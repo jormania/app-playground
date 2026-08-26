@@ -91,6 +91,7 @@ export default {
             ticketsUrl: offer?.url ?? null,
             image: typeof node.image === 'string' ? node.image : (Array.isArray(node.image) ? node.image[0] : null),
             price: Number.isFinite(price) ? price : null,
+            description: typeof node.description === 'string' ? node.description : null,
           }))
         }
       }

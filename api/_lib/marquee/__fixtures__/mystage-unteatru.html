@@ -1,9 +1,10 @@
 <!-- Adapted from https://www.mystage.ro/locatii/teatrul-unteatru-321 on 2026-08-26 —
      the __NEXT_DATA__ blob trimmed to three events, chosen to cover: a real
      event with no specific hall (venue.hall: "-"), a real event with a named
-     hall ("Mare"), and a price. No sold-out event was observed live (every
-     showing on the page was isAvailable: true) — the third entry's
-     isAvailable: false is therefore constructed, not observed, to prove the
-     reader's sold-out branch works; treat a real sold-out mystage page as
-     unverified until one is actually seen. -->
-<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"eventIds":["43667","43668","43556"],"initialEvents":[{"id":43667,"eventId":3385,"title":"Masacrul","date":"2026-08-27 19:00:00","time":"19:00","images":["https://mystage-static-5.starter.ro/files/_event68eae872a3ce64.38697901.png"],"price":{"min":{"value":0},"max":{"value":0},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":true},{"id":43556,"eventId":3591,"title":"MASS","date":"2026-09-14 19:00:00","time":"19:00","images":["https://mystage-static-2.starter.ro/files/_eventmass.jpg"],"price":{"min":{"value":110.08},"max":{"value":110.08},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"Mare"},"isAvailable":true},{"id":43900,"eventId":9999,"title":"Constructed Sold Out Example","date":"2026-09-20 19:00:00","time":"19:00","images":[],"price":{"min":{"value":0},"max":{"value":0},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":false}]}}}</script>
+     hall ("Mare"), a price, and a real description (Masacrul's, verbatim from
+     the live payload). No sold-out event was observed live (every showing on
+     the page was isAvailable: true) — the third entry's isAvailable: false is
+     therefore constructed, not observed, to prove the reader's sold-out
+     branch works; treat a real sold-out mystage page as unverified until one
+     is actually seen. -->
+<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"eventIds":["43667","43668","43556"],"initialEvents":[{"id":43667,"eventId":3385,"title":"Masacrul","description":"Două cupluri se întâlnesc în apartamentul uneia dintre cele două familii, pentru a găsi o rezolvare civilizată la conflictul dintre băieții lor.","date":"2026-08-27 19:00:00","time":"19:00","images":["https://mystage-static-5.starter.ro/files/_event68eae872a3ce64.38697901.png"],"price":{"min":{"value":0},"max":{"value":0},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":true},{"id":43556,"eventId":3591,"title":"MASS","date":"2026-09-14 19:00:00","time":"19:00","images":["https://mystage-static-2.starter.ro/files/_eventmass.jpg"],"price":{"min":{"value":110.08},"max":{"value":110.08},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"Mare"},"isAvailable":true},{"id":43900,"eventId":9999,"title":"Constructed Sold Out Example","date":"2026-09-20 19:00:00","time":"19:00","images":[],"price":{"min":{"value":0},"max":{"value":0},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":false}]}}}</script>

@@ -19,6 +19,10 @@
 // Excelsior's listing too, every real showing carries its own poster, already
 // hosted on eventbook's own CDN as an absolute URL — Excelsior's agenda rows
 // have no image at all; only each show's own detail page does.
+//
+// Every block also carries its own price ("price: 180 lei", sometimes with a
+// trailing tariff name — "27 lei (Bilet Întreg)" — that the number-only capture
+// ignores). One price per block, same as every other field here.
 
 import { TICKET, makeEvent, monthNumber, parseTime, pick, absoluteUrl } from './shared.js'
 
@@ -36,6 +40,7 @@ const LINK = /href="(\/film\/[^"]+)"/
 // the attribute rather than through `pick()`, which would strip it as if it were
 // visible text.
 const IMAGE = /event-image-hall[\s\S]*?<img[^>]*\ssrc="([^"]+)"/
+const PRICE = /text-muted">price:<\/span>\s*(\d+(?:[.,]\d+)?)/i
 
 // How many pages to walk. Ten showings per page; the busiest hall had 8 pages, so
 // this covers it while capping a runaway loop on a site change.
@@ -85,6 +90,7 @@ export default {
         const body = m[1]
         const href = LINK.exec(body)?.[1] ?? null
         const imageSrc = IMAGE.exec(body)?.[1] ?? null
+        const priceRaw = PRICE.exec(body)?.[1] ?? null
         events.push(makeEvent({
           venue: venue.name,
           title: pick(body, TITLE),
@@ -92,6 +98,7 @@ export default {
           time: parseTime(pick(body, TIME)),
           link: absoluteUrl(href, BASE),
           image: absoluteUrl(imageSrc, BASE),
+          price: priceRaw ? Number(priceRaw.replace(',', '.')) : null,
           // The add-to-cart control is the buy path; a sold-out showing loses it.
           // The explicit sold-out wording is checked too, defensively — it was not
           // observed on any of the four halls when this was written, so treat a

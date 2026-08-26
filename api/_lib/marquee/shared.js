@@ -130,6 +130,25 @@ export function parseTime(text) {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
 }
 
+/** The first `max` real prose `<p>` tags from an HTML fragment — long enough
+ *  (`minLength`) to be an actual sentence, not a running-time line or a bare
+ *  content-warning dash. Not a synopsis parser: a venue's "about this show"
+ *  markup mixes the actual blurb with cast lists, sponsor thanks and content
+ *  warnings in no fixed order, and this doesn't try to tell them apart beyond
+ *  length — it just stops before reaching the later credits block, which is
+ *  what actually matters (see tnb.js/excelsior.js for what each site's markup
+ *  looks like and why 2 is the number that works for both). */
+export function proseParagraphs(html, { max = 2, minLength = 60 } = {}) {
+  const paras = []
+  const PARA = /<p[^>]*>([\s\S]*?)<\/p>/g
+  let m
+  while (paras.length < max && (m = PARA.exec(String(html ?? ''))) !== null) {
+    const text = textOf(m[1])
+    if (text.length >= minLength) paras.push(text)
+  }
+  return paras.join(' ') || null
+}
+
 /** Absolute URL from a possibly-relative href. Returns null rather than throwing
  *  so one malformed link can't fail a whole scan. */
 export function absoluteUrl(href, base) {
@@ -141,11 +160,25 @@ export function absoluteUrl(href, base) {
   }
 }
 
+// A production's own blurb, when a reader found one. Capped well short of the
+// full synopsis some detail pages run to — this is context for a Wanderlist
+// draft ("what is this, roughly"), not a full plot summary to read on the
+// card. Adapters pass already-cleaned text; this only bounds its length.
+const MAX_DESCRIPTION = 500
+
+function clipDescription(text) {
+  const clean = textOf(text)
+  if (!clean) return null
+  if (clean.length <= MAX_DESCRIPTION) return clean
+  // Cut at the last word boundary before the limit rather than mid-word.
+  return `${clean.slice(0, MAX_DESCRIPTION).replace(/\s+\S*$/, '')}…`
+}
+
 /** Shape and sanity-check one parsed row. Adapters build the loose object; this
  *  is what decides whether it is an event at all. A row without a title or a date
  *  is dropped — those two are the identity, and a half-row would diff as a new
  *  event every single scan. */
-export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null }) {
+export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null }) {
   const cleanTitle = textOf(title)
   if (!cleanTitle || !date) return null
   // A hall that just repeats the venue is noise: Expirat's JSON-LD names its
@@ -166,6 +199,7 @@ export function makeEvent({ venue, title, date, time = null, hall = null, link =
     ticketsUrl: ticketsUrl ?? null,
     image: image ?? null,
     price: typeof price === 'number' && Number.isFinite(price) ? price : null,
+    description: clipDescription(description),
   }
 }
 

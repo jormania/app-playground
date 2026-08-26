@@ -180,8 +180,28 @@ const SAVED = {
   going: true, plannedDate: day(0), plannedTime: '21:00', dateExpiring: day(0),
 }
 
+/** Saved from somewhere OTHER than Radar's own discovery (Marquee, in the real
+ *  bug report this fixture stands in for) — no Radar row anywhere matches it.
+ *  Proves the pool filter in App.jsx keeps a genuine cross-reference (SAVED
+ *  above, which DOES have a matching Radar entry) while dropping an entry
+ *  that exists only because it's in Wanderlist. Radar-B's calendar is what
+ *  Radar found, not everything Wanderlist happens to hold. */
+const MARQUEE_ONLY_SAVED = {
+  id: 'marquee-only-saved-fixture',
+  name: 'CU DRAG, VAN GOGH / Loving Vincent',
+  start: day(1, '20:30'), hasTime: true,
+  venue: 'Cinema Muzeul Țăranului',
+  category: 'movie',
+  summary: 'Kept from Marquee, not found by Radar.',
+  signals: ['ticketed'],
+  sources: [{ name: 'Wanderlist', url: null, date: day(-1), kind: 'saved' }],
+  confidence: 'reported', checked: day(-1),
+  origin: 'wanderlist', saved: true,
+  going: false, plannedDate: day(1), plannedTime: '20:30', dateExpiring: day(1),
+}
+
 export const DEMO_EVENTS = [...RAW, DUPLICATE].map(normalizeEvent)
-export const DEMO_SAVED = [SAVED].map(normalizeEvent)
+export const DEMO_SAVED = [SAVED, MARQUEE_ONLY_SAVED].map(normalizeEvent)
 
 export const DEMO_SUGGESTED = {
   refreshedAt: 'demo',

@@ -100,12 +100,36 @@ recurring case), fetch each production's own detail page for it** — the same
 `follow()` mechanism eventbook's pagination and iabilet's bundle pages already
 use, one hop deeper. This is only worth doing when the field is actually THERE
 in the detail page's static HTML; it is not a licence to add a headless browser.
-Teatrul Excelsior is the counter-example that proves the rule has a limit: its
-detail page's poster is populated by client-side JS after load (`src="#"` in
-every server response) and the one custom REST route that might expose it
-(`/wp-json/custom/v1/shows`) requires auth — so a poster for Excelsior stays
-unavailable, and that is the honest answer, not a version of this rule to work
-around it further (§9's "shipped" notes record the full investigation).
+An early investigation into Teatrul Excelsior's poster concluded this was
+impossible (its listing carried `src="#"` and the custom REST route that might
+expose it requires auth) — that conclusion was wrong, corrected in §9.14: the
+poster IS on the detail page's static HTML, just not where that first look
+checked (`og:image`, via the canonical URL, not the listing's own `src`
+attribute). The real lesson isn't "Excelsior can't be done" — it's **check the
+detail page's actual response before concluding a field is unreachable**, not
+just the listing page's.
+
+**Rule: a new adapter picks up every field this app already knows how to use,
+not only the minimum that lists a showing.** No source left behind — poster,
+price and a real description (§9.25) are as much a part of "reading a venue's
+programme" as title, date and ticket state, and skipping them because the
+listing alone doesn't carry them is the same mistake the Excelsior
+investigation above made once already. Before shipping a new adapter, check
+each of these against the venue's OWN pages (not just its listing):
+
+| Field | Where it usually hides | Cost if the listing doesn't have it |
+|---|---|---|
+| `image` (poster) | The production's own detail page, or already-absolute on the listing (eventbook) | One `follow()` hop per distinct production — reuse it for `description` too, don't fetch the same page twice for two fields |
+| `price` | Inline on the listing (eventbook's `price:` span), a feed's own price field (Oveit), or absent entirely (mystage's own occurrence price is routinely a genuine 0 before a date goes on sale — never report that as free) | Usually free once you look; skip only if genuinely nowhere |
+| `description` | A detail page's own synopsis wrapper (Excelsior's `the-content`, TNB's `content` div — `proseParagraphs` in `shared.js` handles both), a feed's own description field (mystage, Filarmonica's Strapi blocks), or schema.org's `description` property (any JSON-LD source) | Same detail-page hop as the poster when there's already one; otherwise leave it null rather than inventing one |
+
+Cinema Europa (iabilet) and the four Eventbook cinemas are the current, honest
+exceptions — iabilet's bundle pages carry no synopsis at all short of a THIRD
+hop layer (venue → bundle → per-film page), and Eventbook's own per-film page
+has real content (director/cast/genre/duration) but adding it needs a NEW
+`follow()` hop this adapter doesn't have yet. Both are open, not abandoned —
+see MARQUEE.md's Open section — not a precedent for skipping this check on the
+next venue.
 
 An adapter is a module, not config:
 
@@ -787,6 +811,42 @@ even written, to confirm the parse logic against the actual current pages first.
 category/venue/hall filter tiers were driven in the running app at both desktop and mobile
 viewport widths.
 
+### 9.25 Real descriptions, into Wanderlist only (2026-08-26)
+
+`toDraft`'s description used to be built ENTIRELY from computed facts (date count, hall,
+price, sold-out) — never the venue's own words, because nothing read any. `makeEvent`
+gained an optional `description`, carried through `toProductions` the same way `image`/
+`link`/`hall` already are, and `toDraft` now leads with `production.description` ahead of
+those computed facts rather than replacing them.
+
+Five of the ten active adapters now populate it, each from whatever it already had reason
+to fetch — no new requests beyond what posters already cost:
+
+- **`tnb.js`, `excelsior.js`** — both already fetch each production's own detail page for
+  its poster; the synopsis comes off that SAME page. `shared.js`'s new `proseParagraphs`
+  (first `max` `<p>` tags past a length floor, not a real synopsis parser) is what both
+  adapters share, since both sites mix the actual blurb with short label lines and credits
+  in no fixed order — see the helper's own doc comment for why 2 paragraphs is the number
+  that works for both without over-fitting to either page.
+- **`mystage.js`** — already plain prose in the `__NEXT_DATA__` JSON. No extraction at all,
+  one field access.
+- **`jsonld.js`** (Expirat) — schema.org's own `description` property, already on every
+  Event block that has one.
+- **`filarmonica.js`** — the Strapi feed's `description` is a block-editor AST (headings,
+  paragraphs, each an array of text runs), flattened to plain text. Not currently the ACTIVE
+  reader for Filarmonica (Oveit is, per §9.7 — its feed carries no description field at
+  all), but kept honest for whenever the Strapi feed becomes reachable in production.
+
+Eventbook (4 active venues) and iabilet/Cinema Europa stay without one — both would need a
+NEW `follow()` hop this session didn't add, not a missing field on an existing fetch. See
+the new rule in §3 and the Open section below.
+
+**This only ever reaches Wanderlist's `Description` field, via the Keep sheet's editable
+draft.** Nothing renders it on the programme cards themselves — the listing stays exactly
+as light as it was, title/venue/dates/chips, and adding a real description to what Marquee
+already fetches was never a reason to add a paragraph of prose to a screen meant to be read
+in ten seconds.
+
 ## Open
 
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every
@@ -805,6 +865,14 @@ viewport widths.
   hasn't yet had more than 13 occurrences on its page at once, so whether the missing ones
   reliably surface on a later scan (rather than silently vanishing until manually checked
   again) hasn't been observed against a real case — only reasoned about.
+- **Eventbook and iabilet still have no description**, per the rule in §3 — both are missing
+  a `follow()` hop that doesn't exist yet, not a field that's absent from a page already
+  being read. Eventbook's own film page (`/film/bilete-...`) carries real content
+  (director/cast/genre/duration in an `itemprop="description"` block) and would only need
+  one more hop, the same shape as its existing pagination discovery. iabilet's bundle page
+  has no synopsis text at all — that one would need a THIRD hop layer (venue → bundle → the
+  film's own iabilet page), which is enough added complexity that it's deliberately not done
+  here; revisit only if it turns out to matter in practice.
 - Addresses and areas are filled only where a source stated them (Filarmonica, Expirat,
   Cinema Union, Cinema Europa). The other three are blank rather than guessed.
 - The movie-category horizon is a single blanket rule with one real cinema (Cinema Europa)

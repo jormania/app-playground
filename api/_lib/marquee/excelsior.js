@@ -22,13 +22,18 @@
 // detail page's own `<link rel="canonical">` rather than by request order, so a
 // handful of failed detail fetches just leave those shows posterless instead of
 // misattributing an image to the wrong one.
+//
+// The same detail page also carries the real synopsis, in an `<article
+// class="the-content">` wrapper the WordPress theme prints on every show's
+// own page — read alongside the poster, no third hop.
 
-import { TICKET, makeEvent, inferYear, parseTime, pick, textOf, absoluteUrl } from './shared.js'
+import { TICKET, makeEvent, inferYear, parseTime, pick, textOf, absoluteUrl, proseParagraphs } from './shared.js'
 
 const ITEM = /<a\s+href="([^"]+)"\s+class="el-agenda-item"[^>]*>([\s\S]*?)<\/a>/g
 const BASE = 'https://teatrul-excelsior.ro/'
 const CANONICAL = /<link rel="canonical" href="([^"]+)"/
 const OG_IMAGE = /<meta property="og:image" content="([^"]+)"/
+const CONTENT = /<article class="the-content">([\s\S]*?)<\/article>/
 
 // A season runs maybe 15-20 distinct titles; capped well above that so a
 // genuinely busy programme still gets every poster while a runaway loop can't
@@ -66,11 +71,18 @@ export default {
     // missing one just means that production keeps no poster, same as the
     // handling for every other field this reader can't find.
     const posters = new Map()
+    const descriptions = new Map()
     for (const page of pages) {
       const html = page.body ?? ''
       const canonical = CANONICAL.exec(html)?.[1]
+      if (!canonical) continue
       const image = OG_IMAGE.exec(html)?.[1]
-      if (canonical && image) posters.set(canonical, image)
+      if (image) posters.set(canonical, image)
+      // `the-content` is Excelsior's WordPress theme's own synopsis wrapper —
+      // present only on a detail page, never on the listing, so this is safe
+      // to run over every page without first checking which kind it is.
+      const content = CONTENT.exec(html)?.[1]
+      if (content) descriptions.set(canonical, proseParagraphs(content))
     }
 
     const html = pages.map((p) => p.body).join('\n')
@@ -92,6 +104,7 @@ export default {
         hall: pick(body, /class="location">([^<]*)</),
         link,
         image: link ? (posters.get(link) ?? null) : null,
+        description: link ? (descriptions.get(link) ?? null) : null,
         // "SOLD OUT" wins over a stray buy label: a row can carry both when the
         // theatre leaves the button in place on a sold-out night.
         ticketState: /sold\s*out/i.test(tickets)

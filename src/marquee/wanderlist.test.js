@@ -99,6 +99,18 @@ describe('toDraft', () => {
     expect(draft.description).toMatch(/Sala mare/)
   })
 
+  it('leads with the venue’s own words when a reader found any, ahead of the computed facts', () => {
+    const withBlurb = toProductions([showing])[0]
+    withBlurb.description = 'A real synopsis pulled from the venue’s own page.'
+    const richDraft = toDraft(showing, { venue, production: withBlurb })
+    expect(richDraft.description.startsWith('A real synopsis pulled from the venue’s own page.')).toBe(true)
+  })
+
+  it('falls back to just the computed facts when no reader found a description', () => {
+    expect(draft.description).not.toMatch(/^A real synopsis/)
+    expect(draft.description.length).toBeGreaterThan(0) // the facts alone are never blank here
+  })
+
   it('records a sold-out listing as a fact about when it was saved', () => {
     const gone = toDraft({ ...showing, ticketState: 'sold-out' }, { venue })
     expect(gone.description).toMatch(/sold out when saved/)

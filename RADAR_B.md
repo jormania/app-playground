@@ -967,3 +967,31 @@ across all of them. The `notion` **tag** stays — that one drives filtering.
 and comments, and the name has not changed — there is no visual identity of Radar-B's
 rendered inside Marquee to restyle. Those files were also mid-flight in another
 session (the TNB and MyStage adapters) while this landed, so they were not touched.
+
+## 22. The pool stopped importing Wanderlist as a second source of events (2026-08-26)
+
+§6 and §16 both say it plainly — "Wanderlist is the only save," "Radar-B does not
+re-implement" discovery — but the pool itself didn't enforce it. `App.jsx` built its
+`pool` from `dedupe([...data.events, ...data.saved])` with no filter afterward, so
+**any** Wanderlist row that didn't cluster with a Radar row still survived dedupe as
+its own standalone record and rendered on the calendar. The visible symptom: keeping
+something in Marquee made it show up on Radar-B's own calendar, tagged "in
+Wanderlist" — not because Radar found it, but because it was in Wanderlist at all.
+
+The fix is one line: `.filter((e) => e.radarId)` after `dedupe(...)`. `mergeCluster`
+(`dedupe.js`) already sets `radarId` from whichever member of a cluster has
+`origin === 'radar'`, and `null` when none does — so this doesn't touch the merge
+logic or the cross-reference itself:
+
+- A Radar row that also matches a Wanderlist row merges into one record carrying
+  both ids — still shows, still tagged "in Wanderlist". This is the entire point of
+  §16's two-way merge, and it's unaffected.
+- A Wanderlist row that matches nothing — kept from Marquee, or anywhere Radar
+  itself never looked — merges into its own standalone record with `radarId: null`,
+  and that one is now dropped before it reaches `stream`/`counts`/`facets`.
+
+`fixtures.js` gained `MARQUEE_ONLY_SAVED`, a saved entry with no matching Radar row,
+specifically to give this case a fixture — the existing "Trio Nocturn" fixture
+always had a matching Radar entry, so the no-match path had never actually been
+exercised in demo mode. `App.test.jsx`'s new test asserts it never renders, next to
+the existing test proving "Trio Nocturn" (the genuine cross-reference) still does.

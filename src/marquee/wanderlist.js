@@ -70,6 +70,10 @@ export function toDraft(showing, { venue, production } = {}) {
   return {
     name: showing.title,
     description: [
+      // The venue's own words, when a reader found any — real context rather
+      // than only the facts below, which are all Marquee can otherwise state
+      // about something it never actually read a description of.
+      production?.description ?? null,
       production?.showings?.length > 1
         ? `${production.showings.length} dates listed at ${showing.venue}.`
         : null,

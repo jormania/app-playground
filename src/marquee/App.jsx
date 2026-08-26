@@ -365,49 +365,54 @@ export default function App() {
         </div>
       </header>
 
-      <nav className="tabs" aria-label="Views">
-        <button
-          type="button"
-          className={`tab ${tab === 'programme' ? 'tab--on' : ''}`}
-          onClick={() => setTab('programme')}
-          aria-current={tab === 'programme'}
-        >
-          Programme
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'venues' ? 'tab--on' : ''}`}
-          onClick={() => setTab('venues')}
-          aria-current={tab === 'venues'}
-        >
-          Venues{venues.length ? ` (${venues.length})` : ''}
-        </button>
-      </nav>
+      {/* Tabs and search share one row on desktop, where there's ample width
+          for both regardless of the tab label's own size. On a phone, this row
+          becomes a column instead — a CSS-only, deterministic stack, not the
+          old approach of "sit inline and hope it doesn't have to wrap": that
+          approach was what let "Venues" growing to "Venues (8)" once venues
+          finished loading nudge search onto a wrapped line mid-render, a jump
+          with no user action behind it. A column never wraps; it just always
+          has two rows, on every render, so there's nothing left to jump. */}
+      <div className="tabs-row">
+        <nav className="tabs" aria-label="Views">
+          <button
+            type="button"
+            className={`tab ${tab === 'programme' ? 'tab--on' : ''}`}
+            onClick={() => setTab('programme')}
+            aria-current={tab === 'programme'}
+          >
+            Programme
+          </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'venues' ? 'tab--on' : ''}`}
+            onClick={() => setTab('venues')}
+            aria-current={tab === 'venues'}
+          >
+            Venues{venues.length ? ` (${venues.length})` : ''}
+          </button>
+        </nav>
 
-      {/* Its own row, deliberately outside `.tabs`: sitting inside that flex row
-          made its position depend on the tab labels' width, and "Venues" growing
-          to "Venues (8)" once venues finished loading was enough to push it onto
-          a wrapped line a second after paint — a jump with no user action behind
-          it. A fixed row above the filter chips never moves. */}
-      {tab === 'programme' && (
-        <div className="search-row">
-          <div className="search">
-            <SearchIcon size={14} aria-hidden="true" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search…"
-              aria-label="Search the programme by title or venue"
-            />
-            {search && (
-              <button type="button" className="search__clear" aria-label="Clear search" onClick={() => setSearch('')}>
-                <ClearIcon size={14} />
-              </button>
-            )}
+        {tab === 'programme' && (
+          <div className="search-row">
+            <div className="search">
+              <SearchIcon size={14} aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search…"
+                aria-label="Search the programme by title or venue"
+              />
+              {search && (
+                <button type="button" className="search__clear" aria-label="Clear search" onClick={() => setSearch('')}>
+                  <ClearIcon size={14} />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <main className="main">
         {client.mode === 'demo' && (

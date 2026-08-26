@@ -31,8 +31,15 @@
 // DISTINCT production (61 of them as inspected, not per showing), matched by
 // the page's own request URL rather than by fetch order, so a handful of
 // failed detail fetches just leave those productions posterless.
+//
+// The same detail page also carries the real synopsis — no second hop for it,
+// just another pass over a page already being fetched for its poster. TNB's
+// own markup runs a short content-advisory paragraph BEFORE the actual blurb
+// (`<p><em>Spectacol nerecomandat minorilor...</em></p>` then the real text) —
+// `proseParagraphs`'s length filter happens to keep both, in the order they
+// print, so the real paragraph survives in position 2 rather than being lost.
 
-import { TICKET, makeEvent, textOf, pick, parseTime, absoluteUrl } from './shared.js'
+import { TICKET, makeEvent, textOf, pick, parseTime, absoluteUrl, proseParagraphs } from './shared.js'
 
 const BASE = 'https://www.tnb.ro/'
 const DAY = /<div class="day">([\s\S]*?)(?=<div class="day">|$)/g
@@ -82,9 +89,12 @@ export default {
     // listing row already links to, so no canonical-tag cross-referencing is
     // needed here the way Excelsior's does.
     const posters = new Map()
+    const descriptions = new Map()
     for (const page of pages.slice(1)) {
-      const src = POSTER.exec(page.body ?? '')?.[1]
+      const body = page.body ?? ''
+      const src = POSTER.exec(body)?.[1]
       if (page.url && src) posters.set(page.url, absoluteUrl(src, BASE))
+      if (page.url) descriptions.set(page.url, proseParagraphs(body))
     }
 
     const html = pages[0]?.body ?? ''
@@ -122,6 +132,7 @@ export default {
           image: link ? (posters.get(link) ?? null) : null,
           ticketState: soldOut ? TICKET.SOLD_OUT : ticketHref ? TICKET.OPEN : TICKET.NONE,
           ticketsUrl: ticketHref ? absoluteUrl(ticketHref, BASE) : null,
+          description: link ? (descriptions.get(link) ?? null) : null,
         }))
       }
     }

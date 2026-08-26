@@ -311,12 +311,25 @@ button { color: inherit; font: inherit; }
 .reader--warn { color: var(--color-warning); }
 
 /* ── Tabs ──────────────────────────────────────────────────────────────── */
+/* Shares a row with `.search-row` on desktop (ample width for both regardless
+   of the tab label's own size) and becomes a column on a phone — a CSS-only,
+   deterministic stack rather than the old approach of sitting inline and
+   hoping it never has to wrap: that was what let "Venues" growing to "Venues
+   (8)" once venues finished loading nudge search onto a wrapped line mid-
+   render. A column never wraps; it always has two rows, so nothing jumps. */
+.tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 .tabs {
   display: flex;
   align-items: center;
   gap: 1.25rem;
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 1rem;
   flex-wrap: wrap;
 }
 
@@ -335,14 +348,15 @@ button { color: inherit; font: inherit; }
 .tab--on { color: var(--color-ink); border-bottom-color: var(--color-accent); }
 .tab:hover:not(.tab--on) { color: var(--color-ink); }
 
-/* Its own row above the filter chips, not sharing the tabs' flex-wrap group —
-   see App.jsx's comment for the reflow bug that caused. Right-aligned via the
-   row wrapper rather than `margin-left: auto` on `.search` itself, since a
-   plain block box has nothing to push against without an explicit width. */
+/* Right-aligned within its own box via `justify-content`, rather than
+   `margin-left: auto` on `.search` itself — a plain block box has nothing to
+   push against without an explicit width. On desktop this box just shrinks to
+   its content (`.tabs-row`'s `space-between` already does the separating);
+   on a phone (below) it stretches full-width, and this is what keeps the pill
+   pinned to the right edge of that full-width row. */
 .search-row {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 0.6rem;
 }
 
 .search {
@@ -515,6 +529,7 @@ button { color: inherit; font: inherit; }
 
 .prod {
   display: flex;
+  align-items: flex-start;
   gap: 1rem;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -547,10 +562,17 @@ button { color: inherit; font: inherit; }
 .prod--changed-sold-out { border-left: 3px solid var(--color-danger); }
 .prod--changed-new-event { border-left: 3px solid var(--color-success); }
 
+/* Rendered for EVERY card, real poster or not (Poster in Programme.jsx never
+   returns null) — a fixed slot every card has is what lets the title column
+   start from the same left edge and the same top edge, entry after entry,
+   instead of a posterless card's text jumping over to fill the gap. */
 .prod__poster {
   flex: 0 0 auto;
   width: 56px;
   height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 0.35rem;
   overflow: hidden;
   background: var(--color-surface-2);
@@ -558,6 +580,12 @@ button { color: inherit; font: inherit; }
 }
 
 .prod__poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* The stand-in for a venue that publishes no poster (or an image URL that
+   404s): an outline, not a photo — the standard "no image" treatment, so an
+   empty slot never reads as a broken image. */
+.prod__poster--placeholder { color: var(--color-faint); }
+.prod__poster--placeholder svg { width: 40%; height: 40%; }
 
 .prod__main { flex: 1 1 18rem; min-width: 0; }
 
@@ -672,6 +700,11 @@ button { color: inherit; font: inherit; }
 }
 
 /* ── Venue health (Settings) ───────────────────────────────────────────── */
+/* No max-height/overflow of its own: a nested scrollbar fighting the Settings
+   modal's own scroll made rows past the fold (Teatrul Național, Teatrul
+   Unteatru — last alphabetically) look missing rather than just unreached.
+   This list now scrolls with the rest of the modal, same as every other
+   section. */
 .health {
   list-style: none;
   margin: 0;
@@ -679,8 +712,6 @@ button { color: inherit; font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: 14rem;
-  overflow-y: auto;
 }
 
 .health__row {
@@ -727,18 +758,44 @@ button { color: inherit; font: inherit; }
   .topbar { padding: 1.1rem 0 0.75rem; gap: 0.6rem; }
   .topbar__title { font-size: 1.6rem; }
 
+  /* A deterministic stack, not a wrap: see .tabs-row's own comment above for
+     why this is a column rather than a row left to wrap on its own. */
+  .tabs-row { flex-direction: column; align-items: stretch; gap: 0.6rem; }
   .tabs { gap: 1rem; }
 
-  .venue, .prod { flex-direction: column; gap: 0.6rem; padding: 0.8rem 0.85rem; }
+  /* .venue stacks (name+meta above, actions below) — it has no poster and
+     nothing to keep beside. .prod deliberately does NOT: the whole point of a
+     poster is a cover the title and dates read next to, and stacking it above
+     the text wastes the width beside it that the poster itself isn't using.
+     Its own row still wraps its own children (`flex-wrap` from the base rule
+     already), so `.prod__actions`'s `width: 100%` below still forces Keep/
+     Ignore onto their own line under poster+text, same as a stacked layout
+     would — the poster row just stays a row. */
+  .venue { flex-direction: column; gap: 0.6rem; padding: 0.8rem 0.85rem; }
+  .prod { gap: 0.7rem; padding: 0.8rem 0.85rem; }
 
-  /* .venue__main / .prod__main carry `flex: 1 1 18rem` for the desktop ROW
-     layout, where 18rem is a wrap-width. Flipping the card to a column above
-     leaves that 18rem bound to the (now vertical) main axis instead — a flex
-     item grows to at least its own basis regardless of how short its content
-     is, so every card reserved a fixed ~288px of height and left the gap
-     between a two-line venue and its Pause/Edit/Remove row visible as dead
-     space. `auto` lets the item's height come from its content again. */
-  .venue__main, .prod__main { flex: 1 1 auto; }
+  /* .venue__main carries `flex: 1 1 18rem` for the desktop ROW layout, where
+     18rem is a wrap-width. Flipping the CARD to a column above leaves that
+     18rem bound to the (now vertical) main axis instead — a flex item grows
+     to at least its own basis regardless of how short its content is, so
+     every venue reserved a fixed ~288px of height and left the gap between a
+     two-line venue and its Pause/Edit/Remove row visible as dead space.
+     `auto` lets the item's height come from its content again. */
+  .venue__main { flex: 1 1 auto; }
+
+  /* A narrower cover leaves the title column noticeably more room on a phone
+     — worth tuning specifically rather than carrying the desktop size over
+     unchanged, since the text column is the tightest thing on this screen. */
+  .prod__poster { width: 46px; height: 66px; }
+
+  /* `.prod__main`'s desktop 18rem basis (288px) doesn't fit next to even a
+     narrowed poster on a ~320px content width — and `flex-wrap` decides line
+     breaks from each item's BASIS, not its post-shrink size, so `flex-shrink`
+     never got a chance to help: the poster and the wrapping text landed on
+     separate lines regardless. A near-zero basis (`min-width: 0` already
+     applies) lets `.prod__main` size itself to whatever's left on the poster's
+     own line instead, which is what actually keeps them side by side. */
+  .prod__main { flex: 1 1 0; }
 
   /* Actions become a row under the content rather than a squeezed column
      beside it — with a bigger tap target than an inline text link. */
@@ -754,7 +811,13 @@ button { color: inherit; font: inherit; }
   .change { gap: 0.3rem 0.5rem; }
   .change__title { flex-basis: 100%; }
 
+  /* Same bug as .venue__main/.prod__main above, in the Keep sheet's own date/time
+     row: `.vform__row > *`'s `flex: 1 1 8rem` is a wrap-width for the desktop ROW
+     layout. Flipping to column here leaves that 8rem bound to height instead, so
+     Planned date and Time each reserved ~128px regardless of a Field's actual
+     ~50px height — the big blank gaps under those two labels on a phone. */
   .vform__row { flex-direction: column; gap: 0.85rem; }
+  .vform__row > * { flex: 1 1 auto; }
 
   .settings__row { justify-content: stretch; }
   .settings__row > * { flex: 1 1 auto; }

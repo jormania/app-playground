@@ -15,7 +15,7 @@ import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
 import iabilet from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
-import { inferYear, slug, eventKey, parseTime, decodeEntities, dedupe } from '../_lib/marquee/shared.js'
+import { inferYear, slug, eventKey, parseTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
 import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
@@ -78,6 +78,40 @@ describe('shared helpers', () => {
     expect(parseTime('la ora 19:00')).toBe('19:00')
     expect(parseTime('99:99')).toBeNull()
     expect(parseTime('35 lei')).toBeNull()
+  })
+
+  describe('proseParagraphs — skip past the boilerplate, not a synopsis parser', () => {
+    it('takes the first real paragraphs, skipping short label lines', () => {
+      const html = '<p>7 lei</p><p>A real synopsis paragraph, long enough to actually be a sentence about the show.</p>'
+      expect(proseParagraphs(html)).toBe('A real synopsis paragraph, long enough to actually be a sentence about the show.')
+    })
+
+    it('stops at `max`, even when a later paragraph would also qualify', () => {
+      const html = '<p>First real paragraph, easily past the length floor this filter uses.</p>'
+        + '<p>Second real paragraph, also easily past the length floor this filter uses.</p>'
+        + '<p>Third real paragraph, which should never be reached because max defaults to two.</p>'
+      const result = proseParagraphs(html)
+      expect(result).toContain('First real paragraph')
+      expect(result).toContain('Second real paragraph')
+      expect(result).not.toContain('Third real paragraph')
+    })
+
+    it('returns null rather than an empty string when nothing qualifies', () => {
+      expect(proseParagraphs('<p>7 lei</p><p>90 lei</p>')).toBeNull()
+      expect(proseParagraphs('')).toBeNull()
+    })
+  })
+
+  it('makeEvent clips an overlong description at a word boundary, never mid-word', () => {
+    const long = 'word '.repeat(200).trim()
+    const event = makeEvent({ venue: 'V', title: 'T', date: '2026-09-01', description: long })
+    expect(event.description.length).toBeLessThanOrEqual(501) // 500 + the ellipsis char
+    expect(event.description.endsWith('…')).toBe(true)
+    expect(event.description.endsWith(' …')).toBe(false) // no stray space before it
+    const short = makeEvent({ venue: 'V', title: 'T', date: '2026-09-01', description: 'A short one.' })
+    expect(short.description).toBe('A short one.')
+    const none = makeEvent({ venue: 'V', title: 'T', date: '2026-09-01' })
+    expect(none.description).toBeNull()
   })
 
   it('dedupe keeps the first of a repeated key', () => {
@@ -175,6 +209,13 @@ describe('Teatrul Excelsior', () => {
       )
       expect(withNoCover.every((e) => e.image === null)).toBe(true)
     })
+
+    it('reads the real synopsis off the same detail page it already fetches for the poster', () => {
+      const withDetails = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
+      const tomcat = withDetails.find((e) => e.title === 'Tomcat')
+      expect(tomcat.description).toContain('Jess')
+      expect(tomcat.description).not.toContain('premieră pe țară') // too short to qualify, correctly skipped
+    })
   })
 })
 
@@ -208,6 +249,25 @@ describe('eventbook', () => {
   it('reads the poster off eventbook’s own CDN — it was there all along, just never extracted', () => {
     expect(events[0].image).toMatch(/^https:\/\/storage\.googleapis\.com\/.*\.webp$/)
     expect(events.every((e) => e.image)).toBe(true)
+  })
+
+  it('reads the price off the same block — it was there too, just never extracted', () => {
+    expect(events.every((e) => e.price === 27)).toBe(true)
+  })
+
+  it('takes the leading number and ignores a trailing tariff name', () => {
+    // "27 lei (Bilet Întreg)" — seen on the live site, not (yet) in this fixture.
+    const withTariffName = eventbook.parse([{
+      body: '<div id="performance">'
+        + '<a href="/film/x" class="text-dark event-title d-block text-uppercase text-decoration-none">'
+        + '<h5>Test Film</h5></a>'
+        + '<span class="msym">calendar_month</span> 26 Aug 2026'
+        + '<span class="msym">schedule</span> 18:00'
+        + '<span class="text-muted">price:</span> 27 lei (Bilet Întreg)'
+        + '<a href="/x" class="add_in_cart"></a>'
+        + '</div>',
+    }], { venue })
+    expect(withTariffName[0].price).toBe(27)
   })
 
   it('discovers its own pagination from page 1', () => {
@@ -255,6 +315,13 @@ describe('Filarmonica (Strapi feed)', () => {
     expect(events[0].ticketState).toBe('sold-out') // buyLabel "Sold Out" + disableBuy
     expect(events[1].ticketState).toBe('open')     // buyLabel set, ticketUrl absent
     expect(events[1].ticketsUrl).toBeNull()
+  })
+
+  it('flattens the feed’s block-editor description into plain text', () => {
+    // Strapi's rich-text format nests text runs inside blocks inside an array —
+    // real programme content (soloists, pieces), just not a plain string.
+    expect(events[0].description).toContain('Martha Argerich')
+    expect(events[0].description).toContain('pian')
   })
 
   it('asks the feed for events that have not ended yet, soonest first', () => {
@@ -471,6 +538,13 @@ describe('tnb (one venue, 7 halls sharing it)', () => {
       const noCover = tnb.parse([listing, { url: 'https://www.tnb.ro/ro/defectul-placebo-2026', body: fixture('tnb-detail-no-cover.html') }], { venue })
       expect(noCover.find((e) => e.title === '(D)efectul Placebo').image).toBeNull()
     })
+
+    it('reads the synopsis off the same detail page, past the content-advisory paragraph TNB prints first', () => {
+      const withDetails = tnb.parse([listing, placeboPage, luizaPage], { venue })
+      const placebo = withDetails.find((e) => e.title === '(D)efectul Placebo')
+      expect(placebo.description).toContain('nerecomandat minorilor') // the advisory, kept
+      expect(placebo.description).toContain('spectacol viu') // the real synopsis, also kept
+    })
   })
 })
 
@@ -498,6 +572,12 @@ describe('mystage (Teatrul Unteatru today — any mystage.ro venue the same way)
 
   it('reads the poster straight from the JSON — no follow() hop needed at all', () => {
     expect(events[0].image).toMatch(/^https:\/\/mystage-static/)
+  })
+
+  it('reads the description straight from the JSON too — already plain prose, nothing to extract', () => {
+    expect(events[0].description).toContain('Două cupluri')
+    // MASS's fixture entry carries no description field at all.
+    expect(events.find((e) => e.title === 'MASS').description).toBeNull()
   })
 
   it('trusts mystage’s own isAvailable flag for ticket state', () => {
@@ -542,6 +622,11 @@ describe('generic schema.org reader (Expirat)', () => {
     // Expirat's JSON-LD names its location "Expirat Halele Carol" — the venue
     // itself — which rendered as "Expirat Halele Carol · Expirat Halele Carol".
     expect(events.every((e) => e.hall === null)).toBe(true)
+  })
+
+  it('reads the description straight off the JSON-LD `description` property', () => {
+    expect(events[0].description).toBeTruthy()
+    expect(events[0].description.length).toBeGreaterThan(10)
   })
 
   it('finds nothing on a page with no Event objects, rather than inventing structure', () => {

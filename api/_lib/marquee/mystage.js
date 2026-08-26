@@ -71,6 +71,9 @@ export default {
         // from seating counts.
         ticketState: e.isAvailable === false ? TICKET.SOLD_OUT : e.isAvailable === true ? TICKET.OPEN : TICKET.NONE,
         price: Number.isFinite(price) && price > 0 ? price : null,
+        // Already plain prose in the JSON — no extraction needed, unlike
+        // every HTML-based reader here.
+        description: e.description ?? null,
       })
     }).filter(Boolean)
   },

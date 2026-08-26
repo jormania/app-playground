@@ -97,3 +97,32 @@ describe('Programme — the category → venue → hall filter tiers', () => {
     expect(screen.getByRole('button', { name: 'Sala Studio' })).toBeTruthy()
   })
 })
+
+describe('Programme — the poster slot renders for every card, cover or not', () => {
+  it('shows the real cover when a reader returned one', () => {
+    const days = byDate(toProductions([event({ image: 'https://example.com/poster.jpg' })]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />)
+    const poster = container.querySelector('.prod__poster')
+    expect(poster.classList.contains('prod__poster--placeholder')).toBe(false)
+    expect(poster.querySelector('img')?.src).toBe('https://example.com/poster.jpg')
+  })
+
+  it('falls back to the placeholder outline when there is no cover — never a blank gap', () => {
+    const days = byDate(toProductions([event({ image: null })]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />)
+    const poster = container.querySelector('.prod__poster')
+    expect(poster.classList.contains('prod__poster--placeholder')).toBe(true)
+    expect(poster.querySelector('img')).toBeNull()
+    expect(poster.querySelector('svg')).toBeTruthy()
+  })
+
+  it('falls back to the placeholder when a real cover URL fails to load', () => {
+    const days = byDate(toProductions([event({ image: 'https://example.com/broken.jpg' })]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />)
+    const img = container.querySelector('.prod__poster img')
+    fireEvent.error(img)
+    const poster = container.querySelector('.prod__poster')
+    expect(poster.classList.contains('prod__poster--placeholder')).toBe(true)
+    expect(poster.querySelector('img')).toBeNull()
+  })
+})

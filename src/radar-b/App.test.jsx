@@ -51,6 +51,16 @@ describe('Radar-B in demo mode', () => {
     expect(screen.queryByRole('button', { name: /Salvează/ })).toBeNull()
   })
 
+  test('a Wanderlist entry with no matching Radar find never appears — Radar-B shows what Radar found', async () => {
+    // fixtures.js's MARQUEE_ONLY_SAVED stands in for the real bug report: an
+    // event kept in Marquee (or anywhere else) with no corresponding Radar
+    // row must not get imported onto the calendar just because it's in
+    // Wanderlist. Contrast with the "Trio Nocturn" test above, which DOES
+    // have a matching Radar entry and correctly still shows, tagged.
+    await open()
+    expect(screen.queryByRole('heading', { name: /Loving Vincent/ })).toBeNull()
+  })
+
   test('the detail view shows every source that mentioned the event', async () => {
     await open()
     await userEvent.click(screen.getByRole('heading', { name: /Lumin/ }).closest('button'))

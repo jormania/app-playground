@@ -98,8 +98,17 @@ function RadarB({ prefs, setPrefs }) {
   // an event you already saved is recognised as the same event rather than
   // appearing twice — and shows as "in your Wanderlist" instead of being offered
   // for saving again.
+  //
+  // The filter after dedupe is what keeps that cross-reference from becoming an
+  // import: a Wanderlist row that matches a Radar row merges into ONE record
+  // carrying both ids (mergeCluster's `radarId`) — that one still shows here,
+  // now flagged "in your Wanderlist". A Wanderlist row that matches NOTHING —
+  // kept from Marquee, or anywhere else Radar itself never surfaced — merges
+  // into its own standalone record with `radarId: null`, and that one is
+  // dropped here. Radar-B's calendar stays what Radar found; Wanderlist is
+  // consulted for cross-reference, not treated as a second source of events.
   const pool = useMemo(
-    () => dedupe([...data.events, ...data.saved]),
+    () => dedupe([...data.events, ...data.saved]).filter((e) => e.radarId),
     [data.events, data.saved],
   )
 

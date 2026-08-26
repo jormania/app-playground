@@ -80,6 +80,7 @@ export function toProductions(events) {
         hall: event.hall ?? null,
         image: event.image ?? null,
         link: event.link ?? null,
+        description: event.description ?? null,
         showings: [],
       })
     }
@@ -89,6 +90,7 @@ export function toProductions(events) {
     production.image ??= event.image ?? null
     production.link ??= event.link ?? null
     production.hall ??= event.hall ?? null
+    production.description ??= event.description ?? null
   }
 
   const out = [...byId.values()]

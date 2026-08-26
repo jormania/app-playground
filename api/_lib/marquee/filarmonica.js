@@ -21,6 +21,19 @@ import { TICKET, makeEvent, parseTime } from './shared.js'
 
 const API = 'https://fgestrapi.filarmonicaenescu.ro/api/events'
 
+/** Strapi's block-editor format: `description` is an array of blocks (headings,
+ *  paragraphs), each holding an array of text runs rather than a plain string.
+ *  Flattened to plain text — bold/italic runs collapse to their text, nothing
+ *  else here cares about the rich formatting a Notion-style editor produces. */
+function flattenBlocks(blocks) {
+  if (!Array.isArray(blocks)) return null
+  const lines = blocks
+    .map((block) => (Array.isArray(block?.children) ? block.children.map((c) => c?.text ?? '').join('') : ''))
+    .map((line) => line.trim())
+    .filter(Boolean)
+  return lines.join(' ') || null
+}
+
 /** Events whose END is today or later, soonest first. Params are pre-encoded:
  *  Strapi's bracket syntax has to survive the query string intact. */
 function feedUrl(from, pageSize) {
@@ -87,6 +100,7 @@ export default {
         ticketState: soldOut ? TICKET.SOLD_OUT : onSale ? TICKET.OPEN : TICKET.NONE,
         ticketsUrl: a.ticketUrl ?? null,
         image: a.media?.data?.attributes?.url ?? null,
+        description: flattenBlocks(a.description),
       })
     }).filter(Boolean)
   },

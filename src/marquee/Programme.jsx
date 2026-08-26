@@ -1,18 +1,26 @@
 import { useState } from 'react'
+import { Image as PosterPlaceholderIcon } from 'lucide-react'
 import { TRIAGE, domIdFor, primaryChangeKind, CATEGORY_LABEL } from './programme.js'
 import { CHANGE_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
-/** A production's poster, when a reader gave us one. Readers vary in whether
- *  they do (Excelsior's markup carries none; Expirat, Oveit and iabilet all
- *  return a poster URL) — so this quietly renders nothing rather than a
- *  broken-image icon when there isn't one, or when the URL 404s. */
+/** A production's poster — or the same-sized outline standing in for one.
+ *  Readers vary in whether they return a cover (Excelsior's markup carries
+ *  none; Eventbook, Expirat, Oveit, TNB and mystage all do), and a real one
+ *  can still 404. Either way the slot always renders: a card with no cover
+ *  keeping the same geometry as one with a photo is what lets the title
+ *  column start from the same left edge, entry after entry, rather than
+ *  drifting over to fill a poster-shaped gap that isn't there. */
 function Poster({ src }) {
   const [failed, setFailed] = useState(false)
-  if (!src || failed) return null
+  const hasImage = Boolean(src) && !failed
   return (
-    <div className="prod__poster">
-      <img src={src} alt="" aria-hidden="true" loading="lazy" onError={() => setFailed(true)} />
+    <div className={`prod__poster${hasImage ? '' : ' prod__poster--placeholder'}`}>
+      {hasImage ? (
+        <img src={src} alt="" aria-hidden="true" loading="lazy" onError={() => setFailed(true)} />
+      ) : (
+        <PosterPlaceholderIcon aria-hidden="true" />
+      )}
     </div>
   )
 }
