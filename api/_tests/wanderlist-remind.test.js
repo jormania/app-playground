@@ -3,6 +3,11 @@
 // that can silently break — a prefs call falling through to the send path would look
 // like "reminders aren't configured" rather than like a routing bug — so it is what
 // these tests pin down.
+//
+// It lives under api/_tests/ rather than beside the handler because **every
+// api/*.js file is a Vercel serverless function**, test files included — a test
+// sitting in api/ would burn one of the twelve slots this merge just freed. Paths
+// under api/_* are excluded from that count.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
@@ -11,19 +16,19 @@ const kv = vi.hoisted(() => ({
   configured: true,
 }))
 
-vi.mock('./_lib/kv.js', () => ({
+vi.mock('../_lib/kv.js', () => ({
   kvConfigured: () => kv.configured,
   kvGet: async (key) => kv.store.get(key) ?? null,
   kvSet: async (key, value) => { kv.store.set(key, value); return true },
 }))
 
-vi.mock('./_shared.js', async (importOriginal) => ({
+vi.mock('../_shared.js', async (importOriginal) => ({
   ...(await importOriginal()),
   originAllowed: () => true,
   rateLimited: () => false,
 }))
 
-const { default: handler, PREFS_KEY } = await import('./wanderlist-remind.js')
+const { default: handler, PREFS_KEY } = await import('../wanderlist-remind.js')
 
 const TOKEN = 'secret-notion-token'
 
