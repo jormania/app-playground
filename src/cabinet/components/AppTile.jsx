@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { IconButton, Modal } from '../../ds'
-import { IconArrowUp, IconArrowDown, IconMore } from './icons'
+import { IconArrowUp, IconArrowDown, IconMore, IconQrCode } from './icons'
 import { canInstallPwaHere, chromeIntentUrl, isAndroid, isIos, pwaLaunchIntentUrl } from '../lib/browserSupport'
 import { recordOpened } from '../lib/storage'
 import { formatRelativeTime } from '../lib/relativeTime'
@@ -52,9 +52,19 @@ import styles from './AppTile.module.css'
 // cycle. Reverted back to unconditional so a real install always gets found.
 //
 // Everything that isn't "icon + name + tap to launch" — description, last-
-// opened stats, the QR code, the New badge's word — lives behind the corner
-// "details" button instead of on the tile itself, so a screenful of tiles
-// stays a grid of icons rather than a list of cards.
+// opened stats, the QR code, whether the app is new or installed — lives
+// behind the corner "details" button instead of on the tile itself, so a
+// screenful of tiles stays a grid of icons rather than a list of cards.
+//
+// That includes the two corner dots the icon used to carry (new, and
+// installed). A full grid of them read as noise rather than signal: fifteen
+// tiles each with up to two 10px marks is a lot of pixels spent on facts that
+// don't change what a tap does. Both survive where they're actually useful —
+// "new" as the New badge in the detail sheet, and installed state in the
+// action's own wording, which says Launch for an installed app and Install
+// for one that isn't. That wording is also the stretched link's aria-label,
+// so screen-reader users still get the install distinction on the grid
+// itself; nothing needs an extra sr-only span to spell it out.
 export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
   const isStatic = app.kind === 'static'
   const path = `/${app.file}`
@@ -89,8 +99,26 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
   // load when the vast majority of taps just launch an app and never open a
   // detail sheet. Dynamically imported here so it's fetched only once a
   // sheet is actually opened, off Cabinet's critical startup path entirely.
+  //
+  // The QR lives behind a disclosure rather than in the sheet body: it's a
+  // desktop-to-phone handoff, secondary to "what is this app and open it", and
+  // a 200px white square directly under the action dominated a sheet whose
+  // real content is a sentence of description. Collapsed by default, and
+  // re-collapsed on close (below) so reopening never lands on it.
+  //
+  // The panel is conditionally rendered, not just hidden with CSS: that keeps
+  // the dynamic import above genuinely lazy. Mounting a hidden canvas would
+  // fetch qrcode on every sheet open, which is exactly what the lazy import
+  // exists to avoid — now it's fetched only when someone asks for the QR.
   const [detailOpen, setDetailOpen] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
   const [qrUrl, setQrUrl] = useState(null)
+  const qrPanelId = useId()
+
+  function closeDetail() {
+    setDetailOpen(false)
+    setQrOpen(false)
+  }
   const drawQr = useCallback((canvas) => {
     if (!canvas) return
     // Ref callbacks must not return a value (React 19 reads a return as a
@@ -118,14 +146,6 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
     document.head.appendChild(link)
   }
 
-  // A dot rather than the old "Launch"/"Install" text: the tile has no room
-  // for a word, but losing the distinction entirely meant a sighted user
-  // couldn't tell an installed app from an uninstalled one without opening
-  // its detail sheet. Only for apps that can be installed at all — a static
-  // app has no install state to show. `title` (not just the sr-only span
-  // below) so a mouse user gets a plain hover tooltip too.
-  const showInstalledMark = canOfferInstall && installed
-
   return (
     <article className={styles.tile}>
       {/* Stretched-link pattern: makes the whole tile tappable (easier on
@@ -147,13 +167,9 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
 
       <div className={styles.icon} style={{ background: app.iconBg || 'var(--color-glow)' }}>
         {app.emoji}
-        {isNew && <span className={styles.newDot} aria-hidden="true" />}
-        {showInstalledMark && <span className={styles.installedDot} aria-hidden="true" title="Installed" />}
       </div>
       <div className={styles.title} title={app.title}>
         {app.title}
-        {isNew && <span className={styles.srOnly}> (new)</span>}
-        {showInstalledMark && <span className={styles.srOnly}> (installed)</span>}
       </div>
 
       {editing ? (
@@ -182,7 +198,7 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
         </IconButton>
       )}
 
-      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title={app.title}>
+      <Modal open={detailOpen} onClose={closeDetail} title={app.title}>
         <div className={styles.detailHead}>
           <div className={styles.detailIcon} style={{ background: app.iconBg || 'var(--color-glow)' }}>
             {app.emoji}
@@ -214,11 +230,30 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
           <span aria-hidden="true">{canOfferInstall && !installed ? '⤓' : '→'}</span>
         </a>
 
-        <div className={styles.qrCanvasWrap}>
-          <canvas ref={drawQr} width={200} height={200} />
-        </div>
-        <p className={styles.qrHint}>Scan to open on your phone</p>
-        <p className={styles.qrUrl}>{qrUrl}</p>
+        <button
+          type="button"
+          className={styles.qrToggle}
+          aria-expanded={qrOpen}
+          aria-controls={qrPanelId}
+          onClick={() => setQrOpen((open) => !open)}
+        >
+          <IconQrCode className={styles.qrToggleIcon} />
+          <span className={styles.qrToggleLabel}>QR code &amp; link</span>
+          <IconArrowDown
+            className={qrOpen ? styles.qrChevronOpen : styles.qrChevron}
+            aria-hidden="true"
+          />
+        </button>
+
+        {qrOpen && (
+          <div id={qrPanelId} className={styles.qrPanel}>
+            <div className={styles.qrCanvasWrap}>
+              <canvas ref={drawQr} width={200} height={200} />
+            </div>
+            <p className={styles.qrHint}>Scan to open on your phone</p>
+            <p className={styles.qrUrl}>{qrUrl}</p>
+          </div>
+        )}
       </Modal>
     </article>
   )

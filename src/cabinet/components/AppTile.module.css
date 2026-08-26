@@ -36,6 +36,10 @@
   .tile:active {
     transform: none;
   }
+  .qrChevron,
+  .qrChevronOpen {
+    transition: none;
+  }
 }
 
 /* Sits beneath everything (z-index 0, painted first) so a tap anywhere on
@@ -52,12 +56,12 @@
   outline-offset: 2px;
 }
 
-/* position: relative anchors .newDot below — but that also makes .icon a
-   positioned box, and a positioned box painted after .stretchedLink (it
-   comes later in the DOM) sits on top of it in the stacking order and
-   swallows the tap meant for the link. pointer-events: none lets every tap
-   here (including on .newDot) fall through to .stretchedLink underneath,
-   same as .title staying unpositioned does. */
+/* pointer-events: none so every tap here falls through to .stretchedLink
+   underneath, same as .title staying unpositioned does. (This used to also
+   carry position: relative to anchor the new/installed dots; those are gone
+   — see AppTile.jsx — but a positioned box painted after .stretchedLink
+   would sit above it in the stacking order and swallow the tap, so if
+   anything is ever absolutely positioned in here again, keep this line.) */
 .icon {
   position: relative;
   pointer-events: none;
@@ -82,47 +86,6 @@
 /* Decorative stand-in for the old "New" text pill — the word still exists,
    just moved to the detail sheet's .badge, since a text pill can't shrink
    below a few characters and this tile has no room to spare. */
-.newDot {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  border: 2px solid var(--color-surface);
-}
-
-/* Same treatment, opposite corner: the tile lost its "Launch"/"Install" text
-   in the redesign, so this is the only visual difference left between an
-   installed app and one that isn't — without it that state was legible only
-   from inside the detail sheet or a screen reader's announcement of the
-   link's accessible name. */
-.installedDot {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-muted);
-  border: 2px solid var(--color-surface);
-}
-
-/* Visually hidden, never `display: none` — screen readers still need "new"/
-   "installed" as part of the tile's name even though nothing on screen
-   spells the word out (see .newDot/.installedDot above). Same pattern as
-   App.module.css's .sortWord. */
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 
 .title {
   width: 100%;
@@ -265,6 +228,62 @@
 .detailAction:focus-visible {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
+}
+
+/* Disclosure for the QR handoff. Reads as a quiet row rather than a second
+   button competing with .detailAction above it — that one is the thing to
+   press, this one is a drawer. */
+.qrToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.qrToggle:hover {
+  color: var(--color-text);
+  border-color: var(--color-muted);
+}
+.qrToggle:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.qrToggleIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Pushes the chevron to the far edge, so the row reads label-left,
+   affordance-right like any other disclosure. */
+.qrToggleLabel {
+  flex: 1;
+  text-align: left;
+}
+
+.qrChevron,
+.qrChevronOpen {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform var(--duration) var(--ease);
+}
+.qrChevronOpen {
+  transform: rotate(180deg);
+}
+
+.qrPanel {
+  margin-top: var(--space-sm);
 }
 
 .qrCanvasWrap {
