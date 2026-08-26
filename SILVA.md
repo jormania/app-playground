@@ -668,7 +668,7 @@ in the app.
 
 ### Serverless budget — the hard constraint
 
-`api/*.js` currently sits at **12 of Vercel Hobby's 12** functions:
+`api/*.js` sat at **12 of Vercel Hobby's 12** functions when Silva was built:
 
 ```
 clickdeck-hltb · clickdeck-pricing · clickdeck-studio-search
@@ -678,6 +678,10 @@ wanderlist-remind · wanderlist-reminders
 ```
 
 **One more file fails the deploy.** Silva therefore adds none:
+
+> Since then `wanderlist-reminders` has been folded into `wanderlist-remind` behind a
+> `?mode=prefs` param (Aug 2026), freeing one slot — but the cap and the rule below
+> are unchanged: check the count before adding any `api/*.js`.
 
 - Notion goes through the existing `api/notion.js` relay unchanged.
 - Images go through the existing `api/notion-upload.js` /

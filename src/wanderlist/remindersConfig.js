@@ -1,17 +1,20 @@
 // The reminder settings (turn it on, which email/name, what hour) must be readable by a
 // server-side cron while the app is closed — so unlike the other apps' purely-local
 // notifications, these live server-side in Vercel KV, written and read through
-// /api/wanderlist-reminders. We keep a small LOCAL MIRROR too, so Settings can render
+// /api/wanderlist-remind?mode=prefs. We keep a small LOCAL MIRROR too, so Settings can render
 // instantly and offline; the server copy is the source of truth for the cron.
 //
 // Writes are gated by the Notion token: the endpoint only accepts them when the token
 // matches the server's WANDERLIST_NOTION_TOKEN, so only you (who already hold the token)
-// can change where reminders are sent. See api/wanderlist-reminders.js.
+// can change where reminders are sent. See api/wanderlist-remind.js.
+//
+// Prefs and the send both hit ONE endpoint, separated by ?mode=prefs: Vercel Hobby caps
+// this repo at 12 serverless functions, so the two halves were folded into one file.
 import { getToken } from './store.js'
 
 const LOCAL_KEY = 'wanderlist_reminders'
-const ENDPOINT = '/api/wanderlist-reminders'
 const REMIND_ENDPOINT = '/api/wanderlist-remind'
+const ENDPOINT = `${REMIND_ENDPOINT}?mode=prefs`
 
 export const DEFAULT_PREFS = { enabled: false, email: '', name: '', sendHour: 8 }
 

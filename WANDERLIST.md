@@ -166,9 +166,20 @@ with the app closed.
   `zonedTomorrowKey`, `splitPlannedStart`, `formatTime12`, `buildReminderEmail`) —
   unit-tested in `api/_lib/reminders.test.js`.
 - **Prefs** (`{ enabled, email, name }`) live in **Upstash Redis** (`api/_lib/kv.js`, Upstash
-  REST via fetch — no npm dep), written from Settings via `/api/wanderlist-reminders`,
-  **gated by the Notion token** (only someone with the token can change where mail goes).
+  REST via fetch — no npm dep), written from Settings via
+  `/api/wanderlist-remind?mode=prefs`, **gated by the Notion token** (only someone with the token can change where mail goes).
   Falls back to `REMINDER_EMAIL` / `REMINDER_NAME` env if KV is absent.
+
+### One endpoint, two modes
+
+`api/wanderlist-remind.js` holds **both** halves — the send and the prefs — separated by
+`?mode=prefs`. They used to be two files; they were merged in Aug 2026 because Vercel
+Hobby caps this whole repo at 12 serverless functions and it was sitting at exactly 12,
+which blocked the next app from deploying at all. Same app, same KV key, same auth gate,
+already sharing `api/_lib/reminders.js` — the obvious pair to fold together.
+
+The mode check runs **before** the send path's env-var requirements, so reading prefs
+still works on a setup that has KV but no Resend key.
 
 ### One-time server setup (env vars)
 
@@ -186,7 +197,7 @@ Dry-run (no send): `GET /api/wanderlist-remind?dryRun=1` (carry `?secret=<CRON_S
 set) returns the composed email + matched items.
 
 **Send test reminder** (Settings, next to Save) hits the same endpoint with `?test=1`
-instead — gated like `wanderlist-reminders.js`'s writes (an `x-notion-token` header must
+instead — gated like a prefs write (an `x-notion-token` header must
 match the server's `WANDERLIST_NOTION_TOKEN`, so only whoever holds the token can trigger
 it), bypasses the `enabled` toggle, and **actually sends** rather than dry-running. If
 nothing is genuinely expiring tomorrow it emails one placeholder item instead, so the

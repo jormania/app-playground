@@ -1,9 +1,29 @@
-// Reminder cron. Vercel invokes this once a day, but TWICE (see vercel.json) — once at
-// 16:00 UTC and once at 17:00 UTC — because Hobby-plan cron can't run more than once a
-// day, yet Bucharest's UTC offset flips with DST (+3 EEST / +2 EET), so hitting "7pm
-// local" year-round needs one entry per offset. Each invocation checks the ACTUAL local
-// hour (zonedHour) and no-ops unless it's genuinely evening there — so only one of the
-// two ever really sends on any given day. (Hobby cron also has up to ~59min of jitter
+// Wanderlist's reminders — BOTH halves, in one serverless function.
+//
+// This file used to be two: the cron that sends the email, and a sibling
+// (`wanderlist-reminders.js`) that read and wrote the prefs the cron consults. They
+// were merged because **Vercel Hobby caps this whole repo at 12 serverless
+// functions** and it was sitting at exactly 12 — the next app could not deploy
+// without a slot. These two were the obvious pair to fold together: same app, same
+// KV key, same auth gate, and they already shared `_lib/reminders.js`.
+//
+// Two modes, chosen by `?mode=prefs`:
+//
+//   (no mode)      → send/cron path. Vercel Cron calls it; `?test=1` is Settings'
+//                    "Send test reminder"; `?dryRun=1` renders without sending.
+//   ?mode=prefs    → GET returns the stored prefs, POST writes them. This is what
+//                    Wanderlist's Settings talks to (src/wanderlist/remindersConfig.js).
+//
+// The mode check happens FIRST, before any of the send path's env-var requirements —
+// reading prefs must keep working on a setup that has KV but no Resend key.
+//
+// ── The send path ────────────────────────────────────────────────────────────
+// Vercel invokes this once a day, but TWICE (see vercel.json) — once at 16:00 UTC and
+// once at 17:00 UTC — because Hobby-plan cron can't run more than once a day, yet
+// Bucharest's UTC offset flips with DST (+3 EEST / +2 EET), so hitting "7pm local"
+// year-round needs one entry per offset. Each invocation checks the ACTUAL local hour
+// (zonedHour) and no-ops unless it's genuinely evening there — so only one of the two
+// ever really sends on any given day. (Hobby cron also has up to ~59min of jitter
 // within its scheduled hour, so "7pm" here means "some time in the 7 o'clock hour", not
 // the exact minute — a platform limit, not something this code can tighten further.)
 //
@@ -17,13 +37,12 @@
 // someday pile that never surfaces on the calendar and is easy to forget. Weekly, not
 // daily, so it never becomes noise; it piggybacks on the same evening send.
 //
-// Also answers `?test=1` — Settings' "Send test reminder" button. That path skips the
-// CRON_SECRET (browsers can't hold it) and the local-hour gate (a test press should always
-// send now, not wait for evening) and is instead gated like wanderlist-reminders.js: only
-// a caller whose `x-notion-token` matches WANDERLIST_NOTION_TOKEN (i.e. you) can trigger
-// it. A test send always actually sends — ignoring the enabled toggle — and, if nothing's
-// really due tomorrow, emails one placeholder item so the button always produces a real
-// message to check.
+// `?test=1` skips the CRON_SECRET (browsers can't hold it) and the local-hour gate (a
+// test press should always send now, not wait for evening) and is instead gated exactly
+// like a prefs write: only a caller whose `x-notion-token` matches
+// WANDERLIST_NOTION_TOKEN (i.e. you) can trigger it. A test send always actually sends —
+// ignoring the enabled toggle — and, if nothing's really due tomorrow, emails one
+// placeholder item so the button always produces a real message to check.
 //
 // Config (one-time, see WANDERLIST.md):
 //   WANDERLIST_NOTION_TOKEN  — integration token, shared with the Findings DB
@@ -33,8 +52,7 @@
 //   KV store (optional)      — holds the {enabled,email,name} prefs from the app; if KV
 //                              isn't set, we fall back to REMINDER_EMAIL / REMINDER_NAME.
 import { selectDueTomorrow, selectStaleIdeas, zonedTomorrowKey, zonedTodayKey, zonedHour, zonedWeekday, splitPlannedStart, buildReminderEmail } from './_lib/reminders.js'
-import { kvGet } from './_lib/kv.js'
-import { PREFS_KEY } from './wanderlist-reminders.js'
+import { kvConfigured, kvGet, kvSet } from './_lib/kv.js'
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 
 const NOTION_VERSION = '2022-06-28'
@@ -42,6 +60,74 @@ const TIMEZONE = 'Europe/Bucharest'
 const SEND_HOUR = 19       // local hour this reminder should go out
 const IDEA_NUDGE_WEEKDAY = 0 // Sunday — the one day a week stale ideas are nudged (0 = Sun)
 const IDEA_MIN_AGE_DAYS = 30 // an idea must be at least this old to be nudged about
+
+export const PREFS_KEY = 'wanderlist:reminder-prefs'
+const PREFS_DEFAULTS = { enabled: false, email: '', name: '', sendHour: 8 }
+
+function safeParse(str) {
+  try { return JSON.parse(str) } catch { return {} }
+}
+
+function sanitizePrefs(body) {
+  const b = body && typeof body === 'object' ? body : {}
+  const hour = Number(b.sendHour)
+  return {
+    enabled: Boolean(b.enabled),
+    email: String(b.email || '').trim().slice(0, 200),
+    name: String(b.name || '').trim().slice(0, 100),
+    sendHour: Number.isFinite(hour) ? Math.min(23, Math.max(0, Math.round(hour))) : 8,
+  }
+}
+
+// ── Prefs mode ───────────────────────────────────────────────────────────────
+// Prefs live in Vercel KV so the cron can read them while the app is closed; the app
+// talks to this mode from Settings (see src/wanderlist/remindersConfig.js).
+//
+// Writes are gated by the Notion token: we only accept a change when the caller's
+// x-notion-token matches the server's WANDERLIST_NOTION_TOKEN — so only the holder of
+// the token (i.e. you) can set where reminders go. If KV or that token env var isn't set
+// up, we answer 501 so the app can show a "finish server setup" hint instead of failing.
+async function handlePrefs(req, res) {
+  if (!originAllowed(req.headers.origin)) {
+    res.status(403).json({ message: 'Origin not allowed.' })
+    return
+  }
+  if (rateLimited(clientIp(req))) {
+    res.status(429).json({ message: 'Too many requests — try again shortly.' })
+    return
+  }
+
+  const serverToken = process.env.WANDERLIST_NOTION_TOKEN
+  if (!kvConfigured() || !serverToken) {
+    res.status(501).json({ configured: false, message: 'Reminders aren’t set up on the server yet (KV store + WANDERLIST_NOTION_TOKEN).' })
+    return
+  }
+
+  const token = req.headers['x-notion-token']
+  if (!token || token !== serverToken) {
+    res.status(401).json({ message: 'Not authorised to change reminder settings.' })
+    return
+  }
+
+  if (req.method === 'GET') {
+    const prefs = { ...PREFS_DEFAULTS, ...((await kvGet(PREFS_KEY)) || {}) }
+    res.status(200).json({ configured: true, prefs })
+    return
+  }
+
+  if (req.method === 'POST') {
+    const payload = typeof req.body === 'string' ? safeParse(req.body) : (req.body || {})
+    const prefs = sanitizePrefs(payload)
+    const ok = await kvSet(PREFS_KEY, prefs)
+    if (!ok) { res.status(502).json({ message: 'Could not save to the KV store.' }); return }
+    res.status(200).json({ ok: true, prefs })
+    return
+  }
+
+  res.status(405).json({ message: 'Use GET or POST.' })
+}
+
+// ── Send path ────────────────────────────────────────────────────────────────
 
 // Minimal row → item mapping (only the fields the email needs). Kept local so the cron
 // bundle doesn't reach into the Vite src tree.
@@ -96,6 +182,12 @@ async function queryNotion(dbId, token, filter) {
 }
 
 export default async function handler(req, res) {
+  // Prefs first: reading or writing them must not require the send path's env vars.
+  if (req.query && req.query.mode === 'prefs') {
+    await handlePrefs(req, res)
+    return
+  }
+
   const token = process.env.WANDERLIST_NOTION_TOKEN
   const dbId = process.env.WANDERLIST_DB_ID
   const resendKey = process.env.RESEND_API_KEY
@@ -108,8 +200,8 @@ export default async function handler(req, res) {
   const isTest = Boolean(req.query && (req.query.test || req.query.testSend))
 
   if (isTest) {
-    // Browser-triggered test send: same gate as wanderlist-reminders.js's writes — only
-    // whoever already holds the matching Notion token can fire it.
+    // Browser-triggered test send: same gate as a prefs write — only whoever already
+    // holds the matching Notion token can fire it.
     if (!originAllowed(req.headers.origin)) { res.status(403).json({ message: 'Origin not allowed.' }); return }
     if (rateLimited(clientIp(req))) { res.status(429).json({ message: 'Too many requests — try again shortly.' }); return }
     const callerToken = req.headers['x-notion-token']

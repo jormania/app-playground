@@ -7,7 +7,6 @@ import notionHandler from './api/notion.js'
 import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
 import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
 import placesHandler from './api/places.js'
-import wanderlistRemindersHandler from './api/wanderlist-reminders.js'
 import wanderlistRemindHandler from './api/wanderlist-remind.js'
 import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
@@ -223,7 +222,7 @@ function devApiRelay(path, handler, name) {
 }
 
 // Dev-only: like devApiRelay but drains the request body first (for POST endpoints such
-// as /api/places and /api/wanderlist-reminders), the same way devNotionRelay does.
+// as /api/places and /api/wanderlist-remind), the same way devNotionRelay does.
 function devBodyRelay(path, handler, name) {
   return {
     name,
@@ -263,8 +262,9 @@ export default defineConfig({
     devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
     devApiRelay('/api/law-of-the-day-content', lawOfTheDayContentHandler, 'dev-law-of-the-day-content-relay'),
     devBodyRelay('/api/places', placesHandler, 'dev-places-relay'),
-    devBodyRelay('/api/wanderlist-reminders', wanderlistRemindersHandler, 'dev-wanderlist-reminders-relay'),
-    devApiRelay('/api/wanderlist-remind', wanderlistRemindHandler, 'dev-wanderlist-remind-relay'),
+    // Body-draining relay, not devApiRelay: this one endpoint serves both the GET
+    // send path and the prefs POST (?mode=prefs).
+    devBodyRelay('/api/wanderlist-remind', wanderlistRemindHandler, 'dev-wanderlist-remind-relay'),
     devApiRelay('/api/steam-search', steamSearchHandler, 'dev-steam-search-relay'),
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
     devApiRelay('/api/clickdeck-hltb', clickDeckHltbHandler, 'dev-clickdeck-hltb-relay'),
