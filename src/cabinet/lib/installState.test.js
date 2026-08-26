@@ -101,9 +101,23 @@ describe('cabinet.webmanifest', () => {
     expect(manifest.related_applications).toBeUndefined()
   })
 
+  // `id` is deliberately NOT '/cabinet.html'. Chrome keys an installed web app
+  // by its manifest id, and the Cabinet had a stale Chrome-internal
+  // "shortcut app" record under that original id — a real standalone install,
+  // but registered only inside Chrome's profile, so it appeared in neither
+  // chrome://webapks nor Android's app list and no uninstall or site-data
+  // clear could reach it. It made Chrome answer "already installed" and refuse
+  // to mint a WebAPK. Bumping the id presents a NEW app identity that the
+  // stale record doesn't match. It's an identity string resolved against the
+  // origin, not a navigable path — start_url and scope stay the real page.
+  it('keeps a distinct id so the stale shortcut-app record cannot match', async () => {
+    const manifest = await readManifest()
+    expect(manifest.id).toBe('/cabinet.html?v=2')
+    expect(manifest.id).not.toBe(manifest.start_url)
+  })
+
   it('keeps the rest of the install-relevant manifest intact', async () => {
     const manifest = await readManifest()
-    expect(manifest.id).toBe('/cabinet.html')
     expect(manifest.start_url).toBe('/cabinet.html')
     expect(manifest.scope).toBe('/cabinet.html')
     expect(manifest.display).toBe('standalone')

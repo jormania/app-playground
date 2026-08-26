@@ -2,7 +2,7 @@
   "name": "The Cabinet",
   "short_name": "The Cabinet",
   "description": "ConeofCold's cabinet of tools — every app, one launch pad.",
-  "id": "/cabinet.html",
+  "id": "/cabinet.html?v=2",
   "start_url": "/cabinet.html",
   "scope": "/cabinet.html",
   "display": "standalone",
