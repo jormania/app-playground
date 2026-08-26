@@ -306,7 +306,7 @@ export default defineConfig({
         radarB: resolve(__dirname, 'radar-b-react.html'),
         marquee: resolve(__dirname, 'marquee-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
-        cabinet: resolve(__dirname, 'cabinet-app.html'),
+        cabinet: resolve(__dirname, 'cabinet.html'),
       }
     }
   }

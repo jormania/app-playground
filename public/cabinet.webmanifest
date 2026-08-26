@@ -1,0 +1,17 @@
+{
+  "name": "The Cabinet",
+  "short_name": "The Cabinet",
+  "description": "ConeofCold's cabinet of tools — every app, one launch pad.",
+  "id": "/cabinet.html",
+  "start_url": "/cabinet.html",
+  "scope": "/cabinet.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4EEDA",
+  "theme_color": "#A8781F",
+  "icons": [
+    { "src": "/cabinet-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/cabinet-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/cabinet-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

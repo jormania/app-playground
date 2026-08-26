@@ -84,16 +84,17 @@ describe('checkInstalledFlags', () => {
 
 // cabinet.webmanifest USED to declare a related_applications entry per
 // react-vite sub-app, and this block pinned that list against the registry to
-// catch drift. The field is gone now: it was suppressing Chrome's WebAPK
-// minting for the Cabinet hub itself (chrome://webapks listed all 15 sub-apps
-// but never the Cabinet, and the install UI wrongly claimed "already
-// installed"). See the comment atop installState.js. So the assertion flips —
-// pin the ABSENCE, so nobody re-adds the field and silently un-installs the
-// Cabinet again.
-describe('cabinet-app.webmanifest', () => {
+// catch drift. The field is gone, and stays gone — though not for the reason
+// originally given. It was removed on the theory that it suppressed WebAPK
+// minting for the Cabinet hub; that theory was never confirmed, and the real
+// blocker turned out to be OS-level (see installState.js). It stays out anyway
+// because the one configuration observed to mint a real WebAPK — this manifest
+// served from a different origin — had no related_applications, and that is the
+// only known-good data point we have. So the assertion still pins the ABSENCE.
+describe('cabinet.webmanifest', () => {
   async function readManifest() {
     const { readFileSync } = await import('node:fs')
-    return JSON.parse(readFileSync('public/cabinet-app.webmanifest', 'utf8'))
+    return JSON.parse(readFileSync('public/cabinet.webmanifest', 'utf8'))
   }
 
   it('declares no related_applications — it blocks WebAPK minting for the hub', async () => {
@@ -101,36 +102,26 @@ describe('cabinet-app.webmanifest', () => {
     expect(manifest.related_applications).toBeUndefined()
   })
 
-  // The manifest lives at /cabinet-app.webmanifest, NOT /cabinet.webmanifest —
-  // that filename is load-bearing. Chrome keys an installed web app by its
-  // MANIFEST URL, which is why three earlier attempts all failed: dropping
-  // related_applications, bumping the manifest `id`, and moving the page to
-  // /cabinet-app.html each left /cabinet.webmanifest untouched, and Chrome kept
-  // answering "already installed". Installing the identical manifest from a
-  // preview origin worked precisely because that changed the manifest URL.
-  //
-  // The Cabinet is served from /cabinet-app.html, NOT /cabinet.html. Chrome had
-  // a stale "shortcut app" record bound to the old URL — a real standalone
-  // install registered only inside Chrome's own profile, so it showed up in
-  // neither chrome://webapks nor Android's app list, and no uninstall, site-data
-  // clear or manifest `id` bump could reach it. It made Chrome answer "already
-  // installed" and refuse to mint a WebAPK. Installing the identical manifest
-  // from a different origin minted fine, which proved the manifest was never
-  // the problem — only the record bound to that URL. A genuinely new path is
-  // the one identity change no stale record can span. /cabinet.html now 308s
-  // here (see vercel.json), so old links keep working.
-  it('is served from the new path, which no stale install record can match', async () => {
+  // Chrome on Android answers "This app is already installed" for the Cabinet
+  // and refuses to mint a WebAPK. That is NOT caused by anything in this
+  // manifest: removing related_applications, bumping `id`, moving the page to a
+  // new path and moving the manifest to a new URL were each tried on a real
+  // device and each changed nothing, while installing this exact manifest from a
+  // different origin minted a real WebAPK first time. The blocking record turned
+  // out to be OS-level, not per-site and not per-browser — Edge reports the app
+  // installed too, on a profile that never installed it. Nothing in this repo can
+  // reach it, so the identity fields are back to their plain original values.
+  // Don't re-litigate them here.
+  it('keeps the plain identity fields — the install block is not ours to fix', async () => {
     const manifest = await readManifest()
-    expect(manifest.id).toBe('/cabinet-app.html')
-    expect(manifest.start_url).toBe('/cabinet-app.html')
-    expect(manifest.scope).toBe('/cabinet-app.html')
+    expect(manifest.id).toBe('/cabinet.html')
+    expect(manifest.start_url).toBe('/cabinet.html')
+    expect(manifest.scope).toBe('/cabinet.html')
   })
 
-  it("is the manifest cabinet-app.html actually links, and not the old URL", async () => {
+  it('is the manifest the shell actually links', async () => {
     const { readFileSync } = await import('node:fs')
-    const shell = readFileSync('cabinet-app.html', 'utf8')
-    expect(shell).toContain('href="/cabinet-app.webmanifest"')
-    expect(shell).not.toContain('/cabinet.webmanifest')
+    expect(readFileSync('cabinet.html', 'utf8')).toContain('href="/cabinet.webmanifest"')
   })
 
   it('keeps the rest of the install-relevant manifest intact', async () => {

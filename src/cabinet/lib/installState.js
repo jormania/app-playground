@@ -11,30 +11,36 @@
 //   - null                          — "can't tell" (every other browser)
 //
 // getInstalledRelatedApps() only ever reports apps declared in THIS page's own
-// manifest's related_applications — and cabinet.webmanifest deliberately no
-// longer declares that field. It was removed because it was the one thing
-// blocking Chrome from minting a WebAPK for the Cabinet hub itself: Chromium's
-// Android install-banner logic suppresses WebAPK promotion for a page whose own
-// manifest carries a non-empty related_applications list, regardless of
-// prefer_related_applications. Every sibling sub-app manifest lacks the field
-// and minted fine; the Cabinet was the only one that didn't (chrome://webapks
-// listed all 15 sub-apps but not the Cabinet, while Chrome's install UI
-// wrongly reported it "already installed"). Don't re-add it.
+// manifest's related_applications — and cabinet.webmanifest no longer declares
+// that field, so the call always resolves empty here.
 //
-// Consequences, accepted as a tradeoff:
-//   - checkInstalledApps() below now always resolves to a Map of all-`false`
-//     here, since the browser has nothing to match against.
-//   - reconcileInstallFlags() therefore can never reach a conclusive answer,
-//     so the secondary cleanup of stale "Launch" flags after a sub-app is
-//     uninstalled is inert. It stays correct (an inconclusive answer clears
-//     nothing), just no longer effective.
-//   - The PRIMARY signal is unaffected: checkInstalledFlags() reads the
-//     per-app flag each sub-app writes itself via src/shared/installFlag.ts,
-//     which never depended on related_applications.
+// It was removed while chasing a bug where Chrome on Android answers "This app
+// is already installed" for the Cabinet and refuses to mint it a WebAPK. That
+// chase failed and is documented in CABINET.md; the short version is that the
+// blocking record is OS-level, not something this repo can influence. Four
+// manifest-side changes (dropping this field, bumping `id`, moving the page to a
+// new path, moving the manifest to a new URL) each changed nothing on a real
+// device, and Edge — a separate browser with a separate profile that never
+// installed the app — reports it installed too.
 //
-// The absolute-URL / PROD_ORIGIN machinery below is kept as-is: it's what the
-// matching would need if this ever becomes viable again, and PROD_ORIGIN is
-// referenced elsewhere.
+// The field stays out regardless: the only configuration ever observed to mint a
+// real WebAPK was this manifest served from a different origin, which had no
+// related_applications. Re-adding it would trade a known-good shape for an
+// unproven theory, to restore only the secondary cleanup below.
+//
+// Consequences, unchanged and accepted:
+//   - checkInstalledApps() always resolves to a Map of all-`false` here.
+//   - reconcileInstallFlags() can therefore never reach a conclusive answer, so
+//     its cleanup of stale "Launch" flags after a sub-app is uninstalled is
+//     inert. Still correct (an inconclusive answer clears nothing), just never
+//     effective.
+//   - The PRIMARY signal is unaffected: checkInstalledFlags() reads the per-app
+//     flag each sub-app writes itself via src/shared/installFlag.ts, which never
+//     depended on related_applications.
+//
+// The absolute-URL / PROD_ORIGIN machinery below is kept as-is: PROD_ORIGIN is
+// referenced elsewhere, and it is what matching would need if this ever becomes
+// viable again.
 const PROD_ORIGIN = 'https://coneofcold.vercel.app'
 
 const INSTALL_FLAG_PREFIX = 'installed:'

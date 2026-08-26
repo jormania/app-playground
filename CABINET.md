@@ -1,6 +1,6 @@
 # The Cabinet — the app-of-apps
 
-**[coneofcold.vercel.app/cabinet-app.html](https://coneofcold.vercel.app/cabinet-app.html)**
+**[coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)**
 
 A dashboard listing every app in this repo. The six Vite+React apps
 (`kind: "react-vite"`) always show and try to hand off to each one's
@@ -24,8 +24,7 @@ This only counts taps on the Cabinet's own tiles (`recordOpened` in
 installed PWA from its home-screen icon bypasses the Cabinet and isn't
 counted. Local to this browser/device only — there's no sync.
 
-Source: [`src/cabinet/`](src/cabinet/). Entry shell: `cabinet-app.html`
-(**not** `cabinet.html` — see "Why the URL is `cabinet-app.html`").
+Source: [`src/cabinet/`](src/cabinet/). Entry shell: `cabinet.html`.
 Built on `src/ds/`, like any new app — see the [design-system rule](CLAUDE.md).
 Its palette is lifted from `index.html`'s own warm dark/gold identity rather
 than invented separately — see the comment atop
@@ -37,8 +36,7 @@ The Cabinet asks the browser which of the react-vite sub-apps are already instal
 [`navigator.getInstalledRelatedApps()`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getInstalledRelatedApps),
 which matches against the `related_applications` list declared in
 [`public/cabinet.webmanifest`](public/cabinet.webmanifest) — a list that
-**deliberately no longer exists**; see "Why `related_applications` is gone"
-below. The primary install signal is now the per-app flag each sub-app writes
+**deliberately no longer exists**; see "The Cabinet's WebAPK: a dead end" below. The primary install signal is now the per-app flag each sub-app writes
 itself (`src/shared/installFlag.ts` → `checkInstalledFlags()`).
 
 **Only a `true` result is trusted.** The original design also showed a hard
@@ -55,61 +53,62 @@ and unsupported browsers) now renders identically: a plain "Open →" link,
 never an error. See the comment atop
 [`src/cabinet/components/AppTile.jsx`](src/cabinet/components/AppTile.jsx).
 
-### Why `related_applications` is gone
+### The Cabinet's WebAPK: a dead end, recorded so nobody repeats it
 
-`cabinet.webmanifest` was the only manifest in the repo declaring a
-`related_applications` array (one entry per sub-app, absolute URLs on the
-production domain, since the API matches nothing else). That field was what
-stopped Android Chrome ever minting a **WebAPK for the Cabinet itself**:
-Chromium's install-banner logic suppresses WebAPK promotion for a page whose
-own manifest carries a non-empty `related_applications` list, regardless of
-`prefer_related_applications`. `chrome://webapks` listed every sub-app but not
-the Cabinet, while Chrome's install UI wrongly reported it "already installed"
-off a stale local flag. Every sibling manifest lacks the field and minted
-fine — so the field was removed. **Don't re-add it**, on this manifest or as a
-step when adding a new app; `installState.test.js` pins its absence.
+**Don't spend time trying to make Android mint a WebAPK for the Cabinet.** It
+has been tried thoroughly and the blocker is outside this repo.
 
-The accepted tradeoff: `getInstalledRelatedApps()` now has nothing to match, so
-it always answers empty here, and `reconcileInstallFlags()` can never reach the
-conclusive answer it needs to clear a stale "Launch" flag after a sub-app is
-uninstalled. That secondary cleanup is inert (still correct, just never fires).
-The primary signal — `checkInstalledFlags()` reading each app's own flag from
-`src/shared/installFlag.ts` — is untouched. See
-[`src/cabinet/lib/installState.js`](src/cabinet/lib/installState.js).
+The symptom: on Android, Chrome's install sheet answers **"This app is already
+installed"** and offers no install. `chrome://webapks` lists all 15 sub-apps but
+never the Cabinet, and Android's Settings → Apps has no entry for it either.
+Tapping "open the app instead" does open a correct standalone PWA, so something
+really is registered somewhere.
 
-### Why the URL is `cabinet-app.html`
+What was tried, in order, each verified on a real device, each changing nothing:
 
-The Cabinet was the one app Android never minted a WebAPK for. Removing
-`related_applications` (above) was necessary but not sufficient: Chrome kept
-answering **"This app is already installed"** on `/cabinet.html` and refusing to
-offer an install.
+1. **Removed `related_applications`** from the manifest (it was the only manifest
+   in the repo declaring one).
+2. **Bumped the manifest `id`** to a new value.
+3. **Moved the page** to a new path, with `start_url`, `scope` and the
+   service-worker scope following it.
+4. **Moved the manifest** to a new URL.
+5. Off-device: removed the home-screen icon, Site settings → **Clear & reset**,
+   and a full **Clear browsing data**.
 
-What it was holding was a **shortcut app** — a real, standalone-launching web app
-registered only inside Chrome's own profile, never handed to Android as a
-package. It appeared in neither `chrome://webapks` nor Android's Settings →
-Apps, so there was nothing to uninstall; and Chrome's installed-web-app registry
-is separate from per-site storage, so removing the home-screen icon, running
-Site settings → Clear & reset, and clearing browsing data all left it intact.
-Bumping the manifest `id` didn't shake it loose either — Chrome wasn't keying on
-that.
+Two observations settle it:
 
-Installing the identical manifest from a Vercel preview origin **did** mint a
-real WebAPK. That isolated it: the manifest was never the problem, only the
-record bound to that URL on the production origin. A genuinely new path is the
-one identity change no stale record can span, so the entry shell was renamed and
-`start_url` / `scope` / `id` / the service-worker scope all follow it.
+- Installing **this exact manifest from a Vercel preview origin minted a real
+  WebAPK, first try.** So the manifest is sound; the fault is bound to the
+  production origin, not to the app's configuration.
+- **Edge reports the app installed too** — a separate browser, a separate
+  profile, which never installed it. A record two independent browsers can both
+  see is not in either browser. It is OS-level: the Android package manager
+  and/or Google Play Services, which is what actually mints WebAPKs.
 
-That still wasn't enough. Chrome answered "already installed" even on a URL it
-had never seen — because the thing it actually keys the record on is the
-**manifest URL**, and all three attempts so far had left `/cabinet.webmanifest`
-untouched. The preview origin worked precisely because a different origin means
-a different manifest URL. So the manifest was renamed too:
-**`public/cabinet-app.webmanifest`**.
+Nothing in this repository can reach that record. So the manifest's identity
+fields are back to their plain original values (`/cabinet.html` throughout), and
+the renames from attempts 3 and 4 were reverted.
 
-Both filenames are load-bearing. Don't rename either back, and don't
-re-point `cabinet-app.html`'s `<link rel="manifest">` at the old path —
-`installState.test.js` pins both. `/cabinet.html` **308s to
-`/cabinet-app.html`** (`vercel.json`), so old links and bookmarks keep working.
+`related_applications` stays removed, but note the reason changed: it was
+removed on a theory that was never confirmed. It stays out because the one
+configuration ever observed to mint successfully had no `related_applications`,
+so that is the only known-good shape on record. The cost is described in
+[`installState.js`](src/cabinet/lib/installState.js) — `getInstalledRelatedApps()`
+always answers empty, so the secondary cleanup of stale "Launch" flags is inert.
+The primary signal (each sub-app's own flag via `src/shared/installFlag.ts`) is
+unaffected.
+
+**Where this leaves the Cabinet, by choice:** a web-based hub that opens
+web-based apps, reachable by bookmark or home-screen shortcut, handing off to
+each sub-app's installed PWA where one exists. The sub-apps install and mint
+normally — only the hub is affected. The Cabinet's own PWA still installs on a
+device without the stale record (a phone reset, a fresh profile), so the
+manifest is kept fully valid rather than abandoned.
+
+If someone ever wants to chase it again, the untried lead is the OS side:
+`adb shell pm list packages | grep -i webapk`, then `dumpsys package <pkg>` to
+see which URL each claims. That is the only route left that could turn the
+inference above into a fact.
 
 ## Launching into the installed app, not a browser tab (Android)
 
@@ -265,8 +264,8 @@ add it while still iterating. When it is:
    snippet, and a `scripts/generate-<app>-icons.mjs` icon script (copy
    `scripts/generate-law-of-the-day-icons.mjs`).
 3. Nothing to add to [`public/cabinet.webmanifest`](public/cabinet.webmanifest) —
-   its `related_applications` list was removed on purpose (see "Why
-   `related_applications` is gone"); the next step is what wires up detection.
+   its `related_applications` list was removed on purpose (see "The Cabinet's
+   WebAPK: a dead end"); the next step is what wires up detection.
 4. Call `watchInstalled('your-app-file.html')` from
    [`src/shared/installFlag.ts`](src/shared/installFlag.ts) at the top of the
    app's own `main.jsx`/`main.tsx` — see "Install detection, take two" below

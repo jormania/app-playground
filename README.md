@@ -32,7 +32,7 @@ The "legacy" rows are older, design-locked apps kept live but not actively devel
 see [`LEGACY.md`](LEGACY.md). All ten are registered in one place:
 [`src/apps-registry.js`](src/apps-registry.js), which feeds both `index.html`'s card
 grid and **[The Cabinet](CABINET.md)** — a dashboard at
-[coneofcold.vercel.app/cabinet-app.html](https://coneofcold.vercel.app/cabinet-app.html)
+[coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)
 that lists all ten apps — trying to hand off to each of the six React+Vite apps'
 installed PWA, and a plain "Open" link for the four legacy static apps.
 
@@ -43,7 +43,7 @@ installed PWA, and a plain "Open" link for the four legacy static apps.
 ```
 /
 ├── index.html                      ← landing page with search + tag filter, reads src/apps-registry.js
-├── cabinet-app.html                 ← The Cabinet dashboard entry (src/cabinet/)
+├── cabinet.html                     ← The Cabinet dashboard entry (src/cabinet/)
 ├── ds-showcase.html                ← live design-system component workbench (src/ds/)
 ├── <app>-react.html                ← one Vite entry per React+Vite app (src/<app>/)
 ├── src/
