@@ -27,16 +27,49 @@ effect. The giveaways, both missed at the time:
 A project-level skill has neither problem: it's in git, and it's what the session actually
 loads.
 
-## Two consumers, one file
+## Two consumers, one file — resolved with a pointer stub (2026-08-26)
 
 | Where you run it | What it uses | Action needed |
 |---|---|---|
 | **Claude Code, in this repo** | this file, directly | none — it just works |
-| **claude.ai / Claude Chat** | the account copy | upload by hand, see below |
+| **claude.ai / Claude Chat** | a **stub** that fetches this file at run time | none, after a one-time paste |
 
-To update the Chat copy: claude.ai → **Settings → Capabilities → Skills** → find the
-skill → replace its content with the file here. Verify it took by checking that the
-skill's `updatedAt` in `~/.claude/skills/synced/manifest.json` moves to today.
+Hand-uploading the Chat copy on every edit was the standing instruction here, and it did
+not survive contact with reality: on 2026-08-26 the repo copy was 33.6 KB and the Chat
+copy 24.7 KB, having drifted apart across several sessions. The rules that had just been
+added to `recommend-in-bucharest` — a mandatory per-event link search, no programme-page
+`Link`s, no invented date ranges — existed only in the repo, while every real run was
+started from Chat. **A copy that must be manually re-synced is a copy that will be stale.**
+
+So the Chat copy no longer holds the skill. It holds
+[`claude-ai-stub.md`](recommend-in-bucharest/claude-ai-stub.md): frontmatter, and an
+instruction to fetch this repo's `SKILL.md` from its raw GitHub URL and follow it. The
+repo is public, so the canonical file **is** the URL — no build step, no `public/` copy,
+nothing to keep in sync:
+
+```
+https://raw.githubusercontent.com/jormania/app-playground/main/.claude/skills/<name>/SKILL.md
+```
+
+**`git push` is now the deploy mechanism for skill changes.** The URL points at `main`, so
+a push takes effect on the next run with no paste. The trade is that a bad push is live
+immediately.
+
+Two things in the stub must not drift: the frontmatter `description` (that string is what
+triggers the skill — keep it byte-identical to `SKILL.md`'s) and the URL. It contains no
+part of the procedure, so there is nothing else that *can* drift.
+
+Re-paste the stub only if one of those two changes. Otherwise, edit `SKILL.md` here and
+push.
+
+**Caveat worth knowing:** a skill body is loaded as trusted instruction, whereas a fetched
+document is ordinary web content — a model may skim or summarise it rather than execute it
+step by step. The stub addresses this explicitly (it states the document is Gabriel's own,
+to be treated as if written inline) and tells the run to **fail loudly** rather than
+reconstruct the procedure from memory, since a remembered run would silently drop exactly
+the rules above. If following-fidelity ever proves unreliable, the fallback is running the
+skill from the app via the API — priced at ~$5–8/run and deferred for that reason — not a
+second hand-maintained copy.
 
 When both exist, Claude Code lists the project-scoped one with a path prefix, so they stay
 distinguishable.
