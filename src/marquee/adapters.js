@@ -81,6 +81,20 @@ export const ADAPTERS = [
     note: 'Emits full schema.org Event JSON-LD per listing.',
   },
   {
+    id: 'tnb',
+    label: 'Teatrul Național București',
+    rung: 'selector',
+    hosts: ['tnb.ro'],
+    note: 'One page, all 7 halls — the hall comes off each row, not off the venue.',
+  },
+  {
+    id: 'mystage',
+    label: 'mystage.ro venue page',
+    rung: 'embedded-json',
+    hosts: ['mystage.ro'],
+    note: 'A Next.js venue page that embeds its full event list as JSON — no HTML parsing needed.',
+  },
+  {
     id: 'jsonld',
     label: 'Generic schema.org',
     rung: 'jsonld',

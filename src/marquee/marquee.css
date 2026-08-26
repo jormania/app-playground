@@ -335,20 +335,25 @@ button { color: inherit; font: inherit; }
 .tab--on { color: var(--color-ink); border-bottom-color: var(--color-accent); }
 .tab:hover:not(.tab--on) { color: var(--color-ink); }
 
-/* Squeezed onto the same row as the tabs, pushed to the far edge — its own
-   line would cost the app a whole row of vertical space just for a feature
-   most checks won't touch. Wraps below the tabs first, on a narrow phone,
-   rather than forcing an overflow. */
+/* Its own row above the filter chips, not sharing the tabs' flex-wrap group —
+   see App.jsx's comment for the reflow bug that caused. Right-aligned via the
+   row wrapper rather than `margin-left: auto` on `.search` itself, since a
+   plain block box has nothing to push against without an explicit width. */
+.search-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.6rem;
+}
+
 .search {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin-left: auto;
-  margin-bottom: 0.5rem;
   padding: 0.15rem 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   color: var(--color-faint);
+  width: 100%;
   max-width: 11rem;
 }
 

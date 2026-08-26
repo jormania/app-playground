@@ -64,9 +64,16 @@ describe('KeepSheet', () => {
     expect(field('planned date').value).toBe('2026-08-26');
   });
 
-  it('says out loud that it is not marking you as going', () => {
-    open();
-    expect(screen.getByText(/never marks you as committed/i)).toBeTruthy();
+  it('never marks a draft as going, regardless of what the showing looked like', async () => {
+    // The sheet used to say this in a standing paragraph on every open; that
+    // explanation now lives in the guide (MARQUEE.md §9.23) instead, but the
+    // actual behaviour it described — never write `going: true` — still has to
+    // hold, which is the thing worth a test rather than a rendered sentence.
+    const onSave = vi.fn().mockResolvedValue();
+    open({ onSave });
+    fireEvent.submit(document.querySelector('form.vform'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].going).toBe(false);
   });
 
   it('renders nothing once the showing is cleared, rather than crashing', () => {

@@ -35,6 +35,20 @@ different cost profile.
 whole point: a venue's programme page is authoritative and structured, so parsing it
 is cheap, exact, and needs no judgement.
 
+**The two circles never overlap, on purpose (2026-08-26).** Both apps eventually save
+into the same Wanderlist Findings, so a venue covered by both would mean the same night
+turning up from two directions. Rather than a dedupe check at save time, the boundary is
+drawn at the source: the `recommend-in-bucharest` skill's **Step 1c** queries this repo's
+Marquee — Watched Venues Notion database live, every run, and excludes any venue Marquee
+is actively reading (`Status: active` *and* a working `Adapter` — matching exactly the
+same filter `api/_lib/marquee/serverScan.js` applies before treating a venue as covered).
+Nothing is hand-synced: add, pause, or remove a venue here and the skill's exclusion set
+changes on its very next run, since the skill fetches its own body from this repo's
+`main` at run time (`.claude/skills/README.md`). The one deliberate carve-out is
+long-lead bookings at a `movie`-horizon venue (§9.8) — Marquee's 10-day window means a
+festival announced weeks out won't be there yet, so the skill still allows those through
+rather than dropping them into a gap neither system covers.
+
 ---
 
 ## 2. The one-function constraint (read this before adding files to `api/`)
@@ -72,6 +86,15 @@ Each venue adapter uses the highest rung that works for that site:
 3. **CSS-selector adapter** — a saved fixture, a `parse(html)` function, a test.
    ~30 lines. This is where Teatrul Excelsior lands.
 
+**A rung the original three didn't anticipate: framework-embedded JSON.** Some sites are
+server-rendered by a JS framework that embeds its OWN full data model in the page rather
+than schema.org — a mystage.ro venue page (Teatrul Unteatru) ships its whole event list,
+richer than JSON-LD, inside `<script id="__NEXT_DATA__">`. Same one-request cost as rung 1,
+same "read once, trust it" shape, just not schema.org — see §9.20. Not to be confused with
+Filarmonica's Next.js page, which bails out to client-side rendering and has NO data in the
+server response at all (§3's survey below) — the difference is whether `getServerSideProps`
+actually ran, which only inspecting the raw HTML tells you.
+
 **Rule: if a listing page is missing a field the adapter wants (a poster is the
 recurring case), fetch each production's own detail page for it** — the same
 `follow()` mechanism eventbook's pagination and iabilet's bundle pages already
@@ -98,9 +121,10 @@ export default {
 }
 ```
 
-### The seven venues, as inspected 2026-08-26
+### The ten venues, as inspected 2026-08-26
 
-One adapter per SITE, not per venue — `eventbook` alone covers four of them.
+One adapter per SITE, not per venue — `eventbook` alone covers four of them, and now `tnb`
+covers all 7 halls of one site under a single venue row too.
 
 | Venue | Site | Rung | What the reader gets |
 |---|---|---|---|
@@ -110,6 +134,8 @@ One adapter per SITE, not per venue — `eventbook` alone covers four of them.
 | **Teatrul Excelsior** | teatrul-excelsior.ro | **3 · selector** | See below. |
 | **Filarmonica**, again | oveit.com | **2 · feed** | `membership-api.oveit.com/v1/vendor/<id>/events` — the platform it actually sells through. Same concerts, plus prices, from a host that does not refuse us. **This is the source the app uses**; the Strapi one is kept documented because it is richer if it ever becomes reachable. |
 | **Cinema Europa** | iabilet.ro | **3 · selector, two-hop** | The venue page is a JS shell with no showings in it — only one schema.org Event per weekly themed bundle, each pointing at its own child page. That child page's HTML holds the actual showings, as an accordion of tariff rows. Added 2026-08-26; see §9.8. |
+| **Teatrul Național București** | tnb.ro | **3 · selector, two-hop** | One page, 7 halls sharing this one venue row — the hall comes off each row, not off the venue. ~108 showings across ~35 days as inspected; no pagination, so this IS the whole forward calendar. A second hop per distinct production (61 of them) for its poster, same rule as Excelsior. Added 2026-08-26; see §9.20. |
+| **Teatrul Unteatru** | mystage.ro | **new · embedded-json** | Every mystage.ro venue page is server-rendered Next.js embedding its full event model — title, date, hall, ticket state, poster — as JSON in `<script id="__NEXT_DATA__">`. No HTML parsing, no follow() hop. Added 2026-08-26; see §9.20. |
 
 Three things the survey turned up that the adapters have to respect:
 
@@ -669,6 +695,98 @@ were confirmed against the LIVE sites, not only the fixtures — 7 of 8 real Exc
 productions returned a working cover, the one that didn't genuinely has none set. Search,
 the venue health list, and the new per-card change marks were all driven in the running app.
 
+### 9.20 Teatrul Național, Teatrul Unteatru, and a filter that scales past a flat list (2026-08-26)
+
+Adding the National Theatre exposed a real scaling problem before it exposed a parsing one:
+TNB runs 7 halls (Sala "Ion Caramitru", Sala Mică, Sala Studio, Sala Atelier, Sala Pictura,
+Sala Media, Amfiteatru) out of one building. Registering each as its own Marquee venue would
+have taken the venue-filter chip row from 8 entries to 14+ from this one addition alone, and
+every future multi-hall venue would repeat it.
+
+**The fix is at the data model, not the UI: one Marquee venue row, one adapter, one page.**
+`tnb.js` reads `tnb.ro/ro/bilete-online` — every hall's whole calendar on one page, no
+pagination, sliding forward day by day (~108 showings across ~35 days as inspected; nothing
+to cap, the default 120-day horizon already exceeds what the page itself shows). The hall
+comes off each row's own `<td class="c2">`, into the `hall` field every adapter already
+carries — nothing new to build there, just the first adapter that actually populates it with
+more than one distinct value per venue. Posters follow §3's detail-page rule: one hop per
+DISTINCT production (61, not per showing), each production's own page carrying
+`<img class="article-image">`, matched by request URL rather than a canonical tag (TNB's
+listing link and its detail page's own URL are already the same one).
+
+**Teatrul Unteatru (mystage.ro) needed no HTML parsing at all** — see §3's new embedded-json
+rung. `mystage.js` regexes out `<script id="__NEXT_DATA__">` and reads
+`pageProps.initialEvents` directly: title, date, time, hall, ticket availability (mystage's
+own `isAvailable`) and a poster, all in the one response. The one gap: mystage's own
+`eventIds` list can be longer than what's hydrated inline (13 vs 10 seen on Unteatru's page)
+— a handful of further-out occurrences load only through mystage's private API on scroll,
+which this adapter does not chase. They surface on a later scan once mystage itself renders
+them inline — self-healing, not a permanent blind spot, same shape as any horizon edge.
+
+**The venue filter became three tiers, none of them new UI components** — `FilterRow` in
+`Programme.jsx` is the same "All + one chip per option" shape rendered three times:
+
+1. **Category** (`Theatre`/`Cinema`/`Concert`/…, from the venue's existing `Category Default`
+   — nothing new to maintain, the field was already there) — shown only when more than one
+   category is actually in use (`categoriesInUse` in `programme.js`). Picking one reveals that
+   category's venues and filters the programme immediately.
+2. **Venue** — in category mode, only ever the handful of venues in the picked category, never
+   the full list. With one category (or too few venues to bother grouping), this falls back to
+   exactly the old flat row — nothing changes for a small setup.
+3. **Hall** — only for a single selected venue whose OWN productions span more than one hall
+   (`hallsInUse`), so TNB gets one and every single-hall venue gets none, automatically.
+
+Each tier gates on its own condition rather than a shared "more than one venue" guard
+specifically so a first-time single-venue-but-multi-hall setup still gets its hall row — a
+bug caught by the render test (`Programme.test.jsx`) before it shipped, not after.
+
+### 9.21 Dismiss persists across a re-check that finds nothing new (2026-08-26)
+
+"What changed" used to reset its dismissal on every successful scan, unconditionally —
+including a re-check that found the exact same nothing new, which resurfaced an
+already-read, already-dismissed list for no reason. `store.js` now persists dismissed
+entries as `kind:key` signatures (`loadDismissedChanges`/`saveDismissedChanges`, capped at
+300 — a signature is one-shot, so nothing that old is ever consulted again). `App.jsx`
+filters `scan.changes` against that set on every render (`visibleChanges`) rather than
+resetting a boolean on every scan; the strip only reappears once a check turns up a
+signature that isn't already dismissed. Distinct from "this check found nothing" (`scan.
+changes` itself empty), which still shows its own "nothing new since…" message exactly as
+before — only "there WAS something and all of it is already dismissed" is now the
+persistent, silent state.
+
+### 9.22 Hide what's already in Wanderlist (2026-08-26)
+
+A fourth Programme toggle in Settings, same shape and same "only when ALL of it" rule as
+"hide sold-out": `visibleProductions`' new `hideKept` filters out a production only once
+`savedAll` is true — every date of the run already kept — so a run with one night saved and
+others still undecided stays visible. Reuses `findings.js`'s existing `savedAll` computation;
+nothing new to derive.
+
+### 9.23 Trimming two screens that had drifted into over-explaining (2026-08-26)
+
+A first real look at the Keep sheet on a phone found two paragraphs that had accumulated at
+the bottom — a Cost field hint ("left blank unless the venue published a price") and a
+standing note that nothing saves as `Going` — sitting as permanent UI weight for something
+worth saying once, not on every single keep. Both are removed from `KeepSheet.jsx`; both are
+now in the guide instead (§04), which is where an explanation belongs once it stops being
+something you need to read every time. The duplicate-entry warning itself stays in the sheet
+— that one is contextual and only appears when it's actually true, which is a different
+thing from a paragraph that was always there regardless of context.
+
+`SettingsModal.jsx` got the same pass: the Findings-connection troubleshooting paragraph
+("open the database → ••• → Connections…") shrank to a one-line pointer at the guide, which
+already carried the full version in its own Connecting Notion section (§08) — a genuine
+second copy, not new content.
+
+### 9.24 Verified
+
+`npm test` (3762 tests across 296 files), `npm run typecheck`, `npx eslint` on every changed
+path all pass. Beyond the fixtures: `tnb.js` and `mystage.js` were dry-run against real
+captures of both live sites (not just the trimmed test fixtures) before the fixtures were
+even written, to confirm the parse logic against the actual current pages first. The
+category/venue/hall filter tiers were driven in the running app at both desktop and mobile
+viewport widths.
+
 ## Open
 
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every
@@ -676,8 +794,17 @@ the venue health list, and the new per-card change marks were all driven in the 
   reading Oveit instead (§9.7 of the earlier round), not by fixing the block. **Whether
   Vercel's egress IPs can reach either the Strapi feed or Oveit is unknown until this
   deploys** — the first thing to check in production. The same question now also applies to
-  `MARQUEE_NOTION_TOKEN`'s scheduled reads and Excelsior's ~20 extra per-scan requests, none
-  of which have run from Vercel's own network yet.
+  `MARQUEE_NOTION_TOKEN`'s scheduled reads, Excelsior's ~20 extra per-scan requests, and now
+  TNB's ~61 extra per-scan poster requests, none of which have run from Vercel's own network
+  yet.
+- **TNB's own detail-page fetches at 61-per-scan are the single biggest per-check request
+  count in the app** — well inside a hand-picked handful of venues checked on request, not
+  something with a fixed schedule hammering it, but the first place to look if a scan starts
+  timing out or TNB's site starts throttling.
+- **mystage's incomplete initial-events window is unverified against a real gap.** Unteatru
+  hasn't yet had more than 13 occurrences on its page at once, so whether the missing ones
+  reliably surface on a later scan (rather than silently vanishing until manually checked
+  again) hasn't been observed against a real case — only reasoned about.
 - Addresses and areas are filled only where a source stated them (Filarmonica, Expirat,
   Cinema Union, Cinema Europa). The other three are blank rather than guessed.
 - The movie-category horizon is a single blanket rule with one real cinema (Cinema Europa)

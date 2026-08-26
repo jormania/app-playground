@@ -15,6 +15,7 @@ const VENUES_DB_KEY = 'marquee_venues_db'
 const FINDINGS_DB_KEY = 'marquee_findings_db'
 const PREFS_KEY = 'marquee_prefs'
 const TRIAGE_KEY = 'marquee_triage'
+const DISMISSED_CHANGES_KEY = 'marquee_dismissed_changes'
 
 export function getToken() { return readJson(TOKEN_KEY, '') }
 export function setToken(token) { writeJson(TOKEN_KEY, String(token || '').trim()) }
@@ -43,6 +44,7 @@ export const DEFAULT_PREFS = {
   hideSoldOut: false,
   showIgnored: false,
   keepToday: false,
+  hideKept: false,
 }
 
 export function loadPrefs() {
@@ -73,6 +75,25 @@ export function loadTriage() {
   return out
 }
 export function saveTriage(triage) { writeJson(TRIAGE_KEY, triage ?? {}) }
+
+/** Which "what changed" entries (as `kind:key` signatures) have already been
+ *  shown and dismissed — persisted so a later check that finds nothing NEW
+ *  doesn't resurface them, rather than the strip resetting itself on every
+ *  successful scan regardless of whether the diff actually changed.
+ *
+ *  Capped rather than left to grow forever: a signature is one-shot (the same
+ *  showing doesn't transition "tickets opened" twice), so nothing past a few
+ *  hundred entries is ever consulted again — keeping only the most recent
+ *  bounds the storage without needing to know which ones are still "live". */
+const MAX_DISMISSED = 300
+
+export function loadDismissedChanges() {
+  const raw = readJson(DISMISSED_CHANGES_KEY, [])
+  return Array.isArray(raw) ? raw : []
+}
+export function saveDismissedChanges(keys) {
+  writeJson(DISMISSED_CHANGES_KEY, (keys ?? []).slice(-MAX_DISMISSED))
+}
 
 /** The client the app should use right now. Demo until a token exists. */
 export function getClient() {

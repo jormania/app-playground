@@ -8,11 +8,14 @@ import Programme from './Programme.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import { sortVenues, scannable, togglePaused } from './venues.js'
-import { toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor, changedKeyMap, TRIAGE } from './programme.js'
+import {
+  toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
+  changedKeyMap, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse,
+} from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
-import { summarize } from './changes.js'
+import { summarize, changeSignature, undismissedChanges } from './changes.js'
 import { runScan, loadLastScan, loadSnapshot } from './scanClient.js'
-import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs } from './store.js'
+import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges } from './store.js'
 import { formatDay } from './format.js'
 
 /** Marquee.
@@ -38,12 +41,20 @@ export default function App() {
   // the app say so instead of leaving you to wonder why the old error is still
   // there.
   const [scanStale, setScanStale] = useState(false)
-  // Dismissing "What changed" hides it until the NEXT check produces a fresh
-  // one — deliberately not persisted, and reset the moment a scan completes.
-  const [changesDismissed, setChangesDismissed] = useState(false)
+  // Dismissing "What changed" hides those specific entries — persisted, so a
+  // later check that finds nothing NEW doesn't resurface them. It reappears
+  // only once a check produces an entry that isn't already in this set (see
+  // visibleChanges below), not on every scan regardless of content.
+  const [dismissedKeys, setDismissedKeys] = useState(() => loadDismissedChanges())
 
   const [triage, setTriageState] = useState(() => loadTriage())
+  // Three tiers, each narrowing the one before it: a category (Theatre, Cinema, …)
+  // reveals that category's venues, a venue reveals its own halls when it has more
+  // than one. Picking a broader tier resets the narrower ones — there is no sense
+  // in which a stale hall filter should survive switching venues out from under it.
+  const [categoryFilter, setCategoryFilter] = useState(null)
   const [venueFilter, setVenueFilter] = useState(null)
+  const [hallFilter, setHallFilter] = useState(null)
   const [search, setSearch] = useState('')
   const [keeping, setKeeping] = useState(null)
 
@@ -129,21 +140,89 @@ export default function App() {
     [scan, prefs.keepToday, findings],
   )
 
-  const days = useMemo(() => byDate(searchProductions(visibleProductions(productions, {
+  // name → category, built once from the active venue list rather than every
+  // production carrying its own copy of something that lives on the venue row.
+  const venueCategory = useMemo(() => venueCategoryMap(active), [active])
+  // Only the categories something is actually watching — never a fixed list of
+  // six chips regardless of what's active, and never reshuffled by how many
+  // venues are in each.
+  const categories = useMemo(() => categoriesInUse(active), [active])
+  // Revealed only once a category is picked — this is the whole point: a
+  // resting row of ~5 category chips instead of one flat row that grows with
+  // every venue ever added.
+  const venuesInCategory = useMemo(
+    () => (categoryFilter ? active.filter((v) => v.category === categoryFilter) : []),
+    [active, categoryFilter],
+  )
+
+  const byCategoryAndVenue = useMemo(() => visibleProductions(productions, {
     triage,
     venue: venueFilter,
+    category: categoryFilter,
+    venueCategory,
     hideIgnored: !prefs.showIgnored,
     hideSoldOut: prefs.hideSoldOut,
-  }), search)), [productions, triage, venueFilter, prefs.showIgnored, prefs.hideSoldOut, search])
+    hideKept: prefs.hideKept,
+  }), [productions, triage, venueFilter, categoryFilter, venueCategory, prefs.showIgnored, prefs.hideSoldOut, prefs.hideKept])
+
+  // Computed from the venue-filtered set, BEFORE any hall filter is applied —
+  // otherwise picking a hall would immediately erase every other hall from the
+  // options meant to let you switch back. Empty unless a single venue with more
+  // than one hall is selected (see hallsInUse) — a venue with just one hall, or
+  // none named at all, never grows a pointless third row.
+  const hallOptions = useMemo(
+    () => (venueFilter ? hallsInUse(byCategoryAndVenue, venueFilter) : []),
+    [byCategoryAndVenue, venueFilter],
+  )
+  // Guards against a stale filter surviving a scan that no longer has that hall,
+  // rather than trusting the state to always get cleared in time.
+  const activeHallFilter = hallFilter && hallOptions.includes(hallFilter) ? hallFilter : null
+
+  const days = useMemo(() => byDate(searchProductions(
+    activeHallFilter ? byCategoryAndVenue.filter((p) => p.hall === activeHallFilter) : byCategoryAndVenue,
+    search,
+  )), [byCategoryAndVenue, activeHallFilter, search])
+
+  /** Category → venue → hall, each tier resetting the ones narrower than it —
+   *  a stale hall filter surviving a venue switch, or a stale venue filter
+   *  surviving a category switch, would silently hide productions you didn't
+   *  mean to filter out. */
+  const handleCategoryFilter = (category) => {
+    setCategoryFilter(category)
+    setVenueFilter(null)
+    setHallFilter(null)
+  }
+  const handleVenueFilter = (venue) => {
+    setVenueFilter(venue)
+    setHallFilter(null)
+  }
 
   // What "What changed" already said about this scan, keyed for a card to look
   // itself up in — so scrolling the programme shows you what's new in place,
   // not only in the strip at the top.
   const changedKeys = useMemo(() => changedKeyMap(scan?.changes), [scan])
 
+  // See changes.js's undismissedChanges for what this filters and why.
+  const visibleChanges = useMemo(() => undismissedChanges(scan?.changes, dismissedKeys), [scan, dismissedKeys])
+  // Distinct from "this scan found nothing new" (scan.changes itself empty,
+  // which Changes.jsx already renders its own message for) — this is "there
+  // WAS something, and all of it is already dismissed", the case that used to
+  // reset on every scan regardless of whether anything had actually changed.
+  const changesDismissed = Boolean(scan?.changes?.length) && visibleChanges.length === 0
+
+  const handleDismissChanges = () => {
+    const signatures = visibleChanges.map(changeSignature)
+    setDismissedKeys((current) => {
+      const next = Array.from(new Set([...current, ...signatures]))
+      saveDismissedChanges(next)
+      return next
+    })
+  }
+
   const counts = useMemo(() => ({
     soldOut: productions.filter((p) => p.allSoldOut).length,
     ignored: productions.filter((p) => triage[p.id] === TRIAGE.IGNORED).length,
+    kept: productions.filter((p) => p.savedAll).length,
   }), [productions, triage])
 
   function setTriage(id, state) {
@@ -180,7 +259,6 @@ export default function App() {
       }
       setScan({ ...result, previousScanAt })
       setScanStale(false)
-      setChangesDismissed(false)
       setTab('programme')
       // Write each venue's outcome back to its Notion row, so Settings can show
       // when it was last read without a fresh scan. Best-effort: a failed
@@ -248,7 +326,9 @@ export default function App() {
    *  with hideSoldOut on) this quietly does nothing rather than fighting those
    *  preferences too. */
   const handleOpenChange = (change) => {
+    setCategoryFilter(null)
     setVenueFilter(null)
+    setHallFilter(null)
     const id = domIdFor(productionId({ venue: change.venue, title: change.title }))
     setTimeout(() => {
       const el = document.getElementById(id)
@@ -302,10 +382,15 @@ export default function App() {
         >
           Venues{venues.length ? ` (${venues.length})` : ''}
         </button>
+      </nav>
 
-        {/* Only on Programme — searching venues by name is what the Venues tab
-            already shows in full, alphabetically. */}
-        {tab === 'programme' && (
+      {/* Its own row, deliberately outside `.tabs`: sitting inside that flex row
+          made its position depend on the tab labels' width, and "Venues" growing
+          to "Venues (8)" once venues finished loading was enough to push it onto
+          a wrapped line a second after paint — a jump with no user action behind
+          it. A fixed row above the filter chips never moves. */}
+      {tab === 'programme' && (
+        <div className="search-row">
           <div className="search">
             <SearchIcon size={14} aria-hidden="true" />
             <input
@@ -321,8 +406,8 @@ export default function App() {
               </button>
             )}
           </div>
-        )}
-      </nav>
+        </div>
+      )}
 
       <main className="main">
         {client.mode === 'demo' && (
@@ -338,9 +423,9 @@ export default function App() {
         {tab === 'programme' ? (
           <>
             <Changes
-              scan={scan}
+              scan={scan ? { ...scan, changes: visibleChanges } : scan}
               dismissed={changesDismissed}
-              onDismiss={() => setChangesDismissed(true)}
+              onDismiss={handleDismissChanges}
               onOpen={handleOpenChange}
             />
             <Programme
@@ -352,8 +437,15 @@ export default function App() {
               changedKeys={changedKeys}
               venues={active}
               search={search}
+              categories={categories}
+              categoryFilter={categoryFilter}
+              onCategoryFilter={handleCategoryFilter}
+              venuesInCategory={venuesInCategory}
               venueFilter={venueFilter}
-              onVenueFilter={setVenueFilter}
+              onVenueFilter={handleVenueFilter}
+              hallOptions={hallOptions}
+              hallFilter={activeHallFilter}
+              onHallFilter={setHallFilter}
               onKeep={(showing, production) => setKeeping({ showing, production })}
               onIgnore={(production) =>
                 setTriage(production.id, triage[production.id] === TRIAGE.IGNORED ? null : TRIAGE.IGNORED)}

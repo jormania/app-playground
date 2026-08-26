@@ -11,6 +11,15 @@ Produces a curated digest of Bucharest events filtered to Gabriel's taste. The t
 
 **That order is deliberate and load-bearing.** The Radar write used to come *after* the digest, worded as a followup step — and in practice it got skipped: the digest satisfied the visible request, the run "felt done," and the write never happened, silently leaving Radar empty run after run. Step 4 now happens *before* the digest is produced, and the digest's own closing line (Step 5) reports how many rows were written or updated. There is no such number to report if Step 4 didn't run, which is the point — do not fabricate one. If Radar isn't reachable for some reason, say so in that line instead of silently omitting it; never print the digest as if the run were complete when it isn't.
 
+**This skill and Marquee (`src/marquee/`, same repo) are meant to be two circles that
+never overlap.** Marquee reads a fixed set of venues' own programme pages directly, far
+more completely and far more often than any roundup or search here ever could — so this
+skill has no business re-discovering events at a venue Marquee already watches; doing so
+just means the same night reaches Wanderlist twice, from two different directions. Step
+1c reads Marquee's own venue list fresh, every run, and excludes those venues before Step
+3's filtering even starts. There is nothing to hand-sync: adding, pausing, or removing a
+venue in Marquee changes what this skill excludes on its very next run.
+
 ---
 
 ## Step 1 — Determine mode based on current day
@@ -60,6 +69,50 @@ Use **both** Notion and web search — always combine them:
 3. Additionally search online for events covering the current day, rest of the week, and the approaching weekend. Use the same 8 sources plus general cultural search (gallery openings, cinema listings, club nights, etc.).
 4. Merge all three streams — Notion articles + Zile și Nopți + web search — into a single event pool before filtering and producing the digest.
 5. Do not update Notion in weekday mode unless it is clearly empty or stale.
+
+---
+
+## Step 1c — Marquee's watched venues (unconditional, read before Step 3)
+
+Runs every time, regardless of weekday/weekend mode — this is what keeps this skill and
+Marquee from ever recommending the same night twice.
+
+Query the **Marquee — Watched Venues** database for every row where `Status` = `active`:
+
+| Resource | ID |
+|---|---|
+| Marquee — Watched Venues database | `7c2ed57e41b74660868f014e9965ff19` |
+| Marquee — Watched Venues data source | `ac321743-03da-4939-ab84-8ca7ef9653b3` |
+
+A venue counts as **actually covered by Marquee** — and is excluded here — only when,
+**in addition to `Status` = `active`**, its `Adapter` is set to something other than
+blank or `unsupported`. Marquee's own scheduled check (`api/_lib/marquee/serverScan.js`)
+applies this exact same second condition before treating a venue as read. Skipping it
+here would mean a venue marked `active` with no working reader attached gets excluded
+from this skill too — covered by neither system, a pure gap. Build the excluded set from
+`Name`, matched case- and diacritic-insensitively (so "Cinema Union" and any stray
+capitalisation/diacritic variant of it match the same entry).
+
+**This is the whole mechanism — there is no separate list to maintain, in this file or
+anywhere else.** The set is read fresh from Marquee's own Notion database every single
+run, so adding a venue in Marquee, pausing one, or removing one changes what this skill
+excludes on its very next run. Nothing here needs editing when Marquee's venue list
+changes, which is also what makes this file safe to push once and leave alone — Step 1c
+always reflects what Marquee is doing *today*, not what it was doing when this file was
+last edited.
+
+**The carve-out — don't let a venue match quietly erase coverage Marquee doesn't actually
+have yet.** Marquee caps `movie`-category venues (Cinema Europa, and any other cinema
+added the same way) to a **10-day scan horizon** (MARQUEE.md §9.9) — deliberately, since
+advance notice on daily showtimes isn't useful there. A genuinely exceptional, far-future
+booking at one of those venues — a festival strand, a retrospective, a guest season
+announced weeks out — will not appear in Marquee that early. If a source names something
+at an excluded venue that reads as a one-off special booking clearly outside its everyday
+rotation, rather than an ordinary showing or concert night the venue runs all the time,
+still include it here — note in `Summary` that it's at a Marquee-covered venue, so it's
+easy to spot as a duplicate later if Marquee itself picks it up once the date comes into
+range. Ordinary, everyday programme items at an excluded venue are exactly the case this
+step exists to drop; leave those out.
 
 ---
 
@@ -121,6 +174,8 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 ## Step 3 — Filter by Gabriel's preferences
 
 ### Always exclude
+- **Venues Marquee already reads** — the set built in Step 1c, subject to that step's
+  carve-out for exceptional far-future bookings at movie-horizon venues
 - Sala Palatului
 - Teatrul Nottara
 - MINA
@@ -471,6 +526,8 @@ Show the draft, wait for confirmation, then write. Never bulk-add unless Gabriel
 | Suggested events page | `377d3e6d-60db-81a6-88e1-c81e0604a9a0` |
 | 📡 Radar database | `fbe904166c9e40fcbf723417e15a17bf` |
 | 📡 Radar data source | `48cbd3d9-4f27-4792-ac03-cbe646d7aa48` |
+| Marquee — Watched Venues database (Step 1c) | `7c2ed57e41b74660868f014e9965ff19` |
+| Marquee — Watched Venues data source (Step 1c) | `ac321743-03da-4939-ab84-8ca7ef9653b3` |
 | Quick Notes DB | `aa4d3e6d-60db-830b-b6e4-8189907a1580` |
 | Quick Notes data source | `776d3e6d-60db-83c4-863c-074672829a42` |
 | Wanderlist (Findings) collection | `b78c25e5-e152-4031-adf7-34950d211d7f` |

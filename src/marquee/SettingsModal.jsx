@@ -119,6 +119,12 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
             checked={prefs.keepToday}
             onChange={(e) => set({ keepToday: e.target.checked })}
           />
+          <SettingsToggle
+            label="Hide what’s already in Wanderlist"
+            hint={counts.kept ? `${counts.kept} fully kept` : 'Runs where every date is already saved'}
+            checked={prefs.hideKept}
+            onChange={(e) => set({ hideKept: e.target.checked })}
+          />
         </section>
 
         <section>
@@ -172,9 +178,7 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
               </p>
               {!probe.findings.ok && (
                 <p className="settings__hint">
-                  Until this one is shared with your integration, <strong>keeping a night will
-                  fail</strong> and Marquee can’t tell what you already have. In Notion, open the
-                  Findings database → <em>•••</em> → <em>Connections</em> → add your integration.
+                  Share this database with your integration in Notion — see the guide below.
                 </p>
               )}
             </div>

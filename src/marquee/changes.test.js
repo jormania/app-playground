@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { diff, toSnapshot, sortChanges, summarize, CHANGE } from './changes.js'
-import { toProductions, byDate, visibleProductions, searchProductions, productionId, domIdFor, scanPayload, changedKeyMap, primaryChangeKind, TRIAGE } from './programme.js'
+import { diff, toSnapshot, sortChanges, summarize, CHANGE, changeSignature, undismissedChanges } from './changes.js'
+import {
+  toProductions, byDate, visibleProductions, searchProductions, productionId, domIdFor, scanPayload,
+  changedKeyMap, primaryChangeKind, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, CATEGORY_LABEL,
+} from './programme.js'
 import { normalizeVenue } from './venues.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
@@ -110,6 +113,26 @@ describe('summarize', () => {
   })
 })
 
+describe('changeSignature / undismissedChanges', () => {
+  const opened = { kind: CHANGE.TICKETS_OPENED, key: 'excelsior:2026-09-23T20:00:tomcat', venue: 'Teatrul Excelsior', title: 'Tomcat' }
+  const soldOut = { kind: CHANGE.SOLD_OUT, key: 'excelsior:2026-09-23T20:00:tomcat', venue: 'Teatrul Excelsior', title: 'Tomcat' }
+
+  it('signs a change by kind and key, not just key — the same event can carry two different changes', () => {
+    expect(changeSignature(opened)).not.toBe(changeSignature(soldOut))
+    expect(changeSignature(opened)).toBe('tickets-opened:excelsior:2026-09-23T20:00:tomcat')
+  })
+
+  it('filters out anything already dismissed, leaving genuinely new entries', () => {
+    const dismissed = [changeSignature(opened)]
+    expect(undismissedChanges([opened, soldOut], dismissed)).toEqual([soldOut])
+  })
+
+  it('is a no-op with nothing dismissed yet, and never throws on a missing scan', () => {
+    expect(undismissedChanges([opened], [])).toEqual([opened])
+    expect(undismissedChanges(undefined, ['x'])).toEqual([])
+  })
+})
+
 describe('productions', () => {
   const events = [
     event({ key: 'a', title: 'Metamorfoza', date: '2026-09-24', time: '19:00', ticketState: 'open' }),
@@ -158,6 +181,67 @@ describe('productions', () => {
   it('filters to one venue', () => {
     const mixed = toProductions([event({ key: 'x' }), event({ key: 'y', venue: 'Club Control', title: 'Gig' })])
     expect(visibleProductions(mixed, { venue: 'Club Control' }).map((p) => p.title)).toEqual(['Gig'])
+  })
+
+  it('filters to one category, resolved through venueCategory since a production only knows its venue by name', () => {
+    const mixed = toProductions([
+      event({ key: 'x', venue: 'Teatrul Excelsior', title: 'Play' }),
+      event({ key: 'y', venue: 'Cinema Union', title: 'Film' }),
+    ])
+    const venueCategory = new Map([['Teatrul Excelsior', 'play'], ['Cinema Union', 'movie']])
+    expect(visibleProductions(mixed, { category: 'movie', venueCategory }).map((p) => p.title)).toEqual(['Film'])
+  })
+
+  it('filters to one hall', () => {
+    const mixed = toProductions([
+      event({ key: 'x', hall: 'Sala Atelier', title: 'A' }),
+      event({ key: 'y', hall: 'Sala Studio', title: 'B' }),
+    ])
+    expect(visibleProductions(mixed, { hall: 'Sala Studio' }).map((p) => p.title)).toEqual(['B'])
+  })
+
+  it('hides a kept production only once EVERY date of its run is already saved', () => {
+    const partiallyKept = { id: 'p1', title: 'Partially kept', venue: 'X', savedAll: false }
+    const fullyKept = { id: 'p2', title: 'Fully kept', venue: 'X', savedAll: true }
+    const untouched = { id: 'p3', title: 'Untouched', venue: 'X', savedAll: false }
+    const visible = visibleProductions([partiallyKept, fullyKept, untouched], { hideKept: true })
+    expect(visible.map((p) => p.title)).toEqual(['Partially kept', 'Untouched'])
+  })
+})
+
+describe('venueCategoryMap / categoriesInUse / hallsInUse', () => {
+  const venues = [
+    { name: 'Teatrul Excelsior', category: 'play' },
+    { name: 'Teatrul Național București', category: 'play' },
+    { name: 'Cinema Union', category: 'movie' },
+  ]
+
+  it('maps each venue name to its own category', () => {
+    const map = venueCategoryMap(venues)
+    expect(map.get('Cinema Union')).toBe('movie')
+    expect(map.get('Teatrul Excelsior')).toBe('play')
+  })
+
+  it('lists only categories actually present, in a fixed order', () => {
+    // The venues here list 'movie' last, but CATEGORY_ORDER (via CATEGORY_LABEL)
+    // is what decides the order, not array position — 'play' sorts first there
+    // regardless of how the venues happen to be listed.
+    expect(categoriesInUse(venues)).toEqual(['play', 'movie'])
+    expect(categoriesInUse([{ category: 'play' }])).toEqual(['play'])
+    expect(CATEGORY_LABEL.movie).toBe('Cinema')
+  })
+
+  it('finds halls only for the one venue asked about, and only when it has more than one', () => {
+    const productions = toProductions([
+      event({ key: 'a', venue: 'Teatrul Național București', hall: 'Sala Atelier', title: 'A' }),
+      event({ key: 'b', venue: 'Teatrul Național București', hall: 'Sala Studio', title: 'B' }),
+      event({ key: 'c', venue: 'Teatrul Excelsior', hall: null, title: 'C' }),
+    ])
+    expect(hallsInUse(productions, 'Teatrul Național București')).toEqual(['Sala Atelier', 'Sala Studio'])
+    // Excelsior has only one production and no named hall at all — nothing to
+    // filter by, so the row must not render a single pointless chip.
+    expect(hallsInUse(productions, 'Teatrul Excelsior')).toEqual([])
+    expect(hallsInUse(productions, 'Nonexistent Venue')).toEqual([])
   })
 })
 

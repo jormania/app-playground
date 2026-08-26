@@ -96,6 +96,21 @@ export const CHANGE_LABEL = {
   [CHANGE.CANCELLED]: 'gone from the programme',
 }
 
+/** The identity a dismissal is recorded and matched against — the same pair
+ *  `Changes.jsx` already uses as its own list key. */
+export function changeSignature(change) {
+  return `${change.kind}:${change.key}`
+}
+
+/** `changes` with anything already dismissed filtered back out — persisted
+ *  dismissal means a re-check that finds the exact same nothing new (or only
+ *  things already dismissed) doesn't resurface them, while a genuinely new
+ *  entry still gets through. */
+export function undismissedChanges(changes, dismissedKeys = []) {
+  const dismissed = new Set(dismissedKeys)
+  return (changes ?? []).filter((c) => !dismissed.has(changeSignature(c)))
+}
+
 /** One line summarising a scan, for the venue row and for Notion's Last Result. */
 export function summarize(result) {
   if (!result) return ''

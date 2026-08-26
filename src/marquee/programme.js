@@ -11,6 +11,20 @@
 import { isActive } from './venues.js'
 import { fold } from './findings.js'
 
+/** Human labels for `venues.js`'s CATEGORIES vocabulary, in the fixed order the
+ *  category filter row renders them — same order every time regardless of how
+ *  many venues happen to be in each, so the row doesn't reshuffle as venues are
+ *  added or paused. */
+export const CATEGORY_LABEL = {
+  play: 'Theatre',
+  movie: 'Cinema',
+  concert: 'Concert',
+  event: 'Event',
+  art: 'Art',
+  culture: 'Culture',
+}
+export const CATEGORY_ORDER = Object.keys(CATEGORY_LABEL)
+
 /** Free-text search across title and venue, diacritics and case folded through
  *  the same `fold` the dedupe matcher uses — "sperante" finds "speranțe". A
  *  blank query returns everything unfiltered rather than nothing, so an empty
@@ -133,20 +147,58 @@ export function byDate(productions) {
     .map(([date, items]) => ({ date, productions: items }))
 }
 
-/** Apply the user's triage and venue filter.
+/** Apply the user's triage, category, venue and hall filters.
  *
  *  Ignoring is per PRODUCTION and permanent, including future dates — the point of
  *  ignoring a film is never hearing about it again, not hearing about it again on
- *  Thursday. */
-export function visibleProductions(productions, { triage = {}, venue = null, hideIgnored = true, hideSoldOut = false } = {}) {
+ *  Thursday.
+ *
+ *  `category` and `hall` are resolved through `venueCategory` — a Map from venue
+ *  name to its `Category Default` — because a production only carries its own
+ *  venue's NAME, not the category, which lives on the venue row instead. A `hall`
+ *  filter without a `venue` filter would mix halls across unrelated venues (Sala
+ *  Mare at Ateneul next to Sala Mare at Unteatru), so it is only meaningful, and
+ *  only ever applied by the UI, once a single venue is already chosen. */
+export function visibleProductions(productions, { triage = {}, venue = null, category = null, hall = null, venueCategory = new Map(), hideIgnored = true, hideSoldOut = false, hideKept = false } = {}) {
   return productions.filter((p) => {
     if (venue && p.venue !== venue) return false
+    if (category && venueCategory.get(p.venue) !== category) return false
+    if (hall && p.hall !== hall) return false
     if (hideIgnored && triage[p.id] === TRIAGE.IGNORED) return false
     // A run counts as sold out only when EVERY date is — hiding a production with
     // one night still on sale would hide the thing you wanted.
     if (hideSoldOut && p.allSoldOut) return false
+    // Same logic as sold-out: only once EVERY date of the run is already in
+    // Wanderlist. A production with one night kept and others still undecided
+    // is still something to see here, not clutter to hide.
+    if (hideKept && p.savedAll) return false
     return true
   })
+}
+
+/** name → category, for the lookup `visibleProductions` needs — built once from
+ *  the venue list rather than every production carrying its own copy. */
+export function venueCategoryMap(venues) {
+  return new Map((venues ?? []).map((v) => [v.name, v.category]))
+}
+
+/** Which categories are actually in play, in `CATEGORY_ORDER` — so the category
+ *  filter row only ever shows options with something behind them, and never
+ *  reshuffles as venues are added, paused or removed. */
+export function categoriesInUse(venues) {
+  const present = new Set((venues ?? []).map((v) => v.category))
+  return CATEGORY_ORDER.filter((c) => present.has(c))
+}
+
+/** The distinct halls among a venue's own visible productions — the second-tier
+ *  filter only makes sense, and is only ever shown, once a single venue is
+ *  selected. A venue with one hall (or none named at all) yields an empty list,
+ *  so the row simply doesn't render rather than showing a single, pointless chip. */
+export function hallsInUse(productions, venueName) {
+  const halls = new Set(
+    productions.filter((p) => p.venue === venueName && p.hall).map((p) => p.hall),
+  )
+  return halls.size > 1 ? [...halls].sort((a, b) => a.localeCompare(b, 'ro')) : []
 }
 
 /** The venues a scan should ask about: active, with a reader, and (when the user

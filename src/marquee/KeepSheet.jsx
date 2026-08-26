@@ -113,13 +113,8 @@ export default function KeepSheet({ open, showing, production, venue, demo, find
           inputMode="numeric"
           value={draft.cost ?? ''}
           onChange={(e) => set({ cost: e.target.value === '' ? null : Number(e.target.value) })}
-          hint="Left blank unless the venue published a price. Never guessed."
         />
 
-        <p className="warn">
-          Saved without <strong>Going</strong> — Marquee never marks you as committed. Set that in
-          Wanderlist when you decide.
-        </p>
         {duplicate && (
           <p className="warn warn--stop" role="alert">
             <strong>This night is already in Wanderlist</strong>

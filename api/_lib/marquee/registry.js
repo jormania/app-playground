@@ -11,6 +11,8 @@ import filarmonica from './filarmonica.js'
 import oveit from './oveit.js'
 import iabilet from './iabilet.js'
 import jsonld from './jsonld.js'
+import tnb from './tnb.js'
+import mystage from './mystage.js'
 
 const expirat = { ...jsonld, id: 'expirat', label: 'Expirat / iabilet whitelabel', minItems: 3 }
 
@@ -22,6 +24,8 @@ export const ADAPTERS = {
   iabilet,
   expirat,
   jsonld,
+  tnb,
+  mystage,
 }
 
 export function getAdapter(id) {

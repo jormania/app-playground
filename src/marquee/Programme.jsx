@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TRIAGE, domIdFor, primaryChangeKind } from './programme.js'
+import { TRIAGE, domIdFor, primaryChangeKind, CATEGORY_LABEL } from './programme.js'
 import { CHANGE_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
@@ -141,7 +141,39 @@ function emptyMessage(venueFilter, scanned, search) {
   return `Nothing upcoming at ${venueFilter}.`
 }
 
-export default function Programme({ scan, days, triage, changedKeys = new Map(), onKeep, onIgnore, venueFilter, onVenueFilter, venues, search = '', stale = false, scanning = false }) {
+/** One filter tier: an "All" chip that clears the value, plus one chip per
+ *  option. Category, venue and hall all render through this — the same
+ *  toggle-a-second-click-to-clear behaviour at every tier. */
+function FilterRow({ value, onChange, options, label = (o) => o, keyOf = (o) => o }) {
+  return (
+    <div className="filters">
+      <button type="button" className={`filter ${!value ? 'filter--on' : ''}`} onClick={() => onChange(null)}>
+        All
+      </button>
+      {options.map((option) => {
+        const key = keyOf(option)
+        return (
+          <button
+            key={key}
+            type="button"
+            className={`filter ${value === key ? 'filter--on' : ''}`}
+            onClick={() => onChange(value === key ? null : key)}
+          >
+            {label(option)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function Programme({
+  scan, days, triage, changedKeys = new Map(), onKeep, onIgnore,
+  venues, search = '', stale = false, scanning = false,
+  categories = [], categoryFilter = null, onCategoryFilter,
+  venuesInCategory = [], venueFilter = null, onVenueFilter,
+  hallOptions = [], hallFilter = null, onHallFilter,
+}) {
   if (!scan) {
     return (
       <p className="empty">
@@ -152,6 +184,14 @@ export default function Programme({ scan, days, triage, changedKeys = new Map(),
   }
 
   const scanned = scan.venues ?? []
+  // More than one category actually in use is what turns this into a two-tier
+  // filter — a single-category setup (or the early days of this app, with a
+  // handful of venues and nothing to group) falls straight back to one flat
+  // venue row, exactly as before. This is also what keeps the resting UI a
+  // constant ~5-6 chips wide as venues are added, rather than growing by one
+  // chip per venue forever (MARQUEE.md §9.20).
+  const categoryMode = categories.length > 1
+  const venueOptions = categoryMode ? venuesInCategory : venues
 
   return (
     <>
@@ -164,26 +204,38 @@ export default function Programme({ scan, days, triage, changedKeys = new Map(),
 
       <Trouble venues={scanned} checkedAt={scan.scannedAt ? formatDay(scan.scannedAt.slice(0, 10), { relative: true }) : null} />
 
-      {venues.length > 1 && (
-        <div className="filters">
-          <button
-            type="button"
-            className={`filter ${!venueFilter ? 'filter--on' : ''}`}
-            onClick={() => onVenueFilter(null)}
-          >
-            All
-          </button>
-          {venues.map((v) => (
-            <button
-              key={v.id ?? v.name}
-              type="button"
-              className={`filter ${venueFilter === v.name ? 'filter--on' : ''}`}
-              onClick={() => onVenueFilter(venueFilter === v.name ? null : v.name)}
-            >
-              {v.name}
-            </button>
-          ))}
-        </div>
+      {/* Each tier gates on its OWN condition, not a shared "more than one venue
+          total" guard — a single active venue that happens to have several
+          halls (a first-time TNB-only setup, say) must still get its hall row,
+          which a shared guard would otherwise hide. */}
+      {categoryMode && (
+        <FilterRow
+          value={categoryFilter}
+          onChange={onCategoryFilter}
+          options={categories}
+          label={(c) => CATEGORY_LABEL[c] ?? c}
+        />
+      )}
+
+      {/* In category mode, venue chips only exist once a category narrows the
+          list down to a handful — never the full flat list. Outside category
+          mode (one category, or too few venues to group), this is exactly the
+          old always-visible venue row. */}
+      {(categoryMode ? Boolean(categoryFilter) : venueOptions.length > 1) && (
+        <FilterRow
+          value={venueFilter}
+          onChange={onVenueFilter}
+          options={venueOptions}
+          keyOf={(v) => v.name}
+          label={(v) => v.name}
+        />
+      )}
+
+      {/* Only ever appears for a single selected venue with more than one hall
+          (hallsInUse in programme.js) — Teatrul Național today, any future
+          multi-hall venue the same way, nothing to configure. */}
+      {hallOptions.length > 0 && (
+        <FilterRow value={hallFilter} onChange={onHallFilter} options={hallOptions} />
       )}
 
       {days.length === 0 ? (

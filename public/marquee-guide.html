@@ -265,9 +265,11 @@
 
 <p>
   Tap a row to jump straight to the card it's about, scrolled into view and briefly
-  outlined. The <strong>×</strong> in the corner dismisses the whole strip until your next
-  check — it doesn't delete anything, and a fresh check always shows its own, un-dismissed
-  list regardless of whether you dismissed the last one.
+  outlined. The <strong>×</strong> in the corner dismisses exactly what's currently showing —
+  it doesn't delete anything, and it stays dismissed across however many checks it takes
+  before something genuinely new turns up. A check that finds the same nothing-new
+  situation, or turns up only things you already dismissed, stays quiet; the moment a check
+  finds something that wasn't already dismissed, the strip reappears with just that.
 </p>
 
 <h2 id="programme"><span class="num">03</span>Reading the programme</h2>
@@ -301,8 +303,15 @@
 
 <p>
   <strong>Ignore</strong> silences a production permanently, including its future dates. Ignoring a
-  film you have no interest in means never seeing it again, not seeing it again on Thursday. The
-  venue filter chips narrow the list to one place.
+  film you have no interest in means never seeing it again, not seeing it again on Thursday.
+</p>
+
+<p>
+  The filter chips narrow the list in up to three steps: a <strong>category</strong> row
+  (Theatre, Cinema, Concert…) appears once more than one is actually in play, picking one
+  reveals just that category's <strong>venues</strong>, and a venue with more than one hall —
+  the National Theatre's seven, for instance — gets its own <strong>hall</strong> row once
+  it's selected. A single-category setup skips straight to a flat venue row, same as before.
 </p>
 
 <div class="note">
@@ -331,7 +340,8 @@
       geocode and the map pin comes out wrong.</li>
   <li><strong>Planned date</strong> and time from the showing, and <strong>Date Expiring</strong>
       set to the same date — a one-off night is the case where missing it means missing it.</li>
-  <li><strong>Cost</strong>, only when the venue published a price.</li>
+  <li><strong>Cost</strong>, only when the venue published a price — left blank rather than
+      guessed otherwise.</li>
   <li><strong>Link</strong> — the ticket URL when there is one, otherwise the show’s own page.</li>
 </ul>
 
@@ -419,8 +429,10 @@
     <strong>Not every site can be added by pasting a URL.</strong> Marquee ships readers for
     Teatrul Excelsior, Eventbook (four cinemas and clubs at once), Oveit (a ticketing platform
     — this is how Filarmonica George Enescu is read), Filarmonica's own feed, an iabilet.ro
-    venue page (this is how Cinema Europa is read), and any page publishing standard
-    schema.org event data, which is how Expirat works.
+    venue page (this is how Cinema Europa is read), tnb.ro (the National Theatre — one venue,
+    all seven of its halls), mystage.ro (Teatrul Unteatru today, any other mystage venue the
+    same way), and any page publishing standard schema.org event data, which is how Expirat
+    works.
   </p>
   <p>
     A venue outside that list gets the generic reader, and the form says plainly that it may find
@@ -495,6 +507,11 @@
   <li>
     <strong>Keep the day's showings after they start</strong> — off by default, because a 19:00
     concert stops being useful at 19:30. Turn it on if you'd rather see the whole day regardless.
+  </li>
+  <li>
+    <strong>Hide what's already in Wanderlist</strong> — hides a production once <em>every</em>
+    date of its run is already kept there, the same "only when all of it" rule sold-out uses. A
+    run with one night kept and others still undecided stays visible.
   </li>
 </ul>
 

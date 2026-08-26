@@ -13,6 +13,8 @@ import filarmonica from '../_lib/marquee/filarmonica.js'
 import jsonld from '../_lib/marquee/jsonld.js'
 import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
 import iabilet from '../_lib/marquee/iabilet.js'
+import tnb from '../_lib/marquee/tnb.js'
+import mystage from '../_lib/marquee/mystage.js'
 import { inferYear, slug, eventKey, parseTime, decodeEntities, dedupe } from '../_lib/marquee/shared.js'
 import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
 
@@ -396,6 +398,127 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
     // correctly regardless of when the scan happens to run.
     const events = iabilet.parse([bundlePage], { venue })
     expect(events.every((e) => e.date.startsWith('2026-08'))).toBe(true)
+  })
+})
+
+describe('tnb (one venue, 7 halls sharing it)', () => {
+  const venue = { name: 'Teatrul Național București', url: 'https://www.tnb.ro/ro/bilete-online', adapter: 'tnb' }
+  const listing = { url: venue.url, body: fixture('tnb.html') }
+  const events = tnb.parse([listing], { venue })
+
+  it('reads every hall off one page — 9 showings across 4 halls in the fixture', () => {
+    expect(events).toHaveLength(9)
+    const halls = new Set(events.map((e) => e.hall))
+    expect(halls).toEqual(new Set(['Amfiteatru', 'Sala Atelier', 'Sala Pictura', 'Sala "Ion Caramitru"', 'Sala Studio']))
+  })
+
+  it('reads the numeric day/month/year triplet, not a month name', () => {
+    expect(events[0]).toMatchObject({ venue: 'Teatrul Național București', date: '2026-08-26', time: '20:30' })
+  })
+
+  it('reads ticket state from the button, not from any implied default', () => {
+    // Both states are real markup on this page, not inferred.
+    const placebo = events.find((e) => e.title === '(D)efectul Placebo')
+    const luizaZan = events.find((e) => e.title === 'Concert Luiza Zan & Muse Quartet')
+    expect(placebo.ticketState).toBe('open')
+    expect(placebo.ticketsUrl).toBe('https://www.bilet.ro/eveniment/defectul-placebo-18709-64050')
+    expect(luizaZan.ticketState).toBe('sold-out')
+    expect(luizaZan.ticketsUrl).toBeNull()
+  })
+
+  it('fixes TNB’s own percent-mis-encoded ticket href rather than reproducing the 404', () => {
+    // The fixture's first row emits `href="https%3A%2F%2Fwww.bilet.ro%2F..."` verbatim
+    // — a bug on TNB's own site. A literal href like that 404s if left alone.
+    const placebo = events.find((e) => e.title === '(D)efectul Placebo')
+    expect(placebo.ticketsUrl).toMatch(/^https:\/\/www\.bilet\.ro\//)
+  })
+
+  it('treats the same title twice in one day, same hall, different times, as two showings', () => {
+    const copilarie = events.filter((e) => e.title === 'Amintiri din copilărie')
+    expect(copilarie).toHaveLength(2)
+    expect(copilarie.map((e) => e.time).sort()).toEqual(['11:00', '19:00'])
+  })
+
+  describe('posters — one hop per distinct production, matched by request URL', () => {
+    const placeboPage = { url: 'https://www.tnb.ro/ro/defectul-placebo-2026', body: fixture('tnb-detail-placebo.html') }
+    const luizaPage = { url: 'https://www.tnb.ro/ro/concert-luiza-zan-muse-quartet', body: fixture('tnb-detail-luiza-zan.html') }
+
+    it('discovers one detail request per distinct production link, not per showing', () => {
+      const requests = tnb.follow([listing])
+      expect(requests).toHaveLength(7) // 9 showings, 2 of them repeat an already-seen title
+      expect(requests.map((r) => r.url)).toContain('https://www.tnb.ro/ro/amintiri-din-copilarie')
+    })
+
+    it('attaches each production’s own poster', () => {
+      const withPosters = tnb.parse([listing, placeboPage, luizaPage], { venue })
+      expect(withPosters.find((e) => e.title === '(D)efectul Placebo').image)
+        .toBe('https://www.tnb.ro/uploads/articles/2943/2686/small_large_Afis_placebo_2022-Nou13.jpg')
+      expect(withPosters.find((e) => e.title === 'Concert Luiza Zan & Muse Quartet').image)
+        .toBe('https://www.tnb.ro/uploads/articles/2938/2682/small_Luiza_Zan.jpg')
+    })
+
+    it('is unaffected by the order detail pages come back in', () => {
+      const reversed = tnb.parse([listing, luizaPage, placeboPage], { venue })
+      expect(reversed.find((e) => e.title === '(D)efectul Placebo').image).toContain('Afis_placebo')
+    })
+
+    it('leaves a production posterless when its detail page never came back', () => {
+      const onlyOne = tnb.parse([listing, placeboPage], { venue })
+      expect(onlyOne.find((e) => e.title === 'Concert Luiza Zan & Muse Quartet').image).toBeNull()
+    })
+
+    it('leaves a production posterless when its own page genuinely has no cover', () => {
+      const noCover = tnb.parse([listing, { url: 'https://www.tnb.ro/ro/defectul-placebo-2026', body: fixture('tnb-detail-no-cover.html') }], { venue })
+      expect(noCover.find((e) => e.title === '(D)efectul Placebo').image).toBeNull()
+    })
+  })
+})
+
+describe('mystage (Teatrul Unteatru today — any mystage.ro venue the same way)', () => {
+  const venue = { name: 'Teatrul Unteatru', url: 'https://www.mystage.ro/locatii/teatrul-unteatru-321', adapter: 'mystage' }
+  const events = mystage.parse([{ body: fixture('mystage-unteatru.html') }], { venue })
+
+  it('reads the events straight out of the embedded __NEXT_DATA__ JSON, no HTML parsing', () => {
+    expect(events).toHaveLength(3)
+    expect(events[0]).toMatchObject({
+      venue: 'Teatrul Unteatru',
+      title: 'Masacrul',
+      date: '2026-08-27',
+      time: '19:00',
+      hall: null,
+      ticketState: 'open',
+    })
+  })
+
+  it('names a real hall when there is one, and treats mystage’s own "-" placeholder as none', () => {
+    const mass = events.find((e) => e.title === 'MASS')
+    expect(mass.hall).toBe('Sala Mare')
+    expect(events.find((e) => e.title === 'Masacrul').hall).toBeNull()
+  })
+
+  it('reads the poster straight from the JSON — no follow() hop needed at all', () => {
+    expect(events[0].image).toMatch(/^https:\/\/mystage-static/)
+  })
+
+  it('trusts mystage’s own isAvailable flag for ticket state', () => {
+    expect(events.find((e) => e.title === 'Constructed Sold Out Example').ticketState).toBe('sold-out')
+  })
+
+  it('never reports a price of 0 as a real price', () => {
+    // mystage's own primary-occurrence price is routinely 0 before a date goes on
+    // sale — reporting that as "free" would be false precision, not a real answer.
+    expect(events.find((e) => e.title === 'Masacrul').price).toBeNull()
+    expect(events.find((e) => e.title === 'MASS').price).toBe(110.08)
+  })
+
+  it('builds a working link from the numeric event id even without mystage’s own slug', () => {
+    // mystage's routing only keys on the trailing id — any slug text before it is
+    // decorative, so a slug built here works even if it doesn't byte-match theirs.
+    expect(events[0].link).toBe('https://www.mystage.ro/spectacole/masacrul-3385')
+  })
+
+  it('returns nothing rather than throwing when the page carries no __NEXT_DATA__ at all', () => {
+    expect(mystage.parse([{ body: '<html><body>no data here</body></html>' }], { venue })).toEqual([])
   })
 })
 
