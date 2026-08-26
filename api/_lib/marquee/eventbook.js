@@ -34,7 +34,10 @@ const DATE = /calendar_month\s*<\/span>\s*([^<]+)/
 // and every showing silently lost its time. Match to the next tag instead.
 const TIME = /schedule\s*<\/span>\s*([^<]{0,80})/
 const TITLE = /class="[^"]*event-title[^"]*"[^>]*>\s*<h\d[^>]*>([\s\S]*?)<\/h\d>/
-const LINK = /href="(\/film\/[^"]+)"/
+// `/film/` for the cinemas; `/music/` for Club Control's own listings — the
+// original pattern only ever matched cinema pages, so every Club Control
+// event silently had no link at all until this was noticed.
+const LINK = /href="(\/(?:film|music)\/[^"]+)"/
 // The poster sits in its own `event-image-hall` wrapper, already served from
 // eventbook's own CDN (an absolute URL), same as `LINK` this is read straight off
 // the attribute rather than through `pick()`, which would strip it as if it were
@@ -45,6 +48,20 @@ const PRICE = /text-muted">price:<\/span>\s*(\d+(?:[.,]\d+)?)/i
 // How many pages to walk. Ten showings per page; the busiest hall had 8 pages, so
 // this covers it while capping a runaway loop on a site change.
 const MAX_PAGES = 8
+
+// Most rows carry a dedicated `schedule` icon span; some of Club Control's
+// don't and fold every time into the date line instead — "3 septembrie 2026,
+// Open doors: 19:30 | Concert: 20:30 | Club night: 22:00". The last time
+// mentioned is the one that matches what a `schedule`-span row for the exact
+// same night gives (both read 22:00 for "Two Wrongs", confirmed live
+// 2026-08-26) — "club night" being the actual ticketed start, doors and
+// support acts earlier being context rather than the thing being sold.
+function fallbackTime(dateText) {
+  const matches = [...String(dateText ?? '').matchAll(/\b(\d{1,2})[:.](\d{2})\b/g)]
+  if (!matches.length) return null
+  const [, h, min] = matches[matches.length - 1]
+  return parseTime(`${h}:${min}`)
+}
 
 function parseDate(text) {
   const m = /(\d{1,2})\s+([^\s]+)\s+(\d{4})/.exec(String(text ?? ''))
@@ -91,11 +108,12 @@ export default {
         const href = LINK.exec(body)?.[1] ?? null
         const imageSrc = IMAGE.exec(body)?.[1] ?? null
         const priceRaw = PRICE.exec(body)?.[1] ?? null
+        const dateText = pick(body, DATE)
         events.push(makeEvent({
           venue: venue.name,
           title: pick(body, TITLE),
-          date: parseDate(pick(body, DATE)),
-          time: parseTime(pick(body, TIME)),
+          date: parseDate(dateText),
+          time: parseTime(pick(body, TIME)) ?? fallbackTime(dateText),
           link: absoluteUrl(href, BASE),
           image: absoluteUrl(imageSrc, BASE),
           price: priceRaw ? Number(priceRaw.replace(',', '.')) : null,

@@ -1,0 +1,75 @@
+<!-- Trimmed from https://eventbook.ro/hall/club-control on 2026-08-26 — two real,
+     separate `id="performance"` blocks eventbook itself lists for the exact
+     same night ("Two Wrongs", 3 Sep 2026, confirmed 22:00 in both once parsed
+     correctly), each in a different date/time markup shape:
+
+     Block 1 has no dedicated `schedule` icon span at all — the venue folded
+     every time into the date line itself ("Open doors: 19:30 | Concert: 20:30
+     | Club night: 22:00"), which is what `fallbackTime` in eventbook.js exists
+     to read (the LAST time mentioned, "Club night", is the one that matches
+     block 2's own dedicated time).
+
+     Block 2 has the usual dedicated `schedule` span, AND uses an `/music/`
+     link — not `/film/` — which is why `LINK` matches both prefixes now: this
+     page is a club, not a cinema, and every one of its real listings used to
+     get no link at all under the cinema-only pattern. -->
+<div class="shadow border" id="performance">
+  <div class="pt-2 ps-2 pe-2 text-white overflow-hidden d-block d-lg-none position-absolute z-1">
+    <h4>
+      <span class="msym">calendar_month</span>
+      3 septembrie 2026, Open doors: 19:30 | Concert: 20:30 | Club night: 22:00
+      <br>
+    </h4>
+  </div>
+  <div class="event-image-hall">
+    <img class="img-responsive w-100"
+         src="https://storage.googleapis.com/eventbook-files/images/event/2026/08/bilete-two-wrongs-lee-scott-black-josh-tasha-dana-dumitra-maica-ta-v2A.webp"
+         alt="Two Wrongs: Lee Scott &amp; Black Josh (LIVE), Tasha, Dana, Dumitra, Maică-Ta "/>
+  </div>
+  <a href="/music/bilete-two-wrongs-lee-scott-black-josh-tasha-dana-dumitra-maica-ta?hall=club-control" class="text-dark event-title d-block text-uppercase text-decoration-none">
+    <h5 class="pt-3 pb-xl-3 pt-sm-0">
+      Two Wrongs: Lee Scott &amp; Black Josh (LIVE), Tasha, Dana, Dumitra, Maică-Ta
+    </h5>
+  </a>
+  <div class="col-12 text-dark text-center pt-2 pb-2">
+    <h5 class="text-uppercase">
+      <span class="text-muted">price:</span>
+      65 lei
+    </h5>
+  </div>
+  <form class="buy-form" action="/transaction" method="POST">
+    <button type="submit" class="add_in_cart">Cumpără bilete</button>
+  </form>
+</div>
+<div class="shadow border" id="performance">
+  <div class="pt-2 ps-2 pe-2 text-white overflow-hidden d-block d-lg-none position-absolute z-1">
+    <h4>
+      <span class="msym">calendar_month</span>
+      3 Sep 2026
+      <br>
+      <span>
+        <span class="msym">schedule</span>
+        22:00
+      </span>
+    </h4>
+  </div>
+  <div class="event-image-hall">
+    <img class="img-responsive w-100"
+         src="https://storage.googleapis.com/eventbook-files/images/event/2026/08/bilete-two-wrongs-lee-scott-black-josh-tasha-dana-dumitra-maica-ta-v2A.webp"
+         alt="Two Wrongs: Lee Scott &amp; Black Josh (LIVE), Tasha, Dana, Dumitra, Maică-Ta "/>
+  </div>
+  <a href="/music/bilete-two-wrongs-lee-scott-black-josh-tasha-dana-dumitra-maica-ta?hall=club-control" class="text-dark event-title d-block text-uppercase text-decoration-none">
+    <h5 class="pt-3 pb-xl-3 pt-sm-0">
+      Two Wrongs: Lee Scott &amp; Black Josh (LIVE), Tasha, Dana, Dumitra, Maică-Ta
+    </h5>
+  </a>
+  <div class="col-12 text-dark text-center pt-2 pb-2">
+    <h5 class="text-uppercase">
+      <span class="text-muted">price:</span>
+      40 lei
+    </h5>
+  </div>
+  <form class="buy-form" action="/transaction" method="POST">
+    <button type="submit" class="add_in_cart">Cumpără bilete</button>
+  </form>
+</div>

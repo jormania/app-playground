@@ -34,13 +34,22 @@ export function formatDay(key, { now = new Date(), relative = false } = {}) {
   return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-/** The date line under a production: one date, a range, or a count. */
+/** The date line under a production: one date, a range, or a count.
+ *
+ *  A run with more than one showing but only one distinct CALENDAR DATE (two
+ *  sittings the same night, say) is neither of the things "N dates · first –
+ *  last" claims: not a range (there's nothing to span) and not really
+ *  several dates either — "Thu 3 Sept – 3 Sept" is what that phrasing does to
+ *  it. Named as showings instead, and without a redundant same-day range. */
 export function formatRun(production) {
   const { showings } = production
   if (!showings?.length) return ''
   const first = formatDay(showings[0].date)
   if (showings.length === 1) {
     return showings[0].time ? `${first} · ${showings[0].time}` : first
+  }
+  if (production.firstDate === production.lastDate) {
+    return `${showings.length} showings · ${first}`
   }
   const last = parseDay(production.lastDate)
   const lastLabel = last ? last.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''

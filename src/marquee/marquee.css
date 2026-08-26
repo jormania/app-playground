@@ -642,7 +642,40 @@ button { color: inherit; font: inherit; }
 .date--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }
 .date--changed-new-event { border-color: var(--color-success); color: var(--color-success); font-weight: 600; }
 
-.prod__actions { display: flex; gap: 0.75rem; flex-shrink: 0; padding-top: 0.15rem; }
+.prod__actions { display: flex; gap: 0.5rem; flex-shrink: 0; padding-top: 0.15rem; }
+
+/* Real buttons, not text links — Keep and Ignore are the two things you
+   actually DO on this screen, and a plain underline read as decoration you
+   could skip past rather than an action. Keep leans on the app's own accent
+   (the same colour "tickets" and "on sale" already use); Ignore stays quiet
+   until you're actually about to press it, then leans toward the same danger
+   tone Remove does elsewhere — it's the same kind of "take this away" action. */
+.action-keep, .action-ignore {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.action-keep {
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  background: none;
+}
+.action-keep:hover { background: var(--color-accent); color: var(--color-on-accent); }
+
+.action-ignore {
+  border: 1px solid var(--color-border-2);
+  color: var(--color-muted);
+  background: none;
+}
+.action-ignore:hover { border-color: var(--color-danger); color: var(--color-danger); }
 
 /* ── Keep sheet ────────────────────────────────────────────────────────── */
 .sheet__context {
@@ -806,7 +839,7 @@ button { color: inherit; font: inherit; }
     width: 100%;
   }
 
-  .venue__actions .linkbtn, .prod__actions .linkbtn { padding: 0.35rem 0; }
+  .venue__actions .linkbtn { padding: 0.35rem 0; }
 
   .change { gap: 0.3rem 0.5rem; }
   .change__title { flex-basis: 100%; }

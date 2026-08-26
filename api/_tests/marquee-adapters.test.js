@@ -288,6 +288,38 @@ describe('eventbook', () => {
     const twice = eventbook.parse([...pages, ...pages], { venue })
     expect(dedupe(twice)).toHaveLength(3)
   })
+
+  describe('Club Control — a real bug caught from a phone screenshot (2026-08-26)', () => {
+    const clubVenue = { name: 'Club Control', url: 'https://eventbook.ro/hall/club-control', adapter: 'eventbook', config: 'club-control' }
+    const clubEvents = eventbook.parse([{ body: fixture('eventbook-club-control.html') }], { venue: clubVenue })
+
+    it('matches a `/music/` link, not only `/film/` — every Club Control listing used to get none at all', () => {
+      expect(clubEvents.every((e) => e.link?.startsWith('https://eventbook.ro/music/'))).toBe(true)
+    })
+
+    it('falls back to the last time folded into the date line when there is no dedicated schedule span', () => {
+      // "3 septembrie 2026, Open doors: 19:30 | Concert: 20:30 | Club night:
+      // 22:00" — no <span class="msym">schedule</span> at all in this block,
+      // unlike every other one. 22:00 (the actual ticketed slot) is also what
+      // the SAME night's other, normally-formatted listing block says.
+      const noScheduleSpan = clubEvents[0]
+      expect(noScheduleSpan.date).toBe('2026-09-03')
+      expect(noScheduleSpan.time).toBe('22:00')
+    })
+
+    it('collapses eventbook’s own two separate listing blocks for one night into one showing once the time agrees', () => {
+      // The site itself lists this night as two blocks (likely a per-room or
+      // per-tariff split on eventbook's end) with otherwise-identical title,
+      // date and link — once time resolves the same way for both, they carry
+      // the same key and the app's own dedupe (scan.js) collapses them. Two
+      // survive out of this parse() call directly (dedupe runs one level up,
+      // proven already by "does not re-list…" above) — this just proves the
+      // KEY now actually matches between them, which it didn't before the
+      // time fix.
+      expect(clubEvents).toHaveLength(2)
+      expect(new Set(clubEvents.map((e) => e.key)).size).toBe(1)
+    })
+  })
 })
 
 describe('Filarmonica (Strapi feed)', () => {

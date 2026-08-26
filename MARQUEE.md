@@ -847,6 +847,46 @@ as light as it was, title/venue/dates/chips, and adding a real description to wh
 already fetches was never a reason to add a paragraph of prose to a screen meant to be read
 in ten seconds.
 
+### 9.26 Two real Club Control bugs, caught from a phone screenshot (2026-08-26)
+
+A "Two Wrongs" card showed "2 dates · Thu 3 Sept – 3 Sept" and one of its two date buttons
+had no time at all. Both traced to eventbook.js, and both were live-verified against
+`eventbook.ro/hall/club-control`, not just reasoned about:
+
+- **`LINK` only ever matched `/film/`** — the pattern this adapter was written against, using
+  the four cinemas' own listing pages. Club Control's real listings all link to `/music/`
+  instead, so every one of them has been getting `link: null` since the adapter shipped. Now
+  matches either.
+- **Some Club Control rows have no dedicated `schedule` icon span at all** — the date line
+  folds every time into itself instead: "3 septembrie 2026, Open doors: 19:30 | Concert:
+  20:30 | Club night: 22:00". `fallbackTime` (new) reads the LAST time mentioned when the
+  usual `schedule` span is missing — confirmed against a second, normally-formatted listing
+  for the exact same night, which agrees at 22:00.
+
+The fix to the second bug had a side effect worth naming: eventbook's own page lists this one
+night as TWO separate `id="performance"` blocks (same title, same link, different price —
+likely a per-room or per-tariff split on their end). Before the time fix, the two blocks had
+different keys (`...T22:00...` vs `...Tnull...`) and both survived as separate showings. Once
+both resolve to 22:00, they share a key and `scan.js`'s own dedupe collapses them into one —
+which is what actually should have been happening the whole time this bug existed.
+
+**`formatRun` got its own fix, independent of the above**, for defence in depth: "N dates ·
+first – last" is wrong twice over for two showings on the same calendar date — it isn't a
+range (nothing to span) and it isn't really "dates" (plural) either. Now reads "N showings ·
+[date]" when `firstDate === lastDate`, whether or not a future case like this one dedupes away
+cleanly.
+
+### 9.27 Keep and Ignore look like buttons now (2026-08-26)
+
+Both were `.linkbtn` — a bare underlined text link, the same treatment Settings' Pause/Edit/
+Remove use. On a card full of chips and dates, "the two things you actually DO here" reading as
+the quietest, most skippable text on the screen was worth fixing on its own. New `.action-keep`/
+`.action-ignore` (Programme.jsx only — `.linkbtn` stays exactly as it was for Venues' three
+actions, not touched here): pill-shaped, bordered, bold. Keep borrows the app's own accent (the
+same colour "tickets"/"on sale" chips already use); Ignore stays quiet until hovered, then leans
+toward the same danger tone Remove uses elsewhere — both are "take this away" actions, just at
+different levels of permanence.
+
 ## Open
 
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every

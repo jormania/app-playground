@@ -269,6 +269,20 @@ describe('formatting', () => {
     expect(formatRun(meta)).toMatch(/^2 dates ·/)
   })
 
+  it('never claims a range for two showings on the same calendar date', () => {
+    // A real bug: two Club Control showings both on 2026-09-03 (different
+    // times) rendered as "2 dates · Thu 3 Sept – 3 Sept" — a range with
+    // nothing to span, and not really two dates either.
+    const [sameDay] = toProductions([
+      event({ key: 'x', title: 'Two Wrongs', date: '2026-09-03', time: '20:00' }),
+      event({ key: 'y', title: 'Two Wrongs', date: '2026-09-03', time: '22:00' }),
+    ])
+    const label = formatRun(sameDay)
+    expect(label).toMatch(/^2 showings ·/)
+    expect(label).not.toContain('–')
+    expect(label).not.toMatch(/dates/)
+  })
+
   it('says Free rather than 0 lei, and nothing at all for an unknown price', () => {
     expect(formatPrice(0)).toBe('Free')
     expect(formatPrice(50)).toBe('50 lei')

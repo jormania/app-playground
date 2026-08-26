@@ -101,10 +101,10 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
       </div>
 
       <div className="prod__actions">
-        <button type="button" className="linkbtn" onClick={() => onKeep(production.showings[0], production)}>
+        <button type="button" className="action-keep" onClick={() => onKeep(production.showings[0], production)}>
           Keep
         </button>
-        <button type="button" className="linkbtn" onClick={() => onIgnore(production)}>
+        <button type="button" className="action-ignore" onClick={() => onIgnore(production)}>
           {ignored ? 'Un-ignore' : 'Ignore'}
         </button>
       </div>
