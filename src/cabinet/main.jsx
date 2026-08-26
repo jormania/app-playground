@@ -9,7 +9,7 @@ import App from './App'
 // page — same pattern as Law of the Day. Production only (see CLAUDE.md "Service workers & dev").
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/cabinet-sw.js', { scope: '/cabinet.html' }).catch(() => {})
+    navigator.serviceWorker.register('/cabinet-sw.js', { scope: '/cabinet-app.html' }).catch(() => {})
   })
 }
 

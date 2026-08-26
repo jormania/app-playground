@@ -1,6 +1,6 @@
 # The Cabinet — the app-of-apps
 
-**[coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)**
+**[coneofcold.vercel.app/cabinet-app.html](https://coneofcold.vercel.app/cabinet-app.html)**
 
 A dashboard listing every app in this repo. The six Vite+React apps
 (`kind: "react-vite"`) always show and try to hand off to each one's
@@ -24,7 +24,8 @@ This only counts taps on the Cabinet's own tiles (`recordOpened` in
 installed PWA from its home-screen icon bypasses the Cabinet and isn't
 counted. Local to this browser/device only — there's no sync.
 
-Source: [`src/cabinet/`](src/cabinet/). Entry shell: `cabinet.html`.
+Source: [`src/cabinet/`](src/cabinet/). Entry shell: `cabinet-app.html`
+(**not** `cabinet.html` — see "Why the URL is `cabinet-app.html`").
 Built on `src/ds/`, like any new app — see the [design-system rule](CLAUDE.md).
 Its palette is lifted from `index.html`'s own warm dark/gold identity rather
 than invented separately — see the comment atop
@@ -75,6 +76,32 @@ uninstalled. That secondary cleanup is inert (still correct, just never fires).
 The primary signal — `checkInstalledFlags()` reading each app's own flag from
 `src/shared/installFlag.ts` — is untouched. See
 [`src/cabinet/lib/installState.js`](src/cabinet/lib/installState.js).
+
+### Why the URL is `cabinet-app.html`
+
+The Cabinet was the one app Android never minted a WebAPK for. Removing
+`related_applications` (above) was necessary but not sufficient: Chrome kept
+answering **"This app is already installed"** on `/cabinet.html` and refusing to
+offer an install.
+
+What it was holding was a **shortcut app** — a real, standalone-launching web app
+registered only inside Chrome's own profile, never handed to Android as a
+package. It appeared in neither `chrome://webapks` nor Android's Settings →
+Apps, so there was nothing to uninstall; and Chrome's installed-web-app registry
+is separate from per-site storage, so removing the home-screen icon, running
+Site settings → Clear & reset, and clearing browsing data all left it intact.
+Bumping the manifest `id` didn't shake it loose either — Chrome wasn't keying on
+that.
+
+Installing the identical manifest from a Vercel preview origin **did** mint a
+real WebAPK. That isolated it: the manifest was never the problem, only the
+record bound to that URL on the production origin. A genuinely new path is the
+one identity change no stale record can span, so the entry shell was renamed and
+`start_url` / `scope` / `id` / the service-worker scope all follow it.
+
+`/cabinet.html` **308s to `/cabinet-app.html`** (`vercel.json`), so old links and
+bookmarks keep working. Don't move it back, and don't point the manifest at the
+old path — `installState.test.js` pins the new one.
 
 ## Launching into the installed app, not a browser tab (Android)
 

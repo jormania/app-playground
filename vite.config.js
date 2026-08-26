@@ -303,7 +303,7 @@ export default defineConfig({
         silva: resolve(__dirname, 'silva-react.html'),
         radarB: resolve(__dirname, 'radar-b-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
-        cabinet: resolve(__dirname, 'cabinet.html'),
+        cabinet: resolve(__dirname, 'cabinet-app.html'),
       }
     }
   }

@@ -354,7 +354,7 @@ describe('?resetStats=1', () => {
     localStorage.setItem('cabinet:lastOpened', JSON.stringify({ 'x.html': { count: 5, last: 1 } }))
     localStorage.setItem('cabinet:sort', JSON.stringify('az'))
     localStorage.setItem('cabinet:order', JSON.stringify(CABINET_APPS.map((a) => a.file)))
-    window.history.replaceState({}, '', '/cabinet.html?resetStats=1')
+    window.history.replaceState({}, '', '/cabinet-app.html?resetStats=1')
 
     renderApp()
     await settle()
