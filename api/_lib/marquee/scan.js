@@ -21,6 +21,25 @@ export const STATUS = {
 const USER_AGENT = 'MarqueeBot/1.0 (+https://app-playground.vercel.app; personal venue watcher; 1 request/day)'
 
 /**
+ * How far ahead a venue's events are kept, in days from the day of the check.
+ *
+ * A cinema publishes dozens of showings a week for weeks running — far more
+ * advance notice than anyone actually plans a trip to the pictures around — so
+ * `movie` gets a short leash. Everything else (a theatre's run, a concert
+ * season) genuinely benefits from seeing further out and keeps the long one.
+ *
+ * This is a blanket rule keyed on the venue's Category Default, not a per-venue
+ * setting: add a fifth cinema next year and it is limited automatically,
+ * without anyone having to remember a checkbox.
+ */
+export const HORIZON_DAYS = 120
+export const MOVIE_HORIZON_DAYS = 10
+
+export function horizonFor(venue) {
+  return venue?.category === 'movie' ? MOVIE_HORIZON_DAYS : HORIZON_DAYS
+}
+
+/**
  * Is this result trustworthy enough to diff against?
  *
  * Three assertions, all cheap, all aimed at the same failure: a site redesign that
@@ -80,7 +99,7 @@ async function fetchOne(request, fetchImpl) {
  * every outcome. The caller renders the status; nothing here decides what the user
  * sees beyond naming what happened.
  */
-export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, horizonDays = 120 } = {}) {
+export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, horizonDays = HORIZON_DAYS } = {}) {
   const adapter = getAdapter(venue.adapter)
   const checkedAt = now.toISOString().slice(0, 10)
   const base = { venueId: venue.id ?? null, venue: venue.name, adapter: venue.adapter, checkedAt }

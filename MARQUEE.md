@@ -97,6 +97,7 @@ One adapter per SITE, not per venue — `eventbook` alone covers four of them.
 | **Cinema Union**, **Elvira Popescu**, **Muzeul Țăranului**, **Club Control** | eventbook.ro | **3 · selector** | Server-rendered, one `id="performance"` block per showing, date *with* year, title in `.event-title`. Ticket state = presence of the `add_in_cart` button. |
 | **Teatrul Excelsior** | teatrul-excelsior.ro | **3 · selector** | See below. |
 | **Filarmonica**, again | oveit.com | **2 · feed** | `membership-api.oveit.com/v1/vendor/<id>/events` — the platform it actually sells through. Same concerts, plus prices, from a host that does not refuse us. **This is the source the app uses**; the Strapi one is kept documented because it is richer if it ever becomes reachable. |
+| **Cinema Europa** | iabilet.ro | **3 · selector, two-hop** | The venue page is a JS shell with no showings in it — only one schema.org Event per weekly themed bundle, each pointing at its own child page. That child page's HTML holds the actual showings, as an accordion of tariff rows. Added 2026-08-26; see §9.8. |
 
 Three things the survey turned up that the adapters have to respect:
 
@@ -422,14 +423,119 @@ other fields with it.
 - **Pause is not a soft delete**, and **remove archives** — Notion's trash is the undo.
 - **Nothing is ever kept as "Going".** Marquee never claims you have committed to anything.
 
-### 9.7 Verified
+### 9.7 Cinema Europa — a two-hop iabilet.ro reader (2026-08-26)
 
-`npm test` (3634 tests — 79 Marquee's client, 49 the adapters'), `npm run typecheck`,
-`npx eslint`, and `npm run build` all pass. Beyond the fixtures, the endpoint was run
-against all seven live venues: 24 events from Excelsior, 16 from Expirat with prices, 78
-from Elvira Popescu across 8 paginated pages, 1 from Cinema Union. The full loop — check,
-diff, keep, ignore, pause — was driven in the running app, including a doctored snapshot to
-force each of the four change kinds.
+Added on request, and structurally unlike anything else Marquee reads. A venue page
+(`iabilet.ro/bilete-<slug>-venue-<id>/`) never lists a single showing: it carries exactly
+one schema.org `Event` block per **weekly themed bundle** ("Asian Spotlight Vol. 2", seven
+films across one weekend), each pointing at a **child page of its own**. The actual
+showings — one film, one date, one time — live only in that child page's HTML, as an
+accordion of bookable tariff rows:
+
+```html
+<div data-is-tariff="1" data-tariff-id="346966"
+     data-tariff-name="Vineri, 28 august - 18:15 — Chungking Express - Bilet preț întreg"
+     data-tariff-sell-price="30" data-tariff-sell-currency="RON" …>
+```
+
+`api/_lib/marquee/iabilet.js` reads the venue page for its bundle links (`follow()`), then
+reads each bundle page for the showings inside it (`parse()`) — the same two-step shape as
+eventbook's pagination, just one level deeper. Three things this markup forces the reader
+to get right, each now a test:
+
+- **A showing sells at more than one price** (full / discounted), so tariff rows are
+  grouped by `(date, time, title)` and the CHEAPEST tariff still on sale becomes the
+  event's price — the same convention as Oveit's `minPrice`.
+- **A subscription to the whole weekend ("Abonament") is its own tariff row**, with no date
+  or time of its own. It is dropped by name before the date/time parser ever sees it — not
+  filtered out afterward, which would have let a malformed one slip through as a dateless,
+  identity-less "event".
+- **A showing sells out per price tier, not per showing.** `"Stoc epuizat"` can mark the
+  discounted tariff while the full-price one is still open; the showing itself only reads
+  as sold out once every one of its tariffs says so — the health-gate reasoning applied one
+  level down from the usual production/showing split.
+
+The tariff text carries no year (`"28 august"`), same as Excelsior — but here `inferYear`
+is anchored on the **bundle's own JSON-LD `startDate`**, not on "today", so a bundle that
+happens to straddle a New Year still reads correctly regardless of when the scan runs.
+
+`Category Default: movie` on this row is what puts it under the horizon rule below.
+
+### 9.8 Per-category horizon — movies get 10 days, everything else 120 (2026-08-26)
+
+A cinema lists weeks of showings nobody plans a trip to the pictures around this far out —
+Cinema Elvira Popescu alone returned 78 events across 8 paginated pages the first time it
+was scanned. `api/_lib/marquee/scan.js` exports `horizonFor(venue)`: `movie` gets
+`MOVIE_HORIZON_DAYS` (10), everything else keeps `HORIZON_DAYS` (120). `api/marquee-scan.js`
+calls it per venue in its scan loop, and the client's `scanPayload()` (`programme.js`) now
+sends `category` along with each venue precisely so the endpoint has it to key on.
+
+This is a blanket rule on the category, not a per-venue setting — add a fifth cinema next
+year and it is limited automatically, without anyone remembering a checkbox. Nothing else
+about a movie venue changes: it is still scanned, still diffed, still shows what changed;
+only how far ahead its listing is trusted to matter.
+
+### 9.9 "What changed": dismiss, and jump to the row it's about (2026-08-26)
+
+Two requests from actually using it. **Dismiss** (`Changes.jsx`'s `×`) hides the strip until
+the *next* check produces a fresh one — deliberately not persisted, and not a way to bring
+it back for the current check: once read, the point is it gets out of the way, and a new
+check makes its own un-dismissed strip regardless.
+
+**Clicking a row scrolls to and focuses the card it's about.** `programme.js`'s `domIdFor`
+turns a production id into a DOM id (folding diacritics through `findings.js`'s `fold` —
+`productionId` itself only lowercases, so "speranțe" would otherwise collapse to a run of
+hyphens); `App.jsx`'s `handleOpenChange` clears the venue filter (a change can point at a
+production the current filter is hiding) and, after a deferred tick, scrolls, flashes and
+focuses the matching card.
+
+That deferral is a `setTimeout`, not a double `requestAnimationFrame` — rAF is paused
+whenever a tab isn't actually compositing frames (a backgrounded tab, and incidentally this
+project's own browser-preview pane), so a click made right before switching away would
+otherwise silently never scroll. A macrotask still runs when backgrounded; browsers throttle
+it, they don't stop it.
+
+### 9.10 Bugs a first real look-over caught (2026-08-26)
+
+- **A bare `<button>` has no text colour tied to this app's theme.** The UA default,
+  `color: buttontext`, resolves against `color-scheme` — which defaults to *light*
+  regardless of Marquee's own dark palette unless something says otherwise. Under
+  **System** theme with the OS in dark mode, no `data-theme` attribute is ever set, so
+  `.change` (a plain button with no `color` rule of its own) rendered light-mode black text
+  on the dark surface — unreadable. Fixed two ways: `color-scheme: light` / `dark` added to
+  all three of Marquee's own theme blocks, and — the actual fix — `button { color: inherit }`
+  as a base reset, so every plain button reads the surrounding text colour unless a more
+  specific rule (`.tab`, `.linkbtn`, `.change__kind`) says otherwise.
+- **A venue card on a phone reserved ~288px of height it never used.** `.venue__main` /
+  `.prod__main` carry `flex: 1 1 18rem` for the desktop ROW layout, where 18rem is a
+  wrap-width. The phone breakpoint flips the card to a COLUMN, and that same 18rem now
+  binds to the vertical axis instead — a flex item grows to at least its own basis
+  regardless of how short its content is. Fixed by resetting `flex: 1 1 auto` on both
+  classes inside that breakpoint, so height comes from content again.
+- **The Settings button used to sit on its own row below the title on a phone**, because
+  the desktop text button ("Settings") plus "Check venues" didn't fit beside "Marquee" at
+  375px, and `.topbar__actions{width:100%}` forced them onto a second line. Settings is now
+  an icon-only `IconButton` (lucide-react's `Settings`, matching the convention already used
+  in Lexi5) and sits LAST — after Check venues — inside a `.topbar` that no longer wraps:
+  `.topbar__heading`'s `min-width: 0` is what actually makes the title shrink first instead.
+- **A Notion "Notes" field held developer commentary, not a note to self.** Four venue rows
+  (Excelsior, Expirat, Elvira Popescu, Filarmonica) were seeded with technical explanations
+  of how their adapter reads them — appropriate for this file, wrong for a field the app
+  displays in the Venues list. Cleared in Notion. `Notes` is user-facing ("anything you want
+  to remember about this venue") and nothing written into it from here should read like an
+  implementation note.
+
+### 9.11 Verified
+
+`npm test` (3688 tests — Marquee's client and the adapters' both grown this round), `npm run
+typecheck`, `npx eslint`, and `npm run build` all pass. Beyond the fixtures, the endpoint was
+run against all eight live venues, Cinema Europa included: 24 events from Excelsior, 16 from
+Expirat, 12 from Filarmonica via Oveit, 7 from Cinema Europa within its 10-day horizon, and a
+mixed batch confirming non-movie venues keep the full 120-day window while Cinema Union
+(movie) correctly read `empty` once its one listing aged past 10 days. The full loop — check,
+diff, keep, ignore, pause, dismiss, jump-to-row — was driven in the running app; the topbar
+and venue-card fixes were verified at a 375px viewport with the OS forced to dark and no
+`data-theme` attribute set, reproducing the exact conditions of the reported bugs.
 
 ## Open
 
@@ -437,14 +543,16 @@ force each of the four change kinds.
   the app is closed. §7's deferred half — KV venue mirror, one `vercel.json` cron line, the
   same `diff()` server-side, handed to the existing `wanderlist-remind` email path — is
   written to be a small change, but it is not built.
-- **Filarmonica's feed blocks this development machine.** After the research burst that
-  discovered it, `fgestrapi.filarmonicaenescu.ro` returns 403 to every non-browser client
-  from this IP, regardless of User-Agent — so it is an IP-level block with a long cooldown,
-  not something the adapter can be written around. The app classifies it correctly
-  (`throttled`, not broken) and the other six venues are unaffected. **Whether Vercel's
-  egress IPs are blocked too is unknown until this deploys** — that is the first thing to
-  check in production.
+- **Filarmonica's own Strapi feed still blocks this development machine** (403 to every
+  non-browser client from this IP, regardless of User-Agent) — resolved for the app by
+  reading Oveit instead (§9.7 of the earlier round), not by fixing the block. **Whether
+  Vercel's egress IPs can reach either the Strapi feed or Oveit is unknown until this
+  deploys** — the first thing to check in production.
 - Addresses and areas are filled only where a source stated them (Filarmonica, Expirat,
-  Cinema Union). The other four are blank rather than guessed.
+  Cinema Union, Cinema Europa). The other three are blank rather than guessed.
+- The movie-category horizon is a single blanket rule with one real cinema (Cinema Europa)
+  and one near-empty one (Cinema Union) to prove it against. A theatre or hall that also
+  sells through a `movie`-tagged listing page would get the same 10-day treatment — intended,
+  but untested against a case like that because none exists yet.
 - `cancelled` still cannot distinguish *removed* from *page reorganised*. The health gate
   makes the false positive unlikely, not impossible; the guide says so out loud.

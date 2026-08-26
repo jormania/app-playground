@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { diff, toSnapshot, sortChanges, summarize, CHANGE } from './changes.js'
-import { toProductions, byDate, visibleProductions, productionId, TRIAGE } from './programme.js'
+import { toProductions, byDate, visibleProductions, productionId, domIdFor, scanPayload, TRIAGE } from './programme.js'
+import { normalizeVenue } from './venues.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
 const NOW = new Date('2026-08-26T09:00:00')
@@ -188,5 +189,41 @@ describe('formatting', () => {
     expect(formatPrice(0)).toBe('Free')
     expect(formatPrice(50)).toBe('50 lei')
     expect(formatPrice(null)).toBeNull()
+  })
+})
+
+describe('domIdFor', () => {
+  it('turns a production id into a valid, stable DOM id', () => {
+    const id = domIdFor(productionId({ venue: 'Teatrul Excelsior', title: 'Marile speranțe' }))
+    expect(id).toBe('prod-teatrul-excelsior-marile-sperante')
+    expect(id).toMatch(/^[a-z0-9-]+$/)
+  })
+
+  it('gives the same id from a "What changed" row as from the card it points at', () => {
+    // This is the whole contract: a change carries only venue+title, and that has
+    // to fold to exactly the id toProductions() put on the real card.
+    const [production] = toProductions([event({ venue: 'Teatrul Excelsior', title: 'Tomcat' })])
+    const fromChange = domIdFor(productionId({ venue: 'Teatrul Excelsior', title: 'Tomcat' }))
+    expect(domIdFor(production.id)).toBe(fromChange)
+  })
+
+  it('never collapses to an id two different productions could share', () => {
+    expect(domIdFor(productionId({ venue: 'Club Control', title: 'Gig' })))
+      .not.toBe(domIdFor(productionId({ venue: 'Club Control', title: 'Gig 2' })))
+  })
+})
+
+describe('scanPayload', () => {
+  it('carries category, so the endpoint can pick a per-category horizon', () => {
+    const venues = [normalizeVenue({ id: '1', name: 'Cinema Union', url: 'https://eventbook.ro/hall/cinema-union', adapter: 'eventbook', category: 'movie' })]
+    expect(scanPayload(venues)[0]).toMatchObject({ category: 'movie' })
+  })
+
+  it('drops a paused or unsupported venue, same as before', () => {
+    const venues = [
+      normalizeVenue({ id: '1', name: 'Paused', url: 'https://x.ro', adapter: 'jsonld', status: 'paused' }),
+      normalizeVenue({ id: '2', name: 'No reader', url: 'https://x.ro', adapter: 'unsupported' }),
+    ]
+    expect(scanPayload(venues)).toEqual([])
   })
 })

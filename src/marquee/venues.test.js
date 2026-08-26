@@ -44,6 +44,17 @@ describe('matchAdapter', () => {
     expect(parseUrl('https://eventbook.ro.evil.example/hall/x')).not.toBeNull()
     expect(matchAdapter('https://eventbook.ro.evil.example/hall/x')).toBeNull()
   })
+
+  it('reads the venue id out of an iabilet.ro venue page URL', () => {
+    const m = matchAdapter('https://www.iabilet.ro/bilete-cinema-europa-venue-5877/')
+    expect(m).toMatchObject({ adapter: 'iabilet', config: '5877' })
+  })
+
+  it('refuses a plain iabilet.ro event page — there is no venue to fan out from', () => {
+    // Only a venue page (…-venue-<id>/) has the weekly-bundle links this reader
+    // needs; a single show's own ticket page has nowhere to walk to.
+    expect(matchAdapter('https://www.iabilet.ro/bilete-asian-spotlight-vol-2-130105/')).toBeNull()
+  })
 })
 
 describe('validateVenue', () => {

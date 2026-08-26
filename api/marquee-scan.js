@@ -14,7 +14,7 @@
 // stealing, so the gate is the ordinary origin + rate-limit pair every
 // browser-facing endpoint in this repo uses.
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
-import { scanVenue, STATUS } from './_lib/marquee/scan.js'
+import { scanVenue, STATUS, horizonFor } from './_lib/marquee/scan.js'
 
 // Seven venues, a handful of pages each, one at a time — comfortably past the
 // default budget when a site is slow. Same reasoning as clickdeck-pricing.
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       })
       continue
     }
-    results.push(await scanVenue(venue, { now }))
+    results.push(await scanVenue(venue, { now, horizonDays: horizonFor(venue) }))
   }
 
   res.status(200).json({

@@ -1,4 +1,4 @@
-import { TRIAGE } from './programme.js'
+import { TRIAGE, domIdFor } from './programme.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
 /** One production: a title at a venue, with its dates nested.
@@ -23,7 +23,10 @@ function ProductionCard({ production, triage, onKeep, onIgnore }) {
         : 'kept (another date)'
 
   return (
-    <article className={`prod ${production.saved ? 'prod--saved' : ''} ${ignored ? 'prod--ignored' : ''}`}>
+    <article
+      id={domIdFor(production.id)}
+      className={`prod ${production.saved ? 'prod--saved' : ''} ${ignored ? 'prod--ignored' : ''}`}
+    >
       <div className="prod__main">
         <h3 className="prod__title">
           {production.link ? (

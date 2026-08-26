@@ -6,55 +6,74 @@ import { formatDay } from './format.js'
  *
  *  Its empty state matters as much as its full one: "nothing new since Tuesday" is
  *  a real answer, and the commonest one. The app should be checkable in ten
- *  seconds and closed. */
-export default function Changes({ scan, onOpen }) {
-  if (!scan) return null
+ *  seconds and closed.
+ *
+ *  Dismissing hides it until the NEXT check — there is deliberately no way to
+ *  bring it back for the current one. Once you've read it, re-showing the same
+ *  list would just be clutter; a fresh check produces a fresh (and un-dismissed)
+ *  one on its own. */
+export default function Changes({ scan, dismissed = false, onDismiss, onOpen }) {
+  if (!scan || dismissed) return null
 
+  let body
   if (!scan.hadSnapshot) {
-    return (
-      <section className="changes changes--baseline">
-        <p className="changes__empty">
-          First look — this scan is the baseline. From the next one on, this strip shows only
-          what changed.
-        </p>
-      </section>
+    body = (
+      <p className="changes__empty">
+        First look — this scan is the baseline. From the next one on, this strip shows only
+        what changed.
+      </p>
     )
-  }
-
-  if (scan.changes.length === 0) {
-    return (
-      <section className="changes">
-        <p className="changes__empty">
-          Nothing new since {formatDay(scan.previousScanAt ?? scan.scannedAt, { relative: true })}.
-        </p>
-      </section>
+  } else if (scan.changes.length === 0) {
+    body = (
+      <p className="changes__empty">
+        Nothing new since {formatDay(scan.previousScanAt ?? scan.scannedAt, { relative: true })}.
+      </p>
+    )
+  } else {
+    body = (
+      <>
+        <ul className="changes__list">
+          {scan.changes.map((change) => (
+            <li key={`${change.kind}:${change.key}`}>
+              <button type="button" className={`change change--${change.kind}`} onClick={() => onOpen?.(change)}>
+                <span className="change__kind">{CHANGE_LABEL[change.kind]}</span>
+                <span className="change__title">{change.title}</span>
+                <span className="change__meta">
+                  {change.venue}
+                  {change.date ? ` · ${formatDay(change.date)}` : ''}
+                  {change.time ? ` · ${change.time}` : ''}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {scan.changes.some((c) => c.kind === CHANGE.CANCELLED) && (
+          <p className="changes__note">
+            “Gone from the programme” means the venue stopped listing it — usually a cancellation,
+            occasionally a page being reorganised.
+          </p>
+        )}
+      </>
     )
   }
 
   return (
-    <section className="changes" aria-label="What changed">
-      <h2 className="changes__title">What changed</h2>
-      <ul className="changes__list">
-        {scan.changes.map((change) => (
-          <li key={`${change.kind}:${change.key}`}>
-            <button type="button" className={`change change--${change.kind}`} onClick={() => onOpen?.(change)}>
-              <span className="change__kind">{CHANGE_LABEL[change.kind]}</span>
-              <span className="change__title">{change.title}</span>
-              <span className="change__meta">
-                {change.venue}
-                {change.date ? ` · ${formatDay(change.date)}` : ''}
-                {change.time ? ` · ${change.time}` : ''}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      {scan.changes.some((c) => c.kind === CHANGE.CANCELLED) && (
-        <p className="changes__note">
-          “Gone from the programme” means the venue stopped listing it — usually a cancellation,
-          occasionally a page being reorganised.
-        </p>
-      )}
+    <section className={`changes ${!scan.hadSnapshot ? 'changes--baseline' : ''}`} aria-label="What changed">
+      <div className="changes__head">
+        {scan.hadSnapshot && scan.changes.length > 0 && <h2 className="changes__title">What changed</h2>}
+        {onDismiss && (
+          <button
+            type="button"
+            className="changes__dismiss"
+            onClick={onDismiss}
+            aria-label="Dismiss — hide until the next check"
+            title="Dismiss until the next check"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {body}
     </section>
   )
 }

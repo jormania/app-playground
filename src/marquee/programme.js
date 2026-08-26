@@ -9,6 +9,7 @@
 // Pure — no React, no storage.
 
 import { isActive } from './venues.js'
+import { fold } from './findings.js'
 
 // Saved is deliberately absent: it is not the app's to remember (see findings.js).
 export const TRIAGE = { IGNORED: 'ignored' }
@@ -16,6 +17,15 @@ export const TRIAGE = { IGNORED: 'ignored' }
 /** venue + title, folded — the identity of a production across its dates. */
 export function productionId(event) {
   return `${event.venue}::${event.title}`.toLowerCase()
+}
+
+/** A production id, as a DOM id a "What changed" row can scroll to. Reuses
+ *  findings.js's diacritic fold — `productionId` itself only lowercases, so
+ *  "speranțe" would otherwise collapse to a run of hyphens instead of folding
+ *  to "sperante" — and a clean id is also a valid CSS selector, which the
+ *  flash-highlight styling wants to be able to target directly. */
+export function domIdFor(id) {
+  return `prod-${fold(id).replace(/\s+/g, '-')}`
 }
 
 /** Drop today's showings whose start time has already passed.
@@ -103,9 +113,13 @@ export function visibleProductions(productions, { triage = {}, venue = null, hid
 
 /** The venues a scan should ask about: active, with a reader, and (when the user
  *  has narrowed the view) not filtered out. Wraps `scannable` so the endpoint
- *  payload is built in exactly one place. */
+ *  payload is built in exactly one place.
+ *
+ *  `category` rides along even though nothing in the UI needs it: the endpoint
+ *  uses it to pick each venue's horizon (see api/_lib/marquee/scan.js's
+ *  `horizonFor` — cinemas get 10 days, everything else the full 120). */
 export function scanPayload(venues) {
   return (venues ?? [])
     .filter((v) => isActive(v) && v.url && v.adapter && v.adapter !== 'unsupported')
-    .map((v) => ({ id: v.id, name: v.name, url: v.url, adapter: v.adapter, config: v.config ?? null }))
+    .map((v) => ({ id: v.id, name: v.name, url: v.url, adapter: v.adapter, config: v.config ?? null, category: v.category ?? null }))
 }

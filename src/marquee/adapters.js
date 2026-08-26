@@ -57,6 +57,23 @@ export const ADAPTERS = [
     requiresConfig: true,
   },
   {
+    id: 'iabilet',
+    label: 'iabilet.ro venue page',
+    rung: 'selector',
+    hosts: ['iabilet.ro'],
+    note: 'A venue page fans out into weekly-bundle child pages, each read for its own showings.',
+    /** iabilet.ro/bilete-<slug>-venue-<id>/ — the id IS the venue. Deliberately
+     *  narrower than "any iabilet.ro URL": a single EVENT page on the same
+     *  domain (no "-venue-<id>") is not a venue this adapter can watch, and
+     *  matching it anyway would add a row that can never resolve to a
+     *  programme. */
+    config: (url) => {
+      const m = /-venue-(\d+)\/?$/.exec(url.pathname)
+      return m ? m[1] : null
+    },
+    requiresConfig: true,
+  },
+  {
     id: 'expirat',
     label: 'Expirat / iabilet whitelabel',
     rung: 'jsonld',

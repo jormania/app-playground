@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, ConfirmModal } from '../ds'
+import { Button, ConfirmModal, IconButton } from '../ds'
+import { Settings as SettingsIcon } from 'lucide-react'
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
@@ -7,7 +8,7 @@ import Programme from './Programme.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import { sortVenues, scannable, togglePaused } from './venues.js'
-import { toProductions, byDate, visibleProductions, dropStarted, TRIAGE } from './programme.js'
+import { toProductions, byDate, visibleProductions, dropStarted, productionId, domIdFor, TRIAGE } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize } from './changes.js'
 import { runScan, loadLastScan, loadSnapshot } from './scanClient.js'
@@ -37,6 +38,9 @@ export default function App() {
   // the app say so instead of leaving you to wonder why the old error is still
   // there.
   const [scanStale, setScanStale] = useState(false)
+  // Dismissing "What changed" hides it until the NEXT check produces a fresh
+  // one — deliberately not persisted, and reset the moment a scan completes.
+  const [changesDismissed, setChangesDismissed] = useState(false)
 
   const [triage, setTriageState] = useState(() => loadTriage())
   const [venueFilter, setVenueFilter] = useState(null)
@@ -170,6 +174,7 @@ export default function App() {
       }
       setScan({ ...result, previousScanAt })
       setScanStale(false)
+      setChangesDismissed(false)
       setTab('programme')
       // Write each venue's outcome back to its Notion row, so Settings can show
       // when it was last read without a fresh scan. Best-effort: a failed
@@ -222,10 +227,39 @@ export default function App() {
 
   const keepVenue = keeping ? venues.find((v) => v.name === keeping.showing.venue) ?? null : null
 
+  /** A "What changed" row is a claim about one production; clicking it should
+   *  land you on that production, not just announce that it exists. Clears the
+   *  venue filter first (a change can point at a production the current filter
+   *  is hiding) and defers the scroll past that re-render before measuring the
+   *  DOM — against last frame's layout, scrollIntoView would undershoot.
+   *
+   *  A deferred `setTimeout` rather than `requestAnimationFrame`: rAF is paused
+   *  whenever the tab isn't in the foreground compositing frames, so a click
+   *  right before switching away would silently never scroll. A macrotask still
+   *  runs in the background (browsers throttle it, they don't stop it), and one
+   *  tick is already enough for React to have committed the DOM by the time it
+   *  fires. If the target is hidden for some other reason (ignored, sold-out
+   *  with hideSoldOut on) this quietly does nothing rather than fighting those
+   *  preferences too. */
+  const handleOpenChange = (change) => {
+    setVenueFilter(null)
+    const id = domIdFor(productionId({ venue: change.venue, title: change.title }))
+    setTimeout(() => {
+      const el = document.getElementById(id)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.remove('prod--flash')
+      void el.offsetWidth // restart the animation even if this row was just flashed
+      el.classList.add('prod--flash')
+      el.setAttribute('tabindex', '-1')
+      el.focus({ preventScroll: true })
+    }, 0)
+  }
+
   return (
     <div className="app">
       <header className="topbar">
-        <div>
+        <div className="topbar__heading">
           <h1 className="topbar__title">Marquee</h1>
           <p className="topbar__sub">
             {client.mode === 'demo'
@@ -236,12 +270,12 @@ export default function App() {
           </p>
         </div>
         <div className="topbar__actions">
-          <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)}>
-            Settings
-          </Button>
           <Button size="sm" onClick={handleScan} disabled={scanning || loading || active.length === 0}>
             {scanning ? 'Checking…' : 'Check venues'}
           </Button>
+          <IconButton size="sm" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+            <SettingsIcon size={18} />
+          </IconButton>
         </div>
       </header>
 
@@ -277,7 +311,12 @@ export default function App() {
 
         {tab === 'programme' ? (
           <>
-            <Changes scan={scan} onOpen={() => setTab('programme')} />
+            <Changes
+              scan={scan}
+              dismissed={changesDismissed}
+              onDismiss={() => setChangesDismissed(true)}
+              onOpen={handleOpenChange}
+            />
             <Programme
               scan={scan}
               stale={scanStale}

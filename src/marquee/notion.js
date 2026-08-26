@@ -81,7 +81,7 @@ export function toVenueProps(venue) {
   return {
     [PROP.name]: { title: richText(v.name) },
     [PROP.url]: { url: v.url || null },
-    [PROP.adapter]: { select: selectOf(v.adapter, ['excelsior', 'eventbook', 'filarmonica', 'oveit', 'expirat', 'jsonld', 'unsupported']) },
+    [PROP.adapter]: { select: selectOf(v.adapter, ['excelsior', 'eventbook', 'filarmonica', 'oveit', 'iabilet', 'expirat', 'jsonld', 'unsupported']) },
     [PROP.config]: { rich_text: richText(v.config) },
     [PROP.status]: { select: selectOf(v.status, STATUSES) ?? { name: 'active' } },
     [PROP.category]: { select: selectOf(v.category, CATEGORIES) },

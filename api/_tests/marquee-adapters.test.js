@@ -12,8 +12,9 @@ import eventbook from '../_lib/marquee/eventbook.js'
 import filarmonica from '../_lib/marquee/filarmonica.js'
 import jsonld from '../_lib/marquee/jsonld.js'
 import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
+import iabilet from '../_lib/marquee/iabilet.js'
 import { inferYear, slug, eventKey, parseTime, decodeEntities, dedupe } from '../_lib/marquee/shared.js'
-import { assess, scanVenue, STATUS } from '../_lib/marquee/scan.js'
+import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
 const fixture = (name) => readFileSync(join(FIXTURES, name), 'utf8')
@@ -279,6 +280,73 @@ describe('Oveit (the ticketing platform, as a source)', () => {
   })
 })
 
+describe('iabilet (a venue page that fans out into weekly bundles — Cinema Europa)', () => {
+  const venue = {
+    name: 'Cinema Europa',
+    adapter: 'iabilet',
+    url: 'https://www.iabilet.ro/bilete-cinema-europa-venue-5877/',
+    config: '5877',
+  }
+  const venuePage = { body: fixture('iabilet-venue.html') }
+  const bundlePage = { body: fixture('iabilet-bundle.html') }
+
+  it('finds the child bundle links on the venue page — the venue page itself lists nothing', () => {
+    // The venue page is a JS shell to a server fetch: it names five weekend
+    // bundles and not one individual showing.
+    expect(iabilet.parse([venuePage], { venue })).toEqual([])
+    const bundles = iabilet.follow([venuePage], { venue })
+    expect(bundles.length).toBe(5)
+    expect(bundles[0].url).toBe('https://www.iabilet.ro/bilete-asian-spotlight-vol-2-130105/')
+  })
+
+  it('reads the showings out of one bundle page, dropping the weekend pass', () => {
+    const events = iabilet.parse([bundlePage], { venue })
+    // 4 showings in the fixture (Chungking Express, Parasite, Memories of
+    // Murder, In the Mood for Love) each sold at two price tiers that must
+    // collapse into ONE event — never the two Abonament (subscription) rows,
+    // which have no date or time of their own and are not a showing.
+    expect(events).toHaveLength(4)
+    expect(events.every((e) => !/abonament/i.test(e.title))).toBe(true)
+  })
+
+  it('reads a showing whole, at the cheapest still-open price', () => {
+    const [chungking] = iabilet.parse([bundlePage], { venue })
+    expect(chungking).toMatchObject({
+      venue: 'Cinema Europa',
+      title: 'Chungking Express',
+      date: '2026-08-28',
+      time: '18:15',
+      ticketState: 'open',
+      price: 20, // the discounted tariff, not the 30-lei full price
+    })
+    expect(chungking.link).toBe('https://www.iabilet.ro/bilete-asian-spotlight-vol-2-130105/')
+  })
+
+  it('survives the one malformed tariff string in the fixture', () => {
+    // "In the Mood for Love - Bilet preț redus)elevi, studenti, pemsionari)" —
+    // a stray parenthesis right after "redus" that must not spill into the
+    // title, which the em-dash/"Bilet" split boundary never even looks at.
+    const events = iabilet.parse([bundlePage], { venue })
+    expect(events.some((e) => e.title === 'In the Mood for Love')).toBe(true)
+  })
+
+  it('calls a showing sold out only once every one of its price tiers is', () => {
+    // The two Abonament rows are dropped as not-a-showing, but their OWN sold-out
+    // state ("Stoc epuizat") must never leak onto a real film's tariff group —
+    // there is no shared key between them.
+    const events = iabilet.parse([bundlePage], { venue })
+    expect(events.every((e) => e.ticketState === 'open')).toBe(true)
+  })
+
+  it('reads the bundle’s own year-bearing date, not "today", for its day-and-month rows', () => {
+    // The tariff text carries no year ("28 august"); the bundle's own JSON-LD
+    // startDate is what anchors it, so a bundle spanning a year boundary reads
+    // correctly regardless of when the scan happens to run.
+    const events = iabilet.parse([bundlePage], { venue })
+    expect(events.every((e) => e.date.startsWith('2026-08'))).toBe(true)
+  })
+})
+
 describe('generic schema.org reader (Expirat)', () => {
   const venue = { name: 'Expirat Halele Carol', adapter: 'expirat', url: 'https://tickets.expirat.org/' }
   const events = jsonld.parse([{ body: fixture('expirat.html') }], { venue })
@@ -337,6 +405,18 @@ describe('the health gate', () => {
 
   it('catches a placeholder body served with a 200', () => {
     expect(assess(adapter, [{ body: 'nope' }], good).status).toBe(STATUS.PARSER_BROKEN)
+  })
+})
+
+describe('horizonFor', () => {
+  it('gives a cinema a short horizon and everything else the long one', () => {
+    // Cinemas list weeks of showings nobody plans a trip around this far out —
+    // a blanket rule on the category, not a per-venue setting to remember.
+    expect(horizonFor({ category: 'movie' })).toBe(MOVIE_HORIZON_DAYS)
+    expect(horizonFor({ category: 'concert' })).toBe(HORIZON_DAYS)
+    expect(horizonFor({ category: 'play' })).toBe(HORIZON_DAYS)
+    expect(horizonFor({})).toBe(HORIZON_DAYS)
+    expect(horizonFor(undefined)).toBe(HORIZON_DAYS)
   })
 })
 

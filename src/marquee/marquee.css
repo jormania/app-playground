@@ -13,6 +13,11 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* Tells the browser to draw native chrome (a date input's popup, form-control
+     focus rings) in a matching palette. Doesn't reach a plain `<button>` though —
+     see the `button { color: inherit }` reset below for why that matters here. */
+  color-scheme: light;
+
   --color-bg:        #f6f2ee;
   --color-bg-sunken: #ebe4dd;
   --color-surface:   #fffcf9;
@@ -60,6 +65,7 @@
     --color-danger:       #e0776b;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
   }
 }
 
@@ -82,6 +88,7 @@
   --color-danger:       #e0776b;
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }
 
 body {
@@ -91,6 +98,17 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* The actual readability bug: a bare <button> has NO text colour tied to this
+   page's theme. The UA default is `color: buttontext`, resolved against
+   `color-scheme` — which defaults to light regardless of our own dark palette
+   unless something says otherwise. Under "System" with the OS in dark mode (no
+   `data-theme` attribute, so ds/tokens.css's own dark rule never matches either),
+   every button that didn't set its own `color` — `.change` chief among them —
+   rendered light-mode black text on this page's near-black surface. One reset
+   fixes every button, present and future; a class-level `color` (`.tab`,
+   `.linkbtn`, `.change__kind`, …) still wins by specificity where one is wanted. */
+button { color: inherit; font: inherit; }
 
 .app {
   max-width: 46rem;
@@ -105,7 +123,18 @@ body {
   justify-content: space-between;
   gap: 1rem;
   padding: 1.5rem 0 1rem;
-  flex-wrap: wrap;
+  /* nowrap on purpose: Settings and Check venues stay on the title's own row at
+     every width. `.topbar__heading`'s `min-width: 0` below is what actually
+     makes room for that — without it a flex item refuses to shrink past its
+     text's natural width, and the browser wraps the whole actions group onto
+     its own line instead (the entire point of the fix, not just the wrap
+     itself: the title's OWN text is the only thing here that can still read
+     fine after shrinking, so it's the one asked to). */
+  flex-wrap: nowrap;
+}
+
+.topbar__heading {
+  min-width: 0;
 }
 
 .topbar__title {
@@ -126,6 +155,7 @@ body {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-shrink: 0;
 }
 
 /* ── Page furniture ────────────────────────────────────────────────────── */
@@ -306,11 +336,33 @@ body {
 /* ── What changed ──────────────────────────────────────────────────────── */
 .changes { margin: 0 0 0.5rem; }
 
+.changes__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 1.1rem;
+}
+
 .changes__title {
   font-family: var(--font-display);
   font-size: 1rem;
   margin: 0 0 0.5rem;
 }
+
+.changes__dismiss {
+  flex-shrink: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  line-height: 1;
+  border-radius: 0.3rem;
+  color: var(--color-faint);
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: -0.15rem;
+}
+
+.changes__dismiss:hover { color: var(--color-ink); background: var(--color-surface-2); }
 
 .changes__empty, .changes__note {
   margin: 0;
@@ -422,9 +474,19 @@ body {
   border-radius: 0.5rem;
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
+  scroll-margin-top: 1rem;
 }
 
 .prod--saved { border-color: var(--color-accent); }
+
+/* Landed on from a "What changed" row: a brief outline pulse says "here", then
+   gets out of the way rather than staying as a permanent visual difference. */
+.prod--flash { animation: prod-flash 1.6s ease-out; }
+
+@keyframes prod-flash {
+  0%, 35% { box-shadow: 0 0 0 3px var(--color-accent), var(--shadow-card); }
+  100% { box-shadow: var(--shadow-card); }
+}
 .prod__main { flex: 1 1 18rem; min-width: 0; }
 
 .prod__title {
@@ -550,11 +612,19 @@ body {
 
   .topbar { padding: 1.1rem 0 0.75rem; gap: 0.6rem; }
   .topbar__title { font-size: 1.6rem; }
-  .topbar__actions { width: 100%; justify-content: flex-end; }
 
   .tabs { gap: 1rem; }
 
   .venue, .prod { flex-direction: column; gap: 0.6rem; padding: 0.8rem 0.85rem; }
+
+  /* .venue__main / .prod__main carry `flex: 1 1 18rem` for the desktop ROW
+     layout, where 18rem is a wrap-width. Flipping the card to a column above
+     leaves that 18rem bound to the (now vertical) main axis instead — a flex
+     item grows to at least its own basis regardless of how short its content
+     is, so every card reserved a fixed ~288px of height and left the gap
+     between a two-line venue and its Pause/Edit/Remove row visible as dead
+     space. `auto` lets the item's height come from its content again. */
+  .venue__main, .prod__main { flex: 1 1 auto; }
 
   /* Actions become a row under the content rather than a squeezed column
      beside it — with a bigger tap target than an inline text link. */
