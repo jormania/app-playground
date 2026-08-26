@@ -1,0 +1,17 @@
+{
+  "name": "Marquee",
+  "short_name": "Marquee",
+  "description": "Watches the programme pages of the venues you actually go to, and tells you what changed: a new show, tickets on sale, a night sold out.",
+  "id": "/marquee-react.html",
+  "start_url": "/marquee-react.html",
+  "scope": "/marquee-react.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f2ee",
+  "theme_color": "#9a6a1f",
+  "icons": [
+    { "src": "/marquee-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/marquee-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/marquee-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

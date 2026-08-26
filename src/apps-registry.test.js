@@ -13,6 +13,7 @@ const REACT_VITE_TITLES = [
   'Daily Stoic',
   'Loom',
   'Click Deck',
+  'Marquee',
   'WhereItWent',
   'Fit Check',
   'Lexi5',

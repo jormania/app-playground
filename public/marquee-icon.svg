@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Marquee">
+  <rect width="512" height="512" rx="96" fill="#1a141a"/>
+  <!-- The canopy: a theatre marquee seen head-on, its underside lit by bulbs. -->
+  <path d="M96 168h320l40 96H56z" fill="#d9a441"/>
+  <rect x="56" y="264" width="400" height="26" rx="13" fill="#9a6a1f"/>
+  <!-- Bulbs along the lip. -->
+  <g fill="#1a141a">
+    <circle cx="104" cy="277" r="9"/>
+    <circle cx="155" cy="277" r="9"/>
+    <circle cx="206" cy="277" r="9"/>
+    <circle cx="257" cy="277" r="9"/>
+    <circle cx="308" cy="277" r="9"/>
+    <circle cx="359" cy="277" r="9"/>
+    <circle cx="410" cy="277" r="9"/>
+  </g>
+  <!-- The board below, where tonight's title would be set in letters. -->
+  <rect x="120" y="312" width="272" height="112" rx="14" fill="#2d232d" stroke="#d9a441" stroke-width="8"/>
+  <g fill="#d9a441" opacity="0.9">
+    <rect x="152" y="344" width="208" height="16" rx="8"/>
+    <rect x="152" y="378" width="144" height="16" rx="8"/>
+  </g>
+</svg>

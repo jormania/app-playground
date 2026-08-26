@@ -44,6 +44,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | Yoru | `src/yoru/` | JSX, DS — [`YORU.md`](YORU.md) |
 | The Cabinet | `src/cabinet/` | JSX, DS — [`CABINET.md`](CABINET.md) |
 | Loom | `src/loom/` | JSX, DS — [`LOOM.md`](LOOM.md) |
+| Marquee | `src/marquee/` | JSX, DS — venue watcher; reads venue programme pages through `api/marquee-scan.js` (the ONE endpoint, adapters under `api/_lib/marquee/`), saves into Wanderlist's Findings. Read [`MARQUEE.md`](MARQUEE.md) — especially the health gate and "throttled ≠ broken" — before touching an adapter |
 | Click Deck | `src/click-deck/` | JSX, **not DS** (self-styled) — [`CLICK_DECK.md`](CLICK_DECK.md) |
 | Wanderlist | `src/wanderlist/` | JSX, **not DS** (self-styled) — [`WANDERLIST.md`](WANDERLIST.md) |
 | WhereItWent | `src/where-it-went/` | JSX, DS — schema is load-bearing, read [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) before touching it; also [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) |
@@ -124,5 +125,7 @@ the entire repo** — every top-level `api/*.js` file is one function, regardles
 of app (files under `api/_*` don't count). Before adding a new `api/*.js`,
 run `ls api/*.js | grep -v '^api/_'` and check the count. At 12 already, one
 more **will fail the deploy** (happened before, see git history ~2026-07-23).
+**A `.test.js` file placed directly in `api/` counts as a function too** — put tests for
+top-level handlers in `api/_tests/` (caught once, 2026-08-26).
 Prefer folding a new proxy into an existing same-app endpoint (extra
 query param/mode) over a new file when the count is tight.

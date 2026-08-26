@@ -1,0 +1,154 @@
+import { describe, it, expect } from 'vitest'
+import {
+  normalizeVenue,
+  validateVenue,
+  sameProgramme,
+  scannable,
+  togglePaused,
+  sortVenues,
+  suggestName,
+} from './venues.js'
+import { matchAdapter, parseUrl } from './adapters.js'
+
+describe('matchAdapter', () => {
+  it('routes each real venue to its reader', () => {
+    expect(matchAdapter('https://teatrul-excelsior.ro/program/').adapter).toBe('excelsior')
+    expect(matchAdapter('https://www.filarmonicaenescu.ro/ro/evenimente').adapter).toBe('filarmonica')
+    expect(matchAdapter('https://tickets.expirat.org/').adapter).toBe('expirat')
+  })
+
+  it('reads the eventbook hall slug out of the URL, so four venues share one reader', () => {
+    for (const slug of ['cinema-union', 'cinema-elvire-popesco', 'club-control']) {
+      const m = matchAdapter(`https://eventbook.ro/hall/${slug}`)
+      expect(m).toMatchObject({ adapter: 'eventbook', config: slug })
+    }
+  })
+
+  it('refuses an eventbook URL that names no hall — there would be nothing to watch', () => {
+    expect(matchAdapter('https://eventbook.ro/')).toBeNull()
+    expect(matchAdapter('https://eventbook.ro/film/bilete-iertarea')).toBeNull()
+  })
+
+  it('tolerates a missing scheme and a www prefix, and returns null for nonsense', () => {
+    expect(matchAdapter('teatrul-excelsior.ro/program/').adapter).toBe('excelsior')
+    expect(matchAdapter('https://www.teatrul-excelsior.ro/program/').adapter).toBe('excelsior')
+    expect(matchAdapter('not a url')).toBeNull()
+    expect(matchAdapter('')).toBeNull()
+  })
+
+  it('does not match an unrelated site — jsonld is never chosen by domain', () => {
+    expect(matchAdapter('https://example.com/events')).toBeNull()
+  })
+
+  it('is not fooled by a lookalike host', () => {
+    expect(parseUrl('https://eventbook.ro.evil.example/hall/x')).not.toBeNull()
+    expect(matchAdapter('https://eventbook.ro.evil.example/hall/x')).toBeNull()
+  })
+})
+
+describe('validateVenue', () => {
+  const existing = [normalizeVenue({ id: '1', name: 'Cinema Union', url: 'https://eventbook.ro/hall/cinema-union' })]
+
+  it('accepts a supported venue and resolves its reader from the URL', () => {
+    const r = validateVenue({ name: 'Excelsior', url: 'https://teatrul-excelsior.ro/program/' }, existing)
+    expect(r.ok).toBe(true)
+    expect(r.matched).toBe(true)
+    expect(r.venue.adapter).toBe('excelsior')
+    expect(r.warnings).toEqual([])
+  })
+
+  it('blocks a venue with no name or no URL, and says which field is at fault', () => {
+    const noName = validateVenue({ url: 'https://teatrul-excelsior.ro/program/' })
+    expect(noName.ok).toBe(false)
+    expect(noName.problemFor('name')).toBeTruthy()
+    expect(noName.problemFor('url')).toBeUndefined()
+
+    const noUrl = validateVenue({ name: 'Somewhere' })
+    expect(noUrl.ok).toBe(false)
+    expect(noUrl.problemFor('url')).toBeTruthy()
+  })
+
+  it('blocks a duplicate programme page, however it is written', () => {
+    const r = validateVenue({ name: 'Union again', url: 'http://www.eventbook.ro/hall/cinema-union/' }, existing)
+    expect(r.ok).toBe(false)
+    expect(r.problemFor('url')).toMatch(/already watches/)
+  })
+
+  it('lets a venue edit itself without tripping the duplicate check', () => {
+    const r = validateVenue({ id: '1', name: 'Cinema Union', url: 'https://eventbook.ro/hall/cinema-union' }, existing)
+    expect(r.ok).toBe(true)
+  })
+
+  it('allows an unsupported site through the generic reader, but says so out loud', () => {
+    const r = validateVenue({ name: 'Somewhere new', url: 'https://example.com/program' })
+    expect(r.ok).toBe(true)
+    expect(r.matched).toBe(false)
+    expect(r.venue.adapter).toBe('jsonld')
+    expect(r.warnings.join(' ')).toMatch(/adapter written/)
+  })
+
+  it('ignores a stale adapter id on the draft rather than trusting it as the parser', () => {
+    const r = validateVenue({ name: 'X', url: 'https://teatrul-excelsior.ro/program/', adapter: 'eventbook' })
+    expect(r.venue.adapter).toBe('excelsior')
+  })
+})
+
+describe('pausing', () => {
+  const venues = [
+    normalizeVenue({ id: 'a', name: 'Active', url: 'https://teatrul-excelsior.ro/program/', adapter: 'excelsior' }),
+    normalizeVenue({ id: 'b', name: 'Paused', url: 'https://tickets.expirat.org/', adapter: 'expirat', status: 'paused' }),
+  ]
+
+  it('leaves a paused venue in the list but out of every scan', () => {
+    expect(venues).toHaveLength(2)
+    expect(scannable(venues).map((v) => v.id)).toEqual(['a'])
+  })
+
+  it('round-trips', () => {
+    expect(togglePaused(venues[0]).status).toBe('paused')
+    expect(togglePaused(togglePaused(venues[0])).status).toBe('active')
+  })
+
+  it('skips a venue with no reader even when it is active', () => {
+    const broken = normalizeVenue({ id: 'c', name: 'Broken', url: 'https://example.com', adapter: 'unsupported' })
+    expect(scannable([...venues, broken]).map((v) => v.id)).toEqual(['a'])
+  })
+
+  it('sorts by name, leaving paused venues in place', () => {
+    const list = [
+      normalizeVenue({ id: '1', name: 'Zed', status: 'active' }),
+      normalizeVenue({ id: '2', name: 'Alpha', status: 'paused' }),
+      normalizeVenue({ id: '3', name: 'Beta', status: 'active' }),
+    ]
+    expect(sortVenues(list).map((v) => v.name)).toEqual(['Alpha', 'Beta', 'Zed'])
+  })
+
+  it('sorts Romanian diacritics where a reader expects them', () => {
+    const list = ['Teatrul Excelsior', 'Cinema Muzeul Țăranului', 'Club Control']
+      .map((name, i) => normalizeVenue({ id: String(i), name }))
+    expect(sortVenues(list).map((v) => v.name))
+      .toEqual(['Cinema Muzeul Țăranului', 'Club Control', 'Teatrul Excelsior'])
+  })
+})
+
+describe('sameProgramme', () => {
+  it('sees through scheme, www, trailing slash and query order', () => {
+    expect(sameProgramme('https://eventbook.ro/hall/x', 'http://www.eventbook.ro/hall/x/')).toBe(true)
+    expect(sameProgramme('https://a.ro/p?b=2&a=1', 'https://a.ro/p?a=1&b=2')).toBe(true)
+  })
+
+  it('keeps different halls on the same site apart', () => {
+    expect(sameProgramme('https://eventbook.ro/hall/x', 'https://eventbook.ro/hall/y')).toBe(false)
+  })
+})
+
+describe('suggestName', () => {
+  it('turns a hall slug into a readable name', () => {
+    expect(suggestName('https://eventbook.ro/hall/cinema-union')).toBe('Cinema Union')
+  })
+
+  it('falls back to the host when the path says nothing', () => {
+    expect(suggestName('https://tickets.expirat.org/')).toBe('Tickets')
+    expect(suggestName('')).toBe('')
+  })
+})

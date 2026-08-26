@@ -1,0 +1,591 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Marquee — app palette and screens.
+
+   Built on src/ds/ (tokens + components). This block is UNLAYERED on purpose:
+   ds/tokens.css puts its defaults inside `@layer ds`, and unlayered styles beat
+   layered ones whatever order the bundler emits them in. See tokens.css's own
+   header for the deploy bug that rule exists to prevent.
+
+   The look: a theatre lobby at dusk. Deep plum ground, warm brass for anything
+   that means "tickets", and one restrained red for stop conditions. Quieter
+   than a marquee sign, because the app's job is to be checked in ten seconds
+   and closed.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --color-bg:        #f6f2ee;
+  --color-bg-sunken: #ebe4dd;
+  --color-surface:   #fffcf9;
+  --color-surface-2: #f2ece5;
+  --color-border:    #e0d6cb;
+  --color-border-2:  #c0b2a3;
+
+  --color-ink:   #2a2028;
+  --color-muted: #6a5c66;
+  --color-faint: #9c8e97;
+
+  --color-accent:       #9a6a1f;
+  --color-accent-hover: #82581a;
+  --color-on-accent:    #fffcf9;
+  --color-success:      #4a7a4e;
+  --color-warning:      #a8721c;
+  --color-danger:       #a33c32;
+
+  --font-display: 'Alegreya Variable', Georgia, serif;
+  --font-sans:    'Inter Variable', 'Inter', system-ui, sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(42, 32, 40, 0.06);
+}
+
+/* Dark tokens are defined twice on purpose — once for "system" (no data-theme
+   attribute at all) and once for an explicit choice — so the OS preference is
+   actually followed instead of only the toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg:        #1a141a;
+    --color-bg-sunken: #140f14;
+    --color-surface:   #241c24;
+    --color-surface-2: #2d232d;
+    --color-border:    #3a2e3a;
+    --color-border-2:  #574757;
+
+    --color-ink:   #f0e8ec;
+    --color-muted: #b3a3ad;
+    --color-faint: #857683;
+
+    --color-accent:       #d9a441;
+    --color-accent-hover: #e8b559;
+    --color-on-accent:    #1a141a;
+    --color-warning:      #d9a441;
+    --color-danger:       #e0776b;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-bg:        #1a141a;
+  --color-bg-sunken: #140f14;
+  --color-surface:   #241c24;
+  --color-surface-2: #2d232d;
+  --color-border:    #3a2e3a;
+  --color-border-2:  #574757;
+
+  --color-ink:   #f0e8ec;
+  --color-muted: #b3a3ad;
+  --color-faint: #857683;
+
+  --color-accent:       #d9a441;
+  --color-accent-hover: #e8b559;
+  --color-on-accent:    #1a141a;
+  --color-warning:      #d9a441;
+  --color-danger:       #e0776b;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 var(--space-lg, 1rem) 4rem;
+}
+
+/* ── Top bar ───────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 0 1rem;
+  flex-wrap: wrap;
+}
+
+.topbar__title {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  line-height: 1.1;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.topbar__sub {
+  margin: 0.15rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.topbar__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Page furniture ────────────────────────────────────────────────────── */
+.main { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.banner {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0.4rem;
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.empty, .listcount, .footnote {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.footnote { color: var(--color-faint); padding-top: 0.25rem; }
+
+.warn {
+  margin: 0;
+  color: var(--color-warning);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.warn--stop { color: var(--color-danger); }
+
+/* ── Venue rows ────────────────────────────────────────────────────────── */
+.venues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.venue {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.venue--paused { background: var(--color-surface-2); opacity: 0.72; }
+
+.venue__main { min-width: 0; flex: 1 1 18rem; }
+
+.venue__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.venue__name {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.venue__url {
+  display: inline-block;
+  margin-top: 0.15rem;
+  color: var(--color-accent);
+  font-size: 0.82rem;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.venue__url:hover { text-decoration: underline; }
+
+.venue__meta, .venue__scan, .venue__notes {
+  margin: 0.25rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.venue__scan { color: var(--color-faint); }
+.venue__notes { font-style: italic; }
+
+.venue__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding-top: 0.15rem;
+}
+
+.chip {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border-2);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.chip--paused { border-color: var(--color-warning); color: var(--color-warning); }
+.chip--warn { border-color: var(--color-warning); color: var(--color-warning); }
+
+.linkbtn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.linkbtn:hover:not(:disabled) { color: var(--color-ink); }
+.linkbtn--danger:hover:not(:disabled) { color: var(--color-danger); }
+.linkbtn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Form ──────────────────────────────────────────────────────────────── */
+.vform { display: flex; flex-direction: column; gap: 0.85rem; }
+
+.vform__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reader {
+  margin: -0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.reader--ok { color: var(--color-success); }
+.reader--warn { color: var(--color-warning); }
+
+/* ── Tabs ──────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+}
+
+.tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0 0 0.6rem;
+  margin-bottom: -1px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.tab--on { color: var(--color-ink); border-bottom-color: var(--color-accent); }
+.tab:hover:not(.tab--on) { color: var(--color-ink); }
+
+/* ── What changed ──────────────────────────────────────────────────────── */
+.changes { margin: 0 0 0.5rem; }
+
+.changes__title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.changes__empty, .changes__note {
+  margin: 0;
+  color: var(--color-faint);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.changes__note { margin-top: 0.5rem; font-size: 0.78rem; }
+.changes--baseline .changes__empty { color: var(--color-muted); }
+
+.changes__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.change {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border-2);
+  border-radius: 0.35rem;
+  background: var(--color-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.change:hover { border-color: var(--color-border-2); }
+.change--tickets-opened { border-left-color: var(--color-accent); }
+.change--sold-out { border-left-color: var(--color-danger); }
+.change--cancelled { border-left-color: var(--color-danger); }
+.change--new-event { border-left-color: var(--color-success); }
+
+.change__kind {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.change__title { font-weight: 600; font-size: 0.9rem; }
+.change__meta { color: var(--color-faint); font-size: 0.78rem; }
+
+/* ── Trouble (venues that could not be read) ───────────────────────────── */
+.trouble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+}
+
+.trouble__row {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-warning);
+  border-radius: 0.35rem;
+  color: var(--color-warning);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.trouble__row--parser-broken, .trouble__row--unreachable { border-color: var(--color-danger); color: var(--color-danger); }
+
+/* ── Filters ───────────────────────────────────────────────────────────── */
+.filters { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
+
+.filter {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.filter--on { border-color: var(--color-accent); color: var(--color-accent); }
+
+/* ── Programme ─────────────────────────────────────────────────────────── */
+.day { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+
+.day__head {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--color-muted);
+  margin: 0;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.prod {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.prod--saved { border-color: var(--color-accent); }
+.prod__main { flex: 1 1 18rem; min-width: 0; }
+
+.prod__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.prod__title a { color: inherit; text-decoration: none; }
+.prod__title a:hover { text-decoration: underline; }
+
+.prod__meta, .prod__run {
+  margin: 0.2rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.prod__run { color: var(--color-faint); }
+
+.prod__chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.45rem; }
+.chip--tickets { border-color: var(--color-accent); color: var(--color-accent); }
+.chip--soldout { border-color: var(--color-danger); color: var(--color-danger); }
+.chip--saved { border-color: var(--color-success); color: var(--color-success); }
+
+.prod__dates {
+  list-style: none;
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.date {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.date:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.date--soldout { text-decoration: line-through; opacity: 0.6; }
+
+.prod__actions { display: flex; gap: 0.75rem; flex-shrink: 0; padding-top: 0.15rem; }
+
+/* ── Keep sheet ────────────────────────────────────────────────────────── */
+.sheet__context {
+  margin: 0 0 0.25rem;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.vform__row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.vform__row > * { flex: 1 1 8rem; }
+
+.venues__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+}
+
+/* ── Settings ──────────────────────────────────────────────────────────── */
+.settings { display: flex; flex-direction: column; gap: 1.5rem; }
+.settings section { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.settings__head {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings__label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.settings__hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.settings__hint a { color: var(--color-accent); }
+
+.settings__row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+}
+
+/* ── Modal content breathing room ──────────────────────────────────────────
+   The DS Modal's scrolling body has no right padding of its own, so a long
+   sheet's text and switches sit directly under the scrollbar. Padding on the
+   content roots (rather than on the shared component, which other apps rely
+   on) keeps the gutter clear whether or not a scrollbar is present. */
+.settings,
+.vform {
+  padding-right: 0.6rem;
+}
+
+/* ── Phones ────────────────────────────────────────────────────────────────
+   Below ~30rem the two-column rows (a card plus its right-hand actions, the
+   date/time pair in the keep sheet) have nowhere to go, so they stack; and the
+   header's two buttons get a full row rather than wrapping mid-word. */
+@media (max-width: 30rem) {
+  .app { padding: 0 0.85rem 4rem; }
+
+  .topbar { padding: 1.1rem 0 0.75rem; gap: 0.6rem; }
+  .topbar__title { font-size: 1.6rem; }
+  .topbar__actions { width: 100%; justify-content: flex-end; }
+
+  .tabs { gap: 1rem; }
+
+  .venue, .prod { flex-direction: column; gap: 0.6rem; padding: 0.8rem 0.85rem; }
+
+  /* Actions become a row under the content rather than a squeezed column
+     beside it — with a bigger tap target than an inline text link. */
+  .venue__actions, .prod__actions {
+    gap: 1.1rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--color-border);
+    width: 100%;
+  }
+
+  .venue__actions .linkbtn, .prod__actions .linkbtn { padding: 0.35rem 0; }
+
+  .change { gap: 0.3rem 0.5rem; }
+  .change__title { flex-basis: 100%; }
+
+  .vform__row { flex-direction: column; gap: 0.85rem; }
+
+  .settings__row { justify-content: stretch; }
+  .settings__row > * { flex: 1 1 auto; }
+
+  .filters { gap: 0.3rem; }
+  .filter { font-size: 0.75rem; padding: 0.2rem 0.55rem; }
+
+  .venues__foot { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+}
+
+/* A date already in Wanderlist: ticked and quietened, but still pressable —
+   keeping a second copy is allowed, it just has to be deliberate. */
+.date--saved {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.prod--ignored { opacity: 0.6; }

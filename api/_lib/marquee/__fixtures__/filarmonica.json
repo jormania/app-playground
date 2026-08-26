@@ -1,0 +1,645 @@
+{
+ "data": [
+  {
+   "id": 1146,
+   "attributes": {
+    "heading": "Recital cameral",
+    "description": [
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "bold": true,
+        "text": "Deschiderea Stagiunii Camerale",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Martha Argerich",
+        "type": "text"
+       },
+       {
+        "text": " pian",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Magdalena Kožená",
+        "type": "text"
+       },
+       {
+        "text": " mezzosoprană",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Iddo Bar-Shai",
+        "type": "text"
+       },
+       {
+        "text": " pian",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": " ",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "text": "Program",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Claude Debussy",
+        "type": "text"
+       },
+       {
+        "text": " Suita ",
+        "type": "text"
+       },
+       {
+        "text": "În alb-negru ",
+        "type": "text",
+        "italic": true
+       },
+       {
+        "text": "pentru două piane",
+        "type": "text"
+       },
+       {
+        "text": " ",
+        "type": "text",
+        "italic": true
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Leoš Janáček",
+        "type": "text"
+       },
+       {
+        "text": " Cântece populare din Moravia",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Maurice Ravel",
+        "type": "text"
+       },
+       {
+        "text": " Suita ",
+        "type": "text"
+       },
+       {
+        "text": "Mama mea, gâsca ",
+        "type": "text",
+        "italic": true
+       },
+       {
+        "text": "pentru pian la patru mâini",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Franz Schubert",
+        "type": "text"
+       },
+       {
+        "text": " Rondo în la major pentru pian la patru mâini, D 951 ",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Robert Schumann",
+        "type": "text"
+       },
+       {
+        "text": " Ciclul de lieduri ",
+        "type": "text"
+       },
+       {
+        "text": "Dragoste de poet",
+        "type": "text",
+        "italic": true
+       },
+       {
+        "text": ", op. 48 ",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     }
+    ],
+    "buyLabel": "Sold Out",
+    "detailsLabel": "Vezi detalii",
+    "recommended": false,
+    "venue": "Ateneul Român",
+    "room": "Sala Mare",
+    "ticketUrl": "https://oveit.com/hub/event/recital-cameral-QzvN4wzk/reserve-seats",
+    "startDateAndTime": "2026-09-29T16:00:00.000Z",
+    "endDateAndTime": "2026-09-29T18:00:00.000Z",
+    "categories": [
+     "Muzică de Cameră/Recitaluri"
+    ],
+    "ticketTypes": [
+     "Disponibil"
+    ],
+    "slug": "recital-cameral-4098",
+    "createdAt": "2026-07-07T10:02:55.502Z",
+    "updatedAt": "2026-08-19T09:21:40.071Z",
+    "publishedAt": "2026-07-28T06:50:55.601Z",
+    "locale": "ro",
+    "searchDescription": "Deschiderea Stagiunii Camerale Martha Argerich pian Magdalena Kožená mezzosoprană Iddo Bar-Shai pian     Program Claude Debussy Suita În alb-negru pentru două piane  Leoš Janáček Cântece populare din Moravia Maurice Ravel Suita Mama mea, gâsca pentru pian la patru mâini Franz Schubert Rondo în la major pentru pian la patru mâini, D 951  Robert Schumann Ciclul de lieduri Dragoste de poet, op. 48  ",
+    "disableBuy": true,
+    "media": {
+     "data": {
+      "attributes": {
+       "url": "https://fge-strapi.s3.eu-central-1.amazonaws.com/4_KV_Camerale_Sala_Mare_Web_nou_10fa2d9d47.jpg",
+       "formats": {}
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 1105,
+   "attributes": {
+    "heading": "Concert vocal-simfonic",
+    "description": [
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "text": "Deschiderea Stagiunii 2026-2027",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "text": "Orchestra și Corul Filarmonicii George Enescu",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "Dirijor ",
+        "type": "text"
+       },
+       {
+        "bold": true,
+        "text": "Mikhail Pletnev",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "Solistă ",
+        "type": "text"
+       },
+       {
+        "bold": true,
+        "text": "Martha Argerich ",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "text": "Program",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "George Enescu",
+        "type": "text"
+       },
+       {
+        "text": " Poemul simfonic ",
+        "type": "text"
+       },
+       {
+        "text": "Isis",
+        "type": "text",
+        "italic": true
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Serghei Prokofiev",
+        "type": "text"
+       },
+       {
+        "text": " Concertul nr. 3, în do major, pentru pian şi orchestră, op. 26",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Piotr Ilici Ceaikovski",
+        "type": "text"
+       },
+       {
+        "text": " Suita ",
+        "type": "text"
+       },
+       {
+        "text": "Lacul Lebedelor",
+        "type": "text",
+        "italic": true
+       },
+       {
+        "text": " (aranj. Mikhail Pletnev)",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "Dirijorul corului ",
+        "type": "text"
+       },
+       {
+        "bold": true,
+        "text": "Andrei Stănculescu",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     }
+    ],
+    "buyLabel": "Cumpără bilete",
+    "detailsLabel": "Vezi detalii",
+    "recommended": true,
+    "venue": "Ateneul Român",
+    "room": "Sala Mare",
+    "ticketUrl": null,
+    "startDateAndTime": "2026-10-01T16:00:00.000Z",
+    "endDateAndTime": "2026-10-01T18:00:00.000Z",
+    "categories": [
+     "FGE Simfonic"
+    ],
+    "ticketTypes": [
+     "Disponibil"
+    ],
+    "slug": "concert-vocal-simfonic-5381",
+    "createdAt": "2026-07-06T10:12:21.325Z",
+    "updatedAt": "2026-08-19T09:18:05.193Z",
+    "publishedAt": "2026-07-28T06:50:55.601Z",
+    "locale": "ro",
+    "searchDescription": "Deschiderea Stagiunii 2026-2027 Orchestra și Corul Filarmonicii George Enescu Dirijor Mikhail Pletnev Solistă Martha Argerich    Program George Enescu Poemul simfonic Isis Serghei Prokofiev Concertul nr. 3, în do major, pentru pian şi orchestră, op. 26 Piotr Ilici Ceaikovski Suita Lacul Lebedelor (aranj. Mikhail Pletnev)  Dirijorul corului Andrei Stănculescu ",
+    "disableBuy": false,
+    "media": {
+     "data": {
+      "attributes": {
+       "url": "https://fge-strapi.s3.eu-central-1.amazonaws.com/2_EAED_46_C_E9_BE_43_A8_9_E8_C_0_FDF_1_B9_E5_FC_0_2c027a8a3e.png",
+       "formats": {}
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": 1106,
+   "attributes": {
+    "heading": "Concert vocal-simfonic",
+    "description": [
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "text": "Deschiderea Stagiunii 2026-2027",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "text": "Orchestra și Corul Filarmonicii George Enescu",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "Dirijor ",
+        "type": "text"
+       },
+       {
+        "bold": true,
+        "text": "Mikhail Pletnev",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "Solistă ",
+        "type": "text"
+       },
+       {
+        "bold": true,
+        "text": "Martha Argerich ",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "level": 4,
+      "children": [
+       {
+        "text": "Program",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "George Enescu",
+        "type": "text"
+       },
+       {
+        "text": " Poemul simfonic ",
+        "type": "text"
+       },
+       {
+        "text": "Isis",
+        "type": "text",
+        "italic": true
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Serghei Prokofiev",
+        "type": "text"
+       },
+       {
+        "text": " Concertul nr. 3, în do major, pentru pian şi orchestră, op. 26",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "bold": true,
+        "text": "Piotr Ilici Ceaikovski",
+        "type": "text"
+       },
+       {
+        "text": " Suita ",
+        "type": "text"
+       },
+       {
+        "text": "Lacul Lebedelor",
+        "type": "text",
+        "italic": true
+       },
+       {
+        "text": " (aranj. Mikhail Pletnev)",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "",
+        "type": "text"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "children": [
+       {
+        "text": "Dirijorul corului ",
+        "type": "text"
+       },
+       {
+        "bold": true,
+        "text": "Andrei Stănculescu",
+        "type": "text"
+       }
+      ]
+     }
+    ],
+    "buyLabel": "Cumpără bilete",
+    "detailsLabel": "Vezi detalii",
+    "recommended": false,
+    "venue": "Ateneul Român",
+    "room": "Sala Mare",
+    "ticketUrl": null,
+    "startDateAndTime": "2026-10-02T16:00:00.000Z",
+    "endDateAndTime": "2026-10-02T18:00:00.000Z",
+    "categories": [
+     "FGE Simfonic"
+    ],
+    "ticketTypes": [
+     "Disponibil"
+    ],
+    "slug": "concert-vocal-simfonic-1021",
+    "createdAt": "2026-07-06T10:13:37.165Z",
+    "updatedAt": "2026-07-28T06:53:43.683Z",
+    "publishedAt": "2026-07-28T06:50:55.601Z",
+    "locale": "ro",
+    "searchDescription": "Deschiderea Stagiunii 2026-2027 Orchestra și Corul Filarmonicii George Enescu Dirijor Mikhail Pletnev Solistă Martha Argerich    Program George Enescu Poemul simfonic Isis Serghei Prokofiev Concertul nr. 3, în do major, pentru pian şi orchestră, op. 26 Piotr Ilici Ceaikovski Suita Lacul Lebedelor (aranj. Mikhail Pletnev)  Dirijorul corului Andrei Stănculescu",
+    "disableBuy": false,
+    "media": {
+     "data": {
+      "attributes": {
+       "url": "https://fge-strapi.s3.eu-central-1.amazonaws.com/2_EAED_46_C_E9_BE_43_A8_9_E8_C_0_FDF_1_B9_E5_FC_0_2c027a8a3e.png",
+       "formats": {}
+      }
+     }
+    }
+   }
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "page": 1,
+   "pageSize": 4,
+   "pageCount": 22,
+   "total": 87
+  }
+ }
+}

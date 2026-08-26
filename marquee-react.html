@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Marquee — venue watcher</title>
+  <meta name="description" content="Watches the programme pages of the venues you actually go to, and tells you what changed: a new show, tickets on sale, a night sold out." />
+  <meta name="theme-color" content="#f6f2ee" />
+  <script>
+    // Apply the saved theme before first paint to avoid a flash of the wrong palette.
+    try {
+      var p = JSON.parse(localStorage.getItem('marquee_prefs') || '{}');
+      var dark = p.theme === 'dark' || (p.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (p.theme === 'dark' || p.theme === 'light') {
+        document.documentElement.setAttribute('data-theme', p.theme);
+      }
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', dark ? '#1a141a' : '#f6f2ee');
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/marquee-icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/marquee-favicon-32.png" />
+  <link rel="apple-touch-icon" href="/marquee-icon-192.png" />
+  <link rel="manifest" href="/marquee.webmanifest" />
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/marquee/main.jsx"></script>
+</body>
+</html>

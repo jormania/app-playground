@@ -12,6 +12,7 @@ import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
 import clickDeckHltbHandler from './api/clickdeck-hltb.js'
 import notionPhotoProxyHandler from './api/notion-photo-proxy.js'
+import marqueeScanHandler from './api/marquee-scan.js'
 
 // Stamps the real build/deploy time into every HTML entry as a <meta> tag.
 // On Vercel a fresh build runs on each deploy, so this equals the deploy date.
@@ -268,6 +269,7 @@ export default defineConfig({
     devApiRelay('/api/steam-search', steamSearchHandler, 'dev-steam-search-relay'),
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
     devApiRelay('/api/clickdeck-hltb', clickDeckHltbHandler, 'dev-clickdeck-hltb-relay'),
+    devBodyRelay('/api/marquee-scan', marqueeScanHandler, 'dev-marquee-scan-relay'),
     devApiRelay('/api/notion-photo-proxy', notionPhotoProxyHandler, 'dev-notion-photo-proxy-relay'),
   ],
   server: {
@@ -302,6 +304,7 @@ export default defineConfig({
         lexi5: resolve(__dirname, 'lexi5-react.html'),
         silva: resolve(__dirname, 'silva-react.html'),
         radarB: resolve(__dirname, 'radar-b-react.html'),
+        marquee: resolve(__dirname, 'marquee-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet-app.html'),
       }
