@@ -91,6 +91,29 @@ describe('validateVenue', () => {
     const r = validateVenue({ name: 'X', url: 'https://teatrul-excelsior.ro/program/', adapter: 'eventbook' })
     expect(r.venue.adapter).toBe('excelsior')
   })
+
+  it('drops the old site’s reader when a venue is moved to a site nothing matches', () => {
+    // Filarmonica, moved to a source no reader knew: the form warned "no built-in
+    // reader for this site" while the row quietly kept `filarmonica`, so the next
+    // check went on failing against a site that was no longer being watched.
+    // What the form says is what gets saved.
+    const r = validateVenue({ name: 'Filarmonica', url: 'https://example.com/tickets', adapter: 'filarmonica' })
+    expect(r.matched).toBe(false)
+    expect(r.venue.adapter).toBe('jsonld')
+    expect(r.warnings.join(' ')).toMatch(/No built-in reader/)
+  })
+
+  it('keeps a generic reader across a URL change, since it claims no site', () => {
+    const r = validateVenue({ name: 'X', url: 'https://example.org/whats-on', adapter: 'jsonld' })
+    expect(r.venue.adapter).toBe('jsonld')
+  })
+
+  it('routes an Oveit hub URL to the Oveit reader, vendor id and all', () => {
+    const r = validateVenue({ name: 'Filarmonica', url: 'https://oveit.com/hub/org/l7PDAr7y' })
+    expect(r.venue.adapter).toBe('oveit')
+    expect(r.venue.config).toBe('l7PDAr7y')
+    expect(r.matched).toBe(true)
+  })
 })
 
 describe('pausing', () => {

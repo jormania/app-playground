@@ -163,6 +163,17 @@ describe('KeepSheet', () => {
     });
   });
 
+  it('warns that dedupe could not run only when the read actually failed', () => {
+    // An empty Findings database is a fine answer — inferring failure from a zero
+    // count would show the warning to everyone on their first ever save.
+    open({ findings: EMPTY_INDEX });
+    expect(screen.queryByText(/couldn.t read Wanderlist/i)).toBeNull();
+    cleanup();
+
+    open({ findings: EMPTY_INDEX, findingsUnavailable: true });
+    expect(screen.getByText(/couldn.t read Wanderlist/i)).toBeTruthy();
+  });
+
   it('carries an edit through to the draft', async () => {
     const onSave = vi.fn().mockResolvedValue();
     open({ onSave });

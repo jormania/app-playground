@@ -31,6 +31,12 @@ export default function App() {
 
   const [scan, setScan] = useState(() => loadLastScan())
   const [scanning, setScanning] = useState(false)
+  // The programme on screen is always the LAST check, not a live view. Editing a
+  // venue (or pausing one) does not re-read anything, so a result — including a
+  // failure notice — can outlive the reason it happened. This flag is what makes
+  // the app say so instead of leaving you to wonder why the old error is still
+  // there.
+  const [scanStale, setScanStale] = useState(false)
 
   const [triage, setTriageState] = useState(() => loadTriage())
   const [venueFilter, setVenueFilter] = useState(null)
@@ -66,7 +72,13 @@ export default function App() {
       setFindingsError(null)
     } catch (err) {
       setFindings(EMPTY_INDEX)
-      setFindingsError(err?.message || 'Could not read Wanderlist, so “already kept” is unknown.')
+      // Deliberately blunt: the same database is what keeping WRITES to, so a
+      // read failure means saves will fail too. The old copy said only that
+      // "already kept" was unknown, which let someone discover the real problem
+      // by losing a save.
+      setFindingsError(err?.message
+        ? `Wanderlist’s Findings can’t be read: ${err.message} Until that’s fixed, keeping a night will fail too — check Settings → Notion.`
+        : 'Wanderlist’s Findings can’t be read, so keeping a night will fail and Marquee can’t tell what you already have. Check Settings → Notion.')
     }
   }, [])
 
@@ -157,6 +169,7 @@ export default function App() {
         return
       }
       setScan({ ...result, previousScanAt })
+      setScanStale(false)
       setTab('programme')
       // Write each venue's outcome back to its Notion row, so Settings can show
       // when it was last read without a fresh scan. Best-effort: a failed
@@ -181,6 +194,7 @@ export default function App() {
   const handleSave = async (venue) => {
     const saved = venue.id ? await client.updateVenue(venue) : await client.addVenue(venue)
     setVenues((list) => (venue.id ? list.map((v) => (v.id === saved.id ? saved : v)) : [...list, saved]))
+    if (scan) setScanStale(true)
   }
 
   const handleTogglePause = (venue) =>
@@ -188,6 +202,7 @@ export default function App() {
       const next = togglePaused(venue)
       const saved = await client.setStatus(venue.id, next.status)
       setVenues((list) => list.map((v) => (v.id === saved.id ? saved : v)))
+      if (scan) setScanStale(true)
     })
 
   const handleRemove = () =>
@@ -195,6 +210,7 @@ export default function App() {
       await client.removeVenue(removing.id)
       setVenues((list) => list.filter((v) => v.id !== removing.id))
       setRemoving(null)
+      if (scan) setScanStale(true)
     })
 
   const handleKeep = async (draft) => {
@@ -264,6 +280,8 @@ export default function App() {
             <Changes scan={scan} onOpen={() => setTab('programme')} />
             <Programme
               scan={scan}
+              stale={scanStale}
+              scanning={scanning}
               days={days}
               triage={triage}
               venues={active}
@@ -316,6 +334,7 @@ export default function App() {
         venue={keepVenue}
         demo={client.mode === 'demo'}
         findings={findings}
+        findingsUnavailable={Boolean(findingsError)}
         onSave={handleKeep}
         onClose={() => setKeeping(null)}
       />

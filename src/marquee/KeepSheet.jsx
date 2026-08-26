@@ -12,7 +12,7 @@ import { formatDay } from './format.js'
  *  What it will not do is decide for you: `Going` is never set here, so nothing
  *  arrives in Wanderlist claiming you have committed to it.
  */
-export default function KeepSheet({ open, showing, production, venue, demo, findings, onSave, onClose }) {
+export default function KeepSheet({ open, showing, production, venue, demo, findings, findingsUnavailable = false, onSave, onClose }) {
   const [draft, setDraft] = useState(null)
   const [saving, setSaving] = useState(false)
   const [failure, setFailure] = useState(null)
@@ -131,6 +131,14 @@ export default function KeepSheet({ open, showing, production, venue, demo, find
           <p className="warn">
             Another date of {showing.title} is already in Wanderlist. This is a different night, so
             it will be a separate row.
+          </p>
+        )}
+        {/* Whether the read FAILED, not whether it came back empty — an empty
+            Findings database is a perfectly good answer, and inferring failure
+            from a zero count would cry wolf on day one. */}
+        {findingsUnavailable && (
+          <p className="warn">
+            Marquee couldn’t read Wanderlist, so it can’t tell whether this is already saved.
           </p>
         )}
         {demo && <p className="warn">Demo mode: this won’t actually reach Notion.</p>}

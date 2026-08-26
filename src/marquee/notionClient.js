@@ -114,10 +114,30 @@ export function createNotionClient(token, { venuesDatabaseId = VENUES_DATABASE_I
       return { id: page.id, url: page.url ?? null }
     },
 
-    /** Cheap reachability check for Settings → "Test connection". */
+    /** Reachability check for Settings → "Test connection".
+     *
+     *  Both databases are probed SEPARATELY, because they fail separately and
+     *  mean different things: without Venues there is nothing to check, while
+     *  without Findings the app still works but cannot dedupe or keep. Reporting
+     *  one combined "connected" hid a missing Findings share until the first
+     *  failed save. */
     async probe() {
-      const page = await call(`databases/${venuesDatabaseId}/query`, 'POST', { page_size: 1 })
-      return { ok: true, hasRows: (page.results || []).length > 0 }
+      const result = { venues: { ok: false }, findings: { ok: false } }
+      try {
+        const page = await call(`databases/${venuesDatabaseId}/query`, 'POST', { page_size: 1 })
+        result.venues = { ok: true, hasRows: (page.results || []).length > 0 }
+      } catch (err) {
+        result.venues = { ok: false, error: err?.message || 'Could not read the venues database.' }
+      }
+      try {
+        const page = await call(`databases/${findingsDatabaseId}/query`, 'POST', { page_size: 1 })
+        result.findings = { ok: true, hasRows: (page.results || []).length > 0 }
+      } catch (err) {
+        result.findings = { ok: false, error: err?.message || 'Could not read Wanderlist’s Findings.' }
+      }
+      result.ok = result.venues.ok
+      result.hasRows = Boolean(result.venues.hasRows)
+      return result
     },
   }
 }

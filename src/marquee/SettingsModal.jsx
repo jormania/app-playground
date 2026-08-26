@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button, Field, Modal, SegmentedControl, SettingsToggle } from '../ds'
-import { getToken, setToken, clearToken, venuesDb, isLive, getClient } from './store.js'
+import { getToken, setToken, clearToken, venuesDb, findingsDb, isLive, getClient } from './store.js'
 import { VENUES_DATABASE_ID } from './notionClient.js'
 
 const THEMES = [
@@ -19,12 +19,17 @@ const THEMES = [
 export default function SettingsModal({ open, prefs, onPrefs, counts = {}, onClose, onChanged }) {
   const [token, setTokenValue] = useState('')
   const [db, setDb] = useState('')
+  const [findings, setFindings] = useState('')
+  const [testing, setTesting] = useState(false)
+  const [probe, setProbe] = useState(null)
   const [status, setStatus] = useState(null)
 
   useEffect(() => {
     if (!open) return
     setTokenValue(getToken())
     setDb(venuesDb.get())
+    setFindings(findingsDb.get())
+    setProbe(null)
     setStatus(null)
   }, [open])
 
@@ -33,6 +38,7 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, onClo
   function saveConnection() {
     setToken(token)
     if (db.trim()) venuesDb.set(db)
+    if (findings.trim()) findingsDb.set(findings)
     onChanged()
     onClose()
   }
@@ -44,12 +50,15 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, onClo
   }
 
   async function test() {
-    setStatus('testing')
+    setTesting(true)
+    setStatus(null)
+    setProbe(null)
     try {
-      const probe = await getClient().probe()
-      setStatus(probe.hasRows ? 'ok' : 'empty')
+      setProbe(await getClient().probe())
     } catch (err) {
       setStatus(err?.message || 'Could not reach Notion.')
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -102,15 +111,42 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, onClo
             onChange={(e) => setDb(e.target.value)}
             hint={`URL or id. Defaults to ${VENUES_DATABASE_ID.slice(0, 8)}… — “Marquee — Watched Venues”.`}
           />
-          {status === 'ok' && <p className="warn">Connected — the database answered.</p>}
-          {status === 'empty' && <p className="warn">Connected, but the database has no rows yet.</p>}
-          {status && !['ok', 'empty', 'testing'].includes(status) && (
-            <p className="warn warn--stop" role="alert">{status}</p>
+          <Field
+            label="Wanderlist Findings database"
+            value={findings}
+            onChange={(e) => setFindings(e.target.value)}
+            hint="Where keeping writes, and what dedupe reads. Your integration needs access to this one too."
+          />
+
+          {probe && (
+            <div className="probe">
+              <p className={probe.venues.ok ? 'warn' : 'warn warn--stop'}>
+                <strong>Venues:</strong>{' '}
+                {probe.venues.ok
+                  ? probe.venues.hasRows ? 'reachable.' : 'reachable, but empty.'
+                  : probe.venues.error}
+              </p>
+              <p className={probe.findings.ok ? 'warn' : 'warn warn--stop'}>
+                <strong>Findings:</strong>{' '}
+                {probe.findings.ok
+                  ? probe.findings.hasRows ? 'reachable.' : 'reachable, but empty.'
+                  : probe.findings.error}
+              </p>
+              {!probe.findings.ok && (
+                <p className="settings__hint">
+                  Until this one is shared with your integration, <strong>keeping a night will
+                  fail</strong> and Marquee can’t tell what you already have. In Notion, open the
+                  Findings database → <em>•••</em> → <em>Connections</em> → add your integration.
+                </p>
+              )}
+            </div>
           )}
+          {status && <p className="warn warn--stop" role="alert">{status}</p>}
+
           <div className="settings__row">
             {isLive() && <Button variant="secondary" size="sm" onClick={disconnect}>Disconnect</Button>}
-            <Button variant="secondary" size="sm" onClick={test} disabled={status === 'testing'}>
-              {status === 'testing' ? 'Testing…' : 'Test connection'}
+            <Button variant="secondary" size="sm" onClick={test} disabled={testing}>
+              {testing ? 'Testing…' : 'Test connection'}
             </Button>
             <Button size="sm" onClick={saveConnection}>Save</Button>
           </div>

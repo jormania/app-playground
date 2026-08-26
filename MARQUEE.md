@@ -96,6 +96,7 @@ One adapter per SITE, not per venue — `eventbook` alone covers four of them.
 | **Expirat Halele Carol** | tickets.expirat.org | **1 · JSON-LD** | 16 complete schema.org `Event` objects: name, `startDate`, image, `offers` with price in RON. An iabilet.ro whitelabel, so the same reader should serve any other iabilet venue. |
 | **Cinema Union**, **Elvira Popescu**, **Muzeul Țăranului**, **Club Control** | eventbook.ro | **3 · selector** | Server-rendered, one `id="performance"` block per showing, date *with* year, title in `.event-title`. Ticket state = presence of the `add_in_cart` button. |
 | **Teatrul Excelsior** | teatrul-excelsior.ro | **3 · selector** | See below. |
+| **Filarmonica**, again | oveit.com | **2 · feed** | `membership-api.oveit.com/v1/vendor/<id>/events` — the platform it actually sells through. Same concerts, plus prices, from a host that does not refuse us. **This is the source the app uses**; the Strapi one is kept documented because it is richer if it ever becomes reachable. |
 
 Three things the survey turned up that the adapters have to respect:
 
@@ -361,12 +362,45 @@ Consequences that are each a test:
   is pressed.
 - **A different date, or the same title at another venue, is not a duplicate.** Both save
   normally; the first says a sibling exists.
-- **A Findings read failure is not fatal.** No access, wrong database id — the programme
-  still works, with one quiet line saying "already kept" is unknown.
+- **A Findings read failure is not fatal, but it is not cosmetic either.** The programme
+  still works; keeping does not, because the database Marquee reads for dedupe is the one it
+  writes saves to. The message says so — an earlier version mentioned only the dedupe, which
+  would have let someone find the real problem by losing a save. Settings probes the two
+  databases **separately** for the same reason, and both ids are overridable.
+
+  This is a live setup step, not a hypothetical: an integration created for Marquee has
+  access to Watched Venues and nothing else until Findings is shared with it too
+  (Notion → the database → ••• → Connections).
 - **`triage` now only stores `ignored`.** Stale `saved` entries from the old scheme are
   dropped on read rather than migrated.
 
-### 9.5 Decisions worth keeping
+### 9.5 Moving a venue to a different source (2026-08-26)
+
+Filarmonica's own feed refuses non-browser clients from some IPs, so the venue was pointed
+at **Oveit** — the ticketing platform it sells through — instead. That exposed two things
+worth keeping written down:
+
+- **An Oveit hub page is a 2.5KB JavaScript shell**, so the generic reader finds nothing on
+  it. `api/_lib/marquee/oveit.js` reads the platform's public API instead, taking the vendor
+  id out of the hub URL. It never reports `sold-out`: the feed has no such flag, and an
+  absent price means "none published", not "gone".
+- **Changing a venue's URL used to leave the OLD site's reader in place.** `validateVenue`
+  fell back to the adapter already on the row whenever the new URL matched nothing — so the
+  form said *"no built-in reader for this site"* while the row quietly kept `filarmonica`,
+  and the next check went on failing against a site that was no longer being watched. A
+  carried-over adapter now only stands if it could actually read the new URL (same host, or
+  a generic reader claiming none). **What the form says is what gets saved.**
+
+And one UX consequence, fixed at the same time: the programme on screen is always the LAST
+check, never a live view, so a failure notice outlived the problem it described. Editing a
+venue now marks the results stale and says so, and every trouble line is dated.
+
+**Adding an adapter is a three-place change:** the module and `api/_lib/marquee/registry.js`,
+the client's `src/marquee/adapters.js`, and the `Adapter` select in Notion — which is a
+closed vocabulary, so an unregistered value 400s the entire patch and silently takes the
+other fields with it.
+
+### 9.6 Decisions worth keeping
 
 - **The diff is the product, and the first scan is not news.** With no snapshot every event
   is "new"; reporting a hundred of them says nothing. The baseline is established silently.
@@ -388,7 +422,7 @@ Consequences that are each a test:
 - **Pause is not a soft delete**, and **remove archives** — Notion's trash is the undo.
 - **Nothing is ever kept as "Going".** Marquee never claims you have committed to anything.
 
-### 9.6 Verified
+### 9.7 Verified
 
 `npm test` (3634 tests — 79 Marquee's client, 49 the adapters'), `npm run typecheck`,
 `npx eslint`, and `npm run build` all pass. Beyond the fixtures, the endpoint was run

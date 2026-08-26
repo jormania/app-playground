@@ -376,11 +376,25 @@
   If you only want to stop checking somewhere, pause it instead.
 </p>
 
+<h3>Moving a venue to a different source</h3>
+<p>
+  Some venues are easier to read through their ticketing platform than through their own
+  site. Paste the new URL over the old one and the reader is re-resolved from it — the form
+  always tells you which reader will handle the address currently in the box, and that is
+  what gets saved.
+</p>
+<p>
+  Changing a venue does not re-check it. The programme you are looking at is always the last
+  check, so it will say it is out of date until you press <strong>Check venues</strong> again
+  — including any problem it reported.
+</p>
+
 <div class="warnbox">
   <p>
     <strong>Not every site can be added by pasting a URL.</strong> Marquee ships readers for
-    Teatrul Excelsior, Eventbook (which covers four cinemas and clubs at once), Filarmonica George
-    Enescu, and any page publishing standard schema.org event data — which is how Expirat works.
+    Teatrul Excelsior, Eventbook (four cinemas and clubs at once), Oveit (a ticketing platform
+    — this is how Filarmonica George Enescu is read), Filarmonica's own feed, and any page
+    publishing standard schema.org event data, which is how Expirat works.
   </p>
   <p>
     A venue outside that list gets the generic reader, and the form says plainly that it may find
@@ -476,9 +490,22 @@
 </ul>
 
 <p>
-  <strong>Test connection</strong> checks it without changing anything. The integration also needs
-  access to your Wanderlist <em>Findings</em> database for keeping to work.
+  <strong>Test connection</strong> checks both databases separately and tells you which one
+  answered, because they fail separately and mean different things.
 </p>
+
+<div class="warnbox">
+  <p>
+    <strong>Your integration needs access to two databases, not one.</strong> Sharing it with
+    Marquee — Watched Venues is easy to do and easy to stop there; but Findings is where
+    keeping <em>writes</em>, so without it every save fails and Marquee can't tell what you
+    already have.
+  </p>
+  <p>
+    In Notion, open the Findings database → <em>•••</em> (top right) → <em>Connections</em> →
+    add your integration. Then press Test connection again.
+  </p>
+</div>
 
 <h2 id="limits"><span class="num">09</span>Honest limits</h2>
 

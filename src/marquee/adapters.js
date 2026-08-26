@@ -44,6 +44,19 @@ export const ADAPTERS = [
     note: 'Reads the public Strapi feed behind the site, not the page itself.',
   },
   {
+    id: 'oveit',
+    label: 'Oveit',
+    rung: 'feed',
+    hosts: ['oveit.com'],
+    note: 'Reads the ticketing platform’s own feed — the hub page itself has no events in it.',
+    /** oveit.com/hub/org/<vendor> — the vendor id IS the venue. */
+    config: (url) => {
+      const m = /\/hub\/(?:org|vendor)\/([A-Za-z0-9_-]+)/.exec(url.pathname)
+      return m ? m[1] : null
+    },
+    requiresConfig: true,
+  },
+  {
     id: 'expirat',
     label: 'Expirat / iabilet whitelabel',
     rung: 'jsonld',

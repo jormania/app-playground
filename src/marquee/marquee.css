@@ -589,3 +589,8 @@ body {
 }
 
 .prod--ignored { opacity: 0.6; }
+
+.probe { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.banner--stale { border-left-color: var(--color-warning); color: var(--color-warning); }
+.trouble__when { opacity: 0.75; font-style: italic; }

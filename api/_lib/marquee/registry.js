@@ -8,6 +8,7 @@
 import excelsior from './excelsior.js'
 import eventbook from './eventbook.js'
 import filarmonica from './filarmonica.js'
+import oveit from './oveit.js'
 import jsonld from './jsonld.js'
 
 const expirat = { ...jsonld, id: 'expirat', label: 'Expirat / iabilet whitelabel', minItems: 3 }
@@ -16,6 +17,7 @@ export const ADAPTERS = {
   excelsior,
   eventbook,
   filarmonica,
+  oveit,
   expirat,
   jsonld,
 }

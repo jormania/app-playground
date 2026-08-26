@@ -1,0 +1,90 @@
+{
+ "events": [
+  {
+   "id": "QzvN4wzk",
+   "name": "Recital cameral",
+   "id_seller": "l7PDAr7y",
+   "type": "with-seating-chart",
+   "timeInterval": {
+    "startsAt": "2026-09-29T16:00:00.000000Z",
+    "endsAt": "2026-09-29T18:00:00.000000Z"
+   },
+   "location": "Ateneul Roman / sala mare",
+   "dateTimeFormat": {
+    "timezone": "Europe/Bucharest",
+    "dateFormat": "M d, Y",
+    "timeFormat": "H:i"
+   },
+   "cover": {
+    "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/07/1-oveit-martha-argerich-29-sept.jpg"
+   },
+   "currency": "RON",
+   "minmaxticketsprices": {
+    "minPrice": 150,
+    "maxPrice": 0
+   }
+  },
+  {
+   "id": "d3blW07e",
+   "name": "Recital cameral",
+   "id_seller": "l7PDAr7y",
+   "type": "with-seating-chart",
+   "timeInterval": {
+    "startsAt": "2026-10-03T16:00:00.000000Z",
+    "endsAt": "2026-10-03T18:00:00.000000Z"
+   },
+   "location": "Ateneul Roman / sala mare",
+   "dateTimeFormat": {
+    "timezone": "Europe/Bucharest",
+    "dateFormat": "M d, Y",
+    "timeFormat": "H:i"
+   },
+   "cover": {
+    "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/07/4-kv-camerale-sala-mare-web-nou-2.jpg"
+   },
+   "currency": "RON",
+   "minmaxticketsprices": {
+    "minPrice": 70,
+    "maxPrice": 0
+   }
+  },
+  {
+   "id": "d3Mwar7K",
+   "name": "Turneul Naţional Classic. Jazz. Voyage",
+   "id_seller": "l7PDAr7y",
+   "type": "with-seating-chart",
+   "timeInterval": {
+    "startsAt": "2026-10-05T16:00:00.000000Z",
+    "endsAt": "2026-10-05T18:00:00.000000Z"
+   },
+   "location": "Ateneul Roman / sala mare",
+   "dateTimeFormat": {
+    "timezone": "Europe/Bucharest",
+    "dateFormat": "M d, Y",
+    "timeFormat": "H:i"
+   },
+   "cover": {
+    "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/07/14-kv-concerte-cu-id-vizuala-proprie.jpg"
+   },
+   "currency": "RON",
+   "minmaxticketsprices": {
+    "minPrice": 70,
+    "maxPrice": 0
+   }
+  }
+ ],
+ "remainingEvents": 4,
+ "vendor": {
+  "id": "l7PDAr7y",
+  "gtm_code": null,
+  "features": {
+   "hasMarketplaceCustomLogo": true,
+   "hideFooter": false
+  },
+  "publicInformation": {
+   "name": "Filarmonica George Enescu",
+   "description": "Filarmonica George Enescu este instituţia muzicală reprezentativă a României. Fondată în aprilie 1868, Societatea Filarmonică Română, sub conducerea lui Eduard Wachmann, avea ca scop organizarea unei orchestre simfonice permanente, în vederea propagării culturii muzicale şi popularizării capodoperelor muzicii clasice. Primul concert a avut loc în 15 decembrie acelaşi an, sub bagheta initiatorului sau.",
+   "avatar": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2025/01/logo-ro-black-transparent-01.png"
+  }
+ }
+}

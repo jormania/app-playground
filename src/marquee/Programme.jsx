@@ -80,7 +80,7 @@ function ProductionCard({ production, triage, onKeep, onIgnore }) {
 /** Venues that could not be read. Never silent, never mixed in with the
  *  programme — a venue whose parser broke must not look like a venue with
  *  nothing on (MARQUEE.md §6). */
-function Trouble({ venues }) {
+function Trouble({ venues, checkedAt }) {
   const trouble = venues.filter((v) => v.status !== 'ok' && v.status !== 'empty')
   if (trouble.length === 0) return null
   return (
@@ -88,6 +88,10 @@ function Trouble({ venues }) {
       {trouble.map((v) => (
         <p key={v.venue} className={`trouble__row trouble__row--${v.status}`}>
           <strong>{v.venue}</strong> — {v.detail}
+          {/* Dated, because this is a record of the last check rather than a
+              live status. Without the date, a failure that has since been fixed
+              reads as one that is still happening. */}
+          {checkedAt && <span className="trouble__when"> (as of the check {checkedAt})</span>}
         </p>
       ))}
     </section>
@@ -106,7 +110,7 @@ function emptyMessage(venueFilter, scanned) {
   return `Nothing upcoming at ${venueFilter}.`
 }
 
-export default function Programme({ scan, days, triage, onKeep, onIgnore, venueFilter, onVenueFilter, venues }) {
+export default function Programme({ scan, days, triage, onKeep, onIgnore, venueFilter, onVenueFilter, venues, stale = false, scanning = false }) {
   if (!scan) {
     return (
       <p className="empty">
@@ -120,7 +124,14 @@ export default function Programme({ scan, days, triage, onKeep, onIgnore, venueF
 
   return (
     <>
-      <Trouble venues={scanned} />
+      {stale && !scanning && (
+        <p className="banner banner--stale">
+          You’ve changed your venues since this check ran, so what’s below — including any
+          problems reported — is out of date. Press <strong>Check venues</strong> to refresh it.
+        </p>
+      )}
+
+      <Trouble venues={scanned} checkedAt={scan.scannedAt ? formatDay(scan.scannedAt.slice(0, 10), { relative: true }) : null} />
 
       {venues.length > 1 && (
         <div className="filters">

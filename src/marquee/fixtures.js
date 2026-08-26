@@ -178,7 +178,12 @@ export function createFixtureClient() {
     },
 
     async probe() {
-      return { ok: true, hasRows: venues.length > 0 }
+      return {
+        ok: true,
+        hasRows: venues.length > 0,
+        venues: { ok: true, hasRows: venues.length > 0 },
+        findings: { ok: true, hasRows: findings.length > 0 },
+      }
     },
   }
 }

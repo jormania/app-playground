@@ -103,12 +103,21 @@ export function validateVenue(draft, existing = []) {
   const clash = existing.find((v) => v.id !== venue.id && sameProgramme(v.url, venue.url))
   if (clash) fail('url', `${clash.name} already watches that page.`)
 
-  // The adapter is resolved from the URL, never typed. An explicit choice on the
-  // draft wins only when it names a real adapter — a stale id from an edited
-  // Notion row must not silently become the parser.
+  // The adapter is resolved from the URL, never typed.
+  //
+  // The carried-over adapter may only stand when it could actually read this URL:
+  // either the URL matches it, or it is a generic reader that claims no hosts.
+  // Otherwise the URL wins. Point a venue at a new site and the OLD site's reader
+  // used to survive the edit — the form said "no built-in reader for this site"
+  // while the row quietly kept the previous one, so the next check went on failing
+  // against a site that was no longer there. (Filarmonica, moved to Oveit,
+  // 2026-08-26.) The rule now is simply: what is saved is what the form said.
   const matched = url ? matchAdapter(venue.url) : null
-  const explicit = venue.adapter && venue.adapter !== 'unsupported' ? getAdapter(venue.adapter) : null
-  const resolved = matched ?? (explicit ? { adapter: explicit.id, config: venue.config, rung: explicit.rung, label: explicit.label } : null)
+  const carried = venue.adapter && venue.adapter !== 'unsupported' ? getAdapter(venue.adapter) : null
+  const carriedFits = carried && (carried.id === matched?.adapter || carried.hosts.length === 0)
+  const resolved = matched ?? (carriedFits
+    ? { adapter: carried.id, config: venue.config, rung: carried.rung, label: carried.label }
+    : null)
 
   if (resolved) {
     venue.adapter = resolved.adapter

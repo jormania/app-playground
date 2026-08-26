@@ -32,19 +32,30 @@ export function placeFor(venue) {
   return `${name}, ${address}`
 }
 
+/** The map pin. Wanderlist's `Map` property is a Google Maps search URL built
+ *  from the same Place string — the app has no geocoder of its own, so a row
+ *  saved without this one has no pin at all until someone fills it in by hand.
+ *  Same construction as Radar-B's, so rows from either app behave identically. */
+export function mapUrlFor(venue) {
+  const place = placeFor(venue)
+  return place ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}` : null
+}
+
 /** A dated showing is the case where missing it means missing it permanently, so
  *  the date IS the deadline. Nothing is invented for an event without one. */
 export function expiryFor(showing) {
   return showing?.date ?? null
 }
 
-/** Tags Marquee can state as fact. Ticket state is knowledge the venue published;
- *  everything else about taste or company is the user's to add in Wanderlist. */
-export function tagsFor(showing) {
+/** Tags Marquee can state as fact. Ticket state is knowledge the venue published,
+ *  and a concert hall's programme is music by definition; everything else — taste,
+ *  company, whether it's worth the trip — is the user's to add in Wanderlist. */
+export function tagsFor(showing, venue) {
   const tags = []
   if (showing?.ticketState === 'open' || showing?.ticketState === 'sold-out') tags.push('ticketed')
   if (showing?.price === 0) tags.push('free')
-  return tags.filter((t) => FINDINGS_TAGS.includes(t))
+  if (venue?.category === 'concert') tags.push('music')
+  return [...new Set(tags)].filter((t) => FINDINGS_TAGS.includes(t))
 }
 
 /**
@@ -63,13 +74,17 @@ export function toDraft(showing, { venue, production } = {}) {
         ? `${production.showings.length} dates listed at ${showing.venue}.`
         : null,
       showing.hall ? `Hall: ${showing.hall}.` : null,
+      // Every source that publishes a price publishes the CHEAPEST one, so the
+      // number in Cost is a floor, not the price of a seat worth having. Saying so
+      // costs one clause and stops the row quietly overstating what it knows.
+      showing.price > 0 ? `Cheapest published ticket ${showing.price} lei.` : null,
       showing.ticketState === 'sold-out' ? 'Listed as sold out when saved.' : null,
     ].filter(Boolean).join(' ') || null,
     link: showing.ticketsUrl || showing.link || null,
     category,
     place: placeFor(venue),
-    placeUrl: null,
-    tags: tagsFor(showing),
+    placeUrl: mapUrlFor(venue),
+    tags: tagsFor(showing, venue),
     attended: false,
     going: false,
     cost: showing.price ?? null,

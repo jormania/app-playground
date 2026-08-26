@@ -7,11 +7,12 @@
 
 import { readJson, writeJson, removeJson } from '../shared/storage'
 import { parseNotionId } from '../shared/notionId'
-import { createNotionClient, VENUES_DATABASE_ID } from './notionClient.js'
+import { createNotionClient, VENUES_DATABASE_ID, FINDINGS_DATABASE_ID } from './notionClient.js'
 import { createFixtureClient } from './fixtures.js'
 
 const TOKEN_KEY = 'marquee_token'
 const VENUES_DB_KEY = 'marquee_venues_db'
+const FINDINGS_DB_KEY = 'marquee_findings_db'
 const PREFS_KEY = 'marquee_prefs'
 const TRIAGE_KEY = 'marquee_triage'
 
@@ -20,15 +21,22 @@ export function setToken(token) { writeJson(TOKEN_KEY, String(token || '').trim(
 export function clearToken() { removeJson(TOKEN_KEY) }
 export function isLive() { return Boolean(getToken()) }
 
-export const venuesDb = {
-  get: () => readJson(VENUES_DB_KEY, '') || VENUES_DATABASE_ID,
-  set: (raw) => {
-    const id = parseNotionId(raw)
-    if (id) writeJson(VENUES_DB_KEY, id)
-    else removeJson(VENUES_DB_KEY)
-    return id
-  },
+function idSetting(key, fallback) {
+  return {
+    get: () => readJson(key, '') || fallback,
+    set: (raw) => {
+      const id = parseNotionId(raw)
+      if (id) writeJson(key, id)
+      else removeJson(key)
+      return id
+    },
+  }
 }
+
+export const venuesDb = idSetting(VENUES_DB_KEY, VENUES_DATABASE_ID)
+/** Wanderlist's Findings — read for dedupe, written when you keep something.
+ *  Overridable because the integration may be pointed at a copy of the DB. */
+export const findingsDb = idSetting(FINDINGS_DB_KEY, FINDINGS_DATABASE_ID)
 
 export const DEFAULT_PREFS = {
   theme: 'system',
@@ -70,5 +78,8 @@ export function saveTriage(triage) { writeJson(TRIAGE_KEY, triage ?? {}) }
 export function getClient() {
   const token = getToken()
   if (!token) return createFixtureClient()
-  return createNotionClient(token, { venuesDatabaseId: venuesDb.get() })
+  return createNotionClient(token, {
+    venuesDatabaseId: venuesDb.get(),
+    findingsDatabaseId: findingsDb.get(),
+  })
 }

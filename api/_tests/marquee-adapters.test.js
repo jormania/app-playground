@@ -11,6 +11,7 @@ import excelsior from '../_lib/marquee/excelsior.js'
 import eventbook from '../_lib/marquee/eventbook.js'
 import filarmonica from '../_lib/marquee/filarmonica.js'
 import jsonld from '../_lib/marquee/jsonld.js'
+import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
 import { inferYear, slug, eventKey, parseTime, decodeEntities, dedupe } from '../_lib/marquee/shared.js'
 import { assess, scanVenue, STATUS } from '../_lib/marquee/scan.js'
 
@@ -206,6 +207,75 @@ describe('Filarmonica (Strapi feed)', () => {
     expect(req.json).toBe(true)
     expect(decodeURIComponent(req.url)).toContain('endDateAndTime][$gte]=2026-08-26')
     expect(decodeURIComponent(req.url)).toContain('sort[0]=startDateAndTime:asc')
+  })
+})
+
+describe('Oveit (the ticketing platform, as a source)', () => {
+  const venue = {
+    name: 'Filarmonica George Enescu',
+    adapter: 'oveit',
+    url: 'https://oveit.com/hub/org/l7PDAr7y',
+    config: 'l7PDAr7y',
+  }
+  const pages = [{ json: JSON.parse(fixture('oveit.json')) }]
+  const events = oveit.parse(pages, { venue })
+
+  it('reads the vendor id out of a hub URL', () => {
+    expect(vendorFromUrl('https://oveit.com/hub/org/l7PDAr7y')).toBe('l7PDAr7y')
+    expect(vendorFromUrl('https://oveit.com/hub/event/QzvN4wzk')).toBeNull()
+    expect(vendorFromUrl('not a url')).toBeNull()
+  })
+
+  it('maps the feed rows', () => {
+    expect(events).toHaveLength(3)
+    expect(events[0]).toMatchObject({
+      venue: 'Filarmonica George Enescu',
+      title: 'Recital cameral',
+      date: '2026-09-29',
+      ticketState: 'open',
+      price: 150,
+    })
+    expect(events[0].hall).toMatch(/Ateneul/)
+    expect(events[0].ticketsUrl).toBe('https://oveit.com/hub/event/QzvN4wzk')
+  })
+
+  it('reads the venue’s own wall clock, not the stored UTC hour', () => {
+    // 16:00Z is the 19:00 printed on the ticket.
+    expect(events[0].time).toBe('19:00')
+  })
+
+  it('never claims sold out — the feed has no such flag', () => {
+    // Absent price means "no price published", not "gone". Inventing a sold-out
+    // state from silence is exactly the false precision this app refuses.
+    const noPrice = oveit.parse([{ json: { events: [{
+      id: 'x', name: 'Concert', timeInterval: { startsAt: '2026-10-01T16:00:00.000000Z' },
+      minmaxticketsprices: { minPrice: 0, maxPrice: 0 },
+    }] } }], { venue })
+    expect(noPrice[0].ticketState).toBe('none')
+    expect(noPrice[0].price).toBeNull()
+    expect(events.some((e) => e.ticketState === 'sold-out')).toBe(false)
+  })
+
+  it('pages until the feed says nothing is left', () => {
+    // Page size is read from the page in hand rather than assumed. This fixture
+    // is trimmed to 3 rows (the live page carries 8), so 4 remaining reads as two
+    // more pages instead of one. That is the safe direction to be wrong in: an
+    // extra request returns an empty page, whereas under-counting would silently
+    // drop the tail of a season.
+    const more = oveit.follow(pages, { venue })
+    expect(more.map((r) => r.url)).toEqual([2, 3].map((n) =>
+      `https://membership-api.oveit.com/v1/vendor/l7PDAr7y/events?page=${n}&include=type,timeInterval,dateTimeFormat,location,cover,currency,minmaxticketsprices`))
+
+    expect(oveit.follow([{ json: { events: [], remainingEvents: 0 } }], { venue })).toEqual([])
+  })
+
+  it('stops at a page cap rather than looping if remainingEvents never falls', () => {
+    const runaway = oveit.follow([{ json: { events: [{}], remainingEvents: 9999 } }], { venue })
+    expect(runaway.length).toBeLessThanOrEqual(7)
+  })
+
+  it('asks for nothing when the URL names no vendor', () => {
+    expect(oveit.requests({ ...venue, config: null, url: 'https://oveit.com/hub' })).toEqual([])
   })
 })
 
