@@ -1,16 +1,33 @@
-import { TRIAGE, domIdFor } from './programme.js'
+import { useState } from 'react'
+import { TRIAGE, domIdFor, primaryChangeKind } from './programme.js'
+import { CHANGE_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
+
+/** A production's poster, when a reader gave us one. Readers vary in whether
+ *  they do (Excelsior's markup carries none; Expirat, Oveit and iabilet all
+ *  return a poster URL) — so this quietly renders nothing rather than a
+ *  broken-image icon when there isn't one, or when the URL 404s. */
+function Poster({ src }) {
+  const [failed, setFailed] = useState(false)
+  if (!src || failed) return null
+  return (
+    <div className="prod__poster">
+      <img src={src} alt="" aria-hidden="true" loading="lazy" onError={() => setFailed(true)} />
+    </div>
+  )
+}
 
 /** One production: a title at a venue, with its dates nested.
  *
  *  The card is the production and not the showing because that is the unit you
  *  decide about — "do I want to see this" comes long before "which night". A film
  *  listed six times is one card with six dates, not six cards. */
-function ProductionCard({ production, triage, onKeep, onIgnore }) {
+function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, onIgnore }) {
   const ignored = triage[production.id] === TRIAGE.IGNORED
   const soldOut = production.allSoldOut
   const price = formatPrice(production.price)
   const savedDates = production.savedDates ?? new Set()
+  const changeKind = primaryChangeKind(production, changedKeys)
 
   // How much of the run is already in Wanderlist. Saying "1 of 3 dates" beats a
   // flat "in Wanderlist" that implies the whole run was kept when one night was.
@@ -25,8 +42,10 @@ function ProductionCard({ production, triage, onKeep, onIgnore }) {
   return (
     <article
       id={domIdFor(production.id)}
-      className={`prod ${production.saved ? 'prod--saved' : ''} ${ignored ? 'prod--ignored' : ''}`}
+      className={`prod ${production.saved ? 'prod--saved' : ''} ${ignored ? 'prod--ignored' : ''} ${changeKind ? `prod--changed-${changeKind}` : ''}`}
     >
+      <Poster src={production.image} />
+
       <div className="prod__main">
         <h3 className="prod__title">
           {production.link ? (
@@ -40,6 +59,7 @@ function ProductionCard({ production, triage, onKeep, onIgnore }) {
         <p className="prod__run">{formatRun(production)}</p>
 
         <div className="prod__chips">
+          {changeKind && <span className={`chip chip--changed-${changeKind}`}>{CHANGE_LABEL[changeKind]}</span>}
           {soldOut && <span className="chip chip--soldout">sold out</span>}
           {!soldOut && production.anyOpen && <span className="chip chip--tickets">tickets</span>}
           {price && <span className="chip">{price}</span>}
@@ -48,22 +68,26 @@ function ProductionCard({ production, triage, onKeep, onIgnore }) {
 
         {production.showings.length > 1 && (
           <ul className="prod__dates">
-            {production.showings.map((showing) => (
-              <li key={showing.key}>
-                <button
-                  type="button"
-                  className={`date ${showing.ticketState === 'sold-out' ? 'date--soldout' : ''} ${savedDates.has(showing.date) ? 'date--saved' : ''}`}
-                  onClick={() => onKeep(showing, production)}
-                  title={savedDates.has(showing.date)
-                    ? 'Already in Wanderlist'
-                    : showing.ticketState === 'sold-out' ? 'Sold out — keep it anyway?' : 'Keep this date'}
-                >
-                  {savedDates.has(showing.date) ? '✓ ' : ''}
-                  {formatDay(showing.date)}
-                  {showing.time ? ` ${showing.time}` : ''}
-                </button>
-              </li>
-            ))}
+            {production.showings.map((showing) => {
+              const kind = changedKeys.get(showing.key)
+              return (
+                <li key={showing.key}>
+                  <button
+                    type="button"
+                    className={`date ${showing.ticketState === 'sold-out' ? 'date--soldout' : ''} ${savedDates.has(showing.date) ? 'date--saved' : ''} ${kind ? `date--changed-${kind}` : ''}`}
+                    onClick={() => onKeep(showing, production)}
+                    title={savedDates.has(showing.date)
+                      ? 'Already in Wanderlist'
+                      : kind ? CHANGE_LABEL[kind]
+                        : showing.ticketState === 'sold-out' ? 'Sold out — keep it anyway?' : 'Keep this date'}
+                  >
+                    {savedDates.has(showing.date) ? '✓ ' : ''}
+                    {formatDay(showing.date)}
+                    {showing.time ? ` ${showing.time}` : ''}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
@@ -104,7 +128,11 @@ function Trouble({ venues, checkedAt }) {
 /** "Nothing upcoming" is a claim, and it is only true for a venue that answered.
  *  Filtering to a venue whose scan was throttled or broken must say THAT, not
  *  imply the venue has an empty programme. */
-function emptyMessage(venueFilter, scanned) {
+function emptyMessage(venueFilter, scanned, search) {
+  // A search with no matches is its own answer — distinct from a venue filter
+  // or the programme genuinely being empty, and worth naming as such rather
+  // than the same generic "nothing upcoming" either of those already use.
+  if (search) return `Nothing matches “${search}”.`
   if (!venueFilter) return 'Nothing upcoming at any of your venues right now.'
   const result = scanned.find((v) => v.venue === venueFilter)
   if (result && result.status !== 'ok' && result.status !== 'empty') {
@@ -113,7 +141,7 @@ function emptyMessage(venueFilter, scanned) {
   return `Nothing upcoming at ${venueFilter}.`
 }
 
-export default function Programme({ scan, days, triage, onKeep, onIgnore, venueFilter, onVenueFilter, venues, stale = false, scanning = false }) {
+export default function Programme({ scan, days, triage, changedKeys = new Map(), onKeep, onIgnore, venueFilter, onVenueFilter, venues, search = '', stale = false, scanning = false }) {
   if (!scan) {
     return (
       <p className="empty">
@@ -159,7 +187,7 @@ export default function Programme({ scan, days, triage, onKeep, onIgnore, venueF
       )}
 
       {days.length === 0 ? (
-        <p className="empty">{emptyMessage(venueFilter, scanned)}</p>
+        <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>
       ) : (
         days.map((day) => (
           <section key={day.date} className="day">
@@ -169,6 +197,7 @@ export default function Programme({ scan, days, triage, onKeep, onIgnore, venueF
                 key={production.id}
                 production={production}
                 triage={triage}
+                changedKeys={changedKeys}
                 onKeep={onKeep}
                 onIgnore={onIgnore}
               />

@@ -15,7 +15,10 @@
 //      every field appears two or three times inside one block. First match wins;
 //      they agree.
 //
-// Dates here DO carry a year ("26 Aug 2026"), unlike Excelsior's.
+// Dates here DO carry a year ("26 Aug 2026"), unlike Excelsior's. Unlike
+// Excelsior's listing too, every real showing carries its own poster, already
+// hosted on eventbook's own CDN as an absolute URL — Excelsior's agenda rows
+// have no image at all; only each show's own detail page does.
 
 import { TICKET, makeEvent, monthNumber, parseTime, pick, absoluteUrl } from './shared.js'
 
@@ -28,6 +31,11 @@ const DATE = /calendar_month\s*<\/span>\s*([^<]+)/
 const TIME = /schedule\s*<\/span>\s*([^<]{0,80})/
 const TITLE = /class="[^"]*event-title[^"]*"[^>]*>\s*<h\d[^>]*>([\s\S]*?)<\/h\d>/
 const LINK = /href="(\/film\/[^"]+)"/
+// The poster sits in its own `event-image-hall` wrapper, already served from
+// eventbook's own CDN (an absolute URL), same as `LINK` this is read straight off
+// the attribute rather than through `pick()`, which would strip it as if it were
+// visible text.
+const IMAGE = /event-image-hall[\s\S]*?<img[^>]*\ssrc="([^"]+)"/
 
 // How many pages to walk. Ten showings per page; the busiest hall had 8 pages, so
 // this covers it while capping a runaway loop on a site change.
@@ -76,12 +84,14 @@ export default {
       while ((m = BLOCK.exec(html)) !== null) {
         const body = m[1]
         const href = LINK.exec(body)?.[1] ?? null
+        const imageSrc = IMAGE.exec(body)?.[1] ?? null
         events.push(makeEvent({
           venue: venue.name,
           title: pick(body, TITLE),
           date: parseDate(pick(body, DATE)),
           time: parseTime(pick(body, TIME)),
           link: absoluteUrl(href, BASE),
+          image: absoluteUrl(imageSrc, BASE),
           // The add-to-cart control is the buy path; a sold-out showing loses it.
           // The explicit sold-out wording is checked too, defensively — it was not
           // observed on any of the four halls when this was written, so treat a

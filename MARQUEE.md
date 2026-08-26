@@ -72,6 +72,18 @@ Each venue adapter uses the highest rung that works for that site:
 3. **CSS-selector adapter** — a saved fixture, a `parse(html)` function, a test.
    ~30 lines. This is where Teatrul Excelsior lands.
 
+**Rule: if a listing page is missing a field the adapter wants (a poster is the
+recurring case), fetch each production's own detail page for it** — the same
+`follow()` mechanism eventbook's pagination and iabilet's bundle pages already
+use, one hop deeper. This is only worth doing when the field is actually THERE
+in the detail page's static HTML; it is not a licence to add a headless browser.
+Teatrul Excelsior is the counter-example that proves the rule has a limit: its
+detail page's poster is populated by client-side JS after load (`src="#"` in
+every server response) and the one custom REST route that might expose it
+(`/wp-json/custom/v1/shows`) requires auth — so a poster for Excelsior stays
+unavailable, and that is the honest answer, not a version of this rule to work
+around it further (§9's "shipped" notes record the full investigation).
+
 An adapter is a module, not config:
 
 ```js
@@ -525,29 +537,147 @@ it, they don't stop it.
   to remember about this venue") and nothing written into it from here should read like an
   implementation note.
 
-### 9.11 Verified
+### 9.11 §7 built: scheduled checking (2026-08-26)
 
-`npm test` (3688 tests — Marquee's client and the adapters' both grown this round), `npm run
-typecheck`, `npx eslint`, and `npm run build` all pass. Beyond the fixtures, the endpoint was
-run against all eight live venues, Cinema Europa included: 24 events from Excelsior, 16 from
-Expirat, 12 from Filarmonica via Oveit, 7 from Cinema Europa within its 10-day horizon, and a
-mixed batch confirming non-movie venues keep the full 120-day window while Cinema Union
-(movie) correctly read `empty` once its one listing aged past 10 days. The full loop — check,
-diff, keep, ignore, pause, dismiss, jump-to-row — was driven in the running app; the topbar
-and venue-card fixes were verified at a 375px viewport with the OS forced to dark and no
-`data-theme` attribute set, reproducing the exact conditions of the reported bugs.
+The deferred half, done exactly as §7 sketched it: no new cron entry, no new serverless
+function — `api/wanderlist-remind.js`'s existing evening cron (already DST-adjusted, already
+gated on the reminder being enabled) now ALSO runs `api/_lib/marquee/serverScan.js`'s
+`runScheduledCheck()` and appends whatever changed to that same email, rather than sending a
+second one. The one new requirement is `MARQUEE_NOTION_TOKEN` — the browser's BYO token never
+reaches a cron, so scheduled checking needs its own server-side credential; absent, the
+section is silently skipped and the reminder behaves exactly as it did before Marquee existed.
+
+Three things worth knowing:
+
+- **A second, independent snapshot.** The server keeps its own KV history
+  (`marquee:server-snapshot`) rather than sharing the client's localStorage one — they answer
+  different questions ("what changed since the last scheduled check" vs "since I last opened
+  the app"), and one shared history that either side could write to first is a race the two
+  don't need to have.
+- **The server's own diff is a deliberate duplicate**, not an import of
+  `src/marquee/changes.js` — `api/_lib/marquee/diff.js` copies `diff`/`toSnapshot`/
+  `sortChanges`/`summarize` verbatim. Reaching from a serverless function into the Vite source
+  tree is a boundary nothing else in this repo crosses; the adapter registry already draws the
+  same duplicate-on-purpose line for the same reason. Both sides' tests exercise the same
+  cases, so a rule drifting between them shows up as a test failure, not a silent difference
+  between what the app says and what the email says.
+- **`?mode=cron` on `api/marquee-scan.js`** is a manual diagnostic — run the scheduled check
+  right now and see what it found, gated the same two ways as wanderlist-remind's own cron
+  path (`CRON_SECRET`, or a caller carrying the real Notion token). It is not where the check
+  actually runs from; that's still only inside the reminder send.
+
+Also writes back: each venue's `Last Checked`/`Last Result` gets updated on a scheduled run,
+best-effort, the same as a manual "Check venues" press — so §9.13's health list stays current
+even on a night nobody opens the app.
+
+### 9.12 Posters on cards (2026-08-26)
+
+Every reader already returned an image where its source had one — nothing was capturing it.
+`ProductionCard` now renders one (a 56×80 thumbnail, `Poster` swallowing a 404 into "render
+nothing" rather than a broken-image icon), and the card's left border/chip picks up the same
+colour language as "what changed" when one of its showings is part of this scan's diff
+(`primaryChangeKind`, ordered the same way the strip already is) — so scrolling the programme
+itself shows what's new in place, not only at the top.
+
+Fixing this surfaced two adapters that never extracted an image at all, despite the source
+data being right there:
+
+- **Eventbook** (`api/_lib/marquee/eventbook.js`) has a poster on every real showing, in its
+  own `event-image-hall` block, already hosted on eventbook's own CDN — the `IMAGE` regex
+  simply hadn't been written.
+- **Teatrul Excelsior is different, not broken.** Its LISTING page (`/program/`) carries no
+  image at all, on any row — confirmed by re-reading the real markup, not assumed. A show's
+  poster only exists on that show's OWN detail page, as Yoast's `og:image` meta tag — and only
+  when the post actually has a featured image set; some genuinely don't ("Marile speranțe" has
+  none, at the time this was checked, and that absence is a real answer, not a parsing gap).
+  Fixing this made Excelsior a two-hop adapter (§9.14) instead of one-shot.
+
+### 9.13 Rule: fetch a production's own detail page when the listing doesn't have what's needed
+
+Generalised from Excelsior's poster problem, and worth stating as policy for the next adapter
+that hits the same shape: **if a field an adapter wants isn't on the listing page, `follow()`
+each production's own detail page for it** — the same mechanism eventbook's pagination and
+iabilet's bundle pages already use, one hop deeper, keyed by a self-identifying field on the
+detail page (a canonical URL, an id) rather than by request order, so a handful of failed
+fetches degrade to "that one field is missing" instead of misattributing data between shows.
+
+This is a rule with a real limit, and Excelsior's own poster investigation is the proof: a
+field that is genuinely absent from every static HTML response — populated only by
+client-side JS after load, or gated behind an authenticated API — stays absent. The rule earns
+its keep exactly once per adapter, on whatever field the listing is missing; it is not licence
+to keep fetching further in search of something that was never there to find.
+
+### 9.14 Teatrul Excelsior becomes two-hop, for its poster (2026-08-26)
+
+`follow()` reads the listing for each DISTINCT production's own URL — one request per
+production, not per showing, since a run's several dates all share one detail-page link.
+`parse()` then scans EVERY page (listing and detail pages alike) for two independent things —
+agenda rows, and a `<link rel="canonical">` + `<meta property="og:image">` pair — and
+cross-references by that canonical URL rather than by which page arrived in which order. A
+detail page that fails to fetch simply contributes nothing to the poster map; the production
+it belonged to is posterless, not broken.
+
+Verified against the live site across eight distinct productions: 7 have a working `og:image`
+(Mickey Mouse, Familia Addams, Solaris, Mândrie și prejudecată, Tomcat, Metamorfoza, Două ore
+cu pauză), 1 genuinely doesn't (Marile speranțe) — and the app shows exactly that, not a
+guess for the eighth.
+
+### 9.15 "New since last check" on the cards themselves (2026-08-26)
+
+`programme.js`'s `changedKeyMap` turns `scan.changes` into a lookup by event key; each
+production looks itself up (`primaryChangeKind`, same priority order as the strip) for its own
+card-level badge and border, and each individual date button in a multi-date run looks itself
+up too — so a run where one date just opened and another just sold out shows both, on the
+exact dates they happened to, not only as one entry in the strip above.
+
+### 9.16 A venue health list in Settings (2026-08-26)
+
+Last checked, last result, current reader, paused or not — all of it already lived on the
+Notion row, and nothing put it side by side until now. `SettingsModal`'s new "Venue health"
+section is a read-only list over the SAME `venues` state the Venues tab already holds — no
+new fetch, sorted alphabetically regardless of the order Notion returns them in.
+
+### 9.17 Search across the programme (2026-08-26)
+
+`programme.js`'s `searchProductions` folds the same diacritic-insensitive match `findings.js`
+already uses for dedupe, against both title and venue. Squeezed onto the tabs row rather than
+given its own — a pill-shaped box pushed to the far right by `margin-left: auto`, visible only
+on the Programme tab (searching venues by name is what the Venues tab already shows, in full,
+alphabetically). An empty query is a no-op filter, not "nothing", so a blank search box
+behaves exactly like no search box.
+
+### 9.18 A readability bug this write-up would have missed without a screenshot
+
+Two client-only fixes worth recording precisely because neither would show up in a code
+review — they only exist as pixels: `.tabs`'s `flex-wrap` was left over from before the search
+box existed, and the combined width of the title, the tabs and the new search pill wrapped the
+whole actions row onto its own line at a phone's width — fixed by `flex-wrap: nowrap` plus
+`min-width: 0` on the heading, so the TITLE'S text shrinks first rather than the whole row
+breaking. And `Programme`/`ProductionCard`'s new poster + change-badge props needed a default
+(`changedKeys = new Map()`) so a caller that doesn't pass one — a future test, most likely —
+gets an empty lookup rather than a crash on `.get()`.
+
+### 9.19 Verified
+
+`npm test` (3736 tests), `npm run typecheck`, `npx eslint`, and `npm run build` all pass. Beyond
+the fixtures: the scheduled check was exercised end-to-end against a mocked Notion + KV
+(baseline, then a tickets-opened detection across two runs, then a write-back to the venue's
+own row); the wanderlist-remind splice was proven to append rather than replace, to override
+the subject only when Wanderlist itself has nothing due, and to leave the reminder working
+exactly as before when Marquee is unconfigured or throws. Excelsior's and Eventbook's posters
+were confirmed against the LIVE sites, not only the fixtures — 7 of 8 real Excelsior
+productions returned a working cover, the one that didn't genuinely has none set. Search,
+the venue health list, and the new per-card change marks were all driven in the running app.
 
 ## Open
 
-- **No scheduled checking.** Marquee checks when you press the button; nothing runs while
-  the app is closed. §7's deferred half — KV venue mirror, one `vercel.json` cron line, the
-  same `diff()` server-side, handed to the existing `wanderlist-remind` email path — is
-  written to be a small change, but it is not built.
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every
   non-browser client from this IP, regardless of User-Agent) — resolved for the app by
   reading Oveit instead (§9.7 of the earlier round), not by fixing the block. **Whether
   Vercel's egress IPs can reach either the Strapi feed or Oveit is unknown until this
-  deploys** — the first thing to check in production.
+  deploys** — the first thing to check in production. The same question now also applies to
+  `MARQUEE_NOTION_TOKEN`'s scheduled reads and Excelsior's ~20 extra per-scan requests, none
+  of which have run from Vercel's own network yet.
 - Addresses and areas are filled only where a source stated them (Filarmonica, Expirat,
   Cinema Union, Cinema Europa). The other three are blank rather than guessed.
 - The movie-category horizon is a single blanket rule with one real cinema (Cinema Europa)

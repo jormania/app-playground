@@ -275,7 +275,8 @@
 <p>
   Below the strip is everything currently listed, grouped by day. Each card is a
   <strong>production</strong> — a title at a venue — not a single showing, because a cinema listing
-  the same film six times should be one card, not six. Its dates sit underneath it.
+  the same film six times should be one card, not six. Its dates sit underneath it, and a poster
+  appears wherever the venue published one — not every reader has one to give.
 </p>
 
 <ul>
@@ -287,7 +288,15 @@
 
 <p>
   Individual dates are clickable: each one keeps that specific night. A date with a line through it
-  is sold out — you can still keep it, in case a return shows up.
+  is sold out — you can still keep it, in case a return shows up. A date carrying its own colour
+  (matching a row in the strip above) is one this check specifically found changed — a run where one
+  night just opened and another just sold out shows both, right on the dates they happened to.
+</p>
+
+<p>
+  With enough venues watched, the list grows past what's easy to scan by eye — the search box on the
+  tabs row (Programme tab only) matches a title or a venue as you type, diacritics and case ignored,
+  so "sperante" finds "speranțe".
 </p>
 
 <p>
@@ -489,6 +498,14 @@
   </li>
 </ul>
 
+<h3>Venue health</h3>
+<p>
+  Every watched venue, with what's already on its Notion row put side by side: which reader is
+  reading it, whether it's paused, and when it was last checked — including a check that ran
+  overnight while the app was closed (see the note on scheduled checking below). Read-only; edit a
+  venue from the Venues tab.
+</p>
+
 <h2 id="connect"><span class="num">08</span>Connecting Notion</h2>
 
 <p>
@@ -528,13 +545,15 @@
 
 <ul>
   <li>
-    <strong>It only checks when you press the button.</strong> Nothing runs while the app is closed,
-    so tickets can go on sale and sell out between two checks without Marquee ever seeing it. A
-    scheduled check with an email is possible later; it isn’t built.
+    <strong>A scheduled check exists, but it isn't a Marquee setting.</strong> It rides on
+    Wanderlist's own nightly reminder email — once that's enabled and the server has its own
+    Notion access configured, an overnight check runs automatically and adds a section to that
+    same email when something changed. With neither set up, Marquee only checks when you press
+    the button, and nothing runs while the app is closed.
   </li>
   <li>
-    <strong>Readers are hand-written and sites change.</strong> Four sites is maintainable and the
-    health check makes breakage visible, but a redesign will eventually need a code change.
+    <strong>Readers are hand-written and sites change.</strong> A redesign will eventually need a
+    code change; the health check (§6) is what makes that breakage visible rather than silent.
   </li>
   <li>
     <strong>“Gone from the programme” is inference, not fact.</strong> The venue stopped listing it;

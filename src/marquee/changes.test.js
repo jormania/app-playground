@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { diff, toSnapshot, sortChanges, summarize, CHANGE } from './changes.js'
-import { toProductions, byDate, visibleProductions, productionId, domIdFor, scanPayload, TRIAGE } from './programme.js'
+import { toProductions, byDate, visibleProductions, searchProductions, productionId, domIdFor, scanPayload, changedKeyMap, primaryChangeKind, TRIAGE } from './programme.js'
 import { normalizeVenue } from './venues.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
@@ -225,5 +225,68 @@ describe('scanPayload', () => {
       normalizeVenue({ id: '2', name: 'No reader', url: 'https://x.ro', adapter: 'unsupported' }),
     ]
     expect(scanPayload(venues)).toEqual([])
+  })
+})
+
+describe('searchProductions', () => {
+  const productions = toProductions([
+    event({ key: 'a', title: 'Marile speranțe', venue: 'Teatrul Excelsior' }),
+    event({ key: 'b', title: 'Solaris', venue: 'Cinema Union' }),
+  ])
+
+  it('returns everything for a blank query — no search box behaves like none', () => {
+    expect(searchProductions(productions, '')).toBe(productions)
+    expect(searchProductions(productions, '   ')).toBe(productions)
+  })
+
+  it('matches a title through diacritics and case, same fold as dedupe uses', () => {
+    expect(searchProductions(productions, 'sperante').map((p) => p.title)).toEqual(['Marile speranțe'])
+    expect(searchProductions(productions, 'SPERANTE').map((p) => p.title)).toEqual(['Marile speranțe'])
+  })
+
+  it('matches a venue name, not only a title', () => {
+    expect(searchProductions(productions, 'cinema union').map((p) => p.title)).toEqual(['Solaris'])
+  })
+
+  it('matches a partial word', () => {
+    expect(searchProductions(productions, 'sola')).toHaveLength(1)
+  })
+
+  it('returns nothing for a query that matches neither field', () => {
+    expect(searchProductions(productions, 'nonexistent')).toEqual([])
+  })
+})
+
+describe('changedKeyMap / primaryChangeKind', () => {
+  it('looks a showing up by its own key', () => {
+    const map = changedKeyMap([{ kind: CHANGE.TICKETS_OPENED, key: 'k1' }, { kind: CHANGE.SOLD_OUT, key: 'k2' }])
+    expect(map.get('k1')).toBe(CHANGE.TICKETS_OPENED)
+    expect(map.get('k2')).toBe(CHANGE.SOLD_OUT)
+    expect(map.get('unknown')).toBeUndefined()
+  })
+
+  it('is empty, not throwing, for no changes at all', () => {
+    expect(changedKeyMap(undefined).size).toBe(0)
+    expect(changedKeyMap([]).size).toBe(0)
+  })
+
+  it('finds nothing for a production none of whose showings changed', () => {
+    const [production] = toProductions([event({ key: 'a' })])
+    expect(primaryChangeKind(production, changedKeyMap([]))).toBeNull()
+  })
+
+  it('leads with the change worth acting on when a run has more than one', () => {
+    // Same priority as the "what changed" strip: tickets-opened beats sold-out
+    // beats new, so a run where one date opened and another sold out leads
+    // with the one you can still do something about.
+    const production = toProductions([
+      event({ key: 'a', date: '2026-09-01' }),
+      event({ key: 'b', date: '2026-09-02' }),
+    ])[0]
+    const changed = changedKeyMap([
+      { kind: CHANGE.SOLD_OUT, key: 'a' },
+      { kind: CHANGE.TICKETS_OPENED, key: 'b' },
+    ])
+    expect(primaryChangeKind(production, changed)).toBe(CHANGE.TICKETS_OPENED)
   })
 })

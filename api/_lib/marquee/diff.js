@@ -1,0 +1,88 @@
+// The server's copy of the diff — deliberately a duplicate of
+// src/marquee/changes.js's `diff`/`toSnapshot`/`sortChanges`/`summarize`, not an
+// import across the api/src boundary. That boundary is already crossed
+// on purpose elsewhere (the adapter registry: "these ids are the contract
+// between the two halves — change one, change both") rather than by reaching
+// into the Vite source tree from a serverless function, which nothing else here
+// does and which this file doesn't want to be the first exception to.
+//
+// This is the piece that makes the scheduled check (api/_lib/marquee/serverScan.js)
+// possible without inventing a second definition of "what counts as a change" —
+// src/marquee/changes.js's own header already anticipated this move: "written to
+// be callable from either side, so moving it into a cron later is a small change."
+// If the rule ever changes, change it in BOTH files — src/marquee/changes.test.js
+// and this file's own tests both exercise the same cases so a drift shows up as a
+// test failure, not a silent behavioural difference between the app and the email.
+
+export const CHANGE = {
+  NEW: 'new-event',
+  TICKETS_OPENED: 'tickets-opened',
+  SOLD_OUT: 'sold-out',
+  CANCELLED: 'cancelled',
+}
+
+export function toSnapshot(events, scannedAt) {
+  const map = {}
+  for (const e of events ?? []) {
+    map[e.key] = { ticketState: e.ticketState, date: e.date, title: e.title, venue: e.venue, time: e.time ?? null }
+  }
+  return { scannedAt: scannedAt ?? new Date().toISOString(), events: map }
+}
+
+export function diff(previous, current, { now = new Date() } = {}) {
+  const before = previous?.events ?? null
+  const after = current?.events ?? {}
+  if (!before) return { hadSnapshot: false, changes: [] }
+
+  const changes = []
+  const todayKey = now.toISOString().slice(0, 10)
+
+  for (const [key, event] of Object.entries(after)) {
+    const was = before[key]
+    if (!was) {
+      changes.push({ kind: CHANGE.NEW, key, ...event })
+      continue
+    }
+    if (was.ticketState !== 'open' && event.ticketState === 'open') {
+      changes.push({ kind: CHANGE.TICKETS_OPENED, key, ...event })
+    } else if (was.ticketState !== 'sold-out' && event.ticketState === 'sold-out') {
+      changes.push({ kind: CHANGE.SOLD_OUT, key, ...event })
+    }
+  }
+
+  const answered = new Set(current?.answeredVenues ?? [])
+  for (const [key, event] of Object.entries(before)) {
+    if (after[key]) continue
+    if (event.date && event.date < todayKey) continue
+    if (!answered.has(event.venue)) continue
+    changes.push({ kind: CHANGE.CANCELLED, key, ...event })
+  }
+
+  return { hadSnapshot: true, changes: sortChanges(changes) }
+}
+
+const ORDER = [CHANGE.TICKETS_OPENED, CHANGE.CANCELLED, CHANGE.SOLD_OUT, CHANGE.NEW]
+
+export function sortChanges(changes) {
+  return [...changes].sort((a, b) => {
+    const byKind = ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind)
+    if (byKind) return byKind
+    return String(a.date).localeCompare(String(b.date))
+  })
+}
+
+export const CHANGE_LABEL = {
+  [CHANGE.NEW]: 'new',
+  [CHANGE.TICKETS_OPENED]: 'tickets on sale',
+  [CHANGE.SOLD_OUT]: 'sold out',
+  [CHANGE.CANCELLED]: 'gone from the programme',
+}
+
+export function summarize(result) {
+  if (!result) return ''
+  if (result.status !== 'ok' && result.status !== 'empty') return result.detail || result.status
+  const n = result.events.length
+  if (n === 0) return 'nothing upcoming'
+  const soldOut = result.events.filter((e) => e.ticketState === 'sold-out').length
+  return `${n} event${n === 1 ? '' : 's'}${soldOut ? ` · ${soldOut} sold out` : ''}`
+}

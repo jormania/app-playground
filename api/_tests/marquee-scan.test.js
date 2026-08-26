@@ -5,7 +5,7 @@
 // horizon to the whole batch — a mistake that wouldn't show up testing either
 // piece alone.
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('../_shared.js', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -13,13 +13,23 @@ vi.mock('../_shared.js', async (importOriginal) => ({
   rateLimited: () => false,
 }))
 
+vi.mock('../_lib/marquee/serverScan.js', () => ({
+  runScheduledCheck: vi.fn(),
+}))
+
 const { default: handler } = await import('../marquee-scan.js')
+const { runScheduledCheck } = await import('../_lib/marquee/serverScan.js')
 
 function makeRes() {
   const res = { statusCode: null, body: null }
   res.status = (code) => { res.statusCode = code; return res }
   res.json = (obj) => { res.body = obj; return res }
   return res
+}
+
+function call({ query = {}, headers = {} } = {}) {
+  const res = makeRes()
+  return handler({ method: 'GET', query, headers }, res).then(() => res)
 }
 
 /** Two schema.org Events on the one page: one 5 days out, one 40 days out. A
@@ -61,5 +71,54 @@ describe('marquee-scan: per-venue horizon', () => {
     const [cinema, hall] = res.body.venues
     expect(cinema.events.map((e) => e.title)).toEqual(['Soon'])
     expect(hall.events.map((e) => e.title)).toEqual(['Soon', 'Later'])
+  })
+})
+
+describe('?mode=cron — the manual diagnostic for the scheduled check', () => {
+  let env
+  beforeEach(() => {
+    env = { ...process.env }
+    runScheduledCheck.mockReset()
+  })
+  afterEach(() => { process.env = env })
+
+  it('runs and returns the result for a caller carrying CRON_SECRET', async () => {
+    process.env.CRON_SECRET = 'shh'
+    runScheduledCheck.mockResolvedValue({ configured: true, changes: [], venues: [] })
+    const res = await call({ query: { mode: 'cron' }, headers: { authorization: 'Bearer shh' } })
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toEqual({ configured: true, changes: [], venues: [] })
+  })
+
+  it('also accepts a manual call carrying the real Notion token', async () => {
+    delete process.env.CRON_SECRET
+    process.env.MARQUEE_NOTION_TOKEN = 'real-token'
+    runScheduledCheck.mockResolvedValue({ configured: true, changes: [], venues: [] })
+    const res = await call({ query: { mode: 'cron' }, headers: { 'x-notion-token': 'real-token' } })
+    expect(res.statusCode).toBe(200)
+  })
+
+  it('refuses a caller with neither', async () => {
+    process.env.CRON_SECRET = 'shh'
+    const res = await call({ query: { mode: 'cron' }, headers: {} })
+    expect(res.statusCode).toBe(401)
+    expect(runScheduledCheck).not.toHaveBeenCalled()
+  })
+
+  it('reports a thrown scheduled check as a failure, not a silent 200', async () => {
+    process.env.CRON_SECRET = 'shh'
+    runScheduledCheck.mockRejectedValue(new Error('Notion query failed (401)'))
+    const res = await call({ query: { mode: 'cron' }, headers: { authorization: 'Bearer shh' } })
+    expect(res.statusCode).toBe(502)
+    expect(res.body.message).toMatch(/Notion query failed/)
+  })
+
+  it('never reaches the mode=cron path from a POST scan request', async () => {
+    // The two paths must stay distinguishable: a normal browser scan is a POST
+    // with no mode, and must never accidentally answer with the cron shape.
+    runScheduledCheck.mockResolvedValue({ configured: true, changes: [], venues: [] })
+    const res = makeRes()
+    await handler({ method: 'POST', headers: { origin: 'http://localhost' }, query: {}, body: JSON.stringify({ venues: [] }) }, res)
+    expect(res.body.message).toMatch(/at least one venue/)
   })
 })

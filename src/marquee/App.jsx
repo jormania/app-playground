@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, ConfirmModal, IconButton } from '../ds'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon, Search as SearchIcon, X as ClearIcon } from 'lucide-react'
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
@@ -8,7 +8,7 @@ import Programme from './Programme.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import { sortVenues, scannable, togglePaused } from './venues.js'
-import { toProductions, byDate, visibleProductions, dropStarted, productionId, domIdFor, TRIAGE } from './programme.js'
+import { toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor, changedKeyMap, TRIAGE } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize } from './changes.js'
 import { runScan, loadLastScan, loadSnapshot } from './scanClient.js'
@@ -44,6 +44,7 @@ export default function App() {
 
   const [triage, setTriageState] = useState(() => loadTriage())
   const [venueFilter, setVenueFilter] = useState(null)
+  const [search, setSearch] = useState('')
   const [keeping, setKeeping] = useState(null)
 
   const [editing, setEditing] = useState(null)
@@ -128,12 +129,17 @@ export default function App() {
     [scan, prefs.keepToday, findings],
   )
 
-  const days = useMemo(() => byDate(visibleProductions(productions, {
+  const days = useMemo(() => byDate(searchProductions(visibleProductions(productions, {
     triage,
     venue: venueFilter,
     hideIgnored: !prefs.showIgnored,
     hideSoldOut: prefs.hideSoldOut,
-  })), [productions, triage, venueFilter, prefs.showIgnored, prefs.hideSoldOut])
+  }), search)), [productions, triage, venueFilter, prefs.showIgnored, prefs.hideSoldOut, search])
+
+  // What "What changed" already said about this scan, keyed for a card to look
+  // itself up in — so scrolling the programme shows you what's new in place,
+  // not only in the strip at the top.
+  const changedKeys = useMemo(() => changedKeyMap(scan?.changes), [scan])
 
   const counts = useMemo(() => ({
     soldOut: productions.filter((p) => p.allSoldOut).length,
@@ -296,6 +302,26 @@ export default function App() {
         >
           Venues{venues.length ? ` (${venues.length})` : ''}
         </button>
+
+        {/* Only on Programme — searching venues by name is what the Venues tab
+            already shows in full, alphabetically. */}
+        {tab === 'programme' && (
+          <div className="search">
+            <SearchIcon size={14} aria-hidden="true" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search…"
+              aria-label="Search the programme by title or venue"
+            />
+            {search && (
+              <button type="button" className="search__clear" aria-label="Clear search" onClick={() => setSearch('')}>
+                <ClearIcon size={14} />
+              </button>
+            )}
+          </div>
+        )}
       </nav>
 
       <main className="main">
@@ -323,7 +349,9 @@ export default function App() {
               scanning={scanning}
               days={days}
               triage={triage}
+              changedKeys={changedKeys}
               venues={active}
+              search={search}
               venueFilter={venueFilter}
               onVenueFilter={setVenueFilter}
               onKeep={(showing, production) => setKeeping({ showing, production })}
@@ -393,6 +421,7 @@ export default function App() {
         prefs={prefs}
         onPrefs={setPrefs}
         counts={counts}
+        venues={venues}
         onClose={() => setSettingsOpen(false)}
         onChanged={() => setClient(getClient())}
       />

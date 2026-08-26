@@ -11,6 +11,16 @@
 import { isActive } from './venues.js'
 import { fold } from './findings.js'
 
+/** Free-text search across title and venue, diacritics and case folded through
+ *  the same `fold` the dedupe matcher uses — "sperante" finds "speranțe". A
+ *  blank query returns everything unfiltered rather than nothing, so an empty
+ *  search box behaves like no search box at all. */
+export function searchProductions(productions, query) {
+  const q = fold(query)
+  if (!q) return productions
+  return productions.filter((p) => fold(p.title).includes(q) || fold(p.venue).includes(q))
+}
+
 // Saved is deliberately absent: it is not the app's to remember (see findings.js).
 export const TRIAGE = { IGNORED: 'ignored' }
 
@@ -81,6 +91,34 @@ export function toProductions(events) {
     p.price = p.showings.find((s) => s.price != null)?.price ?? null
   }
   return out.sort((a, b) => String(a.firstDate).localeCompare(String(b.firstDate)) || a.title.localeCompare(b.title, 'ro'))
+}
+
+/** A lookup from event key → what changed about it this scan, so a card can
+ *  mark the specific showing (and itself) without every consumer re-walking
+ *  `scan.changes`. Only `changes`, not the whole scan object, so a caller with
+ *  no scan yet can pass `[]` rather than something conditional. */
+export function changedKeyMap(changes) {
+  const map = new Map()
+  for (const c of changes ?? []) map.set(c.key, c.kind)
+  return map
+}
+
+/** Most useful first — same priority `changes.js`'s own CHANGE ORDER uses for
+ *  the "what changed" strip, so a card showing more than one kind of change
+ *  (a run where one date opened and another sold out) leads with the one
+ *  worth acting on. `cancelled` never appears here: by the time a card is
+ *  rendered its showing still exists in THIS scan, so nothing on it can be the
+ *  one that vanished. */
+const CARD_CHANGE_ORDER = ['tickets-opened', 'sold-out', 'new-event']
+
+export function primaryChangeKind(production, changedKeys) {
+  let best = null
+  for (const showing of production.showings) {
+    const kind = changedKeys.get(showing.key)
+    if (!kind) continue
+    if (!best || CARD_CHANGE_ORDER.indexOf(kind) < CARD_CHANGE_ORDER.indexOf(best)) best = kind
+  }
+  return best
 }
 
 /** Group productions by their first date, for a date-led feed. */

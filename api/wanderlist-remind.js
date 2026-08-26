@@ -37,6 +37,13 @@
 // someday pile that never surfaces on the calendar and is easy to forget. Weekly, not
 // daily, so it never becomes noise; it piggybacks on the same evening send.
 //
+// It also runs Marquee's scheduled venue check (api/_lib/marquee/serverScan.js) and
+// appends what changed, for the same reason: one nightly email, not two. This is
+// deliberately the ONLY place Marquee's scheduled check runs — no new cron entry, no new
+// serverless function, just a second thing this one already-scheduled call now does.
+// Requires its own MARQUEE_NOTION_TOKEN (see that file); absent, this section is simply
+// skipped and everything above behaves exactly as it did before Marquee existed.
+//
 // `?test=1` skips the CRON_SECRET (browsers can't hold it) and the local-hour gate (a
 // test press should always send now, not wait for evening) and is instead gated exactly
 // like a prefs write: only a caller whose `x-notion-token` matches
@@ -51,9 +58,13 @@
 //   CRON_SECRET (optional)   — Vercel adds `Authorization: Bearer <secret>` to cron calls
 //   KV store (optional)      — holds the {enabled,email,name} prefs from the app; if KV
 //                              isn't set, we fall back to REMINDER_EMAIL / REMINDER_NAME.
+//   MARQUEE_NOTION_TOKEN (optional) — enables the Marquee section; see serverScan.js.
+//   MARQUEE_VENUES_DB_ID (optional) — defaults to the one real Watched Venues database.
 import { selectDueTomorrow, selectStaleIdeas, zonedTomorrowKey, zonedTodayKey, zonedHour, zonedWeekday, splitPlannedStart, buildReminderEmail } from './_lib/reminders.js'
 import { kvConfigured, kvGet, kvSet } from './_lib/kv.js'
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
+import { runScheduledCheck } from './_lib/marquee/serverScan.js'
+import { marqueeEmailSection, marqueeOnlySubject } from './_lib/marquee/emailSection.js'
 
 const NOTION_VERSION = '2022-06-28'
 const TIMEZONE = 'Europe/Bucharest'
@@ -289,12 +300,34 @@ export default async function handler(req, res) {
     items = [{ id: 'test', name: 'Test reminder — Wanderlist', place: '', link: '', dateExpiring: tomorrow, attended: false, statuses: ['expiring'] }]
   }
 
-  if (items.length === 0 && ideas.length === 0) { res.status(200).json({ sent: 0, tomorrow, reason: 'nothing-due' }); return }
+  // Best-effort and independent of everything above: a Marquee misconfiguration or a
+  // single bad venue must never cancel the Wanderlist reminder it's riding along with.
+  let marqueeChanges = []
+  try {
+    const marquee = await runScheduledCheck(now)
+    marqueeChanges = marquee.changes
+  } catch { /* the reminder still sends without it */ }
+
+  if (items.length === 0 && ideas.length === 0 && marqueeChanges.length === 0) {
+    res.status(200).json({ sent: 0, tomorrow, reason: 'nothing-due' })
+    return
+  }
 
   const email = buildReminderEmail(items, { name: prefs.name, ideas })
+  if (marqueeChanges.length > 0) {
+    const section = marqueeEmailSection(marqueeChanges)
+    email.text += section.text
+    email.html = email.html.replace('</div>', `${section.html}</div>`)
+    // Wanderlist's own subject only makes sense when Wanderlist has something due;
+    // otherwise this email is really a Marquee email that happens to share the pipe.
+    if (items.length === 0 && ideas.length === 0) email.subject = marqueeOnlySubject(marqueeChanges)
+  }
   if (isTest) email.subject = `[Test] ${email.subject}`
 
-  if (dryRun) { res.status(200).json({ dryRun: true, tomorrow, count: items.length, ideas: ideas.length, to: prefs.email, email }); return }
+  if (dryRun) {
+    res.status(200).json({ dryRun: true, tomorrow, count: items.length, ideas: ideas.length, marquee: marqueeChanges.length, to: prefs.email, email })
+    return
+  }
 
   try {
     const rres = await fetch('https://api.resend.com/emails', {
@@ -312,5 +345,5 @@ export default async function handler(req, res) {
     return
   }
 
-  res.status(200).json({ sent: items.length + ideas.length, due: items.length, ideas: ideas.length, tomorrow, test: isTest })
+  res.status(200).json({ sent: items.length + ideas.length, due: items.length, ideas: ideas.length, marquee: marqueeChanges.length, tomorrow, test: isTest })
 }

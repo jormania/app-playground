@@ -127,6 +127,53 @@ describe('Teatrul Excelsior', () => {
     expect(meta.map((e) => e.date)).toEqual(['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-26'])
     expect(new Set(meta.map((e) => e.key)).size).toBe(4)
   })
+
+  it('asks for one detail page per DISTINCT production, not per showing', () => {
+    // Tomcat and Metamorfoza between them are 6 rows in the fixture but only 2
+    // distinct links — a run's dates all share one detail page.
+    const follow = excelsior.follow([{ body: fixture('excelsior.html') }])
+    expect(follow.map((r) => r.url).sort()).toEqual([
+      'https://teatrul-excelsior.ro/spectacol/metamorfoza/',
+      'https://teatrul-excelsior.ro/spectacol/tomcat/',
+    ])
+  })
+
+  describe('posters — the listing has none; only a production’s own detail page does', () => {
+    const detailPages = [
+      { body: fixture('excelsior-detail-tomcat.html') },
+      { body: fixture('excelsior-detail-metamorfoza.html') },
+    ]
+
+    it('attaches each production’s own poster, matched by the detail page’s own canonical URL', () => {
+      const withPosters = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
+      const tomcat = withPosters.filter((e) => e.title === 'Tomcat')
+      const meta = withPosters.filter((e) => e.title === 'Metamorfoza')
+      expect(tomcat.every((e) => e.image === 'https://teatrul-excelsior.ro/wp-content/uploads/2025/04/TOMCAT-vizual-1-scaled-e1746876802831.jpg')).toBe(true)
+      expect(meta.every((e) => e.image === 'https://teatrul-excelsior.ro/wp-content/uploads/2025/10/A9100136-1-scaled.jpg')).toBe(true)
+    })
+
+    it('is unaffected by the order detail pages come back in', () => {
+      const reversed = excelsior.parse([{ body: fixture('excelsior.html') }, ...[...detailPages].reverse()], { venue, now: AUG })
+      const tomcat = reversed.find((e) => e.title === 'Tomcat')
+      expect(tomcat.image).toContain('TOMCAT-vizual')
+    })
+
+    it('leaves a production posterless when its detail page never came back, rather than crashing', () => {
+      const onlyOne = excelsior.parse([{ body: fixture('excelsior.html') }, detailPages[0]], { venue, now: AUG })
+      const meta = onlyOne.find((e) => e.title === 'Metamorfoza')
+      expect(meta.image).toBeNull()
+    })
+
+    it('treats a show with no featured image set as a real answer, not a failure', () => {
+      // Yoast only emits og:image when a featured image exists; some shows on
+      // this very site genuinely don't have one set.
+      const withNoCover = excelsior.parse(
+        [{ body: fixture('excelsior.html') }, { body: fixture('excelsior-detail-no-cover.html') }],
+        { venue, now: AUG },
+      )
+      expect(withNoCover.every((e) => e.image === null)).toBe(true)
+    })
+  })
 })
 
 describe('eventbook', () => {
@@ -154,6 +201,11 @@ describe('eventbook', () => {
     })
     expect(events[0].link).toMatch(/^https:\/\/eventbook\.ro\/film\//)
     expect(events[0].title.length).toBeGreaterThan(2)
+  })
+
+  it('reads the poster off eventbook’s own CDN — it was there all along, just never extracted', () => {
+    expect(events[0].image).toMatch(/^https:\/\/storage\.googleapis\.com\/.*\.webp$/)
+    expect(events.every((e) => e.image)).toBe(true)
   })
 
   it('discovers its own pagination from page 1', () => {
