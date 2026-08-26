@@ -82,35 +82,58 @@ describe('checkInstalledFlags', () => {
   })
 })
 
-// getInstalledRelatedApps() only ever reports apps this page's own manifest
-// declares in related_applications, so an app missing from that list can never
-// be detected as installed however many times it's been installed — its tile
-// just reads "Install" forever. The list is hand-maintained in
-// public/cabinet.webmanifest and has silently drifted from the registry twice
-// (Fit Check and Wanderlist shipped without an entry), which is invisible until
-// someone notices a wrong label on a phone. Pin it here instead.
-describe('cabinet.webmanifest related_applications', () => {
-  it('declares exactly the react-vite apps in the registry', async () => {
+// cabinet.webmanifest USED to declare a related_applications entry per
+// react-vite sub-app, and this block pinned that list against the registry to
+// catch drift. The field is gone now: it was suppressing Chrome's WebAPK
+// minting for the Cabinet hub itself (chrome://webapks listed all 15 sub-apps
+// but never the Cabinet, and the install UI wrongly claimed "already
+// installed"). See the comment atop installState.js. So the assertion flips —
+// pin the ABSENCE, so nobody re-adds the field and silently un-installs the
+// Cabinet again.
+describe('cabinet.webmanifest', () => {
+  async function readManifest() {
     const { readFileSync } = await import('node:fs')
-    const { APPS } = await import('../../apps-registry.js')
+    return JSON.parse(readFileSync('public/cabinet.webmanifest', 'utf8'))
+  }
 
-    const manifest = JSON.parse(readFileSync('public/cabinet.webmanifest', 'utf8'))
-    const declared = manifest.related_applications
-      .map((entry) => new URL(entry.url).pathname)
-      .sort()
-    const expected = APPS.filter((app) => app.kind === 'react-vite')
-      .map((app) => app.manifest)
-      .sort()
-
-    expect(declared).toEqual(expected)
+  it('declares no related_applications — it blocks WebAPK minting for the hub', async () => {
+    const manifest = await readManifest()
+    expect(manifest.related_applications).toBeUndefined()
   })
 
-  it('points every entry at the same production origin absoluteManifestUrl builds', async () => {
-    const { readFileSync } = await import('node:fs')
-    const manifest = JSON.parse(readFileSync('public/cabinet.webmanifest', 'utf8'))
-    for (const entry of manifest.related_applications) {
-      expect(entry.url).toBe(absoluteManifestUrl(new URL(entry.url).pathname))
-    }
+  it('keeps the rest of the install-relevant manifest intact', async () => {
+    const manifest = await readManifest()
+    expect(manifest.id).toBe('/cabinet.html')
+    expect(manifest.start_url).toBe('/cabinet.html')
+    expect(manifest.scope).toBe('/cabinet.html')
+    expect(manifest.display).toBe('standalone')
+    expect(manifest.icons.map((icon) => icon.sizes)).toContain('512x512')
+  })
+})
+
+// With no related_applications to match against, the browser can only ever
+// hand back an empty list here — which checkInstalledApps() maps to all-false,
+// and reconcileInstallFlags() correctly refuses to act on.
+describe('with related_applications removed', () => {
+  const apps = [
+    { file: 'tempo-react.html', manifest: '/tempo.webmanifest' },
+    { file: 'loom-react.html', manifest: '/loom.webmanifest' },
+  ]
+
+  it('never clears a flag, because the answer can never be conclusive', async () => {
+    vi.stubGlobal('navigator', { getInstalledRelatedApps: async () => [] })
+    const store = new Map([['installed:tempo-react.html', '1']])
+    vi.stubGlobal('localStorage', {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      removeItem: (k) => store.delete(k),
+    })
+
+    const detected = await checkInstalledApps(apps)
+    expect([...detected.values()]).toEqual([false, false])
+    expect(reconcileInstallFlags(apps, detected)).toBe(false)
+    // The primary signal — the app's own flag — survives untouched.
+    expect(store.get('installed:tempo-react.html')).toBe('1')
+    expect(checkInstalledFlags(apps).get('/tempo.webmanifest')).toBe(true)
   })
 })
 

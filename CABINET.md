@@ -32,10 +32,13 @@ than invented separately — see the comment atop
 
 ## How install-detection works (and why there's no "not installed" error)
 
-The Cabinet asks the browser which of the six react-vite sub-apps are already installed via
+The Cabinet asks the browser which of the react-vite sub-apps are already installed via
 [`navigator.getInstalledRelatedApps()`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getInstalledRelatedApps),
-matched against the `related_applications` list declared in
-[`public/cabinet.webmanifest`](public/cabinet.webmanifest).
+which matches against the `related_applications` list declared in
+[`public/cabinet.webmanifest`](public/cabinet.webmanifest) — a list that
+**deliberately no longer exists**; see "Why `related_applications` is gone"
+below. The primary install signal is now the per-app flag each sub-app writes
+itself (`src/shared/installFlag.ts` → `checkInstalledFlags()`).
 
 **Only a `true` result is trusted.** The original design also showed a hard
 "Not installed" error on a `false` result, on the assumption that Chromium's
@@ -51,9 +54,26 @@ and unsupported browsers) now renders identically: a plain "Open →" link,
 never an error. See the comment atop
 [`src/cabinet/components/AppTile.jsx`](src/cabinet/components/AppTile.jsx).
 
-`related_applications` entries must be **absolute URLs**, so they're hardcoded
-to the production domain (`https://coneofcold.vercel.app`). This means even a
-`true` result only ever shows up on the deployed site, not `localhost` — see
+### Why `related_applications` is gone
+
+`cabinet.webmanifest` was the only manifest in the repo declaring a
+`related_applications` array (one entry per sub-app, absolute URLs on the
+production domain, since the API matches nothing else). That field was what
+stopped Android Chrome ever minting a **WebAPK for the Cabinet itself**:
+Chromium's install-banner logic suppresses WebAPK promotion for a page whose
+own manifest carries a non-empty `related_applications` list, regardless of
+`prefer_related_applications`. `chrome://webapks` listed every sub-app but not
+the Cabinet, while Chrome's install UI wrongly reported it "already installed"
+off a stale local flag. Every sibling manifest lacks the field and minted
+fine — so the field was removed. **Don't re-add it**, on this manifest or as a
+step when adding a new app; `installState.test.js` pins its absence.
+
+The accepted tradeoff: `getInstalledRelatedApps()` now has nothing to match, so
+it always answers empty here, and `reconcileInstallFlags()` can never reach the
+conclusive answer it needs to clear a stale "Launch" flag after a sub-app is
+uninstalled. That secondary cleanup is inert (still correct, just never fires).
+The primary signal — `checkInstalledFlags()` reading each app's own flag from
+`src/shared/installFlag.ts` — is untouched. See
 [`src/cabinet/lib/installState.js`](src/cabinet/lib/installState.js).
 
 ## Launching into the installed app, not a browser tab (Android)
@@ -209,8 +229,9 @@ add it while still iterating. When it is:
    `public/law-of-the-day-sw.js` + `src/law-of-the-day/main.jsx`'s registration
    snippet, and a `scripts/generate-<app>-icons.mjs` icon script (copy
    `scripts/generate-law-of-the-day-icons.mjs`).
-3. Add that manifest's absolute production URL to `related_applications` in
-   [`public/cabinet.webmanifest`](public/cabinet.webmanifest).
+3. Nothing to add to [`public/cabinet.webmanifest`](public/cabinet.webmanifest) —
+   its `related_applications` list was removed on purpose (see "Why
+   `related_applications` is gone"); the next step is what wires up detection.
 4. Call `watchInstalled('your-app-file.html')` from
    [`src/shared/installFlag.ts`](src/shared/installFlag.ts) at the top of the
    app's own `main.jsx`/`main.tsx` — see "Install detection, take two" below

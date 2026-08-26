@@ -13,23 +13,5 @@
     { "src": "/cabinet-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/cabinet-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/cabinet-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ],
-  "related_applications": [
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/law-of-the-day.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/tempo.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/sol-odyssey.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/touch-grass.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/journal-of-delights.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/kettlebell-training.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/yoru.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/daily-stoic.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/loom.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/click-deck.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/where-it-went.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/wanderlist.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/fit-check.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/lexi5.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/silva.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/radar-b.webmanifest" }
   ]
 }

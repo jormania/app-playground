@@ -1,7 +1,8 @@
 import QRCode from 'qrcode'
 
-// Same hardcoded production domain as cabinet.webmanifest's
-// related_applications and src/cabinet/lib/installState.js's PROD_ORIGIN —
+// Same hardcoded production domain as src/cabinet/lib/installState.js's
+// PROD_ORIGIN (and, until it was removed, cabinet.webmanifest's
+// related_applications) —
 // a QR code is meant to be scanned by a phone camera, which has no notion of
 // "localhost", so the encoded URL always points at the deployed site even
 // when this renders in dev.
