@@ -48,6 +48,20 @@ const TITLE = /class="title[^"]*">\s*<a href="([^"]+)">\s*<h1[^>]*>([\s\S]*?)<\/
 const TITLE_HREF = /class="title[^"]*">\s*<a href="([^"]+)">/g
 const TICKET_LINK = /<a href="([^"]+)"\s+class="red_button"/
 const POSTER = /<img class="article-image" src="([^"]+)"/
+// TNB runs TWO detail-page templates. A one-off event (a concert, a guest
+// night) uses `article-image` above; a repertoire production — which is most
+// of the calendar — uses a different layout with no such class, and its
+// poster is only reachable through the page's own og:image. Checked against
+// /ro/secundar, /ro/perplex and /ro/orchestra-titanic, none of which carry
+// `article-image` and all of which carry og:image; the two existing fixtures
+// are the reverse, so neither pattern alone covers the site. Same page, same
+// request — this costs nothing beyond one more regex.
+const OG_IMAGE = /<meta property="og:image" content="([^"]+)"/
+// The tiered price list, on the same detail page already being fetched for
+// the poster: `<div class="price_box"><p>120 lei<br />100 lei<br />…`. The
+// listing itself publishes no price at all, which is why every TNB showing
+// read as priceless until this was looked for.
+const PRICE_BOX = /<div class="price_box">([\s\S]*?)<\/div>/
 
 // A season runs 40-60+ distinct titles across 7 halls at once (61 observed
 // 2026-08-26); capped well above that so a genuinely busy programme still gets
@@ -90,11 +104,23 @@ export default {
     // needed here the way Excelsior's does.
     const posters = new Map()
     const descriptions = new Map()
+    const prices = new Map()
     for (const page of pages.slice(1)) {
       const body = page.body ?? ''
-      const src = POSTER.exec(body)?.[1]
+      const src = POSTER.exec(body)?.[1] ?? OG_IMAGE.exec(body)?.[1]
       if (page.url && src) posters.set(page.url, absoluteUrl(src, BASE))
       if (page.url) descriptions.set(page.url, proseParagraphs(body))
+      // Cheapest tier, the same convention every other reader here uses for a
+      // tiered price (Oveit's minPrice, iabilet's cheapest live tariff) and the
+      // one `toDraft` describes in Wanderlist as a floor rather than a seat
+      // worth having.
+      const box = PRICE_BOX.exec(body)?.[1]
+      if (page.url && box) {
+        const tiers = [...box.matchAll(/(\d+(?:[.,]\d+)?)\s*lei/gi)]
+          .map((m) => Number(m[1].replace(',', '.')))
+          .filter((n) => Number.isFinite(n) && n > 0)
+        if (tiers.length) prices.set(page.url, Math.min(...tiers))
+      }
     }
 
     const html = pages[0]?.body ?? ''
@@ -130,6 +156,7 @@ export default {
           hall: pick(row, /class="c2">([^<]*)</),
           link,
           image: link ? (posters.get(link) ?? null) : null,
+          price: link ? (prices.get(link) ?? null) : null,
           ticketState: soldOut ? TICKET.SOLD_OUT : ticketHref ? TICKET.OPEN : TICKET.NONE,
           ticketsUrl: ticketHref ? absoluteUrl(ticketHref, BASE) : null,
           description: link ? (descriptions.get(link) ?? null) : null,

@@ -45,6 +45,20 @@ const LINK = /href="(\/(?:film|music)\/[^"]+)"/
 const IMAGE = /event-image-hall[\s\S]*?<img[^>]*\ssrc="([^"]+)"/
 const PRICE = /text-muted">price:<\/span>\s*(\d+(?:[.,]\d+)?)/i
 
+// A hall with ASSIGNED seating renders a completely different buy control and
+// a completely different price. Cinema Muzeul Țăranului's Studio Horia Bernea
+// is one: 7 of its 10 listings carry neither `add_in_cart` nor the `price:`
+// span, so both signals missed and every one of those showings reported no
+// tickets and no price — while Cinema Elvira Popescu, the same adapter, was
+// 10-for-10 because it sells free seating. The two shapes are mutually
+// exclusive per block, so this is a fallback, never an override.
+//
+// Attribute order is not assumed: `href` sits BEFORE `class` on this anchor,
+// which a `class="…"` -then- `href` pattern would have missed.
+const SEATS_ANCHOR = /<a[^>]*class="[^"]*choose-seats[^"]*"[^>]*>/i
+const HREF = /href="([^"]+)"/i
+const PRICE_HEADING = /<h5[^>]*>\s*(\d+(?:[.,]\d+)?)\s*lei/i
+
 // How many pages to walk. Ten showings per page; the busiest hall had 8 pages, so
 // this covers it while capping a runaway loop on a site change.
 const MAX_PAGES = 8
@@ -107,7 +121,9 @@ export default {
         const body = m[1]
         const href = LINK.exec(body)?.[1] ?? null
         const imageSrc = IMAGE.exec(body)?.[1] ?? null
-        const priceRaw = PRICE.exec(body)?.[1] ?? null
+        const seatsAnchor = SEATS_ANCHOR.exec(body)?.[0] ?? null
+        const seatsHref = seatsAnchor ? (HREF.exec(seatsAnchor)?.[1] ?? null) : null
+        const priceRaw = PRICE.exec(body)?.[1] ?? PRICE_HEADING.exec(body)?.[1] ?? null
         const dateText = pick(body, DATE)
         events.push(makeEvent({
           venue: venue.name,
@@ -117,13 +133,19 @@ export default {
           link: absoluteUrl(href, BASE),
           image: absoluteUrl(imageSrc, BASE),
           price: priceRaw ? Number(priceRaw.replace(',', '.')) : null,
+          // The seat picker IS the buy path for a numbered hall, so it is worth
+          // carrying: a keep from one of these links straight to seat selection
+          // rather than back to the listing (`toDraft` prefers ticketsUrl).
+          ticketsUrl: absoluteUrl(seatsHref, BASE),
           // The add-to-cart control is the buy path; a sold-out showing loses it.
+          // A numbered-seat hall never has one and offers "Choose seats" instead
+          // — same meaning, different markup, so either counts.
           // The explicit sold-out wording is checked too, defensively — it was not
           // observed on any of the four halls when this was written, so treat a
           // future match as a bonus rather than as the primary signal.
           ticketState: /sold\s*out|epuizat/i.test(body)
             ? TICKET.SOLD_OUT
-            : /add_in_cart/.test(body) ? TICKET.OPEN : TICKET.NONE,
+            : (/add_in_cart/.test(body) || seatsAnchor) ? TICKET.OPEN : TICKET.NONE,
         }))
       }
     }

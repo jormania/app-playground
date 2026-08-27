@@ -50,6 +50,37 @@ function firstOffer(node) {
   return offers && typeof offers === 'object' ? offers : null
 }
 
+
+/**
+ * Drop a festival's own umbrella listing when its individual days are already
+ * listed beside it.
+ *
+ * Quantic's QFest publishes NINE schema.org Events for one festival: seven
+ * "Ziua I..VII" days, a whole-festival "QFest" summary, and a season pass
+ * ("Abonamente") — the last two both spanning 28 Sep to 4 Oct. The summary is
+ * not a night you can go to, and it sorts to the top of the first day, ahead
+ * of the day it duplicates.
+ *
+ * The rule is structural rather than by name: a MULTI-DAY event whose span
+ * contains a single-day event at the same venue is an umbrella over listings
+ * you already have. That keeps a multi-day event whose parts are NOT listed
+ * separately — Quantic's own "iubim 2ROTI" runs 4-6 Sep with no per-day
+ * entries, and dropping it would lose the only representation of it there is.
+ * Only single-day rows count as evidence, so two umbrellas over the same span
+ * can't cancel each other out and take the festival with them.
+ *
+ * The honest limit: a festival that publishes ONLY a summary and no days
+ * still reads as one event, because from the page alone it is one.
+ */
+export function dropUmbrellaListings(rows) {
+  const singleDays = rows.filter((r) => !r.endDate || r.endDate <= r.date)
+  return rows.filter((r) => {
+    const multiDay = r.endDate && r.endDate > r.date
+    if (!multiDay) return true
+    return !singleDays.some((d) => d.date >= r.date && d.date <= r.endDate)
+  })
+}
+
 export default {
   id: 'jsonld',
   label: 'Generic schema.org',
@@ -59,7 +90,9 @@ export default {
   requests: (venue) => [{ url: venue.url }],
 
   parse(pages, { venue } = {}) {
-    const events = []
+    // Collected with each event's own span alongside it — `makeEvent` keeps no
+    // endDate, and dropUmbrellaListings needs one to spot a festival summary.
+    const rows = []
     for (const page of pages) {
       const html = page.body ?? ''
       let m
@@ -86,7 +119,7 @@ export default {
             ? Number(rawPrice)
             : NaN
           const { date, time } = parseIsoDateTime(start)
-          events.push(makeEvent({
+          const event = makeEvent({
             venue: venue.name,
             title: typeof node.name === 'string' ? node.name : textOf(node.name),
             date,
@@ -100,10 +133,11 @@ export default {
             image: typeof node.image === 'string' ? node.image : (Array.isArray(node.image) ? node.image[0] : null),
             price: Number.isFinite(price) ? price : null,
             description: typeof node.description === 'string' ? node.description : null,
-          }))
+          })
+          if (event) rows.push({ event, date, endDate: parseIsoDateTime(node.endDate).date })
         }
       }
     }
-    return events.filter(Boolean)
+    return dropUmbrellaListings(rows).map((r) => r.event)
   },
 }

@@ -15,6 +15,8 @@ import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
 import iabilet from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
+import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
+import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
 import { inferYear, slug, eventKey, parseTime, parseIsoDateTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
 import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
 
@@ -732,38 +734,6 @@ describe('generic schema.org reader (Expirat)', () => {
   })
 })
 
-describe('generic schema.org reader — Teatrul Odeon (2026-08-27)', () => {
-  // Real markup, real bug: Odeon's own JSON-LD emits `startDate` with NO
-  // zero-padding ("2026-9-12T20:00+0:00"), which the old fixed-width slice
-  // (`start.slice(11, 16)` assuming "T" always sits at index 10) silently
-  // misread — every event on this venue read as dateless. parseIsoDateTime
-  // is what fixes it; this is the adapter-level proof, not just the unit test.
-  const venue = { name: 'Teatrul Odeon', adapter: 'odeon', url: 'https://teatrul-odeon.ro/programul-teatrului-odeon-pe-zile/' }
-  const events = jsonld.parse([{ body: fixture('odeon.html') }], { venue })
-
-  it('reads every event with a real date and time despite the missing zero-padding', () => {
-    expect(events).toHaveLength(7)
-    expect(events[0]).toMatchObject({
-      venue: 'Teatrul Odeon',
-      title: 'Lysistrata | 18+',
-      date: '2026-09-12',
-      time: '20:00',
-    })
-    expect(events.every((e) => e.date && e.time)).toBe(true)
-  })
-
-  it('reports no ticket state — the venue publishes no `offers` at all, never guessed', () => {
-    expect(events.every((e) => e.ticketState === 'none' && e.price === null)).toBe(true)
-  })
-
-  it('two showings of the same production are two events, same as everywhere else', () => {
-    // "Lysistrata | 18+" runs five nights in this fixture alone.
-    const lysistrata = events.filter((e) => e.title === 'Lysistrata | 18+')
-    expect(lysistrata.length).toBeGreaterThan(1)
-    expect(new Set(lysistrata.map((e) => e.key)).size).toBe(lysistrata.length)
-  })
-})
-
 describe('generic schema.org reader — Quantic (2026-08-27)', () => {
   // Deliberately NOT the `iabilet` adapter, despite the iabilet.ro host: that
   // two-hop reader exists for Cinema Europa's actual shape (one JSON-LD block
@@ -909,5 +879,138 @@ describe('scanVenue', () => {
     const r = await scanVenue(bad, { now: AUG, fetchImpl: ok('') })
     expect(r.status).toBe(STATUS.UNSUPPORTED)
     expect(r.events).toEqual([])
+  })
+})
+
+describe('eventbook — a hall with ASSIGNED seating (2026-08-27)', () => {
+  // Cinema Muzeul Țăranului's Studio Horia Bernea sells numbered seats, and
+  // eventbook renders that completely differently: a "Choose seats" link
+  // instead of `add_in_cart`, and the price as a heading instead of the
+  // `price:` span. 7 of its 10 listings carried neither, so every one of them
+  // reported no tickets and no price — while Cinema Elvira Popescu, the same
+  // adapter, was 10-for-10 because it sells free seating.
+  const venue = { name: 'Cinema Muzeul Țăranului', config: 'cinema-muzeul-taranului-studio-horia-bernea' }
+  const events = eventbook.parse([{ body: fixture('eventbook-numbered-seats.html') }], { venue })
+
+  it('reads tickets and price from the seat-picker shape', () => {
+    expect(events.length).toBeGreaterThanOrEqual(2)
+    expect(events.every((e) => e.ticketState === 'open')).toBe(true)
+    expect(events.every((e) => e.price != null && e.price > 0)).toBe(true)
+  })
+
+  it('carries the seat picker as the ticket URL — it IS the buy path here', () => {
+    const seated = events.find((e) => e.ticketsUrl)
+    expect(seated.ticketsUrl).toMatch(/\/performance\/\d+\/venue/)
+  })
+
+  it('still reads the ordinary add-to-cart shape in the same page', () => {
+    // The fixture holds both shapes; neither may cost the other.
+    expect(events.some((e) => e.ticketsUrl === null)).toBe(true)
+  })
+})
+
+describe('jsonld — a festival summary is not a night out (2026-08-27)', () => {
+  it('drops a multi-day umbrella whose own days are listed beside it', () => {
+    const rows = [
+      { event: 'QFest', date: '2026-09-28', endDate: '2026-10-04' },
+      { event: 'Abonamente', date: '2026-09-28', endDate: '2026-10-04' },
+      { event: 'Ziua I', date: '2026-09-28', endDate: '2026-09-28' },
+      { event: 'Ziua VII', date: '2026-10-04', endDate: '2026-10-04' },
+    ]
+    expect(dropUmbrellaListings(rows).map((r) => r.event)).toEqual(['Ziua I', 'Ziua VII'])
+  })
+
+  it('KEEPS a multi-day event whose parts are not listed separately', () => {
+    // Quantic's "iubim 2ROTI" runs 4-6 Sep with no per-day entries; dropping it
+    // would lose the only representation of it there is.
+    const rows = [
+      { event: '2ROTI', date: '2026-09-04', endDate: '2026-09-06' },
+      { event: 'Elsewhere', date: '2026-09-08', endDate: '2026-09-08' },
+    ]
+    expect(dropUmbrellaListings(rows).map((r) => r.event)).toEqual(['2ROTI', 'Elsewhere'])
+  })
+
+  it('never lets two umbrellas over one span cancel each other out', () => {
+    const rows = [
+      { event: 'A', date: '2026-09-01', endDate: '2026-09-05' },
+      { event: 'B', date: '2026-09-01', endDate: '2026-09-05' },
+    ]
+    expect(dropUmbrellaListings(rows)).toHaveLength(2)
+  })
+
+  it('is inert for a source with no endDate at all', () => {
+    const rows = [{ event: 'X', date: '2026-09-01', endDate: null }]
+    expect(dropUmbrellaListings(rows)).toHaveLength(1)
+  })
+})
+
+describe('Teatrul Odeon (2026-08-27)', () => {
+  const venue = { name: 'Teatrul Odeon', adapter: 'odeon', url: 'https://teatrul-odeon.ro/programul-teatrului-odeon-pe-zile/' }
+  const events = odeon.parse([{ body: fixture('odeon.html') }], { venue })
+
+  describe('parseLocationLine', () => {
+    it('takes the hall and the CHEAPEST tier', () => {
+      expect(parseLocationLine('Sala Majestic, Preț bilete: 100 lei Cat. I; 80 lei Cat. II; 50 lei Cat. III'))
+        .toEqual({ hall: 'Sala Majestic', price: 50 })
+    })
+
+    it('yields a hall with no price, and a price with no hall', () => {
+      expect(parseLocationLine('Sala Studio')).toEqual({ hall: 'Sala Studio', price: null })
+      expect(parseLocationLine('Preț bilete: 40 lei')).toEqual({ hall: null, price: 40 })
+    })
+
+    it('is null/null for nothing at all', () => {
+      expect(parseLocationLine('')).toEqual({ hall: null, price: null })
+      expect(parseLocationLine(undefined)).toEqual({ hall: null, price: null })
+    })
+  })
+
+  it('joins the HTML hall/price rows onto the JSON-LD by event id, not by order', () => {
+    const priced = events.filter((e) => e.price != null)
+    expect(priced.length).toBeGreaterThan(0)
+    expect(priced.every((e) => e.ticketState === 'open')).toBe(true)
+    // Lysistrata runs five nights in this fixture, all in the same hall at the
+    // same cheapest tier — proof the join is per-id rather than positional.
+    const lys = events.filter((e) => e.title.startsWith('Lysistrata'))
+    expect(lys.length).toBeGreaterThan(1)
+    expect(lys.every((e) => e.hall === 'Sala Majestic' && e.price === 50)).toBe(true)
+  })
+
+  it('takes a price without a hall when the row publishes only prices', () => {
+    // Real case in this fixture, not a contrived one: Odeon's location line is
+    // free text, and some rows carry the tier list with no hall in front of it.
+    const priceOnly = events.filter((e) => e.price != null && e.hall === null)
+    expect(priceOnly.length).toBeGreaterThan(0)
+  })
+
+  it('still reads the un-padded dates its JSON-LD emits', () => {
+    expect(events.every((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date))).toBe(true)
+    expect(events.every((e) => e.time)).toBe(true)
+  })
+
+  it('never claims sold-out — the page publishes no availability at all', () => {
+    expect(events.every((e) => e.ticketState !== 'sold-out')).toBe(true)
+  })
+})
+
+describe('tnb — the second detail-page template (2026-08-27)', () => {
+  // TNB runs two templates: a one-off event uses `article-image`, and a
+  // repertoire production — most of the calendar — uses neither that nor any
+  // price on the listing. Its poster is only in og:image and its prices only
+  // in a `price_box` on the detail page already being fetched.
+  const venue = { name: 'Teatrul Național București' }
+  const detail = { url: 'https://www.tnb.ro/ro/secundar', body: fixture('tnb-detail-og-image.html') }
+
+  it('falls back to og:image when article-image is absent', () => {
+    const listing = { url: 'x', body: '<div class="day"><div class="number">16</div><div class="month">09</div><div class="year">2026</div><tr><td class="title"><a href="https://www.tnb.ro/ro/secundar"><h1>Secundar</h1></a></td><td class="c2">Sala Mica</td><td class="c3">19:00</td></tr></div>' }
+    const events = tnb.parse([listing, detail], { venue })
+    expect(events).toHaveLength(1)
+    expect(events[0].image).toMatch(/uploads\/spectacles\/.*\.jpg$/)
+  })
+
+  it('reads the cheapest tier out of the detail page price box', () => {
+    const listing = { url: 'x', body: '<div class="day"><div class="number">16</div><div class="month">09</div><div class="year">2026</div><tr><td class="title"><a href="https://www.tnb.ro/ro/secundar"><h1>Secundar</h1></a></td><td class="c2">Sala Mica</td><td class="c3">19:00</td></tr></div>' }
+    const events = tnb.parse([listing, detail], { venue })
+    expect(events[0].price).toBe(60)
   })
 })

@@ -68,10 +68,17 @@ never tells you the page structure.**
 
 **2. Pick the rung, and prefer an alias to a new module.** If the page already
 publishes usable schema.org Events, register it as an alias of `jsonld` in
-`api/_lib/marquee/registry.js` (`expirat`, `odeon` and `quantic` all are) —
-that is a two-line change, not an adapter. Write a module only when the site
-genuinely needs parsing. Either way apply §3's "no source left behind" rule:
-poster, price and description, checked against the venue's OWN pages.
+`api/_lib/marquee/registry.js` (`expirat` and `quantic` are) — that is a
+two-line change, not an adapter. Write a module only when the site genuinely
+needs parsing. Either way apply §3's "no source left behind" rule: poster,
+price and description, checked against the venue's OWN pages.
+
+> An alias is a starting point, not a verdict. `odeon` began as one and
+> outgrew it within the day (§9.45): its JSON-LD turned out to carry no
+> `offers` and no `location`, so every showing read as no-price, no-hall,
+> no-tickets until a real module joined the LD blocks to the prices in the
+> surrounding HTML. If step 7's live check shows a field empty across the
+> board, the alias is the thing to question first.
 
 **3. Register the id in all FOUR places, or it breaks silently:**
 
@@ -1565,7 +1572,71 @@ is a different claim entirely — the same distinction `emptyMessage` already
 draws on the programme side, worded the same way.
 
 
-## Open
+### 9.45 Five sources were under-reading their own pages (2026-08-27)
+
+Reported from real use, one screenshot at a time, then swept systematically
+across every source. Each was the same shape: the data was on the page and
+the reader wasn't looking in the right place.
+
+**eventbook, for a hall with ASSIGNED seating.** Cinema Muzeul Țăranului's
+Studio Horia Bernea sells numbered seats, and eventbook renders that
+completely differently — a `choose-seats` link instead of `add_in_cart`, the
+price as an `<h5>` heading instead of the `price:` span. **7 of its 10
+listings carried neither signal**, so each reported no tickets and no price,
+while Cinema Elvira Popescu — same adapter — was 10-for-10 because it sells
+free seating. Both shapes are read now, and the seat picker is carried as
+`ticketsUrl`, since for a numbered hall that IS the buy path.
+
+**TNB's second detail-page template.** A one-off event uses
+`<img class="article-image">`; a repertoire production — most of the calendar
+— uses a different layout with no such class, and its poster is reachable
+only through the page's own `og:image`. The two existing fixtures were both
+the first kind, so the gap was invisible. Verified against /ro/secundar,
+/ro/perplex and /ro/orchestra-titanic. **TNB also publishes its prices** on
+that same already-fetched page, in a `price_box` the reader never looked at:
+0% → 100% price coverage, at no extra request.
+
+**Teatrul Odeon outgrew being a `jsonld` alias.** Its JSON-LD carries no
+`offers` and no `location` at all, so every showing read as no-tickets,
+no-price, no-hall. The hall and the tier list are in the surrounding HTML
+(`data-event_id` ↔ the LD block's `@id`), so `odeon.js` now joins the two by
+id — the same "key a second source by something self-identifying, never by
+document order" rule §9.13 states for Excelsior's posters. Cheapest tier is
+reported, matching Oveit and iabilet; a published price reads as on sale,
+matching Oveit's own call for a feed with prices and no availability flag.
+
+**A festival summary is not a night out.** Quantic's QFest publishes nine
+Events for one festival: seven "Ziua I–VII" days, a whole-festival summary
+and a season pass, the last two both spanning 28 Sep – 4 Oct. The summary
+sorted to the top of the first day, ahead of the day it duplicates.
+`dropUmbrellaListings` drops a multi-day event whose span contains a
+single-day event at the same venue — structural, not by name, so Quantic's
+own "iubim 2ROTI" (4–6 Sep, no per-day entries) survives, and two umbrellas
+over one span can't cancel each other out.
+
+**Coverage after, swept live across all twelve venues:** posters 98–100%
+everywhere; prices 100% at seven venues; tickets 93–100% everywhere.
+
+## Open — known source limits, checked and not fixable here
+
+These were each verified against the live page rather than assumed, and are
+absences at the source, not gaps in a reader:
+
+- **Teatrul Excelsior publishes no prices at all.** Zero occurrences of "lei"
+  on the listing AND on a production's own detail page. Nothing to read.
+- **Two productions genuinely have no cover**: Excelsior's "Marile speranțe"
+  and TNB's "Mai e vreun candidat?" — neither page carries `og:image`,
+  `article-image` or any poster image. That is the 17% / 2% those two venues
+  fall short by, and it is a real answer rather than a parsing gap.
+- **Three Unteatru dates report no price because mystage says `0`.** Its own
+  JSON gives `price.min.value: 0` for a date not yet on sale, which §3
+  already records as "never report that as free". `mystage.js` filtering
+  `> 0` is correct, not a miss.
+- **Filarmonica (via Oveit) has no description**, because that feed carries no
+  such field; the richer Strapi feed does, and remains unreachable.
+- **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
+  upcoming listed, not a failure.
+
 
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every
   non-browser client from this IP, regardless of User-Agent) — resolved for the app by
@@ -1591,8 +1662,11 @@ draws on the programme side, worded the same way.
   has no synopsis text at all — that one would need a THIRD hop layer (venue → bundle → the
   film's own iabilet page), which is enough added complexity that it's deliberately not done
   here; revisit only if it turns out to matter in practice.
-- Addresses and areas are filled only where a source stated them (Filarmonica, Expirat,
-  Cinema Union, Cinema Europa). The other three are blank rather than guessed.
+- ~~Addresses and areas are filled only where a source stated them.~~ **Done
+  (2026-08-27, §9.42):** all twelve venues carry both. The four missing
+  addresses were each read off the venue's own page, and three neighbourhoods
+  were added to the `Area` vocabulary rather than forcing a venue into the
+  nearest existing one.
 - The movie-category horizon is a single blanket rule with one real cinema (Cinema Europa)
   and one near-empty one (Cinema Union) to prove it against. A theatre or hall that also
   sells through a `movie`-tagged listing page would get the same 10-day treatment — intended,

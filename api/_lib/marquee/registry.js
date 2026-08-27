@@ -1,10 +1,12 @@
 // The server half of the adapter registry. These ids are the contract with
 // src/marquee/adapters.js — change one, change both.
 //
-// `expirat`, `odeon` and `quantic` are not their own modules: each site's
-// venue page already emits complete schema.org Event objects, so each IS the
-// generic reader, aliased under its own id so the venue row and the UI can
-// name what is reading it.
+// `expirat` and `quantic` are not their own modules: each site's venue page
+// already emits complete schema.org Event objects, so each IS the generic
+// reader, aliased under its own id so the venue row and the UI can name what
+// is reading it. `odeon` STARTED that way and outgrew it — its JSON-LD has no
+// offers and no location, and the hall and prices it does publish live in the
+// surrounding HTML, so it needs a real module to join the two (see odeon.js).
 //
 // `quantic` is the one worth a second look, because its URL would fool the
 // client's own host-based auto-detection (adapters.js) into suggesting
@@ -25,9 +27,9 @@ import iabilet from './iabilet.js'
 import jsonld from './jsonld.js'
 import tnb from './tnb.js'
 import mystage from './mystage.js'
+import odeon from './odeon.js'
 
 const expirat = { ...jsonld, id: 'expirat', label: 'Expirat / iabilet whitelabel', minItems: 3 }
-const odeon = { ...jsonld, id: 'odeon', label: 'Teatrul Odeon', minItems: 6 }
 const quantic = { ...jsonld, id: 'quantic', label: 'Quantic / iabilet.ro venue page', minItems: 6 }
 
 export const ADAPTERS = {
