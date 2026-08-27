@@ -149,6 +149,41 @@ export function byDate(productions) {
     .map(([date, items]) => ({ date, productions: items }))
 }
 
+/** The day-section id a week-strip cell scrolls to — one id per calendar day,
+ *  distinct from `domIdFor`'s per-PRODUCTION id (a "what changed" row jumps to
+ *  one card; a week-strip cell jumps to a whole day's worth). */
+export function domIdForDay(date) {
+  return `day-${date}`
+}
+
+/** `count` calendar dates starting today (local, not UTC — see format.js's own
+ *  `formatDay` for why the day boundary has to be computed this way rather
+ *  than by adding milliseconds across a DST change). */
+export function nextDayKeys(now = new Date(), count = 7) {
+  const out = []
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+  }
+  return out
+}
+
+/**
+ * How many distinct PRODUCTIONS have at least one showing on each of `days`.
+ *
+ * Deliberately not `byDate`'s grouping (which only ever counts a production
+ * on its FIRST date): a run spanning several nights should light up every one
+ * of them in the strip, not only the night it opens — "am I free Thursday,
+ * and is anything on?" is a question about that specific night, not about
+ * which productions happen to start there.
+ */
+export function densityForDays(productions, days) {
+  return days.map((date) => ({
+    date,
+    count: (productions ?? []).filter((p) => p.showings.some((s) => s.date === date)).length,
+  }))
+}
+
 /** Apply the user's triage, category, venue and hall filters.
  *
  *  Ignoring is per PRODUCTION and permanent, including future dates — the point of

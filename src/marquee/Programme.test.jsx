@@ -173,3 +173,46 @@ describe('Programme — swipe left to ignore (promoted from Loom’s ThreadRow)'
     expect(onIgnore).not.toHaveBeenCalled()
   })
 })
+
+describe('Programme — List/Posters layout toggle', () => {
+  it('is absent with no onViewMode handler (backward compatible) or an empty programme', () => {
+    const days = byDate(toProductions([event()]))
+    const { container, rerender } = render(
+      <Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
+    )
+    expect(container.querySelector('.view-toggle')).toBeNull()
+
+    rerender(<Programme {...baseProps} days={[]} venues={[]} onViewMode={() => {}} />)
+    expect(container.querySelector('.view-toggle')).toBeNull()
+  })
+
+  it('defaults to the list, switches to the poster grid, and calls back on click', () => {
+    const onViewMode = vi.fn()
+    const days = byDate(toProductions([event()]))
+    const { container, rerender } = render(
+      <Programme
+        {...baseProps}
+        days={days}
+        venues={[{ name: 'Teatrul Excelsior', category: 'play' }]}
+        onViewMode={onViewMode}
+      />,
+    )
+    expect(container.querySelector('.prod')).toBeTruthy()
+    expect(container.querySelector('.poster-grid')).toBeNull()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Posters' }))
+    expect(onViewMode).toHaveBeenCalledWith('posters')
+
+    rerender(
+      <Programme
+        {...baseProps}
+        days={days}
+        venues={[{ name: 'Teatrul Excelsior', category: 'play' }]}
+        onViewMode={onViewMode}
+        viewMode="posters"
+      />,
+    )
+    expect(container.querySelector('.poster-grid')).toBeTruthy()
+    expect(container.querySelector('.prod')).toBeNull()
+  })
+})

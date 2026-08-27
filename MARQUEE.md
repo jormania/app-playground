@@ -1022,6 +1022,114 @@ every changed path, and `npm run build` all pass. The browser preview pane
 refused localhost in this session, so the render-level checks were driven
 through the new `App.test.jsx` instead of by hand.
 
+### 9.31 Five QoL features, proposed and built the same session (2026-08-27)
+
+A follow-up to §9.29's audit: five features proposed against the app's actual
+scope — "does this serve the diff, or the decision to keep, without a new
+data store, a new endpoint, or a second screen to read" — and built in the
+order that unblocked the most for the least: undo first (small, and #5 needs
+it to be safe), then the gesture, then the one genuine gap (push), then the
+two visual passes.
+
+**Undo on a keep.** The app's only write had no way back short of finding the
+row in Wanderlist itself. `src/ds/` gains `ToastStack` + `useToastStack` — the
+fourth toast implementation in the repo (after Daily Stoic, Fit Check, Click
+Deck, Lexi5), promoted to an app-agnostic primitive so Marquee is its first
+consumer rather than a fifth copy. Keeping a showing now offers **Undo** for a
+few seconds; pressing it archives the just-created Findings row the same way
+removing a venue already does — Notion's trash is the real undo either way.
+`notionClient.js`/`fixtures.js` both gained `unsaveFromWanderlist`.
+
+**Swipe left to Ignore.** `src/shared/useSwipeAction.ts`, generalized out of
+Loom's `ThreadRow` (swipe right to weave, left to unravel) — same axis-lock,
+same elastic-past-threshold feel, available to a second app instead of being
+rewritten for it. `ProductionCard` wraps its content in a sliding `.prod__body`
+over a `.prod__behind` reveal, the same two-layer shape `ThreadRow.module.css`
+uses. Loom's own copy is untouched: no test proves a refactor there is
+behavior-preserving, so this is the "extract the reusable shape" half of a
+promotion — the same restraint `notionId.ts`'s header describes, leaving
+Wanderlist and Journal's older copies in place rather than forcing an unproven
+migration. `data-noswipe` marks the taps-not-drags exemption (Keep/Ignore
+buttons, date buttons, the title link) — Loom's `[data-loom-controls]` under
+another name.
+
+**Push notifications when tickets open.** A fifth app wired into
+`src/shared/notify/`'s cross-app foundation (see NOTIFICATIONS.md), and the
+first whose worker does real work of its own rather than only reading a
+snapshot the page already computed — `public/marquee-sw.js`'s `periodicsync`
+handler POSTs to `/api/marquee-scan` **itself**, because "did tickets just
+open" can only be answered by re-reading the venue pages, and a worker woken
+while the app is closed has no snapshot that already knows. `notify.js`
+mirrors the venue list and prefs into IndexedDB whenever either changes; the
+worker diffs the fresh scan against its OWN independent snapshot — a THIRD
+one, alongside the client's localStorage (§7) and the server cron's KV
+(§9.11), each answering a different "changed since when" question, same
+reasoning as the existing two. Defaults to `tickets-opened` only; a second
+Settings toggle adds `new-event`/`sold-out` — never `cancelled`, which needs
+the full before-set rather than a single forward pass, more state than a
+background worker should hold onto. The notification title reuses
+`marqueeOnlySubject`'s exact convention, so a ticket opening reads the same by
+push or by the evening email. `notify.sw.test.js` extracts the worker's
+duplicated pure functions with `new Function` and runs them against the
+page's copy — the same technique `where-it-went-sw.js`'s own test already
+established — so a rule drifting between the two fails a test rather than
+silently disagreeing. A Settings section covers permission, the
+blocked/unsupported cases, and the same seven-tap diagnostics reveal Touch
+Grass/Sol Odyssey/Journal already use.
+
+The one real cost, documented rather than solved: a busy venue list (TNB's
+own ~61-request poster hop) can outrun a periodic-sync wake's execution
+budget, which the browser enforces, not this code. A run cut short simply
+doesn't reach `set(SNAPSHOT_KEY, ...)`, so the next wake compares against the
+same old snapshot — a slow check costs a delay, never a wrong notification.
+
+**A poster wall.** `Poster` (the fallback-aware cover component) moved out of
+`Programme.jsx` into its own `Poster.jsx` so `PosterGrid.jsx` could use it
+without a circular import. Same productions, same `Keep`/`Ignore` actions as
+the list — a second LAYOUT, not a second feature: a `List`/`Posters` toggle
+(persisted in `prefs.viewMode`, so it survives a reload — see below) swaps
+`ProductionCard`'s rows for a wall of covers at a real theatre-poster
+proportion (2:3, not the list's compact 56×80), a box-office diagonal
+"Sold out" band across the corner instead of another chip, and the same
+change-colour language on the frame's border. The toggle only appears once
+there's a programme to switch between — nothing to switch when the app is
+empty or unread.
+
+**A week strip.** "Am I free Thursday, and is anything on?" — this app's own
+answer to Loom's rhythm heatmap. Seven cells, today first, density-shaded
+over the SAME filtered productions the day list below already shows (search,
+category/venue/hall filters all apply here too — `App.jsx` now computes one
+`visibleProductionsFlat` that both the day list and the strip read from, so
+the two can never disagree). `programme.js` gains `densityForDays` — counting
+a production on EVERY date it shows, not only its first the way `byDate`'s
+own grouping does, so a three-night run lights up all three cells — and
+`nextDayKeys`/`domIdForDay` for the day-anchor ids a tap scrolls to (both
+`Programme.jsx`'s and `PosterGrid.jsx`'s day `<section>`s now carry one). An
+empty day is shown, not hidden (a quiet Tuesday is a real answer), but isn't
+clickable — nowhere to jump to.
+
+**QoL note, from a question asked while this was being verified:** the view
+toggle persisting across a reload wasn't a separate feature to build —
+`viewMode` lives in the same `prefs` object every other Settings toggle
+already round-trips through `localStorage` (`marquee_prefs`), so it was
+already correct.
+
+Every new pure function got its own test rather than relying on the
+integration suite alone: `programme.test.js` (new — `densityForDays`,
+`nextDayKeys`, `domIdForDay`), `PosterGrid.test.jsx`, `WeekStrip.test.jsx`,
+`notify.test.js` + `notify.sw.test.js`, plus extensions to `Programme.test.jsx`
+(the swipe gesture, the view toggle), `SettingsModal.test.jsx` (the Notify
+section), `App.test.jsx` (the full keep → toast → undo round trip), and DS's
+own `ToastStack.test.tsx`/`useToastStack.test.ts`/`useSwipeAction.test.tsx`.
+
+### 9.32 Verified
+
+`npm test` (3866 tests across 306 files), `npm run typecheck`, `npx eslint` on
+every changed path, and `npm run build` all pass. The browser preview pane
+again refused localhost in this session (same limitation §9.30 hit); render
+and interaction checks were driven through the render/integration tests
+listed above rather than by hand.
+
 
 ## Open
 

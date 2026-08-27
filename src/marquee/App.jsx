@@ -5,12 +5,13 @@ import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
 import Programme from './Programme.jsx'
+import WeekStrip from './WeekStrip.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import { sortVenues, scannable, togglePaused } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
-  changedKeyMap, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse,
+  changedKeyMap, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, nextDayKeys, densityForDays,
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize, changeSignature, undismissedChanges } from './changes.js'
@@ -203,10 +204,20 @@ export default function App() {
   // rather than trusting the state to always get cleared in time.
   const activeHallFilter = hallFilter && hallOptions.includes(hallFilter) ? hallFilter : null
 
-  const days = useMemo(() => byDate(searchProductions(
+  // The same filtered set feeds both the day list and the week strip below —
+  // computed once so the two never disagree about what's currently visible.
+  const visibleProductionsFlat = useMemo(() => searchProductions(
     activeHallFilter ? byCategoryAndVenue.filter((p) => p.hall === activeHallFilter) : byCategoryAndVenue,
     search,
-  )), [byCategoryAndVenue, activeHallFilter, search])
+  ), [byCategoryAndVenue, activeHallFilter, search])
+
+  const days = useMemo(() => byDate(visibleProductionsFlat), [visibleProductionsFlat])
+
+  // Today plus the next six, and how many productions land on each — cheap
+  // enough (seven date constructions, one pass over the visible productions)
+  // to recompute on every render rather than chase exactly when "today"
+  // itself should invalidate a memo.
+  const weekDensity = densityForDays(visibleProductionsFlat, nextDayKeys(new Date()))
 
   /** Category → venue → hall, each tier resetting the ones narrower than it —
    *  a stale hall filter surviving a venue switch, or a stale venue filter
@@ -472,6 +483,7 @@ export default function App() {
 
         {tab === 'programme' ? (
           <>
+            {scan && <WeekStrip density={weekDensity} />}
             <Changes
               scan={scan ? { ...scan, changes: visibleChanges } : scan}
               dismissed={changesDismissed}
@@ -496,6 +508,8 @@ export default function App() {
               hallOptions={hallOptions}
               hallFilter={activeHallFilter}
               onHallFilter={setHallFilter}
+              viewMode={prefs.viewMode}
+              onViewMode={(viewMode) => setPrefs((p) => ({ ...p, viewMode }))}
               onKeep={(showing, production) => setKeeping({ showing, production })}
               onIgnore={(production) =>
                 setTriage(production.id, triage[production.id] === TRIAGE.IGNORED ? null : TRIAGE.IGNORED)}

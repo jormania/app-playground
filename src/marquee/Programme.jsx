@@ -1,30 +1,9 @@
-import { useState } from 'react'
-import { Image as PosterPlaceholderIcon } from 'lucide-react'
 import { useSwipeAction } from '../shared/useSwipeAction'
-import { TRIAGE, domIdFor, primaryChangeKind, CATEGORY_LABEL } from './programme.js'
+import PosterGrid from './PosterGrid.jsx'
+import { Poster } from './Poster.jsx'
+import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay, CATEGORY_LABEL } from './programme.js'
 import { CHANGE_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
-
-/** A production's poster — or the same-sized outline standing in for one.
- *  Readers vary in whether they return a cover (Excelsior's markup carries
- *  none; Eventbook, Expirat, Oveit, TNB and mystage all do), and a real one
- *  can still 404. Either way the slot always renders: a card with no cover
- *  keeping the same geometry as one with a photo is what lets the title
- *  column start from the same left edge, entry after entry, rather than
- *  drifting over to fill a poster-shaped gap that isn't there. */
-function Poster({ src }) {
-  const [failed, setFailed] = useState(false)
-  const hasImage = Boolean(src) && !failed
-  return (
-    <div className={`prod__poster${hasImage ? '' : ' prod__poster--placeholder'}`}>
-      {hasImage ? (
-        <img src={src} alt="" aria-hidden="true" loading="lazy" onError={() => setFailed(true)} />
-      ) : (
-        <PosterPlaceholderIcon aria-hidden="true" />
-      )}
-    </div>
-  )
-}
 
 /** One production: a title at a venue, with its dates nested.
  *
@@ -205,6 +184,7 @@ export default function Programme({
   categories = [], categoryFilter = null, onCategoryFilter,
   venuesInCategory = [], venueFilter = null, onVenueFilter,
   hallOptions = [], hallFilter = null, onHallFilter,
+  viewMode = 'list', onViewMode,
 }) {
   if (!scan) {
     return (
@@ -270,11 +250,41 @@ export default function Programme({
         <FilterRow value={hallFilter} onChange={onHallFilter} options={hallOptions} />
       )}
 
+      {days.length > 0 && onViewMode && (
+        // Same data, two ways to look at it — a theatre lobby's actual look
+        // (marquee.css's own "deep plum ground... a theatre lobby at dusk")
+        // spent on more than a 56×80 thumbnail, for the days a face is what
+        // you'd recognise a show by faster than its title. Not shown at all
+        // once the programme is empty or unread — nothing to switch between.
+        <div className="view-toggle" role="radiogroup" aria-label="Programme layout">
+          <button
+            type="button"
+            className={`view-toggle__option ${viewMode === 'list' ? 'view-toggle__option--on' : ''}`}
+            aria-checked={viewMode === 'list'}
+            role="radio"
+            onClick={() => onViewMode('list')}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            className={`view-toggle__option ${viewMode === 'posters' ? 'view-toggle__option--on' : ''}`}
+            aria-checked={viewMode === 'posters'}
+            role="radio"
+            onClick={() => onViewMode('posters')}
+          >
+            Posters
+          </button>
+        </div>
+      )}
+
       {days.length === 0 ? (
         <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>
+      ) : viewMode === 'posters' ? (
+        <PosterGrid days={days} triage={triage} changedKeys={changedKeys} onKeep={onKeep} onIgnore={onIgnore} />
       ) : (
         days.map((day) => (
-          <section key={day.date} className="day">
+          <section key={day.date} id={domIdForDay(day.date)} className="day">
             <h2 className="day__head">{formatDay(day.date)}</h2>
             {day.productions.map((production) => (
               <ProductionCard
