@@ -208,7 +208,7 @@
 
 <p>
   Press <strong>Check venues</strong>. Marquee fetches every active venue’s programme page one at a
-  time, reads the showings out of it, and shows you the result. A check of seven venues takes
+  time, reads the showings out of it, and shows you the result — a handful of venues takes
   something like ten to thirty seconds, mostly waiting on the venues’ own servers.
 </p>
 
@@ -307,6 +307,28 @@
 </p>
 
 <p>
+  On a touch device, both are also a swipe on the card itself: right opens <strong>Keep</strong>
+  for its first date, left is <strong>Ignore</strong> — the two buttons under a different
+  finger, not a third action. Keeps the same "which date is that ambiguous mid-swipe" answer the
+  Keep button already gives: whichever date shows first, editable in the sheet that opens. Turn
+  it off in <a href="#settings">Settings</a> if a card full of dates makes an accidental swipe too
+  easy; the buttons keep working either way.
+</p>
+
+<p>
+  The two icons beside <strong>Check venues</strong>, top right: the middle one switches between
+  this list and a <strong>poster wall</strong> — the same productions as a wall of covers instead
+  of rows, for the days a face is faster to recognise than a title. Same Keep and Ignore, same
+  colours for what's changed; just bigger posters and less text. Your choice is remembered.
+</p>
+
+<p>
+  Above the strip, a row of seven days — today first — shades by how much is on each one: a quiet
+  Tuesday looks quiet, a busy Saturday looks busy. Tap a day with something on it to jump straight
+  there.
+</p>
+
+<p>
   The filter chips narrow the list in up to three steps: a <strong>category</strong> row
   (Theatre, Cinema, Concert…) appears once more than one is actually in play, picking one
   reveals just that category's <strong>venues</strong>, and a venue with more than one hall —
@@ -348,6 +370,12 @@
       guessed otherwise.</li>
   <li><strong>Link</strong> — the ticket URL when there is one, otherwise the show’s own page.</li>
 </ul>
+
+<p>
+  Saving shows a brief confirmation with an <strong>Undo</strong> — press it in the next few
+  seconds and the row is removed from Wanderlist again, no different from deleting it there
+  yourself. After that, Wanderlist is where you'd go to change your mind.
+</p>
 
 <div class="note">
   <p>
@@ -430,18 +458,17 @@
 
 <div class="warnbox">
   <p>
-    <strong>Not every site can be added by pasting a URL.</strong> Marquee ships readers for
-    Teatrul Excelsior, Eventbook (four cinemas and clubs at once), Oveit (a ticketing platform
-    — this is how Filarmonica George Enescu is read), Filarmonica's own feed, an iabilet.ro
-    venue page (this is how Cinema Europa is read), tnb.ro (the National Theatre — one venue,
-    all seven of its halls), mystage.ro (Teatrul Unteatru today, any other mystage venue the
-    same way), and any page publishing standard schema.org event data, which is how Expirat
-    works.
+    <strong>Not every site can be added by pasting a URL.</strong> Marquee ships a handful of
+    readers, each built for one site or one ticketing platform — some cover several venues at
+    once when they share a platform, and a venue with several halls of its own can be read as
+    one row rather than one per hall. Anything publishing standard schema.org event data works
+    out of the box, with no reader written specifically for it.
   </p>
   <p>
-    A venue outside that list gets the generic reader, and the form says plainly that it may find
-    nothing. Sites that publish structured event data usually just work; the rest need a small
-    reader written for them, which is a code change, not something the app can do for you.
+    A venue outside all of that gets the generic reader, and the form says plainly that it may
+    find nothing. Sites that publish structured event data usually just work; the rest need a
+    small reader written for them, which is a code change, not something the app can do for
+    you — check the form's own message when you paste a URL rather than assuming.
   </p>
 </div>
 
@@ -517,7 +544,48 @@
     date of its run is already kept there, the same "only when all of it" rule sold-out uses. A
     run with one night kept and others still undecided stays visible.
   </li>
+  <li>
+    <strong>Swipe to Keep or Ignore</strong> — on by default. Turn it off to use the Keep and
+    Ignore buttons only, if a card full of dates makes an accidental swipe too easy.
+  </li>
+  <li>
+    <strong>Compact list</strong> — a smaller cover and tighter rows, for fitting more of the
+    programme on screen at once. The poster wall keeps its own size either way.
+  </li>
 </ul>
+
+<h3>Notify</h3>
+<p>
+  Opt in and Marquee checks your venues in the background, even while it's closed, and lets you
+  know when tickets open — the one change actually worth a nudge for. Off by default; turning it
+  on asks your browser for permission.
+</p>
+<ul>
+  <li>
+    <strong>Also notify about new listings and sold-out</strong> — off by default. Tickets
+    opening is the one you'd want to know about right away; the other two are more background
+    noise than urgency.
+  </li>
+  <li>
+    <strong>Quiet hours (11pm–8am)</strong> — only shown once notifications are on. Holds
+    anything that happens overnight and delivers it as one check the next morning instead of a
+    2am ping.
+  </li>
+</ul>
+<div class="warnbox">
+  <p>
+    <strong>Background checking needs the app installed, on Chromium</strong> — desktop or
+    Android. iOS Safari and an ordinary browser tab fall back to checking only while the app is
+    open, and Settings says so rather than offering a toggle that can't work there. Even where
+    it's supported, the browser decides exactly when to wake it — the interval Marquee asks for
+    is a floor, not a promise.
+  </p>
+  <p>
+    Seven quick taps on the small print under Notify reveals a diagnostics panel — permission
+    state, whether background checking is actually registered, and what the last background
+    check found — for the rare case one goes quiet and you want to know why.
+  </p>
+</div>
 
 <h3>Venue health</h3>
 <p>
@@ -530,7 +598,7 @@
 <h2 id="connect"><span class="num">08</span>Connecting Notion</h2>
 
 <p>
-  Without a token, Marquee runs in <strong>demo mode</strong>: seven real Bucharest venues held in
+  Without a token, Marquee runs in <strong>demo mode</strong>: real Bucharest venues held in
   memory. Checking them genuinely reads their pages, so you can see exactly what the app does — but
   venue edits and anything you keep never reach Notion.
 </p>
@@ -566,11 +634,12 @@
 
 <ul>
   <li>
-    <strong>A scheduled check exists, but it isn't a Marquee setting.</strong> It rides on
-    Wanderlist's own nightly reminder email — once that's enabled and the server has its own
-    Notion access configured, an overnight check runs automatically and adds a section to that
-    same email when something changed. With neither set up, Marquee only checks when you press
-    the button, and nothing runs while the app is closed.
+    <strong>Two separate ways a check can happen without you pressing the button</strong> — a
+    nightly one that rides on Wanderlist's own reminder email (needs the server's own Notion
+    access configured, not a Marquee setting at all), and the <a href="#settings">Notify</a>
+    toggle's own background check on your device. Neither is guaranteed: without the server-side
+    one set up, and with Notify off or unsupported, Marquee only checks when you press the
+    button, and nothing runs while the app is closed.
   </li>
   <li>
     <strong>Readers are hand-written and sites change.</strong> A redesign will eventually need a

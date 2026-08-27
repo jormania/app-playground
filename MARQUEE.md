@@ -1208,6 +1208,55 @@ and `npm run build` all pass. Live verification was, again, through the
 render/integration suite rather than the browser preview pane, which refused
 localhost in this session too.
 
+### 9.35 List-card poster +30%, mobile poster grid to 3, and the guide catches up (2026-08-27)
+
+Two small follow-ups from actually using the pushed build, plus a genuine
+gap: the user-facing guide (`public/marquee-guide.html`) had gone stale
+across this entire session's work — §9.31–9.34 shipped undo, swipe, push
+notifications, the poster wall, the week strip and three Settings toggles,
+and none of it had reached the one document meant to explain the app to a
+person rather than to the next session.
+
+**Poster mockups, then a pick.** Given three mocked-up sizes (+10%/+15%/+30%,
+built faithfully against the app's own tokens) against the real "Bug" card
+from a phone screenshot, +30% won. `.prod__poster` is now `73×104` on
+desktop (was `56×80`) and `60×86` on the phone breakpoint (was `46×66`) — the
+same 46:66 aspect ratio preserved at each step. The poster grid's own mobile
+column count, set to 2 in §9.33, became 3 after seeing it live: 2 read as
+oversized once actually on a phone. `.main--compact`'s poster (Settings →
+Compact list) is untouched by either change — that mode's whole point is
+fitting more on screen, not a bigger cover.
+
+**The guide, brought current.** New content for everything shipped since
+§9.30: swipe gestures and the Settings toggle to disable them, the topbar's
+List/Posters switch and what the poster wall actually is, the week strip, the
+Undo confirmation after a keep, and a new "Notify" subsection under Settings
+covering permission, the two extra kinds, quiet hours, the
+installed-app-on-Chromium limitation, and the seven-tap diagnostics reveal
+(matching how WhereItWent's own guide documents the identical trick — not
+actually undocumented, just not surfaced in the UI itself). "Honest limits"
+now names BOTH ways a check can happen without pressing the button — the
+email-riding server cron (already there) and Notify's own on-device
+background check (new) — rather than only the first.
+
+**Also asked for, separately: stop naming or counting specific venues in the
+guide.** Two spots did — a "seven real Bucharest venues" demo-mode count
+that would go stale the next time a demo venue is added or removed (as it
+already had — ten, by this session), and a warnbox naming every reader by
+the specific venue it happens to read today (Excelsior, Filarmonica, Cinema
+Europa, the National Theatre, Unteatru, Expirat). Both rewritten to describe
+what KINDS of sites Marquee can read — one reader per site or platform, some
+covering several venues at once, a multi-hall venue as one row — without
+asserting which real venues currently use which reader. The guide describes
+the capability, not a roster that has to be kept in sync with Notion.
+
+### 9.36 Verified
+
+`npm test` (3874 tests across 306 files), `npm run typecheck`, `npx eslint`,
+and `npm run build` all pass. The guide itself has no test coverage (it's
+static HTML, like every other app's guide in this repo) — checked by reading
+it end to end and confirming tag balance rather than by a render test.
+
 
 ## Open
 

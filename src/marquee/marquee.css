@@ -730,8 +730,8 @@ button { color: inherit; font: inherit; }
    instead of a posterless card's text jumping over to fill the gap. */
 .prod__poster {
   flex: 0 0 auto;
-  width: 56px;
-  height: 80px;
+  width: 73px;
+  height: 104px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -996,7 +996,7 @@ button { color: inherit; font: inherit; }
   /* A narrower cover leaves the title column noticeably more room on a phone
      — worth tuning specifically rather than carrying the desktop size over
      unchanged, since the text column is the tightest thing on this screen. */
-  .prod__poster { width: 46px; height: 66px; }
+  .prod__poster { width: 60px; height: 86px; }
 
   /* `.prod__main`'s desktop 18rem basis (288px) doesn't fit next to even a
      narrowed poster on a ~320px content width — and `flex-wrap` decides line
