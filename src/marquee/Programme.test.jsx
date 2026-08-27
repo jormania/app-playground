@@ -27,74 +27,12 @@ const baseProps = {
   triage: {},
   onKeep: () => {},
   onIgnore: () => {},
-  onVenueFilter: () => {},
-  onHallFilter: () => {},
 };
 
-describe('Programme — the category → venue → hall filter tiers', () => {
-  it('shows no filter row at all with one venue and nothing to group', () => {
-    const days = byDate(toProductions([event()]))
-    render(<Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />)
-    expect(screen.queryByRole('button', { name: 'All' })).toBeNull()
-  })
-
-  it('falls back to one flat venue row when every active venue shares a category', () => {
-    const venues = [{ name: 'Teatrul Excelsior', category: 'play' }, { name: 'Teatrul Național București', category: 'play' }]
-    const days = byDate(toProductions([event(), event({ key: 'k2', venue: 'Teatrul Național București', title: 'Alt' })]))
-    render(<Programme {...baseProps} days={days} venues={venues} categories={['play']} />)
-    // One flat row: category chips never appear (only one category), venue chips do.
-    expect(screen.getByRole('button', { name: 'Teatrul Excelsior' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Teatrul Național București' })).toBeTruthy()
-  })
-
-  it('reveals venue chips only once a category is picked, when more than one category is in play', () => {
-    // The category row itself moved up into App.jsx (§9.48) — it renders
-    // beside the tabs now, not inside Programme. Programme only reacts to
-    // `categoryFilter` as a prop, the same way App.jsx's own selection drives
-    // it, so this simulates the pick directly rather than clicking a chip
-    // that no longer lives here.
-    const venues = [{ name: 'Teatrul Excelsior', category: 'play' }, { name: 'Cinema Union', category: 'movie' }]
-    const days = byDate(toProductions([event(), event({ key: 'k2', venue: 'Cinema Union', title: 'Film' })]))
-    const { rerender } = render(
-      <Programme {...baseProps} days={days} venues={venues} categories={['play', 'movie']} />,
-    )
-    expect(screen.queryByRole('button', { name: 'Teatrul Excelsior' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Cinema Union' })).toBeNull()
-
-    rerender(
-      <Programme
-        {...baseProps}
-        days={days}
-        venues={venues}
-        categories={['play', 'movie']}
-        categoryFilter="play"
-        venuesInCategory={[{ name: 'Teatrul Excelsior', category: 'play' }]}
-      />,
-    )
-    expect(screen.getByRole('button', { name: 'Teatrul Excelsior' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Cinema Union' })).toBeNull()
-  })
-
-  it('shows hall chips only when hallOptions carries more than one — a single-hall venue gets none', () => {
-    const days = byDate(toProductions([event()]))
-    const { rerender } = render(
-      <Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} hallOptions={[]} />,
-    )
-    expect(screen.queryByRole('button', { name: 'Sala Atelier' })).toBeNull()
-
-    rerender(
-      <Programme
-        {...baseProps}
-        days={days}
-        venues={[{ name: 'Teatrul Național București', category: 'play' }]}
-        venueFilter="Teatrul Național București"
-        hallOptions={['Sala Atelier', 'Sala Studio']}
-      />,
-    )
-    expect(screen.getByRole('button', { name: 'Sala Atelier' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Sala Studio' })).toBeTruthy()
-  })
-})
+// The category/venue/hall filter tiers moved up into App.jsx entirely
+// (§9.50) — they used to render inside Programme, and this file tested them
+// here. Programme no longer receives or renders any of the three; App.test.jsx
+// covers the tiered filtering behaviour now, against the real stacked block.
 
 describe('Programme — the poster slot renders for every card, cover or not', () => {
   it('shows the real cover when a reader returned one', () => {

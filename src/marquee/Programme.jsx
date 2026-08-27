@@ -240,10 +240,8 @@ export function FilterRow({
 
 export default function Programme({
   scan, days, triage, changedKeys = new Map(), onKeep, onIgnore,
-  venues, search = '', stale = false, scanning = false,
-  categories = [], categoryFilter = null,
-  venuesInCategory = [], venueFilter = null, onVenueFilter,
-  hallOptions = [], hallFilter = null, onHallFilter,
+  search = '', stale = false, scanning = false,
+  venueFilter = null,
   viewMode = 'list', swipeEnabled = true,
 }) {
   if (!scan) {
@@ -256,14 +254,6 @@ export default function Programme({
   }
 
   const scanned = scan.venues ?? []
-  // More than one category actually in use is what turns this into a two-tier
-  // filter — a single-category setup (or the early days of this app, with a
-  // handful of venues and nothing to group) falls straight back to one flat
-  // venue row, exactly as before. This is also what keeps the resting UI a
-  // constant ~5-6 chips wide as venues are added, rather than growing by one
-  // chip per venue forever (MARQUEE.md §9.20).
-  const categoryMode = categories.length > 1
-  const venueOptions = categoryMode ? venuesInCategory : venues
 
   return (
     <>
@@ -276,35 +266,10 @@ export default function Programme({
 
       <Trouble venues={scanned} checkedAt={scan.scannedAt ? formatDay(scan.scannedAt.slice(0, 10), { relative: true }) : null} />
 
-      {/* The category tier itself now renders up in App.jsx, alongside the tabs
-          — the first, most prominent filter belongs beside the navigation it
-          narrows, not buried below a "stale" banner and a Trouble list that
-          may not even be there. Each tier below still gates on its OWN
-          condition, not a shared "more than one venue total" guard — a single
-          active venue that happens to have several halls (a first-time
-          TNB-only setup, say) must still get its hall row, which a shared
-          guard would otherwise hide. */}
-
-      {/* In category mode, venue chips only exist once a category narrows the
-          list down to a handful — never the full flat list. Outside category
-          mode (one category, or too few venues to group), this is exactly the
-          old always-visible venue row. */}
-      {(categoryMode ? Boolean(categoryFilter) : venueOptions.length > 1) && (
-        <FilterRow
-          value={venueFilter}
-          onChange={onVenueFilter}
-          options={venueOptions}
-          keyOf={(v) => v.name}
-          label={(v) => v.name}
-        />
-      )}
-
-      {/* Only ever appears for a single selected venue with more than one hall
-          (hallsInUse in programme.js) — Teatrul Național today, any future
-          multi-hall venue the same way, nothing to configure. */}
-      {hallOptions.length > 0 && (
-        <FilterRow value={hallFilter} onChange={onHallFilter} options={hallOptions} />
-      )}
+      {/* All three filter tiers (category, venue, hall) render up in App.jsx
+          now, stuck directly together right under the week strip (§9.50) —
+          they belong beside the navigation they narrow, not buried below a
+          "stale" banner and a Trouble list that may not even be there. */}
 
       {days.length === 0 ? (
         <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>

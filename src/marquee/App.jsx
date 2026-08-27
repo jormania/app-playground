@@ -84,6 +84,12 @@ export default function App() {
   // the same trap that made a "What changed" row scroll to a card the search
   // was hiding (§9.29's finding).
   const [venueSearch, setVenueSearch] = useState('')
+  // Search starts collapsed to an icon — an empty pill sitting wide open in
+  // the top bar at all times was real estate spent on nothing, most of the
+  // time. Tapping it opens the same box as before; it stays open across a
+  // tab switch (the box already adapts its value/placeholder per tab), and
+  // collapses back on blur.
+  const [searchOpen, setSearchOpen] = useState(false)
   const [keeping, setKeeping] = useState(null)
 
   const [editing, setEditing] = useState(null)
@@ -219,6 +225,16 @@ export default function App() {
     () => (categoryFilter ? active.filter((v) => v.category === categoryFilter) : []),
     [active, categoryFilter],
   )
+  // More than one category actually in use is what turns this into a two-tier
+  // filter — a single-category setup falls straight back to one flat venue
+  // row. Both tiers render together here (§9.49) — directly under the week
+  // strip, stuck to the category row rather than buried below it — so the
+  // venue row's own visibility depends only on category state, never on
+  // Programme's scan/Trouble/stale banners.
+  const categoryMode = categories.length > 1
+  const venueOptions = categoryMode ? venuesInCategory : active
+  const venueTierVisible = tab === 'programme'
+    && (categoryMode ? Boolean(categoryFilter) : venueOptions.length > 1)
 
   const byCategoryAndVenue = useMemo(() => visibleProductions(productions, {
     triage,
@@ -455,40 +471,75 @@ export default function App() {
           </p>
         </div>
 
-        {/* Search moved up here from its old spot beside the tabs — one row
-            for the title and every top-level control, search included, rather
-            than search getting a row of its own below. Still the same box,
-            still present on BOTH tabs and searching whatever the tab in front
-            is actually showing (it used to vanish on the Venues tab, leaving
-            that screen with no way to narrow it). On a phone this whole row
-            wraps under the heading — deterministic, not "sit inline and hope
-            it doesn't have to wrap": that approach was what let "Venues"
-            growing to "Venues (8)" once venues finished loading nudge search
-            onto a wrapped line mid-render, a jump with no user action behind
-            it. Wrapping the row as a WHOLE never depends on that timing. */}
+        {/* One tight cluster for every top-level control — search included.
+            Search starts collapsed to an icon rather than a permanently-open
+            box with nothing in it most of the time; tapping it swaps the icon
+            for the same input as before, still present on BOTH tabs and
+            searching whatever the tab in front is actually showing (it used
+            to vanish on the Venues tab, leaving that screen with no way to
+            narrow it). Collapses back on blur; Escape does the same without
+            waiting for the blur. On a phone this whole row wraps under the
+            heading — deterministic, not "sit inline and hope it doesn't have
+            to wrap". */}
         <div className="topbar__bar">
-          <div className="search">
-            <SearchIcon size={14} aria-hidden="true" />
-            <input
-              type="search"
-              value={onProgramme ? search : venueSearch}
-              onChange={(e) => (onProgramme ? setSearch : setVenueSearch)(e.target.value)}
-              placeholder="Search…"
-              aria-label={onProgramme
-                ? 'Search the programme by title or venue'
-                : 'Search your venues by name, area or address'}
-            />
-            {(onProgramme ? search : venueSearch) && (
-              <button
-                type="button"
-                className="search__clear"
-                aria-label="Clear search"
-                onClick={() => (onProgramme ? setSearch : setVenueSearch)('')}
-              >
-                <ClearIcon size={14} />
-              </button>
-            )}
-          </div>
+          {searchOpen ? (
+            <div className="search">
+              <SearchIcon size={14} aria-hidden="true" />
+              {/* Empty box, tapped away from: nothing to lose, so it collapses
+                  back to the icon on its own. A box with a live query stays
+                  open regardless of where focus goes — closing it out from
+                  under an active filter (say, a tap on a category chip) would
+                  read as "did my search just get cleared?" even though the
+                  query itself survives either way. */}
+              <input
+                autoFocus
+                type="search"
+                value={onProgramme ? search : venueSearch}
+                onChange={(e) => (onProgramme ? setSearch : setVenueSearch)(e.target.value)}
+                onBlur={() => { if (!(onProgramme ? search : venueSearch)) setSearchOpen(false) }}
+                onKeyDown={(e) => { if (e.key === 'Escape') e.currentTarget.blur() }}
+                placeholder="Search…"
+                aria-label={onProgramme
+                  ? 'Search the programme by title or venue'
+                  : 'Search your venues by name, area or address'}
+              />
+              {/* One button, two jobs depending on what's in the box: clears
+                  text while there's any (staying open, so you can see it's
+                  gone and keep typing), collapses the box once there isn't —
+                  the natural next tap rather than a second, separate control. */}
+              {(onProgramme ? search : venueSearch) ? (
+                <button
+                  type="button"
+                  className="search__clear"
+                  aria-label="Clear search"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => (onProgramme ? setSearch : setVenueSearch)('')}
+                >
+                  <ClearIcon size={14} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="search__clear"
+                  aria-label="Close search"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setSearchOpen(false)}
+                >
+                  <ClearIcon size={14} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <IconButton
+              size="sm"
+              selected={Boolean(onProgramme ? search : venueSearch)}
+              aria-label="Search"
+              title="Search"
+              onClick={() => setSearchOpen(true)}
+            >
+              <SearchIcon size={18} />
+            </IconButton>
+          )}
 
           <div className="topbar__actions">
             {/* Accent-filled via IconButton's own `selected` — the same
@@ -555,11 +606,28 @@ export default function App() {
         </button>
       </nav>
 
-      {/* The first, most prominent filter tier — moved up here from deep
-          inside Programme.jsx so it sits right beside the navigation it
-          narrows, rather than below a "stale" banner and a Trouble list that
-          may not even be there. Programme-tab only: the Venues tab has its
-          own search, not a category split. */}
+      {/* Day navigation FIRST, fixed here right under the tabs — nothing below
+          it (category, venue, any filter) can ever move it, whatever gets
+          picked. It used to sit below the filter tiers, where a venue row
+          appearing or disappearing as you tried different categories visibly
+          shifted the one piece of chrome you use to orient by DAY, not by
+          filter. */}
+      {tab === 'programme' && scan && <WeekStrip density={weekDensity} />}
+
+      {/* Category, venue, hall — all three now stacked directly together with
+          nothing between them, one connected drill-down rather than hall
+          rendering two sections further down inside Programme.jsx with its
+          own spacing rules (that mismatch, on a wide-enough screen to have
+          all three at once, is what made the gaps between tiers visibly
+          uneven — §9.50). All three are the horizontal-scroll ticker style
+          (§9.48/9.49): each a fixed one-line height whenever it renders, so
+          the only thing that can shift what's below the whole block is a
+          tier's own appearance — never the day strip above, and never a
+          height change within any one row. `.category-filters:has(+
+          .category-filters)` in marquee.css collapses the gap between
+          adjacent tiers uniformly, however many happen to be showing.
+          Programme-tab only: the Venues tab has its own search, not this
+          split. */}
       {tab === 'programme' && categories.length > 1 && (
         <FilterRow
           className="category-filters"
@@ -569,6 +637,24 @@ export default function App() {
           label={(c) => CATEGORY_LABEL[c] ?? c}
           icon={(c) => CATEGORY_ICON[c]}
           allIcon={StarIcon}
+        />
+      )}
+      {venueTierVisible && (
+        <FilterRow
+          className="category-filters category-filters--venue"
+          value={venueFilter}
+          onChange={handleVenueFilter}
+          options={venueOptions}
+          keyOf={(v) => v.name}
+          label={(v) => v.name}
+        />
+      )}
+      {tab === 'programme' && hallOptions.length > 0 && (
+        <FilterRow
+          className="category-filters category-filters--venue"
+          value={activeHallFilter}
+          onChange={setHallFilter}
+          options={hallOptions}
         />
       )}
 
@@ -585,7 +671,6 @@ export default function App() {
 
         {tab === 'programme' ? (
           <>
-            {scan && <WeekStrip density={weekDensity} />}
             <Changes
               scan={scan ? { ...scan, changes: visibleChanges } : scan}
               dismissed={changesDismissed}
@@ -599,16 +684,8 @@ export default function App() {
               days={days}
               triage={triage}
               changedKeys={changedKeys}
-              venues={active}
               search={search}
-              categories={categories}
-              categoryFilter={categoryFilter}
-              venuesInCategory={venuesInCategory}
               venueFilter={venueFilter}
-              onVenueFilter={handleVenueFilter}
-              hallOptions={hallOptions}
-              hallFilter={activeHallFilter}
-              onHallFilter={setHallFilter}
               viewMode={prefs.viewMode}
               swipeEnabled={prefs.swipeEnabled}
               onKeep={(showing, production) => setKeeping({ showing, production })}

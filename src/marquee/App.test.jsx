@@ -99,6 +99,10 @@ describe('Marquee, end to end in demo mode', () => {
     const user = userEvent.setup();
     render(<App />);
 
+    // Search starts collapsed to an icon (§9.50) — open it once, and it stays
+    // open across the tab switch below (the box itself already adapts its
+    // value/placeholder per tab).
+    await user.click(screen.getByRole('button', { name: 'Search' }));
     const programmeBox = screen.getByLabelText(/Search the programme/);
     await user.type(programmeBox, 'Tomcat');
 
@@ -121,9 +125,29 @@ describe('Marquee, end to end in demo mode', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(await screen.findByRole('button', { name: /^Venues/ }));
+    await user.click(screen.getByRole('button', { name: 'Search' }));
     await user.type(await screen.findByLabelText(/Search your venues/), 'zzzz');
     expect(await screen.findByText(/Nothing matches/)).toBeTruthy();
     expect(screen.queryByText(/No venues yet/)).toBeNull();
+  });
+
+  it('the category and venue tiers render together, and picking a category reveals only its venues', async () => {
+    // §9.50: both tiers moved up out of Programme.jsx into App.jsx, stuck
+    // directly together right under the week strip. The demo roster spans
+    // three categories (play/movie/concert), so category chips render before
+    // any venue chip does — and a venue chip appears only once a category
+    // narrows things down, the same two-tier behaviour Programme.test.jsx
+    // used to check on its own, now proven against the real stacked block.
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: 'Theatre' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cinema' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Teatrul Excelsior' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Theatre' }));
+    expect(await screen.findByRole('button', { name: 'Teatrul Excelsior' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Cinema Union' })).toBeNull();
   });
 
   it('the layout toggle appears only where it does something', async () => {

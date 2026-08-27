@@ -1723,6 +1723,67 @@ exactly where it was, on the Programme tab below the category row — the
 mockup was a reference for the top bar's look, not a spec to cut features
 against.
 
+### 9.49 Category pills go nowrap-and-scroll instead of wrapping (2026-08-27)
+
+Two follow-ups to §9.48, both from a phone screenshot: the four category
+pills wrapped to a second line on a real phone width (the desktop sizing
+didn't shrink for it), and — separately — "if I add more categories later, I
+want this row to scroll like a ticker, not wrap." `.category-filters` switched
+from `flex-wrap: wrap` to `nowrap` + `overflow-x: auto` (no visible
+scrollbar; `.filter` gained `flex-shrink: 0` so a pill scrolls out of view
+whole rather than getting squeezed thin), plus a phone-width size tightening
+so today's four pills still fit one row everywhere without needing to
+scroll at all. Both mechanisms now do the same job at different sizes: fit
+now, ticker later.
+
+### 9.50 The whole top-of-screen area, reworked (2026-08-27)
+
+§9.48/9.49 patched the top bar piece by piece; this pass is the "step back
+and look at the whole thing" the user asked for, from three separate pieces
+of feedback on the same area in one sitting.
+
+**Search collapses to an icon.** A permanently-open, mostly-empty search pill
+was real width spent on nothing most of the time. It now renders as an icon
+button matching Check venues / view toggle / Settings — `selected` (the same
+prop Check venues already used for its accent fill) whenever there's a live
+query, so collapsing the box never hides the fact that a filter is applied.
+Tapping it opens the same input as before, auto-focused; the trailing button
+does double duty — clears the text while there's any, closes the box once
+there isn't, so it's always the obvious next tap rather than two separate
+controls. Blur only auto-closes an EMPTY box — a box with a live query stays
+open regardless of where focus goes next, because collapsing it out from
+under an active filter (a tap on a category chip, a tab switch) would read
+as "did my search just get cleared?" even though the underlying query
+survives either way. Escape closes it immediately without waiting for blur.
+`.topbar__bar` went back to its pre-§9.48 content-sized shape (`justify-content:
+space-between` on `.topbar`, no forced flex-basis) now that its resting
+content is four small icons again, not a wide box — the earlier `flex: 1 1
+20rem` was sized for the box that no longer exists by default.
+
+**The week strip is now the fixed anchor.** It used to render between
+"Changes" and the day list, BELOW the category/venue filter tiers — meaning
+picking a different category (venue row appearing, disappearing, changing
+size) visibly shifted the one piece of chrome meant for orienting by DAY, not
+by filter. It now renders first, directly under the tabs, before any filter
+tier — nothing below it can ever move it, whatever gets picked.
+
+**Category, venue, and hall now stack as one connected control**, directly
+under the week strip, instead of category alone sitting up top (§9.48) while
+venue rendered two sections further down inside `Programme.jsx`, under a
+"stale" banner and a Trouble list that might not even be there — and hall
+rendered lower still, with its OWN spacing rules. On a wide-enough screen to
+show all three at once, that mismatch was visibly uneven gaps between tiers.
+All three tiers moved up into `App.jsx` (the venue and hall `FilterRow` calls
+Programme used to own), all three get the venue tier's smaller/outline
+styling and the same nowrap-scroll ticker treatment as category (§9.49), and
+a single generic rule — `.category-filters:has(+ .category-filters)` — tights
+the gap between whichever tiers happen to be adjacent, however many are
+actually showing. `Programme.jsx` no longer renders or receives any filter
+tier at all; it's the stale banner, the Trouble list, and the day list now,
+nothing else. `Programme.test.jsx`'s tier-rendering tests moved to
+`App.test.jsx`, proven against the real stacked block rather than Programme
+in isolation.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

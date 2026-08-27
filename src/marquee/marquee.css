@@ -117,15 +117,18 @@ button { color: inherit; font: inherit; }
 }
 
 /* ── Top bar ───────────────────────────────────────────────────────────── */
-/* Title/subtitle stay on their own line at every width; the search+actions
-   bar (`.topbar__bar`) is the thing that wraps onto a second full-width row
-   once there's no room beside the title — a search box has real width to
-   ask for, unlike the three icon buttons alone that used to share this row,
-   so nowrap-and-shrink-the-title (this rule's old approach) stopped being
-   viable the moment search moved up here from its own row below. */
+/* Back to the original nowrap-friendly shape now that search collapses to an
+   icon by default (§9.50): heading left, `.topbar__bar` (search-or-its-icon
+   plus the action icons) right, `space-between` doing the separating — no
+   flex-grow needed on either side, so there's no oversized reserved width
+   sitting empty between them the way a permanently-open search pill left
+   behind. `flex-wrap` stays on as the one safety net: tapping search open
+   can genuinely need more room than a phone has beside the title, and that
+   should wrap cleanly rather than crush the title's own text. */
 .topbar {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 0.75rem 1rem;
   padding: 1.5rem 0 1rem;
   flex-wrap: wrap;
@@ -133,7 +136,6 @@ button { color: inherit; font: inherit; }
 
 .topbar__heading {
   min-width: 0;
-  flex: 1 1 auto;
 }
 
 .topbar__title {
@@ -150,17 +152,14 @@ button { color: inherit; font: inherit; }
   font-size: 0.85rem;
 }
 
-/* Search and the icon-button cluster, together — this is what wraps as a
-   unit onto its own row on a phone (see `.topbar` above). Desktop-width: sits
-   beside the heading, search taking up whatever's left of the row up to its
-   own max-width, actions never shrinking. */
+/* Search-icon-or-box plus the action icons, together — the unit that wraps
+   onto its own row on a phone if opening search needs more width than fits
+   beside the title (see `.topbar` above). */
 .topbar__bar {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex: 1 1 20rem;
-  min-width: 0;
-  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .topbar__actions {
@@ -389,9 +388,10 @@ button { color: inherit; font: inherit; }
    piece of chrome here has weight, and it had none. Same border radius and
    surface language, connected rather than a leftover default input.
 
-   Grows to fill whatever `.topbar__bar` has left beside the icon-button
-   cluster (flex: 1 1 auto, up to a real max-width now that it lives in the
-   topbar's own row rather than squeezed beside the tabs). */
+   Only rendered while search is open (§9.50) — a fixed width rather than
+   flex-grow, since it no longer needs to fill leftover space in a row that
+   otherwise sizes to its own content; shrinks below that on a phone rather
+   than force the row wider than the screen. */
 .search {
   display: flex;
   align-items: center;
@@ -402,9 +402,9 @@ button { color: inherit; font: inherit; }
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
   color: var(--color-muted);
-  flex: 1 1 auto;
+  width: 15rem;
+  max-width: 100%;
   min-width: 0;
-  max-width: 18rem;
   transition:
     border-color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
     box-shadow var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
@@ -672,6 +672,31 @@ button { color: inherit; font: inherit; }
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: var(--color-on-accent);
+}
+
+/* Venue and hall — both this same "narrower tier" style, directly under
+   whichever tier they narrow — one connected drill-down, not sections apart.
+   Generic (not venue-specific) adjacency rule: whichever tier is immediately
+   FOLLOWED by another one loses its own trailing margin down to a tight
+   stack gap, so category→venue, venue→hall, and category→venue→hall all
+   close up uniformly — only the LAST tier in whatever chain is actually
+   showing keeps the normal 1rem before what's below it (§9.50; this used to
+   be venue-specific and left hall, when it showed alongside both others on
+   a wide-enough screen, sitting a visibly bigger gap below venue than venue
+   sat below category). Smaller and outline-only even when picked, same "the
+   narrower tier stays quieter" rule §9.48 already set for venue/hall next to
+   category. */
+.category-filters:has(+ .category-filters) { margin-bottom: 0.4rem; }
+
+.category-filters--venue .filter {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+.category-filters--venue .filter--on {
+  background: none;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 /* ── Programme ─────────────────────────────────────────────────────────── */
@@ -985,12 +1010,12 @@ button { color: inherit; font: inherit; }
   .topbar { padding: 1.1rem 0 0.75rem; gap: 0.5rem 0.6rem; }
   .topbar__title { font-size: 1.6rem; }
 
-  /* `.topbar__bar`'s own flex-basis (20rem) is wider than a phone screen, so
-     it wraps below the heading onto a row of its own — the search box then
-     has that whole row to itself beside the icons, rather than the cramped
-     ~6.5rem pill this used to squeeze into next to `.tabs`. */
+  /* Search collapsed to an icon (§9.50) means `.topbar__bar` is small enough
+     to sit beside the title on a phone in its resting state; it only wraps
+     onto its own row on the rare occasion search is open AND that plus four
+     icons genuinely doesn't fit, `.search`'s own 15rem width shrinking to
+     whatever's left via `max-width: 100%`. */
   .tabs { gap: 0.85rem; }
-  .search { max-width: none; }
 
   /* .venue stacks (name+meta above, actions below) — it has no poster and
      nothing to keep beside. .prod deliberately does NOT: the whole point of a
