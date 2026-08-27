@@ -10,7 +10,7 @@ import { formatDay, formatRun, formatPrice } from './format.js'
  *  The card is the production and not the showing because that is the unit you
  *  decide about — "do I want to see this" comes long before "which night". A film
  *  listed six times is one card with six dates, not six cards. */
-function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, onIgnore }) {
+function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, onIgnore, swipeEnabled = true }) {
   const ignored = triage[production.id] === TRIAGE.IGNORED
   const soldOut = production.allSoldOut
   const price = formatPrice(production.price)
@@ -29,13 +29,17 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
 
   // Promoted out of Loom's ThreadRow (swipe right to weave, left to unravel)
   // via `src/shared/useSwipeAction` — same axis-lock and elastic-past-threshold
-  // feel, one direction here: a card's own Ignore button already does the
-  // toggle, this is a second way in to the same action. `data-noswipe` marks
+  // feel, both directions here mirroring the card's own two buttons: swipe
+  // right opens Keep (the first showing, same as tapping the Keep button —
+  // which date is genuinely ambiguous mid-swipe for a multi-date run, and the
+  // sheet itself lets you change it), swipe left Ignores. `data-noswipe` marks
   // the same "taps, not drags" exemption Loom's `[data-loom-controls]` does —
-  // a swipe starting on the title link or a date button must not fire Ignore
-  // on the way to opening the sheet.
+  // a swipe starting on the title link or a date button must not fire either
+  // action on the way to its own tap target.
   const { dx, revealing, bind } = useSwipeAction({
+    disabled: !swipeEnabled,
     onSwipeLeft: () => onIgnore(production),
+    onSwipeRight: () => onKeep(production.showings[0], production),
   })
 
   return (
@@ -43,7 +47,11 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
       id={domIdFor(production.id)}
       className={`prod ${production.saved ? 'prod--saved' : ''} ${ignored ? 'prod--ignored' : ''} ${changeKind ? `prod--changed-${changeKind}` : ''}`}
     >
-      <div className={`prod__behind ${revealing === 'left' ? 'prod__behind--on' : ''}`} aria-hidden="true">
+      <div
+        className={`prod__behind ${revealing ? `prod__behind--${revealing}` : ''}`}
+        aria-hidden="true"
+      >
+        <span className="prod__behindKeep">✓ Keep</span>
         <span className="prod__behindIgnore">{ignored ? 'Un-ignore' : 'Ignore'} ✕</span>
       </div>
 
@@ -184,7 +192,7 @@ export default function Programme({
   categories = [], categoryFilter = null, onCategoryFilter,
   venuesInCategory = [], venueFilter = null, onVenueFilter,
   hallOptions = [], hallFilter = null, onHallFilter,
-  viewMode = 'list', onViewMode,
+  viewMode = 'list', swipeEnabled = true,
 }) {
   if (!scan) {
     return (
@@ -250,34 +258,6 @@ export default function Programme({
         <FilterRow value={hallFilter} onChange={onHallFilter} options={hallOptions} />
       )}
 
-      {days.length > 0 && onViewMode && (
-        // Same data, two ways to look at it — a theatre lobby's actual look
-        // (marquee.css's own "deep plum ground... a theatre lobby at dusk")
-        // spent on more than a 56×80 thumbnail, for the days a face is what
-        // you'd recognise a show by faster than its title. Not shown at all
-        // once the programme is empty or unread — nothing to switch between.
-        <div className="view-toggle" role="radiogroup" aria-label="Programme layout">
-          <button
-            type="button"
-            className={`view-toggle__option ${viewMode === 'list' ? 'view-toggle__option--on' : ''}`}
-            aria-checked={viewMode === 'list'}
-            role="radio"
-            onClick={() => onViewMode('list')}
-          >
-            List
-          </button>
-          <button
-            type="button"
-            className={`view-toggle__option ${viewMode === 'posters' ? 'view-toggle__option--on' : ''}`}
-            aria-checked={viewMode === 'posters'}
-            role="radio"
-            onClick={() => onViewMode('posters')}
-          >
-            Posters
-          </button>
-        </div>
-      )}
-
       {days.length === 0 ? (
         <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>
       ) : viewMode === 'posters' ? (
@@ -294,6 +274,7 @@ export default function Programme({
                 changedKeys={changedKeys}
                 onKeep={onKeep}
                 onIgnore={onIgnore}
+                swipeEnabled={swipeEnabled}
               />
             ))}
           </section>

@@ -89,4 +89,20 @@ describe('Marquee, end to end in demo mode', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('the topbar carries exactly three icon actions, and the middle one switches layout', async () => {
+    render(<App />);
+    // Accessible names, not literal button text — all three are icon-only now.
+    expect(screen.getByRole('button', { name: 'Check venues' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Switch to poster view' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
+
+    const toggle = screen.getByRole('button', { name: 'Switch to poster view' });
+    fireEvent.click(toggle);
+    expect(await screen.findByRole('button', { name: 'Switch to list view' })).toBeTruthy();
+
+    // Persisted, not just component state — the same prefs round trip every
+    // other Settings toggle already uses.
+    expect(JSON.parse(localStorage.getItem('marquee_prefs')).viewMode).toBe('posters');
+  });
 });

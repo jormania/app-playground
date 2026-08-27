@@ -45,12 +45,25 @@ export function notifyKinds(prefs) {
   return prefs?.notifyAllKinds ? ['tickets-opened', 'new-event', 'sold-out'] : ['tickets-opened']
 }
 
+/** 11pm–8am local, on the DEVICE's own clock — the same "Local Bucharest
+ *  time" assumption every date in this app already makes, not a fixed offset.
+ *  Not configurable: the point of a quiet-hours toggle is a fast decision
+ *  ("don't wake me overnight"), not another pair of time pickers. */
+export function isQuietHours(now = new Date()) {
+  const hour = now.getHours()
+  return hour >= 23 || hour < 8
+}
+
 /** Mirror what the worker needs whenever the venue list or the notify prefs
  *  change — the same "whenever the relevant data changes" effect every app
  *  wired into this layer writes (NOTIFICATIONS.md's checklist item 2). */
 export async function writeNotifyState(venues, prefs) {
   await kv.set(VENUES_KEY, scanPayload(venues))
-  await kv.set(PREFS_KEY, { enabled: Boolean(prefs?.notifyEnabled), kinds: notifyKinds(prefs) })
+  await kv.set(PREFS_KEY, {
+    enabled: Boolean(prefs?.notifyEnabled),
+    kinds: notifyKinds(prefs),
+    quietHours: Boolean(prefs?.notifyQuietHours),
+  })
 }
 
 export { capabilities, notificationPermission }

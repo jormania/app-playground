@@ -116,6 +116,15 @@ function toSnapshotMap(events) {
   return map;
 }
 
+// Mirrors notify.js's own copy — see notify.sw.test.js for what pins the two
+// together. 11pm-8am on the DEVICE's own clock, not configurable: the point
+// of a quiet-hours toggle is a fast decision, not a second pair of time
+// pickers.
+function isQuietHours(now) {
+  var hour = now.getHours();
+  return hour >= 23 || hour < 8;
+}
+
 function showChangeNotification(changes) {
   return self.registration.showNotification(notifyTitle(changes), {
     body: notifyBody(changes),
@@ -155,6 +164,14 @@ function runNotifyCheck() {
       if (!snapshot) return set(SNAPSHOT_KEY, after);
 
       var changes = notifiableChanges(snapshot, data.events, prefs.kinds || ['tickets-opened']);
+
+      // Quiet hours hold the snapshot rather than advancing it — a ticket
+      // that opens at 2am is still "new" to the FIRST check after quiet
+      // hours end, which turns a night's worth of changes into one morning
+      // digest instead of either pinging overnight or losing them silently
+      // once the old snapshot got overwritten with nothing shown for it.
+      if (prefs.quietHours && isQuietHours(new Date())) return;
+
       var written = set(SNAPSHOT_KEY, after);
       return changes.length > 0 ? written.then(function () { return showChangeNotification(changes); }) : written;
     });

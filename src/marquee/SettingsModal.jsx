@@ -179,6 +179,18 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
             checked={prefs.hideKept}
             onChange={(e) => set({ hideKept: e.target.checked })}
           />
+          <SettingsToggle
+            label="Swipe to Keep or Ignore"
+            hint="On by default — right to Keep, left to Ignore. Turn off to use the buttons only"
+            checked={prefs.swipeEnabled}
+            onChange={(e) => set({ swipeEnabled: e.target.checked })}
+          />
+          <SettingsToggle
+            label="Compact list"
+            hint="Smaller cover, tighter rows — more of the programme on screen at once"
+            checked={prefs.compactList}
+            onChange={(e) => set({ compactList: e.target.checked })}
+          />
         </section>
 
         <section>
@@ -190,12 +202,20 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
             onChange={toggleNotify}
           />
           {prefs.notifyEnabled && (
-            <SettingsToggle
-              label="Also notify about new listings and sold-out"
-              hint="Off by default — tickets opening is the one you’d want to know about right away"
-              checked={prefs.notifyAllKinds}
-              onChange={(e) => set({ notifyAllKinds: e.target.checked })}
-            />
+            <>
+              <SettingsToggle
+                label="Also notify about new listings and sold-out"
+                hint="Off by default — tickets opening is the one you’d want to know about right away"
+                checked={prefs.notifyAllKinds}
+                onChange={(e) => set({ notifyAllKinds: e.target.checked })}
+              />
+              <SettingsToggle
+                label="Quiet hours (11pm–8am)"
+                hint="Holds anything that happens overnight — you’ll get it as one check the next morning, not a 2am ping"
+                checked={prefs.notifyQuietHours}
+                onChange={(e) => set({ notifyQuietHours: e.target.checked })}
+              />
+            </>
           )}
           {notifyBlocked && (
             <p className="warn warn--stop" role="alert">

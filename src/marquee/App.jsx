@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, ConfirmModal, IconButton, ToastStack, useToastStack } from '../ds'
-import { Settings as SettingsIcon, Search as SearchIcon, X as ClearIcon } from 'lucide-react'
+import {
+  Settings as SettingsIcon, Search as SearchIcon, X as ClearIcon,
+  RefreshCw as RefreshIcon, LayoutGrid as PostersIcon, List as ListIcon,
+} from 'lucide-react'
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
@@ -412,9 +415,36 @@ export default function App() {
           </p>
         </div>
         <div className="topbar__actions">
-          <Button size="sm" onClick={handleScan} disabled={scanning || loading || active.length === 0}>
-            {scanning ? 'Checking…' : 'Check venues'}
-          </Button>
+          {/* Accent-filled via IconButton's own `selected` — the same
+              background/foreground tokens `Check venues` used as a text
+              Button, carried over rather than reinvented, so the primary
+              action still reads as the one with weight even icon-only. */}
+          <IconButton
+            size="sm"
+            selected
+            aria-label={scanning ? 'Checking venues…' : 'Check venues'}
+            title={scanning ? 'Checking venues…' : 'Check venues'}
+            onClick={handleScan}
+            disabled={scanning || loading || active.length === 0}
+          >
+            <RefreshIcon size={18} className={scanning ? 'topbar__scan-icon--spinning' : ''} />
+          </IconButton>
+          {/* A deliberately different, still theme-native colour (--color-success,
+              already this palette's "positive" token) from Check venues' accent
+              fill — distinct at a glance in the same row, never a third raw
+              colour invented for this alone. Icon reflects the layout you'd
+              SWITCH TO, matching the toggle Programme.jsx used to render inline
+              before it moved up here to free the vertical space it took. */}
+          <IconButton
+            size="sm"
+            aria-label={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+            title={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+            onClick={() => setPrefs((p) => ({ ...p, viewMode: p.viewMode === 'posters' ? 'list' : 'posters' }))}
+          >
+            {prefs.viewMode === 'posters'
+              ? <ListIcon size={18} className="topbar__view-icon" />
+              : <PostersIcon size={18} className="topbar__view-icon" />}
+          </IconButton>
           <IconButton size="sm" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
             <SettingsIcon size={18} />
           </IconButton>
@@ -445,7 +475,7 @@ export default function App() {
             onClick={() => setTab('venues')}
             aria-current={tab === 'venues'}
           >
-            Venues{venues.length ? ` (${venues.length})` : ''}
+            Venues
           </button>
         </nav>
 
@@ -470,7 +500,7 @@ export default function App() {
         )}
       </div>
 
-      <main className="main">
+      <main className={`main ${prefs.compactList ? 'main--compact' : ''}`}>
         {client.mode === 'demo' && (
           <p className="banner">
             Demo mode: real Bucharest venues, held in memory. Checking them really does read
@@ -509,7 +539,7 @@ export default function App() {
               hallFilter={activeHallFilter}
               onHallFilter={setHallFilter}
               viewMode={prefs.viewMode}
-              onViewMode={(viewMode) => setPrefs((p) => ({ ...p, viewMode }))}
+              swipeEnabled={prefs.swipeEnabled}
               onKeep={(showing, production) => setKeeping({ showing, production })}
               onIgnore={(production) =>
                 setTriage(production.id, triage[production.id] === TRIAGE.IGNORED ? null : TRIAGE.IGNORED)}

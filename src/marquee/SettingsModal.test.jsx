@@ -129,4 +129,40 @@ describe('SettingsModal — Notify', () => {
     for (let i = 0; i < 7; i++) fireEvent.click(hint);
     await waitFor(() => expect(screen.getByText(/permission:/)).toBeTruthy());
   });
+
+  it('Quiet hours only appears once notifications are already on', () => {
+    const { rerender } = render(
+      <SettingsModal
+        open
+        prefs={{ ...prefs, notifyEnabled: true }}
+        onPrefs={vi.fn()}
+        venues={[]}
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText(/Quiet hours/)).toBeTruthy();
+    rerender(<SettingsModal open prefs={prefs} onPrefs={vi.fn()} venues={[]} onClose={vi.fn()} onChanged={vi.fn()} />);
+    expect(screen.queryByLabelText(/Quiet hours/)).toBeNull();
+  });
+});
+
+describe('SettingsModal — Programme toggles added for gestures and density', () => {
+  it('Swipe to Keep or Ignore and Compact list both flip their own pref', () => {
+    const onPrefs = vi.fn();
+    render(
+      <SettingsModal
+        open
+        prefs={{ ...prefs, swipeEnabled: true, compactList: false }}
+        onPrefs={onPrefs}
+        venues={[]}
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Swipe to Keep or Ignore'));
+    expect(onPrefs).toHaveBeenCalledWith(expect.objectContaining({ swipeEnabled: false }));
+    fireEvent.click(screen.getByLabelText('Compact list'));
+    expect(onPrefs).toHaveBeenCalledWith(expect.objectContaining({ compactList: true }));
+  });
 });

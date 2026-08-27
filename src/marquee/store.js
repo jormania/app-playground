@@ -47,7 +47,10 @@ export const DEFAULT_PREFS = {
   hideKept: false,
   notifyEnabled: false,
   notifyAllKinds: false,
+  notifyQuietHours: false,
   viewMode: 'list',
+  swipeEnabled: true,
+  compactList: false,
 }
 
 export function loadPrefs() {

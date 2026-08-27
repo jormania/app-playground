@@ -1130,6 +1130,82 @@ again refused localhost in this session (same limitation §9.30 hit); render
 and interaction checks were driven through the render/integration tests
 listed above rather than by hand.
 
+### 9.33 A real screenshot, and a round of feedback against it (2026-08-27)
+
+The first live look at §9.31's work, from an actual phone/desktop screenshot
+rather than the render tests alone — worth recording since the two caught
+different things.
+
+**Three icon actions, not a text button plus two.** `Check venues` moved off
+`Button` onto `IconButton`'s own `selected` state, which already carries the
+identical `--color-accent`/`--color-on-accent` pair the text button used, so
+the primary action keeps its visual weight icon-only (spins via a CSS
+animation while a scan runs, replacing the "Checking…" text cue it lost). The
+List/Posters switch — previously its own row inside `Programme.jsx`, freed by
+this move — is now the middle icon, tinted `--color-success` (already this
+palette's "positive" token) specifically so three icons in a row read as
+three different things rather than one cluster: accent for the primary
+action, success for the toggle, plain ink for Settings. `Programme.jsx` no
+longer renders the switch itself, only reads `viewMode` to decide the layout.
+
+**Swipe right now opens Keep, mirroring swipe left's Ignore** — asked
+after the one-directional version shipped, and cheap: `useSwipeAction` already
+took `onSwipeRight`. Keeps the first showing, same as tapping the Keep button
+(which date is genuinely ambiguous mid-swipe for a multi-date run, and the
+sheet itself lets you change it). `.prod__behind` now reveals whichever hint
+matches the drag direction — Keep's accent-tinted, in the gap a rightward
+drag opens on the left; Ignore's danger-tinted, unchanged, on the right.
+
+**Poster grid: 4 across on desktop, not 5.** The original `minmax(7.5rem,
+1fr)` filled the app's own capped content width (`.app`'s `max-width: 46rem`)
+with 5 columns, too small to read anything on. Tuned to `10rem` — computed
+against that same 46rem, not guessed — which lands on exactly 4. The phone
+breakpoint gets an explicit `repeat(2, 1fr)` rather than trusting auto-fill's
+own threshold not to flip between 1 and 2 around an untested viewport width.
+
+**Search, restyled to stop reading as a stray default input.** Every other
+pill on this page — filter chips, week-strip cells — sits on `--color-surface`
+with `shadow-card`, the same weight a `.prod`/`.venue` card has; Search was
+the one piece of chrome still transparent-on-canvas. Filled to match, plus a
+warm accent glow on focus in this palette's own accent rather than a generic
+blue ring.
+
+**The Venues tab count is gone.** `Venues (10)` is exactly the dynamic label
+§9.18/§9.28 fought two separate wrap bugs over — a static `Venues` doesn't
+just avoid a third round, it makes the whole class of bug structurally
+impossible, since there's no longer a width change on load for `.tabs-row`'s
+`flex-shrink: 0` to have to defend against.
+
+**Three more Settings toggles**, each answered from "what else fits this
+app's actual scope" rather than proposed unprompted:
+
+- **Swipe to Keep or Ignore** (Programme section, on by default) — the
+  gesture is convenient, not mandatory; turning it off falls back to the
+  Keep/Ignore buttons only, which still work regardless (`useSwipeAction`
+  already took a `disabled` flag, so this was one prop threaded through
+  `App.jsx` → `Programme.jsx` → `ProductionCard`).
+- **Compact list** (Programme section) — smaller poster, tighter padding, one
+  size step down on the title. Scoped to `.main--compact .prod*` only — the
+  poster grid keeps the sizing §9.33 just tuned above, untouched.
+- **Quiet hours (11pm–8am)** (Notify section, only shown once notifications
+  are already on) — `notify.js` gains `isQuietHours` (device-local clock, not
+  configurable start/end: the point of the toggle is a fast decision, not a
+  second pair of time pickers), duplicated into `public/marquee-sw.js` per
+  the established pattern and pinned by `notify.sw.test.js`. The real design
+  choice: during quiet hours the worker still scans and diffs, but **holds
+  the snapshot rather than advancing it** — a ticket that opens at 2am is
+  still "new" to the FIRST check after quiet hours end, turning a night's
+  worth of changes into one morning digest instead of either pinging
+  overnight or silently losing them once the old snapshot got overwritten
+  with nothing shown for it.
+
+### 9.34 Verified
+
+`npm test` (3874 tests across 306 files), `npm run typecheck`, `npx eslint`,
+and `npm run build` all pass. Live verification was, again, through the
+render/integration suite rather than the browser preview pane, which refused
+localhost in this session too.
+
 
 ## Open
 

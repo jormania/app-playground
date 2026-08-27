@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { kindFor, notifiableChanges, notifyTitle, notifyBody } from './notify.js'
+import { kindFor, notifiableChanges, notifyTitle, notifyBody, isQuietHours } from './notify.js'
 
 /**
  * The service worker is a classic script and cannot import the ES module the
@@ -43,6 +43,7 @@ const { kindFor: swKindFor } = build('kindFor')
 const { notifiableChanges: swNotifiableChanges } = build('kindFor', 'notifiableChanges')
 const { notifyTitle: swNotifyTitle } = build('notifyTitle')
 const { notifyBody: swNotifyBody } = build('notifyBody')
+const { isQuietHours: swIsQuietHours } = build('isQuietHours')
 
 describe('service worker mirrors notify.js', () => {
   it('has the notification half wired up at all', () => {
@@ -79,5 +80,13 @@ describe('service worker mirrors notify.js', () => {
     expect(swNotifyTitle(many)).toBe(notifyTitle(many))
     expect(swNotifyBody(one)).toBe(notifyBody(one))
     expect(swNotifyBody(many)).toBe(notifyBody(many))
+  })
+
+  it('isQuietHours agrees at the window edges', () => {
+    const hours = [0, 7, 8, 12, 22, 23]
+    for (const h of hours) {
+      const now = new Date(2026, 8, 5, h, 0)
+      expect(swIsQuietHours(now)).toBe(isQuietHours(now))
+    }
   })
 })

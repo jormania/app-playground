@@ -127,7 +127,7 @@ describe('Programme — the poster slot renders for every card, cover or not', (
   })
 })
 
-describe('Programme — swipe left to ignore (promoted from Loom’s ThreadRow)', () => {
+describe('Programme — swipe to Keep/Ignore (promoted from Loom’s ThreadRow)', () => {
   function drag(el, path) {
     fireEvent.pointerDown(el, { pointerId: 1, clientX: path[0].x, clientY: path[0].y, pointerType: 'touch', button: 0 })
     for (const { x, y } of path.slice(1)) fireEvent.pointerMove(el, { pointerId: 1, clientX: x, clientY: y })
@@ -145,7 +145,23 @@ describe('Programme — swipe left to ignore (promoted from Loom’s ThreadRow)'
     expect(onIgnore).toHaveBeenCalledTimes(1)
   })
 
-  it('a swipe starting on a real control (the title link, a date button) does not fire Ignore', () => {
+  it('fires onKeep for the first showing once a swipe right crosses the threshold', () => {
+    const onKeep = vi.fn()
+    const days = byDate(toProductions([
+      event({ key: 'a', date: '2026-09-23' }),
+      event({ key: 'b', date: '2026-09-24' }),
+    ]))
+    const { container } = render(
+      <Programme {...baseProps} onKeep={onKeep} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
+    )
+    const body = container.querySelector('.prod__body')
+    drag(body, [{ x: 100, y: 0 }, { x: 200, y: 0 }])
+    fireEvent.pointerUp(body, { pointerId: 1, clientX: 200, clientY: 0 })
+    expect(onKeep).toHaveBeenCalledTimes(1)
+    expect(onKeep.mock.calls[0][0].date).toBe('2026-09-23')
+  })
+
+  it('a swipe starting on a real control (the title link, a date button) fires neither', () => {
     const onIgnore = vi.fn()
     const onKeep = vi.fn()
     const days = byDate(toProductions([
@@ -158,57 +174,73 @@ describe('Programme — swipe left to ignore (promoted from Loom’s ThreadRow)'
     const dateButton = screen.getAllByRole('button', { name: /Sep/ })[0]
     drag(dateButton, [{ x: 200, y: 0 }, { x: 100, y: 0 }])
     fireEvent.pointerUp(dateButton, { pointerId: 1, clientX: 100, clientY: 0 })
+    drag(dateButton, [{ x: 100, y: 0 }, { x: 200, y: 0 }])
+    fireEvent.pointerUp(dateButton, { pointerId: 1, clientX: 200, clientY: 0 })
     expect(onIgnore).not.toHaveBeenCalled()
+    expect(onKeep).not.toHaveBeenCalled()
   })
 
-  it('does not fire short of the swipe threshold', () => {
+  it('does not fire short of the swipe threshold, in either direction', () => {
     const onIgnore = vi.fn()
+    const onKeep = vi.fn()
     const days = byDate(toProductions([event()]))
     const { container } = render(
-      <Programme {...baseProps} onIgnore={onIgnore} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
+      <Programme {...baseProps} onIgnore={onIgnore} onKeep={onKeep} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
     )
     const body = container.querySelector('.prod__body')
     drag(body, [{ x: 200, y: 0 }, { x: 160, y: 0 }])
     fireEvent.pointerUp(body, { pointerId: 1, clientX: 160, clientY: 0 })
+    drag(body, [{ x: 160, y: 0 }, { x: 190, y: 0 }])
+    fireEvent.pointerUp(body, { pointerId: 1, clientX: 190, clientY: 0 })
     expect(onIgnore).not.toHaveBeenCalled()
+    expect(onKeep).not.toHaveBeenCalled()
+  })
+
+  it('does nothing in either direction when swipeEnabled is false, buttons still work', () => {
+    const onIgnore = vi.fn()
+    const onKeep = vi.fn()
+    const days = byDate(toProductions([event()]))
+    const { container } = render(
+      <Programme
+        {...baseProps}
+        onIgnore={onIgnore}
+        onKeep={onKeep}
+        days={days}
+        venues={[{ name: 'Teatrul Excelsior', category: 'play' }]}
+        swipeEnabled={false}
+      />,
+    )
+    const body = container.querySelector('.prod__body')
+    drag(body, [{ x: 200, y: 0 }, { x: 100, y: 0 }])
+    fireEvent.pointerUp(body, { pointerId: 1, clientX: 100, clientY: 0 })
+    expect(onIgnore).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ignore' }))
+    expect(onIgnore).toHaveBeenCalledTimes(1)
   })
 })
 
-describe('Programme — List/Posters layout toggle', () => {
-  it('is absent with no onViewMode handler (backward compatible) or an empty programme', () => {
+describe('Programme — the viewMode prop switches layouts', () => {
+  // The List/Posters SWITCH itself lives in App.jsx's topbar now (three icon
+  // buttons, freeing the vertical space this row used to take) — Programme
+  // only has to render whichever layout `viewMode` says, which is what these
+  // pin down.
+  it('defaults to the list', () => {
     const days = byDate(toProductions([event()]))
-    const { container, rerender } = render(
+    const { container } = render(
       <Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
-    )
-    expect(container.querySelector('.view-toggle')).toBeNull()
-
-    rerender(<Programme {...baseProps} days={[]} venues={[]} onViewMode={() => {}} />)
-    expect(container.querySelector('.view-toggle')).toBeNull()
-  })
-
-  it('defaults to the list, switches to the poster grid, and calls back on click', () => {
-    const onViewMode = vi.fn()
-    const days = byDate(toProductions([event()]))
-    const { container, rerender } = render(
-      <Programme
-        {...baseProps}
-        days={days}
-        venues={[{ name: 'Teatrul Excelsior', category: 'play' }]}
-        onViewMode={onViewMode}
-      />,
     )
     expect(container.querySelector('.prod')).toBeTruthy()
     expect(container.querySelector('.poster-grid')).toBeNull()
+  })
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Posters' }))
-    expect(onViewMode).toHaveBeenCalledWith('posters')
-
-    rerender(
+  it('renders the poster grid instead when told to', () => {
+    const days = byDate(toProductions([event()]))
+    const { container } = render(
       <Programme
         {...baseProps}
         days={days}
         venues={[{ name: 'Teatrul Excelsior', category: 'play' }]}
-        onViewMode={onViewMode}
         viewMode="posters"
       />,
     )

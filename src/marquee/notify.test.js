@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { kindFor, notifiableChanges, notifyKinds, notifyTitle, notifyBody } from './notify.js'
+import { kindFor, notifiableChanges, notifyKinds, notifyTitle, notifyBody, isQuietHours } from './notify.js'
 
 describe('kindFor', () => {
   it('calls a key with no prior entry new-event', () => {
@@ -61,6 +61,20 @@ describe('notifyKinds', () => {
 
   it('adds new-event and sold-out, never cancelled, when notifyAllKinds is on', () => {
     expect(notifyKinds({ notifyAllKinds: true })).toEqual(['tickets-opened', 'new-event', 'sold-out'])
+  })
+})
+
+describe('isQuietHours', () => {
+  it('is true from 11pm up to (not including) 8am', () => {
+    expect(isQuietHours(new Date(2026, 8, 5, 22, 59))).toBe(false)
+    expect(isQuietHours(new Date(2026, 8, 5, 23, 0))).toBe(true)
+    expect(isQuietHours(new Date(2026, 8, 6, 2, 0))).toBe(true)
+    expect(isQuietHours(new Date(2026, 8, 6, 7, 59))).toBe(true)
+    expect(isQuietHours(new Date(2026, 8, 6, 8, 0))).toBe(false)
+  })
+
+  it('is false through the middle of the day', () => {
+    expect(isQuietHours(new Date(2026, 8, 5, 14, 30))).toBe(false)
   })
 })
 
