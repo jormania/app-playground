@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Field, Modal, SegmentedControl, SettingsToggle } from '../ds'
-import { getToken, setToken, clearToken, venuesDb, findingsDb, isLive, getClient } from './store.js'
+import { getToken, setToken, clearToken, venuesDb, findingsDb, isLive, clientFor } from './store.js'
+import { parseNotionId } from '../shared/notionId'
 import { VENUES_DATABASE_ID } from './notionClient.js'
 import { getAdapter } from './adapters.js'
 import { isActive } from './venues.js'
@@ -60,7 +61,19 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
 
   const set = (patch) => onPrefs({ ...prefs, ...patch })
 
+  /** An id that can't be parsed is REFUSED here rather than quietly dropped.
+   *  `idSetting.set` clears the stored value on an unparseable input, so the app
+   *  silently fell back to its built-in default — pasting the wrong thing looked
+   *  exactly like pasting the right thing, and the only symptom was Marquee
+   *  reading a database you hadn't chosen. */
   function saveConnection() {
+    const bad = []
+    if (db.trim() && !parseNotionId(db)) bad.push('Watched Venues')
+    if (findings.trim() && !parseNotionId(findings)) bad.push('Wanderlist Findings')
+    if (bad.length) {
+      setStatus(`${bad.join(' and ')} ${bad.length === 1 ? 'is not' : 'are not'} a Notion database URL or id — nothing was saved.`)
+      return
+    }
     setToken(token)
     if (db.trim()) venuesDb.set(db)
     if (findings.trim()) findingsDb.set(findings)
@@ -79,7 +92,8 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
     setStatus(null)
     setProbe(null)
     try {
-      setProbe(await getClient().probe())
+      // The credentials on screen, not the ones already stored — see clientFor.
+      setProbe(await clientFor(token, db, findings).probe())
     } catch (err) {
       setStatus(err?.message || 'Could not reach Notion.')
     } finally {

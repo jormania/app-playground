@@ -62,7 +62,19 @@ export async function runScan(venues, { fetchImpl = fetch, now = new Date() } = 
   }
   saveSnapshot({ scannedAt: current.scannedAt, events: carried })
 
-  const scan = { scannedAt: data.scannedAt, venues: data.venues ?? [], events: data.events ?? [], changes, hadSnapshot }
+  // Carried on the scan itself, not held in component state: "nothing new since
+  // Tuesday" is a claim about the gap between two checks, and a reload used to
+  // lose the earlier end of it and fall back to reporting the gap as ending at
+  // the check you are looking at ("nothing new since earlier today", after a
+  // check that ran a week ago).
+  const scan = {
+    scannedAt: data.scannedAt,
+    previousScanAt: previous?.scannedAt ?? null,
+    venues: data.venues ?? [],
+    events: data.events ?? [],
+    changes,
+    hadSnapshot,
+  }
   saveLastScan(scan)
   return scan
 }

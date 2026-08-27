@@ -680,6 +680,32 @@ describe('generic schema.org reader (Expirat)', () => {
     const broken = { body: '<script type="application/ld+json">{ not json </script>' + fixture('expirat.html') }
     expect(jsonld.parse([broken], { venue })).toHaveLength(3)
   })
+
+  describe('a blank price is not a free ticket', () => {
+    // `Number(null)` and `Number('')` are both 0, so an offer carrying either —
+    // a common placeholder for "no price published" — used to render a "Free"
+    // chip on the card and tag the Wanderlist row `free`.
+    const withOffer = (offer) => ({
+      body: `<script type="application/ld+json">${JSON.stringify({
+        '@type': 'Event', name: 'X', startDate: '2026-09-05T19:00', offers: offer,
+      })}</script>`,
+    })
+
+    it('reads null and empty-string prices as no price at all', () => {
+      expect(jsonld.parse([withOffer({ price: null, url: 'https://t' })], { venue })[0].price).toBeNull()
+      expect(jsonld.parse([withOffer({ price: '', url: 'https://t' })], { venue })[0].price).toBeNull()
+    })
+
+    it('still reads a real zero as free, and a numeric string as its number', () => {
+      expect(jsonld.parse([withOffer({ price: 0 })], { venue })[0].price).toBe(0)
+      expect(jsonld.parse([withOffer({ price: '45' })], { venue })[0].price).toBe(45)
+    })
+
+    it('does not call a blank-priced offer "on sale" on the strength of the price alone', () => {
+      expect(jsonld.parse([withOffer({ price: null })], { venue })[0].ticketState).toBe('none')
+      expect(jsonld.parse([withOffer({ price: null, url: 'https://t' })], { venue })[0].ticketState).toBe('open')
+    })
+  })
 })
 
 describe('the health gate', () => {
@@ -707,6 +733,29 @@ describe('the health gate', () => {
 
   it('catches a placeholder body served with a 200', () => {
     expect(assess(adapter, [{ body: 'nope' }], good).status).toBe(STATUS.PARSER_BROKEN)
+  })
+})
+
+describe('a request that never answers', () => {
+  const venue = { id: 'v1', name: 'Teatrul Excelsior', url: 'https://teatrul-excelsior.ro/program/', adapter: 'excelsior' }
+
+  it('is abandoned rather than held forever', async () => {
+    // Every fetch in a scan is sequential and a scan runs to ~80 of them (TNB's
+    // poster hop), so one site that accepts a connection and then goes quiet
+    // used to hold the whole function until the platform killed it — taking
+    // every venue after it in the loop, and, on the scheduled path, Wanderlist's
+    // evening email with it.
+    const hang = (url, init) => new Promise((_, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        const err = new Error('aborted')
+        err.name = 'AbortError'
+        reject(err)
+      })
+    })
+    const r = await scanVenue(venue, { now: AUG, fetchImpl: hang, timeoutMs: 10 })
+    expect(r.status).toBe(STATUS.UNREACHABLE)
+    expect(r.detail).toMatch(/no answer within/i)
+    expect(r.events).toEqual([])
   })
 })
 

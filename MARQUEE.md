@@ -25,7 +25,7 @@ different cost profile.
 
 | | Radar-B | Marquee |
 |---|---|---|
-| Sources | 8 editorial publications | the venue sites you chose (7 today, 4 readers) |
+| Sources | 8 editorial publications | the venue sites you chose (10 today, 9 readers) |
 | Ingest | the `/recommend in Bucharest` skill (Claude parses) | a serverless HTML parser (no AI at all) |
 | Wire format | Notion 📡 Radar | none — the scan result is transient |
 | Judgement | taste-filtered by the skill | none; the venue's programme is the truth |
@@ -462,6 +462,13 @@ venue now marks the results stale and says so, and every trouble line is dated.
 the client's `src/marquee/adapters.js`, and the `Adapter` select in Notion — which is a
 closed vocabulary, so an unregistered value 400s the entire patch and silently takes the
 other fields with it.
+
+> It was really a FOUR-place change until 2026-08-27, and the fourth was the one nobody
+> remembered: `src/marquee/notion.js` kept its own hand-typed copy of the same vocabulary,
+> and `tnb`/`mystage` never reached it — so editing either venue wrote `Adapter: null`
+> back to Notion and silently stopped it being read. That copy is now DERIVED from
+> `adapters.js` (`ADAPTER_VOCABULARY`) and cannot drift again; the three places above are
+> the whole list once more. See §9.29.
 
 ### 9.6 Decisions worth keeping
 
@@ -913,6 +920,99 @@ broken, but re-running the adapter against the CURRENT live page (not the fixtur
 one of its 8 listings resolving a real link correctly. Marquee's programme is always the last
 check, not a live view — a code fix doesn't retroactively repair an already-stored scan, and a
 fresh **Check venues** press is what actually picks it up.
+
+### 9.29 A full audit, and the drift it found (2026-08-27)
+
+A pass over every path through the app — UI, client logic, endpoint, adapters,
+integrations — rather than a fix for a reported symptom. Ten findings, each now
+a test.
+
+**The one that mattered.** `notion.js`'s `toVenueProps` carried the `Adapter`
+select's vocabulary as a hand-typed array, and §9.20's two new readers never
+reached it: `tnb` and `mystage` were not in the list. `selectOf` refuses an
+out-of-vocabulary value by design (§9.1's rule 1), so **editing either of those
+two venues wrote `Adapter: null` back to Notion** — the venue silently dropped
+out of `scannable`, stopped being read, and, because the `recommend-in-bucharest`
+skill's Step 1c exclusion keys on exactly the same "active AND has an adapter"
+filter, quietly re-entered the skill's own coverage as well. Correcting a
+venue's address was enough to do it. §9.5 called adding an adapter a
+"three-place change"; it was really four, and the fourth was the one nobody
+remembers. Fixed by **deriving** the vocabulary from `adapters.js`'s
+`ADAPTER_IDS` (plus `unsupported`, which is a row state rather than a reader),
+so the list cannot drift again, and pinned by a test that round-trips **every**
+registered adapter.
+
+> **Left to do by hand, in Notion:** the database's own `Adapter` select must
+> also offer `tnb` and `mystage` as options. The code can no longer refuse them;
+> Notion still will, and an unregistered select name 400s the *entire* patch.
+
+**The rest, in the order they'd bite:**
+
+- **`savedAll` was unreachable for a same-day double bill.** It compared the
+  count of kept DATES against the count of SHOWINGS, and Excelsior's Tomcat at
+  17:00 and 20:00 is two showings on one date. "Hide what's already in
+  Wanderlist" could never hide such a run, and its chip read "1 of 2 dates kept"
+  for a date that was entirely kept. Counted in distinct dates now (`dateCount`)
+  — the unit a keep actually works in, since a Findings row carries one Planned
+  Date.
+- **A JSON-LD offer priced `null` or `""` rendered as "Free"** — and tagged the
+  Wanderlist row `free` — because `Number(null)` and `Number('')` are both 0.
+  Both are common placeholders for "no price published". Only a real number, or
+  a string that is one, counts now; a genuine `0` still reads as free.
+- **Nothing bounded a single fetch.** Every request in a scan is sequential and
+  a scan runs to ~80 of them (TNB's poster hop), so one site that accepts a
+  connection and then goes quiet held the whole function until the platform
+  killed it — taking every venue after it in the loop, and, on the scheduled
+  path, **Wanderlist's evening email** with it. `REQUEST_TIMEOUT_MS` (15s) per
+  request; a timeout is a value like any other, so that venue reads
+  "unreachable" and the scan carries on.
+- **"What changed" offered a Dismiss control that did nothing.** Dismissal
+  records the *signatures* of the entries on screen (§9.21), so a strip with
+  none — the baseline, or "nothing new since Tuesday" — had nothing to record
+  and the × was inert. Offered only where it does something.
+- **"Nothing new since…" lost its earlier end on reload.** `previousScanAt`
+  lived in component state and never reached the saved scan, so after a reload
+  the strip reported the gap as ending at the very check being looked at
+  ("nothing new since earlier today", after a week's gap). Carried on the scan
+  itself now.
+- **A change row cleared the filters but not the search**, so clicking one while
+  a query was active scrolled to a card that wasn't rendered — and did nothing
+  at all. The search narrows the programme exactly as the filters do.
+- **A matinee read "Tonight".** `formatDay` takes an optional `time` and says
+  "Today" before 17:00; a whole-day heading, which has no single time behind it,
+  keeps "Tonight".
+- **Settings tested the credentials you had, not the ones you'd typed.** "Test
+  connection" went through `getClient()`, so pasting a token and pressing Test
+  reported on the OLD one — a fresh token read as broken and a revoked one as
+  fine, at exactly the moment someone is trying to find out which
+  (`clientFor`). And an unparseable database id was silently *dropped*
+  (`idSetting.set` clears on bad input), falling back to the built-in default:
+  pasting the wrong thing looked exactly like pasting the right thing. Refused
+  with a message now.
+- **Demo mode had drifted to two thirds of the app.** Still the original seven
+  venues and a banner saying "seven", three readers after TNB, Unteatru and
+  Cinema Europa shipped — so the demo exercised neither the embedded-json rung
+  nor either two-hop adapter. Back in step.
+
+**Redundancy removed:** `localParts` — the UTC-instant-to-Bucharest-wall-clock
+helper — was duplicated *verbatim* in `oveit.js` and `filarmonica.js`. Promoted
+to `shared.js`, where every other cross-adapter helper already lives. (The two
+deliberate duplications, `api/_lib/marquee/diff.js` and the split adapter
+registry, are unchanged — both are documented boundary decisions, not drift.)
+
+**Coverage the audit added, having found none:** `src/marquee/scanClient.js`
+(`runScan` — which venues count as answered, what carries forward when one
+doesn't, what the saved scan remembers) and `src/marquee/App.test.jsx`, a
+demo-mode smoke test over the whole app. The keep sheet crashed the app to a
+white screen once already (§9.3) and nothing would have caught it.
+
+### 9.30 Verified
+
+`npm test` (3808 tests across 298 files), `npm run typecheck`, `npx eslint` on
+every changed path, and `npm run build` all pass. The browser preview pane
+refused localhost in this session, so the render-level checks were driven
+through the new `App.test.jsx` instead of by hand.
+
 
 ## Open
 

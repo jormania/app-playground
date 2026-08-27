@@ -14,7 +14,7 @@ import {
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize, changeSignature, undismissedChanges } from './changes.js'
-import { runScan, loadLastScan, loadSnapshot } from './scanClient.js'
+import { runScan, loadLastScan } from './scanClient.js'
 import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges } from './store.js'
 import { formatDay } from './format.js'
 
@@ -250,14 +250,13 @@ export default function App() {
   const handleScan = async () => {
     setScanning(true)
     setError(null)
-    const previousScanAt = loadSnapshot()?.scannedAt ?? null
     try {
       const result = await runScan(venues)
       if (result.nothingToScan) {
         setError('Every venue is paused, so there was nothing to read.')
         return
       }
-      setScan({ ...result, previousScanAt })
+      setScan(result)
       setScanStale(false)
       setTab('programme')
       // Write each venue's outcome back to its Notion row, so Settings can show
@@ -329,6 +328,10 @@ export default function App() {
     setCategoryFilter(null)
     setVenueFilter(null)
     setHallFilter(null)
+    // The search narrows the programme exactly as the filters do, so a change
+    // row pointing at something the current query excludes would scroll to a
+    // card that isn't rendered — and quietly do nothing at all.
+    setSearch('')
     const id = domIdFor(productionId({ venue: change.venue, title: change.title }))
     setTimeout(() => {
       const el = document.getElementById(id)
@@ -417,7 +420,7 @@ export default function App() {
       <main className="main">
         {client.mode === 'demo' && (
           <p className="banner">
-            Demo mode: seven real Bucharest venues, held in memory. Checking them really does read
+            Demo mode: real Bucharest venues, held in memory. Checking them really does read
             their pages, but venue edits and anything you keep never reach Notion.
           </p>
         )}

@@ -248,6 +248,12 @@ describe('venueCategoryMap / categoriesInUse / hallsInUse', () => {
 describe('formatting', () => {
   it('names the near days rather than dating them', () => {
     expect(formatDay('2026-08-26', { now: NOW })).toBe('Tonight')
+    // A whole-day label with no one showing behind it keeps "Tonight"; a
+    // specific matinee does not. "Tonight 11:00" on a date button is the kind
+    // of small, confident inaccuracy that erodes trust in everything else.
+    expect(formatDay('2026-08-26', { now: NOW, time: '11:00' })).toBe('Today')
+    expect(formatDay('2026-08-26', { now: NOW, time: '20:00' })).toBe('Tonight')
+    expect(formatDay('2026-08-27', { now: NOW, time: '11:00' })).toBe('Tomorrow')
     expect(formatDay('2026-08-27', { now: NOW })).toBe('Tomorrow')
     expect(formatDay('2026-08-29', { now: NOW })).toBe('Saturday')
     expect(formatDay('2026-09-23', { now: NOW })).toMatch(/23 Sep/)

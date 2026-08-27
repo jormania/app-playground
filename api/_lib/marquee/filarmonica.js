@@ -17,7 +17,7 @@
 // scan is well inside the limit, but the endpoint must never read a 403 here as a
 // dead parser (MARQUEE.md §6) or a quiet rate limit would look like a site change.
 
-import { TICKET, makeEvent, parseTime } from './shared.js'
+import { TICKET, makeEvent, localParts } from './shared.js'
 
 const API = 'https://fgestrapi.filarmonicaenescu.ro/api/events'
 
@@ -43,19 +43,6 @@ function feedUrl(from, pageSize) {
     + '&sort%5B0%5D=startDateAndTime%3Aasc'
     + '&locale=ro'
     + `&pagination%5Bpage%5D=1&pagination%5BpageSize%5D=${pageSize}`
-}
-
-/** The stored datetime is UTC-stamped; the app cares about Bucharest wall time,
- *  which is what the venue printed on the ticket. */
-function localParts(value, timeZone = 'Europe/Bucharest') {
-  if (!value) return { date: null, time: null }
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return { date: null, time: null }
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).formatToParts(d).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
-  const hour = parts.hour === '24' ? '00' : parts.hour
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: parseTime(`${hour}:${parts.minute}`) }
 }
 
 export default {

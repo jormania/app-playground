@@ -10,6 +10,20 @@
 // MARQUEE.md, or in none of them.
 
 import { normalizeVenue, CATEGORIES, AREAS, STATUSES } from './venues.js'
+import { ADAPTER_IDS } from './adapters.js'
+
+/** The Adapter select's closed vocabulary, DERIVED from the adapter registry
+ *  rather than typed out again here.
+ *
+ *  It was typed out once, and drifted: `tnb` and `mystage` shipped as readers
+ *  without being added to this list, so `selectOf` refused them and every
+ *  edit of those two venues wrote `Adapter: null` back to Notion — silently
+ *  un-reading a venue the moment you corrected its address. Deriving the list
+ *  means adding an adapter can never leave this behind again.
+ *
+ *  `unsupported` is not a reader; it is the row's own way of saying no reader
+ *  can read this page, so it is appended rather than registered in adapters.js. */
+export const ADAPTER_VOCABULARY = [...ADAPTER_IDS, 'unsupported']
 
 export const PROP = {
   name: 'Name',
@@ -81,7 +95,7 @@ export function toVenueProps(venue) {
   return {
     [PROP.name]: { title: richText(v.name) },
     [PROP.url]: { url: v.url || null },
-    [PROP.adapter]: { select: selectOf(v.adapter, ['excelsior', 'eventbook', 'filarmonica', 'oveit', 'iabilet', 'expirat', 'jsonld', 'unsupported']) },
+    [PROP.adapter]: { select: selectOf(v.adapter, ADAPTER_VOCABULARY) },
     [PROP.config]: { rich_text: richText(v.config) },
     [PROP.status]: { select: selectOf(v.status, STATUSES) ?? { name: 'active' } },
     [PROP.category]: { select: selectOf(v.category, CATEGORIES) },

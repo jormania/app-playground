@@ -85,3 +85,23 @@ describe('snapshot round trip used by the tests above', () => {
     expect(snap.events.k).toMatchObject({ title: 'Tomcat' })
   })
 })
+
+describe('the dismiss control', () => {
+  const dismissLabel = /Dismiss/i;
+
+  it('is offered when there are entries it could hide', () => {
+    render(<Changes scan={scanWith([change()])} onDismiss={() => {}} />);
+    expect(screen.getByLabelText(dismissLabel)).toBeTruthy();
+  });
+
+  it('is withheld when there is nothing to dismiss', () => {
+    // Dismissal records the signatures of the entries on screen, so a strip
+    // with none — "nothing new since Tuesday", or the first-look baseline —
+    // had nothing to record and pressing × did visibly nothing at all.
+    render(<Changes scan={scanWith([])} onDismiss={() => {}} />);
+    expect(screen.queryByLabelText(dismissLabel)).toBeNull();
+    cleanup();
+    render(<Changes scan={scanWith([], { hadSnapshot: false })} onDismiss={() => {}} />);
+    expect(screen.queryByLabelText(dismissLabel)).toBeNull();
+  });
+});

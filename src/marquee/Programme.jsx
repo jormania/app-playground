@@ -44,7 +44,7 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
     : production.savedAll || production.showings.length === 1
       ? 'in Wanderlist'
       : savedDates.size > 0
-        ? `${savedDates.size} of ${production.showings.length} dates kept`
+        ? `${savedDates.size} of ${production.dateCount ?? production.showings.length} dates kept`
         : 'kept (another date)'
 
   return (
@@ -90,7 +90,7 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
                         : showing.ticketState === 'sold-out' ? 'Sold out — keep it anyway?' : 'Keep this date'}
                   >
                     {savedDates.has(showing.date) ? '✓ ' : ''}
-                    {formatDay(showing.date)}
+                    {formatDay(showing.date, { time: showing.time })}
                     {showing.time ? ` ${showing.time}` : ''}
                   </button>
                 </li>

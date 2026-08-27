@@ -149,6 +149,23 @@ export function proseParagraphs(html, { max = 2, minLength = 60 } = {}) {
   return paras.join(' ') || null
 }
 
+/** The wall clock at the venue, from a UTC-stamped instant.
+ *
+ *  A feed that stores UTC (Oveit and Filarmonica's Strapi both do) would
+ *  otherwise show a 16:00Z concert as an hour nobody recognises instead of the
+ *  19:00 printed on the ticket. Returns `{ date, time }`, both null for
+ *  anything unparseable — a bad timestamp costs one event, never a scan. */
+export function localParts(value, timeZone = 'Europe/Bucharest') {
+  if (!value) return { date: null, time: null }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return { date: null, time: null }
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
+  const hour = parts.hour === '24' ? '00' : parts.hour
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: parseTime(`${hour}:${parts.minute}`) }
+}
+
 /** Absolute URL from a possibly-relative href. Returns null rather than throwing
  *  so one malformed link can't fail a whole scan. */
 export function absoluteUrl(href, base) {

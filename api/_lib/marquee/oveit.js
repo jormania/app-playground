@@ -20,7 +20,7 @@
 // inventing a sold-out state from silence would be exactly the false precision
 // the rest of Marquee refuses.
 
-import { TICKET, makeEvent, parseTime } from './shared.js'
+import { TICKET, makeEvent, localParts } from './shared.js'
 
 const API = 'https://membership-api.oveit.com/v1/vendor'
 const INCLUDE = 'type,timeInterval,dateTimeFormat,location,cover,currency,minmaxticketsprices'
@@ -42,20 +42,6 @@ export function vendorFromUrl(rawUrl) {
 
 function feedUrl(vendor, page) {
   return `${API}/${encodeURIComponent(vendor)}/events?page=${page}&include=${INCLUDE}`
-}
-
-/** The event's own wall clock. The feed stamps UTC and states the venue's
- *  timezone beside it, so a 16:00Z concert reads as the 19:00 printed on the
- *  ticket rather than as an hour nobody recognises. */
-function localParts(value, timeZone = 'Europe/Bucharest') {
-  if (!value) return { date: null, time: null }
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return { date: null, time: null }
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).formatToParts(d).reduce((acc, p) => (acc[p.type] = p.value, acc), {})
-  const hour = parts.hour === '24' ? '00' : parts.hour
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: parseTime(`${hour}:${parts.minute}`) }
 }
 
 function rowsOf(page) {

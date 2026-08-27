@@ -5,7 +5,10 @@
 // secret. Edits are held in memory only and vanish on reload, which is the honest
 // behaviour for a demo: nothing here reaches Notion.
 //
-// The seven venues below are the real ones, as inspected on 2026-08-26.
+// The venues below are the real ones, as inspected on 2026-08-26 — kept in step
+// with what the readers actually cover, so demo mode exercises every rung the
+// app ships (selector, feed, embedded-json, two-hop) rather than the subset
+// that happened to exist the week it was written.
 
 import { normalizeVenue } from './venues.js'
 
@@ -74,6 +77,40 @@ export const DEMO_VENUES = [
     status: 'paused',
     category: 'concert',
     notes: 'Paused over the summer — nothing programmed until October.',
+  },
+  {
+    id: 'demo-tnb',
+    name: 'Teatrul Național București',
+    url: 'https://www.tnb.ro/ro/bilete-online',
+    adapter: 'tnb',
+    status: 'active',
+    category: 'play',
+    area: 'centru',
+    address: 'Bulevardul Nicolae Bălcescu 2, București',
+    lastChecked: '2026-08-26',
+    lastResult: '108 events',
+  },
+  {
+    id: 'demo-unteatru',
+    name: 'Teatrul Unteatru',
+    url: 'https://www.mystage.ro/teatre/unteatru-2',
+    adapter: 'mystage',
+    status: 'active',
+    category: 'play',
+    lastChecked: '2026-08-26',
+    lastResult: '10 events',
+  },
+  {
+    id: 'demo-europa',
+    name: 'Cinema Europa',
+    url: 'https://www.iabilet.ro/bilete-cinema-europa-venue-3419/',
+    adapter: 'iabilet',
+    config: '3419',
+    status: 'active',
+    category: 'movie',
+    area: 'centru',
+    lastChecked: '2026-08-26',
+    lastResult: '7 events',
   },
   {
     id: 'demo-expirat',

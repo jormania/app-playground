@@ -77,7 +77,14 @@ export default {
           const offer = firstOffer(node)
           const status = String(node.eventStatus ?? '')
           const availability = String(offer?.availability ?? '')
-          const price = Number(offer?.price)
+          // `Number(null)` and `Number('')` are both 0, and an offer carrying
+          // either — a placeholder for "no price published", which is common —
+          // would have rendered as a "Free" chip and tagged the Wanderlist row
+          // `free`. Only an actual number, or a string that is one, counts.
+          const rawPrice = offer?.price
+          const price = typeof rawPrice === 'number' || (typeof rawPrice === 'string' && rawPrice.trim() !== '')
+            ? Number(rawPrice)
+            : NaN
           events.push(makeEvent({
             venue: venue.name,
             title: typeof node.name === 'string' ? node.name : textOf(node.name),
@@ -87,7 +94,7 @@ export default {
             link: node.url ?? null,
             ticketState: /SoldOut/i.test(availability) || /Cancelled/i.test(status)
               ? TICKET.SOLD_OUT
-              : offer?.url || offer?.price != null ? TICKET.OPEN : TICKET.NONE,
+              : offer?.url || Number.isFinite(price) ? TICKET.OPEN : TICKET.NONE,
             ticketsUrl: offer?.url ?? null,
             image: typeof node.image === 'string' ? node.image : (Array.isArray(node.image) ? node.image[0] : null),
             price: Number.isFinite(price) ? price : null,

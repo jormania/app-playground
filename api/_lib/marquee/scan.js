@@ -76,19 +76,46 @@ export function assess(adapter, pages, events) {
   return { status: STATUS.OK, detail: null }
 }
 
+/**
+ * How long one request is given before it is abandoned.
+ *
+ * Every fetch in a scan is sequential and a scan can run to ~80 of them (TNB's
+ * per-production poster hop is the big one), so a single site that accepts a
+ * connection and then never answers doesn't just delay that venue — it holds the
+ * whole function until the platform kills it, taking every venue after it in the
+ * loop with it. Worse, the scheduled check runs INSIDE Wanderlist's reminder
+ * cron, so an unbounded hang there costs the evening email too.
+ *
+ * Generous enough that a slow-but-working site still succeeds; a value is still
+ * a value, so a timeout reads as "unreachable" for that one venue and the scan
+ * carries on.
+ */
+export const REQUEST_TIMEOUT_MS = 15000
+
 /** Fetch one request an adapter asked for. Never throws: a failure is a value, so
  *  one dead venue can't take the whole scan down with it. */
-async function fetchOne(request, fetchImpl) {
+async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = typeof AbortController === 'function' ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
   try {
     const res = await fetchImpl(request.url, {
       headers: { 'user-agent': USER_AGENT, accept: request.json ? 'application/json' : 'text/html,*/*' },
       redirect: 'follow',
+      ...(controller ? { signal: controller.signal } : {}),
     })
     if (!res.ok) return { url: request.url, ok: false, status: res.status }
     if (request.json) return { url: request.url, ok: true, status: res.status, json: await res.json() }
     return { url: request.url, ok: true, status: res.status, body: await res.text() }
   } catch (err) {
-    return { url: request.url, ok: false, status: 0, error: err?.message || 'fetch failed' }
+    const timedOut = err?.name === 'AbortError' || err?.name === 'TimeoutError'
+    return {
+      url: request.url,
+      ok: false,
+      status: 0,
+      error: timedOut ? `no answer within ${Math.round(timeoutMs / 1000)}s` : (err?.message || 'fetch failed'),
+    }
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }
 
@@ -99,7 +126,7 @@ async function fetchOne(request, fetchImpl) {
  * every outcome. The caller renders the status; nothing here decides what the user
  * sees beyond naming what happened.
  */
-export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, horizonDays = HORIZON_DAYS } = {}) {
+export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, horizonDays = HORIZON_DAYS, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const adapter = getAdapter(venue.adapter)
   const checkedAt = now.toISOString().slice(0, 10)
   const base = { venueId: venue.id ?? null, venue: venue.name, adapter: venue.adapter, checkedAt }
@@ -110,7 +137,7 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
 
   const pages = []
   for (const request of adapter.requests(venue, { now })) {
-    pages.push(await fetchOne(request, fetchImpl))
+    pages.push(await fetchOne(request, fetchImpl, timeoutMs))
   }
 
   const failed = pages.find((p) => !p.ok)
@@ -134,7 +161,7 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
   // Extra pages (eventbook's pagination) are discovered from the first response.
   if (typeof adapter.follow === 'function') {
     for (const request of adapter.follow(pages, { venue, now })) {
-      const page = await fetchOne(request, fetchImpl)
+      const page = await fetchOne(request, fetchImpl, timeoutMs)
       if (page.ok) pages.push(page)
       // A failed page 4 is not worth failing the venue over — the pages that did
       // arrive are still real events, and the health gate still has to pass.

@@ -1,5 +1,6 @@
 import { getAdapter } from './adapters.js'
 import { isActive } from './venues.js'
+import { formatDay } from './format.js'
 
 /** One venue, as a row you can pause, edit or remove.
  *
@@ -34,7 +35,7 @@ function VenueRow({ venue, busy, onTogglePause, onEdit, onRemove }) {
         </p>
         <p className="venue__scan">
           {venue.lastChecked
-            ? `Last checked ${venue.lastChecked}${venue.lastResult ? ` · ${venue.lastResult}` : ''}`
+            ? `Last checked ${formatDay(venue.lastChecked, { relative: true })}${venue.lastResult ? ` · ${venue.lastResult}` : ''}`
             : 'Never checked'}
         </p>
         {venue.notes && <p className="venue__notes">{venue.notes}</p>}

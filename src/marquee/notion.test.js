@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { fromVenuePage, toVenueProps, statusProps, scanResultProps, PROP } from './notion.js'
+import { fromVenuePage, toVenueProps, statusProps, scanResultProps, PROP, ADAPTER_VOCABULARY } from './notion.js'
+import { ADAPTER_IDS } from './adapters.js'
 import { normalizeVenue } from './venues.js'
 
 const page = {
@@ -87,5 +88,30 @@ describe('narrow patches', () => {
     const props = scanResultProps({ checkedAt: null, result: '' })
     expect(Object.keys(props).sort()).toEqual([PROP.lastChecked, PROP.lastResult].sort())
     expect(props[PROP.lastChecked].date).toBeNull()
+  })
+})
+
+describe('the Adapter select vocabulary', () => {
+  // The bug this pins down: `tnb` and `mystage` shipped as readers while this
+  // list was still typed out by hand, so every edit of those two venues wrote
+  // `Adapter: null` back to Notion — silently un-reading a venue the moment you
+  // corrected its address. Deriving the list from the registry is the fix; this
+  // is what stops it drifting again.
+  it('survives a round trip for EVERY registered adapter', () => {
+    for (const id of ADAPTER_IDS) {
+      expect(toVenueProps({ name: 'V', url: 'https://example.com/', adapter: id })[PROP.adapter])
+        .toEqual({ select: { name: id } })
+    }
+  })
+
+  it('keeps "unsupported", which is a row state rather than a reader', () => {
+    expect(ADAPTER_VOCABULARY).toContain('unsupported')
+    expect(toVenueProps({ name: 'V', url: 'https://example.com/', adapter: 'unsupported' })[PROP.adapter])
+      .toEqual({ select: { name: 'unsupported' } })
+  })
+
+  it('still refuses a value that is in neither', () => {
+    expect(toVenueProps({ name: 'V', url: 'https://example.com/', adapter: 'made-up' })[PROP.adapter])
+      .toEqual({ select: null })
   })
 })

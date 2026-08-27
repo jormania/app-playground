@@ -131,6 +131,22 @@ describe('annotateSaved', () => {
     expect(production.savedDates.size).toBe(3)
   })
 
+  it('counts DATES, not showings, so a double bill on one night can be fully kept', () => {
+    // Excelsior lists Tomcat at 17:00 and at 20:00 on the same date — two
+    // showings, two keys, ONE date and one possible keep. Counting showings made
+    // savedAll unreachable for any such run: "hide what's already in Wanderlist"
+    // could never hide it, and the chip read "1 of 2 dates kept" for a date that
+    // was entirely kept.
+    const doubleBill = toProductions([
+      showing({ key: 'x', date: '2026-09-05', time: '17:00' }),
+      showing({ key: 'y', date: '2026-09-05', time: '20:00' }),
+    ])
+    const [production] = annotateSaved(doubleBill, buildFindingsIndex([finding({ plannedDate: '2026-09-05' })]))
+    expect(production.showings).toHaveLength(2)
+    expect(production.dateCount).toBe(1)
+    expect(production.savedAll).toBe(true)
+  })
+
   it('leaves everything unsaved against an empty index', () => {
     const [production] = annotateSaved(run, EMPTY_INDEX)
     expect(production.saved).toBe(false)

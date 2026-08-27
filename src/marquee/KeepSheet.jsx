@@ -60,7 +60,7 @@ export default function KeepSheet({ open, showing, production, venue, demo, find
         <p className="sheet__context">
           {showing.venue}
           {showing.hall ? ` · ${showing.hall}` : ''}
-          {showing.date ? ` · ${formatDay(showing.date)}` : ''}
+          {showing.date ? ` · ${formatDay(showing.date, { time: showing.time })}` : ''}
           {showing.time ? ` ${showing.time}` : ''}
           {showing.ticketState === 'sold-out' ? ' · listed as sold out' : ''}
         </p>

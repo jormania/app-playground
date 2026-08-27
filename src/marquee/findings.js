@@ -107,15 +107,23 @@ export function annotateSaved(productions, index) {
     for (const showing of production.showings) {
       if (savedShowing(index, showing)) savedDates.add(showing.date)
     }
+    // Counted in DATES, not showings, because that is the unit a keep works in:
+    // a Findings row carries a Planned Date, so two sittings of one production
+    // on one night (Excelsior lists Tomcat at 17:00 and 20:00) are one date and
+    // one possible keep. Counting showings made `savedAll` unreachable for any
+    // such run — "hide what's already in Wanderlist" could never hide it, and
+    // the chip read "1 of 2 dates kept" for a date that was entirely kept.
+    const dates = new Set(production.showings.map((s) => s.date))
     return {
       ...production,
       savedDates,
+      dateCount: dates.size,
       // A row matching the production but not any listed date still counts as
       // "you have this" — it is usually a keep for a date the venue has since
       // dropped, or one typed in Wanderlist without a date at all.
       savedCount: rows.length,
       saved: rows.length > 0,
-      savedAll: production.showings.length > 0 && savedDates.size === production.showings.length,
+      savedAll: dates.size > 0 && savedDates.size === dates.size,
     }
   })
 }

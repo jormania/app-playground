@@ -14,9 +14,19 @@ function parseDay(key) {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
 }
 
+// Before this, today is still "today"; from it on, it is "tonight". Anything
+// this side of late afternoon is a matinee, and calling an 11:00 screening
+// "Tonight" is exactly the small, confident inaccuracy that makes someone stop
+// believing the rest of what the app says.
+const EVENING = '17:00'
+
 /** "Tonight", "Tomorrow", "Sat 5 Sep" — and, with `relative`, a past-facing
- *  "yesterday" / "on 22 Aug" for when a scan last ran. */
-export function formatDay(key, { now = new Date(), relative = false } = {}) {
+ *  "yesterday" / "on 22 Aug" for when a scan last ran.
+ *
+ *  `time` (`HH:MM`) is optional and only ever consulted for TODAY: a specific
+ *  showing that starts in the morning reads "Today", while a label standing for
+ *  a whole day — a date heading, with no one time behind it — keeps "Tonight". */
+export function formatDay(key, { now = new Date(), relative = false, time = null } = {}) {
   const date = parseDay(key)
   if (!date) return ''
   const days = Math.round((startOfDay(date) - startOfDay(now)) / DAY)
@@ -28,7 +38,7 @@ export function formatDay(key, { now = new Date(), relative = false } = {}) {
     return `on ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
   }
 
-  if (days === 0) return 'Tonight'
+  if (days === 0) return time && time < EVENING ? 'Today' : 'Tonight'
   if (days === 1) return 'Tomorrow'
   if (days > 1 && days < 7) return date.toLocaleDateString('en-GB', { weekday: 'long' })
   return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -46,7 +56,8 @@ export function formatRun(production) {
   if (!showings?.length) return ''
   const first = formatDay(showings[0].date)
   if (showings.length === 1) {
-    return showings[0].time ? `${first} · ${showings[0].time}` : first
+    const only = formatDay(showings[0].date, { time: showings[0].time })
+    return showings[0].time ? `${only} · ${showings[0].time}` : only
   }
   if (production.firstDate === production.lastDate) {
     return `${showings.length} showings · ${first}`

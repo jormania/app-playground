@@ -40,7 +40,7 @@ export default function Changes({ scan, dismissed = false, onDismiss, onOpen }) 
                 <span className="change__title">{change.title}</span>
                 <span className="change__meta">
                   {change.venue}
-                  {change.date ? ` · ${formatDay(change.date)}` : ''}
+                  {change.date ? ` · ${formatDay(change.date, { time: change.time })}` : ''}
                   {change.time ? ` · ${change.time}` : ''}
                 </span>
               </button>
@@ -57,11 +57,17 @@ export default function Changes({ scan, dismissed = false, onDismiss, onOpen }) 
     )
   }
 
+  // Dismissal records the SIGNATURES of the entries on screen, so a strip with
+  // no entries — the baseline, or "nothing new since Tuesday" — has nothing to
+  // record and pressing × did visibly nothing. An inert control is worse than
+  // no control: offer it only where it does something.
+  const dismissable = Boolean(onDismiss) && scan.hadSnapshot && scan.changes.length > 0
+
   return (
     <section className={`changes ${!scan.hadSnapshot ? 'changes--baseline' : ''}`} aria-label="What changed">
       <div className="changes__head">
         {scan.hadSnapshot && scan.changes.length > 0 && <h2 className="changes__title">What changed</h2>}
-        {onDismiss && (
+        {dismissable && (
           <button
             type="button"
             className="changes__dismiss"

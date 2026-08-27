@@ -97,10 +97,19 @@ export function saveDismissedChanges(keys) {
 
 /** The client the app should use right now. Demo until a token exists. */
 export function getClient() {
-  const token = getToken()
+  return clientFor(getToken(), venuesDb.get(), findingsDb.get())
+}
+
+/** A client for credentials that have NOT been saved yet — what Settings' "Test
+ *  connection" has to use. Testing through `getClient()` tested whatever was
+ *  already stored, so pasting a token and pressing Test reported on the OLD one:
+ *  a fresh token read as broken, and a revoked one read as fine, both at exactly
+ *  the moment someone is trying to find out which. */
+export function clientFor(rawToken, venuesId, findingsId) {
+  const token = String(rawToken || '').trim()
   if (!token) return createFixtureClient()
   return createNotionClient(token, {
-    venuesDatabaseId: venuesDb.get(),
-    findingsDatabaseId: findingsDb.get(),
+    venuesDatabaseId: parseNotionId(venuesId) || venuesDb.get(),
+    findingsDatabaseId: parseNotionId(findingsId) || findingsDb.get(),
   })
 }
