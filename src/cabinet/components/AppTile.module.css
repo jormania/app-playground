@@ -94,6 +94,11 @@
   font-weight: var(--weight-bold);
   color: var(--color-ink);
   line-height: var(--leading-tight);
+  /* Names are single words as often as not ("WhereItWent", "Kettlebell"), and
+     the line clamp below hides overflow rather than wrapping it — so without
+     this a name wider than the tile is silently truncated mid-word instead of
+     breaking onto the second line it already has room for. */
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -101,9 +106,6 @@
 }
 
 @media (min-width: 480px) {
-  .title {
-    font-size: var(--text-sm);
-  }
 }
 
 .reorder {
@@ -317,4 +319,39 @@
   word-break: break-all;
   -webkit-user-select: all;
   user-select: all;
+}
+
+/* Phone layout: exactly 12 apps in one screen — 3 columns x 4 rows.
+   .grid is already 3 columns below 480px (App.module.css); what makes the
+   fourth row land inside the fold is giving the tile a fixed aspect ratio, so
+   its height follows the column width instead of whatever its contents happen
+   to need. That keeps the 3x4 fit proportional across phone widths rather than
+   pinned to one device's pixel height, and it's what frees the room for a much
+   larger icon and real breathing space between rows.
+
+   Content is centred rather than top-aligned because the box is now taller
+   than its contents by design. */
+@media (max-width: 479px) {
+  .tile {
+    /* width:100% is load-bearing. aspect-ratio can be satisfied in either
+       direction, and without a pinned width the tallest tile's content drove
+       the height and the ratio then inflated the WIDTH to match — 114px in a
+       101px column, overflowing the grid. Pinning width to the column makes
+       the ratio resolve the intended way: height follows width. The padding
+       below is trimmed so the contents (icon + two lines of name) fit inside
+       that computed height rather than pushing past it. */
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: 5 / 6;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: var(--space-2xs);
+  }
+
+  .icon {
+    width: 68px;
+    height: 68px;
+    font-size: 34px;
+  }
+
 }

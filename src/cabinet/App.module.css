@@ -253,10 +253,58 @@
    the viewport does so ~20 apps read as a handful of rows instead of a long
    scroll. Capped at 6 — past that, tiles inside .content's 880px width get
    too cramped for a two-line title. */
+/* minmax(0, 1fr), not plain 1fr: the phone tiles carry an aspect-ratio, and a
+   grid track's automatic minimum is its content's min-content size — which
+   aspect-ratio *transfers* from the content-driven minimum height into a
+   minimum width. That floored each column at 114px inside a 328px row, so the
+   three columns overflowed by ~39px and every tile came out too wide. minmax(0,
+   ...) drops that automatic minimum so 1fr can actually divide the row. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-sm);
+}
+
+/* Phone: the Cabinet shows exactly 12 apps in one screen — 3 columns x 4 rows
+   (the tile's aspect ratio in AppTile.module.css is the other half of this).
+   Four rows of tall tiles only clear the fold if the header earns its height,
+   so below 480px it is tightened deliberately:
+
+   - the title drops to a size that fits "A cabinet of small, strange tools."
+     on ONE line at 360px (it wrapped to two at the shared clamp, costing ~28px);
+   - .controlsRow keeps sort + reorder + search on one row. It wrapped because
+     flex line-breaking uses each item's flex-basis BEFORE shrinking: at 360px
+     the sort track (196px) + reorder (34px) + two 12px gaps + the search's
+     80px basis came to 346px against a 328px row, so search fell to a second
+     line and cost another 44px. A tighter gap and a smaller basis keep the
+     hypothetical widths inside the row; the search still stretches to fill
+     whatever is left over.
+   - the vertical rhythm between title, controls and grid tightens from
+     --space-lg to --space-sm.
+
+   Together these bring the header from ~224px down to ~107px, which is what
+   buys the fourth row. */
+@media (max-width: 479px) {
+  .content {
+    padding-top: var(--space-sm);
+  }
+
+  .titleRow {
+    margin-bottom: var(--space-xs);
+  }
+
+  .title {
+    font-size: clamp(1.05rem, 5.4vw, 1.3rem);
+  }
+
+  .controlsRow {
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+  }
+
+  .searchInput {
+    flex: 1 1 64px;
+  }
 }
 
 @media (min-width: 480px) {
