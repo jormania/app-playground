@@ -27,7 +27,6 @@ const baseProps = {
   triage: {},
   onKeep: () => {},
   onIgnore: () => {},
-  onCategoryFilter: () => {},
   onVenueFilter: () => {},
   onHallFilter: () => {},
 };
@@ -49,18 +48,18 @@ describe('Programme — the category → venue → hall filter tiers', () => {
   })
 
   it('reveals venue chips only once a category is picked, when more than one category is in play', () => {
+    // The category row itself moved up into App.jsx (§9.48) — it renders
+    // beside the tabs now, not inside Programme. Programme only reacts to
+    // `categoryFilter` as a prop, the same way App.jsx's own selection drives
+    // it, so this simulates the pick directly rather than clicking a chip
+    // that no longer lives here.
     const venues = [{ name: 'Teatrul Excelsior', category: 'play' }, { name: 'Cinema Union', category: 'movie' }]
     const days = byDate(toProductions([event(), event({ key: 'k2', venue: 'Cinema Union', title: 'Film' })]))
-    const onCategoryFilter = vi.fn()
     const { rerender } = render(
-      <Programme {...baseProps} days={days} venues={venues} categories={['play', 'movie']} onCategoryFilter={onCategoryFilter} />,
+      <Programme {...baseProps} days={days} venues={venues} categories={['play', 'movie']} />,
     )
-    expect(screen.getByRole('button', { name: 'Theatre' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cinema' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Teatrul Excelsior' })).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Theatre' }))
-    expect(onCategoryFilter).toHaveBeenCalledWith('play')
+    expect(screen.queryByRole('button', { name: 'Cinema Union' })).toBeNull()
 
     rerender(
       <Programme
@@ -70,7 +69,6 @@ describe('Programme — the category → venue → hall filter tiers', () => {
         categories={['play', 'movie']}
         categoryFilter="play"
         venuesInCategory={[{ name: 'Teatrul Excelsior', category: 'play' }]}
-        onCategoryFilter={onCategoryFilter}
       />,
     )
     expect(screen.getByRole('button', { name: 'Teatrul Excelsior' })).toBeTruthy()

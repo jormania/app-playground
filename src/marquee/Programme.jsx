@@ -1,7 +1,7 @@
 import { useSwipeAction } from '../shared/useSwipeAction'
 import PosterGrid from './PosterGrid.jsx'
 import { Poster } from './Poster.jsx'
-import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay, CATEGORY_LABEL } from './programme.js'
+import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay } from './programme.js'
 import { CHANGE, CHANGE_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
@@ -205,14 +205,23 @@ function emptyMessage(venueFilter, scanned, search) {
 /** One filter tier: an "All" chip that clears the value, plus one chip per
  *  option. Category, venue and hall all render through this — the same
  *  toggle-a-second-click-to-clear behaviour at every tier. */
-function FilterRow({ value, onChange, options, label = (o) => o, keyOf = (o) => o }) {
+/* `icon`/`allIcon` are optional — plain text-only pills (venue, hall rows)
+   just don't pass them. `className` lets the category row above (in App.jsx,
+   the first and most prominent tier) size itself differently from these
+   narrower venue/hall tiers without a second component to keep in sync. */
+export function FilterRow({
+  value, onChange, options, label = (o) => o, keyOf = (o) => o,
+  icon, allIcon: AllIcon, className = 'filters',
+}) {
   return (
-    <div className="filters">
+    <div className={className}>
       <button type="button" className={`filter ${!value ? 'filter--on' : ''}`} onClick={() => onChange(null)}>
+        {AllIcon && <AllIcon size={14} aria-hidden="true" />}
         All
       </button>
       {options.map((option) => {
         const key = keyOf(option)
+        const Icon = icon?.(option)
         return (
           <button
             key={key}
@@ -220,6 +229,7 @@ function FilterRow({ value, onChange, options, label = (o) => o, keyOf = (o) => 
             className={`filter ${value === key ? 'filter--on' : ''}`}
             onClick={() => onChange(value === key ? null : key)}
           >
+            {Icon && <Icon size={14} aria-hidden="true" />}
             {label(option)}
           </button>
         )
@@ -231,7 +241,7 @@ function FilterRow({ value, onChange, options, label = (o) => o, keyOf = (o) => 
 export default function Programme({
   scan, days, triage, changedKeys = new Map(), onKeep, onIgnore,
   venues, search = '', stale = false, scanning = false,
-  categories = [], categoryFilter = null, onCategoryFilter,
+  categories = [], categoryFilter = null,
   venuesInCategory = [], venueFilter = null, onVenueFilter,
   hallOptions = [], hallFilter = null, onHallFilter,
   viewMode = 'list', swipeEnabled = true,
@@ -266,18 +276,14 @@ export default function Programme({
 
       <Trouble venues={scanned} checkedAt={scan.scannedAt ? formatDay(scan.scannedAt.slice(0, 10), { relative: true }) : null} />
 
-      {/* Each tier gates on its OWN condition, not a shared "more than one venue
-          total" guard — a single active venue that happens to have several
-          halls (a first-time TNB-only setup, say) must still get its hall row,
-          which a shared guard would otherwise hide. */}
-      {categoryMode && (
-        <FilterRow
-          value={categoryFilter}
-          onChange={onCategoryFilter}
-          options={categories}
-          label={(c) => CATEGORY_LABEL[c] ?? c}
-        />
-      )}
+      {/* The category tier itself now renders up in App.jsx, alongside the tabs
+          — the first, most prominent filter belongs beside the navigation it
+          narrows, not buried below a "stale" banner and a Trouble list that
+          may not even be there. Each tier below still gates on its OWN
+          condition, not a shared "more than one venue total" guard — a single
+          active venue that happens to have several halls (a first-time
+          TNB-only setup, say) must still get its hall row, which a shared
+          guard would otherwise hide. */}
 
       {/* In category mode, venue chips only exist once a category narrows the
           list down to a handful — never the full flat list. Outside category

@@ -1691,6 +1691,38 @@ flag.
 the same fact twice — the change chip already implies open tickets. The state
 chip is now suppressed whenever the change chip is `tickets-opened`.
 
+### 9.48 Top bar redesign — search moves up, category takes the prominent row (2026-08-27)
+
+From a mockup: search moved out of its own row below the tabs and into the
+top bar itself, beside Check venues / view toggle / Settings — one row for
+the title and every top-level control rather than search getting a row to
+itself. The old "search shares a row with the tabs, never wraps mid-render"
+trick (§9.20-era) moves up a level with it: `.topbar__bar` (search + the icon
+cluster) is what wraps onto its own full-width row on a phone now, not
+`.tabs-row`, which no longer exists as a class — `.tabs` renders directly
+under the header.
+
+The category filter tier — the first, most-picked-once-per-visit one — moved
+up to sit right beside the tabs too, out of `Programme.jsx` where it used to
+render below a "stale" banner and a Trouble list that might not even be
+there. `FilterRow` (now exported from `Programme.jsx`) gained optional
+`icon`/`allIcon`/`className` props so this one call can look distinct — bigger
+pills, a solid accent fill on the selected one (`.category-filters` in
+marquee.css) — while the venue and hall tiers still rendered inside
+`Programme.jsx` stay the plain outlined style they always were. One icon per
+real category (`play`→Drama masks, `movie`→Clapperboard, `concert`→Music,
+`event`→Ticket, `art`→Image, `culture`→Landmark), not the mockup's own
+"Exhibitions"/"Kids & Family" labels — those aren't in this app's category
+vocabulary (`venues.js`'s `CATEGORIES`), so the icons key off what's actually
+here, not what happened to be in the reference image.
+
+The mockup's crop didn't show the Programme/Venues tabs at all — kept as
+their own row, unchanged in behaviour, since removing app navigation wasn't
+what was asked for. The week strip (day pills) the mockup also omitted stays
+exactly where it was, on the Programme tab below the category row — the
+mockup was a reference for the top bar's look, not a spec to cut features
+against.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

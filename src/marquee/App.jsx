@@ -3,11 +3,13 @@ import { Button, ConfirmModal, IconButton, ToastStack, useToastStack } from '../
 import {
   Settings as SettingsIcon, Search as SearchIcon, X as ClearIcon,
   RefreshCw as RefreshIcon, LayoutGrid as PostersIcon, List as ListIcon,
+  Star as StarIcon, Drama as TheatreIcon, Clapperboard as MovieIcon,
+  Music as ConcertIcon, Ticket as EventIcon, Image as ArtIcon, Landmark as CultureIcon,
 } from 'lucide-react'
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
-import Programme from './Programme.jsx'
+import Programme, { FilterRow } from './Programme.jsx'
 import WeekStrip from './WeekStrip.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
@@ -15,7 +17,7 @@ import { sortVenues, scannable, togglePaused, searchVenues } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
   changedKeyMap, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, nextDayKeys, densityForDays,
-  troubleByVenue,
+  troubleByVenue, CATEGORY_LABEL,
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize, changeSignature, undismissedChanges } from './changes.js'
@@ -23,6 +25,17 @@ import { runScan, loadLastScan } from './scanClient.js'
 import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges } from './store.js'
 import { formatDay } from './format.js'
 import { writeNotifyPrefs, writeNotifyVenues, registerPeriodicSync, previewFromQuery } from './notify.js'
+
+/** One icon per real category (venues.js's CATEGORIES, not a hardcoded set —
+ *  a category with no icon here still renders, just without one). */
+const CATEGORY_ICON = {
+  play: TheatreIcon,
+  movie: MovieIcon,
+  concert: ConcertIcon,
+  event: EventIcon,
+  art: ArtIcon,
+  culture: CultureIcon,
+}
 
 /** Marquee.
  *
@@ -441,85 +454,19 @@ export default function App() {
                 : `${active.length} venue${active.length === 1 ? '' : 's'} watched`}
           </p>
         </div>
-        <div className="topbar__actions">
-          {/* Accent-filled via IconButton's own `selected` — the same
-              background/foreground tokens `Check venues` used as a text
-              Button, carried over rather than reinvented, so the primary
-              action still reads as the one with weight even icon-only. */}
-          <IconButton
-            size="sm"
-            selected
-            aria-label={scanning ? 'Checking venues…' : 'Check venues'}
-            title={scanning ? 'Checking venues…' : 'Check venues'}
-            onClick={handleScan}
-            disabled={scanning || loading || active.length === 0}
-          >
-            <RefreshIcon size={18} className={scanning ? 'topbar__scan-icon--spinning' : ''} />
-          </IconButton>
-          {/* A deliberately different, still theme-native colour (--color-success,
-              already this palette's "positive" token) from Check venues' accent
-              fill — distinct at a glance in the same row, never a third raw
-              colour invented for this alone. Icon reflects the layout you'd
-              SWITCH TO, matching the toggle Programme.jsx used to render inline
-              before it moved up here to free the vertical space it took.
 
-              Shown only where it does something: on the Programme tab, with a
-              programme actually on screen. Moving it up here from inside
-              Programme.jsx lost that gate — it kept rendering over the Venues
-              list and before the first check, where pressing it silently
-              changed a preference with nothing to show for it. */}
-          {tab === 'programme' && days.length > 0 && (
-            <IconButton
-              size="sm"
-              aria-label={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
-              title={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
-              onClick={() => setPrefs((p) => ({ ...p, viewMode: p.viewMode === 'posters' ? 'list' : 'posters' }))}
-            >
-              {prefs.viewMode === 'posters'
-                ? <ListIcon size={18} className="topbar__view-icon" />
-                : <PostersIcon size={18} className="topbar__view-icon" />}
-            </IconButton>
-          )}
-          <IconButton size="sm" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
-            <SettingsIcon size={18} />
-          </IconButton>
-        </div>
-      </header>
-
-      {/* Tabs and search share one row on desktop, where there's ample width
-          for both regardless of the tab label's own size. On a phone, this row
-          becomes a column instead — a CSS-only, deterministic stack, not the
-          old approach of "sit inline and hope it doesn't have to wrap": that
-          approach was what let "Venues" growing to "Venues (8)" once venues
-          finished loading nudge search onto a wrapped line mid-render, a jump
-          with no user action behind it. A column never wraps; it just always
-          has two rows, on every render, so there's nothing left to jump. */}
-      <div className="tabs-row">
-        <nav className="tabs" aria-label="Views">
-          <button
-            type="button"
-            className={`tab ${tab === 'programme' ? 'tab--on' : ''}`}
-            onClick={() => setTab('programme')}
-            aria-current={tab === 'programme'}
-          >
-            Programme
-          </button>
-          <button
-            type="button"
-            className={`tab ${tab === 'venues' ? 'tab--on' : ''}`}
-            onClick={() => setTab('venues')}
-            aria-current={tab === 'venues'}
-          >
-            Venues
-          </button>
-        </nav>
-
-        {/* Present on BOTH tabs — same box, same place, searching whatever
-            the tab in front is actually showing. It used to vanish on the
-            Venues tab, which made the row's own height change on every tab
-            switch and left the venue list as the one screen with no way to
-            narrow it. */}
-        <div className="search-row">
+        {/* Search moved up here from its old spot beside the tabs — one row
+            for the title and every top-level control, search included, rather
+            than search getting a row of its own below. Still the same box,
+            still present on BOTH tabs and searching whatever the tab in front
+            is actually showing (it used to vanish on the Venues tab, leaving
+            that screen with no way to narrow it). On a phone this whole row
+            wraps under the heading — deterministic, not "sit inline and hope
+            it doesn't have to wrap": that approach was what let "Venues"
+            growing to "Venues (8)" once venues finished loading nudge search
+            onto a wrapped line mid-render, a jump with no user action behind
+            it. Wrapping the row as a WHOLE never depends on that timing. */}
+        <div className="topbar__bar">
           <div className="search">
             <SearchIcon size={14} aria-hidden="true" />
             <input
@@ -542,8 +489,88 @@ export default function App() {
               </button>
             )}
           </div>
+
+          <div className="topbar__actions">
+            {/* Accent-filled via IconButton's own `selected` — the same
+                background/foreground tokens `Check venues` used as a text
+                Button, carried over rather than reinvented, so the primary
+                action still reads as the one with weight even icon-only. */}
+            <IconButton
+              size="sm"
+              selected
+              aria-label={scanning ? 'Checking venues…' : 'Check venues'}
+              title={scanning ? 'Checking venues…' : 'Check venues'}
+              onClick={handleScan}
+              disabled={scanning || loading || active.length === 0}
+            >
+              <RefreshIcon size={18} className={scanning ? 'topbar__scan-icon--spinning' : ''} />
+            </IconButton>
+            {/* A deliberately different, still theme-native colour (--color-success,
+                already this palette's "positive" token) from Check venues' accent
+                fill — distinct at a glance in the same row, never a third raw
+                colour invented for this alone. Icon reflects the layout you'd
+                SWITCH TO, matching the toggle Programme.jsx used to render inline
+                before it moved up here to free the vertical space it took.
+
+                Shown only where it does something: on the Programme tab, with a
+                programme actually on screen. Moving it up here from inside
+                Programme.jsx lost that gate — it kept rendering over the Venues
+                list and before the first check, where pressing it silently
+                changed a preference with nothing to show for it. */}
+            {tab === 'programme' && days.length > 0 && (
+              <IconButton
+                size="sm"
+                aria-label={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+                title={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+                onClick={() => setPrefs((p) => ({ ...p, viewMode: p.viewMode === 'posters' ? 'list' : 'posters' }))}
+              >
+                {prefs.viewMode === 'posters'
+                  ? <ListIcon size={18} className="topbar__view-icon" />
+                  : <PostersIcon size={18} className="topbar__view-icon" />}
+              </IconButton>
+            )}
+            <IconButton size="sm" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+              <SettingsIcon size={18} />
+            </IconButton>
+          </div>
         </div>
-      </div>
+      </header>
+
+      <nav className="tabs" aria-label="Views">
+        <button
+          type="button"
+          className={`tab ${tab === 'programme' ? 'tab--on' : ''}`}
+          onClick={() => setTab('programme')}
+          aria-current={tab === 'programme'}
+        >
+          Programme
+        </button>
+        <button
+          type="button"
+          className={`tab ${tab === 'venues' ? 'tab--on' : ''}`}
+          onClick={() => setTab('venues')}
+          aria-current={tab === 'venues'}
+        >
+          Venues
+        </button>
+      </nav>
+
+      {/* The first, most prominent filter tier — moved up here from deep
+          inside Programme.jsx so it sits right beside the navigation it
+          narrows, rather than below a "stale" banner and a Trouble list that
+          may not even be there. Programme-tab only: the Venues tab has its
+          own search, not a category split. */}
+      {tab === 'programme' && categories.length > 1 && (
+        <FilterRow
+          className="category-filters"
+          value={categoryFilter}
+          onChange={handleCategoryFilter}
+          options={categories}
+          label={(c) => CATEGORY_LABEL[c] ?? c}
+          icon={(c) => CATEGORY_ICON[c]}
+          allIcon={StarIcon}
+        />
+      )}
 
       <main className={`main ${prefs.compactList ? 'main--compact' : ''}`}>
         {client.mode === 'demo' && (
@@ -576,7 +603,6 @@ export default function App() {
               search={search}
               categories={categories}
               categoryFilter={categoryFilter}
-              onCategoryFilter={handleCategoryFilter}
               venuesInCategory={venuesInCategory}
               venueFilter={venueFilter}
               onVenueFilter={handleVenueFilter}
