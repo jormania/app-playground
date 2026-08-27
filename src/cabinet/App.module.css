@@ -307,21 +307,20 @@
   }
 }
 
+/* Four columns at every width above the phone, not the old 4 -> 5 -> 6 ramp.
+   .content is capped at 880px, so on a 1440px screen those six columns spent
+   the width on margin and rendered 128px tiles with 44px icons — small things
+   in a narrow column with most of the screen unused. Four is the most that
+   keeps tiles near 200px, which is what makes room for a much larger icon. */
 @media (min-width: 480px) {
   .grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (min-width: 640px) {
-  .grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-md);
   }
 }
 
-@media (min-width: 860px) {
+@media (min-width: 768px) {
   .grid {
-    grid-template-columns: repeat(6, 1fr);
+    gap: var(--space-lg);
   }
 }

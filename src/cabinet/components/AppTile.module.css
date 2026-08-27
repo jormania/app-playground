@@ -355,3 +355,38 @@
   }
 
 }
+
+/* Above the phone the grid is four columns inside an 880px column, so tiles
+   land near 200px wide and the icon can grow well past the 44px it wore when
+   six columns had to share that width. Two steps rather than one: between 480
+   and 768 the four columns are still narrow (a 520px viewport gives ~107px
+   tiles), so the icon takes an intermediate size there and only reaches full
+   size once the columns are wide enough to hold it. */
+@media (min-width: 480px) {
+  .tile {
+    gap: var(--space-xs);
+  }
+
+  .icon {
+    width: 64px;
+    height: 64px;
+    font-size: 32px;
+  }
+}
+
+@media (min-width: 768px) {
+  .tile {
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-xs);
+  }
+
+  .icon {
+    width: 88px;
+    height: 88px;
+    font-size: 44px;
+  }
+
+  .title {
+    font-size: var(--text-sm);
+  }
+}
