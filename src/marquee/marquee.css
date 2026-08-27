@@ -1036,6 +1036,14 @@ button { color: inherit; font: inherit; }
   .filters { gap: 0.3rem; }
   .filter { font-size: 0.75rem; padding: 0.2rem 0.55rem; }
 
+  /* At its desktop size (§9.48) this row wraps after three pills on a phone
+     — All/Theatre/Cinema fit, Concert drops to its own line. Tightened back
+     down close to the plain `.filter` phone size above, just keeping a
+     touch more weight (padding, not font) so it still reads as the bigger,
+     more prominent tier next to venue/hall chips below it. */
+  .category-filters { gap: 0.35rem; }
+  .category-filters .filter { font-size: 0.75rem; padding: 0.25rem 0.6rem; gap: 0.3rem; }
+
   .venues__foot { flex-direction: column; align-items: stretch; gap: 0.6rem; }
 }
 
