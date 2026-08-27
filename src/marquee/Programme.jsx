@@ -87,6 +87,20 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
             {changeKind && <span className={`chip chip--changed-${changeKind}`}>{CHANGE_LABEL[changeKind]}</span>}
             {soldOut && <span className="chip chip--soldout">sold out</span>}
             {!soldOut && production.anyOpen && <span className="chip chip--tickets">tickets</span>}
+            {/* Neither on sale nor sold out. Until now this state rendered
+                NOTHING, so "the venue hasn't put tickets up" looked identical
+                to "we haven't checked" — and it is the state a show sits in
+                both before a release and while quietly going stale.
+                Deliberately says only what was seen, never why: every venue
+                words it differently ("Momentan nu sunt bilete disponibile",
+                a missing button, an empty price list), and each adapter has
+                already normalised its own wording into `ticketState`, so
+                nothing here has to match anyone's phrasing. */}
+            {!soldOut && !production.anyOpen && (
+              <span className="chip chip--quiet" title="The venue lists no tickets for this — it may not be on sale yet">
+                no tickets listed
+              </span>
+            )}
             {price && <span className="chip">{price}</span>}
             {savedLabel && <span className="chip chip--saved">{savedLabel}</span>}
           </div>

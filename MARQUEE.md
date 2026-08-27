@@ -1617,13 +1617,61 @@ over one span can't cancel each other out.
 **Coverage after, swept live across all twelve venues:** posters 98–100%
 everywhere; prices 100% at seven venues; tickets 93–100% everywhere.
 
+### 9.46 "No tickets listed", and a correction about Excelsior's prices (2026-08-27)
+
+**The third ticket state finally shows.** `ticketState: 'none'` — announced,
+nothing on sale — has existed since the first release and rendered NOTHING on
+a card, so "the venue hasn't put tickets up" looked exactly like "we haven't
+checked". It is also the state a show sits in both BEFORE a release and while
+quietly going stale, and the page never says which. So the chip reports only
+what was seen and offers no reason: *no tickets listed*, in the quietest
+treatment on the card, since it reports an absence and must not compete with
+the chips that report something real.
+
+Explicitly NOT parsed from any venue's wording. mystage writes "Momentan nu
+sunt bilete disponibile", eventbook simply drops its buy button, Odeon
+publishes an empty price list — each adapter already normalises its own site's
+phrasing into `ticketState`, which is exactly the layer that makes one chip
+possible without matching anyone's language. The poster wall is left alone: a
+tile shows the "Tickets" pill when there are tickets, so its absence already
+carries the same meaning without an overlay on every un-ticketed cover.
+
+**Correction: Excelsior DOES publish prices — §9.45 was wrong to say
+otherwise.** That claim came from checking the listing and a production page
+for the string "lei" and finding none. The prices are real, and behind the
+"Alege locurile" seat picker: Cat I 100 RON / Cat II 75 / Cat III 50, on a
+per-showing seat map. What that would actually cost, traced through the live
+site rather than guessed:
+
+- The buy controls are **client-rendered**, so nothing about them is in the
+  static HTML the reader sees.
+- They call a custom WordPress plugin's endpoint,
+  `POST /wp-admin/admin-ajax-ticketsys.php`, which takes **no nonce and no
+  auth** — so it is reachable in principle, and would be a rung-2 feed rather
+  than scraping.
+- The `eventInstance/new` response is 34KB of **seat-map geometry with no
+  price or category field in it at all**, so the prices come from a further
+  call still to be found.
+- The instance id is per SHOWING, not per production — 24 of them at
+  Excelsior, so this would be a THIRD hop, ~24 extra POSTs per scan on top of
+  the ~8 detail pages.
+
+Left undone deliberately, not because it can't be done: §9.13's rule is that
+the detail-page hop earns its keep once per adapter, and this would be a
+third layer against a private endpoint whose price payload hasn't even been
+located yet. Recorded here so the next person starts from the endpoint rather
+than from "Excelsior has no prices", which was simply untrue.
+
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
 absences at the source, not gaps in a reader:
 
-- **Teatrul Excelsior publishes no prices at all.** Zero occurrences of "lei"
-  on the listing AND on a production's own detail page. Nothing to read.
+- **Teatrul Excelsior's prices need a third hop** into a client-rendered seat
+  picker's own endpoint — see §9.46, which corrects an earlier claim here that
+  it published no prices at all. It does; they are just not in any HTML the
+  reader currently fetches.
 - **Two productions genuinely have no cover**: Excelsior's "Marile speranțe"
   and TNB's "Mai e vreun candidat?" — neither page carries `og:image`,
   `article-image` or any poster image. That is the 17% / 2% those two venues

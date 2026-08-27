@@ -801,6 +801,9 @@ button { color: inherit; font: inherit; }
 .main--compact .prod__chips { margin-top: 0.3rem; }
 .main--compact .prod__dates { margin-top: 0.35rem; }
 .chip--tickets { border-color: var(--color-accent); color: var(--color-accent); }
+/* Quieter than the default chip on purpose: this one reports an ABSENCE,
+   and should never compete with the chips that report something real. */
+.chip--quiet { border-color: var(--color-border); color: var(--color-faint); }
 .chip--soldout { border-color: var(--color-danger); color: var(--color-danger); }
 .chip--saved { border-color: var(--color-success); color: var(--color-success); }
 .chip--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); }

@@ -248,3 +248,30 @@ describe('Programme — the viewMode prop switches layouts', () => {
     expect(container.querySelector('.prod')).toBeNull()
   })
 })
+
+describe('Programme — the "no tickets listed" chip', () => {
+  const venues = [{ name: 'Teatrul Excelsior', category: 'play' }]
+
+  it('marks a production the venue lists no tickets for', () => {
+    const days = byDate(toProductions([event({ ticketState: 'none' })]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.getByText('no tickets listed')).toBeTruthy()
+  })
+
+  it('says nothing of the sort once any date is on sale', () => {
+    const days = byDate(toProductions([
+      event({ key: 'a', ticketState: 'none', date: '2026-09-23' }),
+      event({ key: 'b', ticketState: 'open', date: '2026-09-24' }),
+    ]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.queryByText('no tickets listed')).toBeNull()
+    expect(screen.getByText('tickets')).toBeTruthy()
+  })
+
+  it('never shows alongside sold out — those are different claims', () => {
+    const days = byDate(toProductions([event({ ticketState: 'sold-out' })]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.getByText('sold out')).toBeTruthy()
+    expect(screen.queryByText('no tickets listed')).toBeNull()
+  })
+})
