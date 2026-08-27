@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Image as PosterPlaceholderIcon } from 'lucide-react'
+import { useSwipeAction } from '../shared/useSwipeAction'
 import { TRIAGE, domIdFor, primaryChangeKind, CATEGORY_LABEL } from './programme.js'
 import { CHANGE_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
@@ -47,66 +48,89 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
         ? `${savedDates.size} of ${production.dateCount ?? production.showings.length} dates kept`
         : 'kept (another date)'
 
+  // Promoted out of Loom's ThreadRow (swipe right to weave, left to unravel)
+  // via `src/shared/useSwipeAction` — same axis-lock and elastic-past-threshold
+  // feel, one direction here: a card's own Ignore button already does the
+  // toggle, this is a second way in to the same action. `data-noswipe` marks
+  // the same "taps, not drags" exemption Loom's `[data-loom-controls]` does —
+  // a swipe starting on the title link or a date button must not fire Ignore
+  // on the way to opening the sheet.
+  const { dx, revealing, bind } = useSwipeAction({
+    onSwipeLeft: () => onIgnore(production),
+  })
+
   return (
     <article
       id={domIdFor(production.id)}
       className={`prod ${production.saved ? 'prod--saved' : ''} ${ignored ? 'prod--ignored' : ''} ${changeKind ? `prod--changed-${changeKind}` : ''}`}
     >
-      <Poster src={production.image} />
-
-      <div className="prod__main">
-        <h3 className="prod__title">
-          {production.link ? (
-            <a href={production.link} target="_blank" rel="noreferrer noopener">{production.title}</a>
-          ) : production.title}
-        </h3>
-        <p className="prod__meta">
-          {production.venue}
-          {production.hall ? ` · ${production.hall}` : ''}
-        </p>
-        <p className="prod__run">{formatRun(production)}</p>
-
-        <div className="prod__chips">
-          {changeKind && <span className={`chip chip--changed-${changeKind}`}>{CHANGE_LABEL[changeKind]}</span>}
-          {soldOut && <span className="chip chip--soldout">sold out</span>}
-          {!soldOut && production.anyOpen && <span className="chip chip--tickets">tickets</span>}
-          {price && <span className="chip">{price}</span>}
-          {savedLabel && <span className="chip chip--saved">{savedLabel}</span>}
-        </div>
-
-        {production.showings.length > 1 && (
-          <ul className="prod__dates">
-            {production.showings.map((showing) => {
-              const kind = changedKeys.get(showing.key)
-              return (
-                <li key={showing.key}>
-                  <button
-                    type="button"
-                    className={`date ${showing.ticketState === 'sold-out' ? 'date--soldout' : ''} ${savedDates.has(showing.date) ? 'date--saved' : ''} ${kind ? `date--changed-${kind}` : ''}`}
-                    onClick={() => onKeep(showing, production)}
-                    title={savedDates.has(showing.date)
-                      ? 'Already in Wanderlist'
-                      : kind ? CHANGE_LABEL[kind]
-                        : showing.ticketState === 'sold-out' ? 'Sold out — keep it anyway?' : 'Keep this date'}
-                  >
-                    {savedDates.has(showing.date) ? '✓ ' : ''}
-                    {formatDay(showing.date, { time: showing.time })}
-                    {showing.time ? ` ${showing.time}` : ''}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+      <div className={`prod__behind ${revealing === 'left' ? 'prod__behind--on' : ''}`} aria-hidden="true">
+        <span className="prod__behindIgnore">{ignored ? 'Un-ignore' : 'Ignore'} ✕</span>
       </div>
 
-      <div className="prod__actions">
-        <button type="button" className="action-keep" onClick={() => onKeep(production.showings[0], production)}>
-          Keep
-        </button>
-        <button type="button" className="action-ignore" onClick={() => onIgnore(production)}>
-          {ignored ? 'Un-ignore' : 'Ignore'}
-        </button>
+      <div
+        className="prod__body"
+        style={{ touchAction: 'pan-y', transform: dx ? `translateX(${dx}px)` : undefined }}
+        onPointerDown={(e) => { if (!e.target.closest('a, button, [data-noswipe]')) bind.onPointerDown(e) }}
+        onPointerMove={bind.onPointerMove}
+        onPointerUp={bind.onPointerUp}
+      >
+        <Poster src={production.image} />
+
+        <div className="prod__main">
+          <h3 className="prod__title">
+            {production.link ? (
+              <a href={production.link} target="_blank" rel="noreferrer noopener">{production.title}</a>
+            ) : production.title}
+          </h3>
+          <p className="prod__meta">
+            {production.venue}
+            {production.hall ? ` · ${production.hall}` : ''}
+          </p>
+          <p className="prod__run">{formatRun(production)}</p>
+
+          <div className="prod__chips">
+            {changeKind && <span className={`chip chip--changed-${changeKind}`}>{CHANGE_LABEL[changeKind]}</span>}
+            {soldOut && <span className="chip chip--soldout">sold out</span>}
+            {!soldOut && production.anyOpen && <span className="chip chip--tickets">tickets</span>}
+            {price && <span className="chip">{price}</span>}
+            {savedLabel && <span className="chip chip--saved">{savedLabel}</span>}
+          </div>
+
+          {production.showings.length > 1 && (
+            <ul className="prod__dates">
+              {production.showings.map((showing) => {
+                const kind = changedKeys.get(showing.key)
+                return (
+                  <li key={showing.key}>
+                    <button
+                      type="button"
+                      className={`date ${showing.ticketState === 'sold-out' ? 'date--soldout' : ''} ${savedDates.has(showing.date) ? 'date--saved' : ''} ${kind ? `date--changed-${kind}` : ''}`}
+                      onClick={() => onKeep(showing, production)}
+                      title={savedDates.has(showing.date)
+                        ? 'Already in Wanderlist'
+                        : kind ? CHANGE_LABEL[kind]
+                          : showing.ticketState === 'sold-out' ? 'Sold out — keep it anyway?' : 'Keep this date'}
+                    >
+                      {savedDates.has(showing.date) ? '✓ ' : ''}
+                      {formatDay(showing.date, { time: showing.time })}
+                      {showing.time ? ` ${showing.time}` : ''}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="prod__actions" data-noswipe>
+          <button type="button" className="action-keep" onClick={() => onKeep(production.showings[0], production)}>
+            Keep
+          </button>
+          <button type="button" className="action-ignore" onClick={() => onIgnore(production)}>
+            {ignored ? 'Un-ignore' : 'Ignore'}
+          </button>
+        </div>
       </div>
     </article>
   )

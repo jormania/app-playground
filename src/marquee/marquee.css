@@ -535,17 +535,53 @@ button { color: inherit; font: inherit; }
 }
 
 .prod {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  scroll-margin-top: 1rem;
+}
+
+/* The swipe-to-ignore hint, revealed from under `.prod__body` as it slides —
+   same shape as Loom's ThreadRow `.behind`, promoted alongside the gesture
+   itself (`useSwipeAction`). Sits under the card at rest; only ever visible
+   through the gap the sliding body opens up. */
+.prod__behind {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 1.25rem;
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+}
+
+.prod__behindIgnore {
+  color: var(--color-danger);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.prod__behind--on .prod__behindIgnore { opacity: 1; }
+
+.prod__body {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 1rem;
   justify-content: space-between;
   flex-wrap: wrap;
   padding: 0.85rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
-  scroll-margin-top: 1rem;
+  user-select: none;
+  /* Near-instant rather than none: imperceptible during an active drag (the
+     finger still tracks the card exactly), but enough to smooth the snap
+     back to rest on release rather than a hard jump. Same value Loom's own
+     ThreadRow settled on for the identical gesture. */
+  transition: transform 0.02s linear;
 }
 
 .prod--saved { border-color: var(--color-accent); }
@@ -815,7 +851,7 @@ button { color: inherit; font: inherit; }
      Ignore onto their own line under poster+text, same as a stacked layout
      would — the poster row just stays a row. */
   .venue { flex-direction: column; gap: 0.6rem; padding: 0.8rem 0.85rem; }
-  .prod { gap: 0.7rem; padding: 0.8rem 0.85rem; }
+  .prod__body { gap: 0.7rem; padding: 0.8rem 0.85rem; }
 
   /* .venue__main carries `flex: 1 1 18rem` for the desktop ROW layout, where
      18rem is a wrap-width. Flipping the CARD to a column above leaves that

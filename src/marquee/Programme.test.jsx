@@ -126,3 +126,50 @@ describe('Programme — the poster slot renders for every card, cover or not', (
     expect(poster.querySelector('img')).toBeNull()
   })
 })
+
+describe('Programme — swipe left to ignore (promoted from Loom’s ThreadRow)', () => {
+  function drag(el, path) {
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: path[0].x, clientY: path[0].y, pointerType: 'touch', button: 0 })
+    for (const { x, y } of path.slice(1)) fireEvent.pointerMove(el, { pointerId: 1, clientX: x, clientY: y })
+  }
+
+  it('fires onIgnore once a swipe left crosses the threshold', () => {
+    const onIgnore = vi.fn()
+    const days = byDate(toProductions([event()]))
+    const { container } = render(
+      <Programme {...baseProps} onIgnore={onIgnore} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
+    )
+    const body = container.querySelector('.prod__body')
+    drag(body, [{ x: 200, y: 0 }, { x: 100, y: 0 }])
+    fireEvent.pointerUp(body, { pointerId: 1, clientX: 100, clientY: 0 })
+    expect(onIgnore).toHaveBeenCalledTimes(1)
+  })
+
+  it('a swipe starting on a real control (the title link, a date button) does not fire Ignore', () => {
+    const onIgnore = vi.fn()
+    const onKeep = vi.fn()
+    const days = byDate(toProductions([
+      event({ key: 'a', date: '2026-09-23' }),
+      event({ key: 'b', date: '2026-09-24' }),
+    ]))
+    render(
+      <Programme {...baseProps} onIgnore={onIgnore} onKeep={onKeep} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
+    )
+    const dateButton = screen.getAllByRole('button', { name: /Sep/ })[0]
+    drag(dateButton, [{ x: 200, y: 0 }, { x: 100, y: 0 }])
+    fireEvent.pointerUp(dateButton, { pointerId: 1, clientX: 100, clientY: 0 })
+    expect(onIgnore).not.toHaveBeenCalled()
+  })
+
+  it('does not fire short of the swipe threshold', () => {
+    const onIgnore = vi.fn()
+    const days = byDate(toProductions([event()]))
+    const { container } = render(
+      <Programme {...baseProps} onIgnore={onIgnore} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />,
+    )
+    const body = container.querySelector('.prod__body')
+    drag(body, [{ x: 200, y: 0 }, { x: 160, y: 0 }])
+    fireEvent.pointerUp(body, { pointerId: 1, clientX: 160, clientY: 0 })
+    expect(onIgnore).not.toHaveBeenCalled()
+  })
+})

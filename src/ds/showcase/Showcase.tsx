@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Field, Modal, NumberStepper, Card, SegmentedControl, IconButton, StreakCounter, SettingsToggle } from '../index'
+import { Button, Field, Modal, NumberStepper, Card, SegmentedControl, IconButton, StreakCounter, SettingsToggle, ToastStack, useToastStack } from '../index'
 import styles from './Showcase.module.css'
 
 const ArrowUp = () => (
@@ -178,6 +178,10 @@ export function Showcase() {
         </div>
       </Section>
 
+      <Section title="ToastStack" note="Auto-dismissing confirmations, with an optional single action">
+        <ToastDemo />
+      </Section>
+
       <Section title="Amor Fati Elements" note="Fate Badge, Acceptance Tags, and Fate Graph">
         <Row label="Fate Badge">
           <span style={{
@@ -248,6 +252,22 @@ export function Showcase() {
       </Section>
     </div>
   );
+}
+
+function ToastDemo() {
+  const { toasts, push, dismiss } = useToastStack()
+  return (
+    <>
+      <Row label="Try it">
+        <Button size="sm" onClick={() => push({ message: 'Kept it.', tone: 'success' })}>Success</Button>
+        <Button size="sm" onClick={() => push({ message: 'Removed.', tone: 'neutral', actionLabel: 'Undo', onAction: () => {} })}>
+          With undo
+        </Button>
+        <Button size="sm" onClick={() => push({ message: 'Could not save.', tone: 'danger' })}>Danger</Button>
+      </Row>
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
+    </>
+  )
 }
 
 function Section({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {

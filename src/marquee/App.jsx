@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, ConfirmModal, IconButton } from '../ds'
+import { Button, ConfirmModal, IconButton, ToastStack, useToastStack } from '../ds'
 import { Settings as SettingsIcon, Search as SearchIcon, X as ClearIcon } from 'lucide-react'
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
@@ -65,6 +65,7 @@ export default function App() {
   const [findings, setFindings] = useState(EMPTY_INDEX)
   const [findingsError, setFindingsError] = useState(null)
   const [prefs, setPrefs] = useState(() => loadPrefs())
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToastStack()
 
   const load = useCallback(async (c) => {
     setLoading(true)
@@ -302,10 +303,27 @@ export default function App() {
     })
 
   const handleKeep = async (draft) => {
-    await client.saveToWanderlist(draft)
+    const saved = await client.saveToWanderlist(draft)
     // Re-read rather than patching the index by hand: whatever Notion actually
     // stored is what the next dedupe check has to match against.
     await loadFindings(client)
+    // The only write this app makes, and until now there was no way back from
+    // inside it short of finding the row in Wanderlist itself. Same undo shape
+    // Radar-B's own dismissal toast uses: archive the page just created, which
+    // Notion's trash can still recover even after the toast itself is gone.
+    pushToast({
+      message: `Kept “${draft.name}”.`,
+      tone: 'success',
+      actionLabel: 'Undo',
+      onAction: async () => {
+        try {
+          await client.unsaveFromWanderlist(saved.id)
+          await loadFindings(client)
+        } catch {
+          pushToast({ message: 'Could not undo — the row is still in Wanderlist.', tone: 'danger' })
+        }
+      },
+    })
   }
 
   const keepVenue = keeping ? venues.find((v) => v.name === keeping.showing.venue) ?? null : null
@@ -525,6 +543,8 @@ export default function App() {
         onClose={() => setSettingsOpen(false)}
         onChanged={() => setClient(getClient())}
       />
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   )
 }

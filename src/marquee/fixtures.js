@@ -214,6 +214,11 @@ export function createFixtureClient() {
       return { ...saved, demo: true }
     },
 
+    async unsaveFromWanderlist(id) {
+      findings = findings.filter((f) => f.id !== id)
+      return { id, archived: true }
+    },
+
     async probe() {
       return {
         ok: true,

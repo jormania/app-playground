@@ -1,0 +1,80 @@
+.stack {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-lg, 24px);
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 8px);
+  width: min(92vw, 26rem);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 12px);
+  padding: var(--space-sm, 12px) var(--space-md, 16px);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-ink, #1b1f24);
+  color: var(--color-surface, #ffffff);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(16, 20, 26, 0.2));
+  pointer-events: auto;
+  animation: rise var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.toast.success {
+  background: var(--color-success, #2f7a4f);
+}
+
+.toast.danger {
+  background: var(--color-danger, #b3261e);
+}
+
+.message {
+  flex: 1;
+  font-size: var(--text-sm, 0.875rem);
+  line-height: var(--leading-body, 1.6);
+}
+
+.action {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: var(--space-3xs, 2px) var(--space-xs, 8px);
+  font: inherit;
+  font-weight: var(--weight-medium, 500);
+  font-size: var(--text-sm, 0.875rem);
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.close:hover {
+  opacity: 1;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}

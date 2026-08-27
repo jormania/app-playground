@@ -114,6 +114,14 @@ export function createNotionClient(token, { venuesDatabaseId = VENUES_DATABASE_I
       return { id: page.id, url: page.url ?? null }
     },
 
+    /** Undo for the toast that follows a keep — archives the row `saveToWanderlist`
+     *  just created. Same shape as `removeVenue`: Notion's trash is the real undo,
+     *  this just fires it within the few seconds the toast is on screen. */
+    async unsaveFromWanderlist(id) {
+      await call(`pages/${id}`, 'PATCH', { archived: true })
+      return { id, archived: true }
+    },
+
     /** Reachability check for Settings → "Test connection".
      *
      *  Both databases are probed SEPARATELY, because they fail separately and
