@@ -15,7 +15,7 @@ import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
 import iabilet from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
-import { inferYear, slug, eventKey, parseTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
+import { inferYear, slug, eventKey, parseTime, parseIsoDateTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
 import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
@@ -127,6 +127,30 @@ describe('shared helpers', () => {
   it('dedupe keeps the first of a repeated key', () => {
     const a = { key: 'x', title: 'first' }
     expect(dedupe([a, { key: 'x', title: 'second' }, { key: 'y' }])).toEqual([a, { key: 'y' }])
+  })
+
+  describe('parseIsoDateTime — Teatrul Odeon’s own dates never zero-pad', () => {
+    it('reads a properly zero-padded ISO string, as every other JSON-LD source does', () => {
+      expect(parseIsoDateTime('2026-09-12T20:00+00:00')).toEqual({ date: '2026-09-12', time: '20:00' })
+    })
+
+    it('reads Odeon’s own un-padded month/day/hour without misreading the time', () => {
+      // The real bug: a fixed slice(11, 16) assumed the "T" always sits at
+      // index 10, which single-digit month or day shifts left — every Odeon
+      // event read as dateless (and, before the date check even ran, the
+      // time slice landed on "0:00+" instead of "20:00").
+      expect(parseIsoDateTime('2026-9-12T20:00+0:00')).toEqual({ date: '2026-09-12', time: '20:00' })
+      expect(parseIsoDateTime('2026-9-2T9:05+0:00')).toEqual({ date: '2026-09-02', time: '09:05' })
+    })
+
+    it('reads a date with no time at all', () => {
+      expect(parseIsoDateTime('2026-09-12')).toEqual({ date: '2026-09-12', time: null })
+    })
+
+    it('is null/null for garbage rather than throwing', () => {
+      expect(parseIsoDateTime('not a date')).toEqual({ date: null, time: null })
+      expect(parseIsoDateTime(undefined)).toEqual({ date: null, time: null })
+    })
   })
 })
 
@@ -705,6 +729,76 @@ describe('generic schema.org reader (Expirat)', () => {
       expect(jsonld.parse([withOffer({ price: null })], { venue })[0].ticketState).toBe('none')
       expect(jsonld.parse([withOffer({ price: null, url: 'https://t' })], { venue })[0].ticketState).toBe('open')
     })
+  })
+})
+
+describe('generic schema.org reader — Teatrul Odeon (2026-08-27)', () => {
+  // Real markup, real bug: Odeon's own JSON-LD emits `startDate` with NO
+  // zero-padding ("2026-9-12T20:00+0:00"), which the old fixed-width slice
+  // (`start.slice(11, 16)` assuming "T" always sits at index 10) silently
+  // misread — every event on this venue read as dateless. parseIsoDateTime
+  // is what fixes it; this is the adapter-level proof, not just the unit test.
+  const venue = { name: 'Teatrul Odeon', adapter: 'odeon', url: 'https://teatrul-odeon.ro/programul-teatrului-odeon-pe-zile/' }
+  const events = jsonld.parse([{ body: fixture('odeon.html') }], { venue })
+
+  it('reads every event with a real date and time despite the missing zero-padding', () => {
+    expect(events).toHaveLength(7)
+    expect(events[0]).toMatchObject({
+      venue: 'Teatrul Odeon',
+      title: 'Lysistrata | 18+',
+      date: '2026-09-12',
+      time: '20:00',
+    })
+    expect(events.every((e) => e.date && e.time)).toBe(true)
+  })
+
+  it('reports no ticket state — the venue publishes no `offers` at all, never guessed', () => {
+    expect(events.every((e) => e.ticketState === 'none' && e.price === null)).toBe(true)
+  })
+
+  it('two showings of the same production are two events, same as everywhere else', () => {
+    // "Lysistrata | 18+" runs five nights in this fixture alone.
+    const lysistrata = events.filter((e) => e.title === 'Lysistrata | 18+')
+    expect(lysistrata.length).toBeGreaterThan(1)
+    expect(new Set(lysistrata.map((e) => e.key)).size).toBe(lysistrata.length)
+  })
+})
+
+describe('generic schema.org reader — Quantic (2026-08-27)', () => {
+  // Deliberately NOT the `iabilet` adapter, despite the iabilet.ro host: that
+  // two-hop reader exists for Cinema Europa's actual shape (one JSON-LD block
+  // per WEEKLY BUNDLE, real showings only on a child page). Quantic's own
+  // venue page already carries one real, complete Event per show — name, its
+  // own url, a date, an image, and (where the venue published one) offers —
+  // directly, no bundle/tariff hop needed. Running the bundle reader against
+  // this page would fetch each event's own ticket page looking for a
+  // multi-showing tariff accordion that isn't there, and find nothing.
+  const venue = { name: 'Quantic', adapter: 'quantic', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/' }
+  const events = jsonld.parse([{ body: fixture('quantic.html') }], { venue })
+
+  it('reads real per-event names, dates and posters straight off the venue page', () => {
+    expect(events).toHaveLength(6)
+    expect(events[0]).toMatchObject({
+      venue: 'Quantic',
+      title: 'iubim 2ROTI - Editia IX – 2026',
+      date: '2026-09-04',
+      price: 85,
+      ticketState: 'open',
+    })
+    expect(events.every((e) => e.image)).toBe(true)
+  })
+
+  it('is a genuine mix — some events publish offers, some don’t, and each is honest about it', () => {
+    // Real data: "Trio Mandili" has no `offers` block at all in this
+    // fixture, sitting between two events that do.
+    const trio = events.find((e) => e.title.includes('Trio Mandili'))
+    expect(trio.ticketState).toBe('none')
+    expect(trio.price).toBeNull()
+    expect(events.some((e) => e.ticketState === 'open')).toBe(true)
+  })
+
+  it('drops the hall — the location just repeats the venue name', () => {
+    expect(events.every((e) => e.hall === null)).toBe(true)
   })
 })
 

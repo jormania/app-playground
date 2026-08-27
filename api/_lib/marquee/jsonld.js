@@ -11,7 +11,7 @@
 // structure. A page with no Event objects parses to an empty list and the health
 // gate in the endpoint turns that into a visible "needs an adapter", not silence.
 
-import { TICKET, makeEvent, parseTime, textOf } from './shared.js'
+import { TICKET, makeEvent, parseIsoDateTime, textOf } from './shared.js'
 
 const SCRIPT = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
 
@@ -85,11 +85,12 @@ export default {
           const price = typeof rawPrice === 'number' || (typeof rawPrice === 'string' && rawPrice.trim() !== '')
             ? Number(rawPrice)
             : NaN
+          const { date, time } = parseIsoDateTime(start)
           events.push(makeEvent({
             venue: venue.name,
             title: typeof node.name === 'string' ? node.name : textOf(node.name),
-            date: /^\d{4}-\d{2}-\d{2}/.exec(start)?.[0] ?? null,
-            time: start.includes('T') ? parseTime(start.slice(11, 16)) : null,
+            date,
+            time,
             hall: typeof node.location?.name === 'string' ? node.location.name : null,
             link: node.url ?? null,
             ticketState: /SoldOut/i.test(availability) || /Cancelled/i.test(status)

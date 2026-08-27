@@ -112,12 +112,25 @@ export function validateVenue(draft, existing = []) {
   // while the row quietly kept the previous one, so the next check went on failing
   // against a site that was no longer there. (Filarmonica, moved to Oveit,
   // 2026-08-26.) The rule now is simply: what is saved is what the form said.
+  //
+  // One deliberate exception: the URL genuinely NOT CHANGING at all. Some
+  // adapters (Quantic — see registry.js's own header) are pinned to a specific
+  // id BECAUSE the URL's own host is ambiguous between two real readers, and
+  // re-running host-matching on every save would silently flip such a venue
+  // back to the generic auto-detected one the moment its Notes were edited,
+  // even though nothing about what to read changed. Detected by comparing
+  // against this same venue's OWN previously-saved URL, not by trusting the
+  // draft's adapter blindly — a genuine URL edit still re-resolves as above.
+  const previous = venue.id ? existing.find((v) => v.id === venue.id) : null
+  const urlUnchanged = Boolean(previous) && previous.url === venue.url
   const matched = url ? matchAdapter(venue.url) : null
   const carried = venue.adapter && venue.adapter !== 'unsupported' ? getAdapter(venue.adapter) : null
   const carriedFits = carried && (carried.id === matched?.adapter || carried.hosts.length === 0)
-  const resolved = matched ?? (carriedFits
+  const resolved = urlUnchanged && carried
     ? { adapter: carried.id, config: venue.config, rung: carried.rung, label: carried.label }
-    : null)
+    : matched ?? (carriedFits
+      ? { adapter: carried.id, config: venue.config, rung: carried.rung, label: carried.label }
+      : null)
 
   if (resolved) {
     venue.adapter = resolved.adapter

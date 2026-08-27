@@ -74,10 +74,34 @@ export const ADAPTERS = [
     requiresConfig: true,
   },
   {
+    /** Deliberately no `hosts` entry — `matchAdapter` would otherwise
+     *  suggest THIS for any `iabilet.ro/bilete-*-venue-<id>/` URL, including
+     *  Cinema Europa's, which genuinely needs the `iabilet` two-hop reader
+     *  just above. Quantic's own venue page happens to already carry
+     *  complete, real Event JSON-LD directly (confirmed against the live
+     *  page) — the two sites share a host and a URL shape but not a
+     *  structure, which no URL pattern can tell apart. Exists here only so
+     *  `getAdapter('quantic')` resolves to a real label for display; the row
+     *  itself was added with this id chosen deliberately, not through the
+     *  add-venue form's guess. */
+    id: 'quantic',
+    label: 'Quantic / iabilet.ro venue page',
+    rung: 'jsonld',
+    hosts: [],
+    note: 'Real per-event schema.org JSON-LD directly on the venue page — no bundle hop needed, unlike Cinema Europa.',
+  },
+  {
     id: 'expirat',
     label: 'Expirat / iabilet whitelabel',
     rung: 'jsonld',
     hosts: ['tickets.expirat.org'],
+    note: 'Emits full schema.org Event JSON-LD per listing.',
+  },
+  {
+    id: 'odeon',
+    label: 'Teatrul Odeon',
+    rung: 'jsonld',
+    hosts: ['teatrul-odeon.ro'],
     note: 'Emits full schema.org Event JSON-LD per listing.',
   },
   {

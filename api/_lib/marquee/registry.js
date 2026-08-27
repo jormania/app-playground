@@ -1,9 +1,21 @@
 // The server half of the adapter registry. These ids are the contract with
 // src/marquee/adapters.js — change one, change both.
 //
-// `expirat` is not its own module: the site is an iabilet.ro whitelabel that emits
-// complete schema.org Event objects, so it IS the generic reader, registered under
-// its own id so the venue row and the UI can name what is reading it.
+// `expirat`, `odeon` and `quantic` are not their own modules: each site's
+// venue page already emits complete schema.org Event objects, so each IS the
+// generic reader, aliased under its own id so the venue row and the UI can
+// name what is reading it.
+//
+// `quantic` is the one worth a second look, because its URL would fool the
+// client's own host-based auto-detection (adapters.js) into suggesting
+// `iabilet` — same domain, same `-venue-<id>` URL shape as Cinema Europa. But
+// Cinema Europa's venue page carries only ONE Event block per weekly themed
+// BUNDLE, with the real showings living on a child page's tariff accordion —
+// that's what `iabilet.js`'s two-hop reader exists for. Quantic's own venue
+// page already carries one real, complete Event per show, offers and all,
+// directly — no bundle, no second hop, nothing for that reader to do. Two
+// venues, same host, same URL shape, genuinely different page structure —
+// confirmed by reading the real markup, not assumed from the domain.
 
 import excelsior from './excelsior.js'
 import eventbook from './eventbook.js'
@@ -15,6 +27,8 @@ import tnb from './tnb.js'
 import mystage from './mystage.js'
 
 const expirat = { ...jsonld, id: 'expirat', label: 'Expirat / iabilet whitelabel', minItems: 3 }
+const odeon = { ...jsonld, id: 'odeon', label: 'Teatrul Odeon', minItems: 6 }
+const quantic = { ...jsonld, id: 'quantic', label: 'Quantic / iabilet.ro venue page', minItems: 6 }
 
 export const ADAPTERS = {
   excelsior,
@@ -26,6 +40,8 @@ export const ADAPTERS = {
   jsonld,
   tnb,
   mystage,
+  odeon,
+  quantic,
 }
 
 export function getAdapter(id) {

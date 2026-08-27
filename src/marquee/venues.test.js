@@ -125,6 +125,32 @@ describe('validateVenue', () => {
     expect(r.venue.config).toBe('l7PDAr7y')
     expect(r.matched).toBe(true)
   })
+
+  it('keeps a deliberately-pinned adapter on a no-op save, even though the URL would auto-match a different one', () => {
+    // Quantic's own URL (iabilet.ro/bilete-*-venue-<id>/) is structurally
+    // identical to Cinema Europa's, so matchAdapter genuinely returns
+    // 'iabilet' for it — but Quantic's venue page needs the GENERIC reader
+    // (see adapters.js's own header), so its row is pinned to 'quantic'
+    // instead. Editing something else about the row (Notes, say) and saving
+    // without touching the URL must not silently flip it back to 'iabilet'.
+    const quantic = normalizeVenue({
+      id: 'q1', name: 'Quantic', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/', adapter: 'quantic',
+    })
+    const r = validateVenue({ ...quantic, notes: 'Some new note' }, [quantic])
+    expect(r.venue.adapter).toBe('quantic')
+    expect(r.venue.config).toBe(quantic.config)
+  })
+
+  it('still re-resolves normally when a pinned venue’s URL genuinely changes', () => {
+    // The opposite case, so the fix above can't regress into never
+    // re-checking a pinned adapter at all — a real site change still has to
+    // go through the ordinary matched-vs-carried logic.
+    const quantic = normalizeVenue({
+      id: 'q1', name: 'Quantic', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/', adapter: 'quantic',
+    })
+    const r = validateVenue({ ...quantic, url: 'https://teatrul-excelsior.ro/program/' }, [quantic])
+    expect(r.venue.adapter).toBe('excelsior')
+  })
 })
 
 describe('pausing', () => {

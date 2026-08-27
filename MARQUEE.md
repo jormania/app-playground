@@ -1257,6 +1257,74 @@ and `npm run build` all pass. The guide itself has no test coverage (it's
 static HTML, like every other app's guide in this repo) — checked by reading
 it end to end and confirming tag balance rather than by a render test.
 
+### 9.37 Teatrul Odeon and Quantic, and a real bug each turned up (2026-08-27)
+
+Two venues added on request, both aliases of the generic `jsonld` reader —
+each already publishes complete schema.org Event JSON-LD directly on its
+listing page, no dedicated adapter module needed. Neither addition was
+"paste a URL and done," though; investigating each live page's actual markup
+(not assumed from its domain) surfaced a real bug apiece.
+
+**Teatrul Odeon read as dateless — `jsonld.js`'s date extraction assumed
+zero-padding that isn't there.** Odeon's own JSON-LD emits `startDate` as
+`2026-9-12T20:00+0:00` — no leading zero on the month, day or hour. The old
+extraction (`/^\d{4}-\d{2}-\d{2}/` for the date, `start.slice(11, 16)` for the
+time, both assuming a fixed-width `YYYY-MM-DDT` prefix) silently failed both:
+the date regex simply didn't match a single-digit month, and the time slice —
+computed from a position that shifts left by one character per missing
+digit — read garbage instead of the clock. Every Odeon event would have
+health-gated as parser-broken. Fixed with a new `shared.js` export,
+`parseIsoDateTime`, that reads date/time components by capture group rather
+than by position, tolerant of missing padding; `jsonld.js` now calls it
+instead of the two ad-hoc extractions. Backward-compatible by construction —
+capturing `\d{1,2}` matches a correctly zero-padded string exactly as before,
+so Expirat's own dates parse identically to how they always did (confirmed:
+its existing tests still pass unchanged).
+
+**Quantic's URL would have auto-detected the WRONG reader.** It sits on
+iabilet.ro at `bilete-quantic-venue-1705/` — structurally identical to Cinema
+Europa's own URL shape, which `matchAdapter` (adapters.js) already routes to
+the two-hop `iabilet` reader (venue page → weekly-bundle child page →
+tariff-row accordion). Reading Quantic's actual page found something
+different: it already carries one real, complete Event block per SHOW —
+name, its own url, a date, a poster, and (for about half of them, confirmed
+against the live page) real `offers` with a price — directly on the venue
+page. No bundle, no second hop; running the `iabilet` reader against it would
+fetch each show's own ticket page hunting for a multi-showing tariff
+accordion that was never there, and find nothing. Registered as its own
+alias (`quantic`, `hosts: []` — same "only ever chosen explicitly" shape the
+bare `jsonld` fallback already uses) so `getAdapter('quantic')` still
+resolves a real label, but `matchAdapter` never suggests it automatically —
+the row's `Adapter` was set to `quantic` directly, not through the add-venue
+form's own guess, which would have gotten it wrong.
+
+**That mismatch turned up a second, latent bug in `validateVenue`**
+(`venues.js`): editing Quantic's row through the app — even something
+unrelated, like fixing a typo in Notes — without touching the URL would have
+silently re-run host-matching, gotten `iabilet` again (matched is truthy for
+that URL, so the `??` in `resolved = matched ?? (carriedFits ? … : null)`
+never even looks at the carried adapter), and overwritten `quantic` back to
+`iabilet` on save. Not hypothetical — this is the exact venue that exists to
+prove URL-shape auto-detection can be wrong, so it would eventually get
+edited and silently break. Fixed by comparing the draft's URL against this
+same venue's OWN previously-saved one (via `existing`, already a parameter):
+when the URL genuinely hasn't changed, the carried adapter now wins outright
+rather than being re-derived — a real URL change still goes through the
+original matched-vs-carried logic unchanged (the Filarmonica-moved-to-Oveit
+case §9.5 fixed is still covered; pinned to a test).
+
+Both venues verified against their live pages end to end
+(`scanVenue`, not just fixtures): Odeon returned 15 real events with correct
+dates and times; Quantic returned 24, with real prices and images throughout
+and an honest mix of `open`/`none` ticket states matching which shows had
+published `offers` and which didn't.
+
+### 9.38 Verified
+
+`npm test` (3886 tests across 306 files), `npm run typecheck`, `npx eslint`,
+and `npm run build` all pass. Both new adapters were verified against their
+live pages via `scanVenue`, not only the trimmed fixtures — see above.
+
 
 ## Open
 

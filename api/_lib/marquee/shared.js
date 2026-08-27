@@ -130,6 +130,25 @@ export function parseTime(text) {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
 }
 
+/**
+ * Date and time out of a loosely-formatted ISO-ish datetime string, tolerant
+ * of missing zero-padding — Teatrul Odeon's own JSON-LD emits
+ * `2026-9-12T20:00+0:00` rather than the `2026-09-12T20:00...` schema.org
+ * assumes. A fixed-width slice (reading `T`'s position as always index 10)
+ * silently misreads both the date AND the time the moment a month or day is
+ * a single digit, which is how this was actually found: every Odeon event
+ * read as dateless until this was written. Not a full ISO-8601 parser —
+ * just the date and time components any of this app's JSON-LD sources need.
+ */
+export function parseIsoDateTime(raw) {
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{2}))?/.exec(String(raw ?? ''))
+  if (!m) return { date: null, time: null }
+  const [, y, mo, d, h, mi] = m
+  const date = `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`
+  const time = h != null ? parseTime(`${h.padStart(2, '0')}:${mi}`) : null
+  return { date, time }
+}
+
 /** The first `max` real prose `<p>` tags from an HTML fragment — long enough
  *  (`minLength`) to be an actual sentence, not a running-time line or a bare
  *  content-warning dash. Not a synopsis parser: a venue's "about this show"
