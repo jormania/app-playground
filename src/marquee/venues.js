@@ -8,6 +8,7 @@
 // Notion rows; SettingsPanel.jsx drives these functions from the UI.
 
 import { matchAdapter, getAdapter, parseUrl } from './adapters.js'
+import { fold } from './findings.js'
 
 /** Wanderlist's closed Category vocabulary, narrowed to what a venue can be.
  *  Must stay a subset of the real one — a save has to be lossless. */
@@ -182,4 +183,21 @@ export function suggestName(rawUrl) {
   }
   const host = url.hostname.toLowerCase().replace(/^www\./, '').split('.')[0]
   return host.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+/** Free-text search across a venue's own fields, folded through the same
+ *  diacritic-insensitive `fold` the programme's search and the dedupe matcher
+ *  already use — so "taranului" finds "Cinema Muzeul Țăranului", and the
+ *  address and area filled in on every row are searchable too ("academiei",
+ *  "grozavesti"). A blank query returns everything unfiltered rather than
+ *  nothing, exactly as `searchProductions` does. */
+export function searchVenues(venues, query) {
+  const q = fold(query)
+  if (!q) return venues ?? []
+  return (venues ?? []).filter((v) => (
+    fold(v.name).includes(q)
+    || fold(v.area ?? '').includes(q)
+    || fold(v.address ?? '').includes(q)
+    || fold(v.url ?? '').includes(q)
+  ))
 }

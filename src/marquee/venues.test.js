@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   AREAS, CATEGORIES,
+  searchVenues,
   normalizeVenue,
   validateVenue,
   sameProgramme,
@@ -235,5 +236,45 @@ describe('the closed vocabularies must match Notion', () => {
   it('drops an area the app does not know rather than writing it back', () => {
     expect(normalizeVenue({ name: 'X', area: 'atlantis' }).area).toBeNull()
     expect(normalizeVenue({ name: 'X', area: 'grozavesti' }).area).toBe('grozavesti')
+  })
+})
+
+describe('searchVenues', () => {
+  const venues = [
+    normalizeVenue({ id: '1', name: 'Cinema Muzeul Țăranului', area: 'victoriei', address: 'Strada Monetăriei 3, sector 1, București', url: 'https://eventbook.ro/hall/cinema-muzeul-taranului-studio-horia-bernea' }),
+    normalizeVenue({ id: '2', name: 'Quantic', area: 'grozavesti', address: 'Șoseaua Grozăvești 82, București', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/' }),
+    normalizeVenue({ id: '3', name: 'Teatrul Excelsior', area: 'centru', address: 'Strada Academiei 28, sector 1, București', url: 'https://teatrul-excelsior.ro/program/' }),
+  ]
+  const names = (q) => searchVenues(venues, q).map((v) => v.name)
+
+  it('matches a name with diacritics folded, the same way the programme search does', () => {
+    expect(names('taranului')).toEqual(['Cinema Muzeul Țăranului'])
+    expect(names('Țăranului')).toEqual(['Cinema Muzeul Țăranului'])
+  })
+
+  it('searches the address and area too — the fields every venue now carries', () => {
+    expect(names('academiei')).toEqual(['Teatrul Excelsior'])
+    expect(names('grozavesti')).toEqual(['Quantic'])
+    expect(names('centru')).toEqual(['Teatrul Excelsior'])
+  })
+
+  it('searches the programme URL, so a host is enough to find a venue', () => {
+    expect(names('iabilet')).toEqual(['Quantic'])
+  })
+
+  it('is a no-op filter for a blank query, never "nothing"', () => {
+    expect(searchVenues(venues, '')).toHaveLength(3)
+    expect(searchVenues(venues, '   ')).toHaveLength(3)
+    expect(searchVenues(venues, undefined)).toHaveLength(3)
+  })
+
+  it('returns nothing for a query that matches nothing, rather than everything', () => {
+    expect(names('zzzz')).toEqual([])
+  })
+
+  it('survives a venue with no address or area at all', () => {
+    const sparse = [normalizeVenue({ id: 'x', name: 'Bare', url: '' })]
+    expect(() => searchVenues(sparse, 'anything')).not.toThrow()
+    expect(searchVenues(sparse, 'bare').map((v) => v.name)).toEqual(['Bare'])
   })
 })

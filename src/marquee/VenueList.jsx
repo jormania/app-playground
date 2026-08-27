@@ -79,12 +79,16 @@ function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
   )
 }
 
-export default function VenueList({ venues, busyId, troubleByVenue = new Map(), onTogglePause, onEdit, onRemove }) {
+export default function VenueList({ venues, search = '', busyId, troubleByVenue = new Map(), onTogglePause, onEdit, onRemove }) {
   if (!venues.length) {
+    // A search that matches nothing is its own answer, and a different one
+    // from having no venues at all — the same distinction Programme's
+    // `emptyMessage` already draws, worded the same way.
     return (
       <p className="empty">
-        No venues yet. Add the programme page of a place you actually go to — a theatre, a cinema, a
-        concert hall — and Marquee will watch it for new shows and tickets.
+        {search
+          ? `Nothing matches “${search}”.`
+          : 'No venues yet. Add the programme page of a place you actually go to — a theatre, a cinema, a concert hall — and Marquee will watch it for new shows and tickets.'}
       </p>
     )
   }

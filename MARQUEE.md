@@ -1545,6 +1545,26 @@ one carries both an address and an area, and `fixtures.js` was checked against
 `AREAS` programmatically rather than by eye.
 
 
+### 9.44 Search on both tabs (2026-08-27)
+
+The box was Programme-only, which made it the one screen with a way to narrow
+itself and left the row's height changing on every tab switch. It now sits on
+both, searching whatever the tab in front is actually showing:
+`searchVenues` (new, in `venues.js`) matches a venue's name, area, address or
+programme URL — worth having only because §9.42 just filled the first three in
+on every row, so "academiei" finds Excelsior and "grozavesti" finds Quantic.
+Folded through the same diacritic-insensitive `fold` the programme search and
+the dedupe matcher already share.
+
+**Each tab keeps its own query.** Sharing one looked tidier and behaved badly:
+a leftover "Tomcat" would carry onto the Venues tab and empty the list with no
+visible cause — the same shape as the bug where a "What changed" row scrolled
+to a card the search was hiding. And a venue search that matches nothing says
+so ("Nothing matches …") rather than falling through to "No venues yet", which
+is a different claim entirely — the same distinction `emptyMessage` already
+draws on the programme side, worded the same way.
+
+
 ## Open
 
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every

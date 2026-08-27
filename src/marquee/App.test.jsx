@@ -92,6 +92,40 @@ describe('Marquee, end to end in demo mode', () => {
     vi.unstubAllGlobals();
   });
 
+  it('search is on both tabs, and each tab keeps its own query', async () => {
+    // Consistency between screens was the point — but a SHARED query would
+    // carry a programme search onto the Venues tab and empty it with no
+    // visible cause, so each tab owns its own.
+    const user = userEvent.setup();
+    render(<App />);
+
+    const programmeBox = screen.getByLabelText(/Search the programme/);
+    await user.type(programmeBox, 'Tomcat');
+
+    await user.click(await screen.findByRole('button', { name: /^Venues/ }));
+    const venueBox = await screen.findByLabelText(/Search your venues/);
+    expect(venueBox.value).toBe('');
+    // The venue list is intact, not silently emptied by the other tab's query.
+    expect(screen.getByText('Teatrul Excelsior')).toBeTruthy();
+
+    await user.type(venueBox, 'grozavesti');
+    await waitFor(() => expect(screen.getByText('Quantic')).toBeTruthy());
+    expect(screen.queryByText('Teatrul Excelsior')).toBeNull();
+
+    // And back: the programme's own query survived the round trip.
+    await user.click(screen.getByRole('button', { name: 'Programme' }));
+    expect(screen.getByLabelText(/Search the programme/).value).toBe('Tomcat');
+  });
+
+  it('says a venue search matched nothing, rather than "no venues yet"', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /^Venues/ }));
+    await user.type(await screen.findByLabelText(/Search your venues/), 'zzzz');
+    expect(await screen.findByText(/Nothing matches/)).toBeTruthy();
+    expect(screen.queryByText(/No venues yet/)).toBeNull();
+  });
+
   it('the layout toggle appears only where it does something', async () => {
     // Check venues and Settings are always actionable; the List/Posters
     // switch is not — with no programme on screen there is nothing to switch

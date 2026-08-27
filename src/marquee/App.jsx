@@ -11,7 +11,7 @@ import Programme from './Programme.jsx'
 import WeekStrip from './WeekStrip.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
-import { sortVenues, scannable, togglePaused } from './venues.js'
+import { sortVenues, scannable, togglePaused, searchVenues } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
   changedKeyMap, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, nextDayKeys, densityForDays,
@@ -65,6 +65,12 @@ export default function App() {
   const [venueFilter, setVenueFilter] = useState(null)
   const [hallFilter, setHallFilter] = useState(null)
   const [search, setSearch] = useState('')
+  // The Venues tab has its own query rather than sharing the programme's.
+  // Sharing looked tidier and behaved badly: a leftover "Tomcat" would carry
+  // across on a tab switch and empty the venue list with no visible cause —
+  // the same trap that made a "What changed" row scroll to a card the search
+  // was hiding (§9.29's finding).
+  const [venueSearch, setVenueSearch] = useState('')
   const [keeping, setKeeping] = useState(null)
 
   const [editing, setEditing] = useState(null)
@@ -169,7 +175,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const onProgramme = tab === 'programme'
+
   const sorted = useMemo(() => sortVenues(venues), [venues])
+  // What the Venues tab actually lists. `sorted` stays the full set — the
+  // footnote below it counts your whole setup, not the current view.
+  const visibleVenues = useMemo(() => searchVenues(sorted, venueSearch), [sorted, venueSearch])
   // Sorted, so the filter chips read in the same order as the Venues tab.
   const active = useMemo(() => sortVenues(scannable(venues)), [venues])
 
@@ -503,25 +514,35 @@ export default function App() {
           </button>
         </nav>
 
-        {tab === 'programme' && (
-          <div className="search-row">
-            <div className="search">
-              <SearchIcon size={14} aria-hidden="true" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
-                aria-label="Search the programme by title or venue"
-              />
-              {search && (
-                <button type="button" className="search__clear" aria-label="Clear search" onClick={() => setSearch('')}>
-                  <ClearIcon size={14} />
-                </button>
-              )}
-            </div>
+        {/* Present on BOTH tabs — same box, same place, searching whatever
+            the tab in front is actually showing. It used to vanish on the
+            Venues tab, which made the row's own height change on every tab
+            switch and left the venue list as the one screen with no way to
+            narrow it. */}
+        <div className="search-row">
+          <div className="search">
+            <SearchIcon size={14} aria-hidden="true" />
+            <input
+              type="search"
+              value={onProgramme ? search : venueSearch}
+              onChange={(e) => (onProgramme ? setSearch : setVenueSearch)(e.target.value)}
+              placeholder="Search…"
+              aria-label={onProgramme
+                ? 'Search the programme by title or venue'
+                : 'Search your venues by name, area or address'}
+            />
+            {(onProgramme ? search : venueSearch) && (
+              <button
+                type="button"
+                className="search__clear"
+                aria-label="Clear search"
+                onClick={() => (onProgramme ? setSearch : setVenueSearch)('')}
+              >
+                <ClearIcon size={14} />
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <main className={`main ${prefs.compactList ? 'main--compact' : ''}`}>
@@ -574,7 +595,8 @@ export default function App() {
         ) : (
           <>
             <VenueList
-              venues={sorted}
+              venues={visibleVenues}
+              search={venueSearch}
               busyId={busyId}
               troubleByVenue={venueTrouble}
               onTogglePause={handleTogglePause}
