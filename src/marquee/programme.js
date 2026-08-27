@@ -250,3 +250,19 @@ export function scanPayload(venues) {
     .filter((v) => isActive(v) && v.url && v.adapter && v.adapter !== 'unsupported')
     .map((v) => ({ id: v.id, name: v.name, url: v.url, adapter: v.adapter, config: v.config ?? null, category: v.category ?? null }))
 }
+
+/** Venues the LAST check could not read, by venue name — the same
+ *  `status !== 'ok' && status !== 'empty'` rule `Programme.jsx`'s Trouble
+ *  strip already applies, shared so the Venues tab marks exactly the rows
+ *  that strip is complaining about rather than re-deriving it from the
+ *  `Last result` text. A venue the check didn't cover (paused, or added
+ *  since) is simply absent: unknown is not the same as fine. */
+export function troubleByVenue(scanned) {
+  const map = new Map()
+  for (const v of scanned ?? []) {
+    if (v && v.status !== 'ok' && v.status !== 'empty') {
+      map.set(v.venue, { status: v.status, detail: v.detail ?? null })
+    }
+  }
+  return map
+}

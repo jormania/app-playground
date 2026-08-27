@@ -57,13 +57,37 @@ export function isQuietHours(now = new Date()) {
 /** Mirror what the worker needs whenever the venue list or the notify prefs
  *  change — the same "whenever the relevant data changes" effect every app
  *  wired into this layer writes (NOTIFICATIONS.md's checklist item 2). */
-export async function writeNotifyState(venues, prefs) {
-  await kv.set(VENUES_KEY, scanPayload(venues))
+export async function writeNotifyPrefs(prefs) {
   await kv.set(PREFS_KEY, {
     enabled: Boolean(prefs?.notifyEnabled),
     kinds: notifyKinds(prefs),
     quietHours: Boolean(prefs?.notifyQuietHours),
   })
+}
+
+/**
+ * The venue list the worker POSTs with.
+ *
+ * Split from the prefs write on purpose, because the two have OPPOSITE
+ * failure modes. Prefs must reach the worker unconditionally — a toggle
+ * flipped off has to stop a background wake that started before this session
+ * opened. The venue list must NOT be written speculatively: `venues` is `[]`
+ * on first render and stays `[]` if the Notion load fails (offline, a bad
+ * token, Notion down), and writing that empty list makes the worker's own
+ * `if (!venues.length) return` a silent no-op — background checking stops
+ * until the app is next opened *successfully*, which for a feature whose
+ * whole value is running while the app is closed can go unnoticed for weeks.
+ * The caller passes `loaded` only once a read has actually succeeded; a
+ * stale list is strictly better than an empty one.
+ */
+export async function writeNotifyVenues(venues) {
+  await kv.set(VENUES_KEY, scanPayload(venues))
+}
+
+/** Both halves, for a caller that has genuinely loaded both. */
+export async function writeNotifyState(venues, prefs) {
+  await writeNotifyVenues(venues)
+  await writeNotifyPrefs(prefs)
 }
 
 export { capabilities, notificationPermission }
@@ -105,6 +129,62 @@ export function notifiableChanges(beforeMap, events, kinds) {
     if (kind && allow.has(kind)) out.push({ kind, key: e.key, title: e.title, venue: e.venue })
   }
   return out
+}
+
+/** The worker's own snapshot shape. Carries `venue` alongside the ticket
+ *  state — `nextSnapshot` below cannot tell which entries a silent venue
+ *  owned without it, and `changes.js`'s own `toSnapshot` has always kept it
+ *  for the same reason. */
+export function toSnapshotMap(events) {
+  const map = {}
+  for (const e of events ?? []) map[e.key] = { ticketState: e.ticketState, venue: e.venue }
+  return map
+}
+
+/** Which venues actually answered this scan — the endpoint reports a status
+ *  per venue, and only `ok`/`empty` mean "we truly read this one". */
+export function answeredVenues(venues) {
+  const out = new Set()
+  for (const v of venues ?? []) {
+    if (v && (v.status === 'ok' || v.status === 'empty')) out.add(v.venue)
+  }
+  return out
+}
+
+/**
+ * The snapshot to persist after a scan — the current events, PLUS whatever a
+ * venue that did not answer showed last time.
+ *
+ * Without this, a throttled venue (Filarmonica's feed 403s on bursts, which
+ * MARQUEE.md documents as routine) silently drops out of the snapshot, and
+ * the next time it answers every one of its events has no `before` entry.
+ * `kindFor` short-circuits a missing before to `new-event`, so the damage
+ * runs both ways: with "notify about everything" on you get a burst of false
+ * "new" claims, and on the DEFAULT tickets-only setting a genuine
+ * `none → open` is misclassified as `new-event` and therefore never
+ * notified — the feature silently failing at the one job it exists for.
+ *
+ * `src/marquee/scanClient.js` and `api/_lib/marquee/serverScan.js` have both
+ * always carried a silent venue forward this way; this is the third copy of
+ * that rule, and the one that was missing it.
+ *
+ * An entry whose `venue` is unknown (written by a build before the field was
+ * kept) is carried forward rather than dropped: carrying a stale entry too
+ * long only costs a notification that was never going to fire (nothing here
+ * reports removals), while dropping one reproduces the bug above. It
+ * self-heals — the next scan in which that venue answers overwrites the key
+ * outright.
+ */
+export function nextSnapshot(previous, events, scannedVenues) {
+  const after = toSnapshotMap(events)
+  if (!previous) return after
+  const answered = answeredVenues(scannedVenues)
+  for (const [key, entry] of Object.entries(previous)) {
+    if (after[key]) continue
+    if (entry?.venue && answered.has(entry.venue)) continue
+    after[key] = entry
+  }
+  return after
 }
 
 const LABEL = { 'tickets-opened': 'tickets on sale', 'sold-out': 'sold out', 'new-event': 'new' }

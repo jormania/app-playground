@@ -6,7 +6,7 @@ import { formatDay } from './format.js'
  *
  *  A paused venue is dimmed but never hidden or moved out of reach — pausing is
  *  meant to be as easy to undo as it was to do. */
-function VenueRow({ venue, busy, onTogglePause, onEdit, onRemove }) {
+function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
   const active = isActive(venue)
   const adapter = getAdapter(venue.adapter)
   const host = (() => {
@@ -24,6 +24,18 @@ function VenueRow({ venue, busy, onTogglePause, onEdit, onRemove }) {
               generic reader
             </span>
           )}
+          {/* Whether the venue is OKAY was the one question Settings' old
+              "Venue health" list existed to answer, and neither screen
+              actually answered it: a failure reason landed in `Last result`
+              as the same grey text as "24 events". Taken from the last
+              scan's own per-venue status rather than by reading that text,
+              so it says exactly what the check said — and only for venues
+              that check actually covered. */}
+          {trouble && (
+            <span className={`chip chip--${trouble.status === 'throttled' ? 'warn' : 'stop'}`} title={trouble.detail ?? ''}>
+              {trouble.status === 'throttled' ? 'rate-limited' : 'not readable'}
+            </span>
+          )}
         </div>
         <a className="venue__url" href={venue.url} target="_blank" rel="noreferrer noopener">
           {host}
@@ -33,11 +45,23 @@ function VenueRow({ venue, busy, onTogglePause, onEdit, onRemove }) {
           {venue.config ? ` · ${venue.config}` : ''}
           {venue.category ? ` · saves as ${venue.category}` : ''}
         </p>
-        <p className="venue__scan">
+        <p className={`venue__scan ${trouble ? 'venue__scan--trouble' : ''}`}>
           {venue.lastChecked
             ? `Last checked ${formatDay(venue.lastChecked, { relative: true })}${venue.lastResult ? ` · ${venue.lastResult}` : ''}`
             : 'Never checked'}
         </p>
+        {/* Address and Area were editable and then invisible — you could set
+            them and never see them again outside Notion. The address is what
+            makes a saved Wanderlist finding drop its map pin first try
+            (`placeFor` in wanderlist.js), so a venue missing one is worth
+            being able to notice. */}
+        {(venue.address || venue.area) && (
+          <p className="venue__where">
+            {venue.address}
+            {venue.address && venue.area ? ' · ' : ''}
+            {venue.area}
+          </p>
+        )}
         {venue.notes && <p className="venue__notes">{venue.notes}</p>}
       </div>
       <div className="venue__actions">
@@ -55,7 +79,7 @@ function VenueRow({ venue, busy, onTogglePause, onEdit, onRemove }) {
   )
 }
 
-export default function VenueList({ venues, busyId, onTogglePause, onEdit, onRemove }) {
+export default function VenueList({ venues, busyId, troubleByVenue = new Map(), onTogglePause, onEdit, onRemove }) {
   if (!venues.length) {
     return (
       <p className="empty">
@@ -77,6 +101,7 @@ export default function VenueList({ venues, busyId, onTogglePause, onEdit, onRem
             key={venue.id ?? venue.url}
             venue={venue}
             busy={busyId === venue.id}
+            trouble={troubleByVenue.get(venue.name) ?? null}
             onTogglePause={onTogglePause}
             onEdit={onEdit}
             onRemove={onRemove}

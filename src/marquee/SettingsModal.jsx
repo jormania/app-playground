@@ -3,36 +3,11 @@ import { Button, Field, Modal, SegmentedControl, SettingsToggle } from '../ds'
 import { getToken, setToken, clearToken, venuesDb, findingsDb, isLive, clientFor } from './store.js'
 import { parseNotionId } from '../shared/notionId'
 import { VENUES_DATABASE_ID } from './notionClient.js'
-import { getAdapter } from './adapters.js'
-import { isActive } from './venues.js'
-import { formatDay } from './format.js'
 import { enableNotify, unregisterPeriodicSync, capabilities, notificationPermission, REMINDERS_DB } from './notify.js'
 import { gatherDiagnostics } from '../shared/notify/diagnostics'
 import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal'
 
 const NOTIFY_DIAG_KEYS = ['venues', 'prefs', 'snapshot']
-
-/** One venue's own row in the health list: what's reading it, whether it's
- *  paused, and what its last check actually found — the three things "is
- *  this venue okay?" needs, all of which already live on the Notion row but
- *  nowhere in the app puts them side by side. */
-function VenueHealthRow({ venue }) {
-  const adapter = getAdapter(venue.adapter)
-  const active = isActive(venue)
-  return (
-    <li className={`health__row ${active ? '' : 'health__row--paused'}`}>
-      <div className="health__name">
-        {venue.name}
-        {!active && <span className="chip chip--paused">paused</span>}
-      </div>
-      <p className="health__meta">
-        {adapter ? adapter.label : 'no reader'}
-        {venue.lastChecked ? ` · checked ${formatDay(venue.lastChecked, { relative: true })}` : ' · never checked'}
-      </p>
-      {venue.lastResult && <p className="health__result">{venue.lastResult}</p>}
-    </li>
-  )
-}
 
 const THEMES = [
   { value: 'system', label: 'System' },
@@ -47,7 +22,7 @@ const THEMES = [
  * first because they are the ones you revisit, the Notion plumbing below them
  * because it is set once, and help last.
  */
-export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venues = [], onClose, onChanged }) {
+export default function SettingsModal({ open, prefs, onPrefs, counts = {}, onClose, onChanged }) {
   const [token, setTokenValue] = useState('')
   const [db, setDb] = useState('')
   const [findings, setFindings] = useState('')
@@ -236,19 +211,6 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
               <p className="settings__hint">prefs: {diag.values.prefs ? JSON.stringify(diag.values.prefs) : 'none'}</p>
               <p className="settings__hint">last background snapshot: {diag.values.snapshot ? 'written' : 'none yet'}</p>
             </div>
-          )}
-        </section>
-
-        <section>
-          <h3 className="settings__head">Venue health</h3>
-          {venues.length === 0 ? (
-            <p className="settings__hint">No venues yet — add one from the Venues tab.</p>
-          ) : (
-            <ul className="health">
-              {[...venues].sort((a, b) => a.name.localeCompare(b.name, 'ro')).map((v) => (
-                <VenueHealthRow key={v.id ?? v.name} venue={v} />
-              ))}
-            </ul>
           )}
         </section>
 

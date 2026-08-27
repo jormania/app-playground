@@ -290,7 +290,7 @@
 
 <p>
   Individual dates are clickable: each one keeps that specific night. A date with a line through it
-  is sold out — you can still keep it, in case a return shows up. A date carrying its own colour
+  is sold out, and can't be kept — there's nothing left to keep. A date carrying its own colour
   (matching a row in the strip above) is one this check specifically found changed — a run where one
   night just opened and another just sold out shows both, right on the dates they happened to.
 </p>
@@ -423,6 +423,14 @@
   Paste the venue’s <em>programme page</em> URL — the listing, not the homepage. Marquee works out
   which reader handles that site from the URL itself and fills in the name for you. It tells you
   straight away whether it can read the site, before you commit.
+</p>
+
+<p>
+  Each row also carries its own health: which reader handles it, when it was last checked —
+  including a check that ran overnight while the app was closed — and what that check found.
+  A venue the last check couldn't read is marked <strong>not readable</strong> (or
+  <strong>rate-limited</strong>, which is a venue's server being busy, not a breakage), with the
+  reason on the row rather than buried in the same grey as a successful count.
 </p>
 
 <h3>Pause</h3>
@@ -586,14 +594,6 @@
     check found — for the rare case one goes quiet and you want to know why.
   </p>
 </div>
-
-<h3>Venue health</h3>
-<p>
-  Every watched venue, with what's already on its Notion row put side by side: which reader is
-  reading it, whether it's paused, and when it was last checked — including a check that ran
-  overnight while the app was closed (see the note on scheduled checking below). Read-only; edit a
-  venue from the Venues tab.
-</p>
 
 <h2 id="connect"><span class="num">08</span>Connecting Notion</h2>
 

@@ -112,8 +112,33 @@ function notifyBody(changes) {
 
 function toSnapshotMap(events) {
   var map = {};
-  events.forEach(function (e) { map[e.key] = { ticketState: e.ticketState }; });
+  events.forEach(function (e) { map[e.key] = { ticketState: e.ticketState, venue: e.venue }; });
   return map;
+}
+
+function answeredVenues(venues) {
+  var out = {};
+  (venues || []).forEach(function (v) {
+    if (v && (v.status === 'ok' || v.status === 'empty')) out[v.venue] = true;
+  });
+  return out;
+}
+
+// Carries a venue that did NOT answer forward from the previous snapshot —
+// see notify.js's own copy for the full reasoning. Short version: a throttled
+// venue contributes no events, and letting it drop out means the next time it
+// answers, a genuine `none -> open` reads as `new-event` and never notifies.
+function nextSnapshot(previous, events, scannedVenues) {
+  var after = toSnapshotMap(events);
+  if (!previous) return after;
+  var answered = answeredVenues(scannedVenues);
+  Object.keys(previous).forEach(function (key) {
+    if (after[key]) return;
+    var entry = previous[key];
+    if (entry && entry.venue && answered[entry.venue]) return;
+    after[key] = entry;
+  });
+  return after;
 }
 
 // Mirrors notify.js's own copy — see notify.sw.test.js for what pins the two
@@ -147,6 +172,16 @@ function runNotifyCheck() {
     var venues = v[0], prefs = v[1], snapshot = v[2];
     if (!prefs || !prefs.enabled || !venues || !venues.length) return;
 
+    // Quiet hours are decided BEFORE the fetch, not after. The outcome is
+    // identical either way (the snapshot is deliberately held, so a ticket
+    // that opens at 2am is still "new" to the first check after quiet hours
+    // end — one morning digest rather than a 2am ping), but doing it here
+    // saves a full multi-venue scrape whose result was only going to be
+    // discarded. That scrape is ~80 requests against other people's servers
+    // on a busy venue list; MARQUEE.md's own politeness rule (§6) is reason
+    // enough not to make it for nothing.
+    if (prefs.quietHours && isQuietHours(new Date())) return;
+
     return fetch(SCAN_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -155,7 +190,7 @@ function runNotifyCheck() {
       return res.ok ? res.json() : null;
     }).then(function (data) {
       if (!data || !Array.isArray(data.events)) return;
-      var after = toSnapshotMap(data.events);
+      var after = nextSnapshot(snapshot, data.events, data.venues);
 
       // No snapshot yet: this check establishes the baseline, silently — the
       // same rule changes.js's own diff uses for the app's first-ever scan.
@@ -164,13 +199,6 @@ function runNotifyCheck() {
       if (!snapshot) return set(SNAPSHOT_KEY, after);
 
       var changes = notifiableChanges(snapshot, data.events, prefs.kinds || ['tickets-opened']);
-
-      // Quiet hours hold the snapshot rather than advancing it — a ticket
-      // that opens at 2am is still "new" to the FIRST check after quiet
-      // hours end, which turns a night's worth of changes into one morning
-      // digest instead of either pinging overnight or losing them silently
-      // once the old snapshot got overwritten with nothing shown for it.
-      if (prefs.quietHours && isQuietHours(new Date())) return;
 
       var written = set(SNAPSHOT_KEY, after);
       return changes.length > 0 ? written.then(function () { return showChangeNotification(changes); }) : written;

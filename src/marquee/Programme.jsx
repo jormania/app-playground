@@ -57,10 +57,17 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
 
       <div
         className="prod__body"
-        style={{ touchAction: 'pan-y', transform: dx ? `translateX(${dx}px)` : undefined }}
+        style={{
+          // Only claimed while the gesture is actually on: `pan-y` tells the
+          // browser this element handles horizontal movement itself, which is
+          // exactly what someone turning the gesture off is asking it not to do.
+          touchAction: swipeEnabled ? 'pan-y' : undefined,
+          transform: dx ? `translateX(${dx}px)` : undefined,
+        }}
         onPointerDown={(e) => { if (!e.target.closest('a, button, [data-noswipe]')) bind.onPointerDown(e) }}
         onPointerMove={bind.onPointerMove}
         onPointerUp={bind.onPointerUp}
+        onPointerCancel={bind.onPointerCancel}
       >
         <Poster src={production.image} />
 
@@ -93,11 +100,14 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
                     <button
                       type="button"
                       className={`date ${showing.ticketState === 'sold-out' ? 'date--soldout' : ''} ${savedDates.has(showing.date) ? 'date--saved' : ''} ${kind ? `date--changed-${kind}` : ''}`}
+                      disabled={showing.ticketState === 'sold-out'}
                       onClick={() => onKeep(showing, production)}
-                      title={savedDates.has(showing.date)
-                        ? 'Already in Wanderlist'
-                        : kind ? CHANGE_LABEL[kind]
-                          : showing.ticketState === 'sold-out' ? 'Sold out — keep it anyway?' : 'Keep this date'}
+                      title={showing.ticketState === 'sold-out'
+                        ? 'Sold out — nothing left to keep'
+                        : savedDates.has(showing.date)
+                          ? 'Already in Wanderlist'
+                          : kind ? CHANGE_LABEL[kind]
+                            : 'Keep this date'}
                     >
                       {savedDates.has(showing.date) ? '✓ ' : ''}
                       {formatDay(showing.date, { time: showing.time })}
@@ -111,7 +121,20 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
         </div>
 
         <div className="prod__actions" data-noswipe>
-          <button type="button" className="action-keep" onClick={() => onKeep(production.showings[0], production)}>
+          {/* A run with nothing left to buy is nothing left to decide about.
+              This reverses an earlier call — a sold-out night used to stay
+              keepable "in case a return shows up" — because in practice the
+              button offered an action that led nowhere, on the one card state
+              where the answer is already settled. Individual dates below
+              follow the same rule; a run with ONE night gone keeps its button,
+              since `allSoldOut` only means every date. */}
+          <button
+            type="button"
+            className="action-keep"
+            disabled={soldOut}
+            title={soldOut ? 'Sold out — nothing left to keep' : undefined}
+            onClick={() => onKeep(production.showings[0], production)}
+          >
             Keep
           </button>
           <button type="button" className="action-ignore" onClick={() => onIgnore(production)}>

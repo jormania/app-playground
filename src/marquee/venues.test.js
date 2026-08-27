@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  AREAS, CATEGORIES,
   normalizeVenue,
   validateVenue,
   sameProgramme,
@@ -210,5 +211,29 @@ describe('suggestName', () => {
   it('falls back to the host when the path says nothing', () => {
     expect(suggestName('https://tickets.expirat.org/')).toBe('Tickets')
     expect(suggestName('')).toBe('')
+  })
+})
+
+describe('the closed vocabularies must match Notion', () => {
+  // `Adapter` is derived from the registry and can't drift (§9.29). These two
+  // are hand-typed lists that have to match the Notion select by hand, and the
+  // failure is silent in both directions: `toVenueProps` refuses to send a
+  // value that isn't here, and `normalizeVenue` blanks one it doesn't know —
+  // so a venue edited in the app quietly loses an Area added only in Notion.
+  // Pinned so adding one here without the other is at least a conscious act.
+  it('AREAS is exactly the set the Notion Area select offers', () => {
+    expect([...AREAS].sort()).toEqual([
+      'carol', 'centru', 'cotroceni', 'dorobanti', 'floreasca',
+      'grozavesti', 'mosilor', 'tineretului', 'victoriei',
+    ])
+  })
+
+  it('CATEGORIES is exactly the set the Notion Category Default select offers', () => {
+    expect([...CATEGORIES].sort()).toEqual(['art', 'concert', 'culture', 'event', 'movie', 'play'])
+  })
+
+  it('drops an area the app does not know rather than writing it back', () => {
+    expect(normalizeVenue({ name: 'X', area: 'atlantis' }).area).toBeNull()
+    expect(normalizeVenue({ name: 'X', area: 'grozavesti' }).area).toBe('grozavesti')
   })
 })

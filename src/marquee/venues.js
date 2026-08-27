@@ -12,7 +12,20 @@ import { matchAdapter, getAdapter, parseUrl } from './adapters.js'
 /** Wanderlist's closed Category vocabulary, narrowed to what a venue can be.
  *  Must stay a subset of the real one — a save has to be lossless. */
 export const CATEGORIES = ['play', 'movie', 'concert', 'event', 'art', 'culture']
-export const AREAS = ['centru', 'cotroceni', 'floreasca', 'dorobanti', 'tineretului', 'carol']
+/** Neighbourhoods, as a closed vocabulary that MUST match the `Area` select in
+ *  the Notion database exactly.
+ *
+ *  Same shape of trap `Adapter` fell into (§9.29): `toVenueProps` refuses to
+ *  send a value that isn't here, and `normalizeVenue` blanks one it doesn't
+ *  recognise — so a value added on ONE side only is silently dropped the next
+ *  time that venue is edited. Unlike `Adapter`, this can't be derived from
+ *  anything (there is no registry of neighbourhoods), so the guard is a test:
+ *  `venues.test.js` pins the list, and adding an area means changing it here
+ *  AND in Notion, in the same sitting. */
+export const AREAS = [
+  'centru', 'cotroceni', 'floreasca', 'dorobanti', 'tineretului', 'carol',
+  'mosilor', 'victoriei', 'grozavesti',
+]
 export const STATUSES = ['active', 'paused']
 
 export const DEFAULT_CATEGORY = 'event'

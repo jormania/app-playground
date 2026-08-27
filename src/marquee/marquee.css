@@ -239,6 +239,17 @@ button { color: inherit; font: inherit; }
 
 .venue--paused { background: var(--color-surface-2); opacity: 0.72; }
 
+/* The "is this venue okay?" answer, on the screen that already lists every
+   venue — Settings' old, entirely redundant "Venue health" list is gone. A
+   failure reason used to sit in exactly the same grey as "24 events". */
+.venue__scan--trouble { color: var(--color-danger); }
+
+.venue__where {
+  margin: 0.15rem 0 0;
+  color: var(--color-faint);
+  font-size: 0.78rem;
+}
+
 .venue__main { min-width: 0; flex: 1 1 18rem; }
 
 .venue__head {
@@ -296,6 +307,7 @@ button { color: inherit; font: inherit; }
 
 .chip--paused { border-color: var(--color-warning); color: var(--color-warning); }
 .chip--warn { border-color: var(--color-warning); color: var(--color-warning); }
+.chip--stop { border-color: var(--color-danger); color: var(--color-danger); }
 
 .linkbtn {
   background: none;
@@ -506,9 +518,15 @@ button { color: inherit; font: inherit; }
 /* Level 3 (a genuinely busy day) reads warmer than a light one-production
    day — the same "more = warmer" language Loom's own heatmap uses, without
    borrowing its exact palette (this app's accent is brass, not ember). */
+/* Density reads as WEIGHT, not as alarm — a busy Saturday is the good news
+   this strip exists to surface. The earlier version escalated the dots to
+   `--color-danger` at three, which everywhere else in this app means sold
+   out or remove; a full night's programme rendered as a warning. Accent
+   throughout now, gaining border and opacity instead. */
 .week-strip__day--1 { border-color: var(--color-border-2); }
-.week-strip__day--2, .week-strip__day--3 { border-color: var(--color-accent); }
-.week-strip__day--3 .week-strip__dots i { background: var(--color-danger); }
+.week-strip__day--1 .week-strip__dots i { opacity: 0.55; }
+.week-strip__day--2 { border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border)); }
+.week-strip__day--3 { border-color: var(--color-accent); }
 
 /* ── What changed ──────────────────────────────────────────────────────── */
 .changes { margin: 0 0 0.5rem; }
@@ -810,7 +828,8 @@ button { color: inherit; font: inherit; }
   white-space: nowrap;
 }
 
-.date:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.date:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); }
+.date:disabled { cursor: not-allowed; }
 .date--soldout { text-decoration: line-through; opacity: 0.6; }
 .date--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
 .date--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }
@@ -842,7 +861,15 @@ button { color: inherit; font: inherit; }
   color: var(--color-accent);
   background: none;
 }
-.action-keep:hover { background: var(--color-accent); color: var(--color-on-accent); }
+.action-keep:hover:not(:disabled) { background: var(--color-accent); color: var(--color-on-accent); }
+
+/* A sold-out run has nothing left to keep — the button stays visible so the
+   card's shape doesn't change, but reads as unavailable and isn't pressable. */
+.action-keep:disabled {
+  border-color: var(--color-border);
+  color: var(--color-faint);
+  cursor: not-allowed;
+}
 
 .action-ignore {
   border: 1px solid var(--color-border-2);
@@ -907,43 +934,6 @@ button { color: inherit; font: inherit; }
 }
 
 /* ── Venue health (Settings) ───────────────────────────────────────────── */
-/* No max-height/overflow of its own: a nested scrollbar fighting the Settings
-   modal's own scroll made rows past the fold (Teatrul Național, Teatrul
-   Unteatru — last alphabetically) look missing rather than just unreached.
-   This list now scrolls with the rest of the modal, same as every other
-   section. */
-.health {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.health__row {
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.35rem;
-}
-
-.health__row--paused { opacity: 0.65; }
-
-.health__name {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.health__meta, .health__result {
-  margin: 0.1rem 0 0;
-  font-size: 0.75rem;
-  color: var(--color-muted);
-}
-
-.health__result { color: var(--color-faint); }
 
 /* ── Modal content breathing room ──────────────────────────────────────────
    The DS Modal's scrolling body has no right padding of its own, so a long
@@ -1084,6 +1074,8 @@ button { color: inherit; font: inherit; }
 .poster-tile--changed-sold-out .poster-tile__frame { border-color: var(--color-danger); border-width: 2px; }
 .poster-tile--changed-new-event .poster-tile__frame { border-color: var(--color-success); border-width: 2px; }
 
+.poster-tile__frame:disabled { cursor: not-allowed; }
+
 .poster-tile__frame {
   display: block;
   width: 100%;
@@ -1130,6 +1122,51 @@ button { color: inherit; font: inherit; }
   text-transform: uppercase;
   padding: 0.15rem 0;
   box-shadow: var(--shadow-card);
+}
+
+/* The two signals the list card carries as chips. On a tile there is no chip
+   row to put them in, so they sit ON the poster: "Tickets" bottom-left where
+   the eye lands after the cover itself, the kept tick top-left opposite the
+   ignore control. Both carry a text label for assistive tech — the tick is
+   decorative on its own. */
+.poster-tile__tickets {
+  position: absolute;
+  left: 0.4rem;
+  bottom: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.poster-tile__kept {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-success);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* A change badge and the tickets pill would otherwise stack in the same
+   corner — the badge is the more time-sensitive of the two, so it takes the
+   spot and the pill steps up above it. */
+.poster-tile--changed-tickets-opened .poster-tile__tickets,
+.poster-tile--changed-sold-out .poster-tile__tickets,
+.poster-tile--changed-new-event .poster-tile__tickets {
+  bottom: 1.9rem;
 }
 
 .poster-tile__badge {

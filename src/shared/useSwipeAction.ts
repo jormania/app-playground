@@ -20,6 +20,7 @@ export interface SwipeActionState {
     onPointerDown: (e: React.PointerEvent) => void
     onPointerMove: (e: React.PointerEvent) => void
     onPointerUp: (e: React.PointerEvent) => void
+    onPointerCancel: () => void
   }
 }
 
@@ -96,7 +97,24 @@ export function useSwipeAction({
     setDx(0)
   }
 
+  /**
+   * The browser taking the pointer away mid-drag — a system gesture winning,
+   * the element being removed, a touch being cancelled.
+   *
+   * Without this, `pointerup` never arrives, so `dx` keeps whatever value the
+   * drag had reached and the row sits visibly shoved sideways until something
+   * else happens to touch it. `axisLockSlider.js` — this repo's own earlier
+   * take on the same axis-locked-drag problem — has always cleared its
+   * gesture on cancel; the promotion out of Loom's ThreadRow simply didn't
+   * bring that across. Deliberately fires no action: a cancelled gesture is
+   * not a completed one, however far it got.
+   */
+  function onPointerCancel() {
+    gesture.current = null
+    setDx(0)
+  }
+
   const revealing = dx > 4 ? 'right' : dx < -4 ? 'left' : null
 
-  return { dx, revealing, bind: { onPointerDown, onPointerMove, onPointerUp } }
+  return { dx, revealing, bind: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel } }
 }

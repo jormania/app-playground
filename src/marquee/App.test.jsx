@@ -31,11 +31,13 @@ describe('Marquee, end to end in demo mode', () => {
     expect(screen.getByText('Teatrul Unteatru')).toBeTruthy();
   });
 
-  it('opens Settings, and its venue health list, without a scan', async () => {
+  it('opens Settings — which is now only settings, no venue list', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(await screen.findByText('Venue health')).toBeTruthy();
-    expect(screen.getByText('Appearance')).toBeTruthy();
+    expect(await screen.findByText('Appearance')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Notify' })).toBeTruthy();
+    // "Venue health" showed a strict subset of the Venues tab and moved there.
+    expect(screen.queryByText('Venue health')).toBeNull();
   });
 
   it('opens the add-venue form and resolves a reader from a pasted URL', async () => {
@@ -90,19 +92,51 @@ describe('Marquee, end to end in demo mode', () => {
     vi.unstubAllGlobals();
   });
 
-  it('the topbar carries exactly three icon actions, and the middle one switches layout', async () => {
+  it('the layout toggle appears only where it does something', async () => {
+    // Check venues and Settings are always actionable; the List/Posters
+    // switch is not — with no programme on screen there is nothing to switch
+    // between, and it used to render anyway (including over the Venues tab),
+    // silently changing a preference with nothing to show for it.
+    const user = userEvent.setup();
     render(<App />);
-    // Accessible names, not literal button text — all three are icon-only now.
     expect(screen.getByRole('button', { name: 'Check venues' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Switch to poster view' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Switch to/ })).toBeNull();
 
-    const toggle = screen.getByRole('button', { name: 'Switch to poster view' });
-    fireEvent.click(toggle);
+    await user.click(await screen.findByRole('button', { name: /^Venues/ }));
+    expect(screen.queryByRole('button', { name: /Switch to/ })).toBeNull();
+  });
+
+  it('once a programme is on screen, the toggle switches layout and persists the choice', async () => {
+    const user = userEvent.setup();
+    const event = {
+      key: 'excelsior:2099-01-01T20:00:demo-show',
+      venue: 'Teatrul Excelsior',
+      title: 'Demo Show',
+      date: '2099-01-01',
+      time: '20:00',
+      ticketState: 'open',
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        scannedAt: new Date().toISOString(),
+        venues: [{ venue: 'Teatrul Excelsior', status: 'ok', events: [event] }],
+        events: [event],
+      }),
+    })));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Demo Show');
+
+    await user.click(await screen.findByRole('button', { name: 'Switch to poster view' }));
     expect(await screen.findByRole('button', { name: 'Switch to list view' })).toBeTruthy();
 
     // Persisted, not just component state — the same prefs round trip every
     // other Settings toggle already uses.
     expect(JSON.parse(localStorage.getItem('marquee_prefs')).viewMode).toBe('posters');
+
+    vi.unstubAllGlobals();
   });
 });

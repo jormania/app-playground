@@ -15,13 +15,14 @@ import { sortVenues, scannable, togglePaused } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
   changedKeyMap, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, nextDayKeys, densityForDays,
+  troubleByVenue,
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize, changeSignature, undismissedChanges } from './changes.js'
 import { runScan, loadLastScan } from './scanClient.js'
 import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges } from './store.js'
 import { formatDay } from './format.js'
-import { writeNotifyState, registerPeriodicSync, previewFromQuery } from './notify.js'
+import { writeNotifyPrefs, writeNotifyVenues, registerPeriodicSync, previewFromQuery } from './notify.js'
 
 /** Marquee.
  *
@@ -34,6 +35,9 @@ export default function App() {
   const [tab, setTab] = useState('programme')
 
   const [venues, setVenues] = useState([])
+  // Distinct from `loading`: this stays false when a load FAILS, and that is
+  // exactly what the notify mirror below keys on — see writeNotifyVenues.
+  const [venuesLoaded, setVenuesLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [busyId, setBusyId] = useState(null)
@@ -77,6 +81,7 @@ export default function App() {
     setError(null)
     try {
       setVenues(await c.listVenues())
+      setVenuesLoaded(true)
     } catch (err) {
       setError(err?.message || 'Could not load your venues.')
     } finally {
@@ -134,13 +139,20 @@ export default function App() {
 
   useEffect(() => { savePrefs(prefs) }, [prefs])
 
-  // Mirror what the worker needs whenever the venue list or the notify prefs
-  // change — the venue payload is what it POSTs to /api/marquee-scan with, the
-  // prefs are whether it's allowed to fire at all and which kinds. Runs
-  // unconditionally (not gated on notifyEnabled): a toggle flipped OFF has to
-  // reach the worker too, or a background wake started before this session
-  // opened would keep firing regardless of the setting on screen.
-  useEffect(() => { writeNotifyState(venues, prefs) }, [venues, prefs])
+  // Prefs reach the worker unconditionally — not gated on notifyEnabled,
+  // because a toggle flipped OFF has to stop a background wake that started
+  // before this session opened.
+  useEffect(() => { writeNotifyPrefs(prefs) }, [prefs])
+
+  // The venue list, by contrast, is written only once a read has actually
+  // succeeded. `venues` is `[]` on first render and stays `[]` if Notion
+  // can't be reached, and mirroring that empty list would make the worker's
+  // own "nothing to scan" guard a silent no-op until the app was next opened
+  // successfully — invisible, for a feature that only matters while the app
+  // is closed. See notify.js's writeNotifyVenues.
+  useEffect(() => {
+    if (venuesLoaded) writeNotifyVenues(venues)
+  }, [venues, venuesLoaded])
 
   // Resume periodic sync on load if it was already granted — permission and a
   // service-worker registration both survive a reload, but the actual
@@ -240,6 +252,10 @@ export default function App() {
   // itself up in — so scrolling the programme shows you what's new in place,
   // not only in the strip at the top.
   const changedKeys = useMemo(() => changedKeyMap(scan?.changes), [scan])
+  // Which venues the last check couldn't read, so the Venues tab can mark
+  // them — the question Settings' old "Venue health" list was there to
+  // answer, moved to the screen that already lists every venue.
+  const venueTrouble = useMemo(() => troubleByVenue(scan?.venues), [scan])
 
   // See changes.js's undismissedChanges for what this filters and why.
   const visibleChanges = useMemo(() => undismissedChanges(scan?.changes, dismissedKeys), [scan, dismissedKeys])
@@ -434,17 +450,25 @@ export default function App() {
               fill — distinct at a glance in the same row, never a third raw
               colour invented for this alone. Icon reflects the layout you'd
               SWITCH TO, matching the toggle Programme.jsx used to render inline
-              before it moved up here to free the vertical space it took. */}
-          <IconButton
-            size="sm"
-            aria-label={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
-            title={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
-            onClick={() => setPrefs((p) => ({ ...p, viewMode: p.viewMode === 'posters' ? 'list' : 'posters' }))}
-          >
-            {prefs.viewMode === 'posters'
-              ? <ListIcon size={18} className="topbar__view-icon" />
-              : <PostersIcon size={18} className="topbar__view-icon" />}
-          </IconButton>
+              before it moved up here to free the vertical space it took.
+
+              Shown only where it does something: on the Programme tab, with a
+              programme actually on screen. Moving it up here from inside
+              Programme.jsx lost that gate — it kept rendering over the Venues
+              list and before the first check, where pressing it silently
+              changed a preference with nothing to show for it. */}
+          {tab === 'programme' && days.length > 0 && (
+            <IconButton
+              size="sm"
+              aria-label={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+              title={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+              onClick={() => setPrefs((p) => ({ ...p, viewMode: p.viewMode === 'posters' ? 'list' : 'posters' }))}
+            >
+              {prefs.viewMode === 'posters'
+                ? <ListIcon size={18} className="topbar__view-icon" />
+                : <PostersIcon size={18} className="topbar__view-icon" />}
+            </IconButton>
+          )}
           <IconButton size="sm" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
             <SettingsIcon size={18} />
           </IconButton>
@@ -552,6 +576,7 @@ export default function App() {
             <VenueList
               venues={sorted}
               busyId={busyId}
+              troubleByVenue={venueTrouble}
               onTogglePause={handleTogglePause}
               onEdit={(v) => { setEditing(v); setFormOpen(true) }}
               onRemove={(v) => setRemoving(v)}
@@ -607,7 +632,6 @@ export default function App() {
         prefs={prefs}
         onPrefs={setPrefs}
         counts={counts}
-        venues={venues}
         onClose={() => setSettingsOpen(false)}
         onChanged={() => setClient(getClient())}
       />

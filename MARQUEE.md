@@ -51,6 +51,73 @@ rather than dropping them into a gap neither system covers.
 
 ---
 
+## 1b. Adding a venue — the checklist (read this FIRST)
+
+Adding a venue is the single most repeated job in this app and the one that has
+gone wrong the most ways. Every item below is a mistake that has actually
+happened here, not a hypothetical. Work down it in order.
+
+**1. Read the venue's real markup before deciding anything.** Fetch the
+programme page and look at what it actually serves — not what its domain
+implies. Two failures came from skipping this: Teatrul Odeon's JSON-LD emits
+un-padded dates (`2026-9-12T20:00`), which the generic reader misparsed into
+nothing; and Quantic sits on iabilet.ro with the exact URL shape Cinema Europa
+uses, but carries complete per-event JSON-LD directly rather than the
+weekly-bundle structure the `iabilet` two-hop reader exists for. **The URL
+never tells you the page structure.**
+
+**2. Pick the rung, and prefer an alias to a new module.** If the page already
+publishes usable schema.org Events, register it as an alias of `jsonld` in
+`api/_lib/marquee/registry.js` (`expirat`, `odeon` and `quantic` all are) —
+that is a two-line change, not an adapter. Write a module only when the site
+genuinely needs parsing. Either way apply §3's "no source left behind" rule:
+poster, price and description, checked against the venue's OWN pages.
+
+**3. Register the id in all FOUR places, or it breaks silently:**
+
+| Place | What happens if you miss it |
+|---|---|
+| `api/_lib/marquee/registry.js` | The endpoint reports `unsupported` — visible, at least |
+| `src/marquee/adapters.js` | The Venues tab shows "no reader"; `ADAPTER_IDS` is derived from this, so it also feeds the next row |
+| The Notion `Adapter` select | The write 400s the ENTIRE patch, silently taking unrelated fields with it |
+| `src/marquee/fixtures.js` | Demo mode drifts out of step with reality — twice now |
+
+`src/marquee/notion.js` used to be a fifth place and is no longer: its
+vocabulary is derived from `ADAPTER_IDS`. That fix exists because it was
+missed, and `tnb`/`mystage` spent a day silently blanking their own
+`Adapter` on every edit (§9.29).
+
+**4. If the URL's host would auto-match the WRONG reader, pin it.** Give the
+alias `hosts: []` so `matchAdapter` never suggests it, and set the row's
+`Adapter` by hand. `validateVenue` protects a pinned row from being
+re-resolved on an unrelated edit, but only while its URL is unchanged — see
+§9.37.
+
+**5. Fill `Address` and `Area`, always.** `Address` is what makes a saved
+Wanderlist finding drop its map pin first try (`placeFor` in `wanderlist.js`);
+without it the Place is a bare venue name and geocodes badly. `Area` is a
+**closed vocabulary** in exactly the way `Adapter` is: `AREAS` in
+`src/marquee/venues.js` must match the Notion select exactly, or
+`normalizeVenue` blanks the value the next time that venue is edited. Adding
+an area is a three-place change — `venues.js`, the Notion select, and
+`venues.test.js`'s pinning test. `CATEGORIES` works the same way.
+
+**6. Set `Category Default` deliberately.** It decides the Wanderlist Category
+a save lands under AND the scan horizon: `movie` gets 10 days, everything else
+120 (§9.8). A concert venue tagged `movie` quietly loses most of its calendar.
+
+**7. Verify against the live site, not just a fixture.** Run `scanVenue`
+end-to-end and check the event count, dates, times, prices and posters look
+like the real page. A trimmed fixture in `__fixtures__/` plus a test is the
+record; the live run is the proof.
+
+**8. Update the guide only if a CAPABILITY changed.** `public/marquee-guide.html`
+deliberately describes what kinds of site can be read, never a roster of which
+venues use which reader — a list that has to be kept in sync with Notion is
+not what a guide is for (§9.35).
+
+---
+
 ## 2. The one-function constraint (read this before adding files to `api/`)
 
 Vercel Hobby caps the **whole repo** at 12 serverless functions, and it was already
@@ -1324,6 +1391,158 @@ published `offers` and which didn't.
 `npm test` (3886 tests across 306 files), `npm run typecheck`, `npx eslint`,
 and `npm run build` all pass. Both new adapters were verified against their
 live pages via `scanVenue`, not only the trimmed fixtures — see above.
+
+
+### 9.39 A second audit, weighted to the same day's work (2026-08-27)
+
+An audit run over the ten commits above, hours after them. Everything was
+green — tests, typecheck, lint, build — and ten findings still stood, which
+is the useful part: all of them live in behaviour the suite doesn't reach.
+
+**The notification feature was defeated by its own snapshot handling.**
+`runNotifyCheck` persisted `toSnapshotMap(data.events)` straight, and a venue
+that was throttled, unreachable or parser-broken contributes NO events — so
+its keys silently dropped out of the stored snapshot. Both halves of the
+damage matter, and the quieter one is worse:
+
+- with "notify about everything" on, the venue's whole programme re-read as
+  `new-event` the next time it answered;
+- **on the DEFAULT tickets-only setting, a genuine `none → open` across that
+  gap was misclassified as `new-event`** — `kindFor` short-circuits a missing
+  `before` — and therefore never notified. The feature silently failing at
+  the one job it exists for, against Filarmonica, whose feed §3 already
+  documents as routinely 403-ing.
+
+`src/marquee/scanClient.js` and `api/_lib/marquee/serverScan.js` have both
+always carried a silent venue forward; the worker was the third copy of that
+rule and the one without it — and it never even read `data.venues`, which the
+endpoint has returned all along. Fixed with `nextSnapshot(previous, events,
+scannedVenues)` in both halves. The snapshot now also stores `venue` per
+entry (it has to, to know whose keys to carry); a legacy entry without one is
+carried rather than dropped, since carrying an unknown too long costs nothing
+— nothing here notifies on removal — while dropping one recreates the bug.
+
+**A failed venue load wiped the worker's venue list.** One effect mirrored
+both prefs and venues, and `venues` is `[]` on first render and stays `[]`
+when Notion can't be reached. Writing that empty list made the worker's own
+"nothing to scan" guard a permanent no-op — invisible, for a feature that
+only matters while the app is closed. Split into `writeNotifyPrefs` (always,
+so a toggle flipped off still reaches a wake that started earlier) and
+`writeNotifyVenues` (only once a read actually succeeded — a stale list beats
+an empty one).
+
+**Why both got through, and what changed about that.** `notify.sw.test.js`
+pinned every pure helper in the worker against the page's copy — and not
+`runNotifyCheck`, the function that orchestrates them. The worker's only
+untested function was its only buggy one. It now has tests for the
+carry-forward, for both failure directions, for the legacy-entry case, and
+two that assert the worker's own source orchestrates in the right order.
+
+**The rest:**
+
+- **`useSwipeAction` never handled `pointercancel`** — the browser taking the
+  pointer mid-drag left `dx` frozen and the row visibly shoved sideways until
+  something else touched it. `axisLockSlider.js`, this repo's earlier take on
+  the same axis-locked-drag problem, has always cleared on cancel; the
+  promotion out of Loom didn't bring it across.
+- **The poster wall showed what you'd MISSED and nothing you could still
+  get.** It rendered the sold-out band but had no tickets-on-sale mark and no
+  kept mark at all (`production.saved` was unused), while `hideKept` went on
+  silently filtering on it. Both now sit on the tile.
+- **The List/Posters toggle rendered where it did nothing** — over the Venues
+  tab and before the first check. Moving it into the topbar (§9.33) lost the
+  `days.length > 0` gate the inline version had.
+- **Quiet hours scanned and then threw the result away.** The check sat after
+  the fetch, so ~80 requests against other people's servers were made nightly
+  for nothing. Identical behaviour, decided before the fetch now.
+- **A busy day was painted `--color-danger`** — the app's own sold-out/remove
+  colour — so a full Saturday read as a warning. Accent throughout now,
+  gaining border weight instead of hue.
+- Demo mode had drifted again (Odeon and Quantic missing), `touch-action:
+  pan-y` was claimed even with the gesture switched off, and `PosterGrid`
+  lacked the defensive `changedKeys = new Map()` default §9.18 added to
+  `ProductionCard` for exactly the same reason.
+
+### 9.40 "Venue health" removed; the Venues tab answers the question instead
+
+Asked during the audit, and correct: the Settings section was a strict SUBSET
+of what the Venues tab already rendered for every venue — name, paused chip,
+reader label, last-checked date, last result — minus the host, the adapter
+config, the category, the notes and the three actions. Nothing to port
+field-for-field.
+
+What neither screen actually did was answer the question the section was
+NAMED for. `Last result` carries a failure reason (`summarize()` returns the
+detail for any non-ok status) in exactly the same grey as "24 events". So the
+list is gone and the Venues tab gained a real marker — **not readable**, or
+**rate-limited** for a throttled venue, since §6's rule is that those are not
+the same thing — driven by `troubleByVenue(scan.venues)`, the last check's
+own per-venue status, rather than by parsing that text. A venue the check
+didn't cover is unmarked: unknown is not the same as fine.
+
+### 9.41 Verified
+
+`npm test` (3905 tests across 307 files), `npm run typecheck`, `npx eslint`,
+and `npm run build` all pass.
+
+
+### 9.42 The venue-management surface, audited (2026-08-27)
+
+The audit above covered the programme and notification screens; this is the
+half it didn't reach — Edit Venue, the vocabularies, and the venue row.
+
+**`Area` and `CATEGORIES` are the same trap `Adapter` was, unguarded.** Both
+are hand-typed lists in `venues.js` that must match a Notion select exactly,
+and the failure is silent in both directions: `toVenueProps` refuses to send a
+value that isn't in the list, and `normalizeVenue` blanks one it doesn't
+recognise — so a venue edited in the app quietly loses an Area that was added
+only in Notion. `Adapter` got fixed by derivation in §9.29; these two can't be
+derived (there is no registry of neighbourhoods), so they are now pinned by a
+test that fails if either side moves alone.
+
+**Address and Area were editable and then invisible.** Both are on the Edit
+form and neither appeared anywhere afterwards — you could set an address and
+never see it again outside Notion, despite it being the thing that decides
+whether a saved Wanderlist finding geocodes (`placeFor`). Now on the venue row.
+
+**All twelve venues now carry both.** Four had no address at all (Excelsior,
+Club Control, Cinema Elvira Popescu, Cinema Muzeul Țăranului) — each read off
+the venue's own page rather than recalled. Seven had no Area. Three
+neighbourhoods had to be added to the vocabulary to describe the venues
+honestly rather than forcing them into the nearest existing one: `mosilor`
+(Cinema Europa), `victoriei` (Cinema Muzeul Țăranului, on Monetăriei behind
+Piața Victoriei) and `grozavesti` (Quantic). `src/marquee/fixtures.js` was
+brought in step at the same time — demo mode had also been carrying a stale
+Cinema Europa venue id (`3419` vs the real `5877`).
+
+> One casualty worth recording: extending the Notion `Area` select through the
+> DDL cleared that field's own description text in Notion ("Neighbourhood.
+> Cheap geography without a map."). The DDL has no syntax for setting it back;
+> it is a Notion-UI-only annotation, and re-typing it there is a manual step.
+
+**A sold-out run no longer offers a Keep it can't honour.** Asked for
+directly, and it reverses an earlier decision — a sold-out night used to stay
+keepable "in case a return shows up", with the date button reading "Sold out —
+keep it anyway?". In practice that offered an action on the one card state
+where the answer is already settled. The card's Keep button, each sold-out
+date button, and a fully-sold-out poster tile are all disabled now;
+`allSoldOut` still means EVERY date, so a run with one night gone keeps its
+button. The guide's §03 line about keeping a sold-out date has been corrected
+rather than left contradicting the app.
+
+**§1b, the new-venue checklist, is the other output of this audit.** Eight
+steps, every one of them a mistake that actually happened in this repo rather
+than a hypothetical — read the real markup before trusting the domain,
+register the id in all four places, pin an adapter whose host would auto-match
+wrongly, fill Address and Area, and verify live rather than only against a
+fixture.
+
+### 9.43 Verified
+
+`npm test`, `npm run typecheck`, `npx eslint` and `npm run build` all pass.
+The twelve venue rows were re-read from Notion after writing to confirm every
+one carries both an address and an area, and `fixtures.js` was checked against
+`AREAS` programmatically rather than by eye.
 
 
 ## Open
