@@ -459,9 +459,15 @@ check, never a live view, so a failure notice outlived the problem it described.
 venue now marks the results stale and says so, and every trouble line is dated.
 
 **Adding an adapter is a three-place change:** the module and `api/_lib/marquee/registry.js`,
-the client's `src/marquee/adapters.js`, and the `Adapter` select in Notion — which is a
-closed vocabulary, so an unregistered value 400s the entire patch and silently takes the
-other fields with it.
+the client's `src/marquee/adapters.js`, and the `Adapter` select in Notion.
+
+That third place is the one to check by eye rather than assume, in either direction. The
+closed-vocabulary rule §9.1 states is one **the app** enforces — `toVenueProps` refuses to
+send an out-of-vocabulary value at all, which is what §9.29 got bitten by. Whether Notion
+would also have refused it was never actually tested here: when this was finally looked at
+on 2026-08-27, `tnb` and `mystage` were already present as options, so the 400 that rule
+was written to prevent never had a chance to happen. Don't rely on either side catching it
+for you.
 
 > It was really a FOUR-place change until 2026-08-27, and the fourth was the one nobody
 > remembered: `src/marquee/notion.js` kept its own hand-typed copy of the same vocabulary,
@@ -942,9 +948,12 @@ remembers. Fixed by **deriving** the vocabulary from `adapters.js`'s
 so the list cannot drift again, and pinned by a test that round-trips **every**
 registered adapter.
 
-> **Left to do by hand, in Notion:** the database's own `Adapter` select must
-> also offer `tnb` and `mystage` as options. The code can no longer refuse them;
-> Notion still will, and an unregistered select name 400s the *entire* patch.
+> **Checked in Notion afterwards: nothing to do there.** The `Adapter` select
+> already offers `tnb` and `mystage`, and all ten venue rows carry the right
+> reader. Both options are colourless, unlike the seven seeded by hand — so they
+> were created by whatever wrote those two rows last round, not through the UI.
+> The failure was entirely on Marquee's side: `toVenueProps` refused to SEND a
+> value Notion was perfectly willing to accept.
 
 **The rest, in the order they'd bite:**
 
