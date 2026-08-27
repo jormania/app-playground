@@ -625,7 +625,7 @@ describe('mystage (Teatrul Unteatru today — any mystage.ro venue the same way)
     expect(events[0]).toMatchObject({
       venue: 'Teatrul Unteatru',
       title: 'Masacrul',
-      date: '2026-08-27',
+      date: '2026-08-28',
       time: '19:00',
       hall: null,
       ticketState: 'open',
@@ -648,15 +648,23 @@ describe('mystage (Teatrul Unteatru today — any mystage.ro venue the same way)
     expect(events.find((e) => e.title === 'MASS').description).toBeNull()
   })
 
-  it('trusts mystage’s own isAvailable flag for ticket state', () => {
+  it('reads ticket state off the seating map, not mystage’s own isAvailable flag (§9.47)', () => {
+    // "MASS" is the reported bug: isAvailable: true on the JSON itself, same as
+    // every other event on the page, but its one seating category is at
+    // available: 0 with no price — mystage's own flag doesn't distinguish this
+    // from a genuinely open show, so it can't be the signal here either.
+    expect(events.find((e) => e.title === 'MASS').ticketState).toBe('none')
+    // A real showing with seats left reads open regardless of the flag too.
+    expect(events.find((e) => e.title === 'Masacrul').ticketState).toBe('open')
+    // Zero seats WITH a real price is what actually sold out looks like.
     expect(events.find((e) => e.title === 'Constructed Sold Out Example').ticketState).toBe('sold-out')
   })
 
   it('never reports a price of 0 as a real price', () => {
     // mystage's own primary-occurrence price is routinely 0 before a date goes on
     // sale — reporting that as "free" would be false precision, not a real answer.
-    expect(events.find((e) => e.title === 'Masacrul').price).toBeNull()
-    expect(events.find((e) => e.title === 'MASS').price).toBe(110.08)
+    expect(events.find((e) => e.title === 'MASS').price).toBeNull()
+    expect(events.find((e) => e.title === 'Masacrul').price).toBe(110.17)
   })
 
   it('builds a working link from the numeric event id even without mystage’s own slug', () => {

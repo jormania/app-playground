@@ -1662,6 +1662,34 @@ third layer against a private endpoint whose price payload hasn't even been
 located yet. Recorded here so the next person starts from the endpoint rather
 than from "Excelsior has no prices", which was simply untrue.
 
+### 9.47 mystage's `isAvailable` flag doesn't mean available (2026-08-27)
+
+**Reported bug:** "MASS" at Teatrul Unteatru showed a *tickets* chip with
+nothing actually on sale
+(`https://www.mystage.ro/spectacole/mass-3591/date/43556`).
+
+`mystage.js` read `ticketState` straight off the JSON's top-level
+`isAvailable` boolean. Live on Unteatru's venue page (2026-08-27), that flag
+read `true` on all ten hydrated events — including MASS and two other
+showings sitting at `seating.available: 0` in every category with a
+placeholder `price.min.value: 0`. It isn't a per-event signal worth trusting;
+mystage's own page renders "Momentan nu sunt bilete disponibile" for exactly
+these, going by the seating map, not the flag.
+
+Fixed to sum `available` across every seating category instead: seats left
+reads `open`; zero seats with a real price reads `sold-out` (what actually
+selling out looks like); zero seats with no real price reads `none` (not on
+sale yet — exactly the case the §9.46 "no tickets listed" chip exists for).
+`mystage-unteatru.html` rebuilt from the live payload (Masacrul: 8 seats
+left, real price; MASS: the reported bug, now `none`) plus one constructed
+sold-out case, since no genuinely sold-out mystage page was observed live —
+same honesty note as before, now against the seating shape rather than the
+flag.
+
+**Also, while looking at the same card:** a production showing both the
+"tickets on sale" change chip and the plain "tickets" state chip was reporting
+the same fact twice — the change chip already implies open tickets. The state
+chip is now suppressed whenever the change chip is `tickets-opened`.
 
 ## Open — known source limits, checked and not fixable here
 
@@ -1676,10 +1704,11 @@ absences at the source, not gaps in a reader:
   and TNB's "Mai e vreun candidat?" — neither page carries `og:image`,
   `article-image` or any poster image. That is the 17% / 2% those two venues
   fall short by, and it is a real answer rather than a parsing gap.
-- **Three Unteatru dates report no price because mystage says `0`.** Its own
-  JSON gives `price.min.value: 0` for a date not yet on sale, which §3
-  already records as "never report that as free". `mystage.js` filtering
-  `> 0` is correct, not a miss.
+- ~~Three Unteatru dates report no price because mystage says `0`.~~
+  **Corrected, §9.47:** those same dates were also misread as `open` off
+  mystage's `isAvailable` flag, which doesn't track real seat availability.
+  They now read `none` — the price-0 filtering was always correct, the
+  ticket-state reading next to it wasn't.
 - **Filarmonica (via Oveit) has no description**, because that feed carries no
   such field; the richer Strapi feed does, and remains unreachable.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing

@@ -57,7 +57,21 @@ export default {
       const date = typeof e.date === 'string' ? e.date.slice(0, 10) : null
       const hall = e.venue?.hall && e.venue.hall !== '-' ? `Sala ${e.venue.hall}` : null
       const price = Number(e.price?.min?.value)
+      const hasPrice = Number.isFinite(price) && price > 0
       const link = e.eventId ? `https://www.mystage.ro/spectacole/${slug(e.title)}-${e.eventId}` : null
+
+      // `isAvailable` looked like the obvious signal, but it reads `true` on
+      // every event on a venue page checked live (2026-08-27) — including
+      // three with zero seats in every category and a placeholder
+      // `price.min.value: 0`, one of them "MASS" showing a TICKETS chip in
+      // the app with none actually on sale. It is not a per-event flag worth
+      // trusting; the seating map is. Summed availability across every
+      // category tells the truth mystage's own page acts on (it's what
+      // renders "Momentan nu sunt bilete disponibile" there), and a real
+      // price alongside zero seats is what actually being sold out looks
+      // like, as opposed to not on sale yet.
+      const seatsAvailable = Object.values(e.seating ?? {})
+        .reduce((sum, cat) => sum + (Number(cat?.available) || 0), 0)
 
       return makeEvent({
         venue: venue.name,
@@ -67,10 +81,8 @@ export default {
         hall,
         link,
         image: e.images?.[0] ?? null,
-        // mystage computes this itself — nothing here has to infer sold-out
-        // from seating counts.
-        ticketState: e.isAvailable === false ? TICKET.SOLD_OUT : e.isAvailable === true ? TICKET.OPEN : TICKET.NONE,
-        price: Number.isFinite(price) && price > 0 ? price : null,
+        ticketState: seatsAvailable > 0 ? TICKET.OPEN : hasPrice ? TICKET.SOLD_OUT : TICKET.NONE,
+        price: hasPrice ? price : null,
         // Already plain prose in the JSON — no extraction needed, unlike
         // every HTML-based reader here.
         description: e.description ?? null,

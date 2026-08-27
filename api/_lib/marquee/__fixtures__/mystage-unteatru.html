@@ -1,10 +1,12 @@
-<!-- Adapted from https://www.mystage.ro/locatii/teatrul-unteatru-321 on 2026-08-26 —
-     the __NEXT_DATA__ blob trimmed to three events, chosen to cover: a real
-     event with no specific hall (venue.hall: "-"), a real event with a named
-     hall ("Mare"), a price, and a real description (Masacrul's, verbatim from
-     the live payload). No sold-out event was observed live (every showing on
-     the page was isAvailable: true) — the third entry's isAvailable: false is
-     therefore constructed, not observed, to prove the reader's sold-out
-     branch works; treat a real sold-out mystage page as unverified until one
-     is actually seen. -->
-<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"eventIds":["43667","43668","43556"],"initialEvents":[{"id":43667,"eventId":3385,"title":"Masacrul","description":"Două cupluri se întâlnesc în apartamentul uneia dintre cele două familii, pentru a găsi o rezolvare civilizată la conflictul dintre băieții lor.","date":"2026-08-27 19:00:00","time":"19:00","images":["https://mystage-static-5.starter.ro/files/_event68eae872a3ce64.38697901.png"],"price":{"min":{"value":0},"max":{"value":0},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":true},{"id":43556,"eventId":3591,"title":"MASS","date":"2026-09-14 19:00:00","time":"19:00","images":["https://mystage-static-2.starter.ro/files/_eventmass.jpg"],"price":{"min":{"value":110.08},"max":{"value":110.08},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"Mare"},"isAvailable":true},{"id":43900,"eventId":9999,"title":"Constructed Sold Out Example","date":"2026-09-20 19:00:00","time":"19:00","images":[],"price":{"min":{"value":0},"max":{"value":0},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":false}]}}}</script>
+<!-- Adapted from https://www.mystage.ro/locatii/teatrul-unteatru-321 on 2026-08-27 —
+     the __NEXT_DATA__ blob trimmed to three real events plus one constructed one,
+     chosen to cover every ticketState branch off the seating map (see §9.47):
+       - Masacrul: seats actually available (seatingAvail 8) → open, real price
+       - MASS: the reported bug — isAvailable: true, but every seating category
+         reads available: 0 and price.min.value: 0 → not on sale yet, not sold out
+       - "Constructed Sold Out Example": isAvailable: true (mystage's own flag
+         never says otherwise, even here) but seats at 0 WITH a real price —
+         genuinely sold out. No such page was observed live; treat this branch
+         as unverified against a real one until it is.
+     Verbatim otherwise, including Masacrul's real description. -->
+<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"eventIds":["43668","43556","43900"],"initialEvents":[{"id":43668,"eventId":3385,"title":"Masacrul","description":"Două cupluri se întâlnesc în apartamentul uneia dintre cele două familii, pentru a găsi o rezolvare civilizată la conflictul dintre băieții lor.","date":"2026-08-28 19:00:00","time":"19:00","images":["https://mystage-static-8.starter.ro/files/_event68eae872a3ce64.38697901.png"],"seating":{"33":{"cat":"33","name":"Acces General","desc":"Fara Loc","total":80,"price":"110.17","available":8,"currency":"lei"}},"price":{"min":{"value":"110.17","name":"Acces General","available":8},"max":{"value":"110.17","name":"Acces General","available":8},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":true},{"id":43556,"eventId":3591,"title":"MASS","date":"2026-09-14 19:00:00","time":"19:00","images":["https://mystage-static-1.starter.ro/files/_event68eae8ba083cb7.14445822.png"],"seating":{"1":{"cat":"1","name":null,"desc":null,"total":64,"price":null,"available":0,"currency":"lei"}},"price":{"min":{"value":0,"name":""},"max":{"value":0,"name":""},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"Mare"},"isAvailable":true},{"id":43900,"eventId":9999,"title":"Constructed Sold Out Example","date":"2026-09-20 19:00:00","time":"19:00","images":[],"seating":{"1":{"cat":"1","name":"Acces General","desc":null,"total":40,"price":"90","available":0,"currency":"lei"}},"price":{"min":{"value":"90","name":"Acces General","available":0},"max":{"value":"90","name":"Acces General","available":0},"currency":"lei"},"venue":{"id":"321","name":"Teatrul UNTEATRU","hall":"-"},"isAvailable":true}]}}}</script>

@@ -2,7 +2,7 @@ import { useSwipeAction } from '../shared/useSwipeAction'
 import PosterGrid from './PosterGrid.jsx'
 import { Poster } from './Poster.jsx'
 import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay, CATEGORY_LABEL } from './programme.js'
-import { CHANGE_LABEL } from './changes.js'
+import { CHANGE, CHANGE_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
 /** One production: a title at a venue, with its dates nested.
@@ -86,7 +86,12 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
           <div className="prod__chips">
             {changeKind && <span className={`chip chip--changed-${changeKind}`}>{CHANGE_LABEL[changeKind]}</span>}
             {soldOut && <span className="chip chip--soldout">sold out</span>}
-            {!soldOut && production.anyOpen && <span className="chip chip--tickets">tickets</span>}
+            {/* Suppressed when changeKind is already 'tickets-opened': that chip
+                says the same thing ("tickets on sale") about the same change,
+                and showing both doubles up one fact rather than adding a second. */}
+            {!soldOut && production.anyOpen && changeKind !== CHANGE.TICKETS_OPENED && (
+              <span className="chip chip--tickets">tickets</span>
+            )}
             {/* Neither on sale nor sold out. Until now this state rendered
                 NOTHING, so "the venue hasn't put tickets up" looked identical
                 to "we haven't checked" — and it is the state a show sits in
