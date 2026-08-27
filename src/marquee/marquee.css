@@ -1189,15 +1189,16 @@ button { color: inherit; font: inherit; }
   margin: 0.1rem 0 0;
 }
 
-/* Pinned to exactly 2 rather than left to auto-fill's own threshold, which
-   would flip unpredictably between 1 and 2 columns around whatever width
+/* Pinned to exactly 3 rather than left to auto-fill's own threshold, which
+   would flip unpredictably between column counts around whatever width
    10rem-plus-gap happens to cross — a phone gets a deliberate, tested layout
-   instead. Placed AFTER the base `.poster-grid` rule (source order, not
-   inside the shared phone breakpoint above) so equal specificity resolves
-   in this rule's favour regardless of where a future edit moves either
-   block. */
+   instead. A tighter gap than the desktop default so three ~6.9rem tiles
+   still leave the poster itself readable rather than swallowed by spacing.
+   Placed AFTER the base `.poster-grid` rule (source order, not inside the
+   shared phone breakpoint above) so equal specificity resolves in this
+   rule's favour regardless of where a future edit moves either block. */
 @media (max-width: 30rem) {
-  .poster-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+  .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
 }
 
 .probe { display: flex; flex-direction: column; gap: 0.3rem; }

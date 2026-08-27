@@ -1160,8 +1160,10 @@ drag opens on the left; Ignore's danger-tinted, unchanged, on the right.
 1fr)` filled the app's own capped content width (`.app`'s `max-width: 46rem`)
 with 5 columns, too small to read anything on. Tuned to `10rem` — computed
 against that same 46rem, not guessed — which lands on exactly 4. The phone
-breakpoint gets an explicit `repeat(2, 1fr)` rather than trusting auto-fill's
-own threshold not to flip between 1 and 2 around an untested viewport width.
+breakpoint gets an explicit `repeat(N, 1fr)` (3, after checking the real
+phone screenshot — 2 read as oversized once seen live) rather than trusting
+auto-fill's own threshold not to flip unpredictably around an untested
+viewport width.
 
 **Search, restyled to stop reading as a stray default input.** Every other
 pill on this page — filter chips, week-strip cells — sits on `--color-surface`
