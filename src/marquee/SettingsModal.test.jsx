@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import SettingsModal from './SettingsModal.jsx';
 
 /**
@@ -69,5 +69,64 @@ describe('SettingsModal — venue health', () => {
     );
     const names = [...document.querySelectorAll('.health__name')].map((el) => el.textContent.trim());
     expect(names).toEqual(['Alpha', 'Zed']);
+  });
+});
+
+describe('SettingsModal — Notify', () => {
+  it('turning it off just flips the pref, synchronously, no permission dance', () => {
+    const onPrefs = vi.fn();
+    render(
+      <SettingsModal
+        open
+        prefs={{ ...prefs, notifyEnabled: true }}
+        onPrefs={onPrefs}
+        venues={[]}
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Notify me when tickets open'));
+    expect(onPrefs).toHaveBeenCalledWith(expect.objectContaining({ notifyEnabled: false }));
+  });
+
+  it('the second toggle only appears once notifications are on', () => {
+    const { rerender } = render(
+      <SettingsModal open prefs={prefs} onPrefs={vi.fn()} venues={[]} onClose={vi.fn()} onChanged={vi.fn()} />,
+    );
+    expect(screen.queryByLabelText(/Also notify about/)).toBeNull();
+    rerender(
+      <SettingsModal
+        open
+        prefs={{ ...prefs, notifyEnabled: true }}
+        onPrefs={vi.fn()}
+        venues={[]}
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText(/Also notify about/)).toBeTruthy();
+  });
+
+  it('says so plainly when the browser has notifications blocked', () => {
+    render(
+      <SettingsModal
+        open
+        prefs={{ ...prefs, notifyEnabled: true }}
+        onPrefs={vi.fn()}
+        venues={[]}
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    // happy-dom has no Notification global at all, which notificationPermission()
+    // reads the same way a real "denied" browser would.
+    expect(screen.getByText(/blocking notifications/i)).toBeTruthy();
+  });
+
+  it('seven taps on the hint reveals background-check diagnostics', async () => {
+    render(<SettingsModal open prefs={prefs} onPrefs={vi.fn()} venues={[]} onClose={vi.fn()} onChanged={vi.fn()} />);
+    const hint = screen.getByText('Local · best-effort · Chromium + installed app only');
+    for (let i = 0; i < 7; i++) fireEvent.click(hint);
+    await waitFor(() => expect(screen.getByText(/permission:/)).toBeTruthy());
   });
 });

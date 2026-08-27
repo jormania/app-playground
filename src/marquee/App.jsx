@@ -17,6 +17,7 @@ import { summarize, changeSignature, undismissedChanges } from './changes.js'
 import { runScan, loadLastScan } from './scanClient.js'
 import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges } from './store.js'
 import { formatDay } from './format.js'
+import { writeNotifyState, registerPeriodicSync, previewFromQuery } from './notify.js'
 
 /** Marquee.
  *
@@ -128,6 +129,29 @@ export default function App() {
   }, [prefs.theme])
 
   useEffect(() => { savePrefs(prefs) }, [prefs])
+
+  // Mirror what the worker needs whenever the venue list or the notify prefs
+  // change — the venue payload is what it POSTs to /api/marquee-scan with, the
+  // prefs are whether it's allowed to fire at all and which kinds. Runs
+  // unconditionally (not gated on notifyEnabled): a toggle flipped OFF has to
+  // reach the worker too, or a background wake started before this session
+  // opened would keep firing regardless of the setting on screen.
+  useEffect(() => { writeNotifyState(venues, prefs) }, [venues, prefs])
+
+  // Resume periodic sync on load if it was already granted — permission and a
+  // service-worker registration both survive a reload, but the actual
+  // registration call does not; without this, notifications silently stop the
+  // next time the tab is closed and reopened even though Settings still shows
+  // them as on.
+  useEffect(() => {
+    if (prefs.notifyEnabled && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      registerPeriodicSync()
+    }
+    // Preview hook: ?notify=preview fires one sample notification immediately,
+    // for checking the format without waiting for a real background check.
+    previewFromQuery()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const sorted = useMemo(() => sortVenues(venues), [venues])
   // Sorted, so the filter chips read in the same order as the Venues tab.

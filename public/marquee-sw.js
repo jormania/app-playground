@@ -1,6 +1,23 @@
 // Marquee service worker: stale-while-revalidate for same-origin GETs, scoped to the
-// Marquee page. Enables PWA installability and offline reading of the last fetch.
+// Marquee page (enables PWA installability and offline reading of the last fetch) —
+// AND, below, opt-in periodic checking for tickets that just opened. Same file for
+// both, same shape public/where-it-went-sw.js uses when an app needs caching and
+// notifications together (see NOTIFICATIONS.md).
+//
+// The notification half is genuinely different from the other three apps wired
+// into src/shared/notify/: their workers only ever READ a snapshot the page
+// already computed. This one does the actual work "Check venues" does — POSTs to
+// /api/marquee-scan itself — because "did tickets just open" can only be
+// answered by re-reading the venue pages, and a worker woken while the app is
+// closed has no other way to find out. See src/marquee/notify.js for the page
+// half and the reasoning behind the extra, independent snapshot this keeps.
+importScripts('/shared-notify-idb.js');
+
 const CACHE = 'marquee-cache-v1';
+const REMINDERS_DB = 'marquee-reminders', REMINDERS_STORE = 'kv';
+const VENUES_KEY = 'venues', PREFS_KEY = 'prefs', SNAPSHOT_KEY = 'snapshot';
+const SCAN_URL = '/api/marquee-scan';
+const APP_URL = '/marquee-react.html';
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -45,6 +62,125 @@ self.addEventListener('fetch', function (e) {
         }).catch(function () { return cached; });
         return cached || network;
       });
+    })
+  );
+});
+
+// ── Notifications: opt-in checking for tickets that just opened ───────────
+
+function get(key) { return self.sharedNotifyIdb.get(REMINDERS_DB, REMINDERS_STORE, key); }
+function set(key, val) { return self.sharedNotifyIdb.set(REMINDERS_DB, REMINDERS_STORE, key, val); }
+
+// Mirrors src/marquee/notify.js's own copy of the same three functions — see
+// that file's header for why a service worker carries a second copy at all
+// (it can't `import` an ES module), and notify.sw.test.js for what pins the
+// two together so a rule drifting between them fails a test rather than
+// silently disagreeing about what counts as a change.
+function kindFor(before, after) {
+  if (!before) return 'new-event';
+  if (before.ticketState !== 'open' && after.ticketState === 'open') return 'tickets-opened';
+  if (before.ticketState !== 'sold-out' && after.ticketState === 'sold-out') return 'sold-out';
+  return null;
+}
+
+function notifiableChanges(beforeMap, events, kinds) {
+  var allow = {};
+  kinds.forEach(function (k) { allow[k] = true; });
+  var out = [];
+  events.forEach(function (e) {
+    var kind = kindFor(beforeMap ? beforeMap[e.key] : undefined, e);
+    if (kind && allow[kind]) out.push({ kind: kind, key: e.key, title: e.title, venue: e.venue });
+  });
+  return out;
+}
+
+var LABEL = { 'tickets-opened': 'tickets on sale', 'sold-out': 'sold out', 'new-event': 'new' };
+
+function notifyTitle(changes) {
+  if (changes.length === 1) return 'Marquee: "' + changes[0].title + '" — ' + LABEL[changes[0].kind];
+  var opened = changes.filter(function (c) { return c.kind === 'tickets-opened'; }).length;
+  return opened > 0
+    ? ('Marquee: ' + opened + ' tickets just opened')
+    : ('Marquee: ' + changes.length + ' changes at your venues');
+}
+
+function notifyBody(changes) {
+  var lines = changes.slice(0, 3).map(function (c) { return c.title + ' — ' + LABEL[c.kind] + ' (' + c.venue + ')'; });
+  if (changes.length > 3) lines.push('+' + (changes.length - 3) + ' more');
+  return lines.join('\n');
+}
+
+function toSnapshotMap(events) {
+  var map = {};
+  events.forEach(function (e) { map[e.key] = { ticketState: e.ticketState }; });
+  return map;
+}
+
+function showChangeNotification(changes) {
+  return self.registration.showNotification(notifyTitle(changes), {
+    body: notifyBody(changes),
+    tag: 'marquee-changes',
+    icon: '/marquee-icon.svg',
+    badge: '/marquee-icon.svg',
+  });
+}
+
+// The one real risk worth naming: a busy venue list (TNB alone costs ~61
+// extra per-production requests, MARQUEE.md's own Open section flags it as
+// the single biggest per-check request count) can take longer than a
+// periodic-sync wake's own execution budget, which the browser — not this
+// code — enforces and can end early. A run cut short simply doesn't reach
+// `set(SNAPSHOT_KEY, ...)`, so the NEXT wake compares against the same old
+// snapshot rather than a half-updated one — a slow check costs a delay,
+// never a wrong notification.
+function runNotifyCheck() {
+  return Promise.all([get(VENUES_KEY), get(PREFS_KEY), get(SNAPSHOT_KEY)]).then(function (v) {
+    var venues = v[0], prefs = v[1], snapshot = v[2];
+    if (!prefs || !prefs.enabled || !venues || !venues.length) return;
+
+    return fetch(SCAN_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ venues: venues }),
+    }).then(function (res) {
+      return res.ok ? res.json() : null;
+    }).then(function (data) {
+      if (!data || !Array.isArray(data.events)) return;
+      var after = toSnapshotMap(data.events);
+
+      // No snapshot yet: this check establishes the baseline, silently — the
+      // same rule changes.js's own diff uses for the app's first-ever scan.
+      // Everything would technically read "new"; a wake's first-ever push
+      // notification reporting the whole programme would be noise, not news.
+      if (!snapshot) return set(SNAPSHOT_KEY, after);
+
+      var changes = notifiableChanges(snapshot, data.events, prefs.kinds || ['tickets-opened']);
+      var written = set(SNAPSHOT_KEY, after);
+      return changes.length > 0 ? written.then(function () { return showChangeNotification(changes); }) : written;
+    });
+    // Best-effort throughout: any failure here (offline, the endpoint down, a
+    // throttled venue) just means this wake found nothing to say. The app
+    // itself, and the server's own twice-daily email check, are still the
+    // source of truth either way.
+  }).catch(function () {});
+}
+
+self.addEventListener('periodicsync', function (e) {
+  if (e.tag !== 'marquee-reminders') return;
+  e.waitUntil(runNotifyCheck());
+});
+
+// Tapping a notification focuses the app (or opens it) rather than routing to
+// a specific card — "what changed" is already the first thing the programme
+// shows.
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].url && list[i].url.indexOf('marquee-react') !== -1) return list[i].focus();
+      }
+      return self.clients.openWindow(APP_URL);
     })
   );
 });

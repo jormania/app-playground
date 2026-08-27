@@ -1,9 +1,9 @@
 # Local notifications — shared foundation, app-specific decisions
 
-Four apps (Touch Grass, Sol Odyssey, Journal of Delights, WhereItWent) each show local,
-best-effort notifications on a schedule the app decides for itself — no server, no push
+Five apps (Touch Grass, Sol Odyssey, Journal of Delights, WhereItWent, Marquee) each show
+local, best-effort notifications on a schedule the app decides for itself — no server, no push
 service. This file documents the shared foundation they're built on, so the next app doesn't
-grow a fifth from-scratch copy.
+grow a sixth from-scratch copy.
 
 ## What's actually shared
 
@@ -61,6 +61,23 @@ The shared layer is deliberately thin. Each app owns:
    the app's own styling. Worth adding for any app whose reminders depend on the periodic-sync
    + IndexedDB mechanism — it's the only way to see *why* a background notification went
    quiet without a laptop and devtools attached to the device.
+
+## Where Marquee's worker genuinely differs from the other four
+
+Every app above wires a service worker that only READS a snapshot the page already
+computed from data it had loaded — the hard part (deciding whether to nudge) happens on the
+page, the worker just compares a time or a flag against "now". Marquee's worker does real
+work of its own: it POSTs to `/api/marquee-scan` and re-reads the venue pages ITSELF, because
+"did tickets just open" can only be answered that way, and a worker woken while the app is
+closed has no snapshot that already knows the answer. Same shared primitives
+(`idbKv`/`permission`/`periodicSync`/`diagnostics`/`useDiagnosticsReveal`), same
+mirror-state-then-let-the-worker-decide shape in outline — just with a network request
+inserted between "read the mirrored state" and "decide". See `src/marquee/notify.js`'s own
+header, and MARQUEE.md's write-up of the feature, for the consequences: a THIRD independent
+snapshot (client localStorage, server KV, now this browser's own IndexedDB), and a real risk
+that a slow scan (TNB's own ~61-request poster hop) outruns a periodic-sync wake's execution
+budget — documented as a cost, not solved, since a late check is honest and a wrong
+notification would not be.
 
 ## Where an app legitimately diverges
 

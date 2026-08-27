@@ -6,6 +6,11 @@ import { VENUES_DATABASE_ID } from './notionClient.js'
 import { getAdapter } from './adapters.js'
 import { isActive } from './venues.js'
 import { formatDay } from './format.js'
+import { enableNotify, unregisterPeriodicSync, capabilities, notificationPermission, REMINDERS_DB } from './notify.js'
+import { gatherDiagnostics } from '../shared/notify/diagnostics'
+import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal'
+
+const NOTIFY_DIAG_KEYS = ['venues', 'prefs', 'snapshot']
 
 /** One venue's own row in the health list: what's reading it, whether it's
  *  paused, and what its last check actually found — the three things "is
@@ -49,6 +54,8 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
   const [testing, setTesting] = useState(false)
   const [probe, setProbe] = useState(null)
   const [status, setStatus] = useState(null)
+  const [notifyMsg, setNotifyMsg] = useState('')
+  const [diag, setDiag] = useState(null)
 
   useEffect(() => {
     if (!open) return
@@ -57,9 +64,42 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
     setFindings(findingsDb.get())
     setProbe(null)
     setStatus(null)
+    setNotifyMsg('')
+    setDiag(null)
   }, [open])
 
   const set = (patch) => onPrefs({ ...prefs, ...patch })
+
+  const notifyCaps = capabilities()
+  const notifyBlocked = prefs.notifyEnabled && notificationPermission() === 'denied'
+
+  // Seven quick taps on the notify hint dumps the background check's own
+  // state — the same trick Touch Grass, Sol Odyssey and Journal use, since
+  // this relies on the exact same fragile mechanism (a service worker woken
+  // in the background, here doing its own fetch rather than just reading a
+  // snapshot — see notify.js's header).
+  const handleNotifyHintTap = useDiagnosticsReveal(async () => {
+    setDiag(await gatherDiagnostics({ dbName: REMINDERS_DB, keys: NOTIFY_DIAG_KEYS }))
+  })
+
+  async function toggleNotify() {
+    if (prefs.notifyEnabled) {
+      set({ notifyEnabled: false })
+      setNotifyMsg('')
+      void unregisterPeriodicSync()
+      return
+    }
+    set({ notifyEnabled: true })
+    const permission = await enableNotify()
+    if (permission !== 'granted') {
+      set({ notifyEnabled: false })
+      setNotifyMsg('Notifications are blocked in your browser — allow them to use this.')
+    } else if (!notifyCaps.periodicSync) {
+      setNotifyMsg('Background checking isn’t supported on this browser/device — it’ll only run while the app happens to be open.')
+    } else {
+      setNotifyMsg('')
+    }
+  }
 
   /** An id that can't be parsed is REFUSED here rather than quietly dropped.
    *  `idSetting.set` clears the stored value on an unparseable input, so the app
@@ -139,6 +179,44 @@ export default function SettingsModal({ open, prefs, onPrefs, counts = {}, venue
             checked={prefs.hideKept}
             onChange={(e) => set({ hideKept: e.target.checked })}
           />
+        </section>
+
+        <section>
+          <h3 className="settings__head">Notify</h3>
+          <SettingsToggle
+            label="Notify me when tickets open"
+            hint="Checks your venues in the background — the one change actually worth interrupting you for"
+            checked={prefs.notifyEnabled}
+            onChange={toggleNotify}
+          />
+          {prefs.notifyEnabled && (
+            <SettingsToggle
+              label="Also notify about new listings and sold-out"
+              hint="Off by default — tickets opening is the one you’d want to know about right away"
+              checked={prefs.notifyAllKinds}
+              onChange={(e) => set({ notifyAllKinds: e.target.checked })}
+            />
+          )}
+          {notifyBlocked && (
+            <p className="warn warn--stop" role="alert">
+              Your browser is blocking notifications — they can’t reach you.
+            </p>
+          )}
+          {notifyMsg && <p className="warn">{notifyMsg}</p>}
+          <p className="settings__hint" onClick={handleNotifyHintTap}>
+            Local · best-effort · Chromium + installed app only
+          </p>
+          {diag && (
+            <div className="probe">
+              <p className="settings__hint">permission: {diag.permission}</p>
+              <p className="settings__hint">
+                periodicSync: {diag.periodicSyncTags.length ? diag.periodicSyncTags.join(', ') : 'not registered'}
+              </p>
+              <p className="settings__hint">venues mirrored: {diag.values.venues ? diag.values.venues.length : 0}</p>
+              <p className="settings__hint">prefs: {diag.values.prefs ? JSON.stringify(diag.values.prefs) : 'none'}</p>
+              <p className="settings__hint">last background snapshot: {diag.values.snapshot ? 'written' : 'none yet'}</p>
+            </div>
+          )}
         </section>
 
         <section>

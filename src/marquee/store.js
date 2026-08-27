@@ -45,6 +45,8 @@ export const DEFAULT_PREFS = {
   showIgnored: false,
   keepToday: false,
   hideKept: false,
+  notifyEnabled: false,
+  notifyAllKinds: false,
 }
 
 export function loadPrefs() {
