@@ -99,10 +99,6 @@ describe('Marquee, end to end in demo mode', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    // Search starts collapsed to an icon (§9.50) — open it once, and it stays
-    // open across the tab switch below (the box itself already adapts its
-    // value/placeholder per tab).
-    await user.click(screen.getByRole('button', { name: 'Search' }));
     const programmeBox = screen.getByLabelText(/Search the programme/);
     await user.type(programmeBox, 'Tomcat');
 
@@ -125,7 +121,6 @@ describe('Marquee, end to end in demo mode', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(await screen.findByRole('button', { name: /^Venues/ }));
-    await user.click(screen.getByRole('button', { name: 'Search' }));
     await user.type(await screen.findByLabelText(/Search your venues/), 'zzzz');
     expect(await screen.findByText(/Nothing matches/)).toBeTruthy();
     expect(screen.queryByText(/No venues yet/)).toBeNull();

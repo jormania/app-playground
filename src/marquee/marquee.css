@@ -117,21 +117,17 @@ button { color: inherit; font: inherit; }
 }
 
 /* ── Top bar ───────────────────────────────────────────────────────────── */
-/* Back to the original nowrap-friendly shape now that search collapses to an
-   icon by default (§9.50): heading left, `.topbar__bar` (search-or-its-icon
-   plus the action icons) right, `space-between` doing the separating — no
-   flex-grow needed on either side, so there's no oversized reserved width
-   sitting empty between them the way a permanently-open search pill left
-   behind. `flex-wrap` stays on as the one safety net: tapping search open
-   can genuinely need more room than a phone has beside the title, and that
-   should wrap cleanly rather than crush the title's own text. */
+/* Search moved out of here entirely (§9.54 — it now shares `.tabs-row` with
+   the tabs, to the right of Venues). Back to the simple shape: heading left,
+   the three action icons right, `space-between` doing the separating, nowrap
+   at every width — nothing here has real width to ask for any more. */
 .topbar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem 1rem;
+  gap: 1rem;
   padding: 1.5rem 0 1rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .topbar__heading {
@@ -150,16 +146,6 @@ button { color: inherit; font: inherit; }
   margin: 0.15rem 0 0;
   color: var(--color-muted);
   font-size: 0.85rem;
-}
-
-/* Search-icon-or-box plus the action icons, together — the unit that wraps
-   onto its own row on a phone if opening search needs more width than fits
-   beside the title (see `.topbar` above). */
-.topbar__bar {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-shrink: 0;
 }
 
 .topbar__actions {
@@ -357,13 +343,26 @@ button { color: inherit; font: inherit; }
 .reader--warn { color: var(--color-warning); }
 
 /* ── Tabs ──────────────────────────────────────────────────────────────── */
+/* Tabs and search share this row at every width, search to the right of
+   Venues (§9.54). `nowrap` is load-bearing: `.tabs` is `flex-shrink: 0` (two
+   short words — nothing worth shrinking) so `.search` is the only thing that
+   ever gives up width, down to its own `min-width` floor, before the row
+   would otherwise wrap. That floor is picked to still be a real box to type
+   into, not the sliver a plain flex-shrink would leave it. */
+.tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+}
+
 .tabs {
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  border-bottom: 1px solid var(--color-border);
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
+  flex-shrink: 0;
 }
 
 .tab {
@@ -388,10 +387,9 @@ button { color: inherit; font: inherit; }
    piece of chrome here has weight, and it had none. Same border radius and
    surface language, connected rather than a leftover default input.
 
-   Only rendered while search is open (§9.50) — a fixed width rather than
-   flex-grow, since it no longer needs to fill leftover space in a row that
-   otherwise sizes to its own content; shrinks below that on a phone rather
-   than force the row wider than the screen. */
+   Grows to use whatever `.tabs-row` has left beside `.tabs`, up to a real
+   working width, and is the one thing in that row allowed to shrink below
+   it — down to `min-width`, never past it, so the row itself never wraps. */
 .search {
   display: flex;
   align-items: center;
@@ -402,9 +400,9 @@ button { color: inherit; font: inherit; }
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
   color: var(--color-muted);
-  width: 15rem;
-  max-width: 100%;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 8rem;
+  max-width: 16rem;
   transition:
     border-color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
     box-shadow var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
@@ -1019,12 +1017,12 @@ button { color: inherit; font: inherit; }
   .topbar { padding: 1.1rem 0 0.75rem; gap: 0.5rem 0.6rem; }
   .topbar__title { font-size: 1.6rem; }
 
-  /* Search collapsed to an icon (§9.50) means `.topbar__bar` is small enough
-     to sit beside the title on a phone in its resting state; it only wraps
-     onto its own row on the rare occasion search is open AND that plus four
-     icons genuinely doesn't fit, `.search`'s own 15rem width shrinking to
-     whatever's left via `max-width: 100%`. */
+  /* `.search`'s own `flex: 1 1 auto` with a `min-width` floor (§9.54) already
+     handles a phone: it just shrinks toward that floor as `.tabs` claims its
+     own (fixed, `flex-shrink: 0`) share of a narrower row. Tightened here
+     only for a little more breathing room at the narrowest widths. */
   .tabs { gap: 0.85rem; }
+  .tabs-row { gap: 0.5rem; }
 
   /* .venue stacks (name+meta above, actions below) — it has no poster and
      nothing to keep beside. .prod deliberately does NOT: the whole point of a

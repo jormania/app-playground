@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, ConfirmModal, IconButton, ToastStack, useToastStack } from '../ds'
 import {
   Settings as SettingsIcon, Search as SearchIcon, X as ClearIcon,
@@ -84,13 +84,6 @@ export default function App() {
   // the same trap that made a "What changed" row scroll to a card the search
   // was hiding (§9.29's finding).
   const [venueSearch, setVenueSearch] = useState('')
-  // Search starts collapsed to an icon — an empty pill sitting wide open in
-  // the top bar at all times was real estate spent on nothing, most of the
-  // time. Tapping it opens the same box as before; it stays open across a
-  // tab switch (the box already adapts its value/placeholder per tab), and
-  // collapses back on blur.
-  const [searchOpen, setSearchOpen] = useState(false)
-  const searchInputRef = useRef(null)
   const [keeping, setKeeping] = useState(null)
 
   const [editing, setEditing] = useState(null)
@@ -194,18 +187,6 @@ export default function App() {
     previewFromQuery()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Focus the box only where a keyboard doesn't eat most of the screen for
-  // it: a real pointer (mouse/trackpad) means there's room to spare, a touch
-  // device means the on-screen keyboard would slam up the instant the icon
-  // is tapped, covering the very row that icon sits in. On touch, opening
-  // still reveals the box (and its existing query) — tapping INTO it is what
-  // asks for the keyboard, same as any other field on the page.
-  useEffect(() => {
-    if (searchOpen && window.matchMedia?.('(pointer: fine)').matches) {
-      searchInputRef.current?.focus()
-    }
-  }, [searchOpen])
 
   const onProgramme = tab === 'programme'
 
@@ -484,140 +465,101 @@ export default function App() {
           </p>
         </div>
 
-        {/* One tight cluster for every top-level control — search included.
-            Search starts collapsed to an icon rather than a permanently-open
-            box with nothing in it most of the time; tapping it swaps the icon
-            for the same input as before, still present on BOTH tabs and
-            searching whatever the tab in front is actually showing (it used
-            to vanish on the Venues tab, leaving that screen with no way to
-            narrow it). Collapses back on blur; Escape does the same without
-            waiting for the blur. On a phone this whole row wraps under the
-            heading — deterministic, not "sit inline and hope it doesn't have
-            to wrap". */}
-        <div className="topbar__bar">
-          {searchOpen ? (
-            <div className="search">
-              <SearchIcon size={14} aria-hidden="true" />
-              {/* Empty box, tapped away from: nothing to lose, so it collapses
-                  back to the icon on its own. A box with a live query stays
-                  open regardless of where focus goes — closing it out from
-                  under an active filter (say, a tap on a category chip) would
-                  read as "did my search just get cleared?" even though the
-                  query itself survives either way. */}
-              <input
-                ref={searchInputRef}
-                type="search"
-                value={onProgramme ? search : venueSearch}
-                onChange={(e) => (onProgramme ? setSearch : setVenueSearch)(e.target.value)}
-                onBlur={() => { if (!(onProgramme ? search : venueSearch)) setSearchOpen(false) }}
-                onKeyDown={(e) => { if (e.key === 'Escape') e.currentTarget.blur() }}
-                placeholder="Search…"
-                aria-label={onProgramme
-                  ? 'Search the programme by title or venue'
-                  : 'Search your venues by name, area or address'}
-              />
-              {/* One button, two jobs depending on what's in the box: clears
-                  text while there's any (staying open, so you can see it's
-                  gone and keep typing), collapses the box once there isn't —
-                  the natural next tap rather than a second, separate control. */}
-              {(onProgramme ? search : venueSearch) ? (
-                <button
-                  type="button"
-                  className="search__clear"
-                  aria-label="Clear search"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => (onProgramme ? setSearch : setVenueSearch)('')}
-                >
-                  <ClearIcon size={14} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="search__clear"
-                  aria-label="Close search"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => setSearchOpen(false)}
-                >
-                  <ClearIcon size={14} />
-                </button>
-              )}
-            </div>
-          ) : (
+        <div className="topbar__actions">
+          {/* Accent-filled via IconButton's own `selected` — the same
+              background/foreground tokens `Check venues` used as a text
+              Button, carried over rather than reinvented, so the primary
+              action still reads as the one with weight even icon-only. */}
+          <IconButton
+            size="sm"
+            selected
+            aria-label={scanning ? 'Checking venues…' : 'Check venues'}
+            title={scanning ? 'Checking venues…' : 'Check venues'}
+            onClick={handleScan}
+            disabled={scanning || loading || active.length === 0}
+          >
+            <RefreshIcon size={18} className={scanning ? 'topbar__scan-icon--spinning' : ''} />
+          </IconButton>
+          {/* A deliberately different, still theme-native colour (--color-success,
+              already this palette's "positive" token) from Check venues' accent
+              fill — distinct at a glance in the same row, never a third raw
+              colour invented for this alone. Icon reflects the layout you'd
+              SWITCH TO, matching the toggle Programme.jsx used to render inline
+              before it moved up here to free the vertical space it took.
+
+              Shown only where it does something: on the Programme tab, with a
+              programme actually on screen. Moving it up here from inside
+              Programme.jsx lost that gate — it kept rendering over the Venues
+              list and before the first check, where pressing it silently
+              changed a preference with nothing to show for it. */}
+          {tab === 'programme' && days.length > 0 && (
             <IconButton
               size="sm"
-              selected={Boolean(onProgramme ? search : venueSearch)}
-              aria-label="Search"
-              title="Search"
-              onClick={() => setSearchOpen(true)}
+              aria-label={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+              title={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
+              onClick={() => setPrefs((p) => ({ ...p, viewMode: p.viewMode === 'posters' ? 'list' : 'posters' }))}
             >
-              <SearchIcon size={18} />
+              {prefs.viewMode === 'posters'
+                ? <ListIcon size={18} className="topbar__view-icon" />
+                : <PostersIcon size={18} className="topbar__view-icon" />}
             </IconButton>
           )}
-
-          <div className="topbar__actions">
-            {/* Accent-filled via IconButton's own `selected` — the same
-                background/foreground tokens `Check venues` used as a text
-                Button, carried over rather than reinvented, so the primary
-                action still reads as the one with weight even icon-only. */}
-            <IconButton
-              size="sm"
-              selected
-              aria-label={scanning ? 'Checking venues…' : 'Check venues'}
-              title={scanning ? 'Checking venues…' : 'Check venues'}
-              onClick={handleScan}
-              disabled={scanning || loading || active.length === 0}
-            >
-              <RefreshIcon size={18} className={scanning ? 'topbar__scan-icon--spinning' : ''} />
-            </IconButton>
-            {/* A deliberately different, still theme-native colour (--color-success,
-                already this palette's "positive" token) from Check venues' accent
-                fill — distinct at a glance in the same row, never a third raw
-                colour invented for this alone. Icon reflects the layout you'd
-                SWITCH TO, matching the toggle Programme.jsx used to render inline
-                before it moved up here to free the vertical space it took.
-
-                Shown only where it does something: on the Programme tab, with a
-                programme actually on screen. Moving it up here from inside
-                Programme.jsx lost that gate — it kept rendering over the Venues
-                list and before the first check, where pressing it silently
-                changed a preference with nothing to show for it. */}
-            {tab === 'programme' && days.length > 0 && (
-              <IconButton
-                size="sm"
-                aria-label={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
-                title={prefs.viewMode === 'posters' ? 'Switch to list view' : 'Switch to poster view'}
-                onClick={() => setPrefs((p) => ({ ...p, viewMode: p.viewMode === 'posters' ? 'list' : 'posters' }))}
-              >
-                {prefs.viewMode === 'posters'
-                  ? <ListIcon size={18} className="topbar__view-icon" />
-                  : <PostersIcon size={18} className="topbar__view-icon" />}
-              </IconButton>
-            )}
-            <IconButton size="sm" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
-              <SettingsIcon size={18} />
-            </IconButton>
-          </div>
+          <IconButton size="sm" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+            <SettingsIcon size={18} />
+          </IconButton>
         </div>
       </header>
 
-      <nav className="tabs" aria-label="Views">
-        <button
-          type="button"
-          className={`tab ${tab === 'programme' ? 'tab--on' : ''}`}
-          onClick={() => setTab('programme')}
-          aria-current={tab === 'programme'}
-        >
-          Programme
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'venues' ? 'tab--on' : ''}`}
-          onClick={() => setTab('venues')}
-          aria-current={tab === 'venues'}
-        >
-          Venues
-        </button>
-      </nav>
+      {/* Tabs and search share one row, search to the right of Venues —
+          `nowrap` is load-bearing here: `.tabs` never shrinks (it's just two
+          short words) and `.search` is what gives up width first, down to
+          its own floor, so the row itself never drops to a second line
+          however narrow the screen gets. Present on BOTH tabs, searching
+          whatever the tab in front is actually showing — it used to vanish
+          on the Venues tab, leaving that screen with no way to narrow it. */}
+      <div className="tabs-row">
+        <nav className="tabs" aria-label="Views">
+          <button
+            type="button"
+            className={`tab ${tab === 'programme' ? 'tab--on' : ''}`}
+            onClick={() => setTab('programme')}
+            aria-current={tab === 'programme'}
+          >
+            Programme
+          </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'venues' ? 'tab--on' : ''}`}
+            onClick={() => setTab('venues')}
+            aria-current={tab === 'venues'}
+          >
+            Venues
+          </button>
+        </nav>
+
+        <div className="search">
+          <SearchIcon size={14} aria-hidden="true" />
+          <input
+            type="search"
+            value={onProgramme ? search : venueSearch}
+            onChange={(e) => (onProgramme ? setSearch : setVenueSearch)(e.target.value)}
+            placeholder="Search…"
+            aria-label={onProgramme
+              ? 'Search the programme by title or venue'
+              : 'Search your venues by name, area or address'}
+          />
+          {(onProgramme ? search : venueSearch) && (
+            <button
+              type="button"
+              className="search__clear"
+              aria-label="Clear search"
+              onClick={() => (onProgramme ? setSearch : setVenueSearch)('')}
+            >
+              <ClearIcon size={14} />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Day navigation FIRST, fixed here right under the tabs — nothing below
           it (category, venue, any filter) can ever move it, whatever gets

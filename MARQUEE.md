@@ -1864,6 +1864,27 @@ the desktop behaviour this had before), a touch device just reveals the box
 and its existing query, and tapping INTO it is what asks for the keyboard —
 the same as any other field on the page already works.
 
+### 9.54 Search moves back beside the tabs, un-collapsed (2026-08-28)
+
+§9.50 collapsed search to an icon (a permanently-open box was "real estate
+spent on nothing most of the time") and §9.53 conditioned its autofocus on
+pointer type. Explicit follow-up request: move it back to sharing a row with
+the tabs, to the right of Venues, as a real always-visible bar wide enough
+to actually type into — not collapsed to an icon.
+
+`.topbar` goes back to `nowrap` (the action cluster is three icons again,
+nothing that needs `.topbar__bar`'s old wrapping allowance — that class is
+gone). Tabs and search share a revived `.tabs-row`: `nowrap`, `.tabs` at
+`flex-shrink: 0` (two short words, nothing worth shrinking), `.search` at
+`flex: 1 1 auto` with a `min-width: 8rem` floor and a `max-width: 16rem`
+ceiling — it grows to fill whatever the row has left beside the tabs, and is
+the only thing in the row allowed to shrink, down to that floor, so the row
+itself can never wrap regardless of screen width. The collapse/expand state
+(`searchOpen`), its focus-management effect, and the dual-purpose clear/close
+button all removed with it — back to the simpler always-open box, still
+searching BOTH tabs (`searchProductions`/`searchVenues`, each tab's own
+query) exactly as before.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
