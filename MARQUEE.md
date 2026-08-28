@@ -1885,6 +1885,17 @@ button all removed with it — back to the simpler always-open box, still
 searching BOTH tabs (`searchProductions`/`searchVenues`, each tab's own
 query) exactly as before.
 
+### 9.55 Search sat too low in `.tabs-row` (2026-08-28)
+
+Follow-up to §9.54: `.tabs-row`'s `align-items: center` centred `.search`
+against `.tab`'s FULL box height — and `.tab` carries its underline as
+bottom padding (0.6rem, so the border sits under the text rather than
+hugging it), making that box taller below the text than above. Centring
+against it pulled `.search` down toward the border line, visibly lower than
+"Programme"/"Venues" themselves. Switched to `align-items: flex-start`, which
+aligns top edges close enough to read as one row instead of tabs sitting
+above and search hanging off the bottom of it.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

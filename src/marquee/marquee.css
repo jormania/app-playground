@@ -349,9 +349,16 @@ button { color: inherit; font: inherit; }
    ever gives up width, down to its own `min-width` floor, before the row
    would otherwise wrap. That floor is picked to still be a real box to type
    into, not the sliver a plain flex-shrink would leave it. */
+/* `align-items: flex-start`, not `center` — `.tab` carries its underline as
+   bottom PADDING (0.6rem, so the border sits under the text rather than
+   hugging it), which makes its own box taller below the text than above.
+   Centering `.search` against that full box pulled it down toward the
+   border line, well below where "Programme"/"Venues" actually read — top
+   edges align close enough to the text itself that this reads as one row,
+   not the tabs sitting above and search hanging off the bottom of it. */
 .tabs-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   flex-wrap: nowrap;
   border-bottom: 1px solid var(--color-border);
