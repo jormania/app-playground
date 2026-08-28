@@ -410,6 +410,13 @@ button { color: inherit; font: inherit; }
   flex: 1 1 auto;
   min-width: 8rem;
   max-width: 16rem;
+  /* `flex-start` (above) lines up the box's own top edge with `.tab`'s — but
+     `.tab` has NO top padding (text sits right at its box top) while this
+     box does (0.3rem before the icon), so the icon/text inside still sat
+     that much lower than "Programme"/"Venues". Pulled up to close the rest
+     of the gap; the border/shadow pill itself is unaffected, only its
+     position within the row. */
+  margin-top: -0.3rem;
   transition:
     border-color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
     box-shadow var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
