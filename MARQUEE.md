@@ -1784,6 +1784,86 @@ nothing else. `Programme.test.jsx`'s tier-rendering tests moved to
 `App.test.jsx`, proven against the real stacked block rather than Programme
 in isolation.
 
+### 9.51 Excelsior's sold-out shows read as buyable (2026-08-28)
+
+**Reported bug:** "Metamorfoza" at Teatrul Excelsior showed a TICKETS chip and
+four clickable dates, none marked sold out; the real site
+(`teatrul-excelsior.ro`) showed every one of those same four dates as "Sold
+out".
+
+Root cause: the listing page's own tickets column — `excelsior.js`'s ORIGINAL
+signal, "already in the markup, nothing has to be inferred" per its own header
+comment — is a static call-to-action, "Cumpără bilete", printed for every row
+regardless of real availability. It is not a live signal at all; the site
+never renders a "SOLD OUT" label there for a genuinely sold-out night, only
+ever the buy button. The real per-date state lives on each production's own
+detail page instead — already fetched, every scan, for the poster and
+synopsis — as a real button per showing: `style="cursor: not-allowed;"` and
+the text "Sold out" versus `class="select-method-button"` and "Alege
+locurile", each paired with its own "24 septembrie 2026 Ora: 19:00" header a
+short way above it.
+
+Fixed by reading that instead: `detailTicketStates(html)` walks a detail
+page's own showing headers, keyed by date+time (so a partly sold-out run —
+the ordinary case — still reads correctly per date, not as one flag for the
+whole production), bounded to the text between one showing and the next so a
+showing with no button of its own can't borrow the next one's state. The
+listing's own column stays the fallback, reached only when a production's
+detail fetch never came back — worse than nothing, the ORIGINAL behaviour,
+would have been reading it as the primary signal it never actually was.
+`excelsior-detail-metamorfoza.html` rebuilt with the real four "Sold out"
+buttons (verbatim, from the live page); `excelsior-detail-tomcat.html` gained
+real "Alege locurile" showings for both its dates, deliberately contradicting
+its own listing row's "SOLD OUT" for 17:00, to prove precedence — the detail
+page wins when the two actually disagree, which is the whole point.
+
+### 9.52 Expirat shows "Tonight" with no time at all (2026-08-28)
+
+**Reported bug:** an Expirat card read "Tonight" with nothing after it, for
+an event the real ticket page showed starting at a specific time (21:30).
+
+Every event on Expirat's own listing (`tickets.expirat.org`, the iabilet
+whitelabel `jsonld.js` was written against) publishes `startDate` as a bare
+date — `"2026-08-27"`, no time component at all, on EVERY row checked live,
+not just the reported one. The real start time exists only as plain visible
+text on the SAME listing page, a short way after that event's own JSON-LD
+block: `<p>joi, 27 august, ora 21:30 acces de la 20:00</p>`.
+
+`jsonld.js` now falls back to that text when `startDate` carries no time:
+after parsing a script block, if the resulting `time` is null AND that block
+held exactly one event (never for an `@graph`/array block — there is no
+single "the card right after this one" to read from when several events
+share a block), it searches a bounded window after the block for `ora
+HH:MM`, capped at the next JSON-LD script tag so a showing with none of its
+own can't borrow a neighbour's. Generic, not Expirat-specific — any other
+iabilet-whitelabel venue riding the same template benefits the same way, and
+a site with no such text nearby simply keeps reading `time: null` as before.
+`expirat.html` rebuilt with the real surrounding card markup for two of its
+three events (including "Phunk B, Macanache, Dilimanjaro" itself, the exact
+event the bug was reported against) and none for the third, proving the
+fallback is additive rather than required.
+
+### 9.53 Two small ones from the same round: an unstyled button, an unwanted keyboard (2026-08-28)
+
+**The "What changed" dismiss button rendered as a boxy, shadowed native
+button** — grey background, 3D border, nothing like the quiet icon control it
+was meant to be. This file's global `button { color: inherit; font: inherit
+}` reset never touches `background`/`border`/`padding`, and `.changes__dismiss`
+was the one custom button here that never set those itself, so the browser's
+own default chrome showed through. Fixed, and the raw `×` glyph swapped for
+the same `X` icon `search__clear` already uses, for the same reason every
+other dismiss/clear affordance in the app is an icon and not a character.
+
+**Tapping the Search icon on a touch device slammed the on-screen keyboard up
+immediately**, covering most of the screen the instant a small icon was
+tapped — `autoFocus` on the box's `<input>` doesn't distinguish "opened by a
+mouse click, there's room to spare" from "opened by a tap, a keyboard is
+about to eat half the viewport". Now conditional on `matchMedia('(pointer:
+fine)')`: a real pointer still focuses the box the moment it opens (matching
+the desktop behaviour this had before), a touch device just reveals the box
+and its existing query, and tapping INTO it is what asks for the keyboard —
+the same as any other field on the page already works.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

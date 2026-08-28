@@ -1,3 +1,4 @@
+import { X as ClearIcon } from 'lucide-react'
 import { CHANGE, CHANGE_LABEL } from './changes.js'
 import { formatDay } from './format.js'
 
@@ -75,7 +76,7 @@ export default function Changes({ scan, dismissed = false, onDismiss, onOpen }) 
             aria-label="Dismiss — hide until the next check"
             title="Dismiss until the next check"
           >
-            ×
+            <ClearIcon size={14} aria-hidden="true" />
           </button>
         )}
       </div>

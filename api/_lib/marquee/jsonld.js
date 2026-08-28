@@ -14,6 +14,16 @@
 import { TICKET, makeEvent, parseIsoDateTime, textOf } from './shared.js'
 
 const SCRIPT = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+// iabilet whitelabel pages (Expirat, and any other venue riding the same
+// template) publish `startDate` as a bare date, no time — the real start,
+// "joi, 10 septembrie, ora 22:00", lives only in the visible card markup a
+// short way after that event's own JSON-LD block, never in the JSON-LD
+// itself. Every card observed on Expirat's listing keeps well under 2500
+// characters between its own script tag and this text; bounded well past
+// that so a slow week doesn't lose the fallback, capped short of the NEXT
+// event's own block so a card with no time of its own can't borrow one.
+const NEARBY_TIME = /ora\s+(\d{1,2}):(\d{2})/i
+const TIME_WINDOW = 3000
 
 /** Strip the CDATA wrapper iabilet emits around its JSON-LD. */
 function unwrap(raw) {
@@ -104,8 +114,8 @@ export default {
         } catch {
           continue // one malformed block must not cost the whole page
         }
-        for (const node of flatten(payload)) {
-          if (!isEvent(node)) continue
+        const nodes = flatten(payload).filter(isEvent)
+        for (const node of nodes) {
           const start = String(node.startDate ?? '')
           const offer = firstOffer(node)
           const status = String(node.eventStatus ?? '')
@@ -118,7 +128,21 @@ export default {
           const price = typeof rawPrice === 'number' || (typeof rawPrice === 'string' && rawPrice.trim() !== '')
             ? Number(rawPrice)
             : NaN
-          const { date, time } = parseIsoDateTime(start)
+          let { date, time } = parseIsoDateTime(start)
+          // Only for a block with exactly one event — the nearby-text window
+          // belongs to whichever card follows the block, and a block that
+          // bundled several events (an @graph, an itemList) has no single
+          // "the card right after this" to read a time off.
+          if (!time && nodes.length === 1) {
+            const windowStart = m.index + m[0].length
+            const nextScript = html.indexOf('<script', windowStart)
+            const windowEnd = Math.min(
+              windowStart + TIME_WINDOW,
+              nextScript === -1 ? html.length : nextScript,
+            )
+            const found = NEARBY_TIME.exec(html.slice(windowStart, windowEnd))
+            if (found) time = `${found[1].padStart(2, '0')}:${found[2]}`
+          }
           const event = makeEvent({
             venue: venue.name,
             title: typeof node.name === 'string' ? node.name : textOf(node.name),

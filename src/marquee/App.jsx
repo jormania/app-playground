@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, ConfirmModal, IconButton, ToastStack, useToastStack } from '../ds'
 import {
   Settings as SettingsIcon, Search as SearchIcon, X as ClearIcon,
@@ -90,6 +90,7 @@ export default function App() {
   // tab switch (the box already adapts its value/placeholder per tab), and
   // collapses back on blur.
   const [searchOpen, setSearchOpen] = useState(false)
+  const searchInputRef = useRef(null)
   const [keeping, setKeeping] = useState(null)
 
   const [editing, setEditing] = useState(null)
@@ -193,6 +194,18 @@ export default function App() {
     previewFromQuery()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Focus the box only where a keyboard doesn't eat most of the screen for
+  // it: a real pointer (mouse/trackpad) means there's room to spare, a touch
+  // device means the on-screen keyboard would slam up the instant the icon
+  // is tapped, covering the very row that icon sits in. On touch, opening
+  // still reveals the box (and its existing query) — tapping INTO it is what
+  // asks for the keyboard, same as any other field on the page.
+  useEffect(() => {
+    if (searchOpen && window.matchMedia?.('(pointer: fine)').matches) {
+      searchInputRef.current?.focus()
+    }
+  }, [searchOpen])
 
   const onProgramme = tab === 'programme'
 
@@ -492,7 +505,7 @@ export default function App() {
                   read as "did my search just get cleared?" even though the
                   query itself survives either way. */}
               <input
-                autoFocus
+                ref={searchInputRef}
                 type="search"
                 value={onProgramme ? search : venueSearch}
                 onChange={(e) => (onProgramme ? setSearch : setVenueSearch)(e.target.value)}

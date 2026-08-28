@@ -252,6 +252,36 @@ describe('Teatrul Excelsior', () => {
       expect(tomcat.description).toContain('Jess')
       expect(tomcat.description).not.toContain('premieră pe țară') // too short to qualify, correctly skipped
     })
+
+    it('reads the real per-date ticket state off the same detail page, not the listing’s (§9.51)', () => {
+      // The bug as reported: "Metamorfoza" showed as buyable on every date —
+      // the listing's own "Cumpără bilete" column says exactly that for all
+      // four rows — while the real site marked every one "Sold out". The
+      // detail page (already fetched here for posters/synopsis) carries the
+      // real per-showing state; it should win.
+      const withDetails = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
+      const meta = withDetails.filter((e) => e.title === 'Metamorfoza')
+      expect(meta).toHaveLength(4)
+      expect(meta.every((e) => e.ticketState === 'sold-out')).toBe(true)
+    })
+
+    it('lets the detail page’s state override the listing’s when they actually disagree', () => {
+      // Tomcat's listing row marks 17:00 "SOLD OUT" (its own fixture, matching
+      // the real page at the time); its detail page here carries "Alege
+      // locurile" for both showings — a real return-to-sale, which the app
+      // should reflect without needing a fresh listing scrape to say so.
+      const withDetails = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
+      const tomcat = withDetails.filter((e) => e.title === 'Tomcat')
+      expect(tomcat.map((e) => e.time)).toEqual(['17:00', '20:00'])
+      expect(tomcat.every((e) => e.ticketState === 'open')).toBe(true)
+    })
+
+    it('falls back to the listing’s own column when the detail fetch never came back', () => {
+      // No detail pages at all here — the same call the top-level `events`
+      // fixture in this describe already makes — must still read the
+      // listing's signal exactly as before this existed.
+      expect(events.find((e) => e.title === 'Tomcat' && e.time === '17:00').ticketState).toBe('sold-out')
+    })
   })
 })
 
@@ -703,6 +733,35 @@ describe('generic schema.org reader (Expirat)', () => {
   it('reads the description straight off the JSON-LD `description` property', () => {
     expect(events[0].description).toBeTruthy()
     expect(events[0].description.length).toBeGreaterThan(10)
+  })
+
+  it('reads a start time off the nearby card text when startDate has none (§9.52)', () => {
+    // Every event here has a date-only startDate — this site never puts a
+    // time in the JSON-LD at all. "Phunk B, Macanache, Dilimanjaro" is the
+    // exact event the bug was reported against: the app showed "Tonight"
+    // with no time despite the real page saying "ora 21:30".
+    const phunk = events.find((e) => e.title === 'Phunk B, Macanache, Dilimanjaro')
+    expect(phunk.time).toBe('21:30')
+    const faust = events.find((e) => e.title.startsWith('Faust'))
+    expect(faust.time).toBe('22:00')
+    // Ana Coman's fixture card carries no "ora" text at all — the fallback
+    // must not invent one; still null, same as before this existed.
+    expect(events[0].time).toBeNull()
+  })
+
+  it('does not borrow a nearby time across more than one event in the same block', () => {
+    // A block bundling several events (an @graph, an itemList) has no single
+    // "the card right after this" to read a time off — attaching one card's
+    // "ora" text to every event in a multi-event block would be a guess, not
+    // a read.
+    const body = JSON.stringify([
+      { '@type': 'Event', name: 'A', startDate: '2026-09-05' },
+      { '@type': 'Event', name: 'B', startDate: '2026-09-06' },
+    ])
+    const page = { body: `<script type="application/ld+json">${body}</script><p>ora 20:00</p>` }
+    const [a, b] = jsonld.parse([page], { venue })
+    expect(a.time).toBeNull()
+    expect(b.time).toBeNull()
   })
 
   it('finds nothing on a page with no Event objects, rather than inventing structure', () => {

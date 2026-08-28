@@ -531,14 +531,23 @@ button { color: inherit; font: inherit; }
   margin: 0 0 0.5rem;
 }
 
+/* The global `button { color: inherit; font: inherit }` reset (near the top
+   of this file) never touches background/border/padding — every OTHER
+   custom button here sets those itself, and this one didn't, so it rendered
+   as the browser's own boxy, shadowed native button chrome instead of a
+   quiet icon control. */
 .changes__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   width: 1.4rem;
   height: 1.4rem;
-  line-height: 1;
+  background: none;
+  border: 0;
+  padding: 0;
   border-radius: 0.3rem;
   color: var(--color-faint);
-  font-size: 1rem;
   cursor: pointer;
   margin-top: -0.15rem;
 }
