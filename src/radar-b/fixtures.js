@@ -11,6 +11,7 @@
 //   • a stale row nobody has re-checked in weeks
 
 import { normalizeEvent } from './model.js'
+import { endOfWeek, startOfDay } from './dates.js'
 
 /** Dates are generated relative to "today" so the demo is never out of date. */
 function day(offset, time) {
@@ -18,6 +19,16 @@ function day(offset, time) {
   d.setDate(d.getDate() + offset)
   const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   return time ? `${iso}T${time}:00+03:00` : iso
+}
+
+/** A day offset that lands within the current calendar week no matter which day
+ *  the suite runs on — `day(3)` used to run off the end of "week" on a Thu/Fri/Sat,
+ *  since the "week" lens ends at Sunday (see dates.js's endOfWeek) rather than
+ *  rolling seven days out. */
+function dayThisWeek(preferredOffset) {
+  const now = new Date()
+  const daysLeftInWeek = Math.round((endOfWeek(now) - startOfDay(now)) / 86400000)
+  return day(Math.min(preferredOffset, daysLeftInWeek))
 }
 
 const RAW = [
@@ -84,7 +95,7 @@ const RAW = [
   {
     id: 'demo-5', key: null,
     name: 'Lansare de carte la Cărturești Verona',
-    start: day(3), hasTime: false,
+    start: dayThisWeek(3), hasTime: false,
     venue: 'Cărturești Verona', area: 'centru',
     category: 'culture',
     summary: null,
