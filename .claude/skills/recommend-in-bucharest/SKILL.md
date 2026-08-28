@@ -20,6 +20,14 @@ just means the same night reaches Wanderlist twice, from two different direction
 3's filtering even starts. There is nothing to hand-sync: adding, pausing, or removing a
 venue in Marquee changes what this skill excludes on its very next run.
 
+**Batch independent tool calls instead of running them one at a time.** Almost
+every fetch and search in this skill — the sources in Step 1a's table, the
+venue/gallery searches in Step 2, one event's `Link` search against another's in
+Step 3b — has no dependency on any other call in the same batch. Issuing them
+together cuts the run's wall-clock duration substantially without changing what
+gets read; only chain calls sequentially when a later one genuinely needs an
+earlier result (e.g. reading a Key lookup before deciding whether to enrich a row).
+
 ---
 
 ## Step 1 — Determine mode based on current day
@@ -118,54 +126,35 @@ step exists to drop; leave those out.
 
 ## Step 2 — Fetch and parse all sources
 
-For each article linked in Notion (or found via search in weekday mode):
+**Reuse, don't re-fetch.** On a weekend-mode run where Step 1a or 1b already
+fetched a source this run (Buletin, HotNews, B365, Curatorial, Zile și Nopți,
+Harta Muzeelor), parse events out of the content already retrieved — do not fetch
+the same URL a second time just because this step also mentions it. This step
+only needs a fresh fetch for a source Step 1 didn't touch this run (e.g. weekday
+mode, or a source Step 1 only linked without reading in full).
+
+For each article linked in Notion (or found via search in weekday mode) that
+wasn't already fetched in Step 1 this run:
 - Fetch the full article
 - Extract individual events: name, date, time, venue, category, price if available
 
-Also always fetch Zile și Nopți directly and extract its structured event list by category.
+Also always parse Zile și Nopți's structured event list by category — fetch it
+directly only if Step 1 didn't already retrieve it this run.
 
-### Facebook — a required, gated step
+**No Facebook sweep, and no Instagram sweep either.** Facebook event pages
+reliably fail to fetch (login wall, even when public) and search-engine coverage
+of them is thin and stale — tested 2026-08-28 across Google, Bing and DuckDuckGo,
+none returned usable live results. Instagram was tested the same day as a possible
+replacement and did marginally better (search snippets of individual `/p/` posts
+sometimes carry real dates), but Gabriel decided not to adopt it for now — don't
+add an Instagram sweep here without him asking for it again.
 
-Facebook is where a large share of Bucharest's **art scene** actually announces
-itself: gallery openings, artist talks, one-off pop-ups, club nights. Those events
-frequently appear on Facebook **and nowhere else**, so a digest without them isn't
-a thinner digest — it's a digest missing a whole category of the good stuff.
-
-This step has been skipped in practice, more than once, because it sat inside a
-wall of prose that read as advice. It is not advice. Treat it exactly like Step 4's
-Radar write: **a run is incomplete until this has actually been executed.**
-
-**Do this before writing anything, and do it every single run:**
-
-1. Run **at least four** distinct searches. Do not stop at one:
-   - `facebook.com/events Bucuresti [luna curenta]`
-   - `site:facebook.com/events Bucuresti expozitie OR vernisaj`
-   - `site:facebook.com/events Bucuresti concert OR party OR live`
-   - one search per venue for at least six of: Control, Guesthouse, Quantic,
-     Platforma Wolff, Expirat, Apollo111, Cinema Elvire Popesco, MNAC, Combinatul
-     Fondului Plastic, Rezidenta BRD Scena9, Eastwards Prospectus, Ivan Gallery,
-     Galeria Posibila, Suprainfinit, Anca Poterasu.
-2. **Extract from the search results themselves.** Public Facebook event pages
-   reliably fail to fetch (login wall) even when public — a known quirk (see the
-   `wanderlist` skill), not something to retry. Search snippets routinely carry the
-   title, date and venue, and that is enough for a `reported` row. Never retry a
-   failed Facebook fetch more than once.
-3. **Never** treat a Facebook page as the primary source when the venue's own site
-   or a ticket platform lists the same event — Facebook is where you *find* it, the
-   venue page is what you *link* to. Follow Step 3b's link ordering.
-4. **Report the outcome in the digest's closing block, always** — see Step 5's
-   book line. Zero Facebook events is a legitimate result on a dead week; the
-   *absence* of the line is not. If you are about to write the digest without
-   having run these searches, stop and run them.
-
-**Never include a Facebook event — or any event, from any source — that is online-only.**
+**Never include an event — from any source — that is online-only.**
 A livestream, a webinar, a virtual screening, a Zoom talk, an Instagram Live: none of
 these are something to physically go to in Bucharest, which is the entire premise of
-this skill. The tell on Facebook specifically is the event's own location field reading
-something like "Online Event" / "Eveniment online" instead of a real venue or address —
-that is the signal to exclude it, not a location Claude has to reason about. A hybrid
-event (in-person **with** a stream alongside it) is fine and should be included as
-normal; it's the stream-only ones that never belong in this digest or in Radar.
+this skill. A hybrid event (in-person **with** a stream alongside it) is fine and
+should be included as normal; it's the stream-only ones that never belong in this
+digest or in Radar.
 
 Build a unified event pool. Deduplicate — same event cited by multiple sources = one entry with a richer description.
 
@@ -185,26 +174,29 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 -FF Theatre
 -The Fool
 - Opereta
+- **Palatul Mogoșoaia** (all galleries/courtyard programming there) — ignore permanently
+- **Manasia Hub** — ignore permanently
+- **Teatrul În Culise** — ignore permanently
+- **Platforma Wolff** — ignore permanently
+- **Ateneul Român** — ignore permanently
 - Generic corporate events, trade fairs, business conferences (sales, marketing, etc.)
 - Mainstream pop/commercial concerts at large arenas unless genuinely exceptional
 - **Online-only events** — livestreams, webinars, virtual screenings, anything with no
-  physical Bucharest venue to walk into. This applies to every source, Facebook
-  especially (see Step 2) since "Online Event" is a real option there. A hybrid
-  event that's in-person **and** streamed stays included.
+  physical Bucharest venue to walk into. A hybrid event that's in-person **and**
+  streamed stays included.
 
 ### Always include (high priority)
 - **Contemporary and experimental art exhibitions** — this is the core
 - **Arthouse cinema:** Elvire Popesco, Cinema Europa, Apollo, MȚR, Cinema Pro, open-air screenings. Also flag exceptional commercial releases worth seeing (animated, prestige, foreign-language)
 - **Live music:**
   - *Primary:* jazz & improvisation, contemporary/experimental/chamber music, indie/alternative/rock, folk/singer-songwriter
-  - *Secondary:* electronic/club nights at venues like Platforma Wolff, Control, Guesthouse, Quantic — include if the act is noteworthy, not as filler
+  - *Secondary:* electronic/club nights at venues like Control, Guesthouse, Quantic — include if the act is noteworthy, not as filler
 - **Performance in hybrid/alternative spaces:** Control, Guesthouse, Cărturești, galleries, residences, site-specific
 - **Book launches, author signings, literary events**
 - **Cultural and social conferences** (art, urbanism, design, philosophy, social topics — not business)
 - **Street fairs and open-air markets with cultural character** (Street Delivery, Bazar Cotroceni-style)
 - **Guided tours, urban exploration, heritage walks**
 - **Newly opened venues — always flag with 📍 NEW VENUE**
-- **Atheneum:** include all programs
 
 ### Also include — these were being under-collected
 - **Gallery openings and vernisaje of any size**, including one-evening ones
@@ -224,8 +216,8 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 There is **no cap per source and no cap per article.** If Buletin's roundup names
 eighteen things worth going to, all eighteen are candidates. An earlier run returned
 only ~10 events in total, which is a collection failure rather than an accurate
-picture of the city — even a slow August week has more than that once galleries,
-institutes and Facebook are actually swept.
+picture of the city — even a slow August week has more than that once galleries
+and institutes are actually swept.
 
 **Aim for 20-35 events written to Radar per run.** The digest still shows the best
 12-20 (Step 5), but Radar gets everything that passed the taste filter — the app's
@@ -233,7 +225,7 @@ lenses and filters are what make a larger pool browsable, so withholding events 
 Radar to keep the digest tidy is backwards.
 
 If a run yields fewer than 15, treat that as a signal you have not finished
-collecting: go back for the gallery / institute / Facebook sweeps before writing.
+collecting: go back for the gallery / institute sweeps before writing.
 Never pad with events you would otherwise exclude — quality is still the filter;
 **breadth of search** is what changes, not the bar.
 
@@ -255,8 +247,21 @@ Before either output below (Radar, then the digest — both consume this same po
 - Note provenance briefly at the end: `[via Buletin, Zile și Nopți]`
 - Match on: event name similarity + venue + date. When in doubt, keep separate.
 
-**Enrich each surviving entry** — do this once, here, for the whole pool. Both Step 4
-(Radar) and Step 5 (the digest) read these results rather than re-deriving them:
+**Check Radar before spending any enrichment searches.** Build each entry's `Key`
+now (Step 4's `venue-slug:date:title-slug` format) and run **one batch query**
+against Radar for every `Key` in this run's pool, covering the whole date range at
+once — not a query per event. For any match that is already `Confidence: confirmed`
+and was `Checked` within the last 3 days, **skip its Link/Address/Cost/Image
+searches entirely** — that row is already as good as this step would make it. Just
+carry its existing values forward, append today's source to `Sources`, and refresh
+`Checked` when you write it in Step 4. Everything else — no match, an `uncertain`
+or `reported` match, or a `confirmed` match that's gone stale — gets the full
+enrichment pass below. This is what makes a same-day or next-day re-run cheap
+instead of re-searching a pool that was already nailed down.
+
+**Enrich each surviving entry that isn't already covered above** — do this once,
+here, for the whole pool. Both Step 4 (Radar) and Step 5 (the digest) read these
+results rather than re-deriving them:
 - **Links — MANDATORY, one web search per event, no exceptions.** For every single
   surviving entry, run a real search for that event's OWN page (e.g. `"[titlu
   eveniment]" [venue]`, or `[festival name] site oficial`) — official
@@ -319,8 +324,20 @@ Before either output below (Radar, then the digest — both consume this same po
   page that no longer listed it and that Eventbook never did.
 - **Addresses:** always include the full street address — required for Wanderlist
   geocoding and for Radar-B's Maps link. If unknown, write the neighborhood or landmark
-  instead and flag it as approximate.
-- **Prices:** include in lei if stated by any source. Never guess.
+  instead and flag it as approximate. **Never leave this blank** — a bare "București"
+  guess is still more useful than nothing, and Step 4's pre-write check (below) will
+  catch a genuinely empty one.
+- **Prices:** include in lei if stated by any source. Never guess. When the event
+  carries (or will carry) the `ticketed` signal, the same page you're already
+  opening for the `Link` search usually shows the price right there — read it off
+  that page rather than treating `Cost` as a separate search. Only leave it blank
+  when the ticket page itself doesn't state one.
+- **Image:** while you're on the event's own page for the `Link` search, grab its
+  poster/hero image URL if the page exposes one in the markup — no separate search
+  for this. Skip it rather than guessing or using a generic venue photo.
+- **Organizer:** the presenting institution or promoter, when the source names one
+  (ARCUB, a specific gallery, a festival's organizing body, Recomandata as curator).
+  Skip if no source actually names one — don't infer the venue as the organizer.
 
 ---
 
@@ -357,7 +374,7 @@ the other.
 | `Link` | url | The event's **own** page, from Step 3b's enrichment pass. The roundup article is a fallback, not the target. |
 | `Tickets` | url | Only when the ticket link differs from `Link`. |
 | `Image` | url | Poster, when the source page exposes one. |
-| `Organizer` | rich text | |
+| `Organizer` | rich text | The presenting institution or promoter, when a source actually names one. Leave blank rather than inferring the venue as the organizer. |
 | `Sources` | rich text | **Provenance, one mention per line:** `Curatorial │ https://… │ 2026-08-21`. Prefix a line with `*` when that source *recommended* the event rather than merely mentioning it. This is the field that lets Radar-B show "also mentioned by B365" and "recommended by Recomandata" — the whole point of Step 3b's dedupe surviving into the app. |
 | `Confidence` | select | `confirmed` (read off the event's own page) · `reported` (an editorial roundup) · `uncertain` (just a title and a date inside an article). Be honest here — Radar-B dims uncertain events and says so in words. |
 | `Checked` | date | Today. Drives Radar-B's staleness notice. |
@@ -366,8 +383,9 @@ the other.
 
 ### Write rules
 
-1. **Update and ENRICH, never skip and never duplicate.** Before writing, query
-   Radar for the `Key` you are about to use.
+1. **Update and ENRICH, never skip and never duplicate.** Use the batch `Key`
+   lookup already run at the start of Step 3b — don't re-query per row here, that
+   lookup already told you which Keys exist.
    - **No match** → create the row.
    - **Match** → do NOT skip it. Re-read what you just gathered against the stored
      row, field by field, and **patch anything that is now better**:
@@ -396,13 +414,15 @@ the other.
 4. **Bulk writing is fine here** (unlike Wanderlist intake, which is one at a time on confirmation). Radar is a research surface Gabriel browses, not his personal list — nothing lands in his own world until he saves it in Radar-B.
 5. **Never delete rows** for events that have passed. Radar-B hides past events itself, and the history is worth keeping.
 6. **Keep a running count** of rows created and rows updated as you go — Step 5's closing line reports it.
-7. **Before finishing Step 4, check the `Link` column.** Every row you created or
-   updated in this run should either carry the event's own page or be knowingly
-   blank after a search that found nothing. If several rows are blank, the Step 3b
-   link search was skipped — go back and do it rather than writing the digest.
-   A run that wrote ten rows with eight empty `Link`s has not done this step. Do
-   the same for any row you TOUCHED that still holds a roundup URL in `Link`:
-   move it to `Sources` and put the real page in `Link`, or blank it.
+7. **Before finishing Step 4, check `Link`, `Address`, and `Cost`/`Signals` across
+   every row you created or updated this run** — not just `Link`. Each should
+   either carry a real value or be knowingly blank after a genuine search found
+   nothing; a `Link` shouldn't still hold a roundup URL (move it to `Sources`,
+   put the real page in `Link` or blank it), an `Address` shouldn't be empty (see
+   Step 3b — write an approximate one rather than nothing), and a row with a
+   `ticketed` signal shouldn't have a blank `Cost` unless the ticket page itself
+   didn't state one. A run that wrote ten rows with several blank on any of these
+   hasn't finished Step 3b's enrichment — go back rather than writing the digest.
 
 ---
 
@@ -432,22 +452,16 @@ Format: day-by-day, chronological within each day. **Number every event sequenti
 
 ---
 📡 [N] evenimente în Radar ([C] noi, [U] actualizate).
-📘 [F] evenimente de pe Facebook.
 💡 Spune numărul sau titlul prescurtat și adăugăm în Wanderlist.
 ```
 
-**Neither closing line is decorative — they are the confirmation that the two
-skippable steps actually ran.**
+**This closing line is not decorative — it is the confirmation that Step 4 actually ran.**
 
 - `📡` — fill `[N]`, `[C]` and `[U]` with the real counts kept during Step 4. If
   Step 4 didn't run or Radar wasn't reachable, say so plainly (`📡 Radar
   indisponibil — nu s-a scris nimic.`) rather than dropping or guessing the line.
-- `📘` — fill `[F]` with how many events came from the Step 2 Facebook sweep.
-  **Zero is a legitimate answer; a missing line is not.** If you find yourself
-  writing this line and cannot remember running the searches, you didn't — go back
-  and run them before publishing the digest.
 
-A digest missing either line, or carrying a suspiciously round guessed number, is an
+A digest missing this line, or carrying a suspiciously round guessed number, is an
 incomplete run.
 
 **Flags:**
