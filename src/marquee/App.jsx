@@ -16,7 +16,7 @@ import SettingsModal from './SettingsModal.jsx'
 import { sortVenues, scannable, togglePaused, searchVenues } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
-  changedKeyMap, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, nextDayKeys, densityForDays,
+  changedKeyMap, TRIAGE, venueCategoryMap, categoryFor, categoriesInUse, hallsInUse, nextDayKeys, densityForDays,
   troubleByVenue, CATEGORY_LABEL,
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
@@ -210,15 +210,23 @@ export default function App() {
   const venueCategory = useMemo(() => venueCategoryMap(active), [active])
   // Only the categories something is actually watching — never a fixed list of
   // six chips regardless of what's active, and never reshuffled by how many
-  // venues are in each.
-  const categories = useMemo(() => categoriesInUse(active), [active])
+  // venues are in each. `productions` is unioned in so an interdisciplinary
+  // venue (ARCUB) surfaces every category its CURRENT programme actually
+  // spans, not only the one its venue row defaults to.
+  const categories = useMemo(() => categoriesInUse(active, productions), [active, productions])
   // Revealed only once a category is picked — this is the whole point: a
   // resting row of ~5 category chips instead of one flat row that grows with
   // every venue ever added.
-  const venuesInCategory = useMemo(
-    () => (categoryFilter ? active.filter((v) => v.category === categoryFilter) : []),
-    [active, categoryFilter],
-  )
+  //
+  // A venue qualifies either by its own default OR by actually having a
+  // current production tagged with this category — without the second half,
+  // picking "Theatre" would never show ARCUB, whose venue row defaults to
+  // `event`, even on a week it's running a play.
+  const venuesInCategory = useMemo(() => {
+    if (!categoryFilter) return []
+    return active.filter((v) => v.category === categoryFilter
+      || productions.some((p) => p.venue === v.name && categoryFor(p, venueCategory) === categoryFilter))
+  }, [active, categoryFilter, productions, venueCategory])
   // More than one category actually in use is what turns this into a two-tier
   // filter — a single-category setup falls straight back to one flat venue
   // row. Both tiers render together here (§9.49) — directly under the week

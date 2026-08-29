@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { toProductions, byDate, domIdForDay, nextDayKeys, densityForDays } from './programme.js'
+import {
+  toProductions, byDate, domIdForDay, nextDayKeys, densityForDays,
+  categoryFor, categoriesInUse, visibleProductions, venueCategoryMap,
+} from './programme.js'
 
 // programme.js's other functions (byDate, visibleProductions, the filter
 // helpers) are exercised through Programme.jsx/App.jsx's own tests. These
@@ -106,5 +109,73 @@ describe('densityForDays', () => {
       { date: '2026-09-05', count: 0 },
       { date: '2026-09-06', count: 0 },
     ])
+  })
+})
+
+describe('categoryFor', () => {
+  const vcMap = venueCategoryMap([{ name: 'Teatrul Excelsior', category: 'play' }, { name: 'ARCUB', category: 'event' }])
+
+  it('falls back to the venue Category Default for a single-discipline venue', () => {
+    const p = toProductions([event({ venue: 'Teatrul Excelsior', date: '2026-09-05' })])[0]
+    expect(categoryFor(p, vcMap)).toBe('play')
+  })
+
+  it('prefers the production’s own category when its adapter could read one', () => {
+    const p = toProductions([event({ venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' })])[0]
+    expect(categoryFor(p, vcMap)).toBe('play')
+  })
+
+  it('is null for a venue with no entry in the map at all', () => {
+    const p = toProductions([event({ venue: 'Nobody Watches This', date: '2026-09-05' })])[0]
+    expect(categoryFor(p, vcMap)).toBeNull()
+  })
+})
+
+describe('visibleProductions — category filter honours a production’s own category', () => {
+  const venues = [{ name: 'ARCUB', category: 'event' }]
+  const venueCategory = venueCategoryMap(venues)
+  const productions = toProductions([
+    event({ key: 'a', venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' }),
+    event({ key: 'b', venue: 'ARCUB', title: 'Program artistic', date: '2026-09-06', category: null }),
+  ])
+
+  it('a production tagged by its own adapter matches that category, not the venue default', () => {
+    const theatre = visibleProductions(productions, { category: 'play', venueCategory })
+    expect(theatre.map((p) => p.title)).toEqual(['Cineva are să vină'])
+  })
+
+  it('a production with no category of its own still matches the venue default', () => {
+    const events = visibleProductions(productions, { category: 'event', venueCategory })
+    expect(events.map((p) => p.title)).toEqual(['Program artistic'])
+  })
+
+  it('the venue default alone would have hidden the theatre production from "Theatre" — the bug this fixes', () => {
+    // Filtering by the venue's OWN category (the old behaviour) instead of
+    // categoryFor would find nothing under "play", even though ARCUB is
+    // running a play — exactly the gap an interdisciplinary venue exposed.
+    const wrongWay = productions.filter((p) => venueCategory.get(p.venue) === 'play')
+    expect(wrongWay).toHaveLength(0)
+  })
+})
+
+describe('categoriesInUse', () => {
+  it('always includes every active venue’s own default, productions or not', () => {
+    const venues = [{ name: 'Teatrul Excelsior', category: 'play' }]
+    expect(categoriesInUse(venues, [])).toEqual(['play'])
+  })
+
+  it('unions in a category only a production carries, beyond its venue’s default', () => {
+    const venues = [{ name: 'ARCUB', category: 'event' }]
+    const productions = toProductions([
+      event({ venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' }),
+      event({ venue: 'ARCUB', title: 'Expoziție', date: '2026-09-06', category: 'art' }),
+    ])
+    // Order follows CATEGORY_ORDER, not discovery order.
+    expect(categoriesInUse(venues, productions)).toEqual(['play', 'event', 'art'])
+  })
+
+  it('still works with no productions argument at all — every existing call site', () => {
+    const venues = [{ name: 'Teatrul Excelsior', category: 'play' }, { name: 'Cinema Union', category: 'movie' }]
+    expect(categoriesInUse(venues)).toEqual(['play', 'movie'])
   })
 })

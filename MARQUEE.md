@@ -1896,6 +1896,88 @@ against it pulled `.search` down toward the border line, visibly lower than
 aligns top edges close enough to read as one row instead of tabs sitting
 above and search hanging off the bottom of it.
 
+### 9.56 ARCUB — the first interdisciplinary venue, and per-production category (2026-08-29)
+
+Every venue up to this point is genuinely single-discipline: a cinema is a
+cinema, a concert hall is a concert hall, so one `Category Default` on the
+venue row was always an honest description of everything it would ever list.
+**ARCUB** (Centrul Cultural al Municipiului București, arcub.ro/agenda)
+breaks that: theatre, exhibitions, guided tours, concerts and street
+festivals, often in the same week, and its own markup already says which is
+which — each card carries a `.tags` label (`Teatru`, `Muzică`, `Arte
+vizuale`, `Festival`).
+
+**Category became a property of the production, not only the venue.**
+`makeEvent` (`shared.js`) gained an optional `category`, validated against
+the same vocabulary `venues.js`'s `CATEGORIES` uses (duplicated rather than
+imported — `api/_lib` stays self-contained from `src/`, the boundary every
+other adapter already respects). `programme.js` gained `categoryFor(production,
+venueCategoryMap)` — a production's own category if its adapter could read
+one, else the venue's Category Default, the fallback path every existing
+single-discipline venue already relied on entirely and now continues to,
+byte-identical. Every place that used to read `venue.category` directly now
+goes through it instead: `visibleProductions`'s category filter,
+`categoriesInUse` (now also unions in whatever category a CURRENT production
+carries, so ARCUB's own art/theatre/concert nights each earn their chip
+without needing a matching venue default), `App.jsx`'s `venuesInCategory`
+(a venue qualifies for a category tab either by its own default OR by
+actually having a current production tagged with it — without this half,
+picking "Theatre" would never reveal ARCUB, whose venue row defaults to
+`event`), and `wanderlist.js`'s `toDraft`/`tagsFor` (a saved ARCUB concert now
+defaults to Wanderlist's `concert` category and gets the `music` tag, rather
+than whatever ARCUB's own single Default happened to be).
+
+**Multi-hall was already solved, not a new problem.** TNB set the precedent
+(§9.20): hall lives on the event, not a separate venue row. ARCUB's `.meta`
+line is sometimes an in-house hall (`ARCUB - Sala Mare` → hall `Sala Mare`,
+venue name stripped the same way every other multi-hall reader here does it)
+and sometimes a bare public location (`Calea Victoriei`, `Piața
+Constituției`) for a street event ARCUB organises but doesn't own — kept as
+`hall` verbatim, the exact "touring show" case Excelsior's `SPECTACOL
+ITINERANT` already established: venue stays ARCUB either way, since that's
+who published the listing.
+
+**Dates are sometimes a RANGE** ("3 aprilie - 30 august", "26 - 29 august"),
+never a single ISO value, and this app's event model has no end date — only
+a per-showing one. A short range (≤7 days, the same order of magnitude as
+Radar-B's own `isLongRun` floor) becomes one showing per day, reusing the
+existing multi-showing production model with no schema change — a guided-tour
+series named across four consecutive days reads as "pick a day", exactly what
+it is. A longer range becomes a single showing on its opening day: an
+**acknowledged simplification**, since Marquee has no `isLongRun`/
+`isRunningNow` concept the way Radar-B does, so a five-month exhibition is
+only ever shown on the day it opens rather than staying visible throughout.
+Worth building only if this turns out to matter in practice, not before.
+
+One real correctness bug caught before shipping: naively running `inferYear`
+on a cross-month range's START independently of its END rolled a
+still-genuinely-running exhibition ("3 aprilie - 30 august", live on the day
+this was built, 29 August) a full year into the future — April reads as
+"behind" August by four months, past `inferYear`'s same-month slack. The fix
+anchors on the END date instead (the one actually close to `now` on a
+listing of current/upcoming things) and derives the start's year from it,
+one earlier only across a New Year wrap. `datesFromMeta`'s own tests guard
+this explicitly.
+
+**No time is ever parsed from the listing.** ARCUB sometimes bakes a time
+into the TITLE itself (`Tur ghidat cu Dan Perjovschi | ora 15:00 & 17:00` —
+two showtimes named in one string), which is exactly the kind of thing this
+reader declines to guess at rather than mis-split. It stays visible to a
+human reading the title; it just isn't structured data — the same honest
+"we don't know" every untimed event already renders as elsewhere in this app.
+
+Unlike Excelsior/TNB, no `follow()` hop is needed for poster or ticket link —
+both are already on the listing. The one field genuinely missing is a real
+description, read off each production's own `/eveniment/<slug>` detail page
+in a single `<div class="content">` wrapper — not bounded by its own closing
+tag (the wrapper nests other divs before it closes), so this reads a
+generous fixed window and lets `proseParagraphs` find the real sentences.
+
+15 new tests (`api/_tests/marquee-arcub.test.js`) against the live page as
+inspected 2026-08-29, plus coverage in `programme.test.js`, `wanderlist.test.js`
+and one full `App.test.jsx` scan proving ARCUB surfaces under both "Theatre"
+and "Concert" from one scan result, each tab showing only its own showing.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

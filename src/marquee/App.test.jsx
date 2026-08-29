@@ -129,10 +129,11 @@ describe('Marquee, end to end in demo mode', () => {
   it('the category and venue tiers render together, and picking a category reveals only its venues', async () => {
     // §9.50: both tiers moved up out of Programme.jsx into App.jsx, stuck
     // directly together right under the week strip. The demo roster spans
-    // three categories (play/movie/concert), so category chips render before
-    // any venue chip does — and a venue chip appears only once a category
-    // narrows things down, the same two-tier behaviour Programme.test.jsx
-    // used to check on its own, now proven against the real stacked block.
+    // several categories (play/movie/concert/event), so category chips
+    // render before any venue chip does — and a venue chip appears only once
+    // a category narrows things down, the same two-tier behaviour
+    // Programme.test.jsx used to check on its own, now proven against the
+    // real stacked block.
     const user = userEvent.setup();
     render(<App />);
 
@@ -143,6 +144,50 @@ describe('Marquee, end to end in demo mode', () => {
     await user.click(screen.getByRole('button', { name: 'Theatre' }));
     expect(await screen.findByRole('button', { name: 'Teatrul Excelsior' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Cinema Union' })).toBeNull();
+  });
+
+  it('an interdisciplinary venue appears under every category its CURRENT programme spans, not just its own default', async () => {
+    // ARCUB's Category Default is 'event', but a real scan can hand back a
+    // play and a concert from its own `.tags` markup (arcub.js) — both
+    // should surface ARCUB under the matching tab, which the venue's single
+    // default alone could never do (programme.js's categoryFor/App.jsx's
+    // venuesInCategory, the whole point of this session's change).
+    const user = userEvent.setup();
+    const play = {
+      key: 'arcub:2099-01-02:cineva-are-sa-vina', venue: 'ARCUB', title: 'Cineva are să vină',
+      date: '2099-01-02', ticketState: 'open', category: 'play',
+    };
+    const concert = {
+      key: 'arcub:2099-01-03:teodora-brody', venue: 'ARCUB', title: 'Teodora Brody',
+      date: '2099-01-03', ticketState: 'open', category: 'concert',
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        scannedAt: new Date().toISOString(),
+        venues: [{ venue: 'ARCUB', status: 'ok', events: [play, concert] }],
+        events: [play, concert],
+      }),
+    })));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Cineva are să vină');
+
+    await user.click(screen.getByRole('button', { name: 'Theatre' }));
+    expect(await screen.findByRole('button', { name: 'ARCUB' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'ARCUB' }));
+    expect(await screen.findByText('Cineva are să vină')).toBeTruthy();
+    expect(screen.queryByText('Teodora Brody')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Theatre' })); // back up a tier
+    await user.click(screen.getByRole('button', { name: 'Concert' }));
+    expect(await screen.findByRole('button', { name: 'ARCUB' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'ARCUB' }));
+    expect(await screen.findByText('Teodora Brody')).toBeTruthy();
+    expect(screen.queryByText('Cineva are să vină')).toBeNull();
+
+    vi.unstubAllGlobals();
   });
 
   it('the layout toggle appears only where it does something', async () => {

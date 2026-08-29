@@ -10,6 +10,14 @@
 /** Ticket states, as the app's model names them. */
 export const TICKET = { OPEN: 'open', SOLD_OUT: 'sold-out', NONE: 'none' }
 
+/** Wanderlist/Radar-B's own category vocabulary (venues.js's `CATEGORIES`,
+ *  duplicated rather than imported — api/_lib stays self-contained from
+ *  src/, the same boundary every other adapter already respects). An
+ *  adapter's own tag→category mapping can only ever be as good as the
+ *  venue's own labels; this is the floor that stops a mapping typo or an
+ *  unrecognised tag from writing a bogus value into a Wanderlist save. */
+export const CATEGORIES = ['play', 'movie', 'concert', 'event', 'art', 'culture']
+
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" }
 
 /** Decode the entity forms these sites actually emit — named basics plus the
@@ -214,7 +222,7 @@ function clipDescription(text) {
  *  is what decides whether it is an event at all. A row without a title or a date
  *  is dropped — those two are the identity, and a half-row would diff as a new
  *  event every single scan. */
-export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null }) {
+export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null }) {
   const cleanTitle = textOf(title)
   if (!cleanTitle || !date) return null
   // A hall that just repeats the venue is noise: Expirat's JSON-LD names its
@@ -243,6 +251,14 @@ export function makeEvent({ venue, title, date, time = null, hall = null, link =
     image: image ?? null,
     price: typeof price === 'number' && Number.isFinite(price) ? price : null,
     description: clipDescription(description),
+    // Almost every venue is single-discipline, so this stays null and the
+    // client falls back to the venue's own Category Default (venues.js /
+    // programme.js's categoryFor) — the same path every existing venue
+    // already uses. Only an adapter reading a venue whose OWN page states
+    // a per-event kind (ARCUB's `.tags` — theatre, music, visual arts —
+    // arcub.js) ever sets this, one Wanderlist category per event rather
+    // than one guess for the whole venue.
+    category: CATEGORIES.includes(category) ? category : null,
   }
 }
 

@@ -159,6 +159,24 @@ export const DEMO_VENUES = [
     lastChecked: '2026-08-26',
     lastResult: '16 events',
   },
+  {
+    id: 'demo-arcub',
+    // ARCUB is the one interdisciplinary venue in this list — theatre,
+    // exhibitions, guided tours, concerts and street festivals, often in the
+    // same week, each read off its OWN `.tags` label rather than forced
+    // under this one Category Default (see programme.js's `categoryFor`,
+    // MARQUEE.md). `event` here is only the fallback for a listing whose tag
+    // this app's mapping doesn't recognise.
+    name: 'ARCUB',
+    url: 'https://arcub.ro/agenda',
+    adapter: 'arcub',
+    status: 'active',
+    category: 'event',
+    area: 'centru',
+    address: 'Strada Gabroveni 50-53, București',
+    lastChecked: '2026-08-29',
+    lastResult: '7 events',
+  },
 ].map(normalizeVenue)
 
 /** Two rows standing in for Wanderlist's Findings, so demo mode shows the
