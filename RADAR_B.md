@@ -995,3 +995,48 @@ specifically to give this case a fixture — the existing "Trio Nocturn" fixture
 always had a matching Radar entry, so the no-match path had never actually been
 exercised in demo mode. `App.test.jsx`'s new test asserts it never renders, next to
 the existing test proving "Trio Nocturn" (the genuine cross-reference) still does.
+
+## 23. Two more Wanderlist/Radar gaps, and "Running" stopped duplicating "Later" (2026-08-29)
+
+Three fixes from a live phone session, saving and browsing real Radar rows.
+
+- **A saved event with no Radar dismiss control.** `EventDetail`'s hide button was
+  gated on `!event.saved` — once a Radar row merged with a Wanderlist row, there was
+  no way to hide it from the browse view at all. Dismissal writes to the Radar row
+  (`event.radarId`), which has nothing to do with Wanderlist state: a saved,
+  long-running exhibition you're not planning to revisit is exactly the case for
+  hiding it while it sits untouched in Wanderlist. The pool is already filtered to
+  `radarId`-bearing events (§22), so the button is now always shown.
+- **A stale `Date Expiring` blocked the Wanderlist merge silently.** A Findings row
+  saved a month before the event's real closing date was known (an old, vaguer
+  source guessed "recurring, no confirmed end") never merged with the Radar row the
+  skill later wrote from the actual article, because `dedupe.js`'s date check treats
+  a confident mismatch as disqualifying no matter how well the title matches — "same
+  name, non-overlapping dates is a repeat run." Not a code bug: the fix was updating
+  the stale `Date Expiring` in Notion once the real date was known. Worth knowing if
+  a save that should show "In your Wanderlist" doesn't: check whether an old guessed
+  date is quietly vetoing an otherwise exact title+venue match.
+- **`Running` and `Later` showed the identical card.** `lensesFor()` added `later`
+  whenever an event's span reached past the current week — true of essentially every
+  long-running exhibition, since a months-long run's end date is always beyond this
+  week. Once such an exhibition actually opened (`isRunningNow`), it became a member
+  of both `running` and `later` at once, and `search.js`'s standing-section logic
+  rendered it identically under "Oricând" in both tabs — confirmed live: two
+  exhibitions, byte-for-byte the same cards, under both tabs. `later` is
+  forward-looking — things to come back to once this week is done — and an
+  exhibition already open isn't later, it's now; `running` is its one dedicated
+  home. So `later` now excludes anything `isRunningNow`. An exhibition that hasn't
+  opened yet still reaches `later` normally, and drops out of it the day it opens,
+  replaced by `running`. Deliberately narrow: this doesn't touch the
+  tonight/tomorrow/weekend/week overlap, which is separately intentional and tested
+  (§4's "when in doubt, keep separate" governs dedupe, not lenses; the lens
+  philosophy is the opposite — "an event can legitimately answer to several," which
+  is why a long run still surfaces under the day tabs via the standing section,
+  `search.test.js`'s "a long run is lifted out of the day groups into its own
+  section"). Only the one pairing that could show the exact same card under the
+  exact same heading needed separating.
+
+Along the way, two more demo fixtures (`demo-4`, `demo-6` in `fixtures.js`) turned
+out to share `demo-5`'s §12 bug — a fixed `day(2)` offset that lands in next
+calendar week whenever the suite runs on a Friday or Saturday. Switched both to the
+existing `dayThisWeek()` helper.
