@@ -673,6 +673,14 @@ button { color: inherit; font: inherit; }
    scrollbar (still scrollable by touch/trackpad) — a bare thin bar reading
    as a stray line under 3-4 pills that never actually need it today. */
 .category-filters {
+  /* The bug this fixes: `className="category-filters"` never carries the
+     base `.filters` class, so `display: flex` never actually applied here —
+     `flex-wrap`/`gap` below were inert on a plain block div, and its `.filter`
+     buttons wrapped like ordinary inline content once their combined width
+     passed one line. Invisible while the category count stayed small enough
+     to fit regardless; visible the moment Event and Art pushed it past that,
+     reported directly. */
+  display: flex;
   gap: 0.5rem;
   margin: 0 0 1rem;
   flex-wrap: nowrap;

@@ -16,7 +16,7 @@ import SettingsModal from './SettingsModal.jsx'
 import { sortVenues, scannable, togglePaused, searchVenues } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
-  changedKeyMap, TRIAGE, venueCategoryMap, categoryFor, categoriesInUse, hallsInUse, nextDayKeys, densityForDays,
+  changedKeyMap, TRIAGE, venueCategoryMap, categoryFor, categoriesInUse, categoriesForVenue, hallsInUse, nextDayKeys, densityForDays,
   troubleByVenue, CATEGORY_LABEL,
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
@@ -214,6 +214,16 @@ export default function App() {
   // venue (ARCUB) surfaces every category its CURRENT programme actually
   // spans, not only the one its venue row defaults to.
   const categories = useMemo(() => categoriesInUse(active, productions), [active, productions])
+  // Once a SPECIFIC venue is selected, the category row stops being "browse
+  // everything by category" and becomes "what does THIS venue itself offer" —
+  // a single-discipline venue (categoriesForVenue returns one category) then
+  // has nothing to add and the row simply doesn't render (the `.length > 1`
+  // check below), while an interdisciplinary one like ARCUB gets a real
+  // sub-filter across its own theatre/concert/art nights.
+  const categoryOptions = useMemo(
+    () => (venueFilter ? categoriesForVenue(venueFilter, active, productions) : categories),
+    [venueFilter, active, productions, categories],
+  )
   // Revealed only once a category is picked — this is the whole point: a
   // resting row of ~5 category chips instead of one flat row that grows with
   // every venue ever added.
@@ -233,10 +243,16 @@ export default function App() {
   // strip, stuck to the category row rather than buried below it — so the
   // venue row's own visibility depends only on category state, never on
   // Programme's scan/Trouble/stale banners.
+  //
+  // Once a venue IS the active filter, every other venue stays reachable too
+  // (switching venues shouldn't require backing out to category browsing
+  // first) — the category constraint that got you here was already cleared
+  // by `handleVenueFilter`, so this can't accidentally show a venue whose
+  // productions don't match some stale category.
   const categoryMode = categories.length > 1
-  const venueOptions = categoryMode ? venuesInCategory : active
+  const venueOptions = venueFilter ? active : (categoryMode ? venuesInCategory : active)
   const venueTierVisible = tab === 'programme'
-    && (categoryMode ? Boolean(categoryFilter) : venueOptions.length > 1)
+    && (venueFilter ? true : (categoryMode ? Boolean(categoryFilter) : venueOptions.length > 1))
 
   const byCategoryAndVenue = useMemo(() => visibleProductions(productions, {
     triage,
@@ -279,15 +295,30 @@ export default function App() {
   /** Category → venue → hall, each tier resetting the ones narrower than it —
    *  a stale hall filter surviving a venue switch, or a stale venue filter
    *  surviving a category switch, would silently hide productions you didn't
-   *  mean to filter out. */
+   *  mean to filter out.
+   *
+   *  Once a specific venue is already selected, though, the category row has
+   *  changed roles (see `categoryOptions` above) — it's no longer "browse by
+   *  category across every venue," it's "narrow within this one venue," so
+   *  picking a category there must NOT back out of the venue. Only a
+   *  category pick made at the TOP tier (no venue selected yet) still clears
+   *  venue, the original drill-down behaviour. */
   const handleCategoryFilter = (category) => {
     setCategoryFilter(category)
-    setVenueFilter(null)
     setHallFilter(null)
+    if (!venueFilter) setVenueFilter(null)
   }
+  /** Clicking a specific venue shows everything IT offers — clearing whatever
+   *  category got you here, rather than staying silently locked to it, is
+   *  the whole point: ARCUB reached via "Theatre" should not go on hiding its
+   *  own concerts and exhibitions once you're looking at ARCUB itself.
+   *  Clicking back to "All" (venue === null) is a different action — backing
+   *  OUT of a venue to browse by category again — so that one leaves
+   *  `categoryFilter` alone. */
   const handleVenueFilter = (venue) => {
     setVenueFilter(venue)
     setHallFilter(null)
+    if (venue) setCategoryFilter(null)
   }
 
   // What "What changed" already said about this scan, keyed for a card to look
@@ -591,12 +622,12 @@ export default function App() {
           adjacent tiers uniformly, however many happen to be showing.
           Programme-tab only: the Venues tab has its own search, not this
           split. */}
-      {tab === 'programme' && categories.length > 1 && (
+      {tab === 'programme' && categoryOptions.length > 1 && (
         <FilterRow
           className="category-filters"
           value={categoryFilter}
           onChange={handleCategoryFilter}
-          options={categories}
+          options={categoryOptions}
           label={(c) => CATEGORY_LABEL[c] ?? c}
           icon={(c) => CATEGORY_ICON[c]}
           allIcon={StarIcon}

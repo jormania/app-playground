@@ -271,10 +271,40 @@ export default function Programme({
           they belong beside the navigation they narrow, not buried below a
           "stale" banner and a Trouble list that may not even be there. */}
 
+      {/* One venue selected = one small, already-curated list, not a calendar
+          to browse — day headings exist to orient you across a whole
+          programme's worth of venues, and add nothing once you're already
+          looking at just one. "Multidisciplinary" and "more than one hall"
+          don't change this: category and hall are filters within this view,
+          not reasons to split it into sections — everything for this venue,
+          in one straight chronological line. `days` is already sorted
+          date-then-showtime (byDate), so flattening it preserves that order
+          exactly; nothing here re-sorts. */}
       {days.length === 0 ? (
         <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>
       ) : viewMode === 'posters' ? (
-        <PosterGrid days={days} triage={triage} changedKeys={changedKeys} onKeep={onKeep} onIgnore={onIgnore} />
+        <PosterGrid
+          days={venueFilter ? [{ date: null, productions: days.flatMap((d) => d.productions) }] : days}
+          flat={Boolean(venueFilter)}
+          triage={triage}
+          changedKeys={changedKeys}
+          onKeep={onKeep}
+          onIgnore={onIgnore}
+        />
+      ) : venueFilter ? (
+        <section className="day">
+          {days.flatMap((d) => d.productions).map((production) => (
+            <ProductionCard
+              key={production.id}
+              production={production}
+              triage={triage}
+              changedKeys={changedKeys}
+              onKeep={onKeep}
+              onIgnore={onIgnore}
+              swipeEnabled={swipeEnabled}
+            />
+          ))}
+        </section>
       ) : (
         days.map((day) => (
           <section key={day.date} id={domIdForDay(day.date)} className="day">

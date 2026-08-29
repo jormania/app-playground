@@ -284,6 +284,20 @@ export function categoriesInUse(venues, productions = []) {
   return CATEGORY_ORDER.filter((c) => present.has(c))
 }
 
+/** Which categories ONE venue itself offers — "what does this place actually
+ *  put on," for the sub-filter shown once that specific venue is selected.
+ *  For a single-discipline venue this comes back as one category (the row
+ *  it feeds then has nothing to add and doesn't render at all — the caller's
+ *  `.length > 1` check); for an interdisciplinary one like ARCUB it's every
+ *  category its CURRENT productions actually span. Delegates to
+ *  `categoriesInUse` with the pool narrowed to this one venue, so the two
+ *  never disagree about what counts as "in use." */
+export function categoriesForVenue(venueName, venues, productions) {
+  const venue = (venues ?? []).find((v) => v.name === venueName)
+  const ownProductions = (productions ?? []).filter((p) => p.venue === venueName)
+  return categoriesInUse(venue ? [venue] : [], ownProductions)
+}
+
 /** The distinct halls among a venue's own visible productions — the second-tier
  *  filter only makes sense, and is only ever shown, once a single venue is
  *  selected. A venue with one hall (or none named at all) yields an empty list,

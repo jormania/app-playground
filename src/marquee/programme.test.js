@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   toProductions, byDate, domIdForDay, nextDayKeys, densityForDays,
-  categoryFor, categoriesInUse, visibleProductions, venueCategoryMap,
+  categoryFor, categoriesInUse, categoriesForVenue, visibleProductions, venueCategoryMap,
 } from './programme.js'
 
 // programme.js's other functions (byDate, visibleProductions, the filter
@@ -177,5 +177,37 @@ describe('categoriesInUse', () => {
   it('still works with no productions argument at all — every existing call site', () => {
     const venues = [{ name: 'Teatrul Excelsior', category: 'play' }, { name: 'Cinema Union', category: 'movie' }]
     expect(categoriesInUse(venues)).toEqual(['play', 'movie'])
+  })
+})
+
+describe('categoriesForVenue', () => {
+  it('returns only the one category a single-discipline venue has', () => {
+    const venues = [{ name: 'Teatrul Excelsior', category: 'play' }]
+    const productions = toProductions([
+      event({ venue: 'Teatrul Excelsior', title: 'Tomcat', date: '2026-09-05', category: null }),
+    ])
+    expect(categoriesForVenue('Teatrul Excelsior', venues, productions)).toEqual(['play'])
+  })
+
+  it('returns every category an interdisciplinary venue’s CURRENT productions span', () => {
+    const venues = [{ name: 'ARCUB', category: 'event' }]
+    const productions = toProductions([
+      event({ venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' }),
+      event({ venue: 'ARCUB', title: 'Teodora Brody', date: '2026-09-06', category: 'concert' }),
+    ])
+    expect(categoriesForVenue('ARCUB', venues, productions)).toEqual(['play', 'concert', 'event'])
+  })
+
+  it('ignores another venue’s productions entirely', () => {
+    const venues = [{ name: 'ARCUB', category: 'event' }, { name: 'Teatrul Excelsior', category: 'play' }]
+    const productions = toProductions([
+      event({ venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' }),
+      event({ venue: 'Teatrul Excelsior', title: 'Tomcat', date: '2026-09-05', category: null }),
+    ])
+    expect(categoriesForVenue('ARCUB', venues, productions)).toEqual(['play', 'event'])
+  })
+
+  it('is empty for a venue name that matches nothing', () => {
+    expect(categoriesForVenue('Nobody Watches This', [], [])).toEqual([])
   })
 })

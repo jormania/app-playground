@@ -2047,6 +2047,66 @@ integration coverage: the real price landing on both matched showings, zero
 added events, an existing value surviving untouched, and the page-not-fetched
 degrade path scan.js's own failure handling can produce).
 
+### 9.58 The category ticker actually wrapped, and a venue now shows everything it offers (2026-08-29)
+
+Two reported from live use, both ARCUB-shaped.
+
+**The category row was never actually a one-line ticker.** `.category-filters`
+(marquee.css) set `flex-wrap: nowrap` and `overflow-x: auto` — the whole
+point, per §9.48/9.49, was a horizontal-scroll strip that never grows a
+second row as categories are added. It never had `display: flex` in its own
+rule, though — the base `.filters` class carries that, but `className` on
+this row is `"category-filters"` alone, never `"filters category-filters"`.
+Without `display: flex`, the buttons inside are ordinary inline content:
+`flex-wrap`/`gap` do nothing, and they wrap like text once their combined
+width passes one line — invisible while four categories fit any width, wrong
+the moment Event and Art (§9.56) pushed the row past it. One missing
+declaration, added back.
+
+**Picking a venue kept whatever category filter got you there, hiding the
+rest of what it does.** The three-tier design (§9.50) is a strict drill-down —
+category narrows venue, venue narrows hall, and picking a venue never used
+to reset category, only hall. That was fine when every venue was
+single-discipline (there was only ever one category to have picked). ARCUB
+broke the assumption: reach it via "Theatre" and the category filter stayed
+active, so its own page kept showing only its play, silently hiding the
+concerts and exhibitions running the same week — exactly the opposite of
+what selecting a specific venue should do.
+
+Fixed by having venue and category swap roles once a venue is the active
+filter, rather than trying to make one hierarchy serve both directions:
+
+- `handleVenueFilter` now clears `categoryFilter` when a specific venue is
+  picked (not when backing OUT to "All" venues, which is a different action
+  and leaves it alone) — clicking ARCUB means "show me everything here."
+- The category row itself re-scopes: `categoriesForVenue(venue, venues,
+  productions)` (programme.js) replaces the global `categoriesInUse` list the
+  moment a venue is selected, so it becomes a sub-filter of THAT venue's own
+  offerings — a single-discipline venue then has only one category and the
+  row simply doesn't render (nothing to add over what's already showing);
+  ARCUB gets a real Theatre/Concert/Art/Event row to narrow within.
+- The venue row stays reachable for switching to any other venue once one is
+  already selected, rather than requiring a trip back through category first.
+
+**And once a venue is selected, the list is flat — no day headings.** A
+venue's own view is already a small, curated list, not a calendar to browse;
+date headings exist to orient across a whole programme's worth of venues and
+add nothing once you're looking at just one. Multidisciplinary or multi-hall
+doesn't change this — category and hall stay filters WITHIN the view, never
+reasons to split it into sections. `days` (`byDate`'s output) is already
+sorted date-then-showtime, so `Programme.jsx` and `PosterGrid.jsx` just
+flatten it (`days.flatMap(d => d.productions)`) and drop the `<h2>`/section
+boundary when `venueFilter` is set — no re-sorting, no new data shape.
+
+3 new/updated tests (`programme.test.js`'s `categoriesForVenue`, and two
+`App.test.jsx` end-to-end scans: picking ARCUB via Theatre shows both its
+play and its concert with a working Concert sub-filter, and a two-date ARCUB
+scan renders with zero `<h2>` headings). Verified live in a real browser too
+— a scan response stubbed at the network layer (Playwright route
+interception) rather than assumed from the unit tests alone: the ticket row
+measured all five chip tops equal (one line, not wrapped), and the ARCUB view
+showed both dates back to back with no heading between them.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
