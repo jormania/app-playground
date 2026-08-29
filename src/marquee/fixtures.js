@@ -170,6 +170,10 @@ export const DEMO_VENUES = [
     name: 'ARCUB',
     url: 'https://arcub.ro/agenda',
     adapter: 'arcub',
+    // The one field ARCUB's own page never publishes at all — a real price —
+    // read as enrichment from its "Sala Mare" hall's iabilet.ro listing,
+    // never as a second source of events (MARQUEE.md §9.57).
+    config: 'https://www.iabilet.ro/bilete-sala-mare-arcub-venue-863/',
     status: 'active',
     category: 'event',
     area: 'centru',

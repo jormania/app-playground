@@ -54,10 +54,30 @@
 // nests other divs before it closes — so this reads a generous fixed window
 // instead and lets `proseParagraphs` find the real sentences inside it, the
 // same tolerant approach that function already takes everywhere else.
+//
+// Price is the one field ARCUB's own site never publishes at all, for
+// anything. Its "Sala Mare" hall also sells through iabilet.ro, whose venue
+// page (unlike Cinema Europa's) carries a complete schema.org Event per
+// showing directly — real prices, a canonical ticket link — configured as a
+// SECOND request via `Adapter Config` (`secondaryDetails` below), enrichment
+// only: it can fill a gap the agenda left, never replace what the agenda
+// already said, and it never adds a showing of its own.
 
-import { TICKET, makeEvent, inferYear, monthNumber, pick, textOf, absoluteUrl, proseParagraphs } from './shared.js'
+import { TICKET, makeEvent, inferYear, monthNumber, pick, textOf, absoluteUrl, proseParagraphs, slug } from './shared.js'
 
 const BASE = 'https://arcub.ro/'
+// ARCUB's own agenda never publishes a price at all. Its "Sala Mare" hall
+// also sells through iabilet.ro, which — unlike Cinema Europa's iabilet
+// listing — carries a complete schema.org Event per showing directly on the
+// venue's own page (no bundle hop, the same shape Quantic reads). Wiring it
+// in as a genuinely separate venue row would duplicate every showing under
+// two names; instead its URL rides in `Adapter Config` (Notion's "Optional
+// adapter parameter" field — this adapter's own use of it) as a SECOND
+// request this same reader makes, purely for enrichment: price, a
+// description when the agenda's own detail-page hop didn't have one, and a
+// canonical ticket link when the agenda had none. It never adds a showing of
+// its own — see `secondaryDetails` below for why, and MARQUEE.md §9.57.
+const SECONDARY_EVENT = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g
 const ITEM_MARKER = '<div class="pgrid-item">'
 // Every live sample card ran 850–1100 chars; capped here well above that so
 // one item's own fields are never mistaken for the next card's — the same
@@ -198,6 +218,75 @@ function hallFromLocation(text) {
   return t || null
 }
 
+/** Strip iabilet's CDATA-comment wrapper around its JSON-LD, same shape
+ *  jsonld.js already handles for Expirat — a small local copy rather than an
+ *  import, since this reader's field mapping is otherwise unrelated to that
+ *  generic one (see the price note below). */
+function unwrapCData(raw) {
+  return String(raw ?? '')
+    .replace(/^\s*\/\*\s*<!\[CDATA\[\s*\*\/\s*/, '')
+    .replace(/\s*\/\*\s*\]\]>\s*\*\/\s*$/, '')
+    .trim()
+}
+
+/** iabilet writes its price with a Romanian decimal COMMA ("53,03"), which
+ *  plain `Number()` reads as NaN — the reason this isn't simply routed
+ *  through jsonld.js's own reader, whose price parsing assumes a dot. */
+function parsePrice(text) {
+  const n = Number(String(text ?? '').trim().replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Price, a canonical ticket link and a description, read off the secondary
+ * iabilet.ro venue page — keyed by `slug(title):date` so each result can only
+ * ever enrich the agenda's OWN matching showing, never invent one.
+ *
+ * Two things iabilet's own markup does that this has to survive:
+ *
+ *   1. **Subscription/bundle products are listed as their own "Event".**
+ *      "ABONAMENT/ 10 & 11 Septembrie: Teodora Brody…" is a season-pass
+ *      product covering two nights at once — its price is not any single
+ *      night's price, so anything with "abonament" in the title is dropped
+ *      outright rather than risk misreporting a bundle price as a ticket
+ *      price.
+ *   2. **A multi-day umbrella block can shadow a real single-day one at the
+ *      same key.** Teodora Brody's own two real nights (09-10, 09-11) each
+ *      get their own priced Event — but iabilet ALSO emits a third,
+ *      unpriced "Teodora Brody" block spanning both dates as one summary,
+ *      whose `startDate` collides with the first real night's key. Once a
+ *      key already has a price, a later, priceless block for the same key
+ *      is never allowed to overwrite it.
+ */
+export function secondaryDetails(html) {
+  const byKey = new Map()
+  let m
+  SECONDARY_EVENT.lastIndex = 0
+  while ((m = SECONDARY_EVENT.exec(html)) !== null) {
+    let node
+    try {
+      node = JSON.parse(unwrapCData(m[1]))
+    } catch {
+      continue // one malformed block must not cost the whole page
+    }
+    if (node?.['@type'] !== 'Event') continue
+    const title = typeof node.name === 'string' ? textOf(node.name) : null
+    const date = typeof node.startDate === 'string' ? node.startDate.slice(0, 10) : null
+    if (!title || !date || /abonament/i.test(title)) continue
+
+    const offer = node.offers && typeof node.offers === 'object' ? node.offers : null
+    const detail = {
+      price: parsePrice(offer?.price),
+      ticketsUrl: typeof offer?.url === 'string' ? offer.url : (typeof node.url === 'string' ? node.url : null),
+      description: typeof node.description === 'string' ? textOf(node.description) : null,
+    }
+    const key = `${slug(title)}:${date}`
+    const existing = byKey.get(key)
+    if (!existing || (existing.price == null && detail.price != null)) byKey.set(key, detail)
+  }
+  return byKey
+}
+
 export default {
   id: 'arcub',
   label: 'ARCUB',
@@ -207,7 +296,14 @@ export default {
   // answer, not a broken parser (MARQUEE.md §6).
   minItems: 3,
 
-  requests: (venue) => [{ url: venue.url }],
+  /** The main agenda page, plus the secondary iabilet page (Adapter Config)
+   *  when one is configured — always requested first so `follow()`'s
+   *  `pages[0]` and `parse()`'s indexing both keep meaning "the agenda". */
+  requests: (venue) => {
+    const pages = [{ url: venue.url }]
+    if (venue.config) pages.push({ url: venue.config })
+    return pages
+  },
 
   /** One extra request per distinct production, for its own description —
    *  the one field the listing genuinely doesn't carry (poster and ticket
@@ -237,6 +333,12 @@ export default {
       descriptions.set(page.url, proseParagraphs(html.slice(idx, idx + CONTENT_WINDOW)))
     }
 
+    // Identified by URL, not position: `venue.config`'s page is always
+    // requested, but WHERE it lands in `pages` depends on how many detail
+    // pages follow() also fetched.
+    const secondaryPage = venue.config ? pages.find((p) => p.url === venue.config) : null
+    const secondary = secondaryPage ? secondaryDetails(secondaryPage.body ?? '') : new Map()
+
     const events = []
     for (const item of items(pages[0]?.body ?? '')) {
       const href = FIRST_HREF.exec(item)?.[1]
@@ -257,9 +359,13 @@ export default {
       const ticketState = !ticketHref
         ? TICKET.NONE
         : /sold\s*out|epuizat/i.test(ticketLabel) ? TICKET.SOLD_OUT : TICKET.OPEN
-      const description = link ? (descriptions.get(link) ?? null) : null
+      const ownDescription = link ? (descriptions.get(link) ?? null) : null
 
       for (const date of dates) {
+        // Enrichment only, never a downgrade: the agenda's own value always
+        // wins when it has one. ARCUB's own page never publishes a price at
+        // all, so `price` is filled here or not at all.
+        const extra = secondary.get(`${slug(title ?? '')}:${date}`)
         events.push(makeEvent({
           venue: venue.name,
           title,
@@ -268,9 +374,10 @@ export default {
           link,
           image,
           ticketState,
-          ticketsUrl,
+          ticketsUrl: ticketsUrl ?? extra?.ticketsUrl ?? null,
           category,
-          description,
+          description: ownDescription ?? extra?.description ?? null,
+          price: extra?.price ?? null,
         }))
       }
     }
