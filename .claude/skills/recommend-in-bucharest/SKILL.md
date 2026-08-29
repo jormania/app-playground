@@ -122,6 +122,22 @@ easy to spot as a duplicate later if Marquee itself picks it up once the date co
 range. Ordinary, everyday programme items at an excluded venue are exactly the case this
 step exists to drop; leave those out.
 
+**Second carve-out — a venue's adapter reads one channel, not everything that happens
+there.** Control's `Adapter` is `eventbook` — it reads Control's Eventbook programme,
+which is concerts and ticketed club nights. A venue like this can still host things that
+never touch that channel at all: a chess club meetup, a board-game night, a community
+workshop, a private-room talk — free or informally organised, the kind of thing that
+was never going to be sold through the venue's own ticketing platform. Excluding the
+whole venue drops these for no reason, since Marquee was never going to surface them
+either. **This isn't a far-future question like the first carve-out — it's an every-run
+question:** if a source names something at a Marquee-covered venue that plainly isn't
+the kind of programme item that venue's adapter reads (not a concert, not a ticketed
+show, not part of its everyday rotation), include it here, same as above — note in
+`Summary` that it's at a Marquee-covered venue so it's easy to spot as a duplicate if
+Marquee's adapter ever does pick it up. When it's genuinely ambiguous whether the
+adapter would carry it, exclude as usual; this carve-out is for the clear cases, not a
+license to second-guess every exclusion.
+
 ---
 
 ## Step 2 — Fetch and parse all sources
@@ -163,8 +179,9 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 ## Step 3 — Filter by Gabriel's preferences
 
 ### Always exclude
-- **Venues Marquee already reads** — the set built in Step 1c, subject to that step's
-  carve-out for exceptional far-future bookings at movie-horizon venues
+- **Venues Marquee already reads** — the set built in Step 1c, subject to that step's two
+  carve-outs: exceptional far-future bookings at movie-horizon venues, and event types
+  the venue's own adapter doesn't read in the first place (e.g. a chess night at Control)
 - Sala Palatului
 - Teatrul Nottara
 - MINA
@@ -179,6 +196,8 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 - **Teatrul În Culise** — ignore permanently
 - **Platforma Wolff** — ignore permanently
 - **Ateneul Român** — ignore permanently
+- **Teatrul Masca** — ignore permanently
+- **Teatrul Roșu** — ignore permanently
 - Generic corporate events, trade fairs, business conferences (sales, marketing, etc.)
 - Mainstream pop/commercial concerts at large arenas unless genuinely exceptional
 - **Online-only events** — livestreams, webinars, virtual screenings, anything with no
