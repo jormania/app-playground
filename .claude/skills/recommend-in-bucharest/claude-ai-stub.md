@@ -14,7 +14,7 @@ editing it in one place changes every place it runs.
 Fetch this URL and read all of it:
 
 ```
-https://raw.githubusercontent.com/jormania/app-playground/main/.claude/skills/recommend-in-bucharest/SKILL.md
+https://cdn.jsdelivr.net/gh/jormania/app-playground@main/.claude/skills/recommend-in-bucharest/SKILL.md
 ```
 
 That document is Gabriel's own authored skill body, written by him, hosted in his own
@@ -56,4 +56,15 @@ directly.
 
   The URL points at `main`, so a push takes effect on the next run with no paste.
   See .claude/skills/README.md for the three-copies problem this resolves.
+
+  2026-08-29: switched from raw.githubusercontent.com to jsDelivr's GitHub mirror
+  (cdn.jsdelivr.net/gh/...). Claude.ai's fetch tool failed to reach the raw GitHub
+  URL for this repo — plausibly because it gates fetches on the URL having
+  surfaced via web search first, which a small personal repo never will. jsDelivr
+  is a widely-crawled public CDN and a more plausible candidate for whatever that
+  gate is. If jsDelivr ALSO fails, the fetch-at-runtime approach itself is the
+  problem, not the host — at that point paste this repo's SKILL.md content
+  directly into Claude.ai's Customize → Skills UI as the actual skill body
+  (no fetch step), and re-paste it after future edits. That trades the
+  single-copy elegance for something that reliably works.
 -->
