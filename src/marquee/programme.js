@@ -137,7 +137,24 @@ export function primaryChangeKind(production, changedKeys) {
   return best
 }
 
-/** Group productions by their first date, for a date-led feed. */
+/** The time a production's card is chronologically "about" on the day it's
+ *  grouped under — the first showing that actually falls on `firstDate`.
+ *  `showings` is sorted date-then-time (`toProductions`), and a production is
+ *  only ever bucketed under its OWN first date, so that's always `showings[0]`
+ *  — never a later date's time leaking in as this day's sort key. */
+function leadTime(p) {
+  return p.showings[0]?.time || null
+}
+
+/** Group productions by their first date, for a date-led feed. Within a day,
+ *  ordered by showtime — the whole point on a busy day (a Sunday with three
+ *  dozen productions reads as noise sorted by title, not as a schedule). A
+ *  time-less showing (many cinemas print no time until closer to the date,
+ *  and an exhibition or standing installation may never have one) sorts
+ *  after every timed one rather than at an arbitrary alphabetical spot: an
+ *  unknown time is not evidence of an early one. Ties — same showtime, or
+ *  several time-less productions — fall back to title, so the order is
+ *  stable across re-scans instead of reshuffling on every render. */
 export function byDate(productions) {
   const days = new Map()
   for (const p of productions) {
@@ -146,7 +163,17 @@ export function byDate(productions) {
   }
   return [...days.entries()]
     .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-    .map(([date, items]) => ({ date, productions: items }))
+    .map(([date, items]) => ({
+      date,
+      productions: [...items].sort((a, b) => {
+        const ta = leadTime(a)
+        const tb = leadTime(b)
+        if (ta && tb && ta !== tb) return ta.localeCompare(tb)
+        if (ta && !tb) return -1
+        if (!ta && tb) return 1
+        return a.title.localeCompare(b.title, 'ro')
+      }),
+    }))
 }
 
 /** The day-section id a week-strip cell scrolls to — one id per calendar day,
