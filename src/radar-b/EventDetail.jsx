@@ -122,11 +122,15 @@ export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) 
           <button type="button" className="barBtn" onClick={onClose}>
             <BackIcon /> <span>{t('detail.back')}</span>
           </button>
-          {!event.saved && (
-            <button type="button" className="barBtn danger" onClick={() => onDismiss(event)}>
-              <HideIcon /> <span>{t('detail.hide')}</span>
-            </button>
-          )}
+          {/* Dismissal writes to the Radar row (`event.radarId`), not to Wanderlist —
+              being saved doesn't mean "handled forever": a long-running exhibition
+              you're not planning to revisit is exactly the case for hiding it from
+              the browse view while it stays in Wanderlist untouched. The pool is
+              already filtered to `radarId`-bearing events (App.jsx), so this is
+              always actionable here. */}
+          <button type="button" className="barBtn danger" onClick={() => onDismiss(event)}>
+            <HideIcon /> <span>{t('detail.hide')}</span>
+          </button>
         </div>
 
         {event.image && <img className="detailHero" src={event.image} alt="" loading="lazy" />}
