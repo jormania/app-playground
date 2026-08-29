@@ -137,7 +137,14 @@ export function lensesFor(event, now = new Date()) {
   if (touches(span, tomorrow, tomorrow)) out.add('tomorrow')
   if (touches(span, weekend.from, weekend.to)) out.add('weekend')
   if (touches(span, today, weekEnd)) out.add('week')
-  if (span.to > weekEnd) out.add('later')
+  // "Later" means forward-looking — something to come back to once this week is
+  // done. An exhibition that has already opened isn't later, it's now: once it's
+  // isRunningNow, `running` is its one dedicated home (checked separately by
+  // search.js's inView), so it doesn't also sit in "later" claiming you should
+  // wait. This was the one pairing where two lenses could show the exact same
+  // card under the exact same "Oricând" heading with nothing to tell them apart —
+  // unlike tonight/weekend/week, which legitimately share events by design.
+  if (span.to > weekEnd && !isRunningNow(event, now)) out.add('later')
   return out
 }
 

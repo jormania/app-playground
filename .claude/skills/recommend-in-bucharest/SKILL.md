@@ -198,6 +198,8 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 - **Ateneul Român** — ignore permanently
 - **Teatrul Masca** — ignore permanently
 - **Teatrul Roșu** — ignore permanently
+- **Berăria H** — ignore permanently
+- **Hard Rock Cafe** — ignore permanently
 - Generic corporate events, trade fairs, business conferences (sales, marketing, etc.)
 - Mainstream pop/commercial concerts at large arenas unless genuinely exceptional
 - **Online-only events** — livestreams, webinars, virtual screenings, anything with no

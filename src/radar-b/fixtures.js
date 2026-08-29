@@ -25,10 +25,10 @@ function day(offset, time) {
  *  the suite runs on — `day(3)` used to run off the end of "week" on a Thu/Fri/Sat,
  *  since the "week" lens ends at Sunday (see dates.js's endOfWeek) rather than
  *  rolling seven days out. */
-function dayThisWeek(preferredOffset) {
+function dayThisWeek(preferredOffset, time) {
   const now = new Date()
   const daysLeftInWeek = Math.round((endOfWeek(now) - startOfDay(now)) / 86400000)
-  return day(Math.min(preferredOffset, daysLeftInWeek))
+  return day(Math.min(preferredOffset, daysLeftInWeek), time)
 }
 
 const RAW = [
@@ -83,7 +83,7 @@ const RAW = [
   {
     id: 'demo-4', key: 'cinema-elvire-popesco:retrospectiva-varda',
     name: 'Retrospectivă Agnès Varda — Cléo de 5 à 7',
-    start: day(2, '19:30'), hasTime: true,
+    start: dayThisWeek(2, '19:30'), hasTime: true,
     venue: 'Cinema Elvire Popesco', address: 'Bd. Dacia 77', area: 'centru',
     category: 'movie',
     summary: 'Copie restaurată, subtitrare în română. Prima din patru proiecții din retrospectivă.',
@@ -106,7 +106,7 @@ const RAW = [
   {
     id: 'demo-6', key: 'muzeul-national-de-arta:atelier-copii',
     name: 'Atelier de gravură pentru copii',
-    start: day(2, '11:00'), hasTime: true,
+    start: dayThisWeek(2, '11:00'), hasTime: true,
     venue: 'Muzeul Național de Artă al României', address: 'Calea Victoriei 49-53', area: 'centru',
     category: 'culture',
     summary: 'Două ore, 7–12 ani, materialele incluse. Locurile se ocupă repede — rezervarea se face prin site.',

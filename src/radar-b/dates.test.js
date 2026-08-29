@@ -68,10 +68,19 @@ describe('lensesFor', () => {
     expect([...lensesFor(ev({ start: null }), WED)]).toEqual(['later'])
   })
 
-  test('a months-long exhibition reaches beyond the week into later', () => {
-    const l = lensesFor(ev({ start: '2026-08-19', end: '2026-11-01' }), WED)
-    expect(l.has('tonight')).toBe(true)
+  test('an exhibition opening in the future reaches beyond the week into later', () => {
+    const l = lensesFor(ev({ start: '2026-08-27', end: '2026-11-01' }), WED)
+    expect(l.has('week')).toBe(false)
     expect(l.has('later')).toBe(true)
+  })
+
+  test('an exhibition already running is not "later" — that would say wait about something open today', () => {
+    // Its one dedicated home is `running` (isRunningNow), checked separately by
+    // search.js's inView — this is what keeps the Later and Running tabs from
+    // showing the exact same card under the exact same "Oricând" heading.
+    const l = lensesFor(ev({ start: '2026-08-19', end: '2026-11-01' }), WED)
+    expect(l.has('tonight')).toBe(true) // still legitimately "on tonight"
+    expect(l.has('later')).toBe(false)
   })
 })
 
