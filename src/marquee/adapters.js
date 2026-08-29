@@ -125,6 +125,13 @@ export const ADAPTERS = [
     hosts: [],
     note: 'Works on any page that publishes schema.org Event objects.',
   },
+  {
+    id: 'arcub',
+    label: 'ARCUB',
+    rung: 'selector',
+    hosts: ['arcub.ro'],
+    note: 'Interdisciplinary — reads its own per-event category tag, not one guess for the whole venue.',
+  },
 ]
 
 export const ADAPTER_IDS = ADAPTERS.map((a) => a.id)

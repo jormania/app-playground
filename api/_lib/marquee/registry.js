@@ -28,6 +28,7 @@ import jsonld from './jsonld.js'
 import tnb from './tnb.js'
 import mystage from './mystage.js'
 import odeon from './odeon.js'
+import arcub from './arcub.js'
 
 const expirat = { ...jsonld, id: 'expirat', label: 'Expirat / iabilet whitelabel', minItems: 3 }
 const quantic = { ...jsonld, id: 'quantic', label: 'Quantic / iabilet.ro venue page', minItems: 6 }
@@ -44,6 +45,7 @@ export const ADAPTERS = {
   mystage,
   odeon,
   quantic,
+  arcub,
 }
 
 export function getAdapter(id) {

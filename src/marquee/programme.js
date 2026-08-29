@@ -81,6 +81,12 @@ export function toProductions(events) {
         image: event.image ?? null,
         link: event.link ?? null,
         description: event.description ?? null,
+        // Almost every venue is single-discipline, so this stays null and
+        // `categoryFor` below falls back to the venue's own Category
+        // Default — the one path every existing venue already uses. Only a
+        // venue whose OWN page states a per-event kind (ARCUB's `.tags`)
+        // ever sets this.
+        category: event.category ?? null,
         showings: [],
       })
     }
@@ -91,6 +97,7 @@ export function toProductions(events) {
     production.link ??= event.link ?? null
     production.hall ??= event.hall ?? null
     production.description ??= event.description ?? null
+    production.category ??= event.category ?? null
   }
 
   const out = [...byId.values()]
@@ -211,22 +218,34 @@ export function densityForDays(productions, days) {
   }))
 }
 
+/** A production's own category if its adapter could read one (ARCUB's own
+ *  `.tags`), otherwise its venue's single `Category Default` — the fallback
+ *  every other, single-discipline venue already relies on entirely. One
+ *  function, so every caller that needs "what category IS this" (the filter
+ *  below, `categoriesInUse`, the save draft in wanderlist.js) answers it the
+ *  same way rather than three places quietly disagreeing. */
+export function categoryFor(production, venueCategoryMap) {
+  return production?.category ?? venueCategoryMap?.get(production?.venue) ?? null
+}
+
 /** Apply the user's triage, category, venue and hall filters.
  *
  *  Ignoring is per PRODUCTION and permanent, including future dates — the point of
  *  ignoring a film is never hearing about it again, not hearing about it again on
  *  Thursday.
  *
- *  `category` and `hall` are resolved through `venueCategory` — a Map from venue
- *  name to its `Category Default` — because a production only carries its own
- *  venue's NAME, not the category, which lives on the venue row instead. A `hall`
- *  filter without a `venue` filter would mix halls across unrelated venues (Sala
- *  Mare at Ateneul next to Sala Mare at Unteatru), so it is only meaningful, and
- *  only ever applied by the UI, once a single venue is already chosen. */
+ *  `category` and `hall` are resolved through `categoryFor`/`venueCategory` — a
+ *  Map from venue name to its `Category Default` — because most productions
+ *  carry only their venue's NAME, not a category of their own; the category
+ *  lives on the venue row instead, UNLESS the production's own adapter could
+ *  read one directly (ARCUB). A `hall` filter without a `venue` filter would
+ *  mix halls across unrelated venues (Sala Mare at Ateneul next to Sala Mare
+ *  at Unteatru), so it is only meaningful, and only ever applied by the UI,
+ *  once a single venue is already chosen. */
 export function visibleProductions(productions, { triage = {}, venue = null, category = null, hall = null, venueCategory = new Map(), hideIgnored = true, hideSoldOut = false, hideKept = false } = {}) {
   return productions.filter((p) => {
     if (venue && p.venue !== venue) return false
-    if (category && venueCategory.get(p.venue) !== category) return false
+    if (category && categoryFor(p, venueCategory) !== category) return false
     if (hall && p.hall !== hall) return false
     if (hideIgnored && triage[p.id] === TRIAGE.IGNORED) return false
     // A run counts as sold out only when EVERY date is — hiding a production with
@@ -248,9 +267,20 @@ export function venueCategoryMap(venues) {
 
 /** Which categories are actually in play, in `CATEGORY_ORDER` — so the category
  *  filter row only ever shows options with something behind them, and never
- *  reshuffles as venues are added, paused or removed. */
-export function categoriesInUse(venues) {
+ *  reshuffles as venues are added, paused or removed.
+ *
+ *  Every active venue's own default always counts, `productions` or not — a
+ *  single-discipline venue between seasons (nothing currently on) must not
+ *  make its category chip disappear, which is why this isn't driven by
+ *  current productions alone. `productions` (optional; every EXISTING call
+ *  site still works without it) is unioned in on top, so an interdisciplinary
+ *  venue like ARCUB additionally surfaces every category its CURRENT
+ *  programme actually spans, not only the one category its venue row
+ *  defaults to. */
+export function categoriesInUse(venues, productions = []) {
+  const vcMap = venueCategoryMap(venues)
   const present = new Set((venues ?? []).map((v) => v.category))
+  for (const p of productions) present.add(categoryFor(p, vcMap))
   return CATEGORY_ORDER.filter((c) => present.has(c))
 }
 

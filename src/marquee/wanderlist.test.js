@@ -156,3 +156,33 @@ describe('expiryFor', () => {
     expect(expiryFor({})).toBeNull()
   })
 })
+
+describe('an interdisciplinary venue — the production’s own category wins over the venue default', () => {
+  // ARCUB's own Category Default is 'event' (its city-festival catch-all),
+  // but this particular showing is a play — its adapter read that off
+  // ARCUB's own `.tags` markup, and both the save draft and its tags should
+  // say so, not fall back to the venue's single guess.
+  const arcubVenue = { name: 'ARCUB', address: 'Bulevardul Unirii 44, București', category: 'event' }
+  const play = { ...showing, venue: 'ARCUB', title: 'Cineva are să vină', category: 'play' }
+  const playProduction = toProductions([play])[0]
+
+  it('toDraft uses the production’s own category, not the venue’s', () => {
+    expect(toDraft(play, { venue: arcubVenue, production: playProduction }).category).toBe('play')
+  })
+
+  it('toDraft still falls back to the venue default when a production has none of its own', () => {
+    const noCategory = { ...showing, venue: 'ARCUB', category: null }
+    const production = toProductions([noCategory])[0]
+    expect(toDraft(noCategory, { venue: arcubVenue, production }).category).toBe('event')
+  })
+
+  it('tagsFor tags "music" from the production’s own concert category, even though the venue default is not concert', () => {
+    const concert = { ...showing, venue: 'ARCUB', category: 'concert' }
+    const production = toProductions([concert])[0]
+    expect(tagsFor(concert, arcubVenue, production)).toContain('music')
+  })
+
+  it('tagsFor without a production argument still works — every existing call site', () => {
+    expect(tagsFor(showing, venue)).toEqual(expect.arrayContaining(['music', 'ticketed']))
+  })
+})

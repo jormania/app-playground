@@ -48,13 +48,18 @@ export function expiryFor(showing) {
 }
 
 /** Tags Marquee can state as fact. Ticket state is knowledge the venue published,
- *  and a concert hall's programme is music by definition; everything else — taste,
- *  company, whether it's worth the trip — is the user's to add in Wanderlist. */
-export function tagsFor(showing, venue) {
+ *  and a concert programme is music by definition; everything else — taste,
+ *  company, whether it's worth the trip — is the user's to add in Wanderlist.
+ *
+ *  `production`'s own category (when its adapter could read one — ARCUB) wins
+ *  over the venue's single default: a venue whose Default is `event` but
+ *  whose OWN tag says this particular night is a concert should still tag
+ *  `music`, the same as a single-discipline concert hall always has. */
+export function tagsFor(showing, venue, production = null) {
   const tags = []
   if (showing?.ticketState === 'open' || showing?.ticketState === 'sold-out') tags.push('ticketed')
   if (showing?.price === 0) tags.push('free')
-  if (venue?.category === 'concert') tags.push('music')
+  if ((production?.category ?? venue?.category) === 'concert') tags.push('music')
   return [...new Set(tags)].filter((t) => FINDINGS_TAGS.includes(t))
 }
 
@@ -66,7 +71,14 @@ export function tagsFor(showing, venue) {
  * you chose to keep is, in practice, a plan; you can clear it.
  */
 export function toDraft(showing, { venue, production } = {}) {
-  const category = venue?.category && FINDINGS_CATEGORIES.includes(venue.category) ? venue.category : 'event'
+  // A production's own category (ARCUB's per-event tag) wins over the
+  // venue's single default — the whole reason it exists is that one Category
+  // Default can't honestly describe a venue that runs theatre one night and
+  // an exhibition the next. Every single-discipline venue never sets it, so
+  // this falls straight through to the venue default exactly as before.
+  const ownCategory = production?.category && FINDINGS_CATEGORIES.includes(production.category) ? production.category : null
+  const category = ownCategory
+    ?? (venue?.category && FINDINGS_CATEGORIES.includes(venue.category) ? venue.category : 'event')
   return {
     name: showing.title,
     description: [
@@ -88,7 +100,7 @@ export function toDraft(showing, { venue, production } = {}) {
     category,
     place: placeFor(venue),
     placeUrl: mapUrlFor(venue),
-    tags: tagsFor(showing, venue),
+    tags: tagsFor(showing, venue, production),
     attended: false,
     going: false,
     cost: showing.price ?? null,
