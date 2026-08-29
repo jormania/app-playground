@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toProductions, domIdForDay, nextDayKeys, densityForDays } from './programme.js'
+import { toProductions, byDate, domIdForDay, nextDayKeys, densityForDays } from './programme.js'
 
 // programme.js's other functions (byDate, visibleProductions, the filter
 // helpers) are exercised through Programme.jsx/App.jsx's own tests. These
@@ -8,6 +8,51 @@ import { toProductions, domIdForDay, nextDayKeys, densityForDays } from './progr
 const event = (over = {}) => ({
   key: over.key ?? 'k', venue: 'Excelsior', title: 'Tomcat', date: '2026-09-05',
   time: null, ticketState: 'none', hall: null, link: null, image: null, price: null, ...over,
+})
+
+describe('byDate', () => {
+  it('orders a busy day by showtime, not by title', () => {
+    const productions = toProductions([
+      event({ key: 'a', title: 'Zebra', date: '2026-09-05', time: '20:00' }),
+      event({ key: 'b', title: 'Apple', date: '2026-09-05', time: '11:00' }),
+      event({ key: 'c', title: 'Mango', date: '2026-09-05', time: '15:00' }),
+    ])
+    const [day] = byDate(productions)
+    expect(day.productions.map((p) => p.title)).toEqual(['Apple', 'Mango', 'Zebra'])
+  })
+
+  it('sorts a production by the showing that falls on THIS day, not a later one', () => {
+    // "Zebra" opens today at 09:00 and returns tomorrow at 08:00 — the 08:00
+    // must never leak into today's ordering (it's bucketed under today only
+    // because that is its firstDate).
+    const productions = toProductions([
+      event({ key: 'a', title: 'Zebra', date: '2026-09-05', time: '09:00' }),
+      event({ key: 'a2', title: 'Zebra', date: '2026-09-06', time: '08:00' }),
+      event({ key: 'b', title: 'Mango', date: '2026-09-05', time: '10:00' }),
+    ])
+    const [day] = byDate(productions)
+    expect(day.productions.map((p) => p.title)).toEqual(['Zebra', 'Mango'])
+  })
+
+  it('a time-less production sorts after every timed one, not alphabetically among them', () => {
+    const productions = toProductions([
+      event({ key: 'a', title: 'Apple', date: '2026-09-05', time: null }),
+      event({ key: 'b', title: 'Zebra', date: '2026-09-05', time: '20:00' }),
+    ])
+    const [day] = byDate(productions)
+    expect(day.productions.map((p) => p.title)).toEqual(['Zebra', 'Apple'])
+  })
+
+  it('ties — same showtime, or several time-less productions — fall back to title', () => {
+    const productions = toProductions([
+      event({ key: 'a', title: 'Zebra', date: '2026-09-05', time: '20:00' }),
+      event({ key: 'b', title: 'Apple', date: '2026-09-05', time: '20:00' }),
+      event({ key: 'c', title: 'Mango', date: '2026-09-05', time: null }),
+      event({ key: 'd', title: 'Fig', date: '2026-09-05', time: null }),
+    ])
+    const [day] = byDate(productions)
+    expect(day.productions.map((p) => p.title)).toEqual(['Apple', 'Zebra', 'Fig', 'Mango'])
+  })
 })
 
 describe('domIdForDay', () => {
