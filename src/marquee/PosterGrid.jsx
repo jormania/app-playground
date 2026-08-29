@@ -79,13 +79,19 @@ function PosterTile({ production, triage, changedKeys = new Map(), onKeep, onIgn
 }
 
 /** The same `days` (`byDate`'s output) the list view renders, as a wall of
- *  covers grouped under a date heading instead of a column of rows. */
-export default function PosterGrid({ days, triage, changedKeys = new Map(), onKeep, onIgnore }) {
+ *  covers grouped under a date heading instead of a column of rows.
+ *
+ *  `flat` (Programme.jsx passes it once a specific venue is selected) drops
+ *  the date heading and section id — `days` is then already the single
+ *  flattened group Programme.jsx built, kept in the same `[{date,
+ *  productions}]` shape purely so this component doesn't need a second prop
+ *  shape to handle. */
+export default function PosterGrid({ days, triage, changedKeys = new Map(), onKeep, onIgnore, flat = false }) {
   return (
     <>
       {days.map((day) => (
-        <section key={day.date} id={domIdForDay(day.date)} className="day">
-          <h2 className="day__head">{formatDay(day.date)}</h2>
+        <section key={day.date ?? 'flat'} id={flat ? undefined : domIdForDay(day.date)} className="day">
+          {!flat && <h2 className="day__head">{formatDay(day.date)}</h2>}
           <ul className="poster-grid">
             {day.productions.map((production) => (
               <PosterTile

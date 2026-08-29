@@ -177,15 +177,56 @@ describe('Marquee, end to end in demo mode', () => {
     await user.click(screen.getByRole('button', { name: 'Theatre' }));
     expect(await screen.findByRole('button', { name: 'ARCUB' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'ARCUB' }));
-    expect(await screen.findByText('Cineva are să vină')).toBeTruthy();
-    expect(screen.queryByText('Teodora Brody')).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Theatre' })); // back up a tier
+    // Clicking the venue shows everything IT offers — the "Theatre" pick that
+    // got us here is cleared, not still silently filtering ARCUB's own list.
+    expect(await screen.findByText('Cineva are să vină')).toBeTruthy();
+    expect(screen.getByText('Teodora Brody')).toBeTruthy();
+
+    // The category row has re-scoped to ARCUB's own offerings — a sub-filter
+    // within the venue, not a way back out to browsing every venue by category.
+    expect(await screen.findByRole('button', { name: 'Concert' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Concert' }));
-    expect(await screen.findByRole('button', { name: 'ARCUB' })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'ARCUB' }));
-    expect(await screen.findByText('Teodora Brody')).toBeTruthy();
+    expect(screen.getByText('Teodora Brody')).toBeTruthy();
     expect(screen.queryByText('Cineva are să vină')).toBeNull();
+    // Still on ARCUB, not bounced back out to the top tier.
+    expect(screen.getByRole('button', { name: 'ARCUB' })).toBeTruthy();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('no day sections once a specific venue is selected — one flat chronological list', async () => {
+    const user = userEvent.setup();
+    const play = {
+      key: 'arcub:2099-01-02:cineva-are-sa-vina', venue: 'ARCUB', title: 'Cineva are să vină',
+      date: '2099-01-02', ticketState: 'open', category: 'play',
+    };
+    const concert = {
+      key: 'arcub:2099-01-05:teodora-brody', venue: 'ARCUB', title: 'Teodora Brody',
+      date: '2099-01-05', ticketState: 'open', category: 'concert',
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        scannedAt: new Date().toISOString(),
+        venues: [{ venue: 'ARCUB', status: 'ok', events: [play, concert] }],
+        events: [play, concert],
+      }),
+    })));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Cineva are să vină');
+    // Two different dates, so a day-grouped view would render two headings.
+    expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('button', { name: 'Theatre' }));
+    await user.click(await screen.findByRole('button', { name: 'ARCUB' }));
+
+    // Both showings still visible, but no date heading divides them.
+    expect(await screen.findByText('Teodora Brody')).toBeTruthy();
+    expect(screen.getByText('Cineva are să vină')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
 
     vi.unstubAllGlobals();
   });
