@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-import arcub, { datesFromMeta } from '../_lib/marquee/arcub.js'
+import arcub, { datesFromMeta, secondaryDetails } from '../_lib/marquee/arcub.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
 const fixture = (name) => readFileSync(join(FIXTURES, name), 'utf8')
@@ -171,5 +171,108 @@ describe('ARCUB', () => {
 
   it('reports parser-broken rather than a wrong reading on a genuinely empty body', () => {
     expect(arcub.parse([{ body: '' }], { venue, now: TODAY })).toEqual([])
+  })
+
+  describe('secondary source — the iabilet.ro "Sala Mare" venue page (Adapter Config)', () => {
+    const iabiletUrl = 'https://www.iabilet.ro/bilete-sala-mare-arcub-venue-863/'
+    const configuredVenue = { ...venue, config: iabiletUrl }
+
+    it('requests the agenda first and the configured secondary URL second', () => {
+      expect(arcub.requests(configuredVenue)).toEqual([
+        { url: 'https://arcub.ro/agenda' },
+        { url: iabiletUrl },
+      ])
+    })
+
+    it('requests only the agenda when no secondary URL is configured', () => {
+      expect(arcub.requests(venue)).toEqual([{ url: 'https://arcub.ro/agenda' }])
+    })
+
+    it('fills in the real price ARCUB’s own page never publishes', () => {
+      const withSecondary = arcub.parse(
+        [{ body: fixture('arcub.html') }, { url: iabiletUrl, body: fixture('arcub-iabilet-sala-mare.html') }],
+        { venue: configuredVenue, now: TODAY },
+      )
+      const cineva = withSecondary.find((e) => e.title === 'Cineva are să vină')
+      expect(cineva.price).toBe(53.03)
+
+      const brody10 = withSecondary.find((e) => e.title.startsWith('Teodora Brody') && e.date === '2026-09-10')
+      const brody11 = withSecondary.find((e) => e.title.startsWith('Teodora Brody') && e.date === '2026-09-11')
+      expect(brody10.price).toBe(37.12)
+      expect(brody11.price).toBe(37.12)
+    })
+
+    it('never adds a showing of its own — enrichment only', () => {
+      const withoutSecondary = arcub.parse([{ body: fixture('arcub.html') }], { venue, now: TODAY })
+      const withSecondary = arcub.parse(
+        [{ body: fixture('arcub.html') }, { url: iabiletUrl, body: fixture('arcub-iabilet-sala-mare.html') }],
+        { venue: configuredVenue, now: TODAY },
+      )
+      expect(withSecondary).toHaveLength(withoutSecondary.length)
+    })
+
+    it('never downgrades a value the agenda already had', () => {
+      // The agenda's own ticket link for "Cineva are să vină" already points
+      // at the exact iabilet event page; a real ticketsUrl already present
+      // must survive untouched rather than being replaced by the secondary
+      // read of the same URL.
+      const withSecondary = arcub.parse(
+        [{ body: fixture('arcub.html') }, { url: iabiletUrl, body: fixture('arcub-iabilet-sala-mare.html') }],
+        { venue: configuredVenue, now: TODAY },
+      )
+      const cineva = withSecondary.find((e) => e.title === 'Cineva are să vină')
+      expect(cineva.ticketsUrl).toMatch(/^https:\/\/www\.iabilet\.ro\//)
+    })
+
+    it('has no effect when the configured URL’s page was not actually fetched', () => {
+      // scan.js drops a follow()/secondary page that failed to load, rather
+      // than failing the whole venue over it — parse() must degrade to
+      // exactly the no-secondary behaviour, not throw or half-enrich.
+      const degraded = arcub.parse([{ body: fixture('arcub.html') }], { venue: configuredVenue, now: TODAY })
+      const cineva = degraded.find((e) => e.title === 'Cineva are să vină')
+      expect(cineva.price).toBeNull()
+    })
+  })
+})
+
+describe('secondaryDetails', () => {
+  const html = fixture('arcub-iabilet-sala-mare.html')
+
+  it('reads price, description and a canonical ticket link, keyed by title and date', () => {
+    const details = secondaryDetails(html)
+    const cineva = details.get('cineva-are-sa-vina:2026-09-09')
+    expect(cineva.price).toBe(53.03)
+    expect(cineva.ticketsUrl).toBe('https://www.iabilet.ro/bilete-cineva-are-sa-vina-130480/')
+    expect(cineva.description).toMatch(/Jon Fosse/)
+  })
+
+  it('drops a subscription/bundle product rather than risk its price on a single night', () => {
+    const details = secondaryDetails(html)
+    for (const [key] of details) expect(key).not.toMatch(/abonament/i)
+    // The bundle spans both Teodora Brody nights; each real night still
+    // keeps its own individual price, unaffected by the bundle being dropped.
+    expect(details.get('teodora-brody-intalniri-cu-oameni-pasari-esente-de-zbor:2026-09-10').price).toBe(37.12)
+    expect(details.get('teodora-brody-intalniri-cu-oameni-pasari-esente-de-zbor:2026-09-11').price).toBe(37.12)
+  })
+
+  it('never lets a later, price-less umbrella block overwrite an earlier priced one at the same key', () => {
+    // iabilet also emits an unpriced "Teodora Brody" block spanning 09-10 to
+    // 09-11 as a summary — its startDate collides with the first real
+    // night's key. The real, priced block must win regardless of order.
+    const details = secondaryDetails(html)
+    expect(details.get('teodora-brody-intalniri-cu-oameni-pasari-esente-de-zbor:2026-09-10').price).not.toBeNull()
+  })
+
+  it('returns an empty map for a page with no JSON-LD Event at all', () => {
+    expect(secondaryDetails('<html><body>nothing here</body></html>').size).toBe(0)
+  })
+
+  it('tolerates a malformed JSON-LD block without losing the rest of the page', () => {
+    const broken = `
+      <script type="application/ld+json">{not json}</script>
+      <script type="application/ld+json">{"@type":"Event","name":"Fine","startDate":"2026-09-09","offers":{"price":"10,50"}}</script>
+    `
+    const details = secondaryDetails(broken)
+    expect(details.get('fine:2026-09-09').price).toBe(10.5)
   })
 })

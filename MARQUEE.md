@@ -1978,6 +1978,75 @@ inspected 2026-08-29, plus coverage in `programme.test.js`, `wanderlist.test.js`
 and one full `App.test.jsx` scan proving ARCUB surfaces under both "Theatre"
 and "Concert" from one scan result, each tab showing only its own showing.
 
+### 9.57 A second source for ARCUB — prices from iabilet, enrichment only (2026-08-29)
+
+ARCUB's own agenda page (§9.56) never publishes a price at all, for anything.
+Its "Sala Mare" hall also sells through **iabilet.ro**
+(`iabilet.ro/bilete-sala-mare-arcub-venue-863/`) — and, unlike Cinema
+Europa's iabilet listing (a JS shell fanning out into weekly-bundle child
+pages, the reason `iabilet.js`'s two-hop reader exists), ARCUB's own iabilet
+venue page carries a **complete schema.org Event directly**, the same shape
+Quantic already reads with no bundle hop: real price, poster, description, a
+canonical ticket link.
+
+**Wiring it in as its own venue row was rejected first.** Every showing
+would duplicate under two names ("ARCUB" from the agenda, "ARCUB — Sala
+Mare (iabilet)" or similar from the second row) — Marquee has no
+cross-venue dedupe, by design (§ the two-circles-never-overlap rule, and
+`productionId`'s `venue::title` key). Consolidating had to mean ONE venue,
+reading a SECOND source.
+
+**The second URL rides in `Adapter Config`** — Notion's existing "Optional
+adapter parameter" field, used elsewhere for an eventbook hall slug or an
+oveit vendor id. Here it holds a full URL rather than a short parameter,
+which the field's own description already allows ("e.g." is not "always");
+this adapter is the only consumer of its own config value, same as every
+other one. `requests(venue)` fetches the agenda first and this second page
+second when configured, so `follow()`'s `pages[0]` keeps meaning "the
+agenda" unchanged; `parse()` finds the secondary page by matching
+`page.url === venue.config` rather than assuming a fixed index, since
+`follow()`'s own detail-page fetches can land anywhere after it.
+
+**Enrichment only, never a new showing, never a downgrade.** `secondaryDetails`
+returns a `Map` keyed by `slug(title):date`, and a match only ever FILLS a
+gap the agenda left — `price` (always, since the agenda never has one),
+`ticketsUrl`/`description` only when the agenda's own read came back empty.
+Nothing from iabilet is ever added as its own standalone event, and nothing
+it says overrides a value the agenda already published. This was a
+deliberate scope cut: the user's own framing was "you have some ticket
+prices and other details," not "discover more events," and skipping
+new-showing discovery kept the change small, its risk contained to enrichment,
+and its tests exhaustive rather than speculative.
+
+Two things iabilet's own markup does that `secondaryDetails` has to survive,
+both caught before shipping rather than assumed:
+
+- **Subscription/bundle products are listed as their own "Event".**
+  `ABONAMENT/ 10 & 11 Septembrie: Teodora Brody…` is a season-pass product
+  covering two nights at once. Its price is not any single night's price —
+  anything with "abonament" in the title is dropped outright, never matched
+  to an individual showing.
+- **A price-less umbrella block can share a real showing's key.** Alongside
+  Teodora Brody's two real, individually-priced nights (09-10, 09-11),
+  iabilet ALSO emits a third, unpriced summary block spanning both dates as
+  one listing, whose `startDate` collides with the first real night's
+  `slug(title):date` key. A later, price-less block for a key that already
+  has a price is never allowed to overwrite it — verified with a test that
+  encodes the exact live block order.
+
+Also: iabilet's own price format is a Romanian decimal COMMA (`"53,03"`),
+which plain `Number()` reads as `NaN` — the reason this isn't simply routed
+through `jsonld.js`'s existing reader, whose price parsing assumes a dot.
+
+The live ARCUB row's `Adapter Config` was set to the iabilet URL directly
+(Notion MCP, not part of the code diff) — code alone would have left the
+field blank and this whole path dormant.
+
+11 new tests (`secondaryDetails`'s own suite, plus `requests()`/`parse()`
+integration coverage: the real price landing on both matched showings, zero
+added events, an existing value surviving untouched, and the page-not-fetched
+degrade path scan.js's own failure handling can produce).
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
