@@ -771,20 +771,27 @@ button { color: inherit; font: inherit; }
 
 .filter-tier:last-of-type.filter-tier--open { margin-bottom: 0.6rem; }
 
-/* The compact "how did I get here" line above a revealed tier — small, muted
-   text rather than a heading, so the hierarchy reads without costing any
-   real vertical space. Empty (`FilterBreadcrumb` returns null with nothing
-   to show) collapses to nothing rather than leaving a blank line. */
-.filter-breadcrumb {
-  margin: 0 0 0.2rem;
+/* The compact "how did I get here" text — rides INSIDE the venue/hall row
+   itself (`FilterRow`'s `prefix`) rather than claiming a separate line above
+   it, which is what actually keeps the whole filter block to three rows
+   (type, venue, hall) instead of five (type, a breadcrumb line, venue,
+   another breadcrumb line, hall). `position: sticky` pins it to the row's
+   own left edge on `--color-bg` (what the row itself sits on) so it survives
+   the row's horizontal scroll — the ONE thing that must stay put while
+   "Cinema Union", "Cinema Europa" and the rest scroll underneath it, same as
+   the chips list flowing past a fixed street-sign. */
+.filter-row__prefix {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  background: var(--color-bg);
+  padding-right: 0.35rem;
   font-size: 0.7rem;
   color: var(--color-muted);
   white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
+  align-self: center;
 }
-
-.filter-breadcrumb::-webkit-scrollbar { display: none; }
 
 /* ── Programme ─────────────────────────────────────────────────────────── */
 .day { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
