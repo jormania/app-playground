@@ -115,8 +115,12 @@ export function undismissedChanges(changes, dismissedKeys = []) {
 export function summarize(result) {
   if (!result) return ''
   if (result.status !== 'ok' && result.status !== 'empty') return result.detail || result.status
+  // Read fine despite the site's own status line saying otherwise (§9.61) —
+  // recorded here so a venue serving its programme under an HTTP 500 shows up
+  // in its own Last Result instead of looking perfectly healthy.
+  const served = result.servedStatus ? ` · served under HTTP ${result.servedStatus}` : ''
   const n = result.events.length
-  if (n === 0) return 'nothing upcoming'
+  if (n === 0) return `nothing upcoming${served}`
   const soldOut = result.events.filter((e) => e.ticketState === 'sold-out').length
-  return `${n} event${n === 1 ? '' : 's'}${soldOut ? ` · ${soldOut} sold out` : ''}`
+  return `${n} event${n === 1 ? '' : 's'}${soldOut ? ` · ${soldOut} sold out` : ''}${served}`
 }

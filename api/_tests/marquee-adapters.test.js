@@ -19,6 +19,7 @@ import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
 import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
 import { inferYear, slug, eventKey, parseTime, parseIsoDateTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
 import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
+import { summarize } from '../_lib/marquee/diff.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
 const fixture = (name) => readFileSync(join(FIXTURES, name), 'utf8')
@@ -959,6 +960,69 @@ describe('scanVenue', () => {
   it('reports an unreachable page as unreachable', async () => {
     const r = await scanVenue(venue, { now: AUG, fetchImpl: async () => { throw new Error('ENOTFOUND') } })
     expect(r.status).toBe(STATUS.UNREACHABLE)
+  })
+
+  describe('a page served under a bad status line but carrying the whole programme (§9.61)', () => {
+    // teatrulmetropolis.ro serves its complete programme — 18 showings,
+    // posters, ticket links — under an HTTP 500. A browser renders it and
+    // nobody there notices; Marquee reported "The page answered 500" and lost
+    // a venue that was, in every way that matters, publishing. The status line
+    // is a claim about the request; the health gate is a measurement of what
+    // actually arrived, and it is the better arbiter.
+    const metropolis = {
+      id: 'v3', name: 'Teatrul Metropolis', url: 'https://teatrulmetropolis.ro/program/', adapter: 'metropolis',
+    }
+    const served = (status, body) => async () => ({ ok: false, status, text: async () => body, json: async () => ({}) })
+    const NOW = new Date('2026-09-01T09:00:00Z')
+
+    it('reads it, and records the bad status rather than hiding it', async () => {
+      const r = await scanVenue(metropolis, { now: NOW, fetchImpl: served(500, fixture('metropolis-program.html')) })
+      expect(r.status).toBe(STATUS.OK)
+      expect(r.events.length).toBeGreaterThan(0)
+      expect(r.servedStatus).toBe(500)
+      // …and that reaches the venue's own Last Result, so a misconfigured
+      // site is on the record rather than looking perfectly healthy.
+      expect(summarize(r)).toMatch(/served under HTTP 500/)
+    })
+
+    it('still reports the status when the body was NOT a programme', async () => {
+      // A genuine error page fails the gate, and then the HTTP status is the
+      // useful thing to say — never "its markup has probably changed", which
+      // would send someone to rewrite a reader that is fine.
+      const r = await scanVenue(metropolis, { now: NOW, fetchImpl: served(500, '<h1>Error</h1>' + 'x'.repeat(4000)) })
+      expect(r.status).toBe(STATUS.UNREACHABLE)
+      expect(r.detail).toMatch(/answered 500/)
+    })
+
+    it('names a bot check for what it is, rather than blaming the markup', async () => {
+      // The same site, from a different network, answers with a JS challenge
+      // and an HTTP *200*. Parsed, that yields nothing — and "its markup has
+      // probably changed" would be a lie that costs someone an afternoon.
+      const challenge = '<html><head><title>One moment, please...</title></head><body>'
+        + '<p>Checking your browser before accessing the site.</p>' + 'x'.repeat(4000) + '</body></html>'
+      const r = await scanVenue(metropolis, {
+        now: NOW,
+        fetchImpl: async () => ({ ok: true, status: 200, text: async () => challenge, json: async () => ({}) }),
+      })
+      expect(r.status).toBe(STATUS.THROTTLED)
+      expect(r.detail).toMatch(/bot check/i)
+      expect(r.detail).not.toMatch(/markup/i)
+    })
+
+    it('a real programme is never mistaken for a bot check', async () => {
+      // The guard only ever speaks when the parse already came back empty, so
+      // a venue whose page happens to contain those words still reads fine.
+      const r = await scanVenue(metropolis, { now: NOW, fetchImpl: served(500, fixture('metropolis-program.html')) })
+      expect(r.status).toBe(STATUS.OK)
+    })
+
+    it('never parses through a rate limiter, whatever it returns', async () => {
+      // A rate-limit page is not a programme, and a busy venue must not be
+      // reported as a broken one.
+      const feed = { id: 'v4', name: 'Filarmonica George Enescu', url: 'https://www.filarmonicaenescu.ro/ro/evenimente', adapter: 'filarmonica' }
+      const r = await scanVenue(feed, { now: AUG, fetchImpl: served(429, 'slow down') })
+      expect(r.status).toBe(STATUS.THROTTLED)
+    })
   })
 
   it('never throws when a reader does — one bad venue cannot take down a scan', async () => {
