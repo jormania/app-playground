@@ -679,13 +679,17 @@ button { color: inherit; font: inherit; }
      buttons wrapped like ordinary inline content once their combined width
      passed one line. Invisible while the category count stayed small enough
      to fit regardless; visible the moment Event and Art pushed it past that,
-     reported directly. */
+     reported directly. Nowrap + horizontal scroll is load-bearing on a phone:
+     this row must stay one line and be swipeable, never grow a second row,
+     whatever gets added to it. */
   display: flex;
-  gap: 0.5rem;
-  margin: 0 0 1rem;
+  gap: 0.45rem;
+  margin: 0 0 0.6rem;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .category-filters::-webkit-scrollbar { display: none; }
@@ -705,18 +709,11 @@ button { color: inherit; font: inherit; }
 
 /* Venue and hall — both this same "narrower tier" style, directly under
    whichever tier they narrow — one connected drill-down, not sections apart.
-   Generic (not venue-specific) adjacency rule: whichever tier is immediately
-   FOLLOWED by another one loses its own trailing margin down to a tight
-   stack gap, so category→venue, venue→hall, and category→venue→hall all
-   close up uniformly — only the LAST tier in whatever chain is actually
-   showing keeps the normal 1rem before what's below it (§9.50; this used to
-   be venue-specific and left hall, when it showed alongside both others on
-   a wide-enough screen, sitting a visibly bigger gap below venue than venue
-   sat below category). Smaller and outline-only even when picked, same "the
-   narrower tier stays quieter" rule §9.48 already set for venue/hall next to
-   category. */
-.category-filters:has(+ .category-filters) { margin-bottom: 0.4rem; }
-
+   Smaller and outline-only even when picked, same "the narrower tier stays
+   quieter" rule §9.48 already set for venue/hall next to category. Each tier
+   is wrapped in `.filter-tier` (below) rather than sitting bare, so the gap
+   between category→venue→hall comes from the tiers' own tight margins, not
+   an adjacency selector reaching across a wrapper. */
 .category-filters--venue .filter {
   padding: 0.3rem 0.7rem;
   font-size: 0.78rem;
@@ -727,6 +724,67 @@ button { color: inherit; font: inherit; }
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
+
+/* The top category row loses its own trailing margin the moment a venue tier
+   is about to render under it — same "close the gap between tiers" idea
+   §9.50 established, just re-pointed at the wrapper instead of a bare sibling
+   row now that venue/hall each live inside their own `.filter-tier`. */
+.category-filters:has(+ .filter-tier) { margin-bottom: 0.3rem; }
+
+/* ── Filter tiers (venue, hall) — whole-section reveal ────────────────────
+   A tier is revealed or hidden as one block, not chip by chip: this is what
+   makes "Theatre" appearing not also make "Teatrul Excelsior" pop in a beat
+   later, and what lets whatever sits below (What changed, the programme
+   itself) ease into its new position instead of jumping.
+
+   `grid-template-rows: 0fr → 1fr` on the OUTER element, with the actual
+   content one level in inside `.filter-tier__inner` (`overflow: hidden`), is
+   what animates a height nobody measured up front — a plain `max-height`
+   transition needs either a guessed cap or a JS-measured pixel value; a 0fr/
+   1fr grid row animates to the content's real height with neither. Opacity
+   rides along so the reveal reads as a soft fade-and-drop rather than a pure
+   height stretch. `FilterTier` (Programme.jsx) is what sequences the
+   `--open` class onto a real animation frame after mount — flipping it on
+   the SAME render as mounting would leave nothing for the transition to
+   animate from. */
+.filter-tier {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 180ms ease, opacity 140ms ease;
+}
+
+.filter-tier--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.filter-tier__inner { overflow: hidden; min-height: 0; }
+
+.filter-tier .category-filters { margin-bottom: 0; }
+
+/* Two open tiers back to back (venue → hall) close their gap the same way
+   the top category row does above it — a small stack gap between them, the
+   fuller 0.6rem only once more at the very end of whichever chain is
+   actually showing. */
+.filter-tier--open + .filter-tier--open { margin-top: -0.15rem; }
+
+.filter-tier:last-of-type.filter-tier--open { margin-bottom: 0.6rem; }
+
+/* The compact "how did I get here" line above a revealed tier — small, muted
+   text rather than a heading, so the hierarchy reads without costing any
+   real vertical space. Empty (`FilterBreadcrumb` returns null with nothing
+   to show) collapses to nothing rather than leaving a blank line. */
+.filter-breadcrumb {
+  margin: 0 0 0.2rem;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-breadcrumb::-webkit-scrollbar { display: none; }
 
 /* ── Programme ─────────────────────────────────────────────────────────── */
 .day { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }

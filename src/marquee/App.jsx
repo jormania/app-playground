@@ -9,7 +9,7 @@ import {
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
-import Programme, { FilterRow } from './Programme.jsx'
+import Programme, { FilterRow, FilterTier, FilterBreadcrumb } from './Programme.jsx'
 import WeekStrip from './WeekStrip.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
@@ -77,6 +77,16 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState(null)
   const [venueFilter, setVenueFilter] = useState(null)
   const [hallFilter, setHallFilter] = useState(null)
+  // Display-only memory of which category tier a venue was reached through.
+  // `categoryFilter` itself gets cleared the moment a venue is picked (see
+  // `handleVenueFilter` — that's what lets ARCUB show everything it offers,
+  // not just the one category you arrived through), but the breadcrumb above
+  // the hall tier ("Theatre › Teatrul Național București ›") is meant to keep
+  // showing how you got here even after that clear. Sharing one variable for
+  // both jobs would make the breadcrumb vanish at exactly the moment it
+  // becomes most useful — right after picking a venue — so this tracks the
+  // path separately from the live filter.
+  const [categoryBreadcrumb, setCategoryBreadcrumb] = useState(null)
   const [search, setSearch] = useState('')
   // The Venues tab has its own query rather than sharing the programme's.
   // Sharing looked tidier and behaved badly: a leftover "Tomcat" would carry
@@ -305,6 +315,7 @@ export default function App() {
    *  venue, the original drill-down behaviour. */
   const handleCategoryFilter = (category) => {
     setCategoryFilter(category)
+    setCategoryBreadcrumb(category)
     setHallFilter(null)
     if (!venueFilter) setVenueFilter(null)
   }
@@ -633,7 +644,8 @@ export default function App() {
           allIcon={StarIcon}
         />
       )}
-      {venueTierVisible && (
+      <FilterTier show={tab === 'programme' && venueTierVisible}>
+        <FilterBreadcrumb parts={[!venueFilter && categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null]} />
         <FilterRow
           className="category-filters category-filters--venue"
           value={venueFilter}
@@ -642,15 +654,20 @@ export default function App() {
           keyOf={(v) => v.name}
           label={(v) => v.name}
         />
-      )}
-      {tab === 'programme' && hallOptions.length > 0 && (
+      </FilterTier>
+      <FilterTier show={tab === 'programme' && hallOptions.length > 0}>
+        <FilterBreadcrumb parts={[
+          categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null,
+          venueFilter,
+        ]}
+        />
         <FilterRow
           className="category-filters category-filters--venue"
           value={activeHallFilter}
           onChange={setHallFilter}
           options={hallOptions}
         />
-      )}
+      </FilterTier>
 
       <main className={`main ${prefs.compactList ? 'main--compact' : ''}`}>
         {client.mode === 'demo' && (
