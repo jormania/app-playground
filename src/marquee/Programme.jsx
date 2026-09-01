@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSwipeAction } from '../shared/useSwipeAction'
 import PosterGrid from './PosterGrid.jsx'
 import { Poster } from './Poster.jsx'
@@ -214,8 +214,23 @@ export function FilterRow({
   value, onChange, options, label = (o) => o, keyOf = (o) => o,
   icon, allIcon: AllIcon, className = 'filters',
 }) {
+  // Scrolls the currently active chip into view whenever `value` actually
+  // CHANGES (the effect's own dependency array, not a ref callback re-run on
+  // every render) — without this, picking a venue further along an
+  // alphabetical row than wherever the row happened to be scrolled left it
+  // showing an arbitrary slice of OTHER venues with no visible "on" chip and
+  // no clue why, which read as the row being broken rather than merely
+  // scrolled. `nearest` so a chip already fully visible never causes a
+  // needless nudge, and this never fires from an unrelated re-render (a
+  // scan tick, a search keystroke) because `value` hasn't changed then.
+  const rowRef = useRef(null)
+  useEffect(() => {
+    rowRef.current?.querySelector('.filter--on')
+      ?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' })
+  }, [value])
+
   return (
-    <div className={className}>
+    <div className={className} ref={rowRef}>
       <button type="button" className={`filter ${!value ? 'filter--on' : ''}`} onClick={() => onChange(null)}>
         {AllIcon && <AllIcon size={14} aria-hidden="true" />}
         All

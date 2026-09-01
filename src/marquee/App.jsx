@@ -645,7 +645,7 @@ export default function App() {
         />
       )}
       <FilterTier show={tab === 'programme' && venueTierVisible}>
-        <FilterBreadcrumb parts={[!venueFilter && categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null]} />
+        <FilterBreadcrumb parts={[categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null]} />
         <FilterRow
           className="category-filters category-filters--venue"
           value={venueFilter}
