@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useSwipeAction } from '../shared/useSwipeAction'
 import PosterGrid from './PosterGrid.jsx'
 import { Poster } from './Poster.jsx'
@@ -236,6 +237,61 @@ export function FilterRow({
       })}
     </div>
   )
+}
+
+/** Drives a section's mount/enter/exit as three separate beats, because a
+ *  CSS transition needs a frame where the section already exists at its
+ *  CLOSED size before it can animate to open — flipping straight to "open"
+ *  on the same render it mounts leaves nothing for the browser to transition
+ *  FROM, so it would just snap. `mounted` controls DOM presence (stays true
+ *  for `duration`ms past the last "hide" so the closing transition has time
+ *  to play — a section that already vanished can't animate vanishing, the
+ *  same "hold it a beat past the state change" idea `useSwipeAction` uses
+ *  for its own reveal-then-settle motion); `entered` is what actually
+ *  toggles the open class, one animation frame after mounting. */
+function useMountTransition(shouldShow, duration = 180) {
+  const [mounted, setMounted] = useState(shouldShow)
+  const [entered, setEntered] = useState(shouldShow)
+  useEffect(() => {
+    let raf, t
+    if (shouldShow) {
+      setMounted(true)
+      raf = requestAnimationFrame(() => setEntered(true))
+    } else {
+      setEntered(false)
+      t = setTimeout(() => setMounted(false), duration)
+    }
+    return () => { cancelAnimationFrame(raf); clearTimeout(t) }
+  }, [shouldShow, duration])
+  return { mounted, entered }
+}
+
+/** A venue or hall tier, revealed/hidden as a whole SECTION rather than chip
+ *  by chip — the whole point being that "Theatre" appearing doesn't make
+ *  "Teatrul Excelsior" pop in a beat later, and the content below (What
+ *  changed, the programme itself) eases into its new position instead of
+ *  jumping. `grid-template-rows: 0fr → 1fr` on `.filter-tier` (marquee.css)
+ *  is what actually animates the height — it works even though the content
+ *  height is never known up front, which a plain `max-height` transition
+ *  can't do without either guessing a cap or measuring in JS. */
+export function FilterTier({ show, children }) {
+  const { mounted, entered } = useMountTransition(show)
+  if (!mounted) return null
+  return (
+    <div className={`filter-tier ${entered ? 'filter-tier--open' : ''}`}>
+      <div className="filter-tier__inner">{children}</div>
+    </div>
+  )
+}
+
+/** The compact "how did I get here" line above a revealed tier — deliberately
+ *  small, muted text rather than a heading, so the hierarchy reads without
+ *  costing any real vertical space. `parts` is already-ordered, already-
+ *  labelled text; this only joins it with "›" and drops anything falsy. */
+export function FilterBreadcrumb({ parts }) {
+  const clean = parts.filter(Boolean)
+  if (clean.length === 0) return null
+  return <p className="filter-breadcrumb">{clean.join(' › ')} ›</p>
 }
 
 export default function Programme({

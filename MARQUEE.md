@@ -2107,6 +2107,65 @@ interception) rather than assumed from the unit tests alone: the ticket row
 measured all five chip tops equal (one line, not wrapped), and the ARCUB view
 showed both dates back to back with no heading between them.
 
+### 9.59 Cinema Europa's tariff separator changed, and a thirteenth venue — Teatrul Metropolis (2026-09-01)
+
+**Cinema Europa reported "no events could be read."** iaBilet dropped the em
+dash it used to print between a tariff row's date/time and its title
+(`data-tariff-name="Vineri, 28 august - 18:15 — Chungking Express - Bilet
+preț întreg"`) at some point after §9.7 was written — every separator in the
+string is now a plain hyphen (`"Vineri, 4 septembrie - 18:00 - Dr.
+Strangelove - Bilet pret intreg"`). `iabilet.js`'s `parseTariffName` used to
+split on the em dash specifically, so every tariff row failed to parse and
+the health gate (§6) correctly refused to report an empty programme as real.
+Fixed by matching all three separators with one `[-—]` character class
+instead of splitting on the em dash — both the old and new separator styles
+now parse, so a reversion on iaBilet's side won't break this again. Confirmed
+against the live venue and bundle pages, not just a fixture; a new fixture
+(`iabilet-bundle-hyphen.html`) pins the hyphen-only format alongside the
+existing em-dash one.
+
+**Teatrul Metropolis was added as a thirteenth venue, and it is the second
+site (after Filarmonica, §9.5) where the obvious URL is the wrong one to
+read.** The theatre's own ticketing app, `bilete.teatrulmetropolis.ro`, is
+what anyone lands on first — but its server response is a bare `<div
+id="root">` with a create-react-app bundle behind it, the same
+client-rendered-only shape as Filarmonica's Next.js page (§3's survey); its
+`/api/` backend 401s a plain request regardless of the app's own hardcoded
+`T` header, so there's no static or lightly-authenticated route in either.
+Reading the venue's real markup (§1b's rule #1) turned up the actual source:
+`teatrulmetropolis.ro` — a separate WordPress install — publishes its own
+`/program/` listing, fully server-rendered, one row per showing, with poster,
+description, hall and ticket state ALL already on the listing. No `follow()`
+hop needed at all, unlike Excelsior or TNB.
+
+Two things the real markup forces the reader to get right:
+
+- **A co-produced night's own ticket link can point off-domain entirely.**
+  Metropolis stages work with other companies — "Hedwig and the Angry Inch"
+  is a Teatrul Stela Popescu production, and both its `link` and its ticket
+  anchor point at `teatrulstelapopescu.ro`, not Metropolis's own site. The
+  venue stays "Teatrul Metropolis" regardless, the same SPECTACOL
+  ITINERANT/touring-event precedent Excelsior and ARCUB already established —
+  that's who published the listing.
+- **Two halls (Sala Mare, Sala Mică) share one listing**, read straight off
+  each row's own `.show-sala`, the same shape as TNB's `hall` field — no
+  per-hall URL to configure.
+
+No price is published anywhere on this page (confirmed by reading it, not
+assumed), so every Metropolis showing's `price` stays null — a fourth venue
+in the same honest-gap company as Filarmonica/Oveit, Eventbook and iabilet
+(§3, Open section below).
+
+Registered in all three code places (`api/_lib/marquee/metropolis.js` +
+`registry.js`, `src/marquee/adapters.js`) plus the Notion `Adapter` select
+and `Area` — `centru` fit honestly (the address is ~700m from Piața Romană,
+in the ultra-central zone) with no new option needed. `adapters.js`'s own
+entry carries a note flagging the trap for anyone tempted to paste the
+`bilete.` URL into Settings instead.
+
+`npm test` (3994 tests), `npm run typecheck`, `npx eslint` on every changed
+path all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

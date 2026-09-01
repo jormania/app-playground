@@ -181,6 +181,21 @@ export const DEMO_VENUES = [
     lastChecked: '2026-08-29',
     lastResult: '7 events',
   },
+  {
+    id: 'demo-metropolis',
+    name: 'Teatrul Metropolis',
+    // The theatre's own /program/ page, NOT its ticketing SPA
+    // (bilete.teatrulmetropolis.ro), which ships no data server-side — see
+    // metropolis.js.
+    url: 'https://teatrulmetropolis.ro/program/',
+    adapter: 'metropolis',
+    status: 'active',
+    category: 'play',
+    area: 'centru',
+    address: 'Str. Mihai Eminescu 89, sector 2, București',
+    lastChecked: '2026-09-01',
+    lastResult: '18 events · 5 sold out',
+  },
 ].map(normalizeVenue)
 
 /** Two rows standing in for Wanderlist's Findings, so demo mode shows the

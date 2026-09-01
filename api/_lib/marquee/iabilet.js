@@ -43,23 +43,23 @@ function parseLdBlocks(html) {
   return out
 }
 
-/** "Vineri, 28 august - 18:15 — Chungking Express - Bilet preț întreg" into its
- *  parts. The separator before the title is an em dash; the one before the
- *  ticket-tier name is a plain hyphen and sometimes missing its surrounding
- *  space ("Memories of Murder -Bilet"), so the title is cut at the first
- *  "Bilet" rather than at a hyphen position — which also survives the
- *  occasional malformed tier text ("redus)elevi, studenti, pemsionari)") that
- *  comes after it. */
+/** "Vineri, 28 august - 18:15 — Chungking Express - Bilet preț întreg" (and,
+ *  since 2026-09, "Vineri, 4 septembrie - 18:00 - Dr. Strangelove - Bilet
+ *  pret intreg" — the site dropped the em dash before the title at some
+ *  point and now uses a plain hyphen for all three separators) into its
+ *  parts. Both separator styles are accepted so a reversion doesn't break
+ *  this again. The one before the ticket-tier name is a plain hyphen and
+ *  sometimes missing its surrounding space ("Memories of Murder -Bilet"), so
+ *  the title is cut at the first "Bilet" rather than at a hyphen position —
+ *  which also survives the occasional malformed tier text ("redus)elevi,
+ *  studenti, pemsionari)") that comes after it. */
 function parseTariffName(name) {
-  const parts = String(name).split('—')
-  if (parts.length < 2) return null // an Abonament row has no em dash at all
-  const [dateTimePart, ...rest] = parts
-  const dt = /^\s*[^,]+,\s*(\d{1,2})\s+(\S+)\s*-\s*(\d{1,2}:\d{2})\s*$/.exec(dateTimePart)
-  if (!dt) return null
-  const titlePart = rest.join('—')
-  const titleMatch = /^(.*?)\s*-\s*[Bb]ilet\b/.exec(titlePart)
-  const title = textOf(titleMatch ? titleMatch[1] : titlePart)
-  return { day: dt[1], month: dt[2], time: parseTime(dt[3]), title }
+  const m = /^\s*[^,]+,\s*(\d{1,2})\s+(\S+)\s*[-—]\s*(\d{1,2}:\d{2})\s*[-—]\s*(.*)$/.exec(String(name))
+  if (!m) return null
+  const [, day, month, time, rest] = m
+  const titleMatch = /^(.*?)\s*-\s*[Bb]ilet\b/.exec(rest)
+  const title = textOf(titleMatch ? titleMatch[1] : rest)
+  return { day, month, time: parseTime(time), title }
 }
 
 export default {

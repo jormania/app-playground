@@ -564,6 +564,26 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
     const events = iabilet.parse([bundlePage], { venue })
     expect(events.every((e) => e.date.startsWith('2026-08'))).toBe(true)
   })
+
+  it('reads the hyphen-only tariff format iaBilet switched to on 2026-09 (no em dash anywhere)', () => {
+    // The site dropped the em dash before the title at some point — every
+    // separator in "Vineri, 4 septembrie - 18:00 - Dr. Strangelove - Bilet
+    // pret intreg" is now a plain hyphen. This broke the parser entirely
+    // (Cinema Europa reported "no events could be read") until parseTariffName
+    // stopped requiring the em dash.
+    const hyphenPage = { body: fixture('iabilet-bundle-hyphen.html') }
+    const events = iabilet.parse([hyphenPage], { venue })
+    expect(events).toHaveLength(2)
+    expect(events.every((e) => !/abonament/i.test(e.title))).toBe(true)
+    const strangelove = events.find((e) => e.title === 'Dr. Strangelove')
+    expect(strangelove).toMatchObject({
+      venue: 'Cinema Europa',
+      title: 'Dr. Strangelove',
+      date: '2026-09-04',
+      time: '18:00',
+      ticketState: 'open',
+    })
+  })
 })
 
 describe('tnb (one venue, 7 halls sharing it)', () => {
