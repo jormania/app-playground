@@ -203,23 +203,37 @@ function emptyMessage(venueFilter, scanned, search) {
   return `Nothing upcoming at ${venueFilter}.`
 }
 
-/** One filter tier: an "All" chip that clears the value, plus one chip per
- *  option. Category, venue and hall all render through this — the same
- *  toggle-a-second-click-to-clear behaviour at every tier. */
+/** One filter tier: optionally an "All" chip that clears the value, plus one
+ *  chip per option. Category, venue and hall all render through this — the
+ *  same toggle-a-second-click-to-clear behaviour at every tier (which is
+ *  also why venue/hall can drop their own "All" chip below without losing
+ *  any capability — tapping the already-active chip clears it exactly the
+ *  same way). */
 /* `icon`/`allIcon` are optional — plain text-only pills (venue, hall rows)
    just don't pass them. `className` lets the category row above (in App.jsx,
    the first and most prominent tier) size itself differently from these
-   narrower venue/hall tiers without a second component to keep in sync. */
+   narrower venue/hall tiers without a second component to keep in sync.
+   `showAll` defaults on for the top category tier, where it's the one
+   obvious "clear everything" affordance; venue/hall pass it off, since
+   repeating an "All" chip on every single tier read as clutter once there
+   were three of them stacked (re-tapping the active chip already does the
+   same thing). `prefix` is the compact "Theatre ›" breadcrumb, rendered as
+   part of THIS row rather than a separate line above it — sticky to the
+   left edge so it survives the row's own horizontal scroll instead of
+   scrolling out of view with the first chip. */
 export function FilterRow({
   value, onChange, options, label = (o) => o, keyOf = (o) => o,
-  icon, allIcon: AllIcon, className = 'filters',
+  icon, allIcon: AllIcon, className = 'filters', showAll = true, prefix = null,
 }) {
   return (
     <div className={className}>
-      <button type="button" className={`filter ${!value ? 'filter--on' : ''}`} onClick={() => onChange(null)}>
-        {AllIcon && <AllIcon size={14} aria-hidden="true" />}
-        All
-      </button>
+      {prefix && <span className="filter-row__prefix">{prefix}</span>}
+      {showAll && (
+        <button type="button" className={`filter ${!value ? 'filter--on' : ''}`} onClick={() => onChange(null)}>
+          {AllIcon && <AllIcon size={14} aria-hidden="true" />}
+          All
+        </button>
+      )}
       {options.map((option) => {
         const key = keyOf(option)
         const Icon = icon?.(option)
@@ -284,14 +298,14 @@ export function FilterTier({ show, children }) {
   )
 }
 
-/** The compact "how did I get here" line above a revealed tier — deliberately
- *  small, muted text rather than a heading, so the hierarchy reads without
- *  costing any real vertical space. `parts` is already-ordered, already-
- *  labelled text; this only joins it with "›" and drops anything falsy. */
-export function FilterBreadcrumb({ parts }) {
+/** The compact "how did I get here" text — joins already-ordered,
+ *  already-labelled parts with "›" and drops anything falsy. Fed to
+ *  `FilterRow`'s `prefix` so it rides inside the tier's own row instead of
+ *  claiming a whole line of its own; returns null (nothing rendered) rather
+ *  than an empty string when there's no path yet. */
+export function filterBreadcrumb(parts) {
   const clean = parts.filter(Boolean)
-  if (clean.length === 0) return null
-  return <p className="filter-breadcrumb">{clean.join(' › ')} ›</p>
+  return clean.length ? `${clean.join(' › ')} ›` : null
 }
 
 export default function Programme({
