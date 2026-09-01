@@ -2263,6 +2263,67 @@ Verified in a real browser at 390px in both themes, against a stubbed scan
 shaped like the real roster: under Theatre the venue row lists six theatres
 and no cinemas, before and after picking one.
 
+### 9.61 A status line is a claim; the health gate is a measurement (2026-09-01)
+
+Reported: *"Teatrul Metropolis — The page answered 500 … https://teatrulmetropolis.ro/program/
+works for me in the browser, I can see the events and engage on buying tickets.
+So I do not understand why the error."*
+
+Both statements were true at once, which is the whole finding.
+
+**The site serves its complete programme under an HTTP 500.** Not an error page
+— 73,589 bytes containing all 18 showings, posters, ticket links, the right
+`<title>`, no visible PHP error (display_errors is off; the error still flips
+the status line). A browser renders the body and never mentions the status, so
+nobody at the theatre notices. Marquee's `fetchOne` discarded the body on
+`!res.ok` and reported the status, losing a venue that was, in every way that
+matters here, publishing.
+
+**The fix is to let the health gate judge the content instead of trusting the
+status line.** §6's gate already asserts a real body, the adapter's declared
+floor, and at least one parseable date — assertions a 500 error page could
+never satisfy for a venue-specific reader. So `fetchOne` now keeps the body on
+a non-2xx (HTML only: a feed that errors returns an error document, and
+`res.json()` would throw on it), and `scanVenue` parses it, with the gate as
+arbiter. Three things keep that honest rather than merely permissive:
+
+- **Throttling is never parsed through.** A rate-limit page is not a programme,
+  and a busy venue must not be reported as a broken one — the 403/429 path is
+  checked first and short-circuits, exactly as before.
+- **A salvaged page that then FAILS the gate reports the HTTP status**, never
+  "its markup has probably changed". That message would send someone to
+  rewrite a reader that is fine.
+- **Success carries `servedStatus` through to `summarize`**, so the venue's own
+  `Last Result` reads `18 events · 6 sold out · served under HTTP 500`. The
+  site's bug stays on the record instead of being silently papered over — it is
+  the theatre's to fix, and a site one PHP error from a 500 is one more from a
+  blank page.
+
+**And a second, separate thing the investigation turned up.** The same URL, the
+same headers, a different network path:
+
+| From | Status | Body |
+|---|---|---|
+| this app's egress (and the reporter's browser) | **500** | the real programme |
+| a direct fetch from the dev container | **200** | an 11KB bot check, "One moment, please…" |
+
+The bot check parses to nothing, and the gate's ordinary verdict for nothing is
+"the markup has probably changed" — a lie that costs an afternoon. It is the
+same category as a rate limiter (the site is fine, we are being held at the
+door), so it now reports as `throttled` with wording that says so.
+`looksLikeBotCheck` is deliberately generic rather than one vendor's signature,
+and is consulted **only** when the parse already came back empty, so a show
+actually called "Just a moment" can never take its venue down.
+
+This is the second time a Marquee failure turned out to be a true statement
+about the request rather than about the venue (§9.6's "throttled ≠ broken" was
+the first), and the rule generalises: **when a signal and the content disagree,
+believe the content and record the signal.**
+
+`npm test`, `npm run typecheck` and `npx eslint` all pass. Verified against the
+live site through both network paths: the 500 path reads 18 events and records
+the status, the challenge path reports a bot check.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -2322,3 +2383,13 @@ absences at the source, not gaps in a reader:
   but untested against a case like that because none exists yet.
 - `cancelled` still cannot distinguish *removed* from *page reorganised*. The health gate
   makes the false positive unlikely, not impossible; the guide says so out loud.
+- **Teatrul Metropolis sits behind bot protection whose behaviour depends on the
+  network the request comes from** (§9.61). Vercel's own egress currently gets the
+  real page — that is what produced the reported "answered 500" rather than a
+  challenge — but nothing guarantees it stays that way, and the venue would then
+  report `throttled` indefinitely rather than incorrectly. No fix from here if that
+  happens: a JS challenge wants a browser, and this app deliberately has none (§3).
+- **Its 500 is the theatre's bug, not ours**, and worth telling them about: the
+  programme renders fine, so nobody there has any reason to know. Marquee reads it
+  either way now, and records `served under HTTP 500` on the venue row so the
+  anomaly stays visible instead of becoming invisible plumbing.
