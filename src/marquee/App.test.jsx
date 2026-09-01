@@ -126,24 +126,63 @@ describe('Marquee, end to end in demo mode', () => {
     expect(screen.queryByText(/No venues yet/)).toBeNull();
   });
 
-  it('the category and venue tiers render together, and picking a category reveals only its venues', async () => {
-    // §9.50: both tiers moved up out of Programme.jsx into App.jsx, stuck
-    // directly together right under the week strip. The demo roster spans
-    // several categories (play/movie/concert/event), so category chips
-    // render before any venue chip does — and a venue chip appears only once
-    // a category narrows things down, the same two-tier behaviour
-    // Programme.test.jsx used to check on its own, now proven against the
-    // real stacked block.
+  it('every level of the cascade is on screen at once, and a type scopes the venues under it', async () => {
+    // §9.60's core promise: the chain is visible top to leaf rather than
+    // revealed one tier at a time, and a venue row under a type contains
+    // that type's venues and nothing else.
     const user = userEvent.setup();
     render(<App />);
 
+    // Type AND venue both there from the start — no level you have to
+    // unlock something else to see.
     expect(await screen.findByRole('button', { name: 'Theatre' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Cinema' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Teatrul Excelsior' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Teatrul Excelsior' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cinema Union' })).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: 'Theatre' }));
     expect(await screen.findByRole('button', { name: 'Teatrul Excelsior' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Cinema Union' })).toBeNull();
+  });
+
+  it('picking a venue never widens its own type back out to every venue', async () => {
+    // The reported bug, and the reason the cascade was rebuilt: the venue
+    // row used to expand to EVERY active venue the moment one was selected,
+    // so three cinemas sat listed under a "Theatre ›" label. A child level
+    // must not widen the scope its parent set.
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole('button', { name: 'Theatre' }));
+    await user.click(await screen.findByRole('button', { name: 'Teatrul Excelsior' }));
+
+    expect(screen.queryByRole('button', { name: 'Cinema Union' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cinema Europa' })).toBeNull();
+    // And the top of the chain is still there, still visibly the thing that
+    // scoped this — it used to hide itself entirely at this point.
+    expect(screen.getByRole('button', { name: 'Theatre' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('the path says where you are, and its crumbs step back up the chain', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole('button', { name: 'Theatre' }));
+    await user.click(await screen.findByRole('button', { name: 'Teatrul Excelsior' }));
+
+    const path = screen.getByRole('navigation', { name: 'Filter the programme' });
+    expect(path.textContent).toContain('Theatre');
+    expect(path.textContent).toContain('Teatrul Excelsior');
+
+    // A crumb drops the levels BELOW it and keeps its own — back to Theatre
+    // means the venue clears and the type stays.
+    await user.click(screen.getByRole('button', { name: 'Back to Theatre' }));
+    expect(screen.getByRole('button', { name: 'Theatre' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Teatrul Excelsior' }).getAttribute('aria-pressed')).toBe('false');
+
+    // The root crumb clears the whole chain in one tap.
+    await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
+    expect(screen.getByRole('button', { name: 'Theatre' }).getAttribute('aria-pressed')).toBe('false');
   });
 
   it('an interdisciplinary venue appears under every category its CURRENT programme spans, not just its own default', async () => {
@@ -178,19 +217,54 @@ describe('Marquee, end to end in demo mode', () => {
     expect(await screen.findByRole('button', { name: 'ARCUB' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'ARCUB' }));
 
-    // Clicking the venue shows everything IT offers — the "Theatre" pick that
-    // got us here is cleared, not still silently filtering ARCUB's own list.
+    // Theatre is still the scope, so ARCUB shows its play and not its
+    // concert — the row and the label above it agree, which is the whole
+    // point of the rebuild (§9.60). It used to clear the type here instead.
     expect(await screen.findByText('Cineva are să vină')).toBeTruthy();
-    expect(screen.getByText('Teodora Brody')).toBeTruthy();
+    expect(screen.queryByText('Teodora Brody')).toBeNull();
 
-    // The category row has re-scoped to ARCUB's own offerings — a sub-filter
-    // within the venue, not a way back out to browsing every venue by category.
-    expect(await screen.findByRole('button', { name: 'Concert' })).toBeTruthy();
+    // ARCUB is in Concert too, so switching the type above it leaves you
+    // standing at ARCUB — an interdisciplinary venue is browsable through
+    // the ordinary hierarchy rather than through a mode of its own.
     await user.click(screen.getByRole('button', { name: 'Concert' }));
-    expect(screen.getByText('Teodora Brody')).toBeTruthy();
+    expect(await screen.findByText('Teodora Brody')).toBeTruthy();
     expect(screen.queryByText('Cineva are să vină')).toBeNull();
-    // Still on ARCUB, not bounced back out to the top tier.
-    expect(screen.getByRole('button', { name: 'ARCUB' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'ARCUB' }).getAttribute('aria-pressed')).toBe('true');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a type the selected venue has nothing in steps back out to that type’s own venues', async () => {
+    // The other half of the rule above: keep the venue when the new type
+    // still contains it, drop it when it doesn't, rather than leaving the
+    // programme filtered by a venue the row no longer offers.
+    const user = userEvent.setup();
+    const play = {
+      key: 'arcub:2099-01-02:cineva-are-sa-vina', venue: 'ARCUB', title: 'Cineva are să vină',
+      date: '2099-01-02', ticketState: 'open', category: 'play',
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        scannedAt: new Date().toISOString(),
+        venues: [{ venue: 'ARCUB', status: 'ok', events: [play] }],
+        events: [play],
+      }),
+    })));
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Cineva are să vină');
+
+    await user.click(screen.getByRole('button', { name: 'Theatre' }));
+    await user.click(await screen.findByRole('button', { name: 'ARCUB' }));
+    expect(screen.getByRole('button', { name: 'ARCUB' }).getAttribute('aria-pressed')).toBe('true');
+
+    // ARCUB has nothing under Cinema, so the venue clears rather than
+    // stranding the view on it.
+    await user.click(screen.getByRole('button', { name: 'Cinema' }));
+    expect(screen.queryByRole('button', { name: 'ARCUB' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Cinema' }).getAttribute('aria-pressed')).toBe('true');
 
     vi.unstubAllGlobals();
   });
@@ -201,9 +275,12 @@ describe('Marquee, end to end in demo mode', () => {
       key: 'arcub:2099-01-02:cineva-are-sa-vina', venue: 'ARCUB', title: 'Cineva are să vină',
       date: '2099-01-02', ticketState: 'open', category: 'play',
     };
+    // Both the same type, so the venue selection is the only thing under
+    // test here — the cascade keeps its type scope now (§9.60), and a
+    // concert would simply be filtered out by the Theatre pick below.
     const concert = {
       key: 'arcub:2099-01-05:teodora-brody', venue: 'ARCUB', title: 'Teodora Brody',
-      date: '2099-01-05', ticketState: 'open', category: 'concert',
+      date: '2099-01-05', ticketState: 'open', category: 'play',
     };
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
