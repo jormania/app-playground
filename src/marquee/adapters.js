@@ -132,6 +132,13 @@ export const ADAPTERS = [
     hosts: ['arcub.ro'],
     note: 'Interdisciplinary — reads its own per-event category tag, not one guess for the whole venue.',
   },
+  {
+    id: 'metropolis',
+    label: 'Teatrul Metropolis',
+    rung: 'selector',
+    hosts: ['teatrulmetropolis.ro'],
+    note: 'Reads the theatre’s own WordPress /program/ page — its ticketing SPA (bilete.teatrulmetropolis.ro) ships no data at all server-side, so pasting THAT URL here will not resolve to a working scan.',
+  },
 ]
 
 export const ADAPTER_IDS = ADAPTERS.map((a) => a.id)
