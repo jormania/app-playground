@@ -9,7 +9,7 @@ import {
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
-import Programme, { FilterRow, FilterTier, filterBreadcrumb } from './Programme.jsx'
+import Programme, { FilterRow, FilterTier, FilterBreadcrumb } from './Programme.jsx'
 import WeekStrip from './WeekStrip.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
@@ -645,6 +645,7 @@ export default function App() {
         />
       )}
       <FilterTier show={tab === 'programme' && venueTierVisible}>
+        <FilterBreadcrumb parts={[!venueFilter && categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null]} />
         <FilterRow
           className="category-filters category-filters--venue"
           value={venueFilter}
@@ -652,21 +653,19 @@ export default function App() {
           options={venueOptions}
           keyOf={(v) => v.name}
           label={(v) => v.name}
-          showAll={false}
-          prefix={filterBreadcrumb([categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null])}
         />
       </FilterTier>
       <FilterTier show={tab === 'programme' && hallOptions.length > 0}>
+        <FilterBreadcrumb parts={[
+          categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null,
+          venueFilter,
+        ]}
+        />
         <FilterRow
           className="category-filters category-filters--venue"
           value={activeHallFilter}
           onChange={setHallFilter}
           options={hallOptions}
-          showAll={false}
-          prefix={filterBreadcrumb([
-            categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null,
-            venueFilter,
-          ])}
         />
       </FilterTier>
 
