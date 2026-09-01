@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   toProductions, byDate, domIdForDay, nextDayKeys, densityForDays,
-  categoryFor, categoriesInUse, categoriesForVenue, visibleProductions, venueCategoryMap,
+  categoryFor, categoriesInUse, venuesForCategory, visibleProductions, venueCategoryMap,
 } from './programme.js'
 
 // programme.js's other functions (byDate, visibleProductions, the filter
@@ -180,34 +180,41 @@ describe('categoriesInUse', () => {
   })
 })
 
-describe('categoriesForVenue', () => {
-  it('returns only the one category a single-discipline venue has', () => {
-    const venues = [{ name: 'Teatrul Excelsior', category: 'play' }]
-    const productions = toProductions([
-      event({ venue: 'Teatrul Excelsior', title: 'Tomcat', date: '2026-09-05', category: null }),
-    ])
-    expect(categoriesForVenue('Teatrul Excelsior', venues, productions)).toEqual(['play'])
+describe('venuesForCategory', () => {
+  const venues = [
+    { name: 'Teatrul Excelsior', category: 'play' },
+    { name: 'Cinema Union', category: 'movie' },
+    { name: 'ARCUB', category: 'event' },
+  ]
+  const productions = toProductions([
+    event({ venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' }),
+    event({ venue: 'Cinema Union', title: 'Some Film', date: '2026-09-06', category: null }),
+  ])
+
+  it('narrows nothing when no category is picked', () => {
+    expect(venuesForCategory(venues, productions, null)).toEqual(venues)
   })
 
-  it('returns every category an interdisciplinary venue’s CURRENT productions span', () => {
-    const venues = [{ name: 'ARCUB', category: 'event' }]
-    const productions = toProductions([
-      event({ venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' }),
-      event({ venue: 'ARCUB', title: 'Teodora Brody', date: '2026-09-06', category: 'concert' }),
-    ])
-    expect(categoriesForVenue('ARCUB', venues, productions)).toEqual(['play', 'concert', 'event'])
+  it('keeps a venue whose own default matches, even with nothing on', () => {
+    // Excelsior has no productions in this fixture at all — a theatre
+    // between seasons must still be listed under Theatre rather than
+    // vanishing until its next programme goes up.
+    expect(venuesForCategory(venues, productions, 'play').map((v) => v.name))
+      .toEqual(['Teatrul Excelsior', 'ARCUB'])
   })
 
-  it('ignores another venue’s productions entirely', () => {
-    const venues = [{ name: 'ARCUB', category: 'event' }, { name: 'Teatrul Excelsior', category: 'play' }]
-    const productions = toProductions([
-      event({ venue: 'ARCUB', title: 'Cineva are să vină', date: '2026-09-05', category: 'play' }),
-      event({ venue: 'Teatrul Excelsior', title: 'Tomcat', date: '2026-09-05', category: null }),
-    ])
-    expect(categoriesForVenue('ARCUB', venues, productions)).toEqual(['play', 'event'])
+  it('keeps a venue whose CURRENT production carries the category, whatever its default says', () => {
+    // ARCUB defaults to `event`, and is in the Theatre list above purely
+    // because it is running a play this week.
+    expect(venuesForCategory(venues, productions, 'event').map((v) => v.name)).toEqual(['ARCUB'])
   })
 
-  it('is empty for a venue name that matches nothing', () => {
-    expect(categoriesForVenue('Nobody Watches This', [], [])).toEqual([])
+  it('drops a venue that is neither — the cinemas-under-Theatre bug', () => {
+    expect(venuesForCategory(venues, productions, 'play').map((v) => v.name))
+      .not.toContain('Cinema Union')
+  })
+
+  it('is empty when nothing at all belongs to the category', () => {
+    expect(venuesForCategory(venues, productions, 'art')).toEqual([])
   })
 })

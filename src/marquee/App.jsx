@@ -9,14 +9,15 @@ import {
 import VenueList from './VenueList.jsx'
 import VenueForm from './VenueForm.jsx'
 import Changes from './Changes.jsx'
-import Programme, { FilterRow, FilterTier, FilterBreadcrumb } from './Programme.jsx'
+import Programme from './Programme.jsx'
+import FilterCascade from './FilterCascade.jsx'
 import WeekStrip from './WeekStrip.jsx'
 import KeepSheet from './KeepSheet.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import { sortVenues, scannable, togglePaused, searchVenues } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
-  changedKeyMap, TRIAGE, venueCategoryMap, categoryFor, categoriesInUse, categoriesForVenue, hallsInUse, nextDayKeys, densityForDays,
+  changedKeyMap, TRIAGE, venueCategoryMap, categoryFor, categoriesInUse, venuesForCategory, hallsInUse, nextDayKeys, densityForDays,
   troubleByVenue, CATEGORY_LABEL,
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
@@ -70,23 +71,15 @@ export default function App() {
   const [dismissedKeys, setDismissedKeys] = useState(() => loadDismissedChanges())
 
   const [triage, setTriageState] = useState(() => loadTriage())
-  // Three tiers, each narrowing the one before it: a category (Theatre, Cinema, …)
-  // reveals that category's venues, a venue reveals its own halls when it has more
-  // than one. Picking a broader tier resets the narrower ones — there is no sense
-  // in which a stale hall filter should survive switching venues out from under it.
+  // The filter cascade: type (Theatre, Cinema, …) → venue → hall, each level
+  // scoped by the ones above it and by nothing else. These three are the only
+  // state it has; the path line, every chip's highlight and every count are
+  // read straight off them, which is what stopped the rows and the label
+  // above them disagreeing about what was actually filtered (§9.60, and
+  // FilterCascade.jsx's own header for the three mechanisms that caused it).
   const [categoryFilter, setCategoryFilter] = useState(null)
   const [venueFilter, setVenueFilter] = useState(null)
   const [hallFilter, setHallFilter] = useState(null)
-  // Display-only memory of which category tier a venue was reached through.
-  // `categoryFilter` itself gets cleared the moment a venue is picked (see
-  // `handleVenueFilter` — that's what lets ARCUB show everything it offers,
-  // not just the one category you arrived through), but the breadcrumb above
-  // the hall tier ("Theatre › Teatrul Național București ›") is meant to keep
-  // showing how you got here even after that clear. Sharing one variable for
-  // both jobs would make the breadcrumb vanish at exactly the moment it
-  // becomes most useful — right after picking a venue — so this tracks the
-  // path separately from the live filter.
-  const [categoryBreadcrumb, setCategoryBreadcrumb] = useState(null)
   const [search, setSearch] = useState('')
   // The Venues tab has its own query rather than sharing the programme's.
   // Sharing looked tidier and behaved badly: a leftover "Tomcat" would carry
@@ -224,75 +217,87 @@ export default function App() {
   // venue (ARCUB) surfaces every category its CURRENT programme actually
   // spans, not only the one its venue row defaults to.
   const categories = useMemo(() => categoriesInUse(active, productions), [active, productions])
-  // Once a SPECIFIC venue is selected, the category row stops being "browse
-  // everything by category" and becomes "what does THIS venue itself offer" —
-  // a single-discipline venue (categoriesForVenue returns one category) then
-  // has nothing to add and the row simply doesn't render (the `.length > 1`
-  // check below), while an interdisciplinary one like ARCUB gets a real
-  // sub-filter across its own theatre/concert/art nights.
-  const categoryOptions = useMemo(
-    () => (venueFilter ? categoriesForVenue(venueFilter, active, productions) : categories),
-    [venueFilter, active, productions, categories],
-  )
-  // Revealed only once a category is picked — this is the whole point: a
-  // resting row of ~5 category chips instead of one flat row that grows with
-  // every venue ever added.
-  //
-  // A venue qualifies either by its own default OR by actually having a
-  // current production tagged with this category — without the second half,
-  // picking "Theatre" would never show ARCUB, whose venue row defaults to
-  // `event`, even on a week it's running a play.
-  const venuesInCategory = useMemo(() => {
-    if (!categoryFilter) return []
-    return active.filter((v) => v.category === categoryFilter
-      || productions.some((p) => p.venue === v.name && categoryFor(p, venueCategory) === categoryFilter))
-  }, [active, categoryFilter, productions, venueCategory])
-  // More than one category actually in use is what turns this into a two-tier
-  // filter — a single-category setup falls straight back to one flat venue
-  // row. Both tiers render together here (§9.49) — directly under the week
-  // strip, stuck to the category row rather than buried below it — so the
-  // venue row's own visibility depends only on category state, never on
-  // Programme's scan/Trouble/stale banners.
-  //
-  // Once a venue IS the active filter, every other venue stays reachable too
-  // (switching venues shouldn't require backing out to category browsing
-  // first) — the category constraint that got you here was already cleared
-  // by `handleVenueFilter`, so this can't accidentally show a venue whose
-  // productions don't match some stale category.
-  const categoryMode = categories.length > 1
-  const venueOptions = venueFilter ? active : (categoryMode ? venuesInCategory : active)
-  const venueTierVisible = tab === 'programme'
-    && (venueFilter ? true : (categoryMode ? Boolean(categoryFilter) : venueOptions.length > 1))
 
-  const byCategoryAndVenue = useMemo(() => visibleProductions(productions, {
+  // The cascade narrows ONE pool, one level at a time, and every level's
+  // options and counts come from the array its own parent handed down. That
+  // is the rule "a level is scoped by its parents and by nothing else" as
+  // actual code rather than as a promise: `byType` cannot list a venue the
+  // type excludes, and a count cannot disagree with the list beside it,
+  // because they are the same array.
+  //
+  // `pool` is everything the Settings toggles and triage leave standing,
+  // with none of the three cascade filters applied — a level that counted
+  // its own filter would only ever report the number already on screen.
+  const pool = useMemo(() => visibleProductions(productions, {
     triage,
-    venue: venueFilter,
-    category: categoryFilter,
     venueCategory,
     hideIgnored: !prefs.showIgnored,
     hideSoldOut: prefs.hideSoldOut,
     hideKept: prefs.hideKept,
-  }), [productions, triage, venueFilter, categoryFilter, venueCategory, prefs.showIgnored, prefs.hideSoldOut, prefs.hideKept])
+  }), [productions, triage, venueCategory, prefs.showIgnored, prefs.hideSoldOut, prefs.hideKept])
 
-  // Computed from the venue-filtered set, BEFORE any hall filter is applied —
-  // otherwise picking a hall would immediately erase every other hall from the
-  // options meant to let you switch back. Empty unless a single venue with more
-  // than one hall is selected (see hallsInUse) — a venue with just one hall, or
-  // none named at all, never grows a pointless third row.
-  const hallOptions = useMemo(
-    () => (venueFilter ? hallsInUse(byCategoryAndVenue, venueFilter) : []),
-    [byCategoryAndVenue, venueFilter],
+  const byType = useMemo(
+    () => (categoryFilter ? pool.filter((p) => categoryFor(p, venueCategory) === categoryFilter) : pool),
+    [pool, categoryFilter, venueCategory],
   )
-  // Guards against a stale filter surviving a scan that no longer has that hall,
-  // rather than trusting the state to always get cleared in time.
+  // The venues this type actually contains — never "all of them once a venue
+  // is picked", which is what put three cinemas under a Theatre label.
+  const venuesInScope = useMemo(
+    () => venuesForCategory(active, pool, categoryFilter, venueCategory),
+    [active, pool, categoryFilter, venueCategory],
+  )
+  // A venue filter is only honoured while the type above it still contains
+  // that venue — the same defensive re-derivation `activeHallFilter` has
+  // always done, so a re-scan that empties a venue can't leave the programme
+  // filtered by something the rows no longer offer.
+  const activeVenueFilter = venueFilter && venuesInScope.some((v) => v.name === venueFilter)
+    ? venueFilter
+    : null
+
+  const byVenue = useMemo(
+    () => (activeVenueFilter ? byType.filter((p) => p.venue === activeVenueFilter) : byType),
+    [byType, activeVenueFilter],
+  )
+  // Computed BEFORE any hall filter is applied — otherwise picking a hall
+  // would immediately erase every other hall from the options meant to let
+  // you switch between them. A venue with one hall (or none named) yields an
+  // empty list and the level doesn't render.
+  const hallOptions = useMemo(
+    () => (activeVenueFilter ? hallsInUse(byVenue, activeVenueFilter) : []),
+    [byVenue, activeVenueFilter],
+  )
   const activeHallFilter = hallFilter && hallOptions.includes(hallFilter) ? hallFilter : null
+
+  // How many productions sit behind each option, at that option's OWN level
+  // of the cascade — the type counts over the whole pool, the venue counts
+  // within the chosen type, the hall counts within the chosen venue. Counted
+  // this way a number never moves because of something picked BELOW it,
+  // which is what makes them usable for orientation rather than just decoration.
+  const typeCounts = useMemo(() => {
+    const counts = new Map()
+    for (const p of pool) {
+      const category = categoryFor(p, venueCategory)
+      if (category) counts.set(category, (counts.get(category) ?? 0) + 1)
+    }
+    return counts
+  }, [pool, venueCategory])
+  const venueCounts = useMemo(() => {
+    const counts = new Map()
+    for (const p of byType) counts.set(p.venue, (counts.get(p.venue) ?? 0) + 1)
+    return counts
+  }, [byType])
+  const hallCounts = useMemo(() => {
+    const counts = new Map()
+    for (const p of byVenue) if (p.hall) counts.set(p.hall, (counts.get(p.hall) ?? 0) + 1)
+    return counts
+  }, [byVenue])
 
   // The same filtered set feeds both the day list and the week strip below —
   // computed once so the two never disagree about what's currently visible.
   const visibleProductionsFlat = useMemo(() => searchProductions(
-    activeHallFilter ? byCategoryAndVenue.filter((p) => p.hall === activeHallFilter) : byCategoryAndVenue,
+    activeHallFilter ? byVenue.filter((p) => p.hall === activeHallFilter) : byVenue,
     search,
-  ), [byCategoryAndVenue, activeHallFilter, search])
+  ), [byVenue, activeHallFilter, search])
 
   const days = useMemo(() => byDate(visibleProductionsFlat), [visibleProductionsFlat])
 
@@ -302,35 +307,82 @@ export default function App() {
   // itself should invalidate a memo.
   const weekDensity = densityForDays(visibleProductionsFlat, nextDayKeys(new Date()))
 
-  /** Category → venue → hall, each tier resetting the ones narrower than it —
-   *  a stale hall filter surviving a venue switch, or a stale venue filter
-   *  surviving a category switch, would silently hide productions you didn't
-   *  mean to filter out.
-   *
-   *  Once a specific venue is already selected, though, the category row has
-   *  changed roles (see `categoryOptions` above) — it's no longer "browse by
-   *  category across every venue," it's "narrow within this one venue," so
-   *  picking a category there must NOT back out of the venue. Only a
-   *  category pick made at the TOP tier (no venue selected yet) still clears
-   *  venue, the original drill-down behaviour. */
-  const handleCategoryFilter = (category) => {
+  /** Changing the type drops a venue the new type doesn't contain, and keeps
+   *  one it does. That second half is what makes an interdisciplinary venue
+   *  browsable without a mode of its own: ARCUB is in both Theatre and
+   *  Concert, so flipping between them leaves you standing at ARCUB, looking
+   *  at its plays and then its concerts. A cinema isn't in Theatre, so
+   *  picking Theatre while on one steps you back out to the type's own
+   *  venues rather than showing an empty programme under a venue the row no
+   *  longer offers. Nothing here ever clears the level ABOVE it. */
+  const handleTypeFilter = (category) => {
     setCategoryFilter(category)
-    setCategoryBreadcrumb(category)
-    setHallFilter(null)
-    if (!venueFilter) setVenueFilter(null)
+    const stillInScope = venueFilter
+      && venuesForCategory(active, pool, category, venueCategory).some((v) => v.name === venueFilter)
+    if (!stillInScope) {
+      setVenueFilter(null)
+      setHallFilter(null)
+    }
   }
-  /** Clicking a specific venue shows everything IT offers — clearing whatever
-   *  category got you here, rather than staying silently locked to it, is
-   *  the whole point: ARCUB reached via "Theatre" should not go on hiding its
-   *  own concerts and exhibitions once you're looking at ARCUB itself.
-   *  Clicking back to "All" (venue === null) is a different action — backing
-   *  OUT of a venue to browse by category again — so that one leaves
-   *  `categoryFilter` alone. */
+  /** A hall belongs to one venue, so it never survives a venue change. */
   const handleVenueFilter = (venue) => {
     setVenueFilter(venue)
     setHallFilter(null)
-    if (venue) setCategoryFilter(null)
   }
+  const resetFilters = () => {
+    setCategoryFilter(null)
+    setVenueFilter(null)
+    setHallFilter(null)
+  }
+
+  /** The three levels, top to leaf, exactly as the cascade draws them: each
+   *  one's options already scoped by its parents, each one's `focus` (what
+   *  its own crumb in the path line does) dropping only the levels BELOW it. */
+  const filterLevels = useMemo(() => [
+    {
+      id: 'type',
+      label: 'Type',
+      value: categoryFilter,
+      valueLabel: categoryFilter ? CATEGORY_LABEL[categoryFilter] ?? categoryFilter : null,
+      options: categories.map((c) => ({
+        key: c,
+        label: CATEGORY_LABEL[c] ?? c,
+        icon: CATEGORY_ICON[c],
+        count: typeCounts.get(c) ?? 0,
+      })),
+      allIcon: StarIcon,
+      allCount: pool.length,
+      onChange: handleTypeFilter,
+      focus: () => { setVenueFilter(null); setHallFilter(null) },
+    },
+    {
+      id: 'venue',
+      label: 'Venue',
+      value: activeVenueFilter,
+      options: venuesInScope.map((v) => ({ key: v.name, label: v.name, count: venueCounts.get(v.name) ?? 0 })),
+      allCount: byType.length,
+      // Worth showing at ONE option where the other levels aren't: stepping
+      // into that single venue is what reveals the hall level under it, so
+      // hiding the row would leave a level reachable only by a filter you
+      // can't see.
+      minOptions: 1,
+      onChange: handleVenueFilter,
+      focus: () => setHallFilter(null),
+    },
+    {
+      id: 'hall',
+      label: 'Hall',
+      value: activeHallFilter,
+      options: hallOptions.map((h) => ({ key: h, label: h, count: hallCounts.get(h) ?? 0 })),
+      allCount: byVenue.length,
+      onChange: setHallFilter,
+    },
+  // handleTypeFilter/handleVenueFilter are re-created every render by design
+  // (they close over the current filters); the level list only has to be
+  // stable across renders where nothing it DISPLAYS changed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [categories, typeCounts, venuesInScope, venueCounts, hallOptions, hallCounts,
+    categoryFilter, activeVenueFilter, activeHallFilter, pool.length, byType.length, byVenue.length])
 
   // What "What changed" already said about this scan, keyed for a card to look
   // itself up in — so scrolling the programme shows you what's new in place,
@@ -619,55 +671,14 @@ export default function App() {
           filter. */}
       {tab === 'programme' && scan && <WeekStrip density={weekDensity} />}
 
-      {/* Category, venue, hall — all three now stacked directly together with
-          nothing between them, one connected drill-down rather than hall
-          rendering two sections further down inside Programme.jsx with its
-          own spacing rules (that mismatch, on a wide-enough screen to have
-          all three at once, is what made the gaps between tiers visibly
-          uneven — §9.50). All three are the horizontal-scroll ticker style
-          (§9.48/9.49): each a fixed one-line height whenever it renders, so
-          the only thing that can shift what's below the whole block is a
-          tier's own appearance — never the day strip above, and never a
-          height change within any one row. `.category-filters:has(+
-          .category-filters)` in marquee.css collapses the gap between
-          adjacent tiers uniformly, however many happen to be showing.
-          Programme-tab only: the Venues tab has its own search, not this
-          split. */}
-      {tab === 'programme' && categoryOptions.length > 1 && (
-        <FilterRow
-          className="category-filters"
-          value={categoryFilter}
-          onChange={handleCategoryFilter}
-          options={categoryOptions}
-          label={(c) => CATEGORY_LABEL[c] ?? c}
-          icon={(c) => CATEGORY_ICON[c]}
-          allIcon={StarIcon}
-        />
-      )}
-      <FilterTier show={tab === 'programme' && venueTierVisible}>
-        <FilterBreadcrumb parts={[categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null]} />
-        <FilterRow
-          className="category-filters category-filters--venue"
-          value={venueFilter}
-          onChange={handleVenueFilter}
-          options={venueOptions}
-          keyOf={(v) => v.name}
-          label={(v) => v.name}
-        />
-      </FilterTier>
-      <FilterTier show={tab === 'programme' && hallOptions.length > 0}>
-        <FilterBreadcrumb parts={[
-          categoryBreadcrumb ? CATEGORY_LABEL[categoryBreadcrumb] ?? categoryBreadcrumb : null,
-          venueFilter,
-        ]}
-        />
-        <FilterRow
-          className="category-filters category-filters--venue"
-          value={activeHallFilter}
-          onChange={setHallFilter}
-          options={hallOptions}
-        />
-      </FilterTier>
+      {/* The whole cascade, right under the week strip and above everything
+          else: type → venue → hall, every level that has a choice to offer
+          on screen at once, each scoped by the ones above it (§9.60). One
+          component rather than three rows assembled here, because the bug it
+          replaces was precisely three rows each deciding their own scope and
+          none of them agreeing. Programme-tab only: the Venues tab has its
+          own search, not this. */}
+      {tab === 'programme' && <FilterCascade levels={filterLevels} onReset={resetFilters} />}
 
       <main className={`main ${prefs.compactList ? 'main--compact' : ''}`}>
         {client.mode === 'demo' && (
@@ -696,7 +707,7 @@ export default function App() {
               triage={triage}
               changedKeys={changedKeys}
               search={search}
-              venueFilter={venueFilter}
+              venueFilter={activeVenueFilter}
               viewMode={prefs.viewMode}
               swipeEnabled={prefs.swipeEnabled}
               onKeep={(showing, production) => setKeeping({ showing, production })}

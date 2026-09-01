@@ -638,153 +638,149 @@ button { color: inherit; font: inherit; }
 
 .trouble__row--parser-broken, .trouble__row--unreachable { border-color: var(--color-danger); color: var(--color-danger); }
 
-/* ── Filters ───────────────────────────────────────────────────────────── */
-.filters { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
+/* ── Filter cascade (type → venue → hall) ──────────────────────────────────
+   One block, three levels, rebuilt from scratch (§9.60) after three
+   separately-scoped tiers spent three rounds disagreeing with the label
+   drawn above them. What matters visually:
 
-.filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  padding: 0.2rem 0.7rem;
-  font: inherit;
-  font-size: 0.78rem;
-  color: var(--color-muted);
-  cursor: pointer;
-}
+   - Every level is ONE line that scrolls horizontally and never wraps. A
+     phone must be able to swipe along a row of thirteen venues without the
+     block growing a second or third line under it.
+   - Every level carries a STICKY label pinned to its own left edge, so a row
+     scrolled halfway along still says what it is. This is the piece the old
+     design never had: a bare row of chips mid-scroll is unreadable, and that
+     is precisely how the venue row looked once it had been scrolled to a
+     selection further along the alphabet.
+   - The three labels share a min-width, so the rows line up as a chain
+     rather than three unrelated strips.
+   - The top level keeps the heavier accent-filled pill it always had; venue
+     and hall stay outline-only so the levels read in order of scope rather
+     than competing (§9.48's rule, preserved through the rebuild). */
+.cascade { margin: 0 0 0.6rem; }
 
-.filter--on { border-color: var(--color-accent); color: var(--color-accent); }
-
-/* The category tier — the first and most prominent filter, rendered up in
-   App.jsx beside the tabs rather than down here with the narrower venue/hall
-   rows. Bigger pills, and "on" reads as a solid fill rather than just an
-   outline: this is the tier picked once per visit and worth the extra
-   weight, where venue/hall below stay outline-only so they don't compete
-   with it for attention.
-
-   `nowrap` + horizontal scroll rather than `.filters`' own wrap: today's
-   handful of categories (§9.48) fits one row at every width already, this
-   is what keeps it that way as a TICKER rather than a second line once a
-   category is ever added past what fits — `.filter` below is `flex-shrink:
-   0` so a pill scrolls out of view whole, never gets squeezed illegibly
-   thin trying to share the row with one more than fits. No visible
-   scrollbar (still scrollable by touch/trackpad) — a bare thin bar reading
-   as a stray line under 3-4 pills that never actually need it today. */
-.category-filters {
-  /* The bug this fixes: `className="category-filters"` never carries the
-     base `.filters` class, so `display: flex` never actually applied here —
-     `flex-wrap`/`gap` below were inert on a plain block div, and its `.filter`
-     buttons wrapped like ordinary inline content once their combined width
-     passed one line. Invisible while the category count stayed small enough
-     to fit regardless; visible the moment Event and Art pushed it past that,
-     reported directly. Nowrap + horizontal scroll is load-bearing on a phone:
-     this row must stay one line and be swipeable, never grow a second row,
-     whatever gets added to it. */
+/* Where you are, and everything above you one tap away. */
+.cascade__path {
   display: flex;
-  gap: 0.45rem;
-  margin: 0 0 0.6rem;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.category-filters::-webkit-scrollbar { display: none; }
-
-.category-filters .filter {
-  flex-shrink: 0;
-  padding: 0.4rem 0.85rem;
-  font-size: 0.85rem;
-  gap: 0.4rem;
-}
-
-.category-filters .filter--on {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
-}
-
-/* Venue and hall — both this same "narrower tier" style, directly under
-   whichever tier they narrow — one connected drill-down, not sections apart.
-   Smaller and outline-only even when picked, same "the narrower tier stays
-   quieter" rule §9.48 already set for venue/hall next to category. Each tier
-   is wrapped in `.filter-tier` (below) rather than sitting bare, so the gap
-   between category→venue→hall comes from the tiers' own tight margins, not
-   an adjacency selector reaching across a wrapper. */
-.category-filters--venue .filter {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.78rem;
-}
-
-.category-filters--venue .filter--on {
-  background: none;
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-/* The top category row loses its own trailing margin the moment a venue tier
-   is about to render under it — same "close the gap between tiers" idea
-   §9.50 established, just re-pointed at the wrapper instead of a bare sibling
-   row now that venue/hall each live inside their own `.filter-tier`. */
-.category-filters:has(+ .filter-tier) { margin-bottom: 0.3rem; }
-
-/* ── Filter tiers (venue, hall) — whole-section reveal ────────────────────
-   A tier is revealed or hidden as one block, not chip by chip: this is what
-   makes "Theatre" appearing not also make "Teatrul Excelsior" pop in a beat
-   later, and what lets whatever sits below (What changed, the programme
-   itself) ease into its new position instead of jumping.
-
-   `grid-template-rows: 0fr → 1fr` on the OUTER element, with the actual
-   content one level in inside `.filter-tier__inner` (`overflow: hidden`), is
-   what animates a height nobody measured up front — a plain `max-height`
-   transition needs either a guessed cap or a JS-measured pixel value; a 0fr/
-   1fr grid row animates to the content's real height with neither. Opacity
-   rides along so the reveal reads as a soft fade-and-drop rather than a pure
-   height stretch. `FilterTier` (Programme.jsx) is what sequences the
-   `--open` class onto a real animation frame after mount — flipping it on
-   the SAME render as mounting would leave nothing for the transition to
-   animate from. */
-.filter-tier {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition: grid-template-rows 180ms ease, opacity 140ms ease;
-}
-
-.filter-tier--open {
-  grid-template-rows: 1fr;
-  opacity: 1;
-}
-
-.filter-tier__inner { overflow: hidden; min-height: 0; }
-
-.filter-tier .category-filters { margin-bottom: 0; }
-
-/* Two open tiers back to back (venue → hall) close their gap the same way
-   the top category row does above it — a small stack gap between them, the
-   fuller 0.6rem only once more at the very end of whichever chain is
-   actually showing. */
-.filter-tier--open + .filter-tier--open { margin-top: -0.15rem; }
-
-.filter-tier:last-of-type.filter-tier--open { margin-bottom: 0.6rem; }
-
-/* The compact "how did I get here" line above a revealed tier — small, muted
-   text rather than a heading, so the hierarchy reads without costing any
-   real vertical space. Empty (`FilterBreadcrumb` returns null with nothing
-   to show) collapses to nothing rather than leaving a blank line. */
-.filter-breadcrumb {
-  margin: 0 0 0.2rem;
-  font-size: 0.7rem;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
   color: var(--color-muted);
   white-space: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
-.filter-breadcrumb::-webkit-scrollbar { display: none; }
+.cascade__path::-webkit-scrollbar { display: none; }
+
+.cascade__crumb {
+  flex-shrink: 0;
+  background: none;
+  border: 0;
+  padding: 0.1rem 0.15rem;
+  font: inherit;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.cascade__crumb--here { color: var(--color-ink); cursor: default; padding: 0.1rem 0.15rem; }
+
+.cascade__sep { flex-shrink: 0; padding: 0 0.1rem; color: var(--color-faint); }
+
+/* Label in a fixed gutter, chips in a track that scrolls beside it — not a
+   sticky label inside one shared scroller, which leaves chips sliced
+   mid-word where they pass under it. */
+.cascade__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.cascade__row:last-child { margin-bottom: 0; }
+
+.cascade__label {
+  min-width: 3.1rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.cascade__track {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Room for the focus ring of the first chip, which a flush-left
+     overflow container would otherwise clip. */
+  padding: 0.15rem 0;
+}
+
+.cascade__track::-webkit-scrollbar { display: none; }
+
+.cascade__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.cascade__chip--on { border-color: var(--color-accent); color: var(--color-accent); }
+
+/* How much sits behind each option, at that option's own level of the
+   cascade. Muted enough to read as an annotation rather than part of the
+   name, present even at zero — "this venue has nothing under Theatre" is
+   the answer that stops an absence looking like a bug. */
+.cascade__count {
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
+
+/* The top level: bigger pill, solid fill when chosen — picked once per
+   visit and worth the weight. */
+.cascade__row--primary .cascade__chip {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  gap: 0.4rem;
+}
+
+.cascade__row--primary .cascade__chip--on {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+/* A level is revealed and hidden as a whole section, never chip by chip:
+   `grid-template-rows: 0fr → 1fr` animates to a height nobody measured up
+   front, which a plain max-height transition can't do without either
+   guessing a cap or measuring in JS. `useReveal` (FilterCascade.jsx)
+   sequences the class onto a real animation frame after mount, since
+   flipping it on the mounting render leaves nothing to animate from. */
+.cascade__reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 180ms ease, opacity 140ms ease;
+}
+
+.cascade__reveal--open { grid-template-rows: 1fr; opacity: 1; }
+
+.cascade__reveal-inner { overflow: hidden; min-height: 0; }
 
 /* ── Programme ─────────────────────────────────────────────────────────── */
 .day { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
@@ -1163,16 +1159,15 @@ button { color: inherit; font: inherit; }
   .settings__row { justify-content: stretch; }
   .settings__row > * { flex: 1 1 auto; }
 
-  .filters { gap: 0.3rem; }
-  .filter { font-size: 0.75rem; padding: 0.2rem 0.55rem; }
-
-  /* At its desktop size (§9.48) this row wraps after three pills on a phone
-     — All/Theatre/Cinema fit, Concert drops to its own line. Tightened back
-     down close to the plain `.filter` phone size above, just keeping a
-     touch more weight (padding, not font) so it still reads as the bigger,
-     more prominent tier next to venue/hall chips below it. */
-  .category-filters { gap: 0.35rem; }
-  .category-filters .filter { font-size: 0.75rem; padding: 0.25rem 0.6rem; gap: 0.3rem; }
+  /* Tighter chips and a narrower label gutter on a phone, where the whole
+     point of each row is how much of it you can see before swiping. The top
+     level keeps a touch more padding (not font size) so it still reads as
+     the widest scope of the three. */
+  .cascade__row { gap: 0.3rem; }
+  .cascade__track { gap: 0.35rem; }
+  .cascade__chip { font-size: 0.75rem; padding: 0.25rem 0.6rem; }
+  .cascade__row--primary .cascade__chip { font-size: 0.78rem; padding: 0.3rem 0.7rem; gap: 0.3rem; }
+  .cascade__label { min-width: 2.9rem; font-size: 0.65rem; }
 
   .venues__foot { flex-direction: column; align-items: stretch; gap: 0.6rem; }
 }

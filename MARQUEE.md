@@ -2166,6 +2166,103 @@ entry carries a note flagging the trap for anyone tempted to paste the
 `npm test` (3994 tests), `npm run typecheck`, `npx eslint` on every changed
 path all pass.
 
+### 9.60 The filter cascade, rebuilt from the ground up (2026-09-01)
+
+Reported from a phone, looking at the venue row under a "Theatre ›" label:
+*"Currently I see all the venues in this Theatre view and that is not OK."*
+Three cinemas were sitting in it. This is the fourth round on this feature in
+one session (§9.58 shipped it, §9.59 patched the reveal, then a compact pass
+was shipped and reverted on request), and the churn is the tell: each round
+fixed a symptom of a model that had two incompatible halves stapled together.
+
+**The old arrangement drew a hierarchy the state underneath had abandoned.**
+Three separate mechanisms, each defensible alone, each pulling against the
+hierarchy the rows were drawing:
+
+1. `handleVenueFilter` **cleared `categoryFilter`** whenever a venue was
+   picked (§9.58's "clicking ARCUB should show everything ARCUB offers"), so
+   the "Theatre ›" label described a filter that was no longer applied.
+2. `venueOptions` became **every active venue** the moment one was selected
+   ("switching venues shouldn't require backing out first"), which is what
+   actually put cinemas under a Theatre label.
+3. `categoryOptions` **re-scoped to the selected venue's own categories**, so
+   a single-discipline venue like TNB collapsed it to one option and the row
+   hid itself — the top of the chain vanishing exactly when you were deepest
+   in it, with no way back up but the browser's Back.
+
+A display-only `categoryBreadcrumb` had already been added to paper over (1):
+a second variable remembering the category the real one had thrown away.
+That was the signal to stop patching.
+
+**Two rules replace all three, and the rest falls out of them.** They live in
+`src/marquee/FilterCascade.jsx`, which is one component rather than three
+rows assembled in App.jsx — the old bug was precisely three rows each
+deciding their own scope:
+
+1. **A level is scoped by its parents and by nothing else.** `venuesForCategory`
+   (programme.js, promoted out of App.jsx's old inline `venuesInCategory` and
+   now tested directly) is the venue row's only source, whether or not a venue
+   is selected. What the label says is what the row contains.
+2. **A child never clears its parent.** Picking a venue leaves the type
+   selected, visible and highlighted. `categoryBreadcrumb` is gone: the path
+   line reads `categoryFilter` itself, because there is no longer a moment
+   where the two would disagree.
+
+What that buys, in the terms the request asked for — traceability up and
+down, with full visibility:
+
+- **Every level is on screen at once**, top to leaf, each in its own labelled
+  row (TYPE / VENUE / HALL). The venue row no longer waits to be unlocked by
+  a type: with no type picked it lists every active venue, which is the
+  honest answer to "All".
+- **The path line** (`Everything › Theatre › Teatrul Național București ›
+  Sala Atelier`) says where you are, and each crumb drops the levels *below*
+  it and keeps its own — the ordinary breadcrumb contract. `Everything`
+  clears the chain in one tap.
+- **Counts on every chip**, computed at that chip's OWN level's scope — the
+  type counts over the whole pool, a venue within the chosen type, a hall
+  within the chosen venue. Counted that way a number never moves because of
+  something picked below it. This is what makes an absence legible: a venue
+  reading `0` is watched-and-empty, which stops being confusable with
+  not-listed-at-all.
+- **Changing a type keeps a venue the new type still contains**, and drops
+  one it doesn't. That single rule is what makes an interdisciplinary venue
+  browsable through the ordinary hierarchy instead of the special "clear the
+  type" mode §9.58 invented for it: ARCUB is in both Theatre and Concert, so
+  flipping between them leaves you standing at ARCUB.
+
+Smaller things the rebuild got right that the old rows didn't:
+
+- **The level label sits in a gutter, not sticky inside the scroller.**
+  Sticky keeps it visible too, but chips slide underneath and get sliced
+  mid-word at its edge (`…olis 0`), which reads as a rendering fault. A
+  `grid-template-columns: auto minmax(0, 1fr)` row gives the label its own
+  lane and the chips a clean one.
+- **The count is `aria-hidden`.** Left in the accessibility tree it fuses
+  into the chip's name — "Theatre 12" — which is not what anyone calls that
+  filter, and made every name-based query in the tests ambiguous too.
+- **Path crumbs are labelled "Back to …"**, because a button reading
+  "Theatre" a few pixels above a chip reading "Theatre" is two actions under
+  one name.
+- The whole-section reveal animation (§9.58) and the scroll-the-active-chip-
+  into-view fix (§9.59) both survive the rebuild, in `useReveal` and
+  `CascadeLevel`'s own effect.
+
+**Three tests changed rather than broke**, and they are worth naming because
+each pinned a behaviour this deliberately reverses: picking a venue no longer
+clears the type (so ARCUB under Theatre shows its play, not its concert), the
+venue row is no longer hidden until a type is picked, and the type row no
+longer re-scopes to one venue. `categoriesForVenue` — the helper that
+existed only for that third behaviour — is deleted along with its tests.
+New in their place: the cinemas-under-Theatre case, the keep-or-drop rule for
+a venue when the type changes, the path crumbs, and `FilterCascade.test.jsx`
+for the presentation contract.
+
+`npm test` (4006 tests), `npm run typecheck` and `npx eslint` all pass.
+Verified in a real browser at 390px in both themes, against a stubbed scan
+shaped like the real roster: under Theatre the venue row lists six theatres
+and no cinemas, before and after picking one.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
