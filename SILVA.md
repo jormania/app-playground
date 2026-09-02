@@ -304,7 +304,12 @@ lives only at the labels.
 Plus **Forage** (labelled that rather than "Search", which is the PKM word
 this app is defined against — and the field's own placeholder is already "I
 remember something about…"): one box, lexical *and* semantic matching
-("I remember something about people becoming what they repeatedly do").
+("I remember something about people becoming what they repeatedly do"). The
+lexical side reads a thing's `link` too, not only its own words: nobody types
+a URL from memory, but a publication's domain is the part people do recall —
+and a kept link *loses* its URL from the body the moment the article's title
+lands there, which had been leaving the piece unfindable by the only handle
+its reader had.
 
 ## Opening the app
 
@@ -413,16 +418,30 @@ Four lanes into the understory:
      very end, with prose (not a second URL) left over — because a URL inside
      a sentence is a sentence. Not the same judgment as a *locator* that
      contains a URL: that is words you typed, this is a share sheet's
-     boilerplate wrapped around a link.
+     boilerplate wrapped around a link. A URL read out of prose also loses
+     the sentence's punctuation on the way ("Read this https://x.dev/a." is
+     a link that 404s if the full stop is kept), while a URL arriving in the
+     `url` parameter is a structured field an app filled in deliberately and
+     passes through exactly as given.
    - **A link already in the forest is remarked on, not blocked**
      (`lib/linkDuplicate.ts`). Sharing is the one lane with no memory in it —
      tapping share on an article kept in June looks exactly like tapping it
      on one never seen before. The intake field says which state the existing
      copy is in and when it arrived, and does nothing else: a second
      encounter with the same piece is a real thing to record, and only you
-     know whether this one is. Comparison ignores campaign tags, `www.`, a
-     trailing slash and parameter order; the stored URL is **never rewritten**
-     — the junk on the end of a link is occasionally load-bearing.
+     know whether this one is.
+   - **A link is kept without the tracking tags it arrived wearing**
+     (`lib/linkUrl.ts`, applied for every lane at `lib/intakeFields.ts`).
+     A campaign tag prints on the specimen label, outlives by years the
+     newsletter that set it, and makes one article look like several. Two
+     lists, not one: the **stored** list is narrow and unambiguous — `utm_*`,
+     `fbclid`, `gclid` and their kin — because removing a parameter a site
+     routes on leaves a link that no longer resolves, which is worse than an
+     untidy one that does. The **compared** list adds the ambiguous names
+     (`ref`, `source`, `si`, `feature`), which are ignored when asking
+     whether two links are the same page and never removed from either. A URL
+     with nothing to strip comes back byte for byte — no added trailing
+     slash, no re-encoding.
 
    Declared `method: "GET"`, so the OS launches the app at a URL with query
    parameters rather than POSTing anywhere: the whole handler is
@@ -449,6 +468,23 @@ Four lanes into the understory:
    to IndexedDB and `Thing.image` holds a reference (`lib/photoStore.ts`),
    because a ~300 KB data URL inside the localStorage demo snapshot would take
    the whole demo forest down within a handful of photographs.
+
+### A preview is a server fetch, so some links never ask for one
+
+An Open Graph preview is read by `/api/notion-photo-proxy`, which means asking
+for one publishes the URL — and the Nursery asks the moment a share lands,
+before you have decided whether to keep the thing at all. Release it a second
+later and the link has still left the device.
+
+So `lib/linkPrivacy.ts` gates every call: a URL carrying its own credential (a
+`token`, a signature, `user:password@`), or pointing somewhere only this device
+can reach (`localhost`, a private range, a dotless intranet name), or speaking
+anything but http, is never sent. Nothing else changes about it — it is still
+kept, still a `Link`, still opens on tap, and renders as the plain host/path
+line the card already falls back to whenever a preview is missing. The bias is
+one-directional on purpose: a withheld preview costs a thumbnail, and a sent
+one cannot be taken back.
+
 
 ### A kept link takes the article's title
 

@@ -26,6 +26,7 @@
  */
 import { get, set, del, keys } from 'idb-keyval'
 import { createRequestQueue } from './requestQueue'
+import { mayFetchPreview } from './linkPrivacy'
 
 const PREFIX = 'silva:linkpreview:'
 const TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -63,6 +64,15 @@ const cacheKey = (url: string) => `${PREFIX}${url}`
  *  nothing cached (or it's past `TTL_MS`) — never throws, since a link with
  *  no preview is just a link, exactly as it was before this existed. */
 export async function getLinkPreview(url: string): Promise<LinkPreview | null> {
+  // A preview is fetched by a server, so asking for one publishes the URL.
+  // Most links are an article and it does not matter; a signed document URL,
+  // a page on a home server or a reset link is not something to hand over
+  // for a thumbnail — least of all in the Nursery, which asks the moment a
+  // share lands and before you have decided to keep anything at all. See
+  // lib/linkPrivacy.ts. Nothing is cached either way: the answer is a
+  // property of the URL, not of the network.
+  if (!mayFetchPreview(url)) return null
+
   try {
     const cached = await get<CachedPreview>(cacheKey(url))
     if (cached && Date.now() - cached.fetchedAt < TTL_MS) return cached.preview

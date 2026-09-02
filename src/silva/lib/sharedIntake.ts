@@ -65,16 +65,56 @@ function splitEdgeUrl(text: string): { prose: string; url: string } | null {
 
   const last = words[words.length - 1]
   const first = words[0]
-  const url = URL_TOKEN.test(last) ? last : URL_TOKEN.test(first) ? first : null
-  if (!url) return null
+  const token = URL_TOKEN.test(last) ? last : URL_TOKEN.test(first) ? first : null
+  if (!token) return null
 
-  const cut = url === last ? text.lastIndexOf(url) : text.indexOf(url)
-  const prose = (url === last ? text.slice(0, cut) : text.slice(cut + url.length)).trim()
+  const cut = token === last ? text.lastIndexOf(token) : text.indexOf(token)
+  const rest = token === last ? text.slice(0, cut) : text.slice(cut + token.length)
   // Two URLs and no words is a list of links, not a link with a note — and
   // whichever one we kept, we would be choosing for you.
-  if (!prose || looksLikeUrl(prose)) return null
+  if (looksLikeUrl(rest)) return null
 
-  return { prose, url }
+  return { prose: trimDanglingJoiner(rest), url: trimSentencePunctuation(token) }
+}
+
+/**
+ * The URL without the punctuation the sentence around it left attached.
+ *
+ * "Read this https://x.dev/a." ends in a full stop belonging to the
+ * sentence, not to the page — kept, it is a link that 404s, printed on a
+ * label, saved forever. The exception is a closing bracket with an opening
+ * one inside the URL, which is how half of Wikipedia addresses itself
+ * (`/wiki/Mercury_(planet)`).
+ */
+function trimSentencePunctuation(url: string): string {
+  let trimmed = url
+  for (;;) {
+    const last = trimmed.slice(-1)
+    if ('.,;:!?"\''.includes(last)) {
+      trimmed = trimmed.slice(0, -1)
+      continue
+    }
+    if (last === ')' && !trimmed.includes('(')) {
+      trimmed = trimmed.slice(0, -1)
+      continue
+    }
+    if (last === ']' && !trimmed.includes('[')) {
+      trimmed = trimmed.slice(0, -1)
+      continue
+    }
+    // A trim that ate the URL itself is not a trim; hand back what arrived.
+    return looksLikeUrl(trimmed) ? trimmed : url
+  }
+}
+
+/**
+ * The words without the joiner that was holding them to the URL. A share
+ * reading "Some title — https://…" leaves "Some title —" behind, which is a
+ * dash pointing at nothing. A colon is left alone: "worth a read:" is a
+ * sentence, and the one it introduces is the link itself.
+ */
+function trimDanglingJoiner(prose: string): string {
+  return prose.trim().replace(/[\s—–\-|·,]+$/, '').trim()
 }
 
 /**
@@ -107,9 +147,14 @@ export function parseSharedIntake(search: string): SharedIntake | null {
   // thing being shared, and the words around it are the note — see
   // `splitEdgeUrl`. Only consulted when no `url` parameter arrived; when one
   // did, the text is whatever the app chose to say about it.
+  //
+  // Note which of the two gets its punctuation trimmed: a URL read *out of
+  // prose* can have the sentence's full stop stuck to it, while the `url`
+  // parameter is a structured field an app filled in deliberately, and is
+  // passed through exactly as given.
   const split = !url && text && !textIsBareUrl ? splitEdgeUrl(text) : null
   const prose = split ? split.prose : textIsBareUrl ? '' : text
-  const locator = url || (textIsBareUrl ? text : split?.url || '')
+  const locator = url || (textIsBareUrl ? trimSentencePunctuation(text) : split?.url || '')
 
   const bodyParts: string[] = []
   if (prose) bodyParts.push(prose)

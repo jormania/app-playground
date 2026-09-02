@@ -28,6 +28,15 @@ describe('lexicalMatch', () => {
     expect(lexicalMatch('WORTH', thing({ body: 'A passage worth keeping.' }))).toBe(true)
   })
 
+  // A kept link loses its URL from the body the moment the article's title
+  // lands there, and the domain is the one part of it anyone recalls.
+  it('matches on the link a thing points at', () => {
+    const kept = thing({ body: 'The joy of missing out', link: 'https://nesslabs.com/jomo' })
+    expect(lexicalMatch('nesslabs', kept)).toBe(true)
+    expect(lexicalMatch('jomo', kept)).toBe(true)
+    expect(lexicalMatch('nesslabs', thing({ body: 'x', link: null }))).toBe(false)
+  })
+
   it('matches on note', () => {
     expect(lexicalMatch('reason', thing({ body: 'x', note: 'A good reason.' }))).toBe(true)
   })

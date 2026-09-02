@@ -21,6 +21,7 @@
  * wrote and stays exactly where you put it.
  */
 import { isBareUrl, intakeKind } from './kindInference'
+import { cleanLinkUrl } from './linkUrl'
 import type { ThingKind } from './notion'
 
 export interface IntakeFields {
@@ -30,7 +31,23 @@ export interface IntakeFields {
   kind: ThingKind | null
 }
 
-/** What a typed, pasted or shared capture already knows about itself. */
+/**
+ * What a typed, pasted or shared capture already knows about itself.
+ *
+ * ── Why the URL is cleaned here ─────────────────────────────────────────
+ * A link that has been through a newsletter and a share sheet arrives
+ * wearing a campaign tag and a click id, and this is the one place every
+ * lane passes through — typed, pasted and shared alike. Kept as they
+ * arrive, those tags print on the specimen label, outlive the campaign that
+ * set them by years, and make one article look like several to
+ * `lib/linkDuplicate.ts`. Only names that identify *you* rather than the
+ * page are removed, and a URL with none of them comes back untouched —
+ * `lib/linkUrl.ts` has the rules and the reason the list is closed.
+ *
+ * When the body *is* the URL, the body is cleaned with it: the two are the
+ * same string by definition, and letting them drift apart is what makes the
+ * plate print the link twice.
+ */
 export function intakeFields(body: string, locator = ''): IntakeFields {
   const trimmedBody = body.trim()
   const trimmedLocator = locator.trim()
@@ -40,10 +57,11 @@ export function intakeFields(body: string, locator = ''): IntakeFields {
   // rather than copied, so the URL isn't printed twice on the plate (once
   // as a label, once as its own preview card).
   if (isBareUrl(trimmedBody)) {
-    return { body, locator, link: trimmedBody, kind: intakeKind(trimmedBody) }
+    const link = cleanLinkUrl(trimmedBody)
+    return { body: link, locator, link, kind: intakeKind(link) }
   }
   if (isBareUrl(trimmedLocator)) {
-    return { body, locator: '', link: trimmedLocator, kind: 'Link' }
+    return { body, locator: '', link: cleanLinkUrl(trimmedLocator), kind: 'Link' }
   }
   return { body, locator, link: null, kind: null }
 }

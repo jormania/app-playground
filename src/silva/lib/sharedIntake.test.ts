@@ -57,6 +57,50 @@ describe('parseSharedIntake', () => {
       .toEqual({ body: text, locator: '' })
   })
 
+  // A URL read out of prose carries the sentence's punctuation with it —
+  // kept, that is a link that 404s, printed on a label and saved forever.
+  it('leaves the sentence punctuation behind when it splits a link out', () => {
+    expect(parseSharedIntake(`?text=${encodeURIComponent('Read this https://x.dev/a.')}`))
+      .toEqual({ body: 'Read this', locator: 'https://x.dev/a' })
+    expect(parseSharedIntake(`?text=${encodeURIComponent('https://x.dev/a! Extraordinary')}`))
+      .toEqual({ body: 'Extraordinary', locator: 'https://x.dev/a' })
+    expect(parseSharedIntake(`?text=${encodeURIComponent('https://x.dev/a?q=1"')}`))
+      .toEqual({ body: 'https://x.dev/a?q=1', locator: '' })
+  })
+
+  // Half of Wikipedia addresses itself with a bracket.
+  it('keeps a closing bracket the URL opened itself', () => {
+    const url = 'https://en.wikipedia.org/wiki/Mercury_(planet)'
+    expect(parseSharedIntake(`?text=${encodeURIComponent(`${url} is the one`)}`))
+      .toEqual({ body: 'is the one', locator: url })
+    // And a URL wrapped in brackets never starts a word, so it is never a
+    // link at the edge of the text at all — it stays the sentence it is in.
+    const bracketed = 'see (https://x.dev/a)'
+    expect(parseSharedIntake(`?text=${encodeURIComponent(bracketed)}`))
+      .toEqual({ body: bracketed, locator: '' })
+  })
+
+  // "Some title —" is a dash pointing at nothing once the link has moved.
+  it('takes the joiner off the words it split from the link', () => {
+    expect(parseSharedIntake(`?text=${encodeURIComponent('Some title — https://x.dev/a')}`))
+      .toEqual({ body: 'Some title', locator: 'https://x.dev/a' })
+    expect(parseSharedIntake(`?text=${encodeURIComponent('Some title | https://x.dev/a')}`))
+      .toEqual({ body: 'Some title', locator: 'https://x.dev/a' })
+  })
+
+  // A colon is left: "worth a read:" is a sentence, and what it introduces
+  // is the link itself.
+  it('leaves a colon where a sentence put it', () => {
+    expect(parseSharedIntake(`?text=${encodeURIComponent('worth a read: https://x.dev/a')}`))
+      .toEqual({ body: 'worth a read:', locator: 'https://x.dev/a' })
+  })
+
+  // Nothing but a joiner and a link is a wordless share wearing a dash.
+  it('falls through to the wordless rule when the joiner was all there was', () => {
+    expect(parseSharedIntake(`?text=${encodeURIComponent('— https://x.dev/a')}`))
+      .toEqual({ body: 'https://x.dev/a', locator: '' })
+  })
+
   // An app that filled `url` has already said which part is the link; the
   // text is then whatever it chose to say about it, untouched.
   it('does not split the text when the share carried its own url', () => {

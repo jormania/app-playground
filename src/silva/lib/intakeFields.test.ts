@@ -50,3 +50,33 @@ describe('intakeFields', () => {
     expect(intakeFields('A title', `  ${URL}  `)).toMatchObject({ link: URL, kind: 'Link' })
   })
 })
+
+describe('intakeFields — the tracking tags a link arrives wearing', () => {
+  it('takes them off a pasted URL, body and link together', () => {
+    const fields = intakeFields('https://x.dev/essay?utm_source=newsletter')
+    expect(fields).toEqual({
+      body: 'https://x.dev/essay',
+      locator: '',
+      link: 'https://x.dev/essay',
+      kind: 'Link',
+    })
+  })
+
+  it('takes them off a URL arriving in the locator from the share sheet', () => {
+    const fields = intakeFields('A note', 'https://x.dev/essay?fbclid=abc')
+    expect(fields).toEqual({ body: 'A note', locator: '', link: 'https://x.dev/essay', kind: 'Link' })
+  })
+
+  // The body is only ever touched when it *is* the link — anything you wrote
+  // comes back exactly as written, tracking-shaped or not.
+  it('never touches a body that is anything but the URL itself', () => {
+    const prose = 'Read at https://x.dev/essay?utm_source=newsletter, worth it'
+    expect(intakeFields(prose)).toEqual({ body: prose, locator: '', link: null, kind: null })
+  })
+
+  it('leaves a URL with nothing to strip exactly as it arrived', () => {
+    const url = 'https://x.dev/essay?id=17'
+    expect(intakeFields(url).link).toBe(url)
+    expect(intakeFields(url).body).toBe(url)
+  })
+})

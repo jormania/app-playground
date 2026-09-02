@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { comparableUrl, sameLink, findLinkDuplicate, duplicateNotice } from './linkDuplicate'
+import { findLinkDuplicate, duplicateNotice } from './linkDuplicate'
 import type { Thing } from './notion'
 
 const URL = 'https://www.thisiscolossal.com/2026/08/minyoung-kim/'
@@ -24,35 +24,6 @@ function thing(over: Partial<Thing> = {}): Thing {
     ...over,
   }
 }
-
-describe('comparableUrl', () => {
-  it('ignores what a share picks up on the way', () => {
-    expect(sameLink(URL, `${URL}?utm_source=newsletter&utm_medium=email`)).toBe(true)
-    expect(sameLink(URL, `${URL}?fbclid=abc123`)).toBe(true)
-    expect(sameLink(URL, `${URL}#the-paintings`)).toBe(true)
-  })
-
-  it('ignores www, a trailing slash and parameter order', () => {
-    expect(sameLink(URL, 'https://thisiscolossal.com/2026/08/minyoung-kim')).toBe(true)
-    expect(sameLink('https://x.dev/a?b=1&c=2', 'https://x.dev/a?c=2&b=1')).toBe(true)
-  })
-
-  it('keeps parameters that say which page this is', () => {
-    expect(sameLink('https://x.dev/read?id=1', 'https://x.dev/read?id=2')).toBe(false)
-    expect(sameLink('https://youtu.be/x?t=90', 'https://youtu.be/x')).toBe(false)
-  })
-
-  it('does not confuse two hosts, two paths or two schemes', () => {
-    expect(sameLink('https://x.dev/a', 'https://y.dev/a')).toBe(false)
-    expect(sameLink('https://x.dev/a', 'https://x.dev/b')).toBe(false)
-    expect(sameLink('https://x.dev/a', 'http://x.dev/a')).toBe(false)
-  })
-
-  it('falls back to the plain string when the URL will not parse', () => {
-    expect(comparableUrl('  Not A Url ')).toBe('not a url')
-    expect(sameLink('not a url', 'NOT A URL')).toBe(true)
-  })
-})
 
 describe('findLinkDuplicate', () => {
   it('finds the thing already holding this link', () => {

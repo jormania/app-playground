@@ -61,7 +61,13 @@ export function queryTerms(query: string): string[] {
  *  `locator` is in that list because it holds your own words about where
  *  you were — "overheard on the 32 tram" is exactly the fragment someone
  *  remembers and types, and it was the one field a thing carries that
- *  searching could not reach. */
+ *  searching could not reach.
+ *
+ *  `link` is in it for the opposite reason — nobody types a URL from memory,
+ *  but a publication's domain is the one part of it people do recall
+ *  ("something on nesslabs"), and a kept link *loses* its URL from the body
+ *  the moment the article's title lands there (lib/linkFacts.ts). Without
+ *  this the piece became unfindable by the only handle its reader had. */
 export function lexicalMatch(query: string, thing: Thing, sourceTitle = '', sourceAuthor = ''): boolean {
   const terms = queryTerms(query)
   if (terms.length === 0) return false
@@ -71,6 +77,7 @@ export function lexicalMatch(query: string, thing: Thing, sourceTitle = '', sour
     thing.note,
     thing.locator,
     thing.handle,
+    thing.link || '',
     sourceTitle,
     sourceAuthor,
   ].join(' ').toLowerCase()

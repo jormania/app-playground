@@ -90,6 +90,25 @@ function errorText(e: unknown): string {
   return message ? ` (${message})` : ''
 }
 
+/**
+ * The share that launched this page, read once when the module loads — and
+ * the query string cleared in the same breath, so a refresh can't re-add
+ * what you already captured.
+ *
+ * Module scope rather than a `useState` initializer, because an initializer
+ * is not a safe place to do something that can only happen once: React runs
+ * it twice under StrictMode, and the second run read a query string the
+ * first had already cleared and concluded that nothing had been shared. Read
+ * here, it is the same value however often the component mounts, and both
+ * the opening view and the intake prefill come off the one read.
+ */
+const arrived: SharedIntake | null = (() => {
+  if (typeof window === 'undefined') return null
+  const parsed = parseSharedIntake(window.location.search)
+  if (parsed) window.history.replaceState(null, '', urlWithoutShare(window.location.href))
+  return parsed
+})()
+
 export default function App() {
   // SILVA.md: "Light and dark, syncing to the device." Syncing is the
   // *default* (choice === null), not the only option — a phone that flips
@@ -122,10 +141,11 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   // A share opens on the understory, because that is where what you just
-  // shared has landed — arriving on the Forest would hide it.
-  const [view, setView] = useState<View>(() =>
-    typeof window !== 'undefined' && parseSharedIntake(window.location.search) ? 'nursery' : 'forest',
-  )
+  // shared has landed — arriving on the Forest would hide it. Read from the
+  // same single parse as `shared` below (`arrived`), not a second one of its
+  // own: two reads of `location.search` is two chances to disagree about
+  // what came in, and the first of them ran before the query was cleared.
+  const [view, setView] = useState<View>(() => (arrived ? 'nursery' : 'forest'))
   const [importOpen, setImportOpen] = useState(false)
   const [provocation, setProvocation] = useState<Provocation | null>(null)
   const [vectorsById, setVectorsById] = useState<Map<string, Float32Array>>(new Map())
@@ -133,17 +153,9 @@ export default function App() {
   const [seen, setSeen] = useState<SeenMap>({})
   const [photoBusy, setPhotoBusy] = useState(false)
 
-  // A share arriving from elsewhere on the device. Read once, synchronously, so
-  // the very first render already has it — then the query string is cleared so
-  // a refresh can't re-add what you already captured.
-  const [shared, setShared] = useState<SharedIntake | null>(() => {
-    if (typeof window === 'undefined') return null
-    const parsed = parseSharedIntake(window.location.search)
-    if (parsed) {
-      window.history.replaceState(null, '', urlWithoutShare(window.location.href))
-    }
-    return parsed
-  })
+  // A share arriving from elsewhere on the device. Held in state so it can be
+  // cleared once taken in; `arrived` above is the one read of the URL.
+  const [shared, setShared] = useState<SharedIntake | null>(arrived)
 
   /**
    * Draft id -> the real Notion id it became.
@@ -918,13 +930,16 @@ export default function App() {
     // paste mechanism itself) adds, uniformly across typed, pasted and
     // shared-in text (lib/textNormalize.ts). Every word stays exactly as
     // written.
-    const body = normalizeCapturedText(rawBody)
+    const typed = normalizeCapturedText(rawBody)
     const today = todayIso()
     const { sourceId, sourceDraft } = resolveSourceDraft(sourceInput)
     // What the capture already knows about itself: the URL it *is* (pasted,
     // or arriving in the locator from the share sheet) and the one Kind that
-    // reads out of it. Nothing inferred — see lib/intakeFields.ts.
-    const { locator: fieldLocator, link, kind } = intakeFields(body, locator)
+    // reads out of it. Nothing inferred — see lib/intakeFields.ts. The body
+    // comes back too, because a body that is *only* a URL is cleaned along
+    // with the link it becomes; every other body is returned as it was
+    // written.
+    const { body, locator: fieldLocator, link, kind } = intakeFields(typed, locator)
     const draft: Thing = {
       id: draftId(),
       handle: body.slice(0, 60),

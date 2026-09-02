@@ -8,14 +8,9 @@
  * have never seen, and Silva said nothing either way. Two rows for the same
  * page, and the second one carries none of the reading you did on the first.
  *
- * ── Comparison only ─────────────────────────────────────────────────────
- * Nothing here rewrites a stored URL. A link is kept exactly as it arrived,
- * because the tracking junk on the end of it is occasionally load-bearing
- * (a timestamp, a page number, a session a site genuinely needs) and it is
- * not this module's business to decide which. It only decides whether two
- * URLs are *worth telling you about*, which is a much cheaper judgment: the
- * campaign tag a newsletter adds is not what makes an article a different
- * article.
+ * What counts as the same page — campaign tags, `www.`, a trailing slash and
+ * parameter order all ignored — is `comparableUrl` in `lib/linkUrl.ts`, which
+ * is also where the stored form of a link is decided. Nothing here writes.
  *
  * And it never blocks the capture. It says so, and you decide — the same
  * posture as everything else in the understory, where a thing is only ever
@@ -23,44 +18,7 @@
  */
 import type { Thing } from './notion'
 import { effectiveLink } from './kindInference'
-
-/** Parameters a share can pick up on the way that say nothing about which
- *  page it is: campaign tags, click ids, referrer breadcrumbs. */
-const TRACKING = /^(utm_\w+|fbclid|gclid|dclid|msclkid|mc_[ce]id|igshid|ref|ref_src|referrer|source|share_id|__twitter_impression)$/i
-
-/**
- * The comparable shape of a URL: no scheme case, no `www.`, no trailing
- * slash, no fragment, no tracking parameters, and what is left ordered so
- * two URLs written with the same parameters in a different order still read
- * as one page.
- *
- * Falls back to the trimmed original when the URL won't parse — an
- * unparseable string can still equal another one exactly.
- */
-export function comparableUrl(url: string): string {
-  const trimmed = url.trim()
-  let parsed: URL
-  try {
-    parsed = new URL(trimmed)
-  } catch {
-    return trimmed.toLowerCase()
-  }
-
-  const params = [...parsed.searchParams.entries()]
-    .filter(([key]) => !TRACKING.test(key))
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-
-  const host = parsed.host.toLowerCase().replace(/^www\./, '')
-  const path = parsed.pathname.replace(/\/+$/, '')
-  const query = params.map(([key, value]) => `${key}=${value}`).join('&')
-
-  return `${parsed.protocol.toLowerCase()}//${host}${path}${query ? `?${query}` : ''}`
-}
-
-/** True when two URLs point at the same page, campaign tags aside. */
-export function sameLink(a: string, b: string): boolean {
-  return comparableUrl(a) === comparableUrl(b)
-}
+import { comparableUrl } from './linkUrl'
 
 /**
  * The thing already holding this link, or null. Prefers the most recently
