@@ -239,9 +239,14 @@ export default function App() {
     triage,
     venueCategory,
     hideIgnored: !prefs.showIgnored,
-    hideSoldOut: prefs.hideSoldOut,
+    // A standing "hide sold out" preference and an explicit press on the Sold
+    // out (or Watching) facet are the same person disagreeing with themselves;
+    // the press just made wins. Without this, anyone with that preference on
+    // saw Sold out read 0 and show nothing, and lost from Watching every show
+    // still sold out — which is most of what a watchlist holds.
+    hideSoldOut: prefs.hideSoldOut && statusFilter === null,
     hideKept: prefs.hideKept,
-  }), [productions, triage, venueCategory, prefs.showIgnored, prefs.hideSoldOut, prefs.hideKept])
+  }), [productions, triage, venueCategory, prefs.showIgnored, prefs.hideSoldOut, prefs.hideKept, statusFilter])
 
   const byType = useMemo(
     () => (categoryFilter ? pool.filter((p) => categoryFor(p, venueCategory) === categoryFilter) : pool),
@@ -349,6 +354,10 @@ export default function App() {
     setCategoryFilter(null)
     setVenueFilter(null)
     setHallFilter(null)
+    // The crumb says "Clear all filters" and the status facet is a filter. It
+    // survived this, so pressing Everything on a Sold-out view cleared the
+    // chain and left you looking at the same short list.
+    setStatusFilter(null)
   }
 
   /** The three levels, top to leaf, exactly as the cascade draws them: each
@@ -430,24 +439,57 @@ export default function App() {
     }
   }
 
-  // Counted against what the cascade and search already chose, so the numbers
-  // describe the list you are actually looking at — except `watchedCount`,
-  // which counts the whole watchlist including what has dropped out of the
-  // programme, because that is the number the Watching view will show you.
-  const soldOutCount = useMemo(() => searched.filter((p) => p.allSoldOut).length, [searched])
-  const watchedCount = Object.keys(watchlist).length
-
-  /** Watched productions with nothing currently listed anywhere in this scan.
-   *  Deliberately computed against the WHOLE scan, not the filtered view: a
-   *  production hidden by the current type/venue filter is still listed, and
-   *  saying "nothing listed yet" about it would be a lie the filter caused. */
+  /** Watched productions with nothing currently listed anywhere in this scan
+   *  — the half of a watchlist no programme filter can show.
+   *
+   *  Whether it is LISTED is asked of the whole scan (a production hidden by
+   *  the current type/venue filter is still listed, and saying "nothing listed
+   *  yet" about it would be a lie the filter caused); whether it is SHOWN here
+   *  obeys the same scope as everything else on screen, so browsing one venue
+   *  doesn't surface a row from another. */
   const awaited = useMemo(() => {
     const onNow = new Set(productions.map((p) => p.id))
-    return Object.entries(watchlist)
+    const inScope = (entry) => {
+      if (activeVenueFilter) return entry.venue === activeVenueFilter
+      if (categoryFilter) {
+        const category = venueCategory.get(entry.venue)
+        // A venue since removed has no category to test. Show it rather than
+        // hide it: an unreachable row is a watch you can never call off.
+        return category == null || category === categoryFilter
+      }
+      return true
+    }
+    const rows = Object.entries(watchlist)
       .filter(([id]) => !onNow.has(id))
       .map(([id, entry]) => ({ id, ...entry }))
+      .filter(inScope)
       .sort((a, b) => String(a.title).localeCompare(String(b.title), 'ro'))
-  }, [watchlist, productions])
+    // Searching narrows this list too — `searchProductions` only reads title
+    // and venue, which is exactly what a watchlist row carries.
+    return searchProductions(rows, search)
+  }, [watchlist, productions, activeVenueFilter, categoryFilter, venueCategory, search])
+
+  // What each facet WOULD show, counted the way the cascade counts: against
+  // the same scope, and against the sold-out preference the facet overrides
+  // (see `pool`) rather than the one currently applied — a count that changes
+  // the moment you press the thing it labels is not a count.
+  const facetScope = useMemo(() => searchProductions(visibleProductions(productions, {
+    triage,
+    venueCategory,
+    hideIgnored: !prefs.showIgnored,
+    hideSoldOut: false,
+    hideKept: prefs.hideKept,
+    category: categoryFilter,
+    venue: activeVenueFilter,
+    hall: activeHallFilter,
+  }), search), [productions, triage, venueCategory, prefs.showIgnored, prefs.hideKept,
+    categoryFilter, activeVenueFilter, activeHallFilter, search])
+
+  const soldOutCount = useMemo(() => facetScope.filter((p) => p.allSoldOut).length, [facetScope])
+  const watchedCount = useMemo(
+    () => facetScope.filter((p) => Boolean(watchlist[p.id])).length + awaited.length,
+    [facetScope, watchlist, awaited],
+  )
 
   // What "What changed" already said about this scan, keyed for a card to look
   // itself up in — so scrolling the programme shows you what's new in place,
@@ -750,7 +792,7 @@ export default function App() {
           narrowing within them, and putting them in the chain would break the
           one rule that chain now keeps (§9.60). Only rendered once there is
           something to filter — an empty programme needs no facets. */}
-      {tab === 'programme' && scan && (searched.length > 0 || watchedCount > 0) && (
+      {tab === 'programme' && scan && (searched.length > 0 || watchedCount > 0 || statusFilter) && (
         <div className="facets" role="group" aria-label="Show">
           <span className="facets__label" aria-hidden="true">Show</span>
           <button
@@ -822,6 +864,7 @@ export default function App() {
               // which is a question you asked, not one to answer unprompted
               // above every ordinary programme.
               awaited={statusFilter === 'watching' ? awaited : []}
+              statusFilter={statusFilter}
             />
           </>
         ) : loading ? (

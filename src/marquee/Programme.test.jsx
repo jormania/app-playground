@@ -254,3 +254,40 @@ describe('Programme — watching a sold-out production', () => {
     expect(onWatch).toHaveBeenCalledWith({ id: 'teatrul excelsior::tomcat' }, { forget: true })
   })
 })
+
+// §9.64 — the audit's card-level findings.
+describe('Programme — a watch you can always call off', () => {
+  const venues = [{ name: 'Teatrul Excelsior', category: 'play' }]
+
+  it('offers a way off the watchlist once the show is back on sale', () => {
+    // The watch outlives the sell-out that started it, so a returned show
+    // renders the Keep branch — and rendered no way to stop watching, while
+    // being too listed to appear in "nothing listed yet". The mark was stuck.
+    const onWatch = vi.fn()
+    const days = byDate(toProductions([event({ ticketState: 'open' })]))
+    render(
+      <Programme {...baseProps} days={days} venues={venues} onWatch={onWatch}
+        watchlist={{ 'teatrul excelsior::tomcat': { title: 'Tomcat', venue: 'Teatrul Excelsior' } }} />,
+    )
+    expect(screen.getByRole('button', { name: 'Keep' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Watching/ }))
+    expect(onWatch).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves an unwatched card exactly as it was — two buttons, not three', () => {
+    const days = byDate(toProductions([event({ ticketState: 'open' })]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.queryByRole('button', { name: /Watching/ })).toBeNull()
+  })
+
+  it('says which filter emptied the list, rather than blaming the scan', () => {
+    // "Nothing upcoming at any of your venues" is false with a facet on —
+    // there is plenty on, none of it sold out — and sends you looking for a
+    // failed check instead of at the button you pressed.
+    render(<Programme {...baseProps} days={[]} venues={venues} statusFilter="sold-out" />)
+    expect(screen.getByText('Nothing here is sold out.')).toBeTruthy()
+    cleanup()
+    render(<Programme {...baseProps} days={[]} venues={venues} statusFilter="watching" />)
+    expect(screen.getByText(/Nothing you’re watching is on right now/)).toBeTruthy()
+  })
+})

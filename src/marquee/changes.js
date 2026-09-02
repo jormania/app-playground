@@ -121,6 +121,14 @@ export const CHANGE_LABEL = {
   [CHANGE.CANCELLED]: 'gone from the programme',
 }
 
+/** The same labels, cut to what a chip on a card can hold. Only `returned`
+ *  differs: "What changed" is a list of sentences and can afford one, while a
+ *  chip sits beside "sold out" and "tickets" and has to keep their shape. */
+export const CHANGE_CHIP_LABEL = {
+  ...CHANGE_LABEL,
+  [CHANGE.RETURNED]: 'back',
+}
+
 /** The identity a dismissal is recorded and matched against — the same pair
  *  `Changes.jsx` already uses as its own list key. */
 export function changeSignature(change) {

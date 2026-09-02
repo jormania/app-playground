@@ -1080,6 +1080,15 @@ button { color: inherit; font: inherit; }
 .date--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
 .date--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }
 .date--changed-new-event { border-color: var(--color-success); color: var(--color-success); font-weight: 600; }
+/* `returned` REPLACES the kind a date would otherwise have carried, so without
+   its own rule the one date you actually asked about was the only one that
+   lost its highlight. Filled, like the chip. */
+.date--changed-returned {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 600;
+}
 
 .prod__actions { display: flex; gap: 0.5rem; flex-shrink: 0; padding-top: 0.15rem; }
 
@@ -1089,7 +1098,7 @@ button { color: inherit; font: inherit; }
    (the same colour "tickets" and "on sale" already use); Ignore stays quiet
    until you're actually about to press it, then leans toward the same danger
    tone Remove does elsewhere — it's the same kind of "take this away" action. */
-.action-keep, .action-ignore {
+.action-keep, .action-ignore, .action-watch {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -1116,6 +1125,17 @@ button { color: inherit; font: inherit; }
   color: var(--color-faint);
   cursor: not-allowed;
 }
+
+/* Only ever drawn on a production that came BACK while you were watching it:
+   Keep is what to do about it, this is how to stop being told. Quieter than
+   Keep so it reads as the secondary of the two. */
+.action-watch {
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  background: none;
+  opacity: 0.75;
+}
+.action-watch:hover { opacity: 1; }
 
 .action-ignore {
   border: 1px solid var(--color-border-2);

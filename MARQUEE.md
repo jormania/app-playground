@@ -2449,6 +2449,74 @@ function, which is the one thing `api/_lib/marquee/diff.js`'s header asks for.
 
 `npm test`, `npm run typecheck` and `npx eslint` all pass.
 
+### 9.64 The watchlist, audited (2026-09-02)
+
+Asked for a pass over §9.63 end to end. Seven findings, all shipped together;
+none of them was in the diff logic, which is worth noting on its own — every
+one was in the seam between the new feature and something that already
+existed.
+
+**1. A watch you could never call off.** The Watch button lives in the
+sold-out branch of the card, and a watch outlives the sell-out that started
+it. So a production that came *back* rendered the Keep branch, with no way to
+stop watching — and being listed, it never appeared in "nothing listed yet"
+either. The mark was permanent, and every future date of it kept reporting as
+a return. The card now carries a "eye Watching" toggle beside Keep whenever
+the production is watched.
+
+**2. "Hide sold out" made the Sold out facet a dead button.** That preference
+is applied to `pool`, upstream of everything; with it on, the facet read 0 and
+showed nothing, and Watching lost every card still sold out — which is most of
+what a watchlist holds. A standing preference and an explicit press are the
+same person disagreeing with themselves, so the press wins: `hideSoldOut` is
+now `prefs.hideSoldOut && statusFilter === null`.
+
+**3. "Clear all filters" didn't clear the facet.** The cascade's root crumb
+says exactly that, and the facet is a filter. Pressing it cleared the chain
+and left you looking at the same short list.
+
+**4. The facets could take away their own undo.** They rendered only when
+something was on screen, so pressing Sold out with nothing sold out removed
+the control you needed to undo it. Now they also render whenever a facet is
+active.
+
+**5. An empty view blamed the wrong thing.** With a facet on, "Nothing upcoming
+at any of your venues right now" is false — there is plenty on, none of it
+sold out. It sent you looking for a failed check instead of at the button you
+pressed. `emptyMessage` answers the facet first.
+
+**6. The waiting list ignored the cascade.** §9.63 argued the "nothing listed
+yet" group must be computed against the whole scan, and that is still right —
+but it conflated two questions. Whether a production is *listed* is a fact
+about the scan; which rows to *show* is a question about scope. Browsing one
+venue surfaced watches held at another. Now: listed-ness from the whole scan,
+display scoped by the active venue or type, and by the search box. A venue
+since removed has no category to test and is shown rather than hidden — an
+unreachable row is a watch you can never call off (see 1).
+
+**7. Counts that changed the moment you pressed them.** `soldOutCount` was
+counted off the sold-out-filtered pool, and `watchedCount` off the whole
+watchlist regardless of scope. Both now come from `facetScope` — the same
+scope, with the preference the facet overrides already lifted — so each number
+is what pressing it would actually show.
+
+Two smaller things found in the same pass: `.date--changed-returned` had no
+styling at all, so the one date you actually asked about was the only one to
+lose its highlight (`returned` REPLACES the kind it would have had); and
+`CARD_CHANGE_ORDER` never listed `returned`, which worked only because
+`indexOf` returns -1 and -1 sorts first. Both fixed properly. The card chip
+also now reads **back** rather than the strip's full sentence —
+`CHANGE_CHIP_LABEL` — because a chip sits beside "sold out" and "tickets" and
+has to keep their shape.
+
+`npm test`, `npm run typecheck` and `npx eslint` all pass; verified at 390px in
+both themes.
+
+**Not changed, deliberately:** the watchlist is uncapped. Every other stored
+list here has a bound, but this one is hand-curated a show at a time and
+prunes itself the moment you press Stop watching — a cap would only ever fire
+on someone using the feature exactly as intended.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

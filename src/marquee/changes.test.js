@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { diff, toSnapshot, sortChanges, summarize, CHANGE, changeSignature, undismissedChanges } from './changes.js'
+import { diff, toSnapshot, sortChanges, summarize, CHANGE, CHANGE_LABEL, CHANGE_CHIP_LABEL, changeSignature, undismissedChanges } from './changes.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, productionId, domIdFor, scanPayload,
   changedKeyMap, primaryChangeKind, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, CATEGORY_LABEL,
@@ -439,5 +439,29 @@ describe('diff, with a watchlist', () => {
   it('carries the production id in a snapshot, so a watch survives a reload', () => {
     const stored = toSnapshot([soldOut], '2026-08-26T09:00:00.000Z')
     expect(Object.values(stored.events)[0].production).toBe('teatrul excelsior::tomcat')
+  })
+})
+
+// §9.64 — a card leads with the change worth acting on, and `returned` is the
+// only one you personally asked about.
+describe('primaryChangeKind, with a return in the mix', () => {
+  it('leads with the return over anything else on the same card', () => {
+    const production = { showings: [{ key: 'a' }, { key: 'b' }, { key: 'c' }] }
+    const kinds = new Map([['a', CHANGE.NEW], ['b', CHANGE.RETURNED], ['c', CHANGE.TICKETS_OPENED]])
+    expect(primaryChangeKind(production, kinds)).toBe(CHANGE.RETURNED)
+    // …in either encounter order: `returned` used to be absent from the order
+    // list, where indexOf's -1 happened to sort it first by accident.
+    const reversed = new Map([['a', CHANGE.RETURNED], ['b', CHANGE.TICKETS_OPENED], ['c', CHANGE.NEW]])
+    expect(primaryChangeKind({ showings: [{ key: 'a' }, { key: 'b' }, { key: 'c' }] }, reversed))
+      .toBe(CHANGE.RETURNED)
+  })
+
+  it('keeps a chip label a chip can hold, and the sentence for the strip', () => {
+    expect(CHANGE_LABEL[CHANGE.RETURNED]).toBe('back — you were watching this')
+    expect(CHANGE_CHIP_LABEL[CHANGE.RETURNED]).toBe('back')
+    // Every other kind says the same thing in both places.
+    for (const kind of Object.values(CHANGE)) {
+      if (kind !== CHANGE.RETURNED) expect(CHANGE_CHIP_LABEL[kind]).toBe(CHANGE_LABEL[kind])
+    }
   })
 })
