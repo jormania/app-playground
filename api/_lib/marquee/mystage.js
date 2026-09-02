@@ -28,6 +28,58 @@ import { TICKET, makeEvent, parseTime, slug } from './shared.js'
 
 const NEXT_DATA = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/
 
+/** The raw event list embedded in a mystage venue page, or `[]` for anything
+ *  that isn't one. Exported because mystage is now read in two different
+ *  roles: as a venue's own programme (this adapter), and as a SECONDARY
+ *  ticketing source joined onto a venue read elsewhere (metropolis.js, §9.62).
+ *  One reader, so the two can never drift apart on what a mystage page says. */
+export function mystageEvents(html) {
+  const match = NEXT_DATA.exec(html ?? '')
+  if (!match) return []
+  let data
+  try {
+    data = JSON.parse(match[1])
+  } catch {
+    return []
+  }
+  const events = data?.props?.pageProps?.initialEvents
+  return Array.isArray(events) ? events : []
+}
+
+/**
+ * Tickets and price for one mystage event — the §9.47 rule, in one place.
+ *
+ * `isAvailable` looked like the obvious signal, but it reads `true` on every
+ * event on a venue page checked live (2026-08-27) — including three with zero
+ * seats in every category and a placeholder `price.min.value: 0`, one of them
+ * "MASS" showing a TICKETS chip in the app with none actually on sale. It is
+ * not a per-event flag worth trusting; the seating map is. Summed availability
+ * across every category tells the truth mystage's own page acts on (it is what
+ * renders "Momentan nu sunt bilete disponibile" there), and a real price
+ * alongside zero seats is what actually being sold out looks like, as opposed
+ * to not being on sale yet.
+ */
+export function mystageTicketing(event) {
+  const price = Number(event?.price?.min?.value)
+  const hasPrice = Number.isFinite(price) && price > 0
+  const seatsAvailable = Object.values(event?.seating ?? {})
+    .reduce((sum, cat) => sum + (Number(cat?.available) || 0), 0)
+  return {
+    price: hasPrice ? price : null,
+    seatsAvailable,
+    ticketState: seatsAvailable > 0 ? TICKET.OPEN : hasPrice ? TICKET.SOLD_OUT : TICKET.NONE,
+  }
+}
+
+/** mystage's real page slugs aren't in this JSON (only the numeric event id
+ *  is) — but the site's own routing keys on the trailing id alone, any slug
+ *  text before it being decorative (`/spectacole/x-3385` resolves exactly like
+ *  `/spectacole/masacrul-3385`), so a slug built from the title here is a
+ *  real, working link even though it may not byte-match mystage's own. */
+export function mystageLink(event) {
+  return event?.eventId ? `https://www.mystage.ro/spectacole/${slug(event.title)}-${event.eventId}` : null
+}
+
 export default {
   id: 'mystage',
   label: 'mystage.ro venue page',

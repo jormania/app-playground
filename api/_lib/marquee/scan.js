@@ -139,7 +139,7 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
       // errors returns an error document, not a feed, and `res.json()` would
       // throw on it anyway.
       const body = request.json ? undefined : await res.text().catch(() => undefined)
-      return { url: request.url, ok: false, status: res.status, body }
+      return { url: request.url, ok: false, status: res.status, body, optional: request.optional === true }
     }
     if (request.json) return { url: request.url, ok: true, status: res.status, json: await res.json() }
     return { url: request.url, ok: true, status: res.status, body: await res.text() }
@@ -150,6 +150,7 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
       ok: false,
       status: 0,
       error: timedOut ? `no answer within ${Math.round(timeoutMs / 1000)}s` : (err?.message || 'fetch failed'),
+      optional: request.optional === true,
     }
   } finally {
     if (timer) clearTimeout(timer)
@@ -177,7 +178,13 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
     pages.push(await fetchOne(request, fetchImpl, timeoutMs))
   }
 
-  const failed = pages.find((p) => !p.ok)
+  // An `optional` request is an enrichment source (metropolis.js's mystage
+  // secondary, §9.62) — it can add a price to a showing but must never be
+  // able to take its venue down. mystage having a bad afternoon would
+  // otherwise report Metropolis as unreachable while the theatre's own
+  // programme sat there, perfectly readable. Its failure leaves a page with
+  // no body, and the adapter simply finds nothing in it.
+  const failed = pages.find((p) => !p.ok && !p.optional)
   // A rate limiter is not a broken site. Filarmonica's feed refuses bursts with
   // a 403 seconds after answering happily; calling that "parser broken" would
   // send someone hunting a markup change that never happened. It is also the one
@@ -186,7 +193,11 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
   // Everything else that came back with a body still gets read, and stands or
   // falls on the health gate (§9.61 — see fetchOne). A status line is a claim
   // about the request; the gate is a measurement of what arrived.
-  const readableAnyway = Boolean(failed) && !throttled && pages.every((p) => p.ok || Boolean(p.body))
+  // An optional page sits out this decision as well as the one above: it has
+  // no say in whether the VENUE is readable, so a mystage secondary that came
+  // back empty must not veto the salvage of a main page that arrived whole.
+  const readableAnyway = Boolean(failed) && !throttled
+    && pages.every((p) => p.ok || p.optional || Boolean(p.body))
 
   if (failed && !readableAnyway) {
     return {

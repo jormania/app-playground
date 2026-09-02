@@ -189,6 +189,10 @@ export const DEMO_VENUES = [
     // metropolis.js.
     url: 'https://teatrulmetropolis.ro/program/',
     adapter: 'metropolis',
+    // Its mystage.ro venue page, read as a SECOND, optional request purely
+    // to price the two co-productions the theatre's own site links
+    // off-domain (§9.62) — the same Adapter Config join ARCUB uses.
+    config: 'https://www.mystage.ro/locatii/teatrul-metropolis-4',
     status: 'active',
     category: 'play',
     area: 'centru',

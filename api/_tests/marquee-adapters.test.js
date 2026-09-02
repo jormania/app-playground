@@ -1016,6 +1016,20 @@ describe('scanVenue', () => {
       expect(r.status).toBe(STATUS.OK)
     })
 
+    it('an optional enrichment source can fail without taking the venue down (§9.62)', async () => {
+      // metropolis.js asks for its mystage page as `optional`. mystage having
+      // a bad afternoon must cost a couple of prices, never the programme:
+      // reporting Metropolis unreachable while its own page sits there,
+      // perfectly readable, would be the tail wagging the dog.
+      const joined = { ...metropolis, config: 'https://www.mystage.ro/locatii/teatrul-metropolis-4' }
+      const fetchImpl = async (url) => (url === joined.config
+        ? { ok: false, status: 503, text: async () => '', json: async () => ({}) }
+        : { ok: false, status: 500, text: async () => fixture('metropolis-program.html'), json: async () => ({}) })
+      const r = await scanVenue(joined, { now: NOW, fetchImpl })
+      expect(r.status).toBe(STATUS.OK)
+      expect(r.events.length).toBeGreaterThan(0)
+    })
+
     it('never parses through a rate limiter, whatever it returns', async () => {
       // A rate-limit page is not a programme, and a busy venue must not be
       // reported as a broken one.
