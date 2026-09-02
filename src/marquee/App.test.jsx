@@ -433,8 +433,99 @@ describe('Marquee — watching a sold-out show', () => {
     const returning = { ...soldOut, key: 'excelsior:2099-03-03T20:00:demo-show', date: '2099-03-03', ticketState: 'open' };
     stubScan([soldOut, returning]);
     await user.click(screen.getByRole('button', { name: 'Check venues' }));
-    // Twice over, deliberately: the "What changed" strip says it, and so does
-    // the chip on the card itself.
-    expect((await screen.findAllByText(/back — you were watching this/)).length).toBeGreaterThan(1);
+    // The strip says it in a sentence; the card's chip says it in the space a
+    // chip has, beside "sold out" and "tickets".
+    expect(await screen.findByText(/back — you were watching this/)).toBeTruthy();
+    expect(screen.getAllByTitle('back — you were watching this')
+      .some((el) => el.className.includes('chip--changed-returned') && el.textContent === 'back')).toBe(true);
+  });
+});
+
+// §9.64 — the audit's app-level findings, each one a way the facets and the
+// rest of the app disagreed.
+describe('Marquee — the status facets, audited', () => {
+  const soldOut = {
+    key: 'excelsior:2099-01-01T20:00:demo-show', venue: 'Teatrul Excelsior', title: 'Demo Show',
+    date: '2099-01-01', time: '20:00', ticketState: 'sold-out',
+  };
+  const onSale = {
+    key: 'excelsior:2099-02-02T20:00:other-show', venue: 'Teatrul Excelsior', title: 'Other Show',
+    date: '2099-02-02', time: '20:00', ticketState: 'open',
+  };
+  const stubScan = (events) => vi.stubGlobal('fetch', vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      scannedAt: new Date().toISOString(),
+      venues: [{ venue: 'Teatrul Excelsior', status: 'ok', events }],
+      events,
+    }),
+  })));
+
+  it('lets the facet override a standing “hide sold out” preference', async () => {
+    // The two are the same person disagreeing with themselves. With the
+    // preference winning, Sold out read 0 and showed nothing — and Watching
+    // lost every card still sold out, which is most of what a watchlist holds.
+    const user = userEvent.setup();
+    localStorage.setItem('marquee_prefs', JSON.stringify({ hideSoldOut: true }));
+    stubScan([soldOut, onSale]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Other Show');
+    expect(screen.queryByText('Demo Show')).toBeNull();
+
+    const facet = screen.getByRole('button', { name: /^Sold out/ });
+    expect(facet.textContent).toContain('1');
+    await user.click(facet);
+    expect(screen.getByText('Demo Show')).toBeTruthy();
+  });
+
+  it('clears the facet when you clear all filters', async () => {
+    // The crumb says "Clear all filters", and the facet is a filter. It used to
+    // survive: pressing it on a Sold-out view cleared the chain above and left
+    // you looking at the same short list.
+    const user = userEvent.setup();
+    stubScan([soldOut, onSale]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Demo Show');
+    await user.click(screen.getByRole('button', { name: /^Teatrul Excelsior/ }));
+    await user.click(screen.getByRole('button', { name: /^Sold out/ }));
+    expect(screen.queryByText('Other Show')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Clear all filters' }));
+    expect(screen.getByText('Other Show')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Everything' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps the facets reachable when the facet itself empties the view', async () => {
+    // Rendering them only when something was on screen meant pressing Sold out
+    // with nothing sold out took away the control you'd need to undo it.
+    const user = userEvent.setup();
+    stubScan([onSale]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Other Show');
+    await user.click(screen.getByRole('button', { name: /^Sold out/ }));
+    expect(screen.getByText('Nothing here is sold out.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Everything' })).toBeTruthy();
+  });
+
+  it('keeps the waiting list inside the venue you are looking at', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('marquee_watchlist', JSON.stringify({
+      'teatrul odeon::elsewhere': { title: 'Elsewhere', venue: 'Teatrul Odeon', missedDate: '2026-08-30' },
+    }));
+    stubScan([onSale]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Other Show');
+
+    await user.click(screen.getByRole('button', { name: /^Watching/ }));
+    expect(screen.getByText('Elsewhere')).toBeTruthy();
+
+    // Now narrow to the venue that is actually on: a watch held at another
+    // theatre is not part of what you're looking at.
+    await user.click(screen.getByRole('button', { name: /^Teatrul Excelsior/ }));
+    expect(screen.queryByText('Elsewhere')).toBeNull();
   });
 });

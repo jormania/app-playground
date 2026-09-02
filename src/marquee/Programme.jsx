@@ -2,7 +2,7 @@ import { useSwipeAction } from '../shared/useSwipeAction'
 import PosterGrid from './PosterGrid.jsx'
 import { Poster } from './Poster.jsx'
 import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay } from './programme.js'
-import { CHANGE, CHANGE_LABEL } from './changes.js'
+import { CHANGE, CHANGE_LABEL, CHANGE_CHIP_LABEL } from './changes.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
 /** One production: a title at a venue, with its dates nested.
@@ -84,7 +84,11 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
           <p className="prod__run">{formatRun(production)}</p>
 
           <div className="prod__chips">
-            {changeKind && <span className={`chip chip--changed-${changeKind}`}>{CHANGE_LABEL[changeKind]}</span>}
+            {changeKind && (
+              <span className={`chip chip--changed-${changeKind}`} title={CHANGE_LABEL[changeKind]}>
+                {CHANGE_CHIP_LABEL[changeKind]}
+              </span>
+            )}
             {soldOut && <span className="chip chip--soldout">sold out</span>}
             {/* Suppressed when changeKind is already 'tickets-opened': that chip
                 says the same thing ("tickets on sale") about the same change,
@@ -160,13 +164,31 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
               {watching ? '👁 Watching' : 'Watch'}
             </button>
           ) : (
-            <button
-              type="button"
-              className="action-keep"
-              onClick={() => onKeep(production.showings[0], production)}
-            >
-              Keep
-            </button>
+            <>
+              <button
+                type="button"
+                className="action-keep"
+                onClick={() => onKeep(production.showings[0], production)}
+              >
+                Keep
+              </button>
+              {/* The watch outlives the sell-out that started it, so a show
+                  that came back renders here, in the Keep branch — and used
+                  to render no way to call the watch off: it is listed, so it
+                  never appears in the "nothing listed yet" group either, and
+                  the mark was stuck for good. */}
+              {watching && (
+                <button
+                  type="button"
+                  className="action-watch"
+                  aria-pressed="true"
+                  title="Back on — you were watching this. Press to stop watching."
+                  onClick={() => onWatch?.(production)}
+                >
+                  👁 Watching
+                </button>
+              )}
+            </>
           )}
           <button type="button" className="action-ignore" onClick={() => onIgnore(production)}>
             {ignored ? 'Un-ignore' : 'Ignore'}
@@ -201,7 +223,13 @@ function Trouble({ venues, checkedAt }) {
 /** "Nothing upcoming" is a claim, and it is only true for a venue that answered.
  *  Filtering to a venue whose scan was throttled or broken must say THAT, not
  *  imply the venue has an empty programme. */
-function emptyMessage(venueFilter, scanned, search) {
+function emptyMessage(venueFilter, scanned, search, statusFilter = null) {
+  // The status facet answers first: with it on, "nothing upcoming at any of
+  // your venues" is simply false — there is plenty on, none of it sold out (or
+  // none of it watched). Saying the wrong one of those sends you looking for a
+  // scan that failed instead of at the filter you pressed.
+  if (statusFilter === 'sold-out') return 'Nothing here is sold out.'
+  if (statusFilter === 'watching') return 'Nothing you’re watching is on right now.'
   // A search with no matches is its own answer — distinct from a venue filter
   // or the programme genuinely being empty, and worth naming as such rather
   // than the same generic "nothing upcoming" either of those already use.
@@ -257,7 +285,7 @@ export default function Programme({
   search = '', stale = false, scanning = false,
   venueFilter = null,
   viewMode = 'list', swipeEnabled = true,
-  watchlist = {}, onWatch, awaited = [],
+  watchlist = {}, onWatch, awaited = [], statusFilter = null,
 }) {
   if (!scan) {
     return (
@@ -300,7 +328,7 @@ export default function Programme({
       {days.length === 0 ? (
         // Not an empty programme when you are simply waiting on something:
         // the Awaited list above IS the answer in that case.
-        awaited.length > 0 ? null : <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>
+        awaited.length > 0 ? null : <p className="empty">{emptyMessage(venueFilter, scanned, search, statusFilter)}</p>
       ) : viewMode === 'posters' ? (
         <PosterGrid
           days={venueFilter ? [{ date: null, productions: days.flatMap((d) => d.productions) }] : days}

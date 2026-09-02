@@ -132,7 +132,7 @@ export function changedKeyMap(changes) {
  *  worth acting on. `cancelled` never appears here: by the time a card is
  *  rendered its showing still exists in THIS scan, so nothing on it can be the
  *  one that vanished. */
-const CARD_CHANGE_ORDER = ['tickets-opened', 'sold-out', 'new-event']
+const CARD_CHANGE_ORDER = ['returned', 'tickets-opened', 'sold-out', 'new-event']
 
 export function primaryChangeKind(production, changedKeys) {
   let best = null
