@@ -788,20 +788,35 @@ button { color: inherit; font: inherit; }
    "sold out" and "watching" cut ACROSS type/venue/hall instead of narrowing
    within them, so they sit below it, in a squarer, quieter shape that does
    not read as a fourth level of the chain. */
+/* Same shape as a cascade row, for the same reason (§9.60): the label sits in
+   a grid gutter of its own and only the chips scroll, so "SHOW" stays put
+   instead of sliding out of view the moment the row is long enough to need
+   scrolling — which, with seven facets, it always is. */
 .facets {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.4rem;
   margin: 0 0 0.7rem;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-.facets::-webkit-scrollbar { display: none; }
+.facets__track {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Room for the first chip's focus ring, which a flush-left overflow
+     container would clip. */
+  padding: 0.15rem 0;
+}
+
+.facets__track::-webkit-scrollbar { display: none; }
 
 .facets__label {
-  flex-shrink: 0;
   min-width: 3.1rem;
   font-size: 0.7rem;
   letter-spacing: 0.02em;

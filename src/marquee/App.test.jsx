@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.jsx';
 
@@ -527,5 +527,91 @@ describe('Marquee — the status facets, audited', () => {
     // theatre is not part of what you're looking at.
     await user.click(screen.getByRole('button', { name: /^Teatrul Excelsior/ }));
     expect(screen.queryByText('Elsewhere')).toBeNull();
+  });
+});
+
+// §9.65 — the full facet row, in the app.
+describe('Marquee — every state a card can be in has a facet', () => {
+  const open = {
+    key: 'excelsior:2099-02-02T20:00:on-sale-show', venue: 'Teatrul Excelsior', title: 'On Sale Show',
+    date: '2099-02-02', time: '20:00', ticketState: 'open',
+  };
+  const gone = {
+    key: 'excelsior:2099-01-01T20:00:gone-show', venue: 'Teatrul Excelsior', title: 'Gone Show',
+    date: '2099-01-01', time: '20:00', ticketState: 'sold-out',
+  };
+  const stubScan = (events) => vi.stubGlobal('fetch', vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      scannedAt: new Date().toISOString(),
+      venues: [{ venue: 'Teatrul Excelsior', status: 'ok', events }],
+      events,
+    }),
+  })));
+
+  it('draws one chip per state, counted by what pressing it would show', async () => {
+    const user = userEvent.setup();
+    stubScan([open, gone]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('On Sale Show');
+
+    const count = (name) => screen.getByRole('button', { name }).textContent;
+    expect(count(/^On sale/)).toContain('1');
+    expect(count(/^Sold out/)).toContain('1');
+    expect(count(/^Kept/)).toContain('0');
+    expect(count(/^Ignored/)).toContain('0');
+    // Nothing changed yet: the first check is a baseline, not news.
+    expect(count(/^Changed/)).toContain('0');
+
+    await user.click(screen.getByRole('button', { name: /^On sale/ }));
+    expect(screen.getByText('On Sale Show')).toBeTruthy();
+    expect(screen.queryByText('Gone Show')).toBeNull();
+  });
+
+  it('finds what you ignored without going through Settings', async () => {
+    const user = userEvent.setup();
+    stubScan([open, gone]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('On Sale Show');
+
+    // The card for the show on sale, not whichever comes first by date.
+    const card = screen.getByText('On Sale Show').closest('article');
+    await user.click(within(card).getByRole('button', { name: 'Ignore' }));
+    // Ignoring hides it, as it always did…
+    await waitFor(() => expect(screen.queryByText('On Sale Show')).toBeNull());
+    // …and the facet is the one place it comes back, without touching a setting.
+    expect(screen.getByRole('button', { name: /^Ignored/ }).textContent).toContain('1');
+    await user.click(screen.getByRole('button', { name: /^Ignored/ }));
+    expect(screen.getByText('On Sale Show')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Un-ignore' })).toBeTruthy();
+  });
+
+  it('shows only what the last check turned up, under Changed', async () => {
+    const user = userEvent.setup();
+    stubScan([gone]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Gone Show');
+
+    stubScan([gone, open]);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    // Twice over — the "What changed" strip names it as well as the card.
+    await screen.findAllByText('On Sale Show');
+
+    await user.click(screen.getByRole('button', { name: /^Changed/ }));
+    const cards = () => Array.from(document.querySelectorAll('.prod__title')).map((el) => el.textContent);
+    expect(cards()).toEqual(['On Sale Show']);
+  });
+
+  it('says which facet emptied the list, in the facet’s own words', async () => {
+    const user = userEvent.setup();
+    stubScan([open]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('On Sale Show');
+    await user.click(screen.getByRole('button', { name: /^Kept/ }));
+    expect(screen.getByText(/haven’t kept anything here yet/)).toBeTruthy();
   });
 });

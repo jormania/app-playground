@@ -2517,6 +2517,58 @@ list here has a bound, but this one is hand-curated a show at a time and
 prunes itself the moment you press Stop watching — a cap would only ever fire
 on someone using the feature exactly as intended.
 
+### 9.65 One facet per state a card can be in (2026-09-02)
+
+Asked for: a **Kept** filter, "and any other which would be useful for
+completeness". Completeness is the useful word — the honest answer is the set
+of states a card can actually be in, so the row is now:
+
+**Everything · Changed · On sale · Sold out · Kept · Watching · Ignored**
+
+Three of those are the venue's business (changed since the last check, on
+sale, sold out) and three are yours (kept, watched, ignored), which is also
+the order they are drawn in.
+
+**Two that earn their place beyond the ask.** *Changed* answers "just show me
+what this check turned up" against the programme itself rather than through
+the strip at the top — the strip lists showings, this lists the cards.
+*Ignored* is the only way to see what you dismissed without going into
+Settings and turning "show ignored" on, which then applies to every view until
+you turn it off again; as a facet it lasts exactly as long as you're looking.
+
+**The facets are a table now** ([`facets.js`](src/marquee/facets.js)), not a
+chain of `if`s. Each entry carries three things:
+
+- `test` — what belongs in it.
+- `lifts` — which of Settings' "hide this" preferences it switches off. §9.64
+  found this for Sold out; it generalises: **Kept has to show kept runs even
+  with "hide what I've kept" on**, or the button does nothing at all for the
+  one person whose settings make it worth pressing. The exception is
+  `hideIgnored`, lifted by **Ignored alone** — ignoring is a decision about
+  that show, not a display preference, so a question about ticket state must
+  not quietly undo it.
+- `empty` — what to say when it selects nothing, beside the rule that selects
+  it, so a new facet cannot ship with the wrong explanation.
+
+`applyFacet` is the single definition of what a facet shows, used for both the
+list on screen and the number on the chip — which is what makes §9.64's
+seventh finding structurally impossible to reintroduce rather than merely
+fixed once.
+
+**Every facet is always drawn, including at 0** — the same rule the cascade
+keeps: a venue reading 0 is a real answer ("watched, nothing on"), and so is
+Kept reading 0. The row got the cascade's own layout to go with it: the label
+in a grid gutter, only the chips scrolling, so "SHOW" stays put instead of
+sliding out of view — which with seven chips it otherwise always would (the
+same fix, and the same reason, as §9.60's).
+
+One number is not just a filtered length: **Watching adds the shows with no
+date anywhere**, which live above the programme rather than in it and are the
+whole reason the watchlist exists.
+
+`npm test`, `npm run typecheck` and `npx eslint` all pass; verified at 390px in
+both themes, including the row scrolled to its end.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
