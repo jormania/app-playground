@@ -394,3 +394,50 @@ describe('changedKeyMap / primaryChangeKind', () => {
     expect(primaryChangeKind(production, changed)).toBe(CHANGE.TICKETS_OPENED)
   })
 })
+
+// §9.63 — a watch is held on the production, not the showing, which is the only
+// reason a return can be recognised when it comes back on a date nothing has
+// ever seen.
+describe('diff, with a watchlist', () => {
+  const soldOut = event({ ticketState: 'sold-out' })
+  const watched = [productionId(soldOut)]
+
+  it('calls a brand new date for a watched production a return, not a new listing', () => {
+    const later = event({ key: 'excelsior:2026-11-04T20:00:tomcat', date: '2026-11-04', ticketState: 'open' })
+    const { changes } = diff(snap([soldOut]), snap([soldOut, later]), { now: NOW, watching: watched })
+    expect(changes.map((c) => c.kind)).toEqual([CHANGE.RETURNED])
+    expect(changes[0].date).toBe('2026-11-04')
+  })
+
+  it('calls the same night going back on sale a return', () => {
+    const back = event({ ticketState: 'open' })
+    const { changes } = diff(snap([soldOut]), snap([back]), { now: NOW, watching: watched })
+    expect(changes.map((c) => c.kind)).toEqual([CHANGE.RETURNED])
+  })
+
+  it('leaves everything else alone — an unwatched production is still just new', () => {
+    const other = event({ key: 'excelsior:2026-11-04T20:00:other', title: 'Other', date: '2026-11-04' })
+    const { changes } = diff(snap([soldOut]), snap([soldOut, other]), { now: NOW, watching: watched })
+    expect(changes.map((c) => c.kind)).toEqual([CHANGE.NEW])
+  })
+
+  it('is inert with no watchlist, which is every user who never pressed Watch', () => {
+    const back = event({ ticketState: 'open' })
+    expect(diff(snap([soldOut]), snap([back]), { now: NOW }).changes.map((c) => c.kind))
+      .toEqual([CHANGE.TICKETS_OPENED])
+    expect(diff(snap([soldOut]), snap([back]), { now: NOW, watching: [] }).changes.map((c) => c.kind))
+      .toEqual([CHANGE.TICKETS_OPENED])
+  })
+
+  it('sorts a return above everything else — it is the one thing you asked about', () => {
+    const later = event({ key: 'excelsior:2026-11-04T20:00:tomcat', date: '2026-11-04', ticketState: 'open' })
+    const other = event({ key: 'excelsior:2026-09-01T20:00:other', title: 'Other', date: '2026-09-01' })
+    const { changes } = diff(snap([soldOut]), snap([soldOut, later, other]), { now: NOW, watching: watched })
+    expect(changes[0].kind).toBe(CHANGE.RETURNED)
+  })
+
+  it('carries the production id in a snapshot, so a watch survives a reload', () => {
+    const stored = toSnapshot([soldOut], '2026-08-26T09:00:00.000Z')
+    expect(Object.values(stored.events)[0].production).toBe('teatrul excelsior::tomcat')
+  })
+})

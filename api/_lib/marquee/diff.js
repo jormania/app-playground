@@ -16,20 +16,31 @@
 
 export const CHANGE = {
   NEW: 'new-event',
+  RETURNED: 'returned',
   TICKETS_OPENED: 'tickets-opened',
   SOLD_OUT: 'sold-out',
   CANCELLED: 'cancelled',
 }
 
+/** venue + title, folded — the identity of a production across its dates. The
+ *  client's copy lives in src/marquee/programme.js; same rule, same string. */
+function productionId(event) {
+  return `${event.venue}::${event.title}`.toLowerCase()
+}
+
 export function toSnapshot(events, scannedAt) {
   const map = {}
   for (const e of events ?? []) {
-    map[e.key] = { ticketState: e.ticketState, date: e.date, title: e.title, venue: e.venue, time: e.time ?? null }
+    map[e.key] = {
+      ticketState: e.ticketState, date: e.date, title: e.title, venue: e.venue, time: e.time ?? null,
+      // What a watch is held on — see `diff` below.
+      production: productionId(e),
+    }
   }
   return { scannedAt: scannedAt ?? new Date().toISOString(), events: map }
 }
 
-export function diff(previous, current, { now = new Date() } = {}) {
+export function diff(previous, current, { now = new Date(), watching = null } = {}) {
   const before = previous?.events ?? null
   const after = current?.events ?? {}
   if (!before) return { hadSnapshot: false, changes: [] }
@@ -37,14 +48,23 @@ export function diff(previous, current, { now = new Date() } = {}) {
   const changes = []
   const todayKey = now.toISOString().slice(0, 10)
 
+  // Kept identical to the client's rule (§9.63), including the branch this
+  // side can never take: a watchlist lives in the browser that formed it, so
+  // `watching` is always empty here and the scheduled check reports a return
+  // as the `new-event` or `tickets-opened` it also is. The parameter exists so
+  // the two copies stay the same function rather than diverging quietly — the
+  // one thing this file's header asks for.
+  const watched = watching instanceof Set ? watching : new Set(watching ?? [])
+  const isWatched = (event) => watched.size > 0 && event.production && watched.has(event.production)
+
   for (const [key, event] of Object.entries(after)) {
     const was = before[key]
     if (!was) {
-      changes.push({ kind: CHANGE.NEW, key, ...event })
+      changes.push({ kind: isWatched(event) ? CHANGE.RETURNED : CHANGE.NEW, key, ...event })
       continue
     }
     if (was.ticketState !== 'open' && event.ticketState === 'open') {
-      changes.push({ kind: CHANGE.TICKETS_OPENED, key, ...event })
+      changes.push({ kind: isWatched(event) ? CHANGE.RETURNED : CHANGE.TICKETS_OPENED, key, ...event })
     } else if (was.ticketState !== 'sold-out' && event.ticketState === 'sold-out') {
       changes.push({ kind: CHANGE.SOLD_OUT, key, ...event })
     }
@@ -61,7 +81,7 @@ export function diff(previous, current, { now = new Date() } = {}) {
   return { hadSnapshot: true, changes: sortChanges(changes) }
 }
 
-const ORDER = [CHANGE.TICKETS_OPENED, CHANGE.CANCELLED, CHANGE.SOLD_OUT, CHANGE.NEW]
+const ORDER = [CHANGE.RETURNED, CHANGE.TICKETS_OPENED, CHANGE.CANCELLED, CHANGE.SOLD_OUT, CHANGE.NEW]
 
 export function sortChanges(changes) {
   return [...changes].sort((a, b) => {
@@ -73,6 +93,7 @@ export function sortChanges(changes) {
 
 export const CHANGE_LABEL = {
   [CHANGE.NEW]: 'new',
+  [CHANGE.RETURNED]: 'back — you were watching this',
   [CHANGE.TICKETS_OPENED]: 'tickets on sale',
   [CHANGE.SOLD_OUT]: 'sold out',
   [CHANGE.CANCELLED]: 'gone from the programme',

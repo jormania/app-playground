@@ -10,7 +10,7 @@ import { formatDay, formatRun, formatPrice } from './format.js'
  *  The card is the production and not the showing because that is the unit you
  *  decide about — "do I want to see this" comes long before "which night". A film
  *  listed six times is one card with six dates, not six cards. */
-function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, onIgnore, swipeEnabled = true }) {
+function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, onIgnore, onWatch, watching = false, swipeEnabled = true }) {
   const ignored = triage[production.id] === TRIAGE.IGNORED
   const soldOut = production.allSoldOut
   const price = formatPrice(production.price)
@@ -140,22 +140,34 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
         </div>
 
         <div className="prod__actions" data-noswipe>
-          {/* A run with nothing left to buy is nothing left to decide about.
-              This reverses an earlier call — a sold-out night used to stay
-              keepable "in case a return shows up" — because in practice the
-              button offered an action that led nowhere, on the one card state
-              where the answer is already settled. Individual dates below
-              follow the same rule; a run with ONE night gone keeps its button,
-              since `allSoldOut` only means every date. */}
-          <button
-            type="button"
-            className="action-keep"
-            disabled={soldOut}
-            title={soldOut ? 'Sold out — nothing left to keep' : undefined}
-            onClick={() => onKeep(production.showings[0], production)}
-          >
-            Keep
-          </button>
+          {/* A run with nothing left to buy has nothing to Keep — but that
+              left the one card state where you most want to act offering
+              nothing at all, a disabled button and a shrug. It offers Watch
+              instead (§9.63): tell me if this comes back. The watch is held on
+              the PRODUCTION, so it outlives the night that sold out and
+              catches a new date months later, which is the shape a return
+              usually takes. */}
+          {soldOut ? (
+            <button
+              type="button"
+              className={`action-keep ${watching ? 'action-keep--watching' : ''}`}
+              aria-pressed={watching}
+              title={watching
+                ? 'Watching — you’ll see it here if this comes back'
+                : 'Sold out. Watch it, and a new date or a return goes to the top of What changed'}
+              onClick={() => onWatch?.(production)}
+            >
+              {watching ? '👁 Watching' : 'Watch'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="action-keep"
+              onClick={() => onKeep(production.showings[0], production)}
+            >
+              Keep
+            </button>
+          )}
           <button type="button" className="action-ignore" onClick={() => onIgnore(production)}>
             {ignored ? 'Un-ignore' : 'Ignore'}
           </button>
@@ -202,11 +214,50 @@ function emptyMessage(venueFilter, scanned, search) {
   return `Nothing upcoming at ${venueFilter}.`
 }
 
+/** The watched productions with nothing currently listed anywhere.
+ *
+ *  This is the half of a watchlist a programme filter can never show, and the
+ *  reason Watching is not simply another chip: the night you missed has
+ *  PASSED, so the production is in no scan, no snapshot and no day list — the
+ *  waiting is the whole state. Rendered from the watchlist's own stored title
+ *  and venue rather than from a production that isn't there. */
+function Awaited({ entries, onForget }) {
+  if (entries.length === 0) return null
+  return (
+    <section className="awaited" aria-label="Watching, nothing listed yet">
+      <h2 className="awaited__head">
+        Watching · nothing listed yet
+        <span className="awaited__count">{entries.length}</span>
+      </h2>
+      <ul className="awaited__list">
+        {entries.map((entry) => (
+          <li key={entry.id} className="awaited__row">
+            <div className="awaited__what">
+              <strong>{entry.title}</strong>
+              <span className="awaited__where">
+                {entry.venue}
+                {entry.missedDate ? ` · sold out for ${formatDay(entry.missedDate)}` : ''}
+              </span>
+            </div>
+            <button type="button" className="linkbtn" onClick={() => onForget?.(entry.id)}>
+              Stop watching
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="footnote">
+        A new date, or tickets coming back, puts these at the top of What changed.
+      </p>
+    </section>
+  )
+}
+
 export default function Programme({
   scan, days, triage, changedKeys = new Map(), onKeep, onIgnore,
   search = '', stale = false, scanning = false,
   venueFilter = null,
   viewMode = 'list', swipeEnabled = true,
+  watchlist = {}, onWatch, awaited = [],
 }) {
   if (!scan) {
     return (
@@ -244,8 +295,12 @@ export default function Programme({
           in one straight chronological line. `days` is already sorted
           date-then-showtime (byDate), so flattening it preserves that order
           exactly; nothing here re-sorts. */}
+      <Awaited entries={awaited} onForget={(id) => onWatch?.({ id }, { forget: true })} />
+
       {days.length === 0 ? (
-        <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>
+        // Not an empty programme when you are simply waiting on something:
+        // the Awaited list above IS the answer in that case.
+        awaited.length > 0 ? null : <p className="empty">{emptyMessage(venueFilter, scanned, search)}</p>
       ) : viewMode === 'posters' ? (
         <PosterGrid
           days={venueFilter ? [{ date: null, productions: days.flatMap((d) => d.productions) }] : days}
@@ -265,6 +320,8 @@ export default function Programme({
               changedKeys={changedKeys}
               onKeep={onKeep}
               onIgnore={onIgnore}
+              onWatch={onWatch}
+              watching={Boolean(watchlist[production.id])}
               swipeEnabled={swipeEnabled}
             />
           ))}
@@ -281,6 +338,8 @@ export default function Programme({
                 changedKeys={changedKeys}
                 onKeep={onKeep}
                 onIgnore={onIgnore}
+                onWatch={onWatch}
+                watching={Boolean(watchlist[production.id])}
                 swipeEnabled={swipeEnabled}
               />
             ))}

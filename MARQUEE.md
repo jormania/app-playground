@@ -2383,6 +2383,72 @@ direction:**
 priced, the two mystage prices (87.17, 75.95) landing on exactly the two
 showings with no detail page of their own.
 
+### 9.63 Watching a sold-out show, and knowing when it comes back (2026-09-02)
+
+Asked for: *"for the sold out events I want to track those more closely for a
+possible return. If they return and new events with same or close names and
+locations and categories are uncovered by a future scan, I want that
+highlighted"* — then, choosing between an automatic rule and an explicit one:
+watch **only shows I mark**, the button called plainly **Watch**, plus *"I
+would need to be able to filter the Sold Out events somehow and check what's on
+the watch list, easily."*
+
+**What was already there, and what genuinely wasn't.** A sold-out night that
+goes back on sale was *already* reported — the same key, `sold-out` →
+`open`, is `tickets-opened`. Three things were missing:
+
+1. A **new date** for that production carries a key nothing has ever seen, so
+   it arrived as an anonymous `new-event` among fifty others.
+2. Once the sold-out date **passed**, the production left the snapshot
+   entirely and nothing remembered you had wanted it.
+3. The sold-out card was a **dead end** — a disabled Keep and a shrug.
+
+**A watch is held on the production, not the showing.** `productionId`
+(`venue::title`, lowercased) is the identity that survives a date change, so
+`toSnapshot` now carries `production` alongside the showing's own fields and
+`diff` takes a `watching` set. When a watched production reappears — new key
+or old key back on sale — the change is emitted as `returned` **instead of**
+the kind it would otherwise have had, rather than as a second row: one thing
+happened, and "the show you wanted is back" is the more useful way to say it.
+`returned` sorts above everything else and gets the filled accent chip.
+
+That is a deliberately narrower reading of "same or close names" than the
+request allows. Fuzzy matching across near-titles was the alternative, and it
+buys its extra recall with false positives on a venue that runs *Hamlet* and
+*Hamlet — matineu* as different productions. Marking the show yourself makes
+the match exact and the report trustworthy. (`productionId` only lowercases
+and does not fold diacritics — so a source that starts writing `Speranțe` as
+`Sperante` would look like a different production. That is a latent bug shared
+with the rest of the app, noted rather than fixed here.)
+
+**Finding them again — a facet, not a chip.** Sold out and Watching cut
+*across* the type/venue/hall chain rather than narrowing within it, so putting
+them in that chain would break the one rule §9.60 established (a level is
+scoped by its parents and nothing else). They sit below it as a small row —
+Everything / Sold out *n* / Watching *n* — and compose with whatever the
+cascade and search already chose.
+
+**The Watching view has to answer for what is not there.** A watch earns its
+keep exactly when the production has dropped out of the programme, and a
+filter over the programme can only ever show you nothing. So Watching also
+renders **"Watching · nothing listed yet"** above the list, built from the
+watchlist itself: what you marked, where, and the night you missed. It is
+computed against the *whole* scan rather than the filtered view — a production
+hidden by an active venue filter is still listed, and saying "nothing listed
+yet" about it would be a lie the filter caused.
+
+**Storage, and one thing deliberately left alone.** The watchlist is
+`marquee_watchlist` in localStorage — `{ title, venue, watchedAt, missedDate }`
+per productionId, enough to render a row for a production that has vanished
+from every venue. Which means **notifications behave exactly as before**: the
+scheduled check and the service worker have no watchlist to consult, so a
+return still emails and notifies as `tickets-opened` or `new-event`. The
+server's `diff` carries the same `watching` parameter and the same branch — it
+can simply never be passed one. That keeps the two copies of the diff the same
+function, which is the one thing `api/_lib/marquee/diff.js`'s header asks for.
+
+`npm test`, `npm run typecheck` and `npx eslint` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

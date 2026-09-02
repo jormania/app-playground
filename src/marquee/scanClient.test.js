@@ -86,3 +86,24 @@ describe('runScan', () => {
     await expect(runScan([venue()], { fetchImpl: failing })).rejects.toThrow(/Too many requests/)
   })
 })
+
+// §9.63 — the watchlist lives in the app; the diff is the only thing that can
+// use it, and this is the one wire between them.
+describe('runScan, with a watchlist', () => {
+  it('hands the watched productions to the diff', async () => {
+    await runScan([venue()], { fetchImpl: endpoint(answered([event({ ticketState: 'sold-out' })])) })
+    const back = event({ key: 'excelsior:2026-10-10T20:00:tomcat', date: '2026-10-10', ticketState: 'open' })
+    const result = await runScan([venue()], {
+      fetchImpl: endpoint(answered([back])),
+      watching: ['teatrul excelsior::tomcat'],
+    })
+    expect(result.changes.map((c) => c.kind)).toContain('returned')
+  })
+
+  it('leaves the diff exactly as it was when nothing is watched', async () => {
+    await runScan([venue()], { fetchImpl: endpoint(answered([event({ ticketState: 'sold-out' })])) })
+    const back = event({ ticketState: 'open' })
+    const result = await runScan([venue()], { fetchImpl: endpoint(answered([back])) })
+    expect(result.changes.map((c) => c.kind)).toEqual(['tickets-opened'])
+  })
+})

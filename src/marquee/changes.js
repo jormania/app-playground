@@ -11,8 +11,11 @@
 //
 // Pure — no fetch, no storage, no React.
 
+import { productionId } from './programme.js'
+
 export const CHANGE = {
   NEW: 'new-event',
+  RETURNED: 'returned',
   TICKETS_OPENED: 'tickets-opened',
   SOLD_OUT: 'sold-out',
   CANCELLED: 'cancelled',
@@ -24,7 +27,17 @@ export const CHANGE = {
 export function toSnapshot(events, scannedAt) {
   const map = {}
   for (const e of events ?? []) {
-    map[e.key] = { ticketState: e.ticketState, date: e.date, title: e.title, venue: e.venue, time: e.time ?? null }
+    map[e.key] = {
+      ticketState: e.ticketState,
+      date: e.date,
+      title: e.title,
+      venue: e.venue,
+      time: e.time ?? null,
+      // What a watch is held against (§9.63). Derived here rather than
+      // rebuilt in the diff so the snapshot and the watchlist can never
+      // disagree about what counts as the same production.
+      production: productionId(e),
+    }
   }
   return { scannedAt: scannedAt ?? new Date().toISOString(), events: map }
 }
@@ -44,22 +57,31 @@ export function toSnapshot(events, scannedAt) {
  *    treating its absent events as cancellations would empty the app every time a
  *    site hiccuped. Absence is only meaningful from a venue we truly read.
  */
-export function diff(previous, current, { now = new Date() } = {}) {
+export function diff(previous, current, { now = new Date(), watching = null } = {}) {
   const before = previous?.events ?? null
   const after = current?.events ?? {}
   if (!before) return { hadSnapshot: false, changes: [] }
 
   const changes = []
   const todayKey = now.toISOString().slice(0, 10)
+  // A watch is held on the PRODUCTION, so a return is recognised however it
+  // comes back: the same night going on sale again, or — the case a
+  // showing-keyed watch could never catch — a brand new date months later,
+  // which carries a key nothing has ever seen before.
+  const watched = watching instanceof Set ? watching : new Set(watching ?? [])
+  const isWatched = (event) => watched.size > 0 && event.production && watched.has(event.production)
 
   for (const [key, event] of Object.entries(after)) {
     const was = before[key]
     if (!was) {
-      changes.push({ kind: CHANGE.NEW, key, ...event })
+      // `returned` REPLACES the kind this would otherwise have had rather than
+      // adding a second row: one thing happened, and "the show you wanted is
+      // back" is the more useful way to say it than "a new listing appeared".
+      changes.push({ kind: isWatched(event) ? CHANGE.RETURNED : CHANGE.NEW, key, ...event })
       continue
     }
     if (was.ticketState !== 'open' && event.ticketState === 'open') {
-      changes.push({ kind: CHANGE.TICKETS_OPENED, key, ...event })
+      changes.push({ kind: isWatched(event) ? CHANGE.RETURNED : CHANGE.TICKETS_OPENED, key, ...event })
     } else if (was.ticketState !== 'sold-out' && event.ticketState === 'sold-out') {
       changes.push({ kind: CHANGE.SOLD_OUT, key, ...event })
     }
@@ -79,7 +101,9 @@ export function diff(previous, current, { now = new Date() } = {}) {
 /** Most useful first: tickets opening is the thing worth acting on today; a
  *  cancellation is worth knowing; a new listing is the background hum. Within a
  *  kind, soonest event first. */
-const ORDER = [CHANGE.TICKETS_OPENED, CHANGE.CANCELLED, CHANGE.SOLD_OUT, CHANGE.NEW]
+// A return leads: it is the only kind you asked to be told about, and returns
+// are the one thing here that gets taken again while you deliberate.
+const ORDER = [CHANGE.RETURNED, CHANGE.TICKETS_OPENED, CHANGE.CANCELLED, CHANGE.SOLD_OUT, CHANGE.NEW]
 
 export function sortChanges(changes) {
   return [...changes].sort((a, b) => {
@@ -91,6 +115,7 @@ export function sortChanges(changes) {
 
 export const CHANGE_LABEL = {
   [CHANGE.NEW]: 'new',
+  [CHANGE.RETURNED]: 'back — you were watching this',
   [CHANGE.TICKETS_OPENED]: 'tickets on sale',
   [CHANGE.SOLD_OUT]: 'sold out',
   [CHANGE.CANCELLED]: 'gone from the programme',

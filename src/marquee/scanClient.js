@@ -25,12 +25,15 @@ export function saveLastScan(scan) { writeJson(LAST_SCAN_KEY, scan) }
 /**
  * Run a scan and work out what changed.
  *
- * Returns `{ scannedAt, venues, events, changes, hadSnapshot }`. The snapshot is
- * advanced only for venues that actually answered — see `diff`'s rule 2: letting a
+ * Returns `{ scannedAt, venues, events, changes, hadSnapshot }`. `watching` is the
+ * set of watched productionIds — passed straight through to `diff`, which is the
+ * only reason a return can be told apart from any other new listing.
+ *
+ * The snapshot is advanced only for venues that actually answered — see `diff`'s rule 2: letting a
  * throttled venue clear its own events would report the whole programme as
  * cancelled and then, next scan, as brand new.
  */
-export async function runScan(venues, { fetchImpl = fetch, now = new Date() } = {}) {
+export async function runScan(venues, { fetchImpl = fetch, now = new Date(), watching = null } = {}) {
   const payload = scanPayload(venues)
   if (payload.length === 0) {
     return { scannedAt: now.toISOString(), venues: [], events: [], changes: [], hadSnapshot: true, nothingToScan: true }
@@ -50,7 +53,7 @@ export async function runScan(venues, { fetchImpl = fetch, now = new Date() } = 
 
   const previous = loadSnapshot()
   const current = { ...toSnapshot(data.events, data.scannedAt), answeredVenues: answeredNames }
-  const { changes, hadSnapshot } = diff(previous, current, { now })
+  const { changes, hadSnapshot } = diff(previous, current, { now, watching })
 
   // Carry forward what a silent venue last showed, so its programme doesn't
   // vanish from the app (and from the next diff) because of one bad request.
