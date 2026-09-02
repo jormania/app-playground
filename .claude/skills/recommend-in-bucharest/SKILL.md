@@ -527,11 +527,11 @@ the `(URL)` portion entirely rather than guessing one.
 After the digest:
 > Spune numărul evenimentului (ex. „3", „5 și 8") sau titlul prescurtat și adăugăm în Wanderlist.
 
-When Gabriel selects an event, prepare a Wanderlist draft using data already present in the digest entry:
+**Before drafting anything, check whether it is already there** (see "Duplicate check" below). Only once that comes back clear do you prepare a Wanderlist draft, using data already present in the digest entry:
 
 | Wanderlist field | Source in digest |
 |---|---|
-| **Name** | Titlul evenimentului (fără locație) |
+| **Name** | **The Radar row's own `Name` field, verbatim** — not a fresh paraphrase of the digest line. See "Duplicate check": this is what keeps a save from chat and a save from Radar-B byte-identical, and what makes the next run's duplicate check able to find this one. |
 | **Description** | Cele 2–3 propoziții din digest, condensate — obligatoriu, nu se lasă gol |
 | **Category** | Backtick label din digest (`concert`, `art`, etc.) |
 | **Place** (name + address) | Adresa completă din digest, + „, București" |
@@ -550,7 +550,13 @@ When Gabriel selects an event, prepare a Wanderlist draft using data already pre
 
 Show the draft, wait for confirmation, then write. Never bulk-add unless Gabriel spune explicit. One at a time.
 
-**Gabriel may also do this himself in Radar-B** — the app builds the same draft from the same Radar row and writes it through the same shared Findings mapping, so a row saved in the app and one saved from this conversation are identical. If he says "I'll save it myself" or you can see the event is already in Findings, don't re-offer it here.
+**Duplicate check — required, not incidental.** A digest re-recommends whatever is still running (a multi-week exhibition shows up again and again until it closes), and each run used to re-derive the Wanderlist `Name` from that day's own phrasing of the digest line — so the same Radar row produced a differently-worded title on two different days, and a plain "does this title already exist" search missed the match (that's exactly how MNAC's summer exhibition season got two Findings rows one day apart, 2026-08-28/29, both citing the same source). Pinning `Name` to the Radar row's own field (above) removes most of the drift; this step catches the rest, including anything saved before that fix existed. For any event carrying a Radar `Key` (i.e., it came from Step 4's write, not a one-off mention):
+
+1. Query Findings (`notion-search` against the collection, or `notion-query-data-sources` with `Place = <this event's Place>`) — Place is the more reliable match than Name, because it's built the same way every time (venue + address) rather than freely reworded.
+2. A hit with the same Place, an overlapping date range, and `Attended = false` is the same event, whatever its title says. Say so — "this looks like it's already in your Wanderlist as '<existing Name>', added <date>" — and skip the write rather than asking a generic "is this a duplicate?" that's easy to wave past.
+3. No hit → proceed with the draft as normal.
+
+**Gabriel may also do this himself in Radar-B** — the app builds the same draft from the same Radar row and writes it through the same shared Findings mapping, so a row saved in the app and one saved from this conversation are identical (Radar-B's own dedupe pool already catches this case client-side, by matching Radar rows against Findings rows the same way — see `src/radar-b/dedupe.js`). The check above exists for the gap that pool can't see: two chat sessions on different days, each starting cold.
 
 ---
 
