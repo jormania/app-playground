@@ -3,6 +3,7 @@ import PosterGrid from './PosterGrid.jsx'
 import { Poster } from './Poster.jsx'
 import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay } from './programme.js'
 import { CHANGE, CHANGE_LABEL, CHANGE_CHIP_LABEL } from './changes.js'
+import { facetById } from './facets.js'
 import { formatDay, formatRun, formatPrice } from './format.js'
 
 /** One production: a title at a venue, with its dates nested.
@@ -224,12 +225,13 @@ function Trouble({ venues, checkedAt }) {
  *  Filtering to a venue whose scan was throttled or broken must say THAT, not
  *  imply the venue has an empty programme. */
 function emptyMessage(venueFilter, scanned, search, statusFilter = null) {
-  // The status facet answers first: with it on, "nothing upcoming at any of
+  // The status facet answers first: with one on, "nothing upcoming at any of
   // your venues" is simply false — there is plenty on, none of it sold out (or
-  // none of it watched). Saying the wrong one of those sends you looking for a
-  // scan that failed instead of at the filter you pressed.
-  if (statusFilter === 'sold-out') return 'Nothing here is sold out.'
-  if (statusFilter === 'watching') return 'Nothing you’re watching is on right now.'
+  // kept, or changed). Saying the wrong one of those sends you looking for a
+  // scan that failed instead of at the filter you pressed. Each facet carries
+  // its own line, in facets.js, beside the rule that selects it.
+  const facet = facetById(statusFilter)
+  if (facet) return facet.empty
   // A search with no matches is its own answer — distinct from a venue filter
   // or the programme genuinely being empty, and worth naming as such rather
   // than the same generic "nothing upcoming" either of those already use.

@@ -24,6 +24,7 @@ import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize, changeSignature, undismissedChanges } from './changes.js'
 import { runScan, loadLastScan } from './scanClient.js'
 import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges, loadWatchlist, saveWatchlist } from './store.js'
+import { FACET, FACETS, applyFacet, hidesFor } from './facets.js'
 import { formatDay } from './format.js'
 import { writeNotifyPrefs, writeNotifyVenues, registerPeriodicSync, previewFromQuery } from './notify.js'
 
@@ -232,21 +233,26 @@ export default function App() {
   // type excludes, and a count cannot disagree with the list beside it,
   // because they are the same array.
   //
+  // What "What changed" already said about this scan, keyed for a card to look
+  // itself up in — so scrolling the programme shows you what's new in place,
+  // not only in the strip at the top.
+  const changedKeys = useMemo(() => changedKeyMap(scan?.changes), [scan])
+
   // `pool` is everything the Settings toggles and triage leave standing,
   // with none of the three cascade filters applied — a level that counted
   // its own filter would only ever report the number already on screen.
+  //
+  // Settings' three "hide this" preferences apply here, minus whatever the
+  // active facet lifts: a standing preference and the press you just made are
+  // the same person disagreeing with themselves, and the press wins. Kept has
+  // to show kept runs even with "hide what I've kept" on, or the button does
+  // nothing at all — see facets.js for which facet lifts what, and why only
+  // Ignored ever brings ignored shows back.
   const pool = useMemo(() => visibleProductions(productions, {
     triage,
     venueCategory,
-    hideIgnored: !prefs.showIgnored,
-    // A standing "hide sold out" preference and an explicit press on the Sold
-    // out (or Watching) facet are the same person disagreeing with themselves;
-    // the press just made wins. Without this, anyone with that preference on
-    // saw Sold out read 0 and show nothing, and lost from Watching every show
-    // still sold out — which is most of what a watchlist holds.
-    hideSoldOut: prefs.hideSoldOut && statusFilter === null,
-    hideKept: prefs.hideKept,
-  }), [productions, triage, venueCategory, prefs.showIgnored, prefs.hideSoldOut, prefs.hideKept, statusFilter])
+    ...hidesFor(statusFilter, prefs),
+  }), [productions, triage, venueCategory, prefs, statusFilter])
 
   const byType = useMemo(
     () => (categoryFilter ? pool.filter((p) => categoryFor(p, venueCategory) === categoryFilter) : pool),
@@ -312,13 +318,14 @@ export default function App() {
   ), [byVenue, activeHallFilter, search])
 
   // The status facet, applied last: it narrows whatever the cascade and the
-  // search already chose rather than taking part in either. "Sold out" is the
-  // set you'd want to watch; "watching" is what you already did.
-  const visibleProductionsFlat = useMemo(() => {
-    if (statusFilter === 'sold-out') return searched.filter((p) => p.allSoldOut)
-    if (statusFilter === 'watching') return searched.filter((p) => Boolean(watchlist[p.id]))
-    return searched
-  }, [searched, statusFilter, watchlist])
+  // search already chose rather than taking part in either. The preferences
+  // are already settled in `pool` above, so this only has to ask the facet's
+  // own question — hence `prefs: {}` here, and `applyFacet`'s full form for
+  // the chip counts below.
+  const visibleProductionsFlat = useMemo(
+    () => applyFacet(searched, statusFilter, { prefs: { showIgnored: true }, triage, watchlist, changedKeys }),
+    [searched, statusFilter, triage, watchlist, changedKeys],
+  )
 
   const days = useMemo(() => byDate(visibleProductionsFlat), [visibleProductionsFlat])
 
@@ -469,32 +476,32 @@ export default function App() {
     return searchProductions(rows, search)
   }, [watchlist, productions, activeVenueFilter, categoryFilter, venueCategory, search])
 
-  // What each facet WOULD show, counted the way the cascade counts: against
-  // the same scope, and against the sold-out preference the facet overrides
-  // (see `pool`) rather than the one currently applied — a count that changes
-  // the moment you press the thing it labels is not a count.
+  // The same scope every facet is counted against: where the cascade and the
+  // search have you, with NONE of the "hide this" preferences applied —
+  // `applyFacet` puts back the ones that facet doesn't lift. So each chip's
+  // number is exactly what pressing it would show, rather than a number that
+  // changes the moment you press the thing it labels.
   const facetScope = useMemo(() => searchProductions(visibleProductions(productions, {
     triage,
     venueCategory,
-    hideIgnored: !prefs.showIgnored,
+    hideIgnored: false,
     hideSoldOut: false,
-    hideKept: prefs.hideKept,
+    hideKept: false,
     category: categoryFilter,
     venue: activeVenueFilter,
     hall: activeHallFilter,
-  }), search), [productions, triage, venueCategory, prefs.showIgnored, prefs.hideKept,
-    categoryFilter, activeVenueFilter, activeHallFilter, search])
+  }), search), [productions, triage, venueCategory, categoryFilter, activeVenueFilter, activeHallFilter, search])
 
-  const soldOutCount = useMemo(() => facetScope.filter((p) => p.allSoldOut).length, [facetScope])
-  const watchedCount = useMemo(
-    () => facetScope.filter((p) => Boolean(watchlist[p.id])).length + awaited.length,
-    [facetScope, watchlist, awaited],
-  )
+  const facetCounts = useMemo(() => {
+    const ctx = { prefs, triage, watchlist, changedKeys }
+    const counts = new Map(FACETS.map((f) => [f.id, applyFacet(facetScope, f, ctx).length]))
+    // The one number that isn't just a filtered length: what you're watching
+    // includes the shows with no date anywhere, which are the whole reason the
+    // watchlist exists and are listed above the programme rather than in it.
+    counts.set(FACET.WATCHING, (counts.get(FACET.WATCHING) ?? 0) + awaited.length)
+    return counts
+  }, [facetScope, prefs, triage, watchlist, changedKeys, awaited])
 
-  // What "What changed" already said about this scan, keyed for a card to look
-  // itself up in — so scrolling the programme shows you what's new in place,
-  // not only in the strip at the top.
-  const changedKeys = useMemo(() => changedKeyMap(scan?.changes), [scan])
   // Which venues the last check couldn't read, so the Venues tab can mark
   // them — the question Settings' old "Venue health" list was there to
   // answer, moved to the screen that already lists every venue.
@@ -787,40 +794,43 @@ export default function App() {
           own search, not this. */}
       {tab === 'programme' && <FilterCascade levels={filterLevels} onReset={resetFilters} />}
 
-      {/* A facet, deliberately BELOW the cascade and styled apart from it:
-          "sold out" and "watching" cut across type/venue/hall rather than
-          narrowing within them, and putting them in the chain would break the
-          one rule that chain now keeps (§9.60). Only rendered once there is
-          something to filter — an empty programme needs no facets. */}
-      {tab === 'programme' && scan && (searched.length > 0 || watchedCount > 0 || statusFilter) && (
+      {/* Facets, deliberately BELOW the cascade and styled apart from it: they
+          ask what STATE a production is in — changed, on sale, sold out, kept,
+          watched, ignored — and cut across type/venue/hall rather than
+          narrowing within them. Putting them in that chain would break the one
+          rule it keeps (§9.60). The row scrolls sideways like the cascade's own
+          rows rather than wrapping, and every facet is always drawn: a Kept
+          reading 0 is a real answer, the same way a venue reading 0 is. */}
+      {tab === 'programme' && scan && (searched.length > 0 || awaited.length > 0 || statusFilter) && (
         <div className="facets" role="group" aria-label="Show">
           <span className="facets__label" aria-hidden="true">Show</span>
-          <button
-            type="button"
-            className={`facet ${!statusFilter ? 'facet--on' : ''}`}
-            aria-pressed={!statusFilter}
-            onClick={() => setStatusFilter(null)}
-          >
-            Everything
-          </button>
-          <button
-            type="button"
-            className={`facet ${statusFilter === 'sold-out' ? 'facet--on' : ''}`}
-            aria-pressed={statusFilter === 'sold-out'}
-            onClick={() => setStatusFilter(statusFilter === 'sold-out' ? null : 'sold-out')}
-          >
-            Sold out
-            <span className="facet__count" aria-hidden="true">{soldOutCount}</span>
-          </button>
-          <button
-            type="button"
-            className={`facet ${statusFilter === 'watching' ? 'facet--on' : ''}`}
-            aria-pressed={statusFilter === 'watching'}
-            onClick={() => setStatusFilter(statusFilter === 'watching' ? null : 'watching')}
-          >
-            Watching
-            <span className="facet__count" aria-hidden="true">{watchedCount}</span>
-          </button>
+          <div className="facets__track">
+            <button
+              type="button"
+              className={`facet ${!statusFilter ? 'facet--on' : ''}`}
+              aria-pressed={!statusFilter}
+              title="Everything the cascade above and your Settings leave standing"
+              onClick={() => setStatusFilter(null)}
+            >
+              Everything
+            </button>
+            {FACETS.map((facet) => (
+              <button
+                key={facet.id}
+                type="button"
+                className={`facet ${statusFilter === facet.id ? 'facet--on' : ''}`}
+                aria-pressed={statusFilter === facet.id}
+                title={facet.title}
+                onClick={() => setStatusFilter(statusFilter === facet.id ? null : facet.id)}
+              >
+                {facet.label}
+                {/* Hidden from the accessible name, which is the label alone —
+                    otherwise every chip announces as "Kept 0" and no two are
+                    addressable by the name a person would actually say. */}
+                <span className="facet__count" aria-hidden="true">{facetCounts.get(facet.id) ?? 0}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
