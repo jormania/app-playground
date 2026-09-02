@@ -83,6 +83,53 @@ describe('SpecimenPlate — a link', () => {
     expect(screen.getByRole('link', { name: /example\.com\/a\/article/ })).toBeTruthy()
   })
 
+  // A link kept from a share sheet has the article's title as its body, so
+  // the card's own title line was the same words a second time.
+  it('does not repeat a headline the plate has already printed', async () => {
+    vi.mocked(getLinkPreview).mockResolvedValue({
+      title: 'A Great Article',
+      description: 'What it says on the tin.',
+      image: 'https://example.com/og.png',
+      siteName: 'example.com',
+      url: 'https://example.com/a/article',
+    })
+    render(<SpecimenPlate thing={thing({ body: 'A Great Article', link: 'https://example.com/a/article' })} {...handlers} />)
+
+    await waitFor(() => expect(screen.getByText('What it says on the tin.')).toBeTruthy())
+    expect(screen.getAllByText('A Great Article')).toHaveLength(1)
+  })
+
+  // The same, before Keep has trimmed the publication off the shared title.
+  it("treats a share sheet's stapled-on site name as the same headline", async () => {
+    vi.mocked(getLinkPreview).mockResolvedValue({
+      title: 'A Great Article',
+      description: 'What it says on the tin.',
+      image: 'https://example.com/og.png',
+      siteName: 'example.com',
+      url: 'https://example.com/a/article',
+    })
+    render(<SpecimenPlate thing={thing({ body: 'A Great Article — Example', link: 'https://example.com/a/article' })} {...handlers} />)
+
+    await waitFor(() => expect(screen.getByText('What it says on the tin.')).toBeTruthy())
+    expect(screen.queryByText('A Great Article')).toBeNull()
+  })
+
+  // With the title dropped and nothing else to show, an image-less, blurb-less
+  // card would be a frame around a site name — the plain line says more.
+  it('falls back to the plain line when the echoed title was all the card had', async () => {
+    vi.mocked(getLinkPreview).mockResolvedValue({
+      title: 'A Great Article',
+      description: null,
+      image: null,
+      siteName: 'example.com',
+      url: 'https://example.com/a/article',
+    })
+    render(<SpecimenPlate thing={thing({ body: 'A Great Article', link: 'https://example.com/a/article' })} {...handlers} />)
+
+    await waitFor(() => expect(getLinkPreview).toHaveBeenCalled())
+    expect(screen.getByRole('link', { name: /example\.com\/a\/article/ })).toBeTruthy()
+  })
+
   it('renders nothing link-related for a thing with no link', () => {
     render(<SpecimenPlate thing={thing()} {...handlers} />)
     expect(screen.queryByRole('link')).toBeNull()

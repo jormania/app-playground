@@ -35,8 +35,46 @@ const TEXT = 'text'
 const URL_PARAM = 'url'
 const TITLE = 'title'
 
+const URL_TOKEN = /^https?:\/\/\S+$/i
+
 function looksLikeUrl(value: string): boolean {
-  return /^https?:\/\/\S+$/i.test(value.trim())
+  return URL_TOKEN.test(value.trim())
+}
+
+/**
+ * A URL that arrived as its own word at one end of the shared text, split
+ * off from the words around it — or null when there is nothing to split.
+ *
+ * Most Android apps do not fill the `url` parameter at all: they send one
+ * `text` reading "Some video title\nhttps://youtu.be/x", or "worth a read:
+ * https://…". Left whole, that is not a bare URL, so it earned no `link`, no
+ * preview card and no `Link` kind — the share lane quietly lost the one
+ * capture Silva knows most about.
+ *
+ * This is not the same judgment as a *locator* that merely contains a URL
+ * ("overheard on the 32 tram, https://…"), which stays exactly where you put
+ * it: those are words you typed, and these are a share sheet's boilerplate
+ * wrapped around a link. So the split is deliberately narrow — the URL must
+ * be a whole whitespace-delimited word at the very start or the very end,
+ * and what remains must be prose rather than a second URL. Anything else is
+ * left alone as the passage it might be.
+ */
+function splitEdgeUrl(text: string): { prose: string; url: string } | null {
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length < 2) return null
+
+  const last = words[words.length - 1]
+  const first = words[0]
+  const url = URL_TOKEN.test(last) ? last : URL_TOKEN.test(first) ? first : null
+  if (!url) return null
+
+  const cut = url === last ? text.lastIndexOf(url) : text.indexOf(url)
+  const prose = (url === last ? text.slice(0, cut) : text.slice(cut + url.length)).trim()
+  // Two URLs and no words is a list of links, not a link with a note — and
+  // whichever one we kept, we would be choosing for you.
+  if (!prose || looksLikeUrl(prose)) return null
+
+  return { prose, url }
 }
 
 /**
@@ -65,19 +103,39 @@ export function parseSharedIntake(search: string): SharedIntake | null {
   // A share whose `text` is nothing but a URL is a link, not a passage — so it
   // becomes the locator and the title (if any) carries the meaning.
   const textIsBareUrl = Boolean(text) && looksLikeUrl(text)
-  const locator = url || (textIsBareUrl ? text : '')
+  // Failing that, a URL sitting at one end of the shared text is still the
+  // thing being shared, and the words around it are the note — see
+  // `splitEdgeUrl`. Only consulted when no `url` parameter arrived; when one
+  // did, the text is whatever the app chose to say about it.
+  const split = !url && text && !textIsBareUrl ? splitEdgeUrl(text) : null
+  const prose = split ? split.prose : textIsBareUrl ? '' : text
+  const locator = url || (textIsBareUrl ? text : split?.url || '')
 
   const bodyParts: string[] = []
-  if (text && !textIsBareUrl) bodyParts.push(text)
-  // Only add the title when it isn't already the opening of the shared text —
+  if (prose) bodyParts.push(prose)
+  // Only add the title when the shared text doesn't already carry it —
   // sharing a selection from an article commonly sends both, duplicated.
-  if (title && !bodyParts.some((part) => part.startsWith(title))) bodyParts.push(title)
+  if (title && !bodyParts.some((part) => part.includes(title))) bodyParts.push(title)
 
   const body = bodyParts.join('\n\n').trim()
 
   // A bare link with no words at all is still worth keeping — the locator
   // carries it, and the body is left for you to say why.
   if (!body && !locator) return null
+
+  // ── A wordless share is the URL, not an empty thing ────────────────────
+  // A link shared with no title and no text at all — which is what most
+  // messaging apps send — used to arrive as `{ body: '', locator: url }`,
+  // and a thing with an empty body is one Silva can never repair: the
+  // article's title only ever replaces a body that is *nothing but* a URL
+  // (lib/linkFacts.ts), and an empty string is not that. It sat in the
+  // forest as a blank headline over a preview card, permanently.
+  //
+  // Putting the URL in the body instead puts the share back on exactly the
+  // path a *pasted* URL already takes: `intakeFields` moves it into `link`,
+  // Keep swaps it for the article's own title, and until then the plate
+  // prints it once rather than twice.
+  if (!body && locator) return { body: locator, locator: '' }
 
   return { body, locator }
 }

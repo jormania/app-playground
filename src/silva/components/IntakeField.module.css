@@ -105,6 +105,17 @@
   display: none;
 }
 
+/* A remark, not an alarm — the same muted label voice the specimen label
+   uses, sitting between the fields and the buttons where it is read on the
+   way to deciding. Nothing here stops the capture: a second encounter with
+   the same piece is a real thing to record. */
+.notice {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+}
+
 /* The same native dropdown triangle `input[list]` draws, hidden on touch for
    the same reason as SpecimenPlate's Source field: it opens nothing there.
    See that module for the full note. */

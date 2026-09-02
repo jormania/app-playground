@@ -41,6 +41,7 @@ import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settin
 import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
 import { intakeFields } from './lib/intakeFields'
+import { findLinkDuplicate, duplicateNotice } from './lib/linkDuplicate'
 import { normalizeCapturedText } from './lib/textNormalize'
 import {
   readCollectionCache,
@@ -1043,6 +1044,21 @@ export default function App() {
     [things],
   )
 
+  /**
+   * Whether the link that just arrived from the share sheet is one the
+   * forest already holds — said in the intake field, never enforced.
+   *
+   * Read off the share itself rather than the live field, so editing what
+   * arrived doesn't make the remark flicker: the question it answers ("have
+   * I read this already?") is about the thing you just shared, and it stops
+   * being interesting the moment you start writing about it anyway.
+   */
+  const sharedDuplicate = useMemo(() => {
+    if (!shared) return null
+    const { link } = intakeFields(shared.body, shared.locator)
+    return duplicateNotice(findLinkDuplicate(things, link))
+  }, [shared, things])
+
   async function handleImported(created: Thing[]) {
     if (created.length > 0) setThings((prev) => [...created, ...prev])
     // A Kobo import may have created new Sources (or backfilled an existing
@@ -1322,6 +1338,7 @@ export default function App() {
               prefill={shared}
               busy={photoBusy}
               sources={sources}
+              notice={sharedDuplicate}
             />
             {importOpen ? (
               <KoboImportPanel

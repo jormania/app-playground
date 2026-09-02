@@ -18,14 +18,51 @@ describe('parseSharedIntake', () => {
   })
 
   // Several Android share sheets put the URL in `text` and leave `url` empty.
-  it('treats a bare URL in `text` as the locator, not as the passage', () => {
+  // A share carrying nothing but that URL becomes the *body*, exactly as a
+  // pasted URL does: `intakeFields` moves it into `link`, and Keep swaps it
+  // for the article's own title. Left in the locator with an empty body, the
+  // thing had a blank headline nothing could ever fill.
+  it('takes a wordless share as the body, so the title can land on it later', () => {
     expect(parseSharedIntake('?text=https%3A%2F%2Fexample.com%2Fessay'))
-      .toEqual({ body: '', locator: 'https://example.com/essay' })
+      .toEqual({ body: 'https://example.com/essay', locator: '' })
   })
 
-  it('keeps a bare link even with no words — the body is left for you to say why', () => {
+  it('keeps a bare link even with no words at all', () => {
     const result = parseSharedIntake('?url=https%3A%2F%2Fexample.com')
-    expect(result).toEqual({ body: '', locator: 'https://example.com' })
+    expect(result).toEqual({ body: 'https://example.com', locator: '' })
+  })
+
+  // What most Android apps actually send: one `text` with the words and the
+  // link together, and no `url` parameter at all.
+  it('splits a link off the end of the shared text', () => {
+    expect(parseSharedIntake(`?text=${encodeURIComponent('Some video title\nhttps://youtu.be/x')}`))
+      .toEqual({ body: 'Some video title', locator: 'https://youtu.be/x' })
+  })
+
+  it('splits a link off the start of the shared text', () => {
+    expect(parseSharedIntake(`?text=${encodeURIComponent('https://youtu.be/x Some video title')}`))
+      .toEqual({ body: 'Some video title', locator: 'https://youtu.be/x' })
+  })
+
+  // The narrowness is the point — a URL inside a sentence is a sentence.
+  it('leaves a URL in the middle of the text alone', () => {
+    const text = 'he cites https://example.com/essay twice'
+    expect(parseSharedIntake(`?text=${encodeURIComponent(text)}`))
+      .toEqual({ body: text, locator: '' })
+  })
+
+  it('does not choose between two shared links', () => {
+    const text = 'https://example.com/one https://example.com/two'
+    expect(parseSharedIntake(`?text=${encodeURIComponent(text)}`))
+      .toEqual({ body: text, locator: '' })
+  })
+
+  // An app that filled `url` has already said which part is the link; the
+  // text is then whatever it chose to say about it, untouched.
+  it('does not split the text when the share carried its own url', () => {
+    const search = `?text=${encodeURIComponent('read this https://example.com/other')}&url=${encodeURIComponent('https://example.com/essay')}`
+    expect(parseSharedIntake(search))
+      .toEqual({ body: 'read this https://example.com/other', locator: 'https://example.com/essay' })
   })
 
   it('adds the title when it carries something the text does not', () => {
@@ -37,6 +74,11 @@ describe('parseSharedIntake', () => {
   it('does not repeat a title that already opens the shared text', () => {
     expect(parseSharedIntake('?text=The%20Essay%20—%20and%20then%20some&title=The%20Essay'))
       .toEqual({ body: 'The Essay — and then some', locator: '' })
+  })
+
+  it('does not repeat a title buried inside the shared text either', () => {
+    expect(parseSharedIntake('?text=and%20then%20The%20Essay%20came%20up&title=The%20Essay'))
+      .toEqual({ body: 'and then The Essay came up', locator: '' })
   })
 
   it('uses the title alone when that is all that arrived', () => {

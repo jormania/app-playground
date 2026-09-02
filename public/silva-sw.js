@@ -31,14 +31,24 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
 
   if (req.mode === 'navigate') {
+    // A share arrives as a navigation carrying a query string
+    // (?text=…&url=…), and that made the offline path fail on exactly the
+    // lane most likely to be used away from wifi: the cached entry is keyed
+    // on the bare page URL, so `caches.match` missed it and the browser's
+    // offline page ate the share. `ignoreSearch` matches the page the query
+    // was appended to — the app boots, reads `location.search` and the share
+    // is still there. Storing is guarded the same way round: without it,
+    // every distinct share URL became its own cache entry, so the cache grew
+    // by one whole page copy per link shared.
+    var hasQuery = new URL(req.url).search !== '';
     e.respondWith(
       fetch(req).then(function (res) {
-        if (res && res.status === 200 && res.type === 'basic') {
+        if (res && res.status === 200 && res.type === 'basic' && !hasQuery) {
           var copy = res.clone();
           caches.open(CACHE).then(function (cache) { cache.put(req, copy); });
         }
         return res;
-      }).catch(function () { return caches.match(req); })
+      }).catch(function () { return caches.match(req, { ignoreSearch: true }); })
     );
     return;
   }

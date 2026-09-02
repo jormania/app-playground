@@ -15,6 +15,13 @@ export interface IntakeFieldProps {
   prefill?: { body: string; locator: string } | null
   /** Set while a photograph is being processed and uploaded. */
   busy?: boolean
+  /** Said, not enforced, when what just arrived from the share sheet is a
+   *  link the forest already holds (lib/linkDuplicate.ts) — sharing is the
+   *  one lane with no memory in it, and an article kept in June looks
+   *  exactly like one never seen before. Never blocks the capture: a second
+   *  encounter with the same piece is a real thing to record, and only you
+   *  know whether this one is. */
+  notice?: string | null
   /** Sources already in the collection, offered back as the source field is
    *  typed — so retyping "Meditations" a fourth time completes it rather
    *  than risking a slightly different string that reads as a new book to
@@ -33,7 +40,7 @@ export interface IntakeFieldProps {
  *  ("Shelby Foote — The Civil War"), never a picker; resolving that text
  *  into a real Source (reuse a match, create otherwise) happens in App.tsx
  *  (lib/sourceCapture.ts), which is the only place that needs the store. */
-export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false, sources = [] }: IntakeFieldProps) {
+export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false, sources = [], notice = null }: IntakeFieldProps) {
   const [value, setValue] = useState('')
   const [locator, setLocator] = useState('')
   const [source, setSource] = useState('')
@@ -126,6 +133,8 @@ export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false, s
           aria-label="Where this came from"
         />
       )}
+
+      {notice && <p className={styles.notice} role="status">{notice}</p>}
 
       <div className={styles.actions}>
         <Button className={styles.actionButton} size="sm" onClick={submit} disabled={busy || (!value.trim() && !locator.trim())}>

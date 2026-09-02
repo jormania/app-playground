@@ -396,6 +396,34 @@ Four lanes into the understory:
    likely to be used at all. A locator that merely *contains* a URL is prose
    you wrote, and stays put.
 
+   Three things the parser has to get right, because share sheets are not
+   consistent and none of them is Silva's to choose (`lib/sharedIntake.ts`):
+
+   - **A wordless share is the URL, not an empty thing.** Most messaging apps
+     send a link with no title and no text at all. That used to arrive as an
+     empty body with the URL in the locator — and an empty body is one Silva
+     can never repair, since the article's title only ever replaces a body
+     that is *nothing but* a URL. It sat in the forest as a blank headline
+     over a preview card, permanently. The URL goes in the body instead,
+     which is exactly the path a pasted URL already takes.
+   - **A link at either end of the shared text is split off it.** Most
+     Android apps send one `text` reading "Some video title / https://…" and
+     leave `url` empty; left whole that is not a bare URL and earned nothing.
+     The split is deliberately narrow — a whole word at the very start or the
+     very end, with prose (not a second URL) left over — because a URL inside
+     a sentence is a sentence. Not the same judgment as a *locator* that
+     contains a URL: that is words you typed, this is a share sheet's
+     boilerplate wrapped around a link.
+   - **A link already in the forest is remarked on, not blocked**
+     (`lib/linkDuplicate.ts`). Sharing is the one lane with no memory in it —
+     tapping share on an article kept in June looks exactly like tapping it
+     on one never seen before. The intake field says which state the existing
+     copy is in and when it arrived, and does nothing else: a second
+     encounter with the same piece is a real thing to record, and only you
+     know whether this one is. Comparison ignores campaign tags, `www.`, a
+     trailing slash and parameter order; the stored URL is **never rewritten**
+     — the junk on the end of a link is occasionally load-bearing.
+
    Declared `method: "GET"`, so the OS launches the app at a URL with query
    parameters rather than POSTing anywhere: the whole handler is
    `lib/sharedIntake.ts` reading `location.search`, and it costs **no
@@ -404,6 +432,14 @@ Four lanes into the understory:
    `silva-react.html?text=…` lands in the same code.
 
    It opens the field rather than landing silently: the moment a note is
+
+   The service worker treats a share as what it is — a navigation carrying a
+   query string. Its offline fallback matches with `ignoreSearch`, because
+   the cached copy is keyed on the bare page URL and a share that missed it
+   was eaten by the browser's offline page, on the lane most likely to be
+   used away from wifi. The same query check keeps a navigation with
+   parameters *out* of the cache, so the cache no longer grows by a whole
+   page copy per link shared (`public/silva-sw.js`).
    easiest to write is while you still remember why you shared it.
 4. **Photograph a page** — a picture of a physical book's page, kept as an
    Image thing. Deliberately *not* OCR'd in v1: an image is a legitimate thing.
@@ -429,9 +465,16 @@ what the thing *means*. The page's `og:title` is a fact printed on the page,
 read out the same way `isBareUrl` reads a URL out of a pasted body. The rules
 that keep it safe:
 
-- only a body that is nothing but a bare URL is ever replaced — a passage you
-  typed, or a link you retitled by hand, is untouchable however often the
-  preview refreshes;
+- exactly three placeholder bodies are replaceable, and a passage you typed or
+  a link you retitled by hand is never one of them, however often the preview
+  refreshes: a **bare URL** (what a paste leaves behind), an **empty body**
+  (what a wordless share used to leave — fixed at the source, but rows created
+  before that are still in the forest), and **"Headline — Site"**, which is
+  what a phone's share sheet hands over as the page title. That third one is
+  the most common link capture there is and it used to keep its publisher
+  suffix forever; both halves have to match what the page prints about itself
+  — the `og:title` exactly, then a separator, then the site's own name — so a
+  passage that merely opens with the title is untouched;
 - a title that is only the URL again, or long enough to be a standfirst rather
   than a headline, is refused;
 - it runs *behind* the keep and never blocks it, and a failed fetch or write
@@ -456,6 +499,12 @@ A pasted link is also the one capture that arrives with a **Kind** already set
 field itself is. That is the only Kind Silva ever sets for you — every other
 one stays a judgment made later through Edit's **Suggest**, or never made at
 all.
+
+The plate also stopped saying it twice. A link kept from a share sheet *is*
+its own headline, and the preview card underneath repeated it word for word in
+small grey type; the card now keeps its image, standfirst and site and drops
+the line the plate has already set at reading size.
+
 
 And because the URL leaves the body text once the title lands, `inferKind`
 reads `Thing.link` too, so **Suggest** still proposes `Link` for a thing that

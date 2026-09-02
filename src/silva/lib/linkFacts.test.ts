@@ -82,6 +82,40 @@ describe('linkTitlePatch', () => {
     expect(linkTitlePatch(thing(), preview({ title: 'A'.repeat(201) }))).toBeNull()
     expect(linkTitlePatch(thing(), preview({ title: 'A'.repeat(200) }))).toEqual({ body: 'A'.repeat(200) })
   })
+
+  // What a phone's share sheet sends: the page title with the publication
+  // stapled on the end. It is the most common link capture there is, and it
+  // used to keep that suffix forever — the plate then printed the headline
+  // twice, once with "— Ness Labs" and once without, on the card below.
+  it('strips the site name a share sheet staples onto the title', () => {
+    const shared = thing({ body: 'The joy of missing out — Ness Labs' })
+    expect(linkTitlePatch(shared, preview())).toEqual({ body: 'The joy of missing out' })
+  })
+
+  it('accepts the other separators share sheets use', () => {
+    for (const sep of ['|', '-', '·', ':', '–']) {
+      const shared = thing({ body: `The joy of missing out ${sep} Ness Labs` })
+      expect(linkTitlePatch(shared, preview())).toEqual({ body: 'The joy of missing out' })
+    }
+  })
+
+  it('leaves a body that only happens to open with the title', () => {
+    const mine = thing({ body: 'The joy of missing out — which I still do not believe in' })
+    expect(linkTitlePatch(mine, preview())).toBeNull()
+    // The site name has to be the whole of what follows, not merely in it.
+    const near = thing({ body: 'The joy of missing out — read at Ness Labs' })
+    expect(linkTitlePatch(near, preview())).toBeNull()
+    // And there has to be a separator, so an extended headline is left alone.
+    const extended = thing({ body: 'The joy of missing out Ness Labs' })
+    expect(linkTitlePatch(extended, preview())).toBeNull()
+  })
+
+  // Rows a wordless share created before lib/sharedIntake.ts learned to put
+  // the URL in the body: a blank headline nothing could ever fill.
+  it('repairs a thing left with no body at all', () => {
+    expect(linkTitlePatch(thing({ body: '' }), preview())).toEqual({ body: 'The joy of missing out' })
+    expect(linkTitlePatch(thing({ body: '   ' }), preview())).toEqual({ body: 'The joy of missing out' })
+  })
 })
 
 describe('linkLocatorPatch', () => {

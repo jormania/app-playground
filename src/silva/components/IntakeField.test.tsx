@@ -90,3 +90,28 @@ describe('IntakeField — source autocomplete', () => {
     expect(document.querySelector('datalist')).toBeNull()
   })
 })
+
+describe('IntakeField — a link already in the forest', () => {
+  it('says so without standing in the way of the capture', async () => {
+    const onSubmit = vi.fn()
+    render(
+      <IntakeField
+        onSubmit={onSubmit}
+        onPhoto={vi.fn()}
+        prefill={{ body: 'https://example.com/essay', locator: '' }}
+        notice="You already have this — grown 2026-08-18."
+      />,
+    )
+    expect(screen.getByText('You already have this — grown 2026-08-18.')).toBeTruthy()
+
+    const add = screen.getByRole('button', { name: /add to the nursery/i })
+    expect(add.hasAttribute('disabled')).toBe(false)
+    await userEvent.click(add)
+    expect(onSubmit).toHaveBeenCalledWith('https://example.com/essay', '', '')
+  })
+
+  it('says nothing at all when there is nothing to say', () => {
+    render(<IntakeField onSubmit={vi.fn()} onPhoto={vi.fn()} />)
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+})

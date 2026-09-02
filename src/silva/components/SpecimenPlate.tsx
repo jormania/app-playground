@@ -265,7 +265,7 @@ export function SpecimenPlate({
           ))}
         </p>
       )}
-      {readLink && <LinkCard url={readLink} />}
+      {readLink && <LinkCard url={readLink} body={bodyIsJustTheLink ? '' : thing.body} />}
       <div className={styles.plateActions}>
         <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
         <Button size="sm" variant="ghost" onClick={copyBody}>{copied ? 'Copied' : 'Copy'}</Button>
@@ -335,10 +335,21 @@ function displayUrl(url: string): string {
  * image, or a fetch that failed all fall back to the plain host/path line
  * this used to be unconditionally — nothing here ever blocks reading.
  */
-function LinkCard({ url }: { url: string }) {
+function LinkCard({ url, body = '' }: { url: string; body?: string }) {
   const preview = useLinkPreview(url)
 
-  if (!preview || (!preview.title && !preview.image)) {
+  // The plate already prints the body at reading size, and a link kept from
+  // a share sheet *is* its own headline — the card underneath then repeated
+  // it word for word, twice on one plate, the second time in small grey
+  // type. So the card keeps its image, standfirst and site, and drops the
+  // line the plate has already said. `startsWith` rather than equality
+  // because a share sheet's title arrives with the publication stapled to
+  // the end of it, and stays that way until Keep trims it
+  // (lib/linkFacts.ts).
+  const title = preview?.title || ''
+  const echoesBody = Boolean(title) && collapse(body).startsWith(collapse(title))
+
+  if (!preview || (!title && !preview.image) || (echoesBody && !preview.image && !preview.description)) {
     return (
       <p className={styles.linkRow}>
         <a className={styles.link} href={url} target="_blank" rel="noopener noreferrer">
@@ -352,12 +363,18 @@ function LinkCard({ url }: { url: string }) {
     <a className={styles.linkCard} href={url} target="_blank" rel="noopener noreferrer">
       {preview.image && <img className={styles.linkCardImage} src={preview.image} alt="" loading="lazy" />}
       <span className={styles.linkCardBody}>
-        <span className={styles.linkCardTitle}>{preview.title || displayUrl(url)}</span>
+        {!echoesBody && <span className={styles.linkCardTitle}>{title || displayUrl(url)}</span>}
         {preview.description && <span className={styles.linkCardDesc}>{preview.description}</span>}
         <span className={styles.linkCardSite}>{preview.siteName}</span>
       </span>
     </a>
   )
+}
+
+/** Whitespace-and-case flattened, for comparing two renderings of what is
+ *  meant to be the same headline. */
+function collapse(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().toLowerCase()
 }
 
 /** Specimen-label order per SILVA.md: source · locator · encountered · kept.

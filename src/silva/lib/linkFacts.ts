@@ -32,6 +32,31 @@ import { isBareUrl } from './kindInference'
 /** Past this, it isn't a headline. */
 const MAX_TITLE_LENGTH = 200
 
+/** The separators a share sheet's title uses to staple the site's name onto
+ *  the headline: "Mischievous Cats Rule … — Colossal". */
+const SITE_SUFFIX = /\s*[—–\-|·:]\s*$/
+
+/**
+ * True when `body` is the page's own title with the site's name stapled on
+ * the end — which is what a phone's share sheet sends as its `title`, and
+ * what `og:title` almost never contains.
+ *
+ * This is the one body besides a bare URL that is safe to replace, and for
+ * the same reason: it isn't a sentence anyone wrote. Both halves have to
+ * match something the page prints about itself — the headline exactly, and
+ * then the site's own name — so a passage that merely happens to open with
+ * the title is untouched.
+ */
+function isTitlePlusSiteName(body: string, title: string, siteName: string): boolean {
+  const site = siteName.replace(/\s+/g, ' ').trim()
+  if (!site || !title || body.length <= title.length) return false
+  if (!body.startsWith(title)) return false
+
+  const remainder = body.slice(title.length)
+  if (remainder.slice(-site.length).toLowerCase() !== site.toLowerCase()) return false
+  return SITE_SUFFIX.test(remainder.slice(0, remainder.length - site.length))
+}
+
 /**
  * The body patch that gives a link its article's title, or null when there
  * is nothing safe to do — which is the common case and must stay silent.
@@ -41,15 +66,29 @@ const MAX_TITLE_LENGTH = 200
  */
 export function linkTitlePatch(thing: Thing, preview: LinkPreview | null): Partial<Thing> | null {
   if (!preview || !thing.link) return null
-  // Only a placeholder body is replaceable — never your own words.
-  if (!isBareUrl(thing.body)) return null
 
   const title = String(preview.title || '').replace(/\s+/g, ' ').trim()
   if (!title) return null
   if (title.length > MAX_TITLE_LENGTH) return null
   // A title that is just the URL again, which some pages do report.
   if (isBareUrl(title)) return null
-  if (title === thing.body.trim()) return null
+
+  const body = thing.body.trim()
+  if (title === body) return null
+
+  // Three placeholder bodies, and nothing else. A bare URL is the one a
+  // paste leaves behind; an empty body is what a wordless share used to
+  // leave (fixed at the source in lib/sharedIntake.ts, but rows created
+  // before that are still in the forest and this is what repairs them);
+  // and "Headline — Site" is what a phone's share sheet hands over as the
+  // page title, which is the most common link capture of all and the one
+  // that used to keep its publisher suffix forever. Your own words are
+  // never any of the three.
+  const replaceable =
+    isBareUrl(body) ||
+    !body ||
+    isTitlePlusSiteName(body, title, String(preview.siteName || ''))
+  if (!replaceable) return null
 
   return { body: title }
 }
