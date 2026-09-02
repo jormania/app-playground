@@ -23,7 +23,7 @@ import {
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize, changeSignature, undismissedChanges } from './changes.js'
 import { runScan, loadLastScan } from './scanClient.js'
-import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges } from './store.js'
+import { getClient, loadTriage, saveTriage, loadPrefs, savePrefs, loadDismissedChanges, saveDismissedChanges, loadWatchlist, saveWatchlist } from './store.js'
 import { formatDay } from './format.js'
 import { writeNotifyPrefs, writeNotifyVenues, registerPeriodicSync, previewFromQuery } from './notify.js'
 
@@ -71,6 +71,13 @@ export default function App() {
   const [dismissedKeys, setDismissedKeys] = useState(() => loadDismissedChanges())
 
   const [triage, setTriageState] = useState(() => loadTriage())
+  // Productions you asked to hear about if they come back (§9.63). Keyed by
+  // productionId so a watch outlives the night that sold out — see store.js.
+  const [watchlist, setWatchlistState] = useState(() => loadWatchlist())
+  // A facet, not a level of the cascade: "sold out" and "watching" cut ACROSS
+  // type/venue/hall rather than narrowing within them, so they get their own
+  // control rather than a fourth row that would break the hierarchy's own rule.
+  const [statusFilter, setStatusFilter] = useState(null)
   // The filter cascade: type (Theatre, Cinema, …) → venue → hall, each level
   // scoped by the ones above it and by nothing else. These three are the only
   // state it has; the path line, every chip's highlight and every count are
@@ -294,10 +301,19 @@ export default function App() {
 
   // The same filtered set feeds both the day list and the week strip below —
   // computed once so the two never disagree about what's currently visible.
-  const visibleProductionsFlat = useMemo(() => searchProductions(
+  const searched = useMemo(() => searchProductions(
     activeHallFilter ? byVenue.filter((p) => p.hall === activeHallFilter) : byVenue,
     search,
   ), [byVenue, activeHallFilter, search])
+
+  // The status facet, applied last: it narrows whatever the cascade and the
+  // search already chose rather than taking part in either. "Sold out" is the
+  // set you'd want to watch; "watching" is what you already did.
+  const visibleProductionsFlat = useMemo(() => {
+    if (statusFilter === 'sold-out') return searched.filter((p) => p.allSoldOut)
+    if (statusFilter === 'watching') return searched.filter((p) => Boolean(watchlist[p.id]))
+    return searched
+  }, [searched, statusFilter, watchlist])
 
   const days = useMemo(() => byDate(visibleProductionsFlat), [visibleProductionsFlat])
 
@@ -384,6 +400,55 @@ export default function App() {
   ], [categories, typeCounts, venuesInScope, venueCounts, hallOptions, hallCounts,
     categoryFilter, activeVenueFilter, activeHallFilter, pool.length, byType.length, byVenue.length])
 
+  /** Watch a sold-out production, or stop watching it. Stored by
+   *  productionId, with enough of the production to render a row once it has
+   *  dropped out of the programme entirely — which is exactly when a watch
+   *  starts earning its keep (store.js). `forget` comes from the Watching
+   *  list's own "Stop watching", where there is no production left to pass. */
+  const handleWatch = (production, { forget = false } = {}) => {
+    const id = production?.id
+    if (!id) return
+    setWatchlistState((current) => {
+      const next = { ...current }
+      if (forget || next[id]) {
+        delete next[id]
+      } else {
+        next[id] = {
+          title: production.title,
+          venue: production.venue,
+          watchedAt: new Date().toISOString(),
+          // The night you couldn't get into — worth keeping so the Watching
+          // list can say what you missed rather than just naming the show.
+          missedDate: production.showings?.[0]?.date ?? null,
+        }
+      }
+      saveWatchlist(next)
+      return next
+    })
+    if (!forget && !watchlist[id]) {
+      pushToast({ message: `Watching “${production.title}” — you’ll see it here if it comes back.` })
+    }
+  }
+
+  // Counted against what the cascade and search already chose, so the numbers
+  // describe the list you are actually looking at — except `watchedCount`,
+  // which counts the whole watchlist including what has dropped out of the
+  // programme, because that is the number the Watching view will show you.
+  const soldOutCount = useMemo(() => searched.filter((p) => p.allSoldOut).length, [searched])
+  const watchedCount = Object.keys(watchlist).length
+
+  /** Watched productions with nothing currently listed anywhere in this scan.
+   *  Deliberately computed against the WHOLE scan, not the filtered view: a
+   *  production hidden by the current type/venue filter is still listed, and
+   *  saying "nothing listed yet" about it would be a lie the filter caused. */
+  const awaited = useMemo(() => {
+    const onNow = new Set(productions.map((p) => p.id))
+    return Object.entries(watchlist)
+      .filter(([id]) => !onNow.has(id))
+      .map(([id, entry]) => ({ id, ...entry }))
+      .sort((a, b) => String(a.title).localeCompare(String(b.title), 'ro'))
+  }, [watchlist, productions])
+
   // What "What changed" already said about this scan, keyed for a card to look
   // itself up in — so scrolling the programme shows you what's new in place,
   // not only in the strip at the top.
@@ -442,7 +507,7 @@ export default function App() {
     setScanning(true)
     setError(null)
     try {
-      const result = await runScan(venues)
+      const result = await runScan(venues, { watching: Object.keys(watchlist) })
       if (result.nothingToScan) {
         setError('Every venue is paused, so there was nothing to read.')
         return
@@ -680,6 +745,43 @@ export default function App() {
           own search, not this. */}
       {tab === 'programme' && <FilterCascade levels={filterLevels} onReset={resetFilters} />}
 
+      {/* A facet, deliberately BELOW the cascade and styled apart from it:
+          "sold out" and "watching" cut across type/venue/hall rather than
+          narrowing within them, and putting them in the chain would break the
+          one rule that chain now keeps (§9.60). Only rendered once there is
+          something to filter — an empty programme needs no facets. */}
+      {tab === 'programme' && scan && (searched.length > 0 || watchedCount > 0) && (
+        <div className="facets" role="group" aria-label="Show">
+          <span className="facets__label" aria-hidden="true">Show</span>
+          <button
+            type="button"
+            className={`facet ${!statusFilter ? 'facet--on' : ''}`}
+            aria-pressed={!statusFilter}
+            onClick={() => setStatusFilter(null)}
+          >
+            Everything
+          </button>
+          <button
+            type="button"
+            className={`facet ${statusFilter === 'sold-out' ? 'facet--on' : ''}`}
+            aria-pressed={statusFilter === 'sold-out'}
+            onClick={() => setStatusFilter(statusFilter === 'sold-out' ? null : 'sold-out')}
+          >
+            Sold out
+            <span className="facet__count" aria-hidden="true">{soldOutCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`facet ${statusFilter === 'watching' ? 'facet--on' : ''}`}
+            aria-pressed={statusFilter === 'watching'}
+            onClick={() => setStatusFilter(statusFilter === 'watching' ? null : 'watching')}
+          >
+            Watching
+            <span className="facet__count" aria-hidden="true">{watchedCount}</span>
+          </button>
+        </div>
+      )}
+
       <main className={`main ${prefs.compactList ? 'main--compact' : ''}`}>
         {client.mode === 'demo' && (
           <p className="banner">
@@ -713,6 +815,13 @@ export default function App() {
               onKeep={(showing, production) => setKeeping({ showing, production })}
               onIgnore={(production) =>
                 setTriage(production.id, triage[production.id] === TRIAGE.IGNORED ? null : TRIAGE.IGNORED)}
+              watchlist={watchlist}
+              onWatch={handleWatch}
+              // Only when you're actually looking at the watchlist: the
+              // "nothing listed yet" group answers "what am I waiting on",
+              // which is a question you asked, not one to answer unprompted
+              // above every ordinary programme.
+              awaited={statusFilter === 'watching' ? awaited : []}
             />
           </>
         ) : loading ? (

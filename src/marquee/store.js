@@ -16,6 +16,7 @@ const FINDINGS_DB_KEY = 'marquee_findings_db'
 const PREFS_KEY = 'marquee_prefs'
 const TRIAGE_KEY = 'marquee_triage'
 const DISMISSED_CHANGES_KEY = 'marquee_dismissed_changes'
+const WATCHLIST_KEY = 'marquee_watchlist'
 
 export function getToken() { return readJson(TOKEN_KEY, '') }
 export function setToken(token) { writeJson(TOKEN_KEY, String(token || '').trim()) }
@@ -81,6 +82,45 @@ export function loadTriage() {
   return out
 }
 export function saveTriage(triage) { writeJson(TRIAGE_KEY, triage ?? {}) }
+
+/**
+ * Productions you asked to be told about if they come back — the sold-out
+ * card's own action (§9.63).
+ *
+ * Keyed by `productionId` (venue::title) rather than by showing, and that is
+ * the whole point: the night you couldn't get into will PASS, dropping out of
+ * every scan and every snapshot, while the thing you actually want — that
+ * production, at that venue, on some future date — has no key yet. A watch on
+ * the showing would expire exactly when it started to matter.
+ *
+ * Each entry carries enough to render a row on its own (title, venue), because
+ * a watched production with nothing currently listed cannot be looked up in a
+ * programme that no longer mentions it. That is the case the Watching view
+ * exists to show, so it cannot depend on the production still being there.
+ *
+ * Local, like triage: "I wanted to see that" is a mood held in the browser
+ * where you had it, not a record for someone to tidy in Notion.
+ */
+export function loadWatchlist() {
+  const raw = readJson(WATCHLIST_KEY, {})
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out = {}
+  for (const [id, entry] of Object.entries(raw)) {
+    if (entry && typeof entry === 'object' && entry.title && entry.venue) {
+      out[id] = {
+        title: String(entry.title),
+        venue: String(entry.venue),
+        watchedAt: entry.watchedAt ?? null,
+        // The date that was sold out when you started watching — shown as
+        // "you missed 12 Sept" rather than left as a bare title.
+        missedDate: entry.missedDate ?? null,
+      }
+    }
+  }
+  return out
+}
+
+export function saveWatchlist(watchlist) { writeJson(WATCHLIST_KEY, watchlist ?? {}) }
 
 /** Which "what changed" entries (as `kind:key` signatures) have already been
  *  shown and dismissed — persisted so a later check that finds nothing NEW

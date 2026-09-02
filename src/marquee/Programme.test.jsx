@@ -211,3 +211,46 @@ describe('Programme — the "no tickets listed" chip', () => {
     expect(screen.queryByText('no tickets listed')).toBeNull()
   })
 })
+
+// §9.63 — the sold-out card used to be a dead end: a disabled Keep and nothing
+// to do about it.
+describe('Programme — watching a sold-out production', () => {
+  const soldOut = () => byDate(toProductions([event({ ticketState: 'sold-out' })]))
+  const venues = [{ name: 'Teatrul Excelsior', category: 'play' }]
+
+  it('offers Watch where a sold-out card used to offer a disabled Keep', () => {
+    const onWatch = vi.fn()
+    render(<Programme {...baseProps} days={soldOut()} venues={venues} onWatch={onWatch} />)
+    const watch = screen.getByRole('button', { name: 'Watch' })
+    fireEvent.click(watch)
+    expect(onWatch).toHaveBeenCalledTimes(1)
+    expect(onWatch.mock.calls[0][0].title).toBe('Tomcat')
+  })
+
+  it('shows a watched card as watching, and pressing again is the way off', () => {
+    const onWatch = vi.fn()
+    render(
+      <Programme {...baseProps} days={soldOut()} venues={venues} onWatch={onWatch}
+        watchlist={{ 'teatrul excelsior::tomcat': { title: 'Tomcat', venue: 'Teatrul Excelsior' } }} />,
+    )
+    const watching = screen.getByRole('button', { name: /Watching/ })
+    expect(watching.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(watching)
+    expect(onWatch).toHaveBeenCalledTimes(1)
+  })
+
+  it('lists what is watched but not on anywhere — the case a card cannot cover', () => {
+    const onWatch = vi.fn()
+    render(
+      <Programme {...baseProps} days={[]} venues={venues} onWatch={onWatch}
+        awaited={[{ id: 'teatrul excelsior::tomcat', title: 'Tomcat', venue: 'Teatrul Excelsior', missedDate: '2026-09-23' }]} />,
+    )
+    expect(screen.getByText(/Watching · nothing listed yet/)).toBeTruthy()
+    expect(screen.getByText('Tomcat')).toBeTruthy()
+    // …and the usual "nothing matches" line stands down, because the list above
+    // is the answer.
+    expect(screen.queryByText(/Nothing/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Stop watching' }))
+    expect(onWatch).toHaveBeenCalledWith({ id: 'teatrul excelsior::tomcat' }, { forget: true })
+  })
+})

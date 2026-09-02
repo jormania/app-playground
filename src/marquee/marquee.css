@@ -782,6 +782,106 @@ button { color: inherit; font: inherit; }
 
 .cascade__reveal-inner { overflow: hidden; min-height: 0; }
 
+
+/* ── Status facets, and the watchlist ─────────────────────────────────────
+   Deliberately NOT part of the filter cascade above (§9.60's hierarchy):
+   "sold out" and "watching" cut ACROSS type/venue/hall instead of narrowing
+   within them, so they sit below it, in a squarer, quieter shape that does
+   not read as a fourth level of the chain. */
+.facets {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.7rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.facets::-webkit-scrollbar { display: none; }
+
+.facets__label {
+  flex-shrink: 0;
+  min-width: 3.1rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.facet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--color-border);
+  /* Square-ish rather than the cascade's pills: a different shape for a
+     different KIND of filter, readable at a glance without a legend. */
+  border-radius: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.facet--on { border-color: var(--color-accent); color: var(--color-accent); }
+
+.facet__count { font-size: 0.68rem; font-variant-numeric: tabular-nums; opacity: 0.65; }
+
+/* Watching, on a sold-out card. The button that used to be a disabled "Keep"
+   and did nothing at all. */
+.action-keep--watching {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* The watched productions with nothing currently listed — the half of a
+   watchlist no programme filter can show, because the night you missed has
+   already passed and the show is in no scan at all. */
+.awaited {
+  border: 1px dashed var(--color-border-2);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.75rem;
+  background: var(--color-surface-2);
+}
+
+.awaited__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  color: var(--color-muted);
+}
+
+.awaited__count {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-faint);
+}
+
+.awaited__list { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+
+.awaited__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.awaited__what { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+
+/* The title wraps; "Stop watching" doesn't — broken across two lines it read as
+   two separate links. */
+.awaited__row .linkbtn { white-space: nowrap; }
+
+.awaited__where { font-size: 0.78rem; color: var(--color-faint); }
+
 /* ── Programme ─────────────────────────────────────────────────────────── */
 .day { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
 
@@ -944,6 +1044,14 @@ button { color: inherit; font: inherit; }
 .chip--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); }
 .chip--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }
 .chip--changed-new-event { border-color: var(--color-success); color: var(--color-success); }
+/* The one chip that reports something you personally asked to be told about,
+   so it is the one chip that fills rather than outlines (§9.63). Everything
+   else on a card describes the venue; this describes you. */
+.chip--changed-returned {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
 
 .prod__dates {
   list-style: none;

@@ -356,3 +356,85 @@ describe('Marquee, end to end in demo mode', () => {
     vi.unstubAllGlobals();
   });
 });
+
+// §9.63 — the whole watch loop, in the app: press Watch on a sold-out show,
+// find it again under the Watching facet, and have it still be there after a
+// reload.
+describe('Marquee — watching a sold-out show', () => {
+  const soldOut = {
+    key: 'excelsior:2099-01-01T20:00:demo-show',
+    venue: 'Teatrul Excelsior',
+    title: 'Demo Show',
+    date: '2099-01-01',
+    time: '20:00',
+    ticketState: 'sold-out',
+  };
+  const onSale = {
+    key: 'excelsior:2099-02-02T20:00:other-show',
+    venue: 'Teatrul Excelsior',
+    title: 'Other Show',
+    date: '2099-02-02',
+    time: '20:00',
+    ticketState: 'open',
+  };
+
+  const stubScan = (events) => vi.stubGlobal('fetch', vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      scannedAt: new Date().toISOString(),
+      venues: [{ venue: 'Teatrul Excelsior', status: 'ok', events }],
+      events,
+    }),
+  })));
+
+  it('watches, filters and remembers', async () => {
+    const user = userEvent.setup();
+    stubScan([soldOut, onSale]);
+
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Demo Show');
+
+    // Sold out cuts across the type/venue chain, so it is a facet, not a chip.
+    await user.click(screen.getByRole('button', { name: /^Sold out/ }));
+    expect(screen.queryByText('Other Show')).toBeNull();
+    expect(screen.getByText('Demo Show')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Watch' }));
+    await screen.findByText(/Watching “Demo Show”/);
+    expect(JSON.parse(localStorage.getItem('marquee_watchlist'))['teatrul excelsior::demo show'].title)
+      .toBe('Demo Show');
+
+    await user.click(screen.getByRole('button', { name: /^Watching/ }));
+    expect(screen.getByText('Demo Show')).toBeTruthy();
+    expect(screen.queryByText('Other Show')).toBeNull();
+
+    // Reload: the watch is storage, not component state.
+    cleanup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Demo Show');
+    await user.click(screen.getByRole('button', { name: /^Watching/ }));
+    expect(screen.getByRole('button', { name: /👁 Watching/ })).toBeTruthy();
+  });
+
+  it('says so when a watched show comes back on a date nothing has seen', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('marquee_watchlist', JSON.stringify({
+      'teatrul excelsior::demo show': { title: 'Demo Show', venue: 'Teatrul Excelsior', missedDate: '2099-01-01' },
+    }));
+    stubScan([soldOut]);
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    await screen.findByText('Demo Show');
+
+    // Second check, a new date for the same production — a key the app has
+    // never seen, which without a watch would read as a plain new listing.
+    const returning = { ...soldOut, key: 'excelsior:2099-03-03T20:00:demo-show', date: '2099-03-03', ticketState: 'open' };
+    stubScan([soldOut, returning]);
+    await user.click(screen.getByRole('button', { name: 'Check venues' }));
+    // Twice over, deliberately: the "What changed" strip says it, and so does
+    // the chip on the card itself.
+    expect((await screen.findAllByText(/back — you were watching this/)).length).toBeGreaterThan(1);
+  });
+});

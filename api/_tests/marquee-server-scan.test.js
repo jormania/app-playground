@@ -41,6 +41,18 @@ describe('the server diff (parity with the client)', () => {
     expect(diff(before, snap([], []), { now: new Date('2026-08-26') }).changes).toEqual([])
   })
 
+  // §9.63 — the watchlist is a browser thing (localStorage), so the scheduled
+  // check never has one. The parameter exists here only to keep the two copies
+  // of the diff the same file; with nobody to pass it, the email reads exactly
+  // as it did before.
+  it('never claims a return, because the cron has no watchlist to consult', () => {
+    const before = snap([event({ ticketState: 'sold-out' })])
+    const after = snap([event({ ticketState: 'open' })])
+    expect(diff(before, after).changes[0].kind).toBe(CHANGE.TICKETS_OPENED)
+    expect(diff(before, after, { watching: ['teatrul excelsior::tomcat'] }).changes[0].kind)
+      .toBe(CHANGE.RETURNED)
+  })
+
   it('summarizes a scan result the same way the app does', () => {
     expect(summarize({ status: 'ok', events: [event({ ticketState: 'sold-out' })] })).toBe('1 event · 1 sold out')
     expect(summarize({ status: 'parser-broken', detail: 'Markup changed.', events: [] })).toBe('Markup changed.')
