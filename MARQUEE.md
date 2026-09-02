@@ -2324,6 +2324,65 @@ believe the content and record the signal.**
 live site through both network paths: the 500 path reads 18 events and records
 the status, the challenge path reports a bot check.
 
+### 9.62 Prices for Metropolis, from two sources that don't overlap (2026-09-02)
+
+Asked for: mystage.ro's Metropolis page as a **secondary URL**, "so that you
+can also extract availability and ticket prices" — the ARCUB join (§9.57)
+applied to a second venue. Then, mid-build: *"And also from the main source
+you can get ticket prices from here"*, with a screenshot of a production page
+reading **Preț bilet: 59,40 lei**.
+
+Both are right, and they turn out to be exactly complementary, which is worth
+stating precisely because it is the reason this venue ends up fully priced:
+
+| | productions | price from |
+|---|---|---|
+| hosted on the theatre's own site | **14** | its own `/spectacol/<slug>/` page |
+| co-productions linked off-domain | **2** | mystage, which sells them |
+
+The two co-productions (Teatrul Stela Popescu's) are the ones whose links
+leave `teatrulmetropolis.ro` entirely — so they have no detail page here to
+read, and they are precisely the two mystage lists. **18 of 18 showings now
+carry a price**, verified against the live site.
+
+**The theatre's own pages: a `follow()` hop, one per distinct production.**
+`<span class="show-pret">` sits in the same `show-*` class family as the
+programme rows' own fields. One request per production rather than per
+showing, so Liber Volatilium's two nights cost one fetch and share one price;
+capped at `MAX_DETAILS` so a markup change can't turn one venue into a hundred
+requests. The theatre is not consistent with itself about how it writes a
+price — `84,24 lei`, `69,12` with no unit, `49.68 lei` with a **dot** — so
+`parseDetailPrice` takes comma and dot alike and treats zero or free text as
+no price rather than a free show.
+
+**mystage: an optional second request, read through the existing reader.**
+`mystageEvents`/`mystageTicketing` were lifted out of `mystage.js` rather than
+copied into `metropolis.js`, so the §9.47 rule — trust the seating map, never
+the `isAvailable` flag — has exactly one implementation whichever role mystage
+is playing.
+
+**Two deliberate restraints, both about being wrong in the recoverable
+direction:**
+
+- **mystage never overrides the programme's own ticket state**, only fills it
+  where the row said nothing. It sells those two nights, but nothing
+  establishes that its allocation is the whole house, so zero seats there
+  would not prove a sell-out. The errors are not symmetrical: a wrong "sold
+  out" greys out Keep and quietly removes a show you could still have seen,
+  while a wrong "tickets" costs one click to discover.
+- **An enrichment source must never be able to take its venue down.** The
+  secondary request is marked `optional`, and `scanVenue` now excludes
+  optional pages from both the "did anything fail" check and §9.61's
+  "is this readable anyway" check. mystage having a bad afternoon costs two
+  prices, not the programme — the second exclusion was a real bug the test
+  caught: an optional page that came back empty vetoed the salvage of a main
+  page that had arrived whole. ARCUB's own secondary inherits the same
+  protection.
+
+`npm test`, `npm run typecheck` and `npx eslint` all pass. Verified live: 18/18
+priced, the two mystage prices (87.17, 75.95) landing on exactly the two
+showings with no detail page of their own.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -2364,6 +2423,10 @@ absences at the source, not gaps in a reader:
   hasn't yet had more than 13 occurrences on its page at once, so whether the missing ones
   reliably surface on a later scan (rather than silently vanishing until manually checked
   again) hasn't been observed against a real case — only reasoned about.
+- ~~Teatrul Metropolis publishes no prices.~~ **Done (2026-09-02, §9.62):** all
+  18 showings carry one, from the theatre's own production pages (14) and the
+  mystage secondary (2). The `follow()` hop costs ~14 extra requests per scan —
+  well short of TNB's 61, but the second-biggest per-check count in the app.
 - **Eventbook and iabilet still have no description**, per the rule in §3 — both are missing
   a `follow()` hop that doesn't exist yet, not a field that's absent from a page already
   being read. Eventbook's own film page (`/film/bilete-...`) carries real content

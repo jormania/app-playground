@@ -137,7 +137,7 @@ export const ADAPTERS = [
     label: 'Teatrul Metropolis',
     rung: 'selector',
     hosts: ['teatrulmetropolis.ro'],
-    note: 'Reads the theatre’s own WordPress /program/ page — its ticketing SPA (bilete.teatrulmetropolis.ro) ships no data at all server-side, so pasting THAT URL here will not resolve to a working scan.',
+    note: 'Reads the theatre’s own WordPress /program/ page — its ticketing SPA (bilete.teatrulmetropolis.ro) ships no data at all server-side, so pasting THAT URL here will not resolve to a working scan. Adapter Config optionally takes its mystage.ro venue page, which prices the co-productions the theatre links off-domain.',
   },
 ]
 
