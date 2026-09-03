@@ -192,6 +192,17 @@
    so this is the quiet confirmation of what the fade means, not a progress
    bar competing with it. No colour change on the way down: an expiring thing
    is composting, not failing. */
+/* The same small-caps label voice as .kind — a remark on the row, never a
+   badge or a count. See NurseryView.tsx's `pending`. */
+.pending {
+  display: inline-block;
+  margin-top: var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
 .season {
   display: block;
   height: 1px;

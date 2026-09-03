@@ -23,12 +23,26 @@ export interface NurseryViewProps {
   onRelease: (id: string) => void
   onDelete: (id: string) => void
   seasonDays?: number
+  /** Ids of captures this device is still holding because Notion could not
+   *  be reached (`lib/outbox.ts`). Said on the row, because a thing that
+   *  exists only here looks otherwise identical to one that is safely in the
+   *  collection — and clearing this browser's data would take it with no
+   *  warning at all. */
+  pendingIds?: Set<string>
 }
 
 /** Unkept arrivals, each shown with its remaining season as a fade rather
  *  than a countdown number (SILVA.md: "the understory... with their
  *  remaining season shown as a fade rather than a number"). */
-export function NurseryView({ things, sources = [], onKeep, onRelease, onDelete, seasonDays = DEFAULT_SEASON_DAYS }: NurseryViewProps) {
+export function NurseryView({
+  things,
+  sources = [],
+  onKeep,
+  onRelease,
+  onDelete,
+  seasonDays = DEFAULT_SEASON_DAYS,
+  pendingIds,
+}: NurseryViewProps) {
   // Why this, right when you decide it matters — SILVA.md's Keep → Annotate
   // step, without making Keep itself wait on it. Collapsed by default so the
   // one-tap keep nobody wants to slow down stays one tap; only a row you
@@ -51,6 +65,7 @@ export function NurseryView({ things, sources = [], onKeep, onRelease, onDelete,
       key={thing.id}
       thing={thing}
       seasonDays={seasonDays}
+      pending={pendingIds?.has(thing.id) ?? false}
       isOpen={openId === thing.id}
       draft={drafts[thing.id] ?? ''}
       onOpen={() => setOpenId(thing.id)}
@@ -94,6 +109,7 @@ export function NurseryView({ things, sources = [], onKeep, onRelease, onDelete,
 function NurseryRow({
   thing,
   seasonDays,
+  pending,
   isOpen,
   draft,
   onOpen,
@@ -104,6 +120,7 @@ function NurseryRow({
 }: {
   thing: Thing
   seasonDays: number
+  pending: boolean
   isOpen: boolean
   draft: string
   onOpen: () => void
@@ -194,6 +211,10 @@ function NurseryRow({
             toggleClassName={styles.expandToggle}
           />
         )}
+        {/* Said once, in the label voice, and never counted: a thing waiting
+         *  on a signal is not a chore, and the queue drains on its own the
+         *  moment there is one (App.tsx's `drainOutbox`). */}
+        {pending && <span className={styles.pending}>on this device only</span>}
         <span
           className={styles.season}
           role="img"

@@ -20,6 +20,9 @@ export interface ForestViewProps {
   onEdit: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
   onRelease: (id: string) => void
   onDelete: (id: string) => void
+  /** Plants a passage taken out of a link's own page as a thing of its own
+   *  (App.tsx's `handleCutting`). Passed straight through to the plate. */
+  onCutting?: (thing: Thing, body: string) => void
   onSeen: (id: string) => void
   onMakePath: (fromId: string, toId: string, why: string) => void
   /** Settings' "Show the walk" — on by default. Off just means the Forest is
@@ -58,6 +61,7 @@ export function ForestView({
   onEdit,
   onRelease,
   onDelete,
+  onCutting,
   onSeen,
   onMakePath,
   showWalk = true,
@@ -84,6 +88,7 @@ export function ForestView({
         onEdit={onEdit}
         onRelease={onRelease}
         onDelete={onDelete}
+        onCutting={onCutting}
         onSeen={onSeen}
         allSources={sources}
       >

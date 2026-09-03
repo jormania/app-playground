@@ -77,8 +77,48 @@
 
 .plateActions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
   margin-top: var(--space-sm);
+}
+
+/* Taking a cutting happens *beside* the thing, not instead of it — unlike
+   Edit, which replaces the plate. You are copying out a passage from the
+   article the card below is still showing, and hiding it to do that would
+   be the one thing this form must not do. */
+.cutting {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cuttingField {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+}
+
+.cuttingHint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+}
+
+.cuttingActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 
 .kind {

@@ -32,6 +32,24 @@ export interface SpecimenPlateProps {
   /** Deletes the thing outright, with the cleanup Notion cannot do on its
    *  own (App.tsx's `handleDeleteThing`). Optional, same as onRelease. */
   onDelete?: (id: string) => void
+  /**
+   * Plants a passage taken out of this thing's own page as a new thing of
+   * its own — see App.tsx's `handleCutting`.
+   *
+   * A link is the only thing in the forest with no text of its own: it
+   * carries a headline and points at the words, which live elsewhere. That
+   * matters more than it looks, because everything underground — the
+   * mycorrhiza, the near-neighbour provocations, the walk's affinity step —
+   * reads `body`. A forest drifting toward links is one whose serendipity
+   * engine has nothing but headlines to think with, and it degrades
+   * invisibly.
+   *
+   * So the cutting: the paragraph that actually stopped you, in the forest
+   * as a thing, under the same source and still pointing at the page it came
+   * from. Offered only where there is a page to take it from, and only ever
+   * by hand — nothing is extracted for you.
+   */
+  onCutting?: (thing: Thing, body: string) => void
   /** Called once the plate has genuinely been looked at, not merely rendered
    *  (see useDwell). Both the walk and the scroll pass this, so the history
    *  accrues from all reading rather than only from the ritual. */
@@ -58,6 +76,7 @@ export function SpecimenPlate({
   onEdit,
   onRelease,
   onDelete,
+  onCutting,
   onSeen,
   allSources = [],
   children,
@@ -87,6 +106,9 @@ export function SpecimenPlate({
   const [locator, setLocator] = useState(thing.locator)
   const [note, setNote] = useState(thing.note)
   const [link, setLink] = useState(thing.link ?? '')
+  // The cutting form, open beside the thing rather than instead of it.
+  const [cuttingOpen, setCuttingOpen] = useState(false)
+  const [cutting, setCutting] = useState('')
   const hasSource = Boolean(thing.sourceId)
   // A Link-kind thing whose own `link` field is empty — a row created or
   // edited straight in Notion, or one kept before Silva started filling
@@ -103,6 +125,14 @@ export function SpecimenPlate({
     onSeen: () => onSeen?.(thing.id),
     disabled: !onSeen,
   })
+
+  function plantCutting() {
+    const body = cutting.trim()
+    if (!body || !onCutting) return
+    onCutting(thing, body)
+    setCutting('')
+    setCuttingOpen(false)
+  }
 
   function startEditing() {
     setBody(thing.body)
@@ -275,6 +305,14 @@ export function SpecimenPlate({
          *  that strands a path with a dangling end. No confirm, because
          *  release is the one action here that already offers a real way
          *  back (App.tsx's undo toast restores the exact prior state). */}
+        {/* Only where there is a page to take one from, and only for a thing
+         *  that is already kept — a cutting is something you take from what
+         *  is growing, not from a seedling still being decided about. */}
+        {onCutting && readLink && thing.state === 'Kept' && (
+          <Button size="sm" variant="ghost" onClick={() => setCuttingOpen((open) => !open)}>
+            {cuttingOpen ? 'Never mind' : 'Take a cutting'}
+          </Button>
+        )}
         {onRelease && (
           <Button size="sm" variant="ghost" onClick={() => onRelease(thing.id)}>Release</Button>
         )}
@@ -285,6 +323,31 @@ export function SpecimenPlate({
           <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(true)}>Delete</Button>
         )}
       </div>
+      {cuttingOpen && onCutting && (
+        <div className={styles.cutting}>
+          <p className={styles.cuttingHint}>
+            The passage you took from it — in your own transcription, as if you had typed it
+            out of a book.
+          </p>
+          <textarea
+            className={styles.cuttingField}
+            aria-label="The passage you took from this"
+            placeholder="Paste or type the passage…"
+            value={cutting}
+            onChange={(e) => setCutting(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && cutting.trim()) plantCutting()
+            }}
+            rows={4}
+          />
+          <div className={styles.cuttingActions}>
+            {/* The nursery, like every other arrival — SILVA.md: "Everything
+             *  arrives unkept". A cutting is a new thing and gets its own
+             *  decision, even though the thing it came from is already kept. */}
+            <Button size="sm" disabled={!cutting.trim()} onClick={plantCutting}>Add to the nursery</Button>
+          </div>
+        </div>
+      )}
       {onDelete && (
         <ConfirmModal
           isOpen={confirmingDelete}

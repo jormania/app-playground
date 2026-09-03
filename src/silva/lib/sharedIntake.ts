@@ -1,7 +1,7 @@
 /**
  * Something shared into Silva from elsewhere on the device.
  *
- * SILVA.md lists four lanes into the understory and Silva shipped with two,
+ * SILVA.md listed four lanes into the understory and Silva had shipped two,
  * both of which require the same thing: deliberately opening the app and
  * typing. Everything encountered in a browser, a reader or a chat — which is
  * most of what anyone encounters — reached Silva only if you remembered, later,

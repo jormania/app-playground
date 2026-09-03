@@ -250,3 +250,55 @@ describe('SpecimenPlate — the Source field is a chooser', () => {
     expect(new Set(ids).size).toBe(2)
   })
 })
+
+describe('SpecimenPlate — taking a cutting', () => {
+  const linked = () => thing({ state: 'Kept', link: 'https://example.com/a/article', body: 'A Great Article' })
+
+  it('plants the passage you took, and closes the form', async () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    const onCutting = vi.fn()
+    const parent = linked()
+    render(<SpecimenPlate thing={parent} {...handlers} onCutting={onCutting} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /take a cutting/i }))
+    await userEvent.type(screen.getByLabelText(/the passage you took/i), 'The sentence that stopped me.')
+    await userEvent.click(screen.getByRole('button', { name: /add to the nursery/i }))
+
+    expect(onCutting).toHaveBeenCalledWith(parent, 'The sentence that stopped me.')
+    expect(screen.queryByLabelText(/the passage you took/i)).toBeNull()
+  })
+
+  it('will not plant an empty cutting', async () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(<SpecimenPlate thing={linked()} {...handlers} onCutting={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /take a cutting/i }))
+    expect(screen.getByRole('button', { name: /add to the nursery/i }).hasAttribute('disabled')).toBe(true)
+  })
+
+  // The form opens beside the thing, never instead of it — you are copying a
+  // passage out of the page the card below is still showing.
+  it('leaves the thing on screen while the form is open', async () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(<SpecimenPlate thing={linked()} {...handlers} onCutting={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /take a cutting/i }))
+    expect(screen.getByText('A Great Article')).toBeTruthy()
+  })
+
+  it('is offered only where there is a page to take one from', () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    const { rerender } = render(
+      <SpecimenPlate thing={thing({ state: 'Kept', link: null })} {...handlers} onCutting={vi.fn()} />,
+    )
+    expect(screen.queryByRole('button', { name: /take a cutting/i })).toBeNull()
+
+    // Nor from a seedling still being decided about.
+    rerender(<SpecimenPlate thing={thing({ state: 'Understory', link: 'https://example.com/a' })} {...handlers} onCutting={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: /take a cutting/i })).toBeNull()
+
+    // And not at all on a surface that doesn't offer it.
+    rerender(<SpecimenPlate thing={linked()} {...handlers} />)
+    expect(screen.queryByRole('button', { name: /take a cutting/i })).toBeNull()
+  })
+})

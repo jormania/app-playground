@@ -340,6 +340,90 @@ stays on screen and a toast says it could not reach Notion. Offline means
 yesterday's forest, never a blank error page over a collection this device
 is holding.
 
+### Reading survives offline; now capturing does too
+
+The mirror made *reading* local-first, and writing kept the opposite posture:
+every handler applies optimistically and rolls back when the write fails
+(`App.tsx`'s `write`). For an edit that is right — the thing is still there,
+unchanged, and you can try again. For a capture it threw away the only copy
+that existed. Share a link on the metro and the app took it, showed it in the
+nursery, and dropped it a second later with a toast; the service worker fix
+that made a share *arrive* offline only sharpened that.
+
+So captures — and only captures — go to an outbox (`lib/outbox.ts`,
+IndexedDB) when the write fails because the device could reach nothing at
+all. The row stays exactly where it is, marked **on this device only** in the
+label voice, and the queue drains oldest-first when the device says it is
+online again.
+
+- **Why only captures.** A general write queue has to answer what happens
+  when a queued edit meets a row that changed underneath it, and in what
+  order to replay a keep, a release and a delete of the same thing. Getting
+  that wrong corrupts a collection quietly. A capture asks none of those
+  questions: it is a new row that depends on no prior state, so it can be
+  replayed an hour later or tomorrow and the answer is the same. Everything
+  else still rolls back and says so, because for everything else the
+  rollback is honest.
+- **Only a failure with no answer.** `SilvaStoreError` carries the HTTP
+  status for anything the relay answered, and `0` for the store's own
+  configuration errors — neither of which waiting would fix. A `fetch` that
+  never got a response has no status at all, and that is the one case queued.
+- **The queue is hydrated on load, not only drained.** The forest is rebuilt
+  from Notion and the mirror on every open, so without putting queued
+  captures back on screen first, closing the app while still offline made
+  one invisible — the same disappearance, one step later.
+- **A source is re-resolved at flush, never replayed as an id.** By then the
+  publication may already exist in the forest, and an id minted on this
+  device never meant anything to Notion. A cutting is the exception: it
+  inherits a real source id, and falls back to no source rather than to a
+  dangling reference.
+- **The edges that follow from a thing Notion has not heard of yet.**
+  Deleting a queued capture takes it out of the queue as well, or the next
+  load would hydrate it straight back. Keeping one lands it first, so
+  reopening the app in signal and keeping what you captured in the tunnel
+  simply works — and when the drain fails too, the keep fails exactly as it
+  did before, and says so.
+
+Photographs are not queued: the bytes are the hard part, and the photo lane
+already keeps those on the device. This holds text.
+
+### A cutting: the passage taken out of a link
+
+A link is the only thing in the forest with no text of its own. It carries a
+headline and points at words that live somewhere else — and everything
+underground reads `body`: the mycorrhiza, the near-neighbour provocations,
+the clearing-forming threshold, the walk's affinity step. A forest drifting
+toward links is one whose serendipity engine has nothing but headlines to
+think with, and it degrades invisibly.
+
+**Take a cutting** is the answer, on the plate of any kept thing with a page
+behind it. You transcribe the passage that actually stopped you; it is
+planted as a thing of its own. The shape is one the app already has — a Kobo
+highlight is exactly this: text of its own, under the source it came from.
+
+- It inherits the **source** exactly (an id, not a title guessed at twice)
+  and the **link**, so there is a route back to the page.
+- It inherits **nothing else**. The note, the loci, the kind and the locator
+  are judgments about the parent, and a cutting is not the thing it came
+  from.
+- **No path is drawn between them.** A path is a connection you made, with a
+  why; inventing one here would be the app asserting a connection on your
+  behalf, which is the one thing it must never do. They share a source, the
+  way a book's passages relate to their book, and the mycorrhiza can notice
+  the rest on its own.
+- It lands in the **nursery**, like every other arrival, and gets its own
+  Keep. The thing it came from is already kept; this one has not been decided
+  about yet.
+- The form opens **beside** the thing rather than instead of it — unlike
+  Edit, which replaces the plate. You are copying a passage out of a page the
+  card below is still showing.
+
+Nothing is ever extracted for you. The app does not fetch the article, does
+not choose the paragraph, and does not summarise it — the transcription is
+the same act as typing a passage out of a book, which is what the intake
+field has always been for.
+
+
 ### Why the data is never paged, and the rendering is
 
 The obvious way to make a big collection open fast — fetch twenty things and
@@ -468,6 +552,9 @@ Four lanes into the understory:
    to IndexedDB and `Thing.image` holds a reference (`lib/photoStore.ts`),
    because a ~300 KB data URL inside the localStorage demo snapshot would take
    the whole demo forest down within a handful of photographs.
+5. **A cutting** — the passage taken out of a link's own page, planted as a
+   thing of its own. The one lane that starts from something already in the
+   forest rather than from outside it; see "A cutting" below.
 
 ### A preview is a server fetch, so some links never ask for one
 

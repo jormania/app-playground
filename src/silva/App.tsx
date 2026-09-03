@@ -41,7 +41,9 @@ import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settin
 import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
 import { intakeFields } from './lib/intakeFields'
+import { effectiveLink } from './lib/kindInference'
 import { findLinkDuplicate, duplicateNotice } from './lib/linkDuplicate'
+import { queueCapture, queuedCaptures, forgetCapture, looksOffline, type QueuedCapture } from './lib/outbox'
 import { normalizeCapturedText } from './lib/textNormalize'
 import {
   readCollectionCache,
@@ -84,6 +86,28 @@ interface Forest {
 const DRAFT_PREFIX = 'silva-draft-'
 let draftCounter = 0
 const draftId = () => `${DRAFT_PREFIX}${(draftCounter += 1)}`
+
+/** A queued capture as the row it is already showing as, so a reopened app
+ *  puts it back exactly where it was (lib/outbox.ts). */
+function captureAsThing(capture: QueuedCapture): Thing {
+  return {
+    id: capture.id,
+    handle: capture.body.slice(0, 60),
+    body: capture.body,
+    kind: capture.kind,
+    state: 'Understory',
+    sourceId: null,
+    locator: capture.locator,
+    encountered: capture.encountered,
+    kept: null,
+    note: '',
+    lociIds: [],
+    image: null,
+    link: capture.link,
+    koboBookmarkId: null,
+    arrived: null,
+  }
+}
 
 function errorText(e: unknown): string {
   const message = (e as Error)?.message
@@ -152,6 +176,10 @@ export default function App() {
   const [indexing, setIndexing] = useState<{ done: number; total: number; loadingModel: boolean } | null>(null)
   const [seen, setSeen] = useState<SeenMap>({})
   const [photoBusy, setPhotoBusy] = useState(false)
+  /** Captures this device is holding because Notion could not be reached —
+   *  `lib/outbox.ts`. Ids only: the rows themselves are in `things` like any
+   *  other, which is the point. */
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
 
   // A share arriving from elsewhere on the device. Held in state so it can be
   // cleared once taken in; `arrived` above is the one read of the URL.
@@ -288,13 +316,26 @@ export default function App() {
   const writeGeneration = useRef(0)
 
   const write = useCallback(
-    async (apply: () => void, commit: () => Promise<void>, failure: string) => {
+    async (
+      apply: () => void,
+      commit: () => Promise<void>,
+      failure: string,
+      /**
+       * A last chance to keep the optimistic change instead of losing it.
+       * Returns true when it has taken responsibility for the failure — the
+       * rollback and the alarm are then skipped, because the change is safe
+       * somewhere else (today: `lib/outbox.ts`, for a capture made offline).
+       * Everything without one still rolls back and says so.
+       */
+      recover?: (error: unknown) => Promise<boolean>,
+    ) => {
       const snapshot = forestRef.current
       const generation = ++writeGeneration.current
       apply()
       try {
         await commit()
       } catch (e) {
+        if (recover && (await recover(e))) return
         /**
          * Roll back only if nothing else has been applied since.
          *
@@ -596,6 +637,18 @@ export default function App() {
   }, [])
 
   function handleKeep(id: string, note?: string) {
+    // A thing Notion has never heard of cannot be kept in Notion. Landing it
+    // first turns the common case — reopening the app in signal and keeping
+    // what you captured in the tunnel — into one that simply works. When the
+    // drain fails too, the keep fails exactly as it did before, and says so.
+    if (pendingIds.has(id)) {
+      void drainOutbox().then(() => keepThing(id, note))
+      return
+    }
+    keepThing(id, note)
+  }
+
+  function keepThing(id: string, note?: string) {
     // The one act SILVA.md calls "the field that means something" — it gets
     // the affirmative pulse. Release gets the lighter one just below: both
     // are decisions, but only one of them is a commitment.
@@ -761,6 +814,17 @@ export default function App() {
           if (!isDraft(path.id)) await store.archivePath(liveId(path.id))
         }
         if (!isDraft(id)) await store.archiveThing(liveId(id))
+        // A capture still waiting in the outbox has to be taken out of it
+        // too, or the next load hydrates it straight back onto the screen —
+        // a deletion that undoes itself the next time you open the app.
+        if (pendingIds.has(id)) {
+          await forgetCapture(id)
+          setPendingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        }
       },
       'That could not be deleted',
     )
@@ -924,22 +988,34 @@ export default function App() {
     )
   }
 
-  function handleIntake(rawBody: string, locator = '', sourceInput = '') {
-    // Whitespace hygiene only — never a rewrite. Fixes the CRLF, trailing
-    // spaces and padded-out blank lines a badly-formatted source (or the
-    // paste mechanism itself) adds, uniformly across typed, pasted and
-    // shared-in text (lib/textNormalize.ts). Every word stays exactly as
-    // written.
-    const typed = normalizeCapturedText(rawBody)
+  /**
+   * One arrival, whatever lane it came down: the optimistic row, the write
+   * behind it, and — when the write failed because this device could reach
+   * nothing — the outbox that holds it until there is a signal.
+   *
+   * Shared by the intake field and by a cutting taken off a plate, which
+   * differ only in where the fields come from: intake *reads* them out of
+   * what you typed, a cutting *inherits* them from the thing it was taken
+   * from.
+   */
+  function captureThing(capture: {
+    body: string
+    locator: string
+    link: string | null
+    kind: Thing['kind']
+    /** Already resolved — a draft id when `sourceDraft` is set, a live id
+     *  when inherited, null when there is no source. */
+    sourceId: string | null
+    /** A source that does not exist yet and must be created first. */
+    sourceDraft: Source | null
+    /** The raw text the source was typed as, for the outbox to re-resolve
+     *  later. Empty for an inherited source, which needs no resolving. */
+    sourceInput: string
+    /** A live source id to inherit as-is, skipping resolution entirely. */
+    inheritedSourceId?: string | null
+  }) {
     const today = todayIso()
-    const { sourceId, sourceDraft } = resolveSourceDraft(sourceInput)
-    // What the capture already knows about itself: the URL it *is* (pasted,
-    // or arriving in the locator from the share sheet) and the one Kind that
-    // reads out of it. Nothing inferred — see lib/intakeFields.ts. The body
-    // comes back too, because a body that is *only* a URL is cleaned along
-    // with the link it becomes; every other body is returned as it was
-    // written.
-    const { body, locator: fieldLocator, link, kind } = intakeFields(typed, locator)
+    const { body, locator, link, kind, sourceId, sourceDraft, sourceInput } = capture
     const draft: Thing = {
       id: draftId(),
       handle: body.slice(0, 60),
@@ -947,7 +1023,7 @@ export default function App() {
       kind,
       state: 'Understory',
       sourceId,
-      locator: fieldLocator,
+      locator,
       encountered: today,
       kept: null,
       note: '',
@@ -973,14 +1049,231 @@ export default function App() {
           setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
           realSourceId = createdSource.id
         }
-        const created = await store.createThing({ body, locator: fieldLocator, sourceId: realSourceId, link, kind })
+        const created = await store.createThing({ body, locator, sourceId: realSourceId, link, kind })
         realIdByDraft.current.set(draft.id, created.id)
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },
       'That could not be added to the nursery',
+      async (e) => {
+        // Offline, and a capture is the one write worth keeping anyway —
+        // see lib/outbox.ts for why it is the only one. The optimistic row
+        // stays exactly where it is, marked as still on this device, and
+        // drains when the signal comes back.
+        if (!looksOffline(e)) return false
+        const queued = await queueCapture({
+          id: draft.id,
+          body,
+          locator,
+          sourceInput,
+          sourceId: capture.inheritedSourceId ?? null,
+          link,
+          kind,
+          encountered: today,
+          queuedAt: Date.now(),
+        })
+        if (!queued) return false
+        setPendingIds((prev) => new Set(prev).add(draft.id))
+        notify('No signal — kept on this device until there is', { tone: 'quiet' })
+        return true
+      },
     )
+  }
+
+  function handleIntake(rawBody: string, locator = '', sourceInput = '') {
+    // Whitespace hygiene only — never a rewrite. Fixes the CRLF, trailing
+    // spaces and padded-out blank lines a badly-formatted source (or the
+    // paste mechanism itself) adds, uniformly across typed, pasted and
+    // shared-in text (lib/textNormalize.ts). Every word stays exactly as
+    // written.
+    const typed = normalizeCapturedText(rawBody)
+    const { sourceId, sourceDraft } = resolveSourceDraft(sourceInput)
+    // What the capture already knows about itself: the URL it *is* (pasted,
+    // or arriving in the locator from the share sheet) and the one Kind that
+    // reads out of it. Nothing inferred — see lib/intakeFields.ts. The body
+    // comes back too, because a body that is *only* a URL is cleaned along
+    // with the link it becomes; every other body is returned as it was
+    // written.
+    const { body, locator: fieldLocator, link, kind } = intakeFields(typed, locator)
+    captureThing({ body, locator: fieldLocator, link, kind, sourceId, sourceDraft, sourceInput })
     setShared(null)
   }
+
+  /**
+   * A passage taken out of a link's own page and planted as a thing of its
+   * own.
+   *
+   * A link is the only thing in the forest carrying no text — a headline
+   * pointing at words that live elsewhere — and everything underground reads
+   * `body`. A forest drifting toward links is one whose mycorrhiza, near
+   * neighbours and walk have nothing but headlines to work with. The cutting
+   * is how the passage that actually stopped you gets into the forest, and
+   * it is the same shape a Kobo highlight already has: text of its own,
+   * under the source it came from.
+   *
+   * What it inherits and what it doesn't:
+   *
+   * - the **source**, exactly (an id, not a title guessed at again) and the
+   *   **link**, so there is a route back to the page;
+   * - **not** the note, the loci, the kind or the locator — those are
+   *   judgments about the parent, and a cutting is not the thing it came
+   *   from;
+   * - **no path** is drawn between them. A path is a connection you made,
+   *   with a why, and inventing one here would be the app asserting a
+   *   connection on your behalf — the one thing SILVA.md says it must never
+   *   do. The two share a source, which is how a book's passages relate to
+   *   their book, and the mycorrhiza can notice the rest on its own.
+   *
+   * It lands in the nursery like every other arrival, and gets its own Keep.
+   */
+  function handleCutting(parent: Thing, rawBody: string) {
+    const body = normalizeCapturedText(rawBody).trim()
+    if (!body) return
+    // A source the parent is still waiting to be given (a draft id) is not
+    // one to inherit — `captureThing` would write a reference Notion cannot
+    // resolve. No source is honest and fixable; a dangling one is neither.
+    const inherited = parent.sourceId && !parent.sourceId.startsWith(DRAFT_PREFIX) ? parent.sourceId : null
+    captureThing({
+      body,
+      locator: '',
+      link: effectiveLink(parent.body, parent.link),
+      kind: null,
+      sourceId: inherited,
+      sourceDraft: null,
+      sourceInput: '',
+      inheritedSourceId: inherited,
+    })
+    triggerHaptic('success')
+    notify('Planted in the nursery', { tone: 'quiet' })
+  }
+
+  /**
+   * Sends everything the outbox is holding, oldest first.
+   *
+   * Runs when the device says it is online again and once after the initial
+   * load — the two moments the answer can have changed. Serialised through a
+   * ref rather than state, because two drains racing would send the same
+   * capture twice, and Notion has no opinion about that at all.
+   *
+   * A source is re-resolved here rather than replayed as an id: by now the
+   * publication may exist in the forest (a later capture created it), and a
+   * stored id minted on this device never meant anything to Notion.
+   */
+  const sendCapture = useCallback(
+    async (capture: QueuedCapture) => {
+      // An inherited source outranks a typed one — a cutting knows exactly
+      // which source it belongs to. Checked against the forest as it stands
+      // now, so an id whose row has since gone is not written into a new one.
+      const inherited = capture.sourceId
+        && forestRef.current.sources.some((s) => s.id === capture.sourceId)
+        ? capture.sourceId
+        : null
+
+      const resolution = inherited
+        ? ({ kind: 'none' } as const)
+        : resolveSource(capture.sourceInput, forestRef.current.sources)
+      let realSourceId: string | null = inherited
+      if (resolution.kind === 'existing') {
+        realSourceId = resolution.source.id
+      } else if (resolution.kind === 'new') {
+        const createdSource = await store.createSource({ title: resolution.title, author: resolution.author })
+        setSources((prev) => [createdSource, ...prev])
+        realSourceId = createdSource.id
+      }
+
+      const created = await store.createThing({
+        body: capture.body,
+        locator: capture.locator,
+        sourceId: realSourceId,
+        link: capture.link,
+        kind: capture.kind,
+        // The day it reached you, not the day the tunnel ended.
+        encountered: capture.encountered,
+      })
+      // Forgotten *before* the local row is reconciled: a crash in between
+      // leaves a thing that exists in both places, which is visible and
+      // fixable, rather than one queued to be written a second time.
+      await forgetCapture(capture.id)
+      realIdByDraft.current.set(capture.id, created.id)
+      // Normally this replaces the row already on screen. It prepends
+      // instead when there is nothing to replace — a full reconcile can
+      // rebuild `things` from Notion while a capture is still queued, and a
+      // capture that lands into a forest that has forgotten its own draft
+      // row would otherwise be invisible until the next reload.
+      setThings((prev) =>
+        prev.some((t) => t.id === capture.id)
+          ? prev.map((t) => (t.id === capture.id ? created : t))
+          : [created, ...prev],
+      )
+      setPendingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(capture.id)
+        return next
+      })
+    },
+    [store],
+  )
+
+  const draining = useRef(false)
+  const drainOutbox = useCallback(async () => {
+    if (draining.current || !config.notionToken) return
+    draining.current = true
+    try {
+      const waiting = await queuedCaptures()
+      for (const capture of waiting) {
+        try {
+          await sendCapture(capture)
+        } catch {
+          // Still unreachable, or refused. Either way the rest of the queue
+          // waits: retrying the second while the first is stuck would put
+          // the forest back in a different order than you built it.
+          break
+        }
+      }
+    } finally {
+      draining.current = false
+    }
+  }, [config.notionToken, sendCapture])
+
+  /**
+   * Puts anything still queued back on screen, then tries to send it.
+   *
+   * The hydrate half is not housekeeping — it is the difference between a
+   * capture that survives and one that only looks like it did. The queue is
+   * on the device but the forest is rebuilt from Notion and the mirror on
+   * every load, so without this, closing the app while still offline made a
+   * queued capture invisible: exactly the disappearance the outbox exists to
+   * prevent, one step later.
+   */
+  useEffect(() => {
+    if (loading) return
+    let cancelled = false
+
+    async function restoreAndDrain() {
+      const waiting = await queuedCaptures()
+      if (cancelled) return
+      if (waiting.length > 0) {
+        setPendingIds((prev) => {
+          const next = new Set(prev)
+          for (const capture of waiting) next.add(capture.id)
+          return next
+        })
+        setThings((prev) => {
+          const known = new Set(prev.map((t) => t.id))
+          const missing = waiting.filter((capture) => !known.has(capture.id)).map(captureAsThing)
+          return missing.length > 0 ? [...missing, ...prev] : prev
+        })
+      }
+      await drainOutbox()
+    }
+
+    void restoreAndDrain()
+    if (typeof window === 'undefined') return () => { cancelled = true }
+    window.addEventListener('online', drainOutbox)
+    return () => {
+      cancelled = true
+      window.removeEventListener('online', drainOutbox)
+    }
+  }, [loading, drainOutbox])
 
   /**
    * The photograph lane. A picture of a page is a legitimate thing and is
@@ -1369,6 +1662,7 @@ export default function App() {
             )}
             <NurseryView
               things={nurseryThings}
+              pendingIds={pendingIds}
               sources={sources}
               onKeep={handleKeep}
               onRelease={handleRelease}
@@ -1386,6 +1680,7 @@ export default function App() {
             onEdit={handleEditThing}
             onRelease={handleRelease}
             onDelete={handleDeleteThing}
+            onCutting={handleCutting}
             onSeen={markSeen}
             onMakePath={handleMakePath}
             showWalk={config.showWalk}
@@ -1422,6 +1717,7 @@ export default function App() {
             onEditThing={handleEditThing}
             onReleaseThing={handleRelease}
             onDeleteThing={handleDeleteThing}
+            onCutting={handleCutting}
             onDeleteSource={handleDeleteSource}
             onSeen={markSeen}
             onEditSource={handleEditSource}

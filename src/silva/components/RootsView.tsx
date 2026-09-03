@@ -15,6 +15,10 @@ export interface RootsViewProps {
   onEditThing: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
   onReleaseThing: (id: string) => void
   onDeleteThing: (id: string) => void
+  /** Plants a passage taken out of a link's own page as a thing of its own
+   *  (App.tsx's `handleCutting`) — the same plate action the Forest offers,
+   *  so the two reading surfaces stay the same surface. */
+  onCutting?: (thing: Thing, body: string) => void
   onDeleteSource: (id: string) => void
   /** Hearth's "Show the rootstock" — on by default, exactly like the
    *  crossing at the head of Paths. */
@@ -55,7 +59,7 @@ type Screen = { kind: 'list' } | { kind: 'detail'; sourceId: string }
  * rather than by thing, same as Clearings is "what else belongs here"
  * reached by locus.
  */
-export function RootsView({ things, sources, loci, onEditThing, onReleaseThing, onDeleteThing, onDeleteSource, onSeen, onEditSource, showRootstock = true }: RootsViewProps) {
+export function RootsView({ things, sources, loci, onEditThing, onReleaseThing, onDeleteThing, onCutting, onDeleteSource, onSeen, onEditSource, showRootstock = true }: RootsViewProps) {
   const [screen, setScreen] = useState<Screen>({ kind: 'list' })
   const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
 
@@ -133,6 +137,7 @@ export function RootsView({ things, sources, loci, onEditThing, onReleaseThing, 
       onDeleteThing={onDeleteThing}
       onDeleteSource={onDeleteSource}
       onSeen={onSeen}
+      onCutting={onCutting}
       onEditSource={onEditSource}
       allSources={sources}
     />
@@ -149,6 +154,7 @@ function SourceDetail({
   onDeleteThing,
   onDeleteSource,
   onSeen,
+  onCutting,
   onEditSource,
   allSources,
 }: {
@@ -161,6 +167,7 @@ function SourceDetail({
   onDeleteThing: (id: string) => void
   onDeleteSource: (id: string) => void
   onSeen: (id: string) => void
+  onCutting?: (thing: Thing, body: string) => void
   onEditSource: (id: string, patch: Partial<Source>) => void
   /** Offered back as the Source field on a plate is typed — the same
    *  autocomplete intake has, for the same duplicate-source reason. */
@@ -266,6 +273,7 @@ function SourceDetail({
               onEdit={onEditThing}
               onRelease={onReleaseThing}
               onDelete={onDeleteThing}
+              onCutting={onCutting}
               onSeen={onSeen}
             />
           ))}

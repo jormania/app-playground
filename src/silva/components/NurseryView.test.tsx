@@ -413,3 +413,31 @@ describe('NurseryView — long bodies collapse', () => {
     expect(screen.queryByRole('button', { name: /show more/i })).toBeNull()
   })
 })
+
+describe('NurseryView — a capture still on this device', () => {
+  it('says so on the row, once, in the label voice', () => {
+    render(
+      <NurseryView
+        things={[arrival('queued', 1, { body: 'Kept on the metro' })]}
+        pendingIds={new Set(['queued'])}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    expect(screen.getAllByText('on this device only')).toHaveLength(1)
+  })
+
+  it('says nothing about a row that is safely in the collection', () => {
+    render(
+      <NurseryView
+        things={[arrival('landed', 1)]}
+        pendingIds={new Set(['something-else'])}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    expect(screen.queryByText('on this device only')).toBeNull()
+  })
+})
