@@ -4,6 +4,12 @@
 //
 // Category tags (get the rose highlight on index.html): gaming, fitness,
 // outdoor, mindfulness, kawaii.
+// Stack tags (react, vite, notion) describe implementation, not content —
+// they're already visible per-card as the "tech" meta-chip, and nearly every
+// app carries react+vite so they don't discriminate anything in the filter
+// bar. index.html's tag row omits them from its chips (and its "+N more"
+// count) for that reason; they're left in each app's `tags` array below so
+// search-by-tag and the per-card tag pills keep working unchanged.
 // Pre-design-system apps show a "Legacy" chip by default; set ds: true on an
 // app built on src/ds/ to drop it.
 // deployed: "Mon YYYY" (e.g. "Jun 2026") — drives both the date chip and the
@@ -26,6 +32,7 @@
 // See CABINET.md for the full checklist when adding a new app.
 // ─────────────────────────────────────────────────────
 export const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii"]);
+export const STACK_TAGS = new Set(["react", "vite", "notion"]);
 
 export const APPS = [
   {
