@@ -123,6 +123,14 @@ deliberately describes what kinds of site can be read, never a roster of which
 venues use which reader — a list that has to be kept in sync with Notion is
 not what a guide is for (§9.35).
 
+**9. Never write implementation notes into a venue's `Notes` field.** The
+Venues tab displays `Notes` to the user verbatim — it's "anything you want to
+remember about this venue," not a place for adapter internals. This has now
+happened twice: four venues in §9.10, then ARCUB and Teatrul Metropolis
+(§9.66). Put reader details — which rung, what the site's quirks are, why a
+field reads a certain way — in THIS file, under the venue's own adapter
+section, never in Notion's `Notes`.
+
 ---
 
 ## 2. The one-function constraint (read this before adding files to `api/`)
@@ -2568,6 +2576,46 @@ whole reason the watchlist exists.
 
 `npm test`, `npm run typecheck` and `npx eslint` all pass; verified at 390px in
 both themes, including the row scrolled to its end.
+
+### 9.66 Notes is user-facing, again (2026-09-02)
+
+Caught from a screenshot of the Venues tab: ARCUB's card was showing "Reads
+its own per-event category tag (.tags on the listing), not a single default
+for the whole venue. See MARQUEE.md §9.56" as its `Notes`. Teatrul Metropolis
+had the same thing — a paragraph about its SPA ticketing app, the WordPress
+fallback, the HTTP 500 bug, and the mystage.ro price join. Both cleared in
+Notion.
+
+This is §9.10 again, on two venues added since: `Notes` is "anything you want
+to remember about this venue," and the app shows it to the user verbatim —
+whatever gets typed into it while adding or editing a venue ends up on
+screen, unfiltered. §9.10 fixed the four venues it found; nothing changed
+about how a venue gets added, so the same slip was free to happen again on
+the next two. §1b's checklist now has its own line for this (item 9), so it's
+checked at the point a venue is added rather than caught later from a
+screenshot.
+
+### 9.67 Apollo111 Cinema — a fourteenth venue, no code (2026-09-02)
+
+Added at `apollo111.eventbook.ro/hall/apollo111-cinema` — the `eventbook`
+adapter already reads this shape, so this was a Notion row, not a change:
+`Adapter: eventbook`, `Adapter Config: apollo111-cinema`, `Category Default:
+movie`, `Area: centru`. Verified live: 5 real showings, each with a title,
+time, price and poster; the two `Apollo111 Cinema Pass` carnet rows dropped
+correctly (no date, same as every other eventbook hall's carnet rows).
+
+Two things worth recording rather than assuming:
+
+- **The venue's own subdomain and the bare `eventbook.ro/hall/…` URL serve
+  byte-identical programme content** — confirmed by diffing both fetches.
+  `matchAdapter`'s subdomain-suffix check (`hostMatches`) already resolves
+  `apollo111.eventbook.ro` to the `eventbook` host pattern, and the adapter's
+  own pagination always targets `eventbook.ro` regardless of which host the
+  venue's `Programme URL` uses — so this one row didn't even need the
+  subdomain question answered differently than any other eventbook venue.
+- **Apollo111 also runs a theatre/club side** (`apollo111.ro/parties/`,
+  `/teatru/`) on a different site entirely, deliberately not added — asked
+  for explicitly: the cinema only.
 
 ## Open — known source limits, checked and not fixable here
 
