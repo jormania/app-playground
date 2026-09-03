@@ -403,7 +403,7 @@ a { color: inherit; text-decoration: none; }
 </footer>
 
 <script type="module">
-import { APPS, CAT_TAGS } from '/src/apps-registry.js';
+import { APPS, CAT_TAGS, STACK_TAGS } from '/src/apps-registry.js';
 import { appQrUrl, renderAppQr } from '/src/shared/qrCode.ts';
 // App data lives in src/apps-registry.js — the same source the Cabinet
 // (cabinet.html) reads from. Add new apps there, not here.
@@ -430,7 +430,14 @@ const qrCloseBtn    = document.getElementById("qr-close");
 // ─────────────────────────────────────────────────────
 // TAGS
 // ─────────────────────────────────────────────────────
-const ALL_TAGS = [...new Set(APPS.flatMap(a => a.tags))].sort();
+// Stack tags (react/vite/notion) are excluded from the filter row — they're
+// already shown per-card as the "tech" meta-chip and barely narrow anything
+// (react alone covers 16 of 21 apps). They stay searchable via the search
+// box and clickable from a card's own tag pills; they just don't get a
+// dedicated chip up top. See the STACK_TAGS comment in apps-registry.js.
+const ALL_TAGS = [...new Set(APPS.flatMap(a => a.tags))]
+  .filter(t => !STACK_TAGS.has(t))
+  .sort();
 
 // Collapsed to one tidy row by default — with 35+ tags across 21 apps,
 // showing every tag up front used to run the filter bar into a wall of
