@@ -423,6 +423,23 @@ not choose the paragraph, and does not summarise it — the transcription is
 the same act as typing a passage out of a book, which is what the intake
 field has always been for.
 
+#### Five labels never fitted a plate
+
+The actions row is read on a phone, inside a plate with generous margins, and
+inside the walk's narrower frame again. Four labels already overflowed there
+before the cutting was added; five had no chance. Wrapping mid-row reads as a
+mistake rather than a decision, so **Release and Delete moved behind `More`**,
+and the cutting's own button carries the noun (`Cutting`) with the whole
+phrase kept as its accessible name.
+
+It is a revealed row, not a floating menu — the nursery's "+ Why" and the
+neighbourhood panel are the same gesture, and nothing has to be positioned,
+dismissed, or focus-trapped. And it lands where the plate's ordering already
+pointed: the row runs harmless to irreversible, and the irreversible pair is
+now one deliberate tap away rather than beside the thumb that was reaching
+for Copy.
+
+
 
 ### Why the data is never paged, and the rendering is
 

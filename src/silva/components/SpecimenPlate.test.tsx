@@ -170,6 +170,10 @@ describe('SpecimenPlate — letting go of a kept thing', () => {
     const onRelease = vi.fn()
     render(<SpecimenPlate thing={thing()} {...handlers} onRelease={onRelease} />)
 
+    // Behind More, with the other way out — five labels never fitted a
+    // plate's width on a phone, and the pair that removes something is the
+    // right pair to put one deliberate tap away.
+    await user.click(screen.getByRole('button', { name: 'More' }))
     await user.click(screen.getByRole('button', { name: 'Release' }))
     expect(onRelease).toHaveBeenCalledWith('a')
   })
@@ -179,6 +183,7 @@ describe('SpecimenPlate — letting go of a kept thing', () => {
     const onDelete = vi.fn()
     render(<SpecimenPlate thing={thing()} {...handlers} onDelete={onDelete} />)
 
+    await user.click(screen.getByRole('button', { name: 'More' }))
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(onDelete).not.toHaveBeenCalled()
     expect(screen.getByText(/along with any path drawn to it/i)).toBeTruthy()
@@ -300,5 +305,47 @@ describe('SpecimenPlate — taking a cutting', () => {
     // And not at all on a surface that doesn't offer it.
     rerender(<SpecimenPlate thing={linked()} {...handlers} />)
     expect(screen.queryByRole('button', { name: /take a cutting/i })).toBeNull()
+  })
+})
+
+describe('SpecimenPlate — the two ways out', () => {
+  it('keeps them behind More until asked, and says so to a screen reader', async () => {
+    const user = userEvent.setup()
+    render(<SpecimenPlate thing={thing()} {...handlers} onRelease={vi.fn()} onDelete={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: 'Release' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+
+    const more = screen.getByRole('button', { name: 'More' })
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+    await user.click(more)
+
+    expect(screen.getByRole('button', { name: 'Release' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Less' }).getAttribute('aria-expanded')).toBe('true')
+
+    await user.click(screen.getByRole('button', { name: 'Less' }))
+    expect(screen.queryByRole('button', { name: 'Release' })).toBeNull()
+  })
+
+  // A read-only surface passes neither, and then there is nothing to reveal.
+  it('is not offered at all when there is nothing behind it', () => {
+    render(<SpecimenPlate thing={thing()} {...handlers} />)
+    expect(screen.queryByRole('button', { name: 'More' })).toBeNull()
+  })
+
+  // The label is the noun so four actions fit one row on a phone; the name a
+  // screen reader reads is still the whole phrase.
+  it('calls a cutting by its full name where it counts', () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(
+      <SpecimenPlate
+        thing={thing({ state: 'Kept', link: 'https://example.com/a' })}
+        {...handlers}
+        onCutting={vi.fn()}
+      />,
+    )
+    const button = screen.getByRole('button', { name: 'Take a cutting' })
+    expect(button.textContent).toBe('Cutting')
   })
 })

@@ -84,6 +84,7 @@ export function SpecimenPlate({
   // Unique per plate: the Forest mounts a window of these at once, and a
   // datalist id repeated across them would be duplicate ids in one document.
   const sourceListId = useId()
+  const moreId = useId()
   // The same "Title by Author" string `sourceInputValue` reads a source back
   // into, so picking a suggestion resolves as an exact match rather than a
   // near one. De-duplicated — two sources can share a display string.
@@ -109,6 +110,8 @@ export function SpecimenPlate({
   // The cutting form, open beside the thing rather than instead of it.
   const [cuttingOpen, setCuttingOpen] = useState(false)
   const [cutting, setCutting] = useState('')
+  // Release and Delete, revealed rather than listed. See the actions row.
+  const [moreOpen, setMoreOpen] = useState(false)
   const hasSource = Boolean(thing.sourceId)
   // A Link-kind thing whose own `link` field is empty — a row created or
   // edited straight in Notion, or one kept before Silva started filling
@@ -307,22 +310,59 @@ export function SpecimenPlate({
          *  back (App.tsx's undo toast restores the exact prior state). */}
         {/* Only where there is a page to take one from, and only for a thing
          *  that is already kept — a cutting is something you take from what
-         *  is growing, not from a seedling still being decided about. */}
+         *  is growing, not from a seedling still being decided about.
+         *
+         *  Labelled with the noun so four actions fit one row on a phone;
+         *  the accessible name keeps the whole phrase, which is what a
+         *  screen reader reads out and what the guide calls it. */}
         {onCutting && readLink && thing.state === 'Kept' && (
-          <Button size="sm" variant="ghost" onClick={() => setCuttingOpen((open) => !open)}>
-            {cuttingOpen ? 'Never mind' : 'Take a cutting'}
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Take a cutting"
+            aria-expanded={cuttingOpen}
+            onClick={() => setCuttingOpen((open) => !open)}
+          >
+            Cutting
           </Button>
         )}
-        {onRelease && (
-          <Button size="sm" variant="ghost" onClick={() => onRelease(thing.id)}>Release</Button>
-        )}
-        {/* Last, and the only one that asks first — the order runs from
-         *  harmless to irreversible, so the sharp edge is never where a
-         *  thumb lands by accident. */}
-        {onDelete && (
-          <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(true)}>Delete</Button>
+        {/* The two ways out, behind one more tap.
+         *
+         *  Five labels never fitted a plate's width on a phone — four
+         *  didn't either, inside the walk's narrower frame — and a row that
+         *  wraps mid-word reads as a mistake rather than a design. Revealing
+         *  them also happens to put the irreversible pair one deliberate
+         *  step away from a thumb, which is the same reasoning that already
+         *  puts Delete last and behind a confirm.
+         *
+         *  A revealed row, not a floating menu: the nursery's "+ Why" and
+         *  the neighbourhood panel are the same gesture, and this way there
+         *  is no popover to position, dismiss or trap focus in. */}
+        {(onRelease || onDelete) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-expanded={moreOpen}
+            aria-controls={moreId}
+            onClick={() => setMoreOpen((open) => !open)}
+          >
+            {moreOpen ? 'Less' : 'More'}
+          </Button>
         )}
       </div>
+      {moreOpen && (
+        <div className={styles.plateActions} id={moreId}>
+          {onRelease && (
+            <Button size="sm" variant="ghost" onClick={() => onRelease(thing.id)}>Release</Button>
+          )}
+          {/* Last, and the only one that asks first — the order runs from
+           *  harmless to irreversible, so the sharp edge is never where a
+           *  thumb lands by accident. */}
+          {onDelete && (
+            <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(true)}>Delete</Button>
+          )}
+        </div>
+      )}
       {cuttingOpen && onCutting && (
         <div className={styles.cutting}>
           <p className={styles.cuttingHint}>
@@ -341,6 +381,9 @@ export function SpecimenPlate({
             rows={4}
           />
           <div className={styles.cuttingActions}>
+            <Button size="sm" variant="ghost" onClick={() => { setCutting(''); setCuttingOpen(false) }}>
+              Cancel
+            </Button>
             {/* The nursery, like every other arrival — SILVA.md: "Everything
              *  arrives unkept". A cutting is a new thing and gets its own
              *  decision, even though the thing it came from is already kept. */}
