@@ -123,6 +123,14 @@ deliberately describes what kinds of site can be read, never a roster of which
 venues use which reader — a list that has to be kept in sync with Notion is
 not what a guide is for (§9.35).
 
+**9. Never write implementation notes into a venue's `Notes` field.** The
+Venues tab displays `Notes` to the user verbatim — it's "anything you want to
+remember about this venue," not a place for adapter internals. This has now
+happened twice: four venues in §9.10, then ARCUB and Teatrul Metropolis
+(§9.66). Put reader details — which rung, what the site's quirks are, why a
+field reads a certain way — in THIS file, under the venue's own adapter
+section, never in Notion's `Notes`.
+
 ---
 
 ## 2. The one-function constraint (read this before adding files to `api/`)
@@ -2568,6 +2576,24 @@ whole reason the watchlist exists.
 
 `npm test`, `npm run typecheck` and `npx eslint` all pass; verified at 390px in
 both themes, including the row scrolled to its end.
+
+### 9.66 Notes is user-facing, again (2026-09-02)
+
+Caught from a screenshot of the Venues tab: ARCUB's card was showing "Reads
+its own per-event category tag (.tags on the listing), not a single default
+for the whole venue. See MARQUEE.md §9.56" as its `Notes`. Teatrul Metropolis
+had the same thing — a paragraph about its SPA ticketing app, the WordPress
+fallback, the HTTP 500 bug, and the mystage.ro price join. Both cleared in
+Notion.
+
+This is §9.10 again, on two venues added since: `Notes` is "anything you want
+to remember about this venue," and the app shows it to the user verbatim —
+whatever gets typed into it while adding or editing a venue ends up on
+screen, unfiltered. §9.10 fixed the four venues it found; nothing changed
+about how a venue gets added, so the same slip was free to happen again on
+the next two. §1b's checklist now has its own line for this (item 9), so it's
+checked at the point a venue is added rather than caught later from a
+screenshot.
 
 ## Open — known source limits, checked and not fixable here
 
