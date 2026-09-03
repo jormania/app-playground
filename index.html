@@ -135,6 +135,8 @@ a { color: inherit; text-decoration: none; }
   background: var(--gold-dim); color: var(--gold-soft);
   border-color: rgba(224,169,85,0.45);
 }
+.tag-chip.tag-toggle { border-style: dashed; color: var(--faint); }
+.tag-chip.tag-toggle:hover { color: var(--gold-soft); border-color: rgba(224,169,85,0.45); }
 
 /* ── Card grid ── */
 #app-list {
@@ -409,8 +411,9 @@ import { appQrUrl, renderAppQr } from '/src/shared/qrCode.ts';
 // ─────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────
-let activeTag   = "";
-let searchQuery = "";
+let activeTag     = "";
+let searchQuery   = "";
+let tagsExpanded  = false;
 
 // DOM refs
 const searchEl      = document.getElementById("search");
@@ -428,6 +431,12 @@ const qrCloseBtn    = document.getElementById("qr-close");
 // TAGS
 // ─────────────────────────────────────────────────────
 const ALL_TAGS = [...new Set(APPS.flatMap(a => a.tags))].sort();
+
+// Collapsed to one tidy row by default — with 35+ tags across 21 apps,
+// showing every tag up front used to run the filter bar into a wall of
+// pills. "+N more" reveals the rest; an already-active tag stays visible
+// even collapsed so a URL-shared filter (?tag=...) never hides its own pill.
+const COLLAPSED_TAG_COUNT = 9;
 
 // ─────────────────────────────────────────────────────
 // "updated <Month YYYY>" — derived from the newest deployed app
@@ -464,7 +473,14 @@ function isLatest(app) { return app === LATEST_APP; }
 
 function buildTagChips() {
   tagsRowEl.innerHTML = "";
-  ALL_TAGS.forEach(tag => {
+
+  const collapsedSlice = ALL_TAGS.slice(0, COLLAPSED_TAG_COUNT);
+  let visibleTags = tagsExpanded ? ALL_TAGS : collapsedSlice;
+  if (!tagsExpanded && activeTag && !visibleTags.includes(activeTag)) {
+    visibleTags = [...visibleTags, activeTag];
+  }
+
+  visibleTags.forEach(tag => {
     const btn = document.createElement("button");
     btn.className = "tag-chip" + (activeTag === tag ? " active" : "");
     btn.textContent = tag;
@@ -475,6 +491,18 @@ function buildTagChips() {
     });
     tagsRowEl.appendChild(btn);
   });
+
+  const hiddenCount = ALL_TAGS.length - collapsedSlice.length;
+  if (hiddenCount > 0) {
+    const toggle = document.createElement("button");
+    toggle.className = "tag-chip tag-toggle";
+    toggle.textContent = tagsExpanded ? "− show less" : `+${hiddenCount} more`;
+    toggle.addEventListener("click", () => {
+      tagsExpanded = !tagsExpanded;
+      buildTagChips();
+    });
+    tagsRowEl.appendChild(toggle);
+  }
 }
 
 // ─────────────────────────────────────────────────────
