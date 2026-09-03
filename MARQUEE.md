@@ -2595,6 +2595,28 @@ the next two. §1b's checklist now has its own line for this (item 9), so it's
 checked at the point a venue is added rather than caught later from a
 screenshot.
 
+### 9.67 Apollo111 Cinema — a fourteenth venue, no code (2026-09-02)
+
+Added at `apollo111.eventbook.ro/hall/apollo111-cinema` — the `eventbook`
+adapter already reads this shape, so this was a Notion row, not a change:
+`Adapter: eventbook`, `Adapter Config: apollo111-cinema`, `Category Default:
+movie`, `Area: centru`. Verified live: 5 real showings, each with a title,
+time, price and poster; the two `Apollo111 Cinema Pass` carnet rows dropped
+correctly (no date, same as every other eventbook hall's carnet rows).
+
+Two things worth recording rather than assuming:
+
+- **The venue's own subdomain and the bare `eventbook.ro/hall/…` URL serve
+  byte-identical programme content** — confirmed by diffing both fetches.
+  `matchAdapter`'s subdomain-suffix check (`hostMatches`) already resolves
+  `apollo111.eventbook.ro` to the `eventbook` host pattern, and the adapter's
+  own pagination always targets `eventbook.ro` regardless of which host the
+  venue's `Programme URL` uses — so this one row didn't even need the
+  subdomain question answered differently than any other eventbook venue.
+- **Apollo111 also runs a theatre/club side** (`apollo111.ro/parties/`,
+  `/teatru/`) on a different site entirely, deliberately not added — asked
+  for explicitly: the cinema only.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
