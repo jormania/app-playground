@@ -423,6 +423,28 @@ not choose the paragraph, and does not summarise it — the transcription is
 the same act as typing a passage out of a book, which is what the intake
 field has always been for.
 
+#### A cutting is additive, and now says so
+
+Planting one was silent past the moment itself: the toast passed, the form
+closed, and the plate looked exactly as it had before. Tapping **Cutting**
+again a week later gave the same empty field, with nothing to say whether the
+passage about to be transcribed was one already taken — which reads as the
+button having done nothing, and leaves an open question about whether a
+second cutting replaces the first.
+
+It doesn't. A page yields as many passages as a book does, and the form now
+opens with what has already come out of this one listed at its head
+(`lib/cuttings.ts`), each shown by its opening words and marked when it is
+still waiting in the nursery.
+
+Read from the **link** rather than from a stored relation: a cutting inherits
+its parent's link, so this needs no new Notion property, no migration of a
+database the reader owns, and is right retroactively for every cutting taken
+before it existed. What it honestly returns is *the other things pointing at
+the same page* — a second capture of the same article counts, and should:
+the question being asked is "what do I already have from here?"
+
+
 #### Five labels never fitted a plate
 
 The actions row is read on a phone, inside a plate with generous margins, and

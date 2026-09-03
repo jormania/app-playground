@@ -6,6 +6,7 @@ import type { Source, SourceKind } from '../lib/sources'
 import { orderWithinSource } from '../lib/sources'
 import { SpecimenPlate } from './SpecimenPlate'
 import { RootstockGraph } from './RootstockGraph'
+import { cuttingsFrom } from '../lib/cuttings'
 import styles from './RootsView.module.css'
 
 export interface RootsViewProps {
@@ -140,6 +141,7 @@ export function RootsView({ things, sources, loci, onEditThing, onReleaseThing, 
       onCutting={onCutting}
       onEditSource={onEditSource}
       allSources={sources}
+      allThings={things}
     />
   )
 }
@@ -157,6 +159,7 @@ function SourceDetail({
   onCutting,
   onEditSource,
   allSources,
+  allThings,
 }: {
   source: Source
   passages: Thing[]
@@ -172,6 +175,9 @@ function SourceDetail({
   /** Offered back as the Source field on a plate is typed — the same
    *  autocomplete intake has, for the same duplicate-source reason. */
   allSources: Source[]
+  /** The whole collection, not just this source's kept passages — a cutting
+   *  still waiting in the nursery has to count too (`lib/cuttings.ts`). */
+  allThings: Thing[]
 }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(source.title)
@@ -274,6 +280,7 @@ function SourceDetail({
               onRelease={onReleaseThing}
               onDelete={onDeleteThing}
               onCutting={onCutting}
+              cuttings={cuttingsFrom(thing, allThings)}
               onSeen={onSeen}
             />
           ))}

@@ -349,3 +349,56 @@ describe('SpecimenPlate — the two ways out', () => {
     expect(button.textContent).toBe('Cutting')
   })
 })
+
+describe('SpecimenPlate — cuttings already taken', () => {
+  const linked = () => thing({ state: 'Kept', link: 'https://example.com/a/article', body: 'A Great Article' })
+
+  function cutting(over: Partial<Thing> = {}): Thing {
+    return thing({
+      id: 'c1',
+      body: 'The sentence that stopped me.',
+      link: 'https://example.com/a/article',
+      ...over,
+    })
+  }
+
+  // The complaint this answers: taking a cutting was silent past the moment
+  // of planting, so a second visit gave the same empty field with no way to
+  // tell whether you already had the passage in front of you.
+  it('lists what already came out of this page, at the head of the form', async () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(
+      <SpecimenPlate
+        thing={linked()}
+        {...handlers}
+        onCutting={vi.fn()}
+        cuttings={[cutting(), cutting({ id: 'c2', body: 'And another one.', state: 'Understory' })]}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Take a cutting' }))
+    expect(screen.getByText('2 cuttings already')).toBeTruthy()
+    expect(screen.getByText(/The sentence that stopped me\./)).toBeTruthy()
+    expect(screen.getByText(/And another one\./)).toBeTruthy()
+    // The one still undecided says so — it is the one you most need reminding of.
+    expect(screen.getByText(/in the nursery/)).toBeTruthy()
+  })
+
+  it('counts one in words, and says they stack rather than replace', async () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(<SpecimenPlate thing={linked()} {...handlers} onCutting={vi.fn()} cuttings={[cutting()]} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Take a cutting' }))
+    expect(screen.getByText('One cutting already')).toBeTruthy()
+    expect(screen.getByText(/stack up like a book/i)).toBeTruthy()
+  })
+
+  it('says nothing at all the first time', async () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(<SpecimenPlate thing={linked()} {...handlers} onCutting={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Take a cutting' }))
+    expect(screen.queryByText(/cutting already/)).toBeNull()
+    expect(screen.getByText(/as if you had typed it out of a book/i)).toBeTruthy()
+  })
+})

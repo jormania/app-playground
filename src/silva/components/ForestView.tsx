@@ -7,6 +7,7 @@ import type { SeenMap } from '../lib/seen'
 import { SpecimenPlate } from './SpecimenPlate'
 import { Neighbourhood } from './Neighbourhood'
 import { TodaysWalk } from './TodaysWalk'
+import { cuttingsFrom } from '../lib/cuttings'
 import { useProgressiveList } from './useProgressiveList'
 import styles from './ForestView.module.css'
 
@@ -89,6 +90,7 @@ export function ForestView({
         onRelease={onRelease}
         onDelete={onDelete}
         onCutting={onCutting}
+        cuttings={cuttingsFrom(thing, things)}
         onSeen={onSeen}
         allSources={sources}
       >

@@ -3,6 +3,7 @@ import { Button, Field, TextAreaField, ConfirmModal } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
 import type { Source } from '../lib/sources'
 import { inferKind, effectiveLink } from '../lib/kindInference'
+import { cuttingGist } from '../lib/cuttings'
 import { readImageViewMode, writeImageViewMode, type ImageViewMode } from '../lib/imageViewPref'
 import { sourceInputValue } from '../lib/sourceCapture'
 import { useDwell } from './useDwell'
@@ -50,6 +51,17 @@ export interface SpecimenPlateProps {
    * by hand — nothing is extracted for you.
    */
   onCutting?: (thing: Thing, body: string) => void
+  /**
+   * What has already come out of this thing's page (`lib/cuttings.ts`).
+   *
+   * Taking a cutting used to be silent past the moment of planting: the
+   * toast passed, the form closed, and the plate looked exactly as it had
+   * before. Tapping **Cutting** again a week later gave the same empty
+   * field, with no way to tell whether the passage you were about to
+   * transcribe was one you already had. Listed at the head of the form,
+   * where that question is actually being asked.
+   */
+  cuttings?: Thing[]
   /** Called once the plate has genuinely been looked at, not merely rendered
    *  (see useDwell). Both the walk and the scroll pass this, so the history
    *  accrues from all reading rather than only from the ritual. */
@@ -77,6 +89,7 @@ export function SpecimenPlate({
   onRelease,
   onDelete,
   onCutting,
+  cuttings = [],
   onSeen,
   allSources = [],
   children,
@@ -365,9 +378,25 @@ export function SpecimenPlate({
       )}
       {cuttingOpen && onCutting && (
         <div className={styles.cutting}>
+          {cuttings.length > 0 && (
+            <div className={styles.cuttingsTaken}>
+              <p className={styles.cuttingsTakenLabel}>
+                {cuttings.length === 1 ? 'One cutting already' : `${cuttings.length} cuttings already`}
+              </p>
+              <ul className={styles.cuttingsList}>
+                {cuttings.map((taken) => (
+                  <li key={taken.id}>
+                    {cuttingGist(taken)}
+                    {taken.state === 'Understory' && <span className={styles.cuttingsState}> — in the nursery</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className={styles.cuttingHint}>
-            The passage you took from it — in your own transcription, as if you had typed it
-            out of a book.
+            {cuttings.length > 0
+              ? 'Another passage from the same page — they stack up like a book\u2019s, rather than replacing each other.'
+              : 'The passage you took from it — in your own transcription, as if you had typed it out of a book.'}
           </p>
           <textarea
             className={styles.cuttingField}

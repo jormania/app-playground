@@ -108,6 +108,39 @@
   padding: var(--space-sm);
 }
 
+/* What has already come out of this page, at the head of the form — the
+   label voice, not the reading voice: you are recognising these, not
+   re-reading them. */
+.cuttingsTaken {
+  margin: 0;
+}
+
+.cuttingsTakenLabel {
+  margin: 0 0 var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
+.cuttingsList {
+  margin: 0;
+  padding-left: var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+}
+
+.cuttingsList li + li {
+  margin-top: var(--space-2xs);
+}
+
+.cuttingsState {
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--color-faint);
+}
+
 .cuttingHint {
   margin: 0;
   font-size: var(--text-sm);
