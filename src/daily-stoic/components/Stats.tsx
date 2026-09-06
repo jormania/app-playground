@@ -15,6 +15,10 @@ import { useCommitments } from '../lib/useCommitments';
 import { commitmentsInDayRange, ledgerStats } from '../lib/commitments';
 
 interface StatsProps {
+  /** Lite writes no Premeditatio Malorum and can't reckon promises, so those
+   *  two rows are dropped when the selected period holds none — a period with
+   *  real numbers from Full days still reports them. */
+  lite?: boolean;
   streak: number;
   today: number;
   cycleStartDate: string;
@@ -23,7 +27,7 @@ interface StatsProps {
   onClose: () => void;
 }
 
-export default function Stats({ streak, today, cycleStartDate, reflections, loading, onClose }: StatsProps) {
+export default function Stats({ lite = false, streak, today, cycleStartDate, reflections, loading, onClose }: StatsProps) {
   const [insightPeriod, setInsightPeriod] = useInsightPeriod();
   const { commitments } = useCommitments();
 
@@ -131,24 +135,28 @@ export default function Stats({ streak, today, cycleStartDate, reflections, load
                   <span className="text-text-secondary">Dominant Mood</span>
                   <span className="font-medium text-text-primary">{totals.dominantMood}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-tertiary pb-2">
-                  <span className="text-text-secondary">Premeditatio Malorum</span>
-                  <span className="font-medium text-text-primary">
-                    {totals.premeditatioRate}% ({totals.premeditatioCount}/{totals.count})
-                  </span>
-                </div>
+                {(!lite || totals.premeditatioCount > 0) && (
+                  <div className="flex justify-between items-center border-b border-tertiary pb-2">
+                    <span className="text-text-secondary">Premeditatio Malorum</span>
+                    <span className="font-medium text-text-primary">
+                      {totals.premeditatioRate}% ({totals.premeditatioCount}/{totals.count})
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center border-b border-tertiary pb-2">
                   <span className="text-text-secondary">Words Written</span>
                   <span className="font-medium text-text-primary">{totals.words.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">Promises Kept</span>
-                  <span className="font-medium text-text-primary">
-                    {periodLedger.kept + periodLedger.broken > 0
-                      ? `${periodLedger.keptRate}% (${periodLedger.kept}/${periodLedger.kept + periodLedger.broken})`
-                      : '—'}
-                  </span>
-                </div>
+                {(!lite || periodLedger.kept + periodLedger.broken > 0) && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-text-secondary">Promises Kept</span>
+                    <span className="font-medium text-text-primary">
+                      {periodLedger.kept + periodLedger.broken > 0
+                        ? `${periodLedger.keptRate}% (${periodLedger.kept}/${periodLedger.kept + periodLedger.broken})`
+                        : '—'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

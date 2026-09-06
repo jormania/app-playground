@@ -449,16 +449,18 @@ export default function App() {
             <p style="font-size: 42px; font-weight: bold; color: #8E86FF; margin: 10px 0 0;">${reframingsCount}</p>
             <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">Frictions converted to fuel</p>
           </div>
+          ${(!liteActive || cycleWorriesStats.total > 0) ? `
           <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
             <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Concerns Resolved</span>
             <p style="font-size: 42px; font-weight: bold; color: #4FB89A; margin: 10px 0 0;">${cycleWorriesStats.rate}%</p>
             <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">${cycleWorriesStats.resolved} of ${cycleWorriesStats.total} worries cleared</p>
-          </div>
+          </div>` : ''}
+          ${(!liteActive || passionsCount > 0) ? `
           <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
             <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Citadel Vigilance</span>
             <p style="font-size: 42px; font-weight: bold; color: #ECEBF8; margin: 10px 0 0;">${passionsCount}</p>
             <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">Dysfunctional passions tamed</p>
-          </div>
+          </div>` : ''}
         </div>
 
         <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px; font-style: italic; font-size: 18px; color: #A7A3D4; line-height: 1.6; text-align: center;">
@@ -935,6 +937,7 @@ export default function App() {
 
         {route === '/stats' && (
           <Stats
+            lite={liteActive}
             streak={streak}
             today={today}
             cycleStartDate={cycleStartDate}
@@ -1087,6 +1090,7 @@ export default function App() {
 
         {route === '/digest' && (
           <DigestDashboard
+            lite={liteActive}
             today={today}
             cycleStartDate={cycleStartDate}
             reflections={fullReflections}
@@ -1137,7 +1141,7 @@ export default function App() {
 
             {/* Insights Stats Grid */}
             <div className="pt-2">
-              <CycleRetrospectiveCard retrospective={retrospective} />
+              <CycleRetrospectiveCard retrospective={retrospective} lite={liteActive} />
             </div>
 
             {/* Virtues summary quote */}

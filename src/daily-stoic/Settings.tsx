@@ -1,7 +1,7 @@
 import { useState, useReducer } from 'react';
 import { Compass } from 'lucide-react';
 import { Button, Field, SettingsToggle } from '../ds';
-import { JOURNAL_MODE_KEY } from './lib/useJournalMode';
+import { JOURNAL_MODE_KEY, useJournalMode } from './lib/useJournalMode';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
 import { verifyAnthropicKey, MENTOR_KEY_STORAGE, MENTOR_ENABLED_STORAGE } from './lib/mentor';
 import { getCycleDay } from './utils/date';
@@ -22,6 +22,9 @@ interface SettingsProps {
 
 export default function Settings({ onClose, onResetCycle }: SettingsProps) {
   const [, forceUpdate] = useReducer(x => x + 1, 0);
+  // Lite reaches Settings too: the mentor has nowhere to appear, and there is
+  // no morning practice for a morning nudge to point at.
+  const isLite = useJournalMode() === 'lite';
   const [token, setToken] = useState(() => localStorage.getItem('daily-stoic:notion-token') || '');
   const [database, setDatabase] = useState(() => localStorage.getItem('daily-stoic:notion-db') || '');
   const { current, cycle } = useTheme();
@@ -55,7 +58,11 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
 
   const caps = capabilities();
 
-  const syncIdb = async (enabledVal: boolean) => {
+  // `liteVal` is passed explicitly by the Lite toggle: at the moment of that
+  // click the hook still reports the old mode (it updates on the event this
+  // very handler dispatches), so reading `isLite` here would write a stale
+  // morningEnabled to the worker's state.
+  const syncIdb = async (enabledVal: boolean, liteVal: boolean = isLite) => {
     const cycleStartDate = localStorage.getItem('daily-stoic:cycle-start-date') || '';
     const today = getCycleDay(cycleStartDate);
     let todayLogged = false;
@@ -75,6 +82,10 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
     const kv = createIdbKv('daily-stoic-reminders');
     await kv.set('state', {
       enabled: enabledVal,
+      // Lite has no morning step, so the morning nudge would point at nothing.
+      // The service worker treats a missing flag as true, keeping every
+      // already-installed worker's behaviour unchanged.
+      morningEnabled: !liteVal,
       morningTime: morningTime,
       eveningTime: eveningTime,
       todayLogged,
@@ -330,6 +341,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
           )}
         </section>
 
+        {!isLite && (
         <section className="flex flex-col gap-4 rounded-lg border border-accent/30 bg-background-secondary p-4 sm:p-6">
           <h3 className="font-display text-lg text-text-primary flex items-center gap-2">
             <Compass size={18} className="text-accent" /> The Socratic Mentor
@@ -380,6 +392,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
             onChange={(e) => handleToggleMentor(e.target.checked)}
           />
         </section>
+        )}
 
         <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
           <h3 className="font-display text-lg text-text-primary">Appearance</h3>
@@ -407,6 +420,8 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
               const checked = e.target.checked;
               localStorage.setItem(JOURNAL_MODE_KEY, checked ? 'lite' : 'full');
               window.dispatchEvent(new Event('daily-stoic:settings-updated'));
+              // The morning nudge follows the mode — re-sync the worker's copy.
+              if (reminderEnabled) void syncIdb(true, checked);
               triggerHaptic('light');
               forceUpdate();
             }}
@@ -428,7 +443,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
         <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
           <h3 className="font-display text-lg text-text-primary">Habit Reminders</h3>
           <SettingsToggle
-            label="Morning & Evening Nudges"
+            label={isLite ? 'Evening Nudge' : 'Morning & Evening Nudges'}
             hint={
               !caps.periodicSync
                 ? 'Local reminders are only supported when the PWA is installed on Chrome/Edge.'
@@ -440,17 +455,21 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
 
           {reminderEnabled && (
             <div className="flex flex-col gap-4 mt-2 pl-3 border-l-2 border-accent">
+              {!isLite && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Morning Prep Time</label>
+                  <input
+                    type="time"
+                    value={morningTime}
+                    onChange={handleMorningTimeChange}
+                    className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
+                  />
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">Morning Prep Time</label>
-                <input
-                  type="time"
-                  value={morningTime}
-                  onChange={handleMorningTimeChange}
-                  className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">Evening Review Time</label>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  {isLite ? 'Reminder Time' : 'Evening Review Time'}
+                </label>
                 <input
                   type="time"
                   value={eveningTime}

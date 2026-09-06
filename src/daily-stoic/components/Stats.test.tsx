@@ -86,3 +86,37 @@ describe('Stats', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Stats — Lite', () => {
+  it('drops the Premeditatio and Promises rows when the period holds neither', () => {
+    const liteOnly = [
+      makeReflection({ date: '2026-06-02', quoteId: 2, mood: 'Good', text: 'wrote something' }),
+    ];
+    render(
+      <Stats lite streak={1} today={10} cycleStartDate={CYCLE_START} reflections={liteOnly} loading={false} onClose={() => {}} />
+    );
+
+    expect(screen.queryByText('Premeditatio Malorum')).toBeNull();
+    expect(screen.queryByText('Promises Kept')).toBeNull();
+    // What Lite does feed is still reported.
+    expect(screen.getByText('Dominant Mood')).toBeTruthy();
+    expect(screen.getByText('Words Written')).toBeTruthy();
+  });
+
+  it('still reports Premeditatio in Lite when Full days in the period wrote one', () => {
+    render(
+      <Stats lite streak={2} today={10} cycleStartDate={CYCLE_START} reflections={reflections} loading={false} onClose={() => {}} />
+    );
+
+    expect(screen.getByText('Premeditatio Malorum')).toBeTruthy();
+  });
+
+  it('keeps both rows in Full even with nothing logged', () => {
+    render(
+      <Stats streak={0} today={10} cycleStartDate={CYCLE_START} reflections={[]} loading={false} onClose={() => {}} />
+    );
+
+    expect(screen.getByText('Premeditatio Malorum')).toBeTruthy();
+    expect(screen.getByText('Promises Kept')).toBeTruthy();
+  });
+});

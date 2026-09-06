@@ -83,7 +83,12 @@ function maybeNotify() {
 
     var promise = Promise.resolve();
 
-    if (nowMs >= atLocalTime(now, mHour, mMin) && lastMorning !== today) {
+    // Lite has no morning step, so Settings writes morningEnabled:false and the
+    // morning nudge is skipped. An older state object has no such key at all —
+    // undefined must keep firing it, so only an explicit false suppresses it.
+    var morningOn = state.morningEnabled !== false;
+
+    if (morningOn && nowMs >= atLocalTime(now, mHour, mMin) && lastMorning !== today) {
       promise = promise.then(function() {
         return self.registration.showNotification('Daily Stoic', {
           body: "Start your day with purpose. Set your morning intentions.",

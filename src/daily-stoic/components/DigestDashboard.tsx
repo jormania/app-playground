@@ -74,6 +74,8 @@ function downloadTextFile(filename: string, content: string, mimeType: string) {
 }
 
 interface DigestDashboardProps {
+  /** Passed through to CycleRetrospectiveCard — see its `lite` prop. */
+  lite?: boolean;
   today: number;
   cycleStartDate: string;
   reflections: ReflectionRecord[];
@@ -83,6 +85,7 @@ interface DigestDashboardProps {
 }
 
 export default function DigestDashboard({
+  lite = false,
   today,
   cycleStartDate,
   reflections,
@@ -532,7 +535,7 @@ export default function DigestDashboard({
             <p className="text-xs text-text-secondary">
               {selectedCycle.retrospective.dateRange.start} – {selectedCycle.retrospective.dateRange.end}
             </p>
-            <CycleRetrospectiveCard retrospective={selectedCycle.retrospective} />
+            <CycleRetrospectiveCard retrospective={selectedCycle.retrospective} lite={lite} />
           </div>
         </Modal>
       )}

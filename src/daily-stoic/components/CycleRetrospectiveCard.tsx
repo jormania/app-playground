@@ -2,13 +2,21 @@ import { CycleRetrospective } from '../utils/retrospective';
 
 interface CycleRetrospectiveCardProps {
   retrospective: CycleRetrospective;
+  /** Lite writes no worries and no passions, so those two tiles can only read
+   *  zero for a cycle practised in Lite. They're dropped only when the cycle
+   *  actually holds nothing — a cycle with real numbers still shows them,
+   *  which keeps the Digest honest about history written in Full. */
+  lite?: boolean;
 }
 
 // The four-box stats grid used both by App.tsx's end-of-cycle celebration
 // screen and the Digest's per-cycle entries — see computeCycleRetrospective
 // in utils/retrospective.ts for how the numbers are derived.
-export default function CycleRetrospectiveCard({ retrospective }: CycleRetrospectiveCardProps) {
+export default function CycleRetrospectiveCard({ retrospective, lite = false }: CycleRetrospectiveCardProps) {
   const { loggedCount, consistencyRate, reframingsCount, passionsCount, worriesStats } = retrospective;
+
+  const showWorries = !lite || worriesStats.total > 0;
+  const showPassions = !lite || passionsCount > 0;
 
   return (
     <div className="grid grid-cols-2 gap-3.5 text-left">
@@ -24,17 +32,21 @@ export default function CycleRetrospectiveCard({ retrospective }: CycleRetrospec
         <p className="text-[11px] text-text-secondary mt-1">Frictions converted to fuel</p>
       </div>
 
-      <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
-        <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Concerns Resolved</span>
-        <p className="text-2xl font-semibold text-success mt-0.5">{worriesStats.rate}%</p>
-        <p className="text-[11px] text-text-secondary mt-1">{worriesStats.resolved} of {worriesStats.total} worries cleared</p>
-      </div>
+      {showWorries && (
+        <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
+          <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Concerns Resolved</span>
+          <p className="text-2xl font-semibold text-success mt-0.5">{worriesStats.rate}%</p>
+          <p className="text-[11px] text-text-secondary mt-1">{worriesStats.resolved} of {worriesStats.total} worries cleared</p>
+        </div>
+      )}
 
-      <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
-        <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Citadel Vigilance</span>
-        <p className="text-2xl font-semibold text-text-primary mt-0.5">{passionsCount}</p>
-        <p className="text-[11px] text-text-secondary mt-1">Dysfunctional passions tamed</p>
-      </div>
+      {showPassions && (
+        <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
+          <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Citadel Vigilance</span>
+          <p className="text-2xl font-semibold text-text-primary mt-0.5">{passionsCount}</p>
+          <p className="text-[11px] text-text-secondary mt-1">Dysfunctional passions tamed</p>
+        </div>
+      )}
     </div>
   );
 }
