@@ -4,6 +4,7 @@ import { useShowGuides } from './lib/useShowGuides';
 import { fetchReflectionForDay, upsertReflection } from './services/NotionService';
 import { getLocalTodayStr, cycleDayToDateStr, getCycleInfo, getVirtueForWeek, formatCycleLabelCompact, getQuoteOfTheWeek } from './utils/date';
 import AmorFatiControl from './components/AmorFatiControl';
+import MementoMoriBar from './components/MementoMoriBar';
 import MentorPanel from './components/MentorPanel';
 import CommitmentsPanel from './components/CommitmentsPanel';
 import PathCard from './components/PathCard';
@@ -11,6 +12,9 @@ import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
 import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import { useCommitments } from './lib/useCommitments';
+import { useJournalMode, fullDayKey } from './lib/useJournalMode';
+import { pickLiteRetrospective } from './utils/lite';
+import type { ReflectionRecord } from './services/NotionService';
 import { useMentorEnabled } from './lib/useMentor';
 import { dueCommitments, commitmentsResolvedOn, ledgerStats } from './lib/commitments';
 import {
@@ -86,6 +90,9 @@ interface JournalProps {
   isTogglingFavorite: boolean;
   hasPassionsProperty?: boolean;
   worries: Worry[];
+  /** Past records, used only by Lite's retrospective card. Optional so the
+   *  full journal (and its tests) need not thread it through. */
+  recentReflections?: ReflectionRecord[];
 }
 
 interface Worry {
@@ -115,10 +122,33 @@ export default function Journal({
   handleShareQuote,
   isSharing,
   isTogglingFavorite,
-  worries: initialWorries
+  worries: initialWorries,
+  recentReflections = []
 }: JournalProps) {
   const isNotionConfigured = !!token.trim() && !!databaseId.trim();
   const showGuides = useShowGuides();
+  const journalMode = useJournalMode();
+
+  // The per-day escape hatch: Lite is the setting, but this one day was opened
+  // in Full. Stored per day so it lapses by itself at the next day change.
+  const [fullForToday, setFullForToday] = useState<boolean>(
+    () => localStorage.getItem(fullDayKey(dayOfYear)) === 'true'
+  );
+  useEffect(() => {
+    setFullForToday(localStorage.getItem(fullDayKey(dayOfYear)) === 'true');
+  }, [dayOfYear]);
+
+  const isLite = journalMode === 'lite' && !fullForToday;
+
+  const setFullPracticeForToday = (on: boolean) => {
+    if (on) {
+      localStorage.setItem(fullDayKey(dayOfYear), 'true');
+    } else {
+      localStorage.removeItem(fullDayKey(dayOfYear));
+    }
+    setFullForToday(on);
+    triggerHaptic('light');
+  };
 
   // The 28-day cycle (four 7-day weeks, each themed to a Cardinal Virtue) is
   // fully derived from dayOfYear — the same unbounded day count already used
@@ -279,8 +309,12 @@ export default function Journal({
     triggerHaptic('light');
   };
 
-  // Update reflection string when Qs change
+  // Update reflection string when Qs change.
+  // Lite writes the reflection box directly (one free-text field, no Seneca
+  // headers), so this must not run there — the three question states are all
+  // empty in Lite and combining them would blank what was typed.
   useEffect(() => {
+    if (isLite) return;
     const combined = [
       senecaQ1.trim() ? `### What caught my attention about myself today?\n${senecaQ1.trim()}` : '',
       senecaQ2.trim() ? `### What impulse or distraction did I successfully resist?\n${senecaQ2.trim()}` : '',
@@ -290,7 +324,7 @@ export default function Journal({
     if (combined !== reflection) {
       setReflection(combined);
     }
-  }, [senecaQ1, senecaQ2, senecaQ3, reflection]);
+  }, [senecaQ1, senecaQ2, senecaQ3, reflection, isLite]);
 
   const [existingPageId, setExistingPageId] = useState<string | undefined>(undefined);
   
@@ -814,8 +848,197 @@ export default function Journal({
     });
   }, [commitments, dayOfYear, worries, reflection, mood, passionLabels, cycleInfo, weekVirtue]);
 
+  // Lite's one look backwards — the obstacle logged 30, 90 or 365 days ago.
+  const liteRetrospective = useMemo(
+    () => (isLite ? pickLiteRetrospective(recentReflections, dayOfYear) : null),
+    [isLite, recentReflections, dayOfYear]
+  );
+
+  const saveButton = (
+    <button
+      onClick={handleSave}
+      disabled={(!hasChanges && isSaved) || isLoading || isSaving}
+      type="button"
+      className={cn(
+        "rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide border shadow-sm transition-all duration-250 flex items-center justify-center gap-1.5",
+        isSaving
+          ? "bg-accent/20 border-accent/10 text-accent opacity-60 cursor-not-allowed"
+          : isSaved && !hasChanges
+            ? "bg-background-tertiary border-tertiary text-text-secondary cursor-default shadow-none"
+            : "bg-accent hover:bg-accent-hover text-background-primary border-accent hover:shadow-md"
+      )}
+    >
+      {isSaving ? 'Saving...' : isSaved && !hasChanges ? '✓ Saved' : 'Save'}
+    </button>
+  );
+
+  // --- Lite journal ------------------------------------------------------
+  // One screen, no stepper: Memento Mori as a frame, the day's maxim, Amor
+  // Fati, a single reflection box and a mood. Deliberately rendered from the
+  // same state and saved through the same handleSave as the full journal, so
+  // every field Lite doesn't show (intentions, worries, passions, virtue)
+  // round-trips untouched — a Lite save can never blank a day written in Full.
+  if (isLite) {
+    return (
+      <div className="rounded-xl bg-background-secondary border border-tertiary p-4 sm:p-8 space-y-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-display text-xl text-text-primary">Today</h2>
+          <span className="text-xs text-text-secondary">{cycleLabelCompact}</span>
+        </div>
+
+        <MementoMoriBar
+          birthDateString={birthDate}
+          dayOfYear={dayOfYear}
+          onGoToSettings={onGoToSettings}
+        />
+
+        {isLoading ? (
+          <div className="flex items-center justify-center p-12 text-text-secondary">
+            <span className="mr-2 animate-spin inline-block" aria-hidden="true">&#8987;</span> Syncing...
+          </div>
+        ) : (
+          <>
+            {/* The day's maxim — read-only, with the heart */}
+            <blockquote className="relative rounded-lg bg-background-tertiary px-5 pt-5 pb-6 sm:px-8 sm:pt-6 shadow-sm">
+              <button
+                onClick={handleToggleFavorite}
+                disabled={isTogglingFavorite}
+                className={cn(
+                  "absolute right-2.5 top-2.5 rounded-full p-2 transition-all flex items-center justify-center",
+                  isCurrentQuoteFavorited ? "scale-110 opacity-100" : "opacity-40 hover:opacity-100 hover:bg-background-secondary"
+                )}
+                aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart
+                  size={18}
+                  strokeWidth={2}
+                  fill={isCurrentQuoteFavorited ? "currentColor" : "none"}
+                  className={cn(isCurrentQuoteFavorited ? "text-accent" : "text-text-secondary")}
+                />
+              </button>
+              <span className="almanac-openquote text-5xl sm:text-6xl">&ldquo;</span>
+              <p className="almanac-maxim text-text-primary pr-6">{quote.quote}</p>
+              <cite className="almanac-cite mt-4 block text-sm text-text-secondary">
+                &mdash; {quote.author}, <span className="italic normal-case">{quote.source}</span>
+              </cite>
+            </blockquote>
+
+            {/* Amor Fati (Lite) — untethered from the evening */}
+            <AmorFatiControl
+              lite
+              fateInput={fateInput}
+              onFateInputChange={(val) => {
+                setFateInput(val);
+                setIsSaved(false);
+              }}
+              acceptanceTags={acceptanceTags}
+              onAcceptanceTagsChange={(tags) => {
+                setAcceptanceTags(tags);
+                setIsSaved(false);
+              }}
+            />
+
+            {/* The reflection — one box, one prompt */}
+            <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md">
+              <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
+                <Moon size={20} className="text-text-secondary" /> Reflection
+              </h3>
+              <AutoExpandingTextarea
+                value={reflection}
+                onValueChange={(val) => {
+                  setReflection(val);
+                  setIsSaved(false);
+                }}
+                onCtrlEnter={() => { if (hasChanges) void handleSave(); }}
+                placeholder="What happened today, and how did you meet it?"
+                className="w-full rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary min-h-[120px]"
+                aria-label="Reflection"
+              />
+
+              <div className="grid grid-cols-5 gap-2 mt-4">
+                {moodOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    title={opt.value}
+                    aria-label={opt.value}
+                    onClick={() => {
+                      setMood(opt.value);
+                      setIsSaved(false);
+                      triggerHaptic('light');
+                    }}
+                    className={cn(
+                      "rounded-lg border p-3 transition-all flex items-center justify-center",
+                      mood === opt.value
+                        ? "border-accent bg-accent-soft scale-105 text-accent"
+                        : "border-tertiary text-text-secondary hover:border-secondary hover:bg-background-tertiary hover:text-text-primary"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {error && (
+              <div className="rounded-lg bg-caution/10 border border-caution/40 p-4 text-caution" role="alert">
+                &#9888; {error}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 border-t border-tertiary pt-6">
+              {!isSaved && hasChanges && !isSaving ? (
+                <span className="text-xs font-medium text-accent" role="status">
+                  &#9679; Unsaved changes
+                </span>
+              ) : (
+                <span />
+              )}
+              {saveButton}
+            </div>
+
+            {/* One obstacle from the past, once it can't interrupt the writing */}
+            {liteRetrospective && isSaved && !hasChanges && (
+              <section className="rounded-xl border border-energy/30 bg-energy/5 p-4 sm:p-5">
+                <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
+                  <span>&#8987;</span> {liteRetrospective.daysAgo} days ago
+                </h4>
+                <p className="text-sm text-text-primary italic">
+                  &ldquo;{liteRetrospective.record.fateInput}&rdquo;
+                </p>
+                <p className="text-xs text-text-secondary mt-2">
+                  How much of you does it still own?
+                </p>
+              </section>
+            )}
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setFullPracticeForToday(true)}
+                className="text-xs text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors"
+              >
+                Do the full practice today &rarr;
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl bg-background-secondary border border-tertiary p-4 sm:p-8">
+      {journalMode === 'lite' && fullForToday && (
+        <div className="mb-4 text-right">
+          <button
+            type="button"
+            onClick={() => setFullPracticeForToday(false)}
+            className="text-xs text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors"
+          >
+            &larr; Back to Lite
+          </button>
+        </div>
+      )}
       {/* 4-Step Journey Stepper */}
       <nav className="flex items-center justify-between mb-8 border-b border-tertiary pb-4" aria-label="Stoic Journey Progress">
         {steps.map((step) => {

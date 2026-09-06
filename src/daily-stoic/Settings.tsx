@@ -1,6 +1,7 @@
 import { useState, useReducer } from 'react';
 import { Compass } from 'lucide-react';
 import { Button, Field, SettingsToggle } from '../ds';
+import { JOURNAL_MODE_KEY } from './lib/useJournalMode';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
 import { verifyAnthropicKey, MENTOR_KEY_STORAGE, MENTOR_ENABLED_STORAGE } from './lib/mentor';
 import { getCycleDay } from './utils/date';
@@ -398,6 +399,18 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
 
         <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
           <h3 className="font-display text-lg text-text-primary">User Experience</h3>
+          <SettingsToggle
+            label="Lite Practice"
+            hint="One screen instead of the four-step journey: Memento Mori, the day's maxim, Amor Fati, a reflection and a mood. Nothing is deleted — switch back any time and every entry is where you left it."
+            checked={localStorage.getItem(JOURNAL_MODE_KEY) === 'lite'}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              localStorage.setItem(JOURNAL_MODE_KEY, checked ? 'lite' : 'full');
+              window.dispatchEvent(new Event('daily-stoic:settings-updated'));
+              triggerHaptic('light');
+              forceUpdate();
+            }}
+          />
           <SettingsToggle
             label="Show Gentle Concept Guides"
             hint="Display twisties with concept details beside reflection forms."

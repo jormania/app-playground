@@ -970,6 +970,7 @@ export default function App() {
               isTogglingFavorite={isTogglingFavorite}
               hasPassionsProperty={hasPassionsProperty}
               worries={worries}
+              recentReflections={recentReflections}
             />
           </div>
         )}

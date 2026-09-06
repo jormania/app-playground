@@ -35,6 +35,14 @@ Daily Stoic combines daily stoic reflection habits, cognitive reframing, and lon
    - Chronological analysis identifying the day of week and time of day where passions are most active.
    - Citadel empty state with interactive demo mode for previewing insights.
 
+5. **Lite Practice (Settings toggle)**:
+   - One screen instead of the four-step journey — **Memento Mori** as a lifetime bar (80 years / 4,160 weeks, with a question that rotates daily), the day's maxim with its favourite heart, **Amor Fati** reduced to one line and one optional challenge type, a single reflection box, and the mood row.
+   - Amor Fati is untethered from the evening in Lite — it reads "What feels forced or heavy?" and can be filled at any hour.
+   - Everything else (Premeditatio Malorum, Spheres of Choice, Passions, Seneca's three questions, the virtue picker, the mentor) is hidden, not deleted: Lite renders from the same state and saves through the same `handleSave`, so hidden fields round-trip untouched and a Lite save can never blank a day written in Full.
+   - Lite days count toward the streak and the cycle exactly like Full days — the schema and every write are identical.
+   - After saving, Lite surfaces one obstacle logged 30, 90 or 365 days ago (`utils/lite.ts`) — the retrospective idea from the Amor Fati dashboard, narrowed to a single card.
+   - **Per-day escape hatch**: "Do the full practice today →" opens the four-step wizard for that day only (`daily-stoic:full-day-<day>`), without touching the setting; "← Back to Lite" reverses it.
+
 ---
 
 ## Notion Database Schema
@@ -87,6 +95,14 @@ src/daily-stoic/
 ---
 
 ## Changelog
+
+### September 6, 2026 (Lite Practice)
+- **Lite mode**: New Settings toggle (`daily-stoic:mode`, default `full`) rendering the daily screen as one page instead of the four-step journey. Purely presentational — it hides UI, never data.
+- **Memento Mori (Lite)**: New [`MementoMoriBar`](src/daily-stoic/components/MementoMoriBar.tsx) — the whole 80-year lifespan as a single bar with weeks lived and a daily-rotating question. Its arithmetic lives in [`utils/lifetime.ts`](src/daily-stoic/utils/lifetime.ts), which the full grid's numbers agree with by construction.
+- **Amor Fati (Lite)**: `AmorFatiControl` gained a `lite` prop — present-tense prompt ("What feels forced or heavy?"), single-select challenge type, teaching hints suppressed. Same `FateInput` / `AcceptanceTags` properties, so Full reads it back unchanged.
+- **Save path shared, not forked**: Lite renders from the same component state as the stepper. The Seneca question-combining effect is skipped in Lite (it would otherwise blank the free-text box), and every field Lite doesn't render is written back exactly as loaded — covered by [`JournalLite.test.tsx`](src/daily-stoic/JournalLite.test.tsx).
+- **Lite retrospective**: [`pickLiteRetrospective`](src/daily-stoic/utils/lite.ts) surfaces the nearest of the 30/90/365-day obstacles below the save button, once the day has no unsaved edits.
+- **Per-day escape hatch**: "Do the full practice today →" / "← Back to Lite", scoped to a single day so it lapses on its own.
 
 ### July 11, 2026 (Milestone 1)
 - **Notion Sync Integration**: Implemented [`NotionService.ts`](src/daily-stoic/services/NotionService.ts) and connected `/api/notion` relay. Created Settings panel for secure local credentials management.

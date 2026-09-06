@@ -15,6 +15,11 @@ interface AmorFatiControlProps {
   onFateInputChange: (val: string) => void;
   acceptanceTags: string[];
   onAcceptanceTagsChange: (tags: string[]) => void;
+  /** Lite: one line, one tap. The challenge type becomes single-select and the
+   *  per-tag teaching hints are suppressed — they're an aid for the first few
+   *  weeks, and after that they're a wall of text before the save button.
+   *  Same two fields, same Notion properties, so Full still reads it back. */
+  lite?: boolean;
 }
 
 const AVAILABLE_TAGS = ['Situation', 'Outcome', 'People', 'Time', 'Limitation'];
@@ -40,11 +45,14 @@ export default function AmorFatiControl({
   onFateInputChange,
   acceptanceTags,
   onAcceptanceTagsChange,
+  lite = false,
 }: AmorFatiControlProps) {
   const handleTagToggle = (tag: string) => {
     triggerHaptic('light');
     if (acceptanceTags.includes(tag)) {
       onAcceptanceTagsChange(acceptanceTags.filter((t) => t !== tag));
+    } else if (lite) {
+      onAcceptanceTagsChange([tag]);
     } else {
       onAcceptanceTagsChange([...acceptanceTags, tag]);
     }
@@ -56,12 +64,14 @@ export default function AmorFatiControl({
         <Heart size={20} className="text-text-secondary" /> Amor Fati (Love of Fate)
       </h3>
       <p className="text-sm text-text-secondary mb-4">
-        Frame today's resistances as necessary constraints to be embraced rather than fought.
+        {lite
+          ? 'Name what you are fighting, then stop fighting it. Any hour of the day.'
+          : "Frame today's resistances as necessary constraints to be embraced rather than fought."}
       </p>
 
       <div className="flex flex-col gap-4">
         <Field
-          label="What part of today feels forced or heavy?"
+          label={lite ? 'What feels forced or heavy?' : 'What part of today feels forced or heavy?'}
           type="text"
           value={fateInput}
           onChange={(e) => onFateInputChange(e.target.value)}
@@ -74,7 +84,7 @@ export default function AmorFatiControl({
             <span>☁</span> Challenge Types
           </h4>
           <p className="text-xs text-text-secondary mb-3">
-            Select the categories that best describe this challenge:
+            {lite ? 'Optional — one tap:' : 'Select the categories that best describe this challenge:'}
           </p>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_TAGS.map((tag) => {
@@ -99,7 +109,7 @@ export default function AmorFatiControl({
               );
             })}
           </div>
-          {acceptanceTags.length > 0 && (
+          {!lite && acceptanceTags.length > 0 && (
             <div className="mt-3 space-y-1">
               {acceptanceTags.filter(t => TAG_HINTS[t]).map(tag => (
                 <p key={tag} className="text-xs text-text-secondary italic border-l-2 border-energy pl-3 pt-0.5 pb-0.5 animate-in fade-in duration-200">
