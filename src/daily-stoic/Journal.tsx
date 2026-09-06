@@ -919,6 +919,7 @@ export default function Journal({
 
         {/* This week, as seven dots. A filled week invites you to fill the next
             day; a streak counter mostly invites you to stop once it breaks. */}
+        <div className="space-y-2">
         <div className="flex items-center gap-2" role="img" aria-label={`This week: ${dots.filter(d => d.logged).length} of 7 days written`}>
           {dots.map((dot) => (
             <span
@@ -935,11 +936,18 @@ export default function Journal({
               )}
             />
           ))}
-          {lastEntry && (
-            <span className="ml-1 truncate text-xs text-text-secondary/80 italic">
+        </div>
+
+        {/* Yesterday's line is whatever length it is. Rather than cut it off,
+            it scrolls sideways inside its own strip — the page itself never
+            scrolls horizontally. */}
+        {lastEntry && (
+          <div className="overflow-x-auto">
+            <p className="whitespace-nowrap text-xs text-text-secondary/80 italic pb-1">
               {lastEntry.daysAgo === 1 ? 'Yesterday' : `${lastEntry.daysAgo} days ago`}: “{lastEntry.text}”
-            </span>
-          )}
+            </p>
+          </div>
+        )}
         </div>
 
         <MementoMoriBar

@@ -324,6 +324,24 @@ describe('Journal — Lite, day to day', () => {
     expect(screen.getByText(/Yesterday: “A quiet day.”/)).toBeTruthy();
   });
 
+  it('lets a long yesterday scroll sideways instead of cutting it off', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    const long = 'I cannot control the heat, the noise from the street, or how late the meeting ran, but I embrace them as they are.';
+    const past = [{ id: 'y', date: '2026-07-21', quoteId: 9, text: long }];
+
+    render(<Journal {...baseProps} dayOfYear={10} recentReflections={past} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    const line = screen.getByText(new RegExp(long.slice(0, 40)));
+    // The whole sentence is in the DOM, on one unwrapped line...
+    expect(line.textContent).toContain(long);
+    expect(line.className).toContain('whitespace-nowrap');
+    expect(line.className).not.toContain('truncate');
+    // ...inside a strip that scrolls, so the page itself never does.
+    expect(line.parentElement?.className).toContain('overflow-x-auto');
+  });
+
   it('keeps Amor Fati folded until asked, and unfolds it for a day that has one', async () => {
     enableLite();
     vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
