@@ -1,59 +1,55 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  applyPreset,
-  loadPreset,
-  modeOf,
-  nextPreset,
-  presetById,
-  savePreset,
+  applyTheme,
+  loadTheme,
+  resolveTheme,
+  saveTheme,
+  syncThemeColor,
   THEME_KEY,
-  type Preset,
-  type PresetId,
   type Theme,
+  type ThemePref,
 } from './theme'
 
 interface ThemeContextValue {
-  /** The chosen preset id. */
-  preset: PresetId
-  /** The full preset record (name, mode, swatch…). */
-  current: Preset
-  /** The resolved light/dark mode of the current preset (drives the header glyph). */
-  mode: Theme
-  /** Set a preset explicitly (the Settings picker). */
-  setPreset: (id: PresetId) => void
-  /** Header cycle button — advance to the next preset (wraps; flips light↔dark each press). */
-  cycle: () => void
+  /** The stored preference: system / light / dark. */
+  theme: ThemePref
+  /** What it resolves to right now. */
+  resolved: Theme
+  setTheme: (pref: ThemePref) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preset, setPresetState] = useState<PresetId>(() => loadPreset())
+  const [theme, setThemeState] = useState<ThemePref>(() => loadTheme())
 
-  // Apply + persist whenever the preset changes.
   useEffect(() => {
-    applyPreset(preset)
-    savePreset(preset)
-  }, [preset])
+    applyTheme(theme)
+    saveTheme(theme)
+  }, [theme])
+
+  // Follow the OS while on "system". The palette itself swaps in CSS, but the
+  // browser-chrome tint would go stale the moment the device flips at sunset.
+  useEffect(() => {
+    if (theme !== 'system' || typeof matchMedia === 'undefined') return undefined
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    const sync = () => syncThemeColor('system')
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [theme])
 
   // Live sync with the field guide (and other tabs).
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === THEME_KEY) setPresetState(loadPreset())
+      if (e.key === THEME_KEY) setThemeState(loadTheme())
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   const value = useMemo<ThemeContextValue>(
-    () => ({
-      preset,
-      current: presetById(preset),
-      mode: modeOf(preset),
-      setPreset: (id) => setPresetState(id),
-      cycle: () => setPresetState((p) => nextPreset(p)),
-    }),
-    [preset],
+    () => ({ theme, resolved: resolveTheme(theme), setTheme: setThemeState }),
+    [theme],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

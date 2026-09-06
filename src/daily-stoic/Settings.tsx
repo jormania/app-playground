@@ -1,6 +1,6 @@
 import { useState, useReducer } from 'react';
 import { Compass } from 'lucide-react';
-import { Button, Field, SettingsToggle } from '../ds';
+import { Button, Field, SegmentedControl, SettingsToggle } from '../ds';
 import { JOURNAL_MODE_KEY, useJournalMode } from './lib/useJournalMode';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
 import { verifyAnthropicKey, MENTOR_KEY_STORAGE, MENTOR_ENABLED_STORAGE } from './lib/mentor';
@@ -11,9 +11,16 @@ import { requestPermission, capabilities } from '../shared/notify/permission';
 import { gatherDiagnostics, NotifyDiagnostics } from '../shared/notify/diagnostics';
 import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal';
 import { useTheme } from './lib/themeContext';
+import type { ThemePref } from './lib/theme';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
 import { showToast } from './components/Toast';
+
+const THEME_OPTIONS = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
 
 interface SettingsProps {
   onClose: () => void;
@@ -27,7 +34,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
   const isLite = useJournalMode() === 'lite';
   const [token, setToken] = useState(() => localStorage.getItem('daily-stoic:notion-token') || '');
   const [database, setDatabase] = useState(() => localStorage.getItem('daily-stoic:notion-db') || '');
-  const { current, cycle } = useTheme();
+  const { theme, setTheme } = useTheme();
   
   const [status, setStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>((() => {
     const hasToken = !!localStorage.getItem('daily-stoic:notion-token');
@@ -400,18 +407,18 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
 
         <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
           <h3 className="font-display text-lg text-text-primary">Appearance</h3>
+          <SegmentedControl
+            options={THEME_OPTIONS}
+            value={theme}
+            onChange={(value) => {
+              setTheme(value as ThemePref);
+              triggerHaptic('light');
+            }}
+          />
           <p className="text-sm text-text-secondary leading-relaxed">
-            Customize the visual style of the application. The theme cycles through four light and four dark presets.
+            <strong className="text-text-primary">System</strong> follows your device, and keeps
+            following it when it changes.
           </p>
-          <div className="flex items-center justify-between border border-tertiary bg-background-tertiary rounded-lg p-3">
-            <div className="flex flex-col">
-              <span className="text-xs uppercase tracking-wider text-text-secondary font-mono">Current Palette</span>
-              <span className="text-sm font-medium text-text-primary mt-0.5">{current.name}</span>
-            </div>
-            <Button onClick={() => { cycle(); triggerHaptic('light'); }} variant="secondary" size="sm">
-              Cycle Palette ◐
-            </Button>
-          </div>
         </section>
 
         <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">

@@ -114,3 +114,48 @@ describe('Settings — Lite', () => {
     expect(kvSet.mock.calls[0][1].lite).toBe(true);
   });
 });
+
+describe('Settings — Appearance', () => {
+  it('offers System, Light and Dark, with System selected by default', async () => {
+    renderSettings();
+
+    const system = screen.getByRole('radio', { name: 'System' });
+    expect(system.getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Light' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('radio', { name: 'Dark' }).getAttribute('aria-checked')).toBe('false');
+
+    // The retired palette cycler is gone.
+    expect(screen.queryByText(/Cycle Palette/)).toBeNull();
+    expect(screen.queryByText(/Current Palette/)).toBeNull();
+  });
+
+  it('stores an explicit choice and stamps the document', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    await user.click(screen.getByRole('radio', { name: 'Dark' }));
+
+    expect(localStorage.getItem('daily-stoic:theme')).toBe('dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('clears the attribute again on System, so the OS takes over', async () => {
+    localStorage.setItem('daily-stoic:theme', 'dark');
+    const user = userEvent.setup();
+    renderSettings();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+
+    await user.click(screen.getByRole('radio', { name: 'System' }));
+
+    expect(localStorage.getItem('daily-stoic:theme')).toBe('system');
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+  });
+
+  it('carries a retired palette id over to its light/dark side', () => {
+    localStorage.setItem('daily-stoic:theme', 'ristretto');
+    renderSettings();
+
+    expect(screen.getByRole('radio', { name: 'Dark' }).getAttribute('aria-checked')).toBe('true');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+});

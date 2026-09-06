@@ -9,9 +9,14 @@
 <meta name="theme-color" content="#4B45C6" />
 <script>
   try {
-    var DARK = { 'indigo-dark': 1, 'octagon': 1, 'ristretto': 1, 'spectrum': 1, 'dark': 1 };
-    var p = localStorage.getItem('daily-stoic:theme') || 'system';
-    if (DARK[p] || (p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches))) {
+    // Shares the app's daily-stoic:theme key (system / light / dark, plus the
+    // retired palette ids). The guide carries only its own light/dark pair, so
+    // it resolves the choice here and stamps data-theme='dark' when dark wins.
+    var LEGACY_DARK = { 'indigo-dark': 1, 'octagon': 1, 'ristretto': 1, 'spectrum': 1 };
+    var raw = localStorage.getItem('daily-stoic:theme');
+    var pref = (raw === 'light' || raw === 'dark' || raw === 'system') ? raw
+      : (raw ? (LEGACY_DARK[raw] ? 'dark' : 'light') : 'system');
+    if (pref === 'dark' || (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
   } catch (e) {}

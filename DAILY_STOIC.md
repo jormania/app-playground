@@ -99,6 +99,13 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 6, 2026 (Theme: system / light / dark)
+- **One light palette and one dark, chosen the way Marquee does it.** The eight-preset cycler (four light, four dark, advanced by a "Cycle Palette" button) is gone; Settings → Appearance is now a three-way `SegmentedControl` — **System · Light · Dark** — defaulting to **System**.
+- **System means system.** It stores no palette and clears `data-theme` entirely, so [`tokens.css`](src/daily-stoic/styles/tokens.css)'s own `prefers-color-scheme` block takes over and the app keeps following the device when it flips at sunset. An explicit choice stamps `data-theme="light"` / `"dark"`. The `<meta name="theme-color">` tint can't come from CSS, so [`lib/theme.ts`](src/daily-stoic/lib/theme.ts) sets it and a `matchMedia` listener keeps it honest while on System.
+- **Tokens cut to Deep Indigo light + dark**, the dark block written twice (media query for System, attribute for an explicit choice) — the same shape as `marquee.css`. Six palettes, the cycle order and the swatch metadata are deleted.
+- **Retired ids migrate rather than reset**: a stored `octagon`/`ristretto`/`spectrum`/`indigo-dark` resolves to Dark, the four light ones to Light — in the app, in the pre-paint script, and in the Field Guide, which shares the same `daily-stoic:theme` key.
+- `lib/theme.ts` drops `PRESETS`/`nextPreset`/`presetById`/`modeOf` for `ThemePref`, `resolveTheme`, `applyTheme`, `syncThemeColor`; `useTheme()` now returns `{ theme, resolved, setTheme }`.
+
 ### September 6, 2026 (Lite Practice)
 
 The four-step journey asks for eleven inputs across two sittings, half of them in the morning. **Lite** is the same practice at a weight that gets done: one screen, any hour. It is a presentation layer over the existing journal — same state, same save path, same Notion schema — so nothing is migrated, nothing is lost, and switching back restores everything at once.

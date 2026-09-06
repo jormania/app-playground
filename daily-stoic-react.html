@@ -7,34 +7,23 @@
   <meta name="description" content="A daily Stoic companion displaying public domain quotes and a journal for reflections." />
   <meta name="theme-color" content="#4B45C6" />
   <script>
-    // Apply the saved preset before first paint to avoid a flash of the wrong
-    // palette. Mirrors src/daily-stoic/lib/theme.ts's normalizePreset/applyPreset —
-    // keep this THEME_COLORS map in step with that file's PRESETS array.
+    // Resolve the saved theme before first paint, so there's no flash of the
+    // wrong palette. Mirrors src/daily-stoic/lib/theme.ts — keep in step.
+    // "system" (the default) deliberately sets NO attribute: tokens.css's own
+    // prefers-color-scheme block handles it and keeps following the OS.
     try {
-      var THEME_COLORS = {
-        'indigo-light': '#4B45C6',
-        'indigo-dark': '#121127',
-        'quiet-light': '#F5F5F5',
-        'octagon': '#1E1F2B',
-        'filter-sun': '#FAF4F2',
-        'ristretto': '#211C1C',
-        'solarized-light': '#FDF6E3',
-        'spectrum': '#191919'
-      };
+      var LEGACY_DARK = ['indigo-dark', 'octagon', 'ristretto', 'spectrum'];
       var raw = localStorage.getItem('daily-stoic:theme');
-      var id;
-      if (raw && THEME_COLORS.hasOwnProperty(raw)) {
-        id = raw;
-      } else if (raw === 'light') {
-        id = 'indigo-light';
-      } else if (raw === 'dark') {
-        id = 'indigo-dark';
-      } else {
-        id = matchMedia('(prefers-color-scheme: dark)').matches ? 'indigo-dark' : 'indigo-light';
-      }
-      document.documentElement.setAttribute('data-theme', id);
+      var pref = 'system';
+      if (raw === 'light' || raw === 'dark' || raw === 'system') pref = raw;
+      else if (raw) pref = LEGACY_DARK.indexOf(raw) !== -1 ? 'dark' : 'light';
+
+      if (pref !== 'system') document.documentElement.setAttribute('data-theme', pref);
+
+      var dark = pref === 'dark'
+        || (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
       var m = document.querySelector('meta[name="theme-color"]');
-      if (m) m.setAttribute('content', THEME_COLORS[id]);
+      if (m) m.setAttribute('content', dark ? '#121127' : '#4B45C6');
     } catch (e) {}
   </script>
   <link rel="icon" type="image/svg+xml" href="/daily-stoic-logo.svg" />
