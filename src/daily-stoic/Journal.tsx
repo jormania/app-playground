@@ -982,6 +982,13 @@ export default function Journal({
               }
             >
               {lastEntry.daysAgo === 1 ? 'Yesterday' : `${lastEntry.daysAgo} days ago`}: “{lastEntry.text}”
+              {/* A tail of empty space so the fade at the right edge lands on
+                  nothing once the line has drifted (or been swiped) all the
+                  way out — otherwise the last characters sit under the mask
+                  and read dimmed. Trailing padding wouldn't do: browsers leave
+                  it out of scrollWidth, so neither the drift nor the scroll
+                  range would know about it. */}
+              <span aria-hidden="true" className="inline-block w-8" />
             </p>
           </div>
         )}
