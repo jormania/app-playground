@@ -85,6 +85,8 @@ describe('Settings — Lite', () => {
     expect(key).toBe('state');
     expect(state.morningEnabled).toBe(false);
     expect(state.enabled).toBe(true);
+    // Picks Lite's evening wording in the service worker.
+    expect(state.lite).toBe(true);
   });
 
   it('leaves the morning nudge on in Full', async () => {
@@ -96,6 +98,7 @@ describe('Settings — Lite', () => {
 
     await waitFor(() => expect(kvSet).toHaveBeenCalled());
     expect(kvSet.mock.calls[0][1].morningEnabled).toBe(true);
+    expect(kvSet.mock.calls[0][1].lite).toBe(false);
   });
 
   it('re-syncs the worker when the mode is toggled with reminders on', async () => {
@@ -108,5 +111,6 @@ describe('Settings — Lite', () => {
 
     await waitFor(() => expect(kvSet).toHaveBeenCalled());
     expect(kvSet.mock.calls[0][1].morningEnabled).toBe(false);
+    expect(kvSet.mock.calls[0][1].lite).toBe(true);
   });
 });

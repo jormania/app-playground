@@ -86,6 +86,8 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
       // The service worker treats a missing flag as true, keeping every
       // already-installed worker's behaviour unchanged.
       morningEnabled: !liteVal,
+      // Picks the evening nudge's wording in the worker — see daily-stoic-sw.js.
+      lite: liteVal,
       morningTime: morningTime,
       eveningTime: eveningTime,
       todayLogged,

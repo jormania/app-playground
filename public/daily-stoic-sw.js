@@ -99,10 +99,16 @@ function maybeNotify() {
       });
     }
 
+    // Lite's evening screen isn't the four-step review, so it gets its own
+    // wording. An older state object has no `lite` key and keeps the original.
+    var eveningBody = state.lite
+      ? "The day's maxim, one honest line, your mood."
+      : "Take a moment to reflect on today's principle.";
+
     if (nowMs >= atLocalTime(now, eHour, eMin) && !state.todayLogged && lastEvening !== today) {
       promise = promise.then(function() {
         return self.registration.showNotification('Daily Stoic', {
-          body: "Take a moment to reflect on today's principle.",
+          body: eveningBody,
           tag: 'daily-stoic-evening',
           icon: '/daily-stoic-logo.svg',
           badge: '/daily-stoic-logo.svg'
