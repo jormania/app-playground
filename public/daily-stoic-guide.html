@@ -80,6 +80,10 @@
 
   /* Schema Table */
   table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9rem; }
+  /* The schema table can't fit a phone. Let it scroll inside its own strip
+     rather than dragging the whole page sideways with it. */
+  .table-scroll { overflow-x: auto; }
+  .table-scroll table { min-width: 30rem; }
   th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--hair); vertical-align: top; }
   th { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
   td:first-child { font-family: var(--mono); font-size: 0.82rem; color: var(--accent); font-weight: 500; }
@@ -180,8 +184,30 @@
       The four steps ask a great deal, and a practice you dread is a practice you drop. <strong>Settings &rarr; Lite Practice</strong> replaces the stepper with a single screen: <strong>Memento Mori</strong> as one bar across your whole lifespan with a question that changes daily, the day's maxim and its heart, <strong>Amor Fati</strong> reduced to one line and one optional challenge type, a single reflection box, and your mood. Amor Fati loses its evening framing there — it asks <em>"What feels forced or heavy?"</em> and can be answered at any hour.
     </p>
     <p>
-      Everything else is hidden, not deleted. Lite saves through the same path into the same Notion record, so a day you wrote in Full keeps its intentions, worries, passions and virtue untouched when you edit it in Lite. The dashboards Lite cannot feed — Spheres of Choice, Passions &amp; Judgments, Commitments, the Council — leave the menu while it is on, along with the Mentor's settings and the morning nudge; Memento Mori, the Enchiridion, Amor Fati, the Digest and Stats stay. Lite days count toward the streak and the cycle exactly like any other.
+      Everything else is hidden, not deleted. Lite saves through the same path into the same Notion record, so a day you wrote in Full keeps its intentions, worries, passions and virtue untouched when you edit it in Lite. The dashboards Lite cannot feed — Spheres of Choice, Passions &amp; Judgments, Commitments, the Council — leave the menu while it is on, along with the Mentor's settings and the morning nudge. Memento Mori's full grid, the Enchiridion, Amor Fati, the Digest, Stats and this guide all stay; the header keeps two of them to hand and puts the rest behind the <strong>⋯</strong> menu. Lite days count toward the streak and the cycle exactly like any other.
     </p>
+
+    <h3>What Lite does to keep you coming back</h3>
+    <p>
+      The point of Lite is that the day gets logged. Everything below serves that and nothing else — there are no charts on the daily screen, and the app never comments on your consistency.
+    </p>
+    <ul>
+      <li>
+        <strong>A mood is a complete day.</strong> Tapping one of the five faces saves on the spot. No typing, no Save button. An evening with nothing to say still counts, and the practice survives your worst days rather than breaking on them.
+      </li>
+      <li>
+        <strong>Seven dots, not a streak.</strong> The row under "Today" is this week of the cycle: filled for a day written, a ring for today, faint for the days still to come. Deliberately not a running count — a filled week invites you to fill the next day, where a broken forty-day streak mostly invites you to stop.
+      </li>
+      <li>
+        <strong>Yesterday, beside the dots.</strong> The last thing you wrote drifts past as a ticker, so the journal reads as one continuous thing rather than a form you fill in. It looks back up to a week, so one skipped day doesn't break the thread. Touch it to stop it; swipe it to read at your own pace.
+      </li>
+      <li>
+        <strong>Amor Fati stays folded</strong> until you tap <em>"Something heavy today?"</em> — it is optional, and open it is the tallest thing on the screen. A day that already carries an obstacle opens it for you.
+      </li>
+      <li>
+        <strong>"Give me a question"</strong> under the writing box drops in one Stoic prompt for the evenings when the blank box is the obstacle. Tap again for a different one. Never more than one at a time, and never in your way.
+      </li>
+    </ul>
     <p>
       For a day when you have the appetite for the whole thing, <strong>"Do the full practice today"</strong> at the foot of the Lite screen opens the four steps for that day alone, and lapses by itself at the next day change. Turning the setting off restores everything at once.
     </p>
@@ -402,6 +428,7 @@
 
     <h3>Database Schema</h3>
     <p>The seven optional columns below (everything after Favorite) auto-upgrade onto your database on first connection if they're missing — you don't have to add them by hand even if you build the database yourself instead of duplicating the template.</p>
+    <div class="table-scroll">
     <table>
       <thead>
         <tr>
@@ -483,6 +510,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
 
     <h3>Cycle Start Date</h3>
     <p>
