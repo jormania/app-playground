@@ -147,6 +147,9 @@ export default function Journal({
       localStorage.removeItem(fullDayKey(dayOfYear));
     }
     setFullForToday(on);
+    // The app chrome reads the same flag (useLiteActive) to decide which
+    // dashboards to offer, so tell it the mode on screen just changed.
+    window.dispatchEvent(new Event('daily-stoic:settings-updated'));
     triggerHaptic('light');
   };
 

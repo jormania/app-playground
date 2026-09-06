@@ -42,6 +42,7 @@ Daily Stoic combines daily stoic reflection habits, cognitive reframing, and lon
    - Lite days count toward the streak and the cycle exactly like Full days — the schema and every write are identical.
    - After saving, Lite surfaces one obstacle logged 30, 90 or 365 days ago (`utils/lite.ts`) — the retrospective idea from the Amor Fati dashboard, narrowed to a single card.
    - **Per-day escape hatch**: "Do the full practice today →" opens the four-step wizard for that day only (`daily-stoic:full-day-<day>`), without touching the setting; "← Back to Lite" reverses it.
+   - **Nav narrows with the practice**: Lite hides the dashboards it can't feed — Spheres of Choice, Passions & Judgments, Commitments and The Council (`LITE_HIDDEN_ROUTES`). A stale hash, bookmark or notification tap pointing at one redirects home. Memento Mori, the Enchiridion, Amor Fati, the Digest and Stats stay: Lite's own entries still feed them. Everything returns whole when Full comes back — including the day opened through the escape hatch, which restores the full nav for that day.
 
 ---
 
@@ -103,6 +104,7 @@ src/daily-stoic/
 - **Save path shared, not forked**: Lite renders from the same component state as the stepper. The Seneca question-combining effect is skipped in Lite (it would otherwise blank the free-text box), and every field Lite doesn't render is written back exactly as loaded — covered by [`JournalLite.test.tsx`](src/daily-stoic/JournalLite.test.tsx).
 - **Lite retrospective**: [`pickLiteRetrospective`](src/daily-stoic/utils/lite.ts) surfaces the nearest of the 30/90/365-day obstacles below the save button, once the day has no unsaved edits.
 - **Per-day escape hatch**: "Do the full practice today →" / "← Back to Lite", scoped to a single day so it lapses on its own.
+- **Lite nav**: `useLiteActive(dayOfYear)` (mode + the per-day override, kept in sync through the `daily-stoic:settings-updated` event) filters `dashboardOptions` and redirects away from `LITE_HIDDEN_ROUTES` — the four dashboards Lite starves of input. Amor Fati, the Digest and Stats stay reachable.
 
 ### July 11, 2026 (Milestone 1)
 - **Notion Sync Integration**: Implemented [`NotionService.ts`](src/daily-stoic/services/NotionService.ts) and connected `/api/notion` relay. Created Settings panel for secure local credentials management.

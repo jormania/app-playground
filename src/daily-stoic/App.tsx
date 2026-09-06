@@ -24,6 +24,7 @@ import { createIdbKv } from '../shared/notify/idbKv';
 import { triggerHaptic } from '../shared/haptics';
 
 import { useHashRoute } from './lib/useHashRoute';
+import { useLiteActive, isHiddenInLite } from './lib/useJournalMode';
 import { cn } from './lib/cn';
 import {
   Settings as SettingsIcon,
@@ -84,6 +85,15 @@ export default function App() {
   const cycleInfo = useMemo(() => getCycleInfo(today), [today]);
 
   const { route, navigate } = useHashRoute();
+
+  // Lite hides the dashboards it can't feed. A route can still be reached by a
+  // stale hash, a bookmark or a notification tap, so send those home rather
+  // than rendering a screen the nav no longer offers.
+  const liteActive = useLiteActive(dayOfYear);
+  useEffect(() => {
+    if (liteActive && isHiddenInLite(route)) navigate('/');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liteActive, route]);
   
   // Credentials
   const [token, setToken] = useState(() => localStorage.getItem('daily-stoic:notion-token') || '');
@@ -694,7 +704,7 @@ export default function App() {
     { label: 'Passions & Judgments', value: 'passions', Icon: FlameIcon },
     { label: 'Amor Fati', value: 'amorfati', Icon: HeartIcon },
     { label: 'Digest', value: 'digest', Icon: HistoryIcon },
-  ];
+  ].filter((tab) => !(liteActive && isHiddenInLite(tab.value)));
 
   if (!onboarded) {
     return (
