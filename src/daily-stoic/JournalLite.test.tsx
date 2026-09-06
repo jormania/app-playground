@@ -347,6 +347,21 @@ describe('Journal — Lite, day to day', () => {
     expect(strip.parentElement?.querySelector('[role="img"]')).toBeTruthy();
   });
 
+  it('drifts on its own only when the line actually overflows', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    const past = [{ id: 'y', date: '2026-07-21', quoteId: 9, text: 'Short.' }];
+
+    render(<Journal {...baseProps} dayOfYear={10} recentReflections={past} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    // happy-dom reports no layout, so scrollWidth is 0 and nothing overflows —
+    // exactly the case where the line must sit still rather than drift.
+    const line = screen.getByText(/Yesterday: “Short.”/);
+    expect(line.className).not.toContain('ticker-line');
+    expect(line.getAttribute('style')).toBeNull();
+  });
+
   it('keeps Amor Fati folded until asked, and unfolds it for a day that has one', async () => {
     enableLite();
     vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);

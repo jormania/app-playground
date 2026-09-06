@@ -153,3 +153,33 @@ body.stoic-focus-mode footer,
 body.stoic-focus-mode section {
   transition: opacity 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+/* ── Yesterday's ticker ────────────────────────────────────────────────────
+   The line shares its row with the week dots, so its window is narrow. Rather
+   than make you swipe a 160px strip on a phone, it drifts on its own: out to
+   the end, hold, and back. `--ticker-shift` is measured in Journal.tsx (the
+   text's overflow in px) and the duration scales with the distance, so a long
+   line doesn't race. Touch or hover pauses it; the strip stays swipeable, and
+   reduced-motion turns the drift off entirely and leaves only the swipe. */
+@layer components {
+  .ticker-line {
+    animation: ticker-drift var(--ticker-duration, 12s) linear infinite alternate;
+    will-change: transform;
+  }
+
+  .ticker-strip:hover .ticker-line,
+  .ticker-strip:active .ticker-line {
+    animation-play-state: paused;
+  }
+
+  @keyframes ticker-drift {
+    0%, 12%   { transform: translateX(0); }
+    88%, 100% { transform: translateX(var(--ticker-shift, 0px)); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-line {
+      animation: none;
+    }
+  }
+}

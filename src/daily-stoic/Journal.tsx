@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Button, GuideNote } from '../ds';
 import { useShowGuides } from './lib/useShowGuides';
 import { fetchReflectionForDay, upsertReflection } from './services/NotionService';
@@ -885,6 +885,28 @@ export default function Journal({
     [isLite, recentReflections, dayOfYear]
   );
 
+  // The ticker drifts by exactly its own overflow — measured, because CSS
+  // can't know how much wider the text is than the strip it sits in. Speed is
+  // held at a readable ~40px/s so a long line doesn't race past.
+  const tickerStripRef = useRef<HTMLDivElement>(null);
+  const tickerLineRef = useRef<HTMLParagraphElement>(null);
+  const [tickerShift, setTickerShift] = useState(0);
+
+  useLayoutEffect(() => {
+    const strip = tickerStripRef.current;
+    const line = tickerLineRef.current;
+    if (!strip || !line) {
+      setTickerShift(0);
+      return undefined;
+    }
+    const measure = () => setTickerShift(Math.max(0, line.scrollWidth - strip.clientWidth));
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(strip);
+    return () => ro.disconnect();
+  }, [lastEntry, isLite]);
+
   const saveButton = (
     <button
       onClick={() => void handleSave()}
@@ -943,8 +965,22 @@ export default function Journal({
             what lets it shrink inside the flex row instead of pushing the page
             wider; the fade on the right edge says there's more to the right. */}
         {lastEntry && (
-          <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,#000_88%,transparent)]">
-            <p className="whitespace-nowrap text-xs text-text-secondary/80 italic">
+          <div
+            ref={tickerStripRef}
+            className="ticker-strip min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,#000_88%,transparent)]"
+          >
+            <p
+              ref={tickerLineRef}
+              className={cn('whitespace-nowrap text-xs text-text-secondary/80 italic', tickerShift > 0 && 'ticker-line')}
+              style={
+                tickerShift > 0
+                  ? ({
+                      '--ticker-shift': `-${tickerShift}px`,
+                      '--ticker-duration': `${Math.round(tickerShift / 40) + 5}s`,
+                    } as React.CSSProperties)
+                  : undefined
+              }
+            >
               {lastEntry.daysAgo === 1 ? 'Yesterday' : `${lastEntry.daysAgo} days ago`}: “{lastEntry.text}”
             </p>
           </div>
