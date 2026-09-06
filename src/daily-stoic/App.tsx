@@ -697,11 +697,14 @@ export default function App() {
   }, [recentReflections, localFavoritesToggle, today]);
 
 
+  // Lite keeps two doors open in the header — today's page and the handbook —
+  // and pushes the rest into the overflow menu. Eight icons for a one-screen
+  // practice is noise, and on a 360px phone the last of them falls off.
   const tabOptions: { label: string; value: string; Icon: LucideIcon }[] = [
     { label: 'Daily Reflection', value: '', Icon: BookOpenIcon },
     { label: 'Memento Mori', value: 'memento', Icon: SkullIcon },
     { label: 'Enchiridion', value: 'enchiridion', Icon: BookmarkIcon },
-  ];
+  ].filter((tab) => !(liteActive && tab.value === 'memento'));
 
   const dashboardOptions: { label: string; value: string; Icon: LucideIcon }[] = [
     { label: 'Commitments', value: 'commitments', Icon: HandshakeIcon },
@@ -710,6 +713,9 @@ export default function App() {
     { label: 'Passions & Judgments', value: 'passions', Icon: FlameIcon },
     { label: 'Amor Fati', value: 'amorfati', Icon: HeartIcon },
     { label: 'Digest', value: 'digest', Icon: HistoryIcon },
+    // Memento Mori's full grid moves in here while Lite is on, since the bar
+    // at the top of the daily screen covers the everyday case.
+    ...(liteActive ? [{ label: 'Memento Mori', value: 'memento', Icon: SkullIcon }] : []),
   ].filter((tab) => !(liteActive && isHiddenInLite(tab.value)));
 
   if (!onboarded) {
@@ -883,6 +889,18 @@ export default function App() {
                       </svg>
                       Stats & Progress
                     </button>
+                    {liteActive && (
+                      <a
+                        href="/daily-stoic-guide.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setDropdownOpen(false)}
+                        className="w-full rounded px-3 py-2 text-left text-xs font-medium text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center gap-2.5"
+                      >
+                        <HelpIcon size={14} />
+                        Field Guide
+                      </a>
+                    )}
                   </div>
                 </>
               )}
@@ -906,7 +924,11 @@ export default function App() {
               href="/daily-stoic-guide.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center shrink-0"
+              className={cn(
+                "rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors items-center justify-center shrink-0",
+                // In Lite it lives in the dropdown instead — see below.
+                liteActive ? "hidden" : "flex"
+              )}
               title="Field Guide"
               aria-label="Open Field Guide in new tab"
             >

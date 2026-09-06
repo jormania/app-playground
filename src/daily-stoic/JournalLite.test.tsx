@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import Journal from './Journal';
 import * as NotionService from './services/NotionService';
 import { JOURNAL_MODE_KEY } from './lib/useJournalMode';
+import { REFLECTION_PROMPTS } from './utils/lite';
 
 // Same shim as Journal.test.tsx — Node's experimental localStorage global
 // shadows happy-dom's and reads as undefined.
@@ -90,6 +91,22 @@ function fullDayRecord(overrides: Partial<NotionService.NotionReflection> = {}):
 
 const REFLECTION_PROMPT = 'What happened today, and how did you meet it?';
 
+/** A record with nothing in the fields Lite doesn't render — what the relay
+ *  echoes back for a day that has only ever been written in Lite. */
+function emptyDayRecord(overrides: Partial<NotionService.NotionReflection> = {}): NotionService.NotionReflection {
+  return fullDayRecord({
+    text: '',
+    fateInput: '',
+    acceptanceTags: [],
+    mood: '',
+    morningIntentions: '',
+    passions: [],
+    dichotomy: '[]',
+    virtue: '',
+    ...overrides,
+  });
+}
+
 function enableLite() {
   localStorage.setItem(JOURNAL_MODE_KEY, 'lite');
 }
@@ -121,7 +138,9 @@ describe('Journal — Lite mode', () => {
     expect(screen.getByText(/weeks lived/i)).toBeTruthy();
 
     expect(screen.getByText('Test quote')).toBeTruthy();
-    expect(screen.getByLabelText('What feels forced or heavy?')).toBeTruthy();
+    // Amor Fati starts folded — one line, not the tallest card on the screen.
+    expect(screen.getByRole('button', { name: /Something heavy today/ })).toBeTruthy();
+    expect(screen.queryByLabelText('What feels forced or heavy?')).toBeNull();
     expect(screen.getByPlaceholderText(REFLECTION_PROMPT)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Great' })).toBeTruthy();
 
@@ -193,6 +212,7 @@ describe('Journal — Lite mode', () => {
 
     await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
 
+    await user.click(screen.getByRole('button', { name: /Something heavy today/ }));
     await user.type(screen.getByLabelText('What feels forced or heavy?'), 'a cancelled train');
     await user.click(screen.getByRole('button', { name: /Time/ }));
     await user.click(screen.getByRole('button', { name: /People/ }));
@@ -250,5 +270,96 @@ describe('Journal — Lite mode', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.getByText(/30 days ago/)).toBeTruthy());
     expect(screen.getByText(/a missed train/)).toBeTruthy();
+  });
+});
+
+describe('Journal — Lite, day to day', () => {
+  it('saves the moment a mood is tapped, so one tap is a complete day', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockImplementation(
+      async (_t, _d, _q, text, _date, _id, fate, tags, _fav, mood) =>
+        emptyDayRecord({ text, fateInput: fate, acceptanceTags: tags, mood })
+    );
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    await user.click(screen.getByRole('button', { name: 'Good' }));
+
+    await waitFor(() => expect(NotionService.upsertReflection).toHaveBeenCalled());
+    // The mood the user just tapped, not the one in stale state.
+    expect(vi.mocked(NotionService.upsertReflection).mock.calls[0][9]).toBe('Good');
+    await waitFor(() => expect(screen.getByRole('button', { name: '✓ Saved' })).toBeTruthy());
+  });
+
+  it('shows the week as seven dots and fills today on save', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockImplementation(
+      async (_t, _d, _q, text, _date, _id, _f, _tg, _fav, mood) => emptyDayRecord({ text, mood })
+    );
+
+    // Day 10 sits in the week of days 8-14; day 8 already holds something.
+    const past = [{ id: 'a', date: '2026-07-20', quoteId: 8, text: 'wrote then' }];
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={10} recentReflections={past} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    expect(screen.getByLabelText('This week: 1 of 7 days written')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Great' }));
+    await waitFor(() => expect(screen.getByLabelText('This week: 2 of 7 days written')).toBeTruthy());
+  });
+
+  it('threads yesterday under the dots', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    const past = [{ id: 'y', date: '2026-07-21', quoteId: 9, text: 'A quiet day.' }];
+
+    render(<Journal {...baseProps} dayOfYear={10} recentReflections={past} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    expect(screen.getByText(/Yesterday: “A quiet day.”/)).toBeTruthy();
+  });
+
+  it('keeps Amor Fati folded until asked, and unfolds it for a day that has one', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    expect(screen.queryByLabelText('What feels forced or heavy?')).toBeNull();
+    await user.click(screen.getByRole('button', { name: /Something heavy today/ }));
+    expect(screen.getByLabelText('What feels forced or heavy?')).toBeTruthy();
+
+    cleanup();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(fullDayRecord());
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+    // Already carries an obstacle — it opens on its own.
+    expect(screen.getByLabelText('What feels forced or heavy?')).toBeTruthy();
+  });
+
+  it('drops a question into the blank box, then offers another', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    const box = screen.getByPlaceholderText(REFLECTION_PROMPT) as HTMLTextAreaElement;
+    expect(box.value).toBe('');
+
+    await user.click(screen.getByRole('button', { name: 'Give me a question' }));
+    const first = box.value.trim();
+    expect(REFLECTION_PROMPTS).toContain(first);
+
+    await user.click(screen.getByRole('button', { name: 'Another question' }));
+    expect(box.value.trim().split('\n\n')).toHaveLength(2);
   });
 });

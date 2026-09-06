@@ -13,7 +13,7 @@ import { cn } from './lib/cn';
 import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import { useCommitments } from './lib/useCommitments';
 import { useJournalMode, fullDayKey } from './lib/useJournalMode';
-import { pickLiteRetrospective } from './utils/lite';
+import { pickLiteRetrospective, weekDots, previousEntry, promptForDay } from './utils/lite';
 import type { ReflectionRecord } from './services/NotionService';
 import { useMentorEnabled } from './lib/useMentor';
 import { dueCommitments, commitmentsResolvedOn, ledgerStats } from './lib/commitments';
@@ -139,6 +139,12 @@ export default function Journal({
   }, [dayOfYear]);
 
   const isLite = journalMode === 'lite' && !fullForToday;
+
+  // Lite keeps Amor Fati folded away — it's optional, and open it is the
+  // tallest thing on the screen. Anything already written unfolds it.
+  const [fateOpen, setFateOpen] = useState(false);
+  // Which prompt the "give me a question" link offers next.
+  const [promptNudge, setPromptNudge] = useState(0);
 
   const setFullPracticeForToday = (on: boolean) => {
     if (on) {
@@ -585,7 +591,11 @@ export default function Journal({
     };
   }, [dayOfYear, token, databaseId, isNotionConfigured, localStorageKey, localFateKey, localTagsKey, localIntentionsKey, localMoodKey, localPassionsKey, localVirtueKey]);
 
-  const handleSave = async () => {
+  // `overrides` exists for Lite's one-tap mood: React state hasn't committed
+  // when the click handler runs, so the value has to travel with the call or
+  // the save writes the previous mood.
+  const handleSave = async (overrides?: { mood?: string }) => {
+    const moodToSave = overrides?.mood ?? mood;
     const cleanedText = reflection.trim();
     const cleanedFate = fateInput.trim();
     const cleanedIntentions = morningIntentions.trim();
@@ -598,7 +608,7 @@ export default function Journal({
       localStorage.setItem(localFateKey, cleanedFate);
       localStorage.setItem(localTagsKey, JSON.stringify(acceptanceTags));
       localStorage.setItem(localIntentionsKey, cleanedIntentions);
-      localStorage.setItem(localMoodKey, mood);
+      localStorage.setItem(localMoodKey, moodToSave);
       localStorage.setItem(localPassionsKey, JSON.stringify(passions));
       if (!localStorage.getItem(localCreatedTimeKey)) {
         localStorage.setItem(localCreatedTimeKey, new Date().toISOString());
@@ -610,7 +620,7 @@ export default function Journal({
       setSavedFateInput(cleanedFate);
       setSavedPassions([...passions]);
       setSavedMorningIntentions(cleanedIntentions);
-      setSavedMood(mood);
+      setSavedMood(moodToSave);
       setSavedWorries([...worries]);
       setSavedVirtue(selectedVirtue);
       setIsSaved(true);
@@ -636,7 +646,7 @@ export default function Journal({
         cleanedFate,
         acceptanceTags,
         isCurrentQuoteFavorited, // preserve existing favorite state
-        mood,
+        moodToSave,
         cleanedIntentions,
         passions,
         JSON.stringify(worries),
@@ -857,9 +867,27 @@ export default function Journal({
     [isLite, recentReflections, dayOfYear]
   );
 
+  // Today counts as logged the moment anything is committed, so the dot fills
+  // on save rather than after the next fetch.
+  const todayLogged =
+    isSaved &&
+    (savedReflection.trim().length > 0 ||
+      savedFateInput.trim().length > 0 ||
+      savedMood.length > 0);
+
+  const dots = useMemo(
+    () => (isLite ? weekDots(recentReflections, dayOfYear, todayLogged) : []),
+    [isLite, recentReflections, dayOfYear, todayLogged]
+  );
+
+  const lastEntry = useMemo(
+    () => (isLite ? previousEntry(recentReflections, dayOfYear) : null),
+    [isLite, recentReflections, dayOfYear]
+  );
+
   const saveButton = (
     <button
-      onClick={handleSave}
+      onClick={() => void handleSave()}
       disabled={(!hasChanges && isSaved) || isLoading || isSaving}
       type="button"
       className={cn(
@@ -887,6 +915,31 @@ export default function Journal({
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-xl text-text-primary">Today</h2>
           <span className="text-xs text-text-secondary">{cycleLabelCompact}</span>
+        </div>
+
+        {/* This week, as seven dots. A filled week invites you to fill the next
+            day; a streak counter mostly invites you to stop once it breaks. */}
+        <div className="flex items-center gap-2" role="img" aria-label={`This week: ${dots.filter(d => d.logged).length} of 7 days written`}>
+          {dots.map((dot) => (
+            <span
+              key={dot.day}
+              title={dot.isToday ? 'Today' : `Day ${dot.day}`}
+              className={cn(
+                'h-2.5 w-2.5 rounded-full border transition-all duration-300',
+                dot.logged
+                  ? 'bg-accent border-accent'
+                  : dot.future
+                    ? 'bg-transparent border-tertiary'
+                    : 'bg-background-tertiary border-secondary',
+                dot.isToday && !dot.logged && 'ring-2 ring-accent/40 ring-offset-2 ring-offset-background-secondary'
+              )}
+            />
+          ))}
+          {lastEntry && (
+            <span className="ml-1 truncate text-xs text-text-secondary/80 italic">
+              {lastEntry.daysAgo === 1 ? 'Yesterday' : `${lastEntry.daysAgo} days ago`}: “{lastEntry.text}”
+            </span>
+          )}
         </div>
 
         <MementoMoriBar
@@ -926,20 +979,36 @@ export default function Journal({
               </cite>
             </blockquote>
 
-            {/* Amor Fati (Lite) — untethered from the evening */}
-            <AmorFatiControl
-              lite
-              fateInput={fateInput}
-              onFateInputChange={(val) => {
-                setFateInput(val);
-                setIsSaved(false);
-              }}
-              acceptanceTags={acceptanceTags}
-              onAcceptanceTagsChange={(tags) => {
-                setAcceptanceTags(tags);
-                setIsSaved(false);
-              }}
-            />
+            {/* Amor Fati (Lite) — untethered from the evening, and folded away
+                until it's wanted: it's optional, and open it is the tallest
+                card on the screen. Anything already logged keeps it open. */}
+            {fateOpen || fateInput.trim() || acceptanceTags.length > 0 ? (
+              <AmorFatiControl
+                lite
+                fateInput={fateInput}
+                onFateInputChange={(val) => {
+                  setFateInput(val);
+                  setIsSaved(false);
+                }}
+                acceptanceTags={acceptanceTags}
+                onAcceptanceTagsChange={(tags) => {
+                  setAcceptanceTags(tags);
+                  setIsSaved(false);
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setFateOpen(true);
+                  triggerHaptic('light');
+                }}
+                className="w-full rounded-xl border border-dashed border-tertiary bg-background-secondary/40 px-4 py-3 text-left text-sm text-text-secondary hover:border-secondary hover:text-text-primary transition-colors flex items-center gap-2"
+              >
+                <Heart size={16} aria-hidden="true" />
+                Something heavy today?
+              </button>
+            )}
 
             {/* The reflection — one box, one prompt */}
             <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md">
@@ -958,6 +1027,27 @@ export default function Journal({
                 aria-label="Reflection"
               />
 
+              {/* A blank box at the end of a long day is where journalling
+                  goes to die. One tap drops in a question; tapping again
+                  offers a different one. Never more than one at a time. */}
+              <div className="mt-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const question = promptForDay(dayOfYear, promptNudge);
+                    setPromptNudge((n) => n + 1);
+                    setReflection((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')}\n\n${question}\n` : `${question}\n`));
+                    setIsSaved(false);
+                    triggerHaptic('light');
+                  }}
+                  className="text-xs text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors"
+                >
+                  {promptNudge === 0 ? 'Give me a question' : 'Another question'}
+                </button>
+              </div>
+
+              {/* One tap here is a complete day: the mood saves on the spot, so
+                  an evening with nothing to say still counts. */}
               <div className="grid grid-cols-5 gap-2 mt-4">
                 {moodOptions.map(opt => (
                   <button
@@ -968,6 +1058,7 @@ export default function Journal({
                       setMood(opt.value);
                       setIsSaved(false);
                       triggerHaptic('light');
+                      if (!isSaving && !isLoading) void handleSave({ mood: opt.value });
                     }}
                     className={cn(
                       "rounded-lg border p-3 transition-all flex items-center justify-center",
@@ -1802,7 +1893,7 @@ export default function Journal({
               </Button>
             ) : (
               <button
-                onClick={handleSave}
+                onClick={() => void handleSave()}
                 disabled={(!hasChanges && isSaved) || isLoading || isSaving}
                 type="button"
                 className={cn(

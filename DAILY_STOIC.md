@@ -99,6 +99,15 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 6, 2026 (Lite, made daily)
+Six changes aimed at one thing: making the practice easy to keep. No new features, no charts, no commentary on consistency.
+- **A mood tap saves the day.** In Lite, tapping a mood commits immediately, so an evening with nothing to write still counts. `handleSave` takes an `overrides` argument because React state hasn't committed inside the click handler — without it the save writes the previous mood.
+- **The week as seven dots**, in the Lite header ([`weekDots`](src/daily-stoic/utils/lite.ts)). Deliberately not a streak counter: a filled week invites you to fill the next day, where a broken 40-day streak invites you to stop. Today's dot fills from the editor's own state, so it lands on save rather than after the next fetch.
+- **Yesterday, in one line** ([`previousEntry`](src/daily-stoic/utils/lite.ts)) — the thread that makes a journal feel continuous. Looks back up to a week over a gap, prefers the reflection, falls back to the obstacle, and skips the `###` headers a day written in Full carries.
+- **Amor Fati folds away** into a single "Something heavy today?" line until tapped — it's optional, and open it was the tallest card on the screen. A day that already carries an obstacle opens it unprompted.
+- **"Give me a question"** under the blank box drops in one prompt from [`REFLECTION_PROMPTS`](src/daily-stoic/utils/lite.ts) (deterministic per day; tapping again offers another). A blank rectangle at the end of a long day is where journalling goes to die.
+- **Lite's header is five controls, not eight**: today's page, the Enchiridion, the overflow menu, the Pause drill and Settings. Memento Mori's full grid and the Field Guide move into the menu. At 360px the Lite header now fits with nothing past the right edge (Full still overflows there — untouched).
+
 ### September 6, 2026 (Theme: system / light / dark)
 - **One light palette and one dark, chosen the way Marquee does it.** The eight-preset cycler (four light, four dark, advanced by a "Cycle Palette" button) is gone; Settings → Appearance is now a three-way `SegmentedControl` — **System · Light · Dark** — defaulting to **System**.
 - **System means system.** It stores no palette and clears `data-theme` entirely, so [`tokens.css`](src/daily-stoic/styles/tokens.css)'s own `prefers-color-scheme` block takes over and the app keeps following the device when it flips at sunset. An explicit choice stamps `data-theme="light"` / `"dark"`. The `<meta name="theme-color">` tint can't come from CSS, so [`lib/theme.ts`](src/daily-stoic/lib/theme.ts) sets it and a `matchMedia` listener keeps it honest while on System.
