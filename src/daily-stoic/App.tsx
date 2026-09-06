@@ -238,7 +238,11 @@ export default function App() {
           key.startsWith('daily-stoic:retro-rating-') ||
           key.startsWith('daily-stoic:focus-completed-') ||
           key.startsWith('daily-stoic:meditate-completed-') ||
-          key.startsWith('daily-stoic:selected-virtue-')
+          key.startsWith('daily-stoic:selected-virtue-') ||
+          // Per-day Lite escape-hatch flags. Day numbering restarts at 1 after
+          // a reset, so a leftover flag would silently open a fresh day in the
+          // full journal.
+          key.startsWith('daily-stoic:full-day-')
         )) {
           keysToRemove.push(key);
         }
