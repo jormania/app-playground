@@ -305,7 +305,9 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
             hint="Paste the URL of your duplicated Starter Template database."
           />
 
-          <div className="flex items-center gap-3 mt-2">
+          {/* ds Buttons are white-space: nowrap, so this row has to wrap or the
+              second button runs off the right edge on a phone. */}
+          <div className="flex flex-wrap items-center gap-3 mt-2">
             <Button onClick={handleTestConnection} disabled={status === 'testing'}>
               {status === 'testing' ? 'Testing...' : 'Test & Save Connection'}
             </Button>
@@ -368,7 +370,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
             hint="Create a key at console.anthropic.com. Used only to wake the mentor."
           />
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={handleTestMentorKey} disabled={mentorStatus === 'testing'}>
               {mentorStatus === 'testing' ? 'Testing...' : 'Test Key'}
             </Button>
