@@ -100,14 +100,29 @@ src/daily-stoic/
 ## Changelog
 
 ### September 6, 2026 (Lite Practice)
-- **Lite mode**: New Settings toggle (`daily-stoic:mode`, default `full`) rendering the daily screen as one page instead of the four-step journey. Purely presentational — it hides UI, never data.
-- **Memento Mori (Lite)**: New [`MementoMoriBar`](src/daily-stoic/components/MementoMoriBar.tsx) — the whole 80-year lifespan as a single bar with weeks lived and a daily-rotating question. Its arithmetic lives in [`utils/lifetime.ts`](src/daily-stoic/utils/lifetime.ts), which the full grid's numbers agree with by construction.
-- **Amor Fati (Lite)**: `AmorFatiControl` gained a `lite` prop — present-tense prompt ("What feels forced or heavy?"), single-select challenge type, teaching hints suppressed. Same `FateInput` / `AcceptanceTags` properties, so Full reads it back unchanged.
-- **Save path shared, not forked**: Lite renders from the same component state as the stepper. The Seneca question-combining effect is skipped in Lite (it would otherwise blank the free-text box), and every field Lite doesn't render is written back exactly as loaded — covered by [`JournalLite.test.tsx`](src/daily-stoic/JournalLite.test.tsx).
-- **Lite retrospective**: [`pickLiteRetrospective`](src/daily-stoic/utils/lite.ts) surfaces the nearest of the 30/90/365-day obstacles below the save button, once the day has no unsaved edits.
-- **Per-day escape hatch**: "Do the full practice today →" / "← Back to Lite", scoped to a single day so it lapses on its own.
-- **Lite loose ends swept**: the Socratic Mentor settings section (with the Anthropic key — no AI surface is reachable in Lite), the Morning Prep Time input and the morning push notification; the two structurally-empty tiles on `CycleRetrospectiveCard` (celebration, Digest and the shared PNG) and the two structurally-empty rows in `Stats`, each dropped only when the underlying data is actually zero. `syncIdb` takes the new mode explicitly, since the hook still reports the old one during the toggle's own handler. The [Field Guide](public/daily-stoic-guide.html) now documents Lite in Section II.
-- **Lite nav**: `useLiteActive(dayOfYear)` (mode + the per-day override, kept in sync through the `daily-stoic:settings-updated` event) filters `dashboardOptions` and redirects away from `LITE_HIDDEN_ROUTES` — the four dashboards Lite starves of input. Amor Fati, the Digest and Stats stay reachable.
+
+The four-step journey asks for eleven inputs across two sittings, half of them in the morning. **Lite** is the same practice at a weight that gets done: one screen, any hour. It is a presentation layer over the existing journal — same state, same save path, same Notion schema — so nothing is migrated, nothing is lost, and switching back restores everything at once.
+
+**The daily screen** ([`Journal.tsx`](src/daily-stoic/Journal.tsx), the `isLite` branch)
+- **Settings → Lite Practice** (`daily-stoic:mode`, default `full`) replaces the stepper with a single page. Existing users see no change until they flip it.
+- **Memento Mori (Lite)**: [`MementoMoriBar`](src/daily-stoic/components/MementoMoriBar.tsx) — the whole 80-year lifespan (4,160 weeks) as one bar with weeks lived, and a question that rotates daily. Week arithmetic and the question list live in [`utils/lifetime.ts`](src/daily-stoic/utils/lifetime.ts); the full grid agrees with it by construction.
+- **The day's maxim**, read-only, with its favourite heart.
+- **Amor Fati (Lite)**: `AmorFatiControl` gained a `lite` prop — present-tense prompt ("What feels forced or heavy?"), single-select challenge type, teaching hints suppressed. Untethered from the evening by design. Same `FateInput` / `AcceptanceTags` properties, so Full reads it back unchanged.
+- **One reflection box and the mood row.** Nothing but opening the app is mandatory; Lite days count toward the streak and the cycle exactly like Full days.
+- **Lite retrospective**: after saving, [`pickLiteRetrospective`](src/daily-stoic/utils/lite.ts) surfaces the nearest of the 30/90/365-day obstacles — the Amor Fati dashboard's idea, narrowed to one card, and hidden while there are unsaved edits so it never interrupts the writing.
+- **Per-day escape hatch**: "Do the full practice today →" opens the wizard for that day alone (`daily-stoic:full-day-<day>`); "← Back to Lite" reverses it. Day-scoped, so it lapses on its own.
+
+**Data safety — the part that needed care**
+- Lite renders from the same component state and saves through the same `handleSave`, so intentions, worries, passions and virtue on a day written in Full round-trip untouched through a Lite save. Covered by [`JournalLite.test.tsx`](src/daily-stoic/JournalLite.test.tsx).
+- The Seneca question-combining effect derives `reflection` from three question states that are always empty in Lite; left running it would blank the free-text box on every keystroke. It is skipped there.
+
+**The app narrows with the practice**
+- `useLiteActive(dayOfYear)` ([`lib/useJournalMode.ts`](src/daily-stoic/lib/useJournalMode.ts)) combines the setting with the per-day override and re-reads on `daily-stoic:settings-updated`, which the escape hatch dispatches — the nav and the journal read the same hook and can't disagree about the mode on screen.
+- **Nav**: `LITE_HIDDEN_ROUTES` — Spheres of Choice, Passions & Judgments, Commitments, The Council — leave `dashboardOptions`, and a stale hash, bookmark or notification tap pointing at one redirects home. Memento Mori, the Enchiridion, Amor Fati, the Digest and Stats stay: Lite's own entries still feed them.
+- **Settings**: the Socratic Mentor section, its key field and toggle are hidden — `MentorPanel` is mounted only in the stepper, Commitments and the Council, so no AI surface is reachable in Lite at all.
+- **Reminders**: Habit Reminders drops to a single evening nudge. Settings writes `morningEnabled: false` and `lite: true` into the reminders IndexedDB state; [`daily-stoic-sw.js`](public/daily-stoic-sw.js) skips the morning notification on an explicit `false` and swaps the evening body to Lite's wording ("The day's maxim, one honest line, your mood."). Both keys are absent from an older state object, which keeps the original behaviour — already-installed workers are unaffected. `syncIdb` takes the mode explicitly, since during the toggle's own handler the hook still reports the old one.
+- **Empty-by-construction panels step aside**: `CycleRetrospectiveCard` drops *Concerns Resolved* and *Citadel Vigilance* (celebration, Digest and the shared PNG alike), and `Stats` drops *Premeditatio Malorum* and *Promises Kept* — each only when the cycle or period genuinely holds none of that data, so history written in Full still reports its real numbers.
+- The [Field Guide](public/daily-stoic-guide.html) documents Lite in Section II.
 
 ### July 11, 2026 (Milestone 1)
 - **Notion Sync Integration**: Implemented [`NotionService.ts`](src/daily-stoic/services/NotionService.ts) and connected `/api/notion` relay. Created Settings panel for secure local credentials management.
