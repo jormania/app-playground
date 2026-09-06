@@ -339,7 +339,12 @@ describe('Journal — Lite, day to day', () => {
     expect(line.className).toContain('whitespace-nowrap');
     expect(line.className).not.toContain('truncate');
     // ...inside a strip that scrolls, so the page itself never does.
-    expect(line.parentElement?.className).toContain('overflow-x-auto');
+    const strip = line.parentElement!;
+    expect(strip.className).toContain('overflow-x-auto');
+    // Shrinkable inside the flex row it shares with the dots — without
+    // min-w-0 a nowrap child pushes the whole row wider instead of scrolling.
+    expect(strip.className).toContain('min-w-0');
+    expect(strip.parentElement?.querySelector('[role="img"]')).toBeTruthy();
   });
 
   it('keeps Amor Fati folded until asked, and unfolds it for a day that has one', async () => {

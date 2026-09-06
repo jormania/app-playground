@@ -919,8 +919,8 @@ export default function Journal({
 
         {/* This week, as seven dots. A filled week invites you to fill the next
             day; a streak counter mostly invites you to stop once it breaks. */}
-        <div className="space-y-2">
-        <div className="flex items-center gap-2" role="img" aria-label={`This week: ${dots.filter(d => d.logged).length} of 7 days written`}>
+        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0" role="img" aria-label={`This week: ${dots.filter(d => d.logged).length} of 7 days written`}>
           {dots.map((dot) => (
             <span
               key={dot.day}
@@ -938,12 +938,13 @@ export default function Journal({
           ))}
         </div>
 
-        {/* Yesterday's line is whatever length it is. Rather than cut it off,
-            it scrolls sideways inside its own strip — the page itself never
-            scrolls horizontally. */}
+        {/* Yesterday, as a ticker beside the dots: one line of whatever length
+            it is, swiped sideways in the space the dots leave. `min-w-0` is
+            what lets it shrink inside the flex row instead of pushing the page
+            wider; the fade on the right edge says there's more to the right. */}
         {lastEntry && (
-          <div className="overflow-x-auto">
-            <p className="whitespace-nowrap text-xs text-text-secondary/80 italic pb-1">
+          <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,#000_88%,transparent)]">
+            <p className="whitespace-nowrap text-xs text-text-secondary/80 italic">
               {lastEntry.daysAgo === 1 ? 'Yesterday' : `${lastEntry.daysAgo} days ago`}: “{lastEntry.text}”
             </p>
           </div>
