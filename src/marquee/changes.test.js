@@ -190,6 +190,33 @@ describe('productions', () => {
     expect(gone[0].openCount).toBe(0)
   })
 
+  it('calls a run free only when the venue priced every one of its dates at zero', () => {
+    // "0 lei (Acces pe bază de bilet cu valoare 0)" is what eventbook prints
+    // for a genuinely free showing — free entry, ticket still required.
+    const free = toProductions([
+      event({ key: 'a', title: 'Film românesc', date: '2026-09-09', price: 0 }),
+      event({ key: 'b', title: 'Film românesc', date: '2026-09-10', price: 0 }),
+    ])
+    expect(free[0].free).toBe(true)
+  })
+
+  it('does not call an UNPRICED run free — that is unknown, not zero', () => {
+    // The distinction the facet lives or dies on: several sources publish no
+    // price at all, and sweeping those in would make "Free" mean nothing.
+    const unpriced = toProductions([event({ key: 'a', price: null })])
+    expect(unpriced[0].free).toBe(false)
+  })
+
+  it('does not call a run free on the strength of one gratis night among paid ones', () => {
+    // `p.price` takes the first priced showing and would say 0 here.
+    const mixed = toProductions([
+      event({ key: 'a', title: 'Mixed', date: '2026-09-09', price: 0 }),
+      event({ key: 'b', title: 'Mixed', date: '2026-09-10', price: 40 }),
+    ])
+    expect(mixed[0].price).toBe(0)
+    expect(mixed[0].free).toBe(false)
+  })
+
   it('keeps the same title at different venues apart', () => {
     const two = toProductions([event({ key: 'x' }), event({ key: 'y', venue: 'Club Control' })])
     expect(two).toHaveLength(2)

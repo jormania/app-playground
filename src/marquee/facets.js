@@ -33,12 +33,14 @@ export const FACET = {
   SOLD_OUT: 'sold-out',
   KEPT: 'kept',
   WATCHING: 'watching',
+  FREE: 'free',
   IGNORED: 'ignored',
 }
 
 /** In the order they are drawn, which is roughly "what the venue did" →
  *  "what you did about it": what changed, what you can buy, what you can't,
- *  then the three marks that are yours. */
+ *  what it costs, then the three marks that are yours. `Free` sits last of the
+ *  venue's own facts, immediately before `Ignored`, where it was asked for. */
 export const FACETS = [
   {
     id: FACET.CHANGED,
@@ -86,6 +88,21 @@ export const FACETS = [
     // comes back — neither preference may empty this view.
     lifts: { hideSoldOut: false, hideKept: false },
     empty: 'Nothing you’re watching is on right now.',
+  },
+  {
+    id: FACET.FREE,
+    label: 'Free',
+    title: 'Only runs the venue itself prices at zero — a ticket may still be needed',
+    // `p.free` is the strict reading (programme.js): every price published for
+    // the run is 0, and at least one was published. Unpriced is not free.
+    // eventbook prints these as "0 lei (Acces pe bază de bilet cu valoare 0)" —
+    // free entry, ticket still required, which is why the title says so rather
+    // than promising you can walk in.
+    test: (p) => Boolean(p.free),
+    // Nothing lifted: free says what it costs, not what you did about it or
+    // whether it is still going. A free run you've hidden stays hidden.
+    lifts: {},
+    empty: 'Nothing here is free.',
   },
   {
     id: FACET.IGNORED,

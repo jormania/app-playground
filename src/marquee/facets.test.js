@@ -27,8 +27,9 @@ describe('the facets', () => {
     const gone = p({ id: 'c', allSoldOut: true })
     const kept = p({ id: 'd', saved: true })
     const watched = p({ id: 'e' })
+    const free = p({ id: 'g', free: true })
     const ignored = p({ id: 'f' })
-    const all = [changed, onSale, gone, kept, watched, ignored]
+    const all = [changed, onSale, gone, kept, watched, free, ignored]
     const context = ctx({
       changedKeys: new Map([['k2', 'tickets-opened']]),
       watchlist: { e: { title: 'Tomcat', venue: 'Teatrul Excelsior' } },
@@ -42,9 +43,15 @@ describe('the facets', () => {
     expect(ids(FACET.SOLD_OUT)).toEqual(['c'])
     expect(ids(FACET.KEPT)).toEqual(['d'])
     expect(ids(FACET.WATCHING)).toEqual(['e'])
+    expect(ids(FACET.FREE)).toEqual(['g'])
     expect(ids(FACET.IGNORED)).toEqual(['f'])
     // No facet is everything the cascade left standing.
-    expect(ids(null)).toHaveLength(6)
+    expect(ids(null)).toHaveLength(7)
+  })
+
+  it('draws Free immediately before Ignored, where it was asked for', () => {
+    const order = FACETS.map((f) => f.id)
+    expect(order.indexOf(FACET.FREE)).toBe(order.indexOf(FACET.IGNORED) - 1)
   })
 
   it('counts one night of a run as kept, the way the card’s own chip does', () => {

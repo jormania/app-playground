@@ -112,6 +112,15 @@ export function toProductions(events) {
     p.anyOpen = p.showings.some((s) => s.ticketState === 'open')
     p.allSoldOut = p.showings.length > 0 && p.showings.every((s) => s.ticketState === 'sold-out')
     p.price = p.showings.find((s) => s.price != null)?.price ?? null
+    // Free means the venue actually said so — every price it published for this
+    // run is zero, and it published at least one. A run with no price at all is
+    // NOT free, it is unpriced, and the two must not collapse: an unpriced
+    // listing is the commonest state on some sources, and sweeping it in here
+    // would make the facet useless. Deliberately stricter than `p.price === 0`,
+    // which takes the first priced showing and would call a run free on the
+    // strength of one gratis night among paid ones.
+    const priced = p.showings.map((s) => s.price).filter((v) => v != null)
+    p.free = priced.length > 0 && priced.every((v) => v === 0)
     // Seats left across the run, and only where every buyable night actually
     // reported a number (§9.68). One unknown night makes the total a lie in
     // the one direction that matters — it would under-report, and this label

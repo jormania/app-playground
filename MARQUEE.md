@@ -2733,6 +2733,37 @@ That is the venue's own inconsistency, not a parsing error, and picking a
 winner between two things the site genuinely says is a bigger decision than it
 looks.
 
+### 9.69 A "Free" facet (2026-09-07)
+
+Asked for against an eventbook listing — [BSFF 2026's *Film
+românesc*](https://eventbook.ro/film/bilete-bsff-2026-film-romanesc?hall=cinema-muzeul-taranului-studio-horia-bernea)
+— and placed, as asked, immediately before `Ignored`: last of the facts about
+the venue's own listing, before the three marks that are yours.
+
+**The whole design is in one distinction: free is not the same as unpriced.**
+Several sources publish no price at all (Filarmonica's Oveit feed, most of
+Metropolis), and a facet that swept those in would select half the programme
+and mean nothing. So `p.free` (programme.js) is the strict reading — **every
+price published for the run is 0, and at least one was published**. That is
+also deliberately stricter than `p.price === 0`, which takes the first priced
+showing and would call a run free on the strength of one gratis night among
+paid ones; both readings are pinned by their own test.
+
+What the venue actually prints for one of these is `0 lei (Acces pe bază de
+bilet cu valoare 0)` — free entry, ticket still required — which is why the
+chip's title says a ticket may still be needed rather than promising you can
+walk in.
+
+Nothing is lifted (`lifts: {}`). Free says what a run costs, not what you did
+about it or whether it is still going, so a free run you have hidden stays
+hidden — same reasoning as `On sale`, and the opposite of `Kept`, where the
+press has to override the preference or the button does nothing (§9.64).
+
+**Verified live** against `cinema-muzeul-taranului-studio-horia-bernea`: 32
+productions, 4 free — the linked *Film românesc*, two Tibo Pinsard
+masterclasses and a traditional-music concert — with the hall's `Festival
+Pass` (190 lei) and every 30-40 lei screening correctly left out.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
