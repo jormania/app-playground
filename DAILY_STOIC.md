@@ -99,6 +99,11 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (The mood gets its own card)
+- The five faces sat inside the Reflection card under the textarea, reading as an appendage to the writing, and as five unlabelled glyphs they said nothing about what they were or what tapping one did — which hid the most useful thing in Lite: **one tap logs the day**.
+- Now a card of its own directly under Reflection, at the same visual weight: **☀ How was today?** with the line *"One tap. That alone logs the day."* Every face wears its word (Great · Good · Neutral · Bad · Awful), and once one is chosen the line becomes *"Saved — tap Good again to clear it,"* which is also where the tap-to-clear undo finally becomes visible.
+- `Sun` pairs with the Reflection card's `Moon`. Words fit unwrapped at 360px and 390px.
+
 ### September 7, 2026 (Lite audit)
 A pass over the Lite screen for defects rather than features.
 - **A day whose only entry was a challenge type read as unlogged.** `acceptanceTags` had no saved baseline, so it was missing from `hasChanges` (no "unsaved changes" hint) and from the dot's own rule — while Stats, the streak and the digest counted it, because `hasContent` includes tags. The baseline exists now, and the dot reads `hasContent` directly, so it can't drift from the counters again.

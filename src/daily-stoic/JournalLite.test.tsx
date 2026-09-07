@@ -447,6 +447,31 @@ describe('Journal — Lite, audit fixes', () => {
     await waitFor(() => expect(screen.getByLabelText('This week: 1 of 7 days written')).toBeTruthy());
   });
 
+  it('gives the mood its own card, its question and a word under every face', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockImplementation(
+      async (_t, _d, _q, text, _date, _id, _f, _tg, _fav, mood) => emptyDayRecord({ text, mood })
+    );
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    expect(screen.getByText('How was today?')).toBeTruthy();
+    expect(screen.getByText('One tap. That alone logs the day.')).toBeTruthy();
+    for (const word of ['Great', 'Good', 'Neutral', 'Bad', 'Awful']) {
+      expect(screen.getByText(word)).toBeTruthy();
+    }
+
+    // It stands apart from the writing rather than sitting inside it.
+    const moodCard = screen.getByText('How was today?').closest('section')!;
+    expect(moodCard.contains(screen.getByLabelText('Reflection'))).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: 'Good' }));
+    await waitFor(() => expect(screen.getByText('Saved — tap Good again to clear it.')).toBeTruthy());
+  });
+
   it('clears a mis-tapped mood when the same face is tapped again', async () => {
     enableLite();
     vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);

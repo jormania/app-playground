@@ -1173,35 +1173,58 @@ export default function Journal({
                 </button>
               </div>
 
-              {/* One tap here is a complete day: the mood saves on the spot, so
-                  an evening with nothing to say still counts. */}
-              <div className="grid grid-cols-5 gap-2 mt-4">
-                {moodOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    title={mood === opt.value ? `${opt.value} — tap again to clear` : opt.value}
-                    aria-label={opt.value}
-                    aria-pressed={mood === opt.value}
-                    onClick={() => {
-                      // Tapping the mood you're already on clears it. The tap
-                      // saves on the spot, so a mis-tap would otherwise be
-                      // written to the record with no way back.
-                      const next = mood === opt.value ? '' : opt.value;
-                      setMood(next);
-                      setIsSaved(false);
-                      triggerHaptic('light');
-                      if (!isSaving && !isLoading) void handleSave({ mood: next });
-                    }}
-                    className={cn(
-                      "rounded-lg border p-3 transition-all flex items-center justify-center",
-                      mood === opt.value
-                        ? "border-accent bg-accent-soft scale-105 text-accent"
-                        : "border-tertiary text-text-secondary hover:border-secondary hover:bg-background-tertiary hover:text-text-primary"
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            </section>
+
+            {/* Mood is its own act, not a footnote to the writing — and the
+                most useful thing about it (one tap logs the day) was invisible
+                behind five unlabelled glyphs. Its own card, its own question,
+                and every face wears its word. */}
+            <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md">
+              <h3 className="font-display text-xl text-text-primary mb-1 flex items-center gap-2">
+                <Sun size={20} className="text-text-secondary" /> How was today?
+              </h3>
+              <p className="text-xs text-text-secondary mb-4">
+                {mood
+                  ? `Saved — tap ${mood} again to clear it.`
+                  : 'One tap. That alone logs the day.'}
+              </p>
+
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                {moodOptions.map(opt => {
+                  const selected = mood === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      title={selected ? `${opt.value} — tap again to clear` : opt.value}
+                      aria-label={opt.value}
+                      aria-pressed={selected}
+                      onClick={() => {
+                        // Tapping the mood you're already on clears it. The tap
+                        // saves on the spot, so a mis-tap would otherwise be
+                        // written to the record with no way back.
+                        const next = selected ? '' : opt.value;
+                        setMood(next);
+                        setIsSaved(false);
+                        triggerHaptic('light');
+                        if (!isSaving && !isLoading) void handleSave({ mood: next });
+                      }}
+                      className={cn(
+                        "rounded-lg border px-1 py-3 transition-all flex flex-col items-center justify-center gap-1.5",
+                        selected
+                          ? "border-accent bg-accent-soft text-accent shadow-sm"
+                          : "border-tertiary text-text-secondary hover:border-secondary hover:bg-background-tertiary hover:text-text-primary"
+                      )}
+                    >
+                      {opt.label}
+                      <span className={cn(
+                        "text-[10px] leading-none tracking-tight",
+                        selected ? "font-semibold" : "font-medium"
+                      )}>
+                        {opt.value}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
 
