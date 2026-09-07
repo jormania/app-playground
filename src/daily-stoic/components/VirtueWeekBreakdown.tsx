@@ -1,5 +1,6 @@
 import { Lightbulb, Swords, Gavel, Anchor, Star, type LucideIcon } from 'lucide-react';
 import { VirtueWeekStats } from '../utils/stats';
+import { moodForScore } from '../data/moods';
 
 const VIRTUE_ICONS: Record<string, LucideIcon> = {
   Wisdom: Lightbulb,
@@ -61,8 +62,24 @@ export default function VirtueWeekBreakdown({ stats }: VirtueWeekBreakdownProps)
                       ({s.loggedDays}/{s.totalDays})
                     </span>
                   </td>
-                  <td className="py-2.5 px-1 sm:px-2 text-right font-mono text-text-secondary whitespace-nowrap">
-                    {s.avgMood !== null ? `${s.avgMood} / 5` : '—'}
+                  {/* The same five faces as the mood row and the MoodGraph, so
+                      an average reads at a glance instead of as a fraction.
+                      The exact number stays in the label. */}
+                  <td className="py-2.5 px-1 sm:px-2 text-right text-text-secondary whitespace-nowrap">
+                    {s.avgMood !== null ? (() => {
+                      const mood = moodForScore(s.avgMood);
+                      const MoodIcon = mood.Icon;
+                      return (
+                        <span
+                          className="inline-flex justify-end w-full text-text-primary"
+                          title={`${mood.value} — ${s.avgMood} / 5 average`}
+                          aria-label={`Average mood ${mood.value}, ${s.avgMood} out of 5`}
+                          role="img"
+                        >
+                          <MoodIcon size={18} strokeWidth={2} />
+                        </span>
+                      );
+                    })() : <span className="font-mono">—</span>}
                   </td>
                   <td className="py-2.5 pl-2 text-right font-mono text-text-secondary hidden sm:table-cell">{s.favoritesCount}</td>
                 </tr>

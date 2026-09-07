@@ -23,8 +23,16 @@ describe('VirtueWeekBreakdown', () => {
     expect(screen.getByText('Temperance')).toBeTruthy();
 
     expect(screen.getByText('(10/14)')).toBeTruthy();
-    expect(screen.getByText('3.5 / 5')).toBeTruthy();
-    expect(screen.getByText('5 / 5')).toBeTruthy();
+  });
+
+  it('shows the average mood as a face, with the exact figure in its label', () => {
+    render(<VirtueWeekBreakdown stats={stats} />);
+
+    // 3.5 rounds to Good; 5 is Great. The number is never lost — it stays in
+    // the label so a screen reader (and a long press) still gets it.
+    expect(screen.getByLabelText('Average mood Good, 3.5 out of 5')).toBeTruthy();
+    expect(screen.getByLabelText('Average mood Great, 5 out of 5')).toBeTruthy();
+    expect(screen.queryByText('3.5 / 5')).toBeNull();
   });
 
   it('shows an em dash for average mood when no mood data exists', () => {

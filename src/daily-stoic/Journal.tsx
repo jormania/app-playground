@@ -13,6 +13,7 @@ import { cn } from './lib/cn';
 import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import { useCommitments } from './lib/useCommitments';
 import { getWeekCurriculum } from './lib/curriculum';
+import { MOODS } from './data/moods';
 import { useJournalMode, fullDayKey } from './lib/useJournalMode';
 import { pickLiteRetrospective, weekDots, previousEntry, promptForDay } from './utils/lite';
 import type { ReflectionRecord } from './services/NotionService';
@@ -25,11 +26,7 @@ import {
 } from './lib/mentor';
 import { Compass, Sunrise } from 'lucide-react';
 import {
-  SmilePlus,
   Smile,
-  Meh,
-  Frown,
-  Angry,
   Skull,
   BookOpen,
   Sun,
@@ -761,13 +758,12 @@ export default function Journal({
     worriesChanged ||
     virtueChanged;
 
-  const moodOptions = [
-    { label: <SmilePlus size={24} strokeWidth={2} />, value: 'Great' },
-    { label: <Smile size={24} strokeWidth={2} />, value: 'Good' },
-    { label: <Meh size={24} strokeWidth={2} />, value: 'Neutral' },
-    { label: <Frown size={24} strokeWidth={2} />, value: 'Bad' },
-    { label: <Angry size={24} strokeWidth={2} />, value: 'Awful' }
-  ];
+  // From the one mood vocabulary (data/moods.ts), so the face you tap here is
+  // the same face the MoodGraph and the Virtue Week average show back to you.
+  const moodOptions = MOODS.map(({ value, Icon }) => ({
+    value,
+    label: <Icon size={24} strokeWidth={2} />,
+  }));
 
   // Stepper steps configuration
   const steps = [

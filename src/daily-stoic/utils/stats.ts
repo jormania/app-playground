@@ -1,17 +1,12 @@
 import { ReflectionRecord } from '../services/NotionService';
 import { hasContent } from './logged';
+import { MOOD_SCORES } from '../data/moods';
 import { getCycleInfo, WEEK_VIRTUES, WeekVirtue } from './date';
 
 // Same 5-point scale as Journal.tsx's mood picker (Great..Awful). Averaging
 // this is plain arithmetic on ordinal survey data, not an interpretive
 // judgment — Stats states the number, it doesn't say what to do about it.
-const MOOD_SCORES: Record<string, number> = {
-  Great: 5,
-  Good: 4,
-  Neutral: 3,
-  Bad: 2,
-  Awful: 1,
-};
+
 
 export interface VirtueWeekStats {
   virtue: WeekVirtue;

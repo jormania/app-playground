@@ -1,10 +1,5 @@
-import { 
-  SmilePlus, 
-  Smile, 
-  Meh, 
-  Frown, 
-  Angry 
-} from 'lucide-react';
+import { Meh } from 'lucide-react';
+import { MOODS } from '../data/moods';
 
 interface MoodGraphProps {
   records: Array<{ mood?: string }>;
@@ -19,13 +14,8 @@ export default function MoodGraph({ records }: MoodGraphProps) {
     'Awful': 0,
   };
 
-  const icons: Record<string, any> = {
-    'Great': SmilePlus,
-    'Good': Smile,
-    'Neutral': Meh,
-    'Bad': Frown,
-    'Awful': Angry,
-  };
+  // One vocabulary of faces — see data/moods.ts.
+  const icons: Record<string, any> = Object.fromEntries(MOODS.map((m) => [m.value, m.Icon]));
 
   const labels: Record<string, string> = {
     'Great': 'Great',
