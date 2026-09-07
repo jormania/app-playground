@@ -42,7 +42,7 @@ function build(...names) {
 const { kindFor: swKindFor } = build('kindFor')
 const { notifiableChanges: swNotifiableChanges } = build('kindFor', 'notifiableChanges')
 const { notifyTitle: swNotifyTitle } = build('notifyTitle')
-const { notifyBody: swNotifyBody } = build('notifyBody')
+const { notifyBody: swNotifyBody } = build('seatsNote', 'notifyBody')
 const { isQuietHours: swIsQuietHours } = build('isQuietHours')
 const { nextSnapshot: swNextSnapshot } = build('toSnapshotMap', 'answeredVenues', 'nextSnapshot')
 
@@ -81,6 +81,14 @@ describe('service worker mirrors notify.js', () => {
     expect(swNotifyTitle(many)).toBe(notifyTitle(many))
     expect(swNotifyBody(one)).toBe(notifyBody(one))
     expect(swNotifyBody(many)).toBe(notifyBody(many))
+
+    // §9.68: the seat count qualifies the label on both sides, or on neither.
+    const scarce = [{ kind: 'tickets-opened', title: 'Familia Addams', venue: 'Excelsior', seatsLeft: 1 }]
+    const plenty = [{ kind: 'tickets-opened', title: 'Familia Addams', venue: 'Excelsior', seatsLeft: 140 }]
+    expect(swNotifyBody(scarce)).toBe(notifyBody(scarce))
+    expect(swNotifyBody(scarce)).toContain('1 seat left')
+    expect(swNotifyBody(plenty)).toBe(notifyBody(plenty))
+    expect(swNotifyBody(plenty)).not.toContain('left')
   })
 
   it('isQuietHours agrees at the window edges', () => {

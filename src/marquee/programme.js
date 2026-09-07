@@ -112,6 +112,17 @@ export function toProductions(events) {
     p.anyOpen = p.showings.some((s) => s.ticketState === 'open')
     p.allSoldOut = p.showings.length > 0 && p.showings.every((s) => s.ticketState === 'sold-out')
     p.price = p.showings.find((s) => s.price != null)?.price ?? null
+    // Seats left across the run, and only where every buyable night actually
+    // reported a number (§9.68). One unknown night makes the total a lie in
+    // the one direction that matters — it would under-report, and this label
+    // exists to warn, never to reassure — so the whole thing goes null
+    // instead. A production with nothing on sale has no count, not zero:
+    // zero here would claim a sold-out house we did not measure.
+    const open = p.showings.filter((s) => s.ticketState === 'open')
+    p.openCount = open.length
+    p.seatsLeft = open.length > 0 && open.every((s) => typeof s.seatsLeft === 'number')
+      ? open.reduce((n, s) => n + s.seatsLeft, 0)
+      : null
   }
   return out.sort((a, b) => String(a.firstDate).localeCompare(String(b.firstDate)) || a.title.localeCompare(b.title, 'ro'))
 }

@@ -212,6 +212,56 @@ describe('Programme — the "no tickets listed" chip', () => {
   })
 })
 
+// §9.68 — "tickets on sale" said the same thing for one returned seat and for
+// a full house, because the venue's own button does.
+describe('Programme — the seat count', () => {
+  const venues = [{ name: 'Teatrul Excelsior', category: 'play' }]
+
+  it('replaces the "tickets" chip with the count when the house is nearly gone', () => {
+    const days = byDate(toProductions([event({ ticketState: 'open', seatsLeft: 1 })]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.getByText('1 seat left')).toBeTruthy()
+    expect(screen.queryByText('tickets')).toBeNull()
+  })
+
+  it('stands NEXT TO "tickets on sale" rather than being suppressed by it', () => {
+    // The reported bug in one assertion: a change chip saying the tickets are
+    // on sale, and beside it the fact that there is exactly one.
+    const days = byDate(toProductions([event({ ticketState: 'open', seatsLeft: 1 })]))
+    const changedKeys = new Map([['k', 'tickets-opened']])
+    render(<Programme {...baseProps} changedKeys={changedKeys} days={days} venues={venues} />)
+    expect(screen.getByText('tickets on sale')).toBeTruthy()
+    expect(screen.getByText('1 seat left')).toBeTruthy()
+  })
+
+  it('keeps the plain chip when there are plenty, or when nobody counted', () => {
+    for (const seatsLeft of [140, null]) {
+      const days = byDate(toProductions([event({ ticketState: 'open', seatsLeft })]))
+      render(<Programme {...baseProps} days={days} venues={venues} />)
+      expect(screen.getByText('tickets')).toBeTruthy()
+      cleanup()
+    }
+  })
+
+  it('marks the scarce night itself, not just the run', () => {
+    const days = byDate(toProductions([
+      event({ key: 'a', date: '2026-09-23', time: '17:00', ticketState: 'open', seatsLeft: 2 }),
+      event({ key: 'b', date: '2026-09-23', time: '20:00', ticketState: 'sold-out' }),
+    ]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={venues} />)
+    const dates = [...container.querySelectorAll('.date')]
+    expect(dates[0].textContent).toContain('2 left')
+    expect(dates[1].textContent).not.toContain('left')
+  })
+
+  it('says nothing at all about seats on a sold-out card', () => {
+    const days = byDate(toProductions([event({ ticketState: 'sold-out', seatsLeft: 0 })]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.getByText('sold out')).toBeTruthy()
+    expect(screen.queryByText('none left')).toBeNull()
+  })
+})
+
 // §9.63 — the sold-out card used to be a dead end: a disabled Keep and nothing
 // to do about it.
 describe('Programme — watching a sold-out production', () => {

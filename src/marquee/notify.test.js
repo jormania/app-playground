@@ -35,7 +35,7 @@ describe('notifiableChanges', () => {
 
   it('only surfaces kinds the caller actually asked for', () => {
     expect(notifiableChanges(before, events, ['tickets-opened'])).toEqual([
-      { kind: 'tickets-opened', key: 'a', title: 'Tomcat', venue: 'Excelsior' },
+      { kind: 'tickets-opened', key: 'a', title: 'Tomcat', venue: 'Excelsior', seatsLeft: null },
     ])
   })
 

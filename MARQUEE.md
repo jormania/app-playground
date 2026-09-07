@@ -191,6 +191,16 @@ attribute). The real lesson isn't "Excelsior can't be done" — it's **check the
 detail page's actual response before concluding a field is unreachable**, not
 just the listing page's.
 
+**A hop after the hop: `enrich()` (§9.68).** Where `follow()` asks for pages
+discovered in the first response, `enrich()` asks for what only the SECOND
+response can tell you exists — Excelsior's per-showing seat counts, which are
+keyed on ids and on an open/sold-out state that live on the detail pages
+`follow` just fetched. It runs after the health gate's inputs are settled and
+its failures cost only what it went to get, so it is the right place for a
+nicety and the wrong place for anything a venue's programme depends on. Its
+requests may carry `method`/`body` (the one POST in the app) and a `tag`,
+which is how `parse()` tells one identical-URL response from another.
+
 **Rule: a new adapter picks up every field this app already knows how to use,
 not only the minimum that lists a showing.** No source left behind — poster,
 price and a real description (§9.25) are as much a part of "reading a venue's
@@ -293,6 +303,7 @@ lossless and the two apps could share a reader later.
 | `hall` | string? | The location column, when it says something (`SPECTACOL ITINERANT`) |
 | `link` | url | The show's own page |
 | `ticketState` | enum | `open` · `sold-out` · `none` (announced, no ticket link yet) |
+| `seatsLeft` | number? | Free seats, where a venue's ticketing exposes a count (Excelsior only — §9.68). **Null is "unknown", never "plenty"**; 0 is a real, different answer |
 | `ticketsUrl` | url? | When it differs from `link` |
 
 Derived by the client, never parsed: `firstSeen`, `ticketsOpenedAt`, `lastSeen`.
@@ -2617,15 +2628,122 @@ Two things worth recording rather than assuming:
   `/teatru/`) on a different site entirely, deliberately not added — asked
   for explicitly: the cinema only.
 
+### 9.68 "Tickets on sale" meant one seat (2026-09-07)
+
+**Reported from a phone**, against a Familia Addams card at Teatrul Excelsior:
+*"This says tickets on sale, has just been updated, but no tickets exist."*
+Then the same for Mickey Mouse trebuie să plece, two cards down.
+
+**Both cards were right, and both were useless.** Checked against the venue's
+own ticketing back-end rather than its page text:
+
+| Showing | The site's button | Free | Sold | Held in carts |
+|---|---|---|---|---|
+| Familia Addams, 8 Sept 19:00 | Alege locurile | **1** | 175 | 4 |
+| Familia Addams, 9 Sept 19:00 | Sold out | 0 | 174 | 6 |
+| Mickey Mouse, 10 Sept 17:00 | Alege locurile | **2** | 31 | 3 |
+| Mickey Mouse, 10/11 Sept ×3 | Sold out | 0 | 32 | 4 |
+
+One seat out of 180; two out of 36. §9.51's reader was doing exactly its job —
+and its job was to copy a boolean. `select-method-button` renders identically
+for one returned ticket and for a full house, so a night that sold out, had a
+single seat released, and flipped back produced a genuine `tickets-opened`
+change, a "TICKETS ON SALE" chip, and a tap through to nothing. The signal was
+true and the message was wrong, which is worse than a broken parser: nothing
+looks like it needs fixing.
+
+**The number exists and is public.** The ticketsys plugin Excelsior runs
+answers `POST /spring/web/section/eventInstance/new` with a whole seat map,
+per-seat status included, for any event-instance id — and each showing's id is
+already in the detail page this adapter fetches anyway, as `<input
+type="hidden" id="eiId">`, ~550 bytes above its own date header. So the count
+is one request per buyable showing, on top of a hop that already runs. This
+also settles what the Open list below called "Excelsior's prices need a third
+hop": the same response carries `pcds`, the price categories. Deliberately not
+taken in this change — it would alter what a Wanderlist save writes, which is
+a separate decision from correcting a misleading label.
+
+**A third hop, and a third rung of the ladder for it.** `scan.js` gained two
+small capabilities, both opt-in and both used by exactly one adapter:
+
+- **`request.method` / `request.body`**, so a GET-only pipeline can make the
+  one POST this needs, and **`request.tag`**, carried through `fetchOne` onto
+  the page. The tag is load-bearing: every seat request goes to the same URL
+  and the response carries no id of its own, so nothing else could keep one
+  showing's seats off another's card.
+- **`adapter.enrich(pages)`**, run after `follow`, for a question that can
+  only be asked once the second hop has answered — which showings are on sale
+  is a fact of the detail pages `follow` just fetched. It is defended as an
+  enrichment, not a source: it runs *after* every health decision, a page that
+  fails is dropped, and an adapter that throws in there loses its counts
+  rather than its venue. `marquee-adapters.test.js` pins that with a 503 from
+  the ticketing API — the venue still reports `ok` with all 6 events, just
+  with no numbers.
+
+**What the reader does with it.** `enrich()` asks only about showings the
+detail page itself called open (a sold-out night's state already says
+everything, which is what keeps the hop small: 10 requests for Excelsior's
+whole 120-day programme, ~4s), and `freeSeats()` counts only status `0`.
+A seat sitting in someone else's basket (`20`, `40`) is not one you can have,
+and counting it would recreate the exact overcount this exists to fix.
+
+Three distinctions the code holds and the wording follows:
+
+1. **Null is not zero.** Null is "we didn't measure"; 0 is "the button is up
+   and the house is gone". Both are real answers and neither is rounded into
+   the other. A count is attached only to a state the *detail page* called
+   open — pairing a live number with the listing's static column (§9.51 again)
+   would read far more confident than either half deserves.
+2. **A partial total is worse than none.** `production.seatsLeft` sums the
+   open nights only when every one of them reported; one unknown night and the
+   whole thing goes null. The error would always be in the same direction, and
+   this label exists to warn, never to reassure.
+3. **A big number is not news.** `formatSeatsLeft` says nothing above 10
+   (`SEATS_SCARCE`) — generous for a 36-seat studio, stingy for a 500-seat
+   house, which is the right way round: what matters is how many tickets
+   exist, not what fraction of the room they are. "175 seats left" is noise;
+   "1 seat left" changes what you do.
+
+**Where it shows.** The scarce count *replaces* the "tickets" chip — and,
+unlike that chip, is **not** suppressed next to "tickets on sale". The two
+together are the whole point: "on sale" is what the venue's button says, "1
+seat left" is what it means. Each date button carries its own (`· 2 left`),
+because a run's nights differ, which is what lets the card's own figure be a
+sum. Asked for explicitly: **one ticket left is still worth showing, said in
+those words** — so the change fires as it always did, and gets qualified
+rather than suppressed. Same qualifier on the poster tile's band, in the
+"what changed" strip, in the push notification and in the evening email, so
+no surface says "on sale" where another says "1 seat left".
+
+The two duplications this adds are both deliberate and both pinned by a test:
+`seatsNote` in `api/_lib/marquee/shared.js` (api/_lib stays self-contained
+from src/, as `CATEGORIES` already does) and the worker's ES5 copy in
+`public/marquee-sw.js`, which `notify.sw.test.js` now runs against the same
+cases as the module's.
+
+**Verified live**, not only against fixtures: a real `scanVenue` over
+teatrul-excelsior.ro returns `1` for Familia Addams' 8 Sept, `2` for Mickey
+Mouse's 10 Sept matinée, and null for every sold-out night — the same numbers
+counted by hand off the seat map above.
+
+**One thing worth recording that this didn't fix.** Excelsior's listing calls
+Mickey Mouse's hall `SPECTACOL ITINERANT` and its detail page calls it `Sala
+Studio`, so the same production files under two hall names in the cascade.
+That is the venue's own inconsistency, not a parsing error, and picking a
+winner between two things the site genuinely says is a bigger decision than it
+looks.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
 absences at the source, not gaps in a reader:
 
-- **Teatrul Excelsior's prices need a third hop** into a client-rendered seat
-  picker's own endpoint — see §9.46, which corrects an earlier claim here that
-  it published no prices at all. It does; they are just not in any HTML the
-  reader currently fetches.
+- ~~**Teatrul Excelsior's prices need a third hop** into a client-rendered seat
+  picker's own endpoint — see §9.46.~~ **Reachable now (2026-09-07, §9.68):**
+  that third hop exists, for seat counts, and the same response carries the
+  price categories in `pcds`. Left untaken on purpose — reading them would
+  change what a Wanderlist save writes, which is its own decision rather than
+  a side effect of fixing a label.
 - **Two productions genuinely have no cover**: Excelsior's "Marile speranțe"
   and TNB's "Mai e vreun candidat?" — neither page carries `og:image`,
   `article-image` or any poster image. That is the 17% / 2% those two venues

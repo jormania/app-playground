@@ -4,7 +4,7 @@ import { Poster } from './Poster.jsx'
 import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay } from './programme.js'
 import { CHANGE, CHANGE_LABEL, CHANGE_CHIP_LABEL } from './changes.js'
 import { facetById } from './facets.js'
-import { formatDay, formatRun, formatPrice } from './format.js'
+import { formatDay, formatRun, formatPrice, formatSeatsLeft } from './format.js'
 
 /** One production: a title at a venue, with its dates nested.
  *
@@ -15,6 +15,8 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
   const ignored = triage[production.id] === TRIAGE.IGNORED
   const soldOut = production.allSoldOut
   const price = formatPrice(production.price)
+  // Only ever shown when it is small enough to change a decision (§9.68).
+  const seatsLabel = formatSeatsLeft(production.seatsLeft)
   const savedDates = production.savedDates ?? new Set()
   const changeKind = primaryChangeKind(production, changedKeys)
 
@@ -94,7 +96,23 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
             {/* Suppressed when changeKind is already 'tickets-opened': that chip
                 says the same thing ("tickets on sale") about the same change,
                 and showing both doubles up one fact rather than adding a second. */}
-            {!soldOut && production.anyOpen && changeKind !== CHANGE.TICKETS_OPENED && (
+            {/* A scarce count REPLACES the "tickets" chip and, unlike it, is
+                NOT suppressed next to "tickets on sale" — the two together are
+                the whole point (§9.68). "On sale" is what the venue's button
+                says; "1 seat left" is what it means, and the pair is the only
+                honest way to show a night that came back on sale with a single
+                returned ticket. */}
+            {!soldOut && production.anyOpen && seatsLabel && (
+              <span
+                className="chip chip--scarce"
+                title={production.openCount > 1
+                  ? `${seatsLabel}, across ${production.openCount} dates still on sale`
+                  : 'Counted from the venue’s own seat map, at the last check'}
+              >
+                {seatsLabel}
+              </span>
+            )}
+            {!soldOut && production.anyOpen && !seatsLabel && changeKind !== CHANGE.TICKETS_OPENED && (
               <span className="chip chip--tickets">tickets</span>
             )}
             {/* Neither on sale nor sold out. Until now this state rendered
@@ -119,6 +137,9 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
             <ul className="prod__dates">
               {production.showings.map((showing) => {
                 const kind = changedKeys.get(showing.key)
+                const left = showing.ticketState === 'open'
+                  ? formatSeatsLeft(showing.seatsLeft, { short: true })
+                  : null
                 return (
                   <li key={showing.key}>
                     <button
@@ -128,14 +149,20 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
                       onClick={() => onKeep(showing, production)}
                       title={showing.ticketState === 'sold-out'
                         ? 'Sold out — nothing left to keep'
-                        : savedDates.has(showing.date)
-                          ? 'Already in Wanderlist'
-                          : kind ? CHANGE_LABEL[kind]
-                            : 'Keep this date'}
+                        : left
+                          ? `${formatSeatsLeft(showing.seatsLeft)} for this showing`
+                          : savedDates.has(showing.date)
+                            ? 'Already in Wanderlist'
+                            : kind ? CHANGE_LABEL[kind]
+                              : 'Keep this date'}
                     >
                       {savedDates.has(showing.date) ? '✓ ' : ''}
                       {formatDay(showing.date, { time: showing.time })}
                       {showing.time ? ` ${showing.time}` : ''}
+                      {/* Per date, because a run's nights differ: the whole
+                          reason the card's own count can be a sum is that
+                          each night carries its own here. */}
+                      {left && <span className="date__seats"> · {left}</span>}
                     </button>
                   </li>
                 )

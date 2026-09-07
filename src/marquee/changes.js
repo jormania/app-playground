@@ -33,6 +33,11 @@ export function toSnapshot(events, scannedAt) {
       title: e.title,
       venue: e.venue,
       time: e.time ?? null,
+      // Carried so the "what changed" strip can say how much of a return is
+      // actually left (§9.68) — the strip renders from the snapshot, not from
+      // the live production, and "tickets on sale" over one returned seat is
+      // the exact overstatement the count exists to correct.
+      seatsLeft: e.seatsLeft ?? null,
       // What a watch is held against (§9.63). Derived here rather than
       // rebuilt in the diff so the snapshot and the watchlist can never
       // disagree about what counts as the same production.

@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-import excelsior from '../_lib/marquee/excelsior.js'
+import excelsior, { freeSeats } from '../_lib/marquee/excelsior.js'
 import eventbook from '../_lib/marquee/eventbook.js'
 import filarmonica from '../_lib/marquee/filarmonica.js'
 import jsonld from '../_lib/marquee/jsonld.js'
@@ -275,6 +275,83 @@ describe('Teatrul Excelsior', () => {
       const tomcat = withDetails.filter((e) => e.title === 'Tomcat')
       expect(tomcat.map((e) => e.time)).toEqual(['17:00', '20:00'])
       expect(tomcat.every((e) => e.ticketState === 'open')).toBe(true)
+    })
+
+    describe('seat counts behind an “Alege locurile” button (§9.68)', () => {
+      const seatMap = (name) => JSON.parse(fixture(name))
+      const oneLeft = () => seatMap('excelsior-seatmap-one-left.json')
+      const noneLeft = () => seatMap('excelsior-seatmap-none-left.json')
+
+      it('counts only genuinely FREE seats — a held one is not one you can buy', () => {
+        // The fixture is the live response for Familia Addams' 8 Sept showing,
+        // trimmed: one free seat, some sold, some sitting in other people's
+        // baskets. Counting the held ones would recreate the overcount this
+        // whole hop exists to fix.
+        expect(freeSeats(oneLeft())).toBe(1)
+        expect(freeSeats(noneLeft())).toBe(0)
+      })
+
+      it('reads a response that never came back as unknown, not as zero', () => {
+        // Null and 0 are different answers and both are real: null is "we
+        // couldn't read this", 0 is "the button is up and the house is gone".
+        expect(freeSeats(undefined)).toBeNull()
+        expect(freeSeats('not json')).toBeNull()
+        expect(freeSeats(JSON.stringify({ result: 1, data: {} }))).toBeNull()
+      })
+
+      it('asks only about showings the detail page itself says are on sale', () => {
+        // Metamorfoza's four dates are all sold out; Tomcat's two are open.
+        // A sold-out night's state already says everything, so it is never
+        // asked about — that is what keeps this hop small.
+        const requests = excelsior.enrich(detailPages)
+        expect(requests).toHaveLength(2)
+        expect(requests.every((r) => r.method === 'POST')).toBe(true)
+        expect(requests.map((r) => r.tag.when)).toEqual(['2026-09-23T17:00', '2026-09-23T20:00'])
+        expect(requests.every((r) => r.tag.canonical === 'https://teatrul-excelsior.ro/spectacol/tomcat/')).toBe(true)
+      })
+
+      it('sends each showing’s OWN ticketing id, read from above its date header', () => {
+        // The ids are per-showing and printed just before their own date
+        // header; picking them up forwards would hand every showing the NEXT
+        // one's seats.
+        const ids = excelsior.enrich(detailPages)
+          .map((r) => JSON.parse(new URLSearchParams(r.body).get('data')).eventInstanceId)
+        expect(ids).toEqual([70017, 70020])
+      })
+
+      it('attaches the count to the right showing, by tag and not by order', () => {
+        const requests = excelsior.enrich(detailPages)
+        const answered = [
+          // Deliberately reversed: every request goes to the same URL, so the
+          // tag is the only thing keeping one showing's seats off another's.
+          { tag: requests[1].tag, json: noneLeft() },
+          { tag: requests[0].tag, json: oneLeft() },
+        ]
+        const events = excelsior.parse(
+          [{ body: fixture('excelsior.html') }, ...detailPages, ...answered],
+          { venue, now: AUG },
+        )
+        const tomcat = events.filter((e) => e.title === 'Tomcat')
+        expect(tomcat.map((e) => e.time)).toEqual(['17:00', '20:00'])
+        expect(tomcat.map((e) => e.seatsLeft)).toEqual([1, 0])
+      })
+
+      it('leaves seatsLeft null when the hop never ran, rather than guessing', () => {
+        const events = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
+        expect(events.every((e) => e.seatsLeft === null)).toBe(true)
+        // …and the ticket states it already read are untouched by any of this.
+        expect(events.filter((e) => e.title === 'Tomcat').every((e) => e.ticketState === 'open')).toBe(true)
+      })
+
+      it('never pairs a count with a state that came from the listing’s fallback column', () => {
+        // No detail pages: every state here is the listing's static
+        // "Cumpără bilete", which §9.51 established is not a live signal. A
+        // real number beside it would read far more confident than the pair
+        // deserves.
+        const answered = [{ tag: { kind: 'seats', canonical: 'https://teatrul-excelsior.ro/spectacol/tomcat/', when: '2026-09-23T20:00' }, json: oneLeft() }]
+        const events = excelsior.parse([{ body: fixture('excelsior.html') }, ...answered], { venue, now: AUG })
+        expect(events.every((e) => e.seatsLeft === null)).toBe(true)
+      })
     })
 
     it('falls back to the listing’s own column when the detail fetch never came back', () => {
@@ -942,6 +1019,65 @@ describe('scanVenue', () => {
     expect(r.status).toBe(STATUS.EMPTY)
     expect(r.detail).toMatch(/nothing upcoming/i)
     expect(r.events).toEqual([])
+  })
+
+  describe('the enrichment hop (§9.68)', () => {
+    // A fetch that serves the listing, then each detail page, then the seat
+    // map — the three hops a real Excelsior scan makes.
+    const wired = (calls) => async (url, init = {}) => {
+      calls.push({ url, method: init.method ?? 'GET', body: init.body ?? null })
+      if (url.endsWith('/program/')) {
+        return { ok: true, status: 200, text: async () => fixture('excelsior.html') }
+      }
+      if (url.includes('ticketingAjax.php')) {
+        return { ok: true, status: 200, json: async () => JSON.parse(fixture('excelsior-seatmap-one-left.json')) }
+      }
+      const name = url.includes('tomcat') ? 'excelsior-detail-tomcat.html' : 'excelsior-detail-metamorfoza.html'
+      return { ok: true, status: 200, text: async () => fixture(name) }
+    }
+
+    it('POSTs a form-encoded body and lands the count on the showing', async () => {
+      const calls = []
+      const r = await scanVenue(venue, { now: AUG, fetchImpl: wired(calls) })
+      expect(r.status).toBe(STATUS.OK)
+      const posts = calls.filter((c) => c.method === 'POST')
+      expect(posts).toHaveLength(2) // Tomcat's two open showings, and nothing else
+      expect(posts[0].body).toContain('action=ticketsys_action')
+      const tomcat = r.events.filter((e) => e.title === 'Tomcat')
+      expect(tomcat.map((e) => e.seatsLeft)).toEqual([1, 1])
+      // Metamorfoza is sold out on every date — never asked about, never counted.
+      expect(r.events.filter((e) => e.title === 'Metamorfoza').every((e) => e.seatsLeft === null)).toBe(true)
+    })
+
+    it('loses the counts, not the venue, when the ticketing back-end is down', async () => {
+      // The whole defence of this hop: seat counts are a nicety and "is this
+      // venue readable" is the product. A 503 from the ticketing API must cost
+      // exactly the numbers.
+      const fetchImpl = async (url) => {
+        if (url.includes('ticketingAjax.php')) return { ok: false, status: 503, text: async () => 'down' }
+        if (url.endsWith('/program/')) return { ok: true, status: 200, text: async () => fixture('excelsior.html') }
+        const name = url.includes('tomcat') ? 'excelsior-detail-tomcat.html' : 'excelsior-detail-metamorfoza.html'
+        return { ok: true, status: 200, text: async () => fixture(name) }
+      }
+      const r = await scanVenue(venue, { now: AUG, fetchImpl })
+      expect(r.status).toBe(STATUS.OK)
+      expect(r.events.length).toBe(6)
+      expect(r.events.every((e) => e.seatsLeft === null)).toBe(true)
+      expect(r.events.filter((e) => e.title === 'Tomcat').every((e) => e.ticketState === 'open')).toBe(true)
+    })
+
+    it('is skipped entirely by an adapter that declares no enrich', async () => {
+      const calls = []
+      const r = await scanVenue(
+        { ...venue, name: 'Teatrul Odeon', adapter: 'odeon', url: 'https://teatrulodeon.ro/program/' },
+        { now: AUG, fetchImpl: async (url, init = {}) => {
+          calls.push(init.method ?? 'GET')
+          return { ok: true, status: 200, text: async () => fixture('odeon.html') }
+        } },
+      )
+      expect(r.status).toBe(STATUS.OK)
+      expect(calls.every((m) => m === 'GET')).toBe(true)
+    })
   })
 
   it('reports a redesigned page as broken, with a detail a human can act on', async () => {

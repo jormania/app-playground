@@ -4,16 +4,23 @@
 // in.
 
 import { CHANGE, CHANGE_LABEL } from './diff.js'
+import { seatsNote } from './shared.js'
 
 function esc(s) {
   return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+}
+
+/** The change's own label, qualified when what opened is nearly gone (§9.68). */
+function kindLabel(change) {
+  const note = seatsNote(change.seatsLeft)
+  return note ? `${CHANGE_LABEL[change.kind]}, ${note}` : CHANGE_LABEL[change.kind]
 }
 
 function line(change) {
   const bits = [`${change.venue}`]
   if (change.date) bits.push(change.date)
   if (change.time) bits.push(change.time)
-  return `${change.title} — ${CHANGE_LABEL[change.kind]} (${bits.join(' · ')})`
+  return `${change.title} — ${kindLabel(change)} (${bits.join(' · ')})`
 }
 
 /** `{ text, html }`, each meant to be appended to an already-built email —
@@ -31,7 +38,7 @@ export function marqueeEmailSection(changes) {
 
   const items = changes.map((c) => {
     const meta = [c.venue, c.date, c.time].filter(Boolean).join(' · ')
-    return `<li style="margin:6px 0">${esc(c.title)} <span style="color:#8a7f6a">— ${esc(CHANGE_LABEL[c.kind])} (${esc(meta)})</span></li>`
+    return `<li style="margin:6px 0">${esc(c.title)} <span style="color:#8a7f6a">— ${esc(kindLabel(c))} (${esc(meta)})</span></li>`
   }).join('')
   const html = `<p>${esc(heading)}</p><ul style="padding-left:18px">${items}</ul>`
 

@@ -1055,6 +1055,15 @@ button { color: inherit; font: inherit; }
    and should never compete with the chips that report something real. */
 .chip--quiet { border-color: var(--color-border); color: var(--color-faint); }
 .chip--soldout { border-color: var(--color-danger); color: var(--color-danger); }
+/* Scarcity reads as a warning, not as an offer: it sits next to "tickets on
+   sale" and has to look like the qualifier it is (§9.68). Filled, because it
+   is the one number on the card with a clock on it. */
+.chip--scarce {
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+  color: var(--color-on-accent);
+  font-weight: 600;
+}
 .chip--saved { border-color: var(--color-success); color: var(--color-success); }
 .chip--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); }
 .chip--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }
@@ -1092,6 +1101,10 @@ button { color: inherit; font: inherit; }
 .date:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); }
 .date:disabled { cursor: not-allowed; }
 .date--soldout { text-decoration: line-through; opacity: 0.6; }
+/* Rides along inside the date button rather than beside it — the run of dates
+   is already a wrapping row, and a second element per date would break its
+   rhythm for a two-word aside. */
+.date__seats { color: var(--color-warning); font-weight: 600; }
 .date--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
 .date--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }
 .date--changed-new-event { border-color: var(--color-success); color: var(--color-success); font-weight: 600; }
@@ -1450,6 +1463,8 @@ button { color: inherit; font: inherit; }
 /* A change badge and the tickets pill would otherwise stack in the same
    corner — the badge is the more time-sensitive of the two, so it takes the
    spot and the pill steps up above it. */
+.poster-tile__tickets--scarce { background: var(--color-warning); }
+
 .poster-tile--changed-tickets-opened .poster-tile__tickets,
 .poster-tile--changed-sold-out .poster-tile__tickets,
 .poster-tile--changed-new-event .poster-tile__tickets {

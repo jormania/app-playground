@@ -9,7 +9,11 @@
 <!-- §9.51: the listing (excelsior.html) marks the 17:00 showing "SOLD OUT" —
      this is the detail page's own, real, contradicting state for it going
      back on sale, real "Alege locurile" markup, to prove the detail page's
-     per-date read wins over the listing's when they actually disagree. -->
+     per-date read wins over the listing's when they actually disagree.
+     §9.68: each showing's own `eiId` hidden input, as the live page prints it —
+     first field of the showing's own ticketsys block, just above its date
+     header — since that is what the seat-count hop is keyed on. -->
+<input type="hidden" id="eiId" value="70017"/>
 <div class="tkthour"><i class="fa fa-calendar-alt"></i>23 septembrie 2026 Ora: 17:00</div>
 <div class="ei-venue"><i class="fa fa-map-marker"></i> Teatrul Excelsior - Sala Studio</div>
 </div>
@@ -18,6 +22,7 @@
 <button class="btn select-method-button" rel="1">Alege locurile</button>
 </div>
 </div>
+<input type="hidden" id="eiId" value="70020"/>
 <div class="tkthour"><i class="fa fa-calendar-alt"></i>23 septembrie 2026 Ora: 20:00</div>
 <div class="ei-venue"><i class="fa fa-map-marker"></i> Teatrul Excelsior - Sala Studio</div>
 </div>

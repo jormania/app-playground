@@ -210,6 +210,22 @@ describe('marqueeEmailSection / marqueeOnlySubject', () => {
     expect(section.html).toMatch(/<ul/)
   })
 
+  it('qualifies a return worth one seat, in both formats (§9.68)', () => {
+    // The evening email says the same thing the app does, or the two
+    // disagree about a night in the one direction that matters.
+    const section = marqueeEmailSection([event({ kind: CHANGE.TICKETS_OPENED, seatsLeft: 1 })])
+    expect(section.text).toContain('tickets on sale, 1 seat left')
+    expect(section.html).toContain('1 seat left')
+  })
+
+  it('leaves a plentiful or uncounted night unqualified', () => {
+    for (const seatsLeft of [140, null]) {
+      const section = marqueeEmailSection([event({ kind: CHANGE.TICKETS_OPENED, seatsLeft })])
+      expect(section.text).toContain('tickets on sale')
+      expect(section.text).not.toContain('left')
+    }
+  })
+
   it('escapes html in a title', () => {
     const section = marqueeEmailSection([event({ kind: CHANGE.NEW, title: '<script>' })])
     expect(section.html).not.toContain('<script>')

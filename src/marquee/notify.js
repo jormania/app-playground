@@ -19,6 +19,7 @@ import {
   unregisterPeriodicSync as sharedUnregisterPeriodicSync,
 } from '../shared/notify/periodicSync'
 import { scanPayload } from './programme.js'
+import { formatSeatsLeft } from './format.js'
 
 export const REMINDERS_DB = 'marquee-reminders'
 export const REMINDERS_STORE = 'kv'
@@ -126,7 +127,7 @@ export function notifiableChanges(beforeMap, events, kinds) {
   const out = []
   for (const e of events ?? []) {
     const kind = kindFor(beforeMap?.[e.key], e)
-    if (kind && allow.has(kind)) out.push({ kind, key: e.key, title: e.title, venue: e.venue })
+    if (kind && allow.has(kind)) out.push({ kind, key: e.key, title: e.title, venue: e.venue, seatsLeft: e.seatsLeft ?? null })
   }
   return out
 }
@@ -202,7 +203,10 @@ export function notifyTitle(changes) {
  *  notification is read in passing, not studied; MARQUEE.md's own "checkable in
  *  ten seconds" applies here even more than inside the app itself. */
 export function notifyBody(changes) {
-  const lines = changes.slice(0, 3).map((c) => `${c.title} — ${LABEL[c.kind]} (${c.venue})`)
+  const lines = changes.slice(0, 3).map((c) => {
+    const note = formatSeatsLeft(c.seatsLeft)
+    return `${c.title} — ${note ? `${LABEL[c.kind]}, ${note}` : LABEL[c.kind]} (${c.venue})`
+  })
   if (changes.length > 3) lines.push(`+${changes.length - 3} more`)
   return lines.join('\n')
 }

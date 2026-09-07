@@ -121,7 +121,17 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
   try {
     const res = await fetchImpl(request.url, {
-      headers: { 'user-agent': USER_AGENT, accept: request.json ? 'application/json' : 'text/html,*/*' },
+      // GET unless an adapter says otherwise. Only one hop anywhere in Marquee
+      // needs a POST — Excelsior's seat-count lookup (§9.68), whose ticketing
+      // back-end takes a form-encoded body — and it stays opt-in per request so
+      // no adapter has to think about a method it never uses.
+      ...(request.method ? { method: request.method } : {}),
+      ...(request.body != null ? { body: request.body } : {}),
+      headers: {
+        'user-agent': USER_AGENT,
+        accept: request.json ? 'application/json' : 'text/html,*/*',
+        ...(request.body != null ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
+      },
       redirect: 'follow',
       ...(controller ? { signal: controller.signal } : {}),
     })
@@ -139,14 +149,15 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
       // errors returns an error document, not a feed, and `res.json()` would
       // throw on it anyway.
       const body = request.json ? undefined : await res.text().catch(() => undefined)
-      return { url: request.url, ok: false, status: res.status, body, optional: request.optional === true }
+      return { url: request.url, tag: request.tag ?? null, ok: false, status: res.status, body, optional: request.optional === true }
     }
-    if (request.json) return { url: request.url, ok: true, status: res.status, json: await res.json() }
-    return { url: request.url, ok: true, status: res.status, body: await res.text() }
+    if (request.json) return { url: request.url, tag: request.tag ?? null, ok: true, status: res.status, json: await res.json() }
+    return { url: request.url, tag: request.tag ?? null, ok: true, status: res.status, body: await res.text() }
   } catch (err) {
     const timedOut = err?.name === 'AbortError' || err?.name === 'TimeoutError'
     return {
       url: request.url,
+      tag: request.tag ?? null,
       ok: false,
       status: 0,
       error: timedOut ? `no answer within ${Math.round(timeoutMs / 1000)}s` : (err?.message || 'fetch failed'),
@@ -223,6 +234,24 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
       if (page.ok || page.body) pages.push(page)
       // A failed page 4 is not worth failing the venue over — the pages that did
       // arrive are still real events, and the health gate still has to pass.
+    }
+  }
+
+  // A THIRD hop, for adapters that can only ask their real question once the
+  // second one has answered. Excelsior's seat counts (§9.68) are the only user:
+  // which showings are on sale is a fact of the detail pages `follow` just
+  // fetched, and each one's remaining seats live behind its own ticketing call.
+  //
+  // Strictly an enrichment, and defended as one, because "how many seats" is a
+  // nicety and "is this venue readable at all" is the product: it runs after
+  // the health decisions above, a page that fails is simply dropped, and an
+  // adapter that throws in here loses its counts rather than its venue.
+  if (typeof adapter.enrich === 'function') {
+    let extra = []
+    try { extra = adapter.enrich(pages, { venue, now }) ?? [] } catch { extra = [] }
+    for (const request of extra) {
+      const page = await fetchOne({ ...request, optional: true }, fetchImpl, timeoutMs)
+      if (page.ok) pages.push(page)
     }
   }
 

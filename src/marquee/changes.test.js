@@ -5,7 +5,7 @@ import {
   changedKeyMap, primaryChangeKind, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, CATEGORY_LABEL,
 } from './programme.js'
 import { normalizeVenue } from './venues.js'
-import { formatDay, formatRun, formatPrice } from './format.js'
+import { formatDay, formatRun, formatPrice, formatSeatsLeft, SEATS_SCARCE } from './format.js'
 
 const NOW = new Date('2026-08-26T09:00:00')
 
@@ -162,6 +162,34 @@ describe('productions', () => {
     expect(allGone[0].allSoldOut).toBe(true)
   })
 
+  it('totals the seats left across the nights that are actually on sale (§9.68)', () => {
+    const run = toProductions([
+      event({ key: 'a', title: 'Mickey Mouse', date: '2026-09-10', time: '17:00', ticketState: 'open', seatsLeft: 2 }),
+      event({ key: 'b', title: 'Mickey Mouse', date: '2026-09-10', time: '20:00', ticketState: 'sold-out', seatsLeft: null }),
+      event({ key: 'c', title: 'Mickey Mouse', date: '2026-09-11', time: '17:00', ticketState: 'open', seatsLeft: 3 }),
+    ])
+    expect(run[0].seatsLeft).toBe(5)
+    expect(run[0].openCount).toBe(2)
+  })
+
+  it('goes null rather than under-report when one buyable night’s count is missing', () => {
+    // The label exists to warn, never to reassure, so a partial total is the
+    // one wrong answer that matters — it would always be too low.
+    const run = toProductions([
+      event({ key: 'a', title: 'Mickey Mouse', date: '2026-09-10', time: '17:00', ticketState: 'open', seatsLeft: 2 }),
+      event({ key: 'c', title: 'Mickey Mouse', date: '2026-09-11', time: '17:00', ticketState: 'open', seatsLeft: null }),
+    ])
+    expect(run[0].seatsLeft).toBeNull()
+  })
+
+  it('gives a run with nothing on sale no count at all, rather than zero', () => {
+    // Zero would claim a sold-out house we never measured.
+    expect(productions.find((p) => p.title === 'Metamorfoza')).toBeDefined()
+    const gone = toProductions([event({ key: 'a', ticketState: 'sold-out', seatsLeft: null })])
+    expect(gone[0].seatsLeft).toBeNull()
+    expect(gone[0].openCount).toBe(0)
+  })
+
   it('keeps the same title at different venues apart', () => {
     const two = toProductions([event({ key: 'x' }), event({ key: 'y', venue: 'Club Control' })])
     expect(two).toHaveLength(2)
@@ -293,6 +321,34 @@ describe('formatting', () => {
     expect(formatPrice(0)).toBe('Free')
     expect(formatPrice(50)).toBe('50 lei')
     expect(formatPrice(null)).toBeNull()
+  })
+})
+
+describe('formatSeatsLeft — the correction to a binary buy button (§9.68)', () => {
+  it('names a single ticket explicitly', () => {
+    expect(formatSeatsLeft(1)).toBe('1 seat left')
+    expect(formatSeatsLeft(2)).toBe('2 seats left')
+    expect(formatSeatsLeft(1, { short: true })).toBe('1 left')
+  })
+
+  it('says "none left" rather than "0 seats left" for a button over an empty house', () => {
+    // The state worth naming, and the one place a bare 0 would read as a bug
+    // rather than a fact.
+    expect(formatSeatsLeft(0)).toBe('none left')
+  })
+
+  it('stays quiet above the threshold — a big number is not news', () => {
+    expect(formatSeatsLeft(SEATS_SCARCE)).toBe(`${SEATS_SCARCE} seats left`)
+    expect(formatSeatsLeft(SEATS_SCARCE + 1)).toBeNull()
+    expect(formatSeatsLeft(175)).toBeNull()
+  })
+
+  it('treats an unknown count the same as a plentiful one — as nothing to say', () => {
+    // Both fall back to the plain "tickets" chip, which claims only that
+    // something is on sale. Never a reassurance we haven't measured.
+    expect(formatSeatsLeft(null)).toBeNull()
+    expect(formatSeatsLeft(undefined)).toBeNull()
+    expect(formatSeatsLeft(-1)).toBeNull()
   })
 })
 

@@ -72,3 +72,32 @@ export function formatPrice(value) {
   if (value === 0) return 'Free'
   return `${value} lei`
 }
+
+/**
+ * Above this, a seat count is noise. "175 seats left" tells you nothing you
+ * wouldn't assume from the buy button; the number only earns its place on the
+ * card when it changes what you'd do — go tonight, or don't bother going at
+ * all. Ten is deliberately generous for a 36-seat studio and stingy for a
+ * 500-seat house, which is the right way round: what matters is how many
+ * tickets exist, not what fraction of the room they are.
+ */
+export const SEATS_SCARCE = 10
+
+/**
+ * "1 seat left" — the correction to a buy button that says the same thing for
+ * one ticket and for a full house.
+ *
+ * Null above the threshold and for an unknown count, and those two nulls are
+ * the same answer on purpose: the card falls back to its ordinary "tickets"
+ * chip, which claims only that something is on sale. Zero is its own case and
+ * is said out loud — a button up over an empty house is precisely the state
+ * worth naming, and "0 seats left" reads like a bug where "none left" reads
+ * like a fact.
+ */
+export function formatSeatsLeft(count, { short = false } = {}) {
+  if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) return null
+  if (count > SEATS_SCARCE) return null
+  if (count === 0) return 'none left'
+  if (short) return `${count} left`
+  return `${count} seat${count === 1 ? '' : 's'} left`
+}

@@ -1,6 +1,6 @@
 import { X as ClearIcon } from 'lucide-react'
 import { CHANGE, CHANGE_LABEL } from './changes.js'
-import { formatDay } from './format.js'
+import { formatDay, formatSeatsLeft } from './format.js'
 
 /** What changed since you last looked — the strip at the top that is the diff's
  *  output and nothing else.
@@ -37,7 +37,13 @@ export default function Changes({ scan, dismissed = false, onDismiss, onOpen }) 
           {scan.changes.map((change) => (
             <li key={`${change.kind}:${change.key}`}>
               <button type="button" className={`change change--${change.kind}`} onClick={() => onOpen?.(change)}>
-                <span className="change__kind">{CHANGE_LABEL[change.kind]}</span>
+                <span className="change__kind">
+                  {CHANGE_LABEL[change.kind]}
+                  {/* A return worth one seat is still a return, and still
+                      worth showing — but it should not read like a return
+                      worth a house (§9.68). */}
+                  {formatSeatsLeft(change.seatsLeft) && ` — ${formatSeatsLeft(change.seatsLeft)}`}
+                </span>
                 <span className="change__title">{change.title}</span>
                 <span className="change__meta">
                   {change.venue}

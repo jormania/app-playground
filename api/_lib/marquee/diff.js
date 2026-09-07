@@ -33,6 +33,9 @@ export function toSnapshot(events, scannedAt) {
   for (const e of events ?? []) {
     map[e.key] = {
       ticketState: e.ticketState, date: e.date, title: e.title, venue: e.venue, time: e.time ?? null,
+      // So the evening email can qualify a return the same way the app does
+      // (§9.68): "tickets on sale — 1 seat left".
+      seatsLeft: e.seatsLeft ?? null,
       // What a watch is held on — see `diff` below.
       production: productionId(e),
     }

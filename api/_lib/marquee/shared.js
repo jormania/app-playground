@@ -222,7 +222,7 @@ function clipDescription(text) {
  *  is what decides whether it is an event at all. A row without a title or a date
  *  is dropped — those two are the identity, and a half-row would diff as a new
  *  event every single scan. */
-export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null }) {
+export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null, seatsLeft = null }) {
   const cleanTitle = textOf(title)
   if (!cleanTitle || !date) return null
   // A hall that just repeats the venue is noise: Expirat's JSON-LD names its
@@ -259,7 +259,33 @@ export function makeEvent({ venue, title, date, time = null, hall = null, link =
     // arcub.js) ever sets this, one Wanderlist category per event rather
     // than one guess for the whole venue.
     category: CATEGORIES.includes(category) ? category : null,
+    // How many seats are actually left, when the venue's ticketing exposes a
+    // number rather than only a button (§9.68). Null everywhere else, and null
+    // is the honest answer: `ticketState: 'open'` with no count means on sale,
+    // quantity unknown — never "plenty". Only ever set for a showing that IS
+    // open; a sold-out one is already fully described by its state.
+    seatsLeft: Number.isInteger(seatsLeft) && seatsLeft >= 0 ? seatsLeft : null,
   }
+}
+
+/**
+ * Above this many free seats, a count says nothing a buy button doesn't.
+ *
+ * Deliberately a SECOND copy of `src/marquee/format.js`'s rule rather than an
+ * import — api/_lib stays self-contained from src/, the same boundary
+ * `CATEGORIES` above already respects. Change one, change the other; a
+ * disagreement here shows up as the evening email calling a night scarce that
+ * the app doesn't, which is a visible bug rather than a silent one.
+ */
+export const SEATS_SCARCE = 10
+
+/** "1 seat left" / "none left" / null. See `formatSeatsLeft` in
+ *  src/marquee/format.js — same rule, same words, server side. */
+export function seatsNote(count) {
+  if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) return null
+  if (count > SEATS_SCARCE) return null
+  if (count === 0) return 'none left'
+  return `${count} seat${count === 1 ? '' : 's'} left`
 }
 
 /** Drop repeats of the same key, keeping the first (page order = the site's own

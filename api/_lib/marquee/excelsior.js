@@ -37,7 +37,20 @@
 //
 // The same detail page also carries the real synopsis, in an `<article
 // class="the-content">` wrapper the WordPress theme prints on every show's
-// own page — read alongside the poster, no third hop.
+// own page — read alongside the poster, no extra hop for it.
+//
+// There IS a third hop, and only for showings already known to be on sale
+// (§9.68). "Alege locurile" is a boolean: it renders identically for one free
+// seat and for a full house, so a night with a single returned ticket reads as
+// "tickets on sale" and sends you to a page with nothing on it. The number
+// behind that button is public — the ticketsys plugin the theatre runs answers
+// `/spring/web/section/eventInstance/new` for any event-instance id with the
+// whole seat map, statuses included — and each showing's id sits in the
+// detail page as `<input type="hidden" id="eiId">`, a few hundred bytes above
+// its own date header. So `enrich()` asks, per OPEN showing, and `parse()`
+// counts the seats whose status is FREE. One request per buyable showing, on
+// one venue; sold-out showings are never asked about, since their state
+// already says everything.
 
 import { TICKET, makeEvent, inferYear, monthNumber, parseTime, pick, textOf, absoluteUrl, proseParagraphs } from './shared.js'
 
@@ -56,8 +69,33 @@ const SHOWING_WINDOW = 2000
 const SOLD_OUT_BTN = /class="btn"[^>]*>\s*Sold out/i
 const OPEN_BTN = /select-method-button/i
 
-/** date+time → real ticket state, read off one production's own detail page. */
-function detailTicketStates(html) {
+// The ticketing id for a showing, printed just ABOVE its date header — the
+// theme opens a fresh `.ticketsys` block per showing and the hidden input is
+// its first field. Looking backwards is what makes it safe: forwards, a
+// showing whose own block lacked one would silently borrow the next
+// showing's id and report someone else's seats.
+const EIID = /id="eiId"\s+value="(\d+)"/g
+// Real gap on the live page is ~550 bytes. Bounded for the same reason
+// SHOWING_WINDOW is, in the other direction.
+const EIID_WINDOW = 4000
+
+/** The nearest `eiId` printed before `at`, or null if none is close enough. */
+function eiIdBefore(ids, at) {
+  let found = null
+  for (const { index, id } of ids) {
+    if (index >= at) break
+    if (at - index <= EIID_WINDOW) found = id
+  }
+  return found
+}
+
+/** date+time → `{ state, eiId }`, read off one production's own detail page. */
+function detailShowings(html) {
+  const ids = []
+  EIID.lastIndex = 0
+  let e
+  while ((e = EIID.exec(html)) !== null) ids.push({ index: e.index, id: e[1] })
+
   const out = new Map()
   DETAIL_SHOWING.lastIndex = 0
   let m
@@ -68,10 +106,72 @@ function detailTicketStates(html) {
     const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     const time = `${hour.padStart(2, '0')}:${min}`
     const windowText = html.slice(m.index, m.index + SHOWING_WINDOW)
-    if (SOLD_OUT_BTN.test(windowText)) out.set(`${date}T${time}`, TICKET.SOLD_OUT)
-    else if (OPEN_BTN.test(windowText)) out.set(`${date}T${time}`, TICKET.OPEN)
+    const state = SOLD_OUT_BTN.test(windowText)
+      ? TICKET.SOLD_OUT
+      : OPEN_BTN.test(windowText) ? TICKET.OPEN : null
+    if (state) out.set(`${date}T${time}`, { state, eiId: eiIdBefore(ids, m.index) })
   }
   return out
+}
+
+// --- The seat count behind an "Alege locurile" button (§9.68) --------------
+
+const TICKETING_API = 'https://teatrul-excelsior.ro/wp-content/plugins/ticketsys-events/ticketsys/api/ticketingAjax.php'
+const SECTION_ENDPOINT = '/spring/web/section/eventInstance/new'
+// ticketsys' own seat statuses, from its `ticketingAPI.js`: 0 FREE, 20 RESERVE,
+// 30 SOLD, 40 IN_CART, 50 PENDING, 60 SOLD_NOT_PRINTED. Only 0 is buyable —
+// a seat sitting in someone else's basket is not one you can have, and
+// counting it would recreate the exact overcount this whole hop exists to fix.
+const SEAT_FREE = 0
+// Excelsior's whole 120-day programme ran to 10 buyable showings on the day
+// this was built — 10 extra requests, ~4s, roughly doubling this one venue's
+// share of a scan. The cap is set where a genuinely busier season still gets
+// every count while a site change cannot turn one venue into a hundred
+// requests, because this hop also runs inside Wanderlist's evening cron and
+// an unbounded loop there costs the email. Past the cap the remaining
+// showings simply keep `seatsLeft: null` and read as they did before any of
+// this existed.
+const MAX_SEAT_LOOKUPS = 24
+
+/** The form body ticketsys' WordPress shim expects (see its own ticketingAPI.js). */
+function seatRequestBody(eiId) {
+  return new URLSearchParams({
+    action: 'ticketsys_action',
+    data: JSON.stringify({ sectionId: -1, eventInstanceId: Number(eiId) }),
+    address: SECTION_ENDPOINT,
+  }).toString()
+}
+
+/** Every seat in a section tree. Sections nest (`ss`), seats hang off `s`. */
+function collectSeats(section, into) {
+  for (const seat of section?.s ?? []) into.push(seat)
+  for (const child of section?.ss ?? []) collectSeats(child, into)
+  return into
+}
+
+/**
+ * Free seats in one seat-map response, or null if it isn't one.
+ *
+ * The endpoint answers with JSON whose payload is itself a JSON *string*, so
+ * it is parsed twice. A seat with no `t` has no ticket record at all — not on
+ * sale, never counted; the rest carry their status in `s`.
+ *
+ * Null and 0 mean different things and both are real: null is "we couldn't
+ * read this", 0 is "the button is up but the house is gone". Neither may be
+ * quietly rounded into the other.
+ */
+export function freeSeats(json) {
+  let payload = json
+  try {
+    if (typeof payload === 'string') payload = JSON.parse(payload)
+    if (typeof payload === 'string') payload = JSON.parse(payload)
+  } catch { return null }
+  const sections = payload?.data?.venue?.ss
+  if (!Array.isArray(sections)) return null
+  const seats = []
+  for (const section of sections) collectSeats(section, seats)
+  if (seats.length === 0) return null
+  return seats.filter((seat) => seat?.t != null && seat?.s === SEAT_FREE).length
 }
 
 // A season runs maybe 15-20 distinct titles; capped well above that so a
@@ -103,6 +203,34 @@ export default {
     return [...hrefs].slice(0, MAX_DETAIL_PAGES).map((url) => ({ url }))
   },
 
+  /**
+   * One seat-count request per showing that is actually on sale.
+   *
+   * Runs after `follow`, over the detail pages it brought back, and tags each
+   * request with the showing it is about — the endpoint's answer carries no
+   * id of its own, and every request goes to the same URL, so the tag is the
+   * only thing keeping one showing's seats off another's card.
+   */
+  enrich(pages) {
+    const out = []
+    for (const page of pages) {
+      const canonical = CANONICAL.exec(page.body ?? '')?.[1]
+      if (!canonical) continue
+      for (const [when, showing] of detailShowings(page.body)) {
+        if (showing.state !== TICKET.OPEN || !showing.eiId) continue
+        if (out.length >= MAX_SEAT_LOOKUPS) return out
+        out.push({
+          url: TICKETING_API,
+          method: 'POST',
+          body: seatRequestBody(showing.eiId),
+          json: true,
+          tag: { kind: 'seats', canonical, when },
+        })
+      }
+    }
+    return out
+  },
+
   parse(pages, { venue, now = new Date() } = {}) {
     // Every page is scanned for both halves. The listing has agenda rows and no
     // canonical/og:image pair; a detail page has the reverse — so nothing here
@@ -113,7 +241,14 @@ export default {
     const descriptions = new Map()
     // canonical URL → its own date+time → real ticket state.
     const ticketStates = new Map()
+    // `${canonical}|${date}THH:MM` → free seats, from the enrichment hop.
+    const seatCounts = new Map()
     for (const page of pages) {
+      if (page.tag?.kind === 'seats') {
+        const left = freeSeats(page.json)
+        if (left != null) seatCounts.set(`${page.tag.canonical}|${page.tag.when}`, left)
+        continue
+      }
       const html = page.body ?? ''
       const canonical = CANONICAL.exec(html)?.[1]
       if (!canonical) continue
@@ -124,10 +259,10 @@ export default {
       // to run over every page without first checking which kind it is.
       const content = CONTENT.exec(html)?.[1]
       if (content) descriptions.set(canonical, proseParagraphs(content))
-      ticketStates.set(canonical, detailTicketStates(html))
+      ticketStates.set(canonical, detailShowings(html))
     }
 
-    const html = pages.map((p) => p.body).join('\n')
+    const html = pages.map((p) => p.body ?? '').join('\n')
     const events = []
     let m
     ITEM.lastIndex = 0
@@ -142,7 +277,15 @@ export default {
       // The listing's own "Cumpără bilete"/"SOLD OUT" column is the fallback,
       // not the primary read (§9.51) — only reached when the detail page's
       // own per-date state, keyed by this exact showing, isn't available.
-      const detailState = link && date && time ? ticketStates.get(link)?.get(`${date}T${time}`) : undefined
+      const when = date && time ? `${date}T${time}` : null
+      const detailState = link && when ? ticketStates.get(link)?.get(when)?.state : undefined
+      // Only ever attached to a showing the detail page itself called open: a
+      // count read against a state read from the LISTING's fallback column
+      // would be pairing a live number with a signal §9.51 established is not
+      // one, and the pair reads more confident than either half deserves.
+      const seatsLeft = detailState === TICKET.OPEN && link && when
+        ? seatCounts.get(`${link}|${when}`) ?? null
+        : null
 
       events.push(makeEvent({
         venue: venue.name,
@@ -153,6 +296,7 @@ export default {
         link,
         image: link ? (posters.get(link) ?? null) : null,
         description: link ? (descriptions.get(link) ?? null) : null,
+        seatsLeft,
         ticketState: detailState ?? (/sold\s*out/i.test(tickets)
           ? TICKET.SOLD_OUT
           : /bilete/i.test(tickets) ? TICKET.OPEN : TICKET.NONE),

@@ -89,7 +89,7 @@ function notifiableChanges(beforeMap, events, kinds) {
   var out = [];
   events.forEach(function (e) {
     var kind = kindFor(beforeMap ? beforeMap[e.key] : undefined, e);
-    if (kind && allow[kind]) out.push({ kind: kind, key: e.key, title: e.title, venue: e.venue });
+    if (kind && allow[kind]) out.push({ kind: kind, key: e.key, title: e.title, venue: e.venue, seatsLeft: e.seatsLeft == null ? null : e.seatsLeft });
   });
   return out;
 }
@@ -104,8 +104,21 @@ function notifyTitle(changes) {
     : ('Marquee: ' + changes.length + ' changes at your venues');
 }
 
+// The worker's copy of src/marquee/format.js's formatSeatsLeft (§9.68) —
+// same rule, same words, ES5. notify.sw.test.js runs both against the same
+// cases, so the two cannot drift apart unnoticed.
+function seatsNote(count) {
+  if (typeof count !== 'number' || !isFinite(count) || count < 0) return null;
+  if (count > 10) return null;
+  if (count === 0) return 'none left';
+  return count + ' seat' + (count === 1 ? '' : 's') + ' left';
+}
+
 function notifyBody(changes) {
-  var lines = changes.slice(0, 3).map(function (c) { return c.title + ' — ' + LABEL[c.kind] + ' (' + c.venue + ')'; });
+  var lines = changes.slice(0, 3).map(function (c) {
+    var note = seatsNote(c.seatsLeft);
+    return c.title + ' — ' + (note ? LABEL[c.kind] + ', ' + note : LABEL[c.kind]) + ' (' + c.venue + ')';
+  });
   if (changes.length > 3) lines.push('+' + (changes.length - 3) + ' more');
   return lines.join('\n');
 }
