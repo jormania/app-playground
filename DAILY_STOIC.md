@@ -99,6 +99,10 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (The Latin stands on its own)
+- No more English glosses trailing the classical names: **Amor Fati** (was "Amor Fati (Love of Fate)"), **Memento Mori** (the grid no longer opens with "Remember you must die", and the guide note drops "translates to…"), **Premeditatio Malorum** (was "(premeditation of evils)" in the Passions advice), and **the Enchiridion**, whose panel was headed "Stoic Ready-at-Hand Handbook" and explained itself as "handbook" or "ready at hand". Same in the Field Guide.
+- The four Cardinal Virtues keep their English names with the Greek beside them (Wisdom · Sophia) — that reads the other way round, an English label with its origin, not a Latin term being translated.
+
 ### September 7, 2026 (Reflection gathers, the mood asks properly)
 - **Amor Fati moved inside the Reflection card**, under the writing box and the prompt link, behind the same "Something heavy today?" fold. Naming what you are fighting is part of writing the day down, not an errand above it. Nested, `AmorFatiControl`'s `lite` variant drops its own card chrome and heading weight — a card inside a card reads as clutter — and keeps its name.
 - **"How was today?" is now "How did today leave you?"** — the question a Stoic actually asks at the end of a day: not how it went, but what state it left you in.

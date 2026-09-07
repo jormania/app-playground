@@ -19,7 +19,7 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
           Memento Mori
         </h3>
         <p className="mb-6 text-text-secondary">
-          "Remember you must die." A visual representation of your life in weeks.
+          A visual representation of your life in weeks.
         </p>
         <div className="mb-6 text-left">
           <GuideNote hidden={!showGuides} summary="Why meditate on mortality?">

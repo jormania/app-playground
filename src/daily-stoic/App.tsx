@@ -1048,12 +1048,12 @@ export default function App() {
             </div>
 
             <div className="mb-8 rounded-xl border border-accent/25 bg-accent-soft p-5 sm:p-6 text-center max-w-2xl mx-auto shadow-sm animate-in fade-in zoom-in-95 duration-300">
-              <span className="text-[10px] uppercase font-mono tracking-widest font-semibold text-accent/80 block">Stoic Ready-at-Hand Handbook</span>
+              <span className="text-[10px] uppercase font-mono tracking-widest font-semibold text-accent/80 block">The Enchiridion</span>
               <h4 className="font-display text-xl sm:text-2xl text-text-primary mt-1">
-                Your handbook contains <span className="text-accent font-bold underline decoration-2 decoration-accent/40 underline-offset-4">{favoritedMaxims.length}</span> principles.
+                Your Enchiridion holds <span className="text-accent font-bold underline decoration-2 decoration-accent/40 underline-offset-4">{favoritedMaxims.length}</span> principles.
               </h4>
               <p className="text-sm text-text-secondary mt-3 leading-relaxed max-w-md mx-auto italic">
-                Epictetus's original Enchiridion translates to "handbook" or "ready at hand." Keep your favorited maxims here for rapid reference during high-stress moments.
+                Epictetus's own, kept close. Your favorited maxims live here, for rapid reference during high-stress moments.
               </p>
             </div>
 

@@ -75,7 +75,7 @@ export default function AmorFatiControl({
           lite ? 'text-base mb-2' : 'text-xl mb-3 border-b border-tertiary pb-3'
         )}
       >
-        <Heart size={lite ? 16 : 20} className="text-text-secondary" /> Amor Fati (Love of Fate)
+        <Heart size={lite ? 16 : 20} className="text-text-secondary" /> Amor Fati
       </h3>
       <p className={cn('text-text-secondary mb-4', lite ? 'text-xs' : 'text-sm')}>
         {lite

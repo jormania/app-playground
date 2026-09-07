@@ -37,7 +37,7 @@ const VIRTUE_ADVICE: Record<string, { virtue: string; Icon: any; advice: string;
     Icon: ShieldCheck,
     quote: 'We suffer more often in imagination than in reality.',
     author: 'Seneca',
-    advice: 'Practice Premeditatio Malorum (premeditation of evils). Write down the worst-case scenario and realize that even if it occurs, you have the inner resources to endure it.'
+    advice: 'Practice Premeditatio Malorum. Write down the worst-case scenario and realize that even if it occurs, you have the inner resources to endure it.'
   },
   reputation: {
     virtue: 'Wisdom (Sophia)',
@@ -51,7 +51,7 @@ const VIRTUE_ADVICE: Record<string, { virtue: string; Icon: any; advice: string;
     Icon: BookOpen,
     quote: 'A noble mind is free from complaints and distress. It accepts fate and loves whatever happens.',
     author: 'Seneca',
-    advice: 'Focus on Amor Fati (love of fate). Reframe your complaints as necessary training conditions. Ask yourself: "How can I use this obstacle to practice virtue?"'
+    advice: 'Focus on Amor Fati. Reframe your complaints as necessary training conditions. Ask yourself: "How can I use this obstacle to practice virtue?"'
   },
   pride: {
     virtue: 'Justice (Dikaiosyne)',

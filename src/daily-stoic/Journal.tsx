@@ -1439,7 +1439,6 @@ export default function Journal({
               <div className="mt-6">
                 <GuideNote hidden={!showGuides} summary="Meditating on Mortality (Memento Mori)">
                   <p>
-                    <strong>Memento Mori</strong> translates to "remember that you will die." 
                     Stoics meditated on mortality not to become morbid, but to create absolute clarity and gratitude for the present moment. 
                     Viewing your yearly and overall life progress reminds you that time is your most scarce resource.
                   </p>
@@ -1521,7 +1520,7 @@ export default function Journal({
                   <p>
                     <strong>Meditating</strong> on philosophical principles prepares the mind for action.
                     Rather than reading passively, focus on how today's maxim applies to your current circumstances,
-                    or draw from your hand-picked <strong>Enchiridion</strong> handbook to reinforce lessons.
+                    or draw from your hand-picked <strong>Enchiridion</strong> to reinforce lessons.
                     Below it, the <strong>Quote of the Week</strong> stays fixed for all seven days of the week and speaks
                     to that week's Cardinal Virtue — a second, slower thread alongside the maxim that changes daily.
                   </p>

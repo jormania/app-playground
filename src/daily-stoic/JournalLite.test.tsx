@@ -396,7 +396,10 @@ describe('Journal — Lite, day to day', () => {
     await user.click(screen.getByRole('button', { name: /Something heavy today/ }));
     expect(reflectionCard.contains(screen.getByLabelText('What feels forced or heavy?'))).toBe(true);
     // ...and not as a card within a card.
-    expect(screen.getByText('Amor Fati (Love of Fate)').closest('section')?.className).not.toContain('shadow-md');
+    // The name stands alone — no English gloss after the Latin.
+    expect(screen.getByText('Amor Fati')).toBeTruthy();
+    expect(screen.queryByText(/Love of Fate/)).toBeNull();
+    expect(screen.getByText('Amor Fati').closest('section')?.className).not.toContain('shadow-md');
   });
 
   it('keeps Amor Fati folded until asked, and unfolds it for a day that has one', async () => {
