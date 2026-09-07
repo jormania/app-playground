@@ -99,6 +99,12 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (More than one obstacle a day)
+- **Amor Fati in Lite takes a list.** Type one, tap **+ Add another** (or press Enter), and it moves above the box while the box empties for the next. Each committed entry has an × to drop it. Come back at 6pm and add what the afternoon brought.
+- **Still one record per day, one property.** The entries live in the same `FateInput` string joined by ` · ` ([`utils/amorFati.ts`](src/daily-stoic/utils/amorFati.ts)) — a separator rather than a newline, so Notion stores one readable line, the Amor Fati retrospective and its word cloud read it exactly as before, and Full's single-line field round-trips a multi-entry day untouched. The box always edits the **last** entry, so there is no draft state to lose.
+- `normalizeFateInput` trims the entries and drops the empty tail before a save, and `hasChanges` compares normalised on both sides — otherwise a dangling separator would have saved as `the train ·` and left "Unsaved changes" showing for ever.
+- **The challenge-type hints are back in Lite.** Suppressing them was my call and it was wrong: five unlabelled pills need their one line of explanation as much as the mood faces needed their words. Single-select means exactly one line, shown only once a type is chosen; the pills also carry the hint as a `title` for pointers.
+
 ### September 7, 2026 (The Latin stands on its own)
 - No more English glosses trailing the classical names: **Amor Fati** (was "Amor Fati (Love of Fate)"), **Memento Mori** (the grid no longer opens with "Remember you must die", and the guide note drops "translates to…"), **Premeditatio Malorum** (was "(premeditation of evils)" in the Passions advice), and **the Enchiridion**, whose panel was headed "Stoic Ready-at-Hand Handbook" and explained itself as "handbook" or "ready at hand". Same in the Field Guide.
 - The four Cardinal Virtues keep their English names with the Greek beside them (Wisdom · Sophia) — that reads the other way round, an English label with its origin, not a Latin term being translated.

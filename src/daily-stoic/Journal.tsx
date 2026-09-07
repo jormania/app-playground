@@ -17,6 +17,7 @@ import { MOODS } from './data/moods';
 import { useJournalMode, fullDayKey } from './lib/useJournalMode';
 import { pickLiteRetrospective, weekDots, previousEntry, promptForDay } from './utils/lite';
 import { hasContent } from './utils/logged';
+import { normalizeFateInput } from './utils/amorFati';
 import type { ReflectionRecord } from './services/NotionService';
 import { useMentorEnabled } from './lib/useMentor';
 import { dueCommitments, commitmentsResolvedOn, ledgerStats } from './lib/commitments';
@@ -260,7 +261,7 @@ export default function Journal({
   // Debounced auto-save of all inputs to localStorage as draft/backup
   useEffect(() => {
     const cleanedText = reflection.trim();
-    const cleanedFate = fateInput.trim();
+    const cleanedFate = normalizeFateInput(fateInput);
     const cleanedIntentions = morningIntentions.trim();
 
     const timer = setTimeout(() => {
@@ -614,7 +615,9 @@ export default function Journal({
   const handleSave = async (overrides?: { mood?: string }) => {
     const moodToSave = overrides?.mood ?? mood;
     const cleanedText = reflection.trim();
-    const cleanedFate = fateInput.trim();
+    // Lite can leave a trailing empty entry behind ("Add another", then a
+    // change of mind) — normalise before it reaches Notion.
+    const cleanedFate = normalizeFateInput(fateInput);
     const cleanedIntentions = morningIntentions.trim();
     
     localStorage.setItem(localVirtueKey, selectedVirtue || '');
@@ -773,7 +776,8 @@ export default function Journal({
 
   const hasChanges =
     reflection.trim() !== savedReflection ||
-    fateInput.trim() !== savedFateInput ||
+    // Normalised on both sides: a trailing empty entry is not a change.
+    normalizeFateInput(fateInput) !== savedFateInput ||
     morningIntentions.trim() !== savedMorningIntentions ||
     mood !== savedMood ||
     tagsChanged ||

@@ -402,6 +402,72 @@ describe('Journal — Lite, day to day', () => {
     expect(screen.getByText('Amor Fati').closest('section')?.className).not.toContain('shadow-md');
   });
 
+  it('holds several obstacles in a day, and saves them as one tidy line', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockImplementation(
+      async (_t, _d, _q, text, _date, _id, fate) => emptyDayRecord({ text, fateInput: fate })
+    );
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    await user.click(screen.getByRole('button', { name: /Something heavy today/ }));
+    await user.type(screen.getByLabelText('What feels forced or heavy?'), 'the heat');
+    await user.click(screen.getByRole('button', { name: /Add another/ }));
+
+    // The first is now above the box, which is empty and asking for the next.
+    expect(screen.getByText('the heat')).toBeTruthy();
+    const box = screen.getByLabelText('And what else?') as HTMLInputElement;
+    expect(box.value).toBe('');
+
+    await user.type(box, 'the meeting that ran long');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(NotionService.upsertReflection).toHaveBeenCalled());
+    expect(vi.mocked(NotionService.upsertReflection).mock.calls[0][6]).toBe(
+      'the heat · the meeting that ran long'
+    );
+  });
+
+  it('drops an entry when its × is tapped, and never saves a dangling separator', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(
+      fullDayRecord({ fateInput: 'the heat · the train', acceptanceTags: [] })
+    );
+    vi.mocked(NotionService.upsertReflection).mockImplementation(
+      async (_t, _d, _q, text, _date, _id, fate) => emptyDayRecord({ text, fateInput: fate })
+    );
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    // A day loaded with two obstacles opens with the first behind the box.
+    await user.click(screen.getByRole('button', { name: 'Remove “the heat”' }));
+    await user.click(screen.getByRole('button', { name: /Add another/ }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(NotionService.upsertReflection).toHaveBeenCalled());
+    expect(vi.mocked(NotionService.upsertReflection).mock.calls[0][6]).toBe('the train');
+  });
+
+  it('explains a challenge type once it is chosen', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    await user.click(screen.getByRole('button', { name: /Something heavy today/ }));
+    expect(screen.queryByText(/An external crisis/)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /Situation/ }));
+    expect(screen.getByText(/An external crisis, accident, or unexpected disruption/)).toBeTruthy();
+  });
+
   it('keeps Amor Fati folded until asked, and unfolds it for a day that has one', async () => {
     enableLite();
     vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
