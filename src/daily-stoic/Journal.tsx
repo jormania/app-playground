@@ -16,6 +16,7 @@ import { getWeekCurriculum } from './lib/curriculum';
 import { MOODS } from './data/moods';
 import { useJournalMode, fullDayKey } from './lib/useJournalMode';
 import { pickLiteRetrospective, weekDots, previousEntry, promptForDay } from './utils/lite';
+import { hasContent } from './utils/logged';
 import type { ReflectionRecord } from './services/NotionService';
 import { useMentorEnabled } from './lib/useMentor';
 import { dueCommitments, commitmentsResolvedOn, ledgerStats } from './lib/commitments';
@@ -136,6 +137,14 @@ export default function Journal({
     setFullForToday(localStorage.getItem(fullDayKey(dayOfYear)) === 'true');
   }, [dayOfYear]);
 
+  // Yesterday's screen state is not today's: a fold left open and a prompt
+  // link still reading "Another question" both belong to the day they
+  // happened on.
+  useEffect(() => {
+    setFateOpen(false);
+    setPromptNudge(0);
+  }, [dayOfYear]);
+
   const isLite = journalMode === 'lite' && !fullForToday;
 
   // Lite keeps Amor Fati folded away — it's optional, and open it is the
@@ -143,6 +152,7 @@ export default function Journal({
   const [fateOpen, setFateOpen] = useState(false);
   // Which prompt the "give me a question" link offers next.
   const [promptNudge, setPromptNudge] = useState(0);
+  const reflectionBoxRef = useRef<HTMLTextAreaElement | null>(null);
 
   const setFullPracticeForToday = (on: boolean) => {
     if (on) {
@@ -195,6 +205,10 @@ export default function Journal({
   const [fateInput, setFateInput] = useState('');
   const [savedFateInput, setSavedFateInput] = useState('');
   const [acceptanceTags, setAcceptanceTags] = useState<string[]>([]);
+  // Challenge types had no saved baseline, so a day whose only entry was a tag
+  // read as unchanged (no "unsaved changes" hint) and as unlogged (an empty
+  // dot), while Stats and the streak counted it. Now it has one.
+  const [savedAcceptanceTags, setSavedAcceptanceTags] = useState<string[]>([]);
 
   // Passions state
   const [passions, setPassions] = useState<string[]>([]);
@@ -378,6 +392,7 @@ export default function Journal({
         setFateInput(localStorage.getItem(localFateKey) || '');
         setSavedFateInput(localStorage.getItem(localFateKey) || '');
         setAcceptanceTags(savedTags);
+        setSavedAcceptanceTags(savedTags);
         setPassions(savedPassionsVal);
         setSavedPassions(savedPassionsVal);
         setMorningIntentions(savedIntentions);
@@ -413,6 +428,7 @@ export default function Journal({
           setFateInput(result.fateInput || '');
           setSavedFateInput(result.fateInput || '');
           setAcceptanceTags(result.acceptanceTags || []);
+          setSavedAcceptanceTags(result.acceptanceTags || []);
           setPassions(result.passions || []);
           setSavedPassions(result.passions || []);
           setMorningIntentions(result.morningIntentions || '');
@@ -476,6 +492,7 @@ export default function Journal({
             setFateInput(localFateBackup);
             setSavedFateInput('');
             setAcceptanceTags(localTagsBackup);
+            setSavedAcceptanceTags([]);
             setPassions(localPassionsBackup);
             setSavedPassions([]);
             setMorningIntentions(localIntentionsBackup);
@@ -515,6 +532,7 @@ export default function Journal({
             setFateInput(localFateBackup);
             setSavedFateInput('');
             setAcceptanceTags(localTagsBackup);
+            setSavedAcceptanceTags([]);
             setPassions(localPassionsBackup);
             setSavedPassions([]);
             setMorningIntentions(localIntentionsBackup);
@@ -565,6 +583,7 @@ export default function Journal({
         setSenecaQ3(errQ3);
         setFateInput(localFateBackup);
         setAcceptanceTags(localTagsBackup);
+        setSavedAcceptanceTags(localTagsBackup);
         setPassions(localPassionsBackup);
         setMorningIntentions(localIntentionsBackup);
         setMood(localMoodBackup);
@@ -616,6 +635,7 @@ export default function Journal({
     if (!isNotionConfigured) {
       setSavedReflection(cleanedText);
       setSavedFateInput(cleanedFate);
+      setSavedAcceptanceTags([...acceptanceTags]);
       setSavedPassions([...passions]);
       setSavedMorningIntentions(cleanedIntentions);
       setSavedMood(moodToSave);
@@ -653,6 +673,7 @@ export default function Journal({
 
       setSavedReflection(result.text);
       setSavedFateInput(result.fateInput || '');
+      setSavedAcceptanceTags(result.acceptanceTags || []);
       setSavedPassions(result.passions || []);
       setSavedMorningIntentions(result.morningIntentions || '');
       setSavedMood(result.mood || '');
@@ -746,6 +767,7 @@ export default function Journal({
   };
 
   const passionsChanged = JSON.stringify(passions.slice().sort()) !== JSON.stringify(savedPassions.slice().sort());
+  const tagsChanged = JSON.stringify(acceptanceTags.slice().sort()) !== JSON.stringify(savedAcceptanceTags.slice().sort());
   const worriesChanged = JSON.stringify(worries) !== JSON.stringify(savedWorries);
   const virtueChanged = selectedVirtue !== savedVirtue;
 
@@ -754,6 +776,7 @@ export default function Journal({
     fateInput.trim() !== savedFateInput ||
     morningIntentions.trim() !== savedMorningIntentions ||
     mood !== savedMood ||
+    tagsChanged ||
     passionsChanged ||
     worriesChanged ||
     virtueChanged;
@@ -865,17 +888,41 @@ export default function Journal({
   );
 
   // Today counts as logged the moment anything is committed, so the dot fills
-  // on save rather than after the next fetch.
+  // on save rather than after the next fetch — and it counts by exactly the
+  // rule Stats, the streak and the digest use, so the dot can never disagree
+  // with them (it used to miss a day whose only entry was a challenge type).
   const todayLogged =
     isSaved &&
-    (savedReflection.trim().length > 0 ||
-      savedFateInput.trim().length > 0 ||
-      savedMood.length > 0);
+    hasContent({
+      date: '',
+      quoteId: dayOfYear,
+      text: savedReflection,
+      fateInput: savedFateInput,
+      acceptanceTags: savedAcceptanceTags,
+      mood: savedMood,
+      morningIntentions: savedMorningIntentions,
+      passions: savedPassions,
+      virtue: savedVirtue || '',
+    });
 
   const dots = useMemo(
     () => (isLite ? weekDots(recentReflections, dayOfYear, todayLogged) : []),
     [isLite, recentReflections, dayOfYear, todayLogged]
   );
+
+  // A dot's tooltip said "Day 9", which is the cycle count, not a date anyone
+  // thinks in. Name the day itself.
+  const cycleStartDate = typeof localStorage !== 'undefined'
+    ? localStorage.getItem('daily-stoic:cycle-start-date') || ''
+    : '';
+  const dotLabel = (dot: { day: number; isToday: boolean }) => {
+    if (dot.isToday) return 'Today';
+    const iso = cycleDayToDateStr(dot.day, cycleStartDate);
+    const d = new Date(`${iso}T12:00:00`);
+    return Number.isNaN(d.getTime())
+      ? `Day ${dot.day}`
+      : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
+  };
 
   const lastEntry = useMemo(
     () => (isLite ? previousEntry(recentReflections, dayOfYear) : null),
@@ -904,6 +951,10 @@ export default function Journal({
     return () => ro.disconnect();
   }, [lastEntry, isLite]);
 
+  // "✓ Saved" on a day nothing has ever been written to is a small lie — the
+  // record doesn't exist. A blank day shows a plain, disabled Save instead.
+  const nothingYet = isSaved && !hasChanges && !todayLogged;
+
   const saveButton = (
     <button
       onClick={() => void handleSave()}
@@ -918,7 +969,7 @@ export default function Journal({
             : "bg-accent hover:bg-accent-hover text-background-primary border-accent hover:shadow-md"
       )}
     >
-      {isSaving ? 'Saving...' : isSaved && !hasChanges ? '✓ Saved' : 'Save'}
+      {isSaving ? 'Saving...' : isSaved && !hasChanges && !nothingYet ? '✓ Saved' : 'Save'}
     </button>
   );
 
@@ -943,7 +994,7 @@ export default function Journal({
           {dots.map((dot) => (
             <span
               key={dot.day}
-              title={dot.isToday ? 'Today' : `Day ${dot.day}`}
+              title={dotLabel(dot)}
               className={cn(
                 'h-2.5 w-2.5 rounded-full border transition-all duration-300',
                 dot.logged
@@ -1083,6 +1134,7 @@ export default function Journal({
                 <Moon size={20} className="text-text-secondary" /> Reflection
               </h3>
               <AutoExpandingTextarea
+                textareaRef={reflectionBoxRef}
                 value={reflection}
                 onValueChange={(val) => {
                   setReflection(val);
@@ -1106,6 +1158,14 @@ export default function Journal({
                     setReflection((prev) => (prev.trim() ? `${prev.replace(/\s+$/, '')}\n\n${question}\n` : `${question}\n`));
                     setIsSaved(false);
                     triggerHaptic('light');
+                    // Open the keyboard and put the cursor under the question,
+                    // so the tap leads straight into writing.
+                    requestAnimationFrame(() => {
+                      const box = reflectionBoxRef.current;
+                      if (!box) return;
+                      box.focus();
+                      box.setSelectionRange(box.value.length, box.value.length);
+                    });
                   }}
                   className="text-xs text-text-secondary underline underline-offset-4 hover:text-text-primary transition-colors"
                 >
@@ -1119,13 +1179,18 @@ export default function Journal({
                 {moodOptions.map(opt => (
                   <button
                     key={opt.value}
-                    title={opt.value}
+                    title={mood === opt.value ? `${opt.value} — tap again to clear` : opt.value}
                     aria-label={opt.value}
+                    aria-pressed={mood === opt.value}
                     onClick={() => {
-                      setMood(opt.value);
+                      // Tapping the mood you're already on clears it. The tap
+                      // saves on the spot, so a mis-tap would otherwise be
+                      // written to the record with no way back.
+                      const next = mood === opt.value ? '' : opt.value;
+                      setMood(next);
                       setIsSaved(false);
                       triggerHaptic('light');
-                      if (!isSaving && !isLoading) void handleSave({ mood: opt.value });
+                      if (!isSaving && !isLoading) void handleSave({ mood: next });
                     }}
                     className={cn(
                       "rounded-lg border p-3 transition-all flex items-center justify-center",

@@ -99,6 +99,15 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (Lite audit)
+A pass over the Lite screen for defects rather than features.
+- **A day whose only entry was a challenge type read as unlogged.** `acceptanceTags` had no saved baseline, so it was missing from `hasChanges` (no "unsaved changes" hint) and from the dot's own rule — while Stats, the streak and the digest counted it, because `hasContent` includes tags. The baseline exists now, and the dot reads `hasContent` directly, so it can't drift from the counters again.
+- **"✓ Saved" no longer appears on a day nothing was ever written to.** A blank day shows a plain, disabled *Save*: the record genuinely doesn't exist.
+- **A mis-tapped mood can be undone**: tapping the face you're on clears it and saves the clearing. One-tap saving made an accidental tap a written record with no way back.
+- **Per-day screen state no longer leaks across midnight**: a folded-open Amor Fati and a prompt link still reading "Another question" both reset on a day change.
+- **Dot tooltips name the day** ("Tuesday, 8 Sep") instead of the cycle count ("Day 9").
+- **"Give me a question" now focuses the box** and puts the cursor after the question — the tap leads straight into writing. `AutoExpandingTextarea` takes an optional `textareaRef` for it.
+
 ### September 7, 2026 (The week, framed)
 - **The Virtue Week Breakdown fits a phone.** It was 420px wide inside a ~300px strip, so "Avg Mood · 3 / 5" read as a bare "AVG · 3" and Favorites was off the edge entirely, with nothing to say it scrolled. The min-width is gone, Favorites steps aside below `sm` (Stats already carries an all-time tally), and the numbers stay on one line. Unclipped at 360px and 390px.
 - **Rows say what they are**: `Week 1 · Wisdom`, not a bare "Wisdom" that reads like the evening virtue picker. The subtitle now states outright that these are the cycle's week themes, not the virtue you choose — the table never touches that field.

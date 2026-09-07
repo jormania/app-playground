@@ -5,6 +5,10 @@ interface AutoExpandingTextareaProps extends React.TextareaHTMLAttributes<HTMLTe
   value: string;
   onValueChange: (val: string) => void;
   onCtrlEnter?: () => void;
+  /** Optional handle on the element itself, for callers that need to focus it
+   *  (Lite's "Give me a question" drops text in and puts the cursor after it).
+   *  The component keeps its own ref for auto-sizing; this mirrors it. */
+  textareaRef?: React.MutableRefObject<HTMLTextAreaElement | null>;
 }
 
 export function AutoExpandingTextarea({
@@ -14,6 +18,7 @@ export function AutoExpandingTextarea({
   className,
   placeholder,
   disabled,
+  textareaRef: externalRef,
   ...props
 }: AutoExpandingTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,6 +35,10 @@ export function AutoExpandingTextarea({
   useEffect(() => {
     adjustHeight();
   }, [value]);
+
+  useEffect(() => {
+    if (externalRef) externalRef.current = textareaRef.current;
+  });
 
   // Handle Ctrl/Cmd + Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

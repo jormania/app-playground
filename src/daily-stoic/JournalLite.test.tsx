@@ -421,3 +421,81 @@ describe('Journal — Lite, day to day', () => {
     expect(box.value.trim().split('\n\n')).toHaveLength(2);
   });
 });
+
+describe('Journal — Lite, audit fixes', () => {
+  it('fills the dot for a day whose only entry is a challenge type', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockImplementation(
+      async (_t, _d, _q, text, _date, _id, fate, tags) =>
+        emptyDayRecord({ text, fateInput: fate, acceptanceTags: tags })
+    );
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    await user.click(screen.getByRole('button', { name: /Something heavy today/ }));
+    await user.click(screen.getByRole('button', { name: /Time/ }));
+
+    // The tag alone is a change worth saving, and it says so.
+    expect(screen.getByText(/Unsaved changes/)).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // Stats and the streak count a tagged day; the dot must agree.
+    await waitFor(() => expect(screen.getByLabelText('This week: 1 of 7 days written')).toBeTruthy());
+  });
+
+  it('clears a mis-tapped mood when the same face is tapped again', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockImplementation(
+      async (_t, _d, _q, text, _date, _id, _f, _tg, _fav, mood) => emptyDayRecord({ text, mood })
+    );
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    const good = screen.getByRole('button', { name: 'Good' });
+    await user.click(good);
+    await waitFor(() => expect(good.getAttribute('aria-pressed')).toBe('true'));
+
+    await user.click(good);
+    await waitFor(() => expect(good.getAttribute('aria-pressed')).toBe('false'));
+
+    // The clearing save wrote an empty mood, and the day is unlogged again.
+    const calls = vi.mocked(NotionService.upsertReflection).mock.calls;
+    expect(calls[calls.length - 1]![9]).toBe('');
+    await waitFor(() => expect(screen.getByLabelText('This week: 0 of 7 days written')).toBeTruthy());
+  });
+
+  it('does not claim a blank day is saved', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    // Nothing has ever been written for this day, so "✓ Saved" would be a lie.
+    expect(screen.queryByRole('button', { name: '✓ Saved' })).toBeNull();
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('names the day behind each dot rather than its cycle number', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    localStorage.setItem('daily-stoic:cycle-start-date', '2026-09-07');
+
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    const row = screen.getByLabelText(/This week: /);
+    const titles = Array.from(row.querySelectorAll('span')).map((el) => el.getAttribute('title'));
+    expect(titles).toContain('Today');
+    expect(titles.some((t) => t && /Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday/.test(t))).toBe(true);
+    expect(titles.some((t) => t && /^Day \d+$/.test(t))).toBe(false);
+  });
+});
