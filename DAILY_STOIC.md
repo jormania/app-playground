@@ -99,6 +99,11 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (Field Guide caught up)
+- Section II now describes the Lite screen as it actually stands — the week's anchor, Amor Fati folded inside the Reflection card, and the mood in its own card under "How did today leave you?" — plus the obstacle list ("+ Add another") and the challenge-type hint.
+- Section V explains what the **Virtue Week Breakdown** actually groups by (the cycle's week themes, never the virtue you pick), and carries a new panel — **What counts as a logged day** — spelling out that a favourite is not an entry, and why every counter reads one rule.
+- Section VII gains **Appearance** (System / Light / Dark, shared with the guide) and a warning on the Cycle Start Date: run "Start Over" on a Monday, or it snaps back to the Monday just gone.
+
 ### September 7, 2026 (More than one obstacle a day)
 - **Amor Fati in Lite takes a list.** Type one, tap **+ Add another** (or press Enter), and it moves above the box while the box empties for the next. Each committed entry has an × to drop it. Come back at 6pm and add what the afternoon brought.
 - **Still one record per day, one property.** The entries live in the same `FateInput` string joined by ` · ` ([`utils/amorFati.ts`](src/daily-stoic/utils/amorFati.ts)) — a separator rather than a newline, so Notion stores one readable line, the Amor Fati retrospective and its word cloud read it exactly as before, and Full's single-line field round-trips a multi-entry day untouched. The box always edits the **last** entry, so there is no draft state to lose.
