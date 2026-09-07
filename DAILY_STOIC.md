@@ -99,9 +99,13 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (Reflection gathers, the mood asks properly)
+- **Amor Fati moved inside the Reflection card**, under the writing box and the prompt link, behind the same "Something heavy today?" fold. Naming what you are fighting is part of writing the day down, not an errand above it. Nested, `AmorFatiControl`'s `lite` variant drops its own card chrome and heading weight — a card inside a card reads as clutter — and keeps its name.
+- **"How was today?" is now "How did today leave you?"** — the question a Stoic actually asks at the end of a day: not how it went, but what state it left you in.
+
 ### September 7, 2026 (The mood gets its own card)
 - The five faces sat inside the Reflection card under the textarea, reading as an appendage to the writing, and as five unlabelled glyphs they said nothing about what they were or what tapping one did — which hid the most useful thing in Lite: **one tap logs the day**.
-- Now a card of its own directly under Reflection, at the same visual weight: **☀ How was today?** with the line *"One tap. That alone logs the day."* Every face wears its word (Great · Good · Neutral · Bad · Awful), and once one is chosen the line becomes *"Saved — tap Good again to clear it,"* which is also where the tap-to-clear undo finally becomes visible.
+- Now a card of its own directly under Reflection, at the same visual weight (see the entry above for its final wording): with the line *"One tap. That alone logs the day."* Every face wears its word (Great · Good · Neutral · Bad · Awful), and once one is chosen the line becomes *"Saved — tap Good again to clear it,"* which is also where the tap-to-clear undo finally becomes visible.
 - `Sun` pairs with the Reflection card's `Moon`. Words fit unwrapped at 360px and 390px.
 
 ### September 7, 2026 (Lite audit)

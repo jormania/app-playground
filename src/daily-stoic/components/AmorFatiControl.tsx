@@ -58,12 +58,26 @@ export default function AmorFatiControl({
     }
   };
 
+  // In Lite this lives inside the Reflection card, so it drops its own card
+  // chrome and heading weight — a card nested in a card reads as clutter, and
+  // the practice keeps its name either way.
   return (
-    <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
-      <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
-        <Heart size={20} className="text-text-secondary" /> Amor Fati (Love of Fate)
+    <section
+      className={cn(
+        lite
+          ? 'pt-1'
+          : 'rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300'
+      )}
+    >
+      <h3
+        className={cn(
+          'font-display text-text-primary flex items-center gap-2',
+          lite ? 'text-base mb-2' : 'text-xl mb-3 border-b border-tertiary pb-3'
+        )}
+      >
+        <Heart size={lite ? 16 : 20} className="text-text-secondary" /> Amor Fati (Love of Fate)
       </h3>
-      <p className="text-sm text-text-secondary mb-4">
+      <p className={cn('text-text-secondary mb-4', lite ? 'text-xs' : 'text-sm')}>
         {lite
           ? 'Name what you are fighting, then stop fighting it. Any hour of the day.'
           : "Frame today's resistances as necessary constraints to be embraced rather than fought."}

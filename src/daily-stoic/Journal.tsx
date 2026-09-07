@@ -1097,37 +1097,6 @@ export default function Journal({
               )}
             </section>
 
-            {/* Amor Fati (Lite) — untethered from the evening, and folded away
-                until it's wanted: it's optional, and open it is the tallest
-                card on the screen. Anything already logged keeps it open. */}
-            {fateOpen || fateInput.trim() || acceptanceTags.length > 0 ? (
-              <AmorFatiControl
-                lite
-                fateInput={fateInput}
-                onFateInputChange={(val) => {
-                  setFateInput(val);
-                  setIsSaved(false);
-                }}
-                acceptanceTags={acceptanceTags}
-                onAcceptanceTagsChange={(tags) => {
-                  setAcceptanceTags(tags);
-                  setIsSaved(false);
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setFateOpen(true);
-                  triggerHaptic('light');
-                }}
-                className="w-full rounded-xl border border-dashed border-tertiary bg-background-secondary/40 px-4 py-3 text-left text-sm text-text-secondary hover:border-secondary hover:text-text-primary transition-colors flex items-center gap-2"
-              >
-                <Heart size={16} aria-hidden="true" />
-                Something heavy today?
-              </button>
-            )}
-
             {/* The reflection — one box, one prompt */}
             <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md">
               <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
@@ -1173,6 +1142,41 @@ export default function Journal({
                 </button>
               </div>
 
+              {/* Amor Fati belongs to the reflection: naming what you are
+                  fighting is part of writing the day down, not a separate
+                  errand above it. Folded away until wanted — it is optional,
+                  and open it is the tallest thing on the screen. Anything
+                  already logged keeps it open. */}
+              <div className="mt-4 border-t border-tertiary pt-4">
+                {fateOpen || fateInput.trim() || acceptanceTags.length > 0 ? (
+                  <AmorFatiControl
+                    lite
+                    fateInput={fateInput}
+                    onFateInputChange={(val) => {
+                      setFateInput(val);
+                      setIsSaved(false);
+                    }}
+                    acceptanceTags={acceptanceTags}
+                    onAcceptanceTagsChange={(tags) => {
+                      setAcceptanceTags(tags);
+                      setIsSaved(false);
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFateOpen(true);
+                      triggerHaptic('light');
+                    }}
+                    className="w-full rounded-lg border border-dashed border-tertiary px-3 py-2.5 text-left text-sm text-text-secondary hover:border-secondary hover:text-text-primary transition-colors flex items-center gap-2"
+                  >
+                    <Heart size={16} aria-hidden="true" />
+                    Something heavy today?
+                  </button>
+                )}
+              </div>
+
             </section>
 
             {/* Mood is its own act, not a footnote to the writing — and the
@@ -1181,7 +1185,7 @@ export default function Journal({
                 and every face wears its word. */}
             <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md">
               <h3 className="font-display text-xl text-text-primary mb-1 flex items-center gap-2">
-                <Sun size={20} className="text-text-secondary" /> How was today?
+                <Sun size={20} className="text-text-secondary" /> How did today leave you?
               </h3>
               <p className="text-xs text-text-secondary mb-4">
                 {mood

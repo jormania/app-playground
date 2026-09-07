@@ -382,6 +382,23 @@ describe('Journal — Lite, day to day', () => {
     expect(line.getAttribute('style')).toBeNull();
   });
 
+  it('keeps Amor Fati inside the Reflection card, where naming the day belongs', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    const reflectionCard = screen.getByLabelText('Reflection').closest('section')!;
+    expect(reflectionCard.contains(screen.getByRole('button', { name: /Something heavy today/ }))).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: /Something heavy today/ }));
+    expect(reflectionCard.contains(screen.getByLabelText('What feels forced or heavy?'))).toBe(true);
+    // ...and not as a card within a card.
+    expect(screen.getByText('Amor Fati (Love of Fate)').closest('section')?.className).not.toContain('shadow-md');
+  });
+
   it('keeps Amor Fati folded until asked, and unfolds it for a day that has one', async () => {
     enableLite();
     vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
@@ -458,14 +475,14 @@ describe('Journal — Lite, audit fixes', () => {
     render(<Journal {...baseProps} dayOfYear={2} />);
     await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
 
-    expect(screen.getByText('How was today?')).toBeTruthy();
+    expect(screen.getByText('How did today leave you?')).toBeTruthy();
     expect(screen.getByText('One tap. That alone logs the day.')).toBeTruthy();
     for (const word of ['Great', 'Good', 'Neutral', 'Bad', 'Awful']) {
       expect(screen.getByText(word)).toBeTruthy();
     }
 
     // It stands apart from the writing rather than sitting inside it.
-    const moodCard = screen.getByText('How was today?').closest('section')!;
+    const moodCard = screen.getByText('How did today leave you?').closest('section')!;
     expect(moodCard.contains(screen.getByLabelText('Reflection'))).toBe(false);
 
     await user.click(screen.getByRole('button', { name: 'Good' }));
