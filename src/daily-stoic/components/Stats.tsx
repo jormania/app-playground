@@ -8,6 +8,7 @@ import InsightPeriodFilter from './InsightPeriodFilter';
 import { ReflectionRecord } from '../services/NotionService';
 import { getCycleInfo } from '../utils/date';
 import { calculateLongestStreak } from '../utils/streak';
+import { hasContent } from '../utils/logged';
 import { computeVirtueWeekStats, computeWeekdayStats, computeCurrentCycleHeatmap } from '../utils/stats';
 import { getInsightPeriodRange } from '../utils/insightPeriod';
 import { useInsightPeriod } from '../lib/useInsightPeriod';
@@ -65,7 +66,9 @@ export default function Stats({ lite = false, streak, today, cycleStartDate, ref
     });
 
     const dominantMood = Object.entries(moods).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
-    const count = filteredReflections.length;
+    // Days journaled, not days touched: favouriting the maxim writes a record
+    // too, and a bookmark is not an entry (see utils/logged).
+    const count = filteredReflections.filter(hasContent).length;
 
     return {
       words,

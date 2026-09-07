@@ -30,6 +30,8 @@ export interface ReflectionRecord {
   virtue?: string;
 }
 
+import { hasContent } from '../utils/logged';
+
 export const RELAY_ENDPOINT = typeof window !== 'undefined' ? '/api/notion' : 'http://localhost/api/notion';
 
 export function normalizeNotionId(input: string): string {
@@ -676,7 +678,9 @@ export async function fetchReflectionsForStreak(
       .filter((r: ReflectionRecord | null): r is ReflectionRecord => r !== null);
     for (const r of pageRecords) {
       allRecords.push(r);
-      days.add(r.quoteId);
+      // Every record is kept (the Enchiridion needs the favourite-only ones),
+      // but only a practised day counts toward the streak — see utils/logged.
+      if (hasContent(r)) days.add(r.quoteId);
       if (r.quoteId < oldestQuoteIdFetched) oldestQuoteIdFetched = r.quoteId;
     }
     pagesFetched++;

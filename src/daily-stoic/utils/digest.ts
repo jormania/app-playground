@@ -10,6 +10,7 @@ import {
   formatCycleLabel,
 } from './date';
 import { computeCycleRetrospective, CycleRetrospective, Worry } from './retrospective';
+import { hasContent } from './logged';
 import {
   Commitment,
   LedgerStats,
@@ -118,7 +119,7 @@ export function buildDigestEntries(
         end: cycleDayToDateStr(day, cycleStartDate),
       };
       const loggedCount = reflections.filter(
-        (r) => r.date >= dateRange.start && r.date <= dateRange.end
+        (r) => r.date >= dateRange.start && r.date <= dateRange.end && hasContent(r)
       ).length;
       entries.push({
         type: 'week',

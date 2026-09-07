@@ -1,4 +1,5 @@
 import { ReflectionRecord } from '../services/NotionService';
+import { hasContent } from './logged';
 import { getCycleInfo, WEEK_VIRTUES, WeekVirtue } from './date';
 
 // Same 5-point scale as Journal.tsx's mood picker (Great..Awful). Averaging
@@ -48,7 +49,7 @@ export function computeVirtueWeekStats(reflections: ReflectionRecord[], today: n
     const r = byDay.get(day);
     if (!r) continue;
 
-    bucket.loggedDays++;
+    if (hasContent(r)) bucket.loggedDays++;
     if (r.mood && MOOD_SCORES[r.mood] != null) {
       bucket.moodSum += MOOD_SCORES[r.mood];
       bucket.moodCount++;
@@ -123,7 +124,8 @@ export function computeCurrentCycleHeatmap(reflections: ReflectionRecord[], toda
       day,
       dayOfWeek: info.dayOfWeek,
       week: info.week,
-      logged: !!r,
+      // A day that was only favourited shows as favourited, not as logged.
+      logged: hasContent(r),
       favorited: !!r?.favorite,
       isFuture: day > today,
     });

@@ -1,5 +1,6 @@
 import { ReflectionRecord } from '../services/NotionService';
 import { cycleDayToDateStr } from './date';
+import { hasContent } from './logged';
 
 // Mirrors the local `Worry` shape defined in App.tsx/Journal.tsx/DichotomyOfControl.tsx
 // (not centralized there either) — structurally compatible, so callers can pass their
@@ -65,7 +66,7 @@ export function computeCycleRetrospective(
     (r) => r.date >= dateRange.start && r.date <= dateRange.end
   );
 
-  const loggedCount = cycleReflections.length;
+  const loggedCount = cycleReflections.filter(hasContent).length;
   const consistencyRate = Math.min(100, Math.round((loggedCount / 28) * 100));
   const reframingsCount = cycleReflections.filter((r) => r.fateInput && r.fateInput.trim()).length;
   const passionsCount = cycleReflections.reduce((count, r) => count + (r.passions || []).length, 0);

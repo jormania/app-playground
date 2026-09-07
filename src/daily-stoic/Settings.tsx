@@ -5,6 +5,7 @@ import { JOURNAL_MODE_KEY, useJournalMode } from './lib/useJournalMode';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
 import { verifyAnthropicKey, MENTOR_KEY_STORAGE, MENTOR_ENABLED_STORAGE } from './lib/mentor';
 import { getCycleDay } from './utils/date';
+import { hasContent } from './utils/logged';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { registerPeriodicSync, unregisterPeriodicSync } from '../shared/notify/periodicSync';
 import { requestPermission, capabilities } from '../shared/notify/permission';
@@ -77,7 +78,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
     if (token.trim() && database.trim()) {
       try {
         const records = await fetchRecentReflections(token, database);
-        todayLogged = records.some((r) => r.quoteId === today);
+        todayLogged = records.some((r) => r.quoteId === today && hasContent(r));
       } catch {
         /* ignore */
       }

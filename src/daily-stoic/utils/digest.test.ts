@@ -7,7 +7,9 @@ const CYCLE_START = '2026-07-13'; // a Monday
 
 function makeReflection(overrides: Partial<ReflectionRecord> & { date: string; quoteId: number }): ReflectionRecord {
   return {
-    text: '',
+    // A record stands for a day that was actually practised — utils/logged
+    // treats an entirely blank one (a favourite, say) as not logged at all.
+    text: 'an entry',
     fateInput: '',
     acceptanceTags: [],
     favorite: false,

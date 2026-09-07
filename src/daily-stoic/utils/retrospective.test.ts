@@ -6,7 +6,9 @@ const CYCLE_START = '2026-07-13'; // a Monday
 
 function makeReflection(overrides: Partial<ReflectionRecord> & { date: string; quoteId: number }): ReflectionRecord {
   return {
-    text: '',
+    // A record stands for a day that was actually practised — utils/logged
+    // treats an entirely blank one (a favourite, say) as not logged at all.
+    text: 'an entry',
     fateInput: '',
     acceptanceTags: [],
     favorite: false,
@@ -79,5 +81,16 @@ describe('computeCycleRetrospective', () => {
     // Cycle 3: days 57-84
     const result = computeCycleRetrospective(3, CYCLE_START, [], []);
     expect(result.dateRange).toEqual({ start: '2026-09-07', end: '2026-10-04' });
+  });
+});
+
+describe('computeCycleRetrospective — a favourite is not an entry', () => {
+  it('leaves a favourite-only day out of the logged count', () => {
+    const withEntry = makeReflection({ date: '2026-06-01', quoteId: 1 });
+    const favouriteOnly = makeReflection({ date: '2026-06-02', quoteId: 2, text: '', favorite: true });
+
+    const retro = computeCycleRetrospective(1, '2026-06-01', [withEntry, favouriteOnly], []);
+
+    expect(retro.loggedCount).toBe(1);
   });
 });

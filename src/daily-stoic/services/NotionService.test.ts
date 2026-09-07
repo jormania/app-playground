@@ -431,13 +431,26 @@ describe('NotionService', () => {
   });
 
   describe('fetchReflectionsForStreak', () => {
+    // A practised day: it carries a reflection. A page with nothing written on
+    // it (see the favourite-only case at the end of this block) is not one.
     const page = (quoteId: number) => ({
       id: `page-${quoteId}`,
       created_time: '2026-07-12T10:00:00Z',
       properties: {
         Date: { date: { start: '2026-07-12' } },
         QuoteID: { number: quoteId },
+        Reflection: { rich_text: [{ plain_text: 'wrote something' }] },
+      },
+    });
+
+    const favouriteOnlyPage = (quoteId: number) => ({
+      id: `page-${quoteId}`,
+      created_time: '2026-07-12T10:00:00Z',
+      properties: {
+        Date: { date: { start: '2026-07-12' } },
+        QuoteID: { number: quoteId },
         Reflection: { rich_text: [] },
+        Favorite: { checkbox: true },
       },
     });
 
@@ -498,6 +511,20 @@ describe('NotionService', () => {
 
       expect(res.streak).toBe(0);
       expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not count a day that was only favourited — a bookmark is not an entry', async () => {
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ results: [favouriteOnlyPage(100), page(99), page(98)], has_more: false })
+      );
+
+      const res = await fetchReflectionsForStreak('mock-token', '41c42bc4dfb543f49051810b3c5880fe', 100, fetchImpl);
+
+      // Yesterday and the day before were practised; today was only favourited.
+      expect(res.streak).toBe(2);
+      // The record is still returned — the Enchiridion is built from favourites.
+      expect(res.records.map((r) => r.quoteId)).toEqual([100, 99, 98]);
+      expect(res.records.find((r) => r.quoteId === 100)?.favorite).toBe(true);
     });
   });
 

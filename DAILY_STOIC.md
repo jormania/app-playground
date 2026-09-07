@@ -99,6 +99,12 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (A favourite is not an entry)
+- **One definition of a logged day**, in [`utils/logged.ts`](src/daily-stoic/utils/logged.ts): a day counts when it holds something written or chosen — reflection, Amor Fati obstacle or challenge type, mood, morning intentions, passions, virtue. `favorite` is deliberately absent.
+- **Why it mattered**: every write path creates the same Notion page, so favouriting the day's maxim created a record — and the streak, Stats' *Days Journaled*, the virtue-week consistency rate, the cycle heatmap, the cycle retrospective, the digest's week counts and the evening nudge all treated "a record exists" as "the day was practised". Tapping a heart marked the day journaled and silenced that evening's reminder.
+- Every one of those now reads the same predicate, so they can't disagree about what today was. The **records themselves are untouched** — favourite-only pages are still fetched and still build the Enchiridion, and the cycle heatmap shows such a day as favourited rather than logged.
+- The week dots in Lite already used this rule; it has simply been promoted out of `utils/lite.ts` (which re-exports it) to where everything else can read it.
+
 ### September 6, 2026 (Lite, made daily)
 Six changes aimed at one thing: making the practice easy to keep. No new features, no charts, no commentary on consistency.
 - **A mood tap saves the day.** In Lite, tapping a mood commits immediately, so an evening with nothing to write still counts. `handleSave` takes an `overrides` argument because React state hasn't committed inside the click handler — without it the save writes the previous mood.

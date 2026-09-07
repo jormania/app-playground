@@ -1,4 +1,5 @@
 import { ReflectionRecord } from '../services/NotionService';
+import { hasContent } from './logged';
 
 // Lite has no dashboards to visit, so the one worthwhile look backwards comes
 // to the user instead: after saving, the obstacle they logged 30, 90 or 365
@@ -29,18 +30,9 @@ export function pickLiteRetrospective(
   return null;
 }
 
-/** Does this record hold anything the user actually wrote or tapped? */
-export function hasContent(r: ReflectionRecord | undefined): boolean {
-  if (!r) return false;
-  return Boolean(
-    (r.text || '').trim() ||
-    (r.fateInput || '').trim() ||
-    (r.mood || '').trim() ||
-    (r.morningIntentions || '').trim() ||
-    (r.virtue || '').trim() ||
-    (r.passions || []).length > 0
-  );
-}
+// Promoted to utils/logged.ts once streaks, Stats, the digest and the nudge
+// needed the same rule; re-exported here so Lite's callers keep working.
+export { hasContent } from './logged';
 
 export interface WeekDot {
   /** Absolute cycle day this dot stands for. */

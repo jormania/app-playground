@@ -120,3 +120,24 @@ describe('Stats — Lite', () => {
     expect(screen.getByText('Promises Kept')).toBeTruthy();
   });
 });
+
+describe('Stats — a favourite is not an entry', () => {
+  it('leaves a favourite-only day out of Days Journaled', () => {
+    const favouriteOnly = makeReflection({ date: '2026-06-03', quoteId: 3, favorite: true });
+
+    render(
+      <Stats
+        streak={2}
+        today={10}
+        cycleStartDate={CYCLE_START}
+        reflections={[...reflections, favouriteOnly]}
+        loading={false}
+        onClose={() => {}}
+      />
+    );
+
+    // Two practised days out of the three records.
+    expect(tileValue('Days Journaled')).toBe('2 / 10');
+    expect(tileValue('Favorited Quotes')).toBe('2');
+  });
+});

@@ -18,6 +18,7 @@ import PauseDrill from './components/PauseDrill';
 import Ornament from './components/Ornament';
 import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr, getCycleInfo, mostRecentMonday } from './utils/date';
 import { calculateStreak } from './utils/streak';
+import { hasContent } from './utils/logged';
 import { fetchReflectionsForStreak, fetchAllReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, getMissingOptionalColumns, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { computeCycleRetrospective, extractWorriesFromReflections, Worry } from './utils/retrospective';
 import { createIdbKv } from '../shared/notify/idbKv';
@@ -192,7 +193,6 @@ export default function App() {
       const estimatedDateStr = cycleDayToDateStr(i, cycleStartDate);
 
       if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0 || moodVal || morningIntentionsVal) {
-        days.add(i);
         records.push({
           date: estimatedDateStr,
           quoteId: i,
@@ -206,6 +206,9 @@ export default function App() {
           virtue: virtueVal,
           createdTime: createdTimeVal || `${estimatedDateStr}T12:00:00Z`,
         });
+        // The record is kept either way (a favourite-only day still belongs in
+        // the Enchiridion), but only a practised day counts toward the streak.
+        if (hasContent(records[records.length - 1])) days.add(i);
       }
     }
     setRecentReflections(records);

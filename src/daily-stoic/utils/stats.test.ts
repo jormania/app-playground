@@ -4,7 +4,9 @@ import { ReflectionRecord } from '../services/NotionService';
 
 function makeReflection(overrides: Partial<ReflectionRecord> & { date: string; quoteId: number }): ReflectionRecord {
   return {
-    text: '',
+    // A record stands for a day that was actually practised — utils/logged
+    // treats an entirely blank one (a favourite, say) as not logged at all.
+    text: 'an entry',
     fateInput: '',
     acceptanceTags: [],
     favorite: false,
@@ -123,5 +125,23 @@ describe('computeCurrentCycleHeatmap', () => {
     expect(day30.isFuture).toBe(false); // today itself is not "future"
     expect(day31.isFuture).toBe(true);
     expect(day31.logged).toBe(false);
+  });
+});
+
+describe('a favourite is not an entry', () => {
+  const favouriteOnly = makeReflection({ date: '2026-06-02', quoteId: 2, text: '', favorite: true });
+
+  it('is not a logged day in the virtue-week breakdown', () => {
+    const stats = computeVirtueWeekStats([favouriteOnly], 7);
+    expect(stats[0]!.loggedDays).toBe(0);
+    // It is still counted as a favourite for that week.
+    expect(stats[0]!.favoritesCount).toBe(1);
+  });
+
+  it('shows on the cycle heatmap as favourited, not as logged', () => {
+    const days = computeCurrentCycleHeatmap([favouriteOnly], 7);
+    const target = days.find((d) => d.day === 2)!;
+    expect(target.logged).toBe(false);
+    expect(target.favorited).toBe(true);
   });
 });
