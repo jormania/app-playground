@@ -6,6 +6,7 @@ import Journal from './Journal';
 import * as NotionService from './services/NotionService';
 import { JOURNAL_MODE_KEY } from './lib/useJournalMode';
 import { REFLECTION_PROMPTS } from './utils/lite';
+import { getWeekCurriculum } from './lib/curriculum';
 
 // Same shim as Journal.test.tsx — Node's experimental localStorage global
 // shadows happy-dom's and reads as undefined.
@@ -148,6 +149,25 @@ describe('Journal — Lite mode', () => {
     expect(screen.queryByPlaceholderText(/Today I might face complaints/)).toBeNull();
     expect(screen.queryByPlaceholderText('Log a worry/concern for today...')).toBeNull();
     expect(screen.queryByText('Passions & Judgments')).toBeNull();
+  });
+
+  it('anchors the week with its virtue, its framing line and the week\'s maxim', async () => {
+    enableLite();
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    // Day 2 sits in week 1 of the cycle — themed Wisdom.
+    render(<Journal {...baseProps} dayOfYear={2} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+
+    expect(screen.getByText(/This week · Wisdom/)).toBeTruthy();
+    expect(screen.getByText(getWeekCurriculum(1).title)).toBeTruthy();
+
+    // Day 9 is week 2 — Courage — and the framing follows.
+    cleanup();
+    render(<Journal {...baseProps} dayOfYear={9} />);
+    await waitFor(() => expect(screen.queryByText(/Syncing/i)).toBeNull());
+    expect(screen.getByText(/This week · Courage/)).toBeTruthy();
+    expect(screen.getByText(getWeekCurriculum(2).title)).toBeTruthy();
   });
 
   it('prompts for a birth date instead of a bar when none is configured', async () => {

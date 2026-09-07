@@ -99,6 +99,11 @@ src/daily-stoic/
 
 ## Changelog
 
+### September 7, 2026 (The week, framed)
+- **The Virtue Week Breakdown fits a phone.** It was 420px wide inside a ~300px strip, so "Avg Mood · 3 / 5" read as a bare "AVG · 3" and Favorites was off the edge entirely, with nothing to say it scrolled. The min-width is gone, Favorites steps aside below `sm` (Stats already carries an all-time tally), and the numbers stay on one line. Unclipped at 360px and 390px.
+- **Rows say what they are**: `Week 1 · Wisdom`, not a bare "Wisdom" that reads like the evening virtue picker. The subtitle now states outright that these are the cycle's week themes, not the virtue you choose — the table never touches that field.
+- **Lite anchors the week** ([`Journal.tsx`](src/daily-stoic/Journal.tsx)): under the day's maxim, three lines — the week's virtue, its framing title from [`data/curriculum.ts`](src/daily-stoic/data/curriculum.ts), and the Quote of the Week. Full spends a whole `PathCard` plus a second quote block on this; Lite gives it a thin accent rule and no card, so the week has an anchor rather than only a name in the header.
+
 ### September 7, 2026 (A favourite is not an entry)
 - **One definition of a logged day**, in [`utils/logged.ts`](src/daily-stoic/utils/logged.ts): a day counts when it holds something written or chosen — reflection, Amor Fati obstacle or challenge type, mood, morning intentions, passions, virtue. `favorite` is deliberately absent.
 - **Why it mattered**: every write path creates the same Notion page, so favouriting the day's maxim created a record — and the streak, Stats' *Days Journaled*, the virtue-week consistency rate, the cycle heatmap, the cycle retrospective, the digest's week counts and the evening nudge all treated "a record exists" as "the day was practised". Tapping a heart marked the day journaled and silenced that evening's reminder.

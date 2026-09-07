@@ -21,16 +21,22 @@ export default function VirtueWeekBreakdown({ stats }: VirtueWeekBreakdownProps)
         🏛️ Virtue Week Breakdown
       </h3>
       <p className="text-sm text-text-secondary mb-6">
-        Consistency, mood, and favorites by virtue-week theme, across every cycle
+        Each 7-day week of the cycle carries one of the four virtues as its theme, in fixed order.
+        This is your consistency and mood <em>inside</em> those weeks, across every cycle — not the
+        virtue you pick in the evening.
       </p>
+      {/* No min-width: the table has to fit a phone. Favourites are the least
+          telling column here (Stats has an all-time tally of its own), so they
+          step aside on a narrow screen rather than pushing the numbers off the
+          edge, where "Avg Mood 3 / 5" once read as a bare "AVG 3". */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[420px]">
+        <table className="w-full text-xs sm:text-sm">
           <thead>
             <tr className="text-left text-[10px] uppercase font-mono tracking-wider text-text-secondary border-b border-tertiary">
-              <th className="pb-2 pr-2 font-medium">Virtue</th>
-              <th className="pb-2 px-2 font-medium text-right">Consistency</th>
-              <th className="pb-2 px-2 font-medium text-right">Avg Mood</th>
-              <th className="pb-2 pl-2 font-medium text-right">Favorites</th>
+              <th className="pb-2 pr-2 font-medium">Week</th>
+              <th className="pb-2 px-1 sm:px-2 font-medium text-right">Consistency</th>
+              <th className="pb-2 px-1 sm:px-2 font-medium text-right">Avg mood</th>
+              <th className="pb-2 pl-2 font-medium text-right hidden sm:table-cell">Favorites</th>
             </tr>
           </thead>
           <tbody>
@@ -41,19 +47,24 @@ export default function VirtueWeekBreakdown({ stats }: VirtueWeekBreakdownProps)
                   <td className="py-2.5 pr-2">
                     <span className="flex items-center gap-2 font-medium text-text-primary">
                       <Icon size={15} className="text-accent shrink-0" />
-                      {s.virtue}
+                      <span>
+                        <span className="block text-[10px] uppercase font-mono tracking-wider text-text-secondary leading-none">
+                          Week {s.week}
+                        </span>
+                        {s.virtue}
+                      </span>
                     </span>
                   </td>
-                  <td className="py-2.5 px-2 text-right font-mono text-text-secondary">
+                  <td className="py-2.5 px-1 sm:px-2 text-right font-mono text-text-secondary whitespace-nowrap">
                     {s.consistencyRate}%{' '}
                     <span className="text-[11px]">
                       ({s.loggedDays}/{s.totalDays})
                     </span>
                   </td>
-                  <td className="py-2.5 px-2 text-right font-mono text-text-secondary">
+                  <td className="py-2.5 px-1 sm:px-2 text-right font-mono text-text-secondary whitespace-nowrap">
                     {s.avgMood !== null ? `${s.avgMood} / 5` : '—'}
                   </td>
-                  <td className="py-2.5 pl-2 text-right font-mono text-text-secondary">{s.favoritesCount}</td>
+                  <td className="py-2.5 pl-2 text-right font-mono text-text-secondary hidden sm:table-cell">{s.favoritesCount}</td>
                 </tr>
               );
             })}

@@ -12,6 +12,7 @@ import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
 import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import { useCommitments } from './lib/useCommitments';
+import { getWeekCurriculum } from './lib/curriculum';
 import { useJournalMode, fullDayKey } from './lib/useJournalMode';
 import { pickLiteRetrospective, weekDots, previousEntry, promptForDay } from './utils/lite';
 import type { ReflectionRecord } from './services/NotionService';
@@ -1030,6 +1031,24 @@ export default function Journal({
                 &mdash; {quote.author}, <span className="italic normal-case">{quote.source}</span>
               </cite>
             </blockquote>
+
+            {/* The week's theme, at its lightest: the virtue, the one line that
+                frames it, and the maxim that holds for all seven days. Full
+                spends a whole card (PathCard) and a second quote block on
+                this; Lite gives it three lines under the day's maxim, so the
+                week has an anchor rather than only a name in the header. */}
+            <section className="border-l-2 border-accent/40 pl-3 sm:pl-4">
+              <p className="flex items-center gap-1.5 text-[10px] uppercase font-mono tracking-widest font-semibold text-accent/80">
+                <WeekVirtueIcon size={12} aria-hidden="true" />
+                This week · {weekVirtue}
+              </p>
+              <p className="mt-1 text-sm text-text-primary">{getWeekCurriculum(cycleInfo.week).title}</p>
+              {weekQuote && (
+                <p className="mt-1.5 text-xs text-text-secondary italic leading-relaxed">
+                  “{weekQuote.quote}” <span className="not-italic">— {weekQuote.author}</span>
+                </p>
+              )}
+            </section>
 
             {/* Amor Fati (Lite) — untethered from the evening, and folded away
                 until it's wanted: it's optional, and open it is the tallest
