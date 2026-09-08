@@ -10,6 +10,7 @@ import {
   CHIME_PARTIALS,
   CHIME_DAMPING,
   VOICINGS,
+  BED_TRIM,
 } from './soundscape'
 
 // Yoru's eight blendable layers (it keeps `drone`, unlike Touch Grass).
@@ -167,6 +168,7 @@ function stubAudio() {
   const swept = { count: 0 }
   const clock = { t: 0 } // a getter on the context, so tests can move time forward
   const ramps = { count: 0 }
+  const gains = []
   const param = () => ({
     value: 0,
     setValueAtTime() {},
@@ -194,7 +196,17 @@ function stubAudio() {
     get currentTime() {
       return clock.t
     }
-    createGain() { return node({ gain: param() }) }
+    createGain() {
+      const g = param()
+      Object.defineProperty(g, 'value', {
+        get: () => g._v ?? 0,
+        set: (x) => {
+          g._v = x
+          gains.push(x)
+        },
+      })
+      return node({ gain: g })
+    }
     createBiquadFilter() { return filter() }
     createStereoPanner() { return node({ pan: param() }) }
     createDynamicsCompressor() {
@@ -231,6 +243,7 @@ function stubAudio() {
     started,
     swept,
     ramps,
+    gains,
     advance: (sec) => {
       clock.t += sec
     },
@@ -521,5 +534,32 @@ describe('the engine under each voicing', () => {
     sound = createNightSoundscape()
     await sound.start({ totalSec: 900, mix: DEFAULT_MIX, voicing: 'gramophone' })
     expect(started.length).toBeGreaterThan(0)
+  })
+})
+
+describe('the stereo toggle', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    vi.useRealTimers()
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  // The toggle is meant to cost WIDTH, not level. The trim used to sit only on
+  // the stereo path, which made mono ~3-4dB louder — and because only the beds
+  // go through stereoNoise while the droplets and bubbles don't, flipping to
+  // mono also lifted every wash against its own events, undoing the ratio the
+  // layers are tuned around. Both paths carry it now.
+  it.each([true, false])('trims the bed the same way with stereo=%s', async (stereo) => {
+    const audio = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({
+      totalSec: 900,
+      mix: { volume: 8, brightness: 8, motion: 5, pace: 5, warmth: 5 },
+      stereo,
+    })
+    expect(audio.gains).toContain(BED_TRIM)
   })
 })

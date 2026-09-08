@@ -101,7 +101,19 @@ on `speaker` and sits below every corner it lifts, and the drone stays the same
 interval an octave higher. An unknown value falls back to the reference tuning.
 
 **On a mono speaker**, also turn *stereo* off — the decorrelated L/R pair buys
-nothing once it's summed, and off halves the noise sources.
+nothing once it is summed to one driver, and off halves the noise sources, which
+is real battery over a 90-minute session.
+
+That toggle used to cost level as well as width, which it should not: the
+`BED_TRIM` sat only on the stereo path, on the reasoning that two incoherent
+sources sum to ~+3 dB and need taking down. But `StereoPannerNode` is
+equal-power, so each channel already receives exactly unity from a decorrelated
+pair — the trim made stereo **3 dB quieter than mono**, not level-matched
+(4.1 dB once a mono sink sums L+R). And because only the *beds* pass through
+`stereoNoise` while the droplets, bubbles and rustles don't, switching to mono
+also lifted every wash ~3 dB against its own events — quietly undoing the
+wash/event ratio the layers are tuned around. Both paths carry the trim now, and
+a test asserts it for each.
 
 ### The eleven curated blends
 

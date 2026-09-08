@@ -135,6 +135,17 @@ export const VOICINGS = {
   },
 }
 
+// A noise bed's trim. Applied in BOTH the stereo and the mono path, so the
+// stereo toggle changes width and nothing else. It used to sit only on the
+// stereo path, on the reasoning that two incoherent sources sum to ~+3dB and
+// need taking down — but StereoPannerNode is equal-power, so each channel
+// already receives exactly unity from a decorrelated pair. The trim therefore
+// made stereo 3dB QUIETER than mono rather than level-matched, and since only
+// the beds go through here and the transients don't, flipping to mono also
+// lifted every wash ~3dB against its own droplets and bubbles — undoing the
+// wash/event ratio the layers are tuned around.
+export const BED_TRIM = 0.7
+
 const EBB_START = 0.65
 const FADE_IN_SEC = 5
 
@@ -535,10 +546,9 @@ export function createNightSoundscape() {
 
   // A bed's noise source. With stereo on: a decorrelated pair — two loops of
   // the same buffer read from FAR-APART offsets, panned L/R — so the bed reads
-  // as wide and enveloping rather than a mono point in the middle of your head
-  // (the 0.7 trim compensates for the ~+3dB two incoherent sources sum to,
-  // keeping the tuned level). With stereo off: a single centred mono source at
-  // the same level. (Backported from Touch Grass.)
+  // as wide and enveloping rather than a mono point in the middle of your head.
+  // With stereo off: a single centred source, through the same BED_TRIM, so the
+  // toggle costs width and not 3-4dB of level. (Backported from Touch Grass.)
   //
   // Offsets, not the ±1.5% playback-rate detune this replaces: two copies of one
   // buffer at slightly different rates start ALIGNED and slide apart, which
@@ -547,15 +557,16 @@ export function createNightSoundscape() {
   // periodic breathing of the stereo width. Fixed offsets never re-converge,
   // cost no resampling, and are decorrelated from the first sample.
   function stereoNoise(buffer, rate = 1, spread = 0.6) {
+    const merge = ctx.createGain()
+    merge.gain.value = BED_TRIM
     if (!stereo) {
       const s = loopSource(ctx, buffer)
       s.playbackRate.value = rate
       s.start(0, noiseOffset(buffer, 0))
+      s.connect(merge)
       nodes.push(s)
-      return s
+      return merge
     }
-    const merge = ctx.createGain()
-    merge.gain.value = 0.7
     const a = Math.random() * buffer.duration
     const b = (a + buffer.duration * (0.35 + Math.random() * 0.3)) % buffer.duration
     ;[[-spread, a], [spread, b]].forEach(([pan, off]) => {
