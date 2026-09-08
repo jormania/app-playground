@@ -7,11 +7,11 @@ import styles from './Mixer.module.css'
 // The controls, grouped: blendable nature LAYERS, then global SHAPERS. Each
 // carries a very discrete one-line hint — the only in-app "guide" there is.
 const LAYERS = [
-  { key: 'rain', label: 'Rain', hint: 'soft rain and far-off droplets' },
+  { key: 'rain', label: 'Rain', hint: 'soft rain, droplets, far thunder' },
   { key: 'waves', label: 'Waves', hint: 'slow ocean surf, rising and receding' },
   { key: 'stream', label: 'Stream', hint: 'a steady brook, softly babbling' },
   { key: 'wind', label: 'Wind', hint: 'air moving through the dark' },
-  { key: 'leaves', label: 'Leaves', hint: 'a hush of wind through the trees' },
+  { key: 'leaves', label: 'Leaves', hint: 'a hush and a stir through the trees' },
   { key: 'chime', label: 'Chime', hint: 'a wind chime, only now and then' },
   { key: 'warmth', label: 'Warmth', hint: 'the soft noise floor beneath it all' },
   { key: 'drone', label: 'Drone', hint: 'a deep, soft hum underneath' },
@@ -52,7 +52,7 @@ function SliderControl({ label, hint, value, onChange, scrollRef }) {
   )
 }
 
-// The audio mixer — a separate area from the rest of Settings. Ten sliders,
+// The audio mixer — a separate area from the rest of Settings. Twelve sliders,
 // each 0–10, plus a Reset to the mid default. There is no on/off: sound is the
 // whole point of Yoru; the Volume dial takes it down as far as you like. What you
 // hear updates live (the preview lives in Settings, which owns the sound).
@@ -68,7 +68,7 @@ export default function Mixer({ settings, onChange, onClose }) {
       key={key}
       label={label}
       hint={hint}
-      value={typeof mix[key] === 'number' ? mix[key] : 5}
+      value={typeof mix[key] === 'number' ? mix[key] : 0}
       onChange={(v) => setLevel(key, v)}
       scrollRef={scrollRef}
     />

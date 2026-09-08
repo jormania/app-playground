@@ -364,10 +364,10 @@ describe('the granular rustle', () => {
 describe('curated blends', () => {
   const LAYERS = ['rain', 'waves', 'stream', 'wind', 'leaves', 'chime', 'warmth', 'drone']
 
-  it('ships ten, with unique ids and short unique names', () => {
-    expect(CURATED_MIXES).toHaveLength(10)
-    expect(new Set(CURATED_MIXES.map((m) => m.id)).size).toBe(10)
-    expect(new Set(CURATED_MIXES.map((m) => m.name)).size).toBe(10)
+  it('ships eleven, with unique ids and short unique names', () => {
+    expect(CURATED_MIXES).toHaveLength(11)
+    expect(new Set(CURATED_MIXES.map((m) => m.id)).size).toBe(11)
+    expect(new Set(CURATED_MIXES.map((m) => m.name)).size).toBe(11)
     for (const m of CURATED_MIXES) expect(m.name.length).toBeLessThanOrEqual(18) // MAX_MIX_NAME_LEN
   })
 
@@ -411,6 +411,17 @@ describe('curated blends', () => {
       // Rain's level is also Thunder's, so heavy rain has to be DARK — that is
       // what makes a roll read as far away rather than overhead
       if (m.mix.rain >= 6) expect(m.mix.brightness).toBeLessThanOrEqual(4)
+    }
+  })
+
+  // Wind thickens and animates a scene — it carries the shared weather drift,
+  // which is what makes one gust read across Rain and Leaves too — but it is
+  // never what a blend is ABOUT.
+  it('never leads with wind', () => {
+    for (const m of CURATED_MIXES) {
+      const loudestOther = Math.max(...LAYERS.filter((k) => k !== 'wind').map((k) => m.mix[k]))
+      expect(m.mix.wind).toBeLessThan(loudestOther)
+      expect(m.mix.wind).toBeLessThanOrEqual(3)
     }
   })
 

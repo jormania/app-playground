@@ -37,7 +37,7 @@ is a dark full-screen sheet: **your name**, **session length** (`15'–90'`),
 Fully synthesised (no files), following the ambient-mixer references that work
 (A Soft Murmur / Noisli / myNoise): a **blend of independent layers**, not one
 exclusive scene. Engine: [`lib/soundscape.js`](src/yoru/lib/soundscape.js);
-UI: [`components/Mixer.jsx`](src/yoru/components/Mixer.jsx) — ten 0–10 sliders,
+UI: [`components/Mixer.jsx`](src/yoru/components/Mixer.jsx) — twelve 0–10 sliders,
 each with a discrete one-line hint, plus Reset, opened from Settings and
 portalled to `<body>`. **Nature only — no animals, no city.**
 
@@ -58,9 +58,9 @@ portalled to `<body>`. **Nature only — no animals, no city.**
   Volume dial takes it as low as you like.
 - The warm bed **breathes with you** when breathwork is on.
 
-### The ten curated blends
+### The eleven curated blends
 
-Ten hand-tuned mixes in [`lib/storage.js`](src/yoru/lib/storage.js)
+Eleven hand-tuned mixes in [`lib/storage.js`](src/yoru/lib/storage.js)
 (`CURATED_MIXES`), shown as chips in Settings' **your mixes** row ahead of your
 own saved ones. They ship in **code, not seeded into `customMixes`** — those
 four slots are yours (`MAX_CUSTOM_MIXES`), and a seeded copy would either come
@@ -76,22 +76,28 @@ changing, and a shared `'custom'` would drop it onto the hard 0.15s release path
 | | leads with | why it's here |
 |---|---|---|
 | first rain | Rain | the archetype, and the clearest listen for the droplets |
-| long swell | Waves | the deepest swell the layer will give you |
+| eaves rain | Rain, sparse | drops about one a second — you hear each one land |
 | cedar rain | Rain + Leaves | the shared weather drift, audible: one gust moves all three |
-| mountain brook | Stream | the resonant bubbles carry it |
-| night garden | Leaves + Chime | the only blend with a furin, at 2 |
 | far storm | Rain, dark | Brightness 3 puts the whole storm behind glass |
+| long swell | Waves | the deepest swell the layer will give you |
 | low tide | Waves | the same sea drawn right down |
-| paper lantern | Warmth + Drone | almost nothing: masking, no scene |
-| snow hush | Wind, very dark | a night that has stopped moving |
+| night sea | Waves + Drone | Brightness 2 takes the foam out, leaving swell and hum |
+| mountain brook | Stream | close and bright; the resonant bubbles carry it |
+| stone hollow | Stream, dark | the same water from further off, the room doing more of the work |
 | river rain | Stream + Rain | Stream is outside the weather, so it holds while the rain ebbs |
+| night garden | Leaves + Chime | the only blend with a furin, at 2 |
+
+**Wind never leads.** It thickens and animates a scene — it carries the shared
+weather drift, which is what makes one gust read across Rain and Leaves too —
+but nothing here is a wind blend, and that is asserted rather than left to
+taste: `wind` must be strictly below the loudest other layer in every mix.
 
 The sleep guardrails are **asserted, not trusted**: Chime never above 2 and in
 only one blend; Motion ≤ 6, Pace ≤ 4; and any blend with Rain ≥ 6 must have
 Brightness ≤ 4 — Rain's level *is* Thunder's, and dark is what makes a roll read
 as far away rather than overhead. Every blend also has to keep a floor under it
 (some Warmth or Drone) and every one is built through the engine in a test.
-Steady-state levels sit within a 4.9 dB spread, so moving between them in the
+Steady-state levels sit within a 4.8 dB spread, so moving between them in the
 preview doesn't lurch.
 
 ### The four rules that keep it from sounding synthetic
@@ -136,6 +142,14 @@ it under "outside" or under "a machine". They are stated at the top of
 
 Missing browser support for `ConstantSourceNode` or `ConvolverNode` costs the
 drift or the room, never the night's sound — both degrade, neither throws.
+
+The two noise beds are generated **once per sample rate and shared across
+contexts** (`sharedNoise`). Settings rebuilds the entire soundscape on every
+debounced mixer change, and generating 30s of white plus 26s of pink is ~2.7M
+random draws and ~11MB — paying that every 140ms while you drag a slider is
+pure waste. An `AudioBuffer` isn't bound to the context that made it, and the
+cache is keyed by rate, so switching output (phone speaker to Bluetooth, which
+changes the rate) just makes a second entry.
 
 ### Tuning by ear — the wash/event ratio, and where the knobs are
 

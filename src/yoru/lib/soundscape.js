@@ -164,6 +164,30 @@ function makePinkBuffer(ctx, seconds) {
 const noiseOffset = (buffer, needSec) =>
   Math.random() * Math.max(0, buffer.duration - needSec - 0.05)
 
+// Generating the two noise beds is ~2.7M random draws and ~11MB of allocation.
+// Settings rebuilds the WHOLE soundscape on every debounced mixer change, so
+// paying that on each one made dragging a slider needlessly expensive on a
+// phone — and it got worse when the white bed grew from 20s to 30s. An
+// AudioBuffer is not bound to the context that created it (the spec has it
+// usable by one or more contexts, it only has to match the sample rate), so
+// generate each pair once per rate and keep it for the page's life: bounded
+// memory instead of a fresh 11MB every 140ms. Falls back to generating fresh
+// if anything about that goes wrong.
+const noiseBeds = new Map()
+function sharedNoise(ctx) {
+  const fresh = () => ({ white: makeWhiteBuffer(ctx, 30), pink: makePinkBuffer(ctx, 26) })
+  try {
+    let beds = noiseBeds.get(ctx.sampleRate)
+    if (!beds) {
+      beds = fresh()
+      noiseBeds.set(ctx.sampleRate, beds)
+    }
+    return beds
+  } catch {
+    return fresh()
+  }
+}
+
 function loopSource(ctx, buffer) {
   const src = ctx.createBufferSource()
   src.buffer = buffer
@@ -242,14 +266,14 @@ export function createNightSoundscape() {
   // it meant. Segments are also mirrored in JS (`segs`) so the event schedulers
   // can read the same drift the filters are hearing and, say, rustle the leaves
   // harder on the gust that is brightening the wind.
-  function createDrift(rateHz, until = 0) {
+  function createDrift(rateHz) {
     // Degrade to "no drift" rather than "no sound": every caller is null-safe,
     // so on a browser without ConstantSourceNode the soundscape comes up a
     // little more static instead of throwing out of start() into silence.
     if (!ctx.createConstantSource) return null
     const src = ctx.createConstantSource()
     src.offset.value = 0
-    const d = { src, rateHz: Math.max(0.001, rateHz), until, walk: 0, segs: [], nextAt: ctx.currentTime }
+    const d = { src, rateHz: Math.max(0.001, rateHz), walk: 0, segs: [], nextAt: ctx.currentTime }
     src.start()
     nodes.push(src)
     drifts.push(d)
@@ -302,8 +326,8 @@ export function createNightSoundscape() {
     return g
   }
 
-  const driftParam = (param, depth, rateHz, until = 0) => link(createDrift(rateHz, until), param, depth)
-  const driftFilter = (filter, depthHz, rateHz, until = 0) => driftParam(filter.frequency, depthHz, rateHz, until)
+  const driftParam = (param, depth, rateHz) => link(createDrift(rateHz), param, depth)
+  const driftFilter = (filter, depthHz, rateHz) => driftParam(filter.frequency, depthHz, rateHz)
   const driftGain = (gainNode, depth, rateHz) => driftParam(gainNode.gain, depth, rateHz)
 
   // Nodes fed by a source that never stops (a wave's own foam gain) can never
@@ -328,25 +352,13 @@ export function createNightSoundscape() {
     })
   }
 
-  // Keep every drift's automation topped up, and retire the short-lived ones
-  // (a thunder roll's filter wobble) so a 90-minute session doesn't accumulate
-  // control nodes it stopped needing an hour ago.
+  // Keep every drift's automation topped up. Every drift is created once, at
+  // build time, and lives as long as the session — nothing here creates one
+  // per event, so this list is small and fixed.
   function tickDrifts() {
     if (stopped || !ctx) return
-    const now = ctx.currentTime
-    const until = now + DRIFT_AHEAD
-    drifts = drifts.filter((d) => {
-      if (d.until && now > d.until) {
-        try {
-          d.src.stop()
-        } catch {
-          /* already stopped */
-        }
-        return false
-      }
-      advanceDrift(d, until)
-      return true
-    })
+    const until = ctx.currentTime + DRIFT_AHEAD
+    for (const d of drifts) advanceDrift(d, until)
   }
 
   // ── the room (rule 3) ─────────────────────────────────────────────────────
@@ -814,7 +826,7 @@ export function createNightSoundscape() {
         const drain = clamp(period * (0.24 + Math.random() * 0.1), 1.6, 4.5)
         const fv = (0.016 + Math.random() * 0.011) * level * motion * set
         fg.gain.setValueAtTime(0.0001, breakAt)
-        fg.gain.exponentialRampToValueAtTime(fv, breakAt + 0.3 + Math.random() * 0.25)
+        fg.gain.exponentialRampToValueAtTime(Math.max(0.0002, fv), breakAt + 0.3 + Math.random() * 0.25)
         fg.gain.exponentialRampToValueAtTime(0.0001, breakAt + drain)
         // Nothing upstream of these ever stops, so they can never be collected
         // on their own — hand them to the sweeper once the drain is done. The
@@ -1091,7 +1103,15 @@ export function createNightSoundscape() {
     // 'interactive' — far more resistant to audio-thread underruns (the "dusty
     // vinyl" crackle heard on weaker mobile CPUs over Bluetooth), and latency is
     // irrelevant for a sleep soundscape.
-    ctx = new Ctx({ latencyHint: 'playback' })
+    // A browser that refuses another context (Safari caps how many can exist,
+    // and Settings churns through them while you drag a slider) must leave the
+    // night silent, not throw an unhandled rejection out of start().
+    try {
+      ctx = new Ctx({ latencyHint: 'playback' })
+    } catch {
+      ctx = null
+      return
+    }
     if (ctx.state === 'suspended') await ctx.resume().catch(() => {})
     stopped = false
 
@@ -1133,9 +1153,8 @@ export function createNightSoundscape() {
     // noise. 30/26s, with every source reading from its own random offset,
     // puts the repeat count low enough that per-layer drift and the
     // constantly-randomised transient layers are what a listener actually
-    // notices, not the loop.
-    const white = makeWhiteBuffer(ctx, 30)
-    const pink = makePinkBuffer(ctx, 26)
+    // notices, not the loop. Shared across contexts — see sharedNoise.
+    const { white, pink } = sharedNoise(ctx)
 
     // Only pay for the convolver when something transient is actually in the
     // blend — a wind-and-drone night has nothing to put in a room.
