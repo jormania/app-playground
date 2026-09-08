@@ -137,8 +137,9 @@ that would wipe saved custom mixes):
 | wind pressure | `0.27 * p.wind` at the call site, and the gust depth `level * 0.36 * motion` |
 | gusts too squally | the `gust` clamp in `buildLeaves` (`1 + 0.5 * w`, capped 1.55) |
 | surf too big | wave `peak = (0.4 + …) * level * motion` |
-| surf hiss too strong | wave foam `fv = (0.032 + …)` and its low-pass (4200) |
-| gaps between waves | the distant bed `fag.gain` (`0.055 * level`) |
+| surf hiss too strong / harsh | wave foam `fv = (0.028 + …)` and its band (700–2500) |
+| waves not individual enough | the distant bed `fag.gain` (`0.028 * level`) — it sets the floor the crest stands against |
+| one wave's hiss runs into the next | the foam `drain` (≈0.3 of a period) |
 
 ### Waves: three events, not one envelope
 
@@ -167,8 +168,23 @@ It is now three parts:
   shoreline rather than a gap. It lifts the between-waves floor ~9 dB, which is
   what stops the pumping.
 
-Balance at the default Motion, against the body's crest: foam −12 dB alone and
-−9 dB where two waves overlap, distant bed −16 dB.
+**The floor is the swell.** The first cut of this set the distant bed at
+`0.055 * level` and dropped the body's trough to fill the gaps — and it worked,
+in that the pumping went away. It also lifted the between-waves floor 9 dB and
+so took **10 dB out of the swell's dynamic range** (27 dB → 17 dB), which is the
+whole reason waves read as individual events rather than as one continuous sea.
+That was fixing a complaint nobody made at the cost of the thing that was
+working. The bed is now `0.028 * level`, still ~4 dB above the old near-silence
+so it doesn't pump to nothing, and the swell is back to 22 dB.
+
+The foam's band matters as much as its level: 850–4200 Hz put flat noise straight
+across 1.5–4 kHz, the presence/harshness region, and it read as **pebbles poured
+out of a sack** rather than water draining over sand. 700–2500 Hz instead.
+
+Balance at the default Motion, against the body's crest: foam −17 dB, distant
+bed −22 dB, and the foam still sits 5 dB over the floor so the retreat is
+audible. The drain is ~0.3 of a period, not half — long enough to reach the next
+swell's rise, short enough that it doesn't run into the next break.
 
 Sets are real too — swell arrives in groups — so one slow drift scales size and
 period together, and period now grows slightly with Motion. Leaving Motion and

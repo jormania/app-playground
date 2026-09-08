@@ -682,12 +682,15 @@ export function createNightSoundscape() {
     sendToRoom(bg, 0.25)
 
     // The foam chain runs continuously; each wave opens its own gain on it.
+    // 700-2500Hz, not 850-4200. The upper half of that first range is the
+    // presence/harshness band, and flat noise across it doesn't read as water
+    // draining over sand — it reads as pebbles poured out of a sack.
     const fhp = ctx.createBiquadFilter()
     fhp.type = 'highpass'
-    fhp.frequency.value = 850
+    fhp.frequency.value = 700
     const flp = ctx.createBiquadFilter()
     flp.type = 'lowpass'
-    flp.frequency.value = 4200
+    flp.frequency.value = 2500
     src.connect(fhp)
     fhp.connect(flp)
 
@@ -701,14 +704,19 @@ export function createNightSoundscape() {
     const falp = ctx.createBiquadFilter()
     falp.type = 'lowpass'
     falp.frequency.value = 900
+    // Half what it was. Filling the troughs was meant to stop the layer pumping
+        // to near-silence; at 0.055 it instead lifted the between-waves floor 9dB
+    // and took 10dB out of the swell's dynamic range — which is the whole reason
+    // waves read as individual events. A horizon should be audible and no more.
     const fag = ctx.createGain()
-    fag.gain.value = 0.055 * level
+    fag.gain.value = 0.028 * level
     far.connect(fahp)
     fahp.connect(falp)
     falp.connect(fag)
     fag.connect(dest)
     sendToRoom(fag, 0.3)
     driftFilter(falp, 150, 0.02 * pace)
+    driftGain(fag, 0.008 * level, 0.015 * pace) // a static bed is a hiss floor; let it breathe
 
     let nextAt = ctx.currentTime + 0.8
     bg.gain.setValueAtTime(trough, nextAt)
@@ -747,10 +755,14 @@ export function createNightSoundscape() {
         flp.connect(fg)
         fg.connect(fp)
         fp.connect(dest)
-        sendToRoom(fp, 0.5)
+        sendToRoom(fp, 0.4)
         const breakAt = crest - period * 0.06
-        const drain = clamp(period * (0.45 + Math.random() * 0.2), 2.5, 7)
-        const fv = (0.032 + Math.random() * 0.022) * level * motion * set
+        // Shorter than it was: a drain lasting half the period left the last wave
+        // still hissing as the next rose, and the layer stopped reading as a
+        // sequence of waves at all. The overlap this exists for only needs to
+        // reach the next swell's RISE, not its break.
+        const drain = clamp(period * (0.28 + Math.random() * 0.12), 1.8, 5)
+        const fv = (0.028 + Math.random() * 0.018) * level * motion * set
         fg.gain.setValueAtTime(0.0001, breakAt)
         fg.gain.exponentialRampToValueAtTime(fv, breakAt + 0.3 + Math.random() * 0.25)
         fg.gain.exponentialRampToValueAtTime(0.0001, breakAt + drain)
