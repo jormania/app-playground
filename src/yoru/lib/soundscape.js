@@ -93,7 +93,7 @@ const DRIFT_AHEAD = 9 // seconds of drift automation kept scheduled ahead
 // Each channel is independently generated (an IR whose channels correlate would
 // collapse the very width it's meant to create), and each is normalised to unit
 // energy so the wet level means the same thing at any sample rate or length.
-export function reverbImpulse(sampleRate, seconds = 1.6, preDelaySec = 0.018) {
+export function reverbImpulse(sampleRate, seconds = 2.0, preDelaySec = 0.018) {
   const len = Math.max(1, Math.floor(sampleRate * seconds))
   const pre = Math.min(len - 1, Math.floor(sampleRate * preDelaySec))
   const out = [new Float32Array(len), new Float32Array(len)]
@@ -330,7 +330,7 @@ export function createNightSoundscape() {
   function buildRoomUnsafe(toneHz) {
     const conv = ctx.createConvolver()
     conv.normalize = false
-    const [l, r] = reverbImpulse(ctx.sampleRate, 1.6)
+    const [l, r] = reverbImpulse(ctx.sampleRate, 2.0)
     const ir = ctx.createBuffer(2, l.length, ctx.sampleRate)
     ir.copyToChannel(l, 0)
     ir.copyToChannel(r, 1)
@@ -345,9 +345,11 @@ export function createNightSoundscape() {
     lp.type = 'lowpass'
     lp.frequency.value = Math.min(toneHz * 0.6, 2600)
     const wet = ctx.createGain()
-    // Conservative on purpose. An unexpectedly loud tail at 2am is the worst
-    // failure this file can have, and a room you notice is a room set too wet.
-    wet.gain.value = 0.45
+    // Raised from the first pass's 0.45, which came back too dry by ear. Still
+    // the number to reach for first: an unexpectedly loud tail at 2am is the
+    // worst failure this file can have. The IR is normalised to unit energy, so
+    // its LENGTH costs nothing in loudness — 2.0s buys space, not level.
+    wet.gain.value = 0.75
     reverbIn = ctx.createGain()
     reverbIn.gain.value = 1
     reverbIn.connect(conv)
@@ -468,6 +470,9 @@ export function createNightSoundscape() {
   // the SAME two drifts: the shared `weather` (so the whole scene gusts
   // together) plus one of the layer's own (so it doesn't gust in lockstep).
   function buildWind(white, level, lpHz, motion, pace, dest, weather) {
+    // Levels here are deliberately restrained. Moving air is the layer with the
+    // most continuous broadband energy in the whole file, and continuous
+    // broadband energy is what reads as pressure rather than as calm.
     const wind = stereoNoise(white, 1.0, 0.7)
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
@@ -485,8 +490,8 @@ export function createNightSoundscape() {
     const own = createDrift(0.05 * pace)
     for (const [d, w] of [[weather, 0.55], [own, 0.5]]) {
       if (!d) continue
-      link(d, g.gain, level * 0.45 * motion * w)
-      link(d, bp.frequency, 170 * motion * w)
+      link(d, g.gain, level * 0.36 * motion * w)
+      link(d, bp.frequency, 150 * motion * w)
     }
   }
 
@@ -498,14 +503,19 @@ export function createNightSoundscape() {
   // patter thickens with the wash instead of ticking along at its own rate.
   function buildRain(white, level, pace, dest, weather, shower) {
     const rain = stereoNoise(white, 1.0)
+    // Downpour vs. droplets is a RATIO, and the wash was winning it by 10.5dB —
+    // which is why the drops read as texture inside the hiss instead of as
+    // drops. The wash comes down ~6dB and loses its harsh top octave (6.5k ->
+    // 4.5k, and a little more body at the bottom); the droplets below come up.
+    // Together that puts them a couple of dB OVER the wash instead of under it.
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
-    hp.frequency.value = 1300
+    hp.frequency.value = 1150
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
-    lp.frequency.value = 6500
+    lp.frequency.value = 4500
     const g = ctx.createGain()
-    const base = 0.09 * level
+    const base = 0.055 * level
     g.gain.value = base
     rain.connect(hp)
     hp.connect(lp)
@@ -532,23 +542,29 @@ export function createNightSoundscape() {
         src.buffer = white
         const bp = ctx.createBiquadFilter()
         bp.type = 'bandpass'
-        bp.frequency.value = 2000 + Math.random() * 2600
-        bp.Q.value = 1.1
+        // lower and narrower than before: a drop with a bit of pitch to it
+        // reads as one event, where a wide bright burst reads as a tick
+        bp.frequency.value = 1700 + Math.random() * 2200
+        bp.Q.value = 1.4
         const dg = ctx.createGain()
-        const v = (0.02 + Math.random() * 0.03) * level
+        const v = (0.045 + Math.random() * 0.05) * level
         dg.gain.setValueAtTime(0.0001, when)
-        dg.gain.exponentialRampToValueAtTime(v, when + 0.004)
-        dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.08 + Math.random() * 0.07)
+        // 8-14ms, not 4: a softened attack is a plop rather than a tick, and
+        // nothing in a sleep soundscape should have a click's onset
+        dg.gain.exponentialRampToValueAtTime(v, when + 0.008 + Math.random() * 0.006)
+        dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.13 + Math.random() * 0.12)
         const p = panner(ctx, Math.random() * 1.4 - 0.7)
         src.connect(bp)
         bp.connect(dg)
         dg.connect(p)
         p.connect(dest)
-        sendToRoom(p, 0.45)
-        src.start(when, noiseOffset(white, 0.3))
-        src.stop(when + 0.3)
+        sendToRoom(p, 0.6)
+        src.start(when, noiseOffset(white, 0.4))
+        src.stop(when + 0.4)
         // busier when louder, faster with pace, and busier still in a squall
-        nextAt += ((0.22 + Math.random() * 0.7) * (1.6 - level)) / (pace * heavier)
+        // a touch sparser than before as well — louder drops that overlap just
+        // become the wash again
+        nextAt += ((0.26 + Math.random() * 0.8) * (1.6 - level)) / (pace * heavier)
       }
     }, 400)
     timers.push(t)
@@ -576,7 +592,7 @@ export function createNightSoundscape() {
       lp.type = 'lowpass'
       lp.frequency.value = 130 + Math.random() * 90
       const g = ctx.createGain()
-      const peak = (0.05 + Math.random() * 0.04) * level
+      const peak = (0.042 + Math.random() * 0.032) * level
       g.gain.setValueAtTime(0.0001, when)
       g.gain.exponentialRampToValueAtTime(peak, when + 0.8 + Math.random() * 0.6) // a slow, distant roll-in
       g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
@@ -586,7 +602,7 @@ export function createNightSoundscape() {
       lp.connect(g)
       g.connect(p)
       p.connect(dest)
-      sendToRoom(p, 1.1)
+      sendToRoom(p, 1.25)
       src.start(when, noiseOffset(white, dur + 0.3))
       src.stop(when + dur + 0.2)
       // a wobble on the cutoff so the rumble isn't static, retired with the roll
@@ -616,7 +632,7 @@ export function createNightSoundscape() {
     hp.connect(lp)
     lp.connect(g)
     g.connect(dest)
-    sendToRoom(g, 0.3)
+    sendToRoom(g, 0.42)
 
     let nextAt = ctx.currentTime + 0.8
     g.gain.setValueAtTime(trough, nextAt)
@@ -628,12 +644,12 @@ export function createNightSoundscape() {
         const period = (9 + Math.random() * 5) / pace
         const crest = nextAt + period * 0.42
         const end = nextAt + period
-        const peak = (0.5 + Math.random() * 0.28) * level * motion
+        const peak = (0.4 + Math.random() * 0.22) * level * motion
         g.gain.setValueAtTime(trough, nextAt)
         g.gain.linearRampToValueAtTime(peak, crest)
         g.gain.exponentialRampToValueAtTime(Math.max(0.0002, trough), end)
         lp.frequency.setValueAtTime(340, nextAt)
-        lp.frequency.linearRampToValueAtTime(900 + Math.random() * 500, crest)
+        lp.frequency.linearRampToValueAtTime(780 + Math.random() * 400, crest)
         lp.frequency.exponentialRampToValueAtTime(320, end)
         nextAt = end
       }
@@ -646,15 +662,24 @@ export function createNightSoundscape() {
   // The rustles now read the same `weather` drift that is gusting the air, so
   // they arrive in clusters on a gust and go quiet in the lulls, and the layer's
   // own wind chain gusts with the rest of the scene rather than against it.
+  //
+  // Why Forest used to feel heavy: this layer is mostly WIND. Its internal wind
+  // chain ran at level*0.5 through an 1100Hz low-pass — louder AND brighter than
+  // the Wind layer's own (0.34*level, 860Hz) — so a forest blend carried two
+  // wind beds, the larger of them hidden inside Leaves, with the rustles you
+  // actually want to hear buried underneath. The hush now sits below Wind where
+  // it belongs, and the rustles come through because less is on top of them.
   function buildLeaves(white, level, motion, pace, dest, weather) {
-    buildWind(white, level * 0.5, 1100, motion, pace, dest, weather)
+    buildWind(white, level * 0.34, 940, motion, pace, dest, weather)
     let nextAt = ctx.currentTime + 2
     const t = setInterval(() => {
       if (stopped) return
       const ahead = ctx.currentTime + 4
       while (nextAt < ahead) {
         const when = nextAt
-        const gust = clamp(1 + 0.8 * driftValue(weather, when), 0.35, 1.9)
+        // The gust used to scale rustle loudness AND density by up to 1.9x at
+        // once — a ~3.6x energy surge, which is a squall, not a stir. Halved.
+        const gust = clamp(1 + 0.5 * driftValue(weather, when), 0.5, 1.55)
         const src = ctx.createBufferSource()
         src.buffer = white
         const bp = ctx.createBiquadFilter()
@@ -662,7 +687,7 @@ export function createNightSoundscape() {
         bp.frequency.value = 1400 + Math.random() * 1400
         bp.Q.value = 0.8
         const g = ctx.createGain()
-        const v = (0.02 + Math.random() * 0.025) * level * motion * gust
+        const v = (0.028 + Math.random() * 0.032) * level * motion * gust
         const dur = 0.7 + Math.random() * 1.1
         g.gain.setValueAtTime(0.0001, when)
         g.gain.linearRampToValueAtTime(v, when + dur * 0.4)
@@ -672,10 +697,10 @@ export function createNightSoundscape() {
         bp.connect(g)
         g.connect(p)
         p.connect(dest)
-        sendToRoom(p, 0.45)
+        sendToRoom(p, 0.6)
         src.start(when, noiseOffset(white, dur + 0.2))
         src.stop(when + dur + 0.1)
-        nextAt += (2.5 + Math.random() * 4) / (pace * gust)
+        nextAt += (3 + Math.random() * 4.5) / (pace * gust)
       }
     }, 700)
     timers.push(t)
@@ -689,12 +714,15 @@ export function createNightSoundscape() {
   // breathe as one organism — the failure mode rule 4 is trying to avoid. ──
   function buildStream(white, level, motion, pace, dest) {
     const src = stereoNoise(white, 1.0)
+    // Same trade as rain: the wash was 9dB over its own bubbles. Down in level
+    // and down in centre frequency — 1600Hz at Q0.6 is a wide bright band that
+    // reads as hiss; water heard from a few metres away is darker than that.
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
-    bp.frequency.value = 1600
-    bp.Q.value = 0.6
+    bp.frequency.value = 1250
+    bp.Q.value = 0.7
     const g = ctx.createGain()
-    g.gain.value = 0.05 * level
+    g.gain.value = 0.036 * level
     src.connect(bp)
     bp.connect(g)
     g.connect(dest)
@@ -715,13 +743,13 @@ export function createNightSoundscape() {
         bubble.buffer = white
         const bbp = ctx.createBiquadFilter()
         bbp.type = 'bandpass'
-        bbp.frequency.value = 1800 + Math.random() * 2200
+        bbp.frequency.value = 1450 + Math.random() * 1750
         bbp.Q.value = 2.2
         const dg = ctx.createGain()
-        const v = (0.015 + Math.random() * 0.02) * level
+        const v = (0.022 + Math.random() * 0.028) * level
         dg.gain.setValueAtTime(0.0001, when)
-        dg.gain.exponentialRampToValueAtTime(v, when + 0.006)
-        dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.05 + Math.random() * 0.05)
+        dg.gain.exponentialRampToValueAtTime(v, when + 0.01)
+        dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.07 + Math.random() * 0.07)
         const p = panner(ctx, Math.random() * 1.6 - 0.8)
         bubble.connect(bbp)
         bbp.connect(dg)
@@ -729,11 +757,11 @@ export function createNightSoundscape() {
         p.connect(dest)
         // a light send only: at ~13 bubbles a second the tails overlap heavily,
         // and a stream's wash should come from the water, not from the room
-        sendToRoom(p, 0.12)
-        bubble.start(when, noiseOffset(white, 0.2))
-        bubble.stop(when + 0.2)
+        sendToRoom(p, 0.2)
+        bubble.start(when, noiseOffset(white, 0.3))
+        bubble.stop(when + 0.3)
         // continuous babble — much more frequent than rain's droplets
-        nextAt += ((0.03 + Math.random() * 0.09) * busier) / pace
+        nextAt += ((0.04 + Math.random() * 0.12) * busier) / pace
       }
     }, 250)
     timers.push(t)
@@ -753,14 +781,14 @@ export function createNightSoundscape() {
         const when = nextAt
         const f = CHIME_NOTES[(Math.random() * CHIME_NOTES.length) | 0]
         const g = ctx.createGain()
-        const v = (0.05 + Math.random() * 0.03) * level
+        const v = (0.038 + Math.random() * 0.024) * level
         g.gain.setValueAtTime(0.0001, when)
         g.gain.exponentialRampToValueAtTime(v, when + 0.015)
         g.gain.exponentialRampToValueAtTime(0.0001, when + 2.2 + Math.random() * 1.2)
         const p = panner(ctx, Math.random() * 1.4 - 0.7)
         g.connect(p)
         p.connect(dest)
-        sendToRoom(p, 0.7)
+        sendToRoom(p, 0.85)
         // fundamental + a slightly inharmonic partial for a metallic, glassy
         // quality rather than a clean musical tone
         const osc1 = ctx.createOscillator()
@@ -854,7 +882,7 @@ export function createNightSoundscape() {
 
     if (p.warmth > 0) buildWarmth(pink, p.warmth, tone)
     if (p.drone > 0) buildDrone(p.drone, tone)
-    if (p.wind > 0) buildWind(white, 0.34 * p.wind, 900, p.motion, p.pace, tone, weather)
+    if (p.wind > 0) buildWind(white, 0.27 * p.wind, 860, p.motion, p.pace, tone, weather)
     if (p.rain > 0) buildRain(white, p.rain, p.pace, tone, weather, shower)
     if (p.rain > 0) buildThunder(white, p.rain, tone)
     if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone)

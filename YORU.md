@@ -101,13 +101,51 @@ it under "outside" or under "a machine". They are stated at the top of
 Missing browser support for `ConstantSourceNode` or `ConvolverNode` costs the
 drift or the room, never the night's sound — both degrade, neither throws.
 
+### Tuning by ear — the wash/event ratio, and where the knobs are
+
+The pass above was calm but flat, and the fix turned out to be one ratio rather
+than a general "turn it down". **Every event layer was being masked by its own
+continuous wash**: rain's droplets sat **10.5 dB under** its wash, stream's
+bubbles 9 dB under theirs. That reads as a downpour with no drops in it — the
+events are present, they're just underneath. Lowering the wash and lifting the
+events (rain now +0.9 dB, stream −3.1 dB) buys the individual droplets back
+*without* making the layer quieter overall, which a Volume change could never do.
+
+The same reasoning darkened everything: continuous broadband energy is what
+reads as pressure rather than calm, and treble is what makes a wash fatiguing.
+So washes came down in level and lost their top octave; the events kept theirs,
+and got softer onsets (a 4 ms attack is a tick; 10 ms is a drop).
+
+**Forest** was a special case of the same thing: `buildLeaves` builds an internal
+wind chain, and it ran *louder and brighter* than the Wind layer itself, so a
+forest blend carried two wind beds with the rustles buried under both.
+
+If a layer needs nudging, these are the numbers — all in
+[`soundscape.js`](src/yoru/lib/soundscape.js), all per-layer, none of them
+touching the mixer's meaning (so **don't** bump `MIX_VERSION` for a retune —
+that would wipe saved custom mixes):
+
+| To change | Touch |
+|---|---|
+| how wet the room is | `wet.gain.value` in `buildRoomUnsafe` (0.75), then a layer's own `sendToRoom` amount |
+| how big the room is | `reverbImpulse(..., 2.0)` — unit-energy, so length costs no loudness |
+| rain: downpour vs. droplets | wash `base = 0.055 * level` against droplet `v = (0.045 + …)` |
+| rain: harshness | the wash's low-pass (4500) |
+| droplets more distinct | droplet `bp.Q` (1.4) and the `nextAt` interval |
+| stream: hiss vs. babble | wash `g.gain` (0.036) and `bp.frequency` (1250) against bubble `v` |
+| forest weight | `buildWind(white, level * 0.34, 940, …)` inside `buildLeaves` |
+| wind pressure | `0.27 * p.wind` at the call site, and the gust depth `level * 0.36 * motion` |
+| gusts too squally | the `gust` clamp in `buildLeaves` (`1 + 0.5 * w`, capped 1.55) |
+| surf too big | wave `peak = (0.4 + …) * level * motion` |
+
 Still to do (the per-layer pass): Waves needs a break transient and a retreating
 hiss separated from its swell, plus overlapping sets; Stream's bubbles want to
-be upward-chirped damped sinusoids rather than filtered noise clicks; Rain's
-wash is high-passed too far up to have any body; Leaves' rustles should be
-clusters of very short ticks; Thunder should roll in several sub-peaks; Chime
-needs per-partial decay. Brightness would read as *distance* rather than a
-blanket if it were a tilt coupled to the reverb send.
+be upward-chirped damped sinusoids (Minnaert) rather than filtered noise clicks;
+Leaves' rustles should be clusters of very short ticks rather than swelled noise
+blobs — they share a band with the hush they sit on, so no amount of level will
+separate them until their *shape* changes; Thunder should roll in several
+sub-peaks; Chime needs per-partial decay. Brightness would read as *distance*
+rather than a blanket if it were a tilt coupled to the reverb send.
 
 ## Breathwork (optional)
 
