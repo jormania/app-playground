@@ -157,6 +157,12 @@ export const DEFAULT_SETTINGS = {
   moonPath: true,
   starReveal: true,
   stereo: true, // bed stereo width — a decorrelated L/R pair per layer instead of mono
+  // What is playing it. 'speaker' moves the low-frequency layers up into a
+  // small portable's passband (see VOICINGS in soundscape.js); 'headphones' is
+  // the reference tuning. Defaults to headphones so an existing night sounds
+  // exactly as it did — this is a deliberate choice you make once, not a
+  // migration that changes the app under you.
+  voicing: 'headphones',
   palette: 'storm',
   name: '',
   hintSeen: false, // first-run "tap 夜" hint

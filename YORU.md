@@ -58,6 +58,51 @@ portalled to `<body>`. **Nature only — no animals, no city.**
   Volume dial takes it as low as you like.
 - The warm bed **breathes with you** when breathwork is on.
 
+### Playing on: headphones or a small speaker
+
+Where the low end lives depends on what is reproducing it. A small portable
+speaker is typically down 6 dB somewhere around 150–200 Hz and falling fast
+below that, so on one of those everything under its corner is *worse* than
+inaudible: it costs headroom, it works the limiter, and it drives the one small
+driver into distortion that muddies the midrange you can hear.
+
+That matters because several layers keep their identity down there — the swell
+that makes a wave read as depth, the Drone, and nearly all of Thunder. Voiced
+for headphones and played on a small speaker those layers don't sound thin, they
+sound **absent**, and no amount of Volume brings them back. It is also why
+"deeper swell" and "less foam" can be asked for and delivered and still not
+arrive: the foam sits at 600–1900 Hz, right where such a speaker is at its best,
+while the swell it is competing with is half under the floor.
+
+`VOICINGS` in [`soundscape.js`](src/yoru/lib/soundscape.js), picked by
+**Settings → playing on**:
+
+| | headphones | speaker |
+|---|---|---|
+| master high-pass | none | 120 Hz, **before the limiter** |
+| Waves — body | 70–580 Hz | 135–1080 Hz |
+| Thunder | 28–220 Hz | 130–380 Hz |
+| Drone | 110 / 165 Hz | 220 / 330 Hz — the same fifth, an octave up |
+| Warmth | from 95 Hz | from 165 Hz |
+
+Share of each layer's band under ~180 Hz: Thunder 79% → 20%, Drone 37% → 0%,
+Waves' body 22% → 5%.
+
+Nothing above the corner moves. Rain, Stream, Leaves, Chime and the waves' foam
+already live where a small speaker is at its best, and shifting them would
+re-voice the whole app rather than rescue its bottom end. The master high-pass
+sits **before** the limiter on purpose, so energy the speaker can't reproduce
+stops triggering gain reduction on everything it can.
+
+Defaults to `headphones`, so an existing night sounds exactly as it did — this
+is a choice you make once, not a migration that changes the app under you. The
+asserted invariants: every low corner moves up, the master high-pass exists only
+on `speaker` and sits below every corner it lifts, and the drone stays the same
+interval an octave higher. An unknown value falls back to the reference tuning.
+
+**On a mono speaker**, also turn *stereo* off — the decorrelated L/R pair buys
+nothing once it's summed, and off halves the noise sources.
+
 ### The eleven curated blends
 
 Eleven hand-tuned mixes in [`lib/storage.js`](src/yoru/lib/storage.js)

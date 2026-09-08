@@ -69,6 +69,10 @@ const PALETTE_OPTIONS = [
 // this is a phone screen, and more than a row or two of chips here would
 // crowd out everything else. Names are capped at two words so a chip never
 // grows wider than "Rain"/"Waves" do.
+const VOICING_OPTIONS = [
+  { value: 'headphones', label: 'headphones' },
+  { value: 'speaker', label: 'speaker' },
+]
 const MAX_CUSTOM_MIXES = 4
 const MAX_MIX_NAME_LEN = 18
 
@@ -83,7 +87,8 @@ export default function Settings({ settings, onChange, onClose }) {
 
   const scene = settings.scene ?? 'rain'
   const stereo = settings.stereo !== false
-  const mixKey = JSON.stringify(settings.mix) + '|' + stereo
+  const voicing = settings.voicing ?? 'headphones'
+  const mixKey = JSON.stringify(settings.mix) + '|' + stereo + '|' + voicing
   const customMixes = settings.customMixes ?? []
   // The orb is only visible when the screen stays lit.
   const screenShowsOrb = (settings.screen ?? 'lit') === 'lit'
@@ -110,7 +115,7 @@ export default function Settings({ settings, onChange, onClose }) {
       if (sceneChanged) {
         // A real crossfade for a discrete preset switch: the new blend fades
         // in while the old one overlaps and fades out with it.
-        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 1.4, stereo })
+        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 1.4, stereo, voicing })
         outgoing?.stop(1.4)
       } else {
         // A SHORT release here, not the crossfade above: this fires on every
@@ -119,7 +124,7 @@ export default function Settings({ settings, onChange, onClose }) {
         // every single change — exactly while you're trying to judge the
         // change by ear.
         outgoing?.stop(0.15)
-        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 0.6, stereo })
+        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 0.6, stereo, voicing })
       }
     }, 140)
     return () => clearTimeout(restart.current)
@@ -174,6 +179,16 @@ export default function Settings({ settings, onChange, onClose }) {
             options={LENGTH_OPTIONS}
             value={String(settings.minutes)}
             onChange={(v) => onChange({ minutes: parseInt(v, 10) })}
+          />
+        </div>
+
+        <div className={styles.row}>
+          <span className={styles.label}>playing on</span>
+          <SegmentedControl
+            size="sm"
+            options={VOICING_OPTIONS}
+            value={voicing}
+            onChange={(v) => onChange({ voicing: v })}
           />
         </div>
 

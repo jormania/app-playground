@@ -9,6 +9,7 @@ import {
   createNightSoundscape,
   CHIME_PARTIALS,
   CHIME_DAMPING,
+  VOICINGS,
 } from './soundscape'
 
 // Yoru's eight blendable layers (it keeps `drone`, unlike Touch Grass).
@@ -446,5 +447,79 @@ describe('every curated blend actually builds', () => {
     await sound.start({ totalSec: 900, mix: { ...DEFAULT_MIX, ...mix } })
     expect(started.length).toBeGreaterThan(0)
     expect(started.every((o) => typeof o === 'number' && o > 0)).toBe(true)
+  })
+})
+
+describe('playback voicing', () => {
+  // The point of the speaker voicing is that every low corner moves UP. If one
+  // of them didn't, that layer would still be putting its identity somewhere a
+  // small driver can't reproduce — inaudible, while still costing headroom.
+  const CORNERS = [
+    'warmthHp',
+    'droneHp',
+    'droneLp',
+    'thunderHp',
+    'thunderLp',
+    'wavesHp',
+    'wavesLp',
+    'wavesLpCrest',
+    'wavesLpEnd',
+  ]
+
+  it('moves every low corner up for the speaker', () => {
+    for (const k of CORNERS) {
+      expect(VOICINGS.speaker[k]).toBeGreaterThan(VOICINGS.headphones[k])
+    }
+  })
+
+  it('high-passes the master only on the speaker', () => {
+    expect(VOICINGS.headphones.masterHp).toBe(0)
+    expect(VOICINGS.speaker.masterHp).toBeGreaterThan(0)
+  })
+
+  it('keeps the drone a fifth, an octave up', () => {
+    const [h1, h2] = VOICINGS.headphones.droneNotes
+    const [s1, s2] = VOICINGS.speaker.droneNotes
+    expect(s1 / h1).toBeCloseTo(2, 2) // an octave
+    expect(s2 / s1).toBeCloseTo(h2 / h1, 2) // the same interval
+  })
+
+  // Nothing above a small speaker's corner should move: those layers already
+  // live where it is at its best, and shifting them would change the voicing
+  // of the whole app rather than rescuing its bottom end.
+  it('leaves the master high-pass below every layer it lifts', () => {
+    const v = VOICINGS.speaker
+    for (const k of ['warmthHp', 'droneHp', 'thunderHp', 'wavesHp']) {
+      expect(v[k]).toBeGreaterThanOrEqual(v.masterHp)
+    }
+  })
+})
+
+describe('the engine under each voicing', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    vi.useRealTimers()
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  it.each(Object.keys(VOICINGS))('builds every layer on %s', async (voicing) => {
+    const { started } = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({
+      totalSec: 900,
+      mix: { ...DEFAULT_MIX, rain: 6, waves: 5, stream: 5, wind: 5, leaves: 5, chime: 4 },
+      voicing,
+    })
+    expect(started.length).toBeGreaterThan(0)
+  })
+
+  it('falls back to the reference tuning for an unknown voicing', async () => {
+    const { started } = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({ totalSec: 900, mix: DEFAULT_MIX, voicing: 'gramophone' })
+    expect(started.length).toBeGreaterThan(0)
   })
 })

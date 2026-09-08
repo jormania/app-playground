@@ -76,6 +76,65 @@ export const CHIME_PARTIALS = [
 ]
 export const CHIME_DAMPING = 0.7
 
+// ── Playback voicing ────────────────────────────────────────────────────────
+// Where the low end lives depends on what is reproducing it. A small portable
+// speaker is typically down 6dB somewhere around 150-200Hz and falling fast
+// below that, so on one of those, everything under its corner is worse than
+// inaudible: it costs headroom, it works the limiter, and it drives the one
+// small driver into distortion that muddies the midrange you CAN hear.
+//
+// That matters here because several layers keep their identity down there —
+// the swell that makes a wave read as depth, the drone, and nearly all of
+// thunder. Voiced for headphones and played on a small speaker, those layers
+// don't sound thin, they sound ABSENT, and no amount of Volume brings them
+// back.
+//
+// So: two voicings. `headphones` is the reference tuning and changes nothing.
+// `speaker` moves those layers' low corners up into the passband and
+// high-passes the master, trading depth you can't hear for level you can.
+// Nothing above the corner is touched — Rain, Stream, Leaves, Chime and the
+// waves' foam are already where a small speaker is at its best.
+//
+// The numbers below are a starting point for a ~10cm sealed portable. They are
+// the only thing that needs to change for a different speaker; the shape of
+// this doesn't.
+export const VOICINGS = {
+  headphones: {
+    masterHp: 0, // no global high-pass — let the bottom two octaves through
+    warmthHp: 95,
+    droneNotes: [110, 164.81], // a fifth
+    droneHp: 110,
+    droneLp: 300,
+    thunderHp: 28,
+    thunderLp: 130,
+    thunderLpSpread: 90,
+    wavesHp: 70,
+    wavesLp: 260,
+    wavesLpCrest: 640,
+    wavesLpSpread: 220,
+    wavesLpEnd: 230,
+  },
+  speaker: {
+    masterHp: 120,
+    warmthHp: 165,
+    droneNotes: [220, 329.63], // the same fifth, an octave up
+    droneHp: 200,
+    droneLp: 560,
+    // above the master high-pass, not below it — at 95 this filter was doing
+    // nothing the master's 120 wasn't already doing harder. 130-380Hz reads as
+    // a low growl rather than as sub-thunder, which is the only way a driver
+    // this size renders a roll at all
+    thunderHp: 130,
+    thunderLp: 250,
+    thunderLpSpread: 130,
+    wavesHp: 135,
+    wavesLp: 330,
+    wavesLpCrest: 820,
+    wavesLpSpread: 260,
+    wavesLpEnd: 300,
+  },
+}
+
 const EBB_START = 0.65
 const FADE_IN_SEC = 5
 
@@ -241,6 +300,7 @@ export function createNightSoundscape() {
   let reverbIn = null // the send bus, or null when no layer wants a room
   let stopped = true
   let stereo = true // bed stereo width, set from start()'s option
+  let voice = VOICINGS.headphones // playback voicing, set from start()'s option
 
   function scheduleEnvelope(target, totalSec, elapsedSec, fadeIn) {
     const now = ctx.currentTime
@@ -426,7 +486,7 @@ export function createNightSoundscape() {
     lp.frequency.value = 900
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
-    hp.frequency.value = 95
+    hp.frequency.value = voice.warmthHp
     bedGain = ctx.createGain()
     bedBase = level * 0.85
     bedGain.gain.value = bedBase
@@ -444,16 +504,16 @@ export function createNightSoundscape() {
   function buildDrone(level, dest) {
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
-    lp.frequency.value = 300
+    lp.frequency.value = voice.droneLp
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
-    hp.frequency.value = 110
+    hp.frequency.value = voice.droneHp
     const g = ctx.createGain()
     g.gain.value = level * 0.032
     hp.connect(lp)
     lp.connect(g)
     g.connect(dest)
-    ;[110, 164.81].forEach((f, i) => {
+    voice.droneNotes.forEach((f, i) => {
       const osc = ctx.createOscillator()
       osc.type = 'sine'
       osc.frequency.value = f
@@ -670,11 +730,12 @@ export function createNightSoundscape() {
         src.buffer = white
         const hp = ctx.createBiquadFilter()
         hp.type = 'highpass'
-        hp.frequency.value = 28
+        hp.frequency.value = voice.thunderHp
         const lp = ctx.createBiquadFilter()
         lp.type = 'lowpass'
         // later arrivals came further and through more air: darker
-        lp.frequency.value = (130 + Math.random() * 90) * (i === 0 ? 1 : 0.6 + Math.random() * 0.3)
+        lp.frequency.value =
+          (voice.thunderLp + Math.random() * voice.thunderLpSpread) * (i === 0 ? 1 : 0.6 + Math.random() * 0.3)
         const g = ctx.createGain()
         g.gain.setValueAtTime(0.0001, at)
         g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * w), at + grow)
@@ -722,10 +783,10 @@ export function createNightSoundscape() {
     bhp.type = 'highpass'
     // 70Hz, not 90: a swell's weight is in the bottom two octaves, and the
     // "rising and receding" you feel as depth is largely low-frequency motion.
-    bhp.frequency.value = 70
+    bhp.frequency.value = voice.wavesHp
     const blp = ctx.createBiquadFilter()
     blp.type = 'lowpass'
-    blp.frequency.value = 260
+    blp.frequency.value = voice.wavesLp
     const bg = ctx.createGain()
     // lower than it was: the distant bed below now carries the between-waves
     // sound, so the body no longer has to hold the floor up on its own
@@ -776,7 +837,7 @@ export function createNightSoundscape() {
 
     let nextAt = ctx.currentTime + 0.8
     bg.gain.setValueAtTime(trough, nextAt)
-    blp.frequency.setValueAtTime(300, nextAt)
+    blp.frequency.setValueAtTime(voice.wavesLp, nextAt)
     const t = setInterval(() => {
       if (stopped) return
       const ahead = ctx.currentTime + 12
@@ -804,9 +865,9 @@ export function createNightSoundscape() {
         // A wider sweep than before (240 -> ~700 -> 230). More of what reads as a
         // wave approaching and passing is this, not the gain: the water gets
         // brighter as it nears and duller as it draws back.
-        blp.frequency.setValueAtTime(240, t0)
-        blp.frequency.linearRampToValueAtTime(640 + Math.random() * 220, crest)
-        blp.frequency.exponentialRampToValueAtTime(230, t0 + period * 0.86)
+        blp.frequency.setValueAtTime(voice.wavesLp, t0)
+        blp.frequency.linearRampToValueAtTime(voice.wavesLpCrest + Math.random() * voice.wavesLpSpread, crest)
+        blp.frequency.exponentialRampToValueAtTime(voice.wavesLpEnd, t0 + period * 0.86)
 
         // Foam: its own node, so it can still be hissing when the next wave
         // starts. Opens just before the body peaks — the break begins as the
@@ -1092,10 +1153,18 @@ export function createNightSoundscape() {
     timers.push(t)
   }
 
-  async function start({ totalSec, elapsedSec = 0, mix, fadeIn = FADE_IN_SEC, stereo: stereoOpt = true }) {
+  async function start({
+    totalSec,
+    elapsedSec = 0,
+    mix,
+    fadeIn = FADE_IN_SEC,
+    stereo: stereoOpt = true,
+    voicing = 'headphones',
+  }) {
     const p = resolveMix(mix)
     if (p.master <= 0) return
     stereo = stereoOpt
+    voice = VOICINGS[voicing] ?? VOICINGS.headphones
 
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return
@@ -1138,7 +1207,18 @@ export function createNightSoundscape() {
     limiter.ratio.value = 20
     limiter.attack.value = 0.003
     limiter.release.value = 0.25
-    master.connect(limiter)
+    // The voicing's high-pass sits BEFORE the limiter, so energy the speaker
+    // can't reproduce stops eating headroom and stops triggering gain reduction
+    // on everything that it can.
+    if (voice.masterHp > 0) {
+      const mhp = ctx.createBiquadFilter()
+      mhp.type = 'highpass'
+      mhp.frequency.value = voice.masterHp
+      master.connect(mhp)
+      mhp.connect(limiter)
+    } else {
+      master.connect(limiter)
+    }
     limiter.connect(ctx.destination)
 
     // One global brightness low-pass everything passes through.
