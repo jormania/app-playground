@@ -58,62 +58,50 @@ portalled to `<body>`. **Nature only — no animals, no city.**
   Volume dial takes it as low as you like.
 - The warm bed **breathes with you** when breathwork is on.
 
-### Playing on: headphones or a small speaker
-
-Where the low end lives depends on what is reproducing it. A small portable
-speaker is typically down 6 dB somewhere around 150–200 Hz and falling fast
-below that, so on one of those everything under its corner is *worse* than
-inaudible: it costs headroom, it works the limiter, and it drives the one small
-driver into distortion that muddies the midrange you can hear.
-
-That matters because several layers keep their identity down there — the swell
-that makes a wave read as depth, the Drone, and nearly all of Thunder. Voiced
-for headphones and played on a small speaker those layers don't sound thin, they
-sound **absent**, and no amount of Volume brings them back. It is also why
-"deeper swell" and "less foam" can be asked for and delivered and still not
-arrive: the foam sits at 600–1900 Hz, right where such a speaker is at its best,
-while the swell it is competing with is half under the floor.
+### Playing on: headphones or a speaker
 
 `VOICINGS` in [`soundscape.js`](src/yoru/lib/soundscape.js), picked by
-**Settings → playing on**:
+**Settings → playing on**. `headphones` is the reference tuning and changes
+nothing. `speaker` differs by **one number**: a 55 Hz high-pass on the master,
+placed before the limiter.
 
-| | headphones | speaker |
-|---|---|---|
-| master high-pass | none | 120 Hz, **before the limiter** |
-| Waves — body | 70–580 Hz | 135–1080 Hz |
-| Thunder | 28–220 Hz | 130–380 Hz |
-| Drone | 110 / 165 Hz | 220 / 330 Hz — the same fifth, an octave up |
-| Warmth | from 95 Hz | from 165 Hz |
+That is deliberately slight, and the story of how it got that way is the point.
+The first cut assumed a small sealed portable, high-passed at 120 Hz and shifted
+the swell, the drone and thunder up whole octaves. The actual speaker is an
+**IKEA ENEBY 20** — 1× 3.2″ woofer plus 1× 1″ soft dome tweeter, rear reflex
+port, 15 W + 5 W, and IKEA's manual claims 48 Hz–20 kHz. On a box like that the
+aggressive profile is destructive: it throws away real, audible bass, which is
+exactly the swell depth the layers are tuned to deliver. **Guessing at a
+speaker's response and voicing around the guess is worse than leaving it alone.**
 
-Share of each layer's band under ~180 Hz: Thunder 79% → 20%, Drone 37% → 0%,
-Waves' body 22% → 5%.
+What a ported box genuinely wants is a *subsonic* filter. Below the port's
+tuning the woofer unloads — excursion climbs steeply, acoustic output doesn't —
+and the result is distortion and port noise rather than bass. Thunder starts at
+28 Hz, so trimming under 55 Hz costs nothing audible and buys clean headroom for
+everything above it. Asserted: the filter sits **below** every layer that
+carries the scene's body (waves, warmth, drone) so it can't take any of that
+away, and **above** thunder's own corner, since thunder is the one layer that
+reaches under the port.
 
-Nothing above the corner moves. Rain, Stream, Leaves, Chime and the waves' foam
-already live where a small speaker is at its best, and shifting them would
-re-voice the whole app rather than rescue its bottom end. The master high-pass
-sits **before** the limiter on purpose, so energy the speaker can't reproduce
-stops triggering gain reduction on everything it can.
+#### Low end at low volume — what the voicing does *not* fix
 
-Defaults to `headphones`, so an existing night sounds exactly as it did — this
-is a choice you make once, not a migration that changes the app under you. The
-asserted invariants: every low corner moves up, the master high-pass exists only
-on `speaker` and sits below every corner it lifts, and the drone stays the same
-interval an octave higher. An unknown value falls back to the reference tuning.
+At bedtime volume the ear's own low-frequency sensitivity falls away. Between a
+normal listening level and a quiet one, the bottom two octaves lose roughly
+10–15 dB *relative to* the midrange — that's equal-loudness (the Fletcher–Munson
+effect), a property of hearing, not of the speaker or the mix. It is the better
+explanation for "too much foam, not enough swell": the foam sits at 600–1900 Hz,
+near the ear's most sensitive region, while the swell it competes with is
+weighted low and fading fastest as you turn down.
 
-**On a mono speaker**, also turn *stereo* off — the decorrelated L/R pair buys
-nothing once it is summed to one driver, and off halves the noise sources, which
-is real battery over a 90-minute session.
+No high-pass addresses this. The fix, if it's wanted, is **loudness
+compensation** — a low shelf that lifts as Volume falls, the way a hi-fi
+"loudness" button works. Not built: it changes what a saved Volume value
+sounds like, which is the line this app has otherwise held.
 
-That toggle used to cost level as well as width, which it should not: the
-`BED_TRIM` sat only on the stereo path, on the reasoning that two incoherent
-sources sum to ~+3 dB and need taking down. But `StereoPannerNode` is
-equal-power, so each channel already receives exactly unity from a decorrelated
-pair — the trim made stereo **3 dB quieter than mono**, not level-matched
-(4.1 dB once a mono sink sums L+R). And because only the *beds* pass through
-`stereoNoise` while the droplets, bubbles and rustles don't, switching to mono
-also lifted every wash ~3 dB against its own events — quietly undoing the
-wash/event ratio the layers are tuned around. Both paths carry the trim now, and
-a test asserts it for each.
+**On a mono speaker** — and the ENEBY 20 is mono, one channel through a two-way
+driver pair; two-way is not two-channel — also turn *stereo* off. The
+decorrelated L/R pair buys nothing once summed to one driver, and off halves the
+noise sources, which is real battery over a 90-minute session.
 
 ### The eleven curated blends
 

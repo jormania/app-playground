@@ -77,27 +77,29 @@ export const CHIME_PARTIALS = [
 export const CHIME_DAMPING = 0.7
 
 // ── Playback voicing ────────────────────────────────────────────────────────
-// Where the low end lives depends on what is reproducing it. A small portable
-// speaker is typically down 6dB somewhere around 150-200Hz and falling fast
-// below that, so on one of those, everything under its corner is worse than
-// inaudible: it costs headroom, it works the limiter, and it drives the one
-// small driver into distortion that muddies the midrange you CAN hear.
+// What the low end should do depends on what is reproducing it.
 //
-// That matters here because several layers keep their identity down there —
-// the swell that makes a wave read as depth, the drone, and nearly all of
-// thunder. Voiced for headphones and played on a small speaker, those layers
-// don't sound thin, they sound ABSENT, and no amount of Volume brings them
-// back.
+// `headphones` is the reference tuning and changes nothing. `speaker` is for a
+// small SPEAKER WITH A WOOFER IN A PORTED BOX — the IKEA ENEBY 20 this was
+// measured against is 1x 3.2" woofer + 1x 1" soft dome tweeter, rear reflex
+// port, 15W + 5W, and IKEA's manual claims 48Hz-20kHz.
 //
-// So: two voicings. `headphones` is the reference tuning and changes nothing.
-// `speaker` moves those layers' low corners up into the passband and
-// high-passes the master, trading depth you can't hear for level you can.
-// Nothing above the corner is touched — Rain, Stream, Leaves, Chime and the
-// waves' foam are already where a small speaker is at its best.
+// That capability is why this profile is DELIBERATELY SLIGHT. An earlier cut
+// assumed a tiny sealed portable and high-passed the master at 120Hz while
+// shifting the swell, the drone and thunder up whole octaves. On a box like
+// this that is destructive: it throws away real, audible bass — precisely the
+// swell depth the layers are tuned to deliver. Guessing at a speaker's response
+// and voicing around the guess is worse than leaving it alone.
 //
-// The numbers below are a starting point for a ~10cm sealed portable. They are
-// the only thing that needs to change for a different speaker; the shape of
-// this doesn't.
+// What a ported box genuinely wants is a SUBSONIC filter. Below the port's
+// tuning the woofer unloads: excursion climbs steeply, acoustic output does
+// not, and what you get is distortion and port noise rather than bass. Yoru
+// puts sustained energy down there (thunder starts at 28Hz), so cutting it
+// costs nothing audible and buys clean headroom for everything above.
+//
+// Note what this profile does NOT claim to fix. At bedtime volume the ear's own
+// low-frequency sensitivity falls away — that is equal-loudness, not the
+// speaker, and no high-pass addresses it. See LOW-END AT LOW VOLUME in YORU.md.
 export const VOICINGS = {
   headphones: {
     masterHp: 0, // no global high-pass — let the bottom two octaves through
@@ -115,23 +117,24 @@ export const VOICINGS = {
     wavesLpEnd: 230,
   },
   speaker: {
-    masterHp: 120,
-    warmthHp: 165,
-    droneNotes: [220, 329.63], // the same fifth, an octave up
-    droneHp: 200,
-    droneLp: 560,
-    // above the master high-pass, not below it — at 95 this filter was doing
-    // nothing the master's 120 wasn't already doing harder. 130-380Hz reads as
-    // a low growl rather than as sub-thunder, which is the only way a driver
-    // this size renders a roll at all
-    thunderHp: 130,
-    thunderLp: 250,
-    thunderLpSpread: 130,
-    wavesHp: 135,
-    wavesLp: 330,
-    wavesLpCrest: 820,
-    wavesLpSpread: 260,
-    wavesLpEnd: 300,
+    // The ONLY difference. Below the port's likely tuning the woofer unloads —
+    // excursion climbs, output doesn't — so this buys clean headroom and costs
+    // nothing audible. Everything else is left exactly as the reference tuning
+    // has it, because this speaker can reproduce it and guessing otherwise is
+    // how the first cut of this profile ended up throwing away real bass.
+    masterHp: 55,
+    warmthHp: 95,
+    droneNotes: [110, 164.81],
+    droneHp: 110,
+    droneLp: 300,
+    thunderHp: 28,
+    thunderLp: 130,
+    thunderLpSpread: 90,
+    wavesHp: 70,
+    wavesLp: 260,
+    wavesLpCrest: 640,
+    wavesLpSpread: 220,
+    wavesLpEnd: 230,
   },
 }
 

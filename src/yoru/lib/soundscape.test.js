@@ -464,9 +464,6 @@ describe('every curated blend actually builds', () => {
 })
 
 describe('playback voicing', () => {
-  // The point of the speaker voicing is that every low corner moves UP. If one
-  // of them didn't, that layer would still be putting its identity somewhere a
-  // small driver can't reproduce — inaudible, while still costing headroom.
   const CORNERS = [
     'warmthHp',
     'droneHp',
@@ -479,9 +476,11 @@ describe('playback voicing', () => {
     'wavesLpEnd',
   ]
 
-  it('moves every low corner up for the speaker', () => {
+  // The speaker profile may protect a driver; it may never quietly re-voice the
+  // app by dropping a corner lower than the reference tuning.
+  it('never moves a corner below the reference tuning', () => {
     for (const k of CORNERS) {
-      expect(VOICINGS.speaker[k]).toBeGreaterThan(VOICINGS.headphones[k])
+      expect(VOICINGS.speaker[k]).toBeGreaterThanOrEqual(VOICINGS.headphones[k])
     }
   })
 
@@ -490,21 +489,23 @@ describe('playback voicing', () => {
     expect(VOICINGS.speaker.masterHp).toBeGreaterThan(0)
   })
 
-  it('keeps the drone a fifth, an octave up', () => {
-    const [h1, h2] = VOICINGS.headphones.droneNotes
-    const [s1, s2] = VOICINGS.speaker.droneNotes
-    expect(s1 / h1).toBeCloseTo(2, 2) // an octave
-    expect(s2 / s1).toBeCloseTo(h2 / h1, 2) // the same interval
+  // The whole design of the speaker profile, stated as two comparisons: the
+  // subsonic filter sits BELOW every layer that carries the scene's body, so it
+  // can't take any of that away — and ABOVE thunder's own corner, because
+  // thunder is the one layer that reaches under a ported box's tuning, where a
+  // woofer unloads and gives distortion instead of bass.
+  it('protects the woofer without eating the body of the scene', () => {
+    const v = VOICINGS.speaker
+    for (const k of ['wavesHp', 'warmthHp', 'droneHp']) expect(v.masterHp).toBeLessThan(v[k])
+    expect(v.masterHp).toBeGreaterThan(v.thunderHp)
   })
 
-  // Nothing above a small speaker's corner should move: those layers already
-  // live where it is at its best, and shifting them would change the voicing
-  // of the whole app rather than rescuing its bottom end.
-  it('leaves the master high-pass below every layer it lifts', () => {
-    const v = VOICINGS.speaker
-    for (const k of ['warmthHp', 'droneHp', 'thunderHp', 'wavesHp']) {
-      expect(v[k]).toBeGreaterThanOrEqual(v.masterHp)
-    }
+  // Deliberately unshifted: 110Hz is comfortably inside a 3.2" woofer's range,
+  // and an earlier cut moved this up an octave on a guess about the speaker.
+  it('leaves the drone where it is, in both voicings', () => {
+    expect(VOICINGS.speaker.droneNotes).toEqual(VOICINGS.headphones.droneNotes)
+    const [f1, f2] = VOICINGS.headphones.droneNotes
+    expect(f2 / f1).toBeCloseTo(1.5, 2) // a fifth
   })
 })
 
