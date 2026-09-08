@@ -2,15 +2,17 @@
 // job: helping someone fall asleep.
 //
 // A LAYER-BLEND design, following the ambient-mixer references that work (A Soft
-// Murmur, Noisli, myNoise): six independent nature layers you blend freely, plus
-// four global shapers. Everything the ear hears is exposed through the MIX
+// Murmur, Noisli, myNoise): eight independent nature layers you blend freely,
+// plus four global shapers. Everything the ear hears is exposed through the MIX
 // (levels 0..10); this file maps each to a real synth parameter.
 //
 //   layers (0 = off):
-//     rain    soft high wash + sparse, stereo-panned droplets
+//     rain    soft high wash + sparse, stereo-panned droplets (+ distant thunder)
 //     waves   slow ocean surf, each swell a little different
+//     stream  a steady brook, softly babbling
 //     wind    band-passed air, slowly drifting and gusting
 //     leaves  a hush through foliage + soft rustles (no birds, no insects)
+//     chime   a sparse furin, only now and then
 //     warmth  a PINK-noise floor — warmer and less boomy than brown
 //     drone   a deep, soft tonal hum under everything
 //   shapers:
@@ -22,8 +24,31 @@
 // Design north star (from the references): sounds engineered to be easily
 // ignored by the brain — masking, never attention-grabbing — and always ebbing
 // to true silence by the session's end.
+//
+// ── The four structural rules that keep it from sounding synthetic ──────────
+// Filters and levels decide what a layer IS; these four decide whether the ear
+// files it under "outside" or under "a machine". They are cheap, they apply to
+// every layer, and each one is fixing something the brain notices in the dark
+// long before it notices a filter setting.
+//
+//   1. NOTHING SHARES A WAVEFORM. Every noise source reads the shared buffer
+//      from its own random offset — including one-shots (§ noiseOffset). Two
+//      layers reading the same samples fuse into one source no matter how
+//      differently they're filtered.
+//   2. NOTHING REPEATS. Every "organic drift" is an aperiodic random walk, not
+//      an LFO (§ createDrift). A 0.05 Hz sine repeats 180 times an hour and the
+//      brain will find it.
+//   3. EVERYTHING HAS A ROOM. Transients go through a dark synthetic reverb
+//      (§ reverbImpulse). Dry point sources sit inside your skull; a diffuse
+//      tail puts them out in the world — and smears the attack, which matters
+//      when the listener is trying to fall asleep.
+//   4. ONE BREEZE MOVES THE WHOLE SCENE. Wind, leaves and rain share a single
+//      "weather" drift (§ weather), so a gust brightens the air, stirs the
+//      trees and pushes the rain together — but each keeps an independent drift
+//      of its own too, so the mix breathes as a place, not as one tremolo.
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
+const clamp = (x, lo, hi) => (x < lo ? lo : x > hi ? hi : x)
 const lerp = (a, b, t) => a + (b - a) * t
 
 // Human loudness perception is roughly logarithmic: a LINEAR slider->gain
@@ -41,6 +66,52 @@ const LAYER_TAPER = 1.4
 
 const EBB_START = 0.65
 const FADE_IN_SEC = 5
+
+// ── Rule 2: aperiodic drift ────────────────────────────────────────────────
+// One step of a mean-reverting random walk in [-1, 1]. The target is shaped
+// (|u|^1.7, sign preserved) rather than uniform, which is what gives it the
+// character weather actually has: mostly quiet, with a real gust now and then,
+// instead of the relentless even swell of a sine. `pull` is how much of the way
+// to the new target one step travels — lower wanders more slowly.
+export function driftStep(prev, pull = 0.6) {
+  const u = Math.random() * 2 - 1
+  const target = Math.sign(u) * Math.pow(Math.abs(u), 1.7)
+  return clamp(prev + (target - prev) * pull, -1, 1)
+}
+
+// The walk's typical excursion is well under ±1 (that's the point — calm most
+// of the time); this scales the peaks back up so replacing a sine LFO doesn't
+// read as "the soundscape got less alive", only as "it stopped repeating".
+const DRIFT_GAIN = 1.45
+const DRIFT_AHEAD = 9 // seconds of drift automation kept scheduled ahead
+
+// ── Rule 3: a room ─────────────────────────────────────────────────────────
+// A synthetic impulse response: decaying noise, one-pole low-passed to a dark,
+// diffuse tail, after a short pre-delay so the direct sound still arrives first.
+// Deliberately not a "nice" reverb — outdoors has no bright early reflections,
+// and anything resonant would be the one thing in here that grabs attention.
+// Each channel is independently generated (an IR whose channels correlate would
+// collapse the very width it's meant to create), and each is normalised to unit
+// energy so the wet level means the same thing at any sample rate or length.
+export function reverbImpulse(sampleRate, seconds = 1.6, preDelaySec = 0.018) {
+  const len = Math.max(1, Math.floor(sampleRate * seconds))
+  const pre = Math.min(len - 1, Math.floor(sampleRate * preDelaySec))
+  const out = [new Float32Array(len), new Float32Array(len)]
+  for (const ch of out) {
+    let lp = 0
+    for (let i = pre; i < len; i++) {
+      const t = (i - pre) / (len - pre)
+      const env = Math.pow(1 - t, 2.6)
+      lp += ((Math.random() * 2 - 1) * env - lp) * 0.16 // ≈1.3kHz at 48k — dark
+      ch[i] = lp
+    }
+    let energy = 0
+    for (let i = 0; i < len; i++) energy += ch[i] * ch[i]
+    const g = 1 / Math.sqrt(Math.max(energy, 1e-12))
+    for (let i = 0; i < len; i++) ch[i] *= g
+  }
+  return out
+}
 
 function makeWhiteBuffer(ctx, seconds) {
   const len = Math.floor(ctx.sampleRate * seconds)
@@ -70,6 +141,14 @@ function makePinkBuffer(ctx, seconds) {
   }
   return buf
 }
+
+// Rule 1, for one-shots. Every droplet, bubble and rustle used to start at
+// sample 0 of the same shared buffer — so every one of them was literally the
+// same few milliseconds of noise wearing a different filter, thousands of times
+// a night. Reading each from its own offset costs one argument and makes each
+// one genuinely different. `needSec` keeps the slice from running off the end.
+const noiseOffset = (buffer, needSec) =>
+  Math.random() * Math.max(0, buffer.duration - needSec - 0.05)
 
 function loopSource(ctx, buffer) {
   const src = ctx.createBufferSource()
@@ -119,6 +198,8 @@ export function createNightSoundscape() {
   let bedBase = 0
   let nodes = []
   let timers = []
+  let drifts = []
+  let reverbIn = null // the send bus, or null when no layer wants a room
   let stopped = true
   let stereo = true // bed stereo width, set from start()'s option
 
@@ -136,6 +217,154 @@ export function createNightSoundscape() {
     }
     if (remainingToEbb > 0) g.setValueAtTime(target, now + remainingToEbb)
     g.exponentialRampToValueAtTime(0.0001, now + endIn)
+  }
+
+  // ── drift: an aperiodic control signal (rule 2) ───────────────────────────
+  // A ConstantSourceNode whose offset is walked to a fresh random target every
+  // segment, with the segment's own length randomised too. Connected to an
+  // AudioParam it SUMS onto that param's intrinsic value — the same contract
+  // the sine LFOs it replaces had, so every call site's tuning still means what
+  // it meant. Segments are also mirrored in JS (`segs`) so the event schedulers
+  // can read the same drift the filters are hearing and, say, rustle the leaves
+  // harder on the gust that is brightening the wind.
+  function createDrift(rateHz, until = 0) {
+    // Degrade to "no drift" rather than "no sound": every caller is null-safe,
+    // so on a browser without ConstantSourceNode the soundscape comes up a
+    // little more static instead of throwing out of start() into silence.
+    if (!ctx.createConstantSource) return null
+    const src = ctx.createConstantSource()
+    src.offset.value = 0
+    const d = { src, rateHz: Math.max(0.001, rateHz), until, walk: 0, segs: [], nextAt: ctx.currentTime }
+    src.start()
+    nodes.push(src)
+    drifts.push(d)
+    advanceDrift(d, ctx.currentTime + DRIFT_AHEAD)
+    return d
+  }
+
+  function advanceDrift(d, until) {
+    // A backgrounded tab's timers get throttled while the AudioContext keeps
+    // running, so a tick can arrive a long way behind. Skip the backlog rather
+    // than dumping a minute of past-dated automation on the param at once —
+    // `from` already equals where the param actually sits, so this can't click.
+    if (d.nextAt < ctx.currentTime - 1) d.nextAt = ctx.currentTime
+    let from = d.segs.length ? d.segs[d.segs.length - 1].to : 0
+    while (d.nextAt < until) {
+      const dur = (0.5 / d.rateHz) * (0.55 + Math.random() * 0.9)
+      d.walk = driftStep(d.walk)
+      const to = clamp(d.walk * DRIFT_GAIN, -1, 1)
+      d.src.offset.setValueAtTime(from, d.nextAt)
+      d.src.offset.linearRampToValueAtTime(to, d.nextAt + dur)
+      d.segs.push({ t0: d.nextAt, t1: d.nextAt + dur, from, to })
+      d.nextAt += dur
+      from = to
+    }
+    const cutoff = ctx.currentTime - 1
+    while (d.segs.length > 1 && d.segs[0].t1 < cutoff) d.segs.shift()
+  }
+
+  // What a drift will be at time `t` — the value the audio graph is scheduled
+  // to hold then, read from the same segments, so JS-scheduled events and
+  // audio-rate modulation never disagree about where the gust is.
+  function driftValue(d, t) {
+    if (!d || !d.segs.length) return 0
+    for (const s of d.segs) {
+      if (t <= s.t0) return s.from
+      if (t < s.t1) return s.from + ((s.to - s.from) * (t - s.t0)) / (s.t1 - s.t0)
+    }
+    return d.segs[d.segs.length - 1].to
+  }
+
+  // Fan a drift onto an AudioParam at a given depth. One drift can feed several
+  // params at different depths — which is how a gust gets to be louder AND
+  // brighter at the same instant instead of on two unrelated clocks.
+  function link(d, param, depth) {
+    if (!d) return null
+    const g = ctx.createGain()
+    g.gain.value = depth
+    d.src.connect(g)
+    g.connect(param)
+    return g
+  }
+
+  const driftParam = (param, depth, rateHz, until = 0) => link(createDrift(rateHz, until), param, depth)
+  const driftFilter = (filter, depthHz, rateHz, until = 0) => driftParam(filter.frequency, depthHz, rateHz, until)
+  const driftGain = (gainNode, depth, rateHz) => driftParam(gainNode.gain, depth, rateHz)
+
+  // Keep every drift's automation topped up, and retire the short-lived ones
+  // (a thunder roll's filter wobble) so a 90-minute session doesn't accumulate
+  // control nodes it stopped needing an hour ago.
+  function tickDrifts() {
+    if (stopped || !ctx) return
+    const now = ctx.currentTime
+    const until = now + DRIFT_AHEAD
+    drifts = drifts.filter((d) => {
+      if (d.until && now > d.until) {
+        try {
+          d.src.stop()
+        } catch {
+          /* already stopped */
+        }
+        return false
+      }
+      advanceDrift(d, until)
+      return true
+    })
+  }
+
+  // ── the room (rule 3) ─────────────────────────────────────────────────────
+  // One send bus for everything transient. Continuous washes stay dry: running
+  // steady noise through a reverb only makes it louder and muddier, and buys no
+  // realism. The wet path is filtered darker than the dry (`toneHz * 0.6`) and
+  // high-passed, because a diffuse field is always duller than the direct sound
+  // — and because a bright tail would undo the whole point of the brightness
+  // control at its dark end.
+  function buildRoom(toneHz) {
+    try {
+      buildRoomUnsafe(toneHz)
+    } catch {
+      reverbIn = null // same bargain as the drift: lose the room, keep the night
+    }
+  }
+
+  function buildRoomUnsafe(toneHz) {
+    const conv = ctx.createConvolver()
+    conv.normalize = false
+    const [l, r] = reverbImpulse(ctx.sampleRate, 1.6)
+    const ir = ctx.createBuffer(2, l.length, ctx.sampleRate)
+    ir.copyToChannel(l, 0)
+    ir.copyToChannel(r, 1)
+    conv.buffer = ir
+    // 70Hz, not the 180 a room reverb would take: thunder lives at 30-220Hz and
+    // is the one thing here that NEEDS its tail, so the high-pass can only go
+    // low enough to keep genuine sub-mud out.
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 70
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = Math.min(toneHz * 0.6, 2600)
+    const wet = ctx.createGain()
+    // Conservative on purpose. An unexpectedly loud tail at 2am is the worst
+    // failure this file can have, and a room you notice is a room set too wet.
+    wet.gain.value = 0.45
+    reverbIn = ctx.createGain()
+    reverbIn.gain.value = 1
+    reverbIn.connect(conv)
+    conv.connect(hp)
+    hp.connect(lp)
+    lp.connect(wet)
+    wet.connect(master)
+  }
+
+  // Send a node into the room at `amount` of its dry level. A no-op when no
+  // room was built (nothing in the blend asked for one).
+  function sendToRoom(node, amount) {
+    if (!reverbIn) return
+    const g = ctx.createGain()
+    g.gain.value = amount
+    node.connect(g)
+    g.connect(reverbIn)
   }
 
   // ── warmth: pink-noise floor, band-shaped, breathing with you ──
@@ -194,53 +423,51 @@ export function createNightSoundscape() {
   }
 
   // A bed's noise source. With stereo on: a decorrelated pair — two loops of
-  // the same buffer at slightly different playback rates, panned L/R — so the
-  // bed reads as wide and enveloping rather than a mono point in the middle of
-  // your head (the 0.7 trim compensates for the ~+3dB two incoherent sources
-  // sum to, keeping the tuned level). With stereo off: a single centred mono
-  // source at the same level. (Backported from Touch Grass.)
+  // the same buffer read from FAR-APART offsets, panned L/R — so the bed reads
+  // as wide and enveloping rather than a mono point in the middle of your head
+  // (the 0.7 trim compensates for the ~+3dB two incoherent sources sum to,
+  // keeping the tuned level). With stereo off: a single centred mono source at
+  // the same level. (Backported from Touch Grass.)
+  //
+  // Offsets, not the ±1.5% playback-rate detune this replaces: two copies of one
+  // buffer at slightly different rates start ALIGNED and slide apart, which
+  // means they also slide back together — on a 20s buffer at ±1.5% the image
+  // collapsed to near-mono and re-widened every ~11 minutes, a perfectly
+  // periodic breathing of the stereo width. Fixed offsets never re-converge,
+  // cost no resampling, and are decorrelated from the first sample.
   function stereoNoise(buffer, rate = 1, spread = 0.6) {
     if (!stereo) {
       const s = loopSource(ctx, buffer)
       s.playbackRate.value = rate
-      s.start()
+      s.start(0, noiseOffset(buffer, 0))
       nodes.push(s)
       return s
     }
     const merge = ctx.createGain()
     merge.gain.value = 0.7
-    ;[[-spread, rate * 0.985], [spread, rate * 1.015]].forEach(([pan, r]) => {
+    const a = Math.random() * buffer.duration
+    const b = (a + buffer.duration * (0.35 + Math.random() * 0.3)) % buffer.duration
+    ;[[-spread, a], [spread, b]].forEach(([pan, off]) => {
       const s = loopSource(ctx, buffer)
-      s.playbackRate.value = r
+      s.playbackRate.value = rate
       const p = panner(ctx, pan)
       s.connect(p)
       p.connect(merge)
-      s.start()
+      s.start(0, off)
       nodes.push(s)
     })
     return merge
   }
 
-  // A slow, low-depth sine wobble summed onto an AudioParam's own constant
-  // value (Web Audio sums a connected node's output onto a param's intrinsic
-  // value) — the shared shape behind every layer's "organic drift" below.
-  // `rateHz` is randomised a little per call so no two layers ever drift in
-  // lockstep.
-  function driftParam(param, depth, rateHz) {
-    const osc = ctx.createOscillator()
-    osc.frequency.value = rateHz * (0.85 + Math.random() * 0.3)
-    const g = ctx.createGain()
-    g.gain.value = depth
-    osc.connect(g)
-    g.connect(param)
-    osc.start()
-    nodes.push(osc)
-  }
-  const driftFilter = (filter, depthHz, rateHz) => driftParam(filter.frequency, depthHz, rateHz)
-  const driftGain = (gainNode, depth, rateHz) => driftParam(gainNode.gain, depth, rateHz)
-
-  // ── wind: band-passed noise, drifting (pace) + gusting (motion) ──
-  function buildWind(white, level, lpHz, motion, pace, dest) {
+  // ── wind: band-passed noise, drifting + gusting ──
+  // Rule 4, at its most audible: a real gust is louder AND brighter in the same
+  // instant — turbulence carries more high-frequency energy the harder it
+  // blows. This used to run gain off one 0.07Hz sine and the filter off another
+  // at 0.05Hz, so the wind got brighter and louder out of phase, which is a very
+  // strong tell that nothing is actually moving. Now both params are driven by
+  // the SAME two drifts: the shared `weather` (so the whole scene gusts
+  // together) plus one of the layer's own (so it doesn't gust in lockstep).
+  function buildWind(white, level, lpHz, motion, pace, dest, weather) {
     const wind = stereoNoise(white, 1.0, 0.7)
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
@@ -251,29 +478,25 @@ export function createNightSoundscape() {
     lp.frequency.value = lpHz
     const g = ctx.createGain()
     g.gain.value = level
-    const drift = ctx.createOscillator()
-    drift.frequency.value = 0.05 * pace
-    const driftDepth = ctx.createGain()
-    driftDepth.gain.value = 170 * motion
-    drift.connect(driftDepth)
-    driftDepth.connect(bp.frequency)
-    const gust = ctx.createOscillator()
-    gust.frequency.value = 0.07 * pace
-    const gustDepth = ctx.createGain()
-    gustDepth.gain.value = level * 0.45 * motion
-    gust.connect(gustDepth)
-    gustDepth.connect(g.gain)
     wind.connect(bp)
     bp.connect(lp)
     lp.connect(g)
     g.connect(dest)
-    drift.start()
-    gust.start()
-    nodes.push(drift, gust)
+    const own = createDrift(0.05 * pace)
+    for (const [d, w] of [[weather, 0.55], [own, 0.5]]) {
+      if (!d) continue
+      link(d, g.gain, level * 0.45 * motion * w)
+      link(d, bp.frequency, 170 * motion * w)
+    }
   }
 
   // ── rain: soft high wash + stereo droplets, busier with level, faster w/ pace ──
-  function buildRain(white, level, pace, dest) {
+  // The wash rides two drifts: `weather` (a gust drives the rain harder for a
+  // few seconds — and brighter with it) and `shower`, a much slower one that
+  // gives the minute-scale ebb and swell every real rainfall has and no
+  // synthesised one ever does. Droplet density reads the same two, so the
+  // patter thickens with the wash instead of ticking along at its own rate.
+  function buildRain(white, level, pace, dest, weather, shower) {
     const rain = stereoNoise(white, 1.0)
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
@@ -282,12 +505,20 @@ export function createNightSoundscape() {
     lp.type = 'lowpass'
     lp.frequency.value = 6500
     const g = ctx.createGain()
-    g.gain.value = 0.09 * level
+    const base = 0.09 * level
+    g.gain.value = base
     rain.connect(hp)
     hp.connect(lp)
     lp.connect(g)
     g.connect(dest)
-    driftFilter(lp, 900, 0.025) // a slow drift on the wash's top end
+    if (weather) {
+      link(weather, g.gain, base * 0.2)
+      link(weather, lp.frequency, 700)
+    }
+    if (shower) {
+      link(shower, g.gain, base * 0.34)
+      link(shower, lp.frequency, 900)
+    }
 
     let nextAt = ctx.currentTime + 0.6
     const t = setInterval(() => {
@@ -295,6 +526,8 @@ export function createNightSoundscape() {
       const ahead = ctx.currentTime + 1.5
       while (nextAt < ahead) {
         const when = nextAt
+        // how hard it is raining at that moment, 0.5 (a lull) .. 1.9 (a squall)
+        const heavier = clamp(1 + 0.3 * driftValue(weather, when) + 0.5 * driftValue(shower, when), 0.5, 1.9)
         const src = ctx.createBufferSource()
         src.buffer = white
         const bp = ctx.createBiquadFilter()
@@ -311,10 +544,11 @@ export function createNightSoundscape() {
         bp.connect(dg)
         dg.connect(p)
         p.connect(dest)
-        src.start(when)
+        sendToRoom(p, 0.45)
+        src.start(when, noiseOffset(white, 0.3))
         src.stop(when + 0.3)
-        // busier when louder, faster with pace
-        nextAt += (0.22 + Math.random() * 0.7) * (1.6 - level) / pace
+        // busier when louder, faster with pace, and busier still in a squall
+        nextAt += ((0.22 + Math.random() * 0.7) * (1.6 - level)) / (pace * heavier)
       }
     }, 400)
     timers.push(t)
@@ -324,7 +558,9 @@ export function createNightSoundscape() {
   // heavy the rain is (heavier rain, a touch more frequent and a touch louder,
   // but always distant, never a startling crack). Checked once per tick rather
   // than the "schedule several ahead" pattern the frequent transients use
-  // above: events are minutes apart, so there's never more than one pending. ──
+  // above: events are minutes apart, so there's never more than one pending.
+  // It gets the deepest send into the room of anything here — distant thunder
+  // IS its reverberation; dry, it's just a filtered noise swell. ──
   function buildThunder(white, level, dest) {
     let nextAt = ctx.currentTime + 25 + Math.random() * 50
     const t = setInterval(() => {
@@ -350,9 +586,11 @@ export function createNightSoundscape() {
       lp.connect(g)
       g.connect(p)
       p.connect(dest)
-      src.start(when)
+      sendToRoom(p, 1.1)
+      src.start(when, noiseOffset(white, dur + 0.3))
       src.stop(when + dur + 0.2)
-      driftFilter(lp, 40, 0.7 + Math.random() * 0.5) // a wobble on the cutoff so the rumble isn't static
+      // a wobble on the cutoff so the rumble isn't static, retired with the roll
+      driftFilter(lp, 40, 0.7 + Math.random() * 0.5, when + dur + 0.5)
       // rare, and only slightly more frequent the heavier the rain
       nextAt = when + (260 + Math.random() * 340) / (0.55 + 0.45 * level)
     }, 4000)
@@ -360,6 +598,9 @@ export function createNightSoundscape() {
   }
 
   // ── waves: slow surf; level=loudness, motion=swell size, pace=speed ──
+  // Untouched apart from the room: its period and crest are already randomised
+  // per swell, so it has no periodicity to fix. (Its shape — one envelope, no
+  // break transient and no retreating hiss — is the next pass's problem.)
   function buildWaves(white, level, motion, pace, dest) {
     const src = stereoNoise(white, 1.0)
     const hp = ctx.createBiquadFilter()
@@ -375,6 +616,7 @@ export function createNightSoundscape() {
     hp.connect(lp)
     lp.connect(g)
     g.connect(dest)
+    sendToRoom(g, 0.3)
 
     let nextAt = ctx.currentTime + 0.8
     g.gain.setValueAtTime(trough, nextAt)
@@ -383,7 +625,7 @@ export function createNightSoundscape() {
       if (stopped) return
       const ahead = ctx.currentTime + 12
       while (nextAt < ahead) {
-        const period = ((9 + Math.random() * 5) / pace)
+        const period = (9 + Math.random() * 5) / pace
         const crest = nextAt + period * 0.42
         const end = nextAt + period
         const peak = (0.5 + Math.random() * 0.28) * level * motion
@@ -400,14 +642,19 @@ export function createNightSoundscape() {
   }
 
   // ── leaves: a soft hush of wind through foliage + occasional rustles ──
-  function buildLeaves(white, level, motion, pace, dest) {
-    buildWind(white, level * 0.5, 1100, motion, pace, dest)
+  // Foliage doesn't rustle on a timetable — it rustles when the wind moves it.
+  // The rustles now read the same `weather` drift that is gusting the air, so
+  // they arrive in clusters on a gust and go quiet in the lulls, and the layer's
+  // own wind chain gusts with the rest of the scene rather than against it.
+  function buildLeaves(white, level, motion, pace, dest, weather) {
+    buildWind(white, level * 0.5, 1100, motion, pace, dest, weather)
     let nextAt = ctx.currentTime + 2
     const t = setInterval(() => {
       if (stopped) return
       const ahead = ctx.currentTime + 4
       while (nextAt < ahead) {
         const when = nextAt
+        const gust = clamp(1 + 0.8 * driftValue(weather, when), 0.35, 1.9)
         const src = ctx.createBufferSource()
         src.buffer = white
         const bp = ctx.createBiquadFilter()
@@ -415,7 +662,7 @@ export function createNightSoundscape() {
         bp.frequency.value = 1400 + Math.random() * 1400
         bp.Q.value = 0.8
         const g = ctx.createGain()
-        const v = (0.02 + Math.random() * 0.025) * level * motion
+        const v = (0.02 + Math.random() * 0.025) * level * motion * gust
         const dur = 0.7 + Math.random() * 1.1
         g.gain.setValueAtTime(0.0001, when)
         g.gain.linearRampToValueAtTime(v, when + dur * 0.4)
@@ -425,9 +672,10 @@ export function createNightSoundscape() {
         bp.connect(g)
         g.connect(p)
         p.connect(dest)
-        src.start(when)
+        sendToRoom(p, 0.45)
+        src.start(when, noiseOffset(white, dur + 0.2))
         src.stop(when + dur + 0.1)
-        nextAt += (2.5 + Math.random() * 4) / pace
+        nextAt += (2.5 + Math.random() * 4) / (pace * gust)
       }
     }, 700)
     timers.push(t)
@@ -435,7 +683,10 @@ export function createNightSoundscape() {
 
   // ── stream: a continuous brook — steadier and higher than Waves (no big swell
   // envelope), with soft, frequent "bubble" transients rather than sparse drops.
-  // Level makes it both louder AND busier, matching rain's own convention. ──
+  // Level makes it both louder AND busier, matching rain's own convention.
+  // Deliberately left OUT of the shared weather: a brook is the steadiest thing
+  // in a landscape, and coupling it to the wind is what would make the whole mix
+  // breathe as one organism — the failure mode rule 4 is trying to avoid. ──
   function buildStream(white, level, motion, pace, dest) {
     const src = stereoNoise(white, 1.0)
     const bp = ctx.createBiquadFilter()
@@ -451,14 +702,7 @@ export function createNightSoundscape() {
     // a slow drift on the wash's centre so it's never perfectly static, while
     // staying steadier than Waves (no swelling gain envelope). Motion scales
     // its depth, same as every other layer's own drift/gust.
-    const drift = ctx.createOscillator()
-    drift.frequency.value = 0.04 * pace
-    const driftDepth = ctx.createGain()
-    driftDepth.gain.value = 220 * motion
-    drift.connect(driftDepth)
-    driftDepth.connect(bp.frequency)
-    drift.start()
-    nodes.push(drift)
+    driftFilter(bp, 220 * motion, 0.04 * pace)
 
     const busier = 1.5 - 0.6 * level // louder → more frequent bubbles
     let nextAt = ctx.currentTime + 0.3
@@ -483,10 +727,13 @@ export function createNightSoundscape() {
         bbp.connect(dg)
         dg.connect(p)
         p.connect(dest)
-        bubble.start(when)
+        // a light send only: at ~13 bubbles a second the tails overlap heavily,
+        // and a stream's wash should come from the water, not from the room
+        sendToRoom(p, 0.12)
+        bubble.start(when, noiseOffset(white, 0.2))
         bubble.stop(when + 0.2)
         // continuous babble — much more frequent than rain's droplets
-        nextAt += (0.03 + Math.random() * 0.09) * busier / pace
+        nextAt += ((0.03 + Math.random() * 0.09) * busier) / pace
       }
     }, 250)
     timers.push(t)
@@ -513,6 +760,7 @@ export function createNightSoundscape() {
         const p = panner(ctx, Math.random() * 1.4 - 0.7)
         g.connect(p)
         p.connect(dest)
+        sendToRoom(p, 0.7)
         // fundamental + a slightly inharmonic partial for a metallic, glassy
         // quality rather than a clean musical tone
         const osc1 = ctx.createOscillator()
@@ -530,7 +778,7 @@ export function createNightSoundscape() {
         g2.connect(g)
         osc2.start(when)
         osc2.stop(when + 3.6)
-        nextAt += (8 + Math.random() * 17) * busier / pace
+        nextAt += ((8 + Math.random() * 17) * busier) / pace
       }
     }, 3000)
     timers.push(t)
@@ -586,20 +834,32 @@ export function createNightSoundscape() {
     // Long enough that the underlying loop period is never consciously
     // audible over a real session (15-90min): a short clip repeating
     // thousands of times can start to reveal itself even as white/pink
-    // noise; 20/26s puts the repeat count low enough that per-layer drift
-    // (below) and the constantly-randomised transient layers are what a
-    // listener actually notices, not the loop.
-    const white = makeWhiteBuffer(ctx, 20)
+    // noise. 30/26s, with every source reading from its own random offset,
+    // puts the repeat count low enough that per-layer drift and the
+    // constantly-randomised transient layers are what a listener actually
+    // notices, not the loop.
+    const white = makeWhiteBuffer(ctx, 30)
     const pink = makePinkBuffer(ctx, 26)
+
+    // Only pay for the convolver when something transient is actually in the
+    // blend — a wind-and-drone night has nothing to put in a room.
+    if (p.rain > 0 || p.waves > 0 || p.leaves > 0 || p.stream > 0 || p.chime > 0) buildRoom(p.toneHz)
+
+    // The scene's shared weather (rule 4) and, under it, the much slower swell
+    // and lull of the rain itself. Both are made only when something reads them.
+    const needsWeather = p.wind > 0 || p.leaves > 0 || p.rain > 0
+    const weather = needsWeather ? createDrift(0.045 * p.pace) : null
+    const shower = p.rain > 0 ? createDrift(0.006 * p.pace) : null
+    timers.push(setInterval(tickDrifts, 1000))
 
     if (p.warmth > 0) buildWarmth(pink, p.warmth, tone)
     if (p.drone > 0) buildDrone(p.drone, tone)
-    if (p.wind > 0) buildWind(white, 0.34 * p.wind, 900, p.motion, p.pace, tone)
-    if (p.rain > 0) buildRain(white, p.rain, p.pace, tone)
+    if (p.wind > 0) buildWind(white, 0.34 * p.wind, 900, p.motion, p.pace, tone, weather)
+    if (p.rain > 0) buildRain(white, p.rain, p.pace, tone, weather, shower)
     if (p.rain > 0) buildThunder(white, p.rain, tone)
     if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone)
     if (p.stream > 0) buildStream(white, p.stream, p.motion, p.pace, tone)
-    if (p.leaves > 0) buildLeaves(white, p.leaves, p.motion, p.pace, tone)
+    if (p.leaves > 0) buildLeaves(white, p.leaves, p.motion, p.pace, tone, weather)
     if (p.chime > 0) buildChime(p.chime, p.pace, tone)
 
     scheduleEnvelope(p.master, totalSec, elapsedSec, fadeIn)
@@ -627,6 +887,8 @@ export function createNightSoundscape() {
     stopped = true
     timers.forEach(clearInterval)
     timers = []
+    drifts = []
+    reverbIn = null
     if (ctx && master) {
       const now = ctx.currentTime
       try {

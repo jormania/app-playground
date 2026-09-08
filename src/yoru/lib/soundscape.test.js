@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+// @vitest-environment happy-dom
+import { describe, it, expect, afterEach } from 'vitest'
 import { DEFAULT_MIX, SCENE_PRESETS, MIX_MAX } from './storage'
-import { taper, resolveMix } from './soundscape'
+import { taper, resolveMix, driftStep, reverbImpulse, createNightSoundscape } from './soundscape'
 
 // Yoru's eight blendable layers (it keeps `drone`, unlike Touch Grass).
 const LAYER_KEYS = ['rain', 'waves', 'stream', 'wind', 'leaves', 'chime', 'warmth', 'drone']
@@ -78,5 +79,174 @@ describe('resolveMix', () => {
     expect(() => resolveMix(null)).not.toThrow()
     expect(resolveMix(null).master).toBe(0)
     expect(resolveMix({ nonsense: 99 }).rain).toBe(0)
+  })
+})
+
+describe('driftStep — the aperiodic walk that replaced the LFOs', () => {
+  it('stays inside [-1, 1] from any starting point', () => {
+    for (const start of [-1, -0.5, 0, 0.5, 1]) {
+      let v = start
+      for (let i = 0; i < 2000; i++) {
+        v = driftStep(v)
+        expect(v).toBeGreaterThanOrEqual(-1)
+        expect(v).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+
+  it('actually moves, and spends most of its time near calm', () => {
+    let v = 0
+    let sum = 0
+    let peak = 0
+    const n = 6000
+    for (let i = 0; i < n; i++) {
+      v = driftStep(v)
+      sum += Math.abs(v)
+      peak = Math.max(peak, Math.abs(v))
+    }
+    // gusts happen...
+    expect(peak).toBeGreaterThan(0.7)
+    // ...but the average is well below them, which is the whole point of the
+    // shaped target: calm most of the time, not a sine forever at full swing
+    expect(sum / n).toBeLessThan(0.45)
+    expect(sum / n).toBeGreaterThan(0.05)
+  })
+})
+
+describe('reverbImpulse', () => {
+  it('normalises each channel to unit energy, whatever the sample rate', () => {
+    for (const rate of [8000, 44100]) {
+      for (const ch of reverbImpulse(rate, 1.6)) {
+        let e = 0
+        for (const x of ch) e += x * x
+        expect(e).toBeCloseTo(1, 5)
+      }
+    }
+  })
+
+  it('leaves the pre-delay silent so the direct sound still arrives first', () => {
+    const [l] = reverbImpulse(8000, 1.6, 0.02)
+    for (let i = 0; i < 8000 * 0.02; i++) expect(l[i]).toBe(0)
+    expect(l.some((x) => x !== 0)).toBe(true)
+  })
+
+  it('decays — the tail is quieter than the head', () => {
+    const [l] = reverbImpulse(8000, 1.6)
+    const rms = (from, to) => {
+      let e = 0
+      for (let i = from; i < to; i++) e += l[i] * l[i]
+      return Math.sqrt(e / (to - from))
+    }
+    expect(rms(200, 2000)).toBeGreaterThan(rms(l.length - 2000, l.length))
+  })
+
+  it('generates its two channels independently (a correlated IR has no width)', () => {
+    const [l, r] = reverbImpulse(8000, 1.6)
+    let dot = 0
+    for (let i = 0; i < l.length; i++) dot += l[i] * r[i]
+    expect(Math.abs(dot)).toBeLessThan(0.2) // both are unit-energy, so this is the correlation
+  })
+})
+
+// ── A stub just rich enough to build the graph. It exists for one assertion
+// the pure helpers can't make: that no two noise sources read the same samples.
+// Every droplet, bubble and rustle used to start at sample 0 of one shared
+// buffer, so all of them were the same few milliseconds of noise in different
+// filters — invisible in review, glaring in the ear. ─────────────────────────
+function stubAudio() {
+  const started = []
+  const param = () => ({
+    value: 0,
+    setValueAtTime() {},
+    linearRampToValueAtTime() {},
+    exponentialRampToValueAtTime() {},
+    setTargetAtTime() {},
+    cancelScheduledValues() {},
+  })
+  const node = (extra = {}) => ({ connect() {}, disconnect() {}, ...extra })
+  const filter = () => node({ type: '', frequency: param(), Q: param(), gain: param() })
+  class Stub {
+    constructor() {
+      this.sampleRate = 8000
+      this.currentTime = 0
+      this.state = 'running'
+      this.destination = node()
+    }
+    createGain() { return node({ gain: param() }) }
+    createBiquadFilter() { return filter() }
+    createStereoPanner() { return node({ pan: param() }) }
+    createDynamicsCompressor() {
+      return node({ threshold: param(), knee: param(), ratio: param(), attack: param(), release: param() })
+    }
+    createOscillator() {
+      return node({ type: '', frequency: param(), detune: param(), start() {}, stop() {} })
+    }
+    createConstantSource() { return node({ offset: param(), start() {}, stop() {} }) }
+    createConvolver() { return node({ normalize: true, buffer: null }) }
+    createBufferSource() {
+      return node({
+        buffer: null,
+        loop: false,
+        playbackRate: param(),
+        start(when, offset) { started.push(offset) },
+        stop() {},
+      })
+    }
+    createBuffer(channels, length, sampleRate) {
+      const data = Array.from({ length: channels }, () => new Float32Array(length))
+      return {
+        duration: length / sampleRate,
+        length,
+        getChannelData: (i) => data[i],
+        copyToChannel: (src, i) => data[i].set(src),
+      }
+    }
+    resume() { return Promise.resolve() }
+    close() { return Promise.resolve() }
+  }
+  window.AudioContext = Stub
+  return started
+}
+
+describe('the engine, built end to end', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  const everything = { ...DEFAULT_MIX, rain: 6, waves: 5, stream: 5, wind: 5, leaves: 5, chime: 4 }
+
+  it('builds every layer at once without throwing', async () => {
+    const started = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({ totalSec: 900, mix: everything })
+    expect(started.length).toBeGreaterThan(0)
+  })
+
+  it('gives every noise source its own offset into the shared buffer', async () => {
+    const started = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({ totalSec: 900, mix: everything })
+    // no source may start at the default (undefined / sample 0)...
+    expect(started.every((o) => typeof o === 'number' && o > 0)).toBe(true)
+    // ...and they must not all be reading the same place
+    expect(new Set(started).size).toBeGreaterThan(1)
+  })
+
+  it('still starts, and still offsets, with stereo width off', async () => {
+    const started = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({ totalSec: 900, mix: everything, stereo: false })
+    expect(started.every((o) => typeof o === 'number' && o > 0)).toBe(true)
+  })
+
+  it('stays silent — and builds nothing — at volume 0', async () => {
+    const started = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({ totalSec: 900, mix: { ...everything, volume: 0 } })
+    expect(started).toHaveLength(0)
   })
 })

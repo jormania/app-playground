@@ -41,10 +41,13 @@ UI: [`components/Mixer.jsx`](src/yoru/components/Mixer.jsx) — ten 0–10 slide
 each with a discrete one-line hint, plus Reset, opened from Settings and
 portalled to `<body>`. **Nature only — no animals, no city.**
 
-- **Layers** (blend freely, 0 = off): **Rain** (wash + stereo droplets),
-  **Waves** (slow surf), **Wind** (drifting, gusting), **Leaves** (wind through
-  foliage + rustles), **Warmth** (a *pink*-noise floor — warmer and less boomy
-  than brown), **Drone** (a soft low fifth).
+- **Layers** (blend freely, 0 = off): **Rain** (wash + stereo droplets, and a
+  rare distant **thunder** roll that rides Rain's own level — no separate
+  slider), **Waves** (slow surf), **Stream** (a steady brook, softly babbling),
+  **Wind** (drifting, gusting), **Leaves** (wind through foliage + rustles),
+  **Chime** (a sparse furin — an *accent*, meant to sit over another layer, so
+  it has no quick-pick preset of its own), **Warmth** (a *pink*-noise floor —
+  warmer and less boomy than brown), **Drone** (a soft low fifth).
 - **Shapers**: **Volume** (master), **Brightness** (one global low-pass, dark→
   airy), **Motion** (how *much* it swells/gusts), **Pace** (how *fast* it drifts).
 - The `soundscape` quick-pick in Settings stamps a starting blend (`SCENE_PRESETS`
@@ -54,6 +57,57 @@ portalled to `<body>`. **Nature only — no animals, no city.**
   whatever the mixer is set to. There is no on/off: sound is the point; the
   Volume dial takes it as low as you like.
 - The warm bed **breathes with you** when breathwork is on.
+
+### The four rules that keep it from sounding synthetic
+
+Filters and levels decide what a layer *is*; these decide whether the ear files
+it under "outside" or under "a machine". They are stated at the top of
+[`soundscape.js`](src/yoru/lib/soundscape.js) and apply to every layer —
+**keep them when adding or reworking one.**
+
+1. **Nothing shares a waveform.** Every noise source reads the one shared buffer
+   from its own random offset — one-shots included. Before this, every droplet,
+   bubble and rustle started at sample 0 of the same buffer, so all of them were
+   literally the same few milliseconds of noise wearing a different filter; and
+   layers that share samples fuse into a single source however differently
+   they're filtered. Stereo width comes from two far-apart offsets, not from the
+   ±1.5 % playback-rate detune it used to use — two copies of one buffer at
+   different rates start aligned and slide apart, which means they also slide
+   back together, collapsing the image to near-mono and re-widening on an
+   ~11-minute cycle.
+2. **Nothing repeats.** Every "organic drift" is an aperiodic mean-reverting
+   random walk (`driftStep`), not an LFO. A 0.05 Hz sine repeats 180 times an
+   hour and the brain will find it. The walk's target is shaped rather than
+   uniform, which is what gives it weather's actual character: calm most of the
+   time, a real gust now and then.
+3. **Everything transient has a room.** A dark synthetic reverb
+   (`reverbImpulse` — decaying noise, one-pole low-passed, per-channel unit
+   energy) on a send bus. Dry point sources sit inside your skull. Continuous
+   washes stay **dry** — running steady noise through a reverb only adds level
+   and mud. Thunder gets the deepest send: distant thunder *is* its
+   reverberation. The wet path is deliberately quiet — a room you notice is a
+   room set too wet, and an unexpectedly loud tail at 2am is the worst failure
+   this file can have.
+4. **One breeze moves the whole scene.** Wind, Leaves and Rain share a single
+   `weather` drift, so a gust brightens the air, stirs the trees and pushes the
+   rain in the same instant — wind's gain and its filter used to run off two
+   unrelated LFOs, so it got louder and brighter out of phase, which is a very
+   strong tell that nothing is actually moving. Each layer keeps an independent
+   drift of its own too, so the mix breathes as a *place* rather than as one
+   tremolo. **Stream is deliberately left out** — a brook is the steadiest thing
+   in a landscape, and coupling it is what would tip the whole mix into
+   breathing as a single organism.
+
+Missing browser support for `ConstantSourceNode` or `ConvolverNode` costs the
+drift or the room, never the night's sound — both degrade, neither throws.
+
+Still to do (the per-layer pass): Waves needs a break transient and a retreating
+hiss separated from its swell, plus overlapping sets; Stream's bubbles want to
+be upward-chirped damped sinusoids rather than filtered noise clicks; Rain's
+wash is high-passed too far up to have any body; Leaves' rustles should be
+clusters of very short ticks; Thunder should roll in several sub-peaks; Chime
+needs per-partial decay. Brightness would read as *distance* rather than a
+blanket if it were a tilt coupled to the reverb send.
 
 ## Breathwork (optional)
 
