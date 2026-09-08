@@ -64,6 +64,18 @@ export const taper = (t, exp) => Math.pow(clamp01(t), exp)
 const VOLUME_TAPER = 1.9
 const LAYER_TAPER = 1.4
 
+// A struck chime's partials, as [ratio, relative amplitude]. Inharmonic on
+// purpose: a glassy, metallic quality rather than a clean musical one. Each
+// decays at ring / ratio^CHIME_DAMPING, so the high partials leave first and
+// the tone darkens as it rings out — which is what makes metal sound like
+// metal, and what a single shared envelope can never do.
+export const CHIME_PARTIALS = [
+  [1, 1],
+  [2.76, 0.35],
+  [5.4, 0.12],
+]
+export const CHIME_DAMPING = 0.7
+
 const EBB_START = 0.65
 const FADE_IN_SEC = 5
 
@@ -601,39 +613,69 @@ export function createNightSoundscape() {
   // than the "schedule several ahead" pattern the frequent transients use
   // above: events are minutes apart, so there's never more than one pending.
   // It gets the deepest send into the room of anything here — distant thunder
-  // IS its reverberation; dry, it's just a filtered noise swell. ──
-  function buildThunder(white, level, dest) {
+  // IS its reverberation; dry, it's just a filtered noise swell.
+  //
+  // Thunder ROLLS. A lightning channel is kilometres long, so its sound reaches
+  // you as a train of arrivals from successively further parts of the channel,
+  // re-scattered by terrain — several irregular crests over 6-12s, not one
+  // swell with one attack and one decay, which is what this was and why it read
+  // as a filtered noise blob rather than as weather.
+  //
+  // The trap when splitting one burst into several: at the old per-burst level
+  // five of them is +7dB, and each would feed a send that is already the
+  // deepest in the file. So they sum into ONE gain and ONE send, the first
+  // (nearest) crest is the loudest at 0.9x the old single peak, and the rest
+  // fall away — instantaneous loudness slightly DOWN, duration up, which is
+  // what a real roll does. The per-event filter wobble is gone too: the
+  // multi-crest structure is the irregularity that drift was standing in for. ──
+  function buildThunder(white, level, dest, shower) {
     let nextAt = ctx.currentTime + 25 + Math.random() * 50
     const t = setInterval(() => {
       if (stopped || ctx.currentTime < nextAt) return
       const when = nextAt
-      const dur = 3.2 + Math.random() * 2.4
-      const src = ctx.createBufferSource()
-      src.buffer = white
-      const hp = ctx.createBiquadFilter()
-      hp.type = 'highpass'
-      hp.frequency.value = 28
-      const lp = ctx.createBiquadFilter()
-      lp.type = 'lowpass'
-      lp.frequency.value = 130 + Math.random() * 90
-      const g = ctx.createGain()
-      const peak = (0.042 + Math.random() * 0.032) * level
-      g.gain.setValueAtTime(0.0001, when)
-      g.gain.exponentialRampToValueAtTime(peak, when + 0.8 + Math.random() * 0.6) // a slow, distant roll-in
-      g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
+      // heavier rain, a slightly bigger and more frequent storm — thunder rides
+      // the same slow drift the rain's own intensity does, so a squall and its
+      // thunder belong to one weather system rather than two clocks
+      const heavy = clamp(1 + 0.3 * driftValue(shower, when), 0.7, 1.4)
+      const roll = 6 + Math.random() * 6
+      const peak = (0.042 + Math.random() * 0.032) * level * heavy
+
+      const out = ctx.createGain()
+      out.gain.value = 1
       const p = panner(ctx, Math.random() * 1.6 - 0.8)
-      src.connect(hp)
-      hp.connect(lp)
-      lp.connect(g)
-      g.connect(p)
+      out.connect(p)
       p.connect(dest)
       sendToRoom(p, 1.25)
-      src.start(when, noiseOffset(white, dur + 0.3))
-      src.stop(when + dur + 0.2)
-      // a wobble on the cutoff so the rumble isn't static, retired with the roll
-      driftFilter(lp, 40, 0.7 + Math.random() * 0.5, when + dur + 0.5)
+
+      const crests = 3 + ((Math.random() * 4) | 0)
+      for (let i = 0; i < crests; i++) {
+        // the first crest arrives at the strike; the rest scatter across the roll
+        const at = i === 0 ? when : when + Math.random() * roll * 0.75
+        const grow = 0.35 + Math.random() * 0.7
+        const fall = 1.6 + Math.random() * 2.4
+        const w = i === 0 ? 0.9 : 0.22 + Math.random() * 0.4
+        const src = ctx.createBufferSource()
+        src.buffer = white
+        const hp = ctx.createBiquadFilter()
+        hp.type = 'highpass'
+        hp.frequency.value = 28
+        const lp = ctx.createBiquadFilter()
+        lp.type = 'lowpass'
+        // later arrivals came further and through more air: darker
+        lp.frequency.value = (130 + Math.random() * 90) * (i === 0 ? 1 : 0.6 + Math.random() * 0.3)
+        const g = ctx.createGain()
+        g.gain.setValueAtTime(0.0001, at)
+        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * w), at + grow)
+        g.gain.exponentialRampToValueAtTime(0.0001, at + grow + fall)
+        src.connect(hp)
+        hp.connect(lp)
+        lp.connect(g)
+        g.connect(out)
+        src.start(at, noiseOffset(white, grow + fall + 0.3))
+        src.stop(at + grow + fall + 0.2)
+      }
       // rare, and only slightly more frequent the heavier the rain
-      nextAt = when + (260 + Math.random() * 340) / (0.55 + 0.45 * level)
+      nextAt = when + (260 + Math.random() * 340) / (0.55 + 0.45 * level) / heavy
     }, 4000)
     timers.push(t)
   }
@@ -666,14 +708,16 @@ export function createNightSoundscape() {
 
     const bhp = ctx.createBiquadFilter()
     bhp.type = 'highpass'
-    bhp.frequency.value = 90
+    // 70Hz, not 90: a swell's weight is in the bottom two octaves, and the
+    // "rising and receding" you feel as depth is largely low-frequency motion.
+    bhp.frequency.value = 70
     const blp = ctx.createBiquadFilter()
     blp.type = 'lowpass'
-    blp.frequency.value = 420
+    blp.frequency.value = 260
     const bg = ctx.createGain()
     // lower than it was: the distant bed below now carries the between-waves
     // sound, so the body no longer has to hold the floor up on its own
-    const trough = 0.018 * level
+    const trough = 0.011 * level
     bg.gain.value = trough
     src.connect(bhp)
     bhp.connect(blp)
@@ -687,10 +731,10 @@ export function createNightSoundscape() {
     // draining over sand — it reads as pebbles poured out of a sack.
     const fhp = ctx.createBiquadFilter()
     fhp.type = 'highpass'
-    fhp.frequency.value = 700
+    fhp.frequency.value = 600
     const flp = ctx.createBiquadFilter()
     flp.type = 'lowpass'
-    flp.frequency.value = 2500
+    flp.frequency.value = 1900
     src.connect(fhp)
     fhp.connect(flp)
 
@@ -709,14 +753,14 @@ export function createNightSoundscape() {
     // and took 10dB out of the swell's dynamic range — which is the whole reason
     // waves read as individual events. A horizon should be audible and no more.
     const fag = ctx.createGain()
-    fag.gain.value = 0.028 * level
+    fag.gain.value = 0.019 * level
     far.connect(fahp)
     fahp.connect(falp)
     falp.connect(fag)
     fag.connect(dest)
     sendToRoom(fag, 0.3)
     driftFilter(falp, 150, 0.02 * pace)
-    driftGain(fag, 0.008 * level, 0.015 * pace) // a static bed is a hiss floor; let it breathe
+    driftGain(fag, 0.006 * level, 0.015 * pace) // a static bed is a hiss floor; let it breathe
 
     let nextAt = ctx.currentTime + 0.8
     bg.gain.setValueAtTime(trough, nextAt)
@@ -734,17 +778,23 @@ export function createNightSoundscape() {
         // washing machine, not a sea.
         const period = (((9 + Math.random() * 5) / pace) * (0.88 + 0.12 * motion) * (0.9 + 0.15 * set))
         const crest = t0 + period * 0.42
-        const peak = (0.4 + Math.random() * 0.22) * level * motion * set
+        const peak = (0.62 + Math.random() * 0.34) * level * motion * set
 
         // Body: a slow rise that steepens into the crest (water standing up),
         // then a decay that is over well before the next swell begins.
         bg.gain.setValueAtTime(trough, t0)
-        bg.gain.linearRampToValueAtTime(peak * 0.4, t0 + period * 0.26)
+        // A longer, lower start and a longer recede: the swell should be
+        // audibly ARRIVING and audibly LEAVING, which needs both ends of the
+        // envelope to take real time rather than snapping between trough and peak.
+        bg.gain.linearRampToValueAtTime(peak * 0.3, t0 + period * 0.24)
         bg.gain.linearRampToValueAtTime(peak, crest)
-        bg.gain.exponentialRampToValueAtTime(Math.max(0.0002, trough), t0 + period * 0.78)
-        blp.frequency.setValueAtTime(300, t0)
-        blp.frequency.linearRampToValueAtTime(500 + Math.random() * 160, crest)
-        blp.frequency.exponentialRampToValueAtTime(290, t0 + period * 0.78)
+        bg.gain.exponentialRampToValueAtTime(Math.max(0.0002, trough), t0 + period * 0.86)
+        // A wider sweep than before (240 -> ~700 -> 230). More of what reads as a
+        // wave approaching and passing is this, not the gain: the water gets
+        // brighter as it nears and duller as it draws back.
+        blp.frequency.setValueAtTime(240, t0)
+        blp.frequency.linearRampToValueAtTime(640 + Math.random() * 220, crest)
+        blp.frequency.exponentialRampToValueAtTime(230, t0 + period * 0.86)
 
         // Foam: its own node, so it can still be hissing when the next wave
         // starts. Opens just before the body peaks — the break begins as the
@@ -755,14 +805,14 @@ export function createNightSoundscape() {
         flp.connect(fg)
         fg.connect(fp)
         fp.connect(dest)
-        sendToRoom(fp, 0.4)
+        sendToRoom(fp, 0.3)
         const breakAt = crest - period * 0.06
         // Shorter than it was: a drain lasting half the period left the last wave
         // still hissing as the next rose, and the layer stopped reading as a
         // sequence of waves at all. The overlap this exists for only needs to
         // reach the next swell's RISE, not its break.
-        const drain = clamp(period * (0.28 + Math.random() * 0.12), 1.8, 5)
-        const fv = (0.028 + Math.random() * 0.018) * level * motion * set
+        const drain = clamp(period * (0.24 + Math.random() * 0.1), 1.6, 4.5)
+        const fv = (0.016 + Math.random() * 0.011) * level * motion * set
         fg.gain.setValueAtTime(0.0001, breakAt)
         fg.gain.exponentialRampToValueAtTime(fv, breakAt + 0.3 + Math.random() * 0.25)
         fg.gain.exponentialRampToValueAtTime(0.0001, breakAt + drain)
@@ -778,7 +828,7 @@ export function createNightSoundscape() {
 
         // Overlap comes from the foam tails, not from stacking bodies: the next
         // swell begins while the last one is still draining.
-        nextAt = t0 + period * (0.82 + Math.random() * 0.14)
+        nextAt = t0 + period * (0.9 + Math.random() * 0.14)
       }
     }, 1000)
     timers.push(t)
@@ -811,14 +861,39 @@ export function createNightSoundscape() {
         src.buffer = white
         const bp = ctx.createBiquadFilter()
         bp.type = 'bandpass'
-        bp.frequency.value = 1400 + Math.random() * 1400
-        bp.Q.value = 0.8
+        bp.frequency.value = 1600 + Math.random() * 1600
+        bp.Q.value = 1.0
         const g = ctx.createGain()
-        const v = (0.028 + Math.random() * 0.032) * level * motion * gust
+        g.gain.value = 0.0001
+        // GRANULAR, not a swelled blob. A rustle is not one soft whoosh — it is
+        // dozens of individual leaf-on-leaf contacts, each a very short tick.
+        // Shape is why this layer stayed buried: the rustles share a band with
+        // the hush they sit on, so a smooth burst can never separate from it at
+        // any level, while a cluster of ticks separates at almost none.
+        //
+        // One noise source with many scheduled spikes, NOT one source per tick:
+        // 30 sources per rustle would be ~8 new nodes a second on top of the
+        // convolver, and this sounds the same for the node cost of the blob it
+        // replaces. Ticks ride an overall arc so the burst swells and dies.
         const dur = 0.7 + Math.random() * 1.1
-        g.gain.setValueAtTime(0.0001, when)
-        g.gain.linearRampToValueAtTime(v, when + dur * 0.4)
-        g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
+        // x4.3 on the peak, to pay for the duty cycle. Ticks occupy ~22% of the
+        // rustle's span where the blob occupied all of it, so RMS parity needs
+        // x4.76 — this sits a shade under that, because a cluster of transients
+        // reads as louder than smooth noise of the same energy. Getting this
+        // wrong is silent: keep the old constant and the rustles come out ~5dB
+        // QUIETER while looking, in the diff, like nothing changed.
+        const v = (0.12 + Math.random() * 0.14) * level * motion * gust
+        const ticks = 22 + ((Math.random() * 26) | 0)
+        let tick = when
+        for (let i = 0; i < ticks && tick < when + dur; i++) {
+          const span = 0.004 + Math.random() * 0.008
+          const arc = Math.sin((Math.PI * (tick - when)) / dur) // 0 at the ends, 1 in the middle
+          const a = Math.max(0.0002, v * arc * (0.35 + Math.random() * 0.65))
+          g.gain.setValueAtTime(0.0001, tick)
+          g.gain.linearRampToValueAtTime(a, tick + span * 0.35)
+          g.gain.exponentialRampToValueAtTime(0.0001, tick + span)
+          tick += span + Math.random() * (dur / ticks) * 1.4
+        }
         const p = panner(ctx, Math.random() * 1.4 - 0.7)
         src.connect(bp)
         bp.connect(g)
@@ -866,27 +941,60 @@ export function createNightSoundscape() {
       const ahead = ctx.currentTime + 1.2
       while (nextAt < ahead) {
         const when = nextAt
-        const bubble = ctx.createBufferSource()
-        bubble.buffer = white
-        const bbp = ctx.createBiquadFilter()
-        bbp.type = 'bandpass'
-        bbp.frequency.value = 1450 + Math.random() * 1750
-        bbp.Q.value = 2.2
-        const dg = ctx.createGain()
-        const v = (0.022 + Math.random() * 0.028) * level
-        dg.gain.setValueAtTime(0.0001, when)
-        dg.gain.exponentialRampToValueAtTime(v, when + 0.01)
-        dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.07 + Math.random() * 0.07)
         const p = panner(ctx, Math.random() * 1.6 - 0.8)
-        bubble.connect(bbp)
-        bbp.connect(dg)
-        dg.connect(p)
         p.connect(dest)
-        // a light send only: at ~13 bubbles a second the tails overlap heavily,
+        // a light send only: at ~10 bubbles a second the tails overlap heavily,
         // and a stream's wash should come from the water, not from the room
         sendToRoom(p, 0.2)
-        bubble.start(when, noiseOffset(white, 0.3))
-        bubble.stop(when + 0.3)
+        if (Math.random() < 0.2) {
+          // ── a RESONANT bubble, one in five ──
+          // A bubble in water is a damped oscillator whose pitch RISES as it
+          // shrinks and ascends (Minnaert: f ≈ 3.26/r, so 1-5mm gives roughly
+          // 650-3300Hz). That upward chirp is the single most recognisable
+          // thing about running water and no amount of filtered noise has it.
+          //
+          // Only one in five, though. A brook is mostly broadband splash with
+          // resonance as a minority voice, and a stream of pure tones would be
+          // both wrong and — the thing that matters here — attention-grabbing.
+          const f0 = 800 + Math.random() * 1800
+          const dur = 0.03 + Math.random() * 0.06
+          const osc = ctx.createOscillator()
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime(f0, when)
+          osc.frequency.exponentialRampToValueAtTime(f0 * (1.15 + Math.random() * 0.25), when + dur)
+          const cg = ctx.createGain()
+          // x0.22, not the noise burst's own level: a sine keeps 0.707 of its
+          // gain as RMS where that bandpassed burst keeps 0.121, so reusing the
+          // constant would put the brook's events 15dB up in one commit.
+          const cv = (0.005 + Math.random() * 0.004) * level
+          cg.gain.setValueAtTime(0.0001, when)
+          cg.gain.exponentialRampToValueAtTime(cv, when + 0.004)
+          cg.gain.exponentialRampToValueAtTime(0.0001, when + dur)
+          osc.connect(cg)
+          cg.connect(p)
+          osc.start(when)
+          osc.stop(when + dur + 0.05)
+          // deliberately NOT pushed to `nodes` (as chime's oscillators aren't):
+          // it stops itself, and at ~2 a second the array would carry ~11k dead
+          // entries by morning for no reason
+        } else {
+          const bubble = ctx.createBufferSource()
+          bubble.buffer = white
+          const bbp = ctx.createBiquadFilter()
+          bbp.type = 'bandpass'
+          bbp.frequency.value = 1450 + Math.random() * 1750
+          bbp.Q.value = 2.2
+          const dg = ctx.createGain()
+          const v = (0.022 + Math.random() * 0.028) * level
+          dg.gain.setValueAtTime(0.0001, when)
+          dg.gain.exponentialRampToValueAtTime(v, when + 0.01)
+          dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.07 + Math.random() * 0.07)
+          bubble.connect(bbp)
+          bbp.connect(dg)
+          dg.connect(p)
+          bubble.start(when, noiseOffset(white, 0.3))
+          bubble.stop(when + 0.3)
+        }
         // continuous babble — much more frequent than rain's droplets
         nextAt += ((0.04 + Math.random() * 0.12) * busier) / pace
       }
@@ -896,9 +1004,17 @@ export function createNightSoundscape() {
 
   // ── chime: a sparse furin (wind chime) / distant temple-bell accent — a
   // single soft resonant tone now and then, never a melody or a repeating
-  // pattern. Meant to sit over another layer, not be a scene on its own. ──
+  // pattern. Meant to sit over another layer, not be a scene on its own.
+  //
+  // What makes struck metal sound like metal is that its partials decay at
+  // DIFFERENT rates — the high ones die first, which is why a bell's timbre
+  // darkens as it rings out. Both oscillators used to share one envelope, so
+  // the spectrum never changed and it read as a synth tone with a bell-ish
+  // ratio in it. Each partial now gets its own decay (roughly 1/f^0.7), plus a
+  // brief noise transient for the strike and a second detuned oscillator on the
+  // fundamental for the slow warble real chimes have. ──
   const CHIME_NOTES = [587.33, 659.25, 698.46, 783.99, 880.0, 987.77]
-  function buildChime(level, pace, dest) {
+  function buildChime(white, level, pace, dest) {
     const busier = 1.6 - 0.7 * level // louder → a little more frequent
     let nextAt = ctx.currentTime + 6 + Math.random() * 8
     const t = setInterval(() => {
@@ -907,32 +1023,57 @@ export function createNightSoundscape() {
       while (nextAt < ahead) {
         const when = nextAt
         const f = CHIME_NOTES[(Math.random() * CHIME_NOTES.length) | 0]
-        const g = ctx.createGain()
+        // Level is held where it was: the partial amplitudes are normalised so
+        // the sum's RMS at the strike matches the old pair's, and everything
+        // after the strike is quieter because the top partials leave early.
         const v = (0.038 + Math.random() * 0.024) * level
-        g.gain.setValueAtTime(0.0001, when)
-        g.gain.exponentialRampToValueAtTime(v, when + 0.015)
-        g.gain.exponentialRampToValueAtTime(0.0001, when + 2.2 + Math.random() * 1.2)
+        const ring = 2.2 + Math.random() * 1.2
         const p = panner(ctx, Math.random() * 1.4 - 0.7)
-        g.connect(p)
         p.connect(dest)
         sendToRoom(p, 0.85)
-        // fundamental + a slightly inharmonic partial for a metallic, glassy
-        // quality rather than a clean musical tone
-        const osc1 = ctx.createOscillator()
-        osc1.type = 'sine'
-        osc1.frequency.value = f
-        osc1.connect(g)
-        osc1.start(when)
-        osc1.stop(when + 3.6)
-        const osc2 = ctx.createOscillator()
-        osc2.type = 'sine'
-        osc2.frequency.value = f * 2.76
-        const g2 = ctx.createGain()
-        g2.gain.value = 0.3
-        osc2.connect(g2)
-        g2.connect(g)
-        osc2.start(when)
-        osc2.stop(when + 3.6)
+
+        for (const [ratio, amp] of CHIME_PARTIALS) {
+          const decay = ring / Math.pow(ratio, CHIME_DAMPING) // high partials die first
+          const g = ctx.createGain()
+          g.gain.setValueAtTime(0.0001, when)
+          g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * amp), when + 0.015)
+          g.gain.exponentialRampToValueAtTime(0.0001, when + decay)
+          g.connect(p)
+          // the fundamental gets a second, slightly detuned voice so it beats
+          // slowly the way a hanging chime does
+          const voices = ratio === 1 ? [-2.5, 2.5] : [0]
+          for (const cents of voices) {
+            const osc = ctx.createOscillator()
+            osc.type = 'sine'
+            osc.frequency.value = f * ratio
+            osc.detune.value = cents
+            const vg = ctx.createGain()
+            vg.gain.value = voices.length > 1 ? 0.5 : 1
+            osc.connect(vg)
+            vg.connect(g)
+            osc.start(when)
+            osc.stop(when + decay + 0.2)
+          }
+        }
+
+        // the strike itself: a very short filtered click, the clapper on metal.
+        // Quiet — it only has to give the tone an onset, not an attack.
+        const click = ctx.createBufferSource()
+        click.buffer = white
+        const cbp = ctx.createBiquadFilter()
+        cbp.type = 'bandpass'
+        cbp.frequency.value = f * 3.2
+        cbp.Q.value = 1.2
+        const cg = ctx.createGain()
+        cg.gain.setValueAtTime(0.0001, when)
+        cg.gain.exponentialRampToValueAtTime(v * 0.5, when + 0.002)
+        cg.gain.exponentialRampToValueAtTime(0.0001, when + 0.03)
+        click.connect(cbp)
+        cbp.connect(cg)
+        cg.connect(p)
+        click.start(when, noiseOffset(white, 0.1))
+        click.stop(when + 0.1)
+
         nextAt += ((8 + Math.random() * 17) * busier) / pace
       }
     }, 3000)
@@ -1013,11 +1154,11 @@ export function createNightSoundscape() {
     if (p.drone > 0) buildDrone(p.drone, tone)
     if (p.wind > 0) buildWind(white, 0.27 * p.wind, 860, p.motion, p.pace, tone, weather)
     if (p.rain > 0) buildRain(white, p.rain, p.pace, tone, weather, shower)
-    if (p.rain > 0) buildThunder(white, p.rain, tone)
+    if (p.rain > 0) buildThunder(white, p.rain, tone, shower)
     if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone, swellSets)
     if (p.stream > 0) buildStream(white, p.stream, p.motion, p.pace, tone)
     if (p.leaves > 0) buildLeaves(white, p.leaves, p.motion, p.pace, tone, weather)
-    if (p.chime > 0) buildChime(p.chime, p.pace, tone)
+    if (p.chime > 0) buildChime(white, p.chime, p.pace, tone)
 
     scheduleEnvelope(p.master, totalSec, elapsedSec, fadeIn)
   }

@@ -1,7 +1,15 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { DEFAULT_MIX, SCENE_PRESETS, MIX_MAX } from './storage'
-import { taper, resolveMix, driftStep, reverbImpulse, createNightSoundscape } from './soundscape'
+import {
+  taper,
+  resolveMix,
+  driftStep,
+  reverbImpulse,
+  createNightSoundscape,
+  CHIME_PARTIALS,
+  CHIME_DAMPING,
+} from './soundscape'
 
 // Yoru's eight blendable layers (it keeps `drone`, unlike Touch Grass).
 const LAYER_KEYS = ['rain', 'waves', 'stream', 'wind', 'leaves', 'chime', 'warmth', 'drone']
@@ -156,11 +164,14 @@ describe('reverbImpulse', () => {
 function stubAudio() {
   const started = []
   const swept = { count: 0 }
-  let live = null
+  const clock = { t: 0 } // a getter on the context, so tests can move time forward
+  const ramps = { count: 0 }
   const param = () => ({
     value: 0,
     setValueAtTime() {},
-    linearRampToValueAtTime() {},
+    linearRampToValueAtTime() {
+      ramps.count++
+    },
     exponentialRampToValueAtTime() {},
     setTargetAtTime() {},
     cancelScheduledValues() {},
@@ -176,10 +187,11 @@ function stubAudio() {
   class Stub {
     constructor() {
       this.sampleRate = 8000
-      this.currentTime = 0
       this.state = 'running'
       this.destination = node()
-      live = this
+    }
+    get currentTime() {
+      return clock.t
     }
     createGain() { return node({ gain: param() }) }
     createBiquadFilter() { return filter() }
@@ -217,8 +229,9 @@ function stubAudio() {
   return {
     started,
     swept,
+    ramps,
     advance: (sec) => {
-      live.currentTime += sec
+      clock.t += sec
     },
   }
 }
@@ -296,5 +309,51 @@ describe('the sweeper', () => {
     audio.advance(60) // a minute of waves have broken and drained
     vi.advanceTimersByTime(1000) // the sweep tick that should collect them
     expect(audio.swept.count).toBeGreaterThan(before)
+  })
+})
+
+describe('chime partials', () => {
+  it('damps the high partials fastest, so the tone darkens as it rings out', () => {
+    const decays = CHIME_PARTIALS.map(([ratio]) => 1 / Math.pow(ratio, CHIME_DAMPING))
+    for (let i = 1; i < decays.length; i++) expect(decays[i]).toBeLessThan(decays[i - 1])
+  })
+
+  it('keeps the partials inharmonic and descending in level', () => {
+    const [ratios, amps] = [CHIME_PARTIALS.map((p) => p[0]), CHIME_PARTIALS.map((p) => p[1])]
+    expect(ratios[0]).toBe(1)
+    for (let i = 1; i < ratios.length; i++) {
+      expect(ratios[i]).toBeGreaterThan(ratios[i - 1])
+      expect(Number.isInteger(ratios[i])).toBe(false) // integer ratios would sound musical, not metallic
+      expect(amps[i]).toBeLessThan(amps[i - 1])
+    }
+  })
+})
+
+describe('the granular rustle', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    vi.useRealTimers()
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  // A leaf rustle shares its band with the wind hush it sits on, so its SHAPE
+  // is the only thing that can separate it — a cluster of very short ticks
+  // does, a smooth swell never will at any level. That is easy to regress back
+  // to by accident, and it looks like nothing in a diff, so assert it: one
+  // blob is a single ramp, a tick cluster is dozens.
+  it('schedules a rustle as dozens of ticks, not one swell', async () => {
+    vi.useFakeTimers()
+    const audio = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({
+      totalSec: 900,
+      mix: { volume: 8, brightness: 8, motion: 5, pace: 5, leaves: 6 },
+    })
+    const before = audio.ramps.count // the drifts' own automation
+    vi.advanceTimersByTime(1000) // the rustle scheduler's first tick
+    expect(audio.ramps.count - before).toBeGreaterThan(20)
   })
 })

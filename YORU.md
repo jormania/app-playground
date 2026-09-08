@@ -137,7 +137,12 @@ that would wipe saved custom mixes):
 | wind pressure | `0.27 * p.wind` at the call site, and the gust depth `level * 0.36 * motion` |
 | gusts too squally | the `gust` clamp in `buildLeaves` (`1 + 0.5 * w`, capped 1.55) |
 | surf too big | wave `peak = (0.4 + …) * level * motion` |
-| surf hiss too strong / harsh | wave foam `fv = (0.028 + …)` and its band (700–2500) |
+| surf hiss too strong / harsh | wave foam `fv = (0.016 + …)` and its band (600–1900) |
+| swell not deep enough | body `peak = (0.62 + …)`, its trough, and the bed — the swell is the RATIO of these |
+| rustles too soft / too loud | leaves `v = (0.12 + …)` — remember the ×4.76 duty-cycle factor |
+| stream too tonal | the `Math.random() < 0.2` share of resonant bubbles, and `cv` |
+| thunder too heavy | the first crest's weight (0.9) and `crests` |
+| chime too metallic / too dull | `CHIME_DAMPING` (0.7) — higher darkens it faster |
 | waves not individual enough | the distant bed `fag.gain` (`0.028 * level`) — it sets the floor the crest stands against |
 | one wave's hiss runs into the next | the foam `drain` (≈0.3 of a period) |
 
@@ -198,13 +203,56 @@ of a long night, all processing silence, with nothing in the app to show it.
 as well: `disconnect()` clears a node's outputs only, so the foam chain would
 otherwise go on feeding every wave's gain until morning.
 
-Still to do (the per-layer pass): Stream's bubbles want to be upward-chirped
-damped sinusoids (Minnaert) rather than filtered noise clicks;
-Leaves' rustles should be clusters of very short ticks rather than swelled noise
-blobs — they share a band with the hush they sit on, so no amount of level will
-separate them until their *shape* changes; Thunder should roll in several
-sub-peaks; Chime needs per-partial decay. Brightness would read as *distance*
-rather than a blanket if it were a tilt coupled to the reverb send.
+### The per-layer pass
+
+Four shape changes, each done with one rule: **measure RMS before and after —
+the change is to character, not loudness.** Every one of them alters a sound's
+level as a side effect of altering its shape, and every one is silent when you
+get it wrong: the diff looks like a character change and the mix quietly moves.
+
+- **Leaves — granular.** A rustle is dozens of individual leaf contacts, not one
+  soft whoosh. This is the layer's real problem: rustles share a band with the
+  hush they sit on, so a smooth burst can never separate from it at *any* level,
+  while a cluster of very short ticks separates at almost none. One noise source
+  with ~35 scheduled spikes riding an arc, **not** one source per tick — thirty
+  sources per rustle would be ~8 new nodes a second on top of the convolver, and
+  this costs exactly what the blob it replaces cost. The trap: ticks occupy ~22%
+  of the span where the blob occupied all of it, so RMS parity needs **×4.76** on
+  the peak. Keep the old constant and the rustles come out ~5 dB *quieter*.
+- **Stream — one bubble in five is resonant.** A bubble in water is a damped
+  oscillator whose pitch *rises* as it shrinks and ascends (Minnaert: f ≈ 3.26/r,
+  so 1–5 mm gives ~650–3300 Hz). That upward chirp is the most recognisable thing
+  about running water and no filtered noise has it. Only one in five: a brook is
+  mostly broadband splash, and a stream of pure tones would be both wrong and —
+  the part that matters here — attention-grabbing. The trap: a sine keeps 0.707
+  of its gain as RMS where the bandpassed burst keeps 0.121, so reusing the
+  bubble's own constant would put the brook's events **+15 dB** in one commit.
+- **Thunder — it rolls.** A lightning channel is kilometres long, so its sound
+  arrives as a train from successively further parts of it, re-scattered by
+  terrain: several irregular crests over 6–12 s. The trap: five crests at the old
+  per-burst level is **+7 dB**, each feeding the deepest send in the file. They
+  sum into one gain and one send, the nearest crest peaks at 0.9× the old single
+  peak and the rest fall away — instantaneous loudness slightly *down*, duration
+  up. Rides the `shower` drift, so a squall and its thunder are one weather
+  system rather than two clocks. The per-event filter wobble is gone: the crests
+  are the irregularity it was standing in for.
+- **Chime — per-partial decay.** Struck metal darkens as it rings, because its
+  partials decay at different rates. One shared envelope can never do that, which
+  is why it read as a synth tone with a bell-ish ratio in it. Each partial decays
+  at `ring / ratio^0.7`, plus a brief noise strike and a detuned second voice on
+  the fundamental for the warble. Near level-neutral by construction: the
+  partials are normalised so the sum's RMS at the strike matches the old pair's.
+
+Two of these are asserted rather than trusted — `CHIME_PARTIALS` ordering, and
+that a rustle schedules dozens of ramps rather than one. Both are invariants a
+later edit could undo while looking like it changed nothing.
+
+Still to do: Brightness would read as *distance* rather than a blanket if it were
+a tilt coupled to the reverb send — **deferred on purpose**. It conflicts with
+the architecture here (the wet path derives its low-pass from `toneHz`, which
+assumes Brightness *is* a cutoff), and more importantly it would change what an
+already-saved Brightness value does, which would mean bumping `MIX_VERSION` and
+wiping saved custom mixes. Not worth it for a reframing of a control that works.
 
 ## Breathwork (optional)
 
