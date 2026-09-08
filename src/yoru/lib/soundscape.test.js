@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { DEFAULT_MIX, SCENE_PRESETS, MIX_MAX } from './storage'
 import { taper, resolveMix, driftStep, reverbImpulse, createNightSoundscape } from './soundscape'
 
@@ -155,6 +155,8 @@ describe('reverbImpulse', () => {
 // filters — invisible in review, glaring in the ear. ─────────────────────────
 function stubAudio() {
   const started = []
+  const swept = { count: 0 }
+  let live = null
   const param = () => ({
     value: 0,
     setValueAtTime() {},
@@ -163,7 +165,13 @@ function stubAudio() {
     setTargetAtTime() {},
     cancelScheduledValues() {},
   })
-  const node = (extra = {}) => ({ connect() {}, disconnect() {}, ...extra })
+  const node = (extra = {}) => ({
+    connect() {},
+    disconnect() {
+      swept.count++
+    },
+    ...extra,
+  })
   const filter = () => node({ type: '', frequency: param(), Q: param(), gain: param() })
   class Stub {
     constructor() {
@@ -171,6 +179,7 @@ function stubAudio() {
       this.currentTime = 0
       this.state = 'running'
       this.destination = node()
+      live = this
     }
     createGain() { return node({ gain: param() }) }
     createBiquadFilter() { return filter() }
@@ -205,7 +214,13 @@ function stubAudio() {
     close() { return Promise.resolve() }
   }
   window.AudioContext = Stub
-  return started
+  return {
+    started,
+    swept,
+    advance: (sec) => {
+      live.currentTime += sec
+    },
+  }
 }
 
 describe('the engine, built end to end', () => {
@@ -213,6 +228,7 @@ describe('the engine, built end to end', () => {
   afterEach(() => {
     sound?.stop(0)
     sound = null
+    vi.useRealTimers()
     delete window.AudioContext
     delete window.webkitAudioContext
   })
@@ -220,14 +236,14 @@ describe('the engine, built end to end', () => {
   const everything = { ...DEFAULT_MIX, rain: 6, waves: 5, stream: 5, wind: 5, leaves: 5, chime: 4 }
 
   it('builds every layer at once without throwing', async () => {
-    const started = stubAudio()
+    const { started } = stubAudio()
     sound = createNightSoundscape()
     await sound.start({ totalSec: 900, mix: everything })
     expect(started.length).toBeGreaterThan(0)
   })
 
   it('gives every noise source its own offset into the shared buffer', async () => {
-    const started = stubAudio()
+    const { started } = stubAudio()
     sound = createNightSoundscape()
     await sound.start({ totalSec: 900, mix: everything })
     // no source may start at the default (undefined / sample 0)...
@@ -237,16 +253,48 @@ describe('the engine, built end to end', () => {
   })
 
   it('still starts, and still offsets, with stereo width off', async () => {
-    const started = stubAudio()
+    const { started } = stubAudio()
     sound = createNightSoundscape()
     await sound.start({ totalSec: 900, mix: everything, stereo: false })
     expect(started.every((o) => typeof o === 'number' && o > 0)).toBe(true)
   })
 
   it('stays silent — and builds nothing — at volume 0', async () => {
-    const started = stubAudio()
+    const { started } = stubAudio()
     sound = createNightSoundscape()
     await sound.start({ totalSec: 900, mix: { ...everything, volume: 0 } })
     expect(started).toHaveLength(0)
+  })
+})
+
+describe('the sweeper', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    vi.useRealTimers()
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  // Waves opens a fresh gain + panner per breaking wave, hung off a foam chain
+  // that never stops — so nothing about them is ever collectable on their own.
+  // Left alone that is ~1000 live nodes by the end of a 90-minute night, all
+  // processing silence, and nothing in the app would ever show it.
+  it('disconnects a wave\'s foam nodes once its drain is finished', async () => {
+    vi.useFakeTimers()
+    const audio = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({
+      totalSec: 5400,
+      mix: { volume: 8, brightness: 8, motion: 5, pace: 5, waves: 6 },
+    })
+    // waves are scheduled from the layer's own interval, not at build time, so
+    // the first tick is what puts any breaking waves on the timeline at all
+    vi.advanceTimersByTime(1000)
+    const before = audio.swept.count
+    audio.advance(60) // a minute of waves have broken and drained
+    vi.advanceTimersByTime(1000) // the sweep tick that should collect them
+    expect(audio.swept.count).toBeGreaterThan(before)
   })
 })

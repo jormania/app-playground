@@ -83,7 +83,9 @@ export function driftStep(prev, pull = 0.6) {
 // of the time); this scales the peaks back up so replacing a sine LFO doesn't
 // read as "the soundscape got less alive", only as "it stopped repeating".
 const DRIFT_GAIN = 1.45
-const DRIFT_AHEAD = 9 // seconds of drift automation kept scheduled ahead
+const DRIFT_AHEAD = 14 // seconds of drift automation kept scheduled ahead
+// (>= the furthest any event scheduler looks, so driftValue is never asked
+// about a time the drift has not been scheduled through yet — Waves looks 12s)
 
 // ── Rule 3: a room ─────────────────────────────────────────────────────────
 // A synthetic impulse response: decaying noise, one-pole low-passed to a dark,
@@ -199,6 +201,7 @@ export function createNightSoundscape() {
   let nodes = []
   let timers = []
   let drifts = []
+  let retiring = []
   let reverbIn = null // the send bus, or null when no layer wants a room
   let stopped = true
   let stereo = true // bed stereo width, set from start()'s option
@@ -290,6 +293,28 @@ export function createNightSoundscape() {
   const driftParam = (param, depth, rateHz, until = 0) => link(createDrift(rateHz, until), param, depth)
   const driftFilter = (filter, depthHz, rateHz, until = 0) => driftParam(filter.frequency, depthHz, rateHz, until)
   const driftGain = (gainNode, depth, rateHz) => driftParam(gainNode.gain, depth, rateHz)
+
+  // Nodes fed by a source that never stops (a wave's own foam gain) can never
+  // become collectable on their own — they would pile up silently for the whole
+  // session. Hand them over once their envelope is finished.
+  function retire(at, fn) {
+    retiring.push({ at, fn })
+  }
+
+  function tick() {
+    tickDrifts()
+    if (stopped || !ctx) return
+    const now = ctx.currentTime
+    retiring = retiring.filter((r) => {
+      if (r.at > now) return true
+      try {
+        r.fn()
+      } catch {
+        /* already gone */
+      }
+      return false
+    })
+  }
 
   // Keep every drift's automation topped up, and retire the short-lived ones
   // (a thunder roll's filter wobble) so a 90-minute session doesn't accumulate
@@ -614,44 +639,134 @@ export function createNightSoundscape() {
   }
 
   // ── waves: slow surf; level=loudness, motion=swell size, pace=speed ──
-  // Untouched apart from the room: its period and crest are already randomised
-  // per swell, so it has no periodicity to fix. (Its shape — one envelope, no
-  // break transient and no retreating hiss — is the next pass's problem.)
-  function buildWaves(white, level, motion, pace, dest) {
+  //
+  // A wave is not one sound with one envelope. It is three events in sequence:
+  // the swell approaching (low, broad, rising), the break (a burst of bright
+  // splash), and — the part that makes an ear say "beach" — the retreat, a
+  // high hiss draining back over sand for seconds after the water has gone.
+  //
+  // This layer used to run all of it through ONE gain and ONE filter sweep on
+  // one timeline, so the highs peaked exactly when the loudness peaked and died
+  // exactly when it died. That is a "woomp": swelling noise with a tonal wobble,
+  // no break in it and no hiss behind it. It also ran strictly one wave at a
+  // time (`nextAt = end`), which no coast has ever done, and dropped to near
+  // silence in between, which made the whole layer pump.
+  //
+  // Now: a dark BODY on one shared envelope (swells are one continuous motion of
+  // water — they genuinely don't stack), a bright FOAM chain with its OWN gain
+  // node per wave, delayed past the crest and decaying for seconds, so the last
+  // wave is still draining while the next one rises, and a quiet DISTANT bed
+  // underneath so the troughs are a shoreline rather than a gap.
+  function buildWaves(white, level, motion, pace, dest, swell) {
+    // Body and foam share one noise source: their bands don't overlap (below
+    // 420Hz against above 850Hz), so nothing correlates audibly and it saves two
+    // buffer sources. The distant bed gets its own — it sits in the body's band,
+    // and two enveloped-and-static copies of the same noise would comb.
     const src = stereoNoise(white, 1.0)
-    const hp = ctx.createBiquadFilter()
-    hp.type = 'highpass'
-    hp.frequency.value = 160
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 500
-    const g = ctx.createGain()
-    const trough = 0.03 * level
-    g.gain.value = trough
-    src.connect(hp)
-    hp.connect(lp)
-    lp.connect(g)
-    g.connect(dest)
-    sendToRoom(g, 0.42)
+
+    const bhp = ctx.createBiquadFilter()
+    bhp.type = 'highpass'
+    bhp.frequency.value = 90
+    const blp = ctx.createBiquadFilter()
+    blp.type = 'lowpass'
+    blp.frequency.value = 420
+    const bg = ctx.createGain()
+    // lower than it was: the distant bed below now carries the between-waves
+    // sound, so the body no longer has to hold the floor up on its own
+    const trough = 0.018 * level
+    bg.gain.value = trough
+    src.connect(bhp)
+    bhp.connect(blp)
+    blp.connect(bg)
+    bg.connect(dest)
+    sendToRoom(bg, 0.25)
+
+    // The foam chain runs continuously; each wave opens its own gain on it.
+    const fhp = ctx.createBiquadFilter()
+    fhp.type = 'highpass'
+    fhp.frequency.value = 850
+    const flp = ctx.createBiquadFilter()
+    flp.type = 'lowpass'
+    flp.frequency.value = 4200
+    src.connect(fhp)
+    fhp.connect(flp)
+
+    // Distant surf: always there, barely there. Fills the troughs so the layer
+    // reads as a coast rather than as a tremolo, and gives the ear a horizon to
+    // place the near waves against.
+    const far = stereoNoise(white, 1.0, 0.9)
+    const fahp = ctx.createBiquadFilter()
+    fahp.type = 'highpass'
+    fahp.frequency.value = 130
+    const falp = ctx.createBiquadFilter()
+    falp.type = 'lowpass'
+    falp.frequency.value = 900
+    const fag = ctx.createGain()
+    fag.gain.value = 0.055 * level
+    far.connect(fahp)
+    fahp.connect(falp)
+    falp.connect(fag)
+    fag.connect(dest)
+    sendToRoom(fag, 0.3)
+    driftFilter(falp, 150, 0.02 * pace)
 
     let nextAt = ctx.currentTime + 0.8
-    g.gain.setValueAtTime(trough, nextAt)
-    lp.frequency.setValueAtTime(340, nextAt)
+    bg.gain.setValueAtTime(trough, nextAt)
+    blp.frequency.setValueAtTime(300, nextAt)
     const t = setInterval(() => {
       if (stopped) return
       const ahead = ctx.currentTime + 12
       while (nextAt < ahead) {
-        const period = (9 + Math.random() * 5) / pace
-        const crest = nextAt + period * 0.42
-        const end = nextAt + period
-        const peak = (0.4 + Math.random() * 0.22) * level * motion
-        g.gain.setValueAtTime(trough, nextAt)
-        g.gain.linearRampToValueAtTime(peak, crest)
-        g.gain.exponentialRampToValueAtTime(Math.max(0.0002, trough), end)
-        lp.frequency.setValueAtTime(340, nextAt)
-        lp.frequency.linearRampToValueAtTime(780 + Math.random() * 400, crest)
-        lp.frequency.exponentialRampToValueAtTime(320, end)
-        nextAt = end
+        const t0 = nextAt
+        // Sets: real swell arrives in groups, a few larger waves every few
+        // minutes. One slow drift scales both size and period together.
+        const set = clamp(1 + 0.35 * driftValue(swell, t0), 0.6, 1.45)
+        // Bigger swell also travels slower — leaving Motion and Pace fully
+        // orthogonal lets you dial waves that are huge AND fast, which is a
+        // washing machine, not a sea.
+        const period = (((9 + Math.random() * 5) / pace) * (0.88 + 0.12 * motion) * (0.9 + 0.15 * set))
+        const crest = t0 + period * 0.42
+        const peak = (0.4 + Math.random() * 0.22) * level * motion * set
+
+        // Body: a slow rise that steepens into the crest (water standing up),
+        // then a decay that is over well before the next swell begins.
+        bg.gain.setValueAtTime(trough, t0)
+        bg.gain.linearRampToValueAtTime(peak * 0.4, t0 + period * 0.26)
+        bg.gain.linearRampToValueAtTime(peak, crest)
+        bg.gain.exponentialRampToValueAtTime(Math.max(0.0002, trough), t0 + period * 0.78)
+        blp.frequency.setValueAtTime(300, t0)
+        blp.frequency.linearRampToValueAtTime(500 + Math.random() * 160, crest)
+        blp.frequency.exponentialRampToValueAtTime(290, t0 + period * 0.78)
+
+        // Foam: its own node, so it can still be hissing when the next wave
+        // starts. Opens just before the body peaks — the break begins as the
+        // wave stands up — snaps up fast, then drains for seconds.
+        const fg = ctx.createGain()
+        fg.gain.value = 0.0001
+        const fp = panner(ctx, Math.random() * 1.1 - 0.55) // waves break along a front, not at one point
+        flp.connect(fg)
+        fg.connect(fp)
+        fp.connect(dest)
+        sendToRoom(fp, 0.5)
+        const breakAt = crest - period * 0.06
+        const drain = clamp(period * (0.45 + Math.random() * 0.2), 2.5, 7)
+        const fv = (0.032 + Math.random() * 0.022) * level * motion * set
+        fg.gain.setValueAtTime(0.0001, breakAt)
+        fg.gain.exponentialRampToValueAtTime(fv, breakAt + 0.3 + Math.random() * 0.25)
+        fg.gain.exponentialRampToValueAtTime(0.0001, breakAt + drain)
+        // Nothing upstream of these ever stops, so they can never be collected
+        // on their own — hand them to the sweeper once the drain is done. The
+        // upstream edge has to go too: disconnect() clears a node's OUTPUTS, so
+        // flp would otherwise keep feeding every wave's gain for the whole night.
+        retire(breakAt + drain + 0.5, () => {
+          flp.disconnect(fg)
+          fg.disconnect()
+          fp.disconnect()
+        })
+
+        // Overlap comes from the foam tails, not from stacking bodies: the next
+        // swell begins while the last one is still draining.
+        nextAt = t0 + period * (0.82 + Math.random() * 0.14)
       }
     }, 1000)
     timers.push(t)
@@ -878,14 +993,16 @@ export function createNightSoundscape() {
     const needsWeather = p.wind > 0 || p.leaves > 0 || p.rain > 0
     const weather = needsWeather ? createDrift(0.045 * p.pace) : null
     const shower = p.rain > 0 ? createDrift(0.006 * p.pace) : null
-    timers.push(setInterval(tickDrifts, 1000))
+    // the slow grouping of swell into sets
+    const swellSets = p.waves > 0 ? createDrift(0.005 * p.pace) : null
+    timers.push(setInterval(tick, 1000))
 
     if (p.warmth > 0) buildWarmth(pink, p.warmth, tone)
     if (p.drone > 0) buildDrone(p.drone, tone)
     if (p.wind > 0) buildWind(white, 0.27 * p.wind, 860, p.motion, p.pace, tone, weather)
     if (p.rain > 0) buildRain(white, p.rain, p.pace, tone, weather, shower)
     if (p.rain > 0) buildThunder(white, p.rain, tone)
-    if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone)
+    if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone, swellSets)
     if (p.stream > 0) buildStream(white, p.stream, p.motion, p.pace, tone)
     if (p.leaves > 0) buildLeaves(white, p.leaves, p.motion, p.pace, tone, weather)
     if (p.chime > 0) buildChime(p.chime, p.pace, tone)
@@ -916,6 +1033,7 @@ export function createNightSoundscape() {
     timers.forEach(clearInterval)
     timers = []
     drifts = []
+    retiring = []
     reverbIn = null
     if (ctx && master) {
       const now = ctx.currentTime

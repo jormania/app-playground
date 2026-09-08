@@ -137,10 +137,53 @@ that would wipe saved custom mixes):
 | wind pressure | `0.27 * p.wind` at the call site, and the gust depth `level * 0.36 * motion` |
 | gusts too squally | the `gust` clamp in `buildLeaves` (`1 + 0.5 * w`, capped 1.55) |
 | surf too big | wave `peak = (0.4 + …) * level * motion` |
+| surf hiss too strong | wave foam `fv = (0.032 + …)` and its low-pass (4200) |
+| gaps between waves | the distant bed `fag.gain` (`0.055 * level`) |
 
-Still to do (the per-layer pass): Waves needs a break transient and a retreating
-hiss separated from its swell, plus overlapping sets; Stream's bubbles want to
-be upward-chirped damped sinusoids (Minnaert) rather than filtered noise clicks;
+### Waves: three events, not one envelope
+
+A wave is not one sound. It is the swell approaching (low, broad, rising), the
+break (a burst of bright splash), and then the retreat — a high hiss draining
+back over sand for seconds after the water has gone, which is the part that
+makes an ear say *beach*. The layer used to run all three through **one gain and
+one filter sweep on one timeline**, so the highs peaked exactly when the loudness
+peaked and died exactly when it died: a "woomp" with a tonal wobble, no break in
+it and no hiss behind it. It also ran strictly one wave at a time
+(`nextAt = end`), which no coast has ever done, and fell to −27 dB between waves,
+which made the whole layer pump.
+
+It is now three parts:
+
+- **Body** — dark (90–500 Hz), on one shared envelope, rising slowly and then
+  steepening into the crest. Swells are one continuous motion of water; they
+  genuinely don't stack, so one envelope is right for this part.
+- **Foam** — bright (850–4200 Hz), with **its own gain node per wave**, opening
+  just *before* the body peaks and draining for about half a period afterwards.
+  That's what makes the last wave still hiss while the next one rises, and it's
+  why the per-wave node has to exist: one shared param is one timeline and can't
+  overlap itself. Each is panned separately — waves break along a front, not at
+  a point.
+- **Distant surf** — a quiet steady bed (130–900 Hz) so the troughs are a
+  shoreline rather than a gap. It lifts the between-waves floor ~9 dB, which is
+  what stops the pumping.
+
+Balance at the default Motion, against the body's crest: foam −12 dB alone and
+−9 dB where two waves overlap, distant bed −16 dB.
+
+Sets are real too — swell arrives in groups — so one slow drift scales size and
+period together, and period now grows slightly with Motion. Leaving Motion and
+Pace fully orthogonal let you dial waves that were huge *and* fast, which is a
+washing machine rather than a sea.
+
+**The per-wave nodes must be swept.** They hang off a foam chain that never
+stops, so they can never be collected on their own — ~1000 live nodes by the end
+of a long night, all processing silence, with nothing in the app to show it.
+`retire()` hands them to the tick, and note it disconnects the **incoming** edge
+as well: `disconnect()` clears a node's outputs only, so the foam chain would
+otherwise go on feeding every wave's gain until morning.
+
+Still to do (the per-layer pass): Stream's bubbles want to be upward-chirped
+damped sinusoids (Minnaert) rather than filtered noise clicks;
 Leaves' rustles should be clusters of very short ticks rather than swelled noise
 blobs — they share a band with the hush they sit on, so no amount of level will
 separate them until their *shape* changes; Thunder should roll in several
