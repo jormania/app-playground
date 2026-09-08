@@ -93,8 +93,11 @@
   border-color: var(--yoru-glow);
 }
 
-/* Saved mixes — a small wrap of pill chips, capped low enough (see
-   MAX_CUSTOM_MIXES) to stay within a row or two even on a narrow phone. */
+/* Blends — a wrap of pill chips: the ten curated ones (.mixPreset, no delete
+   button) followed by your own saved ones (.mixChip, which carry an "×").
+   Your own are capped low (see MAX_CUSTOM_MIXES); the curated set is fixed, so
+   this wraps to a few rows on a narrow phone rather than the one or two it used
+   to — fine in a sheet that already scrolls. */
 .mixChips {
   display: flex;
   flex-wrap: wrap;
@@ -130,6 +133,25 @@
 .mixChip button:last-child:hover {
   color: var(--color-danger);
 }
+/* A curated blend is a single button, so it can't reuse .mixChip: that styles
+   its first and last children differently for the name/delete pair, and both
+   rules would land on the one element. */
+.mixPreset {
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  padding: var(--space-2xs) var(--space-xs);
+}
+.mixPreset:hover {
+  border-color: var(--yoru-glow);
+}
+
 .mixAdd {
   appearance: none;
   cursor: pointer;

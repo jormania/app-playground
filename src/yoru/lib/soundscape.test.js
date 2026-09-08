@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { DEFAULT_MIX, SCENE_PRESETS, MIX_MAX } from './storage'
+import { DEFAULT_MIX, SCENE_PRESETS, MIX_MAX, CURATED_MIXES } from './storage'
 import {
   taper,
   resolveMix,
@@ -355,5 +355,85 @@ describe('the granular rustle', () => {
     const before = audio.ramps.count // the drifts' own automation
     vi.advanceTimersByTime(1000) // the rustle scheduler's first tick
     expect(audio.ramps.count - before).toBeGreaterThan(20)
+  })
+})
+
+// The curated blends ship with the app, so their sleep guardrails are worth
+// asserting rather than trusting to a careful afternoon. Each rule here exists
+// because breaking it would make one of them unpleasant to fall asleep to.
+describe('curated blends', () => {
+  const LAYERS = ['rain', 'waves', 'stream', 'wind', 'leaves', 'chime', 'warmth', 'drone']
+
+  it('ships ten, with unique ids and short unique names', () => {
+    expect(CURATED_MIXES).toHaveLength(10)
+    expect(new Set(CURATED_MIXES.map((m) => m.id)).size).toBe(10)
+    expect(new Set(CURATED_MIXES.map((m) => m.name)).size).toBe(10)
+    for (const m of CURATED_MIXES) expect(m.name.length).toBeLessThanOrEqual(18) // MAX_MIX_NAME_LEN
+  })
+
+  it('names every layer and the three character shapers', () => {
+    for (const m of CURATED_MIXES) {
+      for (const k of [...LAYERS, 'brightness', 'motion', 'pace']) expect(m.mix).toHaveProperty(k)
+    }
+  })
+
+  // The one that matters most: applying a blend merges over the current mix, so
+  // a blend carrying its own volume would change how loud the app is the
+  // instant you tapped it. In a sleep app that is the worst thing a preset can do.
+  it('never sets volume, so tapping one cannot change the loudness', () => {
+    for (const m of CURATED_MIXES) expect(m.mix).not.toHaveProperty('volume')
+  })
+
+  it('uses integer levels inside the slider range', () => {
+    for (const m of CURATED_MIXES) {
+      for (const v of Object.values(m.mix)) {
+        expect(Number.isInteger(v)).toBe(true)
+        expect(v).toBeGreaterThanOrEqual(0)
+        expect(v).toBeLessThanOrEqual(MIX_MAX)
+      }
+    }
+  })
+
+  it('keeps a floor under every blend — none is bare, none is silent', () => {
+    for (const m of CURATED_MIXES) {
+      expect(m.mix.warmth + m.mix.drone).toBeGreaterThan(0)
+      expect(LAYERS.reduce((n, k) => n + m.mix[k], 0)).toBeGreaterThan(4)
+    }
+  })
+
+  it('holds the no-startle rules', () => {
+    for (const m of CURATED_MIXES) {
+      // Chime is the only tonal, attention-grabbing layer in the app
+      expect(m.mix.chime).toBeLessThanOrEqual(2)
+      // Motion and Pace are how much and how fast the scene moves
+      expect(m.mix.motion).toBeLessThanOrEqual(6)
+      expect(m.mix.pace).toBeLessThanOrEqual(4)
+      // Rain's level is also Thunder's, so heavy rain has to be DARK — that is
+      // what makes a roll read as far away rather than overhead
+      if (m.mix.rain >= 6) expect(m.mix.brightness).toBeLessThanOrEqual(4)
+    }
+  })
+
+  it('at most one blend uses the chime at all', () => {
+    expect(CURATED_MIXES.filter((m) => m.mix.chime > 0)).toHaveLength(1)
+  })
+})
+
+describe('every curated blend actually builds', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    vi.useRealTimers()
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  it.each(CURATED_MIXES.map((m) => [m.name, m.mix]))('%s', async (_name, mix) => {
+    const { started } = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({ totalSec: 900, mix: { ...DEFAULT_MIX, ...mix } })
+    expect(started.length).toBeGreaterThan(0)
+    expect(started.every((o) => typeof o === 'number' && o > 0)).toBe(true)
   })
 })

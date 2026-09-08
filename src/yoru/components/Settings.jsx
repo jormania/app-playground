@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SegmentedControl } from '../../ds'
 import { createNightSoundscape } from '../lib/soundscape'
-import { SCENE_PRESETS } from '../lib/storage'
+import { SCENE_PRESETS, CURATED_MIXES } from '../lib/storage'
 import Mixer from './Mixer'
 import styles from './Settings.module.css'
 
@@ -131,6 +131,13 @@ export default function Settings({ settings, onChange, onClose }) {
   useEffect(() => () => preview.current?.stop(0.3), [])
 
   const applyCustomMix = (m) => onChange({ mix: { ...m.mix }, scene: 'custom' })
+  // A curated blend MERGES over the current mix rather than replacing it: it
+  // carries no `volume`, so tapping one can never change how loud the app is.
+  // The scene id is unique per blend so the preview crossfades when you move
+  // between two of them — the switch logic keys off `scene` changing, and a
+  // shared 'custom' would drop it onto the hard 0.15s release path instead.
+  const applyCuratedMix = (m) =>
+    onChange({ mix: { ...settings.mix, ...m.mix }, scene: `curated:${m.id}` })
   const deleteCustomMix = (id) => onChange({ customMixes: customMixes.filter((m) => m.id !== id) })
   const saveCustomMix = () => {
     const name = mixName.trim().split(/\s+/).slice(0, 2).join(' ').slice(0, MAX_MIX_NAME_LEN)
@@ -190,13 +197,23 @@ export default function Settings({ settings, onChange, onClose }) {
           />
         </div>
 
-        {/* Your own saved blends — a handful of chips under the presets, plus
-            a "+ save" chip while there's room. Tap a chip to load it (the
-            preview above crossfades into it, same as a scene pick); its "×"
-            deletes it. */}
+        {/* Blends: the ten curated ones first (no "×" — they ship with the app
+            and can't be deleted), then your own saved chips, then "+ save"
+            while there's room. Tap any of them to load it; the preview above
+            crossfades into it, same as a scene pick. */}
         <div className={styles.row}>
           <span className={styles.label}>your mixes</span>
           <div className={styles.mixChips}>
+            {CURATED_MIXES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={styles.mixPreset}
+                onClick={() => applyCuratedMix(m)}
+              >
+                {m.name}
+              </button>
+            ))}
             {customMixes.map((m) => (
               <span key={m.id} className={styles.mixChip}>
                 <button type="button" onClick={() => applyCustomMix(m)}>

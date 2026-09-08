@@ -58,6 +58,42 @@ portalled to `<body>`. **Nature only — no animals, no city.**
   Volume dial takes it as low as you like.
 - The warm bed **breathes with you** when breathwork is on.
 
+### The ten curated blends
+
+Ten hand-tuned mixes in [`lib/storage.js`](src/yoru/lib/storage.js)
+(`CURATED_MIXES`), shown as chips in Settings' **your mixes** row ahead of your
+own saved ones. They ship in **code, not seeded into `customMixes`** — those
+four slots are yours (`MAX_CUSTOM_MIXES`), and a seeded copy would either come
+back after you deleted it or never get the benefit of a later retune.
+
+**They deliberately do not set `volume`.** Applying one merges over the current
+mix, so your own loudness survives. A preset carrying its own volume could jump
+the level the instant you tapped it, which is the one thing a sleep app must
+never do. Each also gets a unique `scene` id (`curated:<id>`) so the Settings
+preview *crossfades* between two of them — the switch logic keys off `scene`
+changing, and a shared `'custom'` would drop it onto the hard 0.15s release path.
+
+| | leads with | why it's here |
+|---|---|---|
+| first rain | Rain | the archetype, and the clearest listen for the droplets |
+| long swell | Waves | the deepest swell the layer will give you |
+| cedar rain | Rain + Leaves | the shared weather drift, audible: one gust moves all three |
+| mountain brook | Stream | the resonant bubbles carry it |
+| night garden | Leaves + Chime | the only blend with a furin, at 2 |
+| far storm | Rain, dark | Brightness 3 puts the whole storm behind glass |
+| low tide | Waves | the same sea drawn right down |
+| paper lantern | Warmth + Drone | almost nothing: masking, no scene |
+| snow hush | Wind, very dark | a night that has stopped moving |
+| river rain | Stream + Rain | Stream is outside the weather, so it holds while the rain ebbs |
+
+The sleep guardrails are **asserted, not trusted**: Chime never above 2 and in
+only one blend; Motion ≤ 6, Pace ≤ 4; and any blend with Rain ≥ 6 must have
+Brightness ≤ 4 — Rain's level *is* Thunder's, and dark is what makes a roll read
+as far away rather than overhead. Every blend also has to keep a floor under it
+(some Warmth or Drone) and every one is built through the engine in a test.
+Steady-state levels sit within a 4.9 dB spread, so moving between them in the
+preview doesn't lurch.
+
 ### The four rules that keep it from sounding synthetic
 
 Filters and levels decide what a layer *is*; these decide whether the ear files
