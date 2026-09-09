@@ -163,6 +163,37 @@ function stripStraySolOdysseyManifestPlugin() {
   }
 }
 
+// Silva's semantic layer runs onnxruntime-web through @huggingface/transformers, and
+// transformers.js points ONNX at its own runtime on jsDelivr by default (see
+// backends/onnx.js: it sets env.backends.onnx.wasm.wasmPaths to
+// cdn.jsdelivr.net/npm/onnxruntime-web@<version>/dist/ whenever wasmPaths is unset and
+// we're not inside a ServiceWorkerGlobalScope, which is every context Silva runs in).
+// So the runtime is fetched from the CDN, exactly as src/silva/lib/embeddings.ts says.
+//
+// Rollup doesn't know that. Deep inside ORT's own bundle sits a dead fallback —
+// `new URL('ort-wasm-simd-threaded.asyncify.wasm', import.meta.url)`, reached only when
+// wasmPaths is unset — and a static `new URL(..., import.meta.url)` is exactly the shape
+// Vite treats as an asset reference. So it resolved it and emitted the 23 MB binary into
+// dist/assets on every build: never requested by anything, but charged against Vercel's
+// 10 GB Deployment Storage on every push. That was 44% of a 52 MB deployment.
+//
+// Dropping it from the bundle leaves the live CDN path untouched. The fallback URL it
+// came from stays in the chunk and now 404s if anything ever reaches it — which would
+// mean transformers.js stopped setting wasmPaths, and the honest failure there is a
+// missing runtime, not a silently bundled duplicate of one.
+function dropOrtWasmPlugin() {
+  const pattern = /^assets\/ort-wasm-.*\.wasm$/
+  return {
+    name: 'drop-ort-wasm',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      for (const fileName of Object.keys(bundle)) {
+        if (pattern.test(fileName)) delete bundle[fileName]
+      }
+    },
+  }
+}
+
 // Dev-only: mount the SAME stateless relay handler at /api/notion under `vite dev`, so
 // Settings → "Test connection" works on localhost without deploying. On Vercel the real
 // serverless function (api/notion.js) serves this route instead; this never runs in prod.
@@ -259,6 +290,7 @@ export default defineConfig({
     solOdysseyPWA(),
     clickDeckPWA(),
     stripStraySolOdysseyManifestPlugin(),
+    dropOrtWasmPlugin(),
     devNotionRelay(),
     devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
     devApiRelay('/api/law-of-the-day-content', lawOfTheDayContentHandler, 'dev-law-of-the-day-content-relay'),

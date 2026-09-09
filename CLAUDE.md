@@ -129,3 +129,26 @@ more **will fail the deploy** (happened before, see git history ~2026-07-23).
 top-level handlers in `api/_tests/` (caught once, 2026-08-26).
 Prefer folding a new proxy into an existing same-app endpoint (extra
 query param/mode) over a new file when the count is tight.
+
+**Deployment Storage is 10 GB on Hobby, charged per RETAINED deployment** — not
+per push. `dist/` is ~10 MB; at that size the quota is a few hundred builds
+deep, and it filled once already (2026-09-09). Three rules keep it there:
+
+- **Never import a `@fontsource` family by its bare name or weight entry point**
+  (`@fontsource/x`, `@fontsource/x/400.css`). Those emit every subset — greek,
+  cyrillic, and for a CJK family ~120 Japanese chunks — in both `.woff2` and
+  legacy `.woff`. Import the per-subset file instead (`latin-400.css`, or
+  `/wght.css` for a variable family). Yoru did the former and shipped 17 MB of
+  Japanese fonts to draw one kanji; see `src/yoru/fonts.css` for how a single
+  needed glyph is declared without the family.
+- **Watch for a dependency's `new URL(…, import.meta.url)`.** Rollup treats it
+  as an asset reference and emits the target even when nothing fetches it —
+  that's how a dead ONNX fallback put a 23 MB `.wasm` in every build. See
+  `dropOrtWasmPlugin` in [`vite.config.js`](vite.config.js).
+- Preview builds on `claude/*` branches are **off** (`git.deploymentEnabled` in
+  [`vercel.json`](vercel.json)) — every change used to cost two deployments,
+  one preview and one production. `main` is unaffected.
+
+To reclaim space, `npm run prune:deployments` keeps the newest 10 and deletes
+the rest. It needs a `VERCEL_TOKEN`, dry-runs unless passed `--yes`, and refuses
+to delete the deployment currently serving production.
