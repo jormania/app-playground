@@ -10,6 +10,7 @@
     "test": "cross-env TZ=Europe/Bucharest NODE_OPTIONS=--no-experimental-webstorage vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "prune:deployments": "node scripts/prune-vercel-deployments.mjs",
     "gen:icons": "node scripts/generate-sol-odyssey-icons.mjs",
     "gen:tempo-icons": "node scripts/generate-tempo-icons.mjs",
     "gen:law-of-the-day-icons": "node scripts/generate-law-of-the-day-icons.mjs",

@@ -2,11 +2,17 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 // Yoru's type: one Japanese superfamily. Zen Old Mincho for the display face
 // (the 夜 glyph and titles), Zen Kaku Gothic New for UI text — both carry the
-// kanji and elegant Latin, and the browser lazily fetches only the subsets used.
-import '@fontsource/zen-old-mincho/400.css'
-import '@fontsource/zen-old-mincho/500.css'
-import '@fontsource/zen-kaku-gothic-new/400.css'
-import '@fontsource/zen-kaku-gothic-new/500.css'
+// kanji and elegant Latin.
+//
+// Latin only here: the family-wide entry points ('@fontsource/zen-old-mincho/400.css')
+// emit all ~120 Japanese subsets plus greek and cyrillic into the build, 17 MB that
+// no visitor ever downloads. 夜 — the one non-Latin character Yoru draws — is
+// declared separately in ./fonts.css. See the note at the top of that file.
+import '@fontsource/zen-old-mincho/latin-400.css'
+import '@fontsource/zen-old-mincho/latin-500.css'
+import '@fontsource/zen-kaku-gothic-new/latin-400.css'
+import '@fontsource/zen-kaku-gothic-new/latin-500.css'
+import './fonts.css'
 import '../ds/tokens.css'
 import './yoru.css'
 import { watchInstalled } from '../shared/installFlag'
