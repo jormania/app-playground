@@ -372,10 +372,10 @@ describe('the granular rustle', () => {
     const before = audio.ramps.count // the drifts' own automation
     vi.advanceTimersByTime(1000) // the rustle scheduler's first tick
     // A smooth blob is ONE ramp; a tick cluster is dozens. The threshold is
-    // deliberately loose: the tick count is randomised by design (22-47, cut
-    // short when the ticks fill the rustle's span), and simulating the loop over
-    // 400k draws puts the floor at 18. Asserting >20 flaked about 1 run in 3200
-    // — invisible locally, and eventually red in CI for no reason at all.
+    // deliberately loose: the tick count is randomised by design and cut short
+    // when the ticks fill the rustle's span. An earlier version asserted >20
+    // against a floor of 18 and flaked about 1 run in 3200 — invisible locally,
+    // and eventually red in CI for no reason at all.
     expect(audio.ramps.count - before).toBeGreaterThan(12)
   })
 })

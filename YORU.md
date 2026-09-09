@@ -346,15 +346,43 @@ the change is to character, not loudness.** Every one of them alters a sound's
 level as a side effect of altering its shape, and every one is silent when you
 get it wrong: the diff looks like a character change and the mix quietly moves.
 
-- **Leaves — granular.** A rustle is dozens of individual leaf contacts, not one
+- **Leaves — granular.** A rustle is many individual leaf contacts, not one
   soft whoosh. This is the layer's real problem: rustles share a band with the
   hush they sit on, so a smooth burst can never separate from it at *any* level,
   while a cluster of very short ticks separates at almost none. One noise source
-  with ~35 scheduled spikes riding an arc, **not** one source per tick — thirty
-  sources per rustle would be ~8 new nodes a second on top of the convolver, and
-  this costs exactly what the blob it replaces cost. The trap: ticks occupy ~22%
-  of the span where the blob occupied all of it, so RMS parity needs **×4.76** on
-  the peak. Keep the old constant and the rustles come out ~5 dB *quieter*.
+  with the ticks scheduled on a single gain, **not** one source per tick — that
+  would be ~8 new nodes a second on top of the convolver, and this costs exactly
+  what the blob it replaces cost.
+
+  The first granular cut sounded like **chittering**, which is a precise
+  complaint: it means the ticks read as an *animal*, and this app's rule is
+  nature only. Three causes, all shape:
+
+  1. **One bandpass per rustle, not per tick.** The filter was built once per
+     burst at Q 1.0, so all its ticks shared a centre frequency and therefore a
+     *pitch*. A train of same-pitched chirps is the definition of chittering.
+     Leaf contact has no pitch — a plain high-pass/low-pass pair leaves the ticks
+     broadband and dry, and each then differs on its own because each gates a
+     different slice of the noise running underneath.
+  2. **1600–3200 Hz** is where insect stridulation and small-bird calls live.
+     Now roughly 500–6400 Hz, varied per rustle.
+  3. **~27 Hz tick rate** — the flutter/buzz region: too sparse to fuse into
+     texture, too fast to read as separate events, and exactly where stridulation
+     sits. Now ~85 Hz, where the pulses fuse and you hear the material rather
+     than the rhythm.
+
+  Two statistical fixes went with it: amplitudes follow a power law (`rand^2.2`)
+  rather than a uniform spread, because a rustle is many small contacts of which
+  most are faint; and the gaps cluster (`rand^1.6`) rather than spacing evenly,
+  because leaves are struck in bursts as air moves through them. Even spacing and
+  even amplitudes are the other half of what reads as an animal.
+
+  The trap, both times: ticks occupy a fraction of the span where a blob occupied
+  all of it, so **RMS parity has to be measured, not assumed**. The first cut
+  needed ×4.76 and I wrote ×2.6, which would have made the rustles ~5 dB quieter
+  while looking in the diff like a pure character change. The chittering fix
+  needed +2.4 dB for the same reason, and landed at +0.25 dB measured.
+
 - **Stream — one bubble in five is resonant.** A bubble in water is a damped
   oscillator whose pitch *rises* as it shrinks and ascends (Minnaert: f ≈ 3.26/r,
   so 1–5 mm gives ~650–3300 Hz). That upward chirp is the most recognisable thing

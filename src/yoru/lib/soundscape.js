@@ -1026,10 +1026,20 @@ export function createNightSoundscape() {
         const gust = clamp(1 + 0.5 * driftValue(weather, when), 0.5, 1.55)
         const src = ctx.createBufferSource()
         src.buffer = white
-        const bp = ctx.createBiquadFilter()
-        bp.type = 'bandpass'
-        bp.frequency.value = 1600 + Math.random() * 1600
-        bp.Q.value = 1.0
+        // NOT a resonant bandpass. It used to be one, at Q1.0 somewhere in
+        // 1600-3200Hz — and crucially it was built once per RUSTLE, so every
+        // tick in a burst shared the same centre and therefore the same pitch.
+        // A train of same-pitched chirps in the 2-4kHz band is, precisely,
+        // chittering: that is where insects and small birds live. Leaf contact
+        // has no pitch at all. A plain high-pass/low-pass pair leaves the ticks
+        // broadband and dry, and each one then differs on its own, because each
+        // gates a different slice of the noise running underneath.
+        const lhp = ctx.createBiquadFilter()
+        lhp.type = 'highpass'
+        lhp.frequency.value = 500 + Math.random() * 300
+        const llp = ctx.createBiquadFilter()
+        llp.type = 'lowpass'
+        llp.frequency.value = 4200 + Math.random() * 2200
         const g = ctx.createGain()
         g.gain.value = 0.0001
         // GRANULAR, not a swelled blob. A rustle is not one soft whoosh — it is
@@ -1043,27 +1053,35 @@ export function createNightSoundscape() {
         // convolver, and this sounds the same for the node cost of the blob it
         // replaces. Ticks ride an overall arc so the burst swells and dies.
         const dur = 0.7 + Math.random() * 1.1
-        // x4.3 on the peak, to pay for the duty cycle. Ticks occupy ~22% of the
-        // rustle's span where the blob occupied all of it, so RMS parity needs
-        // x4.76 — this sits a shade under that, because a cluster of transients
-        // reads as louder than smooth noise of the same energy. Getting this
-        // wrong is silent: keep the old constant and the rustles come out ~5dB
-        // QUIETER while looking, in the diff, like nothing changed.
-        const v = (0.12 + Math.random() * 0.14) * level * motion * gust
-        const ticks = 22 + ((Math.random() * 26) | 0)
+        // +2.4dB over the previous constant, which is exactly what the new
+        // shape costs (measured, not guessed): denser but much shorter ticks in
+        // a wider band, with most of them quiet. Shape change, level unchanged —
+        // getting this wrong is silent, since the diff looks like character.
+        const v = (0.16 + Math.random() * 0.18) * level * motion * gust
+        // ~90-110 ticks a second, not ~27. Under about 50Hz a pulse train is
+        // heard AS a train — flutter, buzz, an insect; past it the pulses fuse
+        // into texture and you hear the material instead of the rhythm.
+        const ticks = 90 + ((Math.random() * 90) | 0)
         let tick = when
         for (let i = 0; i < ticks && tick < when + dur; i++) {
-          const span = 0.004 + Math.random() * 0.008
+          const span = 0.002 + Math.random() * 0.004
           const arc = Math.sin((Math.PI * (tick - when)) / dur) // 0 at the ends, 1 in the middle
-          const a = Math.max(0.0002, v * arc * (0.35 + Math.random() * 0.65))
+          // a power law, not a uniform spread: a rustle is many small contacts,
+          // most of them faint, a few of them not. Uniform amplitudes are what
+          // make a tick train sound mechanical.
+          const a = Math.max(0.0002, v * arc * Math.pow(Math.random(), 2.2))
           g.gain.setValueAtTime(0.0001, tick)
           g.gain.linearRampToValueAtTime(a, tick + span * 0.35)
           g.gain.exponentialRampToValueAtTime(0.0001, tick + span)
-          tick += span + Math.random() * (dur / ticks) * 1.4
+          // gaps cluster too — mostly tight, occasionally a pause. Leaves are
+          // struck in bursts as the air moves through them, and an even spacing
+          // is the other half of what reads as an animal.
+          tick += span + Math.pow(Math.random(), 1.6) * (dur / ticks) * 2.2
         }
         const p = panner(ctx, Math.random() * 1.4 - 0.7)
-        src.connect(bp)
-        bp.connect(g)
+        src.connect(lhp)
+        lhp.connect(llp)
+        llp.connect(g)
         g.connect(p)
         p.connect(dest)
         sendToRoom(p, 0.6)
