@@ -83,20 +83,38 @@ carries the scene's body (waves, warmth, drone) so it can't take any of that
 away, and **above** thunder's own corner, since thunder is the one layer that
 reaches under the port.
 
-#### Low end at low volume — what the voicing does *not* fix
+#### Loudness — the low end at low volume
 
 At bedtime volume the ear's own low-frequency sensitivity falls away. Between a
 normal listening level and a quiet one, the bottom two octaves lose roughly
-10–15 dB *relative to* the midrange — that's equal-loudness (the Fletcher–Munson
-effect), a property of hearing, not of the speaker or the mix. It is the better
-explanation for "too much foam, not enough swell": the foam sits at 600–1900 Hz,
-near the ear's most sensitive region, while the swell it competes with is
-weighted low and fading fastest as you turn down.
+10–15 dB *relative to* the midrange — equal-loudness (the Fletcher–Munson
+effect), a property of hearing rather than of the speaker or the mix. It is the
+better explanation for "too much foam, not enough swell": the foam sits at
+600–1900 Hz, near the ear's most sensitive region, while the swell it competes
+with is weighted low and fading fastest as you turn down. **No voicing, and no
+amount of Volume, addresses this** — turning up scales both equally.
 
-No high-pass addresses this. The fix, if it's wanted, is **loudness
-compensation** — a low shelf that lifts as Volume falls, the way a hi-fi
-"loudness" button works. Not built: it changes what a saved Volume value
-sounds like, which is the line this app has otherwise held.
+**Settings → loudness** does: a low shelf at 250 Hz whose gain rises as Volume
+falls, the way a hi-fi loudness button works (`loudnessLiftDb`).
+
+| Volume | shelf |
+|---|---|
+| 10 | +2.0 dB |
+| 8 | +3.2 dB |
+| 5 | +5.0 dB |
+| 2 | +6.8 dB |
+
+Note where the reference sits: Yoru's own ceiling is 0.24, about −12 dBFS, so
+even **Volume 10 is not a loud listening level** — which is why the curve still
+lifts a little at the top of the range rather than reaching zero there.
+
+It is taken from the Volume *setting*, not from `master.gain`, which is being
+automated through the fade-in and the ebb to silence all night. In the chain it
+sits `master → shelf → voicing high-pass → limiter`: the shelf lifts *before*
+the high-pass, so the high-pass still strips the subsonic content it just
+boosted, and both sit before the limiter so a lifted low end is caught rather
+than clipped. Off by default — a night you already have sounds exactly as it did
+until you ask for this.
 
 **On a mono speaker** — and the ENEBY 20 is mono, one channel through a two-way
 driver pair; two-way is not two-channel — also turn *stereo* off. The
@@ -342,12 +360,38 @@ Two of these are asserted rather than trusted — `CHIME_PARTIALS` ordering, and
 that a rustle schedules dozens of ramps rather than one. Both are invariants a
 later edit could undo while looking like it changed nothing.
 
-Still to do: Brightness would read as *distance* rather than a blanket if it were
-a tilt coupled to the reverb send — **deferred on purpose**. It conflicts with
-the architecture here (the wet path derives its low-pass from `toneHz`, which
-assumes Brightness *is* a cutoff), and more importantly it would change what an
-already-saved Brightness value does, which would mean bumping `MIX_VERSION` and
-wiping saved custom mixes. Not worth it for a reframing of a control that works.
+### Brightness as distance
+
+Brightness on its own models exactly one distance cue — high-frequency air
+absorption — and models it as a cliff. The ear doesn't read a cliff as distance;
+it reads it as the same source with something over it. Four of the eleven blends
+already use a dark Brightness to *mean* "further away" (`far storm` at 3 puts a
+wall at 1189 Hz, `night sea` at 2 at 903 Hz), and the control was working against
+them: the comment on `far storm` said "behind glass", which is muffled, not far.
+
+The cue that actually carries distance is the **direct-to-reverberant ratio** —
+further away, proportionally more room and less source. So a dark setting now
+also opens the sends (`distanceSend`):
+
+| Brightness | send |
+|---|---|
+| 10 | ×1.00 |
+| 8 | ×1.19 |
+| 5 | ×1.57 |
+| 2 | ×1.99 |
+
+Only the **wet** side moves. Pulling the dry down to complete the picture would
+make exactly the blends that want to sound far also sound quiet, and they are
+already the quiet ones. It composes correctly with the existing wet low-pass
+(`toneHz × 0.6`): a darker setting gets more reverb *and* a darker reverb, which
+is what distance actually does. Capped at ×2.2, so "distant" never becomes
+"underwater".
+
+**The low-pass is untouched, deliberately.** The fuller version replaces it with
+a tilt, which would change what an already-saved Brightness value sounds like —
+a `MIX_VERSION` bump, which wipes saved custom mixes. The send coupling carries
+most of the value and needs no migration: dark still means dark, it just also
+means further. The tilt stays on the shelf.
 
 ## Breathwork (optional)
 

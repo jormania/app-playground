@@ -11,6 +11,9 @@ import {
   CHIME_DAMPING,
   VOICINGS,
   BED_TRIM,
+  loudnessLiftDb,
+  LOUDNESS_MAX_DB,
+  distanceSend,
 } from './soundscape'
 
 // Yoru's eight blendable layers (it keeps `drone`, unlike Touch Grass).
@@ -368,7 +371,12 @@ describe('the granular rustle', () => {
     })
     const before = audio.ramps.count // the drifts' own automation
     vi.advanceTimersByTime(1000) // the rustle scheduler's first tick
-    expect(audio.ramps.count - before).toBeGreaterThan(20)
+    // A smooth blob is ONE ramp; a tick cluster is dozens. The threshold is
+    // deliberately loose: the tick count is randomised by design (22-47, cut
+    // short when the ticks fill the rustle's span), and simulating the loop over
+    // 400k draws puts the floor at 18. Asserting >20 flaked about 1 run in 3200
+    // — invisible locally, and eventually red in CI for no reason at all.
+    expect(audio.ramps.count - before).toBeGreaterThan(12)
   })
 })
 
@@ -562,5 +570,93 @@ describe('the stereo toggle', () => {
       stereo,
     })
     expect(audio.gains).toContain(BED_TRIM)
+  })
+})
+
+describe('loudness compensation', () => {
+  it('lifts more as the volume falls, and never inverts', () => {
+    let prev = -1
+    for (let v = 1; v >= 0; v -= 0.05) {
+      const lift = loudnessLiftDb(v)
+      expect(lift).toBeGreaterThanOrEqual(prev)
+      prev = lift
+    }
+  })
+
+  it('stays inside 0..max and clamps out-of-range input', () => {
+    for (const v of [-1, 0, 0.5, 1, 2]) {
+      expect(loudnessLiftDb(v)).toBeGreaterThanOrEqual(0)
+      expect(loudnessLiftDb(v)).toBeLessThanOrEqual(LOUDNESS_MAX_DB)
+    }
+  })
+
+  // Deliberate: Yoru's own ceiling is 0.24, about -12dBFS, so even Volume 10 is
+  // not a loud listening level and the curve should not reach zero there.
+  it('still lifts a little at the top of the range', () => {
+    expect(loudnessLiftDb(1)).toBeGreaterThan(0)
+    expect(loudnessLiftDb(1)).toBeLessThan(loudnessLiftDb(0.5))
+  })
+})
+
+describe('brightness as distance', () => {
+  it('leaves the sends alone at full brightness', () => {
+    expect(distanceSend(1)).toBe(1)
+  })
+
+  it('opens the sends as brightness falls, monotonically', () => {
+    let prev = 0
+    for (let b = 1; b >= 0; b -= 0.05) {
+      const send = distanceSend(b)
+      expect(send).toBeGreaterThanOrEqual(prev)
+      prev = send
+    }
+  })
+
+  // A dark blend should read as further away, not as drowned. The cap is what
+  // keeps "distant" from turning into "underwater" at the bottom of the range.
+  it('never sends more than the cap, at any input', () => {
+    for (const b of [-1, 0, 0.3, 1, 2]) {
+      expect(distanceSend(b)).toBeLessThanOrEqual(2.2)
+      expect(distanceSend(b)).toBeGreaterThanOrEqual(1)
+    }
+  })
+})
+
+describe('the new options, wired through the engine', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    vi.useRealTimers()
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  it.each([true, false])('builds with loudness=%s', async (loudness) => {
+    const { started } = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({ totalSec: 900, mix: DEFAULT_MIX, loudness })
+    expect(started.length).toBeGreaterThan(0)
+  })
+
+  // Waves' body send (0.25) is set at build time, so it is the one place the
+  // distance scaling can be observed directly rather than inferred.
+  it.each([2, 5, 10])('scales the room send by distance at brightness %i', async (brightness) => {
+    const audio = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({
+      totalSec: 900,
+      mix: { volume: 8, brightness, motion: 5, pace: 5, waves: 6 },
+    })
+    const want = 0.25 * distanceSend(brightness / 10)
+    expect(audio.gains.some((g) => Math.abs(g - want) < 1e-9)).toBe(true)
+  })
+})
+
+describe('resolveMix exposes what the perceptual curves need', () => {
+  it('carries the untapered volume and brightness readings', () => {
+    const p = resolveMix({ volume: 6, brightness: 3 })
+    expect(p.vol).toBeCloseTo(0.6, 6)
+    expect(p.bright).toBeCloseTo(0.3, 6)
   })
 })

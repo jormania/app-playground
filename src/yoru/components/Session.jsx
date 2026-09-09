@@ -153,6 +153,7 @@ export default function Session({ session, onNote, onFinish }) {
       mix: session.mix,
       stereo: session.stereo !== false,
       voicing: session.voicing,
+      loudness: session.loudness,
     })
     return () => s.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps

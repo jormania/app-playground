@@ -149,6 +149,37 @@ export const VOICINGS = {
 // wash/event ratio the layers are tuned around.
 export const BED_TRIM = 0.7
 
+// ── Loudness compensation ───────────────────────────────────────────────────
+// The ear is not a flat instrument, and it gets less flat the quieter things
+// get. Between a normal listening level and a bedtime one, the bottom two
+// octaves fall roughly 10-15dB RELATIVE to the midrange — the equal-loudness
+// contours (ISO 226 / Fletcher-Munson). That is a property of hearing, not of
+// the speaker or the mix, and it is the best explanation for a complaint this
+// app kept producing: the wave foam sits at 600-1900Hz, near where the ear is
+// most sensitive, while the swell it competes with is weighted low and fading
+// fastest as you turn down. No filter on the source side fixes that.
+//
+// A low shelf that rises as Volume falls does — the hi-fi "loudness" button.
+// Note the reference point: Yoru's own ceiling is 0.24, about -12dBFS, so even
+// its Volume 10 is not a loud listening level. That is why the curve still
+// lifts a little at the top of the range rather than reaching zero there.
+export const LOUDNESS_HZ = 250
+export const LOUDNESS_MAX_DB = 8
+export const loudnessLiftDb = (v) => LOUDNESS_MAX_DB * (1 - 0.75 * clamp01(v))
+
+// ── Brightness as distance ──────────────────────────────────────────────────
+// Brightness on its own models exactly one distance cue, high-frequency air
+// absorption, and models it as a cliff. The ear doesn't read a cliff as
+// distance; it reads it as the same source with something over it. The cue that
+// actually carries distance is the DIRECT-TO-REVERBERANT RATIO: further away,
+// proportionally more room and less source.
+//
+// So a dark setting now also opens the sends. Only the wet side moves — the dry
+// is left alone deliberately, because pulling it down to complete the picture
+// would make exactly the blends that want to sound far also sound quiet, and
+// they are already the quiet ones.
+export const distanceSend = (b) => Math.min(2.2, 1 + 1.3 * Math.pow(1 - clamp01(b), 1.2))
+
 const EBB_START = 0.65
 const FADE_IN_SEC = 5
 
@@ -285,6 +316,10 @@ export function resolveMix(mix) {
     // a real "audio knob" feel instead of a linear one. 0.24 ceiling (was 0.18)
     // after the first taper pass came back reporting the whole mix too quiet.
     master: taper(nv('volume'), VOLUME_TAPER) * 0.24,
+    // the untapered 0..1 readings, for the two curves that are about
+    // PERCEPTION rather than gain: loudness compensation and distance
+    vol: nv('volume'),
+    bright: nv('brightness'),
     // Brightness is a FREQUENCY, not a gain — ears perceive pitch/tone
     // logarithmically (an octave feels like an equal step wherever you are), so
     // this interpolates in log-frequency space rather than linear Hz.
@@ -315,6 +350,7 @@ export function createNightSoundscape() {
   let stopped = true
   let stereo = true // bed stereo width, set from start()'s option
   let voice = VOICINGS.headphones // playback voicing, set from start()'s option
+  let roomSend = 1 // how far away the scene is, from Brightness (see distanceSend)
 
   function scheduleEnvelope(target, totalSec, elapsedSec, fadeIn) {
     const now = ctx.currentTime
@@ -487,7 +523,7 @@ export function createNightSoundscape() {
   function sendToRoom(node, amount) {
     if (!reverbIn) return
     const g = ctx.createGain()
-    g.gain.value = amount
+    g.gain.value = amount * roomSend
     node.connect(g)
     g.connect(reverbIn)
   }
@@ -1174,11 +1210,13 @@ export function createNightSoundscape() {
     fadeIn = FADE_IN_SEC,
     stereo: stereoOpt = true,
     voicing = 'headphones',
+    loudness = false,
   }) {
     const p = resolveMix(mix)
     if (p.master <= 0) return
     stereo = stereoOpt
     voice = VOICINGS[voicing] ?? VOICINGS.headphones
+    roomSend = distanceSend(p.bright)
 
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return
@@ -1221,18 +1259,29 @@ export function createNightSoundscape() {
     limiter.ratio.value = 20
     limiter.attack.value = 0.003
     limiter.release.value = 0.25
-    // The voicing's high-pass sits BEFORE the limiter, so energy the speaker
-    // can't reproduce stops eating headroom and stops triggering gain reduction
-    // on everything that it can.
+    // master -> [loudness shelf] -> [voicing high-pass] -> limiter -> out.
+    // Order matters both ways: the shelf lifts before the high-pass, so the
+    // high-pass still strips the subsonic content it just boosted; and both sit
+    // before the limiter, so a lifted low end is caught rather than clipped.
+    let chain = master
+    if (loudness) {
+      const shelf = ctx.createBiquadFilter()
+      shelf.type = 'lowshelf'
+      shelf.frequency.value = LOUDNESS_HZ
+      // static, from the Volume SETTING — not from master.gain, which is being
+      // automated through the fade-in and the ebb to silence all night
+      shelf.gain.value = loudnessLiftDb(p.vol)
+      chain.connect(shelf)
+      chain = shelf
+    }
     if (voice.masterHp > 0) {
       const mhp = ctx.createBiquadFilter()
       mhp.type = 'highpass'
       mhp.frequency.value = voice.masterHp
-      master.connect(mhp)
-      mhp.connect(limiter)
-    } else {
-      master.connect(limiter)
+      chain.connect(mhp)
+      chain = mhp
     }
+    chain.connect(limiter)
     limiter.connect(ctx.destination)
 
     // One global brightness low-pass everything passes through.

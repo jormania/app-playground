@@ -163,6 +163,11 @@ export const DEFAULT_SETTINGS = {
   // exactly as it did — this is a deliberate choice you make once, not a
   // migration that changes the app under you.
   voicing: 'headphones',
+  // Loudness compensation: a low shelf that rises as Volume falls, because the
+  // ear loses the bottom two octaves relative to the midrange as things get
+  // quieter (see loudnessLiftDb in soundscape.js). Off by default — a night you
+  // already have sounds exactly as it did until you ask for this.
+  loudness: false,
   palette: 'storm',
   name: '',
   hintSeen: false, // first-run "tap 夜" hint

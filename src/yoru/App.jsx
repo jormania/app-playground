@@ -61,6 +61,7 @@ export default function App() {
       starReveal: settings.starReveal,
       stereo: settings.stereo,
       voicing: settings.voicing,
+      loudness: settings.loudness,
       note: '',
     }
     saveActiveSession(active)
