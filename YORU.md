@@ -271,20 +271,43 @@ it and no hiss behind it. It also ran strictly one wave at a time
 (`nextAt = end`), which no coast has ever done, and fell to −27 dB between waves,
 which made the whole layer pump.
 
-It is now three parts:
+It is now four parts:
 
-- **Body** — dark (90–500 Hz), on one shared envelope, rising slowly and then
-  steepening into the crest. Swells are one continuous motion of water; they
-  genuinely don't stack, so one envelope is right for this part.
-- **Foam** — bright (850–4200 Hz), with **its own gain node per wave**, opening
-  just *before* the body peaks and draining for about half a period afterwards.
-  That's what makes the last wave still hiss while the next one rises, and it's
+- **Body** — 70 Hz up to a sweep that tops out around 1000–1380 Hz, on one shared
+  envelope, rising slowly and then steepening into the crest. Swells are one
+  continuous motion of water; they genuinely don't stack, so one envelope is
+  right for this part. More of what reads as a wave *arriving* is that sweep than
+  is the gain.
+- **Break** — short, wide (500–3000 Hz), loud: about 1.2–1.7 s from hit to gone.
+  **This is what "force" is.**
+- **Drain** — long, narrow (600–1900 Hz), quiet: water retreating over sand for
+  seconds afterwards. Both of these get **their own gain node per wave**, which is
   why the per-wave node has to exist: one shared param is one timeline and can't
-  overlap itself. Each is panned separately — waves break along a front, not at
-  a point.
+  overlap itself. They share one panner — a break and its own retreat happen in
+  the same place along the shore.
 - **Distant surf** — a quiet steady bed (130–900 Hz) so the troughs are a
   shoreline rather than a gap. It lifts the between-waves floor ~9 dB, which is
   what stops the pumping.
+
+#### Break and drain are not the same thing, and conflating them cost three rounds
+
+They live in overlapping bands, so it is tempting to treat them as one "foam"
+chain — which is what this was, and it was wrong. **A break is short and
+broadband; grit is sustained and narrow.** With one envelope doing both, every
+instruction to take the pebbles down took the break down with it. Three cuts in a
+row (−18.4 dB → −22.4 → −28.5 under the crest) ended with **0.10 % of the layer's
+energy above 1 kHz** — no break at all, and so a swell with no force behind it,
+which is exactly how it was reported.
+
+Split, the break peaks at roughly the same level as the version that got called
+"pebbles out of a sack" — but for ~1.4 s instead of ~6, and topping at 3000 Hz
+instead of 4200, so about a quarter of the energy per wave. Energy above 1 kHz at
+the crest is now ~18 %. **If that still reads as grit, the level is wrong and
+`kv` comes down; if it reads as impact, the duration was the whole story.**
+
+Note what the *global* Brightness does to this: at Brightness 2 the low-pass sits
+at 903 Hz and removes the break before you hear it. `night sea` is deliberately
+that dark. For force, Brightness 5 or above — which is where `long swell` sits.
 
 **The floor is the swell.** The first cut of this set the distant bed at
 `0.055 * level` and dropped the body's trough to fill the gaps — and it worked,

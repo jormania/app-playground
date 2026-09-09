@@ -111,10 +111,10 @@ export const VOICINGS = {
     thunderLp: 130,
     thunderLpSpread: 90,
     wavesHp: 70,
-    wavesLp: 260,
-    wavesLpCrest: 640,
-    wavesLpSpread: 220,
-    wavesLpEnd: 230,
+    wavesLp: 300,
+    wavesLpCrest: 1000,
+    wavesLpSpread: 380,
+    wavesLpEnd: 260,
   },
   speaker: {
     // The ONLY difference. Below the port's likely tuning the woofer unloads —
@@ -131,10 +131,10 @@ export const VOICINGS = {
     thunderLp: 130,
     thunderLpSpread: 90,
     wavesHp: 70,
-    wavesLp: 260,
-    wavesLpCrest: 640,
-    wavesLpSpread: 220,
-    wavesLpEnd: 230,
+    wavesLp: 300,
+    wavesLpCrest: 1000,
+    wavesLpSpread: 380,
+    wavesLpEnd: 260,
   },
 }
 
@@ -852,6 +852,31 @@ export function createNightSoundscape() {
     // 700-2500Hz, not 850-4200. The upper half of that first range is the
     // presence/harshness band, and flat noise across it doesn't read as water
     // draining over sand — it reads as pebbles poured out of a sack.
+    //
+    // TWO bright chains, not one, because they do different jobs and conflating
+    // them is what went wrong here three times running:
+    //
+    //   BREAK — short, wide, loud. The crash as the wave stands up and falls in.
+    //           This is what "force" is, and it lasts about a second.
+    //   DRAIN — long, narrow, quiet. Water retreating over sand for seconds
+    //           after. SUSTAINED energy in this band is what reads as pebbles
+    //           poured out of a sack.
+    //
+    // One envelope used to do both, so every instruction to take the pebbles
+    // down took the break with it. Three cuts in a row left 0.1% of this
+    // layer's energy above 1kHz — no break at all, and so no force.
+    //
+    // They read the same noise source on purpose: the break and the retreat are
+    // the same water. They barely overlap in time in any case.
+    const khp = ctx.createBiquadFilter()
+    khp.type = 'highpass'
+    khp.frequency.value = 500
+    const klp = ctx.createBiquadFilter()
+    klp.type = 'lowpass'
+    klp.frequency.value = 3000
+    src.connect(khp)
+    khp.connect(klp)
+
     const fhp = ctx.createBiquadFilter()
     fhp.type = 'highpass'
     fhp.frequency.value = 600
@@ -922,13 +947,19 @@ export function createNightSoundscape() {
         // Foam: its own node, so it can still be hissing when the next wave
         // starts. Opens just before the body peaks — the break begins as the
         // wave stands up — snaps up fast, then drains for seconds.
-        const fg = ctx.createGain()
-        fg.gain.value = 0.0001
+        // one panner for the whole wave — a break and its own retreat happen in
+        // the same place along the shore
         const fp = panner(ctx, Math.random() * 1.1 - 0.55) // waves break along a front, not at one point
-        flp.connect(fg)
-        fg.connect(fp)
         fp.connect(dest)
         sendToRoom(fp, 0.3)
+        const fg = ctx.createGain()
+        fg.gain.value = 0.0001
+        flp.connect(fg)
+        fg.connect(fp)
+        const kg = ctx.createGain()
+        kg.gain.value = 0.0001
+        klp.connect(kg)
+        kg.connect(fp)
         const breakAt = crest - period * 0.06
         // Shorter than it was: a drain lasting half the period left the last wave
         // still hissing as the next rose, and the layer stopped reading as a
@@ -939,13 +970,26 @@ export function createNightSoundscape() {
         fg.gain.setValueAtTime(0.0001, breakAt)
         fg.gain.exponentialRampToValueAtTime(Math.max(0.0002, fv), breakAt + 0.3 + Math.random() * 0.25)
         fg.gain.exponentialRampToValueAtTime(0.0001, breakAt + drain)
+
+        // The break. Short is the whole point: about a second of it reads as
+        // impact, where the same energy stretched over the drain's length reads
+        // as grit. Wider than the drain too (500-3000Hz), because a crash is
+        // broadband and a retreat is not.
+        const kv = (0.045 + Math.random() * 0.03) * level * motion * set
+        const hit = 0.12 + Math.random() * 0.13
+        const fall = 0.7 + Math.random() * 0.6
+        kg.gain.setValueAtTime(0.0001, breakAt)
+        kg.gain.exponentialRampToValueAtTime(Math.max(0.0002, kv), breakAt + hit)
+        kg.gain.exponentialRampToValueAtTime(0.0001, breakAt + hit + fall)
         // Nothing upstream of these ever stops, so they can never be collected
         // on their own — hand them to the sweeper once the drain is done. The
         // upstream edge has to go too: disconnect() clears a node's OUTPUTS, so
         // flp would otherwise keep feeding every wave's gain for the whole night.
-        retire(breakAt + drain + 0.5, () => {
+        retire(breakAt + Math.max(drain, hit + fall) + 0.5, () => {
           flp.disconnect(fg)
+          klp.disconnect(kg)
           fg.disconnect()
+          kg.disconnect()
           fp.disconnect()
         })
 
