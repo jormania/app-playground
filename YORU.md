@@ -444,6 +444,38 @@ a `MIX_VERSION` bump, which wipes saved custom mixes. The send coupling carries
 most of the value and needs no migration: dark still means dark, it just also
 means further. The tilt stays on the shelf.
 
+### The throttled-tick guard
+
+Every event layer schedules ahead in a `while (nextAt < ahead)` loop. Yoru's
+main mode is **screen off**, with Media Session holding the audio up while the
+page is backgrounded — so its timers get throttled *while the AudioContext keeps
+running*. `nextAt` then falls behind `currentTime`, and the loop places its whole
+backlog **at past times**. Web Audio fires past-dated events immediately.
+
+Measured, with the guard removed and one minute of throttling simulated:
+**465 stream bubbles scheduled into a single instant.** That is a crack, not a
+brook. Waves does something different and equally audible — its shared envelope
+jumps to wherever the backlog ended, heard as a sharp drop in volume — and a
+past-dated thunder roll fires all its crests together, which is a startle rather
+than a roll.
+
+`catchUp()` skips the backlog rather than playing it, on all five event layers;
+Waves additionally puts its envelope back to the trough, since the backlog it
+just skipped owned that param's timeline. The drifts had this guard from the
+start (`advanceDrift`); the event layers never did.
+
+A regression test simulates the throttle on the stub clock and asserts a
+lookahead's worth of events rather than a minute's worth. It was confirmed to
+fail (465) before the fix and pass after.
+
+**What this is not.** Measured at a big wave crest, with the loudest waves blend,
+Volume 8, loudness on and the speaker voicing, the peak reaching the limiter is
+**−24.8 dBFS** — 22.8 dB below the limiter's own threshold and ~25 dB below full
+scale. Yoru does not clip and its limiter never engages. So a drop-and-distort
+heard on a speaker is either this scheduling bug or the *speaker's* own
+protection circuit responding to sustained low-frequency swell at high device
+volume, which a 3.2″ woofer on 15 W will do. Headphones tell the two apart.
+
 ## Breathwork (optional)
 
 A breathing orb, two patterns ([`lib/breath.js`](src/yoru/lib/breath.js)): a

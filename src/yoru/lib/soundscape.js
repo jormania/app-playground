@@ -518,6 +518,24 @@ export function createNightSoundscape() {
     wet.connect(master)
   }
 
+  // ── the throttled-tick guard ────────────────────────────────────────────
+  // Every event layer below schedules ahead in a `while (nextAt < ahead)` loop.
+  // A backgrounded tab's timers get throttled while the AudioContext keeps
+  // running — which is Yoru's MAIN mode, screen off with Media Session holding
+  // the audio up — so a tick can arrive long after the last event was placed.
+  // `nextAt` is then behind currentTime, and the loop would schedule the whole
+  // backlog AT PAST TIMES. Web Audio fires past-dated events immediately, so:
+  //
+  //   · a one-shot layer dumps its backlog in a single instant — at Stream's
+  //     ~10 bubbles a second, a minute of throttling is ~600 of them landing
+  //     together, which is a crack, not a brook
+  //   · Waves jumps its envelope to wherever the backlog ended, which is heard
+  //     as a sharp drop in volume
+  //
+  // Skip the backlog rather than play it. The drifts already did this; the
+  // event layers never did.
+  const catchUp = (at) => (at < ctx.currentTime ? ctx.currentTime + 0.05 : at)
+
   // Send a node into the room at `amount` of its dry level. A no-op when no
   // room was built (nothing in the blend asked for one).
   function sendToRoom(node, amount) {
@@ -692,6 +710,7 @@ export function createNightSoundscape() {
     let nextAt = ctx.currentTime + 0.6
     const t = setInterval(() => {
       if (stopped) return
+      nextAt = catchUp(nextAt)
       const ahead = ctx.currentTime + 1.5
       while (nextAt < ahead) {
         const when = nextAt
@@ -754,7 +773,9 @@ export function createNightSoundscape() {
     let nextAt = ctx.currentTime + 25 + Math.random() * 50
     const t = setInterval(() => {
       if (stopped || ctx.currentTime < nextAt) return
-      const when = nextAt
+      // never past-dated: a roll whose crests all land in the same instant is
+      // a crack, and this is the one layer loud enough for that to startle
+      const when = Math.max(nextAt, ctx.currentTime + 0.05)
       // heavier rain, a slightly bigger and more frequent storm — thunder rides
       // the same slow drift the rain's own intensity does, so a squall and its
       // thunder belong to one weather system rather than two clocks
@@ -915,6 +936,15 @@ export function createNightSoundscape() {
     blp.frequency.setValueAtTime(voice.wavesLp, nextAt)
     const t = setInterval(() => {
       if (stopped) return
+      if (nextAt < ctx.currentTime) {
+        // the skipped backlog owned this param's timeline; put it back at the
+        // trough before the next swell starts from there
+        bg.gain.cancelScheduledValues(ctx.currentTime)
+        bg.gain.setValueAtTime(trough, ctx.currentTime)
+        blp.frequency.cancelScheduledValues(ctx.currentTime)
+        blp.frequency.setValueAtTime(voice.wavesLp, ctx.currentTime)
+      }
+      nextAt = catchUp(nextAt)
       const ahead = ctx.currentTime + 12
       while (nextAt < ahead) {
         const t0 = nextAt
@@ -1018,6 +1048,7 @@ export function createNightSoundscape() {
     let nextAt = ctx.currentTime + 2
     const t = setInterval(() => {
       if (stopped) return
+      nextAt = catchUp(nextAt)
       const ahead = ctx.currentTime + 4
       while (nextAt < ahead) {
         const when = nextAt
@@ -1123,6 +1154,7 @@ export function createNightSoundscape() {
     let nextAt = ctx.currentTime + 0.3
     const t = setInterval(() => {
       if (stopped) return
+      nextAt = catchUp(nextAt)
       const ahead = ctx.currentTime + 1.2
       while (nextAt < ahead) {
         const when = nextAt
@@ -1204,6 +1236,7 @@ export function createNightSoundscape() {
     let nextAt = ctx.currentTime + 6 + Math.random() * 8
     const t = setInterval(() => {
       if (stopped) return
+      nextAt = catchUp(nextAt)
       const ahead = ctx.currentTime + 6
       while (nextAt < ahead) {
         const when = nextAt

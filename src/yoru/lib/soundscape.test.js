@@ -660,3 +660,39 @@ describe('resolveMix exposes what the perceptual curves need', () => {
     expect(p.bright).toBeCloseTo(0.3, 6)
   })
 })
+
+describe('a throttled tick', () => {
+  let sound = null
+  afterEach(() => {
+    sound?.stop(0)
+    sound = null
+    vi.useRealTimers()
+    delete window.AudioContext
+    delete window.webkitAudioContext
+  })
+
+  // Yoru's main mode is screen off, with Media Session holding the audio up
+  // while the page is backgrounded — so its timers get throttled while the
+  // AudioContext keeps running. Without a guard the scheduling loops then place
+  // their whole backlog at PAST times, and Web Audio fires those at once: a
+  // minute of Stream is ~600 bubbles landing in the same instant. That is a
+  // crack, not a brook, and it is exactly what "sharp drop and some clipping"
+  // sounds like from the outside.
+  it('skips the backlog instead of dumping it into one instant', async () => {
+    vi.useFakeTimers()
+    const audio = stubAudio()
+    sound = createNightSoundscape()
+    await sound.start({
+      totalSec: 5400,
+      mix: { volume: 8, brightness: 8, motion: 5, pace: 5, stream: 6 },
+    })
+    vi.advanceTimersByTime(1000) // one normal tick
+    const before = audio.started.length
+    audio.advance(60) // a minute of throttling, context still running
+    vi.advanceTimersByTime(1000) // the tick that arrives late
+    const scheduled = audio.started.length - before
+    // one lookahead's worth (~1.2s at ~10/s), not a minute's worth (~600)
+    expect(scheduled).toBeLessThan(60)
+    expect(scheduled).toBeGreaterThan(0) // still running, just not catching up
+  })
+})
