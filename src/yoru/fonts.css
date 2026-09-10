@@ -1,0 +1,42 @@
+/* Yoru's type, subset deliberately.
+ *
+ * main.jsx used to import @fontsource/zen-old-mincho/400.css and friends. Those
+ * entry points pull the WHOLE family: ~120 numbered Japanese subsets plus greek
+ * and cyrillic, in both woff2 and legacy woff — 920 files, 17 MB, emitted into
+ * every deployment. At runtime that costs nothing (unicode-range means the
+ * browser fetches only what it needs), but the build output is charged against
+ * Vercel's 10 GB Deployment Storage on every single push, and Yoru renders
+ * exactly one non-Latin character.
+ *
+ * So: the latin subsets come from fontsource's own per-subset entry points
+ * (imported in main.jsx), and the one kanji Yoru actually draws — 夜, U+591C,
+ * the display mark on Home, Ended, Settings and Mixer — is declared here
+ * against the single fontsource chunk that carries it. Chunk 108 is a fixed
+ * slice of the family's Japanese coverage, not a build artifact, so the path is
+ * stable across patch releases; if a future fontsource repackaging moves 夜, the
+ * glyph falls back to 'Yu Mincho'/serif and the fix is to re-find the chunk
+ * whose unicode-range lists U+591C.
+ *
+ * Both weights are declared because --font-display is used at more than one
+ * weight across those four components. woff2 only — every browser that can run
+ * this app has supported it for years, and the legacy woff twins were half the
+ * 17 MB.
+ */
+
+@font-face {
+  font-family: 'Zen Old Mincho';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(@fontsource/zen-old-mincho/files/zen-old-mincho-108-400-normal.woff2) format('woff2');
+  unicode-range: U+591C;
+}
+
+@font-face {
+  font-family: 'Zen Old Mincho';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(@fontsource/zen-old-mincho/files/zen-old-mincho-108-500-normal.woff2) format('woff2');
+  unicode-range: U+591C;
+}
