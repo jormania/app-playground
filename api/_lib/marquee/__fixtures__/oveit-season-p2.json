@@ -1,0 +1,213 @@
+{
+  "remainingEvents": 3,
+  "events": [
+    {
+      "id": "8nQwEkzm",
+      "name": "Recital camera",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-17T16:00:00.000000Z",
+        "endsAt": "2026-10-17T17:30:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mica",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/6-kv-recitaluri-sala-mica-5.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/6-kv-recitaluri-sala-mica-5-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 55,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "G7dBEZ3E",
+      "name": "Recital de sonate",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-18T16:00:00.000000Z",
+        "endsAt": "2026-10-18T17:30:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mica",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/6-kv-recitaluri-sala-mica-2.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/6-kv-recitaluri-sala-mica-2-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 55,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "Z3NwEqnN",
+      "name": "Stagiunea de marți seara",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-20T16:00:00.000000Z",
+        "endsAt": "2026-10-20T17:00:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mica",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/5-kv-stagiunea-de-marti-sala-mica-3.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/5-kv-stagiunea-de-marti-sala-mica-3-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 55,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "6zqO44nl",
+      "name": "Concert simfonic aniversar",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-21T16:00:00.000000Z",
+        "endsAt": "2026-10-21T18:00:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mare",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/oveit-feature-solist-21-oct.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/oveit-feature-solist-21-oct-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 155,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "W3ABRWnL",
+      "name": "Muzica pe Înțelesul Tuturor",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-24T08:00:00.000000Z",
+        "endsAt": "2026-10-24T09:30:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mare",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/8-kv-educative-mit-lira-web-nou.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/8-kv-educative-mit-lira-web-nou-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 35,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "bn1mNgnB",
+      "name": "Turneul Naţional Zâmbetul muzicii - III",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-26T17:00:00.000000Z",
+        "endsAt": "2026-10-26T19:00:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mare",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/07/14-kv-concerte-cu-id-vizuala-proprie-3.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/07/14-kv-concerte-cu-id-vizuala-proprie-3-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 70,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "r3OwXE3w",
+      "name": "Recital cameral",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-28T17:00:00.000000Z",
+        "endsAt": "2026-10-28T19:00:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mare",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/oveit-feature-solist-28-oct-2.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/oveit-feature-solist-28-oct-2-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 70,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "X3ZjZm3x",
+      "name": "Recital cameral",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-10-31T17:00:00.000000Z",
+        "endsAt": "2026-10-31T19:00:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mare",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/oveit-sala-mare-31-oct.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/oveit-sala-mare-31-oct-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 70,
+        "maxPrice": 0
+      }
+    }
+  ]
+}

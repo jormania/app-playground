@@ -1,0 +1,83 @@
+{
+  "remainingEvents": 0,
+  "events": [
+    {
+      "id": "Kzxdlmzq",
+      "name": "Recital vocal",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-11-07T17:00:00.000000Z",
+        "endsAt": "2026-11-07T18:30:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mica",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/6-kv-recitaluri-sala-mica-3.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/09/6-kv-recitaluri-sala-mica-3-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 55,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "PnBANV3X",
+      "name": "Turneul Național ”Clasic la puterea a treia” - VIII",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-11-08T17:00:00.000000Z",
+        "endsAt": "2026-11-08T19:00:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mare",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/08/4-kv-camerale-sala-mare-web-nou-2.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/08/4-kv-camerale-sala-mare-web-nou-2-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 70,
+        "maxPrice": 0
+      }
+    },
+    {
+      "id": "w7rG8dzV",
+      "name": "Recital vocal",
+      "id_seller": "l7PDAr7y",
+      "gtm_code": null,
+      "type": "with-seating-chart",
+      "timeInterval": {
+        "startsAt": "2026-11-25T17:00:00.000000Z",
+        "endsAt": "2026-11-25T19:00:00.000000Z"
+      },
+      "location": "Ateneul Roman / sala mare",
+      "dateTimeFormat": {
+        "timezone": "Europe/Bucharest",
+        "dateFormat": "M d, Y",
+        "timeFormat": "H:i"
+      },
+      "cover": {
+        "original": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/08/4-kv-camerale-sala-mare-web-nou-3.jpg",
+        "small": "https://oveit-prod-space-ds9ayd.fra1.digitaloceanspaces.com/public/uploads/2026/08/4-kv-camerale-sala-mare-web-nou-3-50x25.jpg"
+      },
+      "currency": "RON",
+      "minmaxticketsprices": {
+        "minPrice": 80,
+        "maxPrice": 0
+      }
+    }
+  ]
+}

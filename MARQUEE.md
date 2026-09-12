@@ -2768,43 +2768,65 @@ Pass` (190 lei) and every 30-40 lei screening correctly left out.
 
 Reported from the app: *Recital cameral* showed as one card spanning four dates
 — 29 Sept, 3 Oct, 28 Oct, 31 Oct — with Martha Argerich's poster and a 150 lei
-price. They are four unrelated concerts. The 3 October card belongs to Cvintetul
-V Coloris and costs 70 lei.
+price. They are four unrelated concerts, and the 3 October one is a wind quintet
+at 70 lei.
 
 The cause is one line, and it had been right until this venue arrived.
 `productionId` (programme.js) is `venue + title`, on the assumption that the
 title identifies the show. **Filarmonica prints a programme CATEGORY where every
-other venue prints a name**: every chamber recital of the season is headed
-*Recital cameral*, every choral night *Concert vocal-simfonic*. So the grouping
-key that folds a fortnight of *Tomcat* into one card also folds a season of
-unrelated recitals into one — and then, because a production takes its poster,
-price and link from whichever showing carried them first (`??=`), the survivor
-wears the first concert's face. It doesn't merely crowd the four together; it
-says false things about three of them, including a sold-out night hidden behind
-an open one (`anyOpen` is computed across the lot).
+other venue prints a name**: four separate concerts this autumn are all headed
+*Recital cameral*, two more *Stagiunea de marți seara*, two *Recital vocal*. So
+the grouping that usefully folds a fortnight of *Tomcat* into one card also
+folds a season of unrelated concerts into one — and then, because a production
+takes its poster, price and link from whichever showing carried them first
+(`??=`), the survivor wears the first concert's face. It doesn't merely crowd
+them together; it says false things about the other three.
 
-**Fixed per-adapter, not globally.** The obvious global fix — add the event's
-own link or slug to the identity — is wrong here, and the saved fixture already
-proves it: the two *Concert vocal-simfonic* rows on 1 and 2 October carry
-different slugs, identical descriptions and the same poster. They are one
-programme played on consecutive evenings, which is exactly the case the grouping
-exists for. A slug-keyed identity would split it.
+**The first attempt fixed the wrong adapter.** `filarmonica.js` is the obvious
+place to look and the wrong one: the app reads this venue through **Oveit**
+(§9.7, and the source table in §3 says so outright — the Strapi feed 403s every
+non-browser client). The tell was in the screenshot all along: the card's hall
+read `Ateneul Roman / sala mare`, Oveit's free-typed spelling, where the Strapi
+reader would have produced `Ateneul Român · Sala Mare`. **Check which reader a
+venue actually uses before fixing what it shows** — the adapter named after the
+venue may not be the one running.
 
-So an adapter that knows its own titles aren't identities says so:
+**Fixed per-adapter, not globally.** `makeEvent` takes an optional
+**`productionKey`** (shared.js), null everywhere else, and `productionId` uses
+it in the title's place when present — so every other venue keeps grouping by
+title exactly as before.
 
-- `makeEvent` takes an optional **`productionKey`** (shared.js). Null everywhere
-  else, and null means "group by title" — the behaviour every other venue has
-  always had. `productionId` uses it in the title's place when present.
-- Filarmonica derives it from the **programme text** — the flattened Strapi
-  description, before `clipDescription` cuts it to card length, since two
-  concerts can share 500 characters of preamble — falling back to the poster
-  URL, then the slug. The heading is folded into the digest too, so two kinds of
-  evening can never merge on a shared fallback poster.
-- It travels as a **digest** (`digest`, FNV-1a 32-bit, shared.js) rather than
-  the text itself: the honest discriminator is long and this field rides in
-  every scan payload. Truncating the source instead would collide precisely
-  where it matters — Filarmonica's programmes routinely open with the same
-  several words ("Deschiderea Stagiunii…").
+What that key is derived from is a per-source judgement, and the two readers for
+this venue reach it differently:
+
+- **`oveit.js` keys on the POSTER**, not on the row id. Each Oveit row is one
+  ticketed night, so an id-keyed identity would split any vendor selling a
+  genuine multi-night run as one event per night — precisely the case grouping
+  exists for. Artwork tracks the programme instead: across Filarmonica's whole
+  season no two concerts share a cover (each gets its own upload, down to the
+  `-2`/`-3` variants of a series template), while a run repeated across nights
+  is one poster reused. A coverless row keys to null and falls back to title
+  grouping — silence is not evidence that two nights are different concerts.
+- **`filarmonica.js` (Strapi, still unreachable) keys on the PROGRAMME TEXT**,
+  falling back to the poster and then the slug. That feed carries descriptions,
+  and it needs them: its own fixture holds two *Concert vocal-simfonic* rows on
+  1 and 2 October with different slugs, identical descriptions and the same
+  poster — one programme played on consecutive evenings, which a slug-keyed
+  identity would have split.
+
+Either way the key travels as a **digest** (`digest`, FNV-1a 32-bit, shared.js)
+rather than the text: the honest discriminator is long and this field rides in
+every scan payload. Truncating the source instead would collide exactly where it
+matters — Filarmonica's programmes routinely open with the same several words
+("Deschiderea Stagiunii…").
+
+**Verified against the live Oveit feed**, all three pages captured on
+2026-09-12 and saved as `oveit-season-p{1,2,3}.json`: 19 events. Before, 14
+cards — the four-date *Recital cameral* at 150 lei under the Argerich poster,
+exactly as reported, plus the two doubled-up pairs. After, 19 cards, each with
+its own poster, price and link, and nothing over-split: this season contains no
+genuine multi-night run, and the poster-keyed grouping of one is pinned by its
+own test.
 
 **`eventKey` is untouched**, deliberately. Identity per showing is still
 venue:date:title, so this changes no diff and produces no one-off wave of
@@ -2818,16 +2840,13 @@ already records the right id (`toSnapshot`'s `production`), so the change row
 now uses it, falling back to the old derivation for snapshots written before
 this.
 
-**Not verified live from here.** The Strapi feed 403s this development machine
-(see Open, below), so the proof is the saved fixture plus the two cases above,
-and the app in production is where the four cards actually appear.
-
 **The cards still all read "Recital cameral".** Each now carries its own poster,
-price, dates and link, but the heading is the only title the feed gives, and the
-first line of a description ("Deschiderea Stagiunii 2026-2027") is a season
-label as often as it is a name — composing a title out of it would be guessing.
-A subtitle line on the card would be the honest fix, and it is a change to every
-venue's card, so it waits for a decision rather than riding along with this one.
+price, date and link, but the heading is the only title Oveit carries, and the
+Strapi feed's first description line is a season label ("Deschiderea Stagiunii
+2026-2027") as often as it is a name — composing a title out of either would be
+guessing. A subtitle line on the card would be the honest fix, and it is a
+change to every venue's card, so it waits for a decision rather than riding
+along with this one.
 
 ## Open — known source limits, checked and not fixable here
 

@@ -601,6 +601,52 @@ describe('Oveit (the ticketing platform, as a source)', () => {
     expect(events.some((e) => e.ticketState === 'sold-out')).toBe(false)
   })
 
+  it('gives each concert its own identity when the vendor names them all the same', () => {
+    // The bug this exists for, on Filarmonica's real autumn season (three pages,
+    // captured live 2026-09-12): the venue heads four unrelated concerts "Recital
+    // cameral", two more "Stagiunea de marți seara" and two "Recital vocal". Keyed
+    // by title they grouped into 14 cards, and the recital card claimed four dates
+    // under Martha Argerich's poster at 150 lei — the 3 October one is a wind
+    // quintet at 70 (§9.70). `productionKey` is what programme.js groups on;
+    // toProductions itself is tested on the src side (api/_lib imports no src).
+    const season = [1, 2, 3].map((n) => ({ json: JSON.parse(fixture(`oveit-season-p${n}.json`)) }))
+    const rows = oveit.parse(season, { venue })
+    expect(rows).toHaveLength(19)
+    expect(new Set(rows.map((e) => e.productionKey)).size).toBe(19)
+
+    const recitals = rows.filter((e) => e.title === 'Recital cameral')
+    expect(recitals.map((e) => e.date)).toEqual(['2026-09-29', '2026-10-03', '2026-10-28', '2026-10-31'])
+    expect(recitals.map((e) => e.price)).toEqual([150, 70, 70, 70])
+    expect(new Set(recitals.map((e) => e.productionKey)).size).toBe(4)
+    // Four concerts, four posters and four links — the merged card showed the
+    // first night's of each for all of them.
+    expect(new Set(recitals.map((e) => e.image)).size).toBe(4)
+    expect(new Set(recitals.map((e) => e.link)).size).toBe(4)
+  })
+
+  it('still groups a run that reuses one poster across its nights', () => {
+    // The reason the key is the poster and not the row id: each Oveit row is one
+    // ticketed night, so an id-keyed identity would split a vendor selling the
+    // same show on consecutive evenings — the case grouping exists for.
+    const run = { events: [
+      { id: 'a', name: 'Tomcat', timeInterval: { startsAt: '2026-10-01T17:00:00.000000Z' },
+        cover: { original: 'https://cdn.example/tomcat.jpg' }, minmaxticketsprices: { minPrice: 60, maxPrice: 0 } },
+      { id: 'b', name: 'Tomcat', timeInterval: { startsAt: '2026-10-02T17:00:00.000000Z' },
+        cover: { original: 'https://cdn.example/tomcat.jpg' }, minmaxticketsprices: { minPrice: 60, maxPrice: 0 } },
+    ] }
+    const rows = oveit.parse([{ json: run }], { venue })
+    expect(rows[0].productionKey).toBe(rows[1].productionKey)
+  })
+
+  it('falls back to title grouping for a row with no poster', () => {
+    // Silence is not evidence that two nights are different concerts, so a
+    // coverless row keeps the behaviour every Oveit vendor had before the key.
+    const bare = { events: [
+      { id: 'a', name: 'Concert', timeInterval: { startsAt: '2026-10-01T17:00:00.000000Z' }, minmaxticketsprices: { minPrice: 60, maxPrice: 0 } },
+    ] }
+    expect(oveit.parse([{ json: bare }], { venue })[0].productionKey).toBeNull()
+  })
+
   it('pages until the feed says nothing is left', () => {
     // Page size is read from the page in hand rather than assumed. This fixture
     // is trimmed to 3 rows (the live page carries 8), so 4 remaining reads as two

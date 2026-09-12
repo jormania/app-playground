@@ -20,7 +20,7 @@
 // inventing a sold-out state from silence would be exactly the false precision
 // the rest of Marquee refuses.
 
-import { TICKET, makeEvent, localParts } from './shared.js'
+import { TICKET, makeEvent, localParts, digest } from './shared.js'
 
 const API = 'https://membership-api.oveit.com/v1/vendor'
 const INCLUDE = 'type,timeInterval,dateTimeFormat,location,cover,currency,minmaxticketsprices'
@@ -48,6 +48,29 @@ function rowsOf(page) {
   const events = page?.json?.events
   if (Array.isArray(events)) return events
   return Array.isArray(events?.data) ? events.data : []
+}
+
+/** What this listing IS, when its name only says what KIND of thing it is.
+ *
+ *  Filarmonica heads four unrelated autumn concerts "Recital cameral" and two
+ *  more "Stagiunea de marți seara" — programme categories, not names — so
+ *  grouping by venue+title (programme.js's `productionId`) collapsed them into
+ *  one card wearing the first one's poster and price (§9.70).
+ *
+ *  The poster is the discriminator, not the row id. Each Oveit row is one
+ *  ticketed night, so keying on its id would split any vendor that sells a
+ *  genuine multi-night run as one event per night — grouping those is the whole
+ *  point of a production. Artwork tracks the programme instead: across
+ *  Filarmonica's whole season no two concerts share a cover (each gets its own
+ *  upload, right down to the `-2`/`-3` variants of a series template), while a
+ *  run repeated across nights is one poster reused.
+ *
+ *  A coverless row returns null, which puts it back on title grouping — the
+ *  behaviour every Oveit vendor had before this. Silence is not evidence that
+ *  two nights are different concerts. */
+function posterKey(row) {
+  const cover = row?.cover?.original
+  return cover ? digest(`${row?.name ?? ''}|${cover}`) : null
 }
 
 export default {
@@ -97,6 +120,7 @@ export default {
           ticketsUrl: row?.id ? `https://oveit.com/hub/event/${row.id}` : null,
           image: row?.cover?.original ?? null,
           price: Number.isFinite(price) && price > 0 ? price : null,
+          productionKey: posterKey(row),
         }))
       }
     }
