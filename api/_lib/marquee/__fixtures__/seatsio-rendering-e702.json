@@ -1,0 +1,58 @@
+{
+  "chartKey": "ec46ccde-e0af-47ea-9078-856c60ff39aa",
+  "bookWholeTables": false,
+  "computedTableBookingModes": {},
+  "whitelabeled": true,
+  "forSaleConfigsPerEvent": {},
+  "channels": [],
+  "eventIds": [
+    100001211864
+  ],
+  "disabledFeatures": [
+    "isObjectSelectable",
+    "selectUnselectableObjects"
+  ],
+  "holdOnSelectForGAs": true,
+  "unifiedObjectPropertiesInCallbacks": true,
+  "useSafeColors": false,
+  "drawingVersion": 217,
+  "rendererConfiguration": {
+    "showFullScreenButton": true,
+    "multiSelectEnabled": false,
+    "companionSeatValidationEnabled": true
+  },
+  "categories": [
+    {
+      "key": "C101",
+      "label": "Categoria 1",
+      "color": "#259C5D",
+      "accessible": false
+    },
+    {
+      "key": "C102",
+      "label": "Categoria 2",
+      "color": "#CC3535",
+      "accessible": false
+    },
+    {
+      "key": "C103",
+      "label": "Protocol",
+      "color": "#FAD165",
+      "accessible": false
+    },
+    {
+      "key": "C172",
+      "label": "Categoria 2 - PPC",
+      "color": "#0077CC",
+      "accessible": false
+    }
+  ],
+  "allowPublicHoldTokenCreation": true,
+  "useSeatsioMessaging": true,
+  "accessibilityFilterEnabled": true,
+  "canUseBringYourOwnBackend": false,
+  "useOldTooltipIfTooltipTextIsUsed": false,
+  "companyName": "Oveit, Inc. ",
+  "channelAreaPlacesEnabled": false,
+  "enabledFeatureFlags": []
+}

@@ -655,7 +655,7 @@ describe('Oveit (the ticketing platform, as a source)', () => {
     // drop the tail of a season.
     const more = oveit.follow(pages, { venue })
     expect(more.map((r) => r.url)).toEqual([2, 3].map((n) =>
-      `https://membership-api.oveit.com/v1/vendor/l7PDAr7y/events?page=${n}&include=type,timeInterval,dateTimeFormat,location,cover,currency,minmaxticketsprices`))
+      `https://membership-api.oveit.com/v1/vendor/l7PDAr7y/events?page=${n}&include=type,timeInterval,dateTimeFormat,location,cover,currency,minmaxticketsprices,seatingChart,tickets`))
 
     expect(oveit.follow([{ json: { events: [], remainingEvents: 0 } }], { venue })).toEqual([])
   })
