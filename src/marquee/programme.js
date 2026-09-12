@@ -38,9 +38,19 @@ export function searchProductions(productions, query) {
 // Saved is deliberately absent: it is not the app's to remember (see findings.js).
 export const TRIAGE = { IGNORED: 'ignored' }
 
-/** venue + title, folded — the identity of a production across its dates. */
+/** venue + title, folded — the identity of a production across its dates.
+ *
+ *  Unless the adapter says otherwise. A title identifies a show at almost every
+ *  venue, but Filarmonica heads every chamber recital of the season "Recital
+ *  cameral" and every choral night "Concert vocal-simfonic" — programme
+ *  categories, not names — so four unrelated concerts arrived as one card
+ *  wearing the first one's poster, price and link (§9.70). An adapter that
+ *  knows its own titles aren't identities sets `productionKey` on the showing
+ *  (shared.js's `digest`), and it takes the title's place here. The venue stays
+ *  part of the id either way: keys are only ever unique within the reader that
+ *  minted them. */
 export function productionId(event) {
-  return `${event.venue}::${event.title}`.toLowerCase()
+  return `${event.venue}::${event.productionKey || event.title}`.toLowerCase()
 }
 
 /** A production id, as a DOM id a "What changed" row can scroll to. Reuses
@@ -87,6 +97,7 @@ export function toProductions(events) {
         // venue whose OWN page states a per-event kind (ARCUB's `.tags`)
         // ever sets this.
         category: event.category ?? null,
+        productionKey: event.productionKey ?? null,
         showings: [],
       })
     }

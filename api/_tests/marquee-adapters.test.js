@@ -500,6 +500,53 @@ describe('Filarmonica (Strapi feed)', () => {
     expect(events[0].description).toContain('pian')
   })
 
+  it('keys a production on its programme, not on the feed’s category heading', () => {
+    // The two vocal-simfonic rows are the SAME concert on consecutive nights —
+    // identical programme, identical poster, different slug — and must group as
+    // one production. The recital shares neither and must not join them (§9.70).
+    expect(events[1].productionKey).toBe(events[2].productionKey)
+    expect(events[0].productionKey).not.toBe(events[1].productionKey)
+  })
+
+  it('splits two different concerts that share a heading', () => {
+    // The bug this exists for: "Recital cameral" is what Filarmonica calls every
+    // chamber recital of the season, so grouping by title collapsed a month of
+    // unrelated concerts into one card wearing the first one's poster and price.
+    const feed = JSON.parse(fixture('filarmonica.json'))
+    const other = structuredClone(feed.data[0])
+    other.attributes.slug = 'recital-cameral-7702'
+    other.attributes.startDateAndTime = '2026-10-03T16:00:00.000Z'
+    other.attributes.endDateAndTime = '2026-10-03T18:00:00.000Z'
+    other.attributes.description = [
+      { type: 'heading', children: [{ text: 'Cvintetul V Coloris', type: 'text' }] },
+    ]
+    other.attributes.media = { data: { attributes: { url: 'https://fge-strapi.s3.eu-central-1.amazonaws.com/v_coloris.jpg' } } }
+    feed.data.push(other)
+
+    const parsed = filarmonica.parse([{ json: feed }], { venue })
+    const recitals = parsed.filter((e) => e.title === 'Recital cameral')
+    expect(recitals).toHaveLength(2)
+    expect(recitals[0].productionKey).not.toBe(recitals[1].productionKey)
+  })
+
+  it('falls back to the poster, then the slug, when a row has no programme text', () => {
+    // Weaker discriminators, in descending order of how well they identify a
+    // programme — never null while the feed gives any of the three, because a
+    // null key drops the row back onto title grouping, which is the bug.
+    const feed = JSON.parse(fixture('filarmonica.json'))
+    const bare = structuredClone(feed.data[0])
+    bare.attributes.description = null
+    const noPoster = structuredClone(bare)
+    noPoster.attributes.media = null
+    feed.data.push(bare, noPoster)
+
+    const parsed = filarmonica.parse([{ json: feed }], { venue })
+    const [posterKeyed, slugKeyed] = parsed.slice(-2).map((e) => e.productionKey)
+    expect(posterKeyed).toBeTruthy()
+    expect(slugKeyed).toBeTruthy()
+    expect(posterKeyed).not.toBe(slugKeyed)
+  })
+
   it('asks the feed for events that have not ended yet, soonest first', () => {
     const [req] = filarmonica.requests(venue, { now: AUG })
     expect(req.json).toBe(true)

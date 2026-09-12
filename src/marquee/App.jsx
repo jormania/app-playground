@@ -654,7 +654,12 @@ export default function App() {
     // row pointing at something the current query excludes would scroll to a
     // card that isn't rendered — and quietly do nothing at all.
     setSearch('')
-    const id = domIdFor(productionId({ venue: change.venue, title: change.title }))
+    // `production` is what the snapshot recorded for this showing (changes.js's
+    // `toSnapshot`), and it already accounts for an adapter-supplied
+    // productionKey — re-deriving from venue+title alone would miss the card
+    // at a venue whose titles aren't identities (§9.70). Older snapshots
+    // predate the field, hence the fallback.
+    const id = domIdFor(change.production || productionId({ venue: change.venue, title: change.title }))
     setTimeout(() => {
       const el = document.getElementById(id)
       if (!el) return

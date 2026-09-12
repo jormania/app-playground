@@ -13,6 +13,45 @@ const event = (over = {}) => ({
   time: null, ticketState: 'none', hall: null, link: null, image: null, price: null, ...over,
 })
 
+describe('toProductions — what counts as one production', () => {
+  it('groups by title, as it always has', () => {
+    const productions = toProductions([
+      event({ key: 'a', date: '2026-09-05' }),
+      event({ key: 'b', date: '2026-09-06' }),
+    ])
+    expect(productions).toHaveLength(1)
+    expect(productions[0].showings).toHaveLength(2)
+  })
+
+  it('splits same-titled showings an adapter marked as different productions', () => {
+    // Filarmonica heads every chamber recital of the season "Recital cameral"
+    // (§9.70), so the title cannot be the identity there; the adapter says what
+    // is. Four concerts, four cards — each keeping its own poster and price.
+    const productions = toProductions([
+      event({ key: 'a', title: 'Recital cameral', date: '2026-09-29', productionKey: 'aaaa1111', image: 'argerich.jpg', price: 150 }),
+      event({ key: 'b', title: 'Recital cameral', date: '2026-10-03', productionKey: 'bbbb2222', image: 'coloris.jpg', price: 70 }),
+    ])
+    expect(productions).toHaveLength(2)
+    expect(productions.map((p) => p.image)).toEqual(['argerich.jpg', 'coloris.jpg'])
+    expect(productions.map((p) => p.price)).toEqual([150, 70])
+  })
+
+  it('still groups the two nights of one run that share a key', () => {
+    const productions = toProductions([
+      event({ key: 'a', title: 'Concert vocal-simfonic', date: '2026-10-01', productionKey: 'cccc3333' }),
+      event({ key: 'b', title: 'Concert vocal-simfonic', date: '2026-10-02', productionKey: 'cccc3333' }),
+    ])
+    expect(productions).toHaveLength(1)
+    expect(productions[0].showings.map((s) => s.date)).toEqual(['2026-10-01', '2026-10-02'])
+  })
+
+  it('keeps the key on the production, so a change row can find the card again', () => {
+    const [p] = toProductions([event({ productionKey: 'dddd4444' })])
+    expect(p.productionKey).toBe('dddd4444')
+    expect(p.id).toContain('dddd4444')
+  })
+})
+
 describe('byDate', () => {
   it('orders a busy day by showtime, not by title', () => {
     const productions = toProductions([

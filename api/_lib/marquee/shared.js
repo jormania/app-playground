@@ -218,11 +218,39 @@ function clipDescription(text) {
   return `${clean.slice(0, MAX_DESCRIPTION).replace(/\s+\S*$/, '')}…`
 }
 
+/** A short, stable digest of whatever an adapter uses to tell two events apart
+ *  that share a title.
+ *
+ *  The grouping key a card is built on is venue + title (programme.js's
+ *  `productionId`), which assumes the title identifies the show. At most
+ *  venues it does. At Filarmonica it does not: "Recital cameral" and "Concert
+ *  vocal-simfonic" are programme CATEGORIES printed as headings, so a dozen
+ *  unrelated concerts share one, and the app collapsed them into a single card
+ *  carrying the first one's poster, price and link (§9.70). An adapter that
+ *  knows its titles aren't identities passes `productionKey` instead.
+ *
+ *  Digested rather than carried verbatim because the honest discriminator is
+ *  usually long (the programme text — performers and works), and this field
+ *  travels in every scan payload. FNV-1a, 32-bit: not cryptography, just a
+ *  cheap stable spread over a few hundred strings a run. Truncating the source
+ *  text instead would collide exactly where it matters — Filarmonica's
+ *  programmes routinely share their first several words ("Deschiderea
+ *  Stagiunii…"). */
+export function digest(text) {
+  const s = String(text ?? '')
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
 /** Shape and sanity-check one parsed row. Adapters build the loose object; this
  *  is what decides whether it is an event at all. A row without a title or a date
  *  is dropped — those two are the identity, and a half-row would diff as a new
  *  event every single scan. */
-export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null, seatsLeft = null }) {
+export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null, seatsLeft = null, productionKey = null }) {
   const cleanTitle = textOf(title)
   if (!cleanTitle || !date) return null
   // A hall that just repeats the venue is noise: Expirat's JSON-LD names its
@@ -265,6 +293,10 @@ export function makeEvent({ venue, title, date, time = null, hall = null, link =
     // quantity unknown — never "plenty". Only ever set for a showing that IS
     // open; a sold-out one is already fully described by its state.
     seatsLeft: Number.isInteger(seatsLeft) && seatsLeft >= 0 ? seatsLeft : null,
+    // What this showing belongs to, when the venue's title doesn't say (see
+    // `digest` above). Null everywhere else, and null means "group by title"
+    // — the behaviour every other venue has always had.
+    productionKey: productionKey ? String(productionKey) : null,
   }
 }
 

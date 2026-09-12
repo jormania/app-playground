@@ -2764,6 +2764,71 @@ productions, 4 free — the linked *Film românesc*, two Tibo Pinsard
 masterclasses and a traditional-music concert — with the hall's `Festival
 Pass` (190 lei) and every 30-40 lei screening correctly left out.
 
+### 9.70 A heading is not a title (2026-09-12)
+
+Reported from the app: *Recital cameral* showed as one card spanning four dates
+— 29 Sept, 3 Oct, 28 Oct, 31 Oct — with Martha Argerich's poster and a 150 lei
+price. They are four unrelated concerts. The 3 October card belongs to Cvintetul
+V Coloris and costs 70 lei.
+
+The cause is one line, and it had been right until this venue arrived.
+`productionId` (programme.js) is `venue + title`, on the assumption that the
+title identifies the show. **Filarmonica prints a programme CATEGORY where every
+other venue prints a name**: every chamber recital of the season is headed
+*Recital cameral*, every choral night *Concert vocal-simfonic*. So the grouping
+key that folds a fortnight of *Tomcat* into one card also folds a season of
+unrelated recitals into one — and then, because a production takes its poster,
+price and link from whichever showing carried them first (`??=`), the survivor
+wears the first concert's face. It doesn't merely crowd the four together; it
+says false things about three of them, including a sold-out night hidden behind
+an open one (`anyOpen` is computed across the lot).
+
+**Fixed per-adapter, not globally.** The obvious global fix — add the event's
+own link or slug to the identity — is wrong here, and the saved fixture already
+proves it: the two *Concert vocal-simfonic* rows on 1 and 2 October carry
+different slugs, identical descriptions and the same poster. They are one
+programme played on consecutive evenings, which is exactly the case the grouping
+exists for. A slug-keyed identity would split it.
+
+So an adapter that knows its own titles aren't identities says so:
+
+- `makeEvent` takes an optional **`productionKey`** (shared.js). Null everywhere
+  else, and null means "group by title" — the behaviour every other venue has
+  always had. `productionId` uses it in the title's place when present.
+- Filarmonica derives it from the **programme text** — the flattened Strapi
+  description, before `clipDescription` cuts it to card length, since two
+  concerts can share 500 characters of preamble — falling back to the poster
+  URL, then the slug. The heading is folded into the digest too, so two kinds of
+  evening can never merge on a shared fallback poster.
+- It travels as a **digest** (`digest`, FNV-1a 32-bit, shared.js) rather than
+  the text itself: the honest discriminator is long and this field rides in
+  every scan payload. Truncating the source instead would collide precisely
+  where it matters — Filarmonica's programmes routinely open with the same
+  several words ("Deschiderea Stagiunii…").
+
+**`eventKey` is untouched**, deliberately. Identity per showing is still
+venue:date:title, so this changes no diff and produces no one-off wave of
+phantom "new" rows. What it does reset is anything keyed on the production id —
+a watch or an ignore held on a Filarmonica card — which is the correct
+consequence of deciding those cards were never one production.
+
+One follow-on in the client: `handleOpenChange` (App.jsx) rebuilt the scroll
+target from `venue + title`, which no longer finds the card. The snapshot
+already records the right id (`toSnapshot`'s `production`), so the change row
+now uses it, falling back to the old derivation for snapshots written before
+this.
+
+**Not verified live from here.** The Strapi feed 403s this development machine
+(see Open, below), so the proof is the saved fixture plus the two cases above,
+and the app in production is where the four cards actually appear.
+
+**The cards still all read "Recital cameral".** Each now carries its own poster,
+price, dates and link, but the heading is the only title the feed gives, and the
+first line of a description ("Deschiderea Stagiunii 2026-2027") is a season
+label as often as it is a name — composing a title out of it would be guessing.
+A subtitle line on the card would be the honest fix, and it is a change to every
+venue's card, so it waits for a decision rather than riding along with this one.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
