@@ -12,7 +12,7 @@ import eventbook from '../_lib/marquee/eventbook.js'
 import filarmonica from '../_lib/marquee/filarmonica.js'
 import jsonld from '../_lib/marquee/jsonld.js'
 import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
-import iabilet from '../_lib/marquee/iabilet.js'
+import iabilet, { seatsNote } from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
@@ -689,6 +689,51 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
     expect(bundles[0].url).toBe('https://www.iabilet.ro/bilete-asian-spotlight-vol-2-130105/')
   })
 
+  it('reads iabilet’s own low-stock line off a tariff row', () => {
+    // Both wordings, live on the site: singular for the last one, plural for
+    // the rest. Everything else on a row says nothing about stock.
+    expect(seatsNote('<p class="text-danger">Mai sunt doar 4 bilete disponibile</p>')).toBe(4)
+    expect(seatsNote('<p class="text-danger">Mai este doar 1 bilet disponibil</p>')).toBe(1)
+    expect(seatsNote('<span>Bilet preț întreg</span>')).toBeNull()
+    expect(seatsNote(null)).toBeNull()
+  })
+
+  it('counts a showing only when every open tariff says how few are left', () => {
+    // One silent tariff means iabilet has more of that tier than it warns
+    // about, which is not a number — so the showing stays uncounted rather
+    // than reporting the loud tier's stock as the whole showing's.
+    const row = (name, price, note) => `<div data-is-tariff="1" data-tariff-id="1" data-tariff-name="${name}" data-tariff-sell-price="${price}" data-tariff-sell-currency="RON">`
+      + `<span>${name}</span>${note ? `<p class="text-danger">${note}</p>` : ''}</div>`
+    const page = (rows) => ({ body: '<script type="application/ld+json">/*<![CDATA[*/'
+      + JSON.stringify({ '@type': 'Event', startDate: '2026-09-04T18:00', url: 'https://www.iabilet.ro/bilete-x-1/' })
+      + '/*]]>*/</script>' + rows.join('') })
+
+    const both = iabilet.parse([page([
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret intreg', '30', 'Mai sunt doar 3 bilete disponibile'),
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret redus', '20', 'Mai sunt doar 3 bilete disponibile'),
+    ])], { venue })
+    expect(both).toHaveLength(1)
+    // One pool counted twice, not six tickets: the largest notice, never the sum.
+    expect(both[0].seatsLeft).toBe(3)
+
+    const oneQuiet = iabilet.parse([page([
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret intreg', '30', 'Mai sunt doar 3 bilete disponibile'),
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret redus', '20', null),
+    ])], { venue })
+    expect(oneQuiet[0].seatsLeft).toBeNull()
+    expect(oneQuiet[0].ticketState).toBe('open')
+  })
+
+  it('ignores a low-stock line on a sold-out tier, and on the weekend pass', () => {
+    // A sold-out tier is not an open tariff, so it neither demands a notice nor
+    // contributes one. The Abonament row carries a real notice in the live
+    // fixture and is dropped before any of this, being a pass and not a showing.
+    const events = iabilet.parse([{ body: fixture('iabilet-bundle-hyphen.html') }], { venue })
+    expect(fixture('iabilet-bundle-hyphen.html')).toContain('Mai sunt doar 2 bilete disponibile')
+    expect(events.every((e) => !/abonament/i.test(e.title))).toBe(true)
+    expect(events.every((e) => e.seatsLeft === null)).toBe(true)
+  })
+
   it('reads the showings out of one bundle page, dropping the weekend pass', () => {
     const events = iabilet.parse([bundlePage], { venue })
     // 4 showings in the fixture (Chungking Express, Parasite, Memories of
@@ -879,6 +924,22 @@ describe('mystage (Teatrul Unteatru today — any mystage.ro venue the same way)
     expect(events.find((e) => e.title === 'Masacrul').ticketState).toBe('open')
     // Zero seats WITH a real price is what actually sold out looks like.
     expect(events.find((e) => e.title === 'Constructed Sold Out Example').ticketState).toBe('sold-out')
+  })
+
+  it('reports the seats its own map has been carrying all along (§9.73)', () => {
+    // The same map §9.47 read for ticket state carries `total` beside
+    // `available`, per category — 8 of 80 for Masacrul. mystage IS Unteatru's
+    // box office, so that map is the house.
+    expect(events.find((e) => e.title === 'Masacrul')).toMatchObject({ seatsLeft: 8, seatsTotal: 80 })
+  })
+
+  it('counts only categories a buyer can choose, and never counts a closed house', () => {
+    // MASS's one category has no price — the not-on-sale allocation §9.47
+    // found, and not an empty house: null, not zero.
+    expect(events.find((e) => e.title === 'MASS')).toMatchObject({ seatsLeft: null, seatsTotal: null })
+    // A sold-out showing is already fully described by its state, the same
+    // rule every other reader follows.
+    expect(events.find((e) => e.title === 'Constructed Sold Out Example')).toMatchObject({ seatsLeft: null, seatsTotal: null })
   })
 
   it('never reports a price of 0 as a real price', () => {

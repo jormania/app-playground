@@ -21,6 +21,12 @@
 // A showing sells out per PRICE TIER, not per showing — "Stoc epuizat" can mark
 // the discounted tariff while the full-price one is still open. The showing
 // itself only reads as sold out once every one of its tariffs says so.
+//
+// **iabilet also counts the last few out loud** (§9.73). A tariff running low
+// carries its own line — "Mai sunt doar 4 bilete disponibile" — in the same
+// markup this reader already has in hand, so a seat count here costs no extra
+// request at all. It is a scarcity notice and not an inventory: silence means
+// "more than iabilet bothers to warn about", never a number.
 
 import { TICKET, makeEvent, monthNumber, inferYear, parseTime, textOf } from './shared.js'
 
@@ -32,6 +38,43 @@ const EVENT_LD = /<script type="application\/ld\+json">\s*\/\*<!\[CDATA\[\*\/([\
 const TARIFF = /data-is-tariff="1"[^>]*data-tariff-name="([^"]+)"[^>]*data-tariff-sell-price="([^"]*)"[\s\S]{0,8000}?(?=data-is-tariff="1"|$)/g
 
 const MAX_BUNDLES = 12
+
+/** "Mai sunt doar 4 bilete disponibile" / "Mai este doar 1 bilet disponibil" —
+ *  iabilet's own low-stock line on a tariff row, singular and plural. */
+const SEATS_NOTE = /Mai\s+(?:este|sunt)\s+doar\s+(\d+)\s+bilet/i
+
+/** The number iabilet is warning about on one tariff row, or null when it is
+ *  not warning at all. Exported for its own test: this is the whole of the
+ *  reader's seat knowledge, and it is one regex against someone else's
+ *  wording. */
+export function seatsNote(chunk) {
+  const m = SEATS_NOTE.exec(String(chunk ?? ''))
+  if (!m) return null
+  const n = Number(m[1])
+  return Number.isInteger(n) && n >= 0 ? n : null
+}
+
+/**
+ * One showing's remaining tickets, from the notices on its own tariff rows.
+ *
+ * Two rules, both about refusing to answer:
+ *
+ * 1. **Every tariff still on sale must carry a notice.** One silent tariff
+ *    means iabilet has more of that tier than it warns about, which says
+ *    nothing about how many — so the showing's count is unknown, not the sum of
+ *    the loud ones.
+ * 2. **The largest notice wins, never the sum.** Where two tariffs of one
+ *    showing both run low they print the SAME number (the weekend pass at
+ *    Cinema Europa said "4" on its full-price and reduced rows alike), which is
+ *    one pool counted twice. Adding them would invent tickets. Taking the
+ *    largest is the reading that holds either way: if the tiers really did have
+ *    separate allocations it under-counts, and this label exists to warn rather
+ *    than to reassure.
+ */
+function seatsForShowing(notes, openTariffs) {
+  if (openTariffs === 0 || notes.length !== openTariffs) return null
+  return Math.max(...notes)
+}
 
 function parseLdBlocks(html) {
   const out = []
@@ -105,9 +148,14 @@ export default {
         const key = `${date}T${parsed.time}:${parsed.title.toLowerCase()}`
         const soldOut = /Stoc epuizat/i.test(chunk)
         const price = Number(priceRaw)
-        const group = groups.get(key) ?? { date, time: parsed.time, title: parsed.title, prices: [], anyOpen: false }
+        const group = groups.get(key) ?? { date, time: parsed.time, title: parsed.title, prices: [], anyOpen: false, openTariffs: 0, notes: [] }
         if (!soldOut && Number.isFinite(price)) group.prices.push(price)
-        if (!soldOut) group.anyOpen = true
+        if (!soldOut) {
+          group.anyOpen = true
+          group.openTariffs++
+          const left = seatsNote(chunk)
+          if (left != null) group.notes.push(left)
+        }
         groups.set(key, group)
       }
 
@@ -122,6 +170,11 @@ export default {
           ticketsUrl: bundle?.url ?? null,
           image: bundle?.image ?? null,
           price: g.prices.length ? Math.min(...g.prices) : null,
+          // No `seatsTotal`: iabilet says how few are left, never how big the
+          // room was, so the card's scarcity test falls back to the absolute
+          // one — which is the right reading for a notice the site only prints
+          // when the number is already small.
+          seatsLeft: g.anyOpen ? seatsForShowing(g.notes, g.openTariffs) : null,
         }))
       }
     }

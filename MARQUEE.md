@@ -3002,6 +3002,75 @@ is scarce enough to wear the warning colour, which is itself the honest answer
 — and the scarce path is pinned by its own tests rather than by waiting for a
 concert to sell out.
 
+### 9.73 Seat counts everywhere the source actually has them (2026-09-12)
+
+Asked after Filarmonica started counting: can the other venues do the same?
+Every ticketing source behind an active venue was checked live rather than
+guessed at. Two could, one of them without a single extra request, and two
+could not for reasons worth writing down so nobody re-derives them.
+
+| Source | Venues | Seat count? |
+|---|---|---|
+| **mystage.ro** | Teatrul Unteatru | **Yes — it was already in hand.** `seating[].available` AND `seating[].total`, per category, in the `__NEXT_DATA__` this reader has parsed since §9.20 |
+| **iabilet.ro** | Cinema Europa | **Yes, as a warning.** A low-stock line on the tariff row: "Mai sunt doar 4 bilete disponibile" |
+| **bilet.ro** | Teatrul Național | **No.** Every TNB event sits behind a Queue-it waiting room; reading availability would mean getting past a queue, which this app will not do |
+| **bilete.teatrulmetropolis.ro** | Teatrul Metropolis | **No.** Its own API (`/api/shop/shows`) answers 400 to anything without a session of its own |
+| eventbook.ro, tickets.expirat.org, teatrul-odeon.ro | the cinemas, Expirat, Odeon | **No.** Nothing in the pages this app fetches, and eventbook's `/performance/<id>/seats` returned an empty array for every screening checked |
+
+**mystage was the quiet one: the count had been sitting in the parse since
+§9.47.** That section read the seating map to fix ticket state — `isAvailable`
+being useless — and summed `available` to decide open vs sold out. The number
+it summed was never reported. So this is four lines, and the interesting work is
+in what gets counted:
+
+- **Only categories with a price of their own.** A priceless category is the
+  same not-on-sale allocation §9.47 caught reading `true` with nothing behind
+  it; counting its seats would report a house fuller or emptier than the one
+  being sold. MASS, still in the fixture, is that case: 64 seats, no price,
+  `seatsLeft: null` — not on sale, not an empty house.
+- **`mystageTicketing` is now the only copy of the rule.** `parse` had its own
+  identical inline version; both readers of that map now go through the helper
+  so they cannot drift on what it means.
+- **Metropolis gets no count from it, deliberately** — and this is the same
+  asymmetry §9.62 settled for ticket state. mystage sells two Metropolis
+  co-productions, but nothing establishes that its allocation is the whole
+  room, so "12 left" there could mean twelve of mystage's twelve with a hundred
+  unsold at the theatre's own box office. Unteatru is different in the one way
+  that matters: mystage IS its box office, so the map is the house.
+
+**iabilet is a warning, not an inventory**, and the reader says only what the
+site says. The line appears on a tariff row when stock runs low; silence means
+"more than iabilet bothers to warn about", which is not a number. Two rules
+keep that honest:
+
+- **Every open tariff must carry a line**, or the showing stays uncounted. One
+  silent tier says nothing about how many it has.
+- **The largest line wins, never the sum.** Where two tariffs of one showing
+  both run low they print the SAME number — Cinema Europa's weekend pass said
+  "4" on its full-price and reduced rows alike, one pool counted twice — and
+  adding them would invent tickets. If the tiers really did hold separate
+  allocations the maximum under-counts, which is the tolerable direction for a
+  label that exists to warn rather than to reassure.
+
+No `seatsTotal` from iabilet: it says how few are left and never how big the
+room was, so the card falls back to the absolute scarcity test — right for a
+notice printed only when the number is already small.
+
+**Verified live.** Unteatru through `scanVenue`: ten showings, seven counted
+(`16/80` for Bug, `17/80` for Domnișoara Iulia, `53/80` for the concert), and
+the three mystage is not yet selling correctly uncounted. Cinema Europa: 19
+screenings, none low enough today for iabilet to warn — a clean zero, which is
+the honest reading and not a broken parser. The notice parser itself was run
+against a live iabilet row fetched the same evening ("Premium", 8 left) and
+against the one already sitting unnoticed in the saved bundle fixture ("Mai
+sunt doar 2 bilete disponibile", on a weekend pass this reader drops).
+
+**What this leaves.** Counts now come from four venues by three different
+routes — Excelsior's own ticketing (§9.68), Filarmonica's seats.io chart
+(§9.71), Unteatru's embedded map, Cinema Europa's low-stock line — and every
+one of them lands in the same `seatsLeft`/`seatsTotal` pair, so the card, the
+tile, the change strip and the notification needed no work at all.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
