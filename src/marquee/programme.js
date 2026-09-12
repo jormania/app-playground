@@ -143,6 +143,13 @@ export function toProductions(events) {
     p.seatsLeft = open.length > 0 && open.every((s) => typeof s.seatsLeft === 'number')
       ? open.reduce((n, s) => n + s.seatsLeft, 0)
       : null
+    // The hall behind that number, summed the same way and under the same
+    // all-or-nothing rule — a run whose nights are counted against different
+    // hall sizes still adds up, and one night missing a total makes the
+    // proportion a guess rather than a smaller number.
+    p.seatsTotal = p.seatsLeft != null && open.every((s) => typeof s.seatsTotal === 'number')
+      ? open.reduce((n, s) => n + s.seatsTotal, 0)
+      : null
   }
   return out.sort((a, b) => String(a.firstDate).localeCompare(String(b.firstDate)) || a.title.localeCompare(b.title, 'ro'))
 }

@@ -2938,6 +2938,70 @@ by design. Every one of those failures lands on `seatsLeft: null` and a
 showing that reads exactly as it did before any of this — the same defence
 `enrich` has had since §9.68.
 
+### 9.72 A count you have is worth printing (2026-09-12)
+
+Reported the evening §9.71 shipped: sold-out concerts were marked, and no card
+showed a seat count. The natural reading is that the counts came back null in
+production — and the natural reading is wrong in an instructive way. **A
+sold-out mark can only come FROM a completed count** (`oveit.js` sets it when
+free is zero), so the very thing that looked like the feature half-working was
+proof the whole chain ran. A re-scan confirmed it: every concert inside the
+horizon carried a number, and one had moved by two seats since the morning.
+
+What swallowed them was `SEATS_SCARCE = 10` in `format.js`. `formatSeatsLeft`
+returned **null above ten**, and every caller treats null as "nothing to say",
+so a 736-seat hall with 184 seats left rendered the plain `tickets` chip — the
+app knew exactly how full the Ateneu was and said nothing.
+
+That threshold was not a mistake, it was a rule that aged. Written for §9.68,
+when Excelsior's studio was the only house being counted, its reasoning was
+sound: *"175 seats left" tells you nothing you wouldn't assume from the buy
+button.* True of a theatre with ten shows and a 36-seat studio. False the moment
+a second venue counted a hall where **every** night sits above the line, since
+the alternative to a big number there is not a smaller number, it is silence.
+
+**So the threshold stopped deciding whether the count appears and started
+deciding how it looks.**
+
+- `formatSeatsLeft` returns a label for any count it is given, and null only
+  for an unknown one. The card prints what the reader measured.
+- `seatsAreScarce(free, total)` is the new warning test, and it is two tests:
+  ten or fewer absolutely, **or** a seventh (15%) of the seats that were on
+  sale. Ten is generous for a studio and stingy for the Ateneu, which is why a
+  share sits beside it — 40 left in the big hall is 5% of the room and means
+  what 6 left means in a studio. Either is enough.
+- The chip carries `chip--seats` (outlined, like the `tickets` chip it replaces
+  and whose claim it strictly extends) or `chip--scarce` (filled warning, as
+  before). The tile band works the same way.
+- `seatsTotal` rides alongside `seatsLeft` from `makeEvent` through
+  `toProductions` (summed under the same all-or-nothing rule) so the share is
+  computable at all. It is null wherever the count is, and null wherever the
+  reader counted what is left without counting the hall — Excelsior, which
+  keeps the absolute test alone and behaves exactly as it did.
+
+**Notifications deliberately did NOT follow.** A card is read on purpose; a
+push notification is read in passing, and "Bach 2.0 — tickets on sale, 581
+seats left" is the line that teaches you to swipe them away. `notify.js` and
+the service worker's ES5 mirror both name a count only when it is scarce, now
+by the same two-part test — `notify.sw.test.js` runs both sides against the
+same cases, including the share one, so they cannot drift.
+
+**The horizon moved too, for a reason worth naming.** §9.71 only looked 60 days
+ahead, on the same "last tickets is about a night you could still go to"
+reasoning. Once every card prints its count, a 60-day cut leaves one concert in
+the middle of a season with no number and no explanation, which reads as a bug
+rather than as a saving. It now matches the programme's own 120-day horizon,
+and `MAX_SEAT_LOOKUPS` — 24, soonest first, so the cap drops the far end of the
+season — is what actually bounds the hop.
+
+**Verified live**, the whole way through `scanVenue` and `toProductions` to the
+label each card would render: 19 concerts, 18 counted (`490 of 736`,
+`184 of 754`, `76 of 78`), the 29 September recital sold out, and the November
+one that used to fall off the horizon now counted with the rest. Nothing today
+is scarce enough to wear the warning colour, which is itself the honest answer
+— and the scarce path is pinned by its own tests rather than by waiting for a
+concert to sell out.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

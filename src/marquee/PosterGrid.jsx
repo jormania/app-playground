@@ -1,7 +1,7 @@
 import { Poster } from './Poster.jsx'
 import { TRIAGE, domIdFor, primaryChangeKind, domIdForDay } from './programme.js'
 import { CHANGE_LABEL } from './changes.js'
-import { formatDay, formatRun, formatSeatsLeft } from './format.js'
+import { formatDay, formatRun, formatSeatsLeft, formatSeatsOf, seatsAreScarce } from './format.js'
 
 /** One production as a cover, not a row.
  *
@@ -61,12 +61,16 @@ function PosterTile({ production, triage, changedKeys = new Map(), onKeep, onIgn
             corner, not another chip lost among the others. */}
         {soldOut && <span className="poster-tile__soldout">Sold out</span>}
         {/* The tile's band says the same thing the list card's chip does, in
-            the space it has: a scarce count where there is one (§9.68), the
-            plain "Tickets" otherwise. */}
+            the space it has: the count where the reader has one (§9.68, §9.72),
+            the plain "Tickets" otherwise — and the warning colour only when
+            that count is scarce against its own hall. */}
         {!soldOut && production.anyOpen && (
           formatSeatsLeft(production.seatsLeft, { short: true })
             ? (
-              <span className="poster-tile__tickets poster-tile__tickets--scarce" title={formatSeatsLeft(production.seatsLeft)}>
+              <span
+                className={`poster-tile__tickets ${seatsAreScarce(production.seatsLeft, production.seatsTotal) ? 'poster-tile__tickets--scarce' : ''}`}
+                title={formatSeatsOf(production.seatsLeft, production.seatsTotal)}
+              >
                 {formatSeatsLeft(production.seatsLeft, { short: true })}
               </span>
             )

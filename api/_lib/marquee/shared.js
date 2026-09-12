@@ -250,7 +250,7 @@ export function digest(text) {
  *  is what decides whether it is an event at all. A row without a title or a date
  *  is dropped — those two are the identity, and a half-row would diff as a new
  *  event every single scan. */
-export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null, seatsLeft = null, productionKey = null }) {
+export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null, seatsLeft = null, seatsTotal = null, productionKey = null }) {
   const cleanTitle = textOf(title)
   if (!cleanTitle || !date) return null
   // A hall that just repeats the venue is noise: Expirat's JSON-LD names its
@@ -293,6 +293,11 @@ export function makeEvent({ venue, title, date, time = null, hall = null, link =
     // quantity unknown — never "plenty". Only ever set for a showing that IS
     // open; a sold-out one is already fully described by its state.
     seatsLeft: Number.isInteger(seatsLeft) && seatsLeft >= 0 ? seatsLeft : null,
+    // How many seats were on sale in the first place, where the reader counted
+    // the hall rather than only what is left of it. It is what turns a count
+    // into a proportion — 60 left is a warning in a small hall and an ordinary
+    // Tuesday in the Ateneu — and it is null wherever `seatsLeft` is.
+    seatsTotal: Number.isInteger(seatsTotal) && seatsTotal > 0 && Number.isInteger(seatsLeft) ? seatsTotal : null,
     // What this showing belongs to, when the venue's title doesn't say (see
     // `digest` above). Null everywhere else, and null means "group by title"
     // — the behaviour every other venue has always had.

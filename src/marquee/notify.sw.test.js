@@ -83,8 +83,17 @@ describe('service worker mirrors notify.js', () => {
     expect(swNotifyBody(many)).toBe(notifyBody(many))
 
     // §9.68: the seat count qualifies the label on both sides, or on neither.
+    // §9.72: "scarce" now also means a small share of a big hall, and a
+    // notification still names only the scarce ones — the card is the place
+    // that prints every count.
     const scarce = [{ kind: 'tickets-opened', title: 'Familia Addams', venue: 'Excelsior', seatsLeft: 1 }]
     const plenty = [{ kind: 'tickets-opened', title: 'Familia Addams', venue: 'Excelsior', seatsLeft: 140 }]
+    const share = [{ kind: 'tickets-opened', title: 'Recital cameral', venue: 'Filarmonica', seatsLeft: 40, seatsTotal: 736 }]
+    const roomy = [{ kind: 'tickets-opened', title: 'Recital cameral', venue: 'Filarmonica', seatsLeft: 400, seatsTotal: 736 }]
+    expect(swNotifyBody(share)).toBe(notifyBody(share))
+    expect(swNotifyBody(share)).toContain('40 seats left')
+    expect(swNotifyBody(roomy)).toBe(notifyBody(roomy))
+    expect(swNotifyBody(roomy)).not.toContain('left')
     expect(swNotifyBody(scarce)).toBe(notifyBody(scarce))
     expect(swNotifyBody(scarce)).toContain('1 seat left')
     expect(swNotifyBody(plenty)).toBe(notifyBody(plenty))

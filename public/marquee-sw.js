@@ -89,7 +89,7 @@ function notifiableChanges(beforeMap, events, kinds) {
   var out = [];
   events.forEach(function (e) {
     var kind = kindFor(beforeMap ? beforeMap[e.key] : undefined, e);
-    if (kind && allow[kind]) out.push({ kind: kind, key: e.key, title: e.title, venue: e.venue, seatsLeft: e.seatsLeft == null ? null : e.seatsLeft });
+    if (kind && allow[kind]) out.push({ kind: kind, key: e.key, title: e.title, venue: e.venue, seatsLeft: e.seatsLeft == null ? null : e.seatsLeft, seatsTotal: e.seatsTotal == null ? null : e.seatsTotal });
   });
   return out;
 }
@@ -104,19 +104,23 @@ function notifyTitle(changes) {
     : ('Marquee: ' + changes.length + ' changes at your venues');
 }
 
-// The worker's copy of src/marquee/format.js's formatSeatsLeft (§9.68) —
-// same rule, same words, ES5. notify.sw.test.js runs both against the same
-// cases, so the two cannot drift apart unnoticed.
-function seatsNote(count) {
+// The worker's copy of src/marquee/notify.js's own seat note (§9.68, §9.72) —
+// same rule, same words, ES5. A notification names a count only when it is
+// SCARCE, which since §9.72 is no longer the same test as whether the card
+// prints one: ten seats absolute, or a seventh of the hall where the reader
+// counted the hall. notify.sw.test.js runs both against the same cases, so the
+// two cannot drift apart unnoticed.
+function seatsNote(count, total) {
   if (typeof count !== 'number' || !isFinite(count) || count < 0) return null;
-  if (count > 10) return null;
+  var scarce = count <= 10 || (typeof total === 'number' && total > 0 && count / total <= 0.15);
+  if (!scarce) return null;
   if (count === 0) return 'none left';
   return count + ' seat' + (count === 1 ? '' : 's') + ' left';
 }
 
 function notifyBody(changes) {
   var lines = changes.slice(0, 3).map(function (c) {
-    var note = seatsNote(c.seatsLeft);
+    var note = seatsNote(c.seatsLeft, c.seatsTotal);
     return c.title + ' — ' + (note ? LABEL[c.kind] + ', ' + note : LABEL[c.kind]) + ' (' + c.venue + ')';
   });
   if (changes.length > 3) lines.push('+' + (changes.length - 3) + ' more');

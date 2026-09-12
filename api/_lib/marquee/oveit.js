@@ -86,11 +86,15 @@ function posterKey(row) {
   return cover ? digest(`${row?.name ?? ''}|${cover}`) : null
 }
 
-// How far ahead a seat count is worth a pair of requests. "Last tickets" is a
-// fact about a night you could still go to; for a concert next spring it is
-// noise that costs the same two requests as the useful one. Filarmonica's own
-// season sits almost entirely inside this.
-const SEAT_HORIZON_DAYS = 60
+// How far ahead a seat count is worth a pair of requests. This was 60 days when
+// a count only ever surfaced as a scarcity warning, on the reasoning that
+// "last tickets" is a fact about a night you could still go to. Now that the
+// card prints every count (§9.72), a horizon shorter than the scan's own leaves
+// one concert in the middle of a season with no number and no explanation,
+// which reads as a bug rather than as a saving. So it matches the standard
+// programme horizon, and MAX_SEAT_LOOKUPS below — not the calendar — is what
+// actually bounds the hop.
+const SEAT_HORIZON_DAYS = 120
 // And a hard ceiling on the whole hop, the same reasoning (and the same number)
 // as excelsior.js's: a site change must not be able to turn one venue into a
 // hundred requests, because this runs inside Wanderlist's evening cron too.
@@ -117,7 +121,9 @@ function buyableCategories(row) {
   )
 }
 
-/** Listing rows worth counting seats for, soonest first and capped. */
+/** Listing rows worth counting seats for, soonest first and capped. Soonest
+ *  first matters at the cap: what gets dropped is the far end of the season,
+ *  which is the part nobody is deciding about today. */
 function seatCandidates(pages, now) {
   const horizon = new Date(now.getTime() + SEAT_HORIZON_DAYS * 86400000).toISOString()
   const out = []
@@ -269,6 +275,7 @@ export default {
           // fully described by its state, and `makeEvent` would drop a zero here
           // anyway. `null` when the chain didn't complete: unknown, not plenty.
           seatsLeft: soldOut ? null : counted?.free ?? null,
+          seatsTotal: soldOut ? null : counted?.total ?? null,
         }))
       }
     }

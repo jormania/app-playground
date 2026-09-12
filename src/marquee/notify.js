@@ -19,7 +19,7 @@ import {
   unregisterPeriodicSync as sharedUnregisterPeriodicSync,
 } from '../shared/notify/periodicSync'
 import { scanPayload } from './programme.js'
-import { formatSeatsLeft } from './format.js'
+import { formatSeatsLeft, seatsAreScarce } from './format.js'
 
 export const REMINDERS_DB = 'marquee-reminders'
 export const REMINDERS_STORE = 'kv'
@@ -127,7 +127,7 @@ export function notifiableChanges(beforeMap, events, kinds) {
   const out = []
   for (const e of events ?? []) {
     const kind = kindFor(beforeMap?.[e.key], e)
-    if (kind && allow.has(kind)) out.push({ kind, key: e.key, title: e.title, venue: e.venue, seatsLeft: e.seatsLeft ?? null })
+    if (kind && allow.has(kind)) out.push({ kind, key: e.key, title: e.title, venue: e.venue, seatsLeft: e.seatsLeft ?? null, seatsTotal: e.seatsTotal ?? null })
   }
   return out
 }
@@ -204,7 +204,10 @@ export function notifyTitle(changes) {
  *  ten seconds" applies here even more than inside the app itself. */
 export function notifyBody(changes) {
   const lines = changes.slice(0, 3).map((c) => {
-    const note = formatSeatsLeft(c.seatsLeft)
+    // Scarce counts ONLY, unlike the card (§9.72): a card is read on purpose
+    // and a notification is read in passing, so "581 seats left" is the kind of
+    // line that teaches you to swipe these away.
+    const note = seatsAreScarce(c.seatsLeft, c.seatsTotal) ? formatSeatsLeft(c.seatsLeft) : null
     return `${c.title} — ${note ? `${LABEL[c.kind]}, ${note}` : LABEL[c.kind]} (${c.venue})`
   })
   if (changes.length > 3) lines.push(`+${changes.length - 3} more`)

@@ -152,6 +152,9 @@ describe('oveit’s seat-count hop', () => {
   })
 
   it('does not look past the horizon or past the cap', () => {
+    // The horizon matches the programme's own (120 days), so a concert in the
+    // middle of a season never sits there with no number; what bounds the hop
+    // in practice is the cap below.
     const far = new Date('2026-01-01T00:00:00Z')
     expect(oveit.enrich([listingPage], { venue, now: far })).toEqual([])
     const many = { json: { events: Array.from({ length: 40 }, (_, i) => ({
