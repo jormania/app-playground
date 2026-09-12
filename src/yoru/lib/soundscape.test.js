@@ -14,6 +14,8 @@ import {
   loudnessLiftDb,
   LOUDNESS_MAX_DB,
   distanceSend,
+  RAIN_DRIFT,
+  rainWashSwingDb,
 } from './soundscape'
 
 // Yoru's eight blendable layers (it keeps `drone`, unlike Touch Grass).
@@ -694,5 +696,32 @@ describe('a throttled tick', () => {
     // one lookahead's worth (~1.2s at ~10/s), not a minute's worth (~600)
     expect(scheduled).toBeLessThan(60)
     expect(scheduled).toBeGreaterThan(0) // still running, just not catching up
+  })
+})
+
+describe("rain's weather depths", () => {
+  // Rain is the masker the whole night leans on, and its two drifts each move
+  // three things at once — the wash's gain, the wash's top end, and how fast
+  // the droplets fall. Depths that look modest one at a time COMPOUND: at
+  // 0.34 / 900Hz / 0.5 the wash swung 15dB over a ~78s cycle and read as the
+  // rain stopping and restarting. The point of this test is that the number
+  // that matters is the combined one, which no single constant shows.
+  it('breathes without disappearing', () => {
+    const swing = rainWashSwingDb()
+    expect(swing).toBeLessThan(0) // the trough is quieter than the crest
+    expect(Math.abs(swing)).toBeGreaterThan(2) // ...but it does still move
+    expect(Math.abs(swing)).toBeLessThan(8) // ...and never enough to read as a stop
+  })
+
+  it('keeps the droplet rate inside a gentle range', () => {
+    const d = RAIN_DRIFT
+    const range = (1 + d.dropWeather + d.dropShower) / (1 - d.dropWeather - d.dropShower)
+    expect(range).toBeLessThan(3)
+  })
+
+  it('never lets the trough invert the wash or close its band', () => {
+    const d = RAIN_DRIFT
+    expect(d.gainWeather + d.gainShower).toBeLessThan(1) // gain can't go negative
+    expect(d.lpBase - d.lpWeather - d.lpShower).toBeGreaterThan(d.hpBase) // band can't close
   })
 })

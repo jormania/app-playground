@@ -180,6 +180,39 @@ export const loudnessLiftDb = (v) => LOUDNESS_MAX_DB * (1 - 0.75 * clamp01(v))
 // they are already the quiet ones.
 export const distanceSend = (b) => Math.min(2.2, 1 + 1.3 * Math.pow(1 - clamp01(b), 1.2))
 
+// ── Rain's weather depths ───────────────────────────────────────────────────
+// Rain's two drifts each drive THREE things: the wash's gain, the wash's top
+// end, and how fast the droplets fall. Depths that look modest one at a time
+// compound badly — at 0.34 / 900Hz / 0.5 the wash swung 15dB over a ~78s cycle,
+// because at the trough it was quieter AND darker AND sparser together. That
+// does not read as weather. It reads as the rain stopping and starting again,
+// and it is the worst thing this layer can do, since Rain is the masker the
+// whole night leans on.
+//
+// So the depths are stated together rather than scattered through buildRain,
+// and a test holds the combined swing to something that breathes without
+// disappearing.
+export const RAIN_DRIFT = {
+  hpBase: 1150,
+  lpBase: 4500,
+  gainWeather: 0.1,
+  gainShower: 0.12,
+  lpWeather: 300,
+  lpShower: 350,
+  dropWeather: 0.18,
+  dropShower: 0.22,
+}
+
+// The wash's crest-to-trough swing in dB, counting BOTH what the drifts do to
+// its gain and what they do to its bandwidth. Negative: the trough is quieter.
+export function rainWashSwingDb(d = RAIN_DRIFT) {
+  const gainCrest = 1 + d.gainWeather + d.gainShower
+  const gainTrough = 1 - d.gainWeather - d.gainShower
+  const bwCrest = d.lpBase + d.lpWeather + d.lpShower - d.hpBase
+  const bwTrough = d.lpBase - d.lpWeather - d.lpShower - d.hpBase
+  return 20 * Math.log10((gainTrough / gainCrest) * Math.sqrt(bwTrough / bwCrest))
+}
+
 const EBB_START = 0.65
 const FADE_IN_SEC = 5
 
@@ -687,10 +720,10 @@ export function createNightSoundscape() {
     // Together that puts them a couple of dB OVER the wash instead of under it.
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
-    hp.frequency.value = 1150
+    hp.frequency.value = RAIN_DRIFT.hpBase
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
-    lp.frequency.value = 4500
+    lp.frequency.value = RAIN_DRIFT.lpBase
     const g = ctx.createGain()
     const base = 0.055 * level
     g.gain.value = base
@@ -699,12 +732,12 @@ export function createNightSoundscape() {
     lp.connect(g)
     g.connect(dest)
     if (weather) {
-      link(weather, g.gain, base * 0.2)
-      link(weather, lp.frequency, 700)
+      link(weather, g.gain, base * RAIN_DRIFT.gainWeather)
+      link(weather, lp.frequency, RAIN_DRIFT.lpWeather)
     }
     if (shower) {
-      link(shower, g.gain, base * 0.34)
-      link(shower, lp.frequency, 900)
+      link(shower, g.gain, base * RAIN_DRIFT.gainShower)
+      link(shower, lp.frequency, RAIN_DRIFT.lpShower)
     }
 
     let nextAt = ctx.currentTime + 0.6
@@ -715,7 +748,11 @@ export function createNightSoundscape() {
       while (nextAt < ahead) {
         const when = nextAt
         // how hard it is raining at that moment, 0.5 (a lull) .. 1.9 (a squall)
-        const heavier = clamp(1 + 0.3 * driftValue(weather, when) + 0.5 * driftValue(shower, when), 0.5, 1.9)
+        const heavier = clamp(
+          1 + RAIN_DRIFT.dropWeather * driftValue(weather, when) + RAIN_DRIFT.dropShower * driftValue(shower, when),
+          0.6,
+          1.5,
+        )
         const src = ctx.createBufferSource()
         src.buffer = white
         const bp = ctx.createBiquadFilter()
@@ -1402,7 +1439,7 @@ export function createNightSoundscape() {
     // and lull of the rain itself. Both are made only when something reads them.
     const needsWeather = p.wind > 0 || p.leaves > 0 || p.rain > 0
     const weather = needsWeather ? createDrift(0.045 * p.pace) : null
-    const shower = p.rain > 0 ? createDrift(0.006 * p.pace) : null
+    const shower = p.rain > 0 ? createDrift(0.003 * p.pace) : null
     // the slow grouping of swell into sets
     const swellSets = p.waves > 0 ? createDrift(0.005 * p.pace) : null
     timers.push(setInterval(tick, 1000))
