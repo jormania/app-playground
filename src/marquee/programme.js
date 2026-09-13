@@ -132,24 +132,33 @@ export function toProductions(events) {
     // strength of one gratis night among paid ones.
     const priced = p.showings.map((s) => s.price).filter((v) => v != null)
     p.free = priced.length > 0 && priced.every((v) => v === 0)
-    // Seats left across the run, and only where every buyable night actually
-    // reported a number (§9.68). One unknown night makes the total a lie in
-    // the one direction that matters — it would under-report, and this label
-    // exists to warn, never to reassure — so the whole thing goes null
-    // instead. A production with nothing on sale has no count, not zero:
-    // zero here would claim a sold-out house we did not measure.
+    // The TIGHTEST night still on sale — not a total across the run (§9.74).
+    //
+    // This was a sum, and a sum is the one arithmetic nobody can use: 119 seats
+    // across two nights of "Două ore cu pauză" was 9 on the Sunday and 110 in
+    // October, and you cannot buy a seat spread over both. Worse, it buried the
+    // only urgent thing on the card — 119 reads roomy, and one of those nights
+    // was nearly gone. The minimum says something you can act on, about a night
+    // you can name.
+    //
+    // No all-or-nothing rule either, and that is the other thing the sum forced:
+    // a total needs every night counted or it under-reports, while "9 left on
+    // Sunday" is true whatever the reader knows about the other nights. Nights
+    // without a count simply don't compete for tightest.
     const open = p.showings.filter((s) => s.ticketState === 'open')
     p.openCount = open.length
-    p.seatsLeft = open.length > 0 && open.every((s) => typeof s.seatsLeft === 'number')
-      ? open.reduce((n, s) => n + s.seatsLeft, 0)
+    const counted = open.filter((s) => typeof s.seatsLeft === 'number')
+    const tightest = counted.length
+      ? counted.reduce((worst, s) => (s.seatsLeft < worst.seatsLeft ? s : worst))
       : null
-    // The hall behind that number, summed the same way and under the same
-    // all-or-nothing rule — a run whose nights are counted against different
-    // hall sizes still adds up, and one night missing a total makes the
-    // proportion a guess rather than a smaller number.
-    p.seatsTotal = p.seatsLeft != null && open.every((s) => typeof s.seatsTotal === 'number')
-      ? open.reduce((n, s) => n + s.seatsTotal, 0)
-      : null
+    p.seatsLeft = tightest ? tightest.seatsLeft : null
+    // That night's own hall, so the share is measured against the room the
+    // number came out of rather than against a fleet of rooms added together.
+    p.seatsTotal = typeof tightest?.seatsTotal === 'number' ? tightest.seatsTotal : null
+    // Which night it is, so a card with several can say so instead of implying
+    // the whole run is nearly gone.
+    p.seatsDate = tightest ? tightest.date : null
+    p.seatsCounted = counted.length
   }
   return out.sort((a, b) => String(a.firstDate).localeCompare(String(b.firstDate)) || a.title.localeCompare(b.title, 'ro'))
 }

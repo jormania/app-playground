@@ -1110,7 +1110,12 @@ button { color: inherit; font: inherit; }
 /* Rides along inside the date button rather than beside it — the run of dates
    is already a wrapping row, and a second element per date would break its
    rhythm for a two-word aside. */
-.date__seats { color: var(--color-warning); font-weight: 600; }
+/* Every counted night carries its number since §9.72, so the warning colour had
+   to stop being the only way one is drawn: "9 left" and "110 left" in the same
+   amber made a run look uniformly urgent (§9.74). Plain by default, and the
+   colour kept for the night that has earned it. */
+.date__seats { color: var(--color-faint); }
+.date__seats--scarce { color: var(--color-warning); font-weight: 600; }
 .date--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
 .date--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }
 .date--changed-new-event { border-color: var(--color-success); color: var(--color-success); font-weight: 600; }

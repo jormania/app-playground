@@ -162,24 +162,34 @@ describe('productions', () => {
     expect(allGone[0].allSoldOut).toBe(true)
   })
 
-  it('totals the seats left across the nights that are actually on sale (§9.68)', () => {
+  it('reports the TIGHTEST night still on sale, never a total (§9.74)', () => {
+    // A sum is the one arithmetic nobody can use — you cannot buy a seat spread
+    // across two nights — and it hid the urgent night behind a roomy-looking
+    // number. The minimum is a statement about one night, and `seatsDate` says
+    // which. A sold-out night is not on sale and does not compete.
     const run = toProductions([
-      event({ key: 'a', title: 'Mickey Mouse', date: '2026-09-10', time: '17:00', ticketState: 'open', seatsLeft: 2 }),
+      event({ key: 'a', title: 'Mickey Mouse', date: '2026-09-10', time: '17:00', ticketState: 'open', seatsLeft: 2, seatsTotal: 100 }),
       event({ key: 'b', title: 'Mickey Mouse', date: '2026-09-10', time: '20:00', ticketState: 'sold-out', seatsLeft: null }),
-      event({ key: 'c', title: 'Mickey Mouse', date: '2026-09-11', time: '17:00', ticketState: 'open', seatsLeft: 3 }),
+      event({ key: 'c', title: 'Mickey Mouse', date: '2026-09-11', time: '17:00', ticketState: 'open', seatsLeft: 3, seatsTotal: 40 }),
     ])
-    expect(run[0].seatsLeft).toBe(5)
+    expect(run[0].seatsLeft).toBe(2)
+    expect(run[0].seatsDate).toBe('2026-09-10')
+    // That night's own hall, not every hall added together.
+    expect(run[0].seatsTotal).toBe(100)
     expect(run[0].openCount).toBe(2)
   })
 
-  it('goes null rather than under-report when one buyable night’s count is missing', () => {
-    // The label exists to warn, never to reassure, so a partial total is the
-    // one wrong answer that matters — it would always be too low.
+  it('still answers when one buyable night was never counted', () => {
+    // The old all-or-nothing rule existed because a partial TOTAL under-reports.
+    // "2 left on the 10th" is true whatever the 11th turns out to hold, so an
+    // uncounted night simply doesn't compete for tightest.
     const run = toProductions([
       event({ key: 'a', title: 'Mickey Mouse', date: '2026-09-10', time: '17:00', ticketState: 'open', seatsLeft: 2 }),
       event({ key: 'c', title: 'Mickey Mouse', date: '2026-09-11', time: '17:00', ticketState: 'open', seatsLeft: null }),
     ])
-    expect(run[0].seatsLeft).toBeNull()
+    expect(run[0].seatsLeft).toBe(2)
+    expect(run[0].seatsDate).toBe('2026-09-10')
+    expect(run[0].seatsCounted).toBe(1)
   })
 
   it('gives a run with nothing on sale no count at all, rather than zero', () => {

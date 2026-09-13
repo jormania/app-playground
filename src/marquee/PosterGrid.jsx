@@ -64,8 +64,13 @@ function PosterTile({ production, triage, changedKeys = new Map(), onKeep, onIgn
             the space it has: the count where the reader has one (§9.68, §9.72),
             the plain "Tickets" otherwise — and the warning colour only when
             that count is scarce against its own hall. */}
+        {/* A tile has no date list to fall back on, so a multi-night run shows
+            its tightest night's number only when that night is scarce (§9.74)
+            — the same rule the card follows, for the same reason: a number
+            that belongs to one night must not read as the run's. */}
         {!soldOut && production.anyOpen && (
           formatSeatsLeft(production.seatsLeft, { short: true })
+            && (production.showings.length === 1 || seatsAreScarce(production.seatsLeft, production.seatsTotal))
             ? (
               <span
                 className={`poster-tile__tickets ${seatsAreScarce(production.seatsLeft, production.seatsTotal) ? 'poster-tile__tickets--scarce' : ''}`}

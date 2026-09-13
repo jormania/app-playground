@@ -260,6 +260,47 @@ describe('Programme — the seat count', () => {
     expect(screen.getByText('tickets')).toBeTruthy()
   })
 
+  it('a run of several nights says nothing at card level unless one is tight (§9.74)', () => {
+    // The reported repeat: "119 seats left" on the card was 9 + 110 from the two
+    // buttons right below it. Every night's number is already there, so the chip
+    // stops adding them up — and a roomy run falls back to the plain "tickets".
+    const days = byDate(toProductions([
+      event({ key: 'a', date: '2026-09-27', time: '19:00', ticketState: 'open', seatsLeft: 110, seatsTotal: 220 }),
+      event({ key: 'b', date: '2026-10-30', time: '19:00', ticketState: 'open', seatsLeft: 119, seatsTotal: 220 }),
+    ]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.queryByText('229 seats left')).toBeNull()
+    expect(screen.getByText('tickets')).toBeTruthy()
+    // Both nights still show their own count on their own button.
+    expect(screen.getByText(/110 left/)).toBeTruthy()
+    expect(screen.getByText(/119 left/)).toBeTruthy()
+  })
+
+  it('names the tight night when there is one, instead of summing the run', () => {
+    const days = byDate(toProductions([
+      event({ key: 'a', date: '2026-09-27', time: '19:00', ticketState: 'open', seatsLeft: 9, seatsTotal: 220 }),
+      event({ key: 'b', date: '2026-10-30', time: '19:00', ticketState: 'open', seatsLeft: 110, seatsTotal: 220 }),
+    ]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={venues} />)
+    const chip = container.querySelector('.chip--scarce')
+    expect(chip.textContent).toMatch(/9 left/)
+    // And says WHICH night, so it doesn't read as the whole run going.
+    expect(chip.textContent).toMatch(/27 Sept/)
+    expect(screen.queryByText('119 seats left')).toBeNull()
+  })
+
+  it('colours the tight night on its own button and leaves the roomy one plain', () => {
+    const days = byDate(toProductions([
+      event({ key: 'a', date: '2026-09-27', time: '19:00', ticketState: 'open', seatsLeft: 9, seatsTotal: 220 }),
+      event({ key: 'b', date: '2026-10-30', time: '19:00', ticketState: 'open', seatsLeft: 110, seatsTotal: 220 }),
+    ]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={venues} />)
+    const marks = [...container.querySelectorAll('.date__seats')]
+    expect(marks).toHaveLength(2)
+    expect(marks[0].className).toContain('date__seats--scarce')
+    expect(marks[1].className).not.toContain('date__seats--scarce')
+  })
+
   it('marks the scarce night itself, not just the run', () => {
     const days = byDate(toProductions([
       event({ key: 'a', date: '2026-09-23', time: '17:00', ticketState: 'open', seatsLeft: 2 }),

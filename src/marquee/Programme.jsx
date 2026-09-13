@@ -17,8 +17,17 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
   const price = formatPrice(production.price)
   // Shown whenever the reader counted (§9.72); how scarce it is decides how it
   // looks, not whether it appears at all.
-  const seatsLabel = formatSeatsLeft(production.seatsLeft)
+  //
+  // On a run with several nights the card says less, not more (§9.74): the
+  // number belongs to ONE night — the tightest — and every night's own count is
+  // already on its own button below, so repeating them added together said
+  // nothing and hid the urgent one. Here the chip speaks only when that night
+  // is genuinely nearly gone, and names it when it does.
   const seatsScarce = seatsAreScarce(production.seatsLeft, production.seatsTotal)
+  const manyDates = production.showings.length > 1
+  const seatsLabel = manyDates
+    ? (seatsScarce ? `${formatSeatsLeft(production.seatsLeft, { short: true })} ${formatDay(production.seatsDate)}` : null)
+    : formatSeatsLeft(production.seatsLeft)
   const savedDates = production.savedDates ?? new Set()
   const changeKind = primaryChangeKind(production, changedKeys)
 
@@ -110,8 +119,8 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
             {!soldOut && production.anyOpen && seatsLabel && (
               <span
                 className={`chip ${seatsScarce ? 'chip--scarce' : 'chip--seats'}`}
-                title={production.openCount > 1
-                  ? `${seatsLabel}, across ${production.openCount} dates still on sale`
+                title={manyDates
+                  ? `The tightest night of ${production.openCount} still on sale — ${formatSeatsOf(production.seatsLeft, production.seatsTotal)}`
                   : formatSeatsOf(production.seatsLeft, production.seatsTotal)}
               >
                 {seatsLabel}
@@ -167,7 +176,11 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
                       {/* Per date, because a run's nights differ: the whole
                           reason the card's own count can be a sum is that
                           each night carries its own here. */}
-                      {left && <span className="date__seats"> · {left}</span>}
+                      {left && (
+                        <span className={`date__seats ${seatsAreScarce(showing.seatsLeft, showing.seatsTotal) ? 'date__seats--scarce' : ''}`}>
+                          {' · '}{left}
+                        </span>
+                      )}
                     </button>
                   </li>
                 )

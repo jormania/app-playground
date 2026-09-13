@@ -3071,6 +3071,55 @@ routes — Excelsior's own ticketing (§9.68), Filarmonica's seats.io chart
 one of them lands in the same `seatsLeft`/`seatsTotal` pair, so the card, the
 tile, the change strip and the notification needed no work at all.
 
+### 9.74 A run's seat count is one night's, not every night's added up (2026-09-13)
+
+Reported from production, of Excelsior: *Două ore cu pauză*, two dates, a chip
+reading **119 seats left**, and underneath it the two buttons it was made of —
+**9 left** on Sunday, **110 left** at the end of October. *Muzici și faze* did
+the same with four: a 534 nobody asked for, over 144 + 87 + 163 + 140.
+
+Two things wrong, and the second is the serious one:
+
+1. **The repeat.** The card said the same thing twice, once correctly per night
+   and once as arithmetic on top. Since §9.72 every counted night carries its
+   own number on its own button, so the summed chip stopped being a summary and
+   became a duplicate.
+2. **A sum is the one arithmetic nobody can use.** You cannot buy a seat spread
+   across two nights. Worse, it reads as reassurance exactly when it should not:
+   119 looks roomy, and one of those nights had nine seats left. The urgent fact
+   was in the card and invisible.
+
+**So `seatsLeft` on a production is now the tightest night still on sale**, with
+`seatsTotal` that night's own hall (not a fleet of halls added together) and a
+new `seatsDate` naming it. The card then says less rather than more:
+
+| | before | now |
+|---|---|---|
+| One date | `166 seats left` | unchanged |
+| Several, none tight | `534 seats left` | no seats chip — plain `tickets`, with every night's number on its own button |
+| Several, one tight | `119 seats left` | `9 left Sun, 27 Sept` in the warning colour |
+
+The tile follows the same rule for the same reason, and has no date list to fall
+back on, so a roomy multi-night run there simply reads `Tickets`.
+
+**The all-or-nothing rule went with the sum, and that is a gain.** A total needs
+every night counted or it under-reports; "9 left on Sunday" is true whatever the
+reader knows about October. A night with no count now just does not compete for
+tightest, so a run reports something useful where it used to report nothing.
+
+**The per-date marks got their colour back.** With every night printing a number
+since §9.72, amber on all of them made a whole run look urgent — "9 left" and
+"110 left" in the same warning colour. The number stays on every night; the
+colour is now only for the night that earned it.
+
+**Verified in the app**, against the three productions from the report rendered
+through the real card: the two-date run leads with `9 LEFT SUN, 27 SEPT` in
+amber and marks that night alone below, `Dark Play` (one date) keeps its plain
+`166 seats left`, and the four-date run shows `TICKETS` over four quiet
+per-night numbers. Excelsior serves this development machine a bot check, so
+those numbers are the ones production reported rather than a re-fetch — which is
+also why §9.71's live proofs used Filarmonica and Unteatru.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
