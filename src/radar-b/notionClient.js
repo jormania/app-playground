@@ -93,9 +93,14 @@ export function createNotionClient(token, {
           'GET',
         )
         const results = page.results || []
-        blocks.push(...results)
-        // Table rows are children of the table block, not of the page.
+        // Table rows are children of the table block, not of the page, and they
+        // are spliced in RIGHT AFTER their own table so the array stays in
+        // document order. Pushing every top-level block first and appending all
+        // the rows afterwards detached each table from the heading above it,
+        // which left parseSuggestedPage no way to tell the current weekend's
+        // sources from the archived ones below.
         for (const block of results) {
+          blocks.push(block)
           if (block.type === 'table' && block.has_children) {
             const rows = await call(`blocks/${block.id}/children?page_size=100`, 'GET')
             blocks.push(...(rows.results || []))

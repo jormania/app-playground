@@ -126,6 +126,34 @@ describe('parseSuggestedPage', () => {
     { type: 'table_row', table_row: { cells: [[{ plain_text: 'Buletin' }], [{ plain_text: '⏳ nepublicat încă' }]] } },
   ]
 
+  test('stops at the second section — the page is an append-only log of past weekends', () => {
+    // Reported 2026-09-13: the sources list showed Buletin, HotNews, B365 …
+    // three times over, once per weekend section still on the page. Only the
+    // first section describes the current refresh.
+    const withHistory = [
+      ...blocks,
+      { type: 'heading_2', heading_2: { rich_text: [{ plain_text: '24 iulie 2026' }] } },
+      { type: 'table_row', table_row: { cells: [[{ plain_text: '**B365**' }], [{ plain_text: 'Săptămâna trecută', href: 'https://b365.ro/old' }]] } },
+      { type: 'table_row', table_row: { cells: [[{ plain_text: 'Curatorial' }], [{ plain_text: 'Recomandări vechi', href: 'https://curatorial.ro/old' }]] } },
+    ]
+    const out = parseSuggestedPage(withHistory)
+    expect(out.refreshedAt).toBe('31 iulie 2026')
+    expect(out.links).toHaveLength(2)
+    expect(out.links.map((l) => l.url)).not.toContain('https://b365.ro/old')
+  })
+
+  test('an empty heading does not end the section', () => {
+    // A blank heading block is layout, not a new weekend — ending there would
+    // drop the real sources that follow it.
+    const out = parseSuggestedPage([
+      blocks[0],
+      { type: 'heading_2', heading_2: { rich_text: [] } },
+      ...blocks.slice(1),
+    ])
+    expect(out.refreshedAt).toBe('31 iulie 2026')
+    expect(out.links).toHaveLength(2)
+  })
+
   test('reads the refresh date and the per-source article links', () => {
     const out = parseSuggestedPage(blocks)
     expect(out.refreshedAt).toBe('31 iulie 2026')

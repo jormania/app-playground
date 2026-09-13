@@ -1136,3 +1136,27 @@ Both new tests were verified to **fail** against the previous code before being
 kept — including an end-to-end one that stubs the relay to 404 `blocks/…/children`
 while the database query succeeds, which is the reported failure exactly. 239
 tests in `src/radar-b/`, 4384 in the repo.
+
+### The sources list was reading every weekend on the page
+
+Visible the moment the Suggested page became readable: "Din ce s-a construit
+săptămâna" listed all eight sources **three times over** — Buletin, HotNews,
+B365, Curatorial and the rest, once per section.
+
+That page is an **append-only log**. Each run prepends a `## DD luna YYYY`
+section, and every past weekend keeps its own identical source table below the
+current one; four sections were live. `parseSuggestedPage` collected `table_row`
+blocks from all of them, while taking only the first `heading_2` as the refresh
+date — so the date was right and the list was the whole archive.
+
+Fixing it needed **both halves**, because the parser could not have told the
+sections apart on the input it was being given. `getSuggested` pushed every
+top-level block first and appended all the table rows afterwards, which detached
+each table from the heading above it and flattened the page into
+`[…all headings…, …all rows…]`. Rows are now spliced in directly after their own
+table, so the array is in document order, and `parseSuggestedPage` stops at the
+second heading. An *empty* heading doesn't count as a section boundary — it's
+layout, and ending there would drop the real sources under it.
+
+Worth keeping in mind for anything else that reads this page: it is a log, not a
+document, and the current week is only its first section.
