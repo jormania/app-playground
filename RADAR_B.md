@@ -1040,3 +1040,99 @@ Along the way, two more demo fixtures (`demo-4`, `demo-6` in `fixtures.js`) turn
 out to share `demo-5`'s §12 bug — a fixed `day(2)` offset that lands in next
 calendar week whenever the suite runs on a Friday or Saturday. Switched both to the
 existing `dayThisWeek()` helper.
+
+## 24. "What's new", borrowed from Marquee — and no run-trigger button (2026-09-13)
+
+Requested as "a button to brand the skill and update the database, and present
+what's new" — clarified into two narrower, deliberately non-overlapping pieces.
+
+**Not built: a button that triggers `/recommend in Bucharest`.** Radar-B has no
+route to invoke a skill or open a Claude session from the browser, and inventing
+one would mean either a new serverless function (against §2's "zero new
+functions", and the 12-function cap) or faking a run. What already exists covers
+the freshness half of the ask: the masthead's tap-to-refresh line. It now names
+its source too — `actualizat {when} de /recommend in Bucharest` / `updated {when}
+by /recommend in Bucharest` (`app.updated`, i18n.js) — so freshness answers not
+just *when* but *by what*, without adding a control that does nothing but look
+like a trigger.
+
+**Built: a "What's new" diff banner, modeled directly on Marquee's.** Marquee's
+`changes.js`/`scanClient.js`/`Changes.jsx` already solve exactly this problem for
+venue scans — a client-held snapshot, diffed against the new fetch, rendered as a
+dismiss-until-next-check strip. Radar-B's version is the same shape end to end:
+
+| Marquee | Radar-B | What changed |
+|---|---|---|
+| `changes.js` | `changes.js` | Diffs `App.jsx`'s merged pool (post-dedupe, `radarId`-filtered — §22) instead of a per-venue ticket-state scan. `CHANGE` is `new-event` / `recommended` / `tickets-opened` / `sold-out` / `gone`, not Marquee's ticket-state set — Radar-B has no seat counts, but it does have signals that get *added* to an existing row (the skill's "enrich, don't skip" rule, §16), which is what `recommended`/`tickets-opened`/`sold-out` catch. |
+| `scanClient.js` | folded into `App.jsx`'s `load()` | Marquee's scan is its own explicit action; Radar-B already refreshes on mount, on tab focus and on tap, so the diff runs there instead of a parallel entry point — `poolFrom(data)` is the one function both `load()` and the `pool` memo call, so the diff and the rendered stream are always looking at the same events. |
+| `store.js`'s `loadSnapshot`/`saveSnapshot`, `loadDismissedChanges` | same names, `radarb_*` keys | Identical contract: a snapshot of the last-seen pool, the last diff result (so reopening shows the banner without a fetch), and which change signatures were dismissed. |
+| `Changes.jsx` | `Changes.jsx` | Same three states (baseline · nothing new · a list), same "only dismissable when there's something to dismiss" rule, same "dismissing hides THESE entries until the next check, not forever." Tapping an entry opens that event's own detail view (`openChange` looks it up in `pool` by id) rather than duplicating the card. |
+
+Two rules were adapted rather than copied, because Radar-B's data isn't
+Marquee's:
+
+- **A new event that arrived already dismissed isn't news.** The skill can
+  write a Radar row and a device can have it pre-hidden (rare, but the dismiss
+  state is per-event, synced via Notion — §16) between one refresh and the
+  next; reporting it as "new" when it's simultaneously invisible would be
+  confusing rather than useful.
+- **An event leaving the pool is only "gone" if it hadn't already happened AND
+  wasn't dismissed on purpose.** Marquee's equivalent rule (only claim
+  `cancelled` for a venue that actually answered) doesn't apply — Radar-B has
+  one fetch, not per-venue answers — but the same instinct does: a past event
+  quietly falling out of the pool is normal, not news, and something you hid
+  yourself is not "gone", it's exactly where you put it.
+
+`changes.test.js` covers the pure diff in isolation; three new `App.test.jsx`
+tests cover the baseline message on a first-ever open, "nothing new" on a
+same-data second refresh, and the full list-then-dismiss path against a seeded
+empty snapshot (deliberately not tied to any fixture's merged id, which
+`mergeCluster` can reassign — §4). 235 tests in `src/radar-b/`, 4379 in the
+repo; typecheck and eslint clean.
+
+## 25. Freshness was reading the wrong thing, and failing silently (2026-09-13)
+
+Reported the same evening §24 shipped: the "what's new" banner worked, but the
+masthead showed only the refresh glyph — no "actualizat …" line at all.
+
+**Both halves of that are one bug.** The banner is computed client-side from the
+pool, which loaded fine; the freshness line came from `data.suggested`, a
+*separate* call in the same `load()`. Each of the three calls is `.catch()`ed
+independently (deliberately — one absent source must not take the whole load
+down), so Radar can load perfectly while the 🗓️ Suggested events page 404s, and
+nothing anywhere says so.
+
+That 404 is the normal case, not an exotic one: **sharing the 📡 Radar database
+with a Notion integration does not share its parent page**, and Radar is a child
+of Suggested events. A BYO token set up by pointing at the database alone can
+read every row and still not read the page above it.
+
+And §21 had made "no refresh date" render as a bare glyph, so the broken state
+and the ordinary empty state are pixel-identical. Same shape as §12's "filters
+don't do anything" — a silent degradation that reads as a normal quiet state.
+
+**The line was also sourced from the wrong field.** `parseSuggestedPage` takes
+the page's first `heading_2`, which is a weekend range a human typed
+("11 - 13 septembrie 2026"). That says *which weekend was covered*, not when
+anything was checked — so even working, the line was answering a different
+question than the one it appears to answer.
+
+Every Radar row already carries `Checked`, which means exactly "when this row was
+last verified", and `mergeCluster` already propagates the most recent one through
+dedupe. `poolFreshnessDays()` (dates.js) takes the **freshest** check across the
+pool — not the average, not the stalest, since the claim is "last refreshed" —
+and the masthead renders it through the existing `relativeDays()`: *actualizat
+azi de /recommend in Bucharest*. It needs no second Notion page and no extra
+permission, and it describes the data actually on screen. The Suggested heading
+survives as a fallback for a pool with no check dates at all.
+
+**Demo mode was quietly broken too, in the same line.** `DEMO_SUGGESTED.refreshedAt`
+is the literal string `'demo'`, which got interpolated into `app.updated` — the
+masthead read *"actualizat demo"*, a sentinel rendered inside a sentence, and the
+`app.demo` branch ("mod demo") was unreachable. Being in demo mode is the abnormal
+fact worth reporting there (§21), so it now wins outright.
+
+Both new tests were verified to **fail** against the previous code before being
+kept — including an end-to-end one that stubs the relay to 404 `blocks/…/children`
+while the database query succeeds, which is the reported failure exactly. 239
+tests in `src/radar-b/`, 4384 in the repo.

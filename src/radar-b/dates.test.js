@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { weekendRange, endOfWeek, lensesFor, isLongRun, isRunningNow, isPast, formatWhen, dayHeading, dayKey, stalenessDays, relativeDays } from './dates.js'
+import { weekendRange, endOfWeek, lensesFor, isLongRun, isRunningNow, isPast, formatWhen, dayHeading, dayKey, stalenessDays, relativeDays, poolFreshnessDays } from './dates.js'
 import { normalizeEvent } from './model.js'
 
 const ev = (over) => normalizeEvent({ name: 'x', ...over })
@@ -163,6 +163,29 @@ describe('staleness', () => {
     expect(relativeDays(0)).toBe('azi')
     expect(relativeDays(1)).toBe('ieri')
     expect(relativeDays(5)).toBe('acum 5 zile')
+  })
+})
+
+describe('poolFreshnessDays', () => {
+  test('reports the FRESHEST row, not the average or the stalest', () => {
+    // The masthead claims "last refreshed X" — that's the most recent check
+    // anything got, so one ancient row must not age the whole pool.
+    const pool = [
+      ev({ checked: '2026-07-01' }),
+      ev({ checked: '2026-08-19' }),
+      ev({ checked: '2026-08-12' }),
+    ]
+    expect(poolFreshnessDays(pool, WED)).toBe(0)
+  })
+
+  test('ignores rows with no check date rather than treating them as fresh', () => {
+    expect(poolFreshnessDays([ev({ checked: null }), ev({ checked: '2026-08-12' })], WED)).toBe(7)
+  })
+
+  test('is null when nothing in the pool was ever checked', () => {
+    expect(poolFreshnessDays([ev({ checked: null })], WED)).toBeNull()
+    expect(poolFreshnessDays([], WED)).toBeNull()
+    expect(poolFreshnessDays(undefined, WED)).toBeNull()
   })
 })
 

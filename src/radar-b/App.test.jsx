@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 import { describe, test, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, within, cleanup } from '@testing-library/react'
+import { render, screen, within, cleanup, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App.jsx'
+import { RADAR_DATABASE_ID } from './notionClient.js'
 
 // Demo mode (no token) runs on src/radar-b/fixtures.js, which deliberately contains
 // the hard cases — so this suite doubles as the proof that the dedupe/merge engine
@@ -170,6 +171,16 @@ describe('Radar-B in demo mode', () => {
     expect(screen.getByRole('button', { name: 'orice preț' }).getAttribute('aria-pressed')).toBe('true')
   })
 
+  test('demo mode says so, rather than rendering the sentinel inside a sentence', async () => {
+    await open()
+    // DEMO_SUGGESTED.refreshedAt is the literal string 'demo', which used to be
+    // interpolated into app.updated — the masthead read "actualizat demo". Being
+    // in demo mode is the abnormal fact worth reporting there (§21), so it wins.
+    const refreshBtn = screen.getByRole('button', { name: 'Reîmprospătează' })
+    expect(refreshBtn.textContent).toBe('mod demo')
+    expect(refreshBtn.textContent).not.toMatch(/actualizat/)
+  })
+
   test('tapping the masthead label triggers a refresh', async () => {
     await open()
     const refreshBtn = screen.getByRole('button', { name: 'Reîmprospătează' })
@@ -246,5 +257,90 @@ describe('Radar-B in demo mode', () => {
       window.open = realOpen
     }
     expect(opened).toEqual([])
+  })
+
+  test('the freshness line survives a Suggested events page the app cannot read', async () => {
+    // The real failure, reported from a live phone: Radar rows loaded fine and the
+    // "what's new" banner worked, but the masthead showed only the refresh glyph.
+    // Sharing the 📡 Radar database with a Notion integration does NOT share its
+    // parent page, so `blocks/<suggested>/children` 404s while the database query
+    // succeeds — and load() catches each call separately, so the failure is silent.
+    // Freshness now comes from the pool's own `Checked` dates, which are right there
+    // in the rows that DID load.
+    const today = new Date()
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    localStorage.setItem('radarb_token', JSON.stringify('secret_live_token'))
+
+    const realFetch = global.fetch
+    global.fetch = async (_url, opts) => {
+      const { path } = JSON.parse(opts.body)
+      if (path.startsWith('blocks/')) {
+        return { ok: false, status: 404, json: async () => ({ message: 'Could not find block' }) }
+      }
+      if (path.includes(RADAR_DATABASE_ID)) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            results: [{
+              id: 'f'.repeat(32),
+              properties: {
+                Name: { title: [{ plain_text: 'Ceva în Radar' }] },
+                When: { date: { start: '2026-12-01' } },
+                Venue: { rich_text: [{ plain_text: 'Undeva' }] },
+                Checked: { date: { start: iso } },
+              },
+            }],
+            has_more: false,
+          }),
+        }
+      }
+      return { ok: true, status: 200, json: async () => ({ results: [], has_more: false }) }
+    }
+
+    try {
+      render(<App />)
+      const btn = await screen.findByRole('button', { name: 'Reîmprospătează' })
+      // Checked = today, so the line reads "actualizat azi …" rather than collapsing
+      // to a bare glyph the way it did when it depended on the Suggested page.
+      await waitFor(() => expect(btn.textContent).toMatch(/actualizat azi/))
+      expect(btn.textContent).toMatch(/recommend in Bucharest/)
+    } finally {
+      global.fetch = realFetch
+    }
+  })
+
+  test('"what\'s new" shows the baseline message on a first-ever open', async () => {
+    await open()
+    expect(screen.getByRole('region', { name: 'Ce e nou' })).toBeTruthy()
+    expect(screen.getByText(/Prima actualizare/)).toBeTruthy()
+    // Nothing to dismiss yet — the baseline has no × to press.
+    expect(screen.queryByRole('button', { name: /Închide/ })).toBeNull()
+  })
+
+  test('"what\'s new" reports nothing once a second refresh sees the same pool', async () => {
+    await open()
+    // First load established the baseline snapshot; a same-data refresh diffs
+    // against it and finds nothing changed.
+    await userEvent.click(screen.getByRole('button', { name: 'Reîmprospătează' }))
+    await screen.findByText('Nimic nou de la ultima actualizare.')
+  })
+
+  test('"what\'s new" surfaces the pool as new against an empty snapshot, and dismiss clears it until the next refresh', async () => {
+    // Simulating "last time the app had nothing" — every event in the demo pool
+    // is genuinely new against it, which exercises the full banner without
+    // depending on any particular event's merged id.
+    localStorage.setItem('radarb_changes_snapshot', JSON.stringify({ scannedAt: new Date().toISOString(), events: {} }))
+    await open()
+    const region = screen.getByRole('region', { name: 'Ce e nou' })
+    expect(within(region).getByText('Ce s-a schimbat')).toBeTruthy()
+    expect(within(region).getAllByRole('button').length).toBeGreaterThan(1) // the × plus at least one change
+
+    // Dismissing hides the entries on screen — it does not fake "nothing was
+    // ever different"; the banner still says a refresh happened, with nothing
+    // left to act on and no × until the NEXT refresh produces something new.
+    await userEvent.click(screen.getByRole('button', { name: /Închide/ }))
+    expect(within(region).getByText('Nimic nou de la ultima actualizare.')).toBeTruthy()
+    expect(within(region).queryByRole('button', { name: /Închide/ })).toBeNull()
   })
 })

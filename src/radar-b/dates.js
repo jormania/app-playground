@@ -227,6 +227,29 @@ export function stalenessDays(event, now = new Date()) {
   return Math.max(0, Math.round((startOfDay(now) - checked) / DAY_MS))
 }
 
+/** How long ago the freshest row in a pool was verified, in days.
+ *
+ *  This is the honest answer to "when was this last refreshed", and it is
+ *  deliberately derived from the events themselves rather than from the 🗓️
+ *  Suggested events page. That page's first heading is a WEEKEND RANGE someone
+ *  wrote ("11 - 13 septembrie 2026") — it says which weekend was covered, not
+ *  when the data was checked — and reading it needs a second Notion page the
+ *  app may not have access to at all (sharing the Radar database with an
+ *  integration does not share its parent page). When that read fails the whole
+ *  freshness line silently disappears, which is indistinguishable from "nothing
+ *  published yet". `Checked` is on every Radar row, survives the merge
+ *  (dedupe.js keeps the most recent), and means exactly what the line claims.
+ *
+ *  Null when no event carries a check date. */
+export function poolFreshnessDays(events, now = new Date()) {
+  let best = null
+  for (const event of events ?? []) {
+    const days = stalenessDays(event, now)
+    if (days !== null && (best === null || days < best)) best = days
+  }
+  return best
+}
+
 export function relativeDays(n, t = null) {
   const tr = t ?? ((k, v) => (FALLBACK_RO[k] ?? k).replace('{n}', v?.n ?? ''))
   if (n === null || n === undefined) return null
