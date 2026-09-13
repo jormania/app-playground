@@ -36,30 +36,62 @@ Then find out what is already in flight:
   the queue is backed up and that merging or closing some would let the agent
   resume. A growing pile of unreviewed refactors is worse than no refactors.
 
-## 2. Pick
+## 2. Classes, and what each one is allowed to do
+
+Every backlog item carries a class. The class decides the burden of proof and
+whether the agent may put the item on the queue itself.
+
+| Class | What it is | Agent may self-promote? | Proof required |
+|-------|-----------|------------------------|----------------|
+| `refactor` | Behaviour-preserving restructuring | **Yes** | The existing suite, still green against the moved code |
+| `modernise` | Dependency currency, deprecated APIs, typecheck/test coverage, documentation drift | **Yes** | Suite green; for a dep bump, name what changed in its release notes |
+| `qol` | Small user-visible improvement | **No — propose only** | A test pinning the new behaviour, plus screenshots |
+| `visual` | SVG, icons, spacing, motion, empty states | **No — propose only** | Screenshots: both themes, phone width and desktop |
+| `idea` | A proposal not yet worked out | n/a | n/a — an `idea` is promoted to a real class before anyone builds it |
+
+**Self-promote** means: you noticed it, you added it, you may work it the same
+day. `refactor` and `modernise` have a small blast radius and a mechanical
+notion of correctness, so they run free.
+
+`qol` and `visual` change what Gabriel sees when he opens an app. Those you may
+**propose** — append them under `## Proposed` with a class and an `Impact:`
+line — but you may not work them until a human moves the item up into the main
+list. Do not lobby, do not work a proposed item because it seems obviously
+right. The queue is his steering wheel; proposing is how you hand him one.
+
+## 3. Pick
 
 Read `REFACTOR_BACKLOG.md`. Take the topmost item that is not `done`, not
-`blocked`, and not claimed by an open PR.
+`blocked`, not under `## Proposed`, and not claimed by an open PR.
 
-If the backlog has no eligible items, spend the run on discovery instead: read
-around the codebase, append up to five new grounded candidates to the backlog,
-commit that alone, and say so. A run that adds nothing but honest backlog is a
-fine run. Inventing busywork to have something to show is not.
+**Fridays are discovery runs.** Ship nothing. Spend the session reading the
+codebase against current standards — deprecated APIs, dependency generations
+behind, duplicated patterns that want promoting to `src/shared/`, documentation
+that has drifted from the code, apps with no test coverage, places where the
+design system could replace something hand-rolled. Append what you find: up to
+five items, each with a class, an `Impact:` line, and a concrete file path.
+Commit that alone and report it as a discovery run. A week that adds five good
+proposals is worth more than a week that ships five shrugs.
+
+If the backlog has no eligible items on a non-Friday, do a discovery run instead
+and say so.
 
 If an item turns out to be a bad idea on contact with the code — mark it
 `dropped` with a one-line reason, commit that, and move to the next item.
 
-## 3. Size
+## 4. Size
 
 The target is a diff a human reviews in ten minutes. If the chosen item is
 larger, split it **in the backlog** into numbered slices and do only the first
 one this run. Leave the rest as new items. Never let one run sprawl.
 
-## 4. Execute
+## 5. Execute
 
-Behaviour-preserving unless the item says otherwise in as many words. A
-refactor that changes what an app does is a feature change wearing a disguise,
-and it will get closed.
+A `refactor` or `modernise` item is behaviour-preserving, full stop — one that
+changes what an app does is a feature change wearing a disguise, and it will get
+closed. A `qol` or `visual` item changes behaviour on purpose, but only the
+behaviour its own description names: if you find yourself improving something
+adjacent because you are already in the file, stop and propose it instead.
 
 Hard rules — a run that breaks one of these is a failed run, not a judgement call:
 
@@ -79,7 +111,41 @@ Hard rules — a run that breaks one of these is a failed run, not a judgement c
 - Update the app's own root Markdown doc when the change is visible there
   (`.agents/AGENTS.md` requires it).
 
-## 5. Prove
+## 6. Screenshots — for `qol` and `visual` items only
+
+Preview deploys are off for `claude/*` branches, so a screenshot in the PR is
+the only look Gabriel gets before merging. Skip this for `refactor` and
+`modernise`; a picture of an unchanged screen tells nobody anything.
+
+Chromium and Playwright are preinstalled: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`
+is already set and `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` stops a re-fetch. Never
+run `playwright install`.
+
+Capture the affected screen **four ways** — light and dark, 390px wide and
+desktop — before your change and after it. `npm run build && npm run preview`
+serves the real thing; screenshotting the dev server can mislead you, since the
+service worker is gated off under `vite dev`.
+
+Screenshots must not land in `main`. Put them on the dedicated `claude/shots`
+branch, which exists only to hold them and is never merged:
+
+```bash
+git fetch origin claude/shots 2>/dev/null && git checkout claude/shots || git checkout --orphan claude/shots
+mkdir -p <today>-R-0xx && cp /tmp/shots/*.png <today>-R-0xx/
+git add <today>-R-0xx && git commit -m "shots: R-0xx" && git push -u origin claude/shots
+git checkout claude/refactor-<today>
+```
+
+Then embed them in the PR body by raw URL, which GitHub renders inline:
+
+```
+![before](https://raw.githubusercontent.com/jormania/app-playground/claude/shots/<today>-R-0xx/before-dark-390.png)
+```
+
+Never delete someone else's directory on that branch — it only ever grows, and
+the files are small.
+
+## 7. Prove
 
 All three, every run, no exceptions:
 
@@ -102,15 +168,18 @@ delete the branch, mark the item `blocked` in the backlog with the reason, push
 only that backlog note, and report it. Never push a red branch, never open a PR
 to "see what CI says".
 
-## 6. Record
+## 8. Record
 
 In the same commit as the change, edit `REFACTOR_BACKLOG.md`:
 
 - Mark the item `done` with today's date.
 - Append any new candidates you noticed while working — **at most three**, each
-  with a concrete file path or symbol. Vague aspirations rot the backlog.
+  with a class, an `Impact:` line, and a concrete file path or symbol. Vague
+  aspirations rot the backlog.
+- `refactor` and `modernise` candidates go in the main list, ready to work.
+  `qol` and `visual` candidates go under `## Proposed` and wait for a human.
 
-## 7. Land
+## 9. Land
 
 ```bash
 git push -u origin claude/refactor-$(date +%F)
@@ -120,11 +189,17 @@ Open a PR, ready for review, against `main`. Body must contain:
 
 ```
 Backlog-Item: R-0xx
+Class: refactor | modernise | qol | visual
+
+**What you'd notice** — one sentence, in the second person, about opening the
+app. For a `refactor` or `modernise` item write "nothing — this is invisible
+from the outside", and mean it.
 
 **What** — one paragraph, plain language.
 **Why** — the problem this removes.
 **Behaviour** — "unchanged", or exactly what changed and why that was the point.
-**Proof** — the three gates, and any test added.
+**Proof** — the three gates, any test added, and the screenshots for a `qol` or
+`visual` item.
 **Risk** — what a reviewer should look at hardest. Say "none I can see" if that is true.
 ```
 
@@ -136,11 +211,22 @@ If no GitHub tooling is available in the fired session, or the API refuses,
 `https://github.com/jormania/app-playground/compare/main...<branch>` and paste
 the PR body into your closing report so it can be opened by hand in a click.
 
-## 8. Report
+## 10. Report
 
 Close the session with a short note: which item, what changed, the PR link, and
 anything you deliberately left alone. Write it for someone who has not seen the
 code today.
+
+**Lead with the class and the one-sentence "what you'd notice".** A dependency
+bump and a redesigned empty state must not arrive in the same inbox reading
+identically — the first line is what tells them apart on a phone screen, so give
+an invisible change an honestly boring opening and a visible one the weight it
+has earned. Never inflate: "nothing changes on screen" is a fine first line and
+Gabriel would rather read it than hunt for the catch.
+
+If the run produced proposals under `## Proposed`, list them at the end in one
+line each. They are the part he decides on, so they should be easy to say yes or
+no to without opening anything.
 
 This report is what the completion email carries, and the email is read on a
 phone by someone who was not here. So **end every report that produced a PR

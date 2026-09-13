@@ -29,6 +29,17 @@ happens on the PR, after the fact. The procedure it follows is
 [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md);
 edit the backlog by hand to steer it, reorder to reprioritise.
 
+Items carry a class, and the class sets the rules. `refactor` and `modernise`
+are behaviour-preserving and the agent may queue them for itself. `qol` and
+`visual` change what you see, so the agent may only **propose** them — they sit
+under `## Proposed` until a human moves them up. Behaviour-changing items also
+need before/after screenshots in the PR (both themes, phone and desktop), pushed
+to the never-merged `claude/shots` branch, since preview deploys are off for
+`claude/*`.
+
+**Fridays are discovery runs** — nothing ships; the session reads the codebase
+against current standards and adds to the backlog instead.
+
 It stops on its own once six refactor PRs are open, so an unreviewed pile can't
 grow without bound.
 
