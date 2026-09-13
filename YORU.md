@@ -444,6 +444,36 @@ a `MIX_VERSION` bump, which wipes saved custom mixes. The send coupling carries
 most of the value and needs no migration: dark still means dark, it just also
 means further. The tilt stays on the shelf.
 
+### Rain's weather depths — why "modest each" is the wrong unit
+
+Rain's two drifts each drive **three** things: the wash's gain, the wash's top
+end, and how fast the droplets fall. The depths looked modest one at a time —
+0.34 of base gain, 900 Hz of low-pass, 0.5 on droplet density — and nobody
+computed them together. At the trough the wash was quieter **and** darker **and**
+sparser, all at once:
+
+| | was | now |
+|---|---|---|
+| wash swing, crest → trough | **−15.0 dB** | −5.6 dB |
+| droplet rate range | 3.6× | 2.3× |
+| `shower` cycle | 43–114 s (median 78) | ~86–228 s |
+
+Fifteen decibels on a 78-second cycle does not read as weather. It reads as **the
+rain stopping and starting again** — which is the worst thing this layer can do,
+since Rain is the masker the whole night leans on. It was reported exactly that
+way.
+
+The depths now live together in `RAIN_DRIFT` rather than scattered through
+`buildRain`, and `rainWashSwingDb()` computes the combined figure so a test can
+hold it: the trough must be quieter than the crest, by more than 2 dB (it should
+still breathe) and less than 8 (it must never vanish). The `shower` drift is also
+half as fast, because real rainfall intensity wanders over many minutes and at
+78 s this read as a repeating cycle rather than as weather.
+
+**The general lesson, which cost three separate bugs this session:** when one
+control drives several parameters, the audible result is their product, and no
+single constant in the diff shows it. Measure the compound.
+
 ### The throttled-tick guard
 
 Every event layer schedules ahead in a `while (nextAt < ahead)` loop. Yoru's
