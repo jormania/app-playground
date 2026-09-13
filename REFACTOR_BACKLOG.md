@@ -139,6 +139,10 @@ The agent's own ideas. **Nothing here gets worked until it is moved up.** To
 approve one, cut the block, paste it into the list above, and change `proposed`
 to `open`.
 
+To reject one, delete it — or just close the PR that proposed it, which is the
+same answer said faster. The agent treats a proposal that vanished from `main`
+as declined and will not raise it again.
+
 ### P-001 — 38 hand-rolled inline `<svg>` blocks while lucide-react sits in the deps · `visual` · `proposed`
 
 **Impact:** icons that finally look like one family instead of twelve people's

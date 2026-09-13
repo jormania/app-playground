@@ -70,7 +70,13 @@ behind, duplicated patterns that want promoting to `src/shared/`, documentation
 that has drifted from the code, apps with no test coverage, places where the
 design system could replace something hand-rolled. Append what you find: up to
 five items, each with a class, an `Impact:` line, and a concrete file path.
-Commit that alone and report it as a discovery run. A week that adds five good
+Commit that alone, then **push and open a PR exactly as any other run does** —
+step 9 applies. A discovery run that never opens a PR is a discovery run whose
+findings die on a branch nobody visits.
+
+Title it so it reads as safe at a glance ("Backlog: five proposals from the
+Friday read"), and say in the body that it touches `REFACTOR_BACKLOG.md` and
+nothing else. It should be the easiest merge of the week. A week that adds five good
 proposals is worth more than a week that ships five shrugs.
 
 If the backlog has no eligible items on a non-Friday, do a discovery run instead
@@ -178,6 +184,16 @@ In the same commit as the change, edit `REFACTOR_BACKLOG.md`:
   aspirations rot the backlog.
 - `refactor` and `modernise` candidates go in the main list, ready to work.
   `qol` and `visual` candidates go under `## Proposed` and wait for a human.
+
+**A proposal only reaches the queue when that day's PR is merged.** You write it
+on a branch; `main` is what the next run reads. So before appending, check the
+open `claude/refactor-*` PRs for the same idea already written down and waiting —
+if it is there, do not write it again. Two PRs proposing the same thing in
+different words is how a backlog stops being trustworthy.
+
+If an idea you proposed in an earlier run is absent from `main`'s backlog and
+absent from every open PR, its PR was closed. That was an answer: do not
+re-propose it.
 
 ## 9. Land
 
