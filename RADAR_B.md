@@ -1040,3 +1040,52 @@ Along the way, two more demo fixtures (`demo-4`, `demo-6` in `fixtures.js`) turn
 out to share `demo-5`'s §12 bug — a fixed `day(2)` offset that lands in next
 calendar week whenever the suite runs on a Friday or Saturday. Switched both to the
 existing `dayThisWeek()` helper.
+
+## 24. "What's new", borrowed from Marquee — and no run-trigger button (2026-09-13)
+
+Requested as "a button to brand the skill and update the database, and present
+what's new" — clarified into two narrower, deliberately non-overlapping pieces.
+
+**Not built: a button that triggers `/recommend in Bucharest`.** Radar-B has no
+route to invoke a skill or open a Claude session from the browser, and inventing
+one would mean either a new serverless function (against §2's "zero new
+functions", and the 12-function cap) or faking a run. What already exists covers
+the freshness half of the ask: the masthead's tap-to-refresh line. It now names
+its source too — `actualizat {when} de /recommend in Bucharest` / `updated {when}
+by /recommend in Bucharest` (`app.updated`, i18n.js) — so freshness answers not
+just *when* but *by what*, without adding a control that does nothing but look
+like a trigger.
+
+**Built: a "What's new" diff banner, modeled directly on Marquee's.** Marquee's
+`changes.js`/`scanClient.js`/`Changes.jsx` already solve exactly this problem for
+venue scans — a client-held snapshot, diffed against the new fetch, rendered as a
+dismiss-until-next-check strip. Radar-B's version is the same shape end to end:
+
+| Marquee | Radar-B | What changed |
+|---|---|---|
+| `changes.js` | `changes.js` | Diffs `App.jsx`'s merged pool (post-dedupe, `radarId`-filtered — §22) instead of a per-venue ticket-state scan. `CHANGE` is `new-event` / `recommended` / `tickets-opened` / `sold-out` / `gone`, not Marquee's ticket-state set — Radar-B has no seat counts, but it does have signals that get *added* to an existing row (the skill's "enrich, don't skip" rule, §16), which is what `recommended`/`tickets-opened`/`sold-out` catch. |
+| `scanClient.js` | folded into `App.jsx`'s `load()` | Marquee's scan is its own explicit action; Radar-B already refreshes on mount, on tab focus and on tap, so the diff runs there instead of a parallel entry point — `poolFrom(data)` is the one function both `load()` and the `pool` memo call, so the diff and the rendered stream are always looking at the same events. |
+| `store.js`'s `loadSnapshot`/`saveSnapshot`, `loadDismissedChanges` | same names, `radarb_*` keys | Identical contract: a snapshot of the last-seen pool, the last diff result (so reopening shows the banner without a fetch), and which change signatures were dismissed. |
+| `Changes.jsx` | `Changes.jsx` | Same three states (baseline · nothing new · a list), same "only dismissable when there's something to dismiss" rule, same "dismissing hides THESE entries until the next check, not forever." Tapping an entry opens that event's own detail view (`openChange` looks it up in `pool` by id) rather than duplicating the card. |
+
+Two rules were adapted rather than copied, because Radar-B's data isn't
+Marquee's:
+
+- **A new event that arrived already dismissed isn't news.** The skill can
+  write a Radar row and a device can have it pre-hidden (rare, but the dismiss
+  state is per-event, synced via Notion — §16) between one refresh and the
+  next; reporting it as "new" when it's simultaneously invisible would be
+  confusing rather than useful.
+- **An event leaving the pool is only "gone" if it hadn't already happened AND
+  wasn't dismissed on purpose.** Marquee's equivalent rule (only claim
+  `cancelled` for a venue that actually answered) doesn't apply — Radar-B has
+  one fetch, not per-venue answers — but the same instinct does: a past event
+  quietly falling out of the pool is normal, not news, and something you hid
+  yourself is not "gone", it's exactly where you put it.
+
+`changes.test.js` covers the pure diff in isolation; three new `App.test.jsx`
+tests cover the baseline message on a first-ever open, "nothing new" on a
+same-data second refresh, and the full list-then-dismiss path against a seeded
+empty snapshot (deliberately not tied to any fixture's merged id, which
+`mergeCluster` can reassign — §4). 235 tests in `src/radar-b/`, 4379 in the
+repo; typecheck and eslint clean.

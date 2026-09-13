@@ -247,4 +247,38 @@ describe('Radar-B in demo mode', () => {
     }
     expect(opened).toEqual([])
   })
+
+  test('"what\'s new" shows the baseline message on a first-ever open', async () => {
+    await open()
+    expect(screen.getByRole('region', { name: 'Ce e nou' })).toBeTruthy()
+    expect(screen.getByText(/Prima actualizare/)).toBeTruthy()
+    // Nothing to dismiss yet — the baseline has no × to press.
+    expect(screen.queryByRole('button', { name: /Închide/ })).toBeNull()
+  })
+
+  test('"what\'s new" reports nothing once a second refresh sees the same pool', async () => {
+    await open()
+    // First load established the baseline snapshot; a same-data refresh diffs
+    // against it and finds nothing changed.
+    await userEvent.click(screen.getByRole('button', { name: 'Reîmprospătează' }))
+    await screen.findByText('Nimic nou de la ultima actualizare.')
+  })
+
+  test('"what\'s new" surfaces the pool as new against an empty snapshot, and dismiss clears it until the next refresh', async () => {
+    // Simulating "last time the app had nothing" — every event in the demo pool
+    // is genuinely new against it, which exercises the full banner without
+    // depending on any particular event's merged id.
+    localStorage.setItem('radarb_changes_snapshot', JSON.stringify({ scannedAt: new Date().toISOString(), events: {} }))
+    await open()
+    const region = screen.getByRole('region', { name: 'Ce e nou' })
+    expect(within(region).getByText('Ce s-a schimbat')).toBeTruthy()
+    expect(within(region).getAllByRole('button').length).toBeGreaterThan(1) // the × plus at least one change
+
+    // Dismissing hides the entries on screen — it does not fake "nothing was
+    // ever different"; the banner still says a refresh happened, with nothing
+    // left to act on and no × until the NEXT refresh produces something new.
+    await userEvent.click(screen.getByRole('button', { name: /Închide/ }))
+    expect(within(region).getByText('Nimic nou de la ultima actualizare.')).toBeTruthy()
+    expect(within(region).queryByRole('button', { name: /Închide/ })).toBeNull()
+  })
 })

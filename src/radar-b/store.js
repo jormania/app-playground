@@ -19,6 +19,9 @@ const SUGGESTED_KEY = 'radarb_suggested_page'
 const PREFS_KEY = 'radarb_prefs'
 const LOCAL_KEY = 'radarb_local'
 const CACHE_KEY = 'radarb_cache'
+const CHANGES_SNAPSHOT_KEY = 'radarb_changes_snapshot'
+const LAST_CHANGES_KEY = 'radarb_last_changes'
+const DISMISSED_CHANGES_KEY = 'radarb_dismissed_changes'
 
 export function getToken() { return readJson(TOKEN_KEY, '') }
 export function setToken(token) { writeJson(TOKEN_KEY, String(token || '').trim()) }
@@ -97,6 +100,20 @@ export function stampFirstSeen(local, ids) {
 // (save to Wanderlist) needs the network and says so rather than queueing.
 export function readCache() { return readJson(CACHE_KEY, null) }
 export function writeCache(snapshot) { writeJson(CACHE_KEY, { ...snapshot, cachedAt: Date.now() }) }
+
+// ── "What's new" diff state ──────────────────────────────────────────────────
+// Same shape as Marquee's scanClient.js: a snapshot of the pool as of the last
+// refresh (for changes.js's `diff` to compare against), the last computed diff
+// result itself (so reopening the app shows the banner without waiting on a
+// fetch), and which change signatures have already been dismissed.
+export function loadChangesSnapshot() { return readJson(CHANGES_SNAPSHOT_KEY, null) }
+export function saveChangesSnapshot(snapshot) { writeJson(CHANGES_SNAPSHOT_KEY, snapshot) }
+
+export function loadLastChanges() { return readJson(LAST_CHANGES_KEY, null) }
+export function saveLastChanges(result) { writeJson(LAST_CHANGES_KEY, result) }
+
+export function loadDismissedChanges() { return readJson(DISMISSED_CHANGES_KEY, []) }
+export function saveDismissedChanges(keys) { writeJson(DISMISSED_CHANGES_KEY, keys) }
 
 export async function testConnection(token, radarRaw, findingsRaw) {
   const client = createNotionClient(String(token || '').trim(), {

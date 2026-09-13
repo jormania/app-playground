@@ -34,7 +34,7 @@ const RO = {
   // ── Shell ────────────────────────────────────────────────────────────────
   'app.refresh': 'Reîmprospătează',
   'app.refreshing': 'se actualizează…',
-  'app.updated': 'actualizat {when}',
+  'app.updated': 'actualizat {when} de /recommend in Bucharest',
   'app.demo': 'mod demo',
   'app.search': 'Caută',
   'app.searchPlaceholder': 'titlu, loc, cartier, sursă…',
@@ -200,6 +200,18 @@ const RO = {
   // ── Brief handed to the skill ────────────────────────────────────────────
   'brief.heading': 'Evenimente în Radar-B — {view}:',
   'brief.question': 'Care dintre ele mi s-ar potrivi?',
+
+  // ── What's new (changes.js / Changes.jsx) ───────────────────────────────
+  'changes.label': 'Ce e nou',
+  'changes.title': 'Ce s-a schimbat',
+  'changes.baseline': 'Prima actualizare — de acum înainte, aici apare doar ce s-a schimbat.',
+  'changes.nothingNew': 'Nimic nou de la ultima actualizare.',
+  'changes.dismiss': 'Închide — până la următoarea actualizare',
+  'changes.kind.new-event': 'nou',
+  'changes.kind.recommended': 'acum recomandat',
+  'changes.kind.tickets-opened': 'bilete puse în vânzare',
+  'changes.kind.sold-out': 'sold out',
+  'changes.kind.gone': 'a dispărut din Radar',
 }
 
 const EN = {
@@ -207,7 +219,7 @@ const EN = {
 
   'app.refresh': 'Refresh',
   'app.refreshing': 'refreshing…',
-  'app.updated': 'updated {when}',
+  'app.updated': 'updated {when} by /recommend in Bucharest',
   'app.demo': 'demo mode',
   'app.search': 'Search',
   'app.searchPlaceholder': 'title, venue, area, source…',
@@ -364,6 +376,17 @@ const EN = {
 
   'brief.heading': 'Events in Radar-B — {view}:',
   'brief.question': 'Which of these would suit me?',
+
+  'changes.label': "What's new",
+  'changes.title': 'What changed',
+  'changes.baseline': 'First refresh — from now on, this strip shows only what changed.',
+  'changes.nothingNew': 'Nothing new since the last refresh.',
+  'changes.dismiss': 'Dismiss — until the next refresh',
+  'changes.kind.new-event': 'new',
+  'changes.kind.recommended': 'now recommended',
+  'changes.kind.tickets-opened': 'tickets on sale',
+  'changes.kind.sold-out': 'sold out',
+  'changes.kind.gone': 'gone from Radar',
 }
 
 /** The string tables themselves. Exported so the parity test can compare key
