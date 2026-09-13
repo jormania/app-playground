@@ -4,17 +4,29 @@ import { dedupe } from './dedupe.js'
 import { isIdea, isNonEvent } from './model.js'
 import { dayHeading } from './dates.js'
 import { buildStream, facets, emptyFilters, hasActiveFilters, toBrief, VIEWS, viewLabel, inView, matchesFilters, passesIntake } from './search.js'
+import { toSnapshot, diff, changeSignature, undismissedChanges } from './changes.js'
 import { EventCard } from './EventCard.jsx'
 import { EventDetail } from './EventDetail.jsx'
 import { FilterSheet } from './FilterSheet.jsx'
 import { SaveSheet } from './SaveSheet.jsx'
 import { SettingsModal } from './SettingsModal.jsx'
+import { Changes } from './Changes.jsx'
 import { SearchIcon, FilterIcon, SettingsIcon, GuideIcon, CloseIcon, RadarIcon, UndoIcon, RefreshIcon, BeeMark } from './icons.jsx'
 import { useT, LangProvider } from './i18n.js'
 import {
   getClient, isLive, loadPrefs, savePrefs, loadLocal, saveLocal, stampFirstSeen,
   readCache, writeCache,
+  loadChangesSnapshot, saveChangesSnapshot, loadLastChanges, saveLastChanges,
+  loadDismissedChanges, saveDismissedChanges,
 } from './store.js'
+
+/** Radar rows and Wanderlist rows go into ONE pool and are deduped together —
+ *  see the long comment where this used to live inline, kept below at its call
+ *  site. Pulled out to a plain function so `load()` can compute the SAME pool
+ *  the diff runs against, without waiting for a render. */
+function poolFrom(data) {
+  return dedupe([...data.events, ...data.saved]).filter((e) => e.radarId)
+}
 
 function RadarB({ prefs, setPrefs }) {
   const t = useT()
@@ -33,6 +45,8 @@ function RadarB({ prefs, setPrefs }) {
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState(null)
   const [toast, setToast] = useState(null)   // { text, undo?: () => void }
+  const [changesResult, setChangesResult] = useState(loadLastChanges)
+  const [dismissedChangeKeys, setDismissedChangeKeys] = useState(loadDismissedChanges)
   const searchRef = useRef(null)
 
   // ── Theme ───────────────────────────────────────────────────────────────
@@ -67,6 +81,21 @@ function RadarB({ prefs, setPrefs }) {
       const next = { events, saved, suggested }
       setData(next)
       writeCache(next)
+
+      // "What's new" — see changes.js. Computed here, once per actual refresh,
+      // rather than reactively off `pool`: saving or dismissing an event changes
+      // `data` too, and neither is news the way a genuinely new Radar row is.
+      const current = toSnapshot(poolFrom(next), new Date().toISOString())
+      const previous = loadChangesSnapshot()
+      const result = diff(previous, current)
+      setChangesResult(result)
+      saveLastChanges(result)
+      saveChangesSnapshot(current)
+      // A fresh refresh's diff is, by definition, un-dismissed — the previous
+      // dismissal was recorded against the last diff's entries, which this one
+      // has already superseded.
+      setDismissedChangeKeys([])
+      saveDismissedChanges([])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -107,10 +136,7 @@ function RadarB({ prefs, setPrefs }) {
   // into its own standalone record with `radarId: null`, and that one is
   // dropped here. Radar-B's calendar stays what Radar found; Wanderlist is
   // consulted for cross-reference, not treated as a second source of events.
-  const pool = useMemo(
-    () => dedupe([...data.events, ...data.saved]).filter((e) => e.radarId),
-    [data.events, data.saved],
-  )
+  const pool = useMemo(() => poolFrom(data), [data])
 
   useEffect(() => {
     if (!pool.length) return
@@ -152,6 +178,24 @@ function RadarB({ prefs, setPrefs }) {
     }
     return out
   }, [pool, now, prefs.intake, dismissed, seenIds, local.firstSeen, filters])
+
+  // What the "what's new" banner actually shows — everything from the last
+  // diff, minus whatever was dismissed off THAT diff. See changes.js.
+  const visibleChanges = useMemo(
+    () => undismissedChanges(changesResult?.changes, dismissedChangeKeys),
+    [changesResult, dismissedChangeKeys],
+  )
+
+  function dismissChanges() {
+    const signatures = (changesResult?.changes ?? []).map(changeSignature)
+    setDismissedChangeKeys(signatures)
+    saveDismissedChanges(signatures)
+  }
+
+  function openChange(change) {
+    const event = pool.find((e) => e.id === change.key)
+    if (event) openEvent(event)
+  }
 
   // ── Actions ─────────────────────────────────────────────────────────────
   function openEvent(event) {
@@ -308,6 +352,13 @@ function RadarB({ prefs, setPrefs }) {
       </header>
 
       <main className="stream">
+        <Changes
+          result={changesResult ? { ...changesResult, changes: visibleChanges } : changesResult}
+          now={now}
+          onDismiss={dismissChanges}
+          onOpen={openChange}
+        />
+
         {error && <p className="notice warn">{error}</p>}
 
         {loading && pool.length === 0 && (

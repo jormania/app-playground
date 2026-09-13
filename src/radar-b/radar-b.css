@@ -551,6 +551,68 @@ a:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; bor
 
 .notice.warn { border-color: color-mix(in srgb, var(--color-warning) 45%, transparent); }
 
+/* ── "What's new" (Changes.jsx) ───────────────────────────────────────────── */
+
+.changes {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.changesBaseline { color: var(--color-faint); }
+
+.changesHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+
+.changesTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-faint);
+  margin: 0;
+}
+
+.changesDismiss { background: transparent; border: 0; color: var(--color-faint); cursor: pointer; padding: var(--space-3xs); line-height: 0; }
+@media (hover: hover) { .changesDismiss:hover { color: var(--color-ink); } }
+
+.changesEmpty { font-size: var(--text-sm); color: var(--color-muted); margin: 0; }
+
+.changesList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2xs); }
+
+.change {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2xs) var(--space-sm);
+  cursor: pointer;
+  color: inherit;
+}
+@media (hover: hover) { .change:hover { border-color: var(--color-border-2); } }
+
+/* Same one-hairline treatment as a recommended card (RADAR_B.md §7) — the
+   colour is doing the same job in both places, so it should look the same. */
+.change--recommended { border-left: 2px solid var(--signal); }
+.change--tickets-opened { border-left: 2px solid var(--color-info); }
+.change--gone { opacity: 0.75; }
+
+.changeKind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.changeTitle { font-weight: var(--weight-bold); }
+
+.changeMeta { font-size: var(--text-xs); color: var(--color-muted); }
+
 .empty {
   text-align: center;
   color: var(--color-muted);
