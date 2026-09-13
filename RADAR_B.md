@@ -1089,3 +1089,50 @@ same-data second refresh, and the full list-then-dismiss path against a seeded
 empty snapshot (deliberately not tied to any fixture's merged id, which
 `mergeCluster` can reassign — §4). 235 tests in `src/radar-b/`, 4379 in the
 repo; typecheck and eslint clean.
+
+## 25. Freshness was reading the wrong thing, and failing silently (2026-09-13)
+
+Reported the same evening §24 shipped: the "what's new" banner worked, but the
+masthead showed only the refresh glyph — no "actualizat …" line at all.
+
+**Both halves of that are one bug.** The banner is computed client-side from the
+pool, which loaded fine; the freshness line came from `data.suggested`, a
+*separate* call in the same `load()`. Each of the three calls is `.catch()`ed
+independently (deliberately — one absent source must not take the whole load
+down), so Radar can load perfectly while the 🗓️ Suggested events page 404s, and
+nothing anywhere says so.
+
+That 404 is the normal case, not an exotic one: **sharing the 📡 Radar database
+with a Notion integration does not share its parent page**, and Radar is a child
+of Suggested events. A BYO token set up by pointing at the database alone can
+read every row and still not read the page above it.
+
+And §21 had made "no refresh date" render as a bare glyph, so the broken state
+and the ordinary empty state are pixel-identical. Same shape as §12's "filters
+don't do anything" — a silent degradation that reads as a normal quiet state.
+
+**The line was also sourced from the wrong field.** `parseSuggestedPage` takes
+the page's first `heading_2`, which is a weekend range a human typed
+("11 - 13 septembrie 2026"). That says *which weekend was covered*, not when
+anything was checked — so even working, the line was answering a different
+question than the one it appears to answer.
+
+Every Radar row already carries `Checked`, which means exactly "when this row was
+last verified", and `mergeCluster` already propagates the most recent one through
+dedupe. `poolFreshnessDays()` (dates.js) takes the **freshest** check across the
+pool — not the average, not the stalest, since the claim is "last refreshed" —
+and the masthead renders it through the existing `relativeDays()`: *actualizat
+azi de /recommend in Bucharest*. It needs no second Notion page and no extra
+permission, and it describes the data actually on screen. The Suggested heading
+survives as a fallback for a pool with no check dates at all.
+
+**Demo mode was quietly broken too, in the same line.** `DEMO_SUGGESTED.refreshedAt`
+is the literal string `'demo'`, which got interpolated into `app.updated` — the
+masthead read *"actualizat demo"*, a sentinel rendered inside a sentence, and the
+`app.demo` branch ("mod demo") was unreachable. Being in demo mode is the abnormal
+fact worth reporting there (§21), so it now wins outright.
+
+Both new tests were verified to **fail** against the previous code before being
+kept — including an end-to-end one that stubs the relay to 404 `blocks/…/children`
+while the database query succeeds, which is the reported failure exactly. 239
+tests in `src/radar-b/`, 4384 in the repo.

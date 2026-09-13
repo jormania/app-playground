@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { shareNative } from '../shared/share.js'
 import { dedupe } from './dedupe.js'
 import { isIdea, isNonEvent } from './model.js'
-import { dayHeading } from './dates.js'
+import { dayHeading, poolFreshnessDays, relativeDays } from './dates.js'
 import { buildStream, facets, emptyFilters, hasActiveFilters, toBrief, VIEWS, viewLabel, inView, matchesFilters, passesIntake } from './search.js'
 import { toSnapshot, diff, changeSignature, undismissedChanges } from './changes.js'
 import { EventCard } from './EventCard.jsx'
@@ -277,9 +277,18 @@ function RadarB({ prefs, setPrefs }) {
   // kept because it is abnormal and worth knowing; a real refresh date is kept
   // because it is news. When there is neither, the button shows its glyph and
   // says nothing.
-  const refreshedLine = data.suggested?.refreshedAt
-    ? t('app.updated', { when: data.suggested.refreshedAt })
-    : isLive() ? null : t('app.demo')
+  //
+  // Freshness comes from the POOL's own `Checked` dates, not from the Suggested
+  // page's heading — see dates.js's poolFreshnessDays for why. The Suggested
+  // heading stays as a fallback for a pool that carries no check date at all.
+  const freshDays = useMemo(() => poolFreshnessDays(pool, now), [pool, now])
+  const refreshedLine = !isLive()
+    ? t('app.demo')
+    : freshDays !== null
+      ? t('app.updated', { when: relativeDays(freshDays, t) })
+      : data.suggested?.refreshedAt
+        ? t('app.updated', { when: data.suggested.refreshedAt })
+        : null
 
   return (
     <div className="app">
