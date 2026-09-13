@@ -38,6 +38,7 @@ export function toSnapshot(events, scannedAt) {
       // the live production, and "tickets on sale" over one returned seat is
       // the exact overstatement the count exists to correct.
       seatsLeft: e.seatsLeft ?? null,
+      seatsTotal: e.seatsTotal ?? null,
       // What a watch is held against (§9.63). Derived here rather than
       // rebuilt in the diff so the snapshot and the watchlist can never
       // disagree about what counts as the same production.

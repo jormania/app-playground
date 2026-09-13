@@ -5,7 +5,7 @@ import {
   changedKeyMap, primaryChangeKind, TRIAGE, venueCategoryMap, categoriesInUse, hallsInUse, CATEGORY_LABEL,
 } from './programme.js'
 import { normalizeVenue } from './venues.js'
-import { formatDay, formatRun, formatPrice, formatSeatsLeft, SEATS_SCARCE } from './format.js'
+import { formatDay, formatRun, formatPrice, formatSeatsLeft, formatSeatsOf, seatsAreScarce, SEATS_SCARCE } from './format.js'
 
 const NOW = new Date('2026-08-26T09:00:00')
 
@@ -364,18 +364,36 @@ describe('formatSeatsLeft — the correction to a binary buy button (§9.68)', (
     expect(formatSeatsLeft(0)).toBe('none left')
   })
 
-  it('stays quiet above the threshold — a big number is not news', () => {
-    expect(formatSeatsLeft(SEATS_SCARCE)).toBe(`${SEATS_SCARCE} seats left`)
-    expect(formatSeatsLeft(SEATS_SCARCE + 1)).toBeNull()
-    expect(formatSeatsLeft(175)).toBeNull()
+  it('prints a big number too — the threshold now decides the colour (§9.72)', () => {
+    expect(formatSeatsLeft(SEATS_SCARCE + 1)).toBe(`${SEATS_SCARCE + 1} seats left`)
+    expect(formatSeatsLeft(175)).toBe('175 seats left')
   })
 
-  it('treats an unknown count the same as a plentiful one — as nothing to say', () => {
-    // Both fall back to the plain "tickets" chip, which claims only that
+  it('says nothing only when nobody counted', () => {
+    // The card falls back to the plain "tickets" chip, which claims only that
     // something is on sale. Never a reassurance we haven't measured.
     expect(formatSeatsLeft(null)).toBeNull()
     expect(formatSeatsLeft(undefined)).toBeNull()
     expect(formatSeatsLeft(-1)).toBeNull()
+  })
+
+  it('calls a count scarce by the absolute ten OR by its share of the hall', () => {
+    // Ten is generous for a studio and stingy for the Ateneu, so a share sits
+    // beside it: 40 of 736 is not ten and is plainly nearly gone; 140 of 736 is
+    // an ordinary Tuesday.
+    expect(seatsAreScarce(SEATS_SCARCE)).toBe(true)
+    expect(seatsAreScarce(SEATS_SCARCE + 1)).toBe(false)
+    expect(seatsAreScarce(40, 736)).toBe(true)
+    expect(seatsAreScarce(140, 736)).toBe(false)
+    // Without a hall size — every Excelsior showing — the absolute test alone.
+    expect(seatsAreScarce(40)).toBe(false)
+    expect(seatsAreScarce(null, 736)).toBe(false)
+  })
+
+  it('spells the count against its hall for a tooltip, when it knows one', () => {
+    expect(formatSeatsOf(140, 736)).toBe('140 of 736 seats left, at the last check')
+    expect(formatSeatsOf(6)).toBe('6 seats left, at the last check')
+    expect(formatSeatsOf(null)).toBeNull()
   })
 })
 

@@ -17,7 +17,7 @@
 // scan is well inside the limit, but the endpoint must never read a 403 here as a
 // dead parser (MARQUEE.md §6) or a quiet rate limit would look like a site change.
 
-import { TICKET, makeEvent, localParts } from './shared.js'
+import { TICKET, makeEvent, localParts, digest } from './shared.js'
 
 const API = 'https://fgestrapi.filarmonicaenescu.ro/api/events'
 
@@ -43,6 +43,31 @@ function feedUrl(from, pageSize) {
     + '&sort%5B0%5D=startDateAndTime%3Aasc'
     + '&locale=ro'
     + `&pagination%5Bpage%5D=1&pagination%5BpageSize%5D=${pageSize}`
+}
+
+/** What this concert IS, as opposed to what kind of concert it is.
+ *
+ *  `heading` is a programme category — "Recital cameral", "Concert
+ *  vocal-simfonic" — repeated across every chamber recital and every choral
+ *  concert of a season, so it cannot be the grouping identity (§9.70). The
+ *  programme text can: two nights of the same concert (the Philharmonic
+ *  routinely repeats a symphonic programme on consecutive evenings) carry
+ *  byte-identical descriptions and the same poster, while two recitals a month
+ *  apart share neither.
+ *
+ *  Falls back to the poster and then the slug, each a weaker version of the
+ *  same claim — the poster is per-programme too but a generic house photo gets
+ *  reused, and the slug is per-ROW, so leaning on it alone would split a
+ *  genuine two-night run in half. The heading is folded in as well, so two
+ *  different kinds of evening can never merge on a shared fallback.
+ *  Returns null when the feed gives none of the three, which puts the row back
+ *  on title grouping rather than inventing an identity for it. */
+function programmeKey(attributes, programme) {
+  const identity = programme
+    || attributes?.media?.data?.attributes?.url
+    || attributes?.slug
+    || null
+  return identity ? digest(`${attributes?.heading ?? ''}|${identity}`) : null
 }
 
 export default {
@@ -73,6 +98,9 @@ export default {
       const label = String(a.buyLabel ?? '')
       const soldOut = a.disableBuy === true || /sold\s*out|epuizat/i.test(label)
       const onSale = /bilete|cump|buy|tickets/i.test(label) || Boolean(a.ticketUrl)
+      // Built from the FULL programme text, before makeEvent clips it to card
+      // length — two concerts can share 500 characters of preamble.
+      const programme = flattenBlocks(a.description)
       return makeEvent({
         // The feed names the actual hall (Ateneul Român, Sala Radio…), which can
         // differ from the institution. The venue row stays the identity — that is
@@ -87,7 +115,8 @@ export default {
         ticketState: soldOut ? TICKET.SOLD_OUT : onSale ? TICKET.OPEN : TICKET.NONE,
         ticketsUrl: a.ticketUrl ?? null,
         image: a.media?.data?.attributes?.url ?? null,
-        description: flattenBlocks(a.description),
+        description: programme,
+        productionKey: programmeKey(a, programme),
       })
     }).filter(Boolean)
   },

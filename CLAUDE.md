@@ -149,6 +149,9 @@ deep, and it filled once already (2026-09-09). Three rules keep it there:
   [`vercel.json`](vercel.json)) — every change used to cost two deployments,
   one preview and one production. `main` is unaffected.
 
-To reclaim space, `npm run prune:deployments` keeps the newest 10 and deletes
-the rest. It needs a `VERCEL_TOKEN`, dry-runs unless passed `--yes`, and refuses
-to delete the deployment currently serving production.
+Old deployments are swept automatically: the project's **Deployment Retention
+Policy** (Vercel → Settings → Build and Deployment) is set to 1 week for all four
+classes. That cleared ~11 weeks of backlog on 2026-09-10 and holds the retained
+set to about a week's worth. Nothing to run by hand — a retention window only
+works because the per-deployment size above stays small, so the two are one
+mechanism, not two.

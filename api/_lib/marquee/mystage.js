@@ -62,11 +62,27 @@ export function mystageEvents(html) {
 export function mystageTicketing(event) {
   const price = Number(event?.price?.min?.value)
   const hasPrice = Number.isFinite(price) && price > 0
-  const seatsAvailable = Object.values(event?.seating ?? {})
-    .reduce((sum, cat) => sum + (Number(cat?.available) || 0), 0)
+  const categories = Object.values(event?.seating ?? {})
+  const seatsAvailable = categories.reduce((sum, cat) => sum + (Number(cat?.available) || 0), 0)
+
+  // The same map, read for the OTHER number it has been carrying all along
+  // (§9.73): `total` beside `available`, per category. Only the categories a
+  // buyer can actually choose — one with no price of its own is the same
+  // not-on-sale allocation §9.47 found reading `true` on `isAvailable` with
+  // nothing behind it, and counting its seats would report a house as fuller
+  // or emptier than the one being sold.
+  const sellable = categories.filter((cat) => Number(cat?.price) > 0)
+  const seatsLeft = sellable.reduce((sum, cat) => sum + (Number(cat?.available) || 0), 0)
+  const seatsTotal = sellable.reduce((sum, cat) => sum + (Number(cat?.total) || 0), 0)
+
   return {
     price: hasPrice ? price : null,
     seatsAvailable,
+    // Null rather than zero where there is nothing sellable to count: a
+    // showing with no priced category is not an empty house, it is a house
+    // that is not being sold yet.
+    seatsLeft: seatsTotal > 0 ? seatsLeft : null,
+    seatsTotal: seatsTotal > 0 ? seatsTotal : null,
     ticketState: seatsAvailable > 0 ? TICKET.OPEN : hasPrice ? TICKET.SOLD_OUT : TICKET.NONE,
   }
 }
@@ -108,22 +124,13 @@ export default {
     return events.map((e) => {
       const date = typeof e.date === 'string' ? e.date.slice(0, 10) : null
       const hall = e.venue?.hall && e.venue.hall !== '-' ? `Sala ${e.venue.hall}` : null
-      const price = Number(e.price?.min?.value)
-      const hasPrice = Number.isFinite(price) && price > 0
       const link = e.eventId ? `https://www.mystage.ro/spectacole/${slug(e.title)}-${e.eventId}` : null
 
-      // `isAvailable` looked like the obvious signal, but it reads `true` on
-      // every event on a venue page checked live (2026-08-27) — including
-      // three with zero seats in every category and a placeholder
-      // `price.min.value: 0`, one of them "MASS" showing a TICKETS chip in
-      // the app with none actually on sale. It is not a per-event flag worth
-      // trusting; the seating map is. Summed availability across every
-      // category tells the truth mystage's own page acts on (it's what
-      // renders "Momentan nu sunt bilete disponibile" there), and a real
-      // price alongside zero seats is what actually being sold out looks
-      // like, as opposed to not on sale yet.
-      const seatsAvailable = Object.values(e.seating ?? {})
-        .reduce((sum, cat) => sum + (Number(cat?.available) || 0), 0)
+      // The §9.47 rule and the §9.73 counts, both out of `mystageTicketing`
+      // above rather than copied here — this parse and metropolis.js's
+      // secondary read the same seating map and must not drift on what it
+      // means.
+      const ticketing = mystageTicketing(e)
 
       return makeEvent({
         venue: venue.name,
@@ -133,8 +140,14 @@ export default {
         hall,
         link,
         image: e.images?.[0] ?? null,
-        ticketState: seatsAvailable > 0 ? TICKET.OPEN : hasPrice ? TICKET.SOLD_OUT : TICKET.NONE,
-        price: hasPrice ? price : null,
+        ticketState: ticketing.ticketState,
+        price: ticketing.price,
+        // mystage IS Unteatru's own box office, so its seating map is the
+        // house — which is what makes a count reportable here and NOT for
+        // Metropolis, where the same feed sells one allocation of a room it
+        // does not own (metropolis.js says why at more length).
+        seatsLeft: ticketing.ticketState === TICKET.OPEN ? ticketing.seatsLeft : null,
+        seatsTotal: ticketing.ticketState === TICKET.OPEN ? ticketing.seatsTotal : null,
         // Already plain prose in the JSON — no extraction needed, unlike
         // every HTML-based reader here.
         description: e.description ?? null,

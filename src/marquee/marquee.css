@@ -1064,6 +1064,12 @@ button { color: inherit; font: inherit; }
   color: var(--color-on-accent);
   font-weight: 600;
 }
+/* A count that is not scarce is still worth printing — it is the one chip that
+   says how full the room is rather than only that a button exists (§9.72).
+   Outlined in the accent, like the "tickets" chip it replaces, because it makes
+   the same claim plus a number; the filled warning above is reserved for a
+   count with a clock on it. */
+.chip--seats { border-color: var(--color-accent); color: var(--color-accent); }
 .chip--saved { border-color: var(--color-success); color: var(--color-success); }
 .chip--changed-tickets-opened { border-color: var(--color-accent); color: var(--color-accent); }
 .chip--changed-sold-out { border-color: var(--color-danger); color: var(--color-danger); }

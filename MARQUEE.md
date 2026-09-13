@@ -539,7 +539,9 @@ worth keeping written down:
 - **An Oveit hub page is a 2.5KB JavaScript shell**, so the generic reader finds nothing on
   it. `api/_lib/marquee/oveit.js` reads the platform's public API instead, taking the vendor
   id out of the hub URL. It never reports `sold-out`: the feed has no such flag, and an
-  absent price means "none published", not "gone".
+  absent price means "none published", not "gone". *(Superseded for seated events by
+  §9.71 — the feed still has no flag, but the seats behind it can be counted, so
+  `sold-out` is now said when it has been measured.)*
 - **Changing a venue's URL used to leave the OLD site's reader in place.** `validateVenue`
   fell back to the adapter already on the row whenever the new URL matched nothing — so the
   form said *"no built-in reader for this site"* while the row quietly kept `filarmonica`,
@@ -2764,6 +2766,311 @@ productions, 4 free — the linked *Film românesc*, two Tibo Pinsard
 masterclasses and a traditional-music concert — with the hall's `Festival
 Pass` (190 lei) and every 30-40 lei screening correctly left out.
 
+### 9.70 A heading is not a title (2026-09-12)
+
+Reported from the app: *Recital cameral* showed as one card spanning four dates
+— 29 Sept, 3 Oct, 28 Oct, 31 Oct — with Martha Argerich's poster and a 150 lei
+price. They are four unrelated concerts, and the 3 October one is a wind quintet
+at 70 lei.
+
+The cause is one line, and it had been right until this venue arrived.
+`productionId` (programme.js) is `venue + title`, on the assumption that the
+title identifies the show. **Filarmonica prints a programme CATEGORY where every
+other venue prints a name**: four separate concerts this autumn are all headed
+*Recital cameral*, two more *Stagiunea de marți seara*, two *Recital vocal*. So
+the grouping that usefully folds a fortnight of *Tomcat* into one card also
+folds a season of unrelated concerts into one — and then, because a production
+takes its poster, price and link from whichever showing carried them first
+(`??=`), the survivor wears the first concert's face. It doesn't merely crowd
+them together; it says false things about the other three.
+
+**The first attempt fixed the wrong adapter.** `filarmonica.js` is the obvious
+place to look and the wrong one: the app reads this venue through **Oveit**
+(§9.7, and the source table in §3 says so outright — the Strapi feed 403s every
+non-browser client). The tell was in the screenshot all along: the card's hall
+read `Ateneul Roman / sala mare`, Oveit's free-typed spelling, where the Strapi
+reader would have produced `Ateneul Român · Sala Mare`. **Check which reader a
+venue actually uses before fixing what it shows** — the adapter named after the
+venue may not be the one running.
+
+**Fixed per-adapter, not globally.** `makeEvent` takes an optional
+**`productionKey`** (shared.js), null everywhere else, and `productionId` uses
+it in the title's place when present — so every other venue keeps grouping by
+title exactly as before.
+
+What that key is derived from is a per-source judgement, and the two readers for
+this venue reach it differently:
+
+- **`oveit.js` keys on the POSTER**, not on the row id. Each Oveit row is one
+  ticketed night, so an id-keyed identity would split any vendor selling a
+  genuine multi-night run as one event per night — precisely the case grouping
+  exists for. Artwork tracks the programme instead: across Filarmonica's whole
+  season no two concerts share a cover (each gets its own upload, down to the
+  `-2`/`-3` variants of a series template), while a run repeated across nights
+  is one poster reused. A coverless row keys to null and falls back to title
+  grouping — silence is not evidence that two nights are different concerts.
+- **`filarmonica.js` (Strapi, still unreachable) keys on the PROGRAMME TEXT**,
+  falling back to the poster and then the slug. That feed carries descriptions,
+  and it needs them: its own fixture holds two *Concert vocal-simfonic* rows on
+  1 and 2 October with different slugs, identical descriptions and the same
+  poster — one programme played on consecutive evenings, which a slug-keyed
+  identity would have split.
+
+Either way the key travels as a **digest** (`digest`, FNV-1a 32-bit, shared.js)
+rather than the text: the honest discriminator is long and this field rides in
+every scan payload. Truncating the source instead would collide exactly where it
+matters — Filarmonica's programmes routinely open with the same several words
+("Deschiderea Stagiunii…").
+
+**Verified against the live Oveit feed**, all three pages captured on
+2026-09-12 and saved as `oveit-season-p{1,2,3}.json`: 19 events. Before, 14
+cards — the four-date *Recital cameral* at 150 lei under the Argerich poster,
+exactly as reported, plus the two doubled-up pairs. After, 19 cards, each with
+its own poster, price and link, and nothing over-split: this season contains no
+genuine multi-night run, and the poster-keyed grouping of one is pinned by its
+own test.
+
+**`eventKey` is untouched**, deliberately. Identity per showing is still
+venue:date:title, so this changes no diff and produces no one-off wave of
+phantom "new" rows. What it does reset is anything keyed on the production id —
+a watch or an ignore held on a Filarmonica card — which is the correct
+consequence of deciding those cards were never one production.
+
+One follow-on in the client: `handleOpenChange` (App.jsx) rebuilt the scroll
+target from `venue + title`, which no longer finds the card. The snapshot
+already records the right id (`toSnapshot`'s `production`), so the change row
+now uses it, falling back to the old derivation for snapshots written before
+this.
+
+**The cards still all read "Recital cameral".** Each now carries its own poster,
+price, date and link, but the heading is the only title Oveit carries, and the
+Strapi feed's first description line is a season label ("Deschiderea Stagiunii
+2026-2027") as often as it is a name — composing a title out of either would be
+guessing. A subtitle line on the card would be the honest fix, and it is a
+change to every venue's card, so it waits for a decision rather than riding
+along with this one.
+
+### 9.71 Counting the seats Oveit won't tell us about (2026-09-12)
+
+Reported with a screenshot of Oveit's own seat picker: *Recital cameral*,
+29 September, both ticket categories marked **Stoc epuizat**, while Marquee
+showed it as on sale at 150 lei. The card was not wrong by accident — this
+reader had never been able to say sold out. Oveit's vendor feed carries a
+price and nothing else about availability, and §9.7 chose silence over
+inventing a state from that silence.
+
+**The buyer's own seat picker knows, and it learns from three public
+endpoints.** Filarmonica sells through a seats.io chart, and the widget on
+oveit.com reads, unauthenticated:
+
+| | what it gives |
+|---|---|
+| `rendering-info?event_key=E652` | the chart key and drawing version, the category list, and what this event withheld from sale |
+| `charts/<chartKey>/published/<ver>` | the hall: every seat, its label, its category |
+| `events/object-statuses?event_key=E652` | the seats that are not free |
+
+Free seats are then arithmetic — the hall, minus what was withheld, minus what
+is gone — and `api/_lib/marquee/seatsio.js` does exactly that and nothing else.
+No login, no token, no scraping of a rendered page: the same three GETs the
+seat picker makes before it draws.
+
+Four things had to be got right, each of which could have made the count a
+confident lie:
+
+- **Count only what a buyer can pick.** The 29 September recital put 192 seats
+  of a 794-seat hall on sale — Categoria 2 and 3 only. Counting Categoria 1 and
+  the Protocol seats (the house's own, never sold) would have reported a
+  sold-out concert as two-thirds empty. The buyable set is the seats.io
+  categories the event's own public ticket types map to (`seatsCategoryKey`).
+- **The label join is load-bearing.** The statuses feed names seats and nothing
+  else. Ateneul Român's big hall labels no rows (they arrive as `?`) so its
+  seats are `Centru-43`; the small hall labels them, so its are
+  `Sala mică-4-26`. A wrong join matches nothing, and a hall where nothing
+  matches reads as a hall where **nothing is taken** — failure in the one
+  direction that matters. So `countFree` checks the join rather than trusting
+  it: a single status label absent from the drawing voids the whole count. All
+  19 concerts of the live season matched, 764 of 764 labels on the sold-out one.
+- **`forSale` is a blacklist or a whitelist** depending on its own flag, and an
+  empty list means the whole hall. The sold-out recital withheld 24 seats.
+- **A released seat is free again.** The feed reports movement in both
+  directions, so a row can say `status: free`; only genuinely gone seats count
+  as taken, held-for-checkout included.
+
+**The responses are byte-shifted, not encrypted** — `application/vnd.seatsio`
+is the JSON with every byte raised by one constant 0-63, which the renderer
+subtracts back. `decode` reads the shift off the first byte instead of
+hardcoding today's 29, so a change of constant costs nothing. Nothing about
+this is a credential and nothing is bypassed; it is an encoding, and treating
+it as one keeps the reader honest about what it is doing.
+
+**`enrich` now runs in rounds** (scan.js, capped at 3). Excelsior's seat hop
+needed one: which showings are on sale is a fact of pages already fetched.
+This one needs two, because a chart can only be asked for once the event's own
+answer has named it — and naming it per chart rather than per concert is what
+makes Ateneul Român's big hall one 240 KB fetch for a dozen concerts instead of
+a dozen. An adapter that answers the same way every round (Excelsior does; it
+has no idea a second round happened) is filtered by request signature rather
+than being made to recognise its own answers.
+
+Cost, measured on the live season: **41 requests, ~1.4 MB, ~8s** added to one
+venue's scan, for 19 concerts and 3 distinct halls. Bounded by a 60-day
+horizon — "last tickets" is a fact about a night you could still go to, and a
+concert next spring costs the same two requests for nothing — and by the same
+24-lookup ceiling `excelsior.js` uses, for the same reason: this hop runs
+inside Wanderlist's evening cron.
+
+**No client change was needed**, which is the part worth noticing. `seatsLeft`
+and a measured `sold-out` are the model §9.68 already built for Excelsior:
+`formatSeatsLeft` shows a chip only at 10 or fewer, so a concert with 490 free
+says nothing new, one with 6 says "6 left", and the 29 September recital now
+says sold out. The plumbing was waiting for a second venue that could count.
+
+**Verified live** end to end through `scanVenue`: 19 events, 29 September
+`sold-out`, every other concert carrying a count, and the 25 November one
+`null` — past the horizon, unknown rather than assumed. Fixtures are the real
+small-hall chart, statuses and rendering-info captured the same day (base64 of
+the wire bytes, since the shift is exactly what `decode` exists for).
+
+**What could still break it, honestly:** seats.io owes us nothing. The
+endpoints are public but undocumented for this use, the shift constant is
+theirs to change, and a chart whose labels stop lining up voids its own count
+by design. Every one of those failures lands on `seatsLeft: null` and a
+showing that reads exactly as it did before any of this — the same defence
+`enrich` has had since §9.68.
+
+### 9.72 A count you have is worth printing (2026-09-12)
+
+Reported the evening §9.71 shipped: sold-out concerts were marked, and no card
+showed a seat count. The natural reading is that the counts came back null in
+production — and the natural reading is wrong in an instructive way. **A
+sold-out mark can only come FROM a completed count** (`oveit.js` sets it when
+free is zero), so the very thing that looked like the feature half-working was
+proof the whole chain ran. A re-scan confirmed it: every concert inside the
+horizon carried a number, and one had moved by two seats since the morning.
+
+What swallowed them was `SEATS_SCARCE = 10` in `format.js`. `formatSeatsLeft`
+returned **null above ten**, and every caller treats null as "nothing to say",
+so a 736-seat hall with 184 seats left rendered the plain `tickets` chip — the
+app knew exactly how full the Ateneu was and said nothing.
+
+That threshold was not a mistake, it was a rule that aged. Written for §9.68,
+when Excelsior's studio was the only house being counted, its reasoning was
+sound: *"175 seats left" tells you nothing you wouldn't assume from the buy
+button.* True of a theatre with ten shows and a 36-seat studio. False the moment
+a second venue counted a hall where **every** night sits above the line, since
+the alternative to a big number there is not a smaller number, it is silence.
+
+**So the threshold stopped deciding whether the count appears and started
+deciding how it looks.**
+
+- `formatSeatsLeft` returns a label for any count it is given, and null only
+  for an unknown one. The card prints what the reader measured.
+- `seatsAreScarce(free, total)` is the new warning test, and it is two tests:
+  ten or fewer absolutely, **or** a seventh (15%) of the seats that were on
+  sale. Ten is generous for a studio and stingy for the Ateneu, which is why a
+  share sits beside it — 40 left in the big hall is 5% of the room and means
+  what 6 left means in a studio. Either is enough.
+- The chip carries `chip--seats` (outlined, like the `tickets` chip it replaces
+  and whose claim it strictly extends) or `chip--scarce` (filled warning, as
+  before). The tile band works the same way.
+- `seatsTotal` rides alongside `seatsLeft` from `makeEvent` through
+  `toProductions` (summed under the same all-or-nothing rule) so the share is
+  computable at all. It is null wherever the count is, and null wherever the
+  reader counted what is left without counting the hall — Excelsior, which
+  keeps the absolute test alone and behaves exactly as it did.
+
+**Notifications deliberately did NOT follow.** A card is read on purpose; a
+push notification is read in passing, and "Bach 2.0 — tickets on sale, 581
+seats left" is the line that teaches you to swipe them away. `notify.js` and
+the service worker's ES5 mirror both name a count only when it is scarce, now
+by the same two-part test — `notify.sw.test.js` runs both sides against the
+same cases, including the share one, so they cannot drift.
+
+**The horizon moved too, for a reason worth naming.** §9.71 only looked 60 days
+ahead, on the same "last tickets is about a night you could still go to"
+reasoning. Once every card prints its count, a 60-day cut leaves one concert in
+the middle of a season with no number and no explanation, which reads as a bug
+rather than as a saving. It now matches the programme's own 120-day horizon,
+and `MAX_SEAT_LOOKUPS` — 24, soonest first, so the cap drops the far end of the
+season — is what actually bounds the hop.
+
+**Verified live**, the whole way through `scanVenue` and `toProductions` to the
+label each card would render: 19 concerts, 18 counted (`490 of 736`,
+`184 of 754`, `76 of 78`), the 29 September recital sold out, and the November
+one that used to fall off the horizon now counted with the rest. Nothing today
+is scarce enough to wear the warning colour, which is itself the honest answer
+— and the scarce path is pinned by its own tests rather than by waiting for a
+concert to sell out.
+
+### 9.73 Seat counts everywhere the source actually has them (2026-09-12)
+
+Asked after Filarmonica started counting: can the other venues do the same?
+Every ticketing source behind an active venue was checked live rather than
+guessed at. Two could, one of them without a single extra request, and two
+could not for reasons worth writing down so nobody re-derives them.
+
+| Source | Venues | Seat count? |
+|---|---|---|
+| **mystage.ro** | Teatrul Unteatru | **Yes — it was already in hand.** `seating[].available` AND `seating[].total`, per category, in the `__NEXT_DATA__` this reader has parsed since §9.20 |
+| **iabilet.ro** | Cinema Europa | **Yes, as a warning.** A low-stock line on the tariff row: "Mai sunt doar 4 bilete disponibile" |
+| **bilet.ro** | Teatrul Național | **No.** Every TNB event sits behind a Queue-it waiting room; reading availability would mean getting past a queue, which this app will not do |
+| **bilete.teatrulmetropolis.ro** | Teatrul Metropolis | **No.** Its own API (`/api/shop/shows`) answers 400 to anything without a session of its own |
+| eventbook.ro, tickets.expirat.org, teatrul-odeon.ro | the cinemas, Expirat, Odeon | **No.** Nothing in the pages this app fetches, and eventbook's `/performance/<id>/seats` returned an empty array for every screening checked |
+
+**mystage was the quiet one: the count had been sitting in the parse since
+§9.47.** That section read the seating map to fix ticket state — `isAvailable`
+being useless — and summed `available` to decide open vs sold out. The number
+it summed was never reported. So this is four lines, and the interesting work is
+in what gets counted:
+
+- **Only categories with a price of their own.** A priceless category is the
+  same not-on-sale allocation §9.47 caught reading `true` with nothing behind
+  it; counting its seats would report a house fuller or emptier than the one
+  being sold. MASS, still in the fixture, is that case: 64 seats, no price,
+  `seatsLeft: null` — not on sale, not an empty house.
+- **`mystageTicketing` is now the only copy of the rule.** `parse` had its own
+  identical inline version; both readers of that map now go through the helper
+  so they cannot drift on what it means.
+- **Metropolis gets no count from it, deliberately** — and this is the same
+  asymmetry §9.62 settled for ticket state. mystage sells two Metropolis
+  co-productions, but nothing establishes that its allocation is the whole
+  room, so "12 left" there could mean twelve of mystage's twelve with a hundred
+  unsold at the theatre's own box office. Unteatru is different in the one way
+  that matters: mystage IS its box office, so the map is the house.
+
+**iabilet is a warning, not an inventory**, and the reader says only what the
+site says. The line appears on a tariff row when stock runs low; silence means
+"more than iabilet bothers to warn about", which is not a number. Two rules
+keep that honest:
+
+- **Every open tariff must carry a line**, or the showing stays uncounted. One
+  silent tier says nothing about how many it has.
+- **The largest line wins, never the sum.** Where two tariffs of one showing
+  both run low they print the SAME number — Cinema Europa's weekend pass said
+  "4" on its full-price and reduced rows alike, one pool counted twice — and
+  adding them would invent tickets. If the tiers really did hold separate
+  allocations the maximum under-counts, which is the tolerable direction for a
+  label that exists to warn rather than to reassure.
+
+No `seatsTotal` from iabilet: it says how few are left and never how big the
+room was, so the card falls back to the absolute scarcity test — right for a
+notice printed only when the number is already small.
+
+**Verified live.** Unteatru through `scanVenue`: ten showings, seven counted
+(`16/80` for Bug, `17/80` for Domnișoara Iulia, `53/80` for the concert), and
+the three mystage is not yet selling correctly uncounted. Cinema Europa: 19
+screenings, none low enough today for iabilet to warn — a clean zero, which is
+the honest reading and not a broken parser. The notice parser itself was run
+against a live iabilet row fetched the same evening ("Premium", 8 left) and
+against the one already sitting unnoticed in the saved bundle fixture ("Mai
+sunt doar 2 bilete disponibile", on a weekend pass this reader drops).
+
+**What this leaves.** Counts now come from four venues by three different
+routes — Excelsior's own ticketing (§9.68), Filarmonica's seats.io chart
+(§9.71), Unteatru's embedded map, Cinema Europa's low-stock line — and every
+one of them lands in the same `seatsLeft`/`seatsTotal` pair, so the card, the
+tile, the change strip and the notification needed no work at all.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -2785,7 +3092,9 @@ absences at the source, not gaps in a reader:
   They now read `none` — the price-0 filtering was always correct, the
   ticket-state reading next to it wasn't.
 - **Filarmonica (via Oveit) has no description**, because that feed carries no
-  such field; the richer Strapi feed does, and remains unreachable.
+  such field; the richer Strapi feed does, and remains unreachable. Its
+  availability, once in the same list, is no longer missing — §9.71 counts the
+  seats.io chart the venue's own seat picker reads.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
   upcoming listed, not a failure.
 

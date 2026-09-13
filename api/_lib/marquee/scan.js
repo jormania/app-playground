@@ -114,6 +114,11 @@ export function assess(adapter, pages, events) {
  */
 export const REQUEST_TIMEOUT_MS = 15000
 
+/** How many times `enrich` may be asked for more requests. Two is what the
+ *  deepest chain here needs (oveit.js); the third round is where an adapter
+ *  that keeps asking gets stopped. */
+const MAX_ENRICH_ROUNDS = 3
+
 /** Fetch one request an adapter asked for. Never throws: a failure is a value, so
  *  one dead venue can't take the whole scan down with it. */
 async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
@@ -152,6 +157,14 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
       return { url: request.url, tag: request.tag ?? null, ok: false, status: res.status, body, optional: request.optional === true }
     }
     if (request.json) return { url: request.url, tag: request.tag ?? null, ok: true, status: res.status, json: await res.json() }
+    // A response that is not text and not JSON. seats.io serves its seat maps
+    // as bytes (`application/vnd.seatsio` — every byte of the JSON shifted by a
+    // constant, see seatsio.js), and `res.text()` would decode those through
+    // UTF-8 and lose them. The adapter does the decoding; this layer only
+    // declines to mangle it on the way in.
+    if (request.binary) {
+      return { url: request.url, tag: request.tag ?? null, ok: true, status: res.status, bytes: new Uint8Array(await res.arrayBuffer()) }
+    }
     return { url: request.url, tag: request.tag ?? null, ok: true, status: res.status, body: await res.text() }
   } catch (err) {
     const timedOut = err?.name === 'AbortError' || err?.name === 'TimeoutError'
@@ -247,11 +260,31 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
   // the health decisions above, a page that fails is simply dropped, and an
   // adapter that throws in here loses its counts rather than its venue.
   if (typeof adapter.enrich === 'function') {
-    let extra = []
-    try { extra = adapter.enrich(pages, { venue, now }) ?? [] } catch { extra = [] }
-    for (const request of extra) {
-      const page = await fetchOne({ ...request, optional: true }, fetchImpl, timeoutMs)
-      if (page.ok) pages.push(page)
+    // Called until it stops asking, because one round is not always enough to
+    // reach the answer. Excelsior needs a single round (a ticketing call per
+    // showing). Oveit needs two: the first learns which seating chart each
+    // concert uses, and only the chart named in ITS answer can be fetched in
+    // the second (§9.71). The adapter sees every page fetched so far and is
+    // expected not to ask twice for the same URL; the round cap is the backstop
+    // if it ever does, since this hop runs inside Wanderlist's evening cron too.
+    const asked = new Set()
+    for (let round = 0; round < MAX_ENRICH_ROUNDS; round++) {
+      let extra = []
+      try { extra = adapter.enrich(pages, { venue, now, round }) ?? [] } catch { extra = [] }
+      // An adapter that answers the same way every round (excelsior's enrich
+      // reads the detail pages it was given and has no idea a second round
+      // happened) is asking for what it already has. Filtering those out is
+      // what ends the loop for it, rather than making every adapter learn to
+      // recognise its own answers. The signature is what identifies a request:
+      // Excelsior's seat lookups are one URL POSTed with a different body each
+      // time.
+      const fresh = extra.filter((r) => !asked.has(`${r.method ?? 'GET'} ${r.url} ${r.body ?? ''}`))
+      if (fresh.length === 0) break
+      for (const request of fresh) {
+        asked.add(`${request.method ?? 'GET'} ${request.url} ${request.body ?? ''}`)
+        const page = await fetchOne({ ...request, optional: true }, fetchImpl, timeoutMs)
+        if (page.ok) pages.push(page)
+      }
     }
   }
 

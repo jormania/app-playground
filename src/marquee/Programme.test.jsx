@@ -234,13 +234,30 @@ describe('Programme — the seat count', () => {
     expect(screen.getByText('1 seat left')).toBeTruthy()
   })
 
-  it('keeps the plain chip when there are plenty, or when nobody counted', () => {
-    for (const seatsLeft of [140, null]) {
-      const days = byDate(toProductions([event({ ticketState: 'open', seatsLeft })]))
-      render(<Programme {...baseProps} days={days} venues={venues} />)
-      expect(screen.getByText('tickets')).toBeTruthy()
-      cleanup()
-    }
+  it('prints a roomy count too, without the warning colour (§9.72)', () => {
+    // The app knew the Ateneu was 140-of-736 full and showed "tickets", which
+    // is what the buy button already said. The number is the point; the colour
+    // is what says how urgent it is.
+    const days = byDate(toProductions([event({ ticketState: 'open', seatsLeft: 140, seatsTotal: 736 })]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.getByText('140 seats left')).toBeTruthy()
+    expect(screen.queryByText('tickets')).toBeNull()
+    expect(container.querySelector('.chip--seats')).toBeTruthy()
+    expect(container.querySelector('.chip--scarce')).toBeNull()
+  })
+
+  it('wears the warning colour for a small share of a big hall', () => {
+    // 40 of 736 is not scarce by the absolute ten, and is very scarce by any
+    // reading of the room.
+    const days = byDate(toProductions([event({ ticketState: 'open', seatsLeft: 40, seatsTotal: 736 })]))
+    const { container } = render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(container.querySelector('.chip--scarce').textContent).toBe('40 seats left')
+  })
+
+  it('keeps the plain chip when nobody counted', () => {
+    const days = byDate(toProductions([event({ ticketState: 'open', seatsLeft: null })]))
+    render(<Programme {...baseProps} days={days} venues={venues} />)
+    expect(screen.getByText('tickets')).toBeTruthy()
   })
 
   it('marks the scarce night itself, not just the run', () => {

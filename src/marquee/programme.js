@@ -38,9 +38,19 @@ export function searchProductions(productions, query) {
 // Saved is deliberately absent: it is not the app's to remember (see findings.js).
 export const TRIAGE = { IGNORED: 'ignored' }
 
-/** venue + title, folded — the identity of a production across its dates. */
+/** venue + title, folded — the identity of a production across its dates.
+ *
+ *  Unless the adapter says otherwise. A title identifies a show at almost every
+ *  venue, but Filarmonica heads every chamber recital of the season "Recital
+ *  cameral" and every choral night "Concert vocal-simfonic" — programme
+ *  categories, not names — so four unrelated concerts arrived as one card
+ *  wearing the first one's poster, price and link (§9.70). An adapter that
+ *  knows its own titles aren't identities sets `productionKey` on the showing
+ *  (shared.js's `digest`), and it takes the title's place here. The venue stays
+ *  part of the id either way: keys are only ever unique within the reader that
+ *  minted them. */
 export function productionId(event) {
-  return `${event.venue}::${event.title}`.toLowerCase()
+  return `${event.venue}::${event.productionKey || event.title}`.toLowerCase()
 }
 
 /** A production id, as a DOM id a "What changed" row can scroll to. Reuses
@@ -87,6 +97,7 @@ export function toProductions(events) {
         // venue whose OWN page states a per-event kind (ARCUB's `.tags`)
         // ever sets this.
         category: event.category ?? null,
+        productionKey: event.productionKey ?? null,
         showings: [],
       })
     }
@@ -131,6 +142,13 @@ export function toProductions(events) {
     p.openCount = open.length
     p.seatsLeft = open.length > 0 && open.every((s) => typeof s.seatsLeft === 'number')
       ? open.reduce((n, s) => n + s.seatsLeft, 0)
+      : null
+    // The hall behind that number, summed the same way and under the same
+    // all-or-nothing rule — a run whose nights are counted against different
+    // hall sizes still adds up, and one night missing a total makes the
+    // proportion a guess rather than a smaller number.
+    p.seatsTotal = p.seatsLeft != null && open.every((s) => typeof s.seatsTotal === 'number')
+      ? open.reduce((n, s) => n + s.seatsTotal, 0)
       : null
   }
   return out.sort((a, b) => String(a.firstDate).localeCompare(String(b.firstDate)) || a.title.localeCompare(b.title, 'ro'))

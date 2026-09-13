@@ -12,7 +12,7 @@ import eventbook from '../_lib/marquee/eventbook.js'
 import filarmonica from '../_lib/marquee/filarmonica.js'
 import jsonld from '../_lib/marquee/jsonld.js'
 import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
-import iabilet from '../_lib/marquee/iabilet.js'
+import iabilet, { seatsNote } from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
@@ -500,6 +500,53 @@ describe('Filarmonica (Strapi feed)', () => {
     expect(events[0].description).toContain('pian')
   })
 
+  it('keys a production on its programme, not on the feed’s category heading', () => {
+    // The two vocal-simfonic rows are the SAME concert on consecutive nights —
+    // identical programme, identical poster, different slug — and must group as
+    // one production. The recital shares neither and must not join them (§9.70).
+    expect(events[1].productionKey).toBe(events[2].productionKey)
+    expect(events[0].productionKey).not.toBe(events[1].productionKey)
+  })
+
+  it('splits two different concerts that share a heading', () => {
+    // The bug this exists for: "Recital cameral" is what Filarmonica calls every
+    // chamber recital of the season, so grouping by title collapsed a month of
+    // unrelated concerts into one card wearing the first one's poster and price.
+    const feed = JSON.parse(fixture('filarmonica.json'))
+    const other = structuredClone(feed.data[0])
+    other.attributes.slug = 'recital-cameral-7702'
+    other.attributes.startDateAndTime = '2026-10-03T16:00:00.000Z'
+    other.attributes.endDateAndTime = '2026-10-03T18:00:00.000Z'
+    other.attributes.description = [
+      { type: 'heading', children: [{ text: 'Cvintetul V Coloris', type: 'text' }] },
+    ]
+    other.attributes.media = { data: { attributes: { url: 'https://fge-strapi.s3.eu-central-1.amazonaws.com/v_coloris.jpg' } } }
+    feed.data.push(other)
+
+    const parsed = filarmonica.parse([{ json: feed }], { venue })
+    const recitals = parsed.filter((e) => e.title === 'Recital cameral')
+    expect(recitals).toHaveLength(2)
+    expect(recitals[0].productionKey).not.toBe(recitals[1].productionKey)
+  })
+
+  it('falls back to the poster, then the slug, when a row has no programme text', () => {
+    // Weaker discriminators, in descending order of how well they identify a
+    // programme — never null while the feed gives any of the three, because a
+    // null key drops the row back onto title grouping, which is the bug.
+    const feed = JSON.parse(fixture('filarmonica.json'))
+    const bare = structuredClone(feed.data[0])
+    bare.attributes.description = null
+    const noPoster = structuredClone(bare)
+    noPoster.attributes.media = null
+    feed.data.push(bare, noPoster)
+
+    const parsed = filarmonica.parse([{ json: feed }], { venue })
+    const [posterKeyed, slugKeyed] = parsed.slice(-2).map((e) => e.productionKey)
+    expect(posterKeyed).toBeTruthy()
+    expect(slugKeyed).toBeTruthy()
+    expect(posterKeyed).not.toBe(slugKeyed)
+  })
+
   it('asks the feed for events that have not ended yet, soonest first', () => {
     const [req] = filarmonica.requests(venue, { now: AUG })
     expect(req.json).toBe(true)
@@ -554,6 +601,52 @@ describe('Oveit (the ticketing platform, as a source)', () => {
     expect(events.some((e) => e.ticketState === 'sold-out')).toBe(false)
   })
 
+  it('gives each concert its own identity when the vendor names them all the same', () => {
+    // The bug this exists for, on Filarmonica's real autumn season (three pages,
+    // captured live 2026-09-12): the venue heads four unrelated concerts "Recital
+    // cameral", two more "Stagiunea de marți seara" and two "Recital vocal". Keyed
+    // by title they grouped into 14 cards, and the recital card claimed four dates
+    // under Martha Argerich's poster at 150 lei — the 3 October one is a wind
+    // quintet at 70 (§9.70). `productionKey` is what programme.js groups on;
+    // toProductions itself is tested on the src side (api/_lib imports no src).
+    const season = [1, 2, 3].map((n) => ({ json: JSON.parse(fixture(`oveit-season-p${n}.json`)) }))
+    const rows = oveit.parse(season, { venue })
+    expect(rows).toHaveLength(19)
+    expect(new Set(rows.map((e) => e.productionKey)).size).toBe(19)
+
+    const recitals = rows.filter((e) => e.title === 'Recital cameral')
+    expect(recitals.map((e) => e.date)).toEqual(['2026-09-29', '2026-10-03', '2026-10-28', '2026-10-31'])
+    expect(recitals.map((e) => e.price)).toEqual([150, 70, 70, 70])
+    expect(new Set(recitals.map((e) => e.productionKey)).size).toBe(4)
+    // Four concerts, four posters and four links — the merged card showed the
+    // first night's of each for all of them.
+    expect(new Set(recitals.map((e) => e.image)).size).toBe(4)
+    expect(new Set(recitals.map((e) => e.link)).size).toBe(4)
+  })
+
+  it('still groups a run that reuses one poster across its nights', () => {
+    // The reason the key is the poster and not the row id: each Oveit row is one
+    // ticketed night, so an id-keyed identity would split a vendor selling the
+    // same show on consecutive evenings — the case grouping exists for.
+    const run = { events: [
+      { id: 'a', name: 'Tomcat', timeInterval: { startsAt: '2026-10-01T17:00:00.000000Z' },
+        cover: { original: 'https://cdn.example/tomcat.jpg' }, minmaxticketsprices: { minPrice: 60, maxPrice: 0 } },
+      { id: 'b', name: 'Tomcat', timeInterval: { startsAt: '2026-10-02T17:00:00.000000Z' },
+        cover: { original: 'https://cdn.example/tomcat.jpg' }, minmaxticketsprices: { minPrice: 60, maxPrice: 0 } },
+    ] }
+    const rows = oveit.parse([{ json: run }], { venue })
+    expect(rows[0].productionKey).toBe(rows[1].productionKey)
+  })
+
+  it('falls back to title grouping for a row with no poster', () => {
+    // Silence is not evidence that two nights are different concerts, so a
+    // coverless row keeps the behaviour every Oveit vendor had before the key.
+    const bare = { events: [
+      { id: 'a', name: 'Concert', timeInterval: { startsAt: '2026-10-01T17:00:00.000000Z' }, minmaxticketsprices: { minPrice: 60, maxPrice: 0 } },
+    ] }
+    expect(oveit.parse([{ json: bare }], { venue })[0].productionKey).toBeNull()
+  })
+
   it('pages until the feed says nothing is left', () => {
     // Page size is read from the page in hand rather than assumed. This fixture
     // is trimmed to 3 rows (the live page carries 8), so 4 remaining reads as two
@@ -562,7 +655,7 @@ describe('Oveit (the ticketing platform, as a source)', () => {
     // drop the tail of a season.
     const more = oveit.follow(pages, { venue })
     expect(more.map((r) => r.url)).toEqual([2, 3].map((n) =>
-      `https://membership-api.oveit.com/v1/vendor/l7PDAr7y/events?page=${n}&include=type,timeInterval,dateTimeFormat,location,cover,currency,minmaxticketsprices`))
+      `https://membership-api.oveit.com/v1/vendor/l7PDAr7y/events?page=${n}&include=type,timeInterval,dateTimeFormat,location,cover,currency,minmaxticketsprices,seatingChart,tickets`))
 
     expect(oveit.follow([{ json: { events: [], remainingEvents: 0 } }], { venue })).toEqual([])
   })
@@ -594,6 +687,51 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
     const bundles = iabilet.follow([venuePage], { venue })
     expect(bundles.length).toBe(5)
     expect(bundles[0].url).toBe('https://www.iabilet.ro/bilete-asian-spotlight-vol-2-130105/')
+  })
+
+  it('reads iabilet’s own low-stock line off a tariff row', () => {
+    // Both wordings, live on the site: singular for the last one, plural for
+    // the rest. Everything else on a row says nothing about stock.
+    expect(seatsNote('<p class="text-danger">Mai sunt doar 4 bilete disponibile</p>')).toBe(4)
+    expect(seatsNote('<p class="text-danger">Mai este doar 1 bilet disponibil</p>')).toBe(1)
+    expect(seatsNote('<span>Bilet preț întreg</span>')).toBeNull()
+    expect(seatsNote(null)).toBeNull()
+  })
+
+  it('counts a showing only when every open tariff says how few are left', () => {
+    // One silent tariff means iabilet has more of that tier than it warns
+    // about, which is not a number — so the showing stays uncounted rather
+    // than reporting the loud tier's stock as the whole showing's.
+    const row = (name, price, note) => `<div data-is-tariff="1" data-tariff-id="1" data-tariff-name="${name}" data-tariff-sell-price="${price}" data-tariff-sell-currency="RON">`
+      + `<span>${name}</span>${note ? `<p class="text-danger">${note}</p>` : ''}</div>`
+    const page = (rows) => ({ body: '<script type="application/ld+json">/*<![CDATA[*/'
+      + JSON.stringify({ '@type': 'Event', startDate: '2026-09-04T18:00', url: 'https://www.iabilet.ro/bilete-x-1/' })
+      + '/*]]>*/</script>' + rows.join('') })
+
+    const both = iabilet.parse([page([
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret intreg', '30', 'Mai sunt doar 3 bilete disponibile'),
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret redus', '20', 'Mai sunt doar 3 bilete disponibile'),
+    ])], { venue })
+    expect(both).toHaveLength(1)
+    // One pool counted twice, not six tickets: the largest notice, never the sum.
+    expect(both[0].seatsLeft).toBe(3)
+
+    const oneQuiet = iabilet.parse([page([
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret intreg', '30', 'Mai sunt doar 3 bilete disponibile'),
+      row('Vineri, 4 septembrie - 18:00 - Solaris - Bilet pret redus', '20', null),
+    ])], { venue })
+    expect(oneQuiet[0].seatsLeft).toBeNull()
+    expect(oneQuiet[0].ticketState).toBe('open')
+  })
+
+  it('ignores a low-stock line on a sold-out tier, and on the weekend pass', () => {
+    // A sold-out tier is not an open tariff, so it neither demands a notice nor
+    // contributes one. The Abonament row carries a real notice in the live
+    // fixture and is dropped before any of this, being a pass and not a showing.
+    const events = iabilet.parse([{ body: fixture('iabilet-bundle-hyphen.html') }], { venue })
+    expect(fixture('iabilet-bundle-hyphen.html')).toContain('Mai sunt doar 2 bilete disponibile')
+    expect(events.every((e) => !/abonament/i.test(e.title))).toBe(true)
+    expect(events.every((e) => e.seatsLeft === null)).toBe(true)
   })
 
   it('reads the showings out of one bundle page, dropping the weekend pass', () => {
@@ -786,6 +924,22 @@ describe('mystage (Teatrul Unteatru today — any mystage.ro venue the same way)
     expect(events.find((e) => e.title === 'Masacrul').ticketState).toBe('open')
     // Zero seats WITH a real price is what actually sold out looks like.
     expect(events.find((e) => e.title === 'Constructed Sold Out Example').ticketState).toBe('sold-out')
+  })
+
+  it('reports the seats its own map has been carrying all along (§9.73)', () => {
+    // The same map §9.47 read for ticket state carries `total` beside
+    // `available`, per category — 8 of 80 for Masacrul. mystage IS Unteatru's
+    // box office, so that map is the house.
+    expect(events.find((e) => e.title === 'Masacrul')).toMatchObject({ seatsLeft: 8, seatsTotal: 80 })
+  })
+
+  it('counts only categories a buyer can choose, and never counts a closed house', () => {
+    // MASS's one category has no price — the not-on-sale allocation §9.47
+    // found, and not an empty house: null, not zero.
+    expect(events.find((e) => e.title === 'MASS')).toMatchObject({ seatsLeft: null, seatsTotal: null })
+    // A sold-out showing is already fully described by its state, the same
+    // rule every other reader follows.
+    expect(events.find((e) => e.title === 'Constructed Sold Out Example')).toMatchObject({ seatsLeft: null, seatsTotal: null })
   })
 
   it('never reports a price of 0 as a real price', () => {
