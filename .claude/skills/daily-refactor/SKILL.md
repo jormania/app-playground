@@ -131,6 +131,11 @@ Backlog-Item: R-0xx
 Then subscribe to the PR's activity and drive it to green if CI disagrees with
 your local run.
 
+If no GitHub tooling is available in the fired session, or the API refuses,
+**do not lose the work**: the branch is already pushed. Report the compare link
+`https://github.com/jormania/app-playground/compare/main...<branch>` and paste
+the PR body into your closing report so it can be opened by hand in a click.
+
 ## 8. Report
 
 Close the session with a short note: which item, what changed, the PR link, and
