@@ -20,6 +20,18 @@ shadow jsdom's — every storage-touching test then fails with `Cannot read
 properties of undefined (reading 'clear')`, which reads like a real
 regression but isn't. Either run `npm test`, or set that env var yourself.
 
+## Daily refactor Routine
+
+A scheduled session fires each weekday morning, takes **one** item off
+[`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md), implements it on a fresh branch off
+`main`, proves it green, and opens its own PR. No approval beforehand — review
+happens on the PR, after the fact. The procedure it follows is
+[`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md);
+edit the backlog by hand to steer it, reorder to reprioritise.
+
+It stops on its own once six refactor PRs are open, so an unreviewed pile can't
+grow without bound.
+
 ## Design-system boundary (one-way, enforced)
 
 - **New apps** build on the shared design system in [`src/ds/`](src/ds/).
