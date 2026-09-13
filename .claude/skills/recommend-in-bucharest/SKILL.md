@@ -42,6 +42,8 @@ Notion is the source of truth.
 
 #### Step 1a — Source refresh (replaces Notion content)
 Search and fetch all 8 sources for the current week. Verify each is current before including.
+**Eventbook is the exception** — it is a tool for confirming a film someone else
+named, not a page to browse for what's on. See its row below and Step 1c.
 
 | Source | Type | How to find |
 |---|---|---|
@@ -52,7 +54,7 @@ Search and fetch all 8 sources for the current week. Verify each is current befo
 | **Zile și Nopți** | Aggregator, always current | Fetch directly: `zilesinopti.ro/evenimente-bucuresti-weekend/` — no search needed |
 | **Recomandata** | Newsletter (Scena9/Fundația9), publishes Thu | Fetch `recomandata9.substack.com` to find the latest issue link, then fetch the article. Covers current week + upcoming events. Curated, editorial, highly relevant to Gabriel's taste. |
 | **Harta Muzeelor / Weekend Sessions** | Aggregator, always current | Fetch directly: `hartamuzeelor.ro/recomandari.html` — stable URL, no search needed. Focus: museums, galleries, guided tours, workshops, concerts in cultural venues. |
-| **Eventbook** | Box office, always current | Fetch `eventbook.ro/program/elvirepopesco` (and `eventbook.ro/program/cinema-pro` when relevant). **The authority for art-house film** — it's the actual box office for the cinemas Gabriel goes to, so it gives the real title, the real showtime and a bookable link rather than a listing someone retyped. Use it to CONFIRM or correct any film another source mentions, and as a discovery source in its own right for `movie`. Also carries concerts and theatre worth a look. |
+| **Eventbook** | Box office — **confirmation only, scoped by Step 1c** | Still the authority for art-house film: the real title, the real showtime and a bookable link rather than a listing someone retyped. Use it to **CONFIRM or correct a film another source already named**. **Do NOT open a Marquee-covered venue's programme page as a discovery source** — most art-house cinemas are covered now (Elvire Popesco, Apollo111, Union, MȚR), and `eventbook.ro/program/<venue>` is the exact page Marquee's `eventbook` adapter reads, so browsing it here reproduces Marquee's output row for row. Check the Step 1c set before fetching any `eventbook.ro/program/…` URL; browse it only for a cinema that set did not exclude (e.g. Cinema Pro). |
 
 After retrieving all available sources:
 - Replace the entire content of the **Suggested events** Notion page with a `## DD luna YYYY` section containing a table of article links + a Zile și Nopți highlights block
@@ -108,6 +110,18 @@ excludes on its very next run. Nothing here needs editing when Marquee's venue l
 changes, which is also what makes this file safe to push once and leave alone — Step 1c
 always reflects what Marquee is doing *today*, not what it was doing when this file was
 last edited.
+
+**The exclusion binds every step that follows — including which pages you open.**
+It is not just a filter applied at Step 3. A venue in this set must not be used as a
+**discovery surface** either: no `eventbook.ro/program/<venue>`, no
+`iabilet.ro/bilete-<venue>-venue-<id>`, no venue agenda page, for any name in the set.
+Those pages *are* Marquee's input — reading one here and writing what it lists produces
+the same night twice, from two directions, which is the one thing this step exists to
+prevent. **This has already happened:** the 2026-09-05 run listed Apollo111's and Elvire
+Popesco's Eventbook programmes as sources and wrote seven Apollo111 screenings into
+Radar; Apollo111 had joined Marquee two days earlier, on 2026-09-03. Filtering by venue
+name at the end does not save you if the collection step went to the venue's own box
+office to begin with.
 
 **The carve-out — don't let a venue match quietly erase coverage Marquee doesn't actually
 have yet.** Marquee caps `movie`-category venues (Cinema Europa, and any other cinema
@@ -293,17 +307,19 @@ results rather than re-deriving them:
   reason not to.
   - If the Notion-linked article already names the direct link, use it — no need to
     re-search.
-  - **Eventbook (`eventbook.ro`) first for film, and worth checking for concerts.**
-    Gabriel knows the site and prefers it for movies. It is the box office for the
-    art-house cinemas he actually goes to — Elvire Popesco, Cinema Pro, Cinemateca —
-    so for anything with category `movie` search Eventbook before anything else:
-    `eventbook.ro/film/bilete-[titlu-slug]`, or the venue's programme at
-    `eventbook.ro/program/[venue-slug]` to find the film's own booking page. A
-    hit there gives the exact showtime AND the ticket link in one go, which is
-    two of Step 3b's other fields for free. Use `Tickets` for the Eventbook URL
-    when `Link` already holds the film's own page; when there is no better page,
-    Eventbook IS the `Link`. iaBilet and Bilet.ro remain fine for concerts and
-    theatre.
+  - **Eventbook (`eventbook.ro`) for film — to confirm one, not to browse for them.**
+    Gabriel knows the site and prefers it for movies. For a film another source has
+    already named, go straight to that FILM's own booking page
+    (`eventbook.ro/film/bilete-[titlu-slug]`): a hit gives the exact showtime AND
+    the ticket link in one go, two of this step's other fields for free. Use
+    `Tickets` for the Eventbook URL when `Link` already holds the film's own page;
+    when there is no better page, Eventbook IS the `Link`. iaBilet and Bilet.ro
+    remain fine for concerts and theatre.
+    **Never open `eventbook.ro/program/[venue-slug]` to see what is on** at a venue
+    Step 1c excluded. That page is Marquee's input, and reading it here is exactly
+    how seven Apollo111 screenings were written into Radar on 2026-09-05 — two days
+    after Apollo111 was added to Marquee on 2026-09-03. Searching for one named
+    film is fine; browsing a covered venue's schedule is double coverage.
   - **A roundup or section page is never an acceptable `Link`.** `b365.ro/timp-liber/`,
     `zilesinopti.ro/evenimente-bucuresti-weekend/` and the like are pages listing
     forty other things; as an event's `Link` they answer no question you would ask
