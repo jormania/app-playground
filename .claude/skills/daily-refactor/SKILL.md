@@ -141,3 +141,23 @@ the PR body into your closing report so it can be opened by hand in a click.
 Close the session with a short note: which item, what changed, the PR link, and
 anything you deliberately left alone. Write it for someone who has not seen the
 code today.
+
+This report is what the completion email carries, and the email is read on a
+phone by someone who was not here. So **end every report that produced a PR
+with the merge instruction, verbatim in this shape**, real values substituted:
+
+```
+TO MERGE — open https://github.com/jormania/app-playground/pull/<N>
+Check the CI check is green, then click "Squash and merge" → "Confirm".
+Merging pushes to main, which auto-deploys to Vercel.
+Nothing to do if you'd rather not — click "Close pull request" and the item
+goes back on the backlog.
+```
+
+Name the actual PR number. If CI was still running when you finished, say so on
+the first line rather than implying it was green.
+
+When no PR was opened — nothing eligible in the backlog, the gates wouldn't go
+green, the queue was already six deep — say that in one sentence and **do not**
+include a merge block. An email telling Gabriel to merge something that doesn't
+exist is worse than no email.
