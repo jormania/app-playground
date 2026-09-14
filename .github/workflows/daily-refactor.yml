@@ -78,6 +78,14 @@ jobs:
             all three gates green, throw the branch away, mark the item blocked
             in the backlog with the reason, and open no PR.
 
+            **Before you finish**, write `/tmp/refactor-result.json` so the
+            workflow knows what you did:
+            `{"branch": "claude/refactor-...", "class": "refactor", "pr": 59}`
+            — `branch` and `pr` null if you opened none, `class` exactly as it
+            appears on the PR's `Class:` line. Do not commit this file. A run
+            that writes nothing is treated as a run that changed nothing, and
+            nothing will be merged.
+
             Your closing report is what reaches Gabriel. LEAD with the class and
             one sentence on what he'd notice — "nothing changes on screen" is a
             fine and preferred opening when it is true; never inflate an
@@ -98,3 +106,48 @@ jobs:
           else
             echo "No agent output file — the run failed before Claude produced a report." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      # An independent re-run of the repo's own gates against a FRESH clone of
+      # the pushed branch. The agent's step has ended by now and cannot reach
+      # this; its own green run is not what gates the merge.
+      - name: Verify the pushed branch independently
+        id: verify
+        run: |
+          f=/tmp/refactor-result.json
+          if [ ! -f "$f" ]; then echo "No result file — nothing was pushed."; exit 0; fi
+          BRANCH=$(jq -r '.branch // empty' "$f")
+          if [ -z "$BRANCH" ]; then echo "No branch — the run opened no PR."; exit 0; fi
+          echo "Verifying $BRANCH from a clean checkout"
+          git clone --depth 1 --branch "$BRANCH" \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/verify
+          cd /tmp/verify
+          npm ci
+          npm test -- --run
+          npm run typecheck
+          echo "verified=true" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
+
+      # Behaviour-preserving classes merge themselves once that passes. qol and
+      # visual change what Gabriel sees, so they wait for him however green
+      # they are.
+      - name: Merge, if the class allows it
+        if: steps.verify.outputs.verified == 'true'
+        run: |
+          f=/tmp/refactor-result.json
+          CLASS=$(jq -r '.class // empty' "$f")
+          PR=$(jq -r '.pr // empty' "$f")
+          if [ -z "$PR" ]; then echo "No PR number recorded; nothing to merge."; exit 0; fi
+          case "$CLASS" in
+            refactor|modernise)
+              echo "Class $CLASS — merging PR #$PR."
+              gh pr merge "$PR" --squash --delete-branch
+              echo "Merged #$PR ($CLASS) after an independent green run." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            *)
+              echo "Class '$CLASS' is not auto-mergeable; leaving PR #$PR for review."
+              echo "PR #$PR is class \`$CLASS\` — left open for you to review." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+          esac
+        env:
+          GH_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}

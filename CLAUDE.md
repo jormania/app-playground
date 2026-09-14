@@ -47,6 +47,12 @@ to the never-merged `claude/shots` branch, since preview deploys are off for
 **Fridays are discovery runs** — nothing ships; the session reads the codebase
 against current standards and adds to the backlog instead.
 
+**`refactor` and `modernise` PRs merge themselves** — the workflow re-runs the
+repo's gates against a clean clone of the pushed branch, and merges only if that
+independent run is green. So those reach production without a human reading the
+diff; `git revert` is the undo. `qol` and `visual` are never auto-merged,
+however green: they change what you see, so they wait for you.
+
 It stops on its own once six refactor PRs are open, so an unreviewed pile can't
 grow without bound.
 

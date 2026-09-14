@@ -226,6 +226,25 @@ from the outside", and mean it.
 **Risk** — what a reviewer should look at hardest. Say "none I can see" if that is true.
 ```
 
+**Then record what you did**, in `/tmp/refactor-result.json`:
+
+```json
+{"branch": "claude/refactor-2026-09-14", "class": "refactor", "pr": 59}
+```
+
+`branch` and `pr` are null if you opened none; `class` must match the PR's
+`Class:` line exactly. Do not commit this file. The workflow reads it, re-runs
+the repo's gates against a clean clone of your branch, and — for `refactor` and
+`modernise` only — merges the PR itself once that passes. `qol` and `visual`
+wait for Gabriel however green they are.
+
+Two consequences worth holding in mind. Your `class` line decides whether a
+change reaches production without a human reading it, so classify honestly: if
+a "refactor" turns out to alter behaviour even slightly, it is not a refactor.
+And the verification is a fresh clone, so anything that only passes in your
+working tree — an uncommitted file, a stale cache — fails there and stops the
+merge.
+
 Then subscribe to the PR's activity and drive it to green if CI disagrees with
 your local run.
 
