@@ -38,6 +38,22 @@ recoverable from git history.
 
 Left alone on purpose: `mcp-payloads.json`, which was not in this item's scope.
 
+## P-001 — 38 hand-rolled inline `<svg>` blocks while lucide-react sits in the deps · `visual` · `open`
+
+**Impact:** icons that finally look like one family instead of twelve people's
+handwriting; a smaller bundle where a hand-rolled path duplicates a lucide one.
+
+Inline `<svg>` appears in 38 files across twelve apps — WhereItWent and Touch
+Grass have nine each, Silva four. Some are genuine one-offs that should stay
+hand-drawn. Others are a lucide icon someone retyped.
+
+Audit first, replace second, and **one app per run**. Touch Grass is legacy and
+design-locked: its icons are part of its look, so it is the last candidate, not
+the first, and possibly never. Needs before/after screenshots in both themes.
+
+Promoted by Gabriel on 2026-09-14. Being `visual`, it is **not** auto-merged
+however green it comes back — it waits for his eye on the screenshots.
+
 ## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `open`
 
 **Impact:** a repo root someone can read. Nothing user-facing.
@@ -159,15 +175,4 @@ To reject one, delete it — or just close the PR that proposed it, which is the
 same answer said faster. The agent treats a proposal that vanished from `main`
 as declined and will not raise it again.
 
-### P-001 — 38 hand-rolled inline `<svg>` blocks while lucide-react sits in the deps · `visual` · `proposed`
-
-**Impact:** icons that finally look like one family instead of twelve people's
-handwriting; a smaller bundle where a hand-rolled path duplicates a lucide one.
-
-Inline `<svg>` appears in 38 files across twelve apps — WhereItWent and Touch
-Grass have nine each, Silva four. Some are genuine one-offs that should stay
-hand-drawn. Others are a lucide icon someone retyped.
-
-Audit first, replace second, and **one app per run**. Touch Grass is legacy and
-design-locked: its icons are part of its look, so it is the last candidate, not
-the first, and possibly never. Needs before/after screenshots in both themes.
+_(nothing proposed right now.)_
