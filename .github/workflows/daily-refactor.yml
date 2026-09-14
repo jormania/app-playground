@@ -94,63 +94,122 @@ jobs:
             one line each. End with the PR URL and that merging it is what
             deploys to production.
 
-      # The agent's closing report is the digest. Put it on the run page so it
-      # survives whether or not a PR got opened, and so the GitHub notification
-      # email for this run has something to point at.
+      # ---- Everything below runs after the agent's step has ended. ----
+      # It cannot influence any of it, which is the point: a run that merges to
+      # production on its own must not be the thing that decides it passed.
+
       - name: Publish the report to the run summary
         if: always()
         run: |
-          f=/home/runner/work/_temp/claude-execution-output.json
+          f="${RUNNER_TEMP}/claude-execution-output.json"
           if [ -f "$f" ]; then
-            jq -r '[.. | objects | select(.type=="result") | .result] | last // "The run produced no report."' "$f" >> "$GITHUB_STEP_SUMMARY"
+            jq -r '[.. | objects | select(.type=="result") | .result] | last // "The run produced no report."' \
+              "$f" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null \
+              || echo "The agent's output could not be parsed." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "No agent output file — the run failed before Claude produced a report." >> "$GITHUB_STEP_SUMMARY"
+            echo "No agent output — the run failed before Claude produced a report." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # An independent re-run of the repo's own gates against a FRESH clone of
-      # the pushed branch. The agent's step has ended by now and cannot reach
-      # this; its own green run is not what gates the merge.
-      - name: Verify the pushed branch independently
-        id: verify
+      # Parsing is deliberately total: a missing or malformed result file means
+      # "nothing to merge", never a red run. The agent forgetting to write it
+      # should cost a click, not a morning.
+      - name: Read what the run claims it did
+        id: result
+        if: always()
         run: |
           f=/tmp/refactor-result.json
-          if [ ! -f "$f" ]; then
-            echo "No result file. Nothing will be merged — if a PR was opened, it is waiting for you." \
-              >> "$GITHUB_STEP_SUMMARY"; exit 0
+          branch=""; class=""; pr=""
+          if [ -f "$f" ] && jq -e . "$f" >/dev/null 2>&1; then
+            branch=$(jq -r '.branch // ""' "$f")
+            class=$(jq -r '.class  // ""' "$f" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+            pr=$(jq -r '.pr | select(. != null) | tostring' "$f" 2>/dev/null || true)
+          else
+            echo "::notice::No usable result file; nothing will be merged."
+            echo "_No result file: nothing was auto-merged. If a PR was opened it is waiting for you._" \
+              >> "$GITHUB_STEP_SUMMARY"
           fi
-          BRANCH=$(jq -r '.branch // empty' "$f")
-          if [ -z "$BRANCH" ]; then echo "The run opened no PR." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
-          echo "Verifying $BRANCH from a clean checkout"
-          git clone --depth 1 --branch "$BRANCH" \
-            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/verify
-          cd /tmp/verify
+          case "$branch" in
+            claude/refactor-*) ;;
+            "") ;;
+            *) echo "::warning::Refusing to act on unexpected branch '$branch'."; branch=""; class=""; pr="" ;;
+          esac
+          case "$pr" in ''|*[!0-9]*) pr="" ;; esac
+          { echo "branch=$branch"; echo "class=$class"; echo "pr=$pr"; } >> "$GITHUB_OUTPUT"
+
+      # The nightmare case for an auto-merging workflow: the agent pushes
+      # straight to main. It is forbidden in three places, so this should never
+      # fire — which is exactly why it is worth asserting rather than assuming.
+      - name: Assert nothing was pushed straight to main
+        if: always()
+        run: |
+          git fetch origin main --quiet
+          rogue=$(git log "${{ github.sha }}..origin/main" --format='%an|%s' 2>/dev/null | grep -i '^claude' || true)
+          if [ -n "$rogue" ]; then
+            echo "::error::Commits authored by the agent appeared on main during this run:"
+            echo "$rogue"
+            exit 1
+          fi
+
+      - name: Check out the pushed branch, clean
+        if: steps.result.outputs.branch != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.result.outputs.branch }}
+          path: verify
+          fetch-depth: 1
+
+      - name: Verify it independently
+        id: verify
+        if: steps.result.outputs.branch != ''
+        working-directory: verify
+        run: |
           npm ci
           npm test -- --run
           npm run typecheck
           npx eslint .
           echo "verified=true" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
 
-      # Behaviour-preserving classes merge themselves once that passes. qol and
-      # visual change what Gabriel sees, so they wait for him however green
-      # they are.
-      - name: Merge, if the class allows it
-        if: steps.verify.outputs.verified == 'true'
+      # With auto-merge on, a wrong PR number would merge something else
+      # entirely. Confirm the PR is the one this run actually produced.
+      - name: Confirm the PR is this run's
+        id: identity
+        if: steps.verify.outputs.verified == 'true' && steps.result.outputs.pr != ''
         run: |
-          f=/tmp/refactor-result.json
-          CLASS=$(jq -r '.class // empty' "$f")
-          PR=$(jq -r '.pr // empty' "$f")
-          if [ -z "$PR" ]; then echo "No PR number recorded; nothing to merge."; exit 0; fi
-          case "$CLASS" in
+          pr='${{ steps.result.outputs.pr }}'
+          json=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr}")
+          head_ref=$(echo "$json"  | jq -r '.head.ref')
+          head_repo=$(echo "$json" | jq -r '.head.repo.full_name')
+          base_ref=$(echo "$json"  | jq -r '.base.ref')
+          state=$(echo "$json"     | jq -r '.state')
+          ok=true
+          [ "$head_ref"  = '${{ steps.result.outputs.branch }}' ] || { echo "::error::PR #$pr head is $head_ref, not this run's branch."; ok=false; }
+          [ "$head_repo" = "$GITHUB_REPOSITORY" ] || { echo "::error::PR #$pr comes from $head_repo."; ok=false; }
+          [ "$base_ref"  = "main" ] || { echo "::error::PR #$pr targets $base_ref, not main."; ok=false; }
+          [ "$state"     = "open" ] || { echo "::error::PR #$pr is $state."; ok=false; }
+          $ok || exit 1
+          echo "confirmed=true" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Merge, if the class allows it
+        if: steps.identity.outputs.confirmed == 'true'
+        run: |
+          pr='${{ steps.result.outputs.pr }}'
+          class='${{ steps.result.outputs.class }}'
+          case "$class" in
             refactor|modernise)
-              echo "Class $CLASS — merging PR #$PR."
-              gh pr merge "$PR" --squash --delete-branch
-              echo "Merged #$PR ($CLASS) after an independent green run." >> "$GITHUB_STEP_SUMMARY"
+              if gh pr merge "$pr" --squash --delete-branch; then
+                echo "**Merged #$pr** (\`$class\`) after an independent green run. This is live on Vercel." \
+                  >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "::warning::Merging #$pr failed — it is still open."
+                echo "_Verification passed but the merge did not go through; #$pr is waiting for you._" \
+                  >> "$GITHUB_STEP_SUMMARY"
+              fi
               ;;
             *)
-              echo "Class '$CLASS' is not auto-mergeable; leaving PR #$PR for review."
-              echo "PR #$PR is class \`$CLASS\` — left open for you to review." >> "$GITHUB_STEP_SUMMARY"
+              echo "**#$pr is class \`$class\`** — not auto-merged. It changes what you see, so it is yours to review." \
+                >> "$GITHUB_STEP_SUMMARY"
               ;;
           esac
         env:
