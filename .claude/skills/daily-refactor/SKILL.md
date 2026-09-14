@@ -11,18 +11,33 @@ diff over coffee and merge or close it without a conversation.
 
 Read `CLAUDE.md` and `.agents/AGENTS.md` first — every rule there outranks this file.
 
-## 0. Check you have the repo at all
+## 0. Check you can actually push
 
-A scheduled session can start in an empty container with no repository attached.
-Before anything else: `git -C . rev-parse --show-toplevel`. If there is no repo,
-or `REFACTOR_BACKLOG.md` is missing, try to attach it — `add_repo` for
-`jormania/app-playground`, then clone where it tells you and call
-`register_repo_root`.
+A scheduled session reliably gets the repository **read-only**: the git proxy
+serves clones and fetches, and rejects pushes, because the Routine's source was
+attached without write access. Two runs on 2026-09-14 each did a full day's work
+and lost it at the push. Find out before you spend an hour on it, not after:
 
-If that does not work, **stop**. Do not improvise a task out of nothing. Report
-in one line that the session had no repository and that the Routine needs its
-source attached from the claude.ai Routines UI. A wasted ten minutes reported
-honestly is worth more than ten minutes of invented work.
+```bash
+git rev-parse --show-toplevel            # do I even have a clone?
+git push --dry-run origin HEAD 2>&1      # would a push be allowed?
+```
+
+If the dry run is rejected, **say so immediately and stop**. Do not do the day's
+work; it cannot leave the container and the report is the only thing that
+survives. The one-line remedy to put in your report, because the person reading
+it on a phone needs to know what to click:
+
+> This session has read-only access to the repo, so nothing can be pushed.
+> Fix: claude.ai → Routines → "Daily refactor — app-playground" → re-attach
+> jormania/app-playground **with push access**.
+
+If `add_repo` happens to be in your toolset, try it first — but do not count on
+it. Scheduled sessions are fired without connector tools, so it usually is not
+there, and its absence is not a puzzle to solve. It is the same finding as a
+rejected push, and it gets the same one-line report.
+
+Never improvise a different task because this one is blocked.
 
 ## 1. Install
 
@@ -246,8 +261,9 @@ refuses), report the compare link
 the PR body into your closing report, so it opens by hand in a click.
 
 If the **push itself** failed, the work dies with this container. Say so as the
-first line of your report, name the error, and paste the full `git diff` into
-the report — that is the only copy anyone will ever see.
+first line of your report, name the error, give the remedy from step 0, and
+paste the full `git diff` into the report — that is the only copy anyone will
+ever see, and it is recoverable by hand from there.
 
 ## 11. Report
 
