@@ -85,3 +85,16 @@ jobs:
             hardest, anything you deliberately left alone, and any new proposals
             one line each. End with the PR URL and that merging it is what
             deploys to production.
+
+      # The agent's closing report is the digest. Put it on the run page so it
+      # survives whether or not a PR got opened, and so the GitHub notification
+      # email for this run has something to point at.
+      - name: Publish the report to the run summary
+        if: always()
+        run: |
+          f=/home/runner/work/_temp/claude-execution-output.json
+          if [ -f "$f" ]; then
+            jq -r '[.. | objects | select(.type=="result") | .result] | last // "The run produced no report."' "$f" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No agent output file — the run failed before Claude produced a report." >> "$GITHUB_STEP_SUMMARY"
+          fi
