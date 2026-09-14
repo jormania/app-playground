@@ -130,9 +130,14 @@ Preview deploys are off for `claude/*` branches, so a screenshot in the PR is
 the only look Gabriel gets before merging. Skip this for `refactor` and
 `modernise`; a picture of an unchanged screen tells nobody anything.
 
-Chromium and Playwright are preinstalled: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`
-is already set and `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` stops a re-fetch. Never
-run `playwright install`.
+Playwright is a devDependency, so `npm ci` has already installed the library —
+but **not the browser binary**. On a GitHub runner you must fetch it first:
+
+```bash
+npx playwright install --with-deps chromium    # ~30s, once per run
+```
+
+Only Chromium; the other engines are a slow download for no benefit here.
 
 Capture the affected screen **four ways** — light and dark, 390px wide and
 desktop — before your change and after it. `npm run build && npm run preview`
