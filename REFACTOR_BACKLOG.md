@@ -25,29 +25,45 @@ ritual: cut the block, paste it above, change `proposed` to `open`.
 
 ---
 
-## R-001 — Triage the 27 scratch scripts tracked at the repo root · `refactor` · `open`
+## R-001 — Root triage, slice 1: the inert data dumps · `refactor` · `done 2026-09-14`
+
+**Impact:** a repo root someone can read. Nothing user-facing.
+
+Deleted `diff.txt` (a UTF-16 `git diff` capture), `lexi5_dump.txt` and
+`memento_dump.html` (regenerable output of `dump.cjs` and `debug_memento.cjs`),
+`lint-output.txt` (a captured `eslint .` run), `notes.json` (a one-shot Click
+Deck payload, no reader) and the empty `results.json`. Each was committed once,
+incidentally, alongside unrelated work; none is read by any code. All remain
+recoverable from git history.
+
+Left alone on purpose: `mcp-payloads.json`, which was not in this item's scope.
+
+## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `open`
+
+**Impact:** a repo root someone can read. Nothing user-facing.
+
+`patch-accounts.cjs`, `patch-bulk.cjs`, `patch-categories.cjs`,
+`patch-currency.cjs`, `patch-forms.cjs`, `patch-modal.cjs`,
+`patch-remaining.cjs` — seven files, none referenced by `package.json`. Delete
+the one-shot migrations, move anything still earning its keep under `scripts/`.
+Check `git log` on a file before deleting — a script someone reruns yearly is
+not junk.
+
+## R-011 — Root triage, slice 3: the remaining scratch scripts · `refactor` · `open`
 
 **Impact:** a repo root someone can read. Nothing user-facing.
 
 `cleanup.cjs`, `debug_crash.cjs`, `debug_memento.cjs`, `dump.cjs`,
-`find-covers.cjs`, `generateDemoData.cjs`, `patch-*.cjs` (7 files),
-`scratch-fix.cjs`, `scratch_debug.js`, `scratch_test.mjs`, `screenshot.js`,
-`steam-search.js`, `test-urls.cjs`, `update-seed.cjs`, `validate-covers.cjs`,
-plus the data dumps `diff.txt`, `lexi5_dump.txt`, `lint-output.txt`,
-`memento_dump.html`, `notes.json`, `results.json`.
-
-All committed, none referenced by `package.json`. For each: delete if it was a
-one-shot migration, or move under `scripts/` if it still earns its keep. Check
-`git log` on a file before deleting — a script someone reruns yearly is not junk.
-
-Slice it: one PR for the inert data dumps, one for the `patch-*` family, one for
-the rest. Do not do all three in one run.
+`find-covers.cjs`, `generateDemoData.cjs`, `scratch-fix.cjs`, `scratch_debug.js`,
+`scratch_test.mjs`, `screenshot.js`, `steam-search.js`, `test-urls.cjs`,
+`update-seed.cjs`, `validate-covers.cjs`. Same method as R-010. Note that
+`dump.cjs` and `debug_memento.cjs` only ever wrote the dumps R-001 removed.
 
 ## R-002 — Stop the root from refilling with scratch files · `refactor` · `open`
 
 **Impact:** none visible; prevents R-001 from needing doing again.
 
-Follows R-001. `.gitignore` has no pattern for the dumps and debug scripts that
+Follows R-001, R-010 and R-011. `.gitignore` has no pattern for the dumps and debug scripts that
 keep landing at the root. Add narrow ones (`/scratch_*`, `/debug_*`, `/*_dump.*`,
 `/diff.txt`, `/lint-output.txt`) — narrow, so nothing real gets swallowed.
 
