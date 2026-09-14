@@ -210,7 +210,16 @@ export function parseSuggestedPage(blocks) {
   for (const block of blocks) {
     if (block.type === 'heading_2') {
       const text = (block.heading_2?.rich_text ?? []).map((t) => t.plain_text).join('').trim()
-      if (text && !refreshedAt) refreshedAt = text // e.g. "31 iulie 2026"
+      // The page is an APPEND-ONLY LOG: each run prepends a `## DD luna YYYY`
+      // section, and every past weekend keeps its own source table below the
+      // current one. Only the first section describes this refresh, so the
+      // second heading ends the parse — reading on listed all eight sources
+      // once per weekend still on the page (reported 2026-09-13: Buletin,
+      // HotNews, B365 … three times over).
+      if (text) {
+        if (refreshedAt) break
+        refreshedAt = text // e.g. "31 iulie 2026"
+      }
     }
     const rows = block.type === 'table_row' ? [block.table_row] : []
     for (const row of rows) {
