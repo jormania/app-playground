@@ -20,7 +20,7 @@ shadow jsdom's — every storage-touching test then fails with `Cannot read
 properties of undefined (reading 'clear')`, which reads like a real
 regression but isn't. Either run `npm test`, or set that env var yourself.
 
-## Daily refactor Routine
+## Daily refactor workflow
 
 Driven by [`.github/workflows/daily-refactor.yml`](.github/workflows/daily-refactor.yml)
 — a scheduled GitHub Action, so the runner has the repo and push rights by

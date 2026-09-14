@@ -1,6 +1,6 @@
 ---
 name: daily-refactor
-description: The autonomous daily refactoring pass over app-playground. Picks exactly one item from REFACTOR_BACKLOG.md, implements it on a fresh branch off main, proves it green, and opens a PR for after-the-fact review. Invoked by the "Daily refactor" Routine; can also be run by hand with /daily-refactor.
+description: The autonomous daily improvement pass over app-playground. Picks exactly one item from REFACTOR_BACKLOG.md, implements it on a fresh branch off main, proves it green, and opens a PR for after-the-fact review. Run each weekday by .github/workflows/daily-refactor.yml; also available by hand as /daily-refactor.
 ---
 
 # Daily refactor
@@ -13,48 +13,12 @@ Read `CLAUDE.md` and `.agents/AGENTS.md` first — every rule there outranks thi
 
 ## Where this runs
 
-Two hosts, and they differ in exactly one way. Under
-**`.github/workflows/daily-refactor.yml`** the runner has already checked out
-the repo with full history, installed dependencies, and holds push rights —
-skip steps 0 and 1 entirely. Under a **cloud Routine**, do them: such a session
-gets the repo read-only and loses everything at the push.
+[`.github/workflows/daily-refactor.yml`](../../../.github/workflows/daily-refactor.yml),
+on a GitHub runner, weekday mornings. By the time you read this the runner has
+already checked the repo out with full history and run `npm ci` — so you have
+the code, the dependencies, and push rights. Don't clone, don't reinstall.
 
-## 0. Check you can actually push
-
-A scheduled session reliably gets the repository **read-only**: the git proxy
-serves clones and fetches, and rejects pushes, because the Routine's source was
-attached without write access. Two runs on 2026-09-14 each did a full day's work
-and lost it at the push. Find out before you spend an hour on it, not after:
-
-```bash
-git rev-parse --show-toplevel            # do I even have a clone?
-git push --dry-run origin HEAD 2>&1      # would a push be allowed?
-```
-
-If the dry run is rejected, **say so immediately and stop**. Do not do the day's
-work; it cannot leave the container and the report is the only thing that
-survives. The one-line remedy to put in your report, because the person reading
-it on a phone needs to know what to click:
-
-> This session has read-only access to the repo, so nothing can be pushed.
-> Fix: claude.ai → Routines → "Daily refactor — app-playground" → re-attach
-> jormania/app-playground **with push access**.
-
-If `add_repo` happens to be in your toolset, try it first — but do not count on
-it. Scheduled sessions are fired without connector tools, so it usually is not
-there, and its absence is not a puzzle to solve. It is the same finding as a
-rejected push, and it gets the same one-line report.
-
-Never improvise a different task because this one is blocked.
-
-## 1. Install
-
-A fired session starts from a fresh clone with no `node_modules`. Run `npm ci`
-before anything else — without it `npm test` dies on a missing `cross-env` and
-`npm run typecheck` on missing type definitions, neither of which is a real
-failure. It takes a couple of minutes; the full suite is another ninety seconds.
-
-## 2. Orient
+## 1. Orient
 
 ```bash
 git fetch origin main
@@ -72,7 +36,7 @@ Then find out what is already in flight:
   the queue is backed up and that merging or closing some would let the agent
   resume. A growing pile of unreviewed refactors is worse than no refactors.
 
-## 3. Classes, and what each one is allowed to do
+## 2. Classes, and what each one is allowed to do
 
 Every backlog item carries a class. The class decides the burden of proof and
 whether the agent may put the item on the queue itself.
@@ -95,7 +59,7 @@ line — but you may not work them until a human moves the item up into the main
 list. Do not lobby, do not work a proposed item because it seems obviously
 right. The queue is his steering wheel; proposing is how you hand him one.
 
-## 4. Pick
+## 3. Pick
 
 Read `REFACTOR_BACKLOG.md`. Take the topmost item that is not `done`, not
 `blocked`, not under `## Proposed`, and not claimed by an open PR.
@@ -107,7 +71,7 @@ that has drifted from the code, apps with no test coverage, places where the
 design system could replace something hand-rolled. Append what you find: up to
 five items, each with a class, an `Impact:` line, and a concrete file path.
 Commit that alone, then **push and open a PR exactly as any other run does** —
-step 10 applies. A discovery run that never opens a PR is a discovery run whose
+step 9 applies. A discovery run that never opens a PR is a discovery run whose
 findings die on a branch nobody visits.
 
 Title it so it reads as safe at a glance ("Backlog: five proposals from the
@@ -121,13 +85,13 @@ and say so.
 If an item turns out to be a bad idea on contact with the code — mark it
 `dropped` with a one-line reason, commit that, and move to the next item.
 
-## 5. Size
+## 4. Size
 
 The target is a diff a human reviews in ten minutes. If the chosen item is
 larger, split it **in the backlog** into numbered slices and do only the first
 one this run. Leave the rest as new items. Never let one run sprawl.
 
-## 6. Execute
+## 5. Execute
 
 A `refactor` or `modernise` item is behaviour-preserving, full stop — one that
 changes what an app does is a feature change wearing a disguise, and it will get
@@ -153,7 +117,7 @@ Hard rules — a run that breaks one of these is a failed run, not a judgement c
 - Update the app's own root Markdown doc when the change is visible there
   (`.agents/AGENTS.md` requires it).
 
-## 7. Screenshots — for `qol` and `visual` items only
+## 6. Screenshots — for `qol` and `visual` items only
 
 Preview deploys are off for `claude/*` branches, so a screenshot in the PR is
 the only look Gabriel gets before merging. Skip this for `refactor` and
@@ -187,7 +151,7 @@ Then embed them in the PR body by raw URL, which GitHub renders inline:
 Never delete someone else's directory on that branch — it only ever grows, and
 the files are small.
 
-## 8. Prove
+## 7. Prove
 
 All three, every run, no exceptions:
 
@@ -210,7 +174,7 @@ delete the branch, mark the item `blocked` in the backlog with the reason, push
 only that backlog note, and report it. Never push a red branch, never open a PR
 to "see what CI says".
 
-## 9. Record
+## 8. Record
 
 In the same commit as the change, edit `REFACTOR_BACKLOG.md`:
 
@@ -231,7 +195,7 @@ If an idea you proposed in an earlier run is absent from `main`'s backlog and
 absent from every open PR, its PR was closed. That was an answer: do not
 re-propose it.
 
-## 10. Land
+## 9. Land
 
 ```bash
 git push -u origin claude/refactor-$(date +%F)
@@ -269,11 +233,10 @@ refuses), report the compare link
 the PR body into your closing report, so it opens by hand in a click.
 
 If the **push itself** failed, the work dies with this container. Say so as the
-first line of your report, name the error, give the remedy from step 0, and
-paste the full `git diff` into the report — that is the only copy anyone will
+first line of your report, name the error, give paste the full `git diff` into the report — that is the only copy anyone will
 ever see, and it is recoverable by hand from there.
 
-## 11. Report
+## 10. Report
 
 Close the session with a short note: which item, what changed, the PR link, and
 anything you deliberately left alone. Write it for someone who has not seen the
