@@ -114,9 +114,12 @@ jobs:
         id: verify
         run: |
           f=/tmp/refactor-result.json
-          if [ ! -f "$f" ]; then echo "No result file — nothing was pushed."; exit 0; fi
+          if [ ! -f "$f" ]; then
+            echo "No result file. Nothing will be merged — if a PR was opened, it is waiting for you." \
+              >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
           BRANCH=$(jq -r '.branch // empty' "$f")
-          if [ -z "$BRANCH" ]; then echo "No branch — the run opened no PR."; exit 0; fi
+          if [ -z "$BRANCH" ]; then echo "The run opened no PR." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
           echo "Verifying $BRANCH from a clean checkout"
           git clone --depth 1 --branch "$BRANCH" \
             "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/verify
@@ -124,6 +127,7 @@ jobs:
           npm ci
           npm test -- --run
           npm run typecheck
+          npx eslint .
           echo "verified=true" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
