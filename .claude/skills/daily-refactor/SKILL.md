@@ -11,6 +11,14 @@ diff over coffee and merge or close it without a conversation.
 
 Read `CLAUDE.md` and `.agents/AGENTS.md` first — every rule there outranks this file.
 
+## Where this runs
+
+Two hosts, and they differ in exactly one way. Under
+**`.github/workflows/daily-refactor.yml`** the runner has already checked out
+the repo with full history, installed dependencies, and holds push rights —
+skip steps 0 and 1 entirely. Under a **cloud Routine**, do them: such a session
+gets the repo read-only and loses everything at the push.
+
 ## 0. Check you can actually push
 
 A scheduled session reliably gets the repository **read-only**: the git proxy

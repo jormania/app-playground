@@ -1,0 +1,85 @@
+name: Daily refactor
+
+# One improvement per weekday morning, landing as its own PR off main.
+# The procedure lives in .claude/skills/daily-refactor/SKILL.md; the queue in
+# REFACTOR_BACKLOG.md. This workflow only supplies a scheduled runner that
+# already has the repo and push rights — everything else is in those two files.
+
+on:
+  schedule:
+    - cron: '7 4 * * 1-5'   # 04:07 UTC weekdays = 07:07 Bucharest (06:07 in winter)
+  workflow_dispatch:         # and a Run workflow button, for testing
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: daily-refactor
+  cancel-in-progress: false
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # full history: the backlog asks for `git log` on files before deleting them
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
+          claude_args: |
+            --model claude-opus-5
+            --max-turns 60
+          prompt: |
+            Run today's autonomous improvement pass over this repository.
+
+            You are already inside a full clone of jormania/app-playground with
+            dependencies installed and push rights. Do not clone anything, do not
+            run npm ci again.
+
+            Follow `.claude/skills/daily-refactor/SKILL.md` — it is the complete
+            procedure and outranks anything you would otherwise default to. Skip
+            its step 0 and step 1; the runner has already done both. Read
+            `CLAUDE.md` and `.agents/AGENTS.md` too, and treat their rules as
+            outranking the skill.
+
+            In short: branch off `origin/main` as `claude/refactor-$(date +%F)`,
+            take exactly ONE eligible item from `REFACTOR_BACKLOG.md` — skipping
+            anything under `## Proposed` and anything already claimed by an open
+            `claude/refactor-*` PR — implement it, get `npm test -- --run`,
+            `npm run typecheck` and `npx eslint <changed paths>` all green,
+            update the backlog in the same commit, push, and open a PR against
+            `main` carrying `Backlog-Item:` and `Class:` lines in the body.
+
+            Items carry a class. `refactor` and `modernise` are
+            behaviour-preserving and you may both queue and ship them yourself.
+            `qol` and `visual` change what Gabriel sees when he opens an app —
+            you may only PROPOSE those, under `## Proposed`, and never work one
+            until a human has moved it up into the main list.
+
+            If today is FRIDAY, ship nothing: read the codebase against current
+            standards, append up to five new backlog items each with a class, an
+            `Impact:` line and a concrete file path, and open a backlog-only PR.
+
+            Never push to `main` — it auto-deploys to Vercel. If you cannot get
+            all three gates green, throw the branch away, mark the item blocked
+            in the backlog with the reason, and open no PR.
+
+            Your closing report is what reaches Gabriel. LEAD with the class and
+            one sentence on what he'd notice — "nothing changes on screen" is a
+            fine and preferred opening when it is true; never inflate an
+            invisible change. Then what changed, what a reviewer should look at
+            hardest, anything you deliberately left alone, and any new proposals
+            one line each. End with the PR URL and that merging it is what
+            deploys to production.

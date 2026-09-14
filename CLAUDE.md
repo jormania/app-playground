@@ -22,7 +22,14 @@ regression but isn't. Either run `npm test`, or set that env var yourself.
 
 ## Daily refactor Routine
 
-A scheduled session fires each weekday morning, takes **one** item off
+Driven by [`.github/workflows/daily-refactor.yml`](.github/workflows/daily-refactor.yml)
+— a scheduled GitHub Action, so the runner has the repo and push rights by
+construction. It needs one secret, `CLAUDE_CODE_OAUTH_TOKEN`; add
+`REFACTOR_PAT` as well if you want CI to run on the PRs it opens, since a PR
+created with the default `GITHUB_TOKEN` does not trigger `pull_request`
+workflows.
+
+Each weekday morning it takes **one** item off
 [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md), implements it on a fresh branch off
 `main`, proves it green, and opens its own PR. No approval beforehand — review
 happens on the PR, after the fact. The procedure it follows is
