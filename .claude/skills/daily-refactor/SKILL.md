@@ -22,8 +22,15 @@ the code, the dependencies, and push rights. Don't clone, don't reinstall.
 
 ```bash
 git fetch origin main
-git checkout -B claude/refactor-$(date +%F) origin/main
+BR=claude/refactor-$(date +%F)
+# a second run on the same day must not land on the first run's branch
+n=2; while git ls-remote --exit-code --heads origin "$BR" >/dev/null 2>&1; do BR=claude/refactor-$(date +%F)-$n; n=$((n+1)); done
+git checkout -B "$BR" origin/main
 ```
+
+**Never force-push over an existing `claude/refactor-*` branch.** One of them is
+probably behind an open PR, and overwriting it silently rewrites a change
+Gabriel may already be reading.
 
 Always branch off fresh `origin/main`. Never stack on yesterday's branch — each
 day's PR must be independently mergeable and independently discardable.
