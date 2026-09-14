@@ -78,13 +78,25 @@ jobs:
             all three gates green, throw the branch away, mark the item blocked
             in the backlog with the reason, and open no PR.
 
+            **Open the PR body with `@jormania` on its own first line.** That
+            mention is how the report actually reaches him — it notifies under
+            GitHub's default settings whatever his watch state is, which a
+            bot-opened PR otherwise may not.
+
             **Before you finish**, write `/tmp/refactor-result.json` so the
             workflow knows what you did:
-            `{"branch": "claude/refactor-...", "class": "refactor", "pr": 59}`
-            — `branch` and `pr` null if you opened none, `class` exactly as it
-            appears on the PR's `Class:` line. Do not commit this file. A run
-            that writes nothing is treated as a run that changed nothing, and
-            nothing will be merged.
+            `{"branch": "claude/refactor-...", "class": "refactor", "pr": 59,
+            "outcome": "shipped"}` — `branch` and `pr` null if you opened none,
+            `class` exactly as it appears on the PR's `Class:` line. Do not
+            commit this file. A run that writes nothing is treated as a run
+            that changed nothing, and nothing will be merged.
+
+            `outcome` is one of: `shipped` (a PR exists), `nothing-eligible`
+            (the backlog had nothing to do, or the queue was full — a quiet,
+            correct outcome) or `blocked` (you tried and could not finish:
+            gates would not go green, the push failed, an item turned out to be
+            wrong on contact). Be honest with it; `blocked` is what makes the
+            run tell him something went wrong.
 
             Your closing report is what reaches Gabriel. LEAD with the class and
             one sentence on what he'd notice — "nothing changes on screen" is a
@@ -214,3 +226,23 @@ jobs:
           esac
         env:
           GH_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
+
+      # Last resort channel. GitHub emails on a FAILED workflow by default,
+      # while a successful one is silent unless you have gone and changed a
+      # setting — so a run that got stuck deliberately fails, to borrow the
+      # notification that is already switched on. A run that correctly did
+      # nothing stays quiet: crying wolf on quiet days is how a person learns
+      # to ignore the alert that matters.
+      - name: Fail loudly if the run got stuck
+        if: always()
+        run: |
+          f=/tmp/refactor-result.json
+          outcome=""
+          [ -f "$f" ] && outcome=$(jq -r '.outcome // ""' "$f" 2>/dev/null || true)
+          if [ "$outcome" = "blocked" ]; then
+            echo "::error::The run could not finish its item. See the report above."
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**This run is marked failed on purpose** — it was blocked, and a failed run is the one GitHub emails you about by default." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Outcome: ${outcome:-unrecorded}"

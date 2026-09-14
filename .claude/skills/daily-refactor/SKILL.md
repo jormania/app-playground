@@ -213,7 +213,14 @@ re-propose it.
 git push -u origin claude/refactor-$(date +%F)
 ```
 
-Open a PR, ready for review, against `main`. Body must contain:
+Open a PR, ready for review, against `main`. **The body's first line is
+`@jormania`, alone.** That mention is what actually delivers the report: it
+notifies under GitHub's default settings whatever his watch state is, and a
+bot-opened PR on a repo he merely owns may not otherwise reach him at all. It
+is not decoration — without it the run can succeed and he can still never hear
+about it.
+
+The rest of the body:
 
 ```
 Backlog-Item: R-0xx
@@ -237,8 +244,18 @@ from the outside", and mean it.
 {"branch": "claude/refactor-2026-09-14", "class": "refactor", "pr": 59}
 ```
 
+Add an `outcome` too — `shipped`, `nothing-eligible` or `blocked`:
+
+```json
+{"branch": "claude/refactor-2026-09-14", "class": "refactor", "pr": 59, "outcome": "shipped"}
+```
+
 `branch` and `pr` are null if you opened none; `class` must match the PR's
-`Class:` line exactly. Do not commit this file. The workflow reads it, re-runs
+`Class:` line exactly. **`blocked` deliberately fails the workflow run**, which
+is the only notification Gabriel gets by default — so use it when you tried and
+could not finish, and never to mean "there was nothing to do". `nothing-eligible`
+is the quiet, correct outcome for an empty queue; a false alarm on a calm day
+teaches him to ignore the alarm that matters. Do not commit this file. The workflow reads it, re-runs
 the repo's gates against a clean clone of your branch, and — for `refactor` and
 `modernise` only — merges the PR itself once that passes. `qol` and `visual`
 wait for Gabriel however green they are.
