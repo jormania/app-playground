@@ -83,6 +83,43 @@ Follows R-001, R-010 and R-011. `.gitignore` has no pattern for the dumps and de
 keep landing at the root. Add narrow ones (`/scratch_*`, `/debug_*`, `/*_dump.*`,
 `/diff.txt`, `/lint-output.txt`) — narrow, so nothing real gets swallowed.
 
+## R-012 — Audit the 33 stale `claude/*` branches · `refactor` · `open`
+
+**Impact:** none visible. A branch list someone can actually read, and a
+defensible answer to "has this work landed or not?"
+
+`git branch -r` shows 33 `claude/*` branches, most from finished sessions. The
+naive test is worthless here: `git log main..branch` reports unmerged commits
+for anything that was **squash-merged**, which is most of them — the squash
+creates a new commit, so the original is never an ancestor of `main`.
+
+**This run audits. It does not delete anything.** For each branch establish,
+in this order:
+
+1. Its PR, via the API (`gh pr list --state all --head <branch>`). A merged PR
+   is authoritative: the content landed, the branch is disposable.
+2. No PR, or a PR closed unmerged: compare content, not ancestry —
+   `git diff --quiet main...<branch>` means the tree is already in `main`
+   whatever the history says.
+3. Anything left is genuinely unlanded work. Name what it was about in one
+   line, from the branch name and its commit subjects, so Gabriel can tell at a
+   glance whether it is worth recovering or was abandoned on purpose.
+
+Put the table in the **PR body**, not in a new file — a repo-root audit file
+would be a fresh instance of exactly the mess this item is clearing.
+
+Then append a follow-up item under `## Proposed` listing only the branches the
+audit found disposable, with their PR numbers. **It goes under `## Proposed`
+regardless of class**, because deleting 33 remote branches in one unreviewed
+push is not something that should happen on an agent's own authority — a
+deleted branch whose content did *not* land is work lost with no obvious trace.
+Gabriel promotes it when he has read the table.
+
+Note for whoever runs it: branch deletion from this repo's tooling has been
+refused by the git proxy before (2026-09-14), so phase two may end up being a
+list Gabriel clicks through in the GitHub UI rather than a push. Check whether
+`git push origin --delete` works from a runner before promising otherwise.
+
 ## R-007 — `CLAUDE.md` misstates the typecheck scope · `modernise` · `open`
 
 **Impact:** none visible. Fixes a doc a cold session trusts and would be misled by.
