@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
-import { countServerlessFunctions, parseBacklogCounts } from './build-meta.js';
+import { cleanCommitSubject, countServerlessFunctions, parseBacklogCounts } from './build-meta.js';
 
 const REPO = resolve(__dirname, '..');
 
@@ -76,5 +76,46 @@ describe('parseBacklogCounts', () => {
     const counts = parseBacklogCounts(readFileSync(resolve(REPO, 'REFACTOR_BACKLOG.md'), 'utf8'));
     expect(counts.open).toBeGreaterThanOrEqual(0);
     expect(counts.proposed).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('cleanCommitSubject', () => {
+  it('leaves a subject within budget untouched', () => {
+    expect(cleanCommitSubject('Fix the thing', 60)).toBe('Fix the thing');
+  });
+
+  it('marks elision rather than stopping mid-word', () => {
+    const out = cleanCommitSubject('Route to the footer docs from CLAUDE.md instead of restating them', 60);
+    expect(out).toBe('Route to the footer docs from CLAUDE.md instead of\u2026');
+    expect(out.endsWith('\u2026')).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(60);
+  });
+
+  it('never exceeds the budget, ellipsis included', () => {
+    for (const n of [12, 20, 40, 60]) {
+      expect(cleanCommitSubject('a'.repeat(200), n).length).toBeLessThanOrEqual(n);
+      expect(cleanCommitSubject('word '.repeat(80), n).length).toBeLessThanOrEqual(n);
+    }
+  });
+
+  it('falls back to a hard cut when one token eats the budget', () => {
+    // No usable word boundary — better a hard cut than three characters.
+    expect(cleanCommitSubject('Bump ' + 'x'.repeat(80), 20)).toBe('Bump ' + 'x'.repeat(14) + '\u2026');
+  });
+
+  it('does not leave dangling punctuation before the ellipsis', () => {
+    // The word boundary lands straight after the comma; the comma should not
+    // survive to sit against the ellipsis.
+    expect(cleanCommitSubject('Fix the parser, then everything else', 18)).toBe('Fix the parser\u2026');
+    // Punctuation away from the cut is ordinary text and stays.
+    expect(cleanCommitSubject('Fix parsing, then the rest of it all', 20)).toBe('Fix parsing, then\u2026');
+  });
+
+  it('strips characters that would break out of an attribute value', () => {
+    expect(cleanCommitSubject('Add <script> and "quotes"', 60)).toBe('Add script and quotes');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(cleanCommitSubject('   padded   ', 60)).toBe('padded');
   });
 });

@@ -212,4 +212,35 @@ To reject one, delete it — or just close the PR that proposed it, which is the
 same answer said faster. The agent treats a proposal that vanished from `main`
 as declined and will not raise it again.
 
-_(nothing proposed right now.)_
+## P-002 — A bundle-size gauge in the footer, beside the function one · `qol` · `proposed`
+
+**Impact:** the second Vercel ceiling this repo has hit becomes visible before
+it is hit, the way the function count now is.
+
+Deployment Storage is 10 GB on Hobby, charged per retained deployment, and it
+filled once already (2026-09-09). The retention policy sweeps old builds, but
+that only holds because `dist/` stays around 10 MB — the two are one mechanism.
+Nothing on any surface says what `dist/` currently weighs, so the drift that
+matters (a `@fontsource` family imported by bare name, a dependency's
+`new URL(…, import.meta.url)` dragging in a `.wasm`) is invisible until the
+quota complains.
+
+The footer's build line already carries the function gauge, hidden until it has
+something to say. Same treatment: show the built size from some threshold up —
+20 MB is a reasonable first guess, given ~10 MB is normal and the known
+incidents were 17 MB and 23 MB of a single accidental asset.
+
+**The catch, and the reason this is not a five-minute job.** The existing gauges
+ride on `buildMetaPlugin`'s `transformIndexHtml`, which runs *before* the bundle
+exists — the size is not knowable at that point. This one needs a `closeBundle`
+hook that measures `dist/` and rewrites the emitted HTML afterwards, which is a
+different and uglier mechanism than a `<meta>` tag stamped on the way through.
+Whoever takes it should decide whether one gauge is worth that second mechanism,
+and say so on the PR either way; "measured it, not worth the hook" is a fine
+outcome. Counting logic belongs in `scripts/build-meta.js` with the others, and
+tested — the point of a guardrail gauge is that it cannot quietly under-report.
+
+Being `qol`, it changes what you see: not auto-merged however green, and needs
+before/after screenshots (both themes, phone and desktop).
+
+Proposed 2026-09-15, alongside the footer work that added the function gauge.

@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { execSync } from 'child_process'
-import { countServerlessFunctions, parseBacklogCounts } from './scripts/build-meta.js'
+import { cleanCommitSubject, countServerlessFunctions, parseBacklogCounts } from './scripts/build-meta.js'
 import notionHandler from './api/notion.js'
 import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
 import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
@@ -39,13 +39,10 @@ function buildMetaPlugin() {
     }
   };
 
-  // Strip the characters that would need escaping in an attribute value, and
-  // cap the length — the commit subject is a footnote, not a paragraph.
-  const clean = (s, max) => s.replace(/[<>"]/g, '').trim().slice(0, max);
-
   const sha = (process.env.VERCEL_GIT_COMMIT_SHA || git('git rev-parse HEAD')).slice(0, 7);
   const ref = process.env.VERCEL_GIT_COMMIT_REF || git('git rev-parse --abbrev-ref HEAD');
-  const msg = clean(
+  // The commit subject is a footnote, not a paragraph.
+  const msg = cleanCommitSubject(
     (process.env.VERCEL_GIT_COMMIT_MESSAGE || git('git log -1 --pretty=%s')).split('\n')[0],
     60,
   );

@@ -86,7 +86,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
 | Static HTML apps | `public/*.html` | design-locked, hand-authored — edit in place |
-| Front page | `index.html` | card grid + the footer's build/upkeep status line; counting rules and their why live in [`scripts/build-meta.js`](scripts/build-meta.js) |
+| Front page | `index.html` | card grid + the footer's status line — see [`DAILY_REFACTOR.md`](DAILY_REFACTOR.md) |
 
 Card/tile data (name, icon, blurb, tags) for every app lives in one place —
 [`src/apps-registry.js`](src/apps-registry.js) — read by `index.html`'s card

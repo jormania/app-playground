@@ -234,12 +234,14 @@ degrade independently:
 
 - **Two workflow badges** — Daily refactor and CI — static images from GitHub, so
   they still say pass/fail when the API below is unreachable.
-- **The upkeep line**: last run number, verdict, how long ago, and how many
-  `claude/refactor-*` PRs are waiting. Two unauthenticated GitHub calls, the
-  second independent of the first, every failure silent.
+- **The upkeep line**: last run number, verdict, how long ago, how many
+  `claude/refactor-*` PRs are waiting against the six that pause the workflow,
+  and backlog depth. Two unauthenticated GitHub calls, the second independent of
+  the first, every failure silent — but backlog depth is stamped at build time,
+  so it paints first and survives a rate-limited or offline GitHub alone.
 - **The build line**: commit, deploy time, branch when it isn't `main`, and gauges
   that appear only once they have something to say — the serverless-function
-  count (visible from 10, red at the 12 cap) and backlog depth. Stamped at build
+  count (visible from 10, red at the 12 cap). Stamped at build
   time by `buildMetaPlugin` in `vite.config.js`, so it costs nothing against
   GitHub's 60-requests/hour unauthenticated limit and always describes the build
   you are looking at. The counting rules live in `scripts/build-meta.js` and are
