@@ -281,8 +281,9 @@ refuses), report the compare link
 the PR body into your closing report, so it opens by hand in a click.
 
 If the **push itself** failed, the work dies with this container. Say so as the
-first line of your report, name the error, give paste the full `git diff` into the report — that is the only copy anyone will
-ever see, and it is recoverable by hand from there.
+first line of your report, name the error, and paste the full `git diff` into the
+report — that is the only copy anyone will ever see, and it is recoverable by
+hand from there.
 
 ## 10. Report
 

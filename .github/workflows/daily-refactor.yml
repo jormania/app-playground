@@ -284,10 +284,6 @@ jobs:
       # notification that is already switched on. A run that correctly did
       # nothing stays quiet: crying wolf on quiet days is how a person learns
       # to ignore the alert that matters.
-      # A failed run is the one GitHub emails about without anyone configuring
-      # anything, so this step borrows that alarm. Only a run that genuinely did
-      # nothing stays quiet — crying wolf on calm mornings is how a person learns
-      # to ignore the alert that matters.
       - name: Fail loudly if the run got stuck
         if: always()
         run: |
