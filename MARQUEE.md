@@ -3388,6 +3388,63 @@ a deploy. The scan was always the cheapest place to ask.
 
 `npm test` (4456), `npm run typecheck` and `npx eslint` all pass.
 
+### 9.80 Proving the cache can't hand you a stale sold-out (2026-09-15)
+
+Asked, reasonably, of a cache that had already produced two bugs in a day: *does
+reading from cache affect seats remaining, sold-out state and so on?*
+
+**It cannot, and the reason is one line of structure rather than a promise:**
+the LISTING page is never cached, never sent conditionally, and never skipped by
+§9.78's budget. Ticket state, seat counts, dates and sold-out all live there, and
+it is re-read in full on every single check. The cache only ever covers a
+production's **own** page — poster, synopsis, price tiers — which is what does
+not change hour to hour.
+
+What each cached record actually holds, read off the adapters rather than
+recalled:
+
+| adapter | stored keys |
+|---|---|
+| `tnb` | `image`, `description`, `price` |
+| `arcub` | `description` |
+| `metropolis` | `price` |
+
+Everything else — `excelsior`, `eventbook`, `filarmonica`, `oveit`, `iabilet`,
+`expirat`, `jsonld`, `mystage`, `odeon`, `quantic` — stores nothing at all.
+**Excelsior and Oveit are the ones that matter here**: remaining-seat numbers
+(§9.68) and seats.io charts (§9.71) are the most volatile things Marquee reads,
+and both belong to readers excluded from caching, so every count in the app was
+fetched during the check that displayed it.
+
+**Verified dynamically, not just structurally.** Two checks an hour apart, the
+second reading every detail page from cache and making **zero** detail requests:
+
+| venue | check 1 | check 2 (0 detail fetches) |
+|---|---|---|
+| TNB | `open`, tickets at bilet.ro | **`sold-out`**, ticket link gone, poster still from cache |
+| Metropolis | `open`, 59.40 lei | **`none`**, price still 59.40 from cache |
+
+Both flips arrived. The poster and price came from the store in the same breath,
+which is the whole arrangement working as designed: **the volatile half is
+re-read every time, the stable half is remembered.**
+
+Five tests pin it — the two flips above, that the listing page carries no
+validator and never enters the store, that the seat-count readers cache nothing,
+and a sweep asserting no cached record for ANY adapter contains `ticketState`,
+`ticketsUrl`, `seatsLeft`, `seatsTotal`, `date`, `time`, `isAvailable` or
+`soldOut`. The last one is the guard against a fourteenth venue quietly widening
+what gets stored.
+
+**One honest caveat, since the question deserves the whole answer.** `price` IS
+cached, for up to a week. A theatre that changes a production's price mid-run
+will show the old one until that record comes due. Prices move rarely and a
+stale one costs a small surprise at the box office rather than a wasted evening
+— a different order of error from a stale "tickets available", which is why the
+line was drawn where it was. Worth revisiting if a venue ever turns out to
+re-price often.
+
+`npm test` (4461), `npm run typecheck` and `npx eslint` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
