@@ -73,6 +73,33 @@ a { color: inherit; text-decoration: none; }
 .upkeep-line a:hover { color: var(--gold-soft); }
 .upkeep-line .waiting { color: var(--gold-soft); }
 
+/* Which build you are actually looking at. Stamped at build time, so it
+   describes this page rather than whatever main happens to be now. */
+.build-line {
+  margin-top: 10px; text-align: center;
+  font-family: var(--mono); font-size: 11.5px; color: var(--faint);
+  line-height: 1.9;
+}
+.build-line a { color: var(--muted); border-bottom: 1px solid var(--border); transition: color 0.18s; }
+/* Separators belong to the part that follows them, so a part hidden at a
+   given width takes its own dot with it instead of leaving " · · " behind.
+   Each part holds its own dot unbreakably, so the line wraps between parts
+   and never starts one with an orphaned separator. */
+.build-line .bit { white-space: nowrap; }
+.build-line .bit + .bit::before { content: "·\00a0"; color: var(--faint); }
+.build-line a:hover { color: var(--gold-soft); }
+.build-line .msg { font-style: italic; }
+.build-line .branch { color: var(--rose); font-style: normal; }
+/* The commit subject is the one part a phone can spare — the sha and the
+   gauges are what you would actually squint at on one. */
+@media (max-width: 560px) { .build-line .msg { display: none; } }
+
+/* Gauges earn colour by appearing at all — each one is hidden until it has
+   something to say, so anything gold here is worth a glance and anything
+   rose wants acting on. */
+.gauge { color: var(--gold-soft); white-space: nowrap; }
+.gauge.hot { color: var(--rose); }
+
 .footer-credit {
   margin-top: 16px; text-align: center;
   font-family: var(--mono); font-size: 12px; color: var(--faint);
@@ -422,8 +449,16 @@ a { color: inherit; text-decoration: none; }
         <img src="https://github.com/jormania/app-playground/actions/workflows/daily-refactor.yml/badge.svg"
              alt="Daily refactor workflow status" height="20" loading="lazy" decoding="async">
       </a>
+      <a href="https://github.com/jormania/app-playground/actions/workflows/ci.yml"
+         target="_blank" rel="noopener" title="CI — tests, typecheck and lint on main">
+        <img src="https://github.com/jormania/app-playground/actions/workflows/ci.yml/badge.svg"
+             alt="CI status" height="20" loading="lazy" decoding="async">
+      </a>
       <span class="upkeep-line" id="upkeep-line" hidden></span>
     </div>
+    <!-- Build provenance + the gauges that only show up when they matter.
+         Rendered from <meta> tags stamped by vite.config.js — no network. -->
+    <div class="build-line" id="build-line" hidden></div>
     <div class="footer-credit">© <span id="footer-year">2026</span> Cone of Cold · built with Claude · runs in your browser · <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub ↗</a></div>
   </div>
 </footer>
@@ -744,10 +779,17 @@ qrDialogEl.addEventListener("click", (e) => {
   if (e.target === qrDialogEl) qrDialogEl.close();
 });
 
+// Build metadata stamped into <head> at build time by vite.config.js. Absent
+// under `vite dev`, where every reader below falls back or stays quiet.
+const buildMeta = (name) => {
+  const el = document.querySelector(`meta[name="${name}"]`);
+  return el ? el.content : "";
+};
+
 // Prefer the real build/deploy date stamped in at build time (see vite.config.js);
 // fall back to the newest app `deployed` value in dev where no meta is injected.
-const deployMeta = document.querySelector('meta[name="deploy-date"]');
-const deployDate = deployMeta ? new Date(deployMeta.content) : null;
+const deployRaw  = buildMeta("deploy-date");
+const deployDate = deployRaw ? new Date(deployRaw) : null;
 const latestDate = latestDeployedDate();
 if (deployDate && !isNaN(deployDate)) {
   document.getElementById("updated-meta").textContent =
@@ -791,9 +833,59 @@ const UPKEEP_VERDICT = {
   timed_out: "timed out",
 };
 
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// The workflow stops opening PRs once this many are already waiting, so the
+// count is not just "some review owed" — past five it is about to halt the
+// whole weekday cadence. Kept in step with .github/workflows/daily-refactor.yml.
+const REFACTOR_PR_CAP = 6;
+// Vercel Hobby's per-deployment function limit. The count itself is stamped by
+// vite.config.js; the ceiling is a platform fact, so it lives here with the
+// thing that draws it.
+const FUNCTION_CAP  = 12;
+const FUNCTION_WARN = 10;
+// Below this the weekday run is within a couple of mornings of going hungry.
+const BACKLOG_LOW = 3;
+
+const upkeepEl = document.getElementById("upkeep-line");
+
+// The half of the line that needs no network: how much work is queued for the
+// weekday run, and whether any of it is waiting on a nod from you. Rendered
+// first so a rate-limited or offline GitHub costs only the run status.
+function backlogParts() {
+  const parts = [];
+  const href = `https://github.com/${UPKEEP_REPO}/blob/main/REFACTOR_BACKLOG.md`;
+  const open = Number(buildMeta("build-backlog-open"));
+
+  if (Number.isFinite(open) && buildMeta("build-backlog-open") !== "") {
+    const low = open <= BACKLOG_LOW;
+    parts.push(
+      `<a class="${low ? "gauge hot" : ""}" href="${href}" target="_blank" rel="noopener" ` +
+      `title="${low ? "Running low — the weekday run takes one item each morning" : "Items queued in REFACTOR_BACKLOG.md"}">` +
+      `backlog ${open}</a>`
+    );
+  }
+
+  const proposed = Number(buildMeta("build-backlog-proposed"));
+  if (proposed > 0) {
+    parts.push(
+      `<a class="gauge" href="${href}" target="_blank" rel="noopener" ` +
+      `title="The agent's own ideas — they sit under ## Proposed until you move one up">` +
+      `${proposed} proposed</a>`
+    );
+  }
+  return parts;
+}
+
+function paintUpkeep(parts) {
+  if (!upkeepEl || !parts.length) return;
+  upkeepEl.innerHTML = parts.join(" · ");
+  upkeepEl.hidden = false;
+}
+
 async function renderUpkeep() {
-  const el = document.getElementById("upkeep-line");
-  if (!el) return;
+  if (!upkeepEl) return;
 
   const get = async (path) => {
     const r = await fetch(`${UPKEEP_API}${path}`, { headers: { Accept: "application/vnd.github+json" } });
@@ -820,20 +912,82 @@ async function renderUpkeep() {
       const pulls   = await get("/pulls?state=open&per_page=100");
       const waiting = (pulls || []).filter(p => p.head && /^claude\/refactor-/.test(p.head.ref)).length;
       if (waiting) {
+        const stalled = waiting >= REFACTOR_PR_CAP;
+        const near    = waiting >= REFACTOR_PR_CAP - 1;
         parts.push(
-          `<a class="waiting" href="https://github.com/${UPKEEP_REPO}/pulls?q=is%3Apr+is%3Aopen+head%3Aclaude%2Frefactor-" target="_blank" rel="noopener">` +
-          `${waiting} ${waiting === 1 ? "change" : "changes"} waiting for review</a>`
+          `<a class="waiting${near ? " gauge hot" : ""}" title="${stalled
+            ? "The workflow has stopped opening PRs until some of these are merged or closed"
+            : `The workflow stops opening new PRs at ${REFACTOR_PR_CAP} open`}" ` +
+          `href="https://github.com/${UPKEEP_REPO}/pulls?q=is%3Apr+is%3Aopen+head%3Aclaude%2Frefactor-" target="_blank" rel="noopener">` +
+          `${waiting} / ${REFACTOR_PR_CAP} ${stalled ? "— refactor paused" : "waiting for review"}</a>`
         );
       }
     } catch (_) { /* leave the count off */ }
 
-    el.innerHTML = parts.join(" · ");
-    el.hidden = false;
+    paintUpkeep([...parts, ...backlogParts()]);
   } catch (_) {
-    // The badge above already communicates pass/fail. Stay quiet.
+    // The badges above already communicate pass/fail. Stay quiet.
   }
 }
+
+// ─────────────────────────────────────────────────────
+// BUILD LINE — which build this is, and the two ceilings this repo has
+// actually hit. Entirely from <meta>: no request, no rate limit, and it
+// describes the page you are holding rather than the tip of main.
+// ─────────────────────────────────────────────────────
+function renderBuildLine() {
+  const el = document.getElementById("build-line");
+  if (!el) return;
+  const parts = [];
+  const bit = (html, cls) => `<span class="bit${cls ? " " + cls : ""}">${html}</span>`;
+
+  const sha = buildMeta("build-commit");
+  if (sha) {
+    parts.push(bit(
+      `build <a href="https://github.com/${UPKEEP_REPO}/commit/${esc(sha)}" target="_blank" rel="noopener">${esc(sha)}</a>`
+    ));
+  }
+
+  if (deployDate && !isNaN(deployDate)) {
+    parts.push(bit(`deployed ${deployDate.toLocaleString(undefined, {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+    })}`));
+  }
+
+  // Only worth saying when it is not the branch that reaches production —
+  // on main it would be noise, on a preview it is the whole point.
+  const ref = buildMeta("build-ref");
+  if (ref && ref !== "main") parts.push(bit(esc(ref), "branch"));
+
+  const msg = buildMeta("build-commit-msg");
+  if (msg) parts.push(bit(`“${esc(msg)}”`, "msg"));
+
+  // Gauge: the serverless function budget. Hidden while there is room, gold
+  // as it closes in, rose at the cap — where the next top-level api/*.js file
+  // fails the deploy outright rather than degrading.
+  const fns = Number(buildMeta("build-functions"));
+  if (Number.isFinite(fns) && fns >= FUNCTION_WARN) {
+    const full = fns >= FUNCTION_CAP;
+    parts.push(bit(
+      `<span title="${full
+        ? "At the Vercel Hobby cap — one more top-level api/*.js will fail the deploy"
+        : `Vercel Hobby allows ${FUNCTION_CAP} serverless functions per deployment`}">` +
+      `functions ${fns} / ${FUNCTION_CAP}</span>`,
+      full ? "gauge hot" : "gauge"
+    ));
+  }
+
+  if (!parts.length) return;
+  // Joined on a real space: that space is the only break opportunity
+  // between parts, and each part is nowrap, so the line wraps only
+  // between parts and never inside one.
+  el.innerHTML = parts.join(" ");
+  el.hidden = false;
+}
+
+paintUpkeep(backlogParts());
 renderUpkeep();
+renderBuildLine();
 
 readURL();
 applyFilters();

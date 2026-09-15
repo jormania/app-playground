@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
+import { execSync } from 'child_process'
+import { countServerlessFunctions, parseBacklogCounts } from './scripts/build-meta.js'
 import notionHandler from './api/notion.js'
 import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
 import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
@@ -14,18 +16,75 @@ import clickDeckHltbHandler from './api/clickdeck-hltb.js'
 import notionPhotoProxyHandler from './api/notion-photo-proxy.js'
 import marqueeScanHandler from './api/marquee-scan.js'
 
-// Stamps the real build/deploy time into every HTML entry as a <meta> tag.
-// On Vercel a fresh build runs on each deploy, so this equals the deploy date.
-function deployDatePlugin() {
+// Stamps build provenance into every HTML entry as <meta> tags, so the front
+// page can say which build you are actually looking at without spending a
+// GitHub API request on it. Two things follow from doing this at build time
+// rather than at runtime: it costs nothing against the unauthenticated 60/hr
+// rate limit, and it can never disagree with the page it is embedded in — a
+// cached page carries its own provenance, where a live lookup would report
+// whatever `main` happens to be now.
+//
+// On Vercel a fresh build runs per deploy, so the timestamp equals the deploy
+// time and VERCEL_GIT_* describe the deployed commit. Locally those are absent
+// and git fills in. Everything here is best-effort: a missing value just omits
+// its meta tag, and index.html omits the corresponding half of the footer line.
+function buildMetaPlugin() {
   const deployDate = new Date().toISOString();
+
+  const git = (cmd) => {
+    try {
+      return execSync(cmd, { cwd: __dirname, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch {
+      return '';
+    }
+  };
+
+  // Strip the characters that would need escaping in an attribute value, and
+  // cap the length — the commit subject is a footnote, not a paragraph.
+  const clean = (s, max) => s.replace(/[<>"]/g, '').trim().slice(0, max);
+
+  const sha = (process.env.VERCEL_GIT_COMMIT_SHA || git('git rev-parse HEAD')).slice(0, 7);
+  const ref = process.env.VERCEL_GIT_COMMIT_REF || git('git rev-parse --abbrev-ref HEAD');
+  const msg = clean(
+    (process.env.VERCEL_GIT_COMMIT_MESSAGE || git('git log -1 --pretty=%s')).split('\n')[0],
+    60,
+  );
+
+  // The serverless-function budget and the backlog depth — both counted by
+  // scripts/build-meta.js, which is where the rules behind them are written
+  // down and tested. A count that cannot be taken just omits its meta tag.
+  let functions = '';
+  try {
+    functions = String(countServerlessFunctions(resolve(__dirname, 'api')));
+  } catch { /* no api dir — leave it off */ }
+
+  let backlogOpen = '', backlogProposed = '';
+  try {
+    const counts = parseBacklogCounts(readFileSync(resolve(__dirname, 'REFACTOR_BACKLOG.md'), 'utf8'));
+    backlogOpen     = String(counts.open);
+    backlogProposed = String(counts.proposed);
+  } catch { /* no backlog file — leave it off */ }
+
+  const values = {
+    'deploy-date': deployDate,
+    'build-commit': sha,
+    'build-commit-msg': msg,
+    'build-ref': ref,
+    'build-functions': functions,
+    'build-backlog-open': backlogOpen,
+    'build-backlog-proposed': backlogProposed,
+  };
+
   return {
-    name: 'inject-deploy-date',
+    name: 'inject-build-meta',
     transformIndexHtml() {
-      return [{
-        tag: 'meta',
-        attrs: { name: 'deploy-date', content: deployDate },
-        injectTo: 'head',
-      }];
+      return Object.entries(values)
+        .filter(([, content]) => content !== '')
+        .map(([name, content]) => ({
+          tag: 'meta',
+          attrs: { name, content },
+          injectTo: 'head',
+        }));
     },
   };
 }
@@ -286,7 +345,7 @@ function devBodyRelay(path, handler, name) {
 export default defineConfig({
   plugins: [
     react(),
-    deployDatePlugin(),
+    buildMetaPlugin(),
     solOdysseyPWA(),
     clickDeckPWA(),
     stripStraySolOdysseyManifestPlugin(),

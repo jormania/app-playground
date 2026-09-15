@@ -91,6 +91,14 @@ before working in that app. Don't hold app internals here; this table is a route
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
 | Static HTML apps | `public/*.html` | design-locked, hand-authored — edit in place |
 
+The front page's footer carries the automation's vital signs: two workflow badges, a
+live line for the daily-refactor run (its own two GitHub calls, best-effort), and a
+build line stamped by `buildMetaPlugin` in `vite.config.js` — commit, deploy time,
+branch when it isn't `main`, and gauges that appear only once they have something to
+say. Build-time rather than fetched, so it costs nothing against GitHub's 60/hr
+unauthenticated limit and always describes the build you are looking at. Counting rules
+live in [`scripts/build-meta.js`](scripts/build-meta.js).
+
 Card/tile data (name, icon, blurb, tags) for every app lives in one place —
 [`src/apps-registry.js`](src/apps-registry.js) — read by `index.html`'s card
 grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the new-app checklist.
@@ -163,6 +171,9 @@ run `ls api/*.js | grep -v '^api/_'` and check the count. At 12 already, one
 more **will fail the deploy** (happened before, see git history ~2026-07-23).
 **A `.test.js` file placed directly in `api/` counts as a function too** — put tests for
 top-level handlers in `api/_tests/` (caught once, 2026-08-26).
+Two things now watch this for you: `scripts/build-meta.test.js` fails the suite if the
+count ever exceeds 12, and the count is stamped into the footer of `index.html` at build
+time, showing from 10 up and turning red at the cap.
 Prefer folding a new proxy into an existing same-app endpoint (extra
 query param/mode) over a new file when the count is tight.
 
