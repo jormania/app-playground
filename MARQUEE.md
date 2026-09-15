@@ -345,8 +345,11 @@ Any failure returns `{ venue, status: 'parser-broken', detail }` and the app sho
 empty list, never a silent no-op. With a handful of venues this is cheap to maintain, and
 it is the difference between a tool you can trust and one you stop believing.
 
-**Politeness:** identifying User-Agent, one request per venue per scan, conditional
-requests (`If-Modified-Since`) where the server supports them.
+**Politeness:** identifying User-Agent, one request per venue per scan, and — since
+§9.75 — a cache of extracted detail-page records, so a production's own page is read
+about once a week rather than on every scan. Stale records are re-read
+conditionally (`If-None-Match` / `If-Modified-Since`); listing pages never are,
+because there a 304 means an empty body and an empty body means no programme.
 
 ---
 
@@ -454,11 +457,12 @@ Two rules the code enforces and the tests pin down:
 ### 9.2 The scan
 
 ```
-api/marquee-scan.js            the one endpoint — stateless, no Notion, no secret
+api/marquee-scan.js            the one endpoint — no Notion, no secret
 api/_lib/marquee/
   ├── registry.js              id → adapter
   ├── shared.js                inferYear, eventKey, slug, entities, makeEvent
   ├── scan.js                  fetch → parse → assess → horizon filter
+  ├── detailCache.js           remembered detail-page records, over KV (§9.75)
   ├── excelsior.js             rung 3
   ├── eventbook.js             rung 3, four venues, self-discovering pagination
   ├── filarmonica.js           rung 2 (Strapi feed)
@@ -466,7 +470,10 @@ api/_lib/marquee/
   └── __fixtures__/            markup as actually served on 2026-08-26
 ```
 
-The client owns the venue list and the diff; the endpoint holds nothing between calls.
+The client owns the venue list and the diff; the endpoint holds no PROGRAMME state
+between calls. Since §9.75 it does keep one thing: a cache of detail-page records,
+which is an optimisation of how a page is read and never a fact about what is on —
+lose it and the next scan is slower, not wrong.
 
 ### 9.3 Things the real markup taught us
 
@@ -3120,6 +3127,78 @@ per-night numbers. Excelsior serves this development machine a bot check, so
 those numbers are the ones production reported rather than a re-fetch — which is
 also why §9.71's live proofs used Filarmonica and Unteatru.
 
+### 9.75 TNB served a bot check, and the reader stopped asking the same question daily (2026-09-15)
+
+Reported from the app, after an ordinary check:
+
+> Teatrul Național București — The site served a bot check instead of the page.
+> Nothing is broken here; try again later.
+
+Which is §9.61's `looksLikeBotCheck` doing precisely its job: the status was
+honest, nothing was broken, and the venue was not blamed for markup it had not
+changed. The question was what to do about it — and first, whose address had
+been shown the door.
+
+**Not the reporter's.** Nothing in Marquee fetches a venue from the browser.
+`scanClient.js` posts the venue list to `/api/marquee-scan` and every venue
+request is made server-side, so the address tnb.ro rate-limited belongs to
+Vercel's serverless egress: a shared pool, not attributable to a person, not
+delistable by one, and rotating often enough that "try again later" genuinely
+works. Worth writing down because the instinct is to assume otherwise, and
+because it rules out the whole class of fixes aimed at the wrong machine.
+
+**What was ours was the request count.** TNB is read in two hops — one listing,
+then one page per distinct production for its poster, synopsis and price. That
+is 61 pages on a normal day, sequential, re-fetched in full on every scan, by a
+client whose own User-Agent reads `personal venue watcher; 1 request/day`. The
+"Open limits" section below had already named this the first place to look if
+TNB started throttling. It was.
+
+**So the pages are read once and remembered** — `detailCache.js`, over the same
+Upstash store `serverScan.js` already keeps its scheduled snapshot in. Three
+decisions in it are the ones worth defending:
+
+- **The extracted record is stored, never the HTML.** A TNB detail page is
+  60-120KB and sixty of them would not fit in one KV value at all. The three
+  fields `parse` actually wants out of that page are about a kilobyte. An
+  adapter opts in by implementing `extractDetail(page)`, and TNB's is the same
+  `detailOf` its own `parse` uses — one definition, so a remembered record and a
+  re-read page cannot drift apart. Adapters that don't implement it (eventbook's
+  pagination; Excelsior, whose `enrich` hop reads the detail pages themselves and
+  so still needs them in hand) take the unchanged path.
+- **Expiry is spread, not shared.** A week's TTL alone would have sixty records
+  written in one scan expire in one scan — the cache working perfectly six days
+  in seven and rebuilding the original 61-request burst on the seventh. Each URL
+  carries its own stable offset of up to two further days, hashed from the URL so
+  it is the same on every run rather than re-rolled.
+- **A failure keeps the last good record, without rejuvenating it.** A bot check
+  or a 502 on one production now costs that production nothing visible — its
+  poster and price still print — while the record stays due for a re-read.
+
+**And §6's oldest unkept promise is kept.** "Conditional requests
+(`If-Modified-Since`) where the server supports them" has been in this document
+since the first draft; `fetchOne` had never sent one. It does now, and only where
+a 304 has somewhere to land: a detail page whose record is already held.
+Deliberately never on a listing page, where the body IS the programme and a 304
+would report a venue as broken for the crime of not having changed since
+breakfast. That trap has its own test.
+
+Worth being precise about what this buys. A conditional request is still a
+request, so the validators are politeness to the origin's bandwidth, not the fix.
+The fix is the request never made: eighteen showings across three productions
+cost three detail reads cold and none warm.
+
+**Numbers.** A TNB scan drops from ~62 requests to 1 on a warm cache, and to a
+handful on the day a few records come due. `npm test` (4415), `npm run typecheck`
+and `npx eslint` all pass; the 4397 that existed before this change pass
+untouched, which is what establishes that the parse refactor underneath it
+changed no behaviour.
+
+**Left undone on purpose.** The first scan after a deploy still reads all 61
+pages in one burst, because a cold cache is genuinely cold — spreading THAT
+(refreshing the N oldest records per scan rather than everything due) is a
+separate change and not this one.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -3156,10 +3235,13 @@ absences at the source, not gaps in a reader:
   `MARQUEE_NOTION_TOKEN`'s scheduled reads, Excelsior's ~20 extra per-scan requests, and now
   TNB's ~61 extra per-scan poster requests, none of which have run from Vercel's own network
   yet.
-- **TNB's own detail-page fetches at 61-per-scan are the single biggest per-check request
-  count in the app** — well inside a hand-picked handful of venues checked on request, not
-  something with a fixed schedule hammering it, but the first place to look if a scan starts
-  timing out or TNB's site starts throttling.
+- ~~**TNB's own detail-page fetches at 61-per-scan are the single biggest per-check request
+  count in the app** — the first place to look if a scan starts timing out or TNB's site
+  starts throttling.~~ **It did, on 2026-09-15, and this prediction was the reason the cause
+  was found in minutes rather than an afternoon. Fixed in §9.75:** those pages are now read
+  about once a week per production instead of once per scan, taking a warm TNB scan to a
+  single request. The cold-start burst on a fresh deploy is unchanged and still the biggest
+  one in the app.
 - **mystage's incomplete initial-events window is unverified against a real gap.** Unteatru
   hasn't yet had more than 13 occurrences on its page at once, so whether the missing ones
   reliably surface on a later scan (rather than silently vanishing until manually checked

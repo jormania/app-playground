@@ -8,6 +8,7 @@
 
 import { dedupe } from './shared.js'
 import { getAdapter } from './registry.js'
+import { loadDetails, saveDetails, isFresh, kvStore, DEFAULT_TTL_MS } from './detailCache.js'
 
 export const STATUS = {
   OK: 'ok',
@@ -136,10 +137,30 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
         'user-agent': USER_AGENT,
         accept: request.json ? 'application/json' : 'text/html,*/*',
         ...(request.body != null ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
+        // Ask only for what changed. §6 has claimed conditional requests as
+        // politeness since the first draft; this is where it became true.
+        //
+        // Sent ONLY where a 304 has somewhere to land — a detail page whose
+        // extracted record is already in the cache (see detailCache.js). A
+        // blanket `If-Modified-Since` would be a trap on the listing page,
+        // where a 304 means an empty body and an empty body means no
+        // programme; a venue would report as broken for the crime of not
+        // having changed since breakfast.
+        ...(request.conditional?.etag ? { 'if-none-match': request.conditional.etag } : {}),
+        ...(request.conditional?.lastModified ? { 'if-modified-since': request.conditional.lastModified } : {}),
       },
       redirect: 'follow',
       ...(controller ? { signal: controller.signal } : {}),
     })
+    // "Nothing has changed since you last read this" — the answer a conditional
+    // request exists to get, and the cheapest possible one for both ends. It is
+    // not a failure and it is not a page: it carries no body by definition, so
+    // it is returned as its own kind of result and the caller reuses what it
+    // already had. Checked before the `!res.ok` branch below because a 304 is
+    // not "ok", and salvaging a body from it would salvage an empty string.
+    if (res.status === 304) {
+      return { url: request.url, tag: request.tag ?? null, ok: false, notModified: true, status: 304, optional: request.optional === true }
+    }
     if (!res.ok) {
       // A non-2xx can still carry the entire page. teatrulmetropolis.ro serves
       // its complete programme — 18 showings, posters, ticket links — under an
@@ -165,7 +186,19 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
     if (request.binary) {
       return { url: request.url, tag: request.tag ?? null, ok: true, status: res.status, bytes: new Uint8Array(await res.arrayBuffer()) }
     }
-    return { url: request.url, tag: request.tag ?? null, ok: true, status: res.status, body: await res.text() }
+    // The two validators come back with the page so a cached record can quote
+    // them next time. Read off the HTML path only, which is the only one any
+    // cached detail page uses today; a JSON or binary source that ever wants
+    // the same treatment can have it here.
+    return {
+      url: request.url,
+      tag: request.tag ?? null,
+      ok: true,
+      status: res.status,
+      etag: res.headers?.get?.('etag') ?? null,
+      lastModified: res.headers?.get?.('last-modified') ?? null,
+      body: await res.text(),
+    }
   } catch (err) {
     const timedOut = err?.name === 'AbortError' || err?.name === 'TimeoutError'
     return {
@@ -188,7 +221,17 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
  * every outcome. The caller renders the status; nothing here decides what the user
  * sees beyond naming what happened.
  */
-export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, horizonDays = HORIZON_DAYS, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
+export async function scanVenue(venue, {
+  now = new Date(),
+  fetchImpl = fetch,
+  horizonDays = HORIZON_DAYS,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+  // The detail-page cache's store and its freshness window, both injectable so
+  // a test can exercise a warm cache without a Redis anywhere near it. The
+  // default store is the real KV, which is itself a no-op when unconfigured.
+  detailStore = kvStore,
+  detailTtlMs = DEFAULT_TTL_MS,
+} = {}) {
   const adapter = getAdapter(venue.adapter)
   const checkedAt = now.toISOString().slice(0, 10)
   const base = { venueId: venue.id ?? null, venue: venue.name, adapter: venue.adapter, checkedAt }
@@ -237,16 +280,75 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
   }
 
   // Extra pages (eventbook's pagination) are discovered from the first response.
+  //
+  // For an adapter that declares `extractDetail`, this hop is also where the
+  // detail cache earns its keep: a URL whose record is still fresh is not
+  // requested at all, and a stale one is re-requested conditionally, so the
+  // common case for TNB drops from ~61 requests per scan to nearly none. An
+  // adapter without `extractDetail` (eventbook's pagination, excelsior — whose
+  // `enrich` hop reads the detail pages themselves and so still needs them in
+  // hand) takes the unchanged path.
+  let details = null
   if (typeof adapter.follow === 'function') {
+    const cacheable = typeof adapter.extractDetail === 'function'
+    const remembered = cacheable ? await loadDetails(adapter.id, { store: detailStore }) : {}
+    const held = {}
+
     for (const request of adapter.follow(pages, { venue, now })) {
-      const page = await fetchOne(request, fetchImpl, timeoutMs)
+      const entry = cacheable ? remembered[request.url] : null
+
+      // The whole point: a fresh record answers the question the request was
+      // going to ask, so the request is never made.
+      if (entry && isFresh(entry, now, detailTtlMs)) {
+        held[request.url] = entry
+        continue
+      }
+
+      const page = await fetchOne(
+        entry ? { ...request, conditional: { etag: entry.etag, lastModified: entry.lastModified } } : request,
+        fetchImpl,
+        timeoutMs,
+      )
+
+      // Stale by our clock, unchanged by the site's. Keep the record and reset
+      // its age, which is what stops a page that genuinely never changes from
+      // being re-read every week forever.
+      if (page.notModified && entry) {
+        held[request.url] = { ...entry, fetchedAt: now.toISOString() }
+        continue
+      }
+
       // Same rule as the first hop: a page that arrived is a page that can be
       // read, whatever its status line said. A site erroring on its listing
       // errors on its detail pages too, and dropping those would cost the
       // posters and descriptions they were fetched for.
-      if (page.ok || page.body) pages.push(page)
+      if (page.ok || page.body) {
+        pages.push(page)
+        if (cacheable) {
+          // An adapter that throws in here loses one production's poster, not
+          // its venue — the same defence `enrich` gets below.
+          let data = null
+          try { data = adapter.extractDetail(page, { venue, now }) ?? null } catch { data = null }
+          if (data) {
+            held[request.url] = { url: request.url, data, etag: page.etag ?? null, lastModified: page.lastModified ?? null, fetchedAt: now.toISOString() }
+          }
+        }
+      } else if (entry) {
+        // The page failed and we still hold yesterday's record. Keeping it
+        // (without touching `fetchedAt`, so it stays due for a re-read) means a
+        // bot check or a 502 on one production costs that production nothing at
+        // all, rather than silently stripping its poster and price.
+        held[request.url] = entry
+      }
       // A failed page 4 is not worth failing the venue over — the pages that did
       // arrive are still real events, and the health gate still has to pass.
+    }
+
+    if (cacheable) {
+      details = Object.fromEntries(Object.entries(held).map(([url, e]) => [url, e.data]))
+      // Best-effort, and deliberately not awaited for its verdict beyond this:
+      // a store that refuses the write costs the next scan its shortcut.
+      await saveDetails(adapter.id, held, { store: detailStore })
     }
   }
 
@@ -290,7 +392,7 @@ export async function scanVenue(venue, { now = new Date(), fetchImpl = fetch, ho
 
   let events
   try {
-    events = dedupe(adapter.parse(pages, { venue, now }))
+    events = dedupe(adapter.parse(pages, { venue, now, details }))
   } catch (err) {
     return { ...base, status: STATUS.PARSER_BROKEN, detail: `The reader threw: ${err.message}`, events: [] }
   }

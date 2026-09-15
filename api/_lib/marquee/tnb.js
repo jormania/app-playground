@@ -73,6 +73,36 @@ function decodeMisencodedHref(href) {
   return /^https?%3A/i.test(href) ? decodeURIComponent(href) : href
 }
 
+/**
+ * The three things a production's own page is read for — poster, synopsis,
+ * cheapest tier.
+ *
+ * One definition, used both when a page arrives fresh and (via `extractDetail`)
+ * when it is being written to the cache, so a remembered record and a
+ * re-parsed page can never disagree about what that page said.
+ *
+ * The price is the cheapest tier, the same convention every other reader here
+ * uses for a tiered price (Oveit's minPrice, iabilet's cheapest live tariff)
+ * and the one `toDraft` describes in Wanderlist as a floor rather than a seat
+ * worth having.
+ */
+function detailOf(body) {
+  const src = POSTER.exec(body)?.[1] ?? OG_IMAGE.exec(body)?.[1]
+  let price = null
+  const box = PRICE_BOX.exec(body)?.[1]
+  if (box) {
+    const tiers = [...box.matchAll(/(\d+(?:[.,]\d+)?)\s*lei/gi)]
+      .map((m) => Number(m[1].replace(',', '.')))
+      .filter((n) => Number.isFinite(n) && n > 0)
+    if (tiers.length) price = Math.min(...tiers)
+  }
+  return {
+    image: src ? absoluteUrl(src, BASE) : null,
+    description: proseParagraphs(body),
+    price,
+  }
+}
+
 export default {
   id: 'tnb',
   label: 'Teatrul Național București',
@@ -97,30 +127,35 @@ export default {
     return [...hrefs].slice(0, MAX_DETAIL_PAGES).map((url) => ({ url }))
   },
 
-  parse(pages, { venue } = {}) {
+  /**
+   * Everything one production's own page is fetched for, as a small object.
+   *
+   * This is the detail cache's opt-in (see `detailCache.js`): declaring it is
+   * what tells `scanVenue` these pages may be remembered rather than re-read on
+   * every scan, and about a kilobyte of THIS is what gets stored — never the
+   * 60-120KB of HTML it came out of.
+   */
+  extractDetail(page) {
+    return detailOf(page.body ?? '')
+  },
+
+  parse(pages, { venue, details } = {}) {
     // Every page after the listing is one production's own detail page,
     // keyed by the exact URL it was fetched at — which is the same URL each
     // listing row already links to, so no canonical-tag cross-referencing is
     // needed here the way Excelsior's does.
-    const posters = new Map()
-    const descriptions = new Map()
-    const prices = new Map()
+    //
+    // Remembered records go in first and pages read in THIS scan overwrite
+    // them, so a page that was actually fetched always beats a cached account
+    // of it. With no cache in play (every direct `parse` call in the tests, and
+    // any scan where KV isn't configured) `details` is absent and this reads
+    // exactly as it always did — off the pages alone.
+    const found = new Map()
+    for (const [url, record] of Object.entries(details ?? {})) {
+      if (record) found.set(url, record)
+    }
     for (const page of pages.slice(1)) {
-      const body = page.body ?? ''
-      const src = POSTER.exec(body)?.[1] ?? OG_IMAGE.exec(body)?.[1]
-      if (page.url && src) posters.set(page.url, absoluteUrl(src, BASE))
-      if (page.url) descriptions.set(page.url, proseParagraphs(body))
-      // Cheapest tier, the same convention every other reader here uses for a
-      // tiered price (Oveit's minPrice, iabilet's cheapest live tariff) and the
-      // one `toDraft` describes in Wanderlist as a floor rather than a seat
-      // worth having.
-      const box = PRICE_BOX.exec(body)?.[1]
-      if (page.url && box) {
-        const tiers = [...box.matchAll(/(\d+(?:[.,]\d+)?)\s*lei/gi)]
-          .map((m) => Number(m[1].replace(',', '.')))
-          .filter((n) => Number.isFinite(n) && n > 0)
-        if (tiers.length) prices.set(page.url, Math.min(...tiers))
-      }
+      if (page.url) found.set(page.url, detailOf(page.body ?? ''))
     }
 
     const html = pages[0]?.body ?? ''
@@ -155,11 +190,11 @@ export default {
           time: parseTime(pick(row, /class="c3">([^<]*)</)),
           hall: pick(row, /class="c2">([^<]*)</),
           link,
-          image: link ? (posters.get(link) ?? null) : null,
-          price: link ? (prices.get(link) ?? null) : null,
+          image: link ? (found.get(link)?.image ?? null) : null,
+          price: link ? (found.get(link)?.price ?? null) : null,
           ticketState: soldOut ? TICKET.SOLD_OUT : ticketHref ? TICKET.OPEN : TICKET.NONE,
           ticketsUrl: ticketHref ? absoluteUrl(ticketHref, BASE) : null,
-          description: link ? (descriptions.get(link) ?? null) : null,
+          description: link ? (found.get(link)?.description ?? null) : null,
         }))
       }
     }
