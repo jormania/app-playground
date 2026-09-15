@@ -384,6 +384,26 @@ export function scanPayload(venues) {
  *  that strip is complaining about rather than re-deriving it from the
  *  `Last result` text. A venue the check didn't cover (paused, or added
  *  since) is simply absent: unknown is not the same as fine. */
+/** What the last check did with each venue's detail cache, by venue name.
+ *
+ *  Same shape and same rule as `troubleByVenue` below: a venue the check didn't
+ *  cover is absent rather than zeroed, because unknown is not the same as "read
+ *  nothing". Venues whose reader caches nothing at all (eventbook, oveit,
+ *  iabilet, excelsior — see detailCache.js's rule) report no `cache` at all and
+ *  are absent too, so the Venues tab stays quiet about them instead of printing
+ *  a meaningless "0 remembered, 0 read".
+ *
+ *  This exists because the question "did the cache actually do anything?" was,
+ *  for two days, answerable only by tracing code and querying Vercel — while
+ *  the scan itself knew the answer and discarded it (§9.79). */
+export function cacheByVenue(scanned) {
+  const map = new Map()
+  for (const v of scanned ?? []) {
+    if (v?.cache) map.set(v.venue, v.cache)
+  }
+  return map
+}
+
 export function troubleByVenue(scanned) {
   const map = new Map()
   for (const v of scanned ?? []) {

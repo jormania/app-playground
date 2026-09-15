@@ -18,7 +18,7 @@ import { sortVenues, scannable, togglePaused, searchVenues } from './venues.js'
 import {
   toProductions, byDate, visibleProductions, searchProductions, dropStarted, productionId, domIdFor,
   changedKeyMap, TRIAGE, venueCategoryMap, categoryFor, categoriesInUse, venuesForCategory, hallsInUse, nextDayKeys, densityForDays,
-  troubleByVenue, CATEGORY_LABEL,
+  troubleByVenue, cacheByVenue, CATEGORY_LABEL,
 } from './programme.js'
 import { annotateSaved, buildFindingsIndex, EMPTY_INDEX } from './findings.js'
 import { summarize, changeSignature, undismissedChanges } from './changes.js'
@@ -507,6 +507,10 @@ export default function App() {
   // answer, moved to the screen that already lists every venue.
   const venueTrouble = useMemo(() => troubleByVenue(scan?.venues), [scan])
 
+  // And what that same check did with each venue's detail cache — the
+  // counterpart question to "could it be read at all", on the same screen.
+  const venueCache = useMemo(() => cacheByVenue(scan?.venues), [scan])
+
   // See changes.js's undismissedChanges for what this filters and why.
   const visibleChanges = useMemo(() => undismissedChanges(scan?.changes, dismissedKeys), [scan, dismissedKeys])
   // Distinct from "this scan found nothing new" (scan.changes itself empty,
@@ -891,6 +895,7 @@ export default function App() {
               search={venueSearch}
               busyId={busyId}
               troubleByVenue={venueTrouble}
+              cacheByVenue={venueCache}
               onTogglePause={handleTogglePause}
               onEdit={(v) => { setEditing(v); setFormOpen(true) }}
               onRemove={(v) => setRemoving(v)}

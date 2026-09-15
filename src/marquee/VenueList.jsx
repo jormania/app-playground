@@ -2,11 +2,26 @@ import { getAdapter } from './adapters.js'
 import { isActive } from './venues.js'
 import { formatDay } from './format.js'
 
+/** "12 remembered, 0 read" — what the last check did with this venue's detail
+ *  pages, in the order that answers the question being asked. Nothing at all
+ *  for a venue whose reader caches nothing, or one the last check didn't cover.
+ *
+ *  `waiting` only appears while a cache is still filling, which is exactly when
+ *  it explains something: a venue reading 12 of 61 looks broken until you can
+ *  see that the other 49 are queued behind a deliberate budget rather than
+ *  lost. */
+function cacheSummary(cache) {
+  if (!cache) return null
+  const parts = [`${cache.fromCache} remembered`, `${cache.fetched} read`]
+  if (cache.waiting > 0) parts.push(`${cache.waiting} still to read`)
+  return parts.join(', ')
+}
+
 /** One venue, as a row you can pause, edit or remove.
  *
  *  A paused venue is dimmed but never hidden or moved out of reach — pausing is
  *  meant to be as easy to undo as it was to do. */
-function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
+function VenueRow({ venue, busy, trouble, cache, onTogglePause, onEdit, onRemove }) {
   const active = isActive(venue)
   const adapter = getAdapter(venue.adapter)
   const host = (() => {
@@ -50,6 +65,15 @@ function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
             ? `Last checked ${formatDay(venue.lastChecked, { relative: true })}${venue.lastResult ? ` · ${venue.lastResult}` : ''}`
             : 'Never checked'}
         </p>
+        {/* Detail-page cache, on its own line rather than folded into the scan
+            line above: that line is about the venue, this one is about how
+            Marquee read it, and running them together made a sentence that
+            answered neither. Only shown when there is something to say. */}
+        {cacheSummary(cache) && (
+          <p className="venue__cache" title="Detail pages this venue's reader answered from its stored records versus fetched fresh.">
+            Detail pages · {cacheSummary(cache)}
+          </p>
+        )}
         {/* Address and Area were editable and then invisible — you could set
             them and never see them again outside Notion. The address is what
             makes a saved Wanderlist finding drop its map pin first try
@@ -79,7 +103,7 @@ function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
   )
 }
 
-export default function VenueList({ venues, search = '', busyId, troubleByVenue = new Map(), onTogglePause, onEdit, onRemove }) {
+export default function VenueList({ venues, search = '', busyId, troubleByVenue = new Map(), cacheByVenue = new Map(), onTogglePause, onEdit, onRemove }) {
   if (!venues.length) {
     // A search that matches nothing is its own answer, and a different one
     // from having no venues at all — the same distinction Programme's
@@ -106,6 +130,7 @@ export default function VenueList({ venues, search = '', busyId, troubleByVenue 
             venue={venue}
             busy={busyId === venue.id}
             trouble={troubleByVenue.get(venue.name) ?? null}
+            cache={cacheByVenue.get(venue.name) ?? null}
             onTogglePause={onTogglePause}
             onEdit={onEdit}
             onRemove={onRemove}

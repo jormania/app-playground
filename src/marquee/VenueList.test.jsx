@@ -99,3 +99,46 @@ describe('troubleByVenue', () => {
     expect(troubleByVenue([]).size).toBe(0);
   });
 });
+
+describe('the detail-page cache, said out loud (§9.79)', () => {
+  const venue = { id: 'v1', name: 'TNB', url: 'https://www.tnb.ro/x', adapter: 'tnb', active: true };
+  const render1 = (cache) => render(
+    <VenueList
+      venues={[venue]}
+      cacheByVenue={cache ? new Map([['TNB', cache]]) : new Map()}
+      onTogglePause={() => {}}
+      onEdit={() => {}}
+      onRemove={() => {}}
+    />,
+  );
+
+  it('says a warm cache is warm', () => {
+    render1({ fromCache: 61, fetched: 0, waiting: 0 });
+    expect(screen.getByText(/61 remembered, 0 read/)).toBeTruthy();
+  });
+
+  it('says a cold cache is cold', () => {
+    render1({ fromCache: 0, fetched: 12, waiting: 0 });
+    expect(screen.getByText(/0 remembered, 12 read/)).toBeTruthy();
+  });
+
+  it('explains a cache that is still filling, rather than looking broken', () => {
+    // 12 of 61 with no further word reads as a failure. The third number is the
+    // difference between "it only managed twelve" and "twelve this scan, by
+    // design, the rest next time".
+    render1({ fromCache: 0, fetched: 12, waiting: 49 });
+    expect(screen.getByText(/0 remembered, 12 read, 49 still to read/)).toBeTruthy();
+  });
+
+  it('stays quiet for a venue whose reader caches nothing', () => {
+    // A "0 remembered, 0 read" line on eventbook or Excelsior would be a
+    // statement about a cache that does not exist for them.
+    render1(null);
+    expect(screen.queryByText(/remembered/)).toBeNull();
+  });
+
+  it('stays quiet when the count is zero on both sides but the venue was unread', () => {
+    render1(undefined);
+    expect(screen.queryByText(/Detail pages/)).toBeNull();
+  });
+});

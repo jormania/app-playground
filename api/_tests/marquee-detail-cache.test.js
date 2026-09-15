@@ -13,9 +13,8 @@ import { dirname, join } from 'node:path'
 
 import tnb from '../_lib/marquee/tnb.js'
 import { ADAPTERS } from '../_lib/marquee/registry.js'
-import { scanVenue, STATUS } from '../_lib/marquee/scan.js'
+import { scanVenue, STATUS, DETAIL_BUDGET_PER_SCAN } from '../_lib/marquee/scan.js'
 import { isFresh, loadDetails, saveDetails, DEFAULT_TTL_MS } from '../_lib/marquee/detailCache.js'
-import { DETAIL_BUDGET_PER_SCAN } from '../_lib/marquee/scan.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
 const fixture = (name) => readFileSync(join(FIXTURES, name), 'utf8')
@@ -630,5 +629,80 @@ describe('a challenge page is not a detail page (§9.78)', () => {
     })
     await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: store })
     expect(Object.keys(store.data[KEY] ?? {})).toHaveLength(3)
+  })
+})
+
+describe('the scan says what it did with the cache (§9.79)', () => {
+  const DETAIL = `<html><img class="article-image" src="/poster.jpg"><p>${'A real synopsis, long enough to count as prose. '.repeat(3)}</p></html>`
+
+  function season(n) {
+    return Array.from({ length: 6 }, (_, d) =>
+      `<div class="day"><div class="number">${20 + d}</div><div class="month">09</div><div class="year">2026</div>`
+      + Array.from({ length: n }, (_, i) =>
+        `<tr><td class="title"><a href="https://www.tnb.ro/ro/p${i}"><h1>Prod ${i}</h1></a></td><td class="c2">Sala</td><td class="c3">${8 + (i % 12)}:00</td></tr>`).join('')
+      + '</div>').join('')
+  }
+  const bigVenue = { name: 'TNB', url: 'https://www.tnb.ro/x', adapter: 'tnb' }
+  const servingSeason = async (url) => ({
+    ok: true, status: 200, headers: new Headers(),
+    text: async () => (url === bigVenue.url ? season(20) : DETAIL),
+  })
+
+  it('reports a cold cache as all read, with the rest waiting on the budget', async () => {
+    const store = memoryStore()
+    const r = await scanVenue(bigVenue, { now: NOW, fetchImpl: servingSeason, detailStore: store })
+    // Twenty productions, twelve of budget: none remembered, twelve read, eight
+    // queued. The third number is what tells a filling cache apart from a
+    // broken one.
+    expect(r.cache).toEqual({ fromCache: 0, fetched: 12, waiting: 8 })
+  })
+
+  it('reports a warm cache as all remembered, nothing read', async () => {
+    const store = memoryStore()
+    for (let i = 1; i <= 3; i++) {
+      await scanVenue(bigVenue, { now: new Date(NOW.getTime() + i * 3600000), fetchImpl: servingSeason, detailStore: store })
+    }
+    const r = await scanVenue(bigVenue, { now: new Date(NOW.getTime() + 4 * 3600000), fetchImpl: servingSeason, detailStore: store })
+    expect(r.cache).toEqual({ fromCache: 20, fetched: 0, waiting: 0 })
+  })
+
+  it('counts a 304 as read, because a request went out', async () => {
+    const longAgo = new Date(NOW.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const store = memoryStore({ [KEY]: { [PLACEBO]: record(PLACEBO, longAgo) } })
+    const fetcher = recordingFetch({
+      detail: async (url) => (url === PLACEBO
+        ? { ok: false, status: 304, headers: new Headers() }
+        : { ok: true, status: 200, headers: new Headers(), text: async () => DETAIL_BODY[url] ?? '<html></html>' }),
+    })
+    const r = await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: store })
+    // Three productions, all three requested — the 304 among them. Nothing was
+    // answered without asking, so nothing is "remembered", even though the
+    // 304's content came from the store.
+    expect(r.cache).toEqual({ fromCache: 0, fetched: 3, waiting: 0 })
+  })
+
+  it('says nothing at all for a venue whose reader caches nothing', async () => {
+    // eventbook follows pagination, which is programme rather than detail. A
+    // "0 remembered, 0 read" there would be a meaningless line in the UI.
+    const venue = { name: 'Cinema', url: 'https://eventbook.ro/hall/x', adapter: 'eventbook', config: 'x' }
+    const r = await scanVenue(venue, {
+      now: NOW,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: new Headers(), text: async () => '<html></html>' }),
+      detailStore: memoryStore(),
+    })
+    expect(r.cache ?? null).toBeNull()
+  })
+
+  it('says nothing for a venue the check could not read at all', async () => {
+    const CHALLENGE = `<html><title>Just a moment...</title><body>${'<p>One moment, please. Enable JavaScript and cookies to continue.</p>'.repeat(40)}</body></html>`
+    const r = await scanVenue(bigVenue, {
+      now: NOW,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: new Headers(), text: async () => CHALLENGE }),
+      detailStore: memoryStore(),
+    })
+    expect(r.status).toBe(STATUS.THROTTLED)
+    // Not `{0,0,0}` — the scan never reached the detail hop, and "we read
+    // nothing" would read as a fact about the cache rather than about the wall.
+    expect(r.cache ?? null).toBeNull()
   })
 })

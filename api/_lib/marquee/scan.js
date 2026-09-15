@@ -302,11 +302,24 @@ export async function scanVenue(venue, {
   // `enrich` hop reads the detail pages themselves and so still needs them in
   // hand) takes the unchanged path.
   let details = null
+  // What this scan actually did with the detail cache, so the app can SAY so.
+  //
+  // Three questions kept needing a Vercel query, a code trace and a simulation
+  // to answer — is the cache on, did it store anything, is it still filling —
+  // when the scan itself knew all three at the time and threw them away
+  // (§9.79). `fromCache` is records answered without a request, `fetched` is
+  // detail requests actually made (a 304 counts: a request went out, even
+  // though its answer was "use what you have"), `waiting` is productions that
+  // are due but had to wait for the next scan's budget.
+  let cache = null
   if (typeof adapter.follow === 'function') {
     const cacheable = typeof adapter.extractDetail === 'function'
     const remembered = cacheable ? await loadDetails(adapter.id, { store: detailStore }) : {}
     const held = {}
     const requests = adapter.follow(pages, { venue, now })
+    let fromCache = 0
+    let fetched = 0
+    let waiting = 0
 
     // How many detail pages this scan is allowed to read, and WHICH — the fix
     // for the trap §9.78 found the hard way.
@@ -341,16 +354,23 @@ export async function scanVenue(venue, {
       // going to ask, so the request is never made.
       if (entry && isFresh(entry, now, detailTtlMs)) {
         held[request.url] = entry
+        fromCache++
         continue
       }
 
       // Due, but out of budget this time. Keep what we know (without touching
       // its age, so it stays at the front of the queue next scan) and move on.
       if (budgeted && !budgeted.has(request.url)) {
-        if (entry) held[request.url] = entry
+        if (entry) {
+          held[request.url] = entry
+          fromCache++
+        } else {
+          waiting++
+        }
         continue
       }
 
+      if (cacheable) fetched++
       const page = await fetchOne(
         entry ? { ...request, conditional: { etag: entry.etag, lastModified: entry.lastModified } } : request,
         fetchImpl,
@@ -431,6 +451,7 @@ export async function scanVenue(venue, {
       // Best-effort, and deliberately not awaited for its verdict beyond this:
       // a store that refuses the write costs the next scan its shortcut.
       await saveDetails(adapter.id, held, { store: detailStore })
+      cache = { fromCache, fetched, waiting }
     }
   }
 
@@ -515,6 +536,7 @@ export async function scanVenue(venue, {
 
   return {
     ...base,
+    cache,
     status: upcoming.length ? STATUS.OK : STATUS.EMPTY,
     detail: upcoming.length ? null : 'Nothing upcoming is listed right now.',
     // Read fine, but the site said otherwise — carried through to the venue's

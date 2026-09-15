@@ -3337,6 +3337,50 @@ only take effect under conditions it is meant to create is worth nothing, and
 
 `npm test` (4442), `npm run typecheck` and `npx eslint` all pass.
 
+### 9.79 The scan knew whether the cache worked, and threw it away (2026-09-15)
+
+Three times in one morning — after the cache deployed, after TNB still showed a
+bot check, and again about ARCUB and Metropolis — the question was the same:
+**did the cache actually do anything?** Each time answering it took a Vercel
+query, a code trace and a simulation, and the last one ended in "almost
+certainly, but I can't confirm it."
+
+None of that was necessary. `scanVenue` knows, at the moment of the scan,
+exactly how many detail pages it answered from stored records and how many it
+went and fetched. It was discarding both numbers and returning only a status.
+
+**So it returns them.** `cache: { fromCache, fetched, waiting }` rides alongside
+`status`, and the Venues tab prints one quiet line under each row:
+
+```
+Detail pages · 61 remembered, 0 read
+Detail pages · 0 remembered, 12 read, 49 still to read
+```
+
+Three decisions in it worth keeping:
+
+- **`waiting` is the one that earns its place.** A venue reporting `12 read` out
+  of a 61-production season looks broken. The third number is the difference
+  between "it only managed twelve" and "twelve this scan, by design, the rest
+  next time" — it makes §9.78's budget legible instead of mysterious, and it
+  appears only while a cache is filling.
+- **A 304 counts as `fetched`, not as remembered.** Its content did come from
+  the store, but a request went out, and requests are what the venue's limiter
+  counts. The number that matters here is the one the other end sees.
+- **Silence where there is nothing to say.** A venue whose reader caches nothing
+  (eventbook, oveit, iabilet, excelsior — detailCache.js's rule) reports no
+  `cache` at all, and a venue the check never reached reports none either. The
+  row simply has no such line, rather than `0 remembered, 0 read`, which would
+  be a claim about a cache that does not exist or was never consulted. Same
+  discipline as `troubleByVenue`'s: **unknown is not the same as zero.**
+
+**The general lesson, since this is the third §9.7x in a row about the same
+blind spot:** a mechanism that cannot be observed from the outside will be
+debugged by inference, and inference is how §9.78's loop went unnoticed through
+a deploy. The scan was always the cheapest place to ask.
+
+`npm test` (4455), `npm run typecheck` and `npx eslint` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
