@@ -115,6 +115,18 @@ export function assess(adapter, pages, events) {
  */
 export const REQUEST_TIMEOUT_MS = 15000
 
+/**
+ * How many detail pages one scan may read for a cacheable adapter.
+ *
+ * The number that decides whether the cache can warm up at all — see the loop
+ * described at its use site below. Twelve is a judgement, not a measurement:
+ * sixty-one at once demonstrably trips tnb.ro's limiter and one at a time would
+ * take two months to fill a season, so it sits an order of magnitude under the
+ * thing that broke and still fills TNB in about five scans. Worth revisiting
+ * the first time a venue tolerates more, or tolerates less.
+ */
+export const DETAIL_BUDGET_PER_SCAN = 12
+
 /** How many times `enrich` may be asked for more requests. Two is what the
  *  deepest chain here needs (oveit.js); the third round is where an adapter
  *  that keeps asking gets stopped. */
@@ -231,6 +243,7 @@ export async function scanVenue(venue, {
   // default store is the real KV, which is itself a no-op when unconfigured.
   detailStore = kvStore,
   detailTtlMs = DEFAULT_TTL_MS,
+  detailBudget = DETAIL_BUDGET_PER_SCAN,
 } = {}) {
   const adapter = getAdapter(venue.adapter)
   const checkedAt = now.toISOString().slice(0, 10)
@@ -293,14 +306,48 @@ export async function scanVenue(venue, {
     const cacheable = typeof adapter.extractDetail === 'function'
     const remembered = cacheable ? await loadDetails(adapter.id, { store: detailStore }) : {}
     const held = {}
+    const requests = adapter.follow(pages, { venue, now })
 
-    for (const request of adapter.follow(pages, { venue, now })) {
+    // How many detail pages this scan is allowed to read, and WHICH — the fix
+    // for the trap §9.78 found the hard way.
+    //
+    // The cache only fills on a scan whose listing got through, and that same
+    // scan was then firing all 61 of TNB's detail requests at once, which is
+    // precisely what trips the limiter again. Blocked, one request, nothing
+    // stored, cache still cold; block lapses, 61 requests, blocked again. The
+    // cache could never reach a warm state at the venue it was built for.
+    //
+    // So a scan refreshes a BUDGET of pages, oldest record first (never fetched
+    // counts as oldest), and carries every other production on the record it
+    // already has. A cold cache fills over a handful of scans instead of one
+    // burst, and a warm one only ever re-reads the few that came due.
+    //
+    // Only for cacheable adapters: eventbook's pagination and oveit's feed
+    // pages ARE the programme, and skipping one there would silently drop a
+    // day's showings rather than a poster.
+    const due = cacheable
+      ? requests
+        .filter((r) => !(remembered[r.url] && isFresh(remembered[r.url], now, detailTtlMs)))
+        .sort((a, b) => String(remembered[a.url]?.fetchedAt ?? '').localeCompare(String(remembered[b.url]?.fetchedAt ?? '')))
+        .slice(0, detailBudget)
+        .map((r) => r.url)
+      : null
+    const budgeted = due === null ? null : new Set(due)
+
+    for (const request of requests) {
       const entry = cacheable ? remembered[request.url] : null
 
       // The whole point: a fresh record answers the question the request was
       // going to ask, so the request is never made.
       if (entry && isFresh(entry, now, detailTtlMs)) {
         held[request.url] = entry
+        continue
+      }
+
+      // Due, but out of budget this time. Keep what we know (without touching
+      // its age, so it stays at the front of the queue next scan) and move on.
+      if (budgeted && !budgeted.has(request.url)) {
+        if (entry) held[request.url] = entry
         continue
       }
 
@@ -323,12 +370,47 @@ export async function scanVenue(venue, {
       // errors on its detail pages too, and dropping those would cost the
       // posters and descriptions they were fetched for.
       if (page.ok || page.body) {
+        // An adapter that throws in here loses one production's poster, not
+        // its venue — the same defence `enrich` gets below.
+        let data = null
+        if (cacheable) {
+          try { data = adapter.extractDetail(page, { venue, now }) ?? null } catch { data = null }
+        }
+
+        // A challenge is not a detail page, and must not be treated as one —
+        // neither parsed nor remembered.
+        //
+        // Found in production (§9.78): when TNB's limiter tripped partway
+        // through a burst, the challenge pages that followed were stored as
+        // real records and trusted for a week, with "One moment, please. Enable
+        // JavaScript and cookies to continue" filed as the production's own
+        // SYNOPSIS. Dropping the page rather than parsing it fixes the same lie
+        // one scan wide, which predates the cache entirely.
+        //
+        // But the test cannot be `looksLikeBotCheck` alone, and finding out why
+        // is what the first attempt at this got wrong: §9.61 chose deliberately
+        // generic wording and defended it by consulting the check ONLY once the
+        // parse had already come back empty, so that a show actually called
+        // "Just a Moment" could never take its venue down. Asking the question
+        // unconditionally here threw that guard away — and a test with a real
+        // play of that name proved it, rejecting a perfectly good page.
+        //
+        // So the same defence, in the shape this hop needs: a challenge is a
+        // page that reads like one AND yielded nothing but its own boilerplate.
+        // A real "Just a Moment" has a poster and a price; the interstitial has
+        // only the sentence that gives it away.
+        const onlyBoilerplate = data != null && Object.values(data).every(
+          (v) => v == null || v === '' || (typeof v === 'string' && looksLikeBotCheck([{ body: v }])),
+        )
+        if (onlyBoilerplate && looksLikeBotCheck([page])) {
+          // The last good record stays, un-rejuvenated, so the production keeps
+          // its real poster and this page is re-read next scan.
+          if (entry) held[request.url] = entry
+          continue
+        }
+
         pages.push(page)
         if (cacheable) {
-          // An adapter that throws in here loses one production's poster, not
-          // its venue — the same defence `enrich` gets below.
-          let data = null
-          try { data = adapter.extractDetail(page, { venue, now }) ?? null } catch { data = null }
           if (data) {
             held[request.url] = { url: request.url, data, etag: page.etag ?? null, lastModified: page.lastModified ?? null, fetchedAt: now.toISOString() }
           }
