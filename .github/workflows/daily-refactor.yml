@@ -37,33 +37,40 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+        # Deliberately no `set -e`. Every path through here ends in a decision:
+        # the one thing this step must never do is die and leave the morning to
+        # a default, which is the silence the whole arrangement exists to avoid.
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          decision=true
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "Started by hand — going ahead."
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          today=$(date -u +%F)
-          earlier=$(gh api \
-            "repos/$GH_REPO/actions/workflows/daily-refactor.yml/runs?per_page=30" \
-            --jq "[.workflow_runs[]
-                   | select(.id != ${{ github.run_id }})
-                   | select(.created_at | startswith(\"$today\"))]
-                  | length" || echo "")
-          # An API hiccup must not become a silent skip: unreadable means go ahead.
-          case "$earlier" in ''|*[!0-9]*) earlier=0 ;; esac
-          if [ "$earlier" -gt 0 ]; then
-            echo "$earlier Daily refactor run(s) already went out today — standing down."
-            echo "run=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Nothing has run yet today — going ahead."
-            echo "run=true" >> "$GITHUB_OUTPUT"
+            today=$(date -u +%F)
+            earlier=$(gh api \
+              "repos/$GH_REPO/actions/workflows/daily-refactor.yml/runs?per_page=30" \
+              --jq "[.workflow_runs[]
+                     | select(.id != ${{ github.run_id }})
+                     | select(.created_at | startswith(\"$today\"))]
+                    | length" || echo "")
+            # Unreadable means go ahead. A duplicate run costs one slice of the
+            # backlog; a wrongly skipped one costs the whole day and says nothing.
+            case "${earlier:-}" in ''|*[!0-9]*) earlier=0 ;; esac
+            if [ "$earlier" -gt 0 ]; then
+              echo "$earlier Daily refactor run(s) already went out today — standing down."
+              decision=false
+            else
+              echo "Nothing has run yet today — going ahead."
+            fi
           fi
+          echo "run=$decision" >> "$GITHUB_OUTPUT"
 
   refactor:
     needs: gate
-    if: needs.gate.outputs.run == 'true'
+    # Only an explicit `false` stops the morning. A gate that errored, timed out
+    # or never produced an output must not quietly cancel the day's work — the
+    # cost of getting this backwards is a duplicate PR, not a missing one.
+    if: ${{ !cancelled() && needs.gate.outputs.run != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
