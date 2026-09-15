@@ -391,7 +391,7 @@ export function scanPayload(venues) {
  *  nothing". Venues whose reader caches nothing at all (eventbook, oveit,
  *  iabilet, excelsior — see detailCache.js's rule) report no `cache` at all and
  *  are absent too, so the Venues tab stays quiet about them instead of printing
- *  a meaningless "0 remembered, 0 read".
+ *  a meaningless "0 from cache, 0 fetched fresh".
  *
  *  This exists because the question "did the cache actually do anything?" was,
  *  for two days, answerable only by tracing code and querying Vercel — while

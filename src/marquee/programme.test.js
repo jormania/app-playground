@@ -262,14 +262,14 @@ describe('venuesForCategory', () => {
 describe('cacheByVenue — what the last check did with each venue’s detail cache', () => {
   it('keys the counts by venue name, and skips venues that report none', () => {
     const map = cacheByVenue([
-      { venue: 'TNB', status: 'ok', cache: { fromCache: 61, fetched: 0, waiting: 0 } },
-      { venue: 'ARCUB', status: 'ok', cache: { fromCache: 0, fetched: 12, waiting: 3 } },
+      { venue: 'TNB', status: 'ok', cache: { fromCache: 61, fetched: 0, queued: 0 } },
+      { venue: 'ARCUB', status: 'ok', cache: { fromCache: 0, fetched: 12, queued: 3 } },
       // eventbook and friends cache nothing, so they carry no `cache` at all.
       { venue: 'Cinema Union', status: 'ok' },
       { venue: 'Excelsior', status: 'ok', cache: null },
     ]);
-    expect(map.get('TNB')).toEqual({ fromCache: 61, fetched: 0, waiting: 0 });
-    expect(map.get('ARCUB')).toEqual({ fromCache: 0, fetched: 12, waiting: 3 });
+    expect(map.get('TNB')).toEqual({ fromCache: 61, fetched: 0, queued: 0 });
+    expect(map.get('ARCUB')).toEqual({ fromCache: 0, fetched: 12, queued: 3 });
     expect(map.has('Cinema Union')).toBe(false);
     expect(map.has('Excelsior')).toBe(false);
   });

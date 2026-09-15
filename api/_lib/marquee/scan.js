@@ -307,10 +307,11 @@ export async function scanVenue(venue, {
   // Three questions kept needing a Vercel query, a code trace and a simulation
   // to answer — is the cache on, did it store anything, is it still filling —
   // when the scan itself knew all three at the time and threw them away
-  // (§9.79). `fromCache` is records answered without a request, `fetched` is
-  // detail requests actually made (a 304 counts: a request went out, even
-  // though its answer was "use what you have"), `waiting` is productions that
-  // are due but had to wait for the next scan's budget.
+  // (§9.79). `fromCache` is pages answered out of the saved copy without any
+  // request, `fetched` is pages actually downloaded this scan (a 304 counts: a
+  // request went out, even though its answer was "use what you have"), and
+  // `queued` is pages due for a re-read that hit §9.78's budget and wait for
+  // the next check.
   let cache = null
   if (typeof adapter.follow === 'function') {
     const cacheable = typeof adapter.extractDetail === 'function'
@@ -319,7 +320,7 @@ export async function scanVenue(venue, {
     const requests = adapter.follow(pages, { venue, now })
     let fromCache = 0
     let fetched = 0
-    let waiting = 0
+    let queued = 0
 
     // How many detail pages this scan is allowed to read, and WHICH — the fix
     // for the trap §9.78 found the hard way.
@@ -365,7 +366,7 @@ export async function scanVenue(venue, {
           held[request.url] = entry
           fromCache++
         } else {
-          waiting++
+          queued++
         }
         continue
       }
@@ -451,7 +452,7 @@ export async function scanVenue(venue, {
       // Best-effort, and deliberately not awaited for its verdict beyond this:
       // a store that refuses the write costs the next scan its shortcut.
       await saveDetails(adapter.id, held, { store: detailStore })
-      cache = { fromCache, fetched, waiting }
+      cache = { fromCache, fetched, queued }
     }
   }
 

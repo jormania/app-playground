@@ -654,7 +654,7 @@ describe('the scan says what it did with the cache (§9.79)', () => {
     // Twenty productions, twelve of budget: none remembered, twelve read, eight
     // queued. The third number is what tells a filling cache apart from a
     // broken one.
-    expect(r.cache).toEqual({ fromCache: 0, fetched: 12, waiting: 8 })
+    expect(r.cache).toEqual({ fromCache: 0, fetched: 12, queued: 8 })
   })
 
   it('reports a warm cache as all remembered, nothing read', async () => {
@@ -663,7 +663,7 @@ describe('the scan says what it did with the cache (§9.79)', () => {
       await scanVenue(bigVenue, { now: new Date(NOW.getTime() + i * 3600000), fetchImpl: servingSeason, detailStore: store })
     }
     const r = await scanVenue(bigVenue, { now: new Date(NOW.getTime() + 4 * 3600000), fetchImpl: servingSeason, detailStore: store })
-    expect(r.cache).toEqual({ fromCache: 20, fetched: 0, waiting: 0 })
+    expect(r.cache).toEqual({ fromCache: 20, fetched: 0, queued: 0 })
   })
 
   it('counts a 304 as read, because a request went out', async () => {
@@ -678,7 +678,7 @@ describe('the scan says what it did with the cache (§9.79)', () => {
     // Three productions, all three requested — the 304 among them. Nothing was
     // answered without asking, so nothing is "remembered", even though the
     // 304's content came from the store.
-    expect(r.cache).toEqual({ fromCache: 0, fetched: 3, waiting: 0 })
+    expect(r.cache).toEqual({ fromCache: 0, fetched: 3, queued: 0 })
   })
 
   it('says nothing at all for a venue whose reader caches nothing', async () => {

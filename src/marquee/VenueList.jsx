@@ -2,18 +2,24 @@ import { getAdapter } from './adapters.js'
 import { isActive } from './venues.js'
 import { formatDay } from './format.js'
 
-/** "12 remembered, 0 read" — what the last check did with this venue's detail
- *  pages, in the order that answers the question being asked. Nothing at all
- *  for a venue whose reader caches nothing, or one the last check didn't cover.
+/** "12 from cache, 0 fetched fresh" — what the last check did with this venue's
+ *  per-production pages.
  *
- *  `waiting` only appears while a cache is still filling, which is exactly when
- *  it explains something: a venue reading 12 of 61 looks broken until you can
- *  see that the other 49 are queued behind a deliberate budget rather than
- *  lost. */
+ *  Worded for someone who did not write the cache. The first draft said
+ *  "61 remembered, 0 read", which is precise and means nothing to a reader: the
+ *  thing being described is a saved copy versus a fresh download, so it says
+ *  that. "Production pages" rather than "detail pages" for the same reason —
+ *  the app already counts productions everywhere else, and "detail page" is a
+ *  word from the adapters, not from the programme.
+ *
+ *  The third number appears only while a cache is still filling, which is
+ *  exactly when it explains something: a venue fetching 12 of 61 looks broken
+ *  until you can see the other 49 are queued behind a deliberate budget rather
+ *  than lost. */
 function cacheSummary(cache) {
   if (!cache) return null
-  const parts = [`${cache.fromCache} remembered`, `${cache.fetched} read`]
-  if (cache.waiting > 0) parts.push(`${cache.waiting} still to read`)
+  const parts = [`${cache.fromCache} from cache`, `${cache.fetched} fetched fresh`]
+  if (cache.queued > 0) parts.push(`${cache.queued} queued for next check`)
   return parts.join(', ')
 }
 
@@ -70,8 +76,8 @@ function VenueRow({ venue, busy, trouble, cache, onTogglePause, onEdit, onRemove
             Marquee read it, and running them together made a sentence that
             answered neither. Only shown when there is something to say. */}
         {cacheSummary(cache) && (
-          <p className="venue__cache" title="Detail pages this venue's reader answered from its stored records versus fetched fresh.">
-            Detail pages · {cacheSummary(cache)}
+          <p className="venue__cache" title="How many of this venue's production pages Marquee read from its saved copy instead of downloading again — fewer downloads is why the venue stops rate-limiting us.">
+            Production pages · {cacheSummary(cache)}
           </p>
         )}
         {/* Address and Area were editable and then invisible — you could set
