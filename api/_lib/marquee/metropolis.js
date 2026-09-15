@@ -129,7 +129,19 @@ export default {
     return [...urls].slice(0, MAX_DETAILS).map((url) => ({ url }))
   },
 
-  parse(pages, { venue, now = new Date() } = {}) {
+  /** The one thing a production's own page is fetched for: its price.
+   *
+   *  Declaring this opts Metropolis into the detail cache (§9.76) — the price a
+   *  theatre charges for a production is a fact about the production, stable for
+   *  the length of its run, so it is worth remembering rather than re-asking on
+   *  every scan. Nothing volatile is stored here: ticket state and mystage's
+   *  availability are read fresh from the programme row and the secondary page
+   *  every time. */
+  extractDetail(page) {
+    return { price: parseDetailPrice(DETAIL_PRICE.exec(page.body ?? '')?.[1]) }
+  },
+
+  parse(pages, { venue, now = new Date(), details } = {}) {
     const html = pages[0]?.body ?? ''
 
     // Identified by URL, not position: the mystage page is always requested
@@ -148,7 +160,16 @@ export default {
 
     // Price per production, keyed by the same absolute URL the rows' own
     // links are built from, so the two line up as plain string equality.
+    //
+    // Remembered records first, pages read in THIS scan second, so a page
+    // actually fetched always beats a cached account of it (§9.76). With no
+    // cache in play — every direct `parse` call in the tests, and any scan
+    // where KV isn't configured — `details` is absent and this reads off the
+    // pages alone, exactly as it always did.
     const detailPrices = new Map()
+    for (const [url, record] of Object.entries(details ?? {})) {
+      if (record?.price != null) detailPrices.set(url, record.price)
+    }
     for (const page of pages) {
       if (page === pages[0] || page === secondary) continue
       const price = parseDetailPrice(DETAIL_PRICE.exec(page.body ?? '')?.[1])
