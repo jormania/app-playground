@@ -2,11 +2,32 @@ import { getAdapter } from './adapters.js'
 import { isActive } from './venues.js'
 import { formatDay } from './format.js'
 
+/** "12 from cache, 0 fetched fresh" — what the last check did with this venue's
+ *  per-production pages.
+ *
+ *  Worded for someone who did not write the cache. The first draft said
+ *  "61 remembered, 0 read", which is precise and means nothing to a reader: the
+ *  thing being described is a saved copy versus a fresh download, so it says
+ *  that. "Production pages" rather than "detail pages" for the same reason —
+ *  the app already counts productions everywhere else, and "detail page" is a
+ *  word from the adapters, not from the programme.
+ *
+ *  The third number appears only while a cache is still filling, which is
+ *  exactly when it explains something: a venue fetching 12 of 61 looks broken
+ *  until you can see the other 49 are queued behind a deliberate budget rather
+ *  than lost. */
+function cacheSummary(cache) {
+  if (!cache) return null
+  const parts = [`${cache.fromCache} from cache`, `${cache.fetched} fetched fresh`]
+  if (cache.queued > 0) parts.push(`${cache.queued} queued for next check`)
+  return parts.join(', ')
+}
+
 /** One venue, as a row you can pause, edit or remove.
  *
  *  A paused venue is dimmed but never hidden or moved out of reach — pausing is
  *  meant to be as easy to undo as it was to do. */
-function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
+function VenueRow({ venue, busy, trouble, cache, onTogglePause, onEdit, onRemove }) {
   const active = isActive(venue)
   const adapter = getAdapter(venue.adapter)
   const host = (() => {
@@ -50,6 +71,15 @@ function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
             ? `Last checked ${formatDay(venue.lastChecked, { relative: true })}${venue.lastResult ? ` · ${venue.lastResult}` : ''}`
             : 'Never checked'}
         </p>
+        {/* Detail-page cache, on its own line rather than folded into the scan
+            line above: that line is about the venue, this one is about how
+            Marquee read it, and running them together made a sentence that
+            answered neither. Only shown when there is something to say. */}
+        {cacheSummary(cache) && (
+          <p className="venue__cache" title="How many of this venue's production pages Marquee read from its saved copy instead of downloading again — fewer downloads is why the venue stops rate-limiting us.">
+            Production pages · {cacheSummary(cache)}
+          </p>
+        )}
         {/* Address and Area were editable and then invisible — you could set
             them and never see them again outside Notion. The address is what
             makes a saved Wanderlist finding drop its map pin first try
@@ -79,7 +109,7 @@ function VenueRow({ venue, busy, trouble, onTogglePause, onEdit, onRemove }) {
   )
 }
 
-export default function VenueList({ venues, search = '', busyId, troubleByVenue = new Map(), onTogglePause, onEdit, onRemove }) {
+export default function VenueList({ venues, search = '', busyId, troubleByVenue = new Map(), cacheByVenue = new Map(), onTogglePause, onEdit, onRemove }) {
   if (!venues.length) {
     // A search that matches nothing is its own answer, and a different one
     // from having no venues at all — the same distinction Programme's
@@ -106,6 +136,7 @@ export default function VenueList({ venues, search = '', busyId, troubleByVenue 
             venue={venue}
             busy={busyId === venue.id}
             trouble={troubleByVenue.get(venue.name) ?? null}
+            cache={cacheByVenue.get(venue.name) ?? null}
             onTogglePause={onTogglePause}
             onEdit={onEdit}
             onRemove={onRemove}

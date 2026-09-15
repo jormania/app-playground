@@ -3384,6 +3384,114 @@ only take effect under conditions it is meant to create is worth nothing, and
 
 `npm test` (4442), `npm run typecheck` and `npx eslint` all pass.
 
+### 9.79 The scan knew whether the cache worked, and threw it away (2026-09-15)
+
+Three times in one morning — after the cache deployed, after TNB still showed a
+bot check, and again about ARCUB and Metropolis — the question was the same:
+**did the cache actually do anything?** Each time answering it took a Vercel
+query, a code trace and a simulation, and the last one ended in "almost
+certainly, but I can't confirm it."
+
+None of that was necessary. `scanVenue` knows, at the moment of the scan,
+exactly how many detail pages it answered from stored records and how many it
+went and fetched. It was discarding both numbers and returning only a status.
+
+**So it returns them.** `cache: { fromCache, fetched, waiting }` rides alongside
+`status`, and the Venues tab prints one quiet line under each row:
+
+```
+Production pages · 61 from cache, 0 fetched fresh
+Production pages · 0 from cache, 12 fetched fresh, 49 queued for next check
+```
+
+**The first draft of that line read `Detail pages · 61 remembered, 0 read`, and
+was sent back for being incomprehensible** — correctly. "Remembered" is the
+word of someone who wrote the cache; the reader is looking at a saved copy
+versus a fresh download, so the line now says that. "Detail page" went the same
+way: it is a word from the adapters, while the app counts *productions*
+everywhere else a person can see.
+
+Three decisions in it worth keeping:
+
+- **`queued` is the one that earns its place.** A venue reporting `12 fetched
+  fresh` out of a 61-production season looks broken. The third number is the
+  difference between "it only managed twelve" and "twelve this check, by design,
+  the rest next time" — it makes §9.78's budget legible instead of mysterious,
+  and it appears only while a cache is filling.
+- **A 304 counts as `fetched`, not as from-cache.** Its content did come from
+  the store, but a request went out, and requests are what the venue's limiter
+  counts. The number that matters here is the one the other end sees.
+- **Silence where there is nothing to say.** A venue whose reader caches nothing
+  (eventbook, oveit, iabilet, excelsior — detailCache.js's rule) reports no
+  `cache` at all, and a venue the check never reached reports none either. The
+  row simply has no such line, rather than `0 from cache, 0 fetched fresh`, which would
+  be a claim about a cache that does not exist or was never consulted. Same
+  discipline as `troubleByVenue`'s: **unknown is not the same as zero.**
+
+**The general lesson, since this is the third §9.7x in a row about the same
+blind spot:** a mechanism that cannot be observed from the outside will be
+debugged by inference, and inference is how §9.78's loop went unnoticed through
+a deploy. The scan was always the cheapest place to ask.
+
+`npm test` (4456), `npm run typecheck` and `npx eslint` all pass.
+
+### 9.80 Proving the cache can't hand you a stale sold-out (2026-09-15)
+
+Asked, reasonably, of a cache that had already produced two bugs in a day: *does
+reading from cache affect seats remaining, sold-out state and so on?*
+
+**It cannot, and the reason is one line of structure rather than a promise:**
+the LISTING page is never cached, never sent conditionally, and never skipped by
+§9.78's budget. Ticket state, seat counts, dates and sold-out all live there, and
+it is re-read in full on every single check. The cache only ever covers a
+production's **own** page — poster, synopsis, price tiers — which is what does
+not change hour to hour.
+
+What each cached record actually holds, read off the adapters rather than
+recalled:
+
+| adapter | stored keys |
+|---|---|
+| `tnb` | `image`, `description`, `price` |
+| `arcub` | `description` |
+| `metropolis` | `price` |
+
+Everything else — `excelsior`, `eventbook`, `filarmonica`, `oveit`, `iabilet`,
+`expirat`, `jsonld`, `mystage`, `odeon`, `quantic` — stores nothing at all.
+**Excelsior and Oveit are the ones that matter here**: remaining-seat numbers
+(§9.68) and seats.io charts (§9.71) are the most volatile things Marquee reads,
+and both belong to readers excluded from caching, so every count in the app was
+fetched during the check that displayed it.
+
+**Verified dynamically, not just structurally.** Two checks an hour apart, the
+second reading every detail page from cache and making **zero** detail requests:
+
+| venue | check 1 | check 2 (0 detail fetches) |
+|---|---|---|
+| TNB | `open`, tickets at bilet.ro | **`sold-out`**, ticket link gone, poster still from cache |
+| Metropolis | `open`, 59.40 lei | **`none`**, price still 59.40 from cache |
+
+Both flips arrived. The poster and price came from the store in the same breath,
+which is the whole arrangement working as designed: **the volatile half is
+re-read every time, the stable half is remembered.**
+
+Five tests pin it — the two flips above, that the listing page carries no
+validator and never enters the store, that the seat-count readers cache nothing,
+and a sweep asserting no cached record for ANY adapter contains `ticketState`,
+`ticketsUrl`, `seatsLeft`, `seatsTotal`, `date`, `time`, `isAvailable` or
+`soldOut`. The last one is the guard against a fourteenth venue quietly widening
+what gets stored.
+
+**One honest caveat, since the question deserves the whole answer.** `price` IS
+cached, for up to a week. A theatre that changes a production's price mid-run
+will show the old one until that record comes due. Prices move rarely and a
+stale one costs a small surprise at the box office rather than a wasted evening
+— a different order of error from a stale "tickets available", which is why the
+line was drawn where it was. Worth revisiting if a venue ever turns out to
+re-price often.
+
+`npm test` (4461), `npm run typecheck` and `npx eslint` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

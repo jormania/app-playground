@@ -99,3 +99,52 @@ describe('troubleByVenue', () => {
     expect(troubleByVenue([]).size).toBe(0);
   });
 });
+
+describe('the production-page cache, said in plain words (§9.79)', () => {
+  const venue = { id: 'v1', name: 'TNB', url: 'https://www.tnb.ro/x', adapter: 'tnb', active: true };
+  const render1 = (cache) => render(
+    <VenueList
+      venues={[venue]}
+      cacheByVenue={cache ? new Map([['TNB', cache]]) : new Map()}
+      onTogglePause={() => {}}
+      onEdit={() => {}}
+      onRemove={() => {}}
+    />,
+  );
+
+  it('says a warm cache is warm, in words that name the thing', () => {
+    // Not "61 remembered" — precise, and meaningless to anyone who did not
+    // write the cache. The subject is a saved copy versus a fresh download.
+    render1({ fromCache: 61, fetched: 0, queued: 0 });
+    expect(screen.getByText(/61 from cache, 0 fetched fresh/)).toBeTruthy();
+  });
+
+  it('says a cold cache is cold', () => {
+    render1({ fromCache: 0, fetched: 12, queued: 0 });
+    expect(screen.getByText(/0 from cache, 12 fetched fresh/)).toBeTruthy();
+  });
+
+  it('explains a cache that is still filling, rather than looking broken', () => {
+    // 12 of 61 with no further word reads as a failure. The third number is the
+    // difference between "it only managed twelve" and "twelve this check, by
+    // design, the rest next time".
+    render1({ fromCache: 0, fetched: 12, queued: 49 });
+    expect(screen.getByText(/0 from cache, 12 fetched fresh, 49 queued for next check/)).toBeTruthy();
+  });
+
+  it('calls them production pages, the word the rest of the app uses', () => {
+    render1({ fromCache: 3, fetched: 0, queued: 0 });
+    expect(screen.getByText(/Production pages/)).toBeTruthy();
+    expect(screen.queryByText(/Detail pages/)).toBeNull();
+  });
+
+  it('stays quiet for a venue whose reader caches nothing', () => {
+    render1(null);
+    expect(screen.queryByText(/from cache/)).toBeNull();
+  });
+
+  it('stays quiet when the venue was never reached', () => {
+    render1(undefined);
+    expect(screen.queryByText(/Production pages/)).toBeNull();
+  });
+});

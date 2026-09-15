@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   toProductions, byDate, domIdForDay, nextDayKeys, densityForDays,
   categoryFor, categoriesInUse, venuesForCategory, visibleProductions, venueCategoryMap,
+  cacheByVenue,
 } from './programme.js'
 
 // programme.js's other functions (byDate, visibleProductions, the filter
@@ -257,3 +258,31 @@ describe('venuesForCategory', () => {
     expect(venuesForCategory(venues, productions, 'art')).toEqual([])
   })
 })
+
+describe('cacheByVenue — what the last check did with each venue’s detail cache', () => {
+  it('keys the counts by venue name, and skips venues that report none', () => {
+    const map = cacheByVenue([
+      { venue: 'TNB', status: 'ok', cache: { fromCache: 61, fetched: 0, queued: 0 } },
+      { venue: 'ARCUB', status: 'ok', cache: { fromCache: 0, fetched: 12, queued: 3 } },
+      // eventbook and friends cache nothing, so they carry no `cache` at all.
+      { venue: 'Cinema Union', status: 'ok' },
+      { venue: 'Excelsior', status: 'ok', cache: null },
+    ]);
+    expect(map.get('TNB')).toEqual({ fromCache: 61, fetched: 0, queued: 0 });
+    expect(map.get('ARCUB')).toEqual({ fromCache: 0, fetched: 12, queued: 3 });
+    expect(map.has('Cinema Union')).toBe(false);
+    expect(map.has('Excelsior')).toBe(false);
+  });
+
+  it('a venue the check did not cover is absent, not zeroed', () => {
+    // Same rule as troubleByVenue: unknown is not the same as "read nothing".
+    const map = cacheByVenue([{ venue: 'TNB', status: 'throttled', detail: 'bot check' }]);
+    expect(map.has('TNB')).toBe(false);
+  });
+
+  it('survives an absent scan', () => {
+    expect(cacheByVenue(undefined).size).toBe(0);
+    expect(cacheByVenue(null).size).toBe(0);
+    expect(cacheByVenue([]).size).toBe(0);
+  });
+});

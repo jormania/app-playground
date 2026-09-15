@@ -13,9 +13,8 @@ import { dirname, join } from 'node:path'
 
 import tnb from '../_lib/marquee/tnb.js'
 import { ADAPTERS } from '../_lib/marquee/registry.js'
-import { scanVenue, STATUS } from '../_lib/marquee/scan.js'
+import { scanVenue, STATUS, DETAIL_BUDGET_PER_SCAN } from '../_lib/marquee/scan.js'
 import { isFresh, loadDetails, saveDetails, DEFAULT_TTL_MS } from '../_lib/marquee/detailCache.js'
-import { DETAIL_BUDGET_PER_SCAN } from '../_lib/marquee/scan.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
 const fixture = (name) => readFileSync(join(FIXTURES, name), 'utf8')
@@ -630,5 +629,223 @@ describe('a challenge page is not a detail page (§9.78)', () => {
     })
     await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: store })
     expect(Object.keys(store.data[KEY] ?? {})).toHaveLength(3)
+  })
+})
+
+describe('the scan says what it did with the cache (§9.79)', () => {
+  const DETAIL = `<html><img class="article-image" src="/poster.jpg"><p>${'A real synopsis, long enough to count as prose. '.repeat(3)}</p></html>`
+
+  function season(n) {
+    return Array.from({ length: 6 }, (_, d) =>
+      `<div class="day"><div class="number">${20 + d}</div><div class="month">09</div><div class="year">2026</div>`
+      + Array.from({ length: n }, (_, i) =>
+        `<tr><td class="title"><a href="https://www.tnb.ro/ro/p${i}"><h1>Prod ${i}</h1></a></td><td class="c2">Sala</td><td class="c3">${8 + (i % 12)}:00</td></tr>`).join('')
+      + '</div>').join('')
+  }
+  const bigVenue = { name: 'TNB', url: 'https://www.tnb.ro/x', adapter: 'tnb' }
+  const servingSeason = async (url) => ({
+    ok: true, status: 200, headers: new Headers(),
+    text: async () => (url === bigVenue.url ? season(20) : DETAIL),
+  })
+
+  it('reports a cold cache as all read, with the rest waiting on the budget', async () => {
+    const store = memoryStore()
+    const r = await scanVenue(bigVenue, { now: NOW, fetchImpl: servingSeason, detailStore: store })
+    // Twenty productions, twelve of budget: none remembered, twelve read, eight
+    // queued. The third number is what tells a filling cache apart from a
+    // broken one.
+    expect(r.cache).toEqual({ fromCache: 0, fetched: 12, queued: 8 })
+  })
+
+  it('reports a warm cache as all remembered, nothing read', async () => {
+    const store = memoryStore()
+    for (let i = 1; i <= 3; i++) {
+      await scanVenue(bigVenue, { now: new Date(NOW.getTime() + i * 3600000), fetchImpl: servingSeason, detailStore: store })
+    }
+    const r = await scanVenue(bigVenue, { now: new Date(NOW.getTime() + 4 * 3600000), fetchImpl: servingSeason, detailStore: store })
+    expect(r.cache).toEqual({ fromCache: 20, fetched: 0, queued: 0 })
+  })
+
+  it('counts a 304 as read, because a request went out', async () => {
+    const longAgo = new Date(NOW.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const store = memoryStore({ [KEY]: { [PLACEBO]: record(PLACEBO, longAgo) } })
+    const fetcher = recordingFetch({
+      detail: async (url) => (url === PLACEBO
+        ? { ok: false, status: 304, headers: new Headers() }
+        : { ok: true, status: 200, headers: new Headers(), text: async () => DETAIL_BODY[url] ?? '<html></html>' }),
+    })
+    const r = await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: store })
+    // Three productions, all three requested — the 304 among them. Nothing was
+    // answered without asking, so nothing is "remembered", even though the
+    // 304's content came from the store.
+    expect(r.cache).toEqual({ fromCache: 0, fetched: 3, queued: 0 })
+  })
+
+  it('says nothing at all for a venue whose reader caches nothing', async () => {
+    // eventbook follows pagination, which is programme rather than detail. A
+    // "0 remembered, 0 read" there would be a meaningless line in the UI.
+    const venue = { name: 'Cinema', url: 'https://eventbook.ro/hall/x', adapter: 'eventbook', config: 'x' }
+    const r = await scanVenue(venue, {
+      now: NOW,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: new Headers(), text: async () => '<html></html>' }),
+      detailStore: memoryStore(),
+    })
+    expect(r.cache ?? null).toBeNull()
+  })
+
+  it('says nothing for a venue the check could not read at all', async () => {
+    const CHALLENGE = `<html><title>Just a moment...</title><body>${'<p>One moment, please. Enable JavaScript and cookies to continue.</p>'.repeat(40)}</body></html>`
+    const r = await scanVenue(bigVenue, {
+      now: NOW,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: new Headers(), text: async () => CHALLENGE }),
+      detailStore: memoryStore(),
+    })
+    expect(r.status).toBe(STATUS.THROTTLED)
+    // Not `{0,0,0}` — the scan never reached the detail hop, and "we read
+    // nothing" would read as a fact about the cache rather than about the wall.
+    expect(r.cache ?? null).toBeNull()
+  })
+})
+
+describe('the cache never holds anything that can go stale under you (§9.80)', () => {
+  // The question this answers: does reading from cache put a sold-out night, a
+  // withdrawn ticket link or a seat count at risk of being yesterday's?
+  //
+  // The structural answer is detailCache.js's rule 2, and the boundary test
+  // above already asserts no record carries such a key. These are the dynamic
+  // half: a state that CHANGED between two checks must reach the app even when
+  // the second check read every detail page from cache and made zero requests
+  // for them. That property is the whole licence for caching at all, so it is
+  // pinned per cached venue rather than argued once in prose.
+  //
+  // It holds for one reason worth stating plainly: the LISTING page is never
+  // cached, never conditional and never skipped by the budget. Ticket state,
+  // seats, dates and sold-out all live there, and it is re-read in full on
+  // every single check. The cache only ever covers a production's own page —
+  // poster, synopsis, price — which is what does not change hour to hour.
+
+  const TNB_DETAIL = `<html><img class="article-image" src="/poster.jpg"><div class="price_box"><p>80 lei</p></div><p>${'A real synopsis for this production, long enough to count as prose. '.repeat(3)}</p></html>`
+
+  /** The same TNB listing twice, differing only in the ticket button: a live
+   *  `red_button` anchor, or the `gray-button` "Vândut" that means sold out. */
+  const tnbListing = (soldOut) => Array.from({ length: 6 }, (_, d) =>
+    `<div class="day"><div class="number">${20 + d}</div><div class="month">09</div><div class="year">2026</div>`
+    + Array.from({ length: 3 }, (_, i) =>
+      `<tr><td class="title"><a href="https://www.tnb.ro/ro/p${i}"><h1>Prod ${i}</h1></a></td><td class="c2">Sala</td><td class="c3">${18 + i}:00</td><td>`
+      + (soldOut ? '<a class="gray-button">Vândut</a>' : '<a href="https://www.bilet.ro/x" class="red_button">Bilete</a>')
+      + '</td></tr>').join('')
+    + '</div>').join('')
+
+  it('TNB: a show selling out is visible on a check that read zero detail pages', async () => {
+    const venue = { name: 'TNB', url: 'https://www.tnb.ro/x', adapter: 'tnb' }
+    const store = memoryStore()
+    const serve = (soldOut) => async (url) => ({
+      ok: true, status: 200, headers: new Headers(),
+      text: async () => (url === venue.url ? tnbListing(soldOut) : TNB_DETAIL),
+    })
+
+    const onSale = await scanVenue(venue, { now: NOW, fetchImpl: serve(false), detailStore: store })
+    expect(onSale.events[0].ticketState).toBe('open')
+    expect(onSale.events[0].ticketsUrl).toBe('https://www.bilet.ro/x')
+
+    let detailCalls = 0
+    const soldOut = await scanVenue(venue, {
+      now: new Date(NOW.getTime() + 3600000),
+      fetchImpl: async (url) => {
+        if (url !== venue.url) detailCalls++
+        return { ok: true, status: 200, headers: new Headers(), text: async () => (url === venue.url ? tnbListing(true) : TNB_DETAIL) }
+      },
+      detailStore: store,
+    })
+
+    expect(detailCalls).toBe(0)                            // a fully warm cache
+    expect(soldOut.cache).toEqual({ fromCache: 3, fetched: 0, queued: 0 })
+    expect(soldOut.events[0].ticketState).toBe('sold-out') // ...and the news still arrived
+    expect(soldOut.events[0].ticketsUrl).toBeNull()
+    expect(soldOut.events[0].image).toBeTruthy()           // while the poster came from cache
+  })
+
+  it('Metropolis: a withdrawn ticket link is visible on a check that read zero detail pages', async () => {
+    const venue = { name: 'Metropolis', url: 'https://teatrulmetropolis.ro/program/', adapter: 'metropolis' }
+    const detail = '<html><span class="show-pret">Preț bilet: 59,40 lei</span></html>'
+    const programme = (soldOut) => Array.from({ length: 8 }, (_, i) =>
+      `<span class="cal-date">${20 + i}.09</span><div class="cboxtitle"><a href="https://teatrulmetropolis.ro/p${i % 3}">Prod ${i % 3}</a></div>`
+      + '<div class="mboxdesc"><span class="shrt">blurb</span></div><div class="cboxdet"><span class="show-sala">Sala Mare</span><span class="show-ora">19:00</span>'
+      + `<span class="show-reval">${soldOut ? '' : '<a href="https://bilete.x/y">Cumpără bilete</a>'}</span></div>`).join('')
+    const store = memoryStore()
+    const serve = (soldOut) => async (url) => ({
+      ok: true, status: 200, headers: new Headers(),
+      text: async () => (url === venue.url ? programme(soldOut) : detail),
+    })
+
+    const onSale = await scanVenue(venue, { now: NOW, fetchImpl: serve(false), detailStore: store })
+    expect(onSale.events[0].ticketState).toBe('open')
+    expect(onSale.events[0].price).toBe(59.4)
+
+    let detailCalls = 0
+    const gone = await scanVenue(venue, {
+      now: new Date(NOW.getTime() + 3600000),
+      fetchImpl: async (url) => {
+        if (url !== venue.url) detailCalls++
+        return { ok: true, status: 200, headers: new Headers(), text: async () => (url === venue.url ? programme(true) : detail) }
+      },
+      detailStore: store,
+    })
+
+    expect(detailCalls).toBe(0)
+    expect(gone.events[0].ticketState).toBe('none')
+    expect(gone.events[0].price).toBe(59.4) // the price is what the cache is for
+  })
+
+  it('the listing page is never cached, never conditional, never skipped', async () => {
+    // The invariant everything above rests on. If the programme page itself
+    // were ever answered from a record, or allowed a 304, or dropped by the
+    // budget, every guarantee in this block would evaporate at once.
+    const venue = { name: 'TNB', url: 'https://www.tnb.ro/x', adapter: 'tnb' }
+    const store = memoryStore()
+    const calls = []
+    const impl = async (url, init) => {
+      calls.push({ url, headers: init?.headers ?? {} })
+      return { ok: true, status: 200, headers: new Headers(), text: async () => (url === venue.url ? tnbListing(false) : TNB_DETAIL) }
+    }
+
+    await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
+    calls.length = 0
+    await scanVenue(venue, { now: new Date(NOW.getTime() + 3600000), fetchImpl: impl, detailStore: store })
+
+    // Warm cache: the listing is the ONLY request, and it goes out unconditional.
+    expect(calls.map((c) => c.url)).toEqual([venue.url])
+    expect(calls[0].headers['if-none-match']).toBeUndefined()
+    expect(calls[0].headers['if-modified-since']).toBeUndefined()
+    // And it is never itself written to the store.
+    expect(Object.keys(store.data[KEY])).not.toContain(venue.url)
+  })
+
+  it('seat counts belong to a reader that caches nothing, so they cannot be stale', () => {
+    // Excelsior's remaining-seat numbers (§9.68) and Oveit's seats.io charts
+    // (§9.71) are the most volatile things Marquee reads. Both come from
+    // adapters that store nothing at all, so every count in the app was fetched
+    // during the check that displayed it.
+    expect(ADAPTERS.excelsior.extractDetail).toBeUndefined()
+    expect(ADAPTERS.oveit.extractDetail).toBeUndefined()
+    // Excelsior's is the load-bearing case: its enrich() mines the detail pages
+    // for the ids it posts seat lookups against, so those pages have to be in
+    // hand — which is exactly why it was excluded from caching in §9.76.
+    expect(typeof ADAPTERS.excelsior.enrich).toBe('function')
+  })
+
+  it('no cached record for any venue contains a showing-level fact', () => {
+    // The static guarantee, restated against every cached adapter at once so a
+    // fourteenth venue cannot quietly widen what gets stored.
+    const volatile = ['ticketState', 'ticketsUrl', 'seatsLeft', 'seatsTotal', 'date', 'time', 'isAvailable', 'soldOut']
+    const probe = {
+      url: 'x',
+      body: `<html><img class="article-image" src="/p.jpg"><div class="price_box"><p>80 lei</p></div><span class="show-pret">59,40 lei</span><div class="content"><p>${'Prose long enough to be kept as a description here. '.repeat(3)}</p></div></html>`,
+    }
+    for (const [id, adapter] of Object.entries(ADAPTERS)) {
+      if (typeof adapter.extractDetail !== 'function') continue
+      const keys = Object.keys(adapter.extractDetail(probe))
+      expect({ id, offending: keys.filter((k) => volatile.includes(k)) }).toEqual({ id, offending: [] })
+    }
   })
 })
