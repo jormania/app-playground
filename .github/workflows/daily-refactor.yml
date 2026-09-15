@@ -284,16 +284,35 @@ jobs:
       # notification that is already switched on. A run that correctly did
       # nothing stays quiet: crying wolf on quiet days is how a person learns
       # to ignore the alert that matters.
+      # A failed run is the one GitHub emails about without anyone configuring
+      # anything, so this step borrows that alarm. Only a run that genuinely did
+      # nothing stays quiet — crying wolf on calm mornings is how a person learns
+      # to ignore the alert that matters.
       - name: Fail loudly if the run got stuck
         if: always()
         run: |
           f=/tmp/refactor-result.json
           outcome=""
           [ -f "$f" ] && outcome=$(jq -r '.outcome // ""' "$f" 2>/dev/null || true)
-          if [ "$outcome" = "blocked" ]; then
-            echo "::error::The run could not finish its item. See the report above."
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "**This run is marked failed on purpose** — it was blocked, and a failed run is the one GitHub emails you about by default." >> "$GITHUB_STEP_SUMMARY"
+          note() {
+            echo "::error::$1"
+            {
+              echo ""
+              echo "**This run is marked failed on purpose** — $2"
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
-          fi
-          echo "Outcome: ${outcome:-unrecorded}"
+          }
+          case "$outcome" in
+            shipped|nothing-eligible)
+              echo "Outcome: $outcome" ;;
+            blocked)
+              note "The run could not finish its item. See the report above." \
+                   "it was blocked, and a failed run is the one GitHub emails you about by default." ;;
+            *)
+              # The skill writes this file on every path it can finish, so its
+              # absence means the session stopped early — turn limit, crash,
+              # timeout. Those ended green and empty twice before anyone noticed;
+              # green and empty is the one outcome that must never be quiet.
+              note "The run ended without recording an outcome — it stopped early." \
+                   "the agent never reached the end of its procedure, so nothing can be trusted to have happened." ;;
+          esac
