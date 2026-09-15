@@ -346,8 +346,10 @@ empty list, never a silent no-op. With a handful of venues this is cheap to main
 it is the difference between a tool you can trust and one you stop believing.
 
 **Politeness:** identifying User-Agent, one request per venue per scan, and — since
-§9.75 — a cache of extracted detail-page records, so a production's own page is read
-about once a week rather than on every scan. Stale records are re-read
+§9.75 — a cache of extracted detail-page records for TNB, Metropolis and ARCUB, so a
+production's own page is read about once a week rather than on every scan. **What may
+be cached and what must stay ephemeral is a rule, not a judgement call each time** —
+it is stated at the top of `detailCache.js` and enforced by a boundary test (§9.76). Stale records are re-read
 conditionally (`If-None-Match` / `If-Modified-Since`); listing pages never are,
 because there a 304 means an empty body and an empty body means no programme.
 
@@ -3198,6 +3200,68 @@ changed no behaviour.
 pages in one burst, because a cold cache is genuinely cold — spreading THAT
 (refreshing the N oldest records per scan rather than everything due) is a
 separate change and not this one.
+
+### 9.76 Which venues may remember, and which must not (2026-09-15)
+
+§9.75 built the cache for the venue that needed it. The obvious next question —
+"where else does this apply?" — turns out to have a sharper answer than "the
+other big ones", because six adapters have a `follow` hop and they are not doing
+the same kind of thing at all.
+
+| Adapter | What its extra hop fetches | Cached |
+|---|---|---|
+| `tnb` | one page per production — poster, synopsis, price | **yes** (§9.75) |
+| `metropolis` | one page per production — price | **yes** |
+| `arcub` | one page per agenda item — the real prose | **yes** |
+| `excelsior` | one page per production — poster **and the `eiId`s `enrich` needs** | no |
+| `eventbook` | further pages of the hall's own listing | no |
+| `oveit` | further pages of the event feed | no |
+| `iabilet` | bundle children whose tariff accordion holds the showings | no |
+
+**The rule, now written at the top of `detailCache.js` and enforced by a
+boundary test** in the spirit of `src/ds/boundary.test.js`. The default is
+ephemeral; an adapter caches nothing unless it implements `extractDetail`, and
+it should only do that when all four hold:
+
+1. **The hop is per production, not per showing.** One page shared by a six-night
+   run is worth remembering. A page per night usually means what is being read is
+   volatile anyway.
+2. **What comes out is a fact about the production** — poster, synopsis, price
+   tiers. Never a fact about a showing: ticket state, seats left, availability.
+   Those are the reason to check at all, they change hourly, and a stale one is a
+   lie told confidently — a remembered "tickets available" sends you to a
+   sold-out night. A stale poster is a cosmetic miss; the errors are not
+   symmetrical, which is the same asymmetry §9.62's mystage restraint turns on.
+3. **The page is not the programme.** eventbook, oveit and iabilet all follow
+   pages that ARE more showings. Caching those caches the answer rather than the
+   lookup, and the app would report last week's calendar with total confidence.
+4. **No later hop reads the page itself.** Excelsior is the instructive
+   exclusion, because it looks like a perfect candidate and isn't: its detail
+   pages are one per production and fetched for a poster, exactly like TNB's, but
+   `enrich` also mines each one for the `eiId` of every open showing and posts a
+   live seat lookup per id (§9.68). Skip the fetch and the seat counts go with
+   it. A page that decides what to fetch next has to be in hand.
+
+The boundary test asserts the roster in both directions — the three that may,
+the four that must not, and that no record any of the three produces carries a
+`ticketState`, `seatsLeft`, `date` or `time` key. A fifteenth venue added next
+year gets the rule and the test rather than a paragraph nobody reads.
+
+**Caching Metropolis has a second benefit beyond the request count**, and it is
+the reason it was worth doing at only ~14 detail pages: this is the venue from
+§9.61 that serves its whole programme under an HTTP 500 and shows a bot check to
+some networks. Fewer requests into a site already that fragile is worth more per
+request than the raw number suggests.
+
+**One thing found while surveying, and fixed.** `arcub.follow` had **no cap** —
+alone among the multi-hop readers, all of which slice to a `MAX_DETAIL_PAGES` or
+`MAX_DETAILS` precisely so a markup change that starts matching the wrong hrefs
+cannot turn one venue into a hundred requests. It now slices to 40, with its own
+test. Nothing had gone wrong; the guard every sibling had was simply missing.
+
+`npm test` (4425), `npm run typecheck` and `npx eslint` all pass, and the
+adapters' own existing tests pass untouched — which is again what establishes
+that the two `parse` refactors changed no behaviour for an uncached scan.
 
 ## Open — known source limits, checked and not fixable here
 

@@ -85,6 +85,21 @@ const ITEM_MARKER = '<div class="pgrid-item">'
 const ITEM_WINDOW = 1600
 const CONTENT_WINDOW = 4000
 
+/** ARCUB's agenda items are one-line teasers; the real prose lives on each
+ *  item's own page, inside `class="content"`. One definition, used both when a
+ *  page is read fresh and (via `extractDetail`) when it is written to the
+ *  cache, so a remembered record and a re-read page cannot disagree. */
+function descriptionOf(html) {
+  const idx = html.indexOf('class="content"')
+  return idx === -1 ? null : proseParagraphs(html.slice(idx, idx + CONTENT_WINDOW))
+}
+
+/** The agenda runs to a few dozen items. Capped for the same reason every
+ *  other multi-hop reader here is (metropolis's MAX_DETAILS, excelsior's and
+ *  tnb's MAX_DETAIL_PAGES): a markup change that starts matching the wrong
+ *  hrefs must not be able to turn one venue into a hundred requests. */
+const MAX_DETAIL_PAGES = 40
+
 const H3 = /<h3[^>]*>([\s\S]*?)<\/h3>/
 const TAG = /class="tags"><span>([^<]*)<\/span>/
 const META = /<div class="meta">([\s\S]*?)<\/div>/
@@ -316,21 +331,37 @@ export default {
       const url = href ? absoluteUrl(href, BASE) : null
       if (url) hrefs.add(url)
     }
-    return [...hrefs].map((url) => ({ url }))
+    return [...hrefs].slice(0, MAX_DETAIL_PAGES).map((url) => ({ url }))
   },
 
-  parse(pages, { venue, now = new Date() } = {}) {
+  /** The one thing an agenda item's own page is fetched for: its real prose.
+   *
+   *  Declaring this opts ARCUB into the detail cache (§9.76). An event's
+   *  description is written once and then stands, which is exactly the kind of
+   *  fact worth remembering; the agenda row's own volatile fields — date, hall,
+   *  ticket state, and the iabilet secondary's prices — are read fresh every
+   *  scan and none of them pass through here. */
+  extractDetail(page) {
+    return { description: descriptionOf(page.body ?? '') }
+  },
+
+  parse(pages, { venue, now = new Date(), details } = {}) {
     // Detail pages `follow()` fetched, keyed by their own request URL — which
     // is exactly the same absoluteUrl(href, BASE) each listing's own `link`
     // is built from below, so the two line up as plain string equality with
     // no canonical-tag cross-referencing needed (unlike excelsior.js, whose
     // follow() hrefs and listing hrefs can genuinely differ).
+    // Remembered records first, pages read in THIS scan second, so a page
+    // actually fetched always beats a cached account of it (§9.76). With no
+    // cache in play `details` is absent and this reads off the pages alone,
+    // exactly as it always did.
     const descriptions = new Map()
+    for (const [url, record] of Object.entries(details ?? {})) {
+      if (record?.description) descriptions.set(url, record.description)
+    }
     for (const page of pages.slice(1)) {
-      const html = page.body ?? ''
-      const idx = html.indexOf('class="content"')
-      if (idx === -1) continue
-      descriptions.set(page.url, proseParagraphs(html.slice(idx, idx + CONTENT_WINDOW)))
+      const description = descriptionOf(page.body ?? '')
+      if (description !== null && page.url) descriptions.set(page.url, description)
     }
 
     // Identified by URL, not position: `venue.config`'s page is always

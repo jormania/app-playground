@@ -29,6 +29,42 @@
 // before this file existed — a cache that cannot be reached is a cache miss,
 // never an error.
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WHAT MAY BE CACHED — the rule, for every venue present and future.
+//
+// The default is EPHEMERAL. An adapter caches nothing unless it implements
+// `extractDetail`, and it should only implement it when all four of these hold.
+// `registry.test.js`'s boundary test enforces the roster that results.
+//
+//   1. The hop is PER PRODUCTION, not per showing. One page shared by a run of
+//      six nights is worth remembering; a page per night is not, and usually
+//      means the thing being read is volatile anyway.
+//
+//   2. What comes out of it is a FACT ABOUT THE PRODUCTION — poster, synopsis,
+//      price tiers, running time. Something the site would publish identically
+//      tomorrow. Never a fact about a SHOWING: ticket state, seats left,
+//      availability. Those are the whole point of checking at all, they change
+//      hourly, and a stale one is a lie the app shows with confidence — a
+//      remembered "tickets available" sends you to a sold-out night.
+//
+//   3. The page is NOT the programme. A listing page, a pagination page, a feed
+//      page, a bundle page whose accordion carries the actual showings — those
+//      ARE the answer, and caching them caches the answer rather than the
+//      lookup. This is why eventbook (paginated halls), oveit (paged feed) and
+//      iabilet (bundle children) cache nothing, though all three have a
+//      `follow`.
+//
+//   4. NO LATER HOP READS THE PAGE ITSELF. Excelsior is the instructive
+//      exclusion: its detail pages look exactly like TNB's — one per
+//      production, fetched for a poster — but `enrich` also mines them for the
+//      `eiId` of every open showing and posts a live seat lookup per id. Skip
+//      the fetch and the seat counts go with it. A page that decides what to
+//      fetch next has to be in hand.
+//
+// And one practical constraint that follows from where this lives: the stored
+// record is kilobytes. Store what was EXTRACTED, never the page it came out of.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { kvGet, kvSet } from '../kv.js'
 
 const KEY_PREFIX = 'marquee:details:v1:'

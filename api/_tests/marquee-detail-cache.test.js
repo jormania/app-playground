@@ -2,9 +2,9 @@
 //
 // The thing under test is a NEGATIVE: the request that is no longer made. So
 // most of these assert on what the fake fetch was asked for, not on what came
-// back. The venue used throughout is TNB, the only adapter that opts in today
-// (by declaring `extractDetail`) and the one whose 61-requests-per-scan poster
-// hop is what tripped the bot check in the first place.
+// back. TNB carries the detailed cases — it is the venue whose 61-requests-per-
+// scan poster hop tripped the bot check — while the last two blocks cover the
+// other two adapters that opt in, and the boundary that decides who may.
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import tnb from '../_lib/marquee/tnb.js'
+import { ADAPTERS } from '../_lib/marquee/registry.js'
 import { scanVenue, STATUS } from '../_lib/marquee/scan.js'
 import { isFresh, loadDetails, saveDetails, DEFAULT_TTL_MS } from '../_lib/marquee/detailCache.js'
 
@@ -339,5 +340,130 @@ describe('the store itself', () => {
     const store = memoryStore()
     expect(await saveDetails('tnb', {}, { store })).toBe(false)
     expect(store.data[KEY]).toBeUndefined()
+  })
+})
+
+describe('the cache boundary — which venues may remember, and which may not', () => {
+  // The enforced half of detailCache.js's rule, in the spirit of
+  // src/ds/boundary.test.js: a new adapter that opts into caching has to come
+  // past this list, and a venue that must stay ephemeral cannot drift into it
+  // by someone copying `extractDetail` from the venue above.
+  const MAY_CACHE = ['tnb', 'metropolis', 'arcub']
+
+  const MUST_NOT_CACHE = {
+    // Their extra hops ARE the programme — caching those caches the answer
+    // rather than the lookup.
+    eventbook: 'follows its own pagination; every page is more showings',
+    oveit: 'follows a paged event feed; every page is more concerts',
+    iabilet: 'follows bundle children whose tariff accordion holds the showings',
+    // The instructive one: detail pages of exactly TNB's shape, which a later
+    // hop still needs in hand.
+    excelsior: 'enrich mines each detail page for eiIds and posts a live seat lookup per showing',
+  }
+
+  it('only the adapters on the roster declare extractDetail', () => {
+    const declaring = Object.entries(ADAPTERS)
+      .filter(([, adapter]) => typeof adapter.extractDetail === 'function')
+      .map(([id]) => id)
+      .sort()
+    expect(declaring).toEqual([...MAY_CACHE].sort())
+  })
+
+  it.each(Object.entries(MUST_NOT_CACHE))('%s stays ephemeral — %s', (id) => {
+    expect(ADAPTERS[id].extractDetail).toBeUndefined()
+  })
+
+  it('every adapter that caches also follows — there is nothing else to cache', () => {
+    for (const id of MAY_CACHE) {
+      expect(typeof ADAPTERS[id].follow).toBe('function')
+    }
+  })
+
+  it('no cached record carries a fact about a SHOWING', () => {
+    // Rule 2, the one with teeth: a stale poster is a cosmetic miss, a stale
+    // "tickets available" sends someone to a sold-out night. Whatever else the
+    // records grow, these keys must never appear among them.
+    const volatile = ['ticketState', 'ticketsUrl', 'seatsLeft', 'seatsTotal', 'date', 'time', 'isAvailable']
+    const samples = {
+      tnb: { url: 'https://www.tnb.ro/ro/x', body: fixture('tnb-detail-og-image.html') },
+      metropolis: { url: 'https://teatrulmetropolis.ro/x', body: fixture('metropolis-production.html') },
+      arcub: { url: 'https://arcub.ro/x', body: fixture('arcub-detail-cineva-are-sa-vina.html') },
+    }
+    for (const [id, page] of Object.entries(samples)) {
+      const record = ADAPTERS[id].extractDetail(page)
+      expect(Object.keys(record).some((k) => volatile.includes(k))).toBe(false)
+      // And small — this has to fit alongside sixty siblings in one KV value.
+      expect(JSON.stringify(record).length).toBeLessThan(4096)
+    }
+  })
+})
+
+describe('the other two venues that now remember', () => {
+  it('metropolis keeps a production price and stops re-asking for it', async () => {
+    const venue = { name: 'Teatrul Metropolis', url: 'https://teatrulmetropolis.ro/program/', adapter: 'metropolis' }
+    const programme = fixture('metropolis-program.html')
+    const detail = fixture('metropolis-production.html')
+
+    const calls = []
+    const impl = async (url) => {
+      calls.push(url)
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () => (url === venue.url ? programme : detail),
+      }
+    }
+
+    const store = memoryStore()
+    const cold = await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
+    const coldCalls = calls.length
+    expect(coldCalls).toBeGreaterThan(1)
+
+    const saved = store.data['marquee:details:v1:metropolis']
+    expect(Object.values(saved).some((e) => e.data.price > 0)).toBe(true)
+
+    calls.length = 0
+    const warm = await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
+    expect(calls).toEqual([venue.url])
+    expect(warm.events).toEqual(cold.events)
+  })
+
+  it('arcub keeps a description and stops re-asking for it', async () => {
+    const venue = { name: 'ARCUB', url: 'https://arcub.ro/agenda/', adapter: 'arcub' }
+    const agenda = fixture('arcub.html')
+    const detail = fixture('arcub-detail-cineva-are-sa-vina.html')
+
+    const calls = []
+    const impl = async (url) => {
+      calls.push(url)
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () => (url === venue.url ? agenda : detail),
+      }
+    }
+
+    const store = memoryStore()
+    const cold = await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
+    expect(calls.length).toBeGreaterThan(1)
+
+    const saved = store.data['marquee:details:v1:arcub']
+    expect(Object.values(saved).some((e) => typeof e.data.description === 'string')).toBe(true)
+
+    calls.length = 0
+    const warm = await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
+    expect(calls).toEqual([venue.url])
+    expect(warm.events).toEqual(cold.events)
+  })
+
+  it('arcub caps its follow, like every other multi-hop reader', () => {
+    // It was the one that didn't. An agenda page whose markup shifts and starts
+    // matching every href on the page must not become a hundred requests.
+    const manyItems = Array.from({ length: 200 }, (_, i) =>
+      `<div class="agenda-item"><a href="/eveniment-${i}">x</a><h3>Event ${i}</h3></div>`).join('')
+    const requests = ADAPTERS.arcub.follow([{ url: 'x', body: manyItems }], { venue: { url: 'x' } })
+    expect(requests.length).toBeLessThanOrEqual(40)
   })
 })
