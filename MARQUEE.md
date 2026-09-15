@@ -3263,6 +3263,53 @@ test. Nothing had gone wrong; the guard every sibling had was simply missing.
 adapters' own existing tests pass untouched — which is again what establishes
 that the two `parse` refactors changed no behaviour for an uncached scan.
 
+### 9.77 The week strip showed three dots every day (2026-09-15)
+
+Reported from the app, with a screenshot: seven cells, seven identical
+three-dot marks, and the observation that it is "almost always three dots
+because there are a lot of venues and a lot of events."
+
+Exactly right, and the cause was one line:
+
+```js
+const level = count === 0 ? 0 : count === 1 ? 1 : count <= 3 ? 2 : 3
+```
+
+**Four productions maxed the scale.** With the full venue list watched the
+screenshot's own header reads 247 events across seven days — every night is
+several times past four, so every night got three dots and the strip conveyed
+nothing beyond "not empty". A control that always reads the same is not a
+control.
+
+**Raising the constant would not have fixed it,** which is the part worth
+recording. The same strip has to work at ~35 productions a night with every
+venue showing AND at five or six once the Theatre filter is on — the filters
+apply to the strip too, by design (§9.60). Any constant tuned for the first is
+wrong for the second, and vice versa. There is no number.
+
+**So the scale is comparative, because the question is.** Nobody reads this
+strip to learn an absolute count; they read it to find which nights this week
+are the busy ones. Each day is now measured against the **median** of the
+week's non-empty days — below 70% reads quiet, above 130% reads busy, the rest
+is typical. Median rather than mean so one enormous Saturday can't drag the
+baseline up and flatten the other six into "quiet"; there is a test that holds
+a 300-production night against six 10s and checks the six stay typical.
+
+**And a week whose nights are alike gets one level throughout.** This matters
+more than the bands do. Splitting the gap between 34 productions and 37 into a
+one-dot night and a three-dot night would manufacture a distinction the reader
+then plans around — the same class of error as §9.62's mystage restraint, where
+the wrong answer is not merely wrong but confidently actionable. A flat week is
+a true answer and now reads as one.
+
+**The tooltip says what the dots mean** now that they are relative: `41
+productions · one of the week's busiest` rather than the bare count, which no
+longer explains the shading on its own.
+
+`dotLevels` is exported and tested on its own, including both volumes from the
+report — the full 247-event week and the same week filtered down an order of
+magnitude — because the whole point is that one scale serves both. 4435 tests,
+typecheck and eslint green.
 ### 9.78 The cache that could not warm up (2026-09-15)
 
 Reported the same day §9.75 deployed: TNB still served a bot check, on a fresh
