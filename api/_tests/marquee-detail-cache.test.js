@@ -15,6 +15,7 @@ import tnb from '../_lib/marquee/tnb.js'
 import { ADAPTERS } from '../_lib/marquee/registry.js'
 import { scanVenue, STATUS } from '../_lib/marquee/scan.js'
 import { isFresh, loadDetails, saveDetails, DEFAULT_TTL_MS } from '../_lib/marquee/detailCache.js'
+import { DETAIL_BUDGET_PER_SCAN } from '../_lib/marquee/scan.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
 const fixture = (name) => readFileSync(join(FIXTURES, name), 'utf8')
@@ -465,5 +466,169 @@ describe('the other two venues that now remember', () => {
       `<div class="agenda-item"><a href="/eveniment-${i}">x</a><h3>Event ${i}</h3></div>`).join('')
     const requests = ADAPTERS.arcub.follow([{ url: 'x', body: manyItems }], { venue: { url: 'x' } })
     expect(requests.length).toBeLessThanOrEqual(40)
+  })
+})
+
+describe('the cold-start trap (§9.78) — the cache has to be able to warm up', () => {
+  // Found in production, a day after the cache shipped: TNB still reported a
+  // bot check on every run. The cache was not being bypassed, it was EMPTY —
+  // and could not stop being empty. It only fills on a scan whose listing gets
+  // through, and that scan was then firing all 61 detail requests at once,
+  // which is what trips the limiter again. Blocked, one request, nothing
+  // stored; block lapses, 61 requests, blocked. Round and round.
+
+  const CHALLENGE = `<html><title>Just a moment...</title><body>${'<p>One moment, please. Enable JavaScript and cookies to continue.</p>'.repeat(40)}</body></html>`
+  const DETAIL = `<html><img class="article-image" src="/poster.jpg"><div class="price_box"><p>80 lei</p></div><p>${'A real synopsis for this production, long enough to count as prose. '.repeat(3)}</p></html>`
+
+  /** A season of `n` productions, each playing six nights. */
+  function season(n) {
+    return Array.from({ length: 6 }, (_, d) =>
+      `<div class="day"><div class="number">${20 + d}</div><div class="month">09</div><div class="year">2026</div>`
+      + Array.from({ length: n }, (_, i) =>
+        `<tr><td class="title"><a href="https://www.tnb.ro/ro/p${i}"><h1>Prod ${i}</h1></a></td><td class="c2">Sala</td><td class="c3">${8 + (i % 12)}:00</td></tr>`).join('')
+      + '</div>').join('')
+  }
+
+  const seasonVenue = { name: 'TNB', url: 'https://www.tnb.ro/x', adapter: 'tnb' }
+  const serving = (body, onCall) => async (url) => {
+    onCall?.()
+    return { ok: true, status: 200, headers: new Headers(), text: async () => (url === seasonVenue.url ? season(61) : body) }
+  }
+
+  it('a blocked listing costs one request and stores nothing — the cache is empty, not broken', async () => {
+    const store = memoryStore()
+    let calls = 0
+    const impl = async () => { calls++; return { ok: true, status: 200, headers: new Headers(), text: async () => CHALLENGE } }
+
+    const r = await scanVenue(seasonVenue, { now: NOW, fetchImpl: impl, detailStore: store })
+
+    expect(r.status).toBe(STATUS.THROTTLED)
+    expect(r.detail).toMatch(/bot check/i)
+    expect(calls).toBe(1)
+    expect(store.data['marquee:details:v1:tnb']).toBeUndefined()
+  })
+
+  it('never reads more than the budget in one scan, however large the season', async () => {
+    const store = memoryStore()
+    let calls = 0
+    await scanVenue(seasonVenue, { now: NOW, fetchImpl: serving(DETAIL, () => { calls++ }), detailStore: store })
+    // One listing plus the budget — not one listing plus sixty-one.
+    expect(calls).toBe(1 + DETAIL_BUDGET_PER_SCAN)
+    expect(DETAIL_BUDGET_PER_SCAN).toBeLessThan(20)
+  })
+
+  it('fills a 61-production season over successive scans, then settles at one request', async () => {
+    const store = memoryStore()
+    const requestsPerScan = []
+    for (let scan = 1; scan <= 7; scan++) {
+      let calls = 0
+      await scanVenue(seasonVenue, {
+        now: new Date(NOW.getTime() + scan * 3600000),
+        fetchImpl: serving(DETAIL, () => { calls++ }),
+        detailStore: store,
+      })
+      requestsPerScan.push(calls)
+    }
+    // Five scans of 13, then the tail, then the listing alone. The peak is an
+    // order of magnitude under the 62 that tripped the limiter.
+    expect(requestsPerScan).toEqual([13, 13, 13, 13, 13, 2, 1])
+    expect(Object.keys(store.data['marquee:details:v1:tnb'])).toHaveLength(61)
+    expect(Math.max(...requestsPerScan)).toBeLessThan(20)
+  })
+
+  it('oldest first, so every production gets its turn instead of the same twelve', async () => {
+    const store = memoryStore()
+    const seen = []
+    for (let scan = 1; scan <= 3; scan++) {
+      await scanVenue(seasonVenue, {
+        now: new Date(NOW.getTime() + scan * 3600000),
+        fetchImpl: async (url) => {
+          if (url !== seasonVenue.url) seen.push(url)
+          return { ok: true, status: 200, headers: new Headers(), text: async () => (url === seasonVenue.url ? season(61) : DETAIL) }
+        },
+        detailStore: store,
+      })
+    }
+    // Thirty-six distinct pages across three scans — no repeats, which is what
+    // proves the queue advances rather than re-reading the head of the list.
+    expect(new Set(seen).size).toBe(36)
+  })
+
+  it('carries the productions it did not get to on the records it already has', async () => {
+    const store = memoryStore()
+    await scanVenue(seasonVenue, { now: NOW, fetchImpl: serving(DETAIL), detailStore: store })
+    const second = await scanVenue(seasonVenue, {
+      now: new Date(NOW.getTime() + 3600000),
+      fetchImpl: serving(DETAIL),
+      detailStore: store,
+    })
+    // Twenty-four productions known after two scans; every one of their nights
+    // keeps its poster rather than flickering out while the rest catch up.
+    const withPoster = new Set(second.events.filter((e) => e.image).map((e) => e.link))
+    expect(withPoster.size).toBe(24)
+  })
+
+  it('the budget never applies to an adapter whose extra pages ARE the programme', async () => {
+    // eventbook's pagination and oveit's feed pages carry showings, not
+    // posters. Skipping one there would silently drop a day, so the cap must
+    // not reach them.
+    expect(ADAPTERS.eventbook.extractDetail).toBeUndefined()
+    expect(ADAPTERS.oveit.extractDetail).toBeUndefined()
+    expect(ADAPTERS.iabilet.extractDetail).toBeUndefined()
+  })
+})
+
+describe('a challenge page is not a detail page (§9.78)', () => {
+  const CHALLENGE = `<html><title>Just a moment...</title><body>${'<p>One moment, please. Enable JavaScript and cookies to continue.</p>'.repeat(40)}</body></html>`
+
+  it('is never stored as a record', async () => {
+    const store = memoryStore()
+    const fetcher = recordingFetch({
+      detail: async () => ({ ok: true, status: 200, headers: new Headers(), text: async () => CHALLENGE }),
+    })
+    await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: store })
+    expect(store.data[KEY]).toBeUndefined()
+  })
+
+  it('is never read as a production’s synopsis', async () => {
+    // The visible half of the bug: "One moment, please. Enable JavaScript and
+    // cookies to continue" was filed as the production's own description and
+    // would have shown in the app — for a week, once cached, and for one scan
+    // even before the cache existed.
+    const fetcher = recordingFetch({
+      detail: async () => ({ ok: true, status: 200, headers: new Headers(), text: async () => CHALLENGE }),
+    })
+    const r = await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: memoryStore() })
+    expect(r.events.some((e) => /One moment|Enable JavaScript/i.test(e.description ?? ''))).toBe(false)
+  })
+
+  it('leaves the last good record in place, still due for a re-read', async () => {
+    const longAgo = new Date(NOW.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const store = memoryStore({ [KEY]: { [PLACEBO]: record(PLACEBO, longAgo) } })
+    const fetcher = recordingFetch({
+      detail: async (url) => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () => (url === PLACEBO ? CHALLENGE : DETAIL_BODY[url] ?? '<html></html>'),
+      }),
+    })
+
+    const r = await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: store })
+
+    expect(r.events.find((e) => e.link === PLACEBO).image).toBe('https://www.tnb.ro/remembered.jpg')
+    expect(store.data[KEY][PLACEBO].fetchedAt).toBe(longAgo)
+  })
+
+  it('a real show called "Just a Moment" still keeps its own page', async () => {
+    // The wording is generic on purpose, so the guard has to key on a page that
+    // looks like a challenge overall, not on a title that happens to match.
+    const realShow = `<html><img class="article-image" src="/jm.jpg"><p>${'Just a Moment is a new play about waiting, running ninety minutes without an interval. '.repeat(2)}</p></html>`
+    const store = memoryStore()
+    const fetcher = recordingFetch({
+      detail: async () => ({ ok: true, status: 200, headers: new Headers(), text: async () => realShow }),
+    })
+    await scanVenue(VENUE, { now: NOW, fetchImpl: fetcher.impl, detailStore: store })
+    expect(Object.keys(store.data[KEY] ?? {})).toHaveLength(3)
   })
 })

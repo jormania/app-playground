@@ -3310,6 +3310,79 @@ longer explains the shading on its own.
 report — the full 247-event week and the same week filtered down an order of
 magnitude — because the whole point is that one scale serves both. 4435 tests,
 typecheck and eslint green.
+### 9.78 The cache that could not warm up (2026-09-15)
+
+Reported the same day §9.75 deployed: TNB still served a bot check, on a fresh
+run, against the new code. The deploy was live and correct. The cache was
+simply empty — and, as built, could never stop being empty.
+
+**The loop.** Reproduced against the real adapter rather than reasoned about:
+
+```
+status  : throttled
+requests: 1
+cache   : {}
+```
+
+When the LISTING is challenged, `follow` finds no hrefs in an interstitial, so
+the scan makes one request and stores nothing. The cache only ever fills on a
+scan whose listing gets through — and that scan was then firing all 61 detail
+requests at once, which is exactly what trips the limiter again. Blocked, one
+request, nothing stored; block lapses, sixty-one requests, blocked. Round and
+round, indefinitely.
+
+§9.75 called the cold-start burst "left undone on purpose… a separate change."
+That was wrong, and worth recording as wrong: it is not a one-time cost paid on
+the first scan after a deploy, it is the thing standing between the cache and
+ever being used. **A cache whose only path to warm runs through the behaviour it
+exists to prevent is not a slow cache, it is an inert one.**
+
+**The fix is a budget.** A scan now refreshes at most `DETAIL_BUDGET_PER_SCAN`
+detail pages (12), oldest record first, and carries every other production on
+the record it already holds. Measured across successive scans of a 61-production
+season:
+
+| scan | requests | records | showings with a poster |
+|---|---|---|---|
+| 1 | 13 | 12 | 72 / 366 |
+| 2 | 13 | 24 | 144 / 366 |
+| 3 | 13 | 36 | 216 / 366 |
+| 4 | 13 | 48 | 288 / 366 |
+| 5 | 13 | 60 | 360 / 366 |
+| 6 | 2 | 61 | 366 / 366 |
+| 7 | 1 | 61 | 366 / 366 |
+
+The peak is 13, an order of magnitude under the 62 that broke. Twelve is a
+judgement rather than a measurement and is named as one at the constant. The
+budget deliberately does not reach a non-caching adapter: eventbook's pagination
+and oveit's feed pages ARE showings, and skipping one there would drop a day
+rather than a poster.
+
+**And the second bug, which was visible.** When the limiter tripped partway
+through a burst, the challenge pages that followed were stored as real records
+and trusted for a week — with `One moment, please. Enable JavaScript and cookies
+to continue` filed as the production's own synopsis and rendered in the app.
+`looksLikeBotCheck` had sat ten lines above the write path since §9.61 and was
+never consulted there.
+
+**The first attempt to fix that was itself wrong, and its own test caught it.**
+Consulting `looksLikeBotCheck` unconditionally rejected a page for a real play
+called *Just a Moment* — precisely the failure §9.61 anticipated when it chose
+generic wording and defended it by asking the question ONLY after the parse came
+back empty. The fix restores that discipline in the shape this hop needs: a
+challenge is a page that reads like one **and** yielded nothing but its own
+boilerplate. A real *Just a Moment* has a poster and a price; the interstitial
+has only the sentence that gives it away. Both cases are now tests.
+
+Dropping the page rather than parsing it also fixes the one-scan-wide version of
+the same lie, which predates the cache entirely: that text would have been read
+as a description whether or not anything stored it.
+
+**The lesson, stated plainly because it cost a deploy:** a mitigation that can
+only take effect under conditions it is meant to create is worth nothing, and
+"left undone on purpose" is the sentence to re-read hardest before shipping.
+
+`npm test` (4442), `npm run typecheck` and `npx eslint` all pass.
 
 ## Open — known source limits, checked and not fixable here
 
@@ -3352,8 +3425,9 @@ absences at the source, not gaps in a reader:
   starts throttling.~~ **It did, on 2026-09-15, and this prediction was the reason the cause
   was found in minutes rather than an afternoon. Fixed in §9.75:** those pages are now read
   about once a week per production instead of once per scan, taking a warm TNB scan to a
-  single request. The cold-start burst on a fresh deploy is unchanged and still the biggest
-  one in the app.
+  single request. **The cold-start burst is bounded too, as of §9.78** — a budget of 12
+  detail pages per scan, because leaving it unbounded turned out to stop the cache warming
+  at all.
 - **mystage's incomplete initial-events window is unverified against a real gap.** Unteatru
   hasn't yet had more than 13 occurrences on its page at once, so whether the missing ones
   reliably surface on a later scan (rather than silently vanishing until manually checked
