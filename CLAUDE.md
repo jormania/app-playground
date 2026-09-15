@@ -22,39 +22,35 @@ regression but isn't. Either run `npm test`, or set that env var yourself.
 
 ## Daily refactor workflow
 
-Driven by [`.github/workflows/daily-refactor.yml`](.github/workflows/daily-refactor.yml)
-— a scheduled GitHub Action, so the runner has the repo and push rights by
-construction. It needs one secret, `CLAUDE_CODE_OAUTH_TOKEN`; add
-`REFACTOR_PAT` as well if you want CI to run on the PRs it opens, since a PR
-created with the default `GITHUB_TOKEN` does not trigger `pull_request`
-workflows.
+An autonomous agent improves this repo one item per weekday morning, opens a PR,
+and for two of the four classes merges that PR itself. **Full documentation:
+[`DAILY_REFACTOR.md`](DAILY_REFACTOR.md)** — read it before changing the workflow,
+the skill, or the backlog's shape. The essentials:
 
-Each weekday morning it takes **one** item off
-[`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md), implements it on a fresh branch off
-`main`, proves it green, and opens its own PR. No approval beforehand — review
-happens on the PR, after the fact. The procedure it follows is
-[`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md);
-edit the backlog by hand to steer it, reorder to reprioritise.
-
-Items carry a class, and the class sets the rules. `refactor` and `modernise`
-are behaviour-preserving and the agent may queue them for itself. `qol` and
-`visual` change what you see, so the agent may only **propose** them — they sit
-under `## Proposed` until a human moves them up. Behaviour-changing items also
-need before/after screenshots in the PR (both themes, phone and desktop), pushed
-to the never-merged `claude/shots` branch, since preview deploys are off for
-`claude/*`.
-
-**Fridays are discovery runs** — nothing ships; the session reads the codebase
-against current standards and adds to the backlog instead.
-
-**`refactor` and `modernise` PRs merge themselves** — the workflow re-runs the
-repo's gates against a clean clone of the pushed branch, and merges only if that
-independent run is green. So those reach production without a human reading the
-diff; `git revert` is the undo. `qol` and `visual` are never auto-merged,
-however green: they change what you see, so they wait for you.
-
-It stops on its own once six refactor PRs are open, so an unreviewed pile can't
-grow without bound.
+- Driven by [`.github/workflows/daily-refactor.yml`](.github/workflows/daily-refactor.yml)
+  on two crons (00:41 and 02:41 UTC, weekdays — the second a backstop for GitHub's
+  best-effort scheduled queue). Needs the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+- It takes **one** item off [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md), works it
+  on a fresh branch off `main`, proves it green, and opens its own PR. Review
+  happens after the fact. Reorder the backlog to reprioritise — the order is the
+  steering wheel. The procedure is
+  [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md).
+- **Classes set the autonomy.** `refactor` and `modernise` are
+  behaviour-preserving: the agent may queue them for itself, and their PRs
+  **merge themselves** once the workflow re-runs all three gates against a clean
+  clone of the pushed branch. `qol` and `visual` change what you see, so the agent
+  may only **propose** them under `## Proposed`, and they are never auto-merged
+  however green. They also need before/after screenshots (both themes, phone and
+  desktop) on the never-merged `claude/shots` branch, since preview deploys are
+  off for `claude/*`.
+- **Fridays are discovery runs** — nothing ships; the session reads the codebase
+  against current standards and adds to the backlog instead.
+- It stops on its own at six open refactor PRs, so an unreviewed pile can't grow
+  without bound.
+- **Silence is the failure mode it is built against.** Any run that doesn't finish
+  cleanly fails on purpose, because a failed workflow is the one GitHub emails
+  about by default; every PR body opens with an `@jormania` mention for the same
+  reason. Don't "tidy away" either as noise — they are the reporting channel.
 
 ## Design-system boundary (one-way, enforced)
 
