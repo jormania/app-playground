@@ -79,6 +79,12 @@ right. The queue is his steering wheel; proposing is how you hand him one.
 Read `REFACTOR_BACKLOG.md`. Take the topmost item that is not `done`, not
 `blocked`, not under `## Proposed`, and not claimed by an open PR.
 
+**An item is a `## ` header, and only that.** Nothing nested inside one is a
+separate item, however much it looks like a queue. When a big item splits into
+slices, each slice becomes its own `## ` header in the order it should be taken —
+otherwise it is invisible to the footer's backlog count, and "topmost eligible"
+stops meaning anything once a slice sits inside a parent already marked `done`.
+
 **Fridays are discovery runs** — Friday by the date you were given, not by the
 runner's clock, which is a day behind when the evening cron fires. Ship nothing. Spend the session reading the
 codebase against current standards — deprecated APIs, dependency generations
