@@ -15,6 +15,14 @@ header per slice, in the order they should be taken — nesting them as bullets
 hides them from the footer's backlog count and makes "the topmost eligible item"
 ambiguous.
 
+**The order alternates on purpose.** `refactor` and `modernise` items merge
+themselves once the workflow's independent run is green; `qol` and `visual` ones
+never do, however green — they wait for a human. So they are interleaved rather
+than grouped, and a run of four review-needed items in a row would mean four
+mornings where nothing reaches production on its own. Keep that alternation when
+adding an item or reordering: put a new `qol` or `visual` item where the
+neighbours on both sides are self-merging.
+
 **Classes** decide the burden of proof and who may queue an item:
 
 | Class | What it is | Agent may queue it itself? |
@@ -128,11 +136,12 @@ Group 1, and is backwards for Group 2.**
 
 ### The slices
 
-Each is its own top-level item below — **P-001a**, **P-001b**, **P-001c** — sitting
-directly under this block in the order they should be taken. They live out there
-rather than as bullets in here because the queue is read by header: a sub-item is
-invisible to the footer's backlog count, and "the topmost eligible item" stops
-meaning anything when one sits nested inside a finished parent.
+Each is its own top-level item below — **P-001a**, **P-001b**, **P-001c** — in that
+order, though no longer consecutive: they are spaced out among the `refactor`
+items so that no two mornings in a row produce a PR waiting on a human. They live
+out there rather than as bullets in here because the queue is read by header: a
+sub-item is invisible to the footer's backlog count, and "the topmost eligible
+item" stops meaning anything when one sits nested inside a finished parent.
 
 ### Explicitly not doing, so nobody re-audits this
 
@@ -143,6 +152,17 @@ Silva's four, Sol Odyssey's `Logo`/`Sparkline`, Yoru's `MoonGlyph`, Tempo's
 `CountdownRing`, Click Deck's watchlist mark, `src/ds/components/GuideNote.tsx`,
 `src/ds/showcase/Showcase.tsx`, Fit Check's guide mark — genuine one-off
 drawings (graphs, rings, avatars, logos) that no icon library contains.
+
+## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `open`
+
+**Impact:** a repo root someone can read. Nothing user-facing.
+
+`patch-accounts.cjs`, `patch-bulk.cjs`, `patch-categories.cjs`,
+`patch-currency.cjs`, `patch-forms.cjs`, `patch-modal.cjs`,
+`patch-remaining.cjs` — seven files, none referenced by `package.json`. Delete
+the one-shot migrations, move anything still earning its keep under `scripts/`.
+Check `git log` on a file before deleting — a script someone reruns yearly is
+not junk.
 
 ## P-001a — WhereItWent: retire the pasted Feather markup · `visual` · `open`
 
@@ -159,6 +179,16 @@ Leave `Sparkline.jsx` and `NoraAvatar.jsx` alone — one-off drawings, not icons
 Read `WHERE_IT_WENT.md` first. Being `visual`: screenshots in both themes at both
 widths, and never auto-merged.
 
+## R-011 — Root triage, slice 3: the remaining scratch scripts · `refactor` · `open`
+
+**Impact:** a repo root someone can read. Nothing user-facing.
+
+`cleanup.cjs`, `debug_crash.cjs`, `debug_memento.cjs`, `dump.cjs`,
+`find-covers.cjs`, `generateDemoData.cjs`, `scratch-fix.cjs`, `scratch_debug.js`,
+`scratch_test.mjs`, `screenshot.js`, `steam-search.js`, `test-urls.cjs`,
+`update-seed.cjs`, `validate-covers.cjs`. Same method as R-010. Note that
+`dump.cjs` and `debug_memento.cjs` only ever wrote the dumps R-001 removed.
+
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 
 **Impact:** three fewer pasted glyphs, in an app that already ships the library
@@ -171,6 +201,14 @@ WhereItWent's, so P-001a settles the convention and this follows it.
 Note `src/lexi5/App.jsx`'s two `<svg>` are data-URI favicons, not icons — out of
 scope. Being `visual`: screenshots, and never auto-merged.
 
+## R-002 — Stop the root from refilling with scratch files · `refactor` · `open`
+
+**Impact:** none visible; prevents R-001 from needing doing again.
+
+Follows R-001, R-010 and R-011. `.gitignore` has no pattern for the dumps and debug scripts that
+keep landing at the root. Add narrow ones (`/scratch_*`, `/debug_*`, `/*_dump.*`,
+`/diff.txt`, `/lint-output.txt`) — narrow, so nothing real gets swallowed.
+
 ## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
 
 **Impact:** the smallest of the three, and the one most likely to come back
@@ -182,35 +220,6 @@ assuming it is an icon at all.** `components/Ornament.tsx` stays hand-drawn.
 If the audit on contact says these are deliberate rather than pasted, mark the
 item `dropped` with the reason and move on; that is a correct outcome, not a
 failed run. Being `visual`: screenshots, and never auto-merged.
-
-## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `open`
-
-**Impact:** a repo root someone can read. Nothing user-facing.
-
-`patch-accounts.cjs`, `patch-bulk.cjs`, `patch-categories.cjs`,
-`patch-currency.cjs`, `patch-forms.cjs`, `patch-modal.cjs`,
-`patch-remaining.cjs` — seven files, none referenced by `package.json`. Delete
-the one-shot migrations, move anything still earning its keep under `scripts/`.
-Check `git log` on a file before deleting — a script someone reruns yearly is
-not junk.
-
-## R-011 — Root triage, slice 3: the remaining scratch scripts · `refactor` · `open`
-
-**Impact:** a repo root someone can read. Nothing user-facing.
-
-`cleanup.cjs`, `debug_crash.cjs`, `debug_memento.cjs`, `dump.cjs`,
-`find-covers.cjs`, `generateDemoData.cjs`, `scratch-fix.cjs`, `scratch_debug.js`,
-`scratch_test.mjs`, `screenshot.js`, `steam-search.js`, `test-urls.cjs`,
-`update-seed.cjs`, `validate-covers.cjs`. Same method as R-010. Note that
-`dump.cjs` and `debug_memento.cjs` only ever wrote the dumps R-001 removed.
-
-## R-002 — Stop the root from refilling with scratch files · `refactor` · `open`
-
-**Impact:** none visible; prevents R-001 from needing doing again.
-
-Follows R-001, R-010 and R-011. `.gitignore` has no pattern for the dumps and debug scripts that
-keep landing at the root. Add narrow ones (`/scratch_*`, `/debug_*`, `/*_dump.*`,
-`/diff.txt`, `/lint-output.txt`) — narrow, so nothing real gets swallowed.
 
 ## R-012 — Audit the 33 stale `claude/*` branches · `refactor` · `open`
 
