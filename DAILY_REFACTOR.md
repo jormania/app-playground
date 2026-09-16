@@ -277,14 +277,16 @@ always proceeds; the gate only applies to scheduled ones.
 **Requirements:**
 
 - `CLAUDE_CODE_OAUTH_TOKEN` — repository secret, required.
-- `REFACTOR_PAT` — **not optional in practice, and not currently set.** A PR the
-  workflow opens is authored by `github-actions[bot]` using the default
-  `GITHUB_TOKEN`, and GitHub does not trigger `pull_request` workflows for those.
-  PR #65 has zero checks and a `pending` status as a result. (An earlier note here
-  claimed CI did run, citing #59 — that was a bad inference: #59 was opened under
-  Gabriel's own identity, not the bot's.) Auto-merge is unaffected, since the
-  workflow verifies independently, but a `qol` or `visual` PR waiting for a human
-  shows no green tick at all.
+- `REFACTOR_PAT` — **set since 2026-09-16, and not optional in practice.**
+  Without it a PR the workflow opens is authored by `github-actions[bot]` using
+  the default `GITHUB_TOKEN`, and GitHub does not trigger `pull_request` workflows
+  for those: PR #65 came out with zero checks and a `pending` status. With it, the
+  PR is authored by the token's owner and CI runs normally — confirmed on #70.
+  Auto-merge never depended on it, since the workflow verifies independently, but
+  a `qol` or `visual` PR waiting for a human now shows a real green tick.
+  **The failure mode if this is ever misspelled is silent**: `${{ secrets.REFACTOR_PAT
+  || secrets.GITHUB_TOKEN }}` falls back without complaint, and the only symptom
+  is a bot-authored PR with no checks.
 - Settings → Actions → **Allow GitHub Actions to create and approve pull
   requests** must be **on**. It was off for the second-ever run, which is why that
   run could not open its PR.
@@ -307,12 +309,18 @@ production.
   longer than that still arrives after breakfast, and a morning where nothing
   fires at all is silent. There is no external watchdog — the one gap that cannot
   be closed from inside Actions.
-- **The `visual` path has never run end to end.** Playwright install on the
-  runner, four captures, the `claude/shots` branch (which does not exist yet),
-  raw-URL embedding — none of it has been exercised. P-001 will be the first.
-- **The 60-turn budget is untested for a visual item.** Browser install plus
-  screenshots plus three gates may not fit. It would now fail loudly rather than
-  vanish, but that is a consolation, not a fix.
+- **The screenshot path has run once, on the easiest possible case.** P-002 on
+  2026-09-16 installed Playwright, captured both widths, created `claude/shots`
+  and embedded by raw URL — so the mechanism works. But its before and after were
+  the same picture, and it found that `index.html` has no light theme at all, so
+  "both themes" went untested. A real `visual` item across nine files is still
+  unproven.
+- **The turn budget is a guess, and the first guess was wrong.** 60 turns was
+  not enough for a `qol` item with screenshots: on 2026-09-16 a run finished the
+  work properly and then failed the job at turn 62, because the action treats an
+  overrun as an error regardless of the result. It is 150 now, against a 45-minute
+  timeout that is the real ceiling, but nothing has tested the heaviest case — a
+  `visual` item across nine files with before/after captures.
 - **Agent PRs get no CI at all** until `REFACTOR_PAT` exists — see the
   requirements above. And even where `CI` does run it is the weaker signal: two
   gates (`npm test`, `npm run typecheck`) against the pre-merge verification's
@@ -338,6 +346,8 @@ production.
 | 2026-09-15 | A session dying partway ended green and silent | Any outcome that isn't `shipped` or `nothing-eligible` now fails the run |
 | 2026-09-16 | The first scheduled run worked end to end — gate, agent, independent verification, correct refusal to auto-merge a `visual` item — but arrived four and a half hours late, at 08:13 Bucharest | Primary cron moved to 22:41 UTC the evening before, with the Bucharest date computed and handed to the agent |
 | 2026-09-16 | That run's PR (#65) had zero checks: a PR opened by `github-actions[bot]` does not trigger `pull_request` workflows, and this document had claimed otherwise from a bad reading of #59 | Claim corrected; `REFACTOR_PAT` reclassified from optional to missing |
+| 2026-09-16 | `REFACTOR_PAT` added. Confirmed working by a dispatched run: PR #70 is authored by the repository owner rather than `github-actions[bot]`, and CI runs on it |  — |
+| 2026-09-16 | That same run did its item correctly and still failed, at 62 turns against a limit of 60. The alarm fired for a run that had succeeded — the crying-wolf failure the alerting was designed to avoid, arriving from the opposite direction | `--max-turns` raised to 150 |
 
 The pattern is one thing, seven times: **the danger is not a bad change reaching
 production. It is a morning where nothing happened and nobody was told.**
