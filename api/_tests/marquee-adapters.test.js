@@ -278,10 +278,14 @@ describe('Teatrul Excelsior', () => {
       )
       const events = excelsior.parse([{ body: listing }, ...detailPages], { venue, now: AUG })
       const tomcat = events.filter((e) => e.title === 'Tomcat')
-      expect(tomcat.map((e) => e.ticketState)).toEqual(['sold-out', 'sold-out'])
-      expect(tomcat.every((e) => e.seatsLeft === null)).toBe(true)
-      // And nothing is asked of the ticketing API for either of them.
-      expect(excelsior.enrich([{ body: listing }, ...detailPages], { now: AUG })).toHaveLength(0)
+      // Both stay OPEN, because the detail page and the seat map both say so
+      // and measuring the whole programme (§9.82) showed the detail page is not
+      // the careless source. What changes is that the disagreement is carried.
+      expect(tomcat.map((e) => e.ticketState)).toEqual(['open', 'open'])
+      expect(tomcat.map((e) => e.listingSoldOut)).toEqual([true, true])
+      // And both are still asked about — the count is precisely what tells two
+      // seats apart from none on a night the theatre calls gone.
+      expect(excelsior.enrich([{ body: listing }, ...detailPages])).toHaveLength(2)
     })
 
     it('still ignores the listing’s BUY button, which is what §9.51 actually found', () => {
@@ -296,21 +300,30 @@ describe('Teatrul Excelsior', () => {
       expect(meta.every((e) => e.ticketState === 'sold-out')).toBe(true)
     })
 
-    it('lets the listing’s explicit SOLD OUT override the detail page (§9.81)', () => {
-      // This assertion is the reverse of the one it replaces, and the reversal
-      // is the point. §9.51 made the detail page authoritative on the finding
-      // that the listing column "never renders a SOLD OUT label, only ever the
-      // buy button". On 2026-09-16 that page carried fifteen of them, and both
-      // of Tomcat's 23 Sept showings read SOLD OUT there while its detail page
-      // still offered "Alege locurile" and the seat map still held two free
-      // seats. An explicit SOLD OUT is the venue's plainest statement about a
-      // night, so it now wins.
+    it('carries the listing’s SOLD OUT as a caveat, without resolving it (§9.82)', () => {
+      // Tomcat's listing row marks 17:00 SOLD OUT; its detail page offers
+      // "Alege locurile" for both showings. §9.81 briefly let the listing win.
+      // Measuring every sold-out showing on the live programme settled it the
+      // other way: on eleven of thirteen the two sources agree exactly and the
+      // seat map confirms zero seats, so the detail page is not the careless
+      // one — and where they disagree the seats are real enough to show.
       const withDetails = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
       const tomcat = withDetails.filter((e) => e.title === 'Tomcat')
       expect(tomcat.map((e) => e.time)).toEqual(['17:00', '20:00'])
-      // 17:00 is SOLD OUT in the listing; 20:00 is not, so its detail page
-      // still decides. One rule, both directions, on one production.
-      expect(tomcat.map((e) => e.ticketState)).toEqual(['sold-out', 'open'])
+      expect(tomcat.map((e) => e.ticketState)).toEqual(['open', 'open'])
+      // Only the contradicted showing is marked. The flag is never set on a
+      // night nobody disagreed about, or it would mean nothing.
+      expect(tomcat.map((e) => e.listingSoldOut)).toEqual([true, false])
+    })
+
+    it('never marks a showing contested when the listing merely shows its buy button', () => {
+      // Metamorfoza: listing says "Cumpără bilete" on all four, detail says
+      // Sold out on all four. That is not a disagreement worth flagging — it is
+      // §9.51's static call-to-action being worth nothing, as it always was.
+      const withDetails = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
+      const meta = withDetails.filter((e) => e.title === 'Metamorfoza')
+      expect(meta.every((e) => e.ticketState === 'sold-out')).toBe(true)
+      expect(meta.every((e) => e.listingSoldOut === false)).toBe(true)
     })
 
     describe('seat counts behind an “Alege locurile” button (§9.68)', () => {
@@ -369,19 +382,14 @@ describe('Teatrul Excelsior', () => {
         )
         const tomcat = events.filter((e) => e.title === 'Tomcat')
         expect(tomcat.map((e) => e.time)).toEqual(['17:00', '20:00'])
-        // 17:00 carries no count at all now — the listing calls it sold out
-        // (§9.81), so it gets no number however the seat map answered. The
-        // tag-matching this test exists for is still proved by 20:00: it was
-        // answered FIRST in the reversed array and still got its own 0 rather
-        // than the 1 that arrived second.
-        expect(tomcat.map((e) => e.seatsLeft)).toEqual([null, 0])
+        expect(tomcat.map((e) => e.seatsLeft)).toEqual([1, 0])
       })
 
       it('leaves seatsLeft null when the hop never ran, rather than guessing', () => {
         const events = excelsior.parse([{ body: fixture('excelsior.html') }, ...detailPages], { venue, now: AUG })
         expect(events.every((e) => e.seatsLeft === null)).toBe(true)
         // …and the ticket states it already read are untouched by any of this.
-        expect(events.filter((e) => e.title === 'Tomcat').map((e) => e.ticketState)).toEqual(['sold-out', 'open'])
+        expect(events.filter((e) => e.title === 'Tomcat').every((e) => e.ticketState === 'open')).toBe(true)
       })
 
       it('never pairs a count with a state that came from the listing’s fallback column', () => {
@@ -392,10 +400,9 @@ describe('Teatrul Excelsior', () => {
         const answered = [{ tag: { kind: 'seats', canonical: 'https://teatrul-excelsior.ro/spectacol/tomcat/', when: '2026-09-23T20:00' }, json: oneLeft() }]
         const events = excelsior.parse([{ body: fixture('excelsior.html') }, ...answered], { venue, now: AUG })
         expect(events.every((e) => e.seatsLeft === null)).toBe(true)
-        // Worth being explicit about which guard is doing the work here, since
-        // §9.81 added a second one: the 20:00 showing reads `open` off the
-        // listing's buy button, so the FINAL state is open and only the
-        // detail-page requirement keeps the number off it.
+        // The guard doing the work: the 20:00 showing reads `open` off the
+        // listing's buy button, and only the detail-page requirement keeps a
+        // real number from being pinned to a signal that is not one.
         const late = events.find((e) => e.title === 'Tomcat' && e.time === '20:00')
         expect(late.ticketState).toBe('open')
         expect(late.seatsLeft).toBeNull()
@@ -1243,15 +1250,12 @@ describe('scanVenue', () => {
       const r = await scanVenue(venue, { now: AUG, fetchImpl: wired(calls) })
       expect(r.status).toBe(STATUS.OK)
       const posts = calls.filter((c) => c.method === 'POST')
-      // One, not two: Tomcat's 17:00 is SOLD OUT in the listing, so §9.81 skips
-      // asking about it. A seat lookup on a night the theatre has already
-      // called gone is a request spent to produce a number the reader would
-      // then throw away.
-      expect(posts).toHaveLength(1)
+      expect(posts).toHaveLength(2) // Tomcat's two open showings, and nothing else
       expect(posts[0].body).toContain('action=ticketsys_action')
       const tomcat = r.events.filter((e) => e.title === 'Tomcat')
-      expect(tomcat.map((e) => e.ticketState)).toEqual(['sold-out', 'open'])
-      expect(tomcat.map((e) => e.seatsLeft)).toEqual([null, 1])
+      expect(tomcat.map((e) => e.seatsLeft)).toEqual([1, 1])
+      // 17:00 is the contested one — a count AND the venue's denial, together.
+      expect(tomcat.map((e) => e.listingSoldOut)).toEqual([true, false])
       // Metamorfoza is sold out on every date — never asked about, never counted.
       expect(r.events.filter((e) => e.title === 'Metamorfoza').every((e) => e.seatsLeft === null)).toBe(true)
     })
@@ -1270,7 +1274,7 @@ describe('scanVenue', () => {
       expect(r.status).toBe(STATUS.OK)
       expect(r.events.length).toBe(6)
       expect(r.events.every((e) => e.seatsLeft === null)).toBe(true)
-      expect(r.events.filter((e) => e.title === 'Tomcat').map((e) => e.ticketState)).toEqual(['sold-out', 'open'])
+      expect(r.events.filter((e) => e.title === 'Tomcat').every((e) => e.ticketState === 'open')).toBe(true)
     })
 
     it('is skipped entirely by an adapter that declares no enrich', async () => {

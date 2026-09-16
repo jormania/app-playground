@@ -281,6 +281,14 @@ button { color: inherit; font: inherit; }
   line-height: 1.5;
 }
 
+/* A contested night: the venue's page says gone, its ticketing says seats
+   (§9.82). Muted rather than alarming — it is a caveat on good news, not a
+   warning, and the seat count beside it is doing the louder talking. */
+.date__contested {
+  color: var(--color-faint);
+  font-style: italic;
+}
+
 .venue__scan { color: var(--color-faint); }
 .venue__notes { font-style: italic; }
 

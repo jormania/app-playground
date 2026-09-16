@@ -399,3 +399,44 @@ describe('Programme — a watch you can always call off', () => {
     expect(screen.getByText(/Nothing you’re watching is on right now/)).toBeTruthy()
   })
 })
+
+// §9.82 — the venue's programme page called a night sold out while its own
+// ticketing still answered with seats. Neither could be shown to be wrong, so
+// the card shows both halves instead of picking one.
+describe('Programme — a contested showing', () => {
+  const venues = [{ name: 'Teatrul Excelsior', category: 'play' }];
+  const contested = () => byDate(toProductions([
+    event({ key: 'a', time: '17:00', ticketState: 'open', seatsLeft: 2, listingSoldOut: true }),
+    event({ key: 'b', time: '20:00', ticketState: 'open', seatsLeft: 2, listingSoldOut: false }),
+  ]));
+
+  it('prints the seat count AND the venue’s denial on the contested night', () => {
+    render(<Programme {...baseProps} days={contested()} venues={venues} />);
+    // The count is what makes it worth a try...
+    expect(screen.getAllByText(/2 left/).length).toBeGreaterThan(0);
+    // ...and the mark is why it might not work.
+    expect(screen.getByText(/venue says sold out/)).toBeTruthy();
+  });
+
+  it('marks only the contested night, never the one nobody disagreed about', () => {
+    const { container } = render(<Programme {...baseProps} days={contested()} venues={venues} />);
+    expect(container.querySelectorAll('.date__contested')).toHaveLength(1);
+  });
+
+  it('leaves the showing keepable — the whole point is that it might be buyable', () => {
+    // A sold-out date is disabled so it can't be kept. A contested one must
+    // not be: the seats are the reason to look at it at all.
+    const { container } = render(<Programme {...baseProps} days={contested()} venues={venues} />);
+    const dates = [...container.querySelectorAll('.date')];
+    expect(dates.every((d) => !d.disabled)).toBe(true);
+  });
+
+  it('says nothing at all when no reader found a disagreement', () => {
+    const days = byDate(toProductions([
+      event({ key: 'a', time: '17:00', ticketState: 'open', seatsLeft: 2 }),
+      event({ key: 'b', time: '20:00', ticketState: 'open', seatsLeft: 2 }),
+    ]));
+    const { container } = render(<Programme {...baseProps} days={days} venues={venues} />);
+    expect(container.querySelectorAll('.date__contested')).toHaveLength(0);
+  });
+});

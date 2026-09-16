@@ -250,7 +250,7 @@ export function digest(text) {
  *  is what decides whether it is an event at all. A row without a title or a date
  *  is dropped — those two are the identity, and a half-row would diff as a new
  *  event every single scan. */
-export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null, seatsLeft = null, seatsTotal = null, productionKey = null }) {
+export function makeEvent({ venue, title, date, time = null, hall = null, link = null, ticketState = TICKET.NONE, ticketsUrl = null, image = null, price = null, description = null, category = null, seatsLeft = null, seatsTotal = null, productionKey = null, listingSoldOut = false }) {
   const cleanTitle = textOf(title)
   if (!cleanTitle || !date) return null
   // A hall that just repeats the venue is noise: Expirat's JSON-LD names its
@@ -298,6 +298,15 @@ export function makeEvent({ venue, title, date, time = null, hall = null, link =
     // into a proportion — 60 left is a warning in a small hall and an ordinary
     // Tuesday in the Ateneu — and it is null wherever `seatsLeft` is.
     seatsTotal: Number.isInteger(seatsTotal) && seatsTotal > 0 && Number.isInteger(seatsLeft) ? seatsTotal : null,
+    // The venue's own programme page calls this showing sold out while its
+    // ticketing still has seats (§9.82). True only where a reader found that
+    // contradiction and could not resolve it — Excelsior is the only one today.
+    //
+    // Deliberately a flag beside the state rather than a third `ticketState`:
+    // the actionable answer is "there are seats", and the caveat is that the
+    // theatre disagrees. Folding the two into one value would force the card to
+    // pick a side, which is the thing this exists to stop doing.
+    listingSoldOut: listingSoldOut === true,
     // What this showing belongs to, when the venue's title doesn't say (see
     // `digest` above). Null everywhere else, and null means "group by title"
     // — the behaviour every other venue has always had.

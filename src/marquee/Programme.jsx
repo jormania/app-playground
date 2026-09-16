@@ -163,7 +163,9 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
                       onClick={() => onKeep(showing, production)}
                       title={showing.ticketState === 'sold-out'
                         ? 'Sold out — nothing left to keep'
-                        : left
+                        : showing.listingSoldOut
+                          ? `${formatSeatsLeft(showing.seatsLeft) ?? 'Seats'} in the venue's ticketing, but its programme page lists this night as sold out. Worth a try; don't count on it.`
+                          : left
                           ? `${formatSeatsLeft(showing.seatsLeft)} for this showing`
                           : savedDates.has(showing.date)
                             ? 'Already in Wanderlist'
@@ -179,6 +181,16 @@ function ProductionCard({ production, triage, changedKeys = new Map(), onKeep, o
                       {left && (
                         <span className={`date__seats ${seatsAreScarce(showing.seatsLeft, showing.seatsTotal) ? 'date__seats--scarce' : ''}`}>
                           {' · '}{left}
+                        </span>
+                      )}
+                      {/* The venue's own programme page calls this night gone
+                          while its ticketing still answers with seats (§9.82).
+                          Both halves are shown because neither could be shown
+                          to be wrong — the count is what makes it worth a
+                          try, the mark is why it might not work. */}
+                      {showing.listingSoldOut && (
+                        <span className="date__contested" title="The venue lists this night as sold out.">
+                          {' · '}venue says sold out
                         </span>
                       )}
                     </button>

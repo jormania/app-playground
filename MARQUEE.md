@@ -304,6 +304,7 @@ lossless and the two apps could share a reader later.
 | `link` | url | The show's own page |
 | `ticketState` | enum | `open` · `sold-out` · `none` (announced, no ticket link yet) |
 | `seatsLeft` | number? | Free seats, where a venue's ticketing exposes a count (Excelsior only — §9.68). **Null is "unknown", never "plenty"**; 0 is a real, different answer |
+| `listingSoldOut` | bool | The venue's own programme page calls this showing sold out while its ticketing still answers with seats (§9.82). A caveat beside the state, never a state of its own |
 | `ticketsUrl` | url? | When it differs from `link` |
 
 Derived by the client, never parsed: `firstSeen`, `ticketsOpenedAt`, `lastSeen`.
@@ -3499,6 +3500,13 @@ re-price often.
 
 ### 9.81 Excelsior's listing learned to say SOLD OUT, and §9.51 didn't know (2026-09-16)
 
+> **Reversed the same day by §9.82.** The precedence change below was made
+> before anyone had measured how often the two sources disagree. They almost
+> never do, and where they do the detail page is right — so the detail page is
+> authoritative again and the disagreement is shown rather than resolved. The
+> finding about the listing having learned to print SOLD OUT stands; what it was
+> taken to imply did not.
+
 Two screenshots, side by side. Marquee: *Tomcat, Sala STUDIO, Wed 23 Sept —
 2 showings, **2 left** on each.* The theatre's own programme page, the same
 evening: **SOLD OUT** on both.
@@ -3561,6 +3569,63 @@ would have to fight the venue's own UI to reach. Reasonable, and worth
 revisiting if a SOLD OUT night ever turns out to be genuinely buyable.
 
 `npm test` (4483), `npm run typecheck` and `npx eslint` all pass.
+
+### 9.82 Measuring the disagreement, and keeping it (2026-09-16)
+
+§9.81 shipped a few hours earlier and inverted §9.51's precedence: an explicit
+SOLD OUT in Excelsior's listing beat the detail page. Then the obvious follow-up
+question — *does that glitch happen often?* — turned out to be answerable, and
+the answer reversed the decision.
+
+**Every sold-out showing on the live programme, sampled:**
+
+| production | seats | held | free |
+|---|---|---|---|
+| Metamorfoza ×4 | 180 | 6–9 | 0 |
+| Marile speranțe ×2 | 180 | 40–50 | 0 |
+| Mickey Mouse ×4 | 36 | 1–33 | 0 |
+| Familia Addams | 180 | 97 | 0 |
+| **Tomcat 17:00** | 49 | 2 | **2** |
+| **Tomcat 20:00** | 49 | 4 | **2** |
+
+Thirteen sold-out showings, and on **eleven of them the detail page says sold
+out too** and the seat map confirms zero. Listing, detail page and ticketing all
+agree. The disagreement is two showings of one production out of thirty-two rows
+on the whole programme.
+
+**Which reverses §9.81's reasoning.** It assumed the listing had become the
+better source. It hadn't: the detail page is right everywhere it can be checked.
+The likeliest reading of Tomcat is the opposite of §9.81's — those held-seat
+counts are large and volatile (97 on one night), holds expire and return seats
+to FREE, and a listing flag set when the house hit zero would not come back down
+when two returned. That makes the LISTING the stale half, which is exactly the
+premise §9.51 was built on.
+
+**So the precedence goes back, and the disagreement is kept instead of
+resolved.** `listingSoldOut` rides alongside `ticketState` — a flag, deliberately
+not a third state, because the actionable answer is "there are seats" and the
+caveat is "the theatre disagrees". Folding them into one value forces the card to
+pick a side, which is the thing worth not doing when neither side could be shown
+to be wrong. The date reads `Wed 23 Sept 17:00 · 2 left · venue says sold out`,
+and stays keepable, because the seats are the reason to look at it at all.
+
+**Rarity is what makes the mark affordable.** Two showings in thirty-two means it
+will almost never appear — and a caveat that shows up constantly is noise, while
+one that shows up twice a season is information. That argument was available when
+§9.81 was decided and nobody had the numbers yet; having them is what changed the
+call.
+
+**Still unresolved, and deliberately so:** whether those two seats will actually
+sell. Nothing in the seat record marks them unsellable — same price, same row
+label, ordinary numbers — but "status FREE in the seat map" and "the checkout
+takes your money" are different claims and only the first was verified. The mark
+says *worth a try, don't count on it*, which is the honest width of what is
+known. Settling it would take an attempted purchase, which is not a thing a
+scanner should do on anyone's behalf.
+
+`npm test` (4488), `npm run typecheck` and `npx eslint` all pass. The diagnostic
+that produced the table cost ~17 requests to Excelsior — a one-off, and worth
+recording next to §9.78's frugality so the next person knows it was deliberate.
 
 ## Open — known source limits, checked and not fixable here
 

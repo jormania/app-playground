@@ -252,17 +252,13 @@ export default {
    * id of its own, and every request goes to the same URL, so the tag is the
    * only thing keeping one showing's seats off another's card.
    */
-  enrich(pages, { now = new Date() } = {}) {
+  enrich(pages) {
     const out = []
-    // The programme page is pages[0]; a night it marks sold out needs no seat
-    // lookup, whatever its detail page's button says.
-    const soldOut = soldOutInListing(pages[0]?.body ?? '', now)
     for (const page of pages) {
       const canonical = CANONICAL.exec(page.body ?? '')?.[1]
       if (!canonical) continue
       for (const [when, showing] of detailShowings(page.body)) {
         if (showing.state !== TICKET.OPEN || !showing.eiId) continue
-        if (soldOut.has(`${canonical}|${when}`)) continue
         if (out.length >= MAX_SEAT_LOOKUPS) return out
         out.push({
           url: TICKETING_API,
@@ -322,32 +318,32 @@ export default {
       const when = date && time ? `${date}T${time}` : null
       const detailState = link && when ? ticketStates.get(link)?.get(when)?.state : undefined
 
-      // Precedence, in the order the sources earned it (§9.81).
+      // §9.51's precedence, kept: the detail page decides, and the listing's
+      // BUY button is a static call-to-action worth nothing, reached only as a
+      // fallback when a production's detail fetch never came back.
       //
-      // An explicit SOLD OUT on the programme page wins outright. §9.51 made
-      // the detail page authoritative because the listing column was a static
-      // buy button that never said otherwise; now that it does say otherwise,
-      // per showing, it is the venue's own plainest statement about the night
-      // and nothing here should talk over it.
-      //
-      // The BUY button is still worth nothing, and still only a fallback for a
-      // production whose detail fetch never came back — that half of §9.51 is
-      // unchanged, and reading it as a live signal is the original bug.
-      const ticketState = LISTING_SOLD_OUT.test(tickets)
-        ? TICKET.SOLD_OUT
-        : detailState ?? (/bilete/i.test(tickets) ? TICKET.OPEN : TICKET.NONE)
+      // §9.81 briefly inverted this, on the grounds that the listing had learned
+      // to print a real SOLD OUT. Measuring every sold-out showing on the
+      // programme settled it the other way (§9.82): on eleven of thirteen the
+      // two sources agree exactly and the seat map confirms zero seats, so the
+      // detail page is not the careless one. Where they DO disagree, the seats
+      // are real enough to be worth showing.
+      const ticketState = detailState ?? (/bilete/i.test(tickets)
+        ? TICKET.OPEN
+        : LISTING_SOLD_OUT.test(tickets) ? TICKET.SOLD_OUT : TICKET.NONE)
 
-      // A count needs BOTH halves to be true, and they guard different things.
-      //
-      // `detailState === OPEN` is §9.68's rule and still load-bearing: a number
-      // pinned to the listing's static buy button would pair a live count with
-      // a signal §9.51 established is not one, and the pair reads far more
-      // confident than either half deserves.
-      //
-      // `ticketState === OPEN` is §9.81's: a night the listing calls gone must
-      // not print "2 left" underneath the word SOLD OUT, which is precisely the
-      // contradiction that sent someone to the box office for nothing.
-      const seatsLeft = detailState === TICKET.OPEN && ticketState === TICKET.OPEN && link && when
+      // ...and the disagreement itself is carried, rather than resolved away.
+      // A showing the theatre's own programme calls gone, whose ticketing still
+      // answers with seats, is exactly the case a reader wants flagged rather
+      // than decided for them.
+      const listingSoldOut = LISTING_SOLD_OUT.test(tickets) && ticketState === TICKET.OPEN
+
+      // §9.68's rule, and the only one a count needs: a number pinned to the
+      // listing's static buy button would pair a live count with a signal §9.51
+      // established is not one, and the pair reads far more confident than
+      // either half deserves. On a contradicted showing the count is the whole
+      // point — it is what tells two seats apart from none.
+      const seatsLeft = detailState === TICKET.OPEN && link && when
         ? seatCounts.get(`${link}|${when}`) ?? null
         : null
 
@@ -362,6 +358,7 @@ export default {
         description: link ? (descriptions.get(link) ?? null) : null,
         seatsLeft,
         ticketState,
+        listingSoldOut,
       }))
     }
     return events.filter(Boolean)
