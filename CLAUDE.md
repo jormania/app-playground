@@ -185,6 +185,11 @@ deep, and it filled once already (2026-09-09). Three rules keep it there:
   as an asset reference and emits the target even when nothing fetches it —
   that's how a dead ONNX fallback put a 23 MB `.wasm` in every build. See
   `dropOrtWasmPlugin` in [`vite.config.js`](vite.config.js).
+- **The front-page footer shows the built size of `dist/` from 20 MB up**, red at
+  40 MB — hidden at the usual ~10 MB, since a number that is always fine is one
+  nobody reads. Measured by `stampBuildSizePlugin` in `vite.config.js` (from
+  `closeBundle`, not `transformIndexHtml` — the weight isn't knowable until the
+  bundle is written), counted by `directorySizeBytes` in `scripts/build-meta.js`.
 - Preview builds on `claude/*` branches are **off** (`git.deploymentEnabled` in
   [`vercel.json`](vercel.json)) — every change used to cost two deployments,
   one preview and one production. `main` is unaffected.

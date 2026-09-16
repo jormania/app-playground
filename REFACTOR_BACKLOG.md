@@ -51,7 +51,7 @@ recoverable from git history.
 
 Left alone on purpose: `mcp-payloads.json`, which was not in this item's scope.
 
-## P-002 — A bundle-size gauge in the footer, beside the function one · `qol` · `open`
+## P-002 — A bundle-size gauge in the footer, beside the function one · `qol` · `done 2026-09-16`
 
 **Impact:** the second Vercel ceiling this repo has hit becomes visible before
 it is hit, the way the function count now is.
@@ -86,6 +86,25 @@ Proposed 2026-09-15, alongside the footer work that added the function gauge.
 **Promoted by Gabriel on 2026-09-16** and placed at the head of the list, so
 it is the next item taken. Being `qol` it is still never auto-merged: it waits
 for his eye on the screenshots however green it comes back.
+
+**Built 2026-09-16.** The second mechanism was worth it, but only because it was
+not actually second: `stripStraySolOdysseyManifestPlugin` already rewrites emitted
+HTML from `closeBundle`, so `stampBuildSizePlugin` is a second tenant of a hook
+this config already runs rather than a new idea. `directorySizeBytes` and
+`withBuildSizeMeta` live in `scripts/build-meta.js` with the other counts, tested.
+
+One thing the item did not anticipate, and the reason a naive version would have
+under-reported: vite-plugin-pwa generates its service workers from a **post**-ordered
+`closeBundle`, so a plain hook — at any position in the plugin array — measures
+`dist/` before `sol-odyssey-sw.js`, `click-deck-sw.js` and their two workbox
+runtimes exist, and reads ~42 kB light. Measured that, then ordered the hook `post`
+too. What remains is the tag stamping itself: 20 pages × ~45 bytes ≈ 0.9 kB it
+cannot include, against a threshold in megabytes.
+
+Thresholds: visible from 20 MB, rose from 40 MB, against today's 9.4 MB — so it
+shows nothing right now, which is the point. The front page is dark-only (no
+`prefers-color-scheme` anywhere in `index.html`), so "both themes" did not apply;
+the PR carries both widths, plus both fired states rendered from a patched tag.
 
 ## P-001 — 38 hand-rolled inline `<svg>` blocks while lucide-react sits in the deps · `visual` · `slice 1 (audit) done 2026-09-16`
 

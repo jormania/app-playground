@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
-import { cleanCommitSubject, countServerlessFunctions, parseBacklogCounts } from './build-meta.js';
+import { cleanCommitSubject, countServerlessFunctions, directorySizeBytes, parseBacklogCounts, withBuildSizeMeta } from './build-meta.js';
 
 const REPO = resolve(__dirname, '..');
 
@@ -40,6 +40,74 @@ describe('countServerlessFunctions', () => {
     // Not a gauge test — a guardrail. A thirteenth top-level api/*.js does not
     // degrade the footer, it fails the deploy. Fail here instead, in CI.
     expect(countServerlessFunctions(resolve(REPO, 'api'))).toBeLessThanOrEqual(12);
+  });
+});
+
+describe('directorySizeBytes', () => {
+  const tree = () => mkdtempSync(join(tmpdir(), 'dist-'));
+
+  it('sums the files in one directory', () => {
+    const dir = tree();
+    writeFileSync(join(dir, 'a.js'), 'x'.repeat(100));
+    writeFileSync(join(dir, 'b.css'), 'y'.repeat(50));
+    expect(directorySizeBytes(dir)).toBe(150);
+  });
+
+  it('recurses — dist/assets is where the weight actually is', () => {
+    const dir = tree();
+    writeFileSync(join(dir, 'index.html'), 'x'.repeat(10));
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(join(dir, 'assets', 'app.js'), 'y'.repeat(1000));
+    mkdirSync(join(dir, 'assets', 'nested'));
+    writeFileSync(join(dir, 'assets', 'nested', 'font.woff2'), 'z'.repeat(2000));
+    expect(directorySizeBytes(dir)).toBe(3010);
+  });
+
+  it('counts every extension — the incidents were a .woff2 and a .wasm', () => {
+    const dir = tree();
+    writeFileSync(join(dir, 'ort.wasm'), 'w'.repeat(500));
+    writeFileSync(join(dir, 'jp.woff2'), 'f'.repeat(700));
+    expect(directorySizeBytes(dir)).toBe(1200);
+  });
+
+  it('is zero for an empty directory', () => {
+    expect(directorySizeBytes(tree())).toBe(0);
+  });
+
+  it('measures the repo root without throwing', () => {
+    expect(directorySizeBytes(resolve(REPO, 'scripts'))).toBeGreaterThan(0);
+  });
+});
+
+describe('withBuildSizeMeta', () => {
+  const page = (extra = '') =>
+    `<!doctype html>\n<html>\n<head>\n  <meta name="deploy-date" content="2026-09-16T09:52:49.942Z">\n  <meta name="build-commit" content="345d8dd">${extra}\n</head>\n<body></body>\n</html>`;
+
+  it('stamps the size after the deploy-date tag', () => {
+    const out = withBuildSizeMeta(page(), 9353208);
+    expect(out).toContain('<meta name="build-size" content="9353208">');
+    expect(out.indexOf('build-size')).toBeGreaterThan(out.indexOf('deploy-date'));
+    expect(out.indexOf('build-size')).toBeLessThan(out.indexOf('build-commit'));
+  });
+
+  it('rounds to whole bytes — the attribute is read with Number()', () => {
+    expect(withBuildSizeMeta(page(), 1024.6)).toContain('content="1025"');
+  });
+
+  it('leaves a page that never went through buildMetaPlugin alone', () => {
+    // public/*.html is copied verbatim and carries no build meta at all.
+    const static_ = '<!doctype html>\n<html><head><title>Static</title></head></html>';
+    expect(withBuildSizeMeta(static_, 500)).toBe(static_);
+  });
+
+  it('is idempotent — a second pass never stamps on top of the first', () => {
+    const once = withBuildSizeMeta(page(), 100);
+    expect(withBuildSizeMeta(once, 999)).toBe(once);
+  });
+
+  it('leaves the rest of the document untouched', () => {
+    const out = withBuildSizeMeta(page(), 1);
+    expect(out.replace(/\n\s*<meta name="build-size"[^>]*>/, '')).toBe(page());
   });
 });
 

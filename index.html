@@ -845,6 +845,14 @@ const REFACTOR_PR_CAP = 6;
 // thing that draws it.
 const FUNCTION_CAP  = 12;
 const FUNCTION_WARN = 10;
+// Vercel Hobby's other ceiling: 10 GB of Deployment Storage, charged per
+// RETAINED deployment rather than per push. There is no per-build cap to count
+// against, so these are judgement calls rather than platform facts — a normal
+// build here is ~10 MB, and the two accidents that filled the quota once were
+// single assets of 17 MB and 23 MB. So: say nothing below 20 MB, and go rose at
+// 40 MB, by which point something has clearly been dragged in by mistake.
+const SIZE_WARN = 20 * 1024 * 1024;
+const SIZE_HOT  = 40 * 1024 * 1024;
 // Below this the weekday run is within a couple of mornings of going hungry.
 const BACKLOG_LOW = 3;
 
@@ -974,6 +982,24 @@ function renderBuildLine() {
         : `Vercel Hobby allows ${FUNCTION_CAP} serverless functions per deployment`}">` +
       `functions ${fns} / ${FUNCTION_CAP}</span>`,
       full ? "gauge hot" : "gauge"
+    ));
+  }
+
+  // Gauge: what this build weighs, stamped after the bundle was written (see
+  // stampBuildSizePlugin in vite.config.js). Hidden at the usual ~10 MB, since
+  // a number that is always fine is a number nobody reads — it appears only
+  // once something has been dragged into dist/ that probably should not be
+  // there, which is how both Deployment Storage incidents happened.
+  const bytes = Number(buildMeta("build-size"));
+  if (Number.isFinite(bytes) && bytes >= SIZE_WARN) {
+    const mb  = bytes / (1024 * 1024);
+    const hot = bytes >= SIZE_HOT;
+    parts.push(bit(
+      `<span title="${hot
+        ? "Far above this repo's usual ~10 MB — look for one accidental asset, a bare @fontsource import or a bundled .wasm"
+        : "Vercel Hobby charges 10 GB of Deployment Storage per retained deployment; a week of builds has to fit"}">` +
+      `bundle ${mb >= 100 ? mb.toFixed(0) : mb.toFixed(1)} MB</span>`,
+      hot ? "gauge hot" : "gauge"
     ));
   }
 

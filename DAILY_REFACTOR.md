@@ -252,12 +252,21 @@ degrade independently:
   the first, every failure silent — but backlog depth is stamped at build time,
   so it paints first and survives a rate-limited or offline GitHub alone.
 - **The build line**: commit, deploy time, branch when it isn't `main`, and gauges
-  that appear only once they have something to say — the serverless-function
-  count (visible from 10, red at the 12 cap). Stamped at build
+  for the two Vercel ceilings this repo has actually hit. Both appear only once
+  they have something to say — the serverless-function count (visible from 10, red
+  at the 12 cap), and the built size of `dist/` (visible from 20 MB, red at 40 MB,
+  against a usual ~10 MB). Stamped at build
   time by `buildMetaPlugin` in `vite.config.js`, so it costs nothing against
   GitHub's 60-requests/hour unauthenticated limit and always describes the build
   you are looking at. The counting rules live in `scripts/build-meta.js` and are
   tested — a gauge that silently under-reports is worse than no gauge.
+
+  The size gauge is the one exception to "stamped by `buildMetaPlugin`": a
+  bundle's weight is not knowable from `transformIndexHtml`, which runs while the
+  bundle is still being made, so `stampBuildSizePlugin` measures the finished
+  output and writes the tag into the emitted HTML from `closeBundle` instead. That
+  hook is ordered `post` deliberately — vite-plugin-pwa generates its service
+  workers from a post hook of its own, and measuring before them under-reports.
 
 ---
 
