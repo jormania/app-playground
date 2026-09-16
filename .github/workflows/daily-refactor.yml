@@ -126,18 +126,32 @@ jobs:
             exit 0
           fi
           printf '%s\n' "$branches" | while read -r br; do
-            states=$(gh api "repos/$GH_REPO/pulls?state=all&head=$owner:$br" \
-                       --jq '[.[].state] | join(" ")' 2>/dev/null || echo ERR)
-            case "$states" in
-              ERR)    echo "keep   $br — could not read its pull requests" ;;
-              "")     echo "keep   $br — no pull request, so this may be the only copy" ;;
-              *open*) echo "keep   $br — a pull request on it is still open" ;;
-              *)      if gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$br" >/dev/null 2>&1; then
-                        echo "delete $br — every pull request on it is closed"
-                      else
-                        echo "keep   $br — delete refused"
-                      fi ;;
+            # Counted, not inspected for state: "closed" is not good enough.
+            # A PR closed WITHOUT merging means its commits never reached main,
+            # and this branch is the only place they exist. Only a branch whose
+            # every pull request was actually merged is safe to remove.
+            counts=$(gh api "repos/$GH_REPO/pulls?state=all&head=$owner:$br" \
+                       --jq '"\(length) \([.[] | select(.merged_at != null)] | length)"' \
+                       2>/dev/null) || counts="ERR"
+            # Whitelist, not blacklist: anything that is not literally two
+            # numbers means we do not know, and not knowing means keep. An
+            # earlier blacklist let an EMPTY answer through to the delete, which
+            # is the one mistake this step cannot make twice.
+            case "$counts" in
+              [0-9]*' '[0-9]*) ;;
+              *) echo "keep   $br — could not read its pull requests"; continue ;;
             esac
+            total=${counts%% *}
+            merged=${counts##* }
+            if [ "$total" -eq 0 ]; then
+              echo "keep   $br — no pull request, so this may be the only copy"
+            elif [ "$total" -ne "$merged" ]; then
+              echo "keep   $br — $((total - merged)) of its $total pull requests were not merged"
+            elif gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$br" >/dev/null 2>&1; then
+              echo "delete $br — all $total of its pull requests were merged"
+            else
+              echo "keep   $br — delete refused"
+            fi
           done
 
       - uses: actions/setup-node@v4

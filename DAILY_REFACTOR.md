@@ -188,9 +188,12 @@ its own must not be the thing that decides it passed.**
 
 0. Before any of it — and before today's branch exists — **stale refactor
    branches are pruned**. A branch is removed only if it is `claude/refactor-*`,
-   has pull requests, and every one of them is closed. No PR at all means it is
-   left alone: that is a run that pushed and failed to open one, and its commits
-   are the only copy. The step is `continue-on-error` and every failure path
+   has pull requests, and **every one of them was merged**. Closed without
+   merging is not good enough: those commits never reached `main`, so the branch
+   is the only place they exist. No PR at all likewise means keep — that is a run
+   that pushed and failed to open one. The answer from the API must parse as two
+   numbers or the branch is kept; anything else means we do not know, and not
+   knowing means keep. The step is `continue-on-error` and every failure path
    keeps the branch, because tidying must never cost a morning. `claude/shots`
    does not match the pattern and is never in scope.
 
