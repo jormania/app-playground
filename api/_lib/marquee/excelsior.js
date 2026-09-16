@@ -69,6 +69,47 @@ const SHOWING_WINDOW = 2000
 const SOLD_OUT_BTN = /class="btn"[^>]*>\s*Sold out/i
 const OPEN_BTN = /select-method-button/i
 
+// The listing row's own tickets column, and the label that now means something.
+const TICKETS_COLUMN = /el-column-tickets"[\s\S]*?(?=<\/div>\s*<\/div>|$)/
+const LISTING_SOLD_OUT = /sold\s*out/i
+
+const ticketsColumn = (body) => textOf((TICKETS_COLUMN.exec(body) ?? [''])[0])
+
+/**
+ * Showings the PROGRAMME PAGE itself marks sold out, as `${link}|${date}THH:MM`.
+ *
+ * §9.51's finding had two halves and only one of them aged well. The half that
+ * still holds: this column's BUY button is a static call-to-action printed on
+ * every row whatever the real state, so it is worth nothing and is still
+ * ignored. The half that did not: it recorded that the site "never renders a
+ * SOLD OUT label there, only ever the buy button" — and on 2026-09-16 that page
+ * carried fifteen of them, one per showing (§9.81). An explicit SOLD OUT is a
+ * real per-showing statement by the venue, so it is read, and it wins.
+ *
+ * Built here rather than inside `parse` because `enrich` needs it too: there is
+ * no sense POSTing for a seat count on a night the theatre has already called
+ * gone, and asking anyway would be requests spent to produce a number the
+ * reader then throws away.
+ */
+export function soldOutInListing(html, now = new Date()) {
+  const out = new Set()
+  ITEM.lastIndex = 0
+  let m
+  while ((m = ITEM.exec(html)) !== null) {
+    const [, href, body] = m
+    if (!LISTING_SOLD_OUT.test(ticketsColumn(body))) continue
+    const date = inferYear(
+      pick(body, /class="month">\s*(\d{1,2})\s/),
+      pick(body, /class="month">\s*\d{1,2}\s+([^<]+)</),
+      now,
+    )
+    const time = parseTime(pick(body, /class="time">([^<]*)</))
+    const link = absoluteUrl(href, BASE)
+    if (link && date && time) out.add(`${link}|${date}T${time}`)
+  }
+  return out
+}
+
 // The ticketing id for a showing, printed just ABOVE its date header — the
 // theme opens a fresh `.ticketsys` block per showing and the hidden input is
 // its first field. Looking backwards is what makes it safe: forwards, a
@@ -211,13 +252,17 @@ export default {
    * id of its own, and every request goes to the same URL, so the tag is the
    * only thing keeping one showing's seats off another's card.
    */
-  enrich(pages) {
+  enrich(pages, { now = new Date() } = {}) {
     const out = []
+    // The programme page is pages[0]; a night it marks sold out needs no seat
+    // lookup, whatever its detail page's button says.
+    const soldOut = soldOutInListing(pages[0]?.body ?? '', now)
     for (const page of pages) {
       const canonical = CANONICAL.exec(page.body ?? '')?.[1]
       if (!canonical) continue
       for (const [when, showing] of detailShowings(page.body)) {
         if (showing.state !== TICKET.OPEN || !showing.eiId) continue
+        if (soldOut.has(`${canonical}|${when}`)) continue
         if (out.length >= MAX_SEAT_LOOKUPS) return out
         out.push({
           url: TICKETING_API,
@@ -270,20 +315,39 @@ export default {
       const [, href, body] = m
       const day = pick(body, /class="month">\s*(\d{1,2})\s/)
       const month = pick(body, /class="month">\s*\d{1,2}\s+([^<]+)</)
-      const tickets = textOf((/el-column-tickets"[\s\S]*?(?=<\/div>\s*<\/div>|$)/.exec(body) ?? [''])[0])
+      const tickets = ticketsColumn(body)
       const link = absoluteUrl(href, BASE)
       const date = inferYear(day, month, now)
       const time = parseTime(pick(body, /class="time">([^<]*)</))
-      // The listing's own "Cumpără bilete"/"SOLD OUT" column is the fallback,
-      // not the primary read (§9.51) — only reached when the detail page's
-      // own per-date state, keyed by this exact showing, isn't available.
       const when = date && time ? `${date}T${time}` : null
       const detailState = link && when ? ticketStates.get(link)?.get(when)?.state : undefined
-      // Only ever attached to a showing the detail page itself called open: a
-      // count read against a state read from the LISTING's fallback column
-      // would be pairing a live number with a signal §9.51 established is not
-      // one, and the pair reads more confident than either half deserves.
-      const seatsLeft = detailState === TICKET.OPEN && link && when
+
+      // Precedence, in the order the sources earned it (§9.81).
+      //
+      // An explicit SOLD OUT on the programme page wins outright. §9.51 made
+      // the detail page authoritative because the listing column was a static
+      // buy button that never said otherwise; now that it does say otherwise,
+      // per showing, it is the venue's own plainest statement about the night
+      // and nothing here should talk over it.
+      //
+      // The BUY button is still worth nothing, and still only a fallback for a
+      // production whose detail fetch never came back — that half of §9.51 is
+      // unchanged, and reading it as a live signal is the original bug.
+      const ticketState = LISTING_SOLD_OUT.test(tickets)
+        ? TICKET.SOLD_OUT
+        : detailState ?? (/bilete/i.test(tickets) ? TICKET.OPEN : TICKET.NONE)
+
+      // A count needs BOTH halves to be true, and they guard different things.
+      //
+      // `detailState === OPEN` is §9.68's rule and still load-bearing: a number
+      // pinned to the listing's static buy button would pair a live count with
+      // a signal §9.51 established is not one, and the pair reads far more
+      // confident than either half deserves.
+      //
+      // `ticketState === OPEN` is §9.81's: a night the listing calls gone must
+      // not print "2 left" underneath the word SOLD OUT, which is precisely the
+      // contradiction that sent someone to the box office for nothing.
+      const seatsLeft = detailState === TICKET.OPEN && ticketState === TICKET.OPEN && link && when
         ? seatCounts.get(`${link}|${when}`) ?? null
         : null
 
@@ -297,9 +361,7 @@ export default {
         image: link ? (posters.get(link) ?? null) : null,
         description: link ? (descriptions.get(link) ?? null) : null,
         seatsLeft,
-        ticketState: detailState ?? (/sold\s*out/i.test(tickets)
-          ? TICKET.SOLD_OUT
-          : /bilete/i.test(tickets) ? TICKET.OPEN : TICKET.NONE),
+        ticketState,
       }))
     }
     return events.filter(Boolean)

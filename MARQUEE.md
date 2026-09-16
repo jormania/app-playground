@@ -1833,6 +1833,11 @@ the text "Sold out" versus `class="select-method-button"` and "Alege
 locurile", each paired with its own "24 septembrie 2026 Ora: 19:00" header a
 short way above it.
 
+> **Superseded in part by §9.81 (2026-09-16):** the claim above that the site
+> "never renders a SOLD OUT label there" stopped being true — the listing now
+> prints one per showing, and an explicit SOLD OUT wins. The finding about the
+> BUY button being a static call-to-action still stands, and still governs.
+
 Fixed by reading that instead: `detailTicketStates(html)` walks a detail
 page's own showing headers, keyed by date+time (so a partly sold-out run —
 the ordinary case — still reads correctly per date, not as one flag for the
@@ -3491,6 +3496,71 @@ line was drawn where it was. Worth revisiting if a venue ever turns out to
 re-price often.
 
 `npm test` (4461), `npm run typecheck` and `npx eslint` all pass.
+
+### 9.81 Excelsior's listing learned to say SOLD OUT, and §9.51 didn't know (2026-09-16)
+
+Two screenshots, side by side. Marquee: *Tomcat, Sala STUDIO, Wed 23 Sept —
+2 showings, **2 left** on each.* The theatre's own programme page, the same
+evening: **SOLD OUT** on both.
+
+**Everything each source said was internally true**, which is what made it
+worth an hour. Measured against the live site rather than assumed:
+
+| source | 17:00 | 20:00 |
+|---|---|---|
+| `/program/` listing | **SOLD OUT** | **SOLD OUT** |
+| `/spectacol/tomcat/` detail page | Alege locurile | Alege locurile |
+| ticketing seat map | 45 sold, 2 held, **2 free** | 43 sold, 4 held, **2 free** |
+
+Sala Studio holds 49. The two free seats on each showing are ordinary ones —
+same price (759), same row label, indistinguishable in the seat JSON from the
+forty-odd sold beside them. So the ticketing back-end really does hold two
+buyable seats per night, and the theatre really does publish SOLD OUT over the
+top of them. Marquee was reporting the machine and the user was reading the
+poster.
+
+**The actual defect is a premise that expired.** §9.51 made the detail page
+authoritative over the listing, and said why:
+
+> the listing page's own tickets column … is a static call-to-action, "Cumpără
+> bilete", printed for every row regardless of real availability. It is not a
+> live signal at all; **the site never renders a "SOLD OUT" label there**, only
+> ever the buy button.
+
+That was true of the page as it stood on 2026-08-28. It is not true now: today's
+`/program/` carries **fifteen** SOLD OUT labels, one per showing. The rule was
+sound and its foundation moved, which is a harder failure to notice than a
+broken regex — nothing throws, nothing reads as broken, and the reader goes on
+confidently preferring the weaker of two sources.
+
+**So the precedence is inverted, but only for the half that changed.** An
+explicit SOLD OUT in the listing now wins outright. The BUY button is still
+worth nothing and is still a last-resort fallback for a production whose detail
+fetch never came back — §9.51's surviving half, and there is a test named for it
+so the next person doesn't undo it while reading this entry.
+
+Two smaller consequences, both following from the same decision:
+
+- **No seat count survives a listing SOLD OUT.** `seatsLeft` needs both guards
+  now: the detail page must have called the showing open (§9.68's rule, so a
+  live number is never pinned to the meaningless buy button) AND the final state
+  must be open (§9.81's, so "2 left" can never print under the word SOLD OUT).
+  A test pins each guard separately, because they fail in different directions.
+- **`enrich` stops asking about those nights.** `soldOutInListing` is shared
+  between the two so there is one definition, and a night the theatre has
+  already called gone costs no POST — two requests saved on Tomcat alone, which
+  is the same frugality §9.78 was about.
+
+**The uncomfortable part, recorded rather than smoothed over.** This trades one
+wrong answer for a different one: §9.62's own reasoning says a wrong "sold out"
+quietly removes a show you could still have seen, while a wrong "tickets" costs
+one click to discover — and by that logic the old behaviour was the safer error.
+Gabriel was shown that argument and chose the listing anyway, on the grounds
+that matching what the theatre publicly says is worth more than two seats he
+would have to fight the venue's own UI to reach. Reasonable, and worth
+revisiting if a SOLD OUT night ever turns out to be genuinely buyable.
+
+`npm test` (4483), `npm run typecheck` and `npx eslint` all pass.
 
 ## Open — known source limits, checked and not fixable here
 
