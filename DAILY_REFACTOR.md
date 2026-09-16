@@ -35,25 +35,37 @@ and the workflow is auditable without reading prose.
 ## When it runs
 
 ```yaml
-- cron: '41 0 * * 1-5'   # 00:41 UTC — 03:41 Bucharest, 02:41 in winter
-- cron: '41 2 * * 1-5'   # 02:41 UTC — backstop, usually skipped
+- cron: '41 22 * * 0-4'  # 22:41 UTC — 01:41 Bucharest next day, 00:41 in winter
+- cron: '41 0 * * 1-5'   # 00:41 UTC — 03:41 Bucharest, backstop, usually skipped
 ```
 
-Weekdays only, plus a **Run workflow** button for testing.
+Monday to Friday mornings in Bucharest, plus a **Run workflow** button for
+testing. Note the first cron fires the *evening before*, on days `0-4`.
 
-**Why two, and why :41.** GitHub's scheduled queue is best-effort. Their docs:
-the `schedule` event "can be delayed during periods of high loads", "high load
-times include the start of every hour", and "if the load is sufficiently high
-enough, some queued jobs may be dropped." The first schedule here was `3 2 * * 1-5`
-— three minutes past the hour — and on 2026-09-15 it was dropped outright: no run,
-no delay, no record. Odd minutes avoid the crush; a second draw makes a total miss
-much less likely.
+**GitHub's queue fails in two independent ways, and both have happened here.**
+Their docs cover the first: the `schedule` event "can be delayed during periods
+of high loads", "high load times include the start of every hour", and "if the
+load is sufficiently high enough, some queued jobs may be dropped."
 
-Both finish well before 07:00 local in either season, which is the actual
-requirement — the PR should be waiting at breakfast, not arriving during it.
+- **Dropped.** The original `3 2 * * 1-5` sat three minutes past the hour. On
+  2026-09-15 it never fired at all — no run, no delay, no record. Odd minutes and
+  a second draw address this.
+- **Delayed.** On 2026-09-16 the run did fire, four and a half hours late, landing
+  at 08:13 Bucharest. Another attempt cannot fix that; only a bigger cushion can.
+
+Hence the evening start. **22:41 UTC is the earliest hour that is already
+"tomorrow" in Bucharest in both seasons** — 21:41 plus winter's +2 is still the
+same day — which is why the hour looks arbitrary and is not. It leaves 5h19m of
+slack in summer and 6h19m in winter before 07:00, against 3h19m before.
+
+**A consequence worth knowing:** the runner's own UTC date is then *yesterday*.
+A `Work out which morning this is` step computes the Bucharest date and weekday
+and passes both into the agent's prompt, and the gate compares Bucharest dates
+rather than UTC ones, so a run and its backstop on either side of UTC midnight
+are recognised as the same morning. Nothing in the run may use bare `date +%F`.
 
 **The `gate` job** decides whether the backstop proceeds. It stands down if any
-run already went out today, and goes ahead otherwise. It is a backstop for a
+run already went out this Bucharest morning, and goes ahead otherwise. It is a backstop for a
 dropped cron, **not a retry**: a run that failed on its own merits should not
 burn a second slice of the backlog.
 
@@ -265,9 +277,14 @@ always proceeds; the gate only applies to scheduled ones.
 **Requirements:**
 
 - `CLAUDE_CODE_OAUTH_TOKEN` — repository secret, required.
-- `REFACTOR_PAT` — optional, for the case where PRs opened by the workflow do not
-  trigger `pull_request` workflows. Observed behaviour so far is that CI *does*
-  run on the agent's PRs (#59).
+- `REFACTOR_PAT` — **not optional in practice, and not currently set.** A PR the
+  workflow opens is authored by `github-actions[bot]` using the default
+  `GITHUB_TOKEN`, and GitHub does not trigger `pull_request` workflows for those.
+  PR #65 has zero checks and a `pending` status as a result. (An earlier note here
+  claimed CI did run, citing #59 — that was a bad inference: #59 was opened under
+  Gabriel's own identity, not the bot's.) Auto-merge is unaffected, since the
+  workflow verifies independently, but a `qol` or `visual` PR waiting for a human
+  shows no green tick at all.
 - Settings → Actions → **Allow GitHub Actions to create and approve pull
   requests** must be **on**. It was off for the second-ever run, which is why that
   run could not open its PR.
@@ -284,19 +301,22 @@ than a charge when the OAuth token is subscription-backed. Budget per run:
 Recorded because a system that hides its own weak points cannot be trusted with
 production.
 
-- **Both crons can still be dropped.** Two draws at a best-effort queue is much
-  better than one, but GitHub offers no guarantee and there is no external
-  watchdog. A morning where nothing fires is silent — the one gap that cannot be
-  closed from inside Actions.
+- **The queue is still the weakest link.** Two draws at different hours is much
+  better than one, but GitHub guarantees neither that a run fires nor that it
+  fires on time. The evening start buys five to six hours of slack; a delay
+  longer than that still arrives after breakfast, and a morning where nothing
+  fires at all is silent. There is no external watchdog — the one gap that cannot
+  be closed from inside Actions.
 - **The `visual` path has never run end to end.** Playwright install on the
   runner, four captures, the `claude/shots` branch (which does not exist yet),
   raw-URL embedding — none of it has been exercised. P-001 will be the first.
 - **The 60-turn budget is untested for a visual item.** Browser install plus
   screenshots plus three gates may not fit. It would now fail loudly rather than
   vanish, but that is a consolation, not a fix.
-- **The PR check is weaker than the merge gate.** `CI` runs two gates
-  (`npm test`, `npm run typecheck`); the workflow's own pre-merge verification
-  runs three, adding `npx eslint .` against a clean clone. A green tick on a PR
+- **Agent PRs get no CI at all** until `REFACTOR_PAT` exists — see the
+  requirements above. And even where `CI` does run it is the weaker signal: two
+  gates (`npm test`, `npm run typecheck`) against the pre-merge verification's
+  three, which adds `npx eslint .` on a clean clone. A green tick on a PR
   therefore means less than an auto-merge does.
 - **Squash-merge breaks ancestry**, so `git log main..<branch>` reports a merged
   branch as unmerged. Anything reasoning about stale branches must compare content,
@@ -316,6 +336,8 @@ production.
 | 2026-09-15 | The scheduled run never fired — dropped from GitHub's queue at `:03` | Two crons at `:41`, plus the `gate` job |
 | 2026-09-15 | That gate was itself a fail-*closed* single point of failure | Both halves made to fail open |
 | 2026-09-15 | A session dying partway ended green and silent | Any outcome that isn't `shipped` or `nothing-eligible` now fails the run |
+| 2026-09-16 | The first scheduled run worked end to end — gate, agent, independent verification, correct refusal to auto-merge a `visual` item — but arrived four and a half hours late, at 08:13 Bucharest | Primary cron moved to 22:41 UTC the evening before, with the Bucharest date computed and handed to the agent |
+| 2026-09-16 | That run's PR (#65) had zero checks: a PR opened by `github-actions[bot]` does not trigger `pull_request` workflows, and this document had claimed otherwise from a bad reading of #59 | Claim corrected; `REFACTOR_PAT` reclassified from optional to missing |
 
 The pattern is one thing, seven times: **the danger is not a bad change reaching
 production. It is a morning where nothing happened and nobody was told.**

@@ -28,8 +28,13 @@ and for two of the four classes merges that PR itself. **Full documentation:
 the skill, or the backlog's shape. The essentials:
 
 - Driven by [`.github/workflows/daily-refactor.yml`](.github/workflows/daily-refactor.yml)
-  on two crons (00:41 and 02:41 UTC, weekdays — the second a backstop for GitHub's
-  best-effort scheduled queue). Needs the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+  on two crons — 22:41 UTC the evening before (the earliest hour that is already
+  tomorrow in Bucharest in both seasons) and 00:41 UTC as a backstop, since
+  GitHub's scheduled queue both drops and delays runs. **The runner's UTC date is
+  therefore a day behind**: the workflow computes the Bucharest date and hands it
+  to the agent, and nothing in a run may use bare `date +%F`. Needs the
+  `CLAUDE_CODE_OAUTH_TOKEN` secret; add `REFACTOR_PAT` too, or the PRs it opens
+  get no CI at all.
 - It takes **one** item off [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md), works it
   on a fresh branch off `main`, proves it green, and opens its own PR. Review
   happens after the fact. Reorder the backlog to reprioritise — the order is the
