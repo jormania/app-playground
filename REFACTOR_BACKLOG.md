@@ -10,6 +10,11 @@ topmost eligible item, so the order of this file is the steering wheel.
 
 **States:** `open` · `claimed` (an open PR names it) · `done` · `blocked` · `dropped`
 
+**One item = one `## ` header.** A big item that splits into slices gets one
+header per slice, in the order they should be taken — nesting them as bullets
+hides them from the footer's backlog count and makes "the topmost eligible item"
+ambiguous.
+
 **Classes** decide the burden of proof and who may queue an item:
 
 | Class | What it is | Agent may queue it itself? |
@@ -121,24 +126,13 @@ the icons) to six bundles that currently carry none of it.
 **The "smaller bundle" half of the Impact line above is therefore only true for
 Group 1, and is backwards for Group 2.**
 
-### The slices, in order
+### The slices
 
-- **P-001a — WhereItWent: retire the pasted Feather markup** · `visual` ·
-  `open`. Nine files, ~17 glyph sites, an app already importing lucide in seven
-  others. `components/Navigation.jsx` is the bulk (7 glyphs: dashboard,
-  transactions, insights, settings, filter, calendar, plus×2); then
-  `Settings.jsx` (sun, moon), `PeriodSheet.jsx` (calendar),
-  `TransactionForm.jsx` (Feather `file-text`), and `ChevronDown` in
-  `AccountSelect.jsx`, `CategorySelect.jsx`, `CurrencySelect.jsx`. Leave
-  `Sparkline.jsx` and `NoraAvatar.jsx` alone — one-off drawings, not icons.
-  Read `WHERE_IT_WENT.md` first.
-- **P-001b — Lexi5: the sun/moon/monitor triple** · `visual` · `open`.
-  `src/lexi5/components/Settings.jsx`, three pasted Feather glyphs in an app
-  already importing lucide in three files. Note `src/lexi5/App.jsx`'s two
-  `<svg>` are data-URI favicons, not icons — out of scope.
-- **P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in
-  23 files** · `visual` · `open`. `src/daily-stoic/App.tsx`. The 64×64 one is the app's own
-  mark; check before assuming. `components/Ornament.tsx` stays hand-drawn.
+Each is its own top-level item below — **P-001a**, **P-001b**, **P-001c** — sitting
+directly under this block in the order they should be taken. They live out there
+rather than as bullets in here because the queue is read by header: a sub-item is
+invisible to the footer's backlog count, and "the topmost eligible item" stops
+meaning anything when one sits nested inside a finished parent.
 
 ### Explicitly not doing, so nobody re-audits this
 
@@ -149,6 +143,45 @@ Silva's four, Sol Odyssey's `Logo`/`Sparkline`, Yoru's `MoonGlyph`, Tempo's
 `CountdownRing`, Click Deck's watchlist mark, `src/ds/components/GuideNote.tsx`,
 `src/ds/showcase/Showcase.tsx`, Fit Check's guide mark — genuine one-off
 drawings (graphs, rings, avatars, logos) that no icon library contains.
+
+## P-001a — WhereItWent: retire the pasted Feather markup · `visual` · `open`
+
+**Impact:** one drawing convention per screen instead of two. Part of P-001,
+Group 1 — see that item's audit for why this group and not the other.
+
+Nine files, ~17 glyph sites, in an app already importing lucide in seven others.
+`components/Navigation.jsx` is the bulk (7 glyphs: dashboard, transactions,
+insights, settings, filter, calendar, plus×2); then `Settings.jsx` (sun, moon),
+`PeriodSheet.jsx` (calendar), `TransactionForm.jsx` (Feather `file-text`), and
+`ChevronDown` in `AccountSelect.jsx`, `CategorySelect.jsx`, `CurrencySelect.jsx`.
+
+Leave `Sparkline.jsx` and `NoraAvatar.jsx` alone — one-off drawings, not icons.
+Read `WHERE_IT_WENT.md` first. Being `visual`: screenshots in both themes at both
+widths, and never auto-merged.
+
+## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
+
+**Impact:** three fewer pasted glyphs, in an app that already ships the library
+they were copied from. Part of P-001, Group 1.
+
+`src/lexi5/components/Settings.jsx` — three pasted Feather glyphs in an app
+already importing lucide in three files. Its sun and moon are byte-identical to
+WhereItWent's, so P-001a settles the convention and this follows it.
+
+Note `src/lexi5/App.jsx`'s two `<svg>` are data-URI favicons, not icons — out of
+scope. Being `visual`: screenshots, and never auto-merged.
+
+## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
+
+**Impact:** the smallest of the three, and the one most likely to come back
+"leave it". Part of P-001, Group 1.
+
+`src/daily-stoic/App.tsx`. **The 64×64 one is the app's own mark — check before
+assuming it is an icon at all.** `components/Ornament.tsx` stays hand-drawn.
+
+If the audit on contact says these are deliberate rather than pasted, mark the
+item `dropped` with the reason and move on; that is a correct outcome, not a
+failed run. Being `visual`: screenshots, and never auto-merged.
 
 ## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `open`
 
