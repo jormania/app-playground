@@ -186,6 +186,14 @@ Everything below the agent's step in the workflow runs where the agent cannot
 influence it. That separation is the point: **a run that merges to production on
 its own must not be the thing that decides it passed.**
 
+0. Before any of it — and before today's branch exists — **stale refactor
+   branches are pruned**. A branch is removed only if it is `claude/refactor-*`,
+   has pull requests, and every one of them is closed. No PR at all means it is
+   left alone: that is a run that pushed and failed to open one, and its commits
+   are the only copy. The step is `continue-on-error` and every failure path
+   keeps the branch, because tidying must never cost a morning. `claude/shots`
+   does not match the pattern and is never in scope.
+
 1. **Publish the report** to the run summary, parsed out of the action's output.
 2. **Read the result file** — defensively. Missing or malformed means "nothing to
    merge", never a red run; a forgotten file should cost a click, not a morning.

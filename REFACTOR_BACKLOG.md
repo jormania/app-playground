@@ -240,7 +240,13 @@ If the audit on contact says these are deliberate rather than pasted, mark the
 item `dropped` with the reason and move on; that is a correct outcome, not a
 failed run. Being `visual`: screenshots, and never auto-merged.
 
-## R-012 — Audit the 33 stale `claude/*` branches · `refactor` · `open`
+## R-012 — Audit the stale `claude/*` branches · `refactor` · `open`
+
+**Scope narrowed 2026-09-16:** `claude/refactor-*` branches now prune themselves
+at the top of every run — merged ones go automatically, and anything with an open
+PR or no PR at all is left alone. So this item is about the other ~35 branches,
+which came from ordinary sessions rather than the daily pass and have no such
+rule. The two refactor branches this item originally named are gone.
 
 **Impact:** none visible. A branch list someone can actually read, and a
 defensible answer to "has this work landed or not?"
