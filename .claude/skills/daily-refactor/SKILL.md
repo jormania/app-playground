@@ -20,11 +20,19 @@ the code, the dependencies, and push rights. Don't clone, don't reinstall.
 
 ## 1. Orient
 
+**The date is given to you, and it is not `date +%F`.** The schedule fires the
+evening before, so the runner's clock often reads yesterday while the run belongs
+to this morning in Bucharest. The workflow prompt states the date to use; take it
+from there and use it everywhere — branch name, the backlog's `done` stamp, any
+screenshot directory. Running by hand with no date supplied, use
+`TZ=Europe/Bucharest date +%F`.
+
 ```bash
 git fetch origin main
-BR=claude/refactor-$(date +%F)
+DAY=<the date the prompt gave you>            # e.g. 2026-09-16
+BR=claude/refactor-$DAY
 # a second run on the same day must not land on the first run's branch
-n=2; while git ls-remote --exit-code --heads origin "$BR" >/dev/null 2>&1; do BR=claude/refactor-$(date +%F)-$n; n=$((n+1)); done
+n=2; while git ls-remote --exit-code --heads origin "$BR" >/dev/null 2>&1; do BR=claude/refactor-$DAY-$n; n=$((n+1)); done
 git checkout -B "$BR" origin/main
 ```
 
@@ -71,7 +79,8 @@ right. The queue is his steering wheel; proposing is how you hand him one.
 Read `REFACTOR_BACKLOG.md`. Take the topmost item that is not `done`, not
 `blocked`, not under `## Proposed`, and not claimed by an open PR.
 
-**Fridays are discovery runs.** Ship nothing. Spend the session reading the
+**Fridays are discovery runs** — Friday by the date you were given, not by the
+runner's clock, which is a day behind when the evening cron fires. Ship nothing. Spend the session reading the
 codebase against current standards — deprecated APIs, dependency generations
 behind, duplicated patterns that want promoting to `src/shared/`, documentation
 that has drifted from the code, apps with no test coverage, places where the
@@ -210,7 +219,7 @@ re-propose it.
 ## 9. Land
 
 ```bash
-git push -u origin claude/refactor-$(date +%F)
+git push -u origin "$BR"
 ```
 
 Open a PR, ready for review, against `main`. **The body's first line is

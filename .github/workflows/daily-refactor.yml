@@ -7,12 +7,20 @@ name: Daily refactor
 
 on:
   schedule:
-    # GitHub's scheduled queue is best-effort — it warns that crons near the top
-    # of the hour are delayed under load, and a dropped run is silent. So: two
-    # attempts at odd minutes, the second a backstop the `gate` job below lets
-    # through only if the first never landed. Both finish well before 07:00 local.
-    - cron: '41 0 * * 1-5'   # 00:41 UTC weekdays = 03:41 Bucharest (02:41 in winter)
-    - cron: '41 2 * * 1-5'   # 02:41 UTC — backstop, usually skipped
+    # GitHub's scheduled queue is best-effort in two separate ways, and both have
+    # already bitten. It warns that crons near the top of the hour are delayed
+    # under load and that queued jobs may be dropped outright — so, odd minutes,
+    # and two attempts. But a run can also simply sit: 2026-09-16's fired four
+    # and a half hours late and landed at 08:13 Bucharest, long after the PR was
+    # wanted. The cure for that is not another attempt, it is a bigger cushion.
+    #
+    # So the first attempt now fires the evening before. 22:41 UTC is the
+    # EARLIEST hour that is already tomorrow in Bucharest in both seasons
+    # (21:41 + 2h is still the same day under EET) — hence 22:41 and day-of-week
+    # 0-4, which is Monday-to-Friday mornings local. That leaves 5h19m of slack
+    # in summer and 6h19m in winter before 07:00, against 3h19m before.
+    - cron: '41 22 * * 0-4'  # 22:41 UTC = 01:41 Bucharest next day (00:41 in winter)
+    - cron: '41 0 * * 1-5'   # 00:41 UTC = 03:41 Bucharest — backstop, usually skipped
   workflow_dispatch:         # and a Run workflow button, for testing
 
 permissions:
@@ -46,13 +54,17 @@ jobs:
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "Started by hand — going ahead."
           else
-            today=$(date -u +%F)
+            # Bucharest dates, not UTC ones: the first cron fires the evening
+            # before, so a run and its backstop sit on either side of UTC
+            # midnight while belonging to the same morning here.
+            today=$(TZ=Europe/Bucharest date +%F)
             earlier=$(gh api \
               "repos/$GH_REPO/actions/workflows/daily-refactor.yml/runs?per_page=30" \
-              --jq "[.workflow_runs[]
-                     | select(.id != ${{ github.run_id }})
-                     | select(.created_at | startswith(\"$today\"))]
-                    | length" || echo "")
+              --jq ".workflow_runs[]
+                    | select(.id != ${{ github.run_id }})
+                    | .created_at" \
+              | while read -r ts; do TZ=Europe/Bucharest date -d "$ts" +%F; done \
+              | grep -c "^$today$" || echo "")
             # Unreadable means go ahead. A duplicate run costs one slice of the
             # backlog; a wrongly skipped one costs the whole day and says nothing.
             case "${earlier:-}" in ''|*[!0-9]*) earlier=0 ;; esac
@@ -74,6 +86,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      # The first cron fires the evening before, so the runner's own date is
+      # yesterday as far as Bucharest is concerned. Everything the agent names or
+      # decides by date — the branch, and whether this is a Friday discovery run
+      # — has to use the morning it is landing in, not `date` on the runner.
+      - name: Work out which morning this is
+        id: when
+        run: |
+          echo "date=$(TZ=Europe/Bucharest date +%F)" >> "$GITHUB_OUTPUT"
+          echo "day=$(TZ=Europe/Bucharest date +%A)"  >> "$GITHUB_OUTPUT"
+          echo "This run belongs to $(TZ=Europe/Bucharest date '+%A %F') in Bucharest."
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0     # full history: the backlog asks for `git log` on files before deleting them
@@ -107,7 +130,15 @@ jobs:
             `CLAUDE.md` and `.agents/AGENTS.md` too, and treat their rules as
             outranking the skill.
 
-            In short: branch off `origin/main` as `claude/refactor-$(date +%F)`,
+            **Today, for every purpose, is ${{ steps.when.outputs.day }}
+            ${{ steps.when.outputs.date }} — that is the morning in Bucharest
+            this run lands in.** The runner's own clock may still read
+            yesterday, because the schedule fires the evening before. Use the
+            date above for the branch name, the backlog's `done` stamp, any
+            screenshot directory, and the Friday question. Never `date +%F`.
+
+            In short: branch off `origin/main` as
+            `claude/refactor-${{ steps.when.outputs.date }}`,
             take exactly ONE eligible item from `REFACTOR_BACKLOG.md` — skipping
             anything under `## Proposed` and anything already claimed by an open
             `claude/refactor-*` PR — implement it, get `npm test -- --run`,
@@ -121,7 +152,8 @@ jobs:
             you may only PROPOSE those, under `## Proposed`, and never work one
             until a human has moved it up into the main list.
 
-            If today is FRIDAY, ship nothing: read the codebase against current
+            If today — ${{ steps.when.outputs.day }} — is FRIDAY, ship nothing:
+            read the codebase against current
             standards, append up to five new backlog items each with a class, an
             `Impact:` line and a concrete file path, and open a backlog-only PR.
 
@@ -136,8 +168,9 @@ jobs:
 
             **Before you finish**, write `/tmp/refactor-result.json` so the
             workflow knows what you did:
-            `{"branch": "claude/refactor-...", "class": "refactor", "pr": 59,
-            "outcome": "shipped"}` — `branch` and `pr` null if you opened none,
+            `{"branch": "claude/refactor-${{ steps.when.outputs.date }}",
+            "class": "refactor", "pr": 59, "outcome": "shipped"}` — `branch` and
+            `pr` null if you opened none,
             `class` exactly as it appears on the PR's `Class:` line. Do not
             commit this file. A run that writes nothing is treated as a run
             that changed nothing, and nothing will be merged.
