@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { execSync } from 'child_process'
-import { cleanCommitSubject, countServerlessFunctions, parseBacklogCounts } from './scripts/build-meta.js'
+import { cleanCommitSubject, countServerlessFunctions, directorySizeBytes, parseBacklogCounts, withBuildSizeMeta } from './scripts/build-meta.js'
 import notionHandler from './api/notion.js'
 import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
 import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
@@ -219,6 +219,62 @@ function stripStraySolOdysseyManifestPlugin() {
   }
 }
 
+// The build line's other gauge: what this build weighs. Deployment Storage is the
+// second Vercel ceiling this repo has hit (10 GB on Hobby, charged per retained
+// deployment, filled once on 2026-09-09), and the one-week retention policy only
+// keeps it clear while a single build stays around its usual ~10 MB. Both incidents
+// were one accidental asset — 17 MB of Japanese font subsets, a dead 23 MB ONNX
+// runtime — and neither was visible anywhere until the quota complained.
+//
+// Every other value on that line is stamped by buildMetaPlugin's transformIndexHtml.
+// This one cannot be: that hook runs while the bundle is still being made, and the
+// number wanted is the finished weight, service workers and all. So it is measured
+// and written from `closeBundle`, after everything is on disk — the same point, and
+// the same mechanism, that stripStraySolOdysseyManifestPlugin above already rewrites
+// emitted HTML from. Ordered after that plugin and after both PWA plugins so what it
+// measures is the tree Vercel actually receives. The one thing it cannot account for
+// is itself: the twenty tags it then writes are ~0.9 kB of that tree, so the reading
+// is that much light against a threshold measured in megabytes.
+//
+// The measuring and the stamping both live in scripts/build-meta.js with the other
+// counts, where they are tested: a guardrail gauge that quietly under-reports is
+// worse than no gauge at all.
+function stampBuildSizePlugin() {
+  let outDir = 'dist'
+  return {
+    name: 'stamp-build-size',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    // `order: 'post'` is load-bearing, not tidiness. vite-plugin-pwa generates its
+    // service workers from a post-ordered closeBundle of its own, so a plain hook
+    // here — whatever its position in the plugin array — measures the tree before
+    // sol-odyssey-sw.js, click-deck-sw.js and their two workbox runtimes exist, and
+    // reports ~42 kB light. Post here too puts this last among the post hooks, by
+    // array position, which is after both PWA plugins.
+    closeBundle: {
+      sequential: true,
+      order: 'post',
+      handler() {
+        let bytes
+        try {
+          bytes = directorySizeBytes(outDir)
+        } catch {
+          return // no output to measure — leave the gauge off, as with every other value here
+        }
+        for (const file of readdirSync(outDir)) {
+          if (!file.endsWith('.html')) continue
+          const path = resolve(outDir, file)
+          const html = readFileSync(path, 'utf8')
+          const stamped = withBuildSizeMeta(html, bytes)
+          if (stamped !== html) writeFileSync(path, stamped)
+        }
+      },
+    },
+  }
+}
+
 // Silva's semantic layer runs onnxruntime-web through @huggingface/transformers, and
 // transformers.js points ONNX at its own runtime on jsDelivr by default (see
 // backends/onnx.js: it sets env.backends.onnx.wasm.wasmPaths to
@@ -346,6 +402,8 @@ export default defineConfig({
     solOdysseyPWA(),
     clickDeckPWA(),
     stripStraySolOdysseyManifestPlugin(),
+    // After the strip above, so the size it reports is the final tree.
+    stampBuildSizePlugin(),
     dropOrtWasmPlugin(),
     devNotionRelay(),
     devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
