@@ -38,21 +38,81 @@ recoverable from git history.
 
 Left alone on purpose: `mcp-payloads.json`, which was not in this item's scope.
 
-## P-001 — 38 hand-rolled inline `<svg>` blocks while lucide-react sits in the deps · `visual` · `open`
+## P-001 — 38 hand-rolled inline `<svg>` blocks while lucide-react sits in the deps · `visual` · `slice 1 (audit) done 2026-09-16`
 
 **Impact:** icons that finally look like one family instead of twelve people's
 handwriting; a smaller bundle where a hand-rolled path duplicates a lucide one.
 
-Inline `<svg>` appears in 38 files across twelve apps — WhereItWent and Touch
-Grass have nine each, Silva four. Some are genuine one-offs that should stay
-hand-drawn. Others are a lucide icon someone retyped.
+Promoted by Gabriel on 2026-09-14. Being `visual`, no slice of this is ever
+auto-merged however green it comes back — each waits for his eye on the
+screenshots.
 
-Audit first, replace second, and **one app per run**. Touch Grass is legacy and
-design-locked: its icons are part of its look, so it is the last candidate, not
-the first, and possibly never. Needs before/after screenshots in both themes.
+### What the audit found
 
-Promoted by Gabriel on 2026-09-14. Being `visual`, it is **not** auto-merged
-however green it comes back — it waits for his eye on the screenshots.
+Inline `<svg>` is in **44 `.jsx`/`.tsx` files across eighteen app directories**
+(the "38 / twelve apps" figure was measured 2026-09-13 and has drifted up). They
+are not one population but two, and only one of them is worth touching:
+
+**Group 1 — pasted Feather/lucide markup, in apps that already bundle
+lucide-react.** The tell is markup no human types: `<line x1= y1= x2= y2=>`,
+`<polyline points=>`, `rx="2" ry="2"`, and Feather's 700-character `settings`
+gear path. `src/where-it-went/components/CategorySelect.jsx` and its two
+siblings inline `m6 9 6 6 6-6`, which is lucide `ChevronDown` character for
+character. Worse, the duplication is *within* one app: WhereItWent imports
+lucide in seven files (`CategoryIcon.jsx` alone pulls 23 glyphs) while pasting
+Feather markup into nine others, so one screen can show both drawing
+conventions. And it crosses apps — the sun and moon in
+`src/where-it-went/components/Settings.jsx` are byte-identical to two of the
+three in `src/lexi5/components/Settings.jsx`. Replacing
+these is near-free — lucide is already in those bundles — and it is the only
+part of this item that delivers the stated "one family" win.
+
+**Group 2 — deliberate, documented, app-specific glyph families, in apps with no
+lucide dependency at all.** Cabinet, Loom, Law of the Day, Radar-B, Tempo and
+Wanderlist each hand-draw a coherent set at a 1.6–1.7 stroke, and several carry
+comments explaining why they are *not* the standard glyph: Tempo's header says
+"deliberately organic/quiet rather than mechanical (no gears, no wrench)";
+Radar-B's `SettingsIcon` documents that a gear reads as a sun at 20px;
+Cabinet's sort marks document why Manual is deliberately not arrows. lucide
+0.460's drawings are also a visibly looser family — `Star` is a
+rounded-corner path with 2.12 radii where Cabinet's `IconPopular` is a sharp
+five-point star, `Search` is r=8 where Radar-B's is r=7. So converting Group 2
+would **not** unify anything; it would swap six coherent sets for a seventh
+look, contradict written design decisions, and *add* lucide's runtime
+(`createLucideIcon` + `Icon` + `defaultAttributes`, ~2.3 kB unminified before
+the icons) to six bundles that currently carry none of it.
+
+**The "smaller bundle" half of the Impact line above is therefore only true for
+Group 1, and is backwards for Group 2.**
+
+### The slices, in order
+
+- **P-001a — WhereItWent: retire the pasted Feather markup** · `visual` ·
+  `open`. Nine files, ~17 glyph sites, an app already importing lucide in seven
+  others. `components/Navigation.jsx` is the bulk (7 glyphs: dashboard,
+  transactions, insights, settings, filter, calendar, plus×2); then
+  `Settings.jsx` (sun, moon), `PeriodSheet.jsx` (calendar),
+  `TransactionForm.jsx` (Feather `file-text`), and `ChevronDown` in
+  `AccountSelect.jsx`, `CategorySelect.jsx`, `CurrencySelect.jsx`. Leave
+  `Sparkline.jsx` and `NoraAvatar.jsx` alone — one-off drawings, not icons.
+  Read `WHERE_IT_WENT.md` first.
+- **P-001b — Lexi5: the sun/moon/monitor triple** · `visual` · `open`.
+  `src/lexi5/components/Settings.jsx`, three pasted Feather glyphs in an app
+  already importing lucide in three files. Note `src/lexi5/App.jsx`'s two
+  `<svg>` are data-URI favicons, not icons — out of scope.
+- **P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in
+  23 files** · `visual` · `open`. `src/daily-stoic/App.tsx`. The 64×64 one is the app's own
+  mark; check before assuming. `components/Ornament.tsx` stays hand-drawn.
+
+### Explicitly not doing, so nobody re-audits this
+
+Cabinet, Loom, Law of the Day, Radar-B, Tempo, Wanderlist — Group 2 above.
+Touch Grass, Journal of Delights, Kettlebell — legacy and design-locked
+(`LEGACY.md`); their glyphs are part of a look nobody may restyle.
+Silva's four, Sol Odyssey's `Logo`/`Sparkline`, Yoru's `MoonGlyph`, Tempo's
+`CountdownRing`, Click Deck's watchlist mark, `src/ds/components/GuideNote.tsx`,
+`src/ds/showcase/Showcase.tsx`, Fit Check's guide mark — genuine one-off
+drawings (graphs, rings, avatars, logos) that no icon library contains.
 
 ## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `open`
 
@@ -130,6 +190,12 @@ it, and check the rest of that section against `tsconfig.json` while you are
 there. Documentation drift is what makes a codebase hostile to someone reading
 it cold, model or human.
 
+Found while auditing P-001 (2026-09-16): the drift is wider than the typecheck
+sentence. **`src/silva/` is not mentioned anywhere in `CLAUDE.md`** — no row in
+the per-app map, no link to its `SILVA.md`, absent from the typecheck list —
+despite being one of the seven typechecked directories and having four
+components of its own. Whoever takes R-007 should add that row too.
+
 ## R-003 — Promote the `/api/notion` fetch wrapper to `src/shared/` · `refactor` · `open`
 
 **Impact:** none visible. Twelve copies of one wrapper become one.
@@ -162,15 +228,15 @@ Journal may import from `src/shared/`; that boundary only covers `src/ds/`.
 `CLAUDE.md`: "Wanderlist re-exports it, Journal keeps its older legacy copy."
 Same method as R-004, same caveat about which copy is actually correct.
 
-## R-006 — Guard the Vercel 12-function cap in CI · `modernise` · `open`
+## R-006 — Guard the Vercel 12-function cap in CI · `modernise` · `done 2026-09-16 (already in main)`
 
 **Impact:** none visible. Turns a deploy failure into a test failure.
 
-The repo is at exactly 12/12 top-level `api/*.js` files; a thirteenth fails the
-deploy, which has happened before. `ls api/*.js | grep -v '^api/_' | wc -l` is a
-manual check nobody runs. Turn it into a test (somewhere `npm test` picks up,
-**not** a file directly in `api/`) that fails above 12 and names the cap in its
-message.
+Already satisfied in `main` and the item was never closed: commit c94743b added
+`scripts/build-meta.test.js`, whose `keeps this repo at or under the Vercel
+Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
+outside `api/`, so it does not itself count as a function. Verified during the
+P-001 audit run, not worked — nothing was changed for it.
 
 ## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open`
 
