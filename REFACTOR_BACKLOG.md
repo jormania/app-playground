@@ -172,7 +172,7 @@ Silva's four, Sol Odyssey's `Logo`/`Sparkline`, Yoru's `MoonGlyph`, Tempo's
 `src/ds/showcase/Showcase.tsx`, Fit Check's guide mark — genuine one-off
 drawings (graphs, rings, avatars, logos) that no icon library contains.
 
-## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `open`
+## R-010 — Root triage, slice 2: the `patch-*.cjs` family · `refactor` · `done 2026-09-17`
 
 **Impact:** a repo root someone can read. Nothing user-facing.
 
@@ -182,6 +182,28 @@ drawings (graphs, rings, avatars, logos) that no icon library contains.
 the one-shot migrations, move anything still earning its keep under `scripts/`.
 Check `git log` on a file before deleting — a script someone reruns yearly is
 not junk.
+
+**Done 2026-09-17.** All seven deleted; nothing moved to `scripts/`, because none
+of them earned it. `git log` puts every one in a single commit — 3930c68,
+2026-07-31, *"feat(mobile): replace account emojis with lucide icons and add
+currency flags"* — the same commit that carries their output. They are the
+codemods that performed that one migration, written to be run once against
+WhereItWent and committed by accident alongside the result. The migration is
+fully landed: `AccountSelect.jsx`, `CategorySelect.jsx`, `CurrencySelect.jsx`,
+`CategoryIcon.jsx` and `AccountIcon.jsx` all exist and are imported by the
+components these scripts were rewriting.
+
+Worth recording that they are not merely dead but **actively unsafe to run
+now**: each is a set of regex/string replacements over `src/where-it-went/`
+source that assumes the pre-migration text. `patch-modal.cjs` prepends a
+`lucide-react` import and re-injects the `CATEGORY_ICONS` map that
+`patch-categories.cjs` deleted; `patch-categories.cjs` blanks
+`notionClient.js`'s emoji mapping. Anyone who found one at the root and ran it
+to see what it did would corrupt the app. Deleting them removes a trap, not just
+clutter. All recoverable from history at 3930c68.
+
+No search outside `REFACTOR_BACKLOG.md` finds these names — no `package.json`
+script, no workflow, no doc.
 
 ## P-001a — WhereItWent: retire the pasted Feather markup · `visual` · `open`
 
@@ -227,6 +249,10 @@ scope. Being `visual`: screenshots, and never auto-merged.
 Follows R-001, R-010 and R-011. `.gitignore` has no pattern for the dumps and debug scripts that
 keep landing at the root. Add narrow ones (`/scratch_*`, `/debug_*`, `/*_dump.*`,
 `/diff.txt`, `/lint-output.txt`) — narrow, so nothing real gets swallowed.
+
+Add `/patch-*.cjs` to that list too (noted while doing R-010 on 2026-09-17): all
+seven of those arrived in one commit as a side effect of the migration they
+performed, which is exactly the accident this item is meant to stop.
 
 ## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
 
