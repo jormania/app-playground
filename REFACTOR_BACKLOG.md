@@ -38,6 +38,47 @@ ritual: cut the block, paste it above, change `proposed` to `open`.
 
 ---
 
+## R-013 — The suite goes red for a week whenever the clock walks past a fixture date · `modernise` · `open`
+
+**Impact:** none visible in any app. But **`main`'s suite is red right now**, and
+while it is, the daily pass's independent verify step fails and *nothing
+auto-merges* — so this sits at the top of the list ahead of everything else.
+
+Found on the Friday read, 2026-09-18, by the gates failing on a Markdown-only
+change. It reproduces on a clean `origin/main` checkout, so it is not this run's
+doing:
+
+```
+src/marquee/Programme.test.jsx > a swipe starting on a real control … fires neither
+  Unable to find an accessible element with the role "button" and name /Sep/
+```
+
+**Why, exactly.** The test's fixture hard-codes `date: '2026-09-23'`
+(`src/marquee/Programme.test.jsx:9-21`) and then matches the date button by
+`/Sep/`. The label comes from `formatDay` in `src/marquee/format.js:29`, whose
+`now` **defaults to the real system clock**: at 2 to 6 days out it returns a bare
+weekday (`'Wednesday'`), and only outside that window does it return the
+`"Wed 23 Sept"` form the matcher needs. So the test passed the day it was
+written, quietly became a time bomb, started failing on 2026-09-17, and will go
+green again on its own around 2026-09-25 — a week of red that looks exactly like
+a real Marquee regression and is not one.
+
+**The fix is small and behaviour-preserving** — `formatDay` already takes an
+explicit `now`, so nothing in the app changes:
+
+1. Freeze the clock for this file (`vi.setSystemTime` in a `beforeEach`, restored
+   after), **or** match on the label the component actually renders rather than
+   on a month abbreviation. Freezing is the better answer: it fixes every
+   assertion in the file at once and documents what date the fixtures assume.
+2. **Then sweep for the same shape.** Any test with a hard-coded `2026-…` fixture
+   date and no frozen clock is the same bomb with a different fuse. Marquee,
+   Radar-B, Loom and WhereItWent all reason about "today". List what you find on
+   the PR even if you only fix Marquee.
+
+Read [`MARQUEE.md`](MARQUEE.md) first. Do **not** reach for the forbidden fix:
+skipping, quarantining or loosening the assertion is not on the table — the test
+is correct about the behaviour, it is only wrong about what day it is.
+
 ## R-001 — Root triage, slice 1: the inert data dumps · `refactor` · `done 2026-09-14`
 
 **Impact:** a repo root someone can read. Nothing user-facing.
@@ -325,6 +366,25 @@ the per-app map, no link to its `SILVA.md`, absent from the typecheck list —
 despite being one of the seven typechecked directories and having four
 components of its own. Whoever takes R-007 should add that row too.
 
+Wider still, found on the Friday read (2026-09-18) — **the "Cross-app shared
+logic" section documents 8 of the 15 modules in `src/shared/`.** It names
+`weather.ts`, `photo.ts`, `storage.ts`, `notionId.ts`, `useWakeLock.ts`,
+`findings.js`, `share.js` and `installFlag.ts`; undocumented are **`anthropic.ts`,
+`audio.ts`, `axisLockSlider.js`, `haptics.ts`, `mediaSession.js`, `qrCode.ts` and
+`useSwipeAction.ts`**. That section exists to stop an app hand-rolling something
+`src/shared/` already has, which it can only do if it is complete — so add a
+clause for each in the same shape as the existing entries, naming which apps use
+it. Doing this with the typecheck sentence keeps one PR per file.
+
+One thing to write into that prose rather than file as its own item:
+`src/shared/haptics.ts` exports `triggerHaptic(type)`, while
+`src/lexi5/lib/haptics.js`, `src/loom/lib/haptics.js`, `src/tempo/lib/haptics.js`
+and `src/wanderlist/haptics.js` each keep a local `tap(pattern)`-shaped copy.
+Four apps not using the shared module — but the APIs are genuinely different (a
+named intent versus a raw vibrate pattern), so this is **not** a mechanical
+re-export like R-004 or R-005 and must not be filed as one. Record it as an
+unreconciled overlap and leave the code alone.
+
 ## R-003 — Promote the `/api/notion` fetch wrapper to `src/shared/` · `refactor` · `open`
 
 **Impact:** none visible. Twelve copies of one wrapper become one.
@@ -394,6 +454,131 @@ Every other app under `src/` has test files; `src/kettlebell/` has none. It is
 legacy and design-locked, but that lock is about styling — adding tests touches
 no styling and imports nothing from `src/ds/`. Start with whatever holds the
 session/timer state, not the render tree.
+
+## R-014 — Two dependencies that nothing imports, and one in the wrong list · `modernise` · `open`
+
+**Impact:** none visible. A `package.json` whose dependency list is true.
+
+Found on the Friday read, 2026-09-18. Distinct from R-008, which raises versions
+— this one **removes and reclassifies entries**, and should be done first so
+R-008 never spends a morning bumping something with no importer.
+
+Three separate findings in `package.json`, in descending order of how clear-cut
+they are:
+
+1. **`react-chartjs-2` (^5.3.1) has zero importers.** `grep -rn "react-chartjs"`
+   over the whole repo minus `node_modules` and `package-lock.json` matches the
+   `package.json` line and nothing else. It arrived in b3b93b2 alongside
+   WhereItWent's chart work, but `src/where-it-went/components/Dashboard.jsx`
+   drives `chart.js/auto` imperatively through a `useRef` — the React wrapper
+   was never wired up. Straight removal.
+2. **`playwright` (^1.61.1) sits in `dependencies`, not `devDependencies`** — a
+   browser-automation library declared as a production dependency of a static
+   site. Nothing under `src/` or `api/` imports it; its consumers are
+   `screenshot.js`, `debug_crash.cjs` and `debug_memento.cjs` at the root (all
+   three are R-011 targets) plus this skill's own screenshot step, which is why
+   it must stay installed — `npm ci` installs `devDependencies` too, so the move
+   is safe. `.claude/skills/daily-refactor/SKILL.md` already *calls* it a
+   devDependency; this makes that sentence true. `node_modules/playwright` plus
+   `playwright-core` is ~18 MB.
+3. **`puppeteer` (^25.3.0, devDependency) has exactly one consumer:
+   `scratch_debug.js`** — also an R-011 target. Once R-011 lands it has none, and
+   the repo carries two browser-automation stacks for one screenshot step.
+   **Sequence this after R-011**, or check the file is gone before removing it.
+
+Do 1 and 2 in one run; 3 is a one-line follow-up once R-011 has landed. Prove it
+the usual way — the suite, typecheck, and a `npm run build` that still succeeds.
+
+## R-015 — The theme plumbing is written out six times · `refactor` · `open`
+
+**Impact:** none visible. One copy of the persist-and-sync mechanism instead of six.
+
+Found on the Friday read, 2026-09-18. **Read this carefully before starting: the
+duplication is narrower than a file count suggests, and the obvious large version
+of this item is the wrong one.**
+
+Ten apps have a `theme.{js,ts}` (`src/cabinet/lib/`, `src/law-of-the-day/lib/`,
+`src/loom/lib/`, `src/tempo/lib/`, `src/where-it-went/lib/`,
+`src/daily-stoic/lib/`, `src/silva/lib/`, `src/sol-odyssey/lib/`,
+`src/wanderlist/`, `src/journal/`) and six have a `themeContext.{jsx,tsx}`
+(cabinet, daily-stoic, law-of-the-day, loom, sol-odyssey, tempo). Their
+*vocabularies genuinely differ* and must stay put: Cabinet and Law of the Day are
+light/dark, Tempo and Daily Stoic are three-way with `system`, Loom is a
+two-preset palette system with its own `PRESETS` array and `nextTheme`. Do not
+flatten those into one API — that is a behaviour change wearing a refactor's
+clothes, and Loom's presets and Daily Stoic's `normalizeTheme` legacy mapping
+would both lose.
+
+What **is** duplicated, verbatim or near enough:
+
+- `systemPrefersDark()` — the same seven-line `matchMedia` probe in a `try` in
+  **seven** files (`tempo`, `wanderlist`, `where-it-went`, `daily-stoic`,
+  `sol-odyssey`, `journal`, and `silva` with a `win` parameter added).
+- The `themeContext` body — `useState(loadThemePref)`, an effect that applies
+  and saves, a `storage`-event listener keyed on `THEME_KEY` for cross-tab and
+  guide-page sync, a `useMemo`'d value. `src/cabinet/lib/themeContext.jsx` and
+  `src/law-of-the-day/lib/themeContext.jsx` differ only in a comment's wording;
+  Loom's differs only in naming its state `themeId` and exposing `cycle`.
+
+So the promotion is **`systemPrefersDark` plus a `useThemeSync(key, {load, save,
+apply})` hook** into `src/shared/` — the mechanism, not the vocabulary — with
+each app's `theme.js` keeping its own key, palette and preference type. Follow
+the repo's promotion pattern: move it, leave each old path re-exporting, let the
+existing tests prove the move. **One or two apps per run**, starting with Cabinet
+and Law of the Day since they are the identical pair.
+
+`src/journal/` is legacy but may import from `src/shared/` — that boundary only
+covers `src/ds/` (see `LEGACY.md`). Update the `src/shared/` section of
+`CLAUDE.md` when the first slice lands.
+
+## R-016 — Loom imports four `@fontsource` weight entry points · `modernise` · `open`
+
+**Impact:** ~16 font files in `dist/` where 4 would do. The only literal
+violation of `CLAUDE.md`'s own font rule left in the repo.
+
+Found on the Friday read, 2026-09-18, by auditing every `@fontsource` import
+against the rule in `CLAUDE.md`'s deploy-guardrail section.
+
+`src/loom/main.jsx:4-7` imports `@fontsource/cinzel/500.css`, `/600.css`,
+`/700.css` and `/900.css` — weight entry points, named in `CLAUDE.md` as exactly
+the thing not to do. Each pulls **four** files: a `latin` and a `latin-ext`
+subset, each in `.woff2` *and* legacy `.woff`. Sixteen emitted assets for four
+weights of a display face used on Loom's headings; the `latin-ext` files alone
+are 40 kB. `@fontsource/cinzel/latin-500.css` is the per-subset form and halves
+it; dropping the legacy `.woff` too needs a hand-written `@font-face` block, and
+`src/yoru/fonts.css` is the worked example of that already in the repo.
+Check Loom renders unchanged — Cinzel is latin-only in practice, but confirm no
+heading uses a `latin-ext` glyph before removing that subset.
+
+**While in there, correct the rule itself.** `CLAUDE.md` tells you to import
+`/wght.css` for a variable family instead of the bare name. For
+`@fontsource-variable/*` that is a no-op: `node_modules/@fontsource-variable/inter/index.css`
+and `wght.css` reference an identical set of seven subset files, and the package
+exposes no per-subset entry point at all. So the fourteen bare-name
+`@fontsource-variable/{inter,fraunces,jetbrains-mono,alegreya}` imports across
+eleven apps are **not** the violation the rule implies, and the next person to
+audit this will waste the morning I did. Say what is actually true: for a
+variable family the bare name is the correct import, and latin-only means a
+hand-written `@font-face` against `files/*.woff2`.
+
+## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open`
+
+**Impact:** none visible. Makes the least-covered non-legacy app safe to change.
+
+Found on the Friday read, 2026-09-18. With `src/kettlebell/` handled by R-009,
+Loom is the thinnest coverage left: `src/loom/lib/` has tests for `model.js`,
+`rhythm.js`, `notion.js` and `notionClient.js`, and **nothing else in the app is
+tested at all** — no component has a test, and these `lib` modules have none:
+
+- `store.js` and `useLoom.js` — where the app's state actually lives
+- `drafts.js` — unsaved-draft persistence
+- `localClient.js` — the demo-mode data path
+- `lexicon.js` / `uiStyle.js` — the word and style vocabularies
+
+Start with `store.js` and `drafts.js`, not the render tree — same rule as R-009.
+Read [`LOOM.md`](LOOM.md) and [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md)
+first; `rhythm.test.js` is the house style to copy. **One module per run** — a
+single PR adding tests for six modules is not a ten-minute review.
 
 ---
 
