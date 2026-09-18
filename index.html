@@ -443,14 +443,17 @@ a { color: inherit; text-decoration: none; }
          colours the badge, so an unmerged PR sitting red for a day reads here as
          "the site is broken". These say what main does, which is what the footer
          is for. Caught on 2026-09-18, when a PR's CI failed against a briefly
-         red main and the desktop badge stayed red for hours afterwards. -->
+         red main and the desktop badge stayed red for hours afterwards.
+         The links carry the same filter in the Actions UI's own spelling
+         (`?query=branch%3Amain`, not `?branch=`), so clicking a badge lands on
+         the runs it is reporting rather than on every branch's. -->
     <div class="footer-upkeep">
-      <a href="https://github.com/jormania/app-playground/actions/workflows/daily-refactor.yml"
-         target="_blank" rel="noopener" title="Daily refactor — workflow runs">
+      <a href="https://github.com/jormania/app-playground/actions/workflows/daily-refactor.yml?query=branch%3Amain"
+         target="_blank" rel="noopener" title="Daily refactor — workflow runs on main">
         <img src="https://github.com/jormania/app-playground/actions/workflows/daily-refactor.yml/badge.svg?branch=main"
              alt="Daily refactor workflow status" height="20" loading="lazy" decoding="async">
       </a>
-      <a href="https://github.com/jormania/app-playground/actions/workflows/ci.yml"
+      <a href="https://github.com/jormania/app-playground/actions/workflows/ci.yml?query=branch%3Amain"
          target="_blank" rel="noopener" title="CI — tests, typecheck and lint on main">
         <img src="https://github.com/jormania/app-playground/actions/workflows/ci.yml/badge.svg?branch=main"
              alt="CI status" height="20" loading="lazy" decoding="async">
