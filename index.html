@@ -208,12 +208,14 @@ a { color: inherit; text-decoration: none; }
 }
 .card:hover::before { background: linear-gradient(90deg, transparent, rgba(224,169,85,0.6), transparent); }
 
-/* Featured (latest / complete) spans the full row */
-.card.is-latest { grid-column: 1 / -1; border-color: rgba(224,169,85,0.28); }
+/* The newest app is marked, not enlarged. The ✦ Latest pill carries the
+   distinction; the card keeps every other card's footprint. It used to span the
+   full row with a bigger icon, title and body and its features already open,
+   which cost about a second card's worth of scroll to say one word. */
+.card.is-latest { border-color: rgba(224,169,85,0.28); }
 .card.is-latest::before { background: linear-gradient(90deg, transparent, rgba(224,169,85,0.45), transparent); }
 
 .card-inner { padding: 26px; display: flex; flex-direction: column; flex: 1; }
-.card.is-latest .card-inner { padding: 34px; }
 
 .card-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
 .card-icon {
@@ -221,11 +223,9 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; justify-content: center; font-size: 25px;
   border: 1px solid var(--border2);
 }
-.card.is-latest .card-icon { width: 64px; height: 64px; font-size: 32px; }
 .card-meta { flex: 1; min-width: 0; }
 .card-title-row { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; }
 .card-title { font-family: var(--serif); font-size: 25px; font-weight: 400; color: var(--ink); line-height: 1.1; }
-.card.is-latest .card-title { font-size: 33px; }
 .card-subtitle { font-family: var(--serif); font-style: italic; font-size: 16px; color: var(--muted); margin-top: 4px; }
 
 .card-version {
@@ -256,7 +256,6 @@ a { color: inherit; text-decoration: none; }
 .tag.active-filter { background: var(--gold-dim); border-color: rgba(224,169,85,0.45); color: var(--gold-soft); }
 
 .card-desc { font-size: 14.5px; color: var(--muted); line-height: 1.68; margin-bottom: 16px; font-weight: 300; }
-.card.is-latest .card-desc { font-size: 16px; max-width: 64ch; }
 
 /* Features tucked into a native disclosure */
 .card-details { margin-bottom: 18px; }
@@ -357,10 +356,7 @@ a { color: inherit; text-decoration: none; }
 /* ── Responsive ── */
 @media (max-width: 760px) {
   #app-list { grid-template-columns: 1fr; gap: 18px; }
-  .card.is-latest { grid-column: auto; }
   .hero { padding: 34px 0 26px; }
-  .card.is-latest .card-inner { padding: 26px; }
-  .card.is-latest .card-title { font-size: 27px; }
   .card-footer { flex-direction: column; align-items: flex-start; }
   .card-actions { width: 100%; }
   .btn-launch { flex: 1; justify-content: center; }
@@ -613,7 +609,7 @@ function renderCard(app) {
   }).join("");
 
   const featuresHtml = (app.features || []).length
-    ? `<details class="card-details"${isLatest(app) ? " open" : ""}>
+    ? `<details class="card-details">
          <summary>What's inside</summary>
          <ul class="card-features">${app.features.map(f => `<li>${f}</li>`).join("")}</ul>
        </details>`
