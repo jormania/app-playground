@@ -38,7 +38,7 @@ ritual: cut the block, paste it above, change `proposed` to `open`.
 
 ---
 
-## R-013 — The suite goes red for a week whenever the clock walks past a fixture date · `modernise` · `open`
+## R-013 — The suite goes red for a week whenever the clock walks past a fixture date · `modernise` · `done 2026-09-18`
 
 **Impact:** none visible in any app. But **`main`'s suite is red right now**, and
 while it is, the daily pass's independent verify step fails and *nothing
@@ -78,6 +78,28 @@ explicit `now`, so nothing in the app changes:
 Read [`MARQUEE.md`](MARQUEE.md) first. Do **not** reach for the forbidden fix:
 skipping, quarantining or loosening the assertion is not on the table — the test
 is correct about the behaviour, it is only wrong about what day it is.
+
+### What happened — fixed in #75, 2026-09-18
+
+Step 1 done: the clock is frozen at `2026-09-01` in a `beforeEach`, restored
+after. `main` is green again, 4488 passing. It also defused the `/27 Sept/`
+assertion later in the same file, which was four days from the identical fate.
+
+Two corrections to the diagnosis above, both checked against
+`Math.round((startOfDay(date) - startOfDay(now)) / DAY)`:
+
+- It **started failing on the 18th, not the 17th.** On the 17th the `09-24`
+  fixture was exactly seven days out, which falls past the `days < 7` branch and
+  still rendered `"Thu 24 Sept"`, so one match survived. The 2026-09-17 run
+  verified green, which settles it.
+- It would have **self-healed on the 24th, not the 25th** — once a fixture is one
+  day past, `days = -1` falls through to the month form and matches again.
+
+Step 2, the sweep, is **not** done and is now R-018. What was established:
+every direct `formatDay` call in the suite already pins `now`, so the unit tests
+were written correctly and the defect only existed where `formatDay` is reached
+through a rendered component. `Changes`, `WeekStrip` and `App` were run against a
+clock six months ahead and pass.
 
 ## R-001 — Root triage, slice 1: the inert data dumps · `refactor` · `done 2026-09-14`
 
@@ -581,6 +603,30 @@ first; `rhythm.test.js` is the house style to copy. **One module per run** — a
 single PR adding tests for six modules is not a ten-minute review.
 
 ---
+
+## R-018 — Sweep for the rest of the date-dependent tests · `modernise` · `open`
+
+**Impact:** none visible. Stops a repeat of R-013, where the suite went red on a
+calendar roll and every daily run idled until someone looked.
+
+R-013's second half, split out because it needs a different instrument than the
+obvious one. **The obvious one does not work here**, and that is the finding worth
+keeping: injecting a global frozen clock via a setup file produces 50 failures
+across 3 files that are all the harness, not the code. `smartParser.test.js:36-49`
+builds its expected dates by calling `getYesterday()` at *module load* under the
+real clock, then the subject runs under the injected clock — expectation and
+subject land on different days. `radar-b/App.test.jsx` has the same shape. Those
+tests are correct; a global clock is simply the wrong tool.
+
+So the sweep wants something narrower. The shape to look for is a test that
+**asserts on a rendered relative label** (a weekday name, a month abbreviation,
+"Today"/"Tomorrow") while its fixture date is **hard-coded** and no clock is
+pinned — which in practice means component tests, since every direct `formatDay`
+call already passes `now`. Candidates worth reading: Radar-B, Loom, WhereItWent
+and Journal all reason about "today".
+
+Already cleared: `src/marquee/` — `Changes`, `WeekStrip` and `App` pass under a
+clock six months ahead; `Programme` is frozen as of #75.
 
 ## Proposed
 
