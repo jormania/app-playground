@@ -1,10 +1,30 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import Programme from './Programme.jsx';
 import { toProductions, byDate } from './programme.js';
 
-afterEach(cleanup);
+/* The date labels below are rendered RELATIVE to the clock — `formatDay` gives a
+ * bare weekday between two and six days out and the month form only from seven.
+ * With the fixtures fixed and `now` left floating, this file passed the day it
+ * was written and aged into failing: on 2026-09-18 the 09-23 and 09-24 fixtures
+ * came inside the weekday window, `/Sep/` matched nothing, and `main` went red
+ * without a commit touching it. The 09-27 assertion below was four days from the
+ * same fate.
+ *
+ * So the clock is frozen, well before the earliest fixture. Tests that assert on
+ * a rendered date must not also depend on the date they are run. */
+const NOW = new Date('2026-09-01T09:00:00Z');
+
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(NOW);
+});
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const event = (over = {}) => ({
   key: 'k',
