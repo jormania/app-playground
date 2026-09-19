@@ -146,6 +146,13 @@ export const ADAPTERS = [
     hosts: ['cndb.ro'],
     note: 'Reads the centre’s own rolling /calendar/ — NOT bilet.ro, where its tickets are sold: that site sits behind a Queue-it waiting room and answers a server-side fetch with an endless redirect. Use /calendar/, never /calendar/<season>/, which is a finished season’s archive. Courses and workshops are filtered out by title; the calendar publishes no ticket state at all.',
   },
+  {
+    id: 'salaradio',
+    label: 'Sala Radio',
+    rung: 'selector',
+    hosts: ['salaradio.ro'],
+    note: 'Reads the hall’s own /evenimente/ page, then one hop per concert for its start time and programme. Deliberately not read from bilete.ro, which sells its tickets and is perfectly readable but lists the season only once it opens — the venue announces weeks earlier. Publishes no price and no ticket state; the row’s “Cumpără bilete” button is one static category link repeated on every concert.',
+  },
 ]
 
 export const ADAPTER_IDS = ADAPTERS.map((a) => a.id)

@@ -31,6 +31,7 @@ import odeon from './odeon.js'
 import arcub from './arcub.js'
 import metropolis from './metropolis.js'
 import cndb from './cndb.js'
+import salaradio from './salaradio.js'
 
 const expirat = { ...jsonld, id: 'expirat', label: 'Expirat / iabilet whitelabel', minItems: 3 }
 const quantic = { ...jsonld, id: 'quantic', label: 'Quantic / iabilet.ro venue page', minItems: 6 }
@@ -50,6 +51,7 @@ export const ADAPTERS = {
   arcub,
   metropolis,
   cndb,
+  salaradio,
 }
 
 export function getAdapter(id) {

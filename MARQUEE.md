@@ -3761,6 +3761,101 @@ covers the new id without being told about it.
 
 `npm test` (4505), `npm run typecheck` and `npx eslint` all pass.
 
+### 9.85 Sala Radio, and what a venue will and won't tell you about seats (2026-09-19)
+
+Asked for three things at once: pause TNB, add Sala Radio, and establish
+whether seat availability and prices can be pulled for it — and, going back,
+for CNDB. Three answers, only one of them a new adapter.
+
+**TNB is paused.** Its row carries the reason rather than just the state,
+because a paused venue with no note is indistinguishable from one somebody
+forgot. tnb.ro is not serving a challenge any more; it is refusing the
+connection outright — TLS completes, then the socket resets before a single
+byte of response. §9.75's cache cannot help with that, and it is worth being
+exact about why: the cache saves the 61 *detail* requests, and the block lands
+on the *listing*, one hop earlier. Nothing this reader does to its own
+behaviour reaches a door that shuts before it knocks.
+
+**Sala Radio is read from salaradio.ro, and the reason is the opposite of
+CNDB's.** With CNDB (§9.84) the ticketing was unreadable — Queue-it, fifty
+redirects, no page. Here the ticketing is *fine*: bilete.ro is server-rendered,
+its tiles carry a "de la 99,00 lei" floor, its event pages parse cleanly. It
+was checked properly rather than dismissed by analogy with the similarly-named
+bilet.ro. The problem is that it is nearly empty. On the day this was built its
+`concerte/sala-radio/` category held ONE event — Traffic Strings, 22 November,
+not among the nine the hall itself was advertising — and bilete.ro's own
+Orchestra Națională Radio page read *"0 evenimente in viitorul apropiat"*. The
+venue announces a season weeks before it opens for sale. Reading the ticketing
+would have shown an empty hall and called it the programme.
+
+So: the hall's own `/evenimente/` page, nine rows, plus one hop per concert for
+the start time and the programme — conductor, soloists, works — which the
+listing row does not carry. WordPress with the Events Manager plugin, which
+leaves two marks worth recording.
+
+The first is a near miss. The plugin registers a REST API, and its routes read
+like an answer to this entire question:
+`/wp-json/events-manager/v1/events`, and beside it `/events/{id}/tickets` and
+`/events/{id}/availability` — prices and seat counts, structured, from the
+venue itself. It answers **401**. Not open, and there is no key to have. The
+route list is public enough to raise the hope and the endpoint is closed enough
+to end it, which is worth writing down so nobody re-derives it.
+
+The second is a time bug avoided by reading the page rather than assuming it.
+The plugin's locale is `en_US` while every other word on the site is Romanian,
+so it prints **"7:00 pm - 8:45 pm"**. `parseTime` would have read that as 07:00
+and put a symphony concert at breakfast. `parseMeridiemTime` handles the
+twelve-hour form and falls through to `parseTime` only when there is no am/pm
+marker at all, so a future theme switching the plugin to 24-hour output keeps
+working instead of silently halving every evening.
+
+**No ticket state, and that is a decision rather than a gap.** Every listing row
+carries a "Cumpără bilete" button — and every row carries the *same* one, one
+static bilete.ro category href repeated nine times out of nine, on concerts that
+provably were not on sale anywhere that day. A button present regardless of
+whether anything is for sale is not evidence about this showing. So
+`ticketState` is `none` (§9.7's rule) and `ticketsUrl` is null: a buy link that
+lands on a category page listing one unrelated concert is worse than no link.
+
+**Not opted into the detail cache**, and this is the first venue where
+`detailCache.js`'s first condition does the deciding rather than merely being
+satisfied. The hop must be per PRODUCTION; a symphony concert is a one-night
+production, so nine pages serve nine showings and a cache would store one record
+for every request it saved. Nine is also not sixty-one — this is the load the
+rule was written to permit, not the load it was written against.
+
+**Prices: no, and the near-miss is instructive.** salaradio.ro publishes none
+per concert, but it does publish a *tariff table* on `/bilete/` — 120/96/72 lei
+for an ONR or OCR "Concert A", 100/80/60 for a "Concert B", 140/120/100 for an
+extraordinary one, with separate scales for the Big Band and the folk orchestra.
+The ensemble is knowable from a title. **The class is not published anywhere**,
+so an ONR concert's floor is 60, 72 or 100 lei and the reader would be picking.
+That is exactly the failure the cache rule's second condition describes — a
+number the app shows with confidence and cannot support — and it is worse than
+a blank, because a blank is legible as "unknown" and a wrong floor is not. Two
+ensembles (Big Band, folk orchestra) have a single unambiguous scale and could
+be priced; pricing two of six and leaving four blank would make the field mean
+two different things depending on which concert you were looking at. Left null,
+deliberately, everywhere.
+
+**Seats: no, from any source.** Nothing in the hall's markup, nothing in
+bilete.ro's server HTML (its seat map is a client-side checkout), and the one
+endpoint that would have it is the 401 above.
+
+**CNDB, checked retroactively: nothing to add.** Its calendar carries no price,
+no ticket link and no availability; its event pages carry none either — the two
+`pret` matches on one are both inside Romanian prose words; and `cndb.ro/bilete/`
+turns out to be terms-and-conditions text with no vendor link at all. The
+adapter as shipped in §9.84 is already at the ceiling of what that source
+offers. There was nothing left undone, which is a result and not an absence of
+one.
+
+Sixteen venues active, seventeen rows with TNB paused. Registered in the three
+places §9.29 keeps in step: `registry.js`, the client's `adapters.js`, and the
+Notion select.
+
+`npm test` (4518), `npm run typecheck` and `npx eslint` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -3787,6 +3882,17 @@ absences at the source, not gaps in a reader:
   seats.io chart the venue's own seat picker reads.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
   upcoming listed, not a failure.
+- **Sala Radio publishes no per-concert price and no seat count anywhere** (§9.85).
+  Its own site gives a tariff table keyed by ensemble AND by a concert class
+  (A / B / extraordinary) that is never stated per concert, so a floor would be
+  a guess between 60, 72 and 100 lei. The Events Manager REST API that carries
+  `/tickets` and `/availability` answers 401. bilete.ro, which does publish a
+  floor, lists a concert only once it opens for sale — weeks after the hall
+  announces it — so it is not a source for the season either.
+- **CNDB publishes nothing about price, tickets or availability** (§9.85,
+  re-checked). Not on the calendar, not on the event pages, and `cndb.ro/bilete/`
+  is terms-and-conditions text with no vendor link. The §9.84 adapter is at the
+  ceiling of the source.
 - **CNDB's courses are told apart from its performances by title alone** (§9.84).
   The site publishes no event taxonomy — checked: no `categorie/` terms for
   events, nothing in the detail pages' body classes, and the `external`

@@ -16,6 +16,7 @@ import iabilet, { seatsNote } from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
 import cndb, { isCourse } from '../_lib/marquee/cndb.js'
+import salaradio, { parseMeridiemTime } from '../_lib/marquee/salaradio.js'
 import { ADAPTERS } from '../_lib/marquee/registry.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
 import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
@@ -1613,5 +1614,112 @@ describe('cndb (Centrul Național al Dansului București)', () => {
     // select are one vocabulary, and a mismatch silently un-reads a venue.
     expect(ADAPTERS.cndb).toBe(cndb);
     expect(cndb.id).toBe('cndb');
+  });
+});
+
+describe('salaradio (Sala Radio)', () => {
+  const venue = { name: 'Sala Radio', url: 'https://salaradio.ro/evenimente/', adapter: 'salaradio' };
+  const listing = { url: venue.url, body: fixture('salaradio-evenimente.html') };
+  const detailUrl = 'https://salaradio.ro/events/xavier-de-maistre-orchestra-de-camera-radio/';
+  const detail = { url: detailUrl, body: fixture('salaradio-event.html') };
+  const events = salaradio.parse([listing, detail], { venue });
+
+  it('reads a concert per listing row', () => {
+    expect(events).toHaveLength(9);
+    expect(events[0]).toMatchObject({
+      title: 'Xavier de Maistre – ORCHESTRA DE CAMERĂ RADIO',
+      date: '2026-10-14',
+      link: detailUrl,
+    });
+  });
+
+  it('takes the year from the row rather than inferring it', () => {
+    // "14/10/2026" prints the year, so this reader never touches inferYear and
+    // cannot be caught by the December/January rollover — the same property
+    // cndb's data-time gives it.
+    expect(events.map((e) => e.date)).toEqual([
+      '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-18', '2026-10-22',
+      '2026-10-23', '2026-10-28', '2026-10-29', '2026-10-30',
+    ]);
+  });
+
+  it('follows one page per concert, and no further', () => {
+    const urls = salaradio.follow([listing], { venue }).map((r) => r.url);
+    expect(urls).toHaveLength(9);
+    expect(new Set(urls).size).toBe(9);
+    expect(urls.every((u) => u.startsWith('https://salaradio.ro/events/'))).toBe(true);
+    expect(urls).not.toContain(venue.url);
+  });
+
+  it('takes the start time and the programme off the concert’s own page', () => {
+    expect(events[0].time).toBe('19:00');
+    expect(events[0].description).toMatch(/Dirijor: David Molard Soriano/);
+    expect(events[0].description).toMatch(/G\. Enescu: Pastorala-fantezie/);
+  });
+
+  it('leaves a concert whose page was not fetched without a time, not with a wrong one', () => {
+    // Eight of the nine have no detail page in this call. A failed or skipped
+    // hop costs that concert its time and programme and nothing else — it must
+    // never fall back to "everything starts at seven", which is true of most
+    // of this hall's calendar and false often enough to matter (the ticket
+    // office's own hours name both 19.00 and 17.00 concerts).
+    expect(events.slice(1).every((e) => e.time === null)).toBe(true);
+    expect(events.slice(1).every((e) => e.description === null)).toBe(true);
+    expect(events.slice(1).every((e) => e.title && e.date && e.image)).toBe(true);
+  });
+
+  it('never claims a ticket state, because the row’s button is not one', () => {
+    // Every row carries the SAME bilete.ro category href — nine times out of
+    // nine, on concerts that were not on sale anywhere on the day this was
+    // written. A button that is present regardless says nothing about this
+    // showing, so §9.7 applies: silence is `none`.
+    expect([...new Set(events.map((e) => e.ticketState))]).toEqual(['none']);
+    expect(events.every((e) => e.ticketsUrl === null)).toBe(true);
+    expect(events.every((e) => e.price === null)).toBe(true);
+    // The href IS in the fixture — this is a choice about it, not a parse miss.
+    expect(listing.body).toMatch(/bilete\.ro\/categorii\/concerte\/sala-radio/);
+  });
+
+  it('leaves the hall null — one stage, named after the venue', () => {
+    expect(events.every((e) => e.hall === null)).toBe(true);
+  });
+
+  it('carries a poster for every concert', () => {
+    expect(events.every((e) => e.image?.startsWith('https://salaradio.ro/wp-content/'))).toBe(true);
+  });
+
+  it('is not opted into the detail cache', () => {
+    // detailCache.js's first condition: the hop must be per PRODUCTION. A
+    // symphony concert is a one-night production, so nine pages serve nine
+    // showings and a cache would store a record for every request it saved.
+    expect(salaradio.extractDetail).toBeUndefined();
+  });
+
+  describe('parseMeridiemTime', () => {
+    it('reads the plugin’s twelve-hour English output', () => {
+      // The Events Manager locale is en_US even though the page around it is
+      // Romanian. parseTime alone would read this as 07:00 and print a morning
+      // concert — the bug this function exists to prevent.
+      expect(parseMeridiemTime('7:00 pm - 8:45 pm')).toBe('19:00');
+      expect(parseMeridiemTime('11:30 am')).toBe('11:30');
+    });
+
+    it('handles the two hours that do not simply shift by twelve', () => {
+      expect(parseMeridiemTime('12:00 pm')).toBe('12:00');
+      expect(parseMeridiemTime('12:15 am')).toBe('00:15');
+    });
+
+    it('falls through to 24-hour parsing when there is no marker', () => {
+      // So a theme that switches the plugin to 24-hour output keeps working
+      // instead of silently halving every evening.
+      expect(parseMeridiemTime('19:00')).toBe('19:00');
+      expect(parseMeridiemTime('')).toBe(null);
+      expect(parseMeridiemTime(null)).toBe(null);
+    });
+  });
+
+  it('is registered under the same id on both sides', () => {
+    expect(ADAPTERS.salaradio).toBe(salaradio);
+    expect(salaradio.id).toBe('salaradio');
   });
 });
