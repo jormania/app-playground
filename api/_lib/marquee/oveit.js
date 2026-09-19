@@ -171,6 +171,11 @@ function seatCount(row, { rendering, statuses, charts }) {
     categoryKeys: buyableCategories(row),
     forSale: forSale.forSale ?? null,
     forSaleObjects: forSale.objects ?? [],
+    // This night's own category map, which the drawing does not carry (§9.83).
+    // The same rendering-info response the chart key came from — no extra
+    // request, and it is the difference between counting the hall as it stands
+    // and counting the hall as this concert sold it.
+    objectCategories: info.objectCategories ?? null,
   })
 }
 

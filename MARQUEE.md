@@ -2892,7 +2892,10 @@ seat picker makes before it draws.
 Four things had to be got right, each of which could have made the count a
 confident lie:
 
-- **Count only what a buyer can pick.** The 29 September recital put 192 seats
+- **Count only what a buyer can pick.** (**Incomplete — see §9.83:** the
+  category had to come from the EVENT's own map, not the chart drawing, and
+  reading the drawing alone later reported this very concert as having 15 seats
+  left.) The 29 September recital put 192 seats
   of a 794-seat hall on sale — Categoria 2 and 3 only. Counting Categoria 1 and
   the Protocol seats (the house's own, never sold) would have reported a
   sold-out concert as two-thirds empty. The buyable set is the seats.io
@@ -3626,6 +3629,75 @@ scanner should do on anyone's behalf.
 `npm test` (4488), `npm run typecheck` and `npx eslint` all pass. The diagnostic
 that produced the table cost ~17 requests to Excelsior — a one-off, and worth
 recording next to §9.78's frugality so the next person knows it was deliberate.
+
+### 9.83 The hall as it stands vs the hall as the concert sold it (2026-09-19)
+
+Reported with two screenshots: Marquee showing *Recital cameral*, 29 September,
+**15 SEATS LEFT** at 150 lei — and Oveit's own checkout for the same concert
+with all three categories marked **Stoc epuizat**.
+
+The same concert as §9.71, which was written to get exactly this right. It did,
+then, and stopped.
+
+**Where the 15 came from**, reproduced against the live endpoints rather than
+reasoned about:
+
+| category | label | seats | free |
+|---|---|---|---|
+| C35 | Categoria 1 | 544 | **15** |
+| C36 | Categoria 2 | 144 | 0 |
+| C37 | Categoria 3 | 48 | 0 |
+| C38 | Protocol | 48 | 4 |
+| C168 | Categoria 2 - PPC | 10 | 0 |
+
+Categoria 2 and 3 are genuinely gone — §9.71's measurement, still correct.
+Every one of the fifteen is a **Categoria 1** seat: `Loja 11-3…6`,
+`Stanga-85…93`, `Stanga-97`, `Stanga-98`.
+
+And every one of them is a seat **this event moves to Protocol** — the house's
+own allocation, which §9.71's own prose says must drop out:
+
+> Counting Categoria 1 and the Protocol seats (the house's own, never sold)
+> would have reported a sold-out concert as two-thirds empty.
+
+It excluded them by category key, and took the key from the **chart drawing** —
+the hall's standing layout. seats.io also publishes `objectCategories` in
+`rendering-info`: the category map for THIS event. On this concert it covers 128
+seats and **disagrees with the drawing on 122 of them**. Marquee never read it.
+
+```
+as Marquee counted:      { total: 736, free: 15 }
+honouring the overrides: { total: 656, free: 0 }
+```
+
+Zero — and `free: 0` is what makes this reader say sold out.
+
+**Why it surfaced now rather than on 12 September.** §9.71 verified this event
+when only Categoria 2 and 3 were public, and both are honestly empty. Since then
+Filarmonica published **Categoria 1** as a public ticket type, which pulled 544
+chart seats into the buyable set — and the mis-categorised Protocol seats with
+them. The bug was always there; it needed a category with re-categorised seats
+in it to become visible. A latent wrong join waiting for the data to change
+shape is the same failure as §9.81's expired premise, one layer down.
+
+**The card compounded it, which is worth naming.** It advertised **150 lei** —
+`minPrice`, Categoria 3 — beside a count made entirely of Categoria 1 seats at
+190. A price you cannot pay, for a seat you cannot buy.
+
+**The fix** is `categoriesForEvent`, applied inside `countFree` before anything
+is matched: the drawing's categories with the event's map laid over them. An
+absent or empty map leaves the drawing untouched, which is what an event that
+re-categorises nothing looks like.
+
+**And the override gets §9.71's join check, for the same reason the statuses
+feed has one.** A label the map names that the drawing has not got means the two
+are being matched on labels built differently, and a count from a mismatched
+join is a confident lie — so it voids the count rather than quietly skipping the
+seat. Null is "not counted", never "plenty". Six tests cover it, including the
+reported miscount in miniature and both directions of the override: a seat moved
+out of the sale, and one promoted into it.
+
+`npm test` (4494), `npm run typecheck` and `npx eslint` all pass.
 
 ## Open — known source limits, checked and not fixable here
 

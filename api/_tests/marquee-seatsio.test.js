@@ -212,3 +212,86 @@ describe('oveit’s seat-count hop', () => {
     expect(plain.every((e) => e.ticketState !== 'sold-out')).toBe(true)
   })
 })
+
+// §9.83 — the drawing is the hall as it stands; `objectCategories` is the hall
+// as THIS concert sold it, and the two are not the same night.
+describe('per-event category overrides', () => {
+  const BUYABLE = ['C101', 'C102'];
+  /** Labels the chart already draws in a sold category — the only ones moving
+   *  out of which can change the count. */
+  const someLabels = (n) => [...seatsOf(CHART)]
+    .filter(([, c]) => BUYABLE.includes(c))
+    .slice(0, n)
+    .map(([l]) => l);
+
+  it('counts a seat in the category the EVENT puts it in, not the chart', () => {
+    const buyable = new Set(['C101', 'C102']);
+    const base = countFree(CHART, STATUSES, { categoryKeys: buyable });
+    // Move four buyable seats into a category nobody sells — the shape of what
+    // Filarmonica does when it reserves seats for the house on one night.
+    const moved = Object.fromEntries(someLabels(4).map((l) => [l, 'C999']));
+    const after = countFree(CHART, STATUSES, { categoryKeys: buyable, objectCategories: moved });
+    expect(after.total).toBe(base.total - 4);
+  });
+
+  it('pulls a seat INTO the buyable set when the event promotes it', () => {
+    // The override runs both ways: a hall seat the chart draws outside the
+    // sold categories still counts if this event sells it.
+    const outside = [...seatsOf(CHART)].find(([, c]) => !['C101', 'C102'].includes(c));
+    expect(outside).toBeTruthy();
+    const buyable = new Set(['C101', 'C102']);
+    const base = countFree(CHART, STATUSES, { categoryKeys: buyable });
+    const after = countFree(CHART, STATUSES, { categoryKeys: buyable, objectCategories: { [outside[0]]: 'C101' } });
+    expect(after.total).toBe(base.total + 1);
+  });
+
+  it('reproduces the reported miscount: Protocol seats read as Categoria 1', () => {
+    // Filarmonica's 29 September recital, in miniature. Every buyable seat is
+    // gone, and the event has moved a handful of them to the house's own
+    // allocation. Reading the drawing alone reports those as free — which is
+    // how a sold-out concert advertised "15 seats left" at a price nobody
+    // could pay for a seat nobody could buy.
+    const buyable = new Set(['C101', 'C102']);
+    const held = someLabels(3);
+    const allTaken = [...seatsOf(CHART).keys()]
+      .filter((l) => !held.includes(l))
+      .map((l) => ({ objectLabelOrUuid: l, status: 'booked' }));
+
+    const asDrawn = countFree(CHART, allTaken, { categoryKeys: buyable });
+    expect(asDrawn.free).toBe(3); // the lie
+
+    const asSold = countFree(CHART, allTaken, {
+      categoryKeys: buyable,
+      objectCategories: Object.fromEntries(held.map((l) => [l, 'C999'])),
+    });
+    expect(asSold.free).toBe(0); // the truth: sold out
+  });
+
+  it('leaves the count alone when the event re-categorises nothing', () => {
+    const buyable = new Set(['C101', 'C102']);
+    const base = countFree(CHART, STATUSES, { categoryKeys: buyable });
+    for (const empty of [null, undefined, {}]) {
+      expect(countFree(CHART, STATUSES, { categoryKeys: buyable, objectCategories: empty })).toEqual(base);
+    }
+  });
+
+  it('voids the count when the override names a seat the drawing has not got', () => {
+    // Same reasoning as the statuses join check this file already covers: two
+    // feeds matched on labels built differently produce a confident lie, and
+    // the honest answer is no answer. Null is "not counted", never "plenty".
+    const out = countFree(CHART, STATUSES, {
+      categoryKeys: new Set(['C101', 'C102']),
+      objectCategories: { 'Seat-That-Does-Not-Exist': 'C101' },
+    });
+    expect(out).toBeNull();
+  });
+
+  it('ignores a malformed override rather than throwing', () => {
+    const buyable = new Set(['C101', 'C102']);
+    const base = countFree(CHART, STATUSES, { categoryKeys: buyable });
+    expect(countFree(CHART, STATUSES, { categoryKeys: buyable, objectCategories: 'nonsense' })).toEqual(base);
+    // A null category for a seat is "no opinion", not "move it nowhere".
+    const one = [...seatsOf(CHART).keys()][0];
+    expect(countFree(CHART, STATUSES, { categoryKeys: buyable, objectCategories: { [one]: null } })).toEqual(base);
+  });
+});

@@ -74,6 +74,34 @@ export function seatLabel(section, row, seat) {
 }
 
 /** Every seat in a published drawing, as label → category key. */
+/**
+ * The drawing's seats, re-categorised as THIS event has them.
+ *
+ * `objectCategories` maps a seat label to the category the event puts it in,
+ * which is not always the one the hall's chart draws it in — on the recital
+ * that exposed this, it moved 128 seats and disagreed with the drawing on 122
+ * of them. Absent or empty, the drawing stands unchanged, which is what every
+ * event that re-categorises nothing looks like.
+ *
+ * A label the override names that the drawing does not have is the same signal
+ * `countFree`'s join check already treats as fatal: the two feeds are being
+ * matched on labels built differently, and a count from a mismatched join is a
+ * confident lie. Rather than repeat the check, an unknown label is returned as
+ * its own marker so the caller can void the count.
+ */
+export function categoriesForEvent(seats, objectCategories) {
+  const overrides = objectCategories && typeof objectCategories === 'object' ? objectCategories : null
+  if (!overrides) return seats
+  const out = new Map(seats)
+  for (const [label, category] of Object.entries(overrides)) {
+    if (!category) continue
+    // Not in the drawing: the join is wrong, and `countFree` must not proceed.
+    if (!out.has(label)) return null
+    out.set(label, category)
+  }
+  return out
+}
+
 export function seatsOf(drawing) {
   const seats = new Map()
   for (const row of drawing?.subChart?.rows ?? []) {
@@ -95,6 +123,15 @@ export function seatsOf(drawing) {
  * two-thirds empty. Protocol seats (the house's own) never carry a ticket type
  * and drop out here for the same reason.
  *
+ * `objectCategories` is THIS EVENT'S category map, and it overrides the
+ * drawing's (§9.83). The drawing is the hall's standing layout; a promoter
+ * re-categorises seats per night, and seats.io publishes the result in
+ * `rendering-info`. Reading the layout alone reported Filarmonica's sold-out
+ * 29 September recital as having 15 seats left — fifteen Categoria 1 seats the
+ * event had moved to Protocol, which is the house's own allocation and exactly
+ * the thing the paragraph above says must drop out. It did not, because the
+ * category it was matched on was the wrong night's.
+ *
  * Returns null unless the answer is trustworthy: the drawing has seats, at
  * least one category is buyable, and **every** label the statuses feed named
  * was found in the drawing. That last check is the important one — a chart
@@ -102,10 +139,12 @@ export function seatsOf(drawing) {
  * seats and report a full house, so an unrecognised label voids the count
  * rather than inflating it.
  */
-export function countFree(drawing, statuses, { categoryKeys, forSale = null, forSaleObjects = [] } = {}) {
-  const seats = seatsOf(drawing)
+export function countFree(drawing, statuses, { categoryKeys, forSale = null, forSaleObjects = [], objectCategories = null } = {}) {
+  const seats = categoriesForEvent(seatsOf(drawing), objectCategories)
   const wanted = categoryKeys instanceof Set ? categoryKeys : new Set(categoryKeys ?? [])
-  if (seats.size === 0 || wanted.size === 0) return null
+  // `null` from the re-categorisation means the override named a seat the
+  // drawing does not have — a broken join, and no answer at all.
+  if (seats === null || seats.size === 0 || wanted.size === 0) return null
 
   const rows = Array.isArray(statuses) ? statuses : []
   const named = new Set(rows.map((row) => row?.objectLabelOrUuid).filter(Boolean))
