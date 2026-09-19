@@ -15,6 +15,8 @@ import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
 import iabilet, { seatsNote } from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
+import cndb, { isCourse } from '../_lib/marquee/cndb.js'
+import { ADAPTERS } from '../_lib/marquee/registry.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
 import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
 import { inferYear, slug, eventKey, parseTime, parseIsoDateTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
@@ -1526,3 +1528,90 @@ describe('tnb — the second detail-page template (2026-08-27)', () => {
     expect(events[0].price).toBe(60)
   })
 })
+
+// CNDB (§9.84) — read from the centre's own calendar, because the place its
+// tickets are sold (bilet.ro) sits behind a Queue-it waiting room.
+describe('cndb (Centrul Național al Dansului București)', () => {
+  const venue = { name: 'CNDB', url: 'https://cndb.ro/calendar/', adapter: 'cndb' };
+  const page = { url: venue.url, body: fixture('cndb-calendar.html') };
+  const events = cndb.parse([page], { venue });
+
+  it('reads a showing per calendar row', () => {
+    // Twelve rows in the fixture; four are courses and drop out below.
+    expect(events).toHaveLength(8);
+    expect(events[0]).toMatchObject({
+      title: '11 piese proaspete - Partea I',
+      date: '2026-08-07',
+      time: '19:30',
+      link: 'https://cndb.ro/new_events/11-piese-proaspete-partea-i/',
+    });
+  });
+
+  it('takes the year from the row rather than inferring it', () => {
+    // `data-time="07.08.2026"` carries the full year, which makes this the one
+    // reader here immune to inferYear's December/January rollover. A date read
+    // out of the visible text would have had to guess.
+    expect(events.every((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date))).toBe(true);
+    expect(events.map((e) => e.date)).toEqual([...events.map((e) => e.date)].sort());
+  });
+
+  it('carries a poster, a link and the subtitle for every showing', () => {
+    expect(events.every((e) => e.image?.startsWith('https://cndb.ro/'))).toBe(true);
+    expect(events.every((e) => e.link?.startsWith('https://cndb.ro/new_events/'))).toBe(true);
+    expect(events.every((e) => typeof e.description === 'string' && e.description.length > 0)).toBe(true);
+  });
+
+  it('strips the ?calendar=true&inst=N query from the link', () => {
+    // The query says which showing you arrived from — noise in a link meant to
+    // survive being saved to Wanderlist.
+    expect(events.every((e) => !e.link.includes('?'))).toBe(true);
+  });
+
+  it('never claims a ticket state the calendar does not publish', () => {
+    // One row in 103 mentioned tickets anywhere. §9.7's rule: silence is
+    // `none`, never `open`, and never a sold-out house inferred from nothing.
+    expect([...new Set(events.map((e) => e.ticketState))]).toEqual(['none']);
+    expect(events.every((e) => e.ticketsUrl === null)).toBe(true);
+  });
+
+  it('leaves the hall null rather than guessing it from a title', () => {
+    expect(events.every((e) => e.hall === null)).toBe(true);
+  });
+
+  describe('courses and workshops are filtered out', () => {
+    it('drops the rows the fixture carries', () => {
+      const titles = events.map((e) => e.title).join(' | ');
+      expect(titles).not.toMatch(/Geometry of chance workshop/);
+      expect(titles).not.toMatch(/Cursuri de dans/);
+    });
+
+    it('catches the forms the site actually uses', () => {
+      expect(isCourse('Geometry of chance workshop')).toBe(true);
+      expect(isCourse('Dansezi? Cursuri de dans contemporan')).toBe(true);
+      expect(isCourse('Workshop Solène Weinachter')).toBe(true);
+      expect(isCourse('Atelier susținut de Ștefania Becheanu')).toBe(true);
+    });
+
+    it('errs toward INCLUDING, which is the recoverable direction', () => {
+      // An extra workshop on the list costs a glance; a missing premiere costs
+      // the evening. Every one of these is a real title from the live season.
+      expect(isCourse('ORFEO')).toBe(false);
+      expect(isCourse('Polifonia Gesturilor')).toBe(false);
+      expect(isCourse('Școala performativă pentru copii')).toBe(false);
+      expect(isCourse('Maybe by 2301, we won’t need another feminist show')).toBe(false);
+      expect(isCourse('The Choreography of Water')).toBe(false);
+    });
+
+    it('matches on whole words, so a title is not caught by a fragment', () => {
+      expect(isCourse('Concurs de dans')).toBe(false);
+      expect(isCourse('Discursul corpului')).toBe(false);
+    });
+  });
+
+  it('is registered under the same id on both sides', () => {
+    // §9.29's rule: the server registry, the client roster and the Notion
+    // select are one vocabulary, and a mismatch silently un-reads a venue.
+    expect(ADAPTERS.cndb).toBe(cndb);
+    expect(cndb.id).toBe('cndb');
+  });
+});

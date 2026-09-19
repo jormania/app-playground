@@ -3699,6 +3699,68 @@ out of the sale, and one promoted into it.
 
 `npm test` (4494), `npm run typecheck` and `npx eslint` all pass.
 
+### 9.84 CNDB — a sixteenth venue, read from the wrong place on purpose (2026-09-19)
+
+Asked for: *"Add CNDB as venue, they get their tickets from bilet.ro"*, with the
+promoter page on bilet.ro. The venue is right; the source is not, and finding
+out why took one request.
+
+**bilet.ro sits behind Queue-it.** A server-side fetch of the promoter page is
+bounced into an endless `?queueittoken=…` redirect — fifty hops and no page, at
+which point curl gives up. That is a virtual waiting room, not a rate limit: it
+opens for a real browser session and for nothing else. It is not a source, and
+no amount of patience or politeness makes it one.
+
+**So CNDB is read from CNDB**, which is the precedent `metropolis.js` already
+set for exactly this shape — the theatre's own WordPress programme over its
+ticketing front end. `https://cndb.ro/calendar/` is a rolling ~2-month window
+(32 rows across August–October, as inspected). `/calendar/2025-2026/` is a
+**finished season's archive** — 103 rows, every date in the past — and pointing
+the venue there would produce a reader that parses perfectly and reports nothing
+upcoming forever. The Notes on the venue row say so.
+
+**The markup is the cleanest of any venue here.** One `program-event` block per
+showing, and `data-time="02.09.2025"` carries the full year — which makes this
+the one reader in Marquee immune to `inferYear`'s December/January rollover.
+Read the attribute, not the text.
+
+**Nothing is inferred that the page does not publish.** No hall is named
+anywhere, so `hall` stays null. One row in 103 mentioned tickets at all, so
+every showing reads `ticketState: none` — §9.7's rule, that silence is `none`
+and never an `open` inferred from nothing.
+
+**Courses and workshops are filtered out**, which Gabriel asked for and which is
+the one soft edge in this reader. **There is no structured signal**: CNDB
+publishes no event taxonomy, the detail pages' body classes carry none, and the
+`class="external"` strapline turns out to be free text — festival and project
+names, absent entirely on 39 of 103 archive rows. I checked all three before
+settling for a title keyword rule, because a keyword rule is what §9.82 got
+caught by.
+
+So it is deliberately narrow and **errs toward including**. Against the live
+calendar it drops fourteen rows — every "Dansezi? Cursuri de dans", the
+six-night "Geometry of chance workshop", two named workshops — with no false
+positive in two seasons of titles. What it does not catch, it lets through:
+"Școala performativă pentru copii" may be a class or may be that school's own
+performance, and an extra workshop on the list costs a glance where a missing
+premiere costs the evening. Wrong in the recoverable direction, which is
+§9.62's asymmetry again.
+
+**§9.29 bit exactly as documented.** Creating the venue row 400'd on `Invalid
+select value for property "Adapter": "cndb"` — the whole patch, as that entry
+warned. The Notion select was extended first, carrying all thirteen existing
+options and their colours through the `ALTER COLUMN` (it replaces the set), and
+every property description survived. Worth noting because the Area DDL of an
+earlier round did clear a description; `Adapter`'s was empty, so there was
+nothing to lose this time. Check before, not after.
+
+Registered in three places, which is the vocabulary §9.29 exists to keep in
+step: `registry.js`, the client's `adapters.js`, and the Notion select.
+`ADAPTER_VOCABULARY` derives from the client roster, so the round-trip test
+covers the new id without being told about it.
+
+`npm test` (4505), `npm run typecheck` and `npx eslint` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -3725,6 +3787,12 @@ absences at the source, not gaps in a reader:
   seats.io chart the venue's own seat picker reads.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
   upcoming listed, not a failure.
+- **CNDB's courses are told apart from its performances by title alone** (§9.84).
+  The site publishes no event taxonomy — checked: no `categorie/` terms for
+  events, nothing in the detail pages' body classes, and the `external`
+  strapline is free text. The rule errs toward including, so an occasional
+  workshop will appear on the programme; "Școala performativă pentru copii" is
+  the current ambiguous one.
 
 
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every

@@ -139,6 +139,13 @@ export const ADAPTERS = [
     hosts: ['teatrulmetropolis.ro'],
     note: 'Reads the theatre’s own WordPress /program/ page — its ticketing SPA (bilete.teatrulmetropolis.ro) ships no data at all server-side, so pasting THAT URL here will not resolve to a working scan. Adapter Config optionally takes its mystage.ro venue page, which prices the co-productions the theatre links off-domain.',
   },
+  {
+    id: 'cndb',
+    label: 'Centrul Național al Dansului București',
+    rung: 'selector',
+    hosts: ['cndb.ro'],
+    note: 'Reads the centre’s own rolling /calendar/ — NOT bilet.ro, where its tickets are sold: that site sits behind a Queue-it waiting room and answers a server-side fetch with an endless redirect. Use /calendar/, never /calendar/<season>/, which is a finished season’s archive. Courses and workshops are filtered out by title; the calendar publishes no ticket state at all.',
+  },
 ]
 
 export const ADAPTER_IDS = ADAPTERS.map((a) => a.id)
