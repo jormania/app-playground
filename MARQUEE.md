@@ -3856,6 +3856,72 @@ Notion select.
 
 `npm test` (4518), `npm run typecheck` and `npx eslint` all pass.
 
+### 9.86 One keep, four cards: where a title stopped being an identity (2026-09-19)
+
+Reported from the app, with the screenshot that settles it: four Filarmonica
+"Concert simfonic" cards — 8, 9, 15 and 16 October — every one of them wearing
+**IN WANDERLIST**, against a Wanderlist holding exactly one, planned 8 October.
+
+§9.70 already found the cause and fixed half of it. Filarmonica heads every
+orchestral night "Concert simfonic" and every chamber night "Recital cameral" —
+these are programme categories, not names — so its adapter mints a
+`productionKey` and `programme.js`'s `productionId` uses that instead of the
+title. Four unrelated concerts, four cards. Correct.
+
+`findings.js` never got the message. `savedForProduction` looked its rows up by
+folded TITLE, so the single Findings row named "Concert simfonic" at
+Filarmonica matched all four productions and set `saved` on every one. Two
+things then conspired to make that as loud as possible: each card is a
+one-night production, and `Programme.jsx`'s label reads
+
+```js
+production.savedAll || production.showings.length === 1 ? 'in Wanderlist' : …
+```
+
+so there was no "1 of 4 dates kept" to soften it into a half-claim. A loose
+match became a flat, confident statement, four times over.
+
+**The fix is where the wrong assumption lives, not where it showed.** A
+production carrying a `productionKey` is one whose venue has declared its own
+titles are not identities — so its Findings rows are attributed by DATE, and a
+title match alone is not enough. Venues whose titles are names (every other one)
+keep the looser behaviour unchanged, including the deliberate "a row dated
+outside the listed run still counts" rule, which is usually a keep for a date
+the theatre has since dropped.
+
+**The cost, taken knowingly:** at a §9.70 venue, a Findings row with no date, or
+on a date the venue has dropped, is now attributed to no concert rather than to
+every one of them. Nothing in a Wanderlist row could resolve it — the schema
+stores a name, a place and a date, and no production key — so the choice is
+between one silent omission and four false claims. The omission is also the one
+you can see: open Wanderlist and the row is there.
+
+Five tests, the first of which is the screenshot in miniature — one keep across
+four same-titled October concerts, asserting `[1, 0, 0, 0]` where the old code
+returned `[1, 1, 1, 1]`. It failed before the change and passes after.
+
+The `showings.length === 1` shortcut is left alone. With the root cause fixed it
+is inert at the venues that triggered this (a matched date already sets
+`savedAll`), and where it still fires — a single-night show whose keep sits on a
+date the venue has since moved — "in Wanderlist" is true.
+
+**Sala Radio's reported bot check is not this, and not a bug.** Checked the same
+day: from this machine the page answers 200 with all nine rows, and neither the
+good page nor the failure mode reachable from here trips `looksLikeBotCheck`.
+What the page does carry is `/cdn-cgi/challenge-platform/scripts/jsd/main.js` —
+Cloudflare JS Detections, live on the zone. That is §9.61's Metropolis pattern
+exactly: protection whose behaviour depends on the network the request comes
+from, passing here and challenging Vercel's egress. Nothing to fix from this
+side; the honest report is the feature working.
+
+Worth separating from it, because it is a different fault with a different
+message: **salaradio.ro's origin is also intermittently down.** Six requests
+from here returned one `HTTP 522` — Cloudflare's "origin did not answer" —
+after a 20-second wait, the other five a full page. A 522 reports as *"The page
+answered 522."*, which is correct and is not the message that was reported.
+
+`npm test` (4522), `npm run typecheck` and `npx eslint src/marquee/` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -3882,6 +3948,12 @@ absences at the source, not gaps in a reader:
   seats.io chart the venue's own seat picker reads.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
   upcoming listed, not a failure.
+- **Sala Radio runs Cloudflare JS Detections** (§9.86) — the served page embeds
+  `/cdn-cgi/challenge-platform/scripts/jsd/main.js`. It passes from a dev
+  machine and has challenged at least once from Vercel's egress, the same
+  network-dependent behaviour §9.61 found at Metropolis. No fix from here: a JS
+  challenge wants a browser and this app deliberately has none. Its origin is
+  separately flaky — roughly one request in six answered HTTP 522.
 - **Sala Radio publishes no per-concert price and no seat count anywhere** (§9.85).
   Its own site gives a tariff table keyed by ensemble AND by a concert class
   (A / B / extraordinary) that is never stated per concert, so a floor would be

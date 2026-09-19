@@ -86,11 +86,40 @@ export function savedShowing(index, showing) {
   return rows.find((row) => placeMatches(row.place, showing.venue)) ?? null
 }
 
-/** Every Findings row that looks like any date of this production. */
+/**
+ * Every Findings row that looks like any date of this production.
+ *
+ * **Unless the venue's titles aren't names**, which is the one case where
+ * matching on the title is actively wrong rather than merely loose.
+ * `programme.js`'s `productionId` already knows about this: Filarmonica heads
+ * every orchestral night "Concert simfonic" and every recital "Recital cameral"
+ * — programme categories — so its adapter mints a `productionKey` and the
+ * season's four October concerts become four cards instead of one (§9.70).
+ * This function was left matching on the TITLE, which undid that downstream:
+ * one kept night marked all four "in Wanderlist" (§9.86), and on a
+ * single-showing card that reads as a flat, confident claim with no "1 of 4" to
+ * soften it.
+ *
+ * A Findings row carries no `productionKey` — Wanderlist stores a name, a place
+ * and a date, and nothing that could carry one — so where the title cannot
+ * identify the production, the DATE has to. A row is attributed only if it falls
+ * on one of this production's own dates.
+ *
+ * That has a cost, taken deliberately: a row with no date at all, or on a date
+ * the venue has since dropped, is attributed to no concert rather than to every
+ * one of them. One silent omission beats four false claims — and unlike the
+ * false claim, the omission is visible the moment you open Wanderlist.
+ *
+ * Venues whose titles ARE names (every other one) keep the looser behaviour,
+ * dateless rows included: there, a title match really is the production.
+ */
 export function savedForProduction(index, production) {
   if (!index || !production) return []
   const rows = index.byProduction.get(fold(production.title)) ?? []
-  return rows.filter((row) => placeMatches(row.place, production.venue))
+  const here = rows.filter((row) => placeMatches(row.place, production.venue))
+  if (!production.productionKey) return here
+  const dates = new Set((production.showings ?? []).map((s) => s.date))
+  return here.filter((row) => row.date && dates.has(row.date))
 }
 
 /**
@@ -120,7 +149,10 @@ export function annotateSaved(productions, index) {
       dateCount: dates.size,
       // A row matching the production but not any listed date still counts as
       // "you have this" — it is usually a keep for a date the venue has since
-      // dropped, or one typed in Wanderlist without a date at all.
+      // dropped, or one typed in Wanderlist without a date at all. Not at a
+      // venue whose titles are categories rather than names: there
+      // `savedForProduction` has already required the date, because nothing
+      // else could tell which of four "Concert simfonic" nights a row meant.
       savedCount: rows.length,
       saved: rows.length > 0,
       savedAll: dates.size > 0 && savedDates.size === dates.size,

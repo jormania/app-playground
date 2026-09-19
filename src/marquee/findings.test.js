@@ -102,6 +102,66 @@ describe('savedForProduction', () => {
     const index = buildFindingsIndex([finding({ name: '' })])
     expect(index.byProduction.size).toBe(0)
   })
+
+  describe('where the title is not an identity (§9.70 venues)', () => {
+    // Filarmonica heads every orchestral night "Concert simfonic" — a programme
+    // category, not a name — so its adapter mints a `productionKey` and four
+    // unrelated concerts become four cards. Matching Findings by TITLE undid
+    // that: one kept night marked all four "in Wanderlist".
+    const concerts = (dates) => toProductions(dates.map((date, i) => showing({
+      key: `f${i}`,
+      venue: 'Filarmonica George Enescu',
+      title: 'Concert simfonic',
+      productionKey: `key-${date}`,
+      date,
+    })))
+    const kept = finding({
+      name: 'Concert simfonic',
+      place: 'Filarmonica George Enescu, Str. Benjamin Franklin 1-3, București',
+      plannedDate: '2026-10-08',
+      dateExpiring: '2026-10-08',
+    })
+
+    it('attributes a kept night to that night alone', () => {
+      const index = buildFindingsIndex([kept])
+      const productions = concerts(['2026-10-08', '2026-10-09', '2026-10-15', '2026-10-16'])
+      expect(productions).toHaveLength(4)
+      expect(productions.map((p) => savedForProduction(index, p).length)).toEqual([1, 0, 0, 0])
+    })
+
+    it('does not spread one keep across the season, end to end', () => {
+      const index = buildFindingsIndex([kept])
+      const annotated = annotateSaved(
+        concerts(['2026-10-08', '2026-10-09', '2026-10-15', '2026-10-16']),
+        index,
+      )
+      expect(annotated.map((p) => p.saved)).toEqual([true, false, false, false])
+      expect(annotated.map((p) => p.savedAll)).toEqual([true, false, false, false])
+    })
+
+    it('drops a dateless row rather than attributing it to every concert', () => {
+      // The deliberate cost. A row with no date cannot be pinned to one of a
+      // season's identically-titled nights, so attributing it to all of them is
+      // worse than to none — one silent omission beats four false claims.
+      const index = buildFindingsIndex([finding({
+        name: 'Concert simfonic',
+        place: 'Filarmonica George Enescu, Str. Benjamin Franklin 1-3, București',
+        plannedDate: null,
+        dateExpiring: null,
+      })])
+      const productions = concerts(['2026-10-08', '2026-10-09'])
+      expect(productions.map((p) => savedForProduction(index, p).length)).toEqual([0, 0])
+    })
+
+    it('leaves a venue whose title IS an identity exactly as it was', () => {
+      // Excelsior names its shows. A row dated outside the listed run still
+      // counts there — usually a keep for a date the theatre has since dropped.
+      const index = buildFindingsIndex([finding({ plannedDate: '2026-12-01', dateExpiring: null })])
+      const production = toProductions([showing()])[0]
+      expect(production.productionKey).toBeNull()
+      expect(savedForProduction(index, production)).toHaveLength(1)
+    })
+  })
 })
 
 describe('annotateSaved', () => {
