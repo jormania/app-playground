@@ -3922,6 +3922,82 @@ answered 522."*, which is correct and is not the message that was reported.
 
 `npm test` (4522), `npm run typecheck` and `npx eslint src/marquee/` all pass.
 
+### 9.87 Quantic gets its hour, and the doors are not the show (2026-09-19)
+
+Asked, of the card reading "Tonight" with no time: *"On Quantic, can you pull the
+time, too?"* Yes — but not from the page it was being read from, and the reason
+is worth keeping because the venue looked healthy the whole time.
+
+**iabilet.ro publishes `startDate` as a bare date.** All twenty-four events on
+the venue page carried `"startDate":"2026-09-20"` with no time component — every
+one, checked rather than sampled. `jsonld.js` already anticipates this: its
+`NEARBY_TIME` reads "ora 22:00" out of the visible card just after each JSON-LD
+block, which is exactly why **Expirat** comes out timed. Expirat is an iabilet
+*whitelabel* on a different template. iabilet.ro's own venue-page template
+prints only a day and a month — two `ora HH:MM` strings on the whole page for
+twenty-four events, and both of those inside JSON descriptions rather than in a
+card. So the fallback found nothing, silently and correctly, and Quantic read as
+dates with no hours.
+
+The hour lives only on each event's own page, which is why Quantic stops being
+`{ ...jsonld, id: 'quantic' }` in the registry and becomes a module — the same
+way `odeon` outgrew that alias, and for the same kind of reason.
+
+**The trap, and it is a quiet one.** The detail page's `.date` block comes in
+three shapes:
+
+```
+duminică, 20 septembrie, ora 19:00                    -- start only
+marți, 22 septembrie, ora 20:00 acces de la 19:00     -- start AND doors
+sâmbătă, 19 septembrie acces de la 22:00              -- doors only
+```
+
+`ora` is the show; `acces de la` is the doors, and **the doors come second on
+the line and are earlier.** Taking the last clock match — the obvious way to
+write this — prints a 19:00 start for a concert that begins at 20:00, an hour
+early, every time, on precisely the rows that document themselves most fully. So
+`ora` wins wherever it appears and the door time is read only in its absence.
+Five of the eight rows sampled publish doors alone (Quantic is a club as much as
+a concert hall), so that fallback is what keeps this from being a fix that times
+three nights in eight; for those rows the door time is also the only hour the
+venue itself prints.
+
+The match is bounded to the `.date` block rather than the page, because a
+description routinely names an hour — "un concert acustic … de la ora 19:00" —
+which is right often enough to tempt and wrong often enough to matter. The
+structured block is the venue speaking; the blurb is prose about it.
+
+**A patched time would have been a silent data bug.** `key` is
+venue+date+title+TIME (`shared.js`'s `eventKey`), and it is what change
+detection and the ignore list run on. Setting `.time` on an already-built event
+leaves a key describing an event that no longer exists — so every newly timed
+night would have reported itself as *gone from the programme* exactly once, on
+the first scan after this shipped. The event is rebuilt through `makeEvent`
+instead, and a test asserts the key moves with the time.
+
+Following is driven off the parsed events rather than the page's anchors, which
+buys two things: the links are the JSON-LD's own canonical URLs with no
+`?ica_source=VenuePage` to strip, and `dropUmbrellaListings` has already removed
+QFest's whole-festival summary and its season pass — so a seven-night festival
+costs seven requests, not nine. Twenty-four events became twenty-two follows on
+the live page.
+
+**The cost, stated plainly:** up to ~24 requests per scan against iabilet.ro,
+capped at 30. That is the second-heaviest venue in the app, above Excelsior's
+~20 and Metropolis's ~14, and well under what TNB cost before §9.75.
+
+**Not opted into the detail cache** — `detailCache.js`'s first condition is that
+the hop be per PRODUCTION, and a club night is a one-night production. This is
+the case that shows that condition is a proxy rather than the real criterion:
+its stated rationale is that "a page per night … usually means the thing being
+read is volatile anyway", and a start time printed weeks in advance is about as
+static as data gets. The rule is honoured as written rather than bent quietly.
+Whether to widen it to "is what I am reading static?" is a separate decision
+that would also change `salaradio.js` (§9.85), and it belongs to whoever owns
+the rule, not to the adapter that happens to want it.
+
+`npm test` (4534), `npm run typecheck` and `npx eslint api/ src/` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are

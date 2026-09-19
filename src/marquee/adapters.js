@@ -88,7 +88,7 @@ export const ADAPTERS = [
     label: 'Quantic / iabilet.ro venue page',
     rung: 'jsonld',
     hosts: [],
-    note: 'Real per-event schema.org JSON-LD directly on the venue page — no bundle hop needed, unlike Cinema Europa.',
+    note: 'Real per-event schema.org JSON-LD directly on the venue page — no bundle hop needed, unlike Cinema Europa. It does take one hop per event for the START TIME, which iabilet.ro omits from every startDate and prints only on the event’s own page; there “ora” is the show and “acces de la” is the doors, and the doors are only used when no start is published.',
   },
   {
     id: 'expirat',

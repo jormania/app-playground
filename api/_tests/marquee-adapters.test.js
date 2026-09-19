@@ -17,6 +17,7 @@ import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
 import cndb, { isCourse } from '../_lib/marquee/cndb.js'
 import salaradio, { parseMeridiemTime } from '../_lib/marquee/salaradio.js'
+import quantic, { startTimeOf } from '../_lib/marquee/quantic.js'
 import { ADAPTERS } from '../_lib/marquee/registry.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
 import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
@@ -1721,5 +1722,117 @@ describe('salaradio (Sala Radio)', () => {
   it('is registered under the same id on both sides', () => {
     expect(ADAPTERS.salaradio).toBe(salaradio);
     expect(salaradio.id).toBe('salaradio');
+  });
+});
+
+describe('quantic (iabilet.ro venue page)', () => {
+  const venue = { name: 'Quantic', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/', adapter: 'quantic' };
+  const listing = { url: venue.url, body: fixture('quantic-venue.html') };
+  const detailUrl = 'https://www.iabilet.ro/bilete-funking-with-the-90s-130366/';
+  const detail = { url: detailUrl, body: fixture('quantic-event.html') };
+
+  it('reads the listing through the generic reader, umbrella-dropping included', () => {
+    const events = quantic.parse([listing], { venue });
+    // Five blocks in the fixture; QFest's whole-festival summary and its season
+    // pass both span the days and drop out (jsonld.js's dropUmbrellaListings).
+    expect(events.map((e) => e.title)).not.toContain('QFest');
+    expect(events.length).toBeGreaterThanOrEqual(3);
+    expect(events.every((e) => e.venue === 'Quantic')).toBe(true);
+  });
+
+  it('every startDate on the page is a bare date — the reason this adapter exists', () => {
+    // Not a sample: all 24 live blocks carried a date with no time component,
+    // which is why jsonld.js's NEARBY_TIME fallback (written for Expirat's
+    // whitelabel, a different template) finds nothing here.
+    const events = quantic.parse([listing], { venue });
+    expect(events.every((e) => e.time === null)).toBe(true);
+  });
+
+  it('follows the JSON-LD canonical URLs, not the tracking-tagged anchors', () => {
+    const urls = quantic.follow([listing], { venue });
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.every((r) => r.url.startsWith('https://www.iabilet.ro/'))).toBe(true);
+    expect(urls.every((r) => !r.url.includes('ica_source'))).toBe(true);
+    expect(urls.map((r) => r.url)).not.toContain(venue.url);
+    // The umbrella is dropped before following, so a festival costs one request
+    // per night rather than one per night plus two for the summary and pass.
+    expect(new Set(urls.map((r) => r.url)).size).toBe(urls.length);
+  });
+
+  it('puts the hour on the event it belongs to', () => {
+    const events = quantic.parse([listing, detail], { venue });
+    const funking = events.find((e) => e.link === detailUrl);
+    expect(funking.time).toBe('22:00');
+    // Everything else is untouched — one detail page times one night.
+    expect(events.filter((e) => e.time).length).toBe(1);
+  });
+
+  it('rebuilds the key rather than patching the time onto a finished event', () => {
+    // `key` is venue+date+title+TIME (shared.js's eventKey) and is what change
+    // detection and the ignore list run on. A patched `.time` would leave a key
+    // describing an event that no longer exists, and every newly timed night
+    // would read as "gone from the programme" exactly once.
+    const before = quantic.parse([listing], { venue }).find((e) => e.link === detailUrl);
+    const after = quantic.parse([listing, detail], { venue }).find((e) => e.link === detailUrl);
+    expect(before.key).not.toBe(after.key);
+    expect(after.key).toContain('22:00');
+    // and nothing else about the event moved
+    expect(after.price).toBe(before.price);
+    expect(after.ticketState).toBe(before.ticketState);
+    expect(after.image).toBe(before.image);
+    expect(after.title).toBe(before.title);
+  });
+
+  it('is not opted into the detail cache', () => {
+    // detailCache.js's first condition: the hop must be per PRODUCTION. A club
+    // night is a one-night production. See the header for why this one is worth
+    // revisiting rather than merely accepting.
+    expect(quantic.extractDetail).toBeUndefined();
+  });
+
+  describe('startTimeOf — the show, never the doors', () => {
+    const page = (inner) => `<div class="date">\n ${inner} <meta content="2026-09-19">\n</div>`;
+
+    it('reads a published start time', () => {
+      expect(startTimeOf(page('duminică, 20 septembrie, ora 19:00'))).toBe('19:00');
+    });
+
+    it('prefers "ora" over "acces de la" when a row publishes both', () => {
+      // THE bug this ordering exists to prevent: "acces de la" comes second on
+      // the line and is EARLIER, so taking the last clock would print a 19:00
+      // start for a concert that begins at 20:00 — an hour early, every time,
+      // on exactly the rows that are most fully documented.
+      expect(startTimeOf(page('marți, 22 septembrie, ora 20:00 acces de la 19:00'))).toBe('20:00');
+      expect(startTimeOf(page('miercuri, 23 septembrie, ora 20:00 acces de la 19:00'))).toBe('20:00');
+    });
+
+    it('falls back to the door time when that is all the venue prints', () => {
+      // Five of the eight rows sampled. Without this fallback the fix would
+      // time three nights in eight and leave the club nights blank.
+      expect(startTimeOf(page('sâmbătă, 19 septembrie acces de la 22:00'))).toBe('22:00');
+      expect(startTimeOf(page('luni, 28 septembrie acces de la 18:00'))).toBe('18:00');
+    });
+
+    it('ignores an hour mentioned in prose outside the date block', () => {
+      // A description routinely names an hour — "un concert acustic … de la ora
+      // 19:00" — which is right often enough to tempt and wrong often enough to
+      // matter. The structured block is the venue speaking; the blurb is prose.
+      const html = '<div class="descr">pe terasa Quantic, de la ora 09:00</div>'
+        + page('sâmbătă, 19 septembrie acces de la 22:00');
+      expect(startTimeOf(html)).toBe('22:00');
+    });
+
+    it('returns null rather than a wrong hour', () => {
+      expect(startTimeOf(page('sâmbătă, 19 septembrie'))).toBe(null);
+      expect(startTimeOf('<p>no date block at all</p>')).toBe(null);
+      expect(startTimeOf('')).toBe(null);
+      expect(startTimeOf(null)).toBe(null);
+      expect(startTimeOf(page('ora 99:99'))).toBe(null);
+    });
+  });
+
+  it('is registered under the same id on both sides', () => {
+    expect(ADAPTERS.quantic).toBe(quantic);
+    expect(quantic.id).toBe('quantic');
   });
 });
