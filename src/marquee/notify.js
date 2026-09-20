@@ -165,9 +165,12 @@ export function answeredVenues(venues) {
  * `none → open` is misclassified as `new-event` and therefore never
  * notified — the feature silently failing at the one job it exists for.
  *
- * `src/marquee/scanClient.js` and `api/_lib/marquee/serverScan.js` have both
- * always carried a silent venue forward this way; this is the third copy of
- * that rule, and the one that was missing it.
+ * `src/marquee/scanClient.js` has always carried a silent venue forward this
+ * way; this was the second copy of that rule. This header used to claim
+ * `api/_lib/marquee/serverScan.js` did too — it did not, and §9.89 found out the
+ * expensive way that a comment is not an implementation. It does now
+ * (`carryUnanswered` in api/_lib/marquee/diff.js), so the rule finally lives in
+ * all three places this sentence names.
  *
  * An entry whose `venue` is unknown (written by a build before the field was
  * kept) is carried forward rather than dropped: carrying a stale entry too

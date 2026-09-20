@@ -59,18 +59,51 @@ export async function queryActiveVenues(token, dbId) {
   return out
 }
 
+function richText(value) {
+  return { rich_text: value ? [{ type: 'text', text: { content: String(value).slice(0, 2000) } }] : [] }
+}
+
+/** PATCH a venue row, and — the part this file used to skip — INSIST it worked.
+ *
+ * The original swallowed the response entirely: a Notion 404 (row unshared), a
+ * 400 (a renamed property) or a 429 all returned as cleanly as a success, and
+ * the caller's `catch` could only ever fire on a network throw. A venue row that
+ * silently stopped accepting writes would sit there wearing an old date, which
+ * is the same lie §9.89 is about. Now a non-2xx throws, so "the write failed" is
+ * a thing the caller can count and report. */
+async function patchVenue(token, pageId, properties) {
+  const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Notion-Version': NOTION_VERSION, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ properties }),
+  })
+  if (!res?.ok) {
+    const text = await res?.text?.().catch(() => '') ?? ''
+    const err = new Error(`Notion write failed (${res?.status ?? 0})`)
+    err.detail = String(text).slice(0, 300)
+    throw err
+  }
+}
+
 /** The same narrow patch the app's own `recordScan` writes — Last Checked and
  *  Last Result, nothing else. Best-effort from the caller's side: one venue's
  *  Notion write failing must never stop the rest of the scheduled check. */
 export async function writeScanResult(token, pageId, { checkedAt, result }) {
-  await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${token}`, 'Notion-Version': NOTION_VERSION, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      properties: {
-        'Last Checked': { date: checkedAt ? { start: checkedAt } : null },
-        'Last Result': { rich_text: result ? [{ type: 'text', text: { content: String(result).slice(0, 2000) } }] : [] },
-      },
-    }),
+  await patchVenue(token, pageId, {
+    'Last Checked': { date: checkedAt ? { start: checkedAt } : null },
+    'Last Result': richText(result),
   })
+}
+
+/** For a venue the run never reached: say so on its own row, and deliberately
+ *  DO NOT touch Last Checked.
+ *
+ *  That omission is the whole point. Last Checked means "when this venue was
+ *  last actually read", and stamping today's date on a venue nobody read would
+ *  buy a tidy-looking row at the cost of the one field anyone would trust. So
+ *  the date stays honestly stale and Last Result explains why — carrying the
+ *  date of the run that skipped it, so the row is self-describing without
+ *  cross-referencing anything. */
+export async function writeNotChecked(token, pageId, note) {
+  await patchVenue(token, pageId, { 'Last Result': richText(note) })
 }

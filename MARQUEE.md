@@ -4065,6 +4065,106 @@ or a warm scan and a cold one would disagree about an event's identity and every
 expiry would look like a change.
 
 `npm test` (4543), `npm run typecheck` and `npx eslint api/ src/` all pass.
+### 9.89 A run that stopped early looked exactly like one that finished (2026-09-20)
+
+Observed at about 21:00 Bucharest: of the seventeen rows in **Marquee — Watched
+Venues**, sixteen carried `Last Checked = 2026-09-20` and one carried
+`2026-09-19` — **Sala Radio**, added the day before and therefore last in
+`queryActiveVenues`'s (stable) default order. CNDB, added twenty minutes earlier,
+was fine. Positional, not venue-specific.
+
+**The damage is not the missed scan; it is that the row cannot say so.** A venue
+never checked and a venue checked a while ago render identically: a date, and a
+`Last Result` from whenever it was last written. Sala Radio's row was still
+wearing the 19th's verdict, and that verdict was about to be read — by a person
+and by an agent — as a fresh measurement. It nearly got the venue paused on
+evidence nobody had collected. This is `CLAUDE.md`'s "silence is the failure mode
+it is built against" being violated at the one layer that had no reporting
+channel at all, and §9.79's lesson ("a mechanism that cannot be observed from the
+outside will be debugged by inference") arriving for the fourth time.
+
+**The cause, as far as the evidence reaches.** Vercel's runtime logs were not
+reachable from the session that fixed this (the CLI's token had expired), so the
+timeout was not confirmed directly. What the evidence does say:
+
+- `api/wanderlist-remind.js` was **the one long-running function in the repo with
+  no `maxDuration`** — `marquee-scan.js`, `clickdeck-pricing.js` and
+  `clickdeck-studio-search.js` all declare 300 — so the scheduled check inside it
+  ran on the platform default, whatever that is this month.
+- Sixteen venues completing and the seventeenth not starting is the signature of
+  a ceiling reached, not of one venue failing: a failing venue returns a status
+  and still gets its row written.
+- Per-venue cost had just grown on three fronts (§9.71's seat lookup per open
+  showing, Filarmonica's fifty events, Quantic's new per-event hop), and the
+  active list had just grown too. A budget that fitted on the 19th and not on the
+  20th is what a creeping cost looks like on the day it crosses.
+- Two cheap confirmations remain, for whoever next has the logs to hand: **a
+  timeout predicts no reminder email arrived at all on the 20th**, because
+  `runScheduledCheck` runs *before* the Resend call, and it predicts the KV
+  snapshot went unwritten.
+
+The alternative — `writeScanResult` failing for that one row — was not ruled out
+either, and could not have been: it discarded the response entirely, so a 404 on
+an unshared row read exactly like a success. **So the fix makes both loud rather
+than betting on one.** That is the right move when the diagnosis can't be closed:
+the next occurrence reports itself instead of needing this investigation again.
+
+**What changed.**
+
+- **The ceiling is declared.** `export const maxDuration = 300` on
+  `wanderlist-remind.js` — both for the headroom and because the budget below is
+  meaningless if the number it is carved out of is a platform default nobody
+  wrote down.
+- **The run owns a clock it can see.** `START_BUDGET_MS = 210_000` is the last
+  moment a new venue may be *begun*; `HARD_BUDGET_MS = 270_000` is what a venue
+  already underway has, and also clamps its remaining per-request timeouts, so an
+  unanswering socket costs a venue and never the email. The 30s tail is for the
+  truncation writes, the snapshot and Resend. Measured from the **invocation's**
+  start (`invokedAt`, passed in), not the function's, because the Wanderlist
+  queries spend the same ceiling.
+- **A skipped venue says so on its own row — and its date is left alone.**
+  `writeNotChecked` patches `Last Result` only: *"not checked on 2026-09-20 — the
+  scheduled run ran out of time after 16 of 17 venues; this one is first in line
+  next run"*. Stamping today's date on a venue nobody read would have bought a
+  tidy row at the cost of the only field anyone trusts. `Last Checked` keeps
+  meaning what it says, and `Last Result` supplies the missing half. **This is
+  the assertion the whole fix turns on**, and it has a test of its own.
+- **The email carries the shortfall, and is sent for it.** `truncated` and
+  `writeFailures` ride beside `changes` all the way to `marqueeEmailSection`,
+  which now renders a warning block — and, crucially, returns non-empty on a
+  night when *nothing changed but the run was short*. That night used to produce
+  the same `nothing-due` silence as a clean one. The subject leads with the
+  shortfall even over a ticket opening: the changes are the point on a normal
+  night, but on this one the more important fact is that the list they were drawn
+  from is incomplete. The manual/dry-run JSON response carries both too.
+- **Notion writes are now insisted upon.** `patchVenue` throws on a non-2xx, the
+  caller counts the venue rather than swallowing it, and the count reaches the
+  email. The `catch` that was always there could previously only fire on a
+  network throw.
+- **The next run begins with what this one dropped.** A cursor in KV
+  (`marquee:server-scan-cursor`) records the first skipped venue; `rotate` starts
+  there. Better than rotating blindly, which only spreads the loss around — the
+  venue that went unread is the one with the most to catch up on. A cursor naming
+  a venue since paused or deleted simply doesn't match and the run starts at the
+  top.
+- **And the bug the time budget would otherwise have introduced.** A graceful
+  stop writes a snapshot with a hole in it, and the next run that *does* reach the
+  venue would report every one of its showings as brand new. `diff` already
+  refused to call the hole a cancellation (`answeredVenues` gates that loop), but
+  nothing stopped the hole being stored. `carryUnanswered` carries an unanswered
+  venue's entries through untouched — same `ticketState`, so no phantom "tickets
+  on sale" either. **Worth noting how this was found:** `notify.js`'s header
+  asserted that `serverScan.js` already did this. It did not. A comment is not an
+  implementation, and that sentence had been the only place the rule existed on
+  this side; it now names all three real implementations, and the third one is
+  real.
+
+**The general rule, stated where the next person will look for it:** a budget is
+not a fix on its own — **a limit is only honest if spending it is reported.**
+Raising `maxDuration` alone would have bought headroom and left the failure mode
+exactly as invisible, one venue further down the list.
+
+`npm test` (4567), `npm run typecheck` and `npx eslint api/ src/` all pass.
 
 ## Open — known source limits, checked and not fixable here
 

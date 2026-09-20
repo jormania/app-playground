@@ -66,6 +66,20 @@ import { originAllowed, rateLimited, clientIp } from './_shared.js'
 import { runScheduledCheck } from './_lib/marquee/serverScan.js'
 import { marqueeEmailSection, marqueeOnlySubject } from './_lib/marquee/emailSection.js'
 
+/**
+ * The ceiling this function's own work is budgeted against.
+ *
+ * Declared rather than inherited, because Marquee's scheduled check below runs a
+ * clock against it (`START_BUDGET_MS`/`HARD_BUDGET_MS` in
+ * api/_lib/marquee/serverScan.js) and a budget derived from a platform default
+ * nobody wrote down is a budget nobody can reason about. Until §9.89 this was
+ * the one long-running function in the repo without it — `marquee-scan.js`,
+ * `clickdeck-pricing.js` and `clickdeck-studio-search.js` all already declare
+ * the same 300 — and the scheduled check was being killed somewhere inside its
+ * venue loop, which is exactly what a venue looking un-scanned turned out to be.
+ */
+export const maxDuration = 300
+
 const NOTION_VERSION = '2022-06-28'
 const TIMEZONE = 'Europe/Bucharest'
 const SEND_HOUR = 19       // local hour this reminder should go out
@@ -193,6 +207,10 @@ async function queryNotion(dbId, token, filter) {
 }
 
 export default async function handler(req, res) {
+  // When the platform started this invocation, so Marquee's scheduled check can
+  // budget against `maxDuration` above rather than against its own start.
+  const invokedAt = Date.now()
+
   // Prefs first: reading or writing them must not require the send path's env vars.
   if (req.query && req.query.mode === 'prefs') {
     await handlePrefs(req, res)
@@ -302,30 +320,41 @@ export default async function handler(req, res) {
 
   // Best-effort and independent of everything above: a Marquee misconfiguration or a
   // single bad venue must never cancel the Wanderlist reminder it's riding along with.
+  //
+  // `marqueeTrouble` is the §9.89 half: a run that did not get through its venue
+  // list, or could not write a result back, is news in its own right and is
+  // carried separately from the changes so that it can carry the email on a night
+  // the changes are empty. Silence is the failure mode this app is built against,
+  // and "we checked 14 of 17" is the report that stops a stale row being read as a
+  // fresh verdict.
   let marqueeChanges = []
+  let marqueeTrouble = {}
   try {
-    const marquee = await runScheduledCheck(now)
+    const marquee = await runScheduledCheck(now, { startedAt: invokedAt })
     marqueeChanges = marquee.changes
+    marqueeTrouble = { truncated: marquee.truncated, writeFailures: marquee.writeFailures }
   } catch { /* the reminder still sends without it */ }
 
-  if (items.length === 0 && ideas.length === 0 && marqueeChanges.length === 0) {
+  const marqueeSection = marqueeEmailSection(marqueeChanges, marqueeTrouble)
+  const marqueeHasSomethingToSay = marqueeSection.text !== ''
+
+  if (items.length === 0 && ideas.length === 0 && !marqueeHasSomethingToSay) {
     res.status(200).json({ sent: 0, tomorrow, reason: 'nothing-due' })
     return
   }
 
   const email = buildReminderEmail(items, { name: prefs.name, ideas })
-  if (marqueeChanges.length > 0) {
-    const section = marqueeEmailSection(marqueeChanges)
-    email.text += section.text
-    email.html = email.html.replace('</div>', `${section.html}</div>`)
+  if (marqueeHasSomethingToSay) {
+    email.text += marqueeSection.text
+    email.html = email.html.replace('</div>', `${marqueeSection.html}</div>`)
     // Wanderlist's own subject only makes sense when Wanderlist has something due;
     // otherwise this email is really a Marquee email that happens to share the pipe.
-    if (items.length === 0 && ideas.length === 0) email.subject = marqueeOnlySubject(marqueeChanges)
+    if (items.length === 0 && ideas.length === 0) email.subject = marqueeOnlySubject(marqueeChanges, marqueeTrouble)
   }
   if (isTest) email.subject = `[Test] ${email.subject}`
 
   if (dryRun) {
-    res.status(200).json({ dryRun: true, tomorrow, count: items.length, ideas: ideas.length, marquee: marqueeChanges.length, to: prefs.email, email })
+    res.status(200).json({ dryRun: true, tomorrow, count: items.length, ideas: ideas.length, marquee: marqueeChanges.length, ...marqueeTrouble, to: prefs.email, email })
     return
   }
 
@@ -345,5 +374,9 @@ export default async function handler(req, res) {
     return
   }
 
-  res.status(200).json({ sent: items.length + ideas.length, due: items.length, ideas: ideas.length, marquee: marqueeChanges.length, tomorrow, test: isTest })
+  // The truncation is reported in the RESPONSE as well as the email: a manual run
+  // (`?dryRun=1`, or a `curl` with the cron secret) is the other place anyone asks
+  // this function what it managed to do, and it should not have to read an inbox
+  // to find out.
+  res.status(200).json({ sent: items.length + ideas.length, due: items.length, ideas: ideas.length, marquee: marqueeChanges.length, ...marqueeTrouble, tomorrow, test: isTest })
 }

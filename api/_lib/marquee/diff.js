@@ -43,6 +43,41 @@ export function toSnapshot(events, scannedAt) {
   return { scannedAt: scannedAt ?? new Date().toISOString(), events: map }
 }
 
+/**
+ * Keep what we last knew about every venue this run got no answer from.
+ *
+ * The snapshot is "the programme as of the last scheduled check", and a venue
+ * that was skipped, throttled or unreachable contributes nothing to this run's
+ * events — so storing this run's events raw would record its whole programme as
+ * having ceased to exist. `diff` already refuses to call that a cancellation
+ * (`answeredVenues` gates the second loop), but the hole persists into the
+ * STORED snapshot, and the next check that does reach the venue then reports
+ * every one of its twenty showings as brand new. One unreachable night, one
+ * junk email.
+ *
+ * Nobody noticed on this side because until §9.89 a truncated run died before
+ * `kvSet` and so left the previous snapshot intact by accident. A run that now
+ * ends gracefully mid-list has to do on purpose what the crash was doing for
+ * free: carry those venues' entries through untouched — same ticketState, so no
+ * phantom "tickets on sale" either — until the venue answers for itself again.
+ *
+ * The third implementation of one rule, and the last of the three to get it:
+ * `src/marquee/scanClient.js` does it inline for the app's own snapshot and
+ * `src/marquee/notify.js`'s `nextSnapshot` does it for the notification
+ * snapshot. (notify.js's header asserted the server already did too — it did
+ * not, which is how a comment ends up being the only place a rule is
+ * implemented.) Change the rule and change all three.
+ */
+export function carryUnanswered(previous, current) {
+  const answered = new Set(current?.answeredVenues ?? [])
+  const events = { ...(current?.events ?? {}) }
+  for (const [key, event] of Object.entries(previous?.events ?? {})) {
+    if (events[key] || answered.has(event.venue)) continue
+    events[key] = event
+  }
+  return { ...current, events }
+}
+
 export function diff(previous, current, { now = new Date(), watching = null } = {}) {
   const before = previous?.events ?? null
   const after = current?.events ?? {}

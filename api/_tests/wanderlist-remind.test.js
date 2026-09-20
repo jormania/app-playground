@@ -197,4 +197,39 @@ describe('the Marquee section (piggybacking on this same send)', () => {
     expect(res.body.test).toBe(true)
     expect(res.statusCode).toBe(200)
   })
+
+  // §9.89 — until this, an evening on which the check reached 16 of 17 venues
+  // produced the same "nothing-due" silence as an evening on which it reached all
+  // 17 and found nothing. The skipped venue's row kept an older verdict and there
+  // was no signal anywhere that it was older.
+  describe('a run that did not finish', () => {
+    const truncated = { checked: 16, total: 17, skipped: ['Sala Radio'] }
+
+    it('is reason enough to send, with nothing else to report', async () => {
+      runScheduledCheck.mockResolvedValue({ configured: true, changes: [], venues: [], truncated, writeFailures: [] })
+      stubEmptyWanderlist()
+      const res = await call({ query: { dryRun: '1' } })
+      expect(res.body.reason).not.toBe('nothing-due')
+      expect(res.body.truncated).toEqual(truncated)
+      expect(res.body.email.subject).toMatch(/ran out of time/)
+      expect(res.body.email.text).toMatch(/Sala Radio/)
+      expect(res.body.email.html).toMatch(/Sala Radio/)
+    })
+
+    it('reports a refused bookkeeping write the same way', async () => {
+      runScheduledCheck.mockResolvedValue({ configured: true, changes: [], venues: [], truncated: null, writeFailures: ['Sala Radio'] })
+      stubEmptyWanderlist()
+      const res = await call({ query: { dryRun: '1' } })
+      expect(res.body.reason).not.toBe('nothing-due')
+      expect(res.body.writeFailures).toEqual(['Sala Radio'])
+      expect(res.body.email.text).toMatch(/Notion refused/)
+    })
+
+    it('still goes quiet on a run that completed and found nothing', async () => {
+      runScheduledCheck.mockResolvedValue({ configured: true, changes: [], venues: [], truncated: null, writeFailures: [] })
+      stubEmptyWanderlist()
+      const res = await call({ query: { dryRun: '1' } })
+      expect(res.body.reason).toBe('nothing-due')
+    })
+  })
 })
