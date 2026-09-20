@@ -36,9 +36,27 @@
 // `extractDetail`, and it should only implement it when all four of these hold.
 // `registry.test.js`'s boundary test enforces the roster that results.
 //
-//   1. The hop is PER PRODUCTION, not per showing. One page shared by a run of
-//      six nights is worth remembering; a page per night is not, and usually
-//      means the thing being read is volatile anyway.
+//   1. What comes off the page is STATIC ONCE PUBLISHED — re-reading it a week
+//      later would produce the same answer. A poster, a synopsis, a price tier,
+//      a start time.
+//
+//      This condition used to read "the hop is PER PRODUCTION, not per
+//      showing", on the reasoning that a page per night "usually means the
+//      thing being read is volatile anyway". That proxy held for the venues it
+//      was written against and then met two it got wrong: Sala Radio and
+//      Quantic both publish one page per one-night event, carrying a start time
+//      set weeks ahead and never touched again (§9.85, §9.87). Under the old
+//      wording the app re-read twenty-four iabilet pages every scan to learn an
+//      hour that had not changed since August. Staleness is the thing this rule
+//      is actually defending against, so staleness is what it now asks about;
+//      how many showings share a page is a fact about cost, not about risk, and
+//      it belongs to `MAX_ENTRIES` and the per-scan budget (§9.88).
+//
+//      An adapter reading something static-but-not-eternal may shorten its own
+//      memory with `detailTtlMs`, and one caching a start time should: a poster
+//      is stable for a season, while a rescheduled hour on an unchanged date is
+//      rare but sends you to the wrong door. The scan clamps it — an adapter
+//      can ask to be re-read sooner, never to be trusted for longer.
 //
 //   2. What comes out of it is a FACT ABOUT THE PRODUCTION — poster, synopsis,
 //      price tiers, running time. Something the site would publish identically

@@ -99,11 +99,12 @@ export default {
 
   /** One hop per concert, for its start time and programme.
    *
-   *  Deliberately NOT cached: `detailCache.js`'s first condition is that the
-   *  hop be per PRODUCTION rather than per showing, and a symphony concert is
-   *  a one-night production — nine pages for nine showings, nothing shared, so
-   *  a cache would store as many records as it saves requests. Nine is also
-   *  not sixty; this is the load the rule was written to permit. */
+   *  Cached since §9.88, which replaced `detailCache.js`'s per-production test
+   *  with a staleness one. A concert's hour and its programme — conductor,
+   *  soloists, works — are fixed when the season is announced and never touched
+   *  again, so re-reading all nine pages every scan bought nothing. That a
+   *  symphony concert is a one-night production turns out to be a fact about
+   *  how little the cache saves here, not about whether it is safe. */
   follow(pages, { venue } = {}) {
     const html = pages[0]?.body ?? ''
     const urls = new Set()
@@ -117,13 +118,34 @@ export default {
     return [...urls].slice(0, MAX_DETAIL_PAGES).map((url) => ({ url }))
   },
 
-  parse(pages, { venue } = {}) {
+  /** Everything a concert's own page is fetched for, as a small object.
+   *
+   *  This is the detail cache's opt-in. Only facts about the concert are stored
+   *  — its hour and its programme. Nothing about tickets: this venue publishes
+   *  no price and no availability anywhere (§9.85), so there is not even a
+   *  volatile field here to be tempted by. */
+  extractDetail(page) {
+    return detailOf(page.body ?? '')
+  },
+
+  /** Three days, matching quantic.js and for the same reason: an hour is the
+   *  thing you act on, so it is trusted for less time than TNB's posters are. */
+  detailTtlMs: 3 * 24 * 60 * 60 * 1000,
+
+  parse(pages, { venue, details } = {}) {
     // Keyed by the exact URL each page was fetched at, which is the same URL
     // the listing row links to — so the join is plain string equality, no
     // canonical-tag cross-referencing (excelsior.js) and no fetch-order
     // assumption (a failed detail fetch costs that concert its time and
     // programme, and nothing else).
+    //
+    // Remembered records first, pages read in THIS scan second, so a fetched
+    // page always beats a cached account of it. Without a cache in play
+    // `details` is absent and this reads off the pages alone, as before.
     const detail = new Map()
+    for (const [url, record] of Object.entries(details ?? {})) {
+      if (record) detail.set(url, record)
+    }
     for (const page of pages.slice(1)) {
       if (page.url) detail.set(page.url, detailOf(page.body ?? ''))
     }

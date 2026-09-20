@@ -1689,11 +1689,28 @@ describe('salaradio (Sala Radio)', () => {
     expect(events.every((e) => e.image?.startsWith('https://salaradio.ro/wp-content/'))).toBe(true);
   });
 
-  it('is not opted into the detail cache', () => {
-    // detailCache.js's first condition: the hop must be per PRODUCTION. A
-    // symphony concert is a one-night production, so nine pages serve nine
-    // showings and a cache would store a record for every request it saved.
-    expect(salaradio.extractDetail).toBeUndefined();
+  it('remembers what a concert page said, for three days', () => {
+    // §9.88 widened detailCache.js's first condition from "is this hop per
+    // production?" to "is what it reads static?". A concert's hour and its
+    // programme are fixed when the season is announced; only the memory is
+    // shortened, because an hour is the thing you act on.
+    expect(typeof salaradio.extractDetail).toBe('function');
+    expect(salaradio.detailTtlMs).toBe(3 * 24 * 60 * 60 * 1000);
+    const record = salaradio.extractDetail(detail);
+    expect(record).toEqual({ time: '19:00', description: expect.stringContaining('David Molard Soriano') });
+  });
+
+  it('reads a remembered concert exactly as it reads a fetched one', () => {
+    const record = salaradio.extractDetail(detail);
+    const fromCache = salaradio.parse([listing], { venue, details: { [detailUrl]: record } });
+    const fromFetch = salaradio.parse([listing, detail], { venue });
+    expect(fromCache).toEqual(fromFetch);
+  });
+
+  it('lets a page read THIS scan beat a remembered account of it', () => {
+    const stale = { time: '08:00', description: 'yesterday’s note' };
+    const events = salaradio.parse([listing, detail], { venue, details: { [detailUrl]: stale } });
+    expect(events[0].time).toBe('19:00');
   });
 
   describe('parseMeridiemTime', () => {
@@ -1783,11 +1800,29 @@ describe('quantic (iabilet.ro venue page)', () => {
     expect(after.title).toBe(before.title);
   });
 
-  it('is not opted into the detail cache', () => {
-    // detailCache.js's first condition: the hop must be per PRODUCTION. A club
-    // night is a one-night production. See the header for why this one is worth
-    // revisiting rather than merely accepting.
-    expect(quantic.extractDetail).toBeUndefined();
+  it('remembers an hour, for three days, and nothing else', () => {
+    // The venue this adapter's caching case was argued on (§9.88): the hour is
+    // set weeks ahead, while price and sold-out state come off the listing's
+    // JSON-LD and stay ephemeral. The record holds exactly one key.
+    expect(typeof quantic.extractDetail).toBe('function');
+    expect(quantic.detailTtlMs).toBe(3 * 24 * 60 * 60 * 1000);
+    expect(quantic.extractDetail(detail)).toEqual({ time: '22:00' });
+  });
+
+  it('reads a remembered hour exactly as it reads a fetched one, key included', () => {
+    // Including the key, because the rebuild-not-patch rule has to hold on the
+    // cached path too — otherwise a warm scan and a cold one would disagree
+    // about an event's identity and every cache expiry would look like a change.
+    const record = quantic.extractDetail(detail);
+    const fromCache = quantic.parse([listing], { venue, details: { [detailUrl]: record } });
+    const fromFetch = quantic.parse([listing, detail], { venue });
+    expect(fromCache).toEqual(fromFetch);
+    expect(fromCache.find((e) => e.link === detailUrl).key).toContain('22:00');
+  });
+
+  it('lets a page read THIS scan beat a remembered account of it', () => {
+    const events = quantic.parse([listing, detail], { venue, details: { [detailUrl]: { time: '05:00' } } });
+    expect(events.find((e) => e.link === detailUrl).time).toBe('22:00');
   });
 
   describe('startTimeOf — the show, never the doors', () => {

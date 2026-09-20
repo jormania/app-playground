@@ -315,6 +315,14 @@ export async function scanVenue(venue, {
   let cache = null
   if (typeof adapter.follow === 'function') {
     const cacheable = typeof adapter.extractDetail === 'function'
+    // An adapter may shorten its own memory, and one that caches a START TIME
+    // should: a poster or a synopsis is stable for a season, while an hour is
+    // the thing you actually act on, and a stale one sends you to the wrong
+    // door. Never longer than the scan's own ceiling — an adapter can ask to be
+    // re-read sooner, never to be trusted for longer (§9.88).
+    const ttlMs = Number.isFinite(adapter.detailTtlMs)
+      ? Math.min(adapter.detailTtlMs, detailTtlMs)
+      : detailTtlMs
     const remembered = cacheable ? await loadDetails(adapter.id, { store: detailStore }) : {}
     const held = {}
     const requests = adapter.follow(pages, { venue, now })
@@ -341,7 +349,7 @@ export async function scanVenue(venue, {
     // day's showings rather than a poster.
     const due = cacheable
       ? requests
-        .filter((r) => !(remembered[r.url] && isFresh(remembered[r.url], now, detailTtlMs)))
+        .filter((r) => !(remembered[r.url] && isFresh(remembered[r.url], now, ttlMs)))
         .sort((a, b) => String(remembered[a.url]?.fetchedAt ?? '').localeCompare(String(remembered[b.url]?.fetchedAt ?? '')))
         .slice(0, detailBudget)
         .map((r) => r.url)
@@ -353,7 +361,7 @@ export async function scanVenue(venue, {
 
       // The whole point: a fresh record answers the question the request was
       // going to ask, so the request is never made.
-      if (entry && isFresh(entry, now, detailTtlMs)) {
+      if (entry && isFresh(entry, now, ttlMs)) {
         held[request.url] = entry
         fromCache++
         continue

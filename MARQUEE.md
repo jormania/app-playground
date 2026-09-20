@@ -3817,9 +3817,11 @@ whether anything is for sale is not evidence about this showing. So
 `ticketState` is `none` (§9.7's rule) and `ticketsUrl` is null: a buy link that
 lands on a category page listing one unrelated concert is worse than no link.
 
-**Not opted into the detail cache**, and this is the first venue where
+**Not opted into the detail cache** — ~~and this is the first venue where
 `detailCache.js`'s first condition does the deciding rather than merely being
-satisfied. The hop must be per PRODUCTION; a symphony concert is a one-night
+satisfied.~~ **Superseded by §9.88**, which widened that condition and cached
+this venue after all. The reasoning below is kept because it is the argument
+that turned out to be wrong, and how it was wrong is the point. The hop must be per PRODUCTION; a symphony concert is a one-night
 production, so nine pages serve nine showings and a cache would store one record
 for every request it saved. Nine is also not sixty-one — this is the load the
 rule was written to permit, not the load it was written against.
@@ -3986,8 +3988,10 @@ the live page.
 capped at 30. That is the second-heaviest venue in the app, above Excelsior's
 ~20 and Metropolis's ~14, and well under what TNB cost before §9.75.
 
-**Not opted into the detail cache** — `detailCache.js`'s first condition is that
-the hop be per PRODUCTION, and a club night is a one-night production. This is
+**Not opted into the detail cache** — ~~`detailCache.js`'s first condition is that
+the hop be per PRODUCTION, and a club night is a one-night production.~~
+**Superseded the same day by §9.88**: asked to cache it, and the rule was
+widened rather than bent. The paragraph below is what that decision was made on. This is
 the case that shows that condition is a proxy rather than the real criterion:
 its stated rationale is that "a page per night … usually means the thing being
 read is volatile anyway", and a start time printed weeks in advance is about as
@@ -3997,6 +4001,70 @@ that would also change `salaradio.js` (§9.85), and it belongs to whoever owns
 the rule, not to the adapter that happens to want it.
 
 `npm test` (4534), `npm run typecheck` and `npx eslint api/ src/` all pass.
+
+### 9.88 The cache rule stops asking the wrong question (2026-09-20)
+
+Asked: *"Cache the Quantic times, also Sala Radio, if applicable."* Applicable to
+both, and the interesting part is that it could not be done without changing a
+rule written the previous day.
+
+`detailCache.js`'s first condition was **"the hop is PER PRODUCTION, not per
+showing"**, justified on the grounds that a page per night "usually means the
+thing being read is volatile anyway". That proxy held for the venues it was
+written against — TNB's 61 production pages, Metropolis's 14 — and then met two
+it got wrong in a row. Sala Radio and Quantic both publish one page per
+one-night event, and what those pages carry is a start time fixed when the
+season was announced. Under the old wording the app re-read twenty-four iabilet
+pages on every scan to learn an hour that had not changed since August, and
+§9.85 and §9.87 each dutifully wrote down that this was correct.
+
+It was not. The condition was a proxy for staleness, and it had drifted from the
+thing it was proxying for. **It now asks the question it always meant:** is what
+comes off this page static once published? How many showings share a page is a
+fact about how much the cache *saves*, not about whether it is *safe* — and cost
+is already bounded elsewhere, by `MAX_ENTRIES` and §9.78's per-scan budget.
+
+**The price of widening it, and it is not nothing.** A poster is stable for a
+season; an hour is the thing you act on, and a rescheduled hour on an unchanged
+date is rare but sends you to the wrong door. Two things fall out of that:
+
+- An adapter may now shorten its own memory with **`detailTtlMs`**, and the scan
+  clamps it — an adapter can ask to be re-read sooner, never to be trusted for
+  longer. Both new cachers take three days instead of the default seven.
+- The boundary test's single list of forbidden keys **split in two**. It used to
+  ban `time` beside `ticketState`, which quietly conflated two different
+  hazards: whether you can still GET IN (availability — changes hourly, a stale
+  value actively misleads) and WHEN to turn up (scheduling — set weeks ahead,
+  rarely wrong, expensive when it is). Availability stays absolutely banned.
+  Scheduling is allowed **only to an adapter that has shortened its TTL**, and a
+  test walks every adapter to enforce exactly that, so a future venue cannot
+  cache an hour for a poster's week.
+
+What did NOT change is the property that licenses caching at all: **the listing
+is never cached, never conditional, never skipped by the budget.** Ticket state,
+price, dates and the programme itself all live there and are re-read in full
+every scan. A new test pins it dynamically for Quantic — a night flipping to
+`SoldOut` reaches the app on a check that made **zero** detail requests, while
+its cached hour survives intact.
+
+Measured against the live venue page rather than asserted:
+
+| scan | requests | detail pages from cache | events with an hour |
+|------|----------|--------------------------|---------------------|
+| 1    | 13       | 0                        | 12 of 22            |
+| 2    | 11       | 12                       | 22 of 22            |
+| 3+   | **1**    | 22                       | 22 of 22            |
+
+Twenty-three requests per scan to twenty-three once, then one — filling over two
+scans rather than one burst, which is §9.78's budget doing the job it was added
+for. Sala Radio goes 10 → 1 the same way.
+
+The cached and fetched paths are asserted byte-identical, key included, for both
+venues — the rebuild-not-patch rule (§9.87) has to hold on the cached path too,
+or a warm scan and a cold one would disagree about an event's identity and every
+expiry would look like a change.
+
+`npm test` (4543), `npm run typecheck` and `npx eslint api/ src/` all pass.
 
 ## Open — known source limits, checked and not fixable here
 

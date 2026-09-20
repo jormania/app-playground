@@ -348,7 +348,7 @@ describe('the cache boundary — which venues may remember, and which may not', 
   // src/ds/boundary.test.js: a new adapter that opts into caching has to come
   // past this list, and a venue that must stay ephemeral cannot drift into it
   // by someone copying `extractDetail` from the venue above.
-  const MAY_CACHE = ['tnb', 'metropolis', 'arcub']
+  const MAY_CACHE = ['tnb', 'metropolis', 'arcub', 'quantic', 'salaradio']
 
   const MUST_NOT_CACHE = {
     // Their extra hops ARE the programme — caching those caches the answer
@@ -379,22 +379,54 @@ describe('the cache boundary — which venues may remember, and which may not', 
     }
   })
 
-  it('no cached record carries a fact about a SHOWING', () => {
-    // Rule 2, the one with teeth: a stale poster is a cosmetic miss, a stale
-    // "tickets available" sends someone to a sold-out night. Whatever else the
-    // records grow, these keys must never appear among them.
-    const volatile = ['ticketState', 'ticketsUrl', 'seatsLeft', 'seatsTotal', 'date', 'time', 'isAvailable']
-    const samples = {
-      tnb: { url: 'https://www.tnb.ro/ro/x', body: fixture('tnb-detail-og-image.html') },
-      metropolis: { url: 'https://teatrulmetropolis.ro/x', body: fixture('metropolis-production.html') },
-      arcub: { url: 'https://arcub.ro/x', body: fixture('arcub-detail-cineva-are-sa-vina.html') },
-    }
+  // §9.88 split what used to be one list. The old one banned `time` beside
+  // `ticketState`, which conflated two different hazards under one word:
+  // whether you can still GET IN (availability, changes hourly, a stale value
+  // actively misleads) and WHEN to turn up (scheduling, set weeks ahead, a
+  // stale value is rare but costly). Only the first is unconditionally banned.
+  const NEVER_CACHED = ['ticketState', 'ticketsUrl', 'seatsLeft', 'seatsTotal', 'isAvailable', 'listingSoldOut', 'date']
+  // Cacheable, but only by an adapter that has shortened its own memory.
+  const NEEDS_SHORT_TTL = ['time']
+
+  const samples = {
+    tnb: { url: 'https://www.tnb.ro/ro/x', body: fixture('tnb-detail-og-image.html') },
+    metropolis: { url: 'https://teatrulmetropolis.ro/x', body: fixture('metropolis-production.html') },
+    arcub: { url: 'https://arcub.ro/x', body: fixture('arcub-detail-cineva-are-sa-vina.html') },
+    quantic: { url: 'https://www.iabilet.ro/bilete-x-1/', body: fixture('quantic-event.html') },
+    salaradio: { url: 'https://salaradio.ro/events/x/', body: fixture('salaradio-event.html') },
+  }
+
+  it('no cached record carries an AVAILABILITY fact', () => {
+    // The rule with teeth, and it did not move: a stale poster is a cosmetic
+    // miss; a stale "tickets available" sends someone to a sold-out night.
+    // Whatever else the records grow, these keys must never appear among them.
     for (const [id, page] of Object.entries(samples)) {
       const record = ADAPTERS[id].extractDetail(page)
-      expect(Object.keys(record).some((k) => volatile.includes(k))).toBe(false)
+      expect(Object.keys(record).some((k) => NEVER_CACHED.includes(k))).toBe(false)
       // And small — this has to fit alongside sixty siblings in one KV value.
       expect(JSON.stringify(record).length).toBeLessThan(4096)
     }
+  })
+
+  it('every sampled adapter is one that actually caches', () => {
+    // So the guard above cannot quietly stop covering a venue.
+    expect(Object.keys(samples).sort()).toEqual([...MAY_CACHE].sort())
+  })
+
+  it('an adapter that caches a TIME must shorten its own memory', () => {
+    // The price of widening rule 1: scheduling data may be remembered, but not
+    // for the week a poster gets. Without this, adding `time` to a record would
+    // silently inherit the seven-day default.
+    for (const [id, page] of Object.entries(samples)) {
+      const record = ADAPTERS[id].extractDetail(page)
+      if (!Object.keys(record).some((k) => NEEDS_SHORT_TTL.includes(k))) continue
+      expect(ADAPTERS[id].detailTtlMs).toBeLessThan(DEFAULT_TTL_MS)
+    }
+  })
+
+  it('names the two adapters that took that deal', () => {
+    expect(ADAPTERS.quantic.detailTtlMs).toBe(3 * 24 * 60 * 60 * 1000)
+    expect(ADAPTERS.salaradio.detailTtlMs).toBe(3 * 24 * 60 * 60 * 1000)
   })
 })
 
@@ -834,10 +866,14 @@ describe('the cache never holds anything that can go stale under you (§9.80)', 
     expect(typeof ADAPTERS.excelsior.enrich).toBe('function')
   })
 
-  it('no cached record for any venue contains a showing-level fact', () => {
+  it('no cached record for any venue contains an AVAILABILITY fact', () => {
     // The static guarantee, restated against every cached adapter at once so a
-    // fourteenth venue cannot quietly widen what gets stored.
-    const volatile = ['ticketState', 'ticketsUrl', 'seatsLeft', 'seatsTotal', 'date', 'time', 'isAvailable', 'soldOut']
+    // sixteenth venue cannot quietly widen what gets stored.
+    //
+    // §9.88 removed `time` from this list and did not simply drop it: an hour
+    // may now be remembered, but only by an adapter that has shortened its own
+    // memory, which the next test enforces. Availability is still absolute.
+    const volatile = ['ticketState', 'ticketsUrl', 'seatsLeft', 'seatsTotal', 'date', 'isAvailable', 'soldOut', 'listingSoldOut']
     const probe = {
       url: 'x',
       body: `<html><img class="article-image" src="/p.jpg"><div class="price_box"><p>80 lei</p></div><span class="show-pret">59,40 lei</span><div class="content"><p>${'Prose long enough to be kept as a description here. '.repeat(3)}</p></div></html>`,
@@ -847,5 +883,61 @@ describe('the cache never holds anything that can go stale under you (§9.80)', 
       const keys = Object.keys(adapter.extractDetail(probe))
       expect({ id, offending: keys.filter((k) => volatile.includes(k)) }).toEqual({ id, offending: [] })
     }
+  })
+
+  it('any adapter remembering a time has a shortened memory', () => {
+    // The condition attached to widening rule 1. Checked across every adapter
+    // rather than the two that prompted it, so a future venue cannot cache an
+    // hour for the full week a poster gets.
+    for (const [id, adapter] of Object.entries(ADAPTERS)) {
+      if (typeof adapter.extractDetail !== 'function') continue
+      const probe = { url: 'x', body: '<div class="date">ora 19:00</div><div class="em-event-time">7:00 pm</div>' }
+      if (!('time' in adapter.extractDetail(probe))) continue
+      expect({ id, shortened: adapter.detailTtlMs < DEFAULT_TTL_MS }).toEqual({ id, shortened: true })
+    }
+  })
+
+  it('Quantic: a night selling out reaches the app on a check that read zero detail pages', async () => {
+    // The dynamic half, for the venue whose caching case widened the rule. The
+    // hour is remembered; whether you can still buy is not, because it lives on
+    // the listing, which is never cached and never skipped.
+    const venue = { name: 'Quantic', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/', adapter: 'quantic' }
+    const evUrl = 'https://www.iabilet.ro/bilete-x-1/'
+    const listing = (availability) => '<html>' + Array.from({ length: 8 }, (_, i) =>
+      `<script type="application/ld+json">/*<![CDATA[*/${JSON.stringify({
+        '@context': 'http://www.schema.org',
+        '@type': 'Event',
+        name: `Night ${i}`,
+        url: i === 0 ? evUrl : `https://www.iabilet.ro/bilete-x-${i + 1}/`,
+        startDate: `2026-09-2${i}`,
+        offers: { '@type': 'Offer', url: 'https://www.iabilet.ro/buy', price: '30', priceCurrency: 'RON', availability },
+      })}/*]]>*/</script>`).join('') + '</html>'
+    const detailBody = '<div class="date">sâmbătă, 20 septembrie acces de la 22:00</div>'
+
+    const store = memoryStore()
+    const serve = (availability) => async (url) => ({
+      ok: true, status: 200, headers: new Headers(),
+      text: async () => (url === venue.url ? listing(availability) : detailBody),
+    })
+
+    const open = await scanVenue(venue, { now: NOW, fetchImpl: serve('InStock'), detailStore: store })
+    const openFirst = open.events.find((e) => e.link === evUrl)
+    expect(openFirst.ticketState).toBe('open')
+    expect(openFirst.time).toBe('22:00')
+
+    let detailCalls = 0
+    const gone = await scanVenue(venue, {
+      now: new Date(NOW.getTime() + 3600000),
+      fetchImpl: async (url) => {
+        if (url !== venue.url) detailCalls++
+        return serve('SoldOut')(url)
+      },
+      detailStore: store,
+    })
+    expect(detailCalls).toBe(0)
+    const goneFirst = gone.events.find((e) => e.link === evUrl)
+    // The hour survived from cache; the sell-out came through anyway.
+    expect(goneFirst.time).toBe('22:00')
+    expect(goneFirst.ticketState).toBe('sold-out')
   })
 })

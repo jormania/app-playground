@@ -33,13 +33,13 @@
 // what keeps this from being a fix that times three nights out of eight; the
 // door time is also, for those rows, the only hour the venue itself prints.
 //
-// **Not opted into the detail cache**, per `detailCache.js`'s first condition:
-// the hop is per SHOWING, not per production. Worth flagging rather than
-// burying — a club night's start time is about as static as data gets, so this
-// is the case where that condition's stated rationale ("a page per night
-// usually means the thing being read is volatile anyway") does not hold. The
-// rule is honoured as written; whether it should be widened is a separate
-// decision, and it would apply to salaradio.js too (§9.85).
+// **Cached** (§9.88). This adapter is half the reason `detailCache.js`'s first
+// condition stopped asking whether a hop is per-production and started asking
+// whether what it reads is static: a club night's start time is set weeks ahead
+// and never touched, yet under the old wording this re-read twenty-four iabilet
+// pages on every single scan to learn an hour that had not changed since
+// August. Its memory is deliberately SHORTER than the default week — see
+// `detailTtlMs` below.
 
 import jsonld from './jsonld.js'
 import { makeEvent } from './shared.js'
@@ -103,13 +103,42 @@ export default {
     return [...urls].slice(0, MAX_DETAIL_PAGES).map((url) => ({ url }))
   },
 
+  /** The one thing an event's own page is fetched for.
+   *
+   *  Declaring this opts Quantic into the detail cache. Nothing volatile is
+   *  stored: the price, the sold-out state and the programme itself all come
+   *  off the listing's JSON-LD, read fresh on every scan. Only the hour is
+   *  remembered, and only for three days. */
+  extractDetail(page) {
+    return { time: startTimeOf(page.body ?? '') }
+  },
+
+  /** Three days, not the default seven.
+   *
+   *  A poster or a synopsis is stable for a season and TNB's are trusted for a
+   *  week. An hour is different in kind: it is the thing you act on, and the
+   *  two ways of being wrong are not symmetric — an hour that moved later costs
+   *  you a wait, one that moved earlier costs you the show. Three days still
+   *  removes the great majority of the requests (a warm cache re-reads about a
+   *  third of the venue per day instead of all of it per scan) while bounding
+   *  how long a rescheduled hour on an unchanged date can go unnoticed. */
+  detailTtlMs: 3 * 24 * 60 * 60 * 1000,
+
   parse(pages, ctx = {}) {
     // Only the listing carries the programme. Handing the detail pages to the
     // generic reader as well would have it parse each event's own JSON-LD a
     // second time — every night duplicated, left for `dedupe` to clean up after.
     const events = jsonld.parse(pages.slice(0, 1), ctx)
 
+    // Remembered records first, pages read in THIS scan second, so a page that
+    // was actually fetched always beats a cached account of it. With no cache
+    // in play — every direct `parse` call in the tests, and any scan where KV
+    // isn't configured — `details` is absent and this reads off the pages
+    // alone, exactly as it did before the cache existed.
     const times = new Map()
+    for (const [url, record] of Object.entries(ctx.details ?? {})) {
+      if (record?.time) times.set(url, record.time)
+    }
     for (const page of pages.slice(1)) {
       const time = page.url ? startTimeOf(page.body ?? '') : null
       if (time) times.set(page.url, time)
