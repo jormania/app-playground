@@ -268,7 +268,7 @@ clutter. All recoverable from history at 3930c68.
 No search outside `REFACTOR_BACKLOG.md` finds these names — no `package.json`
 script, no workflow, no doc.
 
-## P-001a — WhereItWent: retire the pasted Feather markup · `visual` · `open`
+## P-001a — WhereItWent: retire the pasted Feather markup · `visual` · `done 2026-09-21`
 
 **Impact:** one drawing convention per screen instead of two. Part of P-001,
 Group 1 — see that item's audit for why this group and not the other.
@@ -282,6 +282,26 @@ insights, settings, filter, calendar, plus×2); then `Settings.jsx` (sun, moon),
 Leave `Sparkline.jsx` and `NoraAvatar.jsx` alone — one-off drawings, not icons.
 Read `WHERE_IT_WENT.md` first. Being `visual`: screenshots in both themes at both
 widths, and never auto-merged.
+
+**Done 2026-09-21.** Seven files, seventeen glyph sites, all seven of the named
+files converted; `Sparkline.jsx` and `NoraAvatar.jsx` are now the only `<svg>`
+left in the app, as intended. Sizes preserved exactly (20/16/14/12px), and
+`TransactionForm`'s `strokeWidth={2.5}` passed through as a prop.
+
+Two things worth keeping for whoever takes P-001b and P-001c:
+
+- **Only three of the seven glyphs actually change shape.** `Filter`,
+  `Calendar`, `ChevronDown` and `ChartNoAxesColumn` in lucide 0.460 are the same
+  coordinates as the Feather markup they replaced, to the character. The visible
+  differences are the gear (lucide's is flatter), the grid (`rx="1"` on each
+  square) and the sun (r=4 vs Feather's r=5). So a "before/after" here is much
+  quieter than the file count suggests — check the shape before promising a
+  reviewer a difference.
+- **`flairLucideIcons` is a different thing and must not be confused with this.**
+  That feature toggle ("Use Lucide Icons", off by default) swaps the *emoji* on
+  category and account rows — `CategoryIcon.jsx` and `AccountIcon.jsx` only. The
+  chrome icons were never emoji and were never behind it. Nothing here was put
+  behind that flag, and nothing should be.
 
 ## R-011 — Root triage, slice 3: the remaining scratch scripts · `refactor` · `open`
 
@@ -627,6 +647,65 @@ and Journal all reason about "today".
 
 Already cleared: `src/marquee/` — `Changes`, `WeekStrip` and `App` pass under a
 clock six months ahead; `Programme` is frozen as of #75.
+
+## R-019 — A third, quietly different `notionId` parser, in WhereItWent · `refactor` · `open`
+
+**Impact:** none visible if done right — but read the caveat, because the naive
+version *is* a behaviour change.
+
+Found while doing P-001a, 2026-09-21. R-004 names Wanderlist and Journal as the
+apps still carrying their own `notionId` copies. There is a **third**:
+`extractNotionId` in `src/where-it-went/components/Settings.jsx:79`, used at nine
+call sites to normalise the six database-ID fields as they are saved.
+
+It is not the same function under another name. Against
+[`src/shared/notionId.ts`](src/shared/notionId.ts)'s `parseNotionId`, it differs
+in three ways that all reach storage:
+
+1. **It keeps the dashes** — returns the matched dashed UUID as-is, where the
+   shared one strips them and returns the compact 32-char form.
+2. **It does not lowercase.**
+3. **On no match it returns the whole trimmed input**, where the shared one
+   returns `''`. So pasting nonsense into the Token-adjacent DB fields currently
+   stores the nonsense, and after a swap would store nothing.
+
+(3) is the one to think about: a stored empty string and a stored bad string
+fail differently downstream, and the Notion API is what rejects them either way.
+(1) and (2) matter only if anything compares saved config values as strings —
+check `notionClient.js` and the config-shape tests before assuming not.
+
+So this is **not** a mechanical re-export like R-005. Either reconcile it
+deliberately, with a test pinning each of the three differences, or record it as
+an unreconciled overlap the way R-007 does for `haptics` — both are correct
+outcomes. Sequence it with R-004 so one PR settles the whole family, or take it
+alone; do not do it *inside* R-004 without saying so.
+
+## R-020 — A CSS rule with no declarations, left behind by a heuristic that was abandoned · `refactor` · `open`
+
+**Impact:** none visible. Six lines of dead CSS and one misleading comment.
+
+Found while doing P-001a, 2026-09-21. `src/where-it-went/index.css:682-686`:
+
+```css
+.flair-empty svg[stroke="currentColor"][fill="none"] {
+  /* Simple heuristic: if it's a large unstyled SVG in an empty state, float it.
+     We don't want to target small icons in buttons. We will target SVGs > 32px height if possible,
+     or we can target specific empty state container paths. */
+}
+```
+
+An empty rule body — it selects every icon in the app under `.flair-empty` and
+then does nothing to them, which is why nothing broke. The comment is a design
+note in the future tense for work that was then done differently three lines
+below (`svg[width="48"]`, `svg[width="64"]`). Delete the rule; if the note is
+worth keeping, keep it as a comment attached to the rules that *did* the job.
+
+While in there: those `svg[width="48"]` / `svg[width="64"]` attribute selectors
+are the fragile part of that block — they match on a literal attribute value, so
+any empty-state icon that moves to a component with a `size` prop silently stops
+floating. Worth one sentence in `WHERE_IT_WENT.md` rather than a fix, unless a
+cleaner hook (`.empty-state-icon`, already selected two rules above) covers all
+four call sites.
 
 ## Proposed
 

@@ -1624,3 +1624,39 @@ Subscription, Template.
 
 Measured before and after in Chromium at root sizes 16/18/19/20px: Cancel and
 Save come out identical at every one, and idle and saving lay out the same.
+
+## The chrome icons stop being two drawings at once (2026-09-21)
+
+The app has imported `lucide-react` since the 1.0 iconography pass, but only in
+some files. Seven others — the nav bar, the pickers, the theme toggle, the
+auto-fill hint — carried **pasted Feather markup** instead: `<line x1= y1=>`,
+`<polyline points=>`, `rx="2" ry="2"`, Feather's 700-character gear path. Feather
+is lucide's ancestor, not lucide, and the two have drifted, so one screen could
+show both conventions at once.
+
+Those seventeen glyph sites now come from the library the app already bundles,
+at exactly the sizes they were drawn at before:
+
+| Where | Was | Now |
+|-------|-----|-----|
+| `Navigation.jsx` | Feather `grid`, `list`, `bar-chart-2`, `settings`, `filter`, `calendar`, `plus`×2 | `LayoutGrid`, `List`, `ChartNoAxesColumn`, `Settings`, `Filter`, `Calendar`, `Plus` at 20px |
+| `AccountSelect.jsx`, `CategorySelect.jsx`, `CurrencySelect.jsx` | a hand-inlined `m6 9 6 6 6-6` | `ChevronDown` at 16/16/14px — the same path, from the library |
+| `PeriodSheet.jsx` | Feather `calendar` | `Calendar` at 16px |
+| `Settings.jsx` | Feather `sun` / `moon` | `Sun` / `Moon` at 20px |
+| `TransactionForm.jsx` | Feather `file-text` | `FileText` at 12px, `strokeWidth={2.5}` kept |
+
+Four of the seven are geometrically identical to what they replaced —
+`Filter`, `Calendar`, `ChevronDown` and `ChartNoAxesColumn` are the same
+coordinates. The three that read differently are **the gear** (lucide's is
+flatter, fewer teeth), **the grid** (1px corner radius on each of the four
+squares) and **the sun** (r=4 rather than r=5). That is the intended change: one
+family, not twelve people's handwriting.
+
+**This is unrelated to the "Use Lucide Icons" flair toggle.** That flag
+(`flairLucideIcons`, off by default) swaps the *emoji* on category and account
+rows for lucide glyphs — `CategoryIcon.jsx` and `AccountIcon.jsx` only. The
+chrome above was never emoji and was never behind a flag; it has always been
+drawn markup, and is now drawn markup from one source.
+
+Left hand-drawn on purpose: `Sparkline.jsx` and `NoraAvatar.jsx` — a graph and
+an avatar, which no icon library contains.

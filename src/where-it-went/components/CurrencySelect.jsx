@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Modal } from '../../ds/components/Modal';
 import { CurrencyFlag } from './CurrencyFlag';
 
@@ -33,7 +34,7 @@ export function CurrencySelect({ id, value, onChange, currencies, style, disable
       >
 
         {value}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: '4px' }}><path d="m6 9 6 6 6-6"/></svg>
+        <ChevronDown size={14} style={{ flexShrink: 0, marginLeft: '4px' }} />
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Select Currency" style={{ maxWidth: '280px', margin: '0 auto' }}>
