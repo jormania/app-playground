@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
 import { FormField } from '../../ds/components/FormField';
@@ -49,7 +50,7 @@ export function CategorySelect({ id, value, onChange, categories, label, require
             {selectedCat ? selectedCat.name : 'Select…'}
           </span>
         </span>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: '8px' }}><path d="m6 9 6 6 6-6"/></svg>
+        <ChevronDown size={16} style={{ flexShrink: 0, marginLeft: '8px' }} />
       </Button>
 
 
