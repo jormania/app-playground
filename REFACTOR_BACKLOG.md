@@ -505,7 +505,7 @@ Three things the run learned that this item did not know:
   naive sweep: it is an orphan screenshot branch, so it reads as 1,479 files of
   pure deletion against `main`.
 
-## R-007 — `CLAUDE.md` misstates the typecheck scope · `modernise` · `open`
+## R-007 — `CLAUDE.md` misstates the typecheck scope · `modernise` · `done 2026-09-22`
 
 **Impact:** none visible. Fixes a doc a cold session trusts and would be misled by.
 
@@ -539,6 +539,34 @@ Four apps not using the shared module — but the APIs are genuinely different (
 named intent versus a raw vibrate pattern), so this is **not** a mechanical
 re-export like R-004 or R-005 and must not be filed as one. Record it as an
 unreconciled overlap and leave the code alone.
+
+**Done 2026-09-22.** All four parts:
+
+- **The typecheck sentence** now says seven paths and names them, with a
+  paragraph on why `src/lexi5/lib` is the half-measure it is.
+- **`src/silva/` has a row** in the per-app map, placed beside the other
+  strict-TS apps rather than in the legacy block where it would have been
+  misread.
+- **All seven undocumented `src/shared/` modules are documented**, each with the
+  apps that use it, so the section can do the job it exists for.
+- **The `haptics` overlap is recorded as an overlap**, in the words this item
+  asked for: a named intent versus a raw vibrate pattern, genuinely different
+  APIs, not a mechanical re-export.
+
+Two findings the sweep turned up that this item did not anticipate:
+
+- **`src/shared/audio.ts` has no importers at all**, and its `playChime()` is
+  unrelated to the `playChime(volume, variant)` in `src/tempo/lib/sound.js` that
+  every caller actually uses. Documenting it as part of the shared surface would
+  have been worse than leaving it out — someone would adopt the dead one. Filed
+  as **R-025** rather than deleted inside a doc sweep, and CLAUDE.md warns about
+  it in the meantime.
+- **The test-running caveat was half-written.** It warned about
+  `NODE_OPTIONS=--no-experimental-webstorage` and said nothing about
+  `TZ=Europe/Bucharest`, which the `test` script also sets. Running `npx vitest`
+  bare during R-003 turned Radar-B's `detail` and `wanderlist` suites red with a
+  clean three-hour shift — indistinguishable from a real date bug until you spot
+  the offset. Both are now named.
 
 ## R-003 — Promote the `/api/notion` fetch wrapper to `src/shared/` · `refactor` · `done 2026-09-22 — and it was five apps, not twelve`
 
@@ -1062,6 +1090,33 @@ restyling one, and reproducing it in a browser needs a real API key and an
 intercepted response; the two tests show the before and after more precisely
 than an image would. Flagging it rather than quietly skipping it, since `qol`
 items are supposed to carry them.
+
+## R-025 — `src/shared/audio.ts` is dead, and shadows the chime that isn't · `modernise` · `open`
+
+**Impact:** none visible today. Prevents a future app adopting the worse of two
+functions with the same name.
+
+Found during R-007's documentation sweep, 2026-09-22.
+`grep -rn "shared/audio"` over `src/` matches nothing: the module has **zero
+importers**. It exports one function, `playChime()`, which takes no arguments and
+builds a fixed C5 sine envelope on a module-level `AudioContext`.
+
+The hazard is the name. `src/tempo/lib/sound.js` exports
+`playChime(volume = 'normal', variant = 'sitwalk')` — volume-aware, with variants,
+and used from `Player.jsx` and `SettingsModal.jsx`. An app reaching for a chime
+and finding the one in `src/shared/` would get the poorer of the two and think it
+was the shared standard.
+
+Check `git log` on the file before removing it — it was last touched in 92c7eb9
+(Silva's share-sheet work), so confirm nothing half-built is waiting on it. If
+nothing is, delete it; if Silva does want a chime, the honest move is to promote
+**Tempo's** implementation and let this one go. Either way the outcome is one
+`playChime` in `src/shared/`, not two functions of that name with different
+signatures.
+
+Also worth a glance while in there: it is the one file in `src/shared/` with a
+`console.warn` and trailing whitespace, which is its own small signal about where
+it came from.
 
 ## Proposed
 

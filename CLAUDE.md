@@ -14,11 +14,19 @@ Run **`npm test`**, **`npm run typecheck`**, and **`npx eslint <changed paths>`*
 and make sure all three pass. Don't call a change complete on green-looking
 code alone.
 
-Running `vitest` directly (rather than through `npm test`) without
-`NODE_OPTIONS=--no-experimental-webstorage` makes Node's native `localStorage`
-shadow jsdom's — every storage-touching test then fails with `Cannot read
-properties of undefined (reading 'clear')`, which reads like a real
-regression but isn't. Either run `npm test`, or set that env var yourself.
+Running `vitest` directly (rather than through `npm test`) drops **two** things
+the `test` script sets, and both produce failures that read like real
+regressions:
+
+- without `NODE_OPTIONS=--no-experimental-webstorage`, Node's native
+  `localStorage` shadows jsdom's and every storage-touching test fails with
+  `Cannot read properties of undefined (reading 'clear')`;
+- without `TZ=Europe/Bucharest`, tests with fixed datetime fixtures fail by the
+  offset — Radar-B's `detail` and `wanderlist` suites go red with a clean
+  three-hour shift, which looks exactly like a date bug someone just introduced.
+
+Either run `npm test` (pass a path after `--` to narrow it), or set both
+yourself.
 
 ## Daily refactor workflow
 
@@ -87,6 +95,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | WhereItWent | `src/where-it-went/` | JSX, DS — schema is load-bearing, read [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) before touching it; also [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) |
 | Lexi5 | `src/lexi5/` | JSX, DS — [`LEXI5.md`](LEXI5.md); also [`LEXI5_ROADMAP.md`](LEXI5_ROADMAP.md) |
 | Fit Check | `src/fit-check/` | **strict TS**, DS — Notion select options are a **closed vocabulary** and its tags are AI-assigned; read [`FIT_CHECK.md`](FIT_CHECK.md) before touching `lib/vocabulary.ts`. Also [`FIT_CHECK_ROADMAP.md`](FIT_CHECK_ROADMAP.md), [`FIT_CHECK_DISCOVERY.md`](FIT_CHECK_DISCOVERY.md) |
+| Silva | `src/silva/` | **strict TS**, DS — commonplace book: today's walk, reading history, photo/share intake, neighbourhoods. Read [`SILVA.md`](SILVA.md) |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
@@ -97,10 +106,16 @@ Card/tile data (name, icon, blurb, tags) for every app lives in one place —
 [`src/apps-registry.js`](src/apps-registry.js) — read by `index.html`'s card
 grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the new-app checklist.
 
-`tsconfig.json` covers **`src/sol-odyssey`, `src/daily-stoic`, `src/ds`,
-`src/shared`, `src/fit-check`**; `npm run typecheck` checks all five. Other React apps are
-plain JS/JSX by design and left out of typecheck (they can still import from
-`src/shared`).
+`tsconfig.json` covers **seven** paths — `src/sol-odyssey`, `src/daily-stoic`,
+`src/ds`, `src/shared`, `src/fit-check`, `src/silva` and `src/lexi5/lib`; `npm run
+typecheck` checks all seven. Other React apps are plain JS/JSX by design and left
+out of typecheck (they can still import from `src/shared`).
+
+`src/lexi5/lib` is the deliberate half-measure: Lexi5's components stay JSX while
+its pure logic — the stats schema, the config shape, the tile scorer, Hard Mode,
+undo — is typed, because a closed `Config` type is what stops a setting being read
+before it exists in `DEFAULT_CONFIG`. Only `.ts` files are picked up, so the JS
+modules beside them are unaffected.
 
 ## Cross-app shared logic (`src/shared/`) — distinct from `src/ds/`
 
@@ -154,6 +169,40 @@ two are retrying client classes with backoff and a `NotionError`, and Sol
 Odyssey's `buildRelayInit` is a pure `RequestInit` builder whose caller does the
 fetch. They share about ten lines with this and differ everywhere else — not
 outstanding promotions. See R-003).
+
+The rest of `src/shared/`, which the list above used to leave out entirely —
+this section only does its job (stop an app hand-rolling what already exists) if
+it is complete:
+
+- [`anthropic.ts`](src/shared/anthropic.ts) — the client-side Claude call every
+  app makes the same way: BYO key straight from the browser, the endpoint and
+  API version, `anthropicHeaders()`, and the model ids. Used by Silva.
+- [`axisLockSlider.js`](src/shared/axisLockSlider.js) — a touch-safe drag handler
+  for range sliders inside a vertically scrolling list, where `touch-action:
+  pan-y` on a native `<input type="range">` isn't reliably honoured. Touch Grass's
+  Chorus and Yoru's mixer.
+- [`haptics.ts`](src/shared/haptics.ts) — `triggerHaptic(type)` for a named intent
+  (`light` / `heavy` / `success` / `transition`). Daily Stoic and Silva.
+- [`mediaSession.js`](src/shared/mediaSession.js) — `useMediaSession()`, which
+  holds a silent looping WAV so a browser will surface lock-screen, headset and
+  watch transport controls at all. Tempo and Yoru.
+- [`qrCode.ts`](src/shared/qrCode.ts) — `appQrUrl(file)` and `renderAppQr()`,
+  against the same hardcoded production origin as Cabinet's `installState.js`.
+  The Cabinet.
+- [`useSwipeAction.ts`](src/shared/useSwipeAction.ts) — the swipe-to-act gesture
+  hook. Marquee.
+
+Two things in here are **not** tidy-ups waiting to happen:
+
+- **`haptics` is an unreconciled overlap, not a missed promotion.**
+  `src/lexi5/lib/haptics.js`, `src/loom/lib/haptics.js`, `src/tempo/lib/haptics.js`
+  and `src/wanderlist/haptics.js` each keep a local `tap(pattern)`. That is a raw
+  vibrate pattern; the shared module takes a named intent. Genuinely different
+  APIs — do not file this as a mechanical re-export like R-004 was.
+- **[`audio.ts`](src/shared/audio.ts) has no importers at all.** Its `playChime()`
+  is unrelated to Tempo's `playChime(volume, variant)` in `src/tempo/lib/sound.js`,
+  which is richer and is the one actually used. Don't adopt the shared one over
+  Tempo's; see R-025.
 
 ## Service workers & dev
 
