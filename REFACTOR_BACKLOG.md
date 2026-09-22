@@ -394,130 +394,49 @@ Being `visual`: before/after screenshots in both themes, phone and desktop, on
 `claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
 the diff shows nothing either way.
 
-## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
+## R-026 — The three theme providers R-015 left behind · `refactor` · `open`
 
-**Impact:** none visible. A branch list someone can read.
+**Impact:** none visible. Finishes what R-015 started, or records why two of them
+should stay as they are.
 
-The follow-up R-012's audit asked for. It sat under `## Proposed` until Gabriel
-had read the table, because a branch whose content did *not* land is work lost
-with no obvious trace. **As of the promotion nothing has been deleted yet.**
+R-015 promoted `useThemeSync(key, {load, save, apply})` and converted Cabinet,
+Law of the Day and Loom. It left Tempo, Daily Stoic and Sol Odyssey, on the
+grounds that at 50, 62 and 66 lines against the other three's 34 they "carry more
+than the mechanism".
 
-> **Daily agent: do not take this item.** Skip it and pick the next one. It is
-> in the open list because Gabriel is working it by hand, not because it is
-> yours. Nothing you can do will make the delete succeed, and burning a morning
-> proving that again is the one outcome this note exists to prevent.
+**That reasoning was half wrong, and in exactly the way this family of items
+keeps going wrong: it judged by line count.** Reading the three afterwards:
 
-**Deletion is blocked from a session here**, and it was tested rather than
-assumed. Twice on 2026-09-22: pushing a throwaway branch succeeded both times,
-`git push origin --delete` on it failed both times — first as *fatal: the
-remote end hung up unexpectedly*, then, more usefully, as **`RPC failed; HTTP
-403`** on send-pack. Ordinary pushes and branch creation work; only the delete
-403s. The session proxy's own README says a 403 is a policy denial that must be
-reported rather than retried or routed around, and the GitHub MCP tools have
-`create_branch`, `create_or_update_file` and `delete_file` — no delete-ref.
+- **Sol Odyssey fits `useThemeSync` as-is.** `src/sol-odyssey/lib/themeContext.tsx`
+  is the same three parts as Cabinet's — `useState(loadPreset)`, one effect that
+  applies then saves, one `storage` listener on `THEME_KEY`. Its 66 lines are a
+  richer *value* object (`current`, `mode`, `cycle`, `setPreset`), which the hook
+  never touches. **This is a clean conversion and should be done.**
+- **Daily Stoic nearly fits.** `applyTheme(theme)` / `saveTheme(theme)` is the
+  hook's shape exactly. What it has on top is a `matchMedia('change')` listener
+  that re-runs `syncThemeColor` while the preference is `system`, because the CSS
+  palette swaps itself but the browser-chrome tint would go stale when the device
+  flips at sunset.
+- **Tempo does not fit.** Its effect **applies one value and saves another** —
+  `applyTheme(resolved)`, `saveThemePref(pref)` — where `useThemeSync` applies and
+  saves the same value. It also carries the same `matchMedia('change')` listener.
 
-So this item has two real executors, neither of them an agent in this
-environment:
+So the decision this item has to make is about **the OS-follow listener**, which
+is what the two three-way apps have and the light/dark and preset apps do not:
 
-1. **Gabriel, in his own clone**, where his credentials apply — one
-   `git push origin --delete` with the list below, or the GitHub UI's branch
-   page.
-2. **A `workflow_dispatch` job** using `REFACTOR_PAT`, which runs on GitHub's
-   runners and never touches this proxy. **This now exists:**
-   [`.github/workflows/prune-claude-branches.yml`](.github/workflows/prune-claude-branches.yml).
-   Run it from the Actions tab — `dry-run` is the default and prints a table of
-   what it would remove; re-run with `delete` once that reads right.
+1. Extend `useThemeSync` with an optional `followSystem` concern, and give Tempo
+   a way to apply a derived value while saving the raw one. Risks turning a
+   narrow hook into the flattened one-API-for-everything that R-015 explicitly
+   refused.
+2. Convert Sol Odyssey only, and record Tempo and Daily Stoic as deliberate —
+   the mechanism they share is already shared, and the rest is genuinely theirs.
 
-   It deliberately does **not** carry the 41 names from the table below. A
-   baked-in list is wrong the moment the next pull request merges, so the rule is
-   re-derived every run, and it is the audit's own rule: a branch is spent only
-   when it has at least one pull request and **every** one of them merged. No
-   pull request means keep — that branch may be the only copy. An unreadable
-   answer means keep. `claude/shots`, the three no-merge-base branches and
-   `claude/daily-refactoring-agent-*` are refused outright whatever their pull
-   requests say. A refused delete fails the run rather than passing quietly.
+**Option 2 is probably right**, and would close this item in one short run. Take
+the other only if a third app turns up needing the same OS-follow effect, which
+is the repo's usual bar for promoting anything.
 
-   The table below therefore stops being the instruction and becomes the record
-   of what the audit saw on 2026-09-22.
-
-**Promoted 2026-09-22** at Gabriel's word, after he read the table.
-
-That probe left `claude/prune-probe-delete-me` behind, pointing at `main`'s own
-commit. It is harmless, and it is on the list below; it exists because the
-delete that should have removed it is the thing that does not work.
-
-### Disposable — the content is in `main` (41 branches)
-
-| Branch (`claude/` prefix dropped) | Why it is spent |
-|---|---|
-| `apollo111-and-venue-notes-fix` | merged via #44 |
-| `badge-links-main` | merged via #78 |
-| `badges-pin-main` | merged via #77 |
-| `bucharest-event-discovery-6zeadz` | merged via #22 |
-| `cabinet-webapk-minting-dnb8x2` | merged via #24 |
-| `cinema-europa-teatrul-metropolis-l86rd6` | merged via #31, #32, #38, #39, #40 |
-| `daily-refactoring-agent-kf8sqm` | merged via #60, #61, #62, #66 |
-| `daily-stogie-lite-td0ujl` | merged via #45, #46 |
-| `fit-check-recommendation-audit-plda82` | merged via #9 |
-| `fix-r013-clock` | merged via #75 |
-| `free-tier-optimization-qx8xau` | merged via #50, #51 |
-| `gate-counts-outcomes` | merged via #80 |
-| `interleave-backlog` | merged via #69 |
-| `latest-card-normal-size` | merged via #76 |
-| `lexi5-wake-lock-word-list-i3hjg4` | merged via #6 |
-| `marquee-bot-check-issue-n7i6dl` | merged via #63, #64 |
-| `marquee-filter-cascade-rebuild` | merged via #35 |
-| `marquee-filter-scroll-breadcrumb` | merged via #34 |
-| `marquee-filters-full-menu` | merged via #33 |
-| `marquee-metropolis-prices` | merged via #37 |
-| `marquee-read-through-bad-status` | merged via #36 |
-| `next-app-recommendation-pr9fpj` | merged via #16 |
-| `production-ci-failure-tczeu8` | merged via #25 |
-| `promote-p002-backlog` | merged via #67 |
-| `prune-refactor-branches` | merged via #72 |
-| `radar-b-wanderlist-opwy25` | merged via #26, #27, #28, #29, #30, #56, #57, #58 |
-| `raise-turn-limit` | merged via #71 |
-| `recital-cameral-marquee-display-y9688r` | merged via #52, #53, #54, #55 |
-| `rhythm-last-7-days-view-2v3rkg` | merged via #4 |
-| `silva-audit-enhancement-62n9ko` | merged via #17, #19, #20 |
-| `silva-link-sharing-audit-fyp1wd` | no PR; tree identical to main |
-| `silva-link-title-prefill-qhojwq` | merged via #21 |
-| `silva-walk-and-intake-62n9ko` | merged via #18 |
-| `split-p001-slices` | merged via #68 |
-| `tag-presentation-audit-8w6ucd` | merged via #42, #43 |
-| `tickets-on-sale-discrepancy-osqpkx` | merged via #47, #48 |
-| `wanderlist-dedupe-fix` | merged via #41 |
-| `whereitwent-ai-transactions-1flz78` | merged via #10, #11, #12, #13, #14, #15 |
-| `yoru-atmosphere-settings-bug-xfapr2` | merged via #7, #8 |
-| `yoru-sound-stage-realism-m0909s` | merged via #49 |
-| `prune-probe-delete-me` | the deletion probe above; points at `main` |
-
-`daily-refactoring-agent-kf8sqm` is on that list because every one of its PRs
-merged — but it is also the branch this repo's session instructions nominate for
-development work. Delete it last, or re-cut it from `main`.
-
-### Not disposable — read before touching (4 branches)
-
-- **`shots`** — **never delete.** The screenshot branch P-001 and P-002 write
-  their before/after images to, deliberately never merged, which is why it reads
-  as 1,479 files of pure deletion against `main`. It is doing its job.
-- **`click-deck-audit-refactor-g3o8hy`** (no PR),
-  **`loom-app-design-as6ftd`** (PR #3, closed unmerged) and
-  **`vercel-ci-failures-9wo5yq`** (PR #5, closed unmerged) — all three **share
-  no commit at all with `main`**. `git merge-base` returns nothing, so R-012's
-  prescribed `git diff main...<branch>` cannot run on them, and a naive reading
-  of `git log main..<branch>` reports 413–658 "unmerged" commits that are
-  nothing of the sort. They are snapshots of a history line that predates the
-  one `main` is on.
-
-  Their subject matter — Loom's SCUMM themes and Notion default database, Click
-  Deck's audit, a WhereItWent test-copy fix — is all in `main` today, so the work
-  almost certainly landed by another route. "Almost certainly" is why they are
-  not on the list above: confirming it means reading three old trees, which is a
-  separate afternoon rather than a line in a table.
-
-
----
+Whatever is chosen, `src/shared/theme.test.ts` is the place to prove it —
+those ten tests are the only coverage the cross-tab listener has ever had.
 
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 
@@ -952,6 +871,14 @@ they carry more than the mechanism, and the item's own warning about the obvious
 large version applies to them most. A follow-up should read each before assuming
 it fits.
 
+**That follow-up is R-026, and reading them showed this paragraph is half
+wrong.** Sol Odyssey's provider is the same three parts as Cabinet's — its 66
+lines are a richer value object the hook never touches — so it converts cleanly.
+Only Tempo and Daily Stoic genuinely carry more, and what they carry is one
+named thing: a `matchMedia('change')` listener for following the OS while the
+preference is `system`. Judging by line count is the exact mistake this item's
+own header warns about; see R-026.
+
 The cross-tab listener had **no test anywhere in the repo** before this — six
 providers, six copies, zero coverage. `src/shared/theme.test.ts` now covers the
 initial load, apply-before-save ordering, an updater function, a `storage` event
@@ -1242,6 +1169,131 @@ signatures.
 Also worth a glance while in there: it is the one file in `src/shared/` with a
 `console.warn` and trailing whitespace, which is its own small signal about where
 it came from.
+
+## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
+
+**Impact:** none visible. A branch list someone can read.
+
+The follow-up R-012's audit asked for. It sat under `## Proposed` until Gabriel
+had read the table, because a branch whose content did *not* land is work lost
+with no obvious trace. **As of the promotion nothing has been deleted yet.**
+
+> **Daily agent: do not take this item.** Skip it and pick the next one. It is
+> in the open list because Gabriel is working it by hand, not because it is
+> yours. Nothing you can do will make the delete succeed, and burning a morning
+> proving that again is the one outcome this note exists to prevent.
+
+**Deletion is blocked from a session here**, and it was tested rather than
+assumed. Twice on 2026-09-22: pushing a throwaway branch succeeded both times,
+`git push origin --delete` on it failed both times — first as *fatal: the
+remote end hung up unexpectedly*, then, more usefully, as **`RPC failed; HTTP
+403`** on send-pack. Ordinary pushes and branch creation work; only the delete
+403s. The session proxy's own README says a 403 is a policy denial that must be
+reported rather than retried or routed around, and the GitHub MCP tools have
+`create_branch`, `create_or_update_file` and `delete_file` — no delete-ref.
+
+So this item has two real executors, neither of them an agent in this
+environment:
+
+1. **Gabriel, in his own clone**, where his credentials apply — one
+   `git push origin --delete` with the list below, or the GitHub UI's branch
+   page.
+2. **A `workflow_dispatch` job** using `REFACTOR_PAT`, which runs on GitHub's
+   runners and never touches this proxy. **This now exists:**
+   [`.github/workflows/prune-claude-branches.yml`](.github/workflows/prune-claude-branches.yml).
+   Run it from the Actions tab — `dry-run` is the default and prints a table of
+   what it would remove; re-run with `delete` once that reads right.
+
+   It deliberately does **not** carry the 41 names from the table below. A
+   baked-in list is wrong the moment the next pull request merges, so the rule is
+   re-derived every run, and it is the audit's own rule: a branch is spent only
+   when it has at least one pull request and **every** one of them merged. No
+   pull request means keep — that branch may be the only copy. An unreadable
+   answer means keep. `claude/shots`, the three no-merge-base branches and
+   `claude/daily-refactoring-agent-*` are refused outright whatever their pull
+   requests say. A refused delete fails the run rather than passing quietly.
+
+   The table below therefore stops being the instruction and becomes the record
+   of what the audit saw on 2026-09-22.
+
+**Promoted 2026-09-22** at Gabriel's word, after he read the table.
+
+That probe left `claude/prune-probe-delete-me` behind, pointing at `main`'s own
+commit. It is harmless, and it is on the list below; it exists because the
+delete that should have removed it is the thing that does not work.
+
+### Disposable — the content is in `main` (41 branches)
+
+| Branch (`claude/` prefix dropped) | Why it is spent |
+|---|---|
+| `apollo111-and-venue-notes-fix` | merged via #44 |
+| `badge-links-main` | merged via #78 |
+| `badges-pin-main` | merged via #77 |
+| `bucharest-event-discovery-6zeadz` | merged via #22 |
+| `cabinet-webapk-minting-dnb8x2` | merged via #24 |
+| `cinema-europa-teatrul-metropolis-l86rd6` | merged via #31, #32, #38, #39, #40 |
+| `daily-refactoring-agent-kf8sqm` | merged via #60, #61, #62, #66 |
+| `daily-stogie-lite-td0ujl` | merged via #45, #46 |
+| `fit-check-recommendation-audit-plda82` | merged via #9 |
+| `fix-r013-clock` | merged via #75 |
+| `free-tier-optimization-qx8xau` | merged via #50, #51 |
+| `gate-counts-outcomes` | merged via #80 |
+| `interleave-backlog` | merged via #69 |
+| `latest-card-normal-size` | merged via #76 |
+| `lexi5-wake-lock-word-list-i3hjg4` | merged via #6 |
+| `marquee-bot-check-issue-n7i6dl` | merged via #63, #64 |
+| `marquee-filter-cascade-rebuild` | merged via #35 |
+| `marquee-filter-scroll-breadcrumb` | merged via #34 |
+| `marquee-filters-full-menu` | merged via #33 |
+| `marquee-metropolis-prices` | merged via #37 |
+| `marquee-read-through-bad-status` | merged via #36 |
+| `next-app-recommendation-pr9fpj` | merged via #16 |
+| `production-ci-failure-tczeu8` | merged via #25 |
+| `promote-p002-backlog` | merged via #67 |
+| `prune-refactor-branches` | merged via #72 |
+| `radar-b-wanderlist-opwy25` | merged via #26, #27, #28, #29, #30, #56, #57, #58 |
+| `raise-turn-limit` | merged via #71 |
+| `recital-cameral-marquee-display-y9688r` | merged via #52, #53, #54, #55 |
+| `rhythm-last-7-days-view-2v3rkg` | merged via #4 |
+| `silva-audit-enhancement-62n9ko` | merged via #17, #19, #20 |
+| `silva-link-sharing-audit-fyp1wd` | no PR; tree identical to main |
+| `silva-link-title-prefill-qhojwq` | merged via #21 |
+| `silva-walk-and-intake-62n9ko` | merged via #18 |
+| `split-p001-slices` | merged via #68 |
+| `tag-presentation-audit-8w6ucd` | merged via #42, #43 |
+| `tickets-on-sale-discrepancy-osqpkx` | merged via #47, #48 |
+| `wanderlist-dedupe-fix` | merged via #41 |
+| `whereitwent-ai-transactions-1flz78` | merged via #10, #11, #12, #13, #14, #15 |
+| `yoru-atmosphere-settings-bug-xfapr2` | merged via #7, #8 |
+| `yoru-sound-stage-realism-m0909s` | merged via #49 |
+| `prune-probe-delete-me` | the deletion probe above; points at `main` |
+
+`daily-refactoring-agent-kf8sqm` is on that list because every one of its PRs
+merged — but it is also the branch this repo's session instructions nominate for
+development work. Delete it last, or re-cut it from `main`.
+
+### Not disposable — read before touching (4 branches)
+
+- **`shots`** — **never delete.** The screenshot branch P-001 and P-002 write
+  their before/after images to, deliberately never merged, which is why it reads
+  as 1,479 files of pure deletion against `main`. It is doing its job.
+- **`click-deck-audit-refactor-g3o8hy`** (no PR),
+  **`loom-app-design-as6ftd`** (PR #3, closed unmerged) and
+  **`vercel-ci-failures-9wo5yq`** (PR #5, closed unmerged) — all three **share
+  no commit at all with `main`**. `git merge-base` returns nothing, so R-012's
+  prescribed `git diff main...<branch>` cannot run on them, and a naive reading
+  of `git log main..<branch>` reports 413–658 "unmerged" commits that are
+  nothing of the sort. They are snapshots of a history line that predates the
+  one `main` is on.
+
+  Their subject matter — Loom's SCUMM themes and Notion default database, Click
+  Deck's audit, a WhereItWent test-copy fix — is all in `main` today, so the work
+  almost certainly landed by another route. "Almost certainly" is why they are
+  not on the list above: confirming it means reading three old trees, which is a
+  separate afternoon rather than a line in a table.
+
+
+---
 
 ## Proposed
 
