@@ -364,6 +364,38 @@ Two things worth carrying forward:
 - **R-014's step 3 is now unblocked.** `scratch_debug.js` was `puppeteer`'s only
   consumer in the repo; with it gone, `puppeteer` has none. See that item.
 
+## R-022 — WhereItWent's empty-state float animation reaches almost nothing · `visual` · `open`
+
+**Impact:** empty states that were meant to float and no longer do. Small, but
+it is a user-visible flair toggle that silently does less than it claims.
+
+Found while doing R-020, 2026-09-22 — the fragility R-020 flagged has already
+fired, so this is a live defect rather than a tidy-up.
+
+`src/where-it-went/index.css`, the `float-icon` block under `.flair-empty`
+(the `flairEmpty` feature toggle, on by default). Two rule blocks feed it:
+
+1. `[style*="font-size: 48px"] svg`, `[style*="height: 48px"] svg`,
+   `[style*="width: 48px"] svg`, `.empty-state-icon svg` — the inline-style
+   selectors do match the empty-state containers in `TransactionsList.jsx:295`,
+   `Dashboard.jsx:683`, `InsightsView.jsx:121` and `App.jsx:690`, but **those
+   containers hold an emoji, not an `<svg>`**, so the descendant never resolves.
+   `.empty-state-icon` appears nowhere in the markup at all.
+2. `main > div > svg[width="48"]`, `main > div > svg[width="64"]` — these
+   matched pasted Feather markup. The 2026-09-21 icon pass (P-001a) moved those
+   sites to lucide components, which render a `size` prop rather than literal
+   `width`/`height` attributes. `grep` finds no `width="48"` or `width="64"`
+   left in the app.
+
+So the whole block is inert today. Decide what it should do before deleting
+anything: either give the four empty states a real `.empty-state-icon` hook and
+let the animation work as intended, or drop the block and the keyframes with it.
+The first is probably right — the toggle exists and users can turn it on.
+
+Being `visual`: before/after screenshots in both themes, phone and desktop, on
+`claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
+the diff shows nothing either way.
+
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 
 **Impact:** three fewer pasted glyphs, in an app that already ships the library
@@ -560,7 +592,7 @@ legacy and design-locked, but that lock is about styling — adding tests touche
 no styling and imports nothing from `src/ds/`. Start with whatever holds the
 session/timer state, not the render tree.
 
-## R-014 — Two dependencies that nothing imports, and one in the wrong list · `modernise` · `open`
+## R-014 — Two dependencies that nothing imports, and one in the wrong list · `modernise` · `done 2026-09-22`
 
 **Impact:** none visible. A `package.json` whose dependency list is true.
 
@@ -597,6 +629,14 @@ they are:
 
 Do 1 and 2 in one run; 3 is a one-line follow-up once R-011 has landed. Prove it
 the usual way — the suite, typecheck, and a `npm run build` that still succeeds.
+
+**Done 2026-09-22**, all three in one run rather than two — step 3's
+precondition was already met, and `grep -rn puppeteer` over the repo minus
+`node_modules` and `package-lock.json` matched `package.json` alone, as this
+note predicted. `playwright` turned out to have no code consumer at all: the
+three root scripts named above are gone, so only the skill's screenshot step
+invokes it. Suite, typecheck and a full build all pass; the lockfile lost 350
+lines.
 
 ## R-015 — The theme plumbing is written out six times · `refactor` · `open`
 
@@ -814,38 +854,6 @@ reads it.
 encodes Lexi5's parse-fallback chain, and this item's own instruction is to
 check whether that logic has a real test first. If it does not, the outcome is
 a test in `src/lexi5/` and *then* the delete.
-
-## R-022 — WhereItWent's empty-state float animation reaches almost nothing · `visual` · `open`
-
-**Impact:** empty states that were meant to float and no longer do. Small, but
-it is a user-visible flair toggle that silently does less than it claims.
-
-Found while doing R-020, 2026-09-22 — the fragility R-020 flagged has already
-fired, so this is a live defect rather than a tidy-up.
-
-`src/where-it-went/index.css`, the `float-icon` block under `.flair-empty`
-(the `flairEmpty` feature toggle, on by default). Two rule blocks feed it:
-
-1. `[style*="font-size: 48px"] svg`, `[style*="height: 48px"] svg`,
-   `[style*="width: 48px"] svg`, `.empty-state-icon svg` — the inline-style
-   selectors do match the empty-state containers in `TransactionsList.jsx:295`,
-   `Dashboard.jsx:683`, `InsightsView.jsx:121` and `App.jsx:690`, but **those
-   containers hold an emoji, not an `<svg>`**, so the descendant never resolves.
-   `.empty-state-icon` appears nowhere in the markup at all.
-2. `main > div > svg[width="48"]`, `main > div > svg[width="64"]` — these
-   matched pasted Feather markup. The 2026-09-21 icon pass (P-001a) moved those
-   sites to lucide components, which render a `size` prop rather than literal
-   `width`/`height` attributes. `grep` finds no `width="48"` or `width="64"`
-   left in the app.
-
-So the whole block is inert today. Decide what it should do before deleting
-anything: either give the four empty states a real `.empty-state-icon` hook and
-let the animation work as intended, or drop the block and the keyframes with it.
-The first is probably right — the toggle exists and users can turn it on.
-
-Being `visual`: before/after screenshots in both themes, phone and desktop, on
-`claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
-the diff shows nothing either way.
 
 ## Proposed
 
