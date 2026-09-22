@@ -7,15 +7,19 @@
 .eyebrow {
   margin: 0;
   font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.04em;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-muted);
+  color: var(--color-accent);
 }
 
+/* The scenario is the thing you actually read, so it gets the one serif-scale
+   treatment in the app: larger, looser, and a gilt margin rule down the left
+   like a passage marked in a book. */
 .scenario {
   margin: 0;
-  padding: var(--space-lg) 0;
+  padding: var(--space-md) 0 var(--space-md) var(--space-md);
+  border-left: 3px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
   font-size: var(--text-lg);
   line-height: var(--leading-body);
   color: var(--color-ink);
@@ -40,8 +44,22 @@
    hard-edged box anyway, so this makes the separation a real design choice. */
 .option {
   width: 100%;
+  padding: var(--space-md) var(--space-lg);
   color: var(--color-ink);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   line-height: var(--leading-body);
+}
+
+/* Tap targets should say so. Hover is desktop-only in practice; :active is the
+   one that reads on a phone, and it fills with the accent's own tint rather
+   than a grey so the answer you are pressing is unmistakable. */
+.option:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+}
+
+.option:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
+  transform: translateY(0);
 }

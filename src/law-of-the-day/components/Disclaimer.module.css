@@ -3,6 +3,6 @@
   padding: 0 var(--space-md);
   font-size: var(--text-xs);
   line-height: var(--leading-body);
-  color: var(--color-faint);
+  color: var(--color-muted);
   text-align: center;
 }

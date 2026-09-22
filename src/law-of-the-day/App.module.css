@@ -1,29 +1,28 @@
-/* This app's own palette, layered on top of the shared DS tokens: the exact
-   gold/bronze gradient/accent already established in law-of-the-day-guide.html,
-   so the app and its guide read as one consistent identity. Scoping the
-   overrides to .shell means every descendant that reads --color-accent (or
-   its derived --color-ring/--color-glow) picks up this app's tint
-   automatically — same pattern Tempo uses for its own per-mode gradients. */
+/* Layout only. The colours live in palette.css, at :root, so the portaled
+   stats dialog gets them too — see the note at the top of that file. */
 .shell {
   min-height: 100vh;
   min-height: 100dvh;
-  --ga: #f4f5f7;
-  --gb: #ece9e0;
-  --color-accent: #b8860b;
-  --color-accent-hover: #8a6608;
-  background: linear-gradient(165deg, var(--ga) 0%, var(--gb) 100%);
+  background:
+    radial-gradient(
+      120% 60% at 50% 0%,
+      color-mix(in srgb, var(--color-accent) 12%, transparent) 0%,
+      transparent 70%
+    ),
+    linear-gradient(165deg, var(--lotd-grad-a) 0%, var(--lotd-grad-b) 100%);
+  background-attachment: fixed;
+  /* Nothing had ever set a font on this app: `body` inherits the browser
+     default, so every line of body copy rendered in Times while the DS's
+     Inter sat loaded and unused. Set it here, at the app's own root. */
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition: background-color 400ms var(--ease);
   display: flex;
   justify-content: center;
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
     env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
-}
-
-:global(html[data-theme='dark']) .shell {
-  --ga: #0e1115;
-  --gb: #171b22;
-  --color-accent: #d9ab3e;
-  --color-accent-hover: #eec569;
 }
 
 .content {
@@ -39,6 +38,10 @@
   align-items: center;
   justify-content: space-between;
   margin: 0 0 var(--space-lg);
+  padding-bottom: var(--space-sm);
+  /* A gilt rule under the header — the one place a hairline of pure accent
+     can sit without competing with the answer cards below it. */
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
   gap: var(--space-sm);
 }
 
@@ -51,7 +54,10 @@
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--text-xl);
+  /* Shrinks rather than wrapping to two lines beside the four toolbar
+     buttons on a narrow phone. */
+  font-size: clamp(1.25rem, 5.5vw, var(--text-xl));
   font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
   color: var(--color-ink);
 }

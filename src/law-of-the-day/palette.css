@@ -1,0 +1,93 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Law of the Day — the app's own palette.
+
+   Two reasons this is a plain unlayered `:root` block in its own file rather
+   than the handful of overrides App.module.css used to carry on `.shell`:
+
+   1. `ds/tokens.css` puts its defaults inside `@layer ds`, and unlayered CSS
+      beats layered CSS whatever order the bundler emits it in. That is the
+      documented way for an app to re-tint the system (see the header of
+      ds/tokens.css) — the same pattern Silva and Fit Check use.
+   2. The DS `Modal` renders through a portal into <body>, which is *outside*
+      `.shell`. Tokens scoped to the shell never reached it, so the stats
+      dialog kept rendering in the stock design-system blue while the rest of
+      the app was gold. At `:root` there is nothing left to miss.
+
+   The scheme: parchment and bronze by day, midnight and gilt by night —
+   the "old book of strategy" the guide page already dresses in. Every text
+   colour here clears 4.5:1 against every surface it can land on, in both
+   themes, including the far end of the background gradient. The previous
+   palette was inherited Solarized: `--color-faint` sat at 2.3:1 on the light
+   background, which is why the disclaimer and the "come back tomorrow"
+   subtext were unreadable on a phone in daylight.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces — warm paper, back to front. */
+  --color-bg:        #f7f1e4;
+  --color-bg-sunken: #efe6d3;
+  --color-surface:   #fffcf4;
+  --color-surface-2: #f4ebd9;
+  --color-border:    #d9c8a6;
+  --color-border-2:  #ab8f5c;
+
+  /* Text — near-black warm ink, then two genuinely readable steps down. */
+  --color-ink:   #1f1a12;
+  --color-muted: #57452c;
+  --color-faint: #745d3c;
+
+  /* Accents — bronze, with the secondary hues pitched to sit beside it. */
+  --color-accent:       #9d4e12;
+  --color-accent-hover: #7a3a0a;
+  --color-on-accent:    #fffcf4;
+  --color-success:      #256b3a;
+  --color-warning:      #8a5300;
+  --color-danger:       #a32121;
+
+  --color-scrim: rgba(41, 30, 16, 0.55);
+
+  /* The shell gradient, kept as tokens so the dark block only restates these. */
+  --lotd-grad-a: #fdf8ec;
+  --lotd-grad-b: #f0e4cc;
+
+  /* Warm the elevation to match the paper — neutral grey shadows read as dirt
+     on a cream surface. */
+  --shadow-sm: 0 1px 2px rgba(74, 52, 20, 0.10);
+  --shadow-md: 0 4px 12px rgba(74, 52, 20, 0.13);
+  --shadow-lg: 0 12px 32px rgba(74, 52, 20, 0.18);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg:        #171b28;
+  --color-bg-sunken: #12141c;
+  --color-surface:   #232839;
+  --color-surface-2: #2c3247;
+  --color-border:    #3f4762;
+  --color-border-2:  #626d92;
+
+  --color-ink:   #f5efe2;
+  --color-muted: #cdc4b2;
+  --color-faint: #ada285;
+
+  /* Gilt on midnight. `--color-on-accent` has to flip to near-black here: a
+     primary Button fills with the accent, and white on gold is unreadable. */
+  --color-accent:       #f2b53c;
+  --color-accent-hover: #ffcd6a;
+  --color-on-accent:    #16181f;
+  --color-success:      #74d38a;
+  --color-warning:      #f2b53c;
+  --color-danger:       #ff8080;
+
+  --color-scrim: rgba(8, 9, 13, 0.72);
+
+  --lotd-grad-a: #12141c;
+  --lotd-grad-b: #1d2233;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.50);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.60);
+}
