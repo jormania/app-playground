@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { useSystemThemeFollow } from '../../shared/theme.ts'
 import { applyTheme, loadThemePref, nextPref, resolveTheme, saveThemePref, THEME_KEY } from './theme'
 
 const ThemeContext = createContext(null)
@@ -12,14 +13,11 @@ export function ThemeProvider({ children }) {
     saveThemePref(pref)
   }, [pref, resolved])
 
-  // Re-resolve when the OS scheme flips while on "system".
-  useEffect(() => {
-    if (pref !== 'system' || typeof matchMedia === 'undefined') return
-    const mq = matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme(resolveTheme('system'))
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [pref])
+  // Re-resolve when the OS scheme flips while on "system". The subscription is
+  // shared (R-026) and brings a Safari < 14 fallback this copy never had; what
+  // to do about the flip stays here, because the three apps that follow the OS
+  // each want something different done.
+  useSystemThemeFollow(pref === 'system', () => applyTheme(resolveTheme('system')))
 
   // Live-sync with the guide (and other tabs).
   useEffect(() => {

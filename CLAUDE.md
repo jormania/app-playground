@@ -151,10 +151,11 @@ unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly),
 written it out, and `useThemeSync(key, {load, save, apply})`, the
 persist-and-cross-tab-sync effect pair, used by Cabinet, Law of the Day and
 Loom, plus `useSystemThemeFollow(active, onChange)`, the `matchMedia` listener
-for following the OS while a preference is `system` — Law of the Day uses it;
-Tempo and Daily Stoic still carry their own copy, which lacks its Safari < 14
-fallback (R-026). **What to do when the OS flips stays with the caller**: the
-three apps each want something different done about it. Each app's own `theme.{js,ts}` keeps its vocabulary — light/dark vs
+for following the OS while a preference is `system` — **all three apps that
+follow the OS use it**: Law of the Day, Tempo and Daily Stoic (R-026).
+**What to do when the OS flips stays with the caller**, because the three want
+different things: Tempo repaints, Daily Stoic re-syncs only the browser-chrome
+tint since its palette swaps in CSS, Law of the Day does both. Each app's own `theme.{js,ts}` keeps its vocabulary — light/dark vs
 three-way-with-system vs palette presets — and **those must not be flattened
 into one API**; see R-015),
 [`findings.js`](src/shared/findings.js) (**the Findings/Wanderlist Notion schema** —
@@ -196,17 +197,17 @@ it is complete:
 - [`useSwipeAction.ts`](src/shared/useSwipeAction.ts) — the swipe-to-act gesture
   hook. Marquee.
 
-Two things in here are **not** tidy-ups waiting to happen:
+One thing in here is **not** a tidy-up waiting to happen:
 
 - **`haptics` is an unreconciled overlap, not a missed promotion.**
   `src/lexi5/lib/haptics.js`, `src/loom/lib/haptics.js`, `src/tempo/lib/haptics.js`
   and `src/wanderlist/haptics.js` each keep a local `tap(pattern)`. That is a raw
   vibrate pattern; the shared module takes a named intent. Genuinely different
   APIs — do not file this as a mechanical re-export like R-004 was.
-- **[`audio.ts`](src/shared/audio.ts) has no importers at all.** Its `playChime()`
-  is unrelated to Tempo's `playChime(volume, variant)` in `src/tempo/lib/sound.js`,
-  which is richer and is the one actually used. Don't adopt the shared one over
-  Tempo's; see R-025.
+
+There was a second: `audio.ts`, which had no importers and shadowed Tempo's
+richer `playChime(volume, variant)`. It was deleted (R-025), so if you are
+looking for a shared chime there isn't one — Tempo's is the only implementation.
 
 ## Service workers & dev
 

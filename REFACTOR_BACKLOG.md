@@ -394,7 +394,7 @@ Being `visual`: before/after screenshots in both themes, phone and desktop, on
 `claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
 the diff shows nothing either way.
 
-## R-026 — The theme mechanism's second half: following the OS · `refactor` · `open` — step 1 done
+## R-026 — The theme mechanism's second half: following the OS · `refactor` · `open` — steps 1–2 done
 
 **Impact:** none visible. One copy of the OS-follow effect instead of three, and
 the two providers R-015 left that can still adopt `useThemeSync`.
@@ -460,7 +460,7 @@ One run each, in this order, so no run is both a promotion and a conversion:
 
 1. ~~`useSystemThemeFollow` into `src/shared/theme.ts`, with Law of the Day
    importing it.~~ **Done 2026-09-22.**
-2. Tempo and Daily Stoic onto it.
+2. ~~Tempo and Daily Stoic onto it.~~ **Done 2026-09-22.**
 3. Sol Odyssey onto `useThemeSync`.
 4. Daily Stoic onto `useThemeSync`.
 
@@ -486,7 +486,21 @@ Two things the promotion settled beyond de-duplicating:
   on `onChange`, ignoring `active`, and never cleaning up — and each was
   caught.
 
-Steps 2–4 are unchanged and still one run each.
+**Step 2 done 2026-09-22.** Tempo and Daily Stoic now call
+`useSystemThemeFollow` too, so **no provider carries its own `matchMedia`
+listener any more** — `grep -rn matchMedia src/*/lib/themeContext.*` comes back
+empty. Both gained the Safari < 14 `addListener` fallback and the `try`/`catch`
+they never had, which is the small bug fix that rode along with the
+de-duplication.
+
+Each kept its own callback, as designed: Tempo repaints
+(`applyTheme(resolveTheme('system'))`), Daily Stoic re-syncs only the
+browser-chrome tint (`syncThemeColor('system')`) because its palette swaps in
+CSS. Neither provider had a test touching that effect before or after — the
+hook's seven tests are what proves the move, which is the whole reason step 1
+wrote them first.
+
+Steps 3–4 remain, still one run each.
 
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 

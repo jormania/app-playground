@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useSystemThemeFollow } from '../../shared/theme.ts'
 import {
   applyTheme,
   loadTheme,
@@ -29,14 +30,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme])
 
   // Follow the OS while on "system". The palette itself swaps in CSS, but the
-  // browser-chrome tint would go stale the moment the device flips at sunset.
-  useEffect(() => {
-    if (theme !== 'system' || typeof matchMedia === 'undefined') return undefined
-    const mq = matchMedia('(prefers-color-scheme: dark)')
-    const sync = () => syncThemeColor('system')
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [theme])
+  // browser-chrome tint would go stale the moment the device flips at sunset —
+  // which is why this app re-syncs only the tint where the other two repaint.
+  // The subscription is shared (R-026); the callback is not.
+  useSystemThemeFollow(theme === 'system', () => syncThemeColor('system'))
 
   // Live sync with the field guide (and other tabs).
   useEffect(() => {
