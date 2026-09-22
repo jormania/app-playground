@@ -13,7 +13,7 @@ import {
 } from './lib/difficulty'
 import { useTheme } from './lib/themeContext'
 import { IconButton } from '../ds'
-import { IconGuide, IconStats, IconDifficulty } from './components/icons'
+import { IconGuide, IconStats, IconDifficulty, IconTheme } from './components/icons'
 import { ScenarioView } from './components/ScenarioView'
 import { RevealView } from './components/RevealView'
 import { LockedView } from './components/LockedView'
@@ -22,7 +22,7 @@ import { Disclaimer } from './components/Disclaimer'
 import styles from './App.module.css'
 
 export default function App() {
-  const { theme, toggle } = useTheme()
+  const { pref: themePref, label: themeLabel, cycle: cycleTheme } = useTheme()
   const [status, setStatus] = useState(() => getDailyStatus(laws))
   const [difficulty, setDifficulty] = useState(() => normalizeDifficulty(loadDifficulty()))
   const [options, setOptions] = useState(() =>
@@ -114,11 +114,11 @@ export default function App() {
             </IconButton>
             <IconButton
               size="sm"
-              aria-label={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'} (tap to switch)`}
-              title={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'}`}
-              onClick={toggle}
+              aria-label={`Theme: ${themeLabel} (tap to change)`}
+              title={`Theme: ${themeLabel}`}
+              onClick={cycleTheme}
             >
-              {theme === 'dark' ? '☾' : '☀'}
+              <IconTheme pref={themePref} />
             </IconButton>
           </div>
         </div>

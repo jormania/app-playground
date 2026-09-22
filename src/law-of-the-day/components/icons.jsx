@@ -42,3 +42,30 @@ export function IconDifficulty({ level = 1, ...props }) {
     </svg>
   )
 }
+
+// Theme — sun (light), moon (dark), and a half-filled disc for "follow the
+// system". Drawn rather than set as ☀/☾ glyphs so all three share the stroke
+// weight of the icons beside them instead of rendering at the font's mercy.
+export function IconTheme({ pref = 'system', ...props }) {
+  if (pref === 'light') {
+    return (
+      <svg {...base} {...props} aria-hidden>
+        <circle cx="12" cy="12" r="4.2" />
+        <path d="M12 2.6v2.2M12 19.2v2.2M4.35 4.35l1.56 1.56M18.09 18.09l1.56 1.56M2.6 12h2.2M19.2 12h2.2M4.35 19.65l1.56-1.56M18.09 5.91l1.56-1.56" />
+      </svg>
+    )
+  }
+  if (pref === 'dark') {
+    return (
+      <svg {...base} {...props} aria-hidden>
+        <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2Z" />
+      </svg>
+    )
+  }
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 3.6a8.4 8.4 0 0 1 0 16.8Z" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}

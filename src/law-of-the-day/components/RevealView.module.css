@@ -5,28 +5,45 @@
   padding: var(--space-lg) 0;
 }
 
+/* Right or wrong is the first thing the eye should land on: a filled pill,
+   not a coloured word. Both fills are the semantic colour itself with
+   near-white/near-black text on top, so neither depends on a hue being
+   distinguishable to read. */
 .resultCorrect,
 .resultIncorrect {
+  align-self: flex-start;
   margin: 0;
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-pill);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .resultCorrect {
-  color: var(--color-success);
+  background: var(--color-success);
+  color: var(--color-surface);
 }
 
 .resultIncorrect {
-  color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-surface);
+}
+
+:global(html[data-theme='dark']) .resultCorrect,
+:global(html[data-theme='dark']) .resultIncorrect {
+  /* The dark theme's success/danger are bright tints — they need dark text. */
+  color: #16181f;
 }
 
 .lawNumber {
-  margin: 0;
+  margin: var(--space-xs) 0 0;
   font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  color: var(--color-muted);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }
 
 .lawTitle {
@@ -39,7 +56,12 @@
 }
 
 .explanation {
-  margin: 0;
+  margin: var(--space-2xs) 0 0;
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   font-size: var(--text-base);
   line-height: var(--leading-body);
   color: var(--color-ink);

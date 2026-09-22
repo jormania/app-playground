@@ -394,49 +394,99 @@ Being `visual`: before/after screenshots in both themes, phone and desktop, on
 `claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
 the diff shows nothing either way.
 
-## R-026 — The three theme providers R-015 left behind · `refactor` · `open`
+## R-026 — The theme mechanism's second half: following the OS · `refactor` · `open` — step 1 done
 
-**Impact:** none visible. Finishes what R-015 started, or records why two of them
-should stay as they are.
+**Impact:** none visible. One copy of the OS-follow effect instead of three, and
+the two providers R-015 left that can still adopt `useThemeSync`.
 
-R-015 promoted `useThemeSync(key, {load, save, apply})` and converted Cabinet,
-Law of the Day and Loom. It left Tempo, Daily Stoic and Sol Odyssey, on the
-grounds that at 50, 62 and 66 lines against the other three's 34 they "carry more
-than the mechanism".
+**Rewritten 2026-09-22, hours after being filed**, because `7ca3e9f` (Law of the
+Day, from a separate session) changed the answer. The original version of this
+item recommended keeping `useThemeSync` narrow and recording Tempo and Daily
+Stoic as deliberate exceptions, on the grounds that promoting the OS-follow
+listener wanted a third app needing it. A third app turned up the same
+afternoon.
 
-**That reasoning was half wrong, and in exactly the way this family of items
-keeps going wrong: it judged by line count.** Reading the three afterwards:
+### Where the six providers stand on current `main`
 
-- **Sol Odyssey fits `useThemeSync` as-is.** `src/sol-odyssey/lib/themeContext.tsx`
-  is the same three parts as Cabinet's — `useState(loadPreset)`, one effect that
-  applies then saves, one `storage` listener on `THEME_KEY`. Its 66 lines are a
-  richer *value* object (`current`, `mode`, `cycle`, `setPreset`), which the hook
-  never touches. **This is a clean conversion and should be done.**
-- **Daily Stoic nearly fits.** `applyTheme(theme)` / `saveTheme(theme)` is the
-  hook's shape exactly. What it has on top is a `matchMedia('change')` listener
-  that re-runs `syncThemeColor` while the preference is `system`, because the CSS
-  palette swaps itself but the browser-chrome tint would go stale when the device
-  flips at sunset.
-- **Tempo does not fit.** Its effect **applies one value and saves another** —
-  `applyTheme(resolved)`, `saveThemePref(pref)` — where `useThemeSync` applies and
-  saves the same value. It also carries the same `matchMedia('change')` listener.
+| App | `useThemeSync` | OS-follow listener | Lines |
+|---|---|---|---|
+| Cabinet | yes | — | 28 |
+| Loom | yes | — | 30 |
+| **Law of the Day** | **yes** | **yes** | 68 |
+| Tempo | — | yes | 50 |
+| Daily Stoic | — | yes | 62 |
+| Sol Odyssey | — | — | 66 |
 
-So the decision this item has to make is about **the OS-follow listener**, which
-is what the two three-way apps have and the light/dark and preset apps do not:
+### What Law of the Day settled
 
-1. Extend `useThemeSync` with an optional `followSystem` concern, and give Tempo
-   a way to apply a derived value while saving the raw one. Risks turning a
-   narrow hook into the flattened one-API-for-everything that R-015 explicitly
-   refused.
-2. Convert Sol Odyssey only, and record Tempo and Daily Stoic as deliberate —
-   the mechanism they share is already shared, and the rest is genuinely theirs.
+It did **not** extend `useThemeSync`. It kept the hook for persist-and-cross-tab
+sync and added the OS-follow effect beside it, in its own `useEffect`. So the
+two concerns compose without touching the shared hook — which is the answer to
+the question the first version of this item posed, and it is the answer R-015
+would have wanted: the hook stays narrow.
 
-**Option 2 is probably right**, and would close this item in one short run. Take
-the other only if a third app turns up needing the same OS-follow effect, which
-is the repo's usual bar for promoting anything.
+**So the promotion is a second, separate hook** — call it `useSystemThemeFollow`
+— not a `followSystem` option bolted onto `useThemeSync`. Three apps now carry
+the effect and `src/shared/`'s own bar is "once a second app needed it".
 
-Whatever is chosen, `src/shared/theme.test.ts` is the place to prove it —
-those ten tests are the only coverage the cross-tab listener has ever had.
+**Promote Law of the Day's version, not the older two.** It is the only one that
+wraps `matchMedia` in a `try`/`catch` and falls back to `addListener` for
+Safari < 14; Tempo's and Daily Stoic's have neither, so folding them onto the
+shared one is a small fix as well as a de-duplication.
+
+The callback differs per app and belongs in the caller, not the hook: Tempo
+calls `applyTheme(resolveTheme('system'))`, Daily Stoic calls
+`syncThemeColor('system')` because its palette swaps in CSS and only the
+browser-chrome tint goes stale, Law of the Day applies *and* sets state. The
+hook's job is the listener's lifecycle; what to do on a change is the app's.
+
+### The other half: two more `useThemeSync` adopters
+
+Separate from the listener, and unchanged from the first version of this item:
+
+- **Sol Odyssey fits `useThemeSync` as-is** — `useState(loadPreset)`, one effect
+  that applies then saves, one `storage` listener. Its 66 lines are a richer
+  value object (`current`, `mode`, `cycle`) the hook never touches. A clean
+  conversion.
+- **Daily Stoic fits too**, once the listener above is its own hook —
+  `applyTheme(theme)` / `saveTheme(theme)` is exactly the hook's shape.
+- **Tempo still does not.** Its effect **applies one value and saves another**
+  (`applyTheme(resolved)`, `saveThemePref(pref)`) where `useThemeSync` applies
+  and saves the same value. Leave it, or widen the hook deliberately and say so.
+
+### Suggested order
+
+One run each, in this order, so no run is both a promotion and a conversion:
+
+1. ~~`useSystemThemeFollow` into `src/shared/theme.ts`, with Law of the Day
+   importing it.~~ **Done 2026-09-22.**
+2. Tempo and Daily Stoic onto it.
+3. Sol Odyssey onto `useThemeSync`.
+4. Daily Stoic onto `useThemeSync`.
+
+`src/shared/theme.test.ts` is where each step is proven.
+
+**Step 1 done 2026-09-22.** `useSystemThemeFollow(active, onChange)` is in
+`src/shared/theme.ts` and Law of the Day imports it; its provider keeps the
+callback, as designed — `applyTheme('system')` plus its own `setTheme`.
+
+Two things the promotion settled beyond de-duplicating:
+
+- **`onChange` is held in a ref**, so the subscription depends on `active`
+  alone. Every caller passes an inline arrow and a naive dependency on the
+  callback would tear the listener down and rebuild it on each render. Pinned
+  by a test that changes only the callback and asserts nothing was removed,
+  while the newest callback still wins.
+- **The effect had no test anywhere**, in any of its three copies. It has seven
+  now: subscribe while active, never while inactive, fire on change,
+  unsubscribe on unmount, unsubscribe when `active` goes false (a sunset flip
+  must not repaint an app the user pinned to light), the Safari < 14
+  `addListener` path, and mounting anyway when `matchMedia` throws. Four
+  mutations were run against the hook — dropping the Safari fallback, depending
+  on `onChange`, ignoring `active`, and never cleaning up — and each was
+  caught.
+
+Steps 2–4 are unchanged and still one run each.
 
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 
