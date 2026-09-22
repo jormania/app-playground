@@ -12,8 +12,11 @@
 import { fromVenuePage, toVenueProps, statusProps, scanResultProps } from './notion.js'
 import { toFindingsPage, fromFindingsRow } from './wanderlist.js'
 import { FINDINGS_DATABASE_ID } from '../shared/findings.js'
+// The relay call itself is shared (R-003); this module keeps its own database
+// ids, mappers and client shape. PROXY_URL is re-exported so the API is unchanged.
+import { notionProxy, PROXY_URL } from '../shared/notionClient.ts'
 
-export const PROXY_URL = '/api/notion'
+export { PROXY_URL }
 
 /** "Marquee — Watched Venues", under Dev → App Databases. The default once a
  *  token is set; overridable in Settings for anyone starting from the template. */
@@ -21,17 +24,7 @@ export const VENUES_DATABASE_ID = '7c2ed57e41b74660868f014e9965ff19'
 
 export { FINDINGS_DATABASE_ID }
 
-async function proxy(token, path, method, body) {
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-notion-token': token },
-    body: JSON.stringify({ path, method, body }),
-  })
-  let data = {}
-  try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(data?.message || data?.error || `Notion request failed (${res.status})`)
-  return data
-}
+const proxy = notionProxy
 
 export function createNotionClient(token, { venuesDatabaseId = VENUES_DATABASE_ID, findingsDatabaseId = FINDINGS_DATABASE_ID, fetchImpl } = {}) {
   const call = fetchImpl

@@ -9,31 +9,21 @@
 // proxy) so a user only needs a token and the database URL — no hunting for an
 // internal "data source id". Anyone can point the app at their own copy.
 import { toEntry, toNotionProps } from './notion.js'
+// The relay call itself is shared (R-003); this module keeps its own database
+// ids, mappers and client shape. PROXY_URL is re-exported so the API is unchanged.
+import { notionProxy, PROXY_URL } from '../shared/notionClient.ts'
 
 // Gabriel's database — the out-of-the-box default. Any user overrides it in
 // settings with their own (duplicated or freshly built) database.
 export const DEFAULT_DATABASE_ID = 'cf04e03098294448a206d9a4e66f7187'
-export const PROXY_URL = '/api/notion'
+export { PROXY_URL }
 export const UPLOAD_URL = '/api/notion-upload'
 
 // The file upload feature postdates the classic version the rest of the app is
 // pinned to (see api/notion.js) — only the three calls below need to opt into it.
 const NOTION_FILES_VERSION = '2025-09-03'
 
-async function proxy(token, path, method, body, version) {
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-notion-token': token },
-    body: JSON.stringify({ path, method, body, version }),
-  })
-  let data = {}
-  try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) {
-    const msg = data?.message || data?.error || `Notion request failed (${res.status})`
-    throw new Error(msg)
-  }
-  return data
-}
+const proxy = notionProxy
 
 // Sends photo bytes to the dedicated multipart relay (api/notion.js only speaks
 // JSON — see its and notion-upload.js's header comments for why this is separate).

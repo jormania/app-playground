@@ -540,7 +540,7 @@ named intent versus a raw vibrate pattern), so this is **not** a mechanical
 re-export like R-004 or R-005 and must not be filed as one. Record it as an
 unreconciled overlap and leave the code alone.
 
-## R-003 — Promote the `/api/notion` fetch wrapper to `src/shared/` · `refactor` · `slice 1 done 2026-09-22 — eleven clients to go`
+## R-003 — Promote the `/api/notion` fetch wrapper to `src/shared/` · `refactor` · `done 2026-09-22 — and it was five apps, not twelve`
 
 **Impact:** none visible. Twelve copies of one wrapper become one.
 
@@ -581,6 +581,33 @@ Two things for whoever takes slice 2:
 happens to share ten lines. Take the five remaining JSX clients (Journal,
 Marquee, Radar-B, Wanderlist, then Fit Check and Sol Odyssey last as this item
 already says) and leave WhereItWent to a considered item of its own.
+
+**Slices 2–5 done 2026-09-22 — Journal, Wanderlist, Marquee, Radar-B.** All
+four now import `notionProxy` and re-export `PROXY_URL`; `version` is the only
+thing that differed between them and the shared function takes it optionally,
+so no branch was needed.
+
+**And the item's own premise was wrong: "twelve app clients" is five.** Reading
+the other three before converting them showed they are not copies of this
+wrapper at all —
+
+- **WhereItWent** (`lib/notionClient.js`, 639 lines) and **Fit Check**
+  (`lib/notionClient.ts`) are retrying client *classes*: `MAX_RETRIES`, backoff
+  between attempts, a `NotionError` carrying a status, `this.token` rather than
+  a token argument, and in Fit Check's case a second multipart endpoint and a
+  per-call Notion version. They share about ten lines with `notionProxy` and
+  differ everywhere else.
+- **Sol Odyssey** (`lib/notion.ts`) has no fetch wrapper to promote. Its
+  `buildRelayInit(token, req)` is a *pure* function returning a `RequestInit`,
+  with the fetch performed by the caller — which is why it is the one app whose
+  relay call was already tested.
+
+So R-003 is **done**, at five apps. Folding those three in would mean changing
+how they work, which is a different item and probably not a wanted one. Noted
+while reading them: Sol Odyssey also carries a **fourth** `notionId` variant —
+`normalizeNotionId` takes the *last* 32-hex run rather than the first. Same
+family as R-004 and R-019; recorded here rather than filed, because like
+WhereItWent's it is deliberate and nothing is broken.
 
 ## R-004 — Fold the two stale `notionId` copies into `src/shared/notionId.ts` · `refactor` · `done 2026-09-22`
 

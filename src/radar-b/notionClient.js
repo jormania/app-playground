@@ -17,8 +17,11 @@
 import { fromRadarPage, fromFindingsPage, parseSuggestedPage, dismissalProps } from './notion.js'
 import { toFindingsPage } from './wanderlist.js'
 import { FINDINGS_DATABASE_ID } from '../shared/findings.js'
+// The relay call itself is shared (R-003); this module keeps its own database
+// ids, mappers and client shape. PROXY_URL is re-exported so the API is unchanged.
+import { notionProxy, PROXY_URL } from '../shared/notionClient.ts'
 
-export const PROXY_URL = '/api/notion'
+export { PROXY_URL }
 /** The 📡 Radar database — the event-level companion the skill writes, created as a
  *  child of the Suggested events page so the two stay visibly part of one workflow.
  *  The out-of-the-box default once a token is set; overridable in Settings. */
@@ -27,17 +30,7 @@ export const RADAR_DATABASE_ID = 'fbe904166c9e40fcbf723417e15a17bf'
 export const SUGGESTED_PAGE_ID = '377d3e6d60db81a688e1c81e0604a9a0'
 export { FINDINGS_DATABASE_ID }
 
-async function proxy(token, path, method, body) {
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-notion-token': token },
-    body: JSON.stringify({ path, method, body }),
-  })
-  let data = {}
-  try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(data?.message || data?.error || `Notion request failed (${res.status})`)
-  return data
-}
+const proxy = notionProxy
 
 export function createNotionClient(token, {
   radarDatabaseId = RADAR_DATABASE_ID,

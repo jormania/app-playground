@@ -147,11 +147,13 @@ share sheet with a clipboard fallback; Wanderlist re-exports it). Each
 promotion left the original path working as a thin re-export, so the old
 app's tests prove the move was behaviour-preserving.
 
-Being promoted, one app per run: [`notionClient.ts`](src/shared/notionClient.ts) —
-the `/api/notion` relay call (`notionProxy` + `PROXY_URL`), the fetch that was
-copied into twelve app clients. **Loom is converted; the other eleven still carry
-their own copy.** Take one per run (R-003), and note WhereItWent's 639-line client
-is not a slice of this — it shares ten lines and differs everywhere else.
+[`notionClient.ts`](src/shared/notionClient.ts) (the `/api/notion` relay call —
+`notionProxy` + `PROXY_URL`. Loom, Journal, Wanderlist, Marquee and Radar-B all
+use it. **WhereItWent, Fit Check and Sol Odyssey deliberately do not**: the first
+two are retrying client classes with backoff and a `NotionError`, and Sol
+Odyssey's `buildRelayInit` is a pure `RequestInit` builder whose caller does the
+fetch. They share about ten lines with this and differ everywhere else — not
+outstanding promotions. See R-003).
 
 ## Service workers & dev
 
