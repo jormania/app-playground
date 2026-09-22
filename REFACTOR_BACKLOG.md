@@ -423,9 +423,22 @@ environment:
    `git push origin --delete` with the list below, or the GitHub UI's branch
    page.
 2. **A `workflow_dispatch` job** using `REFACTOR_PAT`, which runs on GitHub's
-   runners and never touches this proxy. That is the version worth having, since
-   it makes the sweep repeatable rather than a one-off paste. It does not exist
-   yet; writing it is the first half of this item.
+   runners and never touches this proxy. **This now exists:**
+   [`.github/workflows/prune-claude-branches.yml`](.github/workflows/prune-claude-branches.yml).
+   Run it from the Actions tab — `dry-run` is the default and prints a table of
+   what it would remove; re-run with `delete` once that reads right.
+
+   It deliberately does **not** carry the 41 names from the table below. A
+   baked-in list is wrong the moment the next pull request merges, so the rule is
+   re-derived every run, and it is the audit's own rule: a branch is spent only
+   when it has at least one pull request and **every** one of them merged. No
+   pull request means keep — that branch may be the only copy. An unreadable
+   answer means keep. `claude/shots`, the three no-merge-base branches and
+   `claude/daily-refactoring-agent-*` are refused outright whatever their pull
+   requests say. A refused delete fails the run rather than passing quietly.
+
+   The table below therefore stops being the instruction and becomes the record
+   of what the audit saw on 2026-09-22.
 
 **Promoted 2026-09-22** at Gabriel's word, after he read the table.
 

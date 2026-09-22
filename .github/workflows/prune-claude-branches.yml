@@ -1,0 +1,153 @@
+# Sweep the spent claude/* branches (R-024).
+#
+# By hand only — never on a schedule. Deleting a branch whose content did NOT
+# land is work lost with no obvious trace, so this runs when someone asks it to
+# and defaults to telling you what it would do rather than doing it.
+#
+# Why a workflow at all, when `git push origin --delete` exists: deletion is
+# refused from a Claude session (HTTP 403 on send-pack; ordinary pushes and
+# branch creation work, only the delete is blocked). A runner with REFACTOR_PAT
+# never meets that proxy. See R-024 in REFACTOR_BACKLOG.md.
+#
+# It deliberately does NOT carry the list of 41 branches R-012's audit produced.
+# A baked-in list is wrong the moment the next PR merges. The rule is re-derived
+# here every run, and it is the same rule the audit used: a branch is spent only
+# when it has at least one pull request and every one of them was MERGED.
+name: Prune spent claude/* branches
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run lists what would go; delete actually removes them'
+        type: choice
+        options: [dry-run, delete]
+        default: dry-run
+      pattern:
+        description: 'Branch prefix to consider'
+        type: string
+        default: 'claude/'
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sweep
+        env:
+          GH_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          MODE: ${{ inputs.mode }}
+          PATTERN: ${{ inputs.pattern }}
+        run: |
+          set -uo pipefail
+          owner="${GH_REPO%%/*}"
+
+          # Never touched, whatever the pull requests say.
+          #
+          #   shots                   — the orphan screenshot branch P-001 and
+          #                             P-002 write to. Deliberately never merged,
+          #                             so it reads as pure deletion against main
+          #                             and would be a naive sweep's first victim.
+          #   daily-refactoring-agent-* — merged, but it is the branch the repo's
+          #                             session instructions nominate for work.
+          #   the three no-merge-base branches — they share no commit with main at
+          #                             all, so neither the ancestry test nor the
+          #                             content test can speak for them. R-012
+          #                             names them; they need reading, not sweeping.
+          protected='
+          claude/shots
+          claude/click-deck-audit-refactor-g3o8hy
+          claude/loom-app-design-as6ftd
+          claude/vercel-ci-failures-9wo5yq
+          '
+
+          all=$(gh api --paginate "repos/$GH_REPO/branches?per_page=100" --jq '.[].name') || {
+            echo "::error::Could not list branches — nothing swept."
+            exit 1
+          }
+          branches=$(printf '%s\n' "$all" | grep "^${PATTERN}" || true)
+          if [ -z "$branches" ]; then
+            echo "Nothing matches ${PATTERN}."
+            exit 0
+          fi
+
+          deleted=0; kept=0; failed=0
+          {
+            echo "### Sweep (${MODE})"
+            echo
+            echo "| Branch | Verdict |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          while read -r br; do
+            [ -n "$br" ] || continue
+
+            case "$br" in
+              claude/daily-refactoring-agent-*)
+                echo "keep   $br — the nominated development branch"
+                echo "| \`$br\` | kept — nominated development branch |" >> "$GITHUB_STEP_SUMMARY"
+                kept=$((kept + 1)); continue ;;
+            esac
+            # -F, not a pattern: a branch name is a literal, and a dot in one
+            # must not match some other character in a protected name.
+            if printf '%s\n' $protected | grep -qxF "$br"; then
+              echo "keep   $br — on the protect list"
+              echo "| \`$br\` | kept — protected |" >> "$GITHUB_STEP_SUMMARY"
+              kept=$((kept + 1)); continue
+            fi
+
+            # Counted, not inspected for state: "closed" is not good enough. A PR
+            # closed WITHOUT merging means its commits never reached main, and
+            # this branch is the only place they exist.
+            counts=$(gh api "repos/$GH_REPO/pulls?state=all&head=$owner:$br" \
+                       --jq '"\(length) \([.[] | select(.merged_at != null)] | length)"' \
+                       2>/dev/null) || counts="ERR"
+            # Whitelist, not blacklist: anything that is not literally two numbers
+            # means we do not know, and not knowing means keep. An earlier version
+            # of this guard elsewhere let an EMPTY answer through to the delete,
+            # which is the one mistake a sweep cannot make twice.
+            case "$counts" in
+              [0-9]*' '[0-9]*) ;;
+              *) echo "keep   $br — could not read its pull requests"
+                 echo "| \`$br\` | kept — pull requests unreadable |" >> "$GITHUB_STEP_SUMMARY"
+                 kept=$((kept + 1)); continue ;;
+            esac
+            total=${counts%% *}
+            merged=${counts##* }
+
+            if [ "$total" -eq 0 ]; then
+              echo "keep   $br — no pull request, so this may be the only copy"
+              echo "| \`$br\` | kept — no pull request |" >> "$GITHUB_STEP_SUMMARY"
+              kept=$((kept + 1))
+            elif [ "$total" -ne "$merged" ]; then
+              echo "keep   $br — $((total - merged)) of its $total pull requests were not merged"
+              echo "| \`$br\` | kept — $((total - merged))/$total unmerged |" >> "$GITHUB_STEP_SUMMARY"
+              kept=$((kept + 1))
+            elif [ "$MODE" != "delete" ]; then
+              echo "would delete $br — all $total of its pull requests were merged"
+              echo "| \`$br\` | **would delete** — $total merged |" >> "$GITHUB_STEP_SUMMARY"
+              deleted=$((deleted + 1))
+            elif gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$br" >/dev/null 2>&1; then
+              echo "delete $br — all $total of its pull requests were merged"
+              echo "| \`$br\` | **deleted** — $total merged |" >> "$GITHUB_STEP_SUMMARY"
+              deleted=$((deleted + 1))
+            else
+              echo "::warning::delete refused for $br"
+              echo "| \`$br\` | delete refused |" >> "$GITHUB_STEP_SUMMARY"
+              failed=$((failed + 1))
+            fi
+          done <<EOF
+          $branches
+          EOF
+
+          verb=$([ "$MODE" = delete ] && echo deleted || echo "would delete")
+          echo
+          echo "$verb $deleted, kept $kept, refused $failed"
+          { echo; echo "**$verb $deleted, kept $kept, refused $failed.**"; } >> "$GITHUB_STEP_SUMMARY"
+
+          # A refused delete is the failure this is built to surface — the whole
+          # reason the job exists is that deletion is refused somewhere else.
+          [ "$failed" -eq 0 ]
