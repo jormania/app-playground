@@ -10,10 +10,14 @@
  * id-shaped in the input — never throws, so a half-typed value is just empty
  * rather than an error.
  *
- * Promoted to src/shared/ when Fit Check became the FOURTH app to need this;
- * Loom now re-exports it (its own tests prove the move was behaviour-preserving).
- * Wanderlist and Journal of Delights still carry their own older copies — see
- * this file's entry in CLAUDE.md.
+ * Promoted to src/shared/ when Fit Check became the FOURTH app to need this.
+ * Loom, Wanderlist and Journal of Delights all re-export it; each app's own tests
+ * prove those moves were behaviour-preserving.
+ *
+ * WhereItWent's `extractNotionId` is NOT this function and is not a candidate for
+ * folding in: it keeps dashes and case, and returns unmatched input unchanged
+ * where this returns ''. App.jsx gates on that emptiness, so the difference is a
+ * screen, not a format. See src/where-it-went/components/Settings.notionId.test.jsx.
  */
 export function parseNotionId(input: string | null | undefined): string {
   if (!input) return ''

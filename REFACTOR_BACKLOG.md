@@ -781,7 +781,7 @@ and Journal all reason about "today".
 Already cleared: `src/marquee/` — `Changes`, `WeekStrip` and `App` pass under a
 clock six months ahead; `Programme` is frozen as of #75.
 
-## R-019 — A third, quietly different `notionId` parser, in WhereItWent · `refactor` · `open`
+## R-019 — A third, quietly different `notionId` parser, in WhereItWent · `refactor` · `done 2026-09-22 — recorded, not reconciled`
 
 **Impact:** none visible if done right — but read the caveat, because the naive
 version *is* a behaviour change.
@@ -812,6 +812,24 @@ deliberately, with a test pinning each of the three differences, or record it as
 an unreconciled overlap the way R-007 does for `haptics` — both are correct
 outcomes. Sequence it with R-004 so one PR settles the whole family, or take it
 alone; do not do it *inside* R-004 without saying so.
+
+**Done 2026-09-22 — recorded, not reconciled**, and taken alone rather than
+inside R-004. Difference (3) turned out to be larger than this item knew.
+`App.jsx:147` computes `hasNotionConfig = !!config.token && !!config.transactionsDb`,
+so an empty string is not merely a different value downstream — it is the gate
+between the configured app and the setup screen. Under `parseNotionId` a paste
+that isn't id-shaped would save empty, the app would fall back to unconfigured,
+and the text the user typed would disappear from the field on the next render.
+A `refactor`-class item does not get to do that.
+
+So `extractNotionId` stays, now exported and commented with the reasoning, and
+`Settings.notionId.test.jsx` pins all three differences *against* the shared
+parser — each test asserts both functions, so a future swap fails loudly rather
+than silently. `CLAUDE.md` and `src/shared/notionId.ts` both say WhereItWent is
+a deliberate exception rather than an outstanding promotion.
+
+(1) and (2) were checked as this item asked: nothing compares saved config values
+as strings — `notionClient.js` passes them straight into request URLs.
 
 ## R-020 — A CSS rule with no declarations, left behind by a heuristic that was abandoned · `refactor` · `done 2026-09-22`
 

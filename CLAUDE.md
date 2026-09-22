@@ -117,13 +117,18 @@ so The Cabinet can detect install reliably; add this call for any new PWA app
 Promoted here once a second app needed them — **extend these rather than copying
 an app's local copy**: [`weather.ts`](src/shared/weather.ts) (Open-Meteo fetch +
 WMO mapping; Touch Grass wraps it to add its own prose),
-[`photo.ts`](src/shared/photo.ts) (canvas downscale before upload; Wanderlist
-re-exports it, Journal keeps its older legacy copy),
+[`photo.ts`](src/shared/photo.ts) (canvas downscale before upload; Wanderlist and
+Journal both re-export `isImageFile`/`resizePhoto` — but **not** `photoFilename`,
+which Journal keeps its own of because it names files from a date key rather than
+slugifying, see `src/journal/photo.test.js`),
 [`storage.ts`](src/shared/storage.ts) (localStorage/sessionStorage helpers that
 can't throw; WhereItWent re-exports it),
 [`notionId.ts`](src/shared/notionId.ts) (parses a Notion id out of a pasted URL,
-dashed UUID or bare id — Loom re-exports it; Wanderlist and Journal still carry
-their own older copies), and [`useWakeLock.ts`](src/shared/useWakeLock.ts)
+dashed UUID or bare id — Loom, Wanderlist and Journal all re-export it.
+**WhereItWent deliberately does not**: its own `extractNotionId` keeps dashes and
+case, and returns unmatched input unchanged rather than `''`, which App.jsx's
+`hasNotionConfig` gate reads as still-configured. An unreconciled overlap, not a
+missed promotion — `Settings.notionId.test.jsx` pins the three differences), and [`useWakeLock.ts`](src/shared/useWakeLock.ts)
 (screen-awake hook wrapping the Wake Lock API, degrading silently where
 unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly),
 [`findings.js`](src/shared/findings.js) (**the Findings/Wanderlist Notion schema** —

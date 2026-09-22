@@ -76,7 +76,22 @@ const EMPTY_CONFIG_FIELDS = {
   token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: '', templatesDb: '', claudeApiKey: ''
 };
 
-function extractNotionId(input) {
+// Deliberately NOT src/shared/notionId.ts's parseNotionId, despite doing the same
+// job. Three differences, all of which reach storage: this keeps the dashes, does
+// not lowercase, and — the load-bearing one — returns the whole trimmed input when
+// nothing matches, where the shared parser returns ''.
+//
+// That last one is a gate, not a formatting detail. App.jsx computes
+// `hasNotionConfig = !!config.token && !!config.transactionsDb`, so a paste that
+// isn't id-shaped currently saves as-is and the app goes on to let Notion reject
+// it; under the shared parser the field would save empty, the app would fall back
+// to its unconfigured state, and the text the player typed would vanish from the
+// input on the next render. Different failure, not a tidier one.
+//
+// Recorded as an unreconciled overlap (R-019, the same outcome R-007 reached for
+// haptics) rather than reconciled. Settings.notionId.test.jsx pins all three
+// differences against the shared parser; change them together or not at all.
+export function extractNotionId(input) {
   if (!input) return '';
   const str = input.trim();
   const match = str.match(/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|[a-fA-F0-9]{32})/);
