@@ -726,6 +726,15 @@ reused `demo_tx_31`/`demo_tx_32`, and a new income "Gift" category given
 `cat_gift`, which the expense category "Gifts" already held, so selecting Gift
 as income resolved to the expense record and routed to the wrong account.
 
+### Where the fixture comes from
+
+`models/demoData.js` is generated, not hand-written. Its generator lived at the
+repo root as `generateDemoData.cjs` until 2026-09-22 and now sits with the other
+generators as `scripts/generate-where-it-went-demo-data.mjs`, run by
+`npm run gen:where-it-went-demo-data` from the repo root. It writes a randomised
+year of transactions each time, so regenerating never reproduces the committed
+file byte for byte — the fixture guard above is what says the new one is valid.
+
 ### Guide rewritten
 
 `public/where-it-went-guide.html` was a 147-line description of a much older

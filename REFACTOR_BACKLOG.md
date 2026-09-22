@@ -303,7 +303,7 @@ Two things worth keeping for whoever takes P-001b and P-001c:
   chrome icons were never emoji and were never behind it. Nothing here was put
   behind that flag, and nothing should be.
 
-## R-011 — Root triage, slice 3: the remaining scratch scripts · `refactor` · `open`
+## R-011 — Root triage, slice 3: the remaining scratch scripts · `refactor` · `done 2026-09-22`
 
 **Impact:** a repo root someone can read. Nothing user-facing.
 
@@ -312,6 +312,57 @@ Two things worth keeping for whoever takes P-001b and P-001c:
 `scratch_test.mjs`, `screenshot.js`, `steam-search.js`, `test-urls.cjs`,
 `update-seed.cjs`, `validate-covers.cjs`. Same method as R-010. Note that
 `dump.cjs` and `debug_memento.cjs` only ever wrote the dumps R-001 removed.
+
+**Done 2026-09-22.** Thirteen of the fourteen deleted; **one earned its keep and
+moved.** No file outside this backlog referenced any of them except
+`CLICK_DECK.md` and `eslint.config.js`, both updated below.
+
+**`generateDemoData.cjs` was the exception, and it is not a scratch file.** It is
+the generator for `src/where-it-went/models/demoData.js` — 94 kB of committed
+fixture that `App.jsx` and `lib/notionClient.js` both import and that Demo Mode
+serves. Nine commits across a week of July iteration, against one commit for
+every other file here. It now lives with the repo's other generators as
+`scripts/generate-where-it-went-demo-data.mjs`, with an
+`npm run gen:where-it-went-demo-data` entry beside the `gen:*-icons` ones, and a
+header comment saying what it writes. Converting `require('fs')` to
+`import fs from 'node:fs'` was the only edit to its body — `scripts/` is `.mjs`
+by convention, and as a root `.cjs` it had been silently excluded from lint.
+Verified by running it and passing `models/demoData.test.js` (11 tests) against
+the regenerated file, then restoring the committed one; the output is randomised
+per run, so it never reproduces byte for byte and the fixture guard is what
+proves a new one valid.
+
+The other thirteen fall into four groups, all one-shot:
+
+- **Codemods, like R-010's `patch-*` family and equally unsafe to re-run now** —
+  `cleanup.cjs` (injected `afterEach(cleanup)` into four Click Deck test files)
+  and `scratch-fix.cjs` (rewrote `fireEvent.change` into click-a-button for two
+  WhereItWent form tests). Both assume pre-migration source text; running either
+  today would corrupt tests that already carry the result.
+- **The Click Deck cover-art migration** — `find-covers.cjs`, `steam-search.js`,
+  `update-seed.cjs`, `test-urls.cjs`, `validate-covers.cjs`: scrape a cover URL,
+  regex it into `seed-data.js`, check for 404s. Superseded by
+  `scripts/backfill-covers.py` and `api/steam-search.js`. The root
+  `steam-search.js` is unrelated to the endpoint of the same name.
+- **Browser-debug one-offs against `localhost:5173`** — `debug_crash.cjs`,
+  `debug_memento.cjs`, `scratch_debug.js`, `screenshot.js`. The last one writes
+  to a hard-coded `C:\Users\Gabriel\...` path, so it has not run on anything but
+  one machine since 2026-07.
+- **Dump writers whose output R-001 already deleted** — `dump.cjs`, plus
+  `scratch_test.mjs` (a two-line `console.log` probe of `generateInsights`).
+
+Two things worth carrying forward:
+
+- **`eslint.config.js` named two of these files in its `ignores`** —
+  `'steam-search.js'` and `'scratch_debug.js'` — both now removed, since a
+  suppression naming a file that does not exist is a trap for whoever reads it
+  next. Checked first that neither pattern reached anything else: `*.cjs` and
+  these two are root-anchored in flat config, so `api/steam-search.js` was
+  already being linted and stays that way. The `'*.cjs'` entry is left alone
+  deliberately — it is a class of file, not a named one, and R-002 is where the
+  root's future is decided.
+- **R-014's step 3 is now unblocked.** `scratch_debug.js` was `puppeteer`'s only
+  consumer in the repo; with it gone, `puppeteer` has none. See that item.
 
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 
@@ -336,6 +387,11 @@ keep landing at the root. Add narrow ones (`/scratch_*`, `/debug_*`, `/*_dump.*`
 Add `/patch-*.cjs` to that list too (noted while doing R-010 on 2026-09-17): all
 seven of those arrived in one commit as a side effect of the migration they
 performed, which is exactly the accident this item is meant to stop.
+
+And `/test-results/` (noted while doing R-011 on 2026-09-22) — Playwright's
+default output directory, which is why a `.last-run.json` is tracked there. See
+R-021 for the two files themselves; this item is only about stopping the next
+one.
 
 ## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
 
@@ -527,6 +583,10 @@ they are:
    `scratch_debug.js`** — also an R-011 target. Once R-011 lands it has none, and
    the repo carries two browser-automation stacks for one screenshot step.
    **Sequence this after R-011**, or check the file is gone before removing it.
+   **R-011 landed 2026-09-22 and deleted that file**, so the precondition is met:
+   `grep -rn puppeteer` over the repo minus `node_modules` and
+   `package-lock.json` should now match `package.json` alone. Re-run it to
+   confirm before removing, rather than trusting this note.
 
 Do 1 and 2 in one run; 3 is a one-line follow-up once R-011 has landed. Prove it
 the usual way — the suite, typecheck, and a `npm run build` that still succeeds.
@@ -706,6 +766,32 @@ any empty-state icon that moves to a component with a `size` prop silently stops
 floating. Worth one sentence in `WHERE_IT_WENT.md` rather than a fix, unless a
 cleaner hook (`.empty-state-icon`, already selected two rules above) covers all
 four call sites.
+
+## R-021 — Root triage, slice 4: two tracked files that are not source · `refactor` · `open`
+
+**Impact:** none visible. The last two accidental commits at the top of the tree.
+
+Found while doing R-011, 2026-09-22 — both survived slices 1–3 because neither
+is a script and neither sits loose at the root.
+
+1. **`test-results/.last-run.json`** — three lines of Playwright state
+   (`{"status": "failed", "failedTests": []}`) from a run in 2026-07, committed
+   in 9d6a8f7 alongside the Daily Stoic debug scripts R-011 just removed. It is
+   the *only* file in that directory. Nothing reads it; Playwright rewrites it
+   from scratch on every run. Delete the directory, and add `/test-results/` to
+   `.gitignore` under R-002 so the next local Playwright run does not re-add it.
+2. **`scratch/test-curation.cjs`** — 2.6 kB simulating Lexi5's parse of a raw
+   model response against `src/lexi5/data/words.json`, last touched in d069a2c
+   (2026-08-08, *"…and remove mock"*). Judgement call rather than an obvious
+   delete: it is a throwaway harness, but it encodes the fallback chain the app
+   uses when the JSON array does not parse. **Read `LEXI5.md` and the live
+   parser first** — if that logic has no test, the right outcome is a real test
+   in `src/lexi5/` and then deleting this, not deleting this alone. `scratch/`
+   is already in `eslint.config.js`'s ignores, so nothing has ever linted it.
+
+Once both are gone the repo root is clear and R-002 can close the door behind
+it. Same method as R-010 and R-011: check `git log` on a file before deleting,
+and say in the PR what each one turned out to be.
 
 ## Proposed
 

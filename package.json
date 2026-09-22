@@ -23,7 +23,8 @@
     "gen:radar-b-icons": "node scripts/generate-radar-b-icons.mjs",
     "gen:journal-icons": "node scripts/generate-journal-icons.mjs",
     "gen:wanderlist-icons": "node scripts/generate-wanderlist-icons.mjs",
-    "gen:kobo-fixture": "node scripts/generate-kobo-sample-db.mjs"
+    "gen:kobo-fixture": "node scripts/generate-kobo-sample-db.mjs",
+    "gen:where-it-went-demo-data": "node scripts/generate-where-it-went-demo-data.mjs"
   },
   "repository": {
     "type": "git",
