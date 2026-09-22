@@ -122,19 +122,10 @@ export function ticketWriteEntry(ticket) {
 export const toNotionProps = toFindingsProps
 
 // Pull a Notion database/page id out of whatever a user pastes: a full URL, a bare
-// 32-char id, or a dashed UUID. Returns the compact 32-char id, or '' if nothing
-// id-shaped is present. (Same parser as JoD — the id is the trailing 32 hex chars,
-// bounded by the '-'/'/' that separates it from the slug.)
-export function parseNotionId(input) {
-  if (!input) return ''
-  const s = String(input).trim()
-  const uuid = s.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
-  if (uuid) return uuid[0].replace(/-/g, '').toLowerCase()
-  const path = s.split(/[?#]/)[0]
-  if (/^[0-9a-f]{32}$/i.test(path)) return path.toLowerCase()
-  const m = path.match(/[-/]([0-9a-f]{32})\/?$/i)
-  return m ? m[1].toLowerCase() : ''
-}
+// 32-char id, or a dashed UUID. The copy that used to live here was character-for-
+// character the shared one; re-exported rather than deleted so this module's own
+// tests still prove the move (R-004, the pattern Loom's notion.js already follows).
+export { parseNotionId } from '../shared/notionId.ts'
 
 // Unique, order-preserving option values pulled from a list of items — used to
 // suggest existing Category / Place / Tags values inline without a closed list.

@@ -90,23 +90,11 @@ export function toNotionProps(entry) {
 
 // Pull a Notion database/page id out of whatever a user pastes: a full URL like
 // notion.so/workspace/Title-<32hex>?v=..., a bare 32-char id, or a dashed UUID.
-// Returns the compact 32-char id (Notion's API accepts it with or without dashes),
-// or '' if nothing id-shaped is present.
-//
-// The id is bounded: in a URL it's the trailing 32 hex chars, preceded by the '-'
-// (or '/') that separates it from the slug. We must respect that boundary — a slug
-// ending in hex letters (…-App-Sp"ec"-<id>) would otherwise bleed into the id.
-export function parseNotionId(input) {
-  if (!input) return ''
-  const s = String(input).trim()
-  // A dashed UUID anywhere wins (unambiguous).
-  const uuid = s.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
-  if (uuid) return uuid[0].replace(/-/g, '').toLowerCase()
-  const path = s.split(/[?#]/)[0]                     // drop query (?v=…) and hash
-  if (/^[0-9a-f]{32}$/i.test(path)) return path.toLowerCase()  // a bare id
-  const m = path.match(/[-/]([0-9a-f]{32})\/?$/i)     // id at the end of a URL path
-  return m ? m[1].toLowerCase() : ''
-}
+// The copy that used to live here was character-for-character the shared one,
+// boundary comment and all; re-exported rather than deleted so this module's own
+// tests still prove the move (R-004). Legacy apps may import from src/shared/ —
+// the one-way boundary covers src/ds/ only.
+export { parseNotionId } from '../shared/notionId.ts'
 
 // Unique, order-preserving option names pulled from a list of entries — used to
 // suggest existing Tags/People values inline without ever forcing a closed list.

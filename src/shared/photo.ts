@@ -2,9 +2,12 @@
 // everything is downscaled and re-encoded before it ever reaches Notion.
 //
 // Promoted to src/shared/ after being copied Journal → Wanderlist by hand; a third
-// app (Fit Check) made the duplication untenable. Wanderlist now re-exports this;
-// Journal keeps its own older copy, deliberately — it's design-locked legacy and
-// there is nothing to gain from touching it.
+// app (Fit Check) made the duplication untenable. Wanderlist and Journal of
+// Delights both re-export isImageFile and resizePhoto from here (R-005).
+//
+// `photoFilename` is the exception: Journal keeps its own, which takes a date key
+// and prefixes `delight-` rather than slugifying a name. Same name, different
+// function — do not fold it in. src/journal/photo.test.js pins the difference.
 const MAX_EDGE = 1600
 const JPEG_QUALITY = 0.82
 

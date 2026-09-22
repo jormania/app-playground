@@ -538,7 +538,7 @@ Fit Check or Sol Odyssey — those are strict TS and deserve a settled API first
 
 Update the `src/shared/` section of `CLAUDE.md` when the first slice lands.
 
-## R-004 — Fold the two stale `notionId` copies into `src/shared/notionId.ts` · `refactor` · `open`
+## R-004 — Fold the two stale `notionId` copies into `src/shared/notionId.ts` · `refactor` · `done 2026-09-22`
 
 **Impact:** none visible.
 
@@ -547,12 +547,38 @@ copies. Diff them against the shared one first — if either handles a URL shape
 the shared version misses, the shared version is what needs fixing. Legacy
 Journal may import from `src/shared/`; that boundary only covers `src/ds/`.
 
-## R-005 — Same for Journal's legacy `photo.ts` copy · `refactor` · `open`
+**Done 2026-09-22.** Both copies turned out to be character-for-character the
+shared implementation, comments aside. Proved before touching anything with a
+throwaway differential test running all three against 26 inputs — bare id,
+dashed UUID in both cases, slug URL, `?v=` view parameter, hash fragment,
+trailing slash, a 31- and a 33-character string, an id embedded in prose — all
+three agreed on every one. Then both became
+`export { parseNotionId } from '../shared/notionId.ts'`, the pattern Loom's
+`notion.js` already used, and each app's own `notion.test.js` still passes
+unchanged, which is what proves the move.
+
+## R-005 — Same for Journal's legacy `photo.ts` copy · `refactor` · `done 2026-09-22, partially — read why`
 
 **Impact:** none visible.
 
 `CLAUDE.md`: "Wanderlist re-exports it, Journal keeps its older legacy copy."
 Same method as R-004, same caveat about which copy is actually correct.
+
+**Done 2026-09-22, and it was not the same method as R-004.** Two of the three
+exports folded cleanly — `isImageFile` is behaviourally identical, and
+`resizePhoto` differs only in taking an options argument Journal never passes,
+whose defaults are Journal's own `MAX_EDGE` and `JPEG_QUALITY` unchanged. Both
+now re-export from `src/shared/photo.ts`.
+
+**`photoFilename` did not, and must not.** Same name, different function: the
+shared one slugifies an arbitrary *name*, Journal's takes a *date key* and
+prefixes `delight-`. Folding it in would have renamed every photo Journal
+uploads from `delight-2026-09-22.jpg` to `2026-09-22.jpg` — a change in the
+Notion file list, not a refactor. It stays local, `src/journal/photo.test.js`
+is new and pins the difference (Journal had no photo test at all), and the
+comment at the top of `src/shared/photo.ts` — which claimed Journal kept its
+copy "deliberately… nothing to gain from touching it" — now says what is
+actually true.
 
 ## R-006 — Guard the Vercel 12-function cap in CI · `modernise` · `done 2026-09-16 (already in main)`
 
