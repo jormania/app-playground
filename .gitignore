@@ -46,3 +46,18 @@ Thumbs.db
 # Sensitive scripts
 scripts/dramatize-journal.py
 scripts/backfill-hltb.py
+
+# Scratch files that keep landing at the repo root (R-001, R-010, R-011 each
+# had to sweep them up). Deliberately narrow and root-anchored, so nothing
+# real gets swallowed — `scratch_debug.js` is ignored, `src/.../debugger.js`
+# is not.
+/scratch_*
+/debug_*
+/*_dump.*
+/diff.txt
+/lint-output.txt
+/patch-*.cjs
+
+# Playwright's default output directory — a `.last-run.json` was tracked here
+# for two months because nothing ignored it (R-021).
+/test-results/

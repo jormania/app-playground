@@ -376,7 +376,7 @@ WhereItWent's, so P-001a settles the convention and this follows it.
 Note `src/lexi5/App.jsx`'s two `<svg>` are data-URI favicons, not icons — out of
 scope. Being `visual`: screenshots, and never auto-merged.
 
-## R-002 — Stop the root from refilling with scratch files · `refactor` · `open`
+## R-002 — Stop the root from refilling with scratch files · `refactor` · `done 2026-09-22`
 
 **Impact:** none visible; prevents R-001 from needing doing again.
 
@@ -392,6 +392,13 @@ And `/test-results/` (noted while doing R-011 on 2026-09-22) — Playwright's
 default output directory, which is why a `.last-run.json` is tracked there. See
 R-021 for the two files themselves; this item is only about stopping the next
 one.
+
+**Done 2026-09-22.** All seven patterns are in `.gitignore`, root-anchored and
+narrow: `/scratch_*`, `/debug_*`, `/*_dump.*`, `/diff.txt`, `/lint-output.txt`,
+`/patch-*.cjs`, `/test-results/`. Verified with
+`git ls-files | git check-ignore --no-index --stdin -v` that no tracked file
+matches any of them — note the `--no-index`, without which `check-ignore` stays
+silent about tracked paths and the check proves nothing.
 
 ## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
 
@@ -772,7 +779,7 @@ moved onto the rules that do the work. The `WHERE_IT_WENT.md` sentence turned
 out to need a stronger claim than "worth one sentence" — see R-022, filed
 because the fragility this item predicted has already fired.
 
-## R-021 — Root triage, slice 4: two tracked files that are not source · `refactor` · `open`
+## R-021 — Root triage, slice 4: two tracked files that are not source · `refactor` · `part 1 done 2026-09-22, part 2 open`
 
 **Impact:** none visible. The last two accidental commits at the top of the tree.
 
@@ -797,6 +804,16 @@ is a script and neither sits loose at the root.
 Once both are gone the repo root is clear and R-002 can close the door behind
 it. Same method as R-010 and R-011: check `git log` on a file before deleting,
 and say in the PR what each one turned out to be.
+
+**Part 1 done 2026-09-22**, together with R-002 so nothing could re-add the
+file between two merges. `test-results/` was the whole directory; `git log`
+confirms the tracked `.last-run.json` last changed in 92c7eb9 and nothing
+reads it.
+
+**Part 2 stays open** and is not a quick delete: `scratch/test-curation.cjs`
+encodes Lexi5's parse-fallback chain, and this item's own instruction is to
+check whether that logic has a real test first. If it does not, the outcome is
+a test in `src/lexi5/` and *then* the delete.
 
 ## R-022 — WhereItWent's empty-state float animation reaches almost nothing · `visual` · `open`
 
