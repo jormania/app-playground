@@ -36,8 +36,6 @@ Anything under **`## Proposed`** is the agent's own idea and will not be worked
 until a human moves it up into the main list. That move is the whole approval
 ritual: cut the block, paste it above, change `proposed` to `open`.
 
----
-
 ## R-013 — The suite goes red for a week whenever the clock walks past a fixture date · `modernise` · `done 2026-09-18`
 
 **Impact:** none visible in any app. But **`main`'s suite is red right now**, and
@@ -444,7 +442,7 @@ If the audit on contact says these are deliberate rather than pasted, mark the
 item `dropped` with the reason and move on; that is a correct outcome, not a
 failed run. Being `visual`: screenshots, and never auto-merged.
 
-## R-012 — Audit the stale `claude/*` branches · `refactor` · `open`
+## R-012 — Audit the stale `claude/*` branches · `refactor` · `done 2026-09-22`
 
 **Scope narrowed 2026-09-16:** `claude/refactor-*` branches now prune themselves
 at the top of every run — merged ones go automatically, and anything with an open
@@ -486,6 +484,26 @@ Note for whoever runs it: branch deletion from this repo's tooling has been
 refused by the git proxy before (2026-09-14), so phase two may end up being a
 list Gabriel clicks through in the GitHub UI rather than a push. Check whether
 `git push origin --delete` works from a runner before promising otherwise.
+
+**Done 2026-09-22.** 44 `claude/*` branches audited, not 33 — the list grew
+while this item waited. The table is in **R-024**, under `## Proposed`, where
+the disposal decision now sits.
+
+Three things the run learned that this item did not know:
+
+- **Deletion really is refused**, and it was tested rather than assumed: a
+  throwaway branch pushed fine, and `git push origin --delete` on it died with
+  *fatal: the remote end hung up unexpectedly*. The GitHub MCP tools have
+  `create_branch` and no delete. The probe branch is still there, on R-024's
+  list, because the delete that should have removed it is the broken thing.
+- **Three branches share no merge base with `main` at all.** The prescribed
+  `git diff main...<branch>` fails outright on them, and `git log main..<branch>`
+  reports 413–658 commits that are not unlanded work but a different history
+  line. This item was right that the naive ancestry test is worthless; on those
+  three it is worse than worthless, because it looks like an answer.
+- **`claude/shots` must never be deleted**, and would be the first casualty of a
+  naive sweep: it is an orphan screenshot branch, so it reads as 1,479 files of
+  pure deletion against `main`.
 
 ## R-007 — `CLAUDE.md` misstates the typecheck scope · `modernise` · `open`
 
@@ -1002,3 +1020,96 @@ same answer said faster. The agent treats a proposal that vanished from `main`
 as declined and will not raise it again.
 
 _(nothing proposed right now.)_
+
+## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `proposed`
+
+**Impact:** none visible. A branch list someone can read.
+
+The follow-up R-012's audit asked for. **Nothing here has been deleted** — that
+is the point of it sitting under `## Proposed`: a branch whose content did not
+land is work lost with no obvious trace, so a human reads the table first.
+
+**Deletion does not work from a session here.** Tested for real on 2026-09-22
+rather than assumed: pushing a throwaway branch succeeded, and
+`git push origin --delete` on it died with *fatal: the remote end hung up
+unexpectedly*. The GitHub MCP tools available to a session have `create_branch`
+and no delete. So promoting this item does not mean an agent can execute it —
+it is a list to click through in the GitHub UI, or a job for a workflow step
+running with a PAT.
+
+That probe left `claude/prune-probe-delete-me` behind, pointing at `main`'s own
+commit. It is harmless, and it is on the list below; it exists because the
+delete that should have removed it is the thing that does not work.
+
+### Disposable — the content is in `main` (41 branches)
+
+| Branch (`claude/` prefix dropped) | Why it is spent |
+|---|---|
+| `apollo111-and-venue-notes-fix` | merged via #44 |
+| `badge-links-main` | merged via #78 |
+| `badges-pin-main` | merged via #77 |
+| `bucharest-event-discovery-6zeadz` | merged via #22 |
+| `cabinet-webapk-minting-dnb8x2` | merged via #24 |
+| `cinema-europa-teatrul-metropolis-l86rd6` | merged via #31, #32, #38, #39, #40 |
+| `daily-refactoring-agent-kf8sqm` | merged via #60, #61, #62, #66 |
+| `daily-stogie-lite-td0ujl` | merged via #45, #46 |
+| `fit-check-recommendation-audit-plda82` | merged via #9 |
+| `fix-r013-clock` | merged via #75 |
+| `free-tier-optimization-qx8xau` | merged via #50, #51 |
+| `gate-counts-outcomes` | merged via #80 |
+| `interleave-backlog` | merged via #69 |
+| `latest-card-normal-size` | merged via #76 |
+| `lexi5-wake-lock-word-list-i3hjg4` | merged via #6 |
+| `marquee-bot-check-issue-n7i6dl` | merged via #63, #64 |
+| `marquee-filter-cascade-rebuild` | merged via #35 |
+| `marquee-filter-scroll-breadcrumb` | merged via #34 |
+| `marquee-filters-full-menu` | merged via #33 |
+| `marquee-metropolis-prices` | merged via #37 |
+| `marquee-read-through-bad-status` | merged via #36 |
+| `next-app-recommendation-pr9fpj` | merged via #16 |
+| `production-ci-failure-tczeu8` | merged via #25 |
+| `promote-p002-backlog` | merged via #67 |
+| `prune-refactor-branches` | merged via #72 |
+| `radar-b-wanderlist-opwy25` | merged via #26, #27, #28, #29, #30, #56, #57, #58 |
+| `raise-turn-limit` | merged via #71 |
+| `recital-cameral-marquee-display-y9688r` | merged via #52, #53, #54, #55 |
+| `rhythm-last-7-days-view-2v3rkg` | merged via #4 |
+| `silva-audit-enhancement-62n9ko` | merged via #17, #19, #20 |
+| `silva-link-sharing-audit-fyp1wd` | no PR; tree identical to main |
+| `silva-link-title-prefill-qhojwq` | merged via #21 |
+| `silva-walk-and-intake-62n9ko` | merged via #18 |
+| `split-p001-slices` | merged via #68 |
+| `tag-presentation-audit-8w6ucd` | merged via #42, #43 |
+| `tickets-on-sale-discrepancy-osqpkx` | merged via #47, #48 |
+| `wanderlist-dedupe-fix` | merged via #41 |
+| `whereitwent-ai-transactions-1flz78` | merged via #10, #11, #12, #13, #14, #15 |
+| `yoru-atmosphere-settings-bug-xfapr2` | merged via #7, #8 |
+| `yoru-sound-stage-realism-m0909s` | merged via #49 |
+| `prune-probe-delete-me` | the deletion probe above; points at `main` |
+
+`daily-refactoring-agent-kf8sqm` is on that list because every one of its PRs
+merged — but it is also the branch this repo's session instructions nominate for
+development work. Delete it last, or re-cut it from `main`.
+
+### Not disposable — read before touching (4 branches)
+
+- **`shots`** — **never delete.** The screenshot branch P-001 and P-002 write
+  their before/after images to, deliberately never merged, which is why it reads
+  as 1,479 files of pure deletion against `main`. It is doing its job.
+- **`click-deck-audit-refactor-g3o8hy`** (no PR),
+  **`loom-app-design-as6ftd`** (PR #3, closed unmerged) and
+  **`vercel-ci-failures-9wo5yq`** (PR #5, closed unmerged) — all three **share
+  no commit at all with `main`**. `git merge-base` returns nothing, so R-012's
+  prescribed `git diff main...<branch>` cannot run on them, and a naive reading
+  of `git log main..<branch>` reports 413–658 "unmerged" commits that are
+  nothing of the sort. They are snapshots of a history line that predates the
+  one `main` is on.
+
+  Their subject matter — Loom's SCUMM themes and Notion default database, Click
+  Deck's audit, a WhereItWent test-copy fix — is all in `main` today, so the work
+  almost certainly landed by another route. "Almost certainly" is why they are
+  not on the list above: confirming it means reading three old trees, which is a
+  separate afternoon rather than a line in a table.
+
+
+---
