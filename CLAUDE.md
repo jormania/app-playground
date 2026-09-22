@@ -149,8 +149,11 @@ unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly),
 [`theme.ts`](src/shared/theme.ts) (the theme **mechanism** only — the
 `matchMedia` probe `systemPrefersDark`, re-exported by all seven apps that had
 written it out, and `useThemeSync(key, {load, save, apply})`, the
-persist-and-cross-tab-sync effect pair, used by Cabinet, Law of the Day and
-Loom, plus `useSystemThemeFollow(active, onChange)`, the `matchMedia` listener
+persist-and-cross-tab-sync effect pair, used by **five of the six** theme
+providers — Cabinet, Loom, Law of the Day, Sol Odyssey and Daily Stoic. Tempo
+is the exception and cannot use it: it applies one value and saves another
+(`applyTheme(resolved)`, `saveThemePref(pref)`), so it still hand-writes its
+own `storage` listener. Plus `useSystemThemeFollow(active, onChange)`, the `matchMedia` listener
 for following the OS while a preference is `system` — **all three apps that
 follow the OS use it**: Law of the Day, Tempo and Daily Stoic (R-026).
 **What to do when the OS flips stays with the caller**, because the three want

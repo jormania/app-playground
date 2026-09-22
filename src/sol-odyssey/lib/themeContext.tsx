@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { useThemeSync } from '../../shared/theme.ts'
 import {
   applyPreset,
   loadPreset,
@@ -28,22 +29,14 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preset, setPresetState] = useState<PresetId>(() => loadPreset())
-
-  // Apply + persist whenever the preset changes.
-  useEffect(() => {
-    applyPreset(preset)
-    savePreset(preset)
-  }, [preset])
-
-  // Live sync with the field guide (and other tabs).
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === THEME_KEY) setPresetState(loadPreset())
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  // Apply, persist, and live-sync with the field guide (and other tabs) — the
+  // shared mechanism (R-026 step 3). The vocabulary stays local: a preset id,
+  // not a light/dark pair, which is exactly why only the mechanism moved.
+  const [preset, setPresetState] = useThemeSync<PresetId>(THEME_KEY, {
+    load: loadPreset,
+    save: savePreset,
+    apply: applyPreset,
+  })
 
   const value = useMemo<ThemeContextValue>(
     () => ({
@@ -53,7 +46,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setPreset: (id) => setPresetState(id),
       cycle: () => setPresetState((p) => nextPreset(p)),
     }),
-    [preset],
+    // setPresetState is useState's setter, reached through useThemeSync, so it
+    // is stable — named here because eslint cannot see through the hook.
+    [preset, setPresetState],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

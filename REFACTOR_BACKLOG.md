@@ -394,7 +394,7 @@ Being `visual`: before/after screenshots in both themes, phone and desktop, on
 `claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
 the diff shows nothing either way.
 
-## R-026 — The theme mechanism's second half: following the OS · `refactor` · `open` — steps 1–2 done
+## R-026 — The theme mechanism's second half: following the OS · `refactor` · `done 2026-09-22`
 
 **Impact:** none visible. One copy of the OS-follow effect instead of three, and
 the two providers R-015 left that can still adopt `useThemeSync`.
@@ -461,8 +461,8 @@ One run each, in this order, so no run is both a promotion and a conversion:
 1. ~~`useSystemThemeFollow` into `src/shared/theme.ts`, with Law of the Day
    importing it.~~ **Done 2026-09-22.**
 2. ~~Tempo and Daily Stoic onto it.~~ **Done 2026-09-22.**
-3. Sol Odyssey onto `useThemeSync`.
-4. Daily Stoic onto `useThemeSync`.
+3. ~~Sol Odyssey onto `useThemeSync`.~~ **Done 2026-09-22.**
+4. ~~Daily Stoic onto `useThemeSync`.~~ **Done 2026-09-22.**
 
 `src/shared/theme.test.ts` is where each step is proven.
 
@@ -500,7 +500,40 @@ CSS. Neither provider had a test touching that effect before or after — the
 hook's seven tests are what proves the move, which is the whole reason step 1
 wrote them first.
 
-Steps 3–4 remain, still one run each.
+**Steps 3 and 4 done 2026-09-22.** Sol Odyssey and Daily Stoic are on
+`useThemeSync`. Where the six providers finished up:
+
+| App | `useThemeSync` | `useSystemThemeFollow` | Own effects | Lines |
+|---|---|---|---|---|
+| Cabinet | yes | — | 0 | 28 |
+| Loom | yes | — | 0 | 30 |
+| Daily Stoic | yes | yes | 0 | 54 |
+| Law of the Day | yes | yes | 1 | 58 |
+| Sol Odyssey | yes | — | 0 | 61 |
+| Tempo | **no** | yes | 2 | 48 |
+
+Law of the Day's one remaining effect is app-specific derived state
+(`setTheme(resolveTheme(pref))`), not mechanism.
+
+Both conversions needed the same small thing: eslint cannot see that the setter
+returned by `useThemeSync` is `useState`'s own, so it warns on a `useMemo` that
+closes over it. Naming it in the deps is correct and free — it is stable — and
+every converted provider now carries a line saying why.
+
+**Tempo stays unconverted, and this is where it gets interesting.** It cannot
+use `useThemeSync` because it applies one value and saves another
+(`applyTheme(resolved)`, `saveThemePref(pref)`). But that incompatibility is
+only with the *apply-and-save* half — Tempo's `storage` listener is still a
+verbatim copy of the one inside the hook, duplicated because the hook bundles
+three concerns and Tempo can only use two.
+
+So there is a residue: one app still hand-writes cross-tab sync. The fix would
+be splitting `useThemeSync` into a `useCrossTabSync(key, onExternalChange)` and
+a thin apply-and-save layer over it, which Tempo could then use half of.
+**Not filed as an item** — one duplicated listener is a thin case for splitting
+a hook that four apps use happily, and R-015's warning about the obvious large
+version applies. Recorded here so the next person weighing it has the evidence
+rather than the impulse.
 
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 
