@@ -345,15 +345,24 @@ I hope this helps!`)
     expect(storedDict()).toBeNull()
   })
 
-  it('surfaces the raw parser message when the bracketed body is not valid JSON', async () => {
-    await curateWith('["brave", "crazy",]')
+  it('recovers a bracketed body that is not valid JSON instead of showing a parser message', async () => {
+    const onToast = await curateWith('["brave", "crazy",]')
 
-    // Current behaviour, pinned rather than endorsed. A trailing comma reaches the
-    // player as whatever V8 says — LEXI5.md promises "a readable error inline in
-    // Settings", and this is not one. The matcher stays loose because the wording
-    // is Node's, not ours, and has changed between versions.
-    expect(await screen.findByText(/not valid JSON|Unexpected token/i)).toBeTruthy()
-    expect(screen.queryByText(/Could not parse JSON array/)).toBeNull()
+    // A trailing comma, which models produce. This used to reach the player as
+    // whatever V8 says — *Unexpected token ']' … is not valid JSON* — against
+    // LEXI5.md's promise of "a readable error inline in Settings" (R-023). The
+    // sweep that already handles truncation handles this shape too.
+    await waitFor(() => expect(onToast).toHaveBeenCalled())
+    expect(storedDict().sort()).toEqual(['brave', 'crazy'])
+    expect(screen.queryByText(/not valid JSON|Unexpected token/i)).toBeNull()
+  })
+
+  it('still errors when the bracketed body is unparseable AND holds no words', async () => {
+    // The recovery is a fallback, not a way to swallow a genuinely useless
+    // reply: no quoted words means the same message the no-bracket branch gives.
+    await curateWith('[ 1, 2, 3, ]')
+
+    expect(await screen.findByText(/Could not parse JSON array/)).toBeTruthy()
     expect(storedDict()).toBeNull()
   })
 })

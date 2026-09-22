@@ -981,7 +981,7 @@ filtering was "exactly as it is in Settings.jsx" while wrapping `JSON.parse` in
 a try/catch the app has never had, and it labelled `starr` a hallucination when
 it is in the guess list. See R-023 for the behaviour that divergence exposed.
 
-## R-023 — Lexi5 shows the player a V8 parser message when curation returns bad JSON · `qol` · `open`
+## R-023 — Lexi5 shows the player a V8 parser message when curation returns bad JSON · `qol` · `done 2026-09-22`
 
 **Impact:** one error message, in the one Lexi5 feature that talks to a model
 and therefore fails most often. `LEXI5.md` line 153 promises "a readable error
@@ -1008,6 +1008,33 @@ no-bracket branch already uses.
 Being `qol`: it changes what the player sees, so it may be **proposed and
 worked but never auto-merged**. No screenshots needed beyond the error state
 itself — one theme is enough for a line of text, unlike a `visual` item.
+
+**Done 2026-09-22**, promoted by Gabriel rather than auto-merged, which is the
+only route a `qol` item has.
+
+The fix is the one sketched above: `JSON.parse(match[0])` is wrapped, and on
+failure falls through to the same `matchAll(/"([a-zA-Z]+)"/g)` sweep the
+no-bracket branch already used. That sweep moved into a `recoverQuotedWords()`
+helper so both paths share the "no words at all" error rather than each
+carrying a copy.
+
+What did **not** change: a reply that parses to an empty array still reaches
+"AI did not return any valid 5-letter words." rather than the parse error. The
+length check lives inside the recovery helper, not after the branch, precisely
+so that case keeps its own message.
+
+`Settings.test.jsx`'s pinning test was rewritten with the code, as this item
+asked — `["brave", "crazy",]` now curates both words instead of showing a
+parser message — and a second test covers the case the recovery must **not**
+swallow: a bracketed body that is unparseable *and* holds no quoted words
+(`[ 1, 2, 3, ]`) still errors. Both were mutation-checked; removing the
+try/catch fails both.
+
+**No screenshots were taken.** The change removes an error state rather than
+restyling one, and reproducing it in a browser needs a real API key and an
+intercepted response; the two tests show the before and after more precisely
+than an image would. Flagging it rather than quietly skipping it, since `qol`
+items are supposed to carry them.
 
 ## Proposed
 

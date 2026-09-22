@@ -148,16 +148,31 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
       const text = data.content[0].text
       const match = text.match(/\[([\s\S]*?)\]/)
 
-      let words
-      if (match) {
-        words = JSON.parse(match[0])
-      } else {
-        // Response likely got truncated before the closing bracket — recover
-        // whatever complete quoted words were returned instead of failing outright.
-        words = [...text.matchAll(/"([a-zA-Z]+)"/g)].map(m => m[1])
-        if (words.length === 0) {
+      // Recover whatever complete quoted words came back. Used when the reply was
+      // truncated before its closing bracket, and when the bracketed body is not
+      // valid JSON — a trailing comma is how a model usually produces one.
+      const recoverQuotedWords = () => {
+        const found = [...text.matchAll(/"([a-zA-Z]+)"/g)].map(m => m[1])
+        if (found.length === 0) {
           throw new Error("Could not parse JSON array from AI response. AI said: " + text.substring(0, 150) + (text.length > 150 ? '...' : ''))
         }
+        return found
+      }
+
+      let words
+      if (match) {
+        try {
+          words = JSON.parse(match[0])
+        } catch {
+          // Unguarded, this handed the player V8's own parser message — something
+          // like *Unexpected token ']' … is not valid JSON* — in the one feature
+          // that talks to a model and so fails most often (R-023). The sweep below
+          // already recovers exactly this shape, so use it rather than a message
+          // nobody outside this file can read.
+          words = recoverQuotedWords()
+        }
+      } else {
+        words = recoverQuotedWords()
       }
       words = [...new Set(words.map(w => w.toLowerCase()))].filter(w => w.length === 5 && /^[a-z]+$/.test(w))
 
