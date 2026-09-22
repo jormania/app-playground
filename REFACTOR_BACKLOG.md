@@ -522,7 +522,7 @@ named intent versus a raw vibrate pattern), so this is **not** a mechanical
 re-export like R-004 or R-005 and must not be filed as one. Record it as an
 unreconciled overlap and leave the code alone.
 
-## R-003 — Promote the `/api/notion` fetch wrapper to `src/shared/` · `refactor` · `open`
+## R-003 — Promote the `/api/notion` fetch wrapper to `src/shared/` · `refactor` · `slice 1 done 2026-09-22 — eleven clients to go`
 
 **Impact:** none visible. Twelve copies of one wrapper become one.
 
@@ -537,6 +537,32 @@ behaviour-preserving. **One app per run.** Start with a JSX app, not with
 Fit Check or Sol Odyssey — those are strict TS and deserve a settled API first.
 
 Update the `src/shared/` section of `CLAUDE.md` when the first slice lands.
+
+**Slice 1 done 2026-09-22 — Loom.** `src/shared/notionClient.ts` now holds
+`notionProxy(token, path, method, body?, version?)` and `PROXY_URL`, and nothing
+else: each app keeps its own database ids, mappers and `createNotionClient`
+shape. Loom re-exports `PROXY_URL` and aliases `proxy = notionProxy`, so its
+module's API is unchanged.
+
+Two things for whoever takes slice 2:
+
+- **The `version` parameter reconciles the two shapes.** Journal and Wanderlist
+  pass a `version`; Loom, Marquee and Radar-B do not. An absent one never
+  survives `JSON.stringify`, so the shared function serves both without a
+  branch. Pinned by a test.
+- **The clients' own tests do not prove this move**, unlike R-004's. Every one
+  of them injects a `fetchImpl` seam, so the real fetch path never ran in any
+  app's suite — outside Sol Odyssey's separate `relay.ts`, the most-copied
+  function in the repo had no coverage at all. `src/shared/notionClient.test.ts`
+  now covers it once: the POST shape, the token header, version present and
+  absent, Notion's `message`, the `error` fallback, and a non-JSON error body
+  falling back to the status code.
+
+**WhereItWent is not a slice.** Its client is 639 lines with retries, a
+`NotionError` class and a `this.token` method shape — a different animal that
+happens to share ten lines. Take the five remaining JSX clients (Journal,
+Marquee, Radar-B, Wanderlist, then Fit Check and Sol Odyssey last as this item
+already says) and leave WhereItWent to a considered item of its own.
 
 ## R-004 — Fold the two stale `notionId` copies into `src/shared/notionId.ts` · `refactor` · `done 2026-09-22`
 

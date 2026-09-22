@@ -147,8 +147,11 @@ share sheet with a clipboard fallback; Wanderlist re-exports it). Each
 promotion left the original path working as a thin re-export, so the old
 app's tests prove the move was behaviour-preserving.
 
-Still **not** promoted: the `/api/notion` fetch wrapper, copied in twelve app clients.
-A worthwhile future promotion; nobody has needed it badly enough to convert them all.
+Being promoted, one app per run: [`notionClient.ts`](src/shared/notionClient.ts) —
+the `/api/notion` relay call (`notionProxy` + `PROXY_URL`), the fetch that was
+copied into twelve app clients. **Loom is converted; the other eleven still carry
+their own copy.** Take one per run (R-003), and note WhereItWent's 639-line client
+is not a slice of this — it shares ten lines and differs everywhere else.
 
 ## Service workers & dev
 

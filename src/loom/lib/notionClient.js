@@ -5,23 +5,14 @@
 // (Notion-Version 2022-06-28, pinned in the proxy) so a user only needs a token
 // + a database URL.
 import { toThread, toNotionProps } from './notion.js'
+// The relay call itself is shared (R-003, first slice) — eleven other app
+// clients still carry their own copy of it, one per run. PROXY_URL is
+// re-exported so this module's API is unchanged.
+import { notionProxy, PROXY_URL } from '../../shared/notionClient.ts'
 
-export const PROXY_URL = '/api/notion'
+export { PROXY_URL }
 
-async function proxy(token, path, method, body) {
-  const res = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-notion-token': token },
-    body: JSON.stringify({ path, method, body }),
-  })
-  let data = {}
-  try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) {
-    const msg = data?.message || data?.error || `Notion request failed (${res.status})`
-    throw new Error(msg)
-  }
-  return data
-}
+const proxy = notionProxy
 
 export function createNotionClient(token, { databaseId, fetchImpl } = {}) {
   // fetchImpl is only an injection seam for tests; production uses the proxy.
