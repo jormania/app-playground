@@ -1,0 +1,99 @@
+/* Loom's display face, subset deliberately.
+ *
+ * main.jsx used to import @fontsource/cinzel/500.css and its 600, 700 and 900
+ * siblings. Each of those weight entry points emits BOTH latin subsets in BOTH
+ * woff2 and legacy woff: 4 weights x 2 subsets x 2 formats = 16 files, 232 kB,
+ * written into every deployment and charged against Vercel's 10 GB Deployment
+ * Storage on each push. Cinzel was the largest family in the build.
+ *
+ * CLAUDE.md's rule says to import the per-subset file instead, and for a family
+ * that needs one subset that is right. It is NOT right here, and the reason is
+ * worth knowing before anyone "finishes the job": fontsource's per-subset files
+ * (latin-500.css, latin-ext-500.css) carry NO unicode-range. Importing both
+ * would make every browser fetch both files unconditionally — a runtime
+ * regression traded for a build-size win. Only the weight entry points declare
+ * the ranges.
+ *
+ * Loom needs both subsets. Its own source carries Romanian text, and the
+ * letters split across the boundary: a-circumflex (U+00E2) and i-circumflex
+ * (U+00EE) are latin, while s-comma (U+0219), t-comma (U+021B) and a-breve
+ * (U+0103) are latin-ext. Drop latin-ext and display text falls back to
+ * Georgia mid-word.
+ *
+ * So both subsets are declared here with fontsource's own ranges, copied from
+ * its weight entry points rather than retyped, and woff2 only — the legacy woff
+ * twins were half the 232 kB and every browser that can run this app has
+ * supported woff2 for years. Same reasoning as src/yoru/fonts.css, which
+ * CLAUDE.md already points at as the precedent. 16 files become 8.
+ *
+ * The four weights are unchanged. Which of them Cinzel is actually rendered at
+ * is a separate question the CSS alone cannot answer — most --font-display
+ * rules inherit their weight, and h1-h3 have no reset — so dropping one is a
+ * visual judgement needing browser evidence, not a build-size tidy-up. See
+ * R-016.
+ */
+
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(@fontsource/cinzel/files/cinzel-latin-ext-500-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(@fontsource/cinzel/files/cinzel-latin-500-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(@fontsource/cinzel/files/cinzel-latin-ext-600-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(@fontsource/cinzel/files/cinzel-latin-600-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(@fontsource/cinzel/files/cinzel-latin-ext-700-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(@fontsource/cinzel/files/cinzel-latin-700-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 900;
+  src: url(@fontsource/cinzel/files/cinzel-latin-ext-900-normal.woff2) format('woff2');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 900;
+  src: url(@fontsource/cinzel/files/cinzel-latin-900-normal.woff2) format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
