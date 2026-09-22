@@ -151,6 +151,10 @@ The app surfaces state changes/errors via a lightweight in-app toast (not blocki
 - Falling back off an unavailable Custom dictionary (storage cleared, or a shared seed link
   referencing a Custom list you don't have).
 - Curating/refreshing the Custom dictionary (success, or a readable error inline in Settings).
+  One exception, known and filed as R-023: if the model's reply contains a bracket span
+  that isn't valid JSON — a trailing comma is the usual way — `JSON.parse` runs unguarded
+  and V8's own message reaches the player. Every other curation failure, including a reply
+  truncated before its closing bracket, is handled and worded by us.
 - Copying/sharing the result (link copy and its failure path).
 - A hint request that came back empty or failed (see Hints & definitions below) — the one
   toast that can fire from a `fetch`, so it's the one place a "check your connection"

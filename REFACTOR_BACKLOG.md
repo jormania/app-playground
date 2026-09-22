@@ -819,7 +819,7 @@ moved onto the rules that do the work. The `WHERE_IT_WENT.md` sentence turned
 out to need a stronger claim than "worth one sentence" — see R-022, filed
 because the fragility this item predicted has already fired.
 
-## R-021 — Root triage, slice 4: two tracked files that are not source · `refactor` · `part 1 done 2026-09-22, part 2 open`
+## R-021 — Root triage, slice 4: two tracked files that are not source · `refactor` · `done 2026-09-22`
 
 **Impact:** none visible. The last two accidental commits at the top of the tree.
 
@@ -850,10 +850,48 @@ file between two merges. `test-results/` was the whole directory; `git log`
 confirms the tracked `.last-run.json` last changed in 92c7eb9 and nothing
 reads it.
 
-**Part 2 stays open** and is not a quick delete: `scratch/test-curation.cjs`
-encodes Lexi5's parse-fallback chain, and this item's own instruction is to
-check whether that logic has a real test first. If it does not, the outcome is
-a test in `src/lexi5/` and *then* the delete.
+**Part 2 done 2026-09-22**, the long way round, because the check said to.
+`Settings.test.jsx` covered the happy path — dedupe, case, length — and none of
+the three shapes the harness documented. Six tests added for the parse chain
+(prose-wrapped array, truncation before the closing bracket, the discard count
+in the toast, nothing parseable, everything invalid, a bracketed body that is
+not JSON), each one mutation-checked against the code it pins, and *then* the
+harness deleted. `scratch/` is now gone entirely; its entry in
+`eslint.config.js`'s ignores is left in place for the next one.
+
+Two things the harness turned out to be wrong about, which is the argument
+against keeping a file like it as documentation: its comment claimed the
+filtering was "exactly as it is in Settings.jsx" while wrapping `JSON.parse` in
+a try/catch the app has never had, and it labelled `starr` a hallucination when
+it is in the guess list. See R-023 for the behaviour that divergence exposed.
+
+## R-023 — Lexi5 shows the player a V8 parser message when curation returns bad JSON · `qol` · `open`
+
+**Impact:** one error message, in the one Lexi5 feature that talks to a model
+and therefore fails most often. `LEXI5.md` line 153 promises "a readable error
+inline in Settings"; this is the case where that promise is not kept.
+
+Found while doing R-021 part 2, 2026-09-22, and pinned by
+`Settings.test.jsx` — "surfaces the raw parser message when the bracketed body
+is not valid JSON". That test records current behaviour rather than endorsing
+it; whoever takes this item should change the test with the code.
+
+`src/lexi5/components/Settings.jsx`: the curation reply is matched for a
+bracket span, and `JSON.parse(match[0])` runs **unguarded**. A reply like
+`["brave", "crazy",]` — a trailing comma, which models produce — throws, the
+outer `catch` assigns `err.message` straight to `curateError`, and the player
+reads something like *Unexpected token ']', ..."crazy",]" is not valid JSON*.
+
+The fix the deleted `scratch/test-curation.cjs` harness had already sketched:
+wrap the parse, and on failure fall through to the same
+`matchAll(/"([a-zA-Z]+)"/g)` sweep that already handles a reply truncated
+before its closing bracket. That path is tested and recovers exactly this
+shape. Failing that, at minimum replace the message with the wording the
+no-bracket branch already uses.
+
+Being `qol`: it changes what the player sees, so it may be **proposed and
+worked but never auto-merged**. No screenshots needed beyond the error state
+itself — one theme is enough for a line of text, unlike a `visual` item.
 
 ## Proposed
 

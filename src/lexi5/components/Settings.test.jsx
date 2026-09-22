@@ -250,4 +250,110 @@ describe('Settings component', () => {
     expect(screen.queryByText(/timed out/i)).toBeNull()
     expect(localStorage.getItem('lexi5_custom_dict')).toBeNull()
   })
+
+  // ---------------------------------------------------------------------------
+  // The curation parse chain.
+  //
+  // These shapes were documented only by `scratch/test-curation.cjs` — a harness
+  // that printed three scenarios to a console and asserted nothing, so it could
+  // not fail. Pinned here for real, and the harness deleted.
+  //
+  // The harness was not a faithful copy of the app, which is the other reason not
+  // to keep trusting it: it wrapped `JSON.parse` in a try/catch that fell back to
+  // the regex sweep. Settings has never done that — see the malformed-array case
+  // below, where a bracketed body that isn't valid JSON is an error rather than a
+  // recovery.
+  // ---------------------------------------------------------------------------
+
+  const curateWith = async (rawText, onToast = vi.fn()) => {
+    render(
+      <Settings
+        open={true}
+        onClose={() => {}}
+        config={defaultConfig}
+        onConfigChange={mockOnConfigChange}
+        onDictionaryChange={mockOnDictionaryChange}
+        onDifficultyChange={mockOnDifficultyChange}
+        onResetStats={mockOnResetStats}
+        onToast={onToast}
+        openToCurate={false}
+      />
+    )
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ content: [{ text: rawText }] })
+    })
+    fireEvent.click(screen.getByText('AI Curation'))
+    fireEvent.change(await screen.findByPlaceholderText('sk-ant-...'), { target: { value: 'sk-ant-test-key' } })
+    fireEvent.click(screen.getByText('Start Curation'))
+    return onToast
+  }
+
+  const storedDict = () => JSON.parse(localStorage.getItem('lexi5_custom_dict') || 'null')
+
+  it('pulls the array out of a reply that wrapped it in prose', async () => {
+    const onToast = await curateWith(`Here is the list you requested:
+[
+  "Brave", "CRAZY", "hello", "W0rld", "super", "duper"
+]
+I hope this helps!`)
+
+    await waitFor(() => expect(onToast).toHaveBeenCalled())
+    // The bracket span is extracted from the surrounding chatter; "W0rld" survives
+    // the length check and dies on the letters-only one.
+    expect(storedDict().sort()).toEqual(['brave', 'crazy', 'duper', 'hello', 'super'])
+  })
+
+  it('recovers the complete words from a reply truncated before its closing bracket', async () => {
+    const onToast = await curateWith('["alien", "orbit", "stars", "moo')
+
+    await waitFor(() => expect(onToast).toHaveBeenCalled())
+    // No closing bracket means no array to parse, so the regex sweep takes over and
+    // keeps what came back whole. The half-written word has no closing quote and is
+    // never seen.
+    expect(storedDict().sort()).toEqual(['alien', 'orbit', 'stars'])
+  })
+
+  it('counts the words it threw away in the toast', async () => {
+    const onToast = await curateWith(JSON.stringify(['alien', 'orbit', 'spsce', 'galxy']))
+
+    // "spsce" and "galxy" are five letters each and pass every format check; only
+    // the guess list knows they are not words. That is the discard the player is
+    // told about, and the reason the count is worth surfacing at all.
+    await waitFor(() => {
+      expect(onToast).toHaveBeenCalledWith(
+        expect.stringContaining('(2 invalid words discarded)'),
+        undefined
+      )
+    })
+    expect(storedDict().sort()).toEqual(['alien', 'orbit'])
+  })
+
+  it('errors when nothing in the reply looks like a word list', async () => {
+    await curateWith('Sorry, I am not able to help with that request.')
+
+    expect(await screen.findByText(/Could not parse JSON array/)).toBeTruthy()
+    expect(storedDict()).toBeNull()
+  })
+
+  it('errors when every word came back invalid', async () => {
+    await curateWith(JSON.stringify(['spsce', 'galxy', 'zzzzz']))
+
+    // Distinct from the case above: the reply parsed fine and the words were the
+    // right shape. Nothing survived the guess list, which needs its own message.
+    expect(await screen.findByText('AI did not return any valid 5-letter words.')).toBeTruthy()
+    expect(storedDict()).toBeNull()
+  })
+
+  it('surfaces the raw parser message when the bracketed body is not valid JSON', async () => {
+    await curateWith('["brave", "crazy",]')
+
+    // Current behaviour, pinned rather than endorsed. A trailing comma reaches the
+    // player as whatever V8 says — LEXI5.md promises "a readable error inline in
+    // Settings", and this is not one. The matcher stays loose because the wording
+    // is Node's, not ours, and has changed between versions.
+    expect(await screen.findByText(/not valid JSON|Unexpected token/i)).toBeTruthy()
+    expect(screen.queryByText(/Could not parse JSON array/)).toBeNull()
+    expect(storedDict()).toBeNull()
+  })
 })
