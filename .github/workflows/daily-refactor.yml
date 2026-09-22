@@ -33,9 +33,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Was today's slice already done? The backstop cron exists for the morning the
-  # first one is dropped, not as a retry: any earlier run today, whatever became
-  # of it, means stand down. A run started by hand always goes ahead.
+  # Was today's slice already DONE — not merely attempted? The backstop stands
+  # down for a run that succeeded or is still going, and proceeds otherwise.
+  #
+  # It used to count runs rather than outcomes, and 2026-09-22 showed the cost:
+  # the 01:10 run died on an API 529 four minutes in, having produced nothing,
+  # and the 05:21 backstop stood down because "1 run already went out today".
+  # The backstop exists for exactly that morning and declined to work on it.
+  #
+  # The old rule was written for `blocked` — the agent tried, could not finish,
+  # said so, and a retry would waste a slice. That is still true, and a blocked
+  # run now gets one retry it does not deserve. That is the price: some tokens
+  # and a second red run, against a guaranteed lost morning every time the API
+  # hiccups at 01:10. Transient failures are common; blocked ones are rare.
+  #
+  # A run started by hand always goes ahead.
   gate:
     runs-on: ubuntu-latest
     outputs:
@@ -58,10 +70,15 @@ jobs:
             # before, so a run and its backstop sit on either side of UTC
             # midnight while belonging to the same morning here.
             today=$(TZ=Europe/Bucharest date +%F)
+            # `success`, or not finished yet: a run still in flight counts, so a
+            # delayed backstop queued behind the primary does not double up.
+            # Anything else — failed, cancelled, timed out — leaves the morning
+            # undone and is not a reason to stand down.
             earlier=$(gh api \
               "repos/$GH_REPO/actions/workflows/daily-refactor.yml/runs?per_page=30" \
               --jq ".workflow_runs[]
                     | select(.id != ${{ github.run_id }})
+                    | select(.conclusion == \"success\" or .status != \"completed\")
                     | .created_at" \
               | while read -r ts; do TZ=Europe/Bucharest date -d "$ts" +%F; done \
               | grep -c "^$today$" || echo "")
@@ -69,10 +86,10 @@ jobs:
             # backlog; a wrongly skipped one costs the whole day and says nothing.
             case "${earlier:-}" in ''|*[!0-9]*) earlier=0 ;; esac
             if [ "$earlier" -gt 0 ]; then
-              echo "$earlier Daily refactor run(s) already went out today — standing down."
+              echo "$earlier Daily refactor run(s) already succeeded or are running today — standing down."
               decision=false
             else
-              echo "Nothing has run yet today — going ahead."
+              echo "Nothing has succeeded yet today — going ahead."
             fi
           fi
           echo "run=$decision" >> "$GITHUB_OUTPUT"
