@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
-import { systemPrefersDark, useThemeSync } from './theme'
+import { systemPrefersDark, useThemeSync, useSystemThemeFollow } from './theme'
 
 afterEach(cleanup)
 
@@ -107,5 +107,136 @@ describe('useThemeSync', () => {
 
     expect(remove).toHaveBeenCalledWith('storage', expect.any(Function))
     remove.mockRestore()
+  })
+})
+
+describe('useSystemThemeFollow', () => {
+  // The OS-follow effect was copied into three providers and tested in none of
+  // them, which is the other half of why it was promoted (R-026).
+  const makeMq = ({ legacy = false } = {}) => {
+    const listeners: Array<() => void> = []
+    const mq: Record<string, unknown> = {
+      matches: false,
+      removed: 0,
+      fire: () => listeners.slice().forEach((l) => l()),
+      count: () => listeners.length,
+    }
+    if (legacy) {
+      // Safari < 14: a MediaQueryList with only addListener/removeListener.
+      mq.addListener = (l: () => void) => { listeners.push(l) }
+      mq.removeListener = (l: () => void) => {
+        const i = listeners.indexOf(l)
+        if (i >= 0) listeners.splice(i, 1)
+        ;(mq.removed as number)++
+      }
+    } else {
+      mq.addEventListener = (_e: string, l: () => void) => { listeners.push(l) }
+      mq.removeEventListener = (_e: string, l: () => void) => {
+        const i = listeners.indexOf(l)
+        if (i >= 0) listeners.splice(i, 1)
+        ;(mq.removed as number)++
+      }
+    }
+    return mq
+  }
+
+  const install = (mq: unknown) => {
+    vi.stubGlobal('matchMedia', vi.fn(() => mq))
+    // window.matchMedia is what the hook calls; in jsdom window IS globalThis,
+    // but assign it explicitly so the stub holds either way.
+    ;(window as unknown as Record<string, unknown>).matchMedia = globalThis.matchMedia
+  }
+
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('subscribes while active and calls back when the OS flips', () => {
+    const mq = makeMq()
+    install(mq)
+    const onChange = vi.fn()
+
+    renderHook(() => useSystemThemeFollow(true, onChange))
+    expect((mq.count as () => number)()).toBe(1)
+
+    ;(mq.fire as () => void)()
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not subscribe at all while inactive', () => {
+    const mq = makeMq()
+    install(mq)
+
+    renderHook(() => useSystemThemeFollow(false, vi.fn()))
+    expect((mq.count as () => number)()).toBe(0)
+  })
+
+  it('unsubscribes on unmount', () => {
+    const mq = makeMq()
+    install(mq)
+
+    const { unmount } = renderHook(() => useSystemThemeFollow(true, vi.fn()))
+    unmount()
+
+    expect((mq.count as () => number)()).toBe(0)
+    expect(mq.removed).toBe(1)
+  })
+
+  it('unsubscribes when it stops being active', () => {
+    // Switching the preference away from "system" must stop the listener, or a
+    // sunset flip repaints an app the user has explicitly pinned to light.
+    const mq = makeMq()
+    install(mq)
+    const onChange = vi.fn()
+
+    const { rerender } = renderHook(({ on }) => useSystemThemeFollow(on, onChange), {
+      initialProps: { on: true },
+    })
+    rerender({ on: false })
+
+    ;(mq.fire as () => void)()
+    expect(onChange).not.toHaveBeenCalled()
+    expect((mq.count as () => number)()).toBe(0)
+  })
+
+  it('falls back to addListener on a Safari < 14 MediaQueryList', () => {
+    // The guard Tempo's and Daily Stoic's copies lack, and the reason Law of
+    // the Day's was the version promoted.
+    const mq = makeMq({ legacy: true })
+    install(mq)
+    const onChange = vi.fn()
+
+    const { unmount } = renderHook(() => useSystemThemeFollow(true, onChange))
+    ;(mq.fire as () => void)()
+    expect(onChange).toHaveBeenCalledTimes(1)
+
+    unmount()
+    expect((mq.count as () => number)()).toBe(0)
+  })
+
+  it('mounts anyway when matchMedia throws or is missing', () => {
+    vi.stubGlobal('matchMedia', () => { throw new Error('nope') })
+    ;(window as unknown as Record<string, unknown>).matchMedia = globalThis.matchMedia
+
+    expect(() => renderHook(() => useSystemThemeFollow(true, vi.fn()))).not.toThrow()
+  })
+
+  it('does not tear the listener down when only the callback changes', () => {
+    // Every caller passes an inline arrow, so a naive dependency on onChange
+    // would resubscribe on every render. The newest callback still wins.
+    const mq = makeMq()
+    install(mq)
+    const first = vi.fn()
+    const second = vi.fn()
+
+    const { rerender } = renderHook(({ cb }) => useSystemThemeFollow(true, cb), {
+      initialProps: { cb: first },
+    })
+    rerender({ cb: second })
+
+    expect(mq.removed).toBe(0)
+    expect((mq.count as () => number)()).toBe(1)
+
+    ;(mq.fire as () => void)()
+    expect(first).not.toHaveBeenCalled()
+    expect(second).toHaveBeenCalledTimes(1)
   })
 })

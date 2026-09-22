@@ -394,7 +394,7 @@ Being `visual`: before/after screenshots in both themes, phone and desktop, on
 `claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
 the diff shows nothing either way.
 
-## R-026 — The theme mechanism's second half: following the OS · `refactor` · `open`
+## R-026 — The theme mechanism's second half: following the OS · `refactor` · `open` — step 1 done
 
 **Impact:** none visible. One copy of the OS-follow effect instead of three, and
 the two providers R-015 left that can still adopt `useThemeSync`.
@@ -458,15 +458,35 @@ Separate from the listener, and unchanged from the first version of this item:
 
 One run each, in this order, so no run is both a promotion and a conversion:
 
-1. `useSystemThemeFollow` into `src/shared/theme.ts`, with Law of the Day
-   re-exporting or importing it — its own tests prove the move.
+1. ~~`useSystemThemeFollow` into `src/shared/theme.ts`, with Law of the Day
+   importing it.~~ **Done 2026-09-22.**
 2. Tempo and Daily Stoic onto it.
 3. Sol Odyssey onto `useThemeSync`.
 4. Daily Stoic onto `useThemeSync`.
 
-`src/shared/theme.test.ts` is where each step is proven; those ten tests are
-still the only coverage the cross-tab listener has ever had, and the OS-follow
-effect currently has none anywhere.
+`src/shared/theme.test.ts` is where each step is proven.
+
+**Step 1 done 2026-09-22.** `useSystemThemeFollow(active, onChange)` is in
+`src/shared/theme.ts` and Law of the Day imports it; its provider keeps the
+callback, as designed — `applyTheme('system')` plus its own `setTheme`.
+
+Two things the promotion settled beyond de-duplicating:
+
+- **`onChange` is held in a ref**, so the subscription depends on `active`
+  alone. Every caller passes an inline arrow and a naive dependency on the
+  callback would tear the listener down and rebuild it on each render. Pinned
+  by a test that changes only the callback and asserts nothing was removed,
+  while the newest callback still wins.
+- **The effect had no test anywhere**, in any of its three copies. It has seven
+  now: subscribe while active, never while inactive, fire on change,
+  unsubscribe on unmount, unsubscribe when `active` goes false (a sunset flip
+  must not repaint an app the user pinned to light), the Safari < 14
+  `addListener` path, and mounting anyway when `matchMedia` throws. Four
+  mutations were run against the hook — dropping the Safari fallback, depending
+  on `onChange`, ignoring `active`, and never cleaning up — and each was
+  caught.
+
+Steps 2–4 are unchanged and still one run each.
 
 ## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
 

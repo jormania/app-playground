@@ -150,7 +150,11 @@ unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly),
 `matchMedia` probe `systemPrefersDark`, re-exported by all seven apps that had
 written it out, and `useThemeSync(key, {load, save, apply})`, the
 persist-and-cross-tab-sync effect pair, used by Cabinet, Law of the Day and
-Loom. Each app's own `theme.{js,ts}` keeps its vocabulary — light/dark vs
+Loom, plus `useSystemThemeFollow(active, onChange)`, the `matchMedia` listener
+for following the OS while a preference is `system` — Law of the Day uses it;
+Tempo and Daily Stoic still carry their own copy, which lacks its Safari < 14
+fallback (R-026). **What to do when the OS flips stays with the caller**: the
+three apps each want something different done about it. Each app's own `theme.{js,ts}` keeps its vocabulary — light/dark vs
 three-way-with-system vs palette presets — and **those must not be flattened
 into one API**; see R-015),
 [`findings.js`](src/shared/findings.js) (**the Findings/Wanderlist Notion schema** —

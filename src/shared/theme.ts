@@ -7,7 +7,7 @@
 // behaviour change wearing a refactor's clothes (R-015). So only the two pieces
 // that were genuinely written out over and over live here: the `matchMedia`
 // probe, and the persist-and-sync effect pair.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 /**
@@ -70,4 +70,52 @@ export function useThemeSync<T>(
   }, [key])
 
   return [value, setValue]
+}
+
+/**
+ * Follow the OS colour scheme while `active`, calling `onChange` each time it
+ * flips — the phone that turns dark at sunset taking the app with it.
+ *
+ * Promoted from Law of the Day (R-026), which is the version worth having:
+ * Tempo's and Daily Stoic's copies call `matchMedia` bare and assume
+ * `addEventListener` exists on a MediaQueryList, which Safari before 14 does
+ * not provide. Both guards are kept here.
+ *
+ * Only the subscription is shared. **What to do on a change stays with the
+ * caller**, because the three apps genuinely differ: one repaints, one only
+ * re-syncs the browser-chrome tint because its palette swaps in CSS, one does
+ * both. A hook that decided that for them would be the flattened
+ * one-API-for-everything R-015 refused.
+ *
+ * `onChange` is held in a ref, so the subscription depends on `active` alone.
+ * Callers can pass an inline arrow — all of them naturally would — without
+ * tearing the listener down and rebuilding it on every render.
+ */
+export function useSystemThemeFollow(active: boolean, onChange: () => void): void {
+  const latest = useRef(onChange)
+  latest.current = onChange
+
+  useEffect(() => {
+    if (!active) return
+
+    let mq: MediaQueryList
+    try {
+      mq = window.matchMedia('(prefers-color-scheme: dark)')
+    } catch {
+      // No matchMedia, or a browser that refuses the query: the app keeps
+      // whatever it last painted rather than failing to mount.
+      return
+    }
+
+    const handler = () => latest.current()
+
+    // Safari < 14 has no addEventListener on a MediaQueryList.
+    if (mq.addEventListener) mq.addEventListener('change', handler)
+    else mq.addListener(handler)
+
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', handler)
+      else mq.removeListener(handler)
+    }
+  }, [active])
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { useThemeSync } from '../../shared/theme.ts'
+import { useThemeSync, useSystemThemeFollow } from '../../shared/theme.ts'
 import {
   applyTheme,
   loadThemePref,
@@ -28,25 +28,15 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     setTheme(resolveTheme(pref))
-    if (pref !== 'system') return
-    let mq
-    try {
-      mq = window.matchMedia('(prefers-color-scheme: dark)')
-    } catch {
-      return
-    }
-    const onChange = () => {
-      applyTheme('system')
-      setTheme(resolveTheme('system'))
-    }
-    // Safari < 14 has no addEventListener on a MediaQueryList.
-    if (mq.addEventListener) mq.addEventListener('change', onChange)
-    else mq.addListener(onChange)
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener('change', onChange)
-      else mq.removeListener(onChange)
-    }
   }, [pref])
+
+  // The subscription is shared (R-026); what to do when the OS flips stays
+  // here, because the three apps that follow the OS each want something
+  // different done about it.
+  useSystemThemeFollow(pref === 'system', () => {
+    applyTheme('system')
+    setTheme(resolveTheme('system'))
+  })
 
   const value = useMemo(
     () => ({
