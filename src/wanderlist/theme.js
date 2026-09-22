@@ -10,6 +10,7 @@
 // same Solarized-derived token vocabulary as JoD (--bg/--ink/--blue/…). Keep the id list +
 // bar colours here in step with the inline FOUC script in wanderlist-react.html and the
 // guide (public/wanderlist-guide.html), which map a preset to its light/dark MODE only.
+import { systemPrefersDark } from '../shared/theme.ts'
 
 /** @typedef {'light' | 'dark'} Mode */
 /** @typedef {'solarized-dark'|'solarized-light'|'octagon'|'quiet-light'|'spectrum'|'filter-sun'} PresetId */
@@ -39,13 +40,9 @@ export const DEFAULT_PRESET = 'solarized-dark'
 const BY_ID = Object.fromEntries(PRESETS.map((p) => [p.id, p]))
 
 /** Does the OS currently prefer dark? (false where matchMedia is unavailable.) */
-export function systemPrefersDark() {
-  try {
-    return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches
-  } catch {
-    return false
-  }
-}
+// The matchMedia probe is the shared one now (R-015) — seven apps had written
+// out the same seven lines. Re-exported so this module's API is unchanged.
+export { systemPrefersDark }
 
 /** Migrate a raw stored value (incl. the legacy 'light' | 'dark' prefs) to a PresetId. */
 function normalizePreset(raw) {

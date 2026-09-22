@@ -10,6 +10,7 @@
 // guide (same origin), so one setting drives both and a `storage` event keeps
 // open pages in sync. Keep this in step with the pre-paint script in
 // daily-stoic-react.html and the guide's own.
+import { systemPrefersDark } from '../../shared/theme.ts'
 
 /** The stored preference. */
 export type ThemePref = 'system' | 'light' | 'dark'
@@ -41,13 +42,9 @@ export function normalizeTheme(raw: string | null | undefined): ThemePref {
 }
 
 /** Does the OS currently prefer dark? (false where matchMedia is unavailable.) */
-export function systemPrefersDark(): boolean {
-  try {
-    return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches
-  } catch {
-    return false
-  }
-}
+// The matchMedia probe is the shared one now (R-015) — seven apps had written
+// out the same seven lines. Re-exported so this module's API is unchanged.
+export { systemPrefersDark }
 
 /** What the preference means right now — "system" asks the OS. */
 export function resolveTheme(pref: ThemePref): Theme {

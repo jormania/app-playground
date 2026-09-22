@@ -15,6 +15,7 @@
  */
 
 import { readJson, writeJson } from '../../shared/storage'
+import { systemPrefersDark } from '../../shared/theme.ts'
 
 export type ThemeChoice = 'light' | 'dark' | null
 export type ResolvedTheme = 'light' | 'dark'
@@ -23,13 +24,9 @@ export const THEME_KEY = 'silva:theme'
 
 /** Does the OS currently prefer dark? False anywhere matchMedia is absent
  *  rather than throwing. */
-export function systemPrefersDark(win: Window | undefined = typeof window === 'undefined' ? undefined : window): boolean {
-  try {
-    return Boolean(win?.matchMedia('(prefers-color-scheme: dark)').matches)
-  } catch {
-    return false
-  }
-}
+// This app's version — the one that takes an explicit `win` — became the shared
+// signature, since it is a superset of the six that took none (R-015).
+export { systemPrefersDark }
 
 /** The palette a choice actually resolves to right now. */
 export function resolveTheme(choice: ThemeChoice, win?: Window): ResolvedTheme {

@@ -664,7 +664,7 @@ three root scripts named above are gone, so only the skill's screenshot step
 invokes it. Suite, typecheck and a full build all pass; the lockfile lost 350
 lines.
 
-## R-015 — The theme plumbing is written out six times · `refactor` · `open`
+## R-015 — The theme plumbing is written out six times · `refactor` · `done 2026-09-22 — mechanism moved, three of six providers adopted`
 
 **Impact:** none visible. One copy of the persist-and-sync mechanism instead of six.
 
@@ -705,6 +705,34 @@ and Law of the Day since they are the identical pair.
 `src/journal/` is legacy but may import from `src/shared/` — that boundary only
 covers `src/ds/` (see `LEGACY.md`). Update the `src/shared/` section of
 `CLAUDE.md` when the first slice lands.
+
+
+**Done 2026-09-22, in the narrow form this item argued for.**
+`src/shared/theme.ts` now holds exactly two things:
+
+- `systemPrefersDark(win?)` — **all seven** copies now re-export it. Silva's
+  signature won, because the explicit `win` parameter is a superset of the six
+  that took none; the six keep calling it with no argument and it defaults to
+  the real window. Note a re-export alone was not enough in four of them: they
+  call the function internally, so each needed an `import` as well as the
+  `export`.
+- `useThemeSync(key, {load, save, apply})` — the `useState(load)` / apply-and-save
+  effect / `storage`-listener trio, returning a plain `[value, setValue]` so each
+  caller keeps its own vocabulary on top.
+
+**Three of six providers adopted it**: Cabinet, Law of the Day and Loom, which
+were the three that differed only in a comment's wording and, for Loom, in
+naming its state `themeId` and exposing `cycle`. Tempo, Daily Stoic and Sol
+Odyssey are left as they were — at 50, 62 and 66 lines against these three's 34
+they carry more than the mechanism, and the item's own warning about the obvious
+large version applies to them most. A follow-up should read each before assuming
+it fits.
+
+The cross-tab listener had **no test anywhere in the repo** before this — six
+providers, six copies, zero coverage. `src/shared/theme.test.ts` now covers the
+initial load, apply-before-save ordering, an updater function, a `storage` event
+on the key, a `storage` event on some other key, and unmount. That, rather than
+the line count, is what the promotion bought.
 
 ## R-016 — Loom imports four `@fontsource` weight entry points · `modernise` · `open`
 

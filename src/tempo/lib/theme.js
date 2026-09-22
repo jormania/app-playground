@@ -2,19 +2,16 @@
 // shared by BOTH the app and the standalone guide (same origin), so a single choice drives both
 // and a `storage` event keeps open pages in sync. Keep in step with the inline FOUC script in
 // tempo-react.html and tempo-guide.html.
+import { systemPrefersDark } from '../../shared/theme.ts'
 
 export const THEME_KEY = 'tempo:theme'
 
 // Browser-chrome colour per resolved theme (soft cream / deep calm night).
 const THEME_COLOR = { light: '#F4F6F3', dark: '#12151A' }
 
-export function systemPrefersDark() {
-  try {
-    return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches
-  } catch {
-    return false
-  }
-}
+// The matchMedia probe is the shared one now (R-015) — seven apps had written
+// out the same seven lines. Re-exported so this module's API is unchanged.
+export { systemPrefersDark }
 
 export function resolveTheme(pref) {
   if (pref === 'system') return systemPrefersDark() ? 'dark' : 'light'

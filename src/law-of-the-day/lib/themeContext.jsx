@@ -1,28 +1,21 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useMemo } from 'react'
+import { useThemeSync } from '../../shared/theme.ts'
 import { applyTheme, loadThemePref, saveThemePref, toggleTheme, THEME_KEY } from './theme'
 
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => loadThemePref())
-
-  useEffect(() => {
-    applyTheme(theme)
-    saveThemePref(theme)
-  }, [theme])
-
-  // Live-sync with the guide (and other tabs).
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === THEME_KEY) setTheme(loadThemePref())
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  // Shared mechanism (R-015), local vocabulary. The storage listener inside
+  // useThemeSync is what live-syncs with the guide page and other tabs.
+  const [theme, setTheme] = useThemeSync(THEME_KEY, {
+    load: loadThemePref,
+    save: saveThemePref,
+    apply: applyTheme,
+  })
 
   const value = useMemo(
     () => ({ theme, toggle: () => setTheme(toggleTheme) }),
-    [theme],
+    [theme, setTheme],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

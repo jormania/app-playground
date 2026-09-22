@@ -4,6 +4,7 @@
 // press flips light↔dark); Settings picks one directly. Pure-ish helpers here; the React wiring is in
 // themeContext.tsx. Keep this in step with the inline FOUC script in sol-odysseys-react.html and the
 // guide (the guide maps a preset to its light/dark MODE and keeps its own Deep Indigo palette).
+import { systemPrefersDark } from '../../shared/theme.ts'
 
 /** The resolved light/dark mode of a preset. */
 export type Theme = 'light' | 'dark'
@@ -50,13 +51,9 @@ export const DEFAULT_PRESET: PresetId = 'indigo-light'
 const BY_ID: Record<string, Preset> = Object.fromEntries(PRESETS.map((p) => [p.id, p]))
 
 /** Does the OS currently prefer dark? (false where matchMedia is unavailable.) */
-export function systemPrefersDark(): boolean {
-  try {
-    return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches
-  } catch {
-    return false
-  }
-}
+// The matchMedia probe is the shared one now (R-015) — seven apps had written
+// out the same seven lines. Re-exported so this module's API is unchanged.
+export { systemPrefersDark }
 
 /** Migrate a raw stored value (incl. the legacy 'light' | 'dark' | 'system' prefs) to a PresetId. */
 function normalizePreset(raw: string | null | undefined): PresetId {

@@ -131,6 +131,13 @@ case, and returns unmatched input unchanged rather than `''`, which App.jsx's
 missed promotion — `Settings.notionId.test.jsx` pins the three differences), and [`useWakeLock.ts`](src/shared/useWakeLock.ts)
 (screen-awake hook wrapping the Wake Lock API, degrading silently where
 unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly),
+[`theme.ts`](src/shared/theme.ts) (the theme **mechanism** only — the
+`matchMedia` probe `systemPrefersDark`, re-exported by all seven apps that had
+written it out, and `useThemeSync(key, {load, save, apply})`, the
+persist-and-cross-tab-sync effect pair, used by Cabinet, Law of the Day and
+Loom. Each app's own `theme.{js,ts}` keeps its vocabulary — light/dark vs
+three-way-with-system vs palette presets — and **those must not be flattened
+into one API**; see R-015),
 [`findings.js`](src/shared/findings.js) (**the Findings/Wanderlist Notion schema** —
 property names, rich-text chunking, the Category/Tags lowercase rule, the Planned-Date
 offset, `toFindingsProps`; promoted when Radar-B became a second writer to that database,

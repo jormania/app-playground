@@ -1,29 +1,24 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useMemo } from 'react'
+import { useThemeSync } from '../../shared/theme.ts'
 import { applyTheme, loadThemePref, saveThemePref, nextTheme, presetById, THEME_KEY } from './theme.js'
 
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [themeId, setThemeId] = useState(() => loadThemePref())
-
-  useEffect(() => {
-    applyTheme(themeId)
-    saveThemePref(themeId)
-  }, [themeId])
-
-  // Live-sync with the guide (and other tabs) via the shared storage key.
-  useEffect(() => {
-    const onStorage = (e) => { if (e.key === THEME_KEY) setThemeId(loadThemePref()) }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  // Shared mechanism (R-015). Loom's vocabulary is a preset id rather than a
+  // light/dark pair, which is exactly why only the mechanism moved.
+  const [themeId, setThemeId] = useThemeSync(THEME_KEY, {
+    load: loadThemePref,
+    save: saveThemePref,
+    apply: applyTheme,
+  })
 
   const value = useMemo(() => ({
     themeId,
     preset: presetById(themeId),
     setTheme: setThemeId,
     cycle: () => setThemeId(nextTheme),
-  }), [themeId])
+  }), [themeId, setThemeId])
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
