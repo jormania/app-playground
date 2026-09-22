@@ -679,11 +679,10 @@ select option {
   50% { transform: translateY(-8px); }
   100% { transform: translateY(0); }
 }
-.flair-empty svg[stroke="currentColor"][fill="none"] {
-  /* Simple heuristic: if it's a large unstyled SVG in an empty state, float it.
-     We don't want to target small icons in buttons. We will target SVGs > 32px height if possible,
-     or we can target specific empty state container paths. */
-}
+/* Float the large icon in an empty state, and only that one — never the small
+   icons inside buttons. Reached two ways: an inline 48px container, or the
+   .empty-state-icon hook. An earlier attempt selected every unstyled SVG under
+   .flair-empty and was abandoned; its empty rule body sat here until 2026-09-22. */
 .flair-empty [style*="font-size: 48px"] svg,
 .flair-empty [style*="height: 48px"] svg,
 .flair-empty [style*="width: 48px"] svg,

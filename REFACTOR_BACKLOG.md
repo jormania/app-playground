@@ -740,7 +740,7 @@ an unreconciled overlap the way R-007 does for `haptics` — both are correct
 outcomes. Sequence it with R-004 so one PR settles the whole family, or take it
 alone; do not do it *inside* R-004 without saying so.
 
-## R-020 — A CSS rule with no declarations, left behind by a heuristic that was abandoned · `refactor` · `open`
+## R-020 — A CSS rule with no declarations, left behind by a heuristic that was abandoned · `refactor` · `done 2026-09-22`
 
 **Impact:** none visible. Six lines of dead CSS and one misleading comment.
 
@@ -767,6 +767,11 @@ floating. Worth one sentence in `WHERE_IT_WENT.md` rather than a fix, unless a
 cleaner hook (`.empty-state-icon`, already selected two rules above) covers all
 four call sites.
 
+**Done 2026-09-22.** The empty rule is gone and the surviving part of its note
+moved onto the rules that do the work. The `WHERE_IT_WENT.md` sentence turned
+out to need a stronger claim than "worth one sentence" — see R-022, filed
+because the fragility this item predicted has already fired.
+
 ## R-021 — Root triage, slice 4: two tracked files that are not source · `refactor` · `open`
 
 **Impact:** none visible. The last two accidental commits at the top of the tree.
@@ -792,6 +797,38 @@ is a script and neither sits loose at the root.
 Once both are gone the repo root is clear and R-002 can close the door behind
 it. Same method as R-010 and R-011: check `git log` on a file before deleting,
 and say in the PR what each one turned out to be.
+
+## R-022 — WhereItWent's empty-state float animation reaches almost nothing · `visual` · `open`
+
+**Impact:** empty states that were meant to float and no longer do. Small, but
+it is a user-visible flair toggle that silently does less than it claims.
+
+Found while doing R-020, 2026-09-22 — the fragility R-020 flagged has already
+fired, so this is a live defect rather than a tidy-up.
+
+`src/where-it-went/index.css`, the `float-icon` block under `.flair-empty`
+(the `flairEmpty` feature toggle, on by default). Two rule blocks feed it:
+
+1. `[style*="font-size: 48px"] svg`, `[style*="height: 48px"] svg`,
+   `[style*="width: 48px"] svg`, `.empty-state-icon svg` — the inline-style
+   selectors do match the empty-state containers in `TransactionsList.jsx:295`,
+   `Dashboard.jsx:683`, `InsightsView.jsx:121` and `App.jsx:690`, but **those
+   containers hold an emoji, not an `<svg>`**, so the descendant never resolves.
+   `.empty-state-icon` appears nowhere in the markup at all.
+2. `main > div > svg[width="48"]`, `main > div > svg[width="64"]` — these
+   matched pasted Feather markup. The 2026-09-21 icon pass (P-001a) moved those
+   sites to lucide components, which render a `size` prop rather than literal
+   `width`/`height` attributes. `grep` finds no `width="48"` or `width="64"`
+   left in the app.
+
+So the whole block is inert today. Decide what it should do before deleting
+anything: either give the four empty states a real `.empty-state-icon` hook and
+let the animation work as intended, or drop the block and the keyframes with it.
+The first is probably right — the toggle exists and users can turn it on.
+
+Being `visual`: before/after screenshots in both themes, phone and desktop, on
+`claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
+the diff shows nothing either way.
 
 ## Proposed
 

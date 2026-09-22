@@ -1669,3 +1669,27 @@ drawn markup, and is now drawn markup from one source.
 
 Left hand-drawn on purpose: `Sparkline.jsx` and `NoraAvatar.jsx` — a graph and
 an avatar, which no icon library contains.
+
+## A CSS rule that selected everything and did nothing (2026-09-22)
+
+`index.css`'s empty-state float animation carried a rule with no declarations:
+
+```css
+.flair-empty svg[stroke="currentColor"][fill="none"] {
+  /* Simple heuristic: if it's a large unstyled SVG in an empty state, float it. … */
+}
+```
+
+It selected every icon under `.flair-empty` and then applied nothing, which is
+why nothing ever broke. The comment was a design note in the future tense for
+work that was done differently three lines below. Deleted; the part of the note
+worth keeping now sits on the rules that actually do the job.
+
+**Watch the two attribute selectors below it.** `svg[width="48"]` and
+`svg[width="64"]` match on a literal rendered attribute, so an empty-state icon
+that moves to a component with a `size` prop silently stops floating — and that
+has already happened: the 2026-09-21 icon pass left no `width="48"` or
+`width="64"` in the app, and nothing carries the `.empty-state-icon` hook
+either, so today that second block matches nothing. Only the inline-48px
+containers still reach the animation. Worth a proper pass rather than a quick
+delete, since `.flair-empty` is a user-facing toggle (`flairEmpty`).
