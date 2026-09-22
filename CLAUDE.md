@@ -247,10 +247,29 @@ deep, and it filled once already (2026-09-09). Three rules keep it there:
 - **Never import a `@fontsource` family by its bare name or weight entry point**
   (`@fontsource/x`, `@fontsource/x/400.css`). Those emit every subset — greek,
   cyrillic, and for a CJK family ~120 Japanese chunks — in both `.woff2` and
-  legacy `.woff`. Import the per-subset file instead (`latin-400.css`, or
-  `/wght.css` for a variable family). Yoru did the former and shipped 17 MB of
-  Japanese fonts to draw one kanji; see `src/yoru/fonts.css` for how a single
-  needed glyph is declared without the family.
+  legacy `.woff`. Yoru did the latter and shipped 17 MB of Japanese fonts to
+  draw one kanji.
+
+  **How to fix one depends on how many subsets the app needs, and getting this
+  wrong trades a build-size win for a runtime regression.** fontsource's
+  per-subset files (`latin-400.css`) carry **no `unicode-range`** — only the
+  bare and weight entry points declare the ranges. So:
+
+  - **One subset needed** → import the per-subset file. Nothing else can match,
+    so the missing range costs nothing.
+  - **More than one** → declare the `@font-face` blocks by hand, copying
+    fontsource's own ranges from its entry points, and reference
+    `@fontsource/<family>/files/*.woff2` directly. Importing two per-subset
+    files instead would make every browser fetch both unconditionally.
+    `src/loom/fonts.css` is the worked example (Cinzel, latin + latin-ext,
+    because Loom renders Romanian and `ș`/`ț`/`ă` sit in latin-ext while
+    `â`/`î` do not); `src/yoru/fonts.css` is the same method for a single
+    glyph.
+
+  Either way, declare **`woff2` only** — the legacy `.woff` twins are half the
+  bytes and every browser that can run these apps has supported woff2 for years.
+  **Still outstanding:** `@fontsource-variable/inter` (four apps), `alegreya`,
+  `fraunces` and `jetbrains-mono` are all imported bare — see R-027.
 - **Watch for a dependency's `new URL(…, import.meta.url)`.** Rollup treats it
   as an asset reference and emits the target even when nothing fetches it —
   that's how a dead ONNX fallback put a 23 MB `.wasm` in every build. See

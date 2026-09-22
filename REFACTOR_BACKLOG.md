@@ -783,7 +783,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open`
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom done, five families to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -802,7 +802,30 @@ directories, and that deserves its own week rather than a morning.
 Watch the `@fontsource` bumps for the subset trap in `CLAUDE.md`: never import a
 family by bare name or weight entry point.
 
-## R-009 — Kettlebell Training has no tests at all · `modernise` · `open`
+
+**jsdom done 2026-09-22 — 29.1.1 → 30.1.1.** The 25 test files carrying an
+`@vitest-environment jsdom` pragma all pass unchanged; full suite 4601, typecheck
+clean, build green.
+
+The one breaking change, cited from the package rather than a summary: **the Node
+floor moved** from `^20.19.0 || ^22.13.0 || >=24.0.0` to
+`^22.22.2 || ^24.15.0 || >=26.0.0`. Node 20 is dropped entirely and the 22 line
+moved up nine patch releases. Both workflows say `node-version: '22'`, which
+`actions/setup-node` resolves to the newest 22.x and therefore satisfies it — but
+it is a constraint now, and pinning an older 22.x anywhere would fail `npm ci` on
+engines. The container this ran in is exactly v22.22.2, the minimum.
+
+**jsdom 30 ships no changelog in the package** (README only), and GitHub is not
+reachable from this environment, so the release notes this item asks for could not
+be read. Said plainly rather than paraphrased from memory: what is verified above
+is the engines change and the suite.
+
+Remaining, in the order I would take them: `@anthropic-ai/sdk` 0.110 → 0.127
+(one consumer), `@types/node` 22 → 26 (typecheck-only blast radius),
+`eslint` 9 → 10 with `@eslint/js`, `lucide-react` 0.460 → **1.47** (a 1.0 major
+across every icon — expect renames, and P-001's remaining slices depend on it),
+and the React 19 types last, as this item already says.
+## R-009 — Kettlebell Training has no tests at all · `modernise` · `open` — first tests landed
 
 **Impact:** none visible. Makes the one untested app safe to change later.
 
@@ -811,6 +834,29 @@ legacy and design-locked, but that lock is about styling — adding tests touche
 no styling and imports nothing from `src/ds/`. Start with whatever holds the
 session/timer state, not the render tree.
 
+
+**First tests landed 2026-09-22 — `src/kettlebell/exercises.test.js`, 8 tests.**
+Kettlebell no longer has zero.
+
+This item said to start with whatever holds the session/timer state. **There is
+none** — Kettlebell is a browse app, not a workout timer. `App.jsx`'s only state
+is `active`, set by an `IntersectionObserver` scroll-spy. So the equivalent of
+"not the render tree" here is `exercises.js`, the data module every screen is a
+projection of.
+
+They are invariants rather than a transcription: rewording a step or adding a
+thirteenth exercise must not fail them. Unique ids (`App.jsx` keys cards `ex-${id}`
+and the scroll-spy reads it back, so a duplicate makes one nav chip unreachable),
+`num` consecutive from 1 in list order, difficulty inside the 1–3 the
+`Difficulty` pips can draw, accents drawn from the `ACCENTS` palette rather than
+a one-off hex, **every `phases[].pose` present in `POSES`** — a renamed pose
+renders an empty frame today and nothing complains — and `flip` only on a pose
+that actually repeats in its own filmstrip. Five mutations were run against the
+data and each was caught by exactly one test.
+
+**Left for a later run:** `App.jsx`'s scroll-spy, which needs an
+`IntersectionObserver` stub, and `poses.jsx`. Neither is data; both are the
+render tree this item told the first run to avoid.
 ## R-014 — Two dependencies that nothing imports, and one in the wrong list · `modernise` · `done 2026-09-22`
 
 **Impact:** none visible. A `package.json` whose dependency list is true.
@@ -935,7 +981,7 @@ initial load, apply-before-save ordering, an updater function, a `storage` event
 on the key, a `storage` event on some other key, and unmount. That, rather than
 the line count, is what the promotion bought.
 
-## R-016 — Loom imports four `@fontsource` weight entry points · `modernise` · `open`
+## R-016 — Loom imports four `@fontsource` weight entry points · `modernise` · `done 2026-09-22`
 
 **Impact:** ~16 font files in `dist/` where 4 would do. The only literal
 violation of `CLAUDE.md`'s own font rule left in the repo.
@@ -965,7 +1011,32 @@ audit this will waste the morning I did. Say what is actually true: for a
 variable family the bare name is the correct import, and latin-only means a
 hand-written `@font-face` against `files/*.woff2`.
 
-## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open`
+
+**Done 2026-09-22 — 16 files and 232 kB become 8 and 104 kB**, via
+`src/loom/fonts.css` on Yoru's pattern rather than the per-subset imports this
+item and `CLAUDE.md` both recommended. **That recommendation is wrong for Loom,
+and the reason is now in `CLAUDE.md`:** fontsource's per-subset files carry no
+`unicode-range` — only the bare and weight entry points declare it. Importing
+`latin-500.css` and `latin-ext-500.css` together would have made every browser
+fetch both files unconditionally: a runtime regression bought with a build-size
+win.
+
+Loom needs both subsets. Its own source carries Romanian, and the letters
+straddle the boundary — `â` (U+00E2) and `î` (U+00EE) are latin, while `ș`
+(U+0219), `ț` (U+021B) and `ă` (U+0103) are latin-ext. Dropping latin-ext would
+have fallen back to Georgia mid-word in display text.
+
+So the eight `@font-face` blocks are declared by hand with fontsource's own
+ranges, copied from its entry points rather than retyped, **woff2 only** — the
+legacy `.woff` twins were exactly half the 232 kB. Verified in a real build: 8
+Cinzel files, ranges intact in the emitted CSS, suite green.
+
+**The four weights are unchanged, deliberately.** Which weights Cinzel actually
+renders at cannot be settled from the CSS: most `--font-display` rules inherit
+their weight, there is no heading reset so `h1`–`h3` are 700, and `--weight-bold`
+is 700 from the DS. Dropping one is a visual judgement needing browser evidence,
+not a build-size tidy-up.
+## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js done, five modules to go
 
 **Impact:** none visible. Makes the least-covered non-legacy app safe to change.
 
@@ -984,9 +1055,24 @@ Read [`LOOM.md`](LOOM.md) and [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md)
 first; `rhythm.test.js` is the house style to copy. **One module per run** — a
 single PR adding tests for six modules is not a ten-minute review.
 
+
+**`drafts.js` done 2026-09-22 — 17 tests**, following this item's "one module per
+run" and `rhythm.test.js`'s house style (the same `localStorage` stub, same shape).
+
+What they pin, beyond the round-trip: the id counter (`Date.now()` base-36 **plus
+a sequence** — without the counter two drafts saved in one tick collide and
+`updateDraft` patches both), the `Untitled` fallback for a blank or whitespace
+name, corrupt or non-array storage reading as "no drafts" rather than throwing on
+open, and the whole cast log — settling a draft for one week only, so the offer
+returns the next week, which is the entire reason the log is keyed by week rather
+than flagged on the draft. Four mutations were run against `drafts.js` and each
+was caught.
+
+**Still untested, in the order this item suggests:** `store.js`, `useLoom.js`,
+`localClient.js`, `lexicon.js`, `uiStyle.js`.
 ---
 
-## R-018 — Sweep for the rest of the date-dependent tests · `modernise` · `open`
+## R-018 — Sweep for the rest of the date-dependent tests · `modernise` · `done 2026-09-22 — swept clean`
 
 **Impact:** none visible. Stops a repeat of R-013, where the suite went red on a
 calendar roll and every daily run idled until someone looked.
@@ -1010,6 +1096,29 @@ and Journal all reason about "today".
 Already cleared: `src/marquee/` — `Changes`, `WeekStrip` and `App` pass under a
 clock six months ahead; `Programme` is frozen as of #75.
 
+
+**Done 2026-09-22, and the sweep found nothing.** That is a result, not a
+shrug — it means R-013 was the only one.
+
+The instrument is now `scripts/clock-shift.mjs`, and it is the piece worth
+keeping. This item recorded that a vitest setup file calling `vi.setSystemTime`
+produces 50 false failures, because a test that builds its expected dates at
+*module load* computes them under the real clock and then runs the subject under
+the injected one. Patching `Date` through `--import` happens **before any test
+module loads**, so module load and subject see the same day and that whole class
+of false failure disappears.
+
+Proven rather than assumed: a probe test asserting the real month passes
+unshifted and fails shifted, which is how we know the patch reaches vitest's
+worker processes rather than only the parent.
+
+Twelve offsets, all green at 4601 tests: **+1, +2, +3, +4, +5, +6, +7, +9, +30,
++90, +365 and +700 days** — every weekday, several month boundaries and two year
+boundaries. 1–9 matters most because that is where R-013 lived, at the 2-to-6-day
+window where `formatDay` switches from a bare weekday to the month form.
+
+Re-run it before any release that worries you; the usage line is in the script's
+header.
 ## R-019 — A third, quietly different `notionId` parser, in WhereItWent · `refactor` · `done 2026-09-22 — recorded, not reconciled`
 
 **Impact:** none visible if done right — but read the caveat, because the naive
@@ -1193,7 +1302,7 @@ intercepted response; the two tests show the before and after more precisely
 than an image would. Flagging it rather than quietly skipping it, since `qol`
 items are supposed to carry them.
 
-## R-025 — `src/shared/audio.ts` is dead, and shadows the chime that isn't · `modernise` · `open`
+## R-025 — `src/shared/audio.ts` is dead, and shadows the chime that isn't · `modernise` · `done 2026-09-22`
 
 **Impact:** none visible today. Prevents a future app adopting the worse of two
 functions with the same name.
@@ -1219,6 +1328,47 @@ signatures.
 Also worth a glance while in there: it is the one file in `src/shared/` with a
 `console.warn` and trailing whitespace, which is its own small signal about where
 it came from.
+
+
+**Done 2026-09-22 — deleted.** The `git log` check this item asked for came back
+clean: added in 92c7eb9 (Silva's share-sheet work, 2026-09-02), never referenced
+since, and `grep -rni 'chime|audio|sound'` over `src/silva/` and `SILVA.md`
+matches nothing at all — so no half-built feature was waiting on it. Tempo's
+`playChime(volume, variant)` is untouched and remains the only one.
+## R-027 — Four variable font families imported by bare name · `modernise` · `open`
+
+**Impact:** none visible. ~590 kB of `dist/`, charged against Vercel's
+Deployment Storage on every push.
+
+Found while doing R-016, 2026-09-22. With Cinzel fixed, these are what is left
+of the `@fontsource` rule in `CLAUDE.md`:
+
+| Import | Where | Files in `dist/` |
+|---|---|---|
+| `@fontsource-variable/inter` | Loom, and three other apps | 7 |
+| `@fontsource-variable/alegreya` | Loom | 7 |
+| `@fontsource-variable/jetbrains-mono` | — | 5 |
+| `@fontsource-variable/fraunces` | — | 3 |
+
+All four are imported by **bare name**, which pulls the family's `index.css` and
+therefore every subset it ships — cyrillic, cyrillic-ext, greek, greek-ext,
+latin, latin-ext, vietnamese. 22 `.woff2` files, ~590 kB. At runtime this costs
+nothing (the ranges are intact, so a browser fetches only what it needs); the
+cost is entirely build size.
+
+Unlike Cinzel there is **no legacy `.woff` to drop** — the variable packages are
+woff2-only already. So the whole win here is subsetting, which means deciding
+per family which subsets an app can actually need. Read R-016's note first: the
+per-subset files carry no `unicode-range`, so anything needing more than one
+subset wants hand-declared `@font-face` blocks, not two imports.
+
+**Inter is the one to be careful with** — four apps share it, so this is not a
+one-app change, and any of them may render user text. Romanian alone needs
+latin *and* latin-ext. Cyrillic and greek are the safe removals; vietnamese
+probably.
+
+Sequence it after R-016's lesson is settled, and do **one family per run** —
+same reason R-008 does.
 
 ## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
 

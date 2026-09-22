@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
-import '@fontsource/cinzel/500.css'
-import '@fontsource/cinzel/600.css'
-import '@fontsource/cinzel/700.css'
-import '@fontsource/cinzel/900.css'
+// Cinzel is declared by hand in ./fonts.css — woff2 only, both latin subsets,
+// fontsource's own unicode-ranges. See that file's header for why the
+// per-subset entry points CLAUDE.md recommends are the wrong fix here (R-016).
+import './fonts.css'
 import '@fontsource-variable/alegreya'
 import '../ds/tokens.css'
 import './loom.css'
