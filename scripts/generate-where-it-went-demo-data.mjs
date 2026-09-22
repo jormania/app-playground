@@ -1,4 +1,8 @@
-const fs = require('fs');
+// Regenerates `src/where-it-went/models/demoData.js` — the fixture Demo Mode
+// serves. Run from the repo root: `npm run gen:where-it-went-demo-data`.
+// Output is randomised per run, so regenerating produces a different (but
+// equally valid) year of data; `models/demoData.test.js` is what proves it.
+import fs from 'node:fs';
 
 const categories = [
   { id: 'cat_housing', name: 'Housing', type: 'Expense', icon: '🏠', description: 'Home rent, HOA, etc' },
