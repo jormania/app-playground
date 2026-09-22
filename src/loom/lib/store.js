@@ -13,7 +13,7 @@ const VIEW_KEY = 'loom_view_prefs'
 // the App Databases Notion page). Used out of the box once a token is set, so a
 // user only needs to paste a token; any user overrides it in Settings with their
 // own copy of the Starter Template. This is a data-source id, not a secret.
-export const DEFAULT_DATABASE_ID = '11a0e2d61c8f49c4b92b91fc45add2f5'
+export const DEFAULT_DATABASE_ID = '0798789cc792422b9cac6206bee0ff1d'
 
 export function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) || '' } catch { return '' }
