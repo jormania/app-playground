@@ -7,10 +7,12 @@ answers one question:
 > Delock USB-C (host) → USB-B cable, well enough to build a serious
 > piano-learning app on?
 
-**Two phones, not one.** Nora will practise on her own **Xiaomi Poco F3**;
-Gabriel's **Samsung Galaxy S24** is the second device. The Poco F3 is the one
-that matters most, and it has a Xiaomi-specific catch (the OTG switch, §2).
-Run the probe on both. The report records which phone it came from.
+**Two phones, tested in order.** The go/no-go test runs on Gabriel's
+**Samsung Galaxy S24**. If it passes, full app development starts without
+waiting for the second phone. Nora will practise on her own **Xiaomi Poco
+F3**, which gets the same probe later as a compatibility check before she uses
+the app. It has one known Xiaomi-specific catch (the OTG switch, §2). The
+report records which phone it came from.
 
 Nothing here teaches yet. No lessons, no songs, no scoring. If the answer is
 yes, the next step is designing the lesson engine, not extending this page.
@@ -211,7 +213,7 @@ three ways that do work:
    report** / **Download**. The report is plain JSON text. Where it lands
    depends on the Claude app, which may open a new conversation. If so, paste
    it into the KeyPath session instead, or just tell it to read the results.
-9. **Poco F3:** the 15-minute idle test from §2.
+9. **Poco F3, later:** the same sequence plus the 15-minute idle test from §2.
 
 ### How to read the result
 
@@ -530,21 +532,28 @@ problems from MIDI problems), and possibly the hybrid route (§6).
 
 1. **Record the result**: paste the probe report into a session and fill in §1
    with measured values.
-2. **Try the charging hub** (§2) with the probe, before any daily-use design
+2. **Design for a dropped keyboard from day one.** The lesson engine should
+   pause when the input disappears and resume when it comes back. Hot-plug
+   already works in the MIDI layer. This costs little now, and it covers
+   whatever the Poco F3's OTG switch turns out to do, a knocked cable, or a
+   keyboard switched off mid-lesson.
+3. **Poco F3 compatibility check** (§2, §3) before Nora uses the app. Not a
+   gate for starting development.
+4. **Try the charging hub** (§2) with the probe, before any daily-use design
    assumes it.
-3. **Lesson engine core, UI-free**: a `PerformanceJudge` consuming
+5. **Lesson engine core, UI-free**: a `PerformanceJudge` consuming
    `MidiEvent`s against an expected note sequence (pitch, onset window, chord
    window sized from the measured spread, duration). Pure, tested like
    `diagnostics.ts`.
-4. **Song model + one importer**: an internal `Song` type and a MIDI-file
+6. **Song model + one importer**: an internal `Song` type and a MIDI-file
    importer (later MusicXML), fed from a **local file picker** first, so no
    hosting is needed to start.
-5. **Public-domain starter pack** (3–5 pieces, provenance noted) as the first
+7. **Public-domain starter pack** (3–5 pieces, provenance noted) as the first
    real content.
-6. **Content host** (§7, option 1), then signed-URL loading.
-7. **Nora-facing design**: learning paths she chooses and adapts, drawing on
+8. **Content host** (§7, option 1), then signed-URL loading.
+9. **Nora-facing design**: learning paths she chooses and adapts, drawing on
    the best of Flowkey (wait-for-correct-note mode, hand separation) and Simply
    Piano (short wins, progression). That's a design conversation with her, not
    a technical step, and it deserves its own document.
-8. **Split KeyPath into its own origin/project** at the point it gets auth
+10. **Split KeyPath into its own origin/project** at the point it gets auth
    (§8, "Authentication").
