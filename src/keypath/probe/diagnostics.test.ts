@@ -85,3 +85,12 @@ describe('glissando test', () => {
     expect(r.summary).toContain('Stuck')
   })
 })
+
+import { countDrops } from './report'
+
+describe('countDrops', () => {
+  it('counts every time a connected input disappeared', () => {
+    expect(countDrops([{ inputs: ['Digital Keyboard'] }, { inputs: [] }, { inputs: ['Digital Keyboard'] }, { inputs: [] }])).toBe(2)
+    expect(countDrops([{ inputs: [] }, { inputs: ['Digital Keyboard'] }])).toBe(0)
+  })
+})

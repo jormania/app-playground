@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Button, SegmentedControl } from '../ds'
 import { useWakeLock } from '../shared/useWakeLock'
 import { PSR_E383_RANGE } from './midi/noteNames'
@@ -6,8 +6,14 @@ import { SimulatedConnection } from './midi/simulatedConnection'
 import { WebMidiConnection } from './midi/webMidiConnection'
 import { readEnvironment, type EnvironmentFacts } from './probe/environment'
 import { ProbeSession } from './probe/probeSession'
-import { buildReport } from './probe/report'
+import { buildReport, countDrops } from './probe/report'
 import { findYamahaOnUsb, type UsbFinding } from './probe/usb'
+import { playTestTone, previewKeyboardOutput, readAudioDevices, watchAudioDevices, type AudioDeviceView, type HeardFrom, type ToneResult } from './probe/audioRouting'
+import { SimpleSynth } from './probe/synth'
+import { loadOutputLevel, saveOutputLevel, toggled, withLevel, type OutputLevel } from './probe/outputLevel'
+import { setKeyboardLevel } from './probe/audioContext'
+import { canShareReport, shareReport } from './probe/shareReport'
+import { AudioPanel } from './components/AudioPanel'
 import { EventLog } from './components/EventLog'
 import { LivePanel } from './components/LivePanel'
 import { PianoKeyboard } from './components/PianoKeyboard'
@@ -26,6 +32,14 @@ export default function App() {
   const [env, setEnv] = useState<EnvironmentFacts | null>(null)
   const [usb, setUsb] = useState<UsbFinding | null>(null)
   const [copied, setCopied] = useState(false)
+  const [shareNote, setShareNote] = useState<string | null>(null)
+  const [tone, setTone] = useState<ToneResult | null>(null)
+  const [heard, setHeard] = useState<HeardFrom | null>(null)
+  const [devices, setDevices] = useState<AudioDeviceView | null>(null)
+  const [deviceChanges, setDeviceChanges] = useState(0)
+  const [soundOn, setSoundOn] = useState(true)
+  const [output, setOutput] = useState<OutputLevel>(loadOutputLevel)
+  const synth = useRef<SimpleSynth | null>(null)
   const simulated = snap.sourceKind === 'simulated'
   const granted = snap.connection.access === 'granted'
 
@@ -34,9 +48,25 @@ export default function App() {
   useEffect(() => {
     readEnvironment().then(setEnv)
     findYamahaOnUsb(false).then(setUsb)
+    readAudioDevices().then(setDevices)
     // No dispose on unmount: the session lives as long as the page, and
     // StrictMode's rehearsal unmount would otherwise detach it for good.
   }, [])
+
+  useEffect(() => {
+    setKeyboardLevel(output.level)
+    saveOutputLevel(output)
+  }, [output])
+
+  // Plugging the Yamaha in may add a USB audio device; count each change the OS reports.
+  useEffect(
+    () =>
+      watchAudioDevices((view) => {
+        setDevices(view)
+        setDeviceChanges((n) => n + 1)
+      }),
+    [],
+  )
 
   // Re-read the MIDI permission once access settles, so the report says what Chrome now says.
   useEffect(() => {
@@ -52,6 +82,20 @@ export default function App() {
   const sim = simulated ? (session.source as SimulatedConnection) : null
   const press = useCallback((n: number) => sim?.press(n), [sim])
   const release = useCallback((n: number) => sim?.release(n), [sim])
+
+  // Simulator notes get a sound; the real keyboard never does (it makes its own).
+  useEffect(() => {
+    if (!sim || !soundOn) return
+    const voice = (synth.current ??= new SimpleSynth())
+    const off = sim.onEvent((e) => {
+      if (e.type === 'noteon') voice.noteOn(e.note, e.velocity).catch(() => {})
+      else if (e.type === 'noteoff') voice.noteOff(e.note)
+    })
+    return () => {
+      off()
+      voice.allOff()
+    }
+  }, [sim, soundOn])
 
   useEffect(() => {
     if (!sim) return
@@ -76,7 +120,7 @@ export default function App() {
   const low = Math.min(PSR_E383_RANGE.low, t.lowest ?? Infinity)
   const high = Math.max(PSR_E383_RANGE.high, t.highest ?? -Infinity)
 
-  const report = () => JSON.stringify(buildReport(snap, env, usb), null, 2)
+  const report = () => JSON.stringify(buildReport(snap, env, usb, { heard, tone, devices, deviceChanges, keyboardOutput: output }), null, 2)
   const copyReport = async () => {
     try {
       await navigator.clipboard.writeText(report())
@@ -84,6 +128,16 @@ export default function App() {
       setTimeout(() => setCopied(false), 2000)
     } catch {
       downloadReport()
+    }
+  }
+  const sendReport = async () => {
+    const outcome = await shareReport(report())
+    // A failed share falls back to the clipboard, so the report is never lost.
+    if (outcome === 'error' || outcome === 'unsupported') {
+      await copyReport()
+      setShareNote('Sharing failed, so the report was copied instead. Paste it into Claude.')
+    } else {
+      setShareNote(null)
     }
   }
   const downloadReport = () => {
@@ -100,7 +154,7 @@ export default function App() {
       <header className={styles.header}>
         <div>
           <h1 className={styles.h1}>KeyPath</h1>
-          <p className={styles.sub}>MIDI probe · PSR-E383 → Galaxy S24</p>
+          <p className={styles.sub}>MIDI probe · PSR-E383 → {env?.model ?? 'Android phone'}</p>
         </div>
         <SegmentedControl
           size="sm"
@@ -120,11 +174,19 @@ export default function App() {
         usb={usb}
         onConnect={() => session.open()}
         onLookUsb={() => findYamahaOnUsb(true).then(setUsb)}
+        drops={countDrops(snap.connectionHistory)}
       />
 
       <section className={styles.panel} aria-label="Keyboard">
         <PianoKeyboard low={low} high={high} held={held} onPress={sim ? press : undefined} onRelease={sim ? release : undefined} />
-        {sim && <p className={styles.faint}>Simulator: tap keys (several fingers for a chord), or type A W S E D F T G Y H U J K for C4–C5.</p>}
+        {sim && (
+          <div className={styles.simBar}>
+            <p className={styles.faint}>Simulator: tap keys (several fingers for a chord), or type A W S E D F T G Y H U J K for C4–C5.</p>
+            <Button size="sm" variant="outline" onClick={() => setSoundOn((on) => !on)} aria-pressed={soundOn}>
+              {soundOn ? 'Sound on' : 'Sound off'}
+            </Button>
+          </div>
+        )}
       </section>
 
       <LivePanel snap={snap} />
@@ -138,16 +200,36 @@ export default function App() {
         onCancel={() => session.cancelTest()}
       />
 
+      {!simulated && (
+        <AudioPanel
+          tone={tone}
+          heard={heard}
+          devices={devices}
+          deviceChanges={deviceChanges}
+          onPlay={() => playTestTone().then(setTone)}
+          onHeard={setHeard}
+          output={output}
+          onToggleOutput={() => setOutput(toggled)}
+          onOutputLevel={(n) => setOutput((o) => withLevel(o, n))}
+          onPreviewOutput={() => void previewKeyboardOutput()}
+        />
+      )}
+
       <EventLog log={snap.log} origin={snap.origin} />
 
       <section className={styles.panel} aria-label="Report">
         <h2 className={styles.h2}>Report</h2>
         <p className={styles.faint}>Everything above as one JSON file: environment, device, counters, timing and test results. No content, no personal data beyond the phone model and browser.</p>
         <div className={styles.actions}>
-          <Button onClick={copyReport}>{copied ? 'Copied' : 'Copy report'}</Button>
+          {canShareReport() && <Button onClick={sendReport}>Share to Claude…</Button>}
+          <Button variant={canShareReport() ? 'outline' : 'primary'} onClick={copyReport}>
+            {copied ? 'Copied' : 'Copy report'}
+          </Button>
           <Button variant="outline" onClick={downloadReport}>Download</Button>
           <Button variant="ghost" onClick={() => session.resetCounters()}>Reset counters</Button>
         </div>
+        {canShareReport() && <p className={styles.faint}>Share opens Android’s share sheet. Pick Claude, or any app you want to send the report to.</p>}
+        {shareNote && <p className={styles.faint}>{shareNote}</p>}
       </section>
     </main>
   )

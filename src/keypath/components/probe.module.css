@@ -175,3 +175,37 @@
 }
 .log tbody tr:nth-child(even) { background: var(--color-bg-sunken); }
 .rowOn td:nth-child(2) { color: var(--color-accent); }
+
+.simBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+/* ── Keyboard output level ── */
+.outputBox {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sunken);
+}
+.outputHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+.sliderRow {
+  display: grid;
+  grid-template-columns: 1fr 2.5rem auto;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.slider {
+  width: 100%;
+  accent-color: var(--color-accent);
+  min-height: 32px;
+}

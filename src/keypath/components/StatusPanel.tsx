@@ -32,9 +32,11 @@ export interface StatusPanelProps {
   usb: UsbFinding | null
   onConnect: () => void
   onLookUsb: () => void
+  /** Times a connected input vanished this session. */
+  drops: number
 }
 
-export function StatusPanel({ simulated, connection, env, usb, onConnect, onLookUsb }: StatusPanelProps) {
+export function StatusPanel({ simulated, connection, env, usb, onConnect, onLookUsb, drops }: StatusPanelProps) {
   const inputs = connection.inputs.filter((d) => d.state === 'connected')
   const yamaha = inputs.find((d) => d.looksLikeYamaha)
   const granted = connection.access === 'granted'
@@ -67,6 +69,13 @@ export function StatusPanel({ simulated, connection, env, usb, onConnect, onLook
           label="Yamaha PSR-E383"
           tone={!granted ? 'unknown' : yamaha ? 'ok' : inputs.length ? 'unknown' : 'bad'}
           value={!granted ? '—' : yamaha ? `Identified: “${yamaha.name}”` : inputs.length ? 'Not identified by name — press a key; any input that sends notes works' : 'Not detected'}
+        />
+      )}
+      {!simulated && granted && (
+        <Row
+          label="Drops"
+          tone={drops ? 'bad' : 'ok'}
+          value={drops ? `${drops} × the keyboard disconnected. If you didn’t unplug it, the phone dropped it (on Xiaomi, check the OTG switch)` : 'None this session'}
         />
       )}
       <div className={styles.actions}>

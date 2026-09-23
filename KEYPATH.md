@@ -3,9 +3,16 @@
 A piano-learning app for Nora, eventually. **Today it is a hardware probe** that
 answers one question:
 
-> Can a Samsung Galaxy S24 reliably receive MIDI from a Yamaha PSR-E383 through
-> a 0.5 m Delock USB-C (host) → USB-B cable, well enough to build a serious
+> Can a phone reliably receive MIDI from a Yamaha PSR-E383 through a 0.5 m
+> Delock USB-C (host) → USB-B cable, well enough to build a serious
 > piano-learning app on?
+
+**Two phones, tested in order.** The go/no-go test runs on Gabriel's
+**Samsung Galaxy S24**. If it passes, full app development starts without
+waiting for the second phone. Nora will practise on her own **Xiaomi Poco
+F3**, which gets the same probe later as a compatibility check before she uses
+the app. It has one known Xiaomi-specific catch (the OTG switch, §2). The
+report records which phone it came from.
 
 Nothing here teaches yet. No lessons, no songs, no scoring. If the answer is
 yes, the next step is designing the lesson engine, not extending this page.
@@ -77,6 +84,8 @@ and a cable wired the other way round would put the phone in device mode.
 
 ### Steps
 
+0. **Poco F3 only:** Settings → Additional settings → **OTG** → on, *before*
+   plugging in (§"Xiaomi's OTG switch" below).
 1. Keyboard **off**. Plug the USB-B end into **USB TO HOST** on the rear panel
    of the PSR-E383.
 2. Plug the USB-C end into the S24.
@@ -84,14 +93,41 @@ and a cable wired the other way round would put the phone in device mode.
 4. Android may show a notification or dialog about the USB device. If it offers
    a choice of what to use the connection for, pick MIDI. With the phone as
    host this usually doesn't appear, but it depends on the build.
-5. On the S24, open **Chrome** (not Firefox; §5) at the probe URL (§3).
+5. On the phone, open **Chrome** (not Firefox; §5) at the probe URL (§3).
 6. Tap **Connect MIDI** and allow the MIDI permission prompt.
 7. Optional: tap **Look on USB** and pick the Yamaha in Chrome's chooser. This is
    a second, independent check (§3).
 
+### Xiaomi's OTG switch (Poco F3)
+
+Xiaomi phones don't act as a USB host until **OTG** is switched on:
+Settings → Additional settings → OTG. This comes from Xiaomi's support
+article, as quoted in search results; the page itself refused a direct fetch,
+so treat it as reported rather than confirmed. Two behaviours matter for
+practice sessions:
+
+- The switch is **off by default** and is **greyed out while any cable is
+  plugged in**, charging cables included. Turn it on first, then connect.
+- Xiaomi's support article says it **turns itself off after about 10 minutes
+  without data transfer**. Whether the Yamaha's continuous Active Sensing
+  counts as "data transfer" is unknown until tested. If it doesn't, the
+  keyboard would vanish in the middle of a practice session.
+
+Users on the xiaomi.eu forum also report OTG not working at all on some
+HyperOS / Android 13 builds. The probe records the Android version, so the
+report shows which build the Poco F3 is on.
+
+The probe watches for this. **Connection → Drops** counts every time a
+connected keyboard disappeared, and the report keeps a timestamped history.
+A drop you didn't cause, especially around the 10-minute mark, is the OTG
+switch.
+
+Test for it on the Poco F3: connect, run the tests, then **leave the keyboard
+idle for 15 minutes** with the page open, press a key, and check Drops.
+
 ### A practical issue: charging
 
-The S24 has one USB-C port, and the cable takes it. For the length of a
+Both phones have one USB-C port, and the cable takes it. For the length of a
 practice session **the phone runs on battery and can't charge**. For the probe
 that's fine. For daily practice it will matter, and the fix is hardware: a
 USB-C hub with Power Delivery pass-through plus a standard USB-A-to-B cable.
@@ -102,12 +138,39 @@ charge-or-data.
 
 The PSR-E383's USB TO HOST is **also a USB audio interface** (44.1 kHz,
 16-bit stereo, per its spec sheet). Android usually routes media audio to a
-USB audio device when one is attached, so the phone's sound may start coming
-out of the keyboard's speakers. It's worth watching for during the probe, and
-it could turn out useful later: the app's metronome or backing track would
-play through the instrument. The keyboard's Audio Loop Back setting
-(Function 046, default On) sends the phone's audio back to it mixed with the
-keyboard's own sound. That only matters if the app ever records.
+USB audio device when one is attached, so the phone's sound (notifications,
+music, and later the app's own metronome) may come out of the keyboard's
+speakers instead.
+
+**A web page can't choose the output on Android.** `HTMLMediaElement.setSinkId`
+is marked unavailable on Chrome for Android (MDN: "Not available due to a
+limitation in Android"), and without microphone permission Chrome hides the
+list of audio devices. So the probe finds out the only reliable way: the
+**Phone audio** panel plays a short tone and asks where you heard it. The
+answer, the audio-device count and Chrome's output-latency estimate all go
+into the report.
+
+The fixes are settings, and the probe shows the right one for your answer:
+
+| Where | Setting | Effect |
+|---|---|---|
+| **KeyPath itself** | **"KeyPath sound through the keyboard"** in the probe: toggle + volume slider, **default 0** | Everything KeyPath plays while the real keyboard is connected goes through this one gain stage, so the app never sends sound to the Yamaha until someone turns it up. Remembered per phone |
+| **Keyboard (for the phone's other sounds)** | FUNCTION → **045 "[USB TO HOST] Audio Volume" → 0** | The keyboard ignores the phone's audio. MIDI is unaffected. The value survives power-off (the manual marks it as backed up). Reversible at any time |
+| Phone | Settings → Developer options → **Disable USB audio routing** | Android stops routing audio to USB devices. Affects **every** USB audio device, USB-C earphones included |
+| Keyboard | FUNCTION → **046 "Audio Loop Back" → Off** | Only matters if the app ever records: stops the phone's audio being sent back to it mixed with the piano |
+
+**Why the app can't set Function 045 itself.** The PSR-E383's MIDI Data
+Format (Data List, p. 33) documents exactly five system-exclusive messages it
+accepts: GM System On, Master Volume, Master Tuning, Reverb type and Chorus
+type. None of them reaches 045. Master Volume changes the keyboard's own
+piano sound, which is the wrong knob. So no app, web or native, can switch it
+over USB with documented messages. The in-app level above controls the other
+end of the cable instead. That covers KeyPath's own sound, and 045 remains the
+setting for everything else the phone plays.
+
+It might be worth keeping. A metronome or backing track through the
+instrument's speakers sounds better than through a phone, and it keeps Nora's
+attention on the keyboard rather than the phone. Decide after hearing it.
 
 ---
 
@@ -121,7 +184,7 @@ three ways that do work:
 
 | Option | How | Trade-off |
 |---|---|---|
-| **A. Production URL (recommended)** | Merge the PR; open `https://<prod-domain>/keypath-react.html` | Real HTTPS, the same conditions the app will run under. Preview deploys are off for `claude/*` (`vercel.json`), so the page only exists once it's on `main` |
+| **A. Production URL (in use)** | Open **https://coneofcold.vercel.app/keypath-react.html** | Real HTTPS, the same conditions the app will run under. Preview deploys are off for `claude/*` (`vercel.json`), so a change only reaches this URL once it's on `main` |
 | B. USB debugging + port forward | `npm run dev`, then `adb reverse tcp:5173 tcp:5173`; open `http://localhost:5173/keypath-react.html` on the phone | No deploy, but the phone's one USB port is needed for the keyboard. Only works with wireless ADB |
 | C. Chrome flag | `chrome://flags/#unsafely-treat-insecure-origin-as-secure` with the laptop's LAN URL | Quick, but leaves a security flag on the phone |
 
@@ -141,11 +204,16 @@ three ways that do work:
 3. **Any key**, **Repeated note** (4× middle C), **Chord** (C4+E4+G4),
    **Glissando**. Each shows pass/fail with its measurements.
 4. **Sustain pedal**, if there is one: the Sustain chip appears in Live.
-5. Play normally for a few minutes. **Lost / orphan / reordered** should stay at
+5. **Phone audio**: tap **Play test tone** and answer where you heard it (§2).
+6. Play normally for a few minutes. **Lost / orphan / reordered** should stay at
    `0 / 0 / 0`, and **On / Off** should match once your hands are off the keys.
-6. Unplug and replug the cable with the page open. The input should disappear
+7. Unplug and replug the cable with the page open. The input should disappear
    and come back without a reload (the hot-plug path).
-7. **Copy report** (or Download) and send it back.
+8. **Share to Claude…** (Android's share sheet; pick Claude), or **Copy
+   report** / **Download**. The report is plain JSON text. Where it lands
+   depends on the Claude app, which may open a new conversation. If so, paste
+   it into the KeyPath session instead, or just tell it to read the results.
+9. **Poco F3, later:** the same sequence plus the 15-minute idle test from §2.
 
 ### How to read the result
 
@@ -206,6 +274,13 @@ and Reference Manual. These are the facts that shaped the code:
 ---
 
 ## 5. Android, browser and API limitations
+
+Everything here applies to both phones. Both run Chrome on Android, and the
+MIDI path through `android.media.midi` is the same. The differences are the
+vendor layers on top: Xiaomi's OTG switch (§2) and each vendor's battery
+management. That's one more reason to prefer a web app: one codebase covers
+both vendors, and a vendor quirk gets fixed with a setting, not a separate
+build.
 
 - **Chrome for Android supports Web MIDI** (since Chrome 43, per MDN's
   compatibility data). Underneath, Chrome uses Android's own MIDI service,
@@ -303,6 +378,15 @@ implementation of `MidiConnection`. `ProbeSession` is the pattern for the
 lesson engine: a plain class that consumes events and exposes a snapshot, with
 React only as a viewer.
 
+### Why the simulator makes a sound and the keyboard doesn't
+
+In simulator mode a small Web Audio synth (`probe/synth.ts`) plays each tapped
+note, with a **Sound on/off** toggle. With the real keyboard the page stays
+silent on purpose: the Yamaha sounds its notes instantly, and a second copy
+from the phone would arrive audibly late. The lag you can hear between tapping
+the screen and the simulator's sound is the phone's audio path, which is the
+same reason the production app should let the instrument make the sound.
+
 ### What the probe is not
 
 It has no service worker, no manifest and no Cabinet entry, on purpose. A
@@ -377,6 +461,47 @@ That pushes towards one of these:
 Option 1 fits a private family app best. Option 2 is right if everything
 should stay on one vendor.
 
+**Supabase's free plan, as of September 2026** ([pricing page](https://supabase.com/pricing)):
+50,000 monthly active users, 500 MB database, 1 GB file storage, 5 GB egress,
+two active projects. **Free projects pause after 1 week of inactivity.** Data
+is kept, but the app can't reach it until the project is resumed from the
+dashboard. A week-long holiday without practice would trigger it. The Pro plan
+(from $25/month) removes the pause. A 1 GB storage limit is ample: MIDI and
+MusicXML files are kilobytes; only scanned PDF scores are large.
+
+### Accounts and profiles (Gabriel and Nora)
+
+Supabase Auth handles any number of accounts, so separate libraries and
+progress for Gabriel and Nora are straightforward. The question is how to cut
+it:
+
+| Model | How it works | For | Against |
+|---|---|---|---|
+| **A. One family account, several profiles (recommended)** | Gabriel signs the family account in on **both** phones, once each. Each phone is **pinned to its profile**: Nora's Poco F3 opens straight into Nora, the S24 into Gabriel. Switching needs a PIN. Songs belong to the family library; **progress, settings and chosen learning path belong to a profile** | Nora never types a password. No child account holding her personal data. The library (songs you bought) is owned once and shared. You can see her progress from your phone | Profiles aren't a security boundary against each other. The family session on her phone could reach your profile if the PIN is guessed. A PIN is a lock on the door, not a wall. Enough for a family |
+| B. Separate accounts | Nora and Gabriel each sign in with their own email | Hard separation. Nora could later use her own device | Two logins on one phone. A child account holding personal data. Shared songs need an explicit sharing model |
+| C. A then B | Start with A. Promote a profile to its own account if Nora ever needs one | No decision needed now | Promotion needs a small migration, which is easy if planned for |
+
+Recommended: **A, designed so C is possible.** Nora having her own phone
+makes A work better, not worse: the profile picker becomes a one-time setting
+per phone instead of a choice at every launch. B only earns its extra cost if
+she'll ever use KeyPath without you managing the account, and C covers that
+day. The data model:
+
+```
+accounts   (id = auth.users.id)                       ← the login, held by Gabriel
+profiles   (id, account_id, name, avatar, pin_hash?)   ← Nora, Gabriel
+devices    (id, account_id, profile_id, label)         ← "Nora's Poco F3" → Nora
+songs      (id, account_id, class, storage_path, …)    ← family library; class 1/2/3 from above
+visibility (song_id, profile_id)                       ← optional: hide a song from a profile
+progress   (profile_id, song_id, attempts, best, …)    ← per person
+```
+
+Row-level security: every row is readable only when its `account_id`, or its
+profile's `account_id`, matches `auth.uid()`. Storage paths are prefixed with
+the account id and gated by the same rule. Profile-level visibility (for
+example, Gabriel's own pieces not showing up in Nora's picker) is an app rule
+on top of that, not a security rule, per the "Against" column above.
+
 ---
 
 ## 8. Security and copyright risks
@@ -407,21 +532,28 @@ problems from MIDI problems), and possibly the hybrid route (§6).
 
 1. **Record the result**: paste the probe report into a session and fill in §1
    with measured values.
-2. **Try the charging hub** (§2) with the probe, before any daily-use design
+2. **Design for a dropped keyboard from day one.** The lesson engine should
+   pause when the input disappears and resume when it comes back. Hot-plug
+   already works in the MIDI layer. This costs little now, and it covers
+   whatever the Poco F3's OTG switch turns out to do, a knocked cable, or a
+   keyboard switched off mid-lesson.
+3. **Poco F3 compatibility check** (§2, §3) before Nora uses the app. Not a
+   gate for starting development.
+4. **Try the charging hub** (§2) with the probe, before any daily-use design
    assumes it.
-3. **Lesson engine core, UI-free**: a `PerformanceJudge` consuming
+5. **Lesson engine core, UI-free**: a `PerformanceJudge` consuming
    `MidiEvent`s against an expected note sequence (pitch, onset window, chord
    window sized from the measured spread, duration). Pure, tested like
    `diagnostics.ts`.
-4. **Song model + one importer**: an internal `Song` type and a MIDI-file
+6. **Song model + one importer**: an internal `Song` type and a MIDI-file
    importer (later MusicXML), fed from a **local file picker** first, so no
    hosting is needed to start.
-5. **Public-domain starter pack** (3–5 pieces, provenance noted) as the first
+7. **Public-domain starter pack** (3–5 pieces, provenance noted) as the first
    real content.
-6. **Content host** (§7, option 1), then signed-URL loading.
-7. **Nora-facing design**: learning paths she chooses and adapts, drawing on
+8. **Content host** (§7, option 1), then signed-URL loading.
+9. **Nora-facing design**: learning paths she chooses and adapts, drawing on
    the best of Flowkey (wait-for-correct-note mode, hand separation) and Simply
    Piano (short wins, progression). That's a design conversation with her, not
    a technical step, and it deserves its own document.
-8. **Split KeyPath into its own origin/project** at the point it gets auth
+10. **Split KeyPath into its own origin/project** at the point it gets auth
    (§8, "Authentication").
