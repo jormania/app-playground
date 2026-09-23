@@ -1,0 +1,60 @@
+.scroller {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-sunken);
+}
+
+.keys {
+  --white-w: max(18px, calc(100% / var(--whites)));
+  --black-w: calc(var(--white-w) * 0.6);
+  position: relative;
+  height: 140px;
+  min-width: calc(var(--whites) * 18px);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.white,
+.black {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  transition: background var(--duration) var(--ease);
+}
+
+.white {
+  width: calc(100% / var(--whites));
+  height: 100%;
+  background: #fbfaf6;
+  border: 1px solid #b9b4a6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.black {
+  width: var(--black-w);
+  height: 60%;
+  background: #23252b;
+  z-index: 1;
+}
+
+/* Key colours are the instrument's, not the theme's — ivory and ebony stay put
+   in dark mode, and only the pressed state borrows the accent. */
+.down {
+  background: color-mix(in srgb, var(--color-accent) calc(var(--vel) * 100%), #fbfaf6);
+}
+.black.down {
+  background: color-mix(in srgb, var(--color-accent) calc(var(--vel) * 100%), #23252b);
+}
+
+.label {
+  font: var(--weight-medium) 10px/1 var(--font-mono);
+  color: #6b675c;
+  padding-bottom: 6px;
+  pointer-events: none;
+}

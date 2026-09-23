@@ -96,6 +96,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | Lexi5 | `src/lexi5/` | JSX, DS — [`LEXI5.md`](LEXI5.md); also [`LEXI5_ROADMAP.md`](LEXI5_ROADMAP.md) |
 | Fit Check | `src/fit-check/` | **strict TS**, DS — Notion select options are a **closed vocabulary** and its tags are AI-assigned; read [`FIT_CHECK.md`](FIT_CHECK.md) before touching `lib/vocabulary.ts`. Also [`FIT_CHECK_ROADMAP.md`](FIT_CHECK_ROADMAP.md), [`FIT_CHECK_DISCOVERY.md`](FIT_CHECK_DISCOVERY.md) |
 | Silva | `src/silva/` | **strict TS**, DS — commonplace book: today's walk, reading history, photo/share intake, neighbourhoods. Read [`SILVA.md`](SILVA.md) |
+| KeyPath | `src/keypath/` | **strict TS**, DS — **a hardware probe, not an app yet**: can the phone receive MIDI from the Yamaha over USB. Unlisted (no registry entry, no service worker). The MIDI layer in `midi/` must stay free of React. **No music files in the repo, ever** — `content-boundary.test.js` enforces it. Read [`KEYPATH.md`](KEYPATH.md) |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
@@ -106,9 +107,9 @@ Card/tile data (name, icon, blurb, tags) for every app lives in one place —
 [`src/apps-registry.js`](src/apps-registry.js) — read by `index.html`'s card
 grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the new-app checklist.
 
-`tsconfig.json` covers **seven** paths — `src/sol-odyssey`, `src/daily-stoic`,
-`src/ds`, `src/shared`, `src/fit-check`, `src/silva` and `src/lexi5/lib`; `npm run
-typecheck` checks all seven. Other React apps are plain JS/JSX by design and left
+`tsconfig.json` covers **eight** paths — `src/sol-odyssey`, `src/daily-stoic`,
+`src/ds`, `src/shared`, `src/fit-check`, `src/silva`, `src/keypath` and `src/lexi5/lib`; `npm run
+typecheck` checks all eight. Other React apps are plain JS/JSX by design and left
 out of typecheck (they can still import from `src/shared`).
 
 `src/lexi5/lib` is the deliberate half-measure: Lexi5's components stay JSX while

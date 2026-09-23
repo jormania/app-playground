@@ -61,3 +61,20 @@ scripts/backfill-hltb.py
 # Playwright's default output directory — a `.last-run.json` was tracked here
 # for two months because nothing ignored it (R-021).
 /test-results/
+
+# KeyPath: private music content never enters this repo (see KEYPATH.md,
+# "Content"). Songs, arrangements and lesson material live in private storage
+# and are fetched at runtime by the authenticated user; this repo holds only
+# the engine. src/keypath/content-boundary.test.js fails the suite if a file
+# like these gets tracked anyway (`git add -f`).
+/keypath-content/
+/private-content/
+*.mid
+*.midi
+*.kar
+*.rmi
+*.musicxml
+*.mxl
+*.mscz
+*.mscx
+*.sib
