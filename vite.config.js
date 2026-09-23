@@ -451,6 +451,7 @@ export default defineConfig({
         silva: resolve(__dirname, 'silva-react.html'),
         radarB: resolve(__dirname, 'radar-b-react.html'),
         marquee: resolve(__dirname, 'marquee-react.html'),
+        keypath: resolve(__dirname, 'keypath-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }
