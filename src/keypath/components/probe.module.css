@@ -175,3 +175,11 @@
 }
 .log tbody tr:nth-child(even) { background: var(--color-bg-sunken); }
 .rowOn td:nth-child(2) { color: var(--color-accent); }
+
+.simBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}

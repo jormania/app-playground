@@ -4,6 +4,14 @@ import type { MidiEvent } from '../midi/types'
 import type { EnvironmentFacts } from './environment'
 import type { ProbeSnapshot } from './probeSession'
 import type { UsbFinding } from './usb'
+import type { AudioDeviceView, HeardFrom, ToneResult } from './audioRouting'
+
+export interface AudioFindings {
+  heard: HeardFrom | null
+  tone: ToneResult | null
+  devices: AudioDeviceView | null
+  deviceChanges: number
+}
 
 const round = (x: number) => Math.round(x * 100) / 100
 
@@ -30,7 +38,7 @@ function eventRow(e: MidiEvent, origin: number) {
  * into the conversation or attach to KEYPATH.md. No personal data beyond the
  * browser's user agent and phone model; no content.
  */
-export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb: UsbFinding | null) {
+export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb: UsbFinding | null, audio: AudioFindings | null = null) {
   const t = s.tracker
   return {
     keypathProbe: 1,
@@ -38,6 +46,7 @@ export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb:
     source: s.sourceKind,
     environment: env,
     usb,
+    audio,
     midi: {
       access: s.connection.access,
       error: s.connection.error,

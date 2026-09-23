@@ -13,6 +13,14 @@ describe('KeyPath probe', () => {
     expect(await screen.findByText(/no Web MIDI|not a secure context/)).toBeTruthy()
   })
 
+  it('offers the phone-audio check for the real keyboard, and hides it in the simulator', async () => {
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'Play test tone' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('radio', { name: 'Simulator' }))
+    await screen.findByRole('button', { name: 'Sound on' })
+    expect(screen.queryByRole('button', { name: 'Play test tone' })).toBeNull()
+  })
+
   it('in simulator mode, a pressed key shows as held and lands in the log', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('radio', { name: 'Simulator' }))

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Button, SegmentedControl } from '../ds'
 import { useWakeLock } from '../shared/useWakeLock'
 import { PSR_E383_RANGE } from './midi/noteNames'
@@ -8,6 +8,9 @@ import { readEnvironment, type EnvironmentFacts } from './probe/environment'
 import { ProbeSession } from './probe/probeSession'
 import { buildReport } from './probe/report'
 import { findYamahaOnUsb, type UsbFinding } from './probe/usb'
+import { playTestTone, readAudioDevices, watchAudioDevices, type AudioDeviceView, type HeardFrom, type ToneResult } from './probe/audioRouting'
+import { SimpleSynth } from './probe/synth'
+import { AudioPanel } from './components/AudioPanel'
 import { EventLog } from './components/EventLog'
 import { LivePanel } from './components/LivePanel'
 import { PianoKeyboard } from './components/PianoKeyboard'
@@ -26,6 +29,12 @@ export default function App() {
   const [env, setEnv] = useState<EnvironmentFacts | null>(null)
   const [usb, setUsb] = useState<UsbFinding | null>(null)
   const [copied, setCopied] = useState(false)
+  const [tone, setTone] = useState<ToneResult | null>(null)
+  const [heard, setHeard] = useState<HeardFrom | null>(null)
+  const [devices, setDevices] = useState<AudioDeviceView | null>(null)
+  const [deviceChanges, setDeviceChanges] = useState(0)
+  const [soundOn, setSoundOn] = useState(true)
+  const synth = useRef<SimpleSynth | null>(null)
   const simulated = snap.sourceKind === 'simulated'
   const granted = snap.connection.access === 'granted'
 
@@ -34,9 +43,20 @@ export default function App() {
   useEffect(() => {
     readEnvironment().then(setEnv)
     findYamahaOnUsb(false).then(setUsb)
+    readAudioDevices().then(setDevices)
     // No dispose on unmount: the session lives as long as the page, and
     // StrictMode's rehearsal unmount would otherwise detach it for good.
   }, [])
+
+  // Plugging the Yamaha in may add a USB audio device; count each change the OS reports.
+  useEffect(
+    () =>
+      watchAudioDevices((view) => {
+        setDevices(view)
+        setDeviceChanges((n) => n + 1)
+      }),
+    [],
+  )
 
   // Re-read the MIDI permission once access settles, so the report says what Chrome now says.
   useEffect(() => {
@@ -52,6 +72,20 @@ export default function App() {
   const sim = simulated ? (session.source as SimulatedConnection) : null
   const press = useCallback((n: number) => sim?.press(n), [sim])
   const release = useCallback((n: number) => sim?.release(n), [sim])
+
+  // Simulator notes get a sound; the real keyboard never does (it makes its own).
+  useEffect(() => {
+    if (!sim || !soundOn) return
+    const voice = (synth.current ??= new SimpleSynth())
+    const off = sim.onEvent((e) => {
+      if (e.type === 'noteon') voice.noteOn(e.note, e.velocity).catch(() => {})
+      else if (e.type === 'noteoff') voice.noteOff(e.note)
+    })
+    return () => {
+      off()
+      voice.allOff()
+    }
+  }, [sim, soundOn])
 
   useEffect(() => {
     if (!sim) return
@@ -76,7 +110,7 @@ export default function App() {
   const low = Math.min(PSR_E383_RANGE.low, t.lowest ?? Infinity)
   const high = Math.max(PSR_E383_RANGE.high, t.highest ?? -Infinity)
 
-  const report = () => JSON.stringify(buildReport(snap, env, usb), null, 2)
+  const report = () => JSON.stringify(buildReport(snap, env, usb, { heard, tone, devices, deviceChanges }), null, 2)
   const copyReport = async () => {
     try {
       await navigator.clipboard.writeText(report())
@@ -124,7 +158,14 @@ export default function App() {
 
       <section className={styles.panel} aria-label="Keyboard">
         <PianoKeyboard low={low} high={high} held={held} onPress={sim ? press : undefined} onRelease={sim ? release : undefined} />
-        {sim && <p className={styles.faint}>Simulator: tap keys (several fingers for a chord), or type A W S E D F T G Y H U J K for C4–C5.</p>}
+        {sim && (
+          <div className={styles.simBar}>
+            <p className={styles.faint}>Simulator: tap keys (several fingers for a chord), or type A W S E D F T G Y H U J K for C4–C5.</p>
+            <Button size="sm" variant="outline" onClick={() => setSoundOn((on) => !on)} aria-pressed={soundOn}>
+              {soundOn ? 'Sound on' : 'Sound off'}
+            </Button>
+          </div>
+        )}
       </section>
 
       <LivePanel snap={snap} />
@@ -137,6 +178,17 @@ export default function App() {
         onFinish={() => session.finishTest()}
         onCancel={() => session.cancelTest()}
       />
+
+      {!simulated && (
+        <AudioPanel
+          tone={tone}
+          heard={heard}
+          devices={devices}
+          deviceChanges={deviceChanges}
+          onPlay={() => playTestTone().then(setTone)}
+          onHeard={setHeard}
+        />
+      )}
 
       <EventLog log={snap.log} origin={snap.origin} />
 
