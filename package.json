@@ -42,7 +42,7 @@
   },
   "homepage": "https://github.com/jormania/app-playground#readme",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.110.0",
+    "@anthropic-ai/sdk": "^0.128.0",
     "@fontsource-variable/alegreya": "^5.2.8",
     "@fontsource-variable/fraunces": "^5.1.0",
     "@fontsource-variable/inter": "^5.1.0",
