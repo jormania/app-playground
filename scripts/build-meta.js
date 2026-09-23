@@ -91,12 +91,18 @@ export function withBuildSizeMeta(html, bytes) {
  * ideas, parked until a human moves one up. Anchored to `^## ` so the prose
  * and the class table above the list never count.
  *
+ * The state token is matched where it sits — after a `·` separator — and may be
+ * followed by a progress note: `· \`open\` — jsdom done, five to go`. This used to
+ * require the token at end of line, so every note added after a state silently
+ * dropped that item from the footer: on 2026-09-23 it read 5 open against a
+ * real 9, all four misses carrying a note.
+ *
  * @param {string} md raw REFACTOR_BACKLOG.md contents
  * @returns {{ open: number, proposed: number }}
  */
 export function parseBacklogCounts(md) {
   const count = (state) =>
-    (md.match(new RegExp('^##\\s.+`' + state + '`\\s*$', 'gm')) || []).length;
+    (md.match(new RegExp('^##\\s.+·\\s*`' + state + '`(?:\\s|$)', 'gm')) || []).length;
   return { open: count('open'), proposed: count('proposed') };
 }
 

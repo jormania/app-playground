@@ -126,8 +126,14 @@ behind a PR someone is reading.
 the agent stops** and says the queue is backed up. An unreviewed pile that grows
 without bound is worse than no refactors at all.
 
-**3 — Pick.** The topmost item that is not `done`, `blocked`, under `## Proposed`,
-or claimed.
+**3 — Pick.** The topmost eligible item, and the order is absolute. Eligible
+means: in the main list rather than `## Proposed`; state `open`; not claimed by
+an open PR; not marked *not agent-executable*. **Class is not part of the test**
+— a `visual` item on top is today's item. Every item passed over is named in the
+PR body with the condition that made it ineligible; there is no other kind of
+skip. An item found to be a bad idea is marked `dropped`, one that cannot be
+finished is marked `blocked`, one that is too big is split — each a visible
+backlog change, never a silent jump to the next header.
 
 **Fridays are discovery runs.** Nothing ships. The session reads the codebase
 against current standards and appends up to five findings, each with a class, an
@@ -284,7 +290,10 @@ degrade independently:
 ## Running it, and steering it
 
 **To change what it does next:** reorder `REFACTOR_BACKLOG.md`. The agent always
-takes the topmost eligible item, so the order of that file is the steering wheel.
+takes the topmost eligible item, so the order of that file is the steering wheel —
+including when that means several `visual` PRs in a row waiting on you. Spacing
+review-needed items between self-merging ones is a good habit when arranging the
+queue; it is not something the agent will do for you by skipping.
 
 **To approve a proposal:** move it out of `## Proposed` into the main list and
 change `proposed` to `open`.
@@ -368,6 +377,10 @@ production.
 | 2026-09-16 | That run's PR (#65) had zero checks: a PR opened by `github-actions[bot]` does not trigger `pull_request` workflows, and this document had claimed otherwise from a bad reading of #59 | Claim corrected; `REFACTOR_PAT` reclassified from optional to missing |
 | 2026-09-16 | `REFACTOR_PAT` added. Confirmed working by a dispatched run: PR #70 is authored by the repository owner rather than `github-actions[bot]`, and CI runs on it |  — |
 | 2026-09-16 | That same run did its item correctly and still failed, at 62 turns against a limit of 60. The alarm fired for a run that had succeeded — the crying-wolf failure the alerting was designed to avoid, arriving from the opposite direction | `--max-turns` raised to 150 |
+| 2026-09-22 | The 01:10 run died on an API 529 four minutes in, having produced nothing. The 05:21 backstop then stood down because a run had already gone out that day — declining the exact morning it exists for | The gate counts outcomes, not attempts: it stands down only for a run that succeeded or is still in flight (#80) |
+| 2026-09-23 | Both crons fired and the gate behaved. But the run passed over R-022, P-001b and P-001c — all `visual`, all at the top — to take R-008, did it well, and merged itself. Its PR never mentioned the three it skipped. The backlog's header had said the order "alternates on purpose", and the skill's pick rule said nothing about class; the agent reconciled the two in favour of the header, silently | Order made absolute in the skill, the backlog, this document and the workflow prompt. Every item passed over is named in the PR with its reason, and the only valid reasons are eligibility conditions. Also found the front-page footer undercounting open items, 5 against 9: its counter required `` `open` `` at end of line, and progress notes added after the state broke it |
 
-The pattern is one thing, seven times: **the danger is not a bad change reaching
-production. It is a morning where nothing happened and nobody was told.**
+The pattern is one thing, told many ways: **the danger is not a bad change
+reaching production. It is a morning where something other than what you asked
+for happened — usually nothing — and nobody was told.** 2026-09-23 was the first
+time the agent did good work and it was still that failure.

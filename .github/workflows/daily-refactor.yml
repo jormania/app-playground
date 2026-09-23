@@ -217,9 +217,13 @@ jobs:
 
             In short: branch off `origin/main` as
             `claude/refactor-${{ steps.when.outputs.date }}`,
-            take exactly ONE eligible item from `REFACTOR_BACKLOG.md` — skipping
-            anything under `## Proposed` and anything already claimed by an open
-            `claude/refactor-*` PR — implement it, get `npm test -- --run`,
+            take exactly ONE item from `REFACTOR_BACKLOG.md`: the TOPMOST eligible
+            one, in file order, with no exceptions for class. Eligible means in
+            the main list (not `## Proposed`), state `open`, not claimed by an
+            open PR, and not marked "not agent-executable". A `visual` item on
+            top is today's item. In the PR body, name every item you passed over
+            and which of those conditions made it ineligible — there is no other
+            valid reason to skip one. Implement it, get `npm test -- --run`,
             `npm run typecheck` and `npx eslint <changed paths>` all green,
             update the backlog in the same commit, push, and open a PR against
             `main` carrying `Backlog-Item:` and `Class:` lines in the body.

@@ -140,6 +140,42 @@ describe('parseBacklogCounts', () => {
     expect(parseBacklogCounts('# Backlog\n\n_(nothing right now.)_')).toEqual({ open: 0, proposed: 0 });
   });
 
+  it('counts an open item that carries a progress note after its state', () => {
+    // The form that broke the footer on 2026-09-23: a note after the state token
+    // dropped the item from the count, and four of nine open items went missing.
+    const md = [
+      '## R-008 — deps · `modernise` · `open` — jsdom done, five families to go',
+      '## R-024 — branches · `refactor` · `open` — **not agent-executable, see below**',
+      '## R-026 — theme · `refactor` · `open`',
+    ].join('\n');
+    expect(parseBacklogCounts(md)).toEqual({ open: 3, proposed: 0 });
+  });
+
+  it('does not mistake the word open elsewhere in a header for the state', () => {
+    // Loosening the anchor must not start counting a title that mentions `open`,
+    // or a done item whose note happens to say it.
+    const md = [
+      '## R-090 — the `open` door problem · `refactor` · `done 2026-09-23`',
+      '## R-091 — something · `modernise` · `done 2026-09-23` — was `open` for a week',
+      '## R-092 — `open`ing hours · `visual` · `blocked`',
+    ].join('\n');
+    expect(parseBacklogCounts(md)).toEqual({ open: 0, proposed: 0 });
+  });
+
+  it('agrees with a plain split on the real backlog', () => {
+    // A second, independent reading of the same file — split on the separator and
+    // look at the state segment — so the regex cannot drift away from what the
+    // headers actually say without this failing.
+    const md = readFileSync(resolve(REPO, 'REFACTOR_BACKLOG.md'), 'utf8');
+    const stateOf = (line) => (line.split(' · ')[2] || '').trim();
+    const headers = md.split('\n').filter((l) => l.startsWith('## ') && l.split(' · ').length >= 3);
+    const expected = {
+      open: headers.filter((l) => /^`open`(\s|$)/.test(stateOf(l))).length,
+      proposed: headers.filter((l) => /^`proposed`(\s|$)/.test(stateOf(l))).length,
+    };
+    expect(parseBacklogCounts(md)).toEqual(expected);
+  });
+
   it('parses the real REFACTOR_BACKLOG.md without throwing', () => {
     const counts = parseBacklogCounts(readFileSync(resolve(REPO, 'REFACTOR_BACKLOG.md'), 'utf8'));
     expect(counts.open).toBeGreaterThanOrEqual(0);

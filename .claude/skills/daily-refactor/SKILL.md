@@ -76,8 +76,42 @@ right. The queue is his steering wheel; proposing is how you hand him one.
 
 ## 3. Pick
 
-Read `REFACTOR_BACKLOG.md`. Take the topmost item that is not `done`, not
-`blocked`, not under `## Proposed`, and not claimed by an open PR.
+Read `REFACTOR_BACKLOG.md`. **Take the topmost eligible item. The order is
+absolute** — it is Gabriel's steering wheel, and a run that drives somewhere else
+has taken the wheel off him.
+
+An item is eligible when its `## ` header is **all** of these:
+
+- in the main list, not under `## Proposed`;
+- in state `open` — not `done`, `blocked` or `dropped`;
+- not claimed — no open PR carries its id on a `Backlog-Item:` line;
+- not marked **not agent-executable** in its header.
+
+That is the whole test. **Class is not in it.** A `visual` or `qol` item a human
+has moved into the main list is as eligible as any `refactor` — you take it, you
+do the screenshots, and it waits for review because its class never auto-merges.
+**Neither is the order of classes around it.** The backlog header asks whoever
+arranges the queue to interleave review-needed items with self-merging ones;
+that is advice for arranging, never licence for you to skip. If three `visual`
+items sit at the top, the top one is today's.
+
+**Every item you pass over, you name.** For each header above the one you take,
+the PR body gets one line — the id and which of the four conditions made it
+ineligible (`R-024 — not agent-executable`, `R-031 — claimed by #92`). Those are
+the only valid reasons. There is no other kind of skip:
+
+- an item that turns out to be a **bad idea on contact** is marked `dropped` in
+  the backlog with a one-line reason, in this run's commit — it is not passed over;
+- an item you **cannot finish** is marked `blocked` with the reason, and the run
+  opens no PR — see step 5;
+- an item that is **too big** is split into slices in the backlog and you do the
+  first — see step 4.
+
+In each case the backlog changes and says why. Silently taking the second item
+instead of the first is a failed run, however good the second item's work is.
+2026-09-23 is why this paragraph exists: the run passed over three `visual`
+items to take R-008, did excellent work on it, merged itself — and left nothing
+for the human who had put R-022 on top to review, with no word as to why.
 
 **An item is a `## ` header, and only that.** Nothing nested inside one is a
 separate item, however much it looks like a queue. When a big item splits into

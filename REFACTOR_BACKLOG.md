@@ -8,20 +8,31 @@ Process lives in [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily
 Edit by hand freely. Reorder to change priority — the agent always takes the
 topmost eligible item, so the order of this file is the steering wheel.
 
-**States:** `open` · `claimed` (an open PR names it) · `done` · `blocked` · `dropped`
+**States:** `open` · `claimed` (an open PR names it) · `done` · `blocked` · `dropped`.
+An `open` item may also carry **not agent-executable** in its header — work only a
+human can do, which the agent passes over and names in its PR. Progress notes may
+follow the state (`` `open` — step 1 done ``); the state token itself stays third.
 
 **One item = one `## ` header.** A big item that splits into slices gets one
 header per slice, in the order they should be taken — nesting them as bullets
 hides them from the footer's backlog count and makes "the topmost eligible item"
 ambiguous.
 
-**The order alternates on purpose.** `refactor` and `modernise` items merge
-themselves once the workflow's independent run is green; `qol` and `visual` ones
-never do, however green — they wait for a human. So they are interleaved rather
-than grouped, and a run of four review-needed items in a row would mean four
-mornings where nothing reaches production on its own. Keep that alternation when
-adding an item or reordering: put a new `qol` or `visual` item where the
-neighbours on both sides are self-merging.
+**The order is absolute.** The agent takes the topmost eligible item — never a
+lower one because it seems a better fit for the morning, and never by reasoning
+about the classes around it. It names every item it passes over in its PR, and
+the only valid reasons are the four in the skill's pick rule.
+
+**Interleaving is advice for whoever arranges the queue, not a rule the agent
+applies.** `refactor` and `modernise` items merge themselves once the workflow's
+independent run is green; `qol` and `visual` never do — they wait for a human. So
+a run of review-needed items at the top means that many mornings in a row of PRs
+waiting on you. When adding or reordering, it is usually worth putting a `qol`
+or `visual` item between self-merging neighbours. But if you *want* three visual
+items first, put them first: the agent will take them in that order. (It once
+didn't — on 2026-09-23 it passed over three `visual` items to take a
+self-merging one, on the strength of an older wording of this paragraph. That
+wording is gone.)
 
 **Classes** decide the burden of proof and who may queue an item:
 
