@@ -6,10 +6,13 @@ import { SimulatedConnection } from './midi/simulatedConnection'
 import { WebMidiConnection } from './midi/webMidiConnection'
 import { readEnvironment, type EnvironmentFacts } from './probe/environment'
 import { ProbeSession } from './probe/probeSession'
-import { buildReport } from './probe/report'
+import { buildReport, countDrops } from './probe/report'
 import { findYamahaOnUsb, type UsbFinding } from './probe/usb'
-import { playTestTone, readAudioDevices, watchAudioDevices, type AudioDeviceView, type HeardFrom, type ToneResult } from './probe/audioRouting'
+import { playTestTone, previewKeyboardOutput, readAudioDevices, watchAudioDevices, type AudioDeviceView, type HeardFrom, type ToneResult } from './probe/audioRouting'
 import { SimpleSynth } from './probe/synth'
+import { loadOutputLevel, saveOutputLevel, toggled, withLevel, type OutputLevel } from './probe/outputLevel'
+import { setKeyboardLevel } from './probe/audioContext'
+import { canShareReport, shareReport } from './probe/shareReport'
 import { AudioPanel } from './components/AudioPanel'
 import { EventLog } from './components/EventLog'
 import { LivePanel } from './components/LivePanel'
@@ -29,11 +32,13 @@ export default function App() {
   const [env, setEnv] = useState<EnvironmentFacts | null>(null)
   const [usb, setUsb] = useState<UsbFinding | null>(null)
   const [copied, setCopied] = useState(false)
+  const [shareNote, setShareNote] = useState<string | null>(null)
   const [tone, setTone] = useState<ToneResult | null>(null)
   const [heard, setHeard] = useState<HeardFrom | null>(null)
   const [devices, setDevices] = useState<AudioDeviceView | null>(null)
   const [deviceChanges, setDeviceChanges] = useState(0)
   const [soundOn, setSoundOn] = useState(true)
+  const [output, setOutput] = useState<OutputLevel>(loadOutputLevel)
   const synth = useRef<SimpleSynth | null>(null)
   const simulated = snap.sourceKind === 'simulated'
   const granted = snap.connection.access === 'granted'
@@ -47,6 +52,11 @@ export default function App() {
     // No dispose on unmount: the session lives as long as the page, and
     // StrictMode's rehearsal unmount would otherwise detach it for good.
   }, [])
+
+  useEffect(() => {
+    setKeyboardLevel(output.level)
+    saveOutputLevel(output)
+  }, [output])
 
   // Plugging the Yamaha in may add a USB audio device; count each change the OS reports.
   useEffect(
@@ -110,7 +120,7 @@ export default function App() {
   const low = Math.min(PSR_E383_RANGE.low, t.lowest ?? Infinity)
   const high = Math.max(PSR_E383_RANGE.high, t.highest ?? -Infinity)
 
-  const report = () => JSON.stringify(buildReport(snap, env, usb, { heard, tone, devices, deviceChanges }), null, 2)
+  const report = () => JSON.stringify(buildReport(snap, env, usb, { heard, tone, devices, deviceChanges, keyboardOutput: output }), null, 2)
   const copyReport = async () => {
     try {
       await navigator.clipboard.writeText(report())
@@ -118,6 +128,16 @@ export default function App() {
       setTimeout(() => setCopied(false), 2000)
     } catch {
       downloadReport()
+    }
+  }
+  const sendReport = async () => {
+    const outcome = await shareReport(report())
+    // A failed share falls back to the clipboard, so the report is never lost.
+    if (outcome === 'error' || outcome === 'unsupported') {
+      await copyReport()
+      setShareNote('Sharing failed, so the report was copied instead. Paste it into Claude.')
+    } else {
+      setShareNote(null)
     }
   }
   const downloadReport = () => {
@@ -134,7 +154,7 @@ export default function App() {
       <header className={styles.header}>
         <div>
           <h1 className={styles.h1}>KeyPath</h1>
-          <p className={styles.sub}>MIDI probe · PSR-E383 → Galaxy S24</p>
+          <p className={styles.sub}>MIDI probe · PSR-E383 → {env?.model ?? 'Android phone'}</p>
         </div>
         <SegmentedControl
           size="sm"
@@ -154,6 +174,7 @@ export default function App() {
         usb={usb}
         onConnect={() => session.open()}
         onLookUsb={() => findYamahaOnUsb(true).then(setUsb)}
+        drops={countDrops(snap.connectionHistory)}
       />
 
       <section className={styles.panel} aria-label="Keyboard">
@@ -187,6 +208,10 @@ export default function App() {
           deviceChanges={deviceChanges}
           onPlay={() => playTestTone().then(setTone)}
           onHeard={setHeard}
+          output={output}
+          onToggleOutput={() => setOutput(toggled)}
+          onOutputLevel={(n) => setOutput((o) => withLevel(o, n))}
+          onPreviewOutput={() => void previewKeyboardOutput()}
         />
       )}
 
@@ -196,10 +221,15 @@ export default function App() {
         <h2 className={styles.h2}>Report</h2>
         <p className={styles.faint}>Everything above as one JSON file: environment, device, counters, timing and test results. No content, no personal data beyond the phone model and browser.</p>
         <div className={styles.actions}>
-          <Button onClick={copyReport}>{copied ? 'Copied' : 'Copy report'}</Button>
+          {canShareReport() && <Button onClick={sendReport}>Share to Claude…</Button>}
+          <Button variant={canShareReport() ? 'outline' : 'primary'} onClick={copyReport}>
+            {copied ? 'Copied' : 'Copy report'}
+          </Button>
           <Button variant="outline" onClick={downloadReport}>Download</Button>
           <Button variant="ghost" onClick={() => session.resetCounters()}>Reset counters</Button>
         </div>
+        {canShareReport() && <p className={styles.faint}>Share opens Android’s share sheet. Pick Claude, or any app you want to send the report to.</p>}
+        {shareNote && <p className={styles.faint}>{shareNote}</p>}
       </section>
     </main>
   )

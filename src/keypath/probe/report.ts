@@ -5,15 +5,26 @@ import type { EnvironmentFacts } from './environment'
 import type { ProbeSnapshot } from './probeSession'
 import type { UsbFinding } from './usb'
 import type { AudioDeviceView, HeardFrom, ToneResult } from './audioRouting'
+import type { OutputLevel } from './outputLevel'
 
 export interface AudioFindings {
   heard: HeardFrom | null
   tone: ToneResult | null
   devices: AudioDeviceView | null
   deviceChanges: number
+  keyboardOutput: OutputLevel
 }
 
 const round = (x: number) => Math.round(x * 100) / 100
+
+/** How many times an input that was connected went away. */
+export function countDrops(history: readonly { inputs: string[] }[]): number {
+  let drops = 0
+  for (let i = 1; i < history.length; i++) {
+    if (history[i - 1].inputs.some((name) => !history[i].inputs.includes(name))) drops++
+  }
+  return drops
+}
 
 function eventRow(e: MidiEvent, origin: number) {
   const t = round(e.time - origin)
@@ -51,6 +62,8 @@ export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb:
       access: s.connection.access,
       error: s.connection.error,
       inputs: s.connection.inputs,
+      history: s.connectionHistory.map((c) => ({ t: round(c.time - s.origin), inputs: c.inputs })),
+      drops: countDrops(s.connectionHistory),
     },
     observed: {
       counts: t.counts,

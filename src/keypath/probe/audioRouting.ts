@@ -9,7 +9,7 @@
 // device list. So the probe settles it the only reliable way: play a tone and
 // ask where it was heard. The fixes themselves are settings (see KEYPATH.md).
 
-import { audioContext } from './audioContext'
+import { audioContext, keyboardOutput } from './audioContext'
 
 export type HeardFrom = 'keyboard' | 'phone' | 'both' | 'nowhere'
 
@@ -59,8 +59,20 @@ export function watchAudioDevices(onChange: (view: AudioDeviceView | null) => vo
  * describe the same audio path the simulator uses.
  */
 export async function playTestTone(): Promise<ToneResult> {
+  return playChime('test')
+}
+
+/** The same chime through the keyboard-output level, so the chosen volume can be heard. */
+export async function previewKeyboardOutput(): Promise<ToneResult> {
+  return playChime('keyboard')
+}
+
+// The test tone deliberately bypasses the keyboard-output level: its job is to
+// find out where the phone's audio goes, which it can't do at volume 0.
+async function playChime(route: 'test' | 'keyboard'): Promise<ToneResult> {
   try {
     const ctx = await audioContext()
+    const out: AudioNode = route === 'keyboard' ? await keyboardOutput() : ctx.destination
     const t0 = ctx.currentTime + 0.05
     for (const [i, freq] of [523.25, 659.25].entries()) {
       const osc = ctx.createOscillator()
@@ -70,7 +82,7 @@ export async function playTestTone(): Promise<ToneResult> {
       gain.gain.setValueAtTime(0, start)
       gain.gain.linearRampToValueAtTime(0.3, start + 0.02)
       gain.gain.exponentialRampToValueAtTime(0.001, start + 0.6)
-      osc.connect(gain).connect(ctx.destination)
+      osc.connect(gain).connect(out)
       osc.start(start)
       osc.stop(start + 0.65)
     }
@@ -93,8 +105,8 @@ export function adviceFor(heard: HeardFrom): AudioAdvice {
       return {
         headline: 'Android is sending the phone’s audio to the Yamaha’s speakers.',
         steps: [
-          'Keep it if you like: a future metronome or backing track would play through the instrument.',
-          'To stop it from the keyboard: FUNCTION → 045 “[USB TO HOST] Audio Volume” → 0. The keyboard remembers this after power-off, and it doesn’t touch MIDI.',
+          'KeyPath’s own sound is already covered: the “KeyPath sound through the keyboard” level above starts at 0.',
+          'To silence everything else the phone plays (notifications, other apps), on the keyboard: FUNCTION → 045 “[USB TO HOST] Audio Volume” → 0. The keyboard remembers this after power-off, and MIDI is unaffected.',
           'Or from the phone: Settings → Developer options → “Disable USB audio routing”. This affects every USB audio device, USB-C earphones included.',
           'Also set FUNCTION → 046 “Audio Loop Back” to Off if anything is ever recorded, so the phone’s sound isn’t sent back to it.',
         ],

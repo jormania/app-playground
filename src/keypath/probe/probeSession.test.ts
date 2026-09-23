@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SimulatedConnection } from '../midi/simulatedConnection'
+import { WebMidiConnection } from '../midi/webMidiConnection'
 import { ProbeSession } from './probeSession'
 import { buildReport } from './report'
 
@@ -59,6 +60,26 @@ describe('ProbeSession', () => {
     expect(r.tests.anyKey?.verdict).toBe('pass')
     expect(r.observed.velocity).toEqual({ min: 99, max: 99 })
     expect(r.recentEvents.map((e) => e.type)).toEqual(['on', 'off'])
+  })
+
+  it('records an input dropping out and coming back — the OTG auto-off signature', async () => {
+    const port = { id: 'y', name: 'Digital Keyboard', manufacturer: 'Yamaha', state: 'connected', onmidimessage: null }
+    const access = { inputs: new Map([['y', port]]), onstatechange: null as null | (() => void) }
+    const nav = { requestMIDIAccess: () => Promise.resolve(access) } as unknown as Navigator
+    let t = 0
+    const session = new ProbeSession(new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => t }), () => t, () => {})
+    await session.open()
+    t = 600_000
+    access.inputs.delete('y')
+    access.onstatechange!()
+    t = 660_000
+    access.inputs.set('y', port)
+    access.onstatechange!()
+    const s = session.getSnapshot()
+    expect(s.connectionHistory.map((c) => c.inputs)).toEqual([['Digital Keyboard'], [], ['Digital Keyboard']])
+    const report = buildReport(s, null, null)
+    expect(report.midi.drops).toBe(1)
+    expect(report.midi.history[1].t).toBe(600_000)
   })
 
   it('starts the counters over when the source is swapped', async () => {

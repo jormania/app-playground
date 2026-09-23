@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  localStorage.clear()
+})
 
 describe('KeyPath probe', () => {
   it('says plainly when the browser has no Web MIDI', async () => {
@@ -19,6 +22,19 @@ describe('KeyPath probe', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Simulator' }))
     await screen.findByRole('button', { name: 'Sound on' })
     expect(screen.queryByRole('button', { name: 'Play test tone' })).toBeNull()
+  })
+
+  it('keeps KeyPath’s sound to the keyboard at 0 until turned on, and remembers the level', () => {
+    render(<App />)
+    const slider = screen.getByRole('slider', { name: 'KeyPath sound volume' }) as HTMLInputElement
+    expect(slider.value).toBe('0')
+    expect((screen.getByRole('button', { name: 'Preview' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Off' }))
+    expect(slider.value).toBe('50')
+    fireEvent.change(slider, { target: { value: '80' } })
+    cleanup()
+    render(<App />)
+    expect((screen.getByRole('slider', { name: 'KeyPath sound volume' }) as HTMLInputElement).value).toBe('80')
   })
 
   it('in simulator mode, a pressed key shows as held and lands in the log', async () => {

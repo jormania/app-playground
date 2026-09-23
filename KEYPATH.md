@@ -3,9 +3,14 @@
 A piano-learning app for Nora, eventually. **Today it is a hardware probe** that
 answers one question:
 
-> Can a Samsung Galaxy S24 reliably receive MIDI from a Yamaha PSR-E383 through
-> a 0.5 m Delock USB-C (host) → USB-B cable, well enough to build a serious
+> Can a phone reliably receive MIDI from a Yamaha PSR-E383 through a 0.5 m
+> Delock USB-C (host) → USB-B cable, well enough to build a serious
 > piano-learning app on?
+
+**Two phones, not one.** Nora will practise on her own **Xiaomi Poco F3**;
+Gabriel's **Samsung Galaxy S24** is the second device. The Poco F3 is the one
+that matters most, and it has a Xiaomi-specific catch (the OTG switch, §2).
+Run the probe on both. The report records which phone it came from.
 
 Nothing here teaches yet. No lessons, no songs, no scoring. If the answer is
 yes, the next step is designing the lesson engine, not extending this page.
@@ -77,6 +82,8 @@ and a cable wired the other way round would put the phone in device mode.
 
 ### Steps
 
+0. **Poco F3 only:** Settings → Additional settings → **OTG** → on, *before*
+   plugging in (§"Xiaomi's OTG switch" below).
 1. Keyboard **off**. Plug the USB-B end into **USB TO HOST** on the rear panel
    of the PSR-E383.
 2. Plug the USB-C end into the S24.
@@ -84,14 +91,41 @@ and a cable wired the other way round would put the phone in device mode.
 4. Android may show a notification or dialog about the USB device. If it offers
    a choice of what to use the connection for, pick MIDI. With the phone as
    host this usually doesn't appear, but it depends on the build.
-5. On the S24, open **Chrome** (not Firefox; §5) at the probe URL (§3).
+5. On the phone, open **Chrome** (not Firefox; §5) at the probe URL (§3).
 6. Tap **Connect MIDI** and allow the MIDI permission prompt.
 7. Optional: tap **Look on USB** and pick the Yamaha in Chrome's chooser. This is
    a second, independent check (§3).
 
+### Xiaomi's OTG switch (Poco F3)
+
+Xiaomi phones don't act as a USB host until **OTG** is switched on:
+Settings → Additional settings → OTG. This comes from Xiaomi's support
+article, as quoted in search results; the page itself refused a direct fetch,
+so treat it as reported rather than confirmed. Two behaviours matter for
+practice sessions:
+
+- The switch is **off by default** and is **greyed out while any cable is
+  plugged in**, charging cables included. Turn it on first, then connect.
+- Xiaomi's support article says it **turns itself off after about 10 minutes
+  without data transfer**. Whether the Yamaha's continuous Active Sensing
+  counts as "data transfer" is unknown until tested. If it doesn't, the
+  keyboard would vanish in the middle of a practice session.
+
+Users on the xiaomi.eu forum also report OTG not working at all on some
+HyperOS / Android 13 builds. The probe records the Android version, so the
+report shows which build the Poco F3 is on.
+
+The probe watches for this. **Connection → Drops** counts every time a
+connected keyboard disappeared, and the report keeps a timestamped history.
+A drop you didn't cause, especially around the 10-minute mark, is the OTG
+switch.
+
+Test for it on the Poco F3: connect, run the tests, then **leave the keyboard
+idle for 15 minutes** with the page open, press a key, and check Drops.
+
 ### A practical issue: charging
 
-The S24 has one USB-C port, and the cable takes it. For the length of a
+Both phones have one USB-C port, and the cable takes it. For the length of a
 practice session **the phone runs on battery and can't charge**. For the probe
 that's fine. For daily practice it will matter, and the fix is hardware: a
 USB-C hub with Power Delivery pass-through plus a standard USB-A-to-B cable.
@@ -118,9 +152,19 @@ The fixes are settings, and the probe shows the right one for your answer:
 
 | Where | Setting | Effect |
 |---|---|---|
-| **Keyboard (recommended if unwanted)** | FUNCTION → **045 "[USB TO HOST] Audio Volume" → 0** | The keyboard ignores the phone's audio. MIDI is unaffected. The value survives power-off (the manual marks it as backed up). Reversible at any time |
+| **KeyPath itself** | **"KeyPath sound through the keyboard"** in the probe: toggle + volume slider, **default 0** | Everything KeyPath plays while the real keyboard is connected goes through this one gain stage, so the app never sends sound to the Yamaha until someone turns it up. Remembered per phone |
+| **Keyboard (for the phone's other sounds)** | FUNCTION → **045 "[USB TO HOST] Audio Volume" → 0** | The keyboard ignores the phone's audio. MIDI is unaffected. The value survives power-off (the manual marks it as backed up). Reversible at any time |
 | Phone | Settings → Developer options → **Disable USB audio routing** | Android stops routing audio to USB devices. Affects **every** USB audio device, USB-C earphones included |
 | Keyboard | FUNCTION → **046 "Audio Loop Back" → Off** | Only matters if the app ever records: stops the phone's audio being sent back to it mixed with the piano |
+
+**Why the app can't set Function 045 itself.** The PSR-E383's MIDI Data
+Format (Data List, p. 33) documents exactly five system-exclusive messages it
+accepts: GM System On, Master Volume, Master Tuning, Reverb type and Chorus
+type. None of them reaches 045. Master Volume changes the keyboard's own
+piano sound, which is the wrong knob. So no app, web or native, can switch it
+over USB with documented messages. The in-app level above controls the other
+end of the cable instead. That covers KeyPath's own sound, and 045 remains the
+setting for everything else the phone plays.
 
 It might be worth keeping. A metronome or backing track through the
 instrument's speakers sounds better than through a phone, and it keeps Nora's
@@ -163,7 +207,11 @@ three ways that do work:
    `0 / 0 / 0`, and **On / Off** should match once your hands are off the keys.
 7. Unplug and replug the cable with the page open. The input should disappear
    and come back without a reload (the hot-plug path).
-8. **Copy report** (or Download) and send it back.
+8. **Share to Claude…** (Android's share sheet; pick Claude), or **Copy
+   report** / **Download**. The report is plain JSON text. Where it lands
+   depends on the Claude app, which may open a new conversation. If so, paste
+   it into the KeyPath session instead, or just tell it to read the results.
+9. **Poco F3:** the 15-minute idle test from §2.
 
 ### How to read the result
 
@@ -224,6 +272,13 @@ and Reference Manual. These are the facts that shaped the code:
 ---
 
 ## 5. Android, browser and API limitations
+
+Everything here applies to both phones. Both run Chrome on Android, and the
+MIDI path through `android.media.midi` is the same. The differences are the
+vendor layers on top: Xiaomi's OTG switch (§2) and each vendor's battery
+management. That's one more reason to prefer a web app: one codebase covers
+both vendors, and a vendor quirk gets fixed with a setting, not a separate
+build.
 
 - **Chrome for Android supports Web MIDI** (since Chrome 43, per MDN's
   compatibility data). Underneath, Chrome uses Android's own MIDI service,
@@ -420,15 +475,20 @@ it:
 
 | Model | How it works | For | Against |
 |---|---|---|---|
-| **A. One family account, several profiles (recommended)** | Gabriel signs in once on the S24. The app offers "Nora" / "Gabriel" at launch (a Netflix-style picker, optional PIN on Gabriel's). Songs belong to the family library; **progress, settings and chosen learning path belong to a profile** | One login on a shared device. No account, email or password for a 10-year-old. The library (songs you bought) is owned once and shared. Nora's data stays under a parent-held account | Profiles aren't a security boundary against each other on one device. A PIN is a lock on the door, not a wall. Enough for a family |
+| **A. One family account, several profiles (recommended)** | Gabriel signs the family account in on **both** phones, once each. Each phone is **pinned to its profile**: Nora's Poco F3 opens straight into Nora, the S24 into Gabriel. Switching needs a PIN. Songs belong to the family library; **progress, settings and chosen learning path belong to a profile** | Nora never types a password. No child account holding her personal data. The library (songs you bought) is owned once and shared. You can see her progress from your phone | Profiles aren't a security boundary against each other. The family session on her phone could reach your profile if the PIN is guessed. A PIN is a lock on the door, not a wall. Enough for a family |
 | B. Separate accounts | Nora and Gabriel each sign in with their own email | Hard separation. Nora could later use her own device | Two logins on one phone. A child account holding personal data. Shared songs need an explicit sharing model |
 | C. A then B | Start with A. Promote a profile to its own account if Nora ever needs one | No decision needed now | Promotion needs a small migration, which is easy if planned for |
 
-Recommended: **A, designed so C is possible.** The data model:
+Recommended: **A, designed so C is possible.** Nora having her own phone
+makes A work better, not worse: the profile picker becomes a one-time setting
+per phone instead of a choice at every launch. B only earns its extra cost if
+she'll ever use KeyPath without you managing the account, and C covers that
+day. The data model:
 
 ```
 accounts   (id = auth.users.id)                       ← the login, held by Gabriel
 profiles   (id, account_id, name, avatar, pin_hash?)   ← Nora, Gabriel
+devices    (id, account_id, profile_id, label)         ← "Nora's Poco F3" → Nora
 songs      (id, account_id, class, storage_path, …)    ← family library; class 1/2/3 from above
 visibility (song_id, profile_id)                       ← optional: hide a song from a profile
 progress   (profile_id, song_id, attempts, best, …)    ← per person

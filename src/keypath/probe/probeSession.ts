@@ -13,6 +13,12 @@ export interface ActiveTest {
   result: TestResult
 }
 
+/** One change in the set of connected MIDI inputs — a plug, an unplug, or the OS dropping the port. */
+export interface ConnectionChange {
+  time: number
+  inputs: string[]
+}
+
 export interface ProbeSnapshot {
   connection: ConnectionSnapshot
   sourceKind: MidiConnection['kind']
@@ -26,6 +32,12 @@ export interface ProbeSnapshot {
   /** Platform timestamp → the next animation frame: roughly when the key can appear on screen. */
   toFrame: number[]
   test: ActiveTest | null
+  /**
+   * Every change in which inputs are connected, oldest first. A drop nobody
+   * caused is the thing to look for: Xiaomi phones switch OTG off by
+   * themselves, and it would show up here as an input vanishing mid-session.
+   */
+  connectionHistory: ConnectionChange[]
   /** Last finished result per test, kept for the report. */
   results: Partial<Record<TestKind, TestResult>>
 }
@@ -114,6 +126,7 @@ export class ProbeSession {
       dispatchLag: [],
       toFrame: [],
       test: null,
+      connectionHistory: this.state?.connectionHistory ?? [],
       results: this.state?.results ?? {},
     }
   }
@@ -121,7 +134,17 @@ export class ProbeSession {
   private attach(): void {
     this.unsubs = [
       this.connection.onChange((connection) => {
-        this.state = { ...this.state, connection }
+        const names = connection.inputs.filter((d) => d.state === 'connected').map((d) => d.name || d.id)
+        const history = this.state.connectionHistory
+        const last = history.at(-1)
+        const changed = !last || last.inputs.join('\n') !== names.join('\n')
+        // Only record once access exists; "no inputs" before the prompt isn't an unplug.
+        const record = changed && connection.access === 'granted'
+        this.state = {
+          ...this.state,
+          connection,
+          connectionHistory: record ? [...history, { time: this.now(), inputs: names }].slice(-100) : history,
+        }
         this.publish()
       }),
       this.connection.onEvent((e) => this.receive(e)),
