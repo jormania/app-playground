@@ -830,7 +830,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom done, five families to go
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom and the Anthropic SDK done, four families to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -867,11 +867,64 @@ reachable from this environment, so the release notes this item asks for could n
 be read. Said plainly rather than paraphrased from memory: what is verified above
 is the engines change and the suite.
 
-Remaining, in the order I would take them: `@anthropic-ai/sdk` 0.110 → 0.127
-(one consumer), `@types/node` 22 → 26 (typecheck-only blast radius),
-`eslint` 9 → 10 with `@eslint/js`, `lucide-react` 0.460 → **1.47** (a 1.0 major
-across every icon — expect renames, and P-001's remaining slices depend on it),
-and the React 19 types last, as this item already says.
+**`@anthropic-ai/sdk` done 2026-09-23 — 0.110.0 → 0.128.0**, eighteen minors in
+one step. Suite 4646, typecheck clean, build green, `eslint` clean.
+
+**What changed, read from the package's own `CHANGELOG.md`** rather than
+paraphrased — unlike jsdom above, this one ships a full changelog, so the release
+notes this item asks for were actually available:
+
+- **Exactly one breaking change in the range, and it misses this repo entirely.**
+  0.122.0 moved the beta Files and Skills namespaces (`client.beta.files`,
+  `client.beta.skills`) onto GA shapes: renamed types, `display_name` for
+  `display_title`, cursor pagination, `beta.skills.delete()` now cascading.
+  `api/generate-law-of-the-day.js` never touches `client.beta` — it calls
+  `client.messages.create` and nothing else.
+- **Three changes that do land in this handler's path**, all fixes: 0.117.0
+  honours a per-request timeout in the non-streaming long-request check (this
+  call is non-streaming), and 0.126.0 reworked retries — invalid or
+  out-of-range `Retry-After` values are ignored for the default backoff,
+  `maxRetries` is validated, and an aborted request stops waiting immediately.
+- 0.126.0 also added `"sideEffects": false` and pure-class annotations. Of no
+  consequence here: this dependency is only ever imported by a serverless
+  function, never by anything Vite bundles into `dist/`.
+- 0.122.0 documents **TypeScript 5.0 as the minimum**. Irrelevant in passing —
+  the handler is plain JS and not in any of the seven typechecked paths — but
+  worth knowing before a strict-TS app ever adopts the SDK.
+
+**The suite did not prove this bump, and now it does.**
+`api/generate-law-of-the-day.js` was the repo's only `@anthropic-ai/sdk`
+consumer *and* the only `api/` handler with no test whatsoever, so "green suite"
+said nothing at all about the one file the bump could break — the first signal
+would have been a 502 from a Vercel cron at 03:00 UTC.
+`api/_tests/generate-law-of-the-day.test.js` is new, 11 tests, and it runs the
+**real** SDK against a stubbed `globalThis.fetch`: the endpoint, `x-api-key` and
+`anthropic-version`, the `thinking: {type:'adaptive'}` and `json_schema`
+`output_config` body, the blob path and its `allowOverwrite`, the leak-check
+retry as a real three-message turn, the give-up-after-two path, and a 400
+becoming a 502 rather than a throw.
+
+**That test was run against 0.110.0 as well as 0.128.0** — `npm install
+@anthropic-ai/sdk@0.110.0 --no-save`, same 11 passing, then restored. Identical
+wire call on both versions is what actually makes this behaviour-preserving,
+rather than the absence of a breaking-change heading.
+
+Two notes for whoever writes the next test against an SDK call:
+
+- **A `Response` body can be read once.** `mockResolvedValue(messageResponse(…))`
+  hands the same object to both attempts of the retry loop and the second fails
+  with *Body has already been read*, which reads like a handler bug. Use
+  `mockImplementation(async () => …)` so each call builds a fresh one.
+- **Freeze the clock.** `getGeneratorLawId()` defaults to the real `new Date()`,
+  so which of the 48 laws is generated — and therefore which words count as a
+  leak — walks with the calendar. That is exactly the shape R-013 and R-018
+  swept for, and it would have been a fresh instance of it.
+
+Remaining, in the order I would take them: `@types/node` 22 → 26
+(typecheck-only blast radius), `eslint` 9 → 10 with `@eslint/js`,
+`lucide-react` 0.460 → **1.47** (a 1.0 major across every icon — expect renames,
+and P-001's remaining slices depend on it), and the React 19 types last, as this
+item already says.
 ## R-009 — Kettlebell Training has no tests at all · `modernise` · `open` — first tests landed
 
 **Impact:** none visible. Makes the one untested app safe to change later.
@@ -1416,6 +1469,45 @@ probably.
 
 Sequence it after R-016's lesson is settled, and do **one family per run** —
 same reason R-008 does.
+
+## R-028 — Nine of the twelve serverless functions have no test at all · `modernise` · `open`
+
+**Impact:** none visible. But every one of these is a path whose first failure
+signal today is a user seeing an error, or — for the two cron targets — nobody
+seeing anything.
+
+Found while doing R-008's Anthropic bump, 2026-09-23. Measured by matching each
+`api/<name>.js` against an import of it under `api/_tests/`:
+
+| Handler | Test |
+|---|---|
+| `marquee-scan.js` | yes |
+| `wanderlist-remind.js` | yes |
+| `generate-law-of-the-day.js` | yes — new, R-008 |
+| `clickdeck-hltb.js` | — |
+| `clickdeck-pricing.js` | — |
+| `clickdeck-studio-search.js` | — |
+| `law-of-the-day-content.js` | — |
+| `notion-photo-proxy.js` | — |
+| `notion-upload.js` | — |
+| `notion.js` | — |
+| `places.js` | — |
+| `steam-search.js` | — |
+
+**`api/notion.js` is the one to take first.** It is the relay five apps reach
+through `src/shared/notionClient.ts`, so a single handler carries Loom, Journal,
+Wanderlist, Marquee and Radar-B. R-003 gave the *client* half of that call its
+first coverage; the server half still has none.
+
+R-008's new test is the worked pattern and is cheap to copy: stub
+`globalThis.fetch`, mock the one npm side-effect, drive the handler through the
+same `makeRes()` stand-in `wanderlist-remind.test.js` uses. What is worth pinning
+is the part a refactor could silently break — the `originAllowed` / `rateLimited`
+gate, the method check, and what an upstream error turns into.
+
+**One handler per run**, and **tests go in `api/_tests/`, never beside the
+handler** — every `api/*.js` is a Vercel function and the repo is at the cap of
+twelve.
 
 ## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
 
