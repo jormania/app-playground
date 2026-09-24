@@ -98,4 +98,12 @@ describe('router', () => {
     expect(hrefOf({ name: 'door', door: 'songs' })).toBe('#/door/songs')
     expect(hrefOf({ name: 'diagnostics' })).toBe('#/diagnostics')
   })
+
+  it('round-trips the Songs screens, including song ids with a colon', () => {
+    expect(parseRoute('#/songs')).toEqual({ name: 'door', door: 'songs' })
+    expect(parseRoute(hrefOf({ name: 'songImport' }))).toEqual({ name: 'songImport' })
+    expect(parseRoute(hrefOf({ name: 'play', songId: 'import:abc' }))).toEqual({ name: 'play', songId: 'import:abc' })
+    expect(parseRoute('#/play/')).toEqual({ name: 'door', door: 'songs' })
+    expect(parseRoute(hrefOf({ name: 'connect' }))).toEqual({ name: 'connect' })
+  })
 })

@@ -35,6 +35,8 @@ export const K = {
   profiles: `${PREFIX}profiles`,
   current: `${PREFIX}current`,
   meta: `${PREFIX}meta`,
+  /** The keyboard this phone last connected to, for Home's first-run card. */
+  keyboard: `${PREFIX}keyboard`,
   settings: (profileId: string) => `${PREFIX}settings:${profileId}`,
   log: (profileId: string) => `${PREFIX}log:${profileId}`,
 }

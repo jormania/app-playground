@@ -12,6 +12,15 @@ export type LogEvent =
   | { type: 'door_opened'; door: Door }
   | { type: 'setting_changed'; key: string; from: unknown; to: unknown }
   | { type: 'profile_created' }
+  | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string }
+  | { type: 'song_finished'; songId: string; practice: string; stars: number; score: number; hit: number; total: number; wrong: number }
+  | { type: 'song_abandoned'; songId: string; practice: string; hit: number; total: number }
+  | { type: 'song_added' }
+  | { type: 'suggestion'; setting: string; to: string; accepted: boolean; songId: string }
+  /** The connection wizard: finished, or left at a step (where people get stuck). */
+  | { type: 'keyboard_setup'; outcome: 'done' | 'left'; step: string; ms: number }
+  /** The keyboard vanished mid-song; on the Poco F3, suspect Xiaomi's OTG timeout (KEYPATH.md §2). */
+  | { type: 'keyboard_lost'; songId: string }
 
 export type Door = 'songs' | 'journey' | 'challenges' | 'studio'
 

@@ -166,6 +166,11 @@ and a cable wired the other way round would put the phone in device mode.
 7. Optional: tap **Look on USB** and pick the Yamaha in Chrome's chooser. This is
    a second, independent check (§3).
 
+The tutor walks these same steps for you: **Home → Connect your keyboard**
+(or **Connect** on the keyboard status line) checks each one before the next
+and shows what to check when the keyboard doesn't appear
+(`KEYPATH_TUTOR.md` §9, step 3).
+
 ### Xiaomi's OTG switch (Poco F3)
 
 Xiaomi phones don't act as a USB host until **OTG** is switched on:
