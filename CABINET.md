@@ -105,10 +105,56 @@ normally — only the hub is affected. The Cabinet's own PWA still installs on a
 device without the stale record (a phone reset, a fresh profile), so the
 manifest is kept fully valid rather than abandoned.
 
-If someone ever wants to chase it again, the untried lead is the OS side:
-`adb shell pm list packages | grep -i webapk`, then `dumpsys package <pkg>` to
-see which URL each claims. That is the only route left that could turn the
-inference above into a fact.
+### Update (2026-09-24): found it — a Radar-B WebAPK scoped to the whole origin
+
+The same symptom then spread past the Cabinet: every app answered "already
+installed", and KeyPath — no manifest, never installed — opened standalone.
+`chrome://webapks` on the phone settled it. Every sub-app's WebAPK is scoped to
+its own page except one:
+
+```
+Radar-B
+Scope: https://coneofcold.vercel.app/
+Manifest URL:            (empty)
+Manifest Id: https://coneofcold.vercel.app/radar-b-react.html
+Display Mode: minimal-ui
+```
+
+An empty manifest URL and `minimal-ui` are Chrome's defaults for a page it
+installs **without reading a manifest**, and the default scope is the start
+URL's directory, which here is the origin root. So that one install registered
+Android intent filters for every URL on `coneofcold.vercel.app`. That explains
+everything above: it is OS-level (Edge sees it), bound to the production
+origin (a preview origin was clean), and no change to any manifest could touch
+it — with no manifest URL on record, Chrome's update check has nothing to
+fetch, and it had run that same morning without narrowing anything.
+
+`public/radar-b.webmanifest` has been valid and narrowly scoped since the app
+was created (2026-08-21), so why Chrome skipped it at install time is not
+known — and it is not a one-off: **reinstalling reproduced it.** The second
+install ("Radar-Bi", a new package) came back with the same bare-origin scope,
+empty manifest URL and `minimal-ui`, and the Cabinet's launches flashed its
+logo again (a Cabinet tap is resolved by URL, so the root-scoped app catches it
+before Chrome hands it on; a home-screen icon launches its own package and is
+unaffected). The repo cannot reach the record.
+
+**What to do on the phone until the cause is known:** uninstall Radar-B
+(Settings → Apps → Radar-B → Uninstall; removing the home-screen icon is not
+enough), use it in a browser tab, and **don't reinstall it**. Next diagnostic:
+remote-inspect the Radar-B tab from a desktop (`chrome://inspect`) and read
+Application → Manifest → Installability, which states why Chrome won't install
+from the manifest.
+
+The same can happen to any page without a manifest, installed from the browser
+menu — and it did: a KeyPath install then claimed the whole origin the same way,
+and every Cabinet launch flashed the KeyPath logo instead. KeyPath has since
+shipped as a proper PWA (#98) with a manifest scoped to its own page. The front
+page and the guides still have none.
+
+`scripts/pwa-scope.test.js` fails the suite on any manifest without an id or
+with a root scope, and on any unscoped service-worker registration. It cannot
+catch this failure — the manifest was fine — but it keeps the repo from
+causing one.
 
 ## Launching into the installed app, not a browser tab (Android)
 

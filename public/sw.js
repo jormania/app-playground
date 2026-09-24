@@ -3,6 +3,9 @@
 // the React rewrite (/touch-grass-react.html) and the older static apps.
 importScripts('/shared-notify-idb.js');
 const CACHE = 'tg-cache-v6';
+// Cache Storage is origin-wide and every app here shares one origin: activate only
+// ever deletes this worker's own older caches, never another app's.
+const CACHE_PREFIX = 'tg-cache-';
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -11,7 +14,7 @@ self.addEventListener('install', function () {
 self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
-      return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+      return Promise.all(keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
   );
 });

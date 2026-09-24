@@ -3,6 +3,9 @@
 // Same shape as Law of the Day's. Songs, takes and progress live in IndexedDB,
 // never in this cache, so clearing it loses nothing but speed.
 const CACHE = 'keypath-cache-v1';
+// Cache Storage is origin-wide and every app here shares one origin: activate only
+// ever deletes this worker's own older caches, never another app's.
+const CACHE_PREFIX = 'keypath-cache-';
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -12,7 +15,7 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(
-        keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })
+        keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); })
       );
     }).then(function () { return self.clients.claim(); })
   );
