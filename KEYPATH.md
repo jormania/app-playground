@@ -51,18 +51,21 @@ code.
 Other things the run established:
 
 - **Channel 1** for everything played on the keys. No other channel appeared.
-- **Range:** the top key is C7 (MIDI 96), confirming the 36–96 assumption at
-  the top. The lowest key pressed was D2 (38); C2 (36) is assumed.
+- **Range: C2–C7, MIDI 36–96, confirmed.** The leftmost key reads C2 (36) and
+  the rightmost C7 (96), with Transpose at 0.
 - **Repeated notes:** four C4 presses, 455–794 ms apart, each Note On matched
   by its Note Off, in order.
 - **Glissando:** 53 notes across 35 keys, fastest gap 38 ms, overlapping keys
   handled, nothing stuck.
 - **Connection stable:** no drops in about three minutes. An unexplained
   single drop appeared once in an earlier page load and didn't recur.
-- **MIDI Clock runs throughout:** about 31 F8 bytes per second in both runs
-  (≈ 77 BPM at 24 per beat), alongside Active Sensing about every 300 ms. The
-  probe ignores both. Whether a Style or the metronome was running is
-  unconfirmed. Either way, a future app could follow the keyboard's own tempo.
+- **MIDI Clock runs continuously, even with nothing playing.** Three runs,
+  the last one about 2.7 minutes with only two notes played: a steady 31 F8
+  bytes per second (≈ 78 BPM at 24 per beat), and no Start (FA) or Stop (FC)
+  anywhere. Active Sensing arrives about every 300 ms. The probe ignores both.
+  **Not yet checked:** whether the clock rate follows the keyboard's tempo
+  setting (change [TEMPO/TAP] and watch the F8 count). If it does, the app
+  can read the tempo Nora sets on the instrument.
 - **The phone's audio goes to the keyboard.** The test tone was heard from
   the Yamaha's speakers, so Android does route media to the PSR-E383's USB
   audio. Chrome reports **24 ms output latency** (+ 4 ms base). A metronome
