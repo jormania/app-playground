@@ -188,12 +188,11 @@ Each step ships on its own and is usable without the next.
    song model, MIDI-file reader, part picker, range check, octave check,
    judge (wait / running, pause-resume), live cues and the end-of-piece
    report.
-2. **App shell**: profiles, per-profile settings, English/Romanian strings,
-   IndexedDB storage with persist + backup, engagement log, the four-door home.
-   The probe becomes a **Diagnostics** screen, reached from **Settings**
-   (not the home screen): the connection check, event monitor, tests, tempo
-   readout, phone-audio check and report, for whenever something needs
-   looking at.
+2. **App shell** — **built** (`src/keypath/app/`, see below): players,
+   per-player settings, English/Romanian, local storage with persistence and
+   backup, the engagement log, the four-door home. The probe is **Settings →
+   Diagnostics**, unchanged: the connection check, event monitor, tests, tempo
+   readout, phone-audio check and report.
 3. **A. Songs** with the starter pack: falling notes, hands, the three
    wrong-note modes, the end report.
 4. **B. Journey**: the six steps with test-out.
@@ -228,12 +227,44 @@ src/keypath/engine/
 It produces codes, never text: wording in English or Romanian belongs to the
 app shell (step 2).
 
+### Step 2 as built
+
+```
+src/keypath/app/
+  Shell.tsx          who's playing → home → door / settings / diagnostics;
+                     sessions start and end with the screen (engagement log)
+  router.ts          screens in the URL hash, so the phone's back button works
+  store.ts           IndexedDB (idb-keyval) behind an interface; asks Chrome
+                     to persist it; everything under keypath:v1:
+  profiles.ts        players (name + a face), per-player settings merged over
+                     defaults, the player this phone opens into
+  log.ts             the engagement log: session start/end, door opened,
+                     setting changed, profile created
+  backup.ts          save / restore one JSON file; the weekly nudge counts
+                     from the first player, never nags on day one
+  i18n/              English (default) and Romanian; note names C D E /
+                     Do Re Mi / both; a test keeps the two catalogues in step
+  screens/           WhoIsPlaying, Home (four doors), DoorScreen (placeholder
+                     until each door's step), SettingsScreen, DiagnosticsScreen
+```
+
+The doors open to "coming soon", and opening one is already logged. The
+probe's own screens stay in English: Diagnostics is a technical tool.
+
 ---
 
 ## 10. Roadmap: deferred on purpose
 
 Left out of the steps above to keep each one small. Nothing here is
 forgotten; each item says when it comes back.
+
+**App shell refinements** (deferred from step 2):
+- A **PIN** on a player (the family-account design in `KEYPATH.md` §7). For
+  now each phone simply opens into its last player.
+- **Edit or remove a player**. For now: create and switch.
+- **Share progress** as a report to a parent's phone, alongside the backup
+  file.
+- Translating the **Diagnostics** screen, which stays in English for now.
 
 **App distribution** (when the tutor is stable enough to hand to Nora):
 - Listing on the front page (`index.html`) and in The Cabinet, via

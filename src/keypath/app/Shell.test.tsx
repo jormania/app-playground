@@ -1,0 +1,91 @@
+// @vitest-environment happy-dom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { Shell } from './Shell'
+import { EngagementLog } from './log'
+import { ProfileRepo } from './profiles'
+import { memoryStore, type KeyValueStore } from './store'
+
+vi.mock('../App', () => ({ default: () => <div>probe screen</div> }))
+
+beforeEach(() => {
+  history.replaceState(null, '', '#/')
+})
+afterEach(cleanup)
+
+async function start(store: KeyValueStore = memoryStore()) {
+  render(<Shell store={store} />)
+  return store
+}
+
+async function createPlayer(name: string) {
+  fireEvent.change(await screen.findByLabelText(/^Name/), { target: { value: name } })
+  fireEvent.click(screen.getByRole('radio', { name: '🦊' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+  await screen.findByText(`Hi, ${name}!`)
+}
+
+describe('KeyPath shell', () => {
+  it('asks who’s playing on a new phone, and opens into that player next time', async () => {
+    const store = await start()
+    expect(await screen.findByText('Who’s playing?')).toBeTruthy()
+    await createPlayer('Nora')
+    cleanup()
+    history.replaceState(null, '', '#/')
+    await start(store)
+    expect(await screen.findByText('Hi, Nora!')).toBeTruthy()
+  })
+
+  it('shows four doors, and logs which one she opens', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    for (const door of ['Songs', 'Journey', 'Challenges', 'Studio']) expect(screen.getByRole('button', { name: new RegExp(door) })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Studio/ }))
+    expect(await screen.findByText('Coming soon')).toBeTruthy()
+    const [p] = await new ProfileRepo(store).list()
+    const events = await new EngagementLog(store).read(p.id)
+    expect(events.map((e) => e.type)).toEqual(['profile_created', 'session_start', 'door_opened'])
+    expect(events[2]).toMatchObject({ door: 'studio' })
+  })
+
+  it('switches the whole app to Romanian from settings, for that player only', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('radio', { name: 'Română' }))
+    expect(await screen.findByText('Setări pentru Nora')).toBeTruthy()
+    const [p] = await new ProfileRepo(store).list()
+    expect((await new ProfileRepo(store).settings(p.id)).language).toBe('ro')
+    expect((await new EngagementLog(store).read(p.id)).at(-1)).toMatchObject({ type: 'setting_changed', key: 'language', from: 'en', to: 'ro' })
+  })
+
+  it('reaches Diagnostics from settings, and switches player', async () => {
+    await start()
+    await createPlayer('Gabriel')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Diagnostics' }))
+    expect(await screen.findByText('probe screen')).toBeTruthy()
+    await act(async () => {
+      history.back()
+      await new Promise((r) => setTimeout(r, 50))
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch player' }))
+    expect(await screen.findByText('Who’s playing?')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Gabriel/ })).toBeTruthy()
+  })
+
+  it('ends a session when KeyPath leaves the screen, and starts one on return', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    const setVisibility = (v: string) => {
+      Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+    setVisibility('hidden')
+    setVisibility('visible')
+    const [p] = await new ProfileRepo(store).list()
+    await waitFor(async () => {
+      expect((await new EngagementLog(store).read(p.id)).map((e) => e.type)).toEqual(['profile_created', 'session_start', 'session_end', 'session_start'])
+    })
+  })
+})
