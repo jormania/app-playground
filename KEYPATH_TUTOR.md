@@ -184,9 +184,10 @@ listing (added when stable, per `CABINET.md`).
 
 Each step ships on its own and is usable without the next.
 
-1. **Engine core, UI-free**: song model, MIDI-file import (tracks, part
-   picker, range check), judge, feedback policy, tested like
-   `probe/diagnostics.ts`.
+1. **Engine core, UI-free** — **built** (`src/keypath/engine/`, see below):
+   song model, MIDI-file reader, part picker, range check, octave check,
+   judge (wait / running, pause-resume), live cues and the end-of-piece
+   report.
 2. **App shell**: profiles, per-profile settings, English/Romanian strings,
    IndexedDB storage with persist + backup, engagement log, the four-door home.
    The probe becomes a **Diagnostics** screen inside it.
@@ -198,3 +199,59 @@ Each step ships on its own and is usable without the next.
 6. **C. Challenges**: note race, rhythm echo.
 7. **Poco F3 check** (`KEYPATH.md` §2) before Nora starts, then two to three
    weeks of use, read the engagement log, and decide what to deepen.
+
+### Step 1 as built
+
+```
+src/keypath/engine/
+  smf.ts        Standard MIDI File reader (formats 0/1, running status, tempo
+                map, time signature, track names). No dependency.
+  parts.ts      Track+channel parts, a suggested right/left hand (never drums),
+                and a Song built from the chosen parts.
+  song.ts       The Song model; notes grouped into steps (chords).
+  range.ts      Fits the 61 keys? Else the smallest whole-octave move.
+  octave.ts     The "press middle C" check → shift for incoming notes.
+  settings.ts   Wrong-note mode, timing, report depth, stars; confidence-first
+                defaults; timing windows; minimum velocity.
+  judge.ts      Wait mode (song holds on each step) and running mode (each
+                note judged against its moment; early / on time / late;
+                missed). Pause/resume for a dropped keyboard. Listens to the
+                player's channels only, via the MIDI layer.
+  feedback.ts   Live cues per setting, and the report: stars (finishing
+                always earns one), highlights first, bars to work on, and at
+                most one suggested step up — never applied automatically.
+```
+
+It produces codes, never text: wording in English or Romanian belongs to the
+app shell (step 2).
+
+---
+
+## 10. Roadmap: deferred on purpose
+
+Left out of the steps above to keep each one small. Nothing here is
+forgotten; each item says when it comes back.
+
+**App distribution** (when the tutor is stable enough to hand to Nora):
+- Listing on the front page (`index.html`) and in The Cabinet, via
+  `src/apps-registry.js` (`CABINET.md` checklist).
+- PWA: web manifest, icons, a scoped service worker, and the `watchInstalled`
+  install flag (`CLAUDE.md`, "Service workers & dev").
+
+**Engine refinements** (after Nora has used the taster; tune on her playing):
+- **Note length.** Only note *starts* are judged. Holding a note for its full
+  value isn't scored yet.
+- **Chord togetherness.** In running mode each chord note is judged against
+  its own window. The probe's 60–80 ms "together" window isn't applied as a
+  separate check yet.
+- **Dynamics.** Velocity is only used to ignore grazed keys. Loud/soft isn't
+  judged.
+- **Following the keyboard's tempo** (MIDI Clock) instead of the app's own.
+- **Hand from the Split channel**: using channel 3 as "left hand" when Split
+  is on.
+- **Import simplification**: "melody only" for arrangements too hard as
+  written (the range check and whole-octave transposition exist now).
+- **MusicXML import** (with notation rendering, a late Journey skill).
+
+**Content**: the public-domain starter pack arrives with step 3 (Songs).
+
