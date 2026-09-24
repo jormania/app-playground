@@ -15,6 +15,8 @@ export interface KeyPathApp {
   /** Change one setting for the current player; logged. */
   updateSetting: <K extends keyof ProfileSettings>(key: K, value: ProfileSettings[K]) => Promise<void>
   choose: (profile: Profile | null) => Promise<void>
+  /** Delete a player and all their data on this phone (for testing and starting over). */
+  removeProfile: (profile: Profile) => Promise<void>
   /** Reload profiles and settings after a restore. */
   reload: () => Promise<void>
 }

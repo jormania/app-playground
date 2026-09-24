@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, type JudgeSettings } from '../engine'
-import { K, type KeyValueStore } from './store'
+import { K, PREFIX, type KeyValueStore } from './store'
 
 export type Language = 'en' | 'ro'
 /** 'auto' follows the language: C D E in English, Do Re Mi in Romanian. */
@@ -61,6 +61,21 @@ export class ProfileRepo {
   async settings(profileId: string): Promise<ProfileSettings> {
     // Merge over the defaults so a setting added in a later version has a value.
     return { ...DEFAULT_PROFILE_SETTINGS, ...((await this.store.get<Partial<ProfileSettings>>(K.settings(profileId))) ?? {}) }
+  }
+
+  /**
+   * Delete a player and everything that is theirs on this phone: settings,
+   * the engagement log, Journey progress, Studio takes — every key that ends
+   * in their id, so data added in later versions goes too. Songs added to
+   * the phone are the family's and stay.
+   */
+  async remove(profileId: string): Promise<void> {
+    await this.store.set(
+      K.profiles,
+      (await this.list()).filter((p) => p.id !== profileId),
+    )
+    if ((await this.store.get<string>(K.current)) === profileId) await this.store.del(K.current)
+    for (const key of await this.store.keys()) if (key.startsWith(PREFIX) && key.endsWith(`:${profileId}`)) await this.store.del(key)
   }
 
   async saveSettings(profileId: string, settings: ProfileSettings): Promise<void> {

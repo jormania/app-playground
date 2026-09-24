@@ -2,10 +2,33 @@ import { describe, expect, it } from 'vitest'
 import { backupDue, BackupError, exportBackup, markBackedUp, restoreBackup } from './backup'
 import { EngagementLog } from './log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo } from './profiles'
-import { K, memoryStore } from './store'
+import { K, PREFIX, memoryStore } from './store'
 import { hrefOf, parseRoute } from './router'
 
 describe('ProfileRepo', () => {
+  it('deletes a player and everything that is theirs, and nothing that isn’t', async () => {
+    const store = memoryStore()
+    const repo = new ProfileRepo(store)
+    const nora = await repo.create('Nora', '🐺')
+    const gabriel = await repo.create('Gabriel', '🦉')
+    await repo.setCurrent(nora.id)
+    for (const p of [nora, gabriel]) {
+      await store.set(K.log(p.id), [{ type: 'session_start' }])
+      await store.set(K.journey(p.id), { middleC: { at: '', how: 'check' } })
+      await store.set(K.studio(p.id), [])
+    }
+    await store.set(`${PREFIX}songs`, [{ id: 'import:x' }])
+    await store.set(K.keyboard, { name: 'Digital Keyboard' })
+
+    await repo.remove(nora.id)
+
+    expect((await repo.list()).map((p) => p.name)).toEqual(['Gabriel'])
+    expect(await repo.current()).toBeNull()
+    const left = await store.keys()
+    expect(left.filter((k) => k.includes(nora.id))).toEqual([])
+    for (const k of [K.settings(gabriel.id), K.log(gabriel.id), K.journey(gabriel.id), K.studio(gabriel.id), `${PREFIX}songs`, K.keyboard]) expect(left).toContain(k)
+  })
+
   it('creates players with confidence-first, English defaults', async () => {
     const repo = new ProfileRepo(memoryStore())
     const p = await repo.create('  Nora  ', '🐺')

@@ -54,6 +54,11 @@ export class EngagementLog {
     return this.queue
   }
 
+  /** Resolves once every append so far has been written. */
+  settled(): Promise<void> {
+    return this.queue
+  }
+
   async read(profileId: string): Promise<LogRecord[]> {
     await this.queue
     return (await this.store.get<LogRecord[]>(K.log(profileId))) ?? []

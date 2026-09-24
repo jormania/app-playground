@@ -441,7 +441,10 @@ forgotten; each item says when it comes back.
 **App shell refinements** (deferred from step 2):
 - A **PIN** on a player (the family-account design in `KEYPATH.md` §7). For
   now each phone simply opens into its last player.
-- **Edit or remove a player**. For now: create and switch.
+- **Edit a player** (rename, change face). *Remove* is done: Settings →
+  **Delete this player**, confirmed in place. It deletes every key ending in
+  the player's id (settings, log, Journey, Studio), and keeps the phone's
+  songs, the other players and the keyboard it remembers.
 - **Share progress** as a report to a parent's phone, alongside the backup
   file.
 - Translating the **Diagnostics** screen, which stays in English for now.

@@ -109,6 +109,17 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
       setSettings(p ? await profiles.settings(p.id) : DEFAULT_PROFILE_SETTINGS)
       if (p) startSession(p)
     },
+    removeProfile: async (p) => {
+      if (profile?.id === p.id) {
+        // No session_end for a player being deleted: it would only re-create their log.
+        sessionStart.current = null
+        await profiles.setCurrent(null)
+        setProfile(null)
+        setSettings(DEFAULT_PROFILE_SETTINGS)
+      }
+      await log.settled()
+      await profiles.remove(p.id)
+    },
     reload: async () => {
       await load()
     },

@@ -98,4 +98,29 @@ describe('KeyPath shell', () => {
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Names on the keys' }))
     await waitFor(async () => expect((await new ProfileRepo(store).settings(p.id)).keyNames).toBe(false))
   })
+
+  it('deletes a player only after confirming, and leaves the others', async () => {
+    const store = await start()
+    await createPlayer('Gabriel')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch player' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Add a player/ }))
+    await createPlayer('Nora')
+    const repo = new ProfileRepo(store)
+    const nora = (await repo.list()).find((p) => p.name === 'Nora')!
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete this player' }))
+    expect(screen.getByText(/Delete Nora and everything of theirs on this phone/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(await repo.list()).toHaveLength(2)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete this player' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Nora' }))
+    expect(await screen.findByText('Who’s playing?')).toBeTruthy()
+    expect((await repo.list()).map((p) => p.name)).toEqual(['Gabriel'])
+    // Nothing of hers comes back, not even a late session_end.
+    await new EngagementLog(store).settled()
+    expect((await store.keys()).filter((k) => k.includes(nora.id))).toEqual([])
+  })
 })

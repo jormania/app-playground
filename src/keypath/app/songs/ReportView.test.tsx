@@ -42,6 +42,7 @@ function renderReport(language: 'en' | 'ro' = 'en') {
     t: (key, vars) => translate(language, key, vars),
     updateSetting,
     choose: async () => {},
+    removeProfile: async () => {},
     reload: async () => {},
   } as KeyPathApp
   render(
