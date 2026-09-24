@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { memo, useLayoutEffect, useRef } from 'react'
 import { isBlackKey, noteName } from '../midi/noteNames'
 import styles from './PianoKeyboard.module.css'
 
@@ -19,7 +19,7 @@ export interface PianoKeyboardProps {
  * down comes from the MIDI layer, never from this component's own state, so
  * the picture can't disagree with what was actually received.
  */
-export function PianoKeyboard({ low, high, held, onPress, onRelease, targets }: PianoKeyboardProps) {
+export const PianoKeyboard = memo(function PianoKeyboard({ low, high, held, onPress, onRelease, targets }: PianoKeyboardProps) {
   // pointerId → note, so each finger releases the key it pressed even if it slid off.
   const pointers = useRef(new Map<number, number>())
   const scroller = useRef<HTMLDivElement>(null)
@@ -121,4 +121,4 @@ export function PianoKeyboard({ low, high, held, onPress, onRelease, targets }: 
       </div>
     </div>
   )
-}
+})

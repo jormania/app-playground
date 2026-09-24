@@ -69,6 +69,8 @@ export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb:
     observed: {
       counts: t.counts,
       channels: t.channels,
+      playerChannels: s.player.channels,
+      accompanimentChannels: t.channels.filter((ch) => !s.player.channels.includes(ch)),
       range: t.lowest === null ? null : { lowest: noteName(t.lowest), highest: noteName(t.highest!) },
       velocity: t.velocities,
       stuckNow: t.held.map((h) => noteName(h.note)),

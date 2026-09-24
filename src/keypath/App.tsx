@@ -119,7 +119,8 @@ export default function App() {
     }
   }, [sim])
 
-  const t = snap.tracker
+  // The on-screen keyboard shows what you play, not the Style's drums.
+  const t = snap.player
   const held = useMemo(() => new Map(t.held.map((h) => [h.note, h.velocity])), [t.held])
   // While a test is running, mark its keys on the on-screen keyboard.
   const targets = useMemo(() => {
