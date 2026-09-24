@@ -66,6 +66,15 @@ const defaultFrame: Scheduler = (cb) => {
  * channels and Style parts on 9–16; the Split and built-in-Song tests are what
  * confirm this split for this model.
  */
+const pageVisible = () => typeof document === 'undefined' || document.visibilityState === 'visible'
+/** Bumped every time the page is hidden, so a frame sample can tell it spanned one. */
+let hiddenEpoch = 0
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') hiddenEpoch++
+  })
+}
+
 export const isPlayerChannel = (channel: number) => channel >= 1 && channel <= 8
 
 /**
@@ -223,8 +232,14 @@ export class ProbeSession {
   }
 
   private sampleFrame(e: MidiEvent): void {
-    if (e.type !== 'noteon') return
+    if (e.type !== 'noteon' || !pageVisible()) return
+    // A browser holds back frames while the page is hidden, then runs them all
+    // on return — which on the S24 recorded 12–14 s "frame" times for notes
+    // played while another app was in front. Only a frame that follows the
+    // note without the page having been hidden in between is a real sample.
+    const epoch = hiddenEpoch
     this.schedule(() => {
+      if (epoch !== hiddenEpoch || !pageVisible()) return
       this.state = { ...this.state, toFrame: pushSample(this.state.toFrame, this.now() - e.time) }
       this.publishSoon()
     })

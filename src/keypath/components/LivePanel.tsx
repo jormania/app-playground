@@ -63,7 +63,8 @@ export function LivePanel({ snap }: { snap: ProbeSnapshot }) {
         <Stat label="Velocity range" value={t.velocities ? `${t.velocities.min}–${t.velocities.max}` : '—'} />
         <Stat label="Your channel(s)" value={t.channels.length ? t.channels.join(', ') : '—'} />
         <Stat label="Accompaniment channels" value={accompaniment.length ? accompaniment.join(', ') : 'none'} />
-        <Stat label="Lost / orphan / reordered" value={`${c.doubleOns} / ${c.orphanOffs} / ${c.outOfOrder}`} />
+        <Stat label="Lost / orphan / reordered (you)" value={`${t.counts.doubleOns} / ${t.counts.orphanOffs} / ${t.counts.outOfOrder}`} />
+        <Stat label="… (accompaniment)" value={`${c.doubleOns - t.counts.doubleOns} / ${c.orphanOffs - t.counts.orphanOffs} / ${c.outOfOrder - t.counts.outOfOrder}`} />
         <Stat label="Dispatch lag p50 / p95" value={lag ? `${lag.median.toFixed(1)} / ${lag.p95.toFixed(1)} ms` : '—'} />
         <Stat
           label="Keyboard tempo (MIDI Clock)"

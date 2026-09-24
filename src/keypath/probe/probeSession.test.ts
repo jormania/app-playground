@@ -135,6 +135,8 @@ describe('ProbeSession', () => {
     expect(s.player.channels).toEqual([1])
     expect(s.tracker.channels).toEqual([1, 10])
     expect(buildReport(s, null, null).observed.accompanimentChannels).toEqual([10])
+    // Integrity and range are also reported for you alone.
+    expect(buildReport(s, null, null).observed.player).toMatchObject({ counts: { noteOn: 1, noteOff: 1, orphanOffs: 0 }, range: { lowest: 'C4', highest: 'C4' } })
   })
 
   it('starts the counters over when the source is swapped', async () => {
