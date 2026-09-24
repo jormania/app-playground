@@ -1,8 +1,8 @@
 # KeyPath — tutor design (v0 “taster”)
 
-The design of the learning app that follows the probe (`KEYPATH.md`). Nothing
-here is built yet. The hardware questions are answered in `KEYPATH.md` §1;
-this document is about **what Nora does with it**.
+The design of the learning app that follows the probe (`KEYPATH.md`), and
+the record of what's been built (§9). The hardware questions are answered in
+`KEYPATH.md` §1; this document is about **what Nora does with it**.
 
 Decisions below were taken with Gabriel on 2026-09-24. Open questions are at
 the end: some can only be answered by Nora.
@@ -40,13 +40,36 @@ steps (§4, Journey).
 |---|---|---|
 | Language | English · Română | **English** |
 | Note names | Follow language (C D E / Do Re Mi) · C D E · Do Re Mi · Both (“C / Do”) | Follow language |
-| On a wrong note | **Keep going** (nothing live; report at the end) · **Show it** (wrong key flashes, song continues) · **Wait for it** (song pauses until the right note) | Show it |
+| Names on the keys | On · Off (the falling notes keep their names either way) | On |
+| On a wrong note | Easiest first: **Wait for it** (song pauses until the right note) · **Show it** (wrong key flashes, song continues) · **Keep going** (nothing live; report at the end) | **Wait for it** (changed after step 5; players created before keep what they had) |
 | Timing | Relaxed (wide window; early/late never counts against) · Normal · Strict | Relaxed |
 | End-of-piece report | Off · Short (stars + one “try this next”) · Detailed (which bars/notes, early/late) | Short |
 | Wrong notes affect stars | Yes · No | No |
 | Sound through the keyboard | 0–100 (the probe's control) | 0 |
 
 Reports lead with **what went right** before any correction.
+
+### The ramp
+
+After a piece that went very well, the report suggests the next rung, one
+setting at a time, and changes nothing unless she says yes
+(`nextStep()` in `engine/settings.ts`):
+
+| Rung | On a wrong note | Timing | What she's learning |
+|---|---|---|---|
+| 1 | Wait for it | (none: no clock) | the notes, with no time pressure |
+| 2 | Show it | Relaxed | playing in time, mistakes shown gently |
+| 3 | Show it | Normal | tighter timing |
+| 4 | Keep going | Normal | playing it through, like a performance |
+| 5 | Keep going | Strict | polish |
+
+Two more axes are chosen per song, not suggested: **speed** (50 → 75 →
+100%) and **hands** (right → left → both). **Names on the keys** has its own
+moment: passing the Journey's reading check (step 6) offers to turn them
+off, since she can then read a note and find its key without the label.
+
+Until then, key names stay on in the reading check: its skill is staff →
+name, and name → key was already tested in step 2.
 
 Romanian needs ș ț ă â î: fonts must include the **latin-ext** subset (see the
 font rules in `CLAUDE.md`; Loom's `fonts.css` is the worked example).
@@ -108,7 +131,8 @@ MIDI layer (built, src/keypath/midi/)  →  Judge  →  Feedback policy  →  UI
    *Frère Jacques*, *Au clair de la lune*, *Melc, melc, codobelc*). The
    arrangements are ours; each gets a provenance note, as `KEYPATH.md` §7 and
    `content-boundary.test.js` require. They are stored as data in source code,
-   not as `.mid` files, so the boundary test stays strict.
+   not as `.mid` files, so the boundary test stays strict. **Shipped with
+   four** (step 3); *Melc, melc, codobelc* waits for a checked melody (§10).
 2. **Your own MIDI files**: **Add song** opens a `.mid` from the phone.
    - It stays **on that phone** (IndexedDB), never uploaded, never committed.
    - **“Which part do you want to learn?”**: a short preview of each track, with
@@ -175,8 +199,10 @@ listing (added when stable, per `CABINET.md`).
 - **Rewards**: stars only, or streaks, collectibles, unlockable Styles? Depends
   on Nora's answers and on the engagement log.
 - **MIDI out**: Studio playback and “listen first” in Songs are best played on
-  the Yamaha itself (it accepts MIDI on 16 channels). This needs one short probe
-  test before building Studio.
+  the Yamaha itself. Whether it plays what it receives, in which voices, and
+  whether it starts a Style on MIDI Start is untested: the test is built
+  (`KEYPATH.md` §3, "Phone → keyboard") and waits for the keyboard. Studio
+  was built to work either way.
 
 ---
 
@@ -193,11 +219,16 @@ Each step ships on its own and is usable without the next.
    backup, the engagement log, the four-door home. The probe is **Settings →
    Diagnostics**, unchanged: the connection check, event monitor, tests, tempo
    readout, phone-audio check and report.
-3. **A. Songs** with the starter pack: falling notes, hands, the three
-   wrong-note modes, the end report.
-4. **B. Journey**: the six steps with test-out.
+3. **A. Songs** with the starter pack — **built** (`src/keypath/app/songs/`,
+   see below): falling notes, hands, the three wrong-note modes, the end
+   report. Plus **Connect the keyboard** (`src/keypath/app/connect/`), a
+   step-by-step wizard so nobody reaches a song without a working
+   connection.
+4. **B. Journey** — **built** (`src/keypath/app/journey/`, see below): the
+   six steps with test-out.
 5. **MIDI-out probe test**, then **D. Studio** and the “make it yours” link
-   from Songs.
+   from Songs — **built** (see below). The test is ready in Diagnostics and
+   **hasn't been run on the Yamaha yet**; Studio works whatever it finds.
 6. **C. Challenges**: note race, rhythm echo.
 7. **Poco F3 check** (`KEYPATH.md` §2) before Nora starts, then two to three
    weeks of use, read the engagement log, and decide what to deepen.
@@ -251,6 +282,155 @@ src/keypath/app/
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
 
+### Step 5 as built
+
+```
+src/keypath/midi/          outputs listed in the connection snapshot, and
+                           send(bytes, at) to the Yamaha (preferred if several
+                           outputs), scheduled on Web MIDI's own clock
+src/keypath/probe/midiOut.ts + components/MidiOutPanel.tsx
+                           the MIDI-out test in Diagnostics (KEYPATH.md §3,
+                           "Phone → keyboard"): four notes, another voice, a
+                           Style started from the phone; plus an automatic
+                           echo check. Answers go into the report
+src/keypath/app/studio/
+  recorder.ts              her notes and sustain pedal from channels 1–8,
+                           never the Style's channels; ten minutes at most
+  playback.ts              plays a take through a sink, handing events over
+                           250 ms ahead with their exact time, so timing
+                           doesn't depend on timers and Stop leaves at most
+                           that much in flight
+  sinks.ts                 the keyboard (MIDI out, channel 1; Stop silences
+                           twice, now and after the lookahead) or the phone
+                           (the probe's synth; through the "sound through the
+                           keyboard" level when the Yamaha is attached)
+  takes.ts                 kept takes per player, numbered, favourites; at
+                           most 50, and never dropped silently
+  StudioScreen.tsx         Record / Stop, keep or discard, my takes (play,
+                           ★, delete on a second tap), play takes on
+                           Keyboard or Phone. Opened from a song's report as
+                           "Make it yours", with the song's tune as a
+                           reminder and the take named after it
+```
+
+**What Studio records is what she plays, not the Style.** The Style's notes
+arrive on channels 9–16 and are left out. At playback the keyboard doesn't
+restart the Style, so she hears her part alone unless she starts the Style
+herself. Whether the app could start it (MIDI Start) is test 3 above. If
+the Yamaha turns out not to play what it receives (test 1), set "Play takes
+on" to Phone. The choice is remembered per phone.
+
+Takes can't be exported yet, and nothing leaves the phone except in the
+backup file, like everything else.
+
+New in the engagement log: `studio_opened` (from the door, or from a song),
+`studio_recorded` (length, notes, whether a Style ran), `studio_kept`,
+`studio_played` (on the keyboard or the phone), `studio_favourite` and
+`studio_deleted`.
+
+### Step 4 as built
+
+```
+src/keypath/app/journey/
+  steps.ts           the six steps (practice with keys lit, check with keys
+                     dark), their keyboards, pass marks, and which need the
+                     middle-C check. Tunes are public domain, stored as data:
+                     Ode to Joy, Twinkle, Mary Had a Little Lamb
+  exercises.ts       one small judge per kind of task, free of React:
+                     Prompts (one named key at a time), FindAll ("three
+                     different Cs"), Chords (all keys within a window from
+                     the Timing setting: 150 / 100 / 70 ms; spread wider is
+                     "nearly", not wrong), Tune (the engine's judge in
+                     "Wait for it")
+  progress.ts        per player: which steps are done, and how (in order, or
+                     tested out)
+  JourneyHome.tsx    the map: six stops on a path
+  StepScreen.tsx     intro and tip → Learn it / Check (or "I can do this
+                     already" on a locked step) → middle C where needed →
+                     the exercise → result, with the next step one tap away
+  Staff.tsx          a small treble staff in SVG for step 6, drawn by hand
+                     (no notation library for one step); the clef is a
+                     drawn stroke, not the 𝄞 character, which Android's
+                     fonts may lack
+```
+
+| # | Step | Practice (keys lit) | Check (keys dark) |
+|---|---|---|---|
+| 1 | Find middle C | middle C, the C above, the C below, middle C | three different Cs |
+| 2 | C, D, E | C D E D C E D C | D C E D E C, by name |
+| 3 | A five-finger tune | Ode to Joy, first line | the same line |
+| 4 | Your first chord | C, C, G, G chords | C, G, C chords |
+| 5 | Both hands | Twinkle, first line, with seven low left-hand notes, each starting with a right-hand note | the same |
+| 6 | Reading music | two bars on the staff, named: C D E F G F E D | Mary Had a Little Lamb, first bar and a half, unnamed |
+
+Steps 1, 2 and 4 go by note *name* (any octave), so they need no octave
+check. The tune steps start with "press middle C", like Songs.
+
+**Passing a step's check is what completes it.** A locked step's check can be
+taken at any time ("I can do this already"). Passing it completes **that step
+only**, since each step proves its own skill (reading a staff says nothing
+about chords). The map then shows it as "Tested out", and the first step not
+yet done stays open. Practices always finish; they teach, and don't count.
+
+New in the engagement log: `journey_started` (practice or check, and whether
+it was a test-out), `journey_finished` (passed, wrong keys, time) and
+`journey_left`.
+
+### Step 3 as built
+
+```
+src/keypath/engine/starterPack.ts
+                     four public-domain melodies as data (no .mid files, so
+                     content-boundary.test.js stays strict): Twinkle and Ode
+                     to Joy with a simple left hand, Frère Jacques and Au
+                     clair de la lune right hand only. Provenance in the file
+src/keypath/app/songs/
+  library.ts         the starter pack + the family's own songs (IndexedDB,
+                     shared by every player on the phone); "Add a song" reads
+                     a MIDI file, suggests the hands, moves it by whole
+                     octaves to fit the 61 keys and says so
+  SongsHome.tsx      the Songs door: starter songs, your songs, Add a song
+  ImportSong.tsx     pick a file, confirm which part is which hand, save
+  PlayScreen.tsx     hands and speed (100/75/50%) → "press middle C" (the
+                     octave check) → play → report. Running mode counts in
+                     three beats; wait mode glides to the next step. Pauses
+                     when the keyboard drops or the app leaves the screen
+  FallingNotes.tsx   one transform per frame, no React re-render per frame
+  PlayKeyboard.tsx   full-width keys lined up with the notes; always
+                     playable by touch, so a song works without the Yamaha
+  keyGeometry.ts     key positions as percentages
+  ReportView.tsx     stars, what went well first, the bar worth another go,
+                     and the step-up suggestion (only applied on "Yes")
+src/keypath/app/connect/
+  keyboard.ts        the one tutor-wide Web MIDI connection. Opens by itself
+                     only when Chrome already allows it: the permission
+                     prompt is only ever raised from the wizard, explained
+  setup.ts           the wizard's steps as pure logic (tested on its own)
+  ConnectWizard.tsx  Browser → OTG (Xiaomi/Redmi/POCO only) → Plug in →
+                     Allow → Find the keyboard → Press any key. Each step is
+                     checked before the next opens; steps it can already see
+                     are done are skipped. Find shows what to check after 6 s
+                     and keeps listening, so plugging in moves it on by itself
+  KeyboardStatus.tsx the live "Keyboard ready / not connected · Connect" line
+                     on Home and above every song
+  remember.ts        this phone's keyboard, so Home shows a "Connect your
+                     keyboard" card until the first success
+```
+
+New in the engagement log: `song_started`, `song_finished`, `song_abandoned`,
+`song_added`, `suggestion` (accepted or not), `keyboard_setup` (done, or the
+step someone gave up on), and `keyboard_lost` mid-song. On the Poco F3 that
+last one is the signal for Xiaomi's OTG timeout.
+
+A keyboard pulled out mid-song pauses the song. "Help me reconnect" opens the
+wizard; when the keyboard is back the banner says so and Carry on resumes
+where it stopped.
+
+The wizard's detection is tested in happy-dom against a fake connection, and
+in Chromium against a fake Web MIDI device injected at `requestMIDIAccess`,
+which runs the real `WebMidiConnection`, hot-plug included. **It hasn't met
+the real Yamaha yet**: first thing to try on the S24.
+
 ---
 
 ## 10. Roadmap: deferred on purpose
@@ -261,16 +441,24 @@ forgotten; each item says when it comes back.
 **App shell refinements** (deferred from step 2):
 - A **PIN** on a player (the family-account design in `KEYPATH.md` §7). For
   now each phone simply opens into its last player.
-- **Edit or remove a player**. For now: create and switch.
+- **Edit a player** (rename, change face). *Remove* is done: Settings →
+  **Delete this player**, confirmed in place. It deletes every key ending in
+  the player's id (settings, log, Journey, Studio), and keeps the phone's
+  songs, the other players and the keyboard it remembers.
 - **Share progress** as a report to a parent's phone, alongside the backup
   file.
 - Translating the **Diagnostics** screen, which stays in English for now.
 
-**App distribution** (when the tutor is stable enough to hand to Nora):
-- Listing on the front page (`index.html`) and in The Cabinet, via
+**App distribution** — **done** (after step 5, at Gabriel's request, to
+install it and get the full screen):
+- Listed on the front page (`index.html`) and in The Cabinet, via
   `src/apps-registry.js` (`CABINET.md` checklist).
-- PWA: web manifest, icons, a scoped service worker, and the `watchInstalled`
-  install flag (`CLAUDE.md`, "Service workers & dev").
+- PWA: `public/keypath.webmanifest` (standalone, any orientation), icons from
+  `public/keypath-icon.svg` / `keypath-logo.svg` via `npm run
+  gen:keypath-icons`, a scoped service worker (`public/keypath-sw.js`,
+  production only; navigations network-first, so the installed app opens
+  the latest deploy when online), and `watchInstalled('keypath-react.html')`.
+- The screen stays on across the whole tutor (wake lock in `Shell.tsx`).
 
 **Engine refinements** (after Nora has used the taster; tune on her playing):
 - **Note length.** Only note *starts* are judged. Holding a note for its full
@@ -287,5 +475,45 @@ forgotten; each item says when it comes back.
   written (the range check and whole-octave transposition exist now).
 - **MusicXML import** (with notation rendering, a late Journey skill).
 
-**Content**: the public-domain starter pack arrives with step 3 (Songs).
+**Studio refinements** (deferred from step 5; most depend on the MIDI-out test):
+- **Start the Style with playback**, if test 3 says the keyboard obeys MIDI
+  Start: record the Style's tempo (MIDI Clock) with the take and start it
+  in time. Today she starts it herself.
+- **"Listen first" in Songs**, the song played by the Yamaha before she
+  tries it, in a second voice if test 2 allows.
+- **Export a take** as a `.mid` file, to share or to open in Songs as her
+  own song.
+- **Rename** a take. For now they're numbered, or named after the song.
+- **The phone's playback ignores the sustain pedal.** Notes end where the
+  keys were released; the keyboard's playback does voice the pedal.
+
+**Journey refinements** (deferred from step 4; tune on Nora's use):
+- **Pass marks.** A check passes with at most one wrong key (two in the tune
+  steps). Checks have no time limit: "about 30 s" is how long they take, not
+  a clock. Both are guesses until the log shows how she does.
+- ~~**Reading step:** key names during the check~~ Done: a **Names on the
+  keys** setting, offered off after step 6 (§2, "The ramp").
+- **More steps** (rests, the left hand alone, a black key, a second line of
+  notation) once the log says the Journey is the door she uses.
+- **Chord togetherness** is judged in the chord step only. The engine's
+  Songs judging doesn't use it yet (see Engine refinements).
+
+**Songs refinements** (deferred from step 3):
+- **Remove or rename** an added song. For now songs can only be added.
+- **Progress per song** (best stars, last played) on the song list. The log
+  already has what's needed.
+- **More starter songs.** "Melc, melc, codobelc" was left out: its melody
+  hasn't been checked against a reliable source yet.
+- **Landscape layout** for the play screen: more keys, more width per key.
+- A **sound for the on-screen keys** when no keyboard is connected (the
+  probe's synth, through the output level that defaults to 0).
+
+**Connection refinements** (deferred from step 3):
+- A check for **Touch Response Off** (every note at the same velocity). It
+  doesn't matter until dynamics are judged.
+- The wizard doesn't test the **charging hub** (`KEYPATH.md` §2) or phone
+  audio; Diagnostics still does the audio check.
+
+**Content**: the public-domain starter pack shipped with step 3 (four
+melodies). More public-domain pieces can join it the same way, as data.
 

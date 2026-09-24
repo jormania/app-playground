@@ -1,19 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- KeyPath launcher tile: an octave of keys on the app's cream ground. Full-bleed,
-       with the keys inside the central 80% so the same art serves as the maskable icon. -->
-  <rect width="512" height="512" fill="#efe9dc"/>
-  <g transform="translate(96 136)">
-    <rect width="320" height="240" rx="18" fill="#fbf7ee" stroke="#3f4f58" stroke-width="10"/>
-    <g stroke="#3f4f58" stroke-width="8">
-      <line x1="64" y1="0" x2="64" y2="240"/>
-      <line x1="128" y1="0" x2="128" y2="240"/>
-      <line x1="192" y1="0" x2="192" y2="240"/>
-      <line x1="256" y1="0" x2="256" y2="240"/>
-    </g>
-    <g fill="#3f4f58">
-      <rect x="44" y="0" width="40" height="140" rx="6"/>
-      <rect x="108" y="0" width="40" height="140" rx="6"/>
-      <rect x="236" y="0" width="40" height="140" rx="6"/>
-    </g>
+  <!-- KeyPath launcher tile: full bleed, for the PWA icons (any + maskable). -->
+  <rect width="512" height="512" fill="#1f2347"/>
+  <!-- A five-key keyboard, C to G (black keys where C–D, D–E and F–G meet),
+       and a dotted path climbing from middle C to a star: the path in KeyPath.
+       Everything sits inside the maskable safe zone (a circle of radius 205
+       about the centre), so Android's round and squircle crops keep it whole. -->
+  <g fill="#fbfaf7">
+    <rect x="128.0" y="290" width="46.4" height="110" rx="7"/>
+    <rect x="180.4" y="290" width="46.4" height="110" rx="7"/>
+    <rect x="232.8" y="290" width="46.4" height="110" rx="7"/>
+    <rect x="285.2" y="290" width="46.4" height="110" rx="7"/>
+    <rect x="337.6" y="290" width="46.4" height="110" rx="7"/>
   </g>
+  <g fill="#1f2347">
+    <rect x="163.4" y="290" width="28" height="64" rx="5"/>
+    <rect x="215.8" y="290" width="28" height="64" rx="5"/>
+    <rect x="320.6" y="290" width="28" height="64" rx="5"/>
+  </g>
+  <path d="M 151.2 270 C 151.2 214, 214 222, 222 180 S 300 150, 300 128" fill="none" stroke="#e0795b" stroke-width="15" stroke-linecap="round" stroke-dasharray="1 27"/>
+  <polygon points="310.0,70.0 318.8,93.9 344.2,94.9 324.3,110.6 331.2,135.1 310.0,121.0 288.8,135.1 295.7,110.6 275.8,94.9 301.2,93.9" fill="#f2c14e"/>
 </svg>

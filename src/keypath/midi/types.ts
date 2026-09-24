@@ -88,6 +88,11 @@ export interface ConnectionSnapshot {
   /** The error text when access failed, verbatim — it is the diagnosis. */
   error: string | null
   inputs: MidiDevice[]
+  /**
+   * Ports KeyPath can send to (the Yamaha plays what it receives there).
+   * Absent where a connection has no way out, like the simulator.
+   */
+  outputs?: MidiDevice[]
 }
 
 export type Unsubscribe = () => void
@@ -104,4 +109,10 @@ export interface MidiConnection {
   snapshot(): ConnectionSnapshot
   onEvent(listener: (event: MidiEvent) => void): Unsubscribe
   onChange(listener: (snapshot: ConnectionSnapshot) => void): Unsubscribe
+  /**
+   * Send raw MIDI bytes to the keyboard (the Yamaha if several outputs are
+   * attached), optionally scheduled at a `performance.now()` time. Returns
+   * false when there is nowhere to send them.
+   */
+  send?(data: number[], atMs?: number): boolean
 }

@@ -12,6 +12,27 @@ export type LogEvent =
   | { type: 'door_opened'; door: Door }
   | { type: 'setting_changed'; key: string; from: unknown; to: unknown }
   | { type: 'profile_created' }
+  | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string }
+  | { type: 'song_finished'; songId: string; practice: string; stars: number; score: number; hit: number; total: number; wrong: number }
+  | { type: 'song_abandoned'; songId: string; practice: string; hit: number; total: number }
+  | { type: 'song_added' }
+  /** A step up offered: after a song (songId) or at a Journey milestone (step). */
+  | { type: 'suggestion'; setting: string; to: string; accepted: boolean; songId?: string; step?: string }
+  /** The connection wizard: finished, or left at a step (where people get stuck). */
+  | { type: 'keyboard_setup'; outcome: 'done' | 'left'; step: string; ms: number }
+  /** The keyboard vanished mid-song; on the Poco F3, suspect Xiaomi's OTG timeout (KEYPATH.md §2). */
+  | { type: 'keyboard_lost'; songId: string }
+  /** Journey: a practice or check begun; `testOut` when the step was still locked. */
+  | { type: 'journey_started'; step: string; mode: 'practice' | 'check'; testOut: boolean }
+  | { type: 'journey_finished'; step: string; mode: 'practice' | 'check'; passed: boolean; wrong: number; ms: number }
+  | { type: 'journey_left'; step: string; mode: 'practice' | 'check'; ms: number }
+  /** Studio: opened from its door or from a song's "Make it yours". */
+  | { type: 'studio_opened'; from: 'door' | 'song'; songId?: string }
+  | { type: 'studio_recorded'; ms: number; notes: number; style: boolean; songId?: string }
+  | { type: 'studio_kept'; takeId: string }
+  | { type: 'studio_played'; takeId: string; via: 'keyboard' | 'phone' }
+  | { type: 'studio_favourite'; takeId: string; on: boolean }
+  | { type: 'studio_deleted'; takeId: string }
 
 export type Door = 'songs' | 'journey' | 'challenges' | 'studio'
 
@@ -30,6 +51,11 @@ export class EngagementLog {
       records.push({ ...event, at: now.toISOString(), profileId })
       await this.store.set(K.log(profileId), records)
     })
+    return this.queue
+  }
+
+  /** Resolves once every append so far has been written. */
+  settled(): Promise<void> {
     return this.queue
   }
 

@@ -82,6 +82,16 @@ export class WebMidiConnection implements MidiConnection {
   private refresh(): void {
     if (!this.access) return
     const inputs: MidiDevice[] = []
+    const outputs: MidiDevice[] = []
+    for (const output of this.access.outputs?.values() ?? []) {
+      outputs.push({
+        id: output.id,
+        name: output.name ?? '',
+        manufacturer: output.manufacturer ?? '',
+        state: output.state,
+        looksLikeYamaha: looksLikeYamaha(output.name ?? '', output.manufacturer ?? ''),
+      })
+    }
     for (const input of this.access.inputs.values()) {
       inputs.push({
         id: input.id,
@@ -95,7 +105,20 @@ export class WebMidiConnection implements MidiConnection {
         this.bound.set(input.id, input)
       }
     }
-    this.set({ access: 'granted', error: null, inputs })
+    this.set({ access: 'granted', error: null, inputs, outputs })
+  }
+
+  send(data: number[], atMs?: number): boolean {
+    const ports = [...(this.access?.outputs?.values() ?? [])].filter((o) => o.state === 'connected')
+    const port = ports.find((o) => looksLikeYamaha(o.name ?? '', o.manufacturer ?? '')) ?? ports[0]
+    if (!port) return false
+    try {
+      port.send(data, atMs)
+      return true
+    } catch {
+      // A port that vanished between the list and the send: nothing was sent.
+      return false
+    }
   }
 
   private handle(deviceId: string, e: MIDIMessageEvent): void {

@@ -20,9 +20,10 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 export function SettingsScreen() {
-  const { profile, settings, t, updateSetting, choose, store, reload } = useApp()
+  const { profile, settings, t, updateSetting, choose, removeProfile, store, reload } = useApp()
   const [persisted, setPersisted] = useState<Persistence>('unknown')
   const [message, setMessage] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export function SettingsScreen() {
             ]}
           />
         </Row>
+        <SettingsToggle label={t('keyNames')} hint={t('keyNamesHint')} checked={settings.keyNames} onChange={(e) => void updateSetting('keyNames', e.target.checked)} />
       </section>
 
       <section className={styles.panel}>
@@ -93,9 +95,9 @@ export function SettingsScreen() {
             value={settings.onWrong}
             onChange={set('onWrong')}
             options={[
-              { value: 'keepGoing' satisfies OnWrong, label: t('onWrongKeepGoing') },
-              { value: 'show' satisfies OnWrong, label: t('onWrongShow') },
               { value: 'wait' satisfies OnWrong, label: t('onWrongWait') },
+              { value: 'show' satisfies OnWrong, label: t('onWrongShow') },
+              { value: 'keepGoing' satisfies OnWrong, label: t('onWrongKeepGoing') },
             ]}
           />
         </Row>
@@ -177,6 +179,35 @@ export function SettingsScreen() {
           <span className={styles.muted}>
             {persisted === 'persisted' ? t('storagePersisted') : persisted === 'best-effort' ? t('storageBestEffort') : t('storageUnknown')}
           </span>
+        </Row>
+      </section>
+      <section className={styles.panel}>
+        <Row label={t('deletePlayer')} hint={t('deletePlayerHint')}>
+          {confirmDelete ? (
+            <div className={styles.confirm} role="alertdialog" aria-label={t('deletePlayerConfirm', { name: profile.name })}>
+              <p className={styles.confirmText}>{t('deletePlayerConfirm', { name: profile.name })}</p>
+              <div className={styles.actions}>
+                <Button
+                  variant="danger"
+                  onClick={async () => {
+                    await removeProfile(profile)
+                    navigate({ name: 'who' }, { replace: true })
+                  }}
+                >
+                  {t('deletePlayerYes', { name: profile.name })}
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+                  {t('cancel')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <Button variant="outline" onClick={() => setConfirmDelete(true)}>
+                {t('deletePlayer')}
+              </Button>
+            </div>
+          )}
         </Row>
       </section>
     </main>

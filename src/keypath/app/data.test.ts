@@ -2,16 +2,39 @@ import { describe, expect, it } from 'vitest'
 import { backupDue, BackupError, exportBackup, markBackedUp, restoreBackup } from './backup'
 import { EngagementLog } from './log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo } from './profiles'
-import { K, memoryStore } from './store'
+import { K, PREFIX, memoryStore } from './store'
 import { hrefOf, parseRoute } from './router'
 
 describe('ProfileRepo', () => {
+  it('deletes a player and everything that is theirs, and nothing that isn’t', async () => {
+    const store = memoryStore()
+    const repo = new ProfileRepo(store)
+    const nora = await repo.create('Nora', '🐺')
+    const gabriel = await repo.create('Gabriel', '🦉')
+    await repo.setCurrent(nora.id)
+    for (const p of [nora, gabriel]) {
+      await store.set(K.log(p.id), [{ type: 'session_start' }])
+      await store.set(K.journey(p.id), { middleC: { at: '', how: 'check' } })
+      await store.set(K.studio(p.id), [])
+    }
+    await store.set(`${PREFIX}songs`, [{ id: 'import:x' }])
+    await store.set(K.keyboard, { name: 'Digital Keyboard' })
+
+    await repo.remove(nora.id)
+
+    expect((await repo.list()).map((p) => p.name)).toEqual(['Gabriel'])
+    expect(await repo.current()).toBeNull()
+    const left = await store.keys()
+    expect(left.filter((k) => k.includes(nora.id))).toEqual([])
+    for (const k of [K.settings(gabriel.id), K.log(gabriel.id), K.journey(gabriel.id), K.studio(gabriel.id), `${PREFIX}songs`, K.keyboard]) expect(left).toContain(k)
+  })
+
   it('creates players with confidence-first, English defaults', async () => {
     const repo = new ProfileRepo(memoryStore())
     const p = await repo.create('  Nora  ', '🐺')
     expect(p).toMatchObject({ name: 'Nora', avatar: '🐺' })
     expect(await repo.settings(p.id)).toEqual(DEFAULT_PROFILE_SETTINGS)
-    expect(DEFAULT_PROFILE_SETTINGS).toMatchObject({ language: 'en', noteNames: 'auto', onWrong: 'show', timing: 'relaxed', report: 'short', wrongAffectsStars: false })
+    expect(DEFAULT_PROFILE_SETTINGS).toMatchObject({ language: 'en', noteNames: 'auto', onWrong: 'wait', timing: 'relaxed', report: 'short', wrongAffectsStars: false })
   })
 
   it('keeps each player’s settings apart', async () => {
@@ -97,5 +120,17 @@ describe('router', () => {
     expect(parseRoute('#/settings')).toEqual({ name: 'settings' })
     expect(hrefOf({ name: 'door', door: 'songs' })).toBe('#/door/songs')
     expect(hrefOf({ name: 'diagnostics' })).toBe('#/diagnostics')
+  })
+
+  it('round-trips the Songs screens, including song ids with a colon', () => {
+    expect(parseRoute('#/songs')).toEqual({ name: 'door', door: 'songs' })
+    expect(parseRoute(hrefOf({ name: 'songImport' }))).toEqual({ name: 'songImport' })
+    expect(parseRoute(hrefOf({ name: 'play', songId: 'import:abc' }))).toEqual({ name: 'play', songId: 'import:abc' })
+    expect(parseRoute('#/play/')).toEqual({ name: 'door', door: 'songs' })
+    expect(parseRoute(hrefOf({ name: 'connect' }))).toEqual({ name: 'connect' })
+    expect(parseRoute('#/journey')).toEqual({ name: 'door', door: 'journey' })
+    expect(parseRoute('#/studio')).toEqual({ name: 'door', door: 'studio' })
+    expect(parseRoute(hrefOf({ name: 'studio', songId: 'starter:ode' }))).toEqual({ name: 'studio', songId: 'starter:ode' })
+    expect(parseRoute(hrefOf({ name: 'journeyStep', step: 'chord' }))).toEqual({ name: 'journeyStep', step: 'chord' })
   })
 })

@@ -14,6 +14,9 @@ import { SimpleSynth } from './probe/synth'
 import { loadOutputLevel, saveOutputLevel, toggled, withLevel, type OutputLevel } from './probe/outputLevel'
 import { setKeyboardLevel } from './probe/audioContext'
 import { canShareReport, shareReport } from './probe/shareReport'
+import { durationOf, echoed, messagesFor, NO_FINDINGS, type MidiOutFindings, type OutCheck } from './probe/midiOut'
+import type { MidiEvent } from './midi/types'
+import { MidiOutPanel } from './components/MidiOutPanel'
 import { AudioPanel } from './components/AudioPanel'
 import { EventLog } from './components/EventLog'
 import { LivePanel } from './components/LivePanel'
@@ -41,6 +44,8 @@ export default function App() {
   const [soundOn, setSoundOn] = useState(true)
   const [output, setOutput] = useState<OutputLevel>(loadOutputLevel)
   const synth = useRef<SimpleSynth | null>(null)
+  const [midiOut, setMidiOut] = useState<MidiOutFindings>(NO_FINDINGS)
+  const [outRunning, setOutRunning] = useState<OutCheck | null>(null)
   const simulated = snap.sourceKind === 'simulated'
   const granted = snap.connection.access === 'granted'
 
@@ -130,7 +135,26 @@ export default function App() {
   const low = Math.min(PSR_E383_RANGE.low, t.lowest ?? Infinity)
   const high = Math.max(PSR_E383_RANGE.high, t.highest ?? -Infinity)
 
-  const report = () => JSON.stringify(buildReport(snap, env, usb, { heard, tone, devices, deviceChanges, keyboardOutput: output }), null, 2)
+  // Phone → keyboard: schedule the check's messages on Web MIDI's own clock,
+  // and listen meanwhile for the keyboard sending them back (an echo).
+  const outPort = snap.connection.outputs?.find((o) => o.state === 'connected' && o.looksLikeYamaha) ?? snap.connection.outputs?.find((o) => o.state === 'connected') ?? null
+  const runOut = (check: OutCheck) => {
+    const source = session.source
+    if (!source.send) return
+    const start = performance.now() + 50
+    const seen: MidiEvent[] = []
+    const off = source.onEvent((e) => seen.push(e))
+    for (const m of messagesFor(check)) source.send(m.data, start + m.at)
+    setOutRunning(check)
+    setMidiOut((f) => ({ ...f, port: outPort ? outPort.name || outPort.id : null }))
+    setTimeout(() => {
+      off()
+      setOutRunning(null)
+      if (check !== 'style') setMidiOut((f) => ({ ...f, notes: { ...f.notes, echoed: f.notes.echoed || echoed(start, seen, check) } }))
+    }, durationOf(check) + 600)
+  }
+
+  const report = () => JSON.stringify(buildReport(snap, env, usb, { heard, tone, devices, deviceChanges, keyboardOutput: output }, midiOut), null, 2)
   const copyReport = async () => {
     try {
       await navigator.clipboard.writeText(report())
@@ -222,6 +246,18 @@ export default function App() {
           onToggleOutput={() => setOutput(toggled)}
           onOutputLevel={(n) => setOutput((o) => withLevel(o, n))}
           onPreviewOutput={() => void previewKeyboardOutput()}
+        />
+      )}
+
+      {!simulated && (
+        <MidiOutPanel
+          port={granted && outPort ? outPort.name || outPort.id : null}
+          findings={midiOut}
+          running={outRunning}
+          onRun={runOut}
+          onNotes={(h) => setMidiOut((f) => ({ ...f, notes: { ...f.notes, heard: h } }))}
+          onVoice={(v) => setMidiOut((f) => ({ ...f, voice: v }))}
+          onStyle={(h) => setMidiOut((f) => ({ ...f, style: h }))}
         />
       )}
 

@@ -12,6 +12,12 @@ export type Route =
   | { name: 'door'; door: Door }
   | { name: 'settings' }
   | { name: 'diagnostics' }
+  | { name: 'songImport' }
+  | { name: 'play'; songId: string }
+  | { name: 'connect' }
+  | { name: 'journeyStep'; step: string }
+  /** Studio opened from a song ("Make it yours"); from Home it's the studio door. */
+  | { name: 'studio'; songId: string }
 
 const DOORS: readonly Door[] = ['songs', 'journey', 'challenges', 'studio']
 
@@ -23,7 +29,16 @@ export function parseRoute(hash: string): Route {
     case 'home':
     case 'settings':
     case 'diagnostics':
+    case 'connect':
       return { name: head }
+    case 'songs':
+      return arg === 'import' ? { name: 'songImport' } : { name: 'door', door: 'songs' }
+    case 'studio':
+      return arg ? { name: 'studio', songId: decodeURIComponent(arg) } : { name: 'door', door: 'studio' }
+    case 'journey':
+      return arg ? { name: 'journeyStep', step: decodeURIComponent(arg) } : { name: 'door', door: 'journey' }
+    case 'play':
+      return arg ? { name: 'play', songId: decodeURIComponent(arg) } : { name: 'door', door: 'songs' }
     case 'door':
       return DOORS.includes(arg as Door) ? { name: 'door', door: arg as Door } : { name: 'home' }
     default:
@@ -32,7 +47,22 @@ export function parseRoute(hash: string): Route {
 }
 
 export function hrefOf(route: Route): string {
-  return route.name === 'door' ? `#/door/${route.door}` : route.name === 'start' ? '#/' : `#/${route.name}`
+  switch (route.name) {
+    case 'door':
+      return `#/door/${route.door}`
+    case 'start':
+      return '#/'
+    case 'songImport':
+      return '#/songs/import'
+    case 'play':
+      return `#/play/${encodeURIComponent(route.songId)}`
+    case 'studio':
+      return `#/studio/${encodeURIComponent(route.songId)}`
+    case 'journeyStep':
+      return `#/journey/${encodeURIComponent(route.step)}`
+    default:
+      return `#/${route.name}`
+  }
 }
 
 export function navigate(route: Route, { replace = false } = {}): void {

@@ -147,8 +147,9 @@ from the manifest.
 
 The same can happen to any page without a manifest, installed from the browser
 menu — and it did: a KeyPath install then claimed the whole origin the same way,
-and every Cabinet launch flashed the KeyPath logo instead. KeyPath now links a
-manifest scoped to its own page. The front page and the guides still have none.
+and every Cabinet launch flashed the KeyPath logo instead. KeyPath has since
+shipped as a proper PWA (#98) with a manifest scoped to its own page. The front
+page and the guides still have none.
 
 `scripts/pwa-scope.test.js` fails the suite on any manifest without an id or
 with a root scope, and on any unscoped service-worker registration. It cannot

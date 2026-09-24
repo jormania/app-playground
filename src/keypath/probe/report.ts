@@ -7,6 +7,7 @@ import type { ProbeSnapshot } from './probeSession'
 import type { UsbFinding } from './usb'
 import type { AudioDeviceView, HeardFrom, ToneResult } from './audioRouting'
 import type { OutputLevel } from './outputLevel'
+import type { MidiOutFindings } from './midiOut'
 
 export interface AudioFindings {
   heard: HeardFrom | null
@@ -50,7 +51,7 @@ function eventRow(e: MidiEvent, origin: number) {
  * into the conversation or attach to KEYPATH.md. No personal data beyond the
  * browser's user agent and phone model; no content.
  */
-export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb: UsbFinding | null, audio: AudioFindings | null = null) {
+export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb: UsbFinding | null, audio: AudioFindings | null = null, midiOut: MidiOutFindings | null = null) {
   const t = s.tracker
   return {
     keypathProbe: 1,
@@ -59,10 +60,13 @@ export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb:
     environment: env,
     usb,
     audio,
+    // Phone → keyboard (the MIDI-out test): heard by ear, echo measured.
+    midiOut,
     midi: {
       access: s.connection.access,
       error: s.connection.error,
       inputs: s.connection.inputs,
+      outputs: s.connection.outputs ?? [],
       history: s.connectionHistory.map((c) => ({ t: round(c.time - s.origin), inputs: c.inputs })),
       drops: countDrops(s.connectionHistory),
     },

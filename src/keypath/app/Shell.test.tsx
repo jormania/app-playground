@@ -40,12 +40,12 @@ describe('KeyPath shell', () => {
     const store = await start()
     await createPlayer('Nora')
     for (const door of ['Songs', 'Journey', 'Challenges', 'Studio']) expect(screen.getByRole('button', { name: new RegExp(door) })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Studio/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Challenges/ }))
     expect(await screen.findByText('Coming soon')).toBeTruthy()
     const [p] = await new ProfileRepo(store).list()
     const events = await new EngagementLog(store).read(p.id)
     expect(events.map((e) => e.type)).toEqual(['profile_created', 'session_start', 'door_opened'])
-    expect(events[2]).toMatchObject({ door: 'studio' })
+    expect(events[2]).toMatchObject({ door: 'challenges' })
   })
 
   it('switches the whole app to Romanian from settings, for that player only', async () => {
@@ -87,5 +87,40 @@ describe('KeyPath shell', () => {
     await waitFor(async () => {
       expect((await new EngagementLog(store).read(p.id)).map((e) => e.type)).toEqual(['profile_created', 'session_start', 'session_end', 'session_start'])
     })
+  })
+
+  it('starts a new player on “Wait for it”, and turns the key names off from settings', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    const [p] = await new ProfileRepo(store).list()
+    expect((await new ProfileRepo(store).settings(p.id)).onWrong).toBe('wait')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Names on the keys' }))
+    await waitFor(async () => expect((await new ProfileRepo(store).settings(p.id)).keyNames).toBe(false))
+  })
+
+  it('deletes a player only after confirming, and leaves the others', async () => {
+    const store = await start()
+    await createPlayer('Gabriel')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch player' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Add a player/ }))
+    await createPlayer('Nora')
+    const repo = new ProfileRepo(store)
+    const nora = (await repo.list()).find((p) => p.name === 'Nora')!
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete this player' }))
+    expect(screen.getByText(/Delete Nora and everything of theirs on this phone/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(await repo.list()).toHaveLength(2)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete this player' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Nora' }))
+    expect(await screen.findByText('Who’s playing?')).toBeTruthy()
+    expect((await repo.list()).map((p) => p.name)).toEqual(['Gabriel'])
+    // Nothing of hers comes back, not even a late session_end.
+    await new EngagementLog(store).settled()
+    expect((await store.keys()).filter((k) => k.includes(nora.id))).toEqual([])
   })
 })

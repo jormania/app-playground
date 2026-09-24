@@ -14,11 +14,12 @@ F3**, which gets the same probe later as a compatibility check before she uses
 the app. It has one known Xiaomi-specific catch (the OTG switch, §2). The
 report records which phone it came from.
 
-Nothing here teaches yet. No lessons, no songs, no scoring. If the answer is
-yes, the next step is designing the lesson engine, not extending this page.
+The probe itself teaches nothing. The answer was yes, and the tutor built on
+it is designed in [`KEYPATH_TUTOR.md`](KEYPATH_TUTOR.md); the probe now lives
+inside it at **Settings → Diagnostics**.
 
-- Page: `/keypath-react.html` (unlisted: no registry entry, no Cabinet tile,
-  `noindex`)
+- Page: `/keypath-react.html`, an installable PWA listed on the front page
+  and in The Cabinet (still `noindex`: a family tool, not for search engines)
 - Code: `src/keypath/`, strict TypeScript, built on `src/ds/`
 - Tests: `npm test -- src/keypath`
 
@@ -165,6 +166,11 @@ and a cable wired the other way round would put the phone in device mode.
 6. Tap **Connect MIDI** and allow the MIDI permission prompt.
 7. Optional: tap **Look on USB** and pick the Yamaha in Chrome's chooser. This is
    a second, independent check (§3).
+
+The tutor walks these same steps for you: **Home → Connect your keyboard**
+(or **Connect** on the keyboard status line) checks each one before the next
+and shows what to check when the keyboard doesn't appear
+(`KEYPATH_TUTOR.md` §9, step 3).
 
 ### Xiaomi's OTG switch (Poco F3)
 
@@ -320,6 +326,34 @@ If step 3 changes the readout, the app can take Nora's tempo straight from
 the instrument, with no tempo control on the phone. If the readout stays put
 while the keyboard's tempo changes, the clock is a fixed internal rate and
 the app will need its own tempo control.
+
+### Phone → keyboard (MIDI out)
+
+Everything above is the keyboard talking to the phone. This panel tests the
+other direction, which the Data List doesn't settle: it documents what the
+PSR-E383 *sends*, not how it treats what it receives. Studio plays takes
+back through the Yamaha when it can (`KEYPATH_TUTOR.md` §9, step 5), so this
+decides whether that works.
+
+With the keyboard connected (Keyboard source, **Connect MIDI** done):
+
+1. **Play C E G C.** Four notes on channel 1. Answer whether the keyboard
+   played them. Meanwhile the probe listens: if the same notes come straight
+   back in, the keyboard **echoes** what it receives, and the tutor must
+   ignore its own playback (Studio already does, while a take plays). The
+   verdict appears under the answers.
+2. **Play as strings.** The same notes on channel 2, after a Program Change
+   to General MIDI 49 (String Ensemble). *Different*, *Same piano* or
+   *Nothing* tells whether a second voice can play alongside hers: a "listen
+   first" guide in Songs would need it. Channel 2 is put back to piano after.
+3. **Start the Style.** Choose a Style with the STYLE button first, but
+   don't press START/STOP. The phone sends MIDI Start, then Stop 4 s later.
+   *Yes* means the app could start her backing track itself.
+
+Each check ends by silencing what it used (All Notes Off, and Stop), so
+nothing is left sounding. The answers and the echo verdict go into the
+report under `midiOut`, and the report now lists the output ports under
+`midi.outputs`.
 
 ### How to read the result
 
@@ -498,17 +532,10 @@ same reason the production app should let the instrument make the sound.
 
 ### What the probe is not
 
-It has no service worker and no Cabinet entry, on purpose. A cached probe
-answering from yesterday's build is the last thing a hardware test needs, and
-CABINET.md reserves the registry for apps that are stable. The real app gets
-both when it exists.
-
-It does have a manifest (`public/keypath.webmanifest`), since 2026-09-24, and
-only to pin its scope. Chrome will still install a page with no manifest, and
-the scope it then assumes is the page's directory, here the whole origin. A
-KeyPath installed that way caught every other app's links and flashed its logo
-on each launch from the Cabinet (CABINET.md, "Update (2026-09-24)"). A manifest
-caches nothing, so the reasoning above is unaffected.
+It has no service worker, no manifest and no Cabinet entry, on purpose. A
+cached probe answering from yesterday's build is the last thing a hardware test
+needs, and CABINET.md reserves the registry for apps that are stable. The real
+app gets all three when it exists.
 
 ---
 

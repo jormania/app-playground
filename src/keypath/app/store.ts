@@ -35,8 +35,12 @@ export const K = {
   profiles: `${PREFIX}profiles`,
   current: `${PREFIX}current`,
   meta: `${PREFIX}meta`,
+  /** The keyboard this phone last connected to, for Home's first-run card. */
+  keyboard: `${PREFIX}keyboard`,
   settings: (profileId: string) => `${PREFIX}settings:${profileId}`,
   log: (profileId: string) => `${PREFIX}log:${profileId}`,
+  journey: (profileId: string) => `${PREFIX}journey:${profileId}`,
+  studio: (profileId: string) => `${PREFIX}studio:${profileId}`,
 }
 
 export type Persistence = 'persisted' | 'best-effort' | 'unknown'
