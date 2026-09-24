@@ -1693,3 +1693,46 @@ has already happened: the 2026-09-21 icon pass left no `width="48"` or
 either, so today that second block matches nothing. Only the inline-48px
 containers still reach the animation. Worth a proper pass rather than a quick
 delete, since `.flair-empty` is a user-facing toggle (`flairEmpty`).
+
+## The empty-state float now actually floats (2026-09-24)
+
+That proper pass, R-022. The conclusion of the section above was too generous to
+the surviving rules: the inline-48px selectors did **not** reach the animation
+either. `[style*="font-size: 48px"] svg` matches the empty state's container,
+but the container holds an **emoji**, so the descendant `svg` never resolves.
+All four empty states are emoji. Between that and the dead `width="48"`
+attributes, `float-icon` had never run on any screen since it was written — the
+flair toggle was on by default and did nothing.
+
+Now there is **one selector**, hooked on a class rather than inferred from
+markup shape:
+
+```css
+.flair-empty .empty-state-icon { animation: float-icon 4s ease-in-out infinite; }
+```
+
+and `className="empty-state-icon"` sits on the icon element of all four empty
+states — `TransactionsList.jsx` ("Nothing here"), `Dashboard.jsx` ("Nothing to
+chart"), `InsightsView.jsx` ("Nothing to analyse yet") and `App.jsx` ("Could Not
+Load Data"). The four `[style*=…]` and `svg[width=…]` selectors are gone.
+
+Two things worth keeping:
+
+- **It animates the container, not an icon inside it.** That is what makes it
+  work for an emoji, and an `<svg>` dropped in later floats just the same —
+  whereas the reverse (animating a descendant) is what quietly broke twice.
+  Don't reintroduce a shape-based selector here.
+- **It is the first `flair-empty` motion the app has ever shown, so it needed a
+  `prefers-reduced-motion` guard**, which it now has in the consolidated block
+  near the top of `index.css`. That guard carries `!important` because the float
+  rule is declared further down the same file at equal specificity, so source
+  order would otherwise beat it.
+
+`src/where-it-went/emptyStateFloat.test.jsx` pins the join the two earlier
+versions had no way to notice was broken: the three cheap empty states are
+rendered and asserted to carry the hook, App's error state is checked as source,
+and the stylesheet is parsed to assert the animation hangs off that class and on
+nothing attribute- or `svg`-shaped.
+
+Not touched: the other flair animations (`fab-pulse`, `slideRight`) are still
+outside the reduced-motion block. Filed as a proposal rather than fixed here.
