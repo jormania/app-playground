@@ -1,13 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../ds/tokens.css'
-import App from './App.tsx'
+import { Shell } from './app/Shell'
 import { systemPrefersDark } from '../shared/theme'
 
-// No service worker, no manifest, no install flag — deliberately. This is a
-// probe, not an app yet: nothing here is worth caching offline, and a cached
-// probe answering from yesterday's build is the last thing a hardware test
-// needs. See KEYPATH.md, "What the probe is not".
+// No service worker, no manifest, no install flag yet — deliberately: the
+// tutor is a taster still changing daily, and a cached copy answering from
+// yesterday's build helps nobody. On the roadmap (KEYPATH_TUTOR.md §10).
 const applyTheme = () => document.documentElement.setAttribute('data-theme', systemPrefersDark() ? 'dark' : 'light')
 applyTheme()
 try {
@@ -16,6 +15,6 @@ try {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Shell />
   </StrictMode>,
 )
