@@ -31,12 +31,16 @@ export function LivePanel({ snap }: { snap: ProbeSnapshot }) {
   const now = Math.max(useNow(1000), snap.clock.ticks.at(-1) ?? 0)
   const tempo = tempoOf(snap.clock, now)
   const transport = TRANSPORT_TEXT[snap.clock.transport]
-  const t = snap.tracker
+  // What you played (channels 1–8) drives the readouts; the integrity
+  // counters cover every channel, accompaniment included.
+  const t = snap.player
+  const all = snap.tracker
+  const accompaniment = all.channels.filter((ch) => !t.channels.includes(ch))
   const last = t.lastNoteOn
   const done = t.lastPlayed && last && t.lastPlayed.onTime === last.onTime && t.lastPlayed.note === last.note ? t.lastPlayed : null
   const lag = summarise(snap.dispatchLag)
   const frame = summarise(snap.toFrame)
-  const c = t.counts
+  const c = all.counts
   const realtime = Object.entries(c.realtime).map(([k, n]) => `${k}h×${n}`).join(' ')
 
   return (
@@ -57,7 +61,8 @@ export function LivePanel({ snap }: { snap: ProbeSnapshot }) {
       <div className={styles.stats}>
         <Stat label="On / Off" value={`${c.noteOn} / ${c.noteOff}`} />
         <Stat label="Velocity range" value={t.velocities ? `${t.velocities.min}–${t.velocities.max}` : '—'} />
-        <Stat label="Channels seen" value={t.channels.length ? t.channels.join(', ') : '—'} />
+        <Stat label="Your channel(s)" value={t.channels.length ? t.channels.join(', ') : '—'} />
+        <Stat label="Accompaniment channels" value={accompaniment.length ? accompaniment.join(', ') : 'none'} />
         <Stat label="Lost / orphan / reordered" value={`${c.doubleOns} / ${c.orphanOffs} / ${c.outOfOrder}`} />
         <Stat label="Dispatch lag p50 / p95" value={lag ? `${lag.median.toFixed(1)} / ${lag.p95.toFixed(1)} ms` : '—'} />
         <Stat

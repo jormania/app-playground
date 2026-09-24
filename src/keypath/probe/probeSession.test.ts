@@ -99,6 +99,44 @@ describe('ProbeSession', () => {
     expect(session.getSnapshot().log).toEqual([])
   })
 
+  it('publishes MIDI-driven changes at most once per frame — a Style burst must not re-render per message', async () => {
+    const port = { id: 'y', name: 'Digital Keyboard', manufacturer: 'Yamaha', state: 'connected', onmidimessage: null as null | ((e: unknown) => void) }
+    const access = { inputs: new Map([['y', port]]), onstatechange: null }
+    const nav = { requestMIDIAccess: () => Promise.resolve(access) } as unknown as Navigator
+    const frames: (() => void)[] = []
+    const session = new ProbeSession(new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => 0 }), () => 0, () => {}, (cb) => frames.push(cb))
+    await session.open()
+    let publishes = 0
+    session.subscribe(() => publishes++)
+    for (let i = 0; i < 60; i++) port.onmidimessage!({ data: new Uint8Array([0xf8]), timeStamp: i })
+    expect(publishes).toBe(0)
+    expect(frames).toHaveLength(1)
+    frames.splice(0).forEach((f) => f())
+    expect(publishes).toBe(1)
+    expect(session.getSnapshot().clock.ticks.length).toBeGreaterThan(40)
+  })
+
+  it('keeps the accompaniment (channels 9–16) out of the tests and the player view, but counts it', async () => {
+    const port = { id: 'y', name: 'Digital Keyboard', manufacturer: 'Yamaha', state: 'connected', onmidimessage: null as null | ((e: unknown) => void) }
+    const access = { inputs: new Map([['y', port]]), onstatechange: null }
+    const nav = { requestMIDIAccess: () => Promise.resolve(access) } as unknown as Navigator
+    const session = new ProbeSession(new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => 0 }), () => 0, () => {}, () => {})
+    await session.open()
+    const send = (bytes: number[], t: number) => port.onmidimessage!({ data: new Uint8Array(bytes), timeStamp: t })
+    session.startTest('anyKey')
+    // A Style's snare on channel 10 (0x99 = Note On, ch 10) — must not pass the test for you.
+    send([0x99, 38, 93], 10)
+    send([0x99, 38, 0], 15)
+    expect(session.getSnapshot().test?.result.verdict).toBe('waiting')
+    send([0x90, 60, 70], 20)
+    send([0x90, 60, 0], 200)
+    const s = session.getSnapshot()
+    expect(s.test?.result.verdict).toBe('pass')
+    expect(s.player.channels).toEqual([1])
+    expect(s.tracker.channels).toEqual([1, 10])
+    expect(buildReport(s, null, null).observed.accompanimentChannels).toEqual([10])
+  })
+
   it('starts the counters over when the source is swapped', async () => {
     const { session, sim } = setup()
     await session.open()

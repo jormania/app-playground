@@ -72,6 +72,24 @@ Other things the run established:
   audio. Chrome reports **24 ms output latency** (+ 4 ms base). A metronome
   played through the keyboard should be scheduled that much early. KeyPath's
   own output stays at 0 until turned up (§2).
+- **A running Style sends its accompaniment over MIDI.** With a Style
+  started (FA seen, tempo read as 109.1 BPM), its drums arrived as ordinary
+  Note On/Off on **channels 9 and 10** (GM drum notes: A1, D2, G#2, B3),
+  alongside 27 control changes and 5 other messages. Everything played on the
+  keys stayed on channel 1. **The tutor must listen to the player's channel
+  only**, or it will credit Nora with the drummer's notes. The probe now
+  treats channels 1–8 as the player and 9–16 as accompaniment. The Split and
+  built-in-Song checks are what confirm that line for this model.
+- **The probe itself fell behind under a Style's traffic.** About 60 messages a
+  second (clock plus drums), each triggering a full redraw, pushed its handler
+  up to **12.8 s** late. The drums' timestamps stayed exactly one beat apart
+  (≈ 550 ms at 109 BPM), so the phone, Chrome and the keyboard were fine: the
+  page was the bottleneck. Fixed by publishing at most once per animation
+  frame and memoising the heavy components. Reproduced in Chromium with the
+  CPU slowed 6× and the same Style-like stream: the old build's handler delay
+  was p50 629 ms / p95 2.6 s and climbing; the fixed build's was
+  p50 6.8 ms / p95 74 ms. **Lesson for the tutor, now measured rather than
+  assumed:** MIDI in, state updated immediately, screen updated per frame.
 - **Sustain pedal: untested.** There isn't one. The PSR-E383 documents
   sending it as CC 64, and the probe and tracker already read it. Beginner
   lessons don't need it; test it the same way if a pedal (e.g. Yamaha FC4A
@@ -232,7 +250,8 @@ three ways that do work:
      match is only a hint. Any input that sends notes gets used.
 2. **Press keys freely.** They should light up on the on-screen keyboard; harder
    presses show as a brighter colour.
-3. **Any key**, **Repeated note** (4× middle C), **Chord** (C4+E4+G4),
+3. **Any key**, **Repeated note** (4× middle C), **Chord** (C4+E4+G4, marked
+   on the on-screen keyboard; a held key that isn't a target shows red),
    **Glissando**. Each shows pass/fail with its measurements.
 4. **Sustain pedal**, if there is one: the Sustain chip appears in Live.
 5. **Phone audio**: tap **Play test tone** and answer where you heard it (§2).
@@ -600,28 +619,31 @@ on top of that, not a security rule, per the "Against" column above.
 The probe passed on the S24 (§1), so this list is now the plan.
 
 1. ~~**Record the result**~~ Done, §1.
-2. **Design for a dropped keyboard from day one.** The lesson engine should
+2. **Two rules from the probe for the lesson engine:** listen only to the
+   player's channel(s), never the accompaniment (§1); and update the screen at
+   most once per frame, never per MIDI message (§1).
+3. **Design for a dropped keyboard from day one.** The lesson engine should
    pause when the input disappears and resume when it comes back. Hot-plug
    already works in the MIDI layer. This costs little now, and it covers
    whatever the Poco F3's OTG switch turns out to do, a knocked cable, or a
    keyboard switched off mid-lesson.
-3. **Poco F3 compatibility check** (§2, §3) before Nora uses the app. Not a
+4. **Poco F3 compatibility check** (§2, §3) before Nora uses the app. Not a
    gate for starting development.
-4. **Try the charging hub** (§2) with the probe, before any daily-use design
+5. **Try the charging hub** (§2) with the probe, before any daily-use design
    assumes it.
-5. **Lesson engine core, UI-free**: a `PerformanceJudge` consuming
+6. **Lesson engine core, UI-free**: a `PerformanceJudge` consuming
    `MidiEvent`s against an expected note sequence (pitch, onset window, chord
    window sized from the measured spread, duration). Pure, tested like
    `diagnostics.ts`.
-6. **Song model + one importer**: an internal `Song` type and a MIDI-file
+7. **Song model + one importer**: an internal `Song` type and a MIDI-file
    importer (later MusicXML), fed from a **local file picker** first, so no
    hosting is needed to start.
-7. **Public-domain starter pack** (3–5 pieces, provenance noted) as the first
+8. **Public-domain starter pack** (3–5 pieces, provenance noted) as the first
    real content.
-8. **Content host** (§7, option 1), then signed-URL loading.
-9. **Nora-facing design**: learning paths she chooses and adapts, drawing on
+9. **Content host** (§7, option 1), then signed-URL loading.
+10. **Nora-facing design**: learning paths she chooses and adapts, drawing on
    the best of Flowkey (wait-for-correct-note mode, hand separation) and Simply
    Piano (short wins, progression). That's a design conversation with her, not
    a technical step, and it deserves its own document.
-10. **Split KeyPath into its own origin/project** at the point it gets auth
+11. **Split KeyPath into its own origin/project** at the point it gets auth
    (§8, "Authentication").
