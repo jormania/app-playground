@@ -612,14 +612,15 @@ install it and get the full screen):
 - **A drum sound** for the clicks (General MIDI channel 10), if the MIDI-out
   test shows the Yamaha plays it.
 - **More games**, if the log says Challenges is her door: intervals by ear,
-  chords by name, a longer race.
+  a longer race. (Chords by name is done: chord catch, §9 "More
+  challenges".)
 
 **Studio refinements** (deferred from step 5; most depend on the MIDI-out test):
 - **Start the Style with playback**, if test 3 says the keyboard obeys MIDI
   Start: record the Style's tempo (MIDI Clock) with the take and start it
   in time. Today she starts it herself.
-- **"Listen first" in Songs**, the song played by the Yamaha before she
-  tries it, in a second voice if test 2 allows.
+- ~~**"Listen first" in Songs**~~ Done (§9, "More songs and Listen
+  first"). Still open: a second voice for it, if test 2 allows.
 - **Export a take** as a `.mid` file, to share or to open in Songs as her
   own song.
 - **Rename** a take. For now they're numbered, or named after the song.
@@ -647,6 +648,25 @@ install it and get the full screen):
 - **Landscape layout** for the play screen: more keys, more width per key.
 - A **sound for the on-screen keys** when no keyboard is connected (the
   probe's synth, through the output level that defaults to 0).
+- **Make a song from a recording.** A tune recorded on the phone (played,
+  or hummed) turned into a song in her library. Like **Add a song**, it
+  stays on the phone and never reaches the repo. The candidate is Spotify's
+  Basic Pitch (`@spotify/basic-pitch`, Apache 2.0): audio to MIDI, any
+  instrument, chords included, with a model of about 0.9 MB. Checked
+  2026-09-24:
+  - It transcribes a **whole recording**, not live, so it's no route to a
+    "no keyboard" mode.
+  - Its last release (1.0.1) is from August 2022, and it needs TensorFlow.js
+    3, a major version behind. Load it only when this feature opens, never in
+    the main bundle (the deploy-size rules in `CLAUDE.md`).
+  - The model is the easy part. The work is the cleanup: extra notes from
+    overtones, repeated notes merged, no hands split, and times that must be
+    snapped to beats before the engine can use them. So it needs a review
+    screen to fix the notes before the song is saved.
+  - Not for the playing itself: over USB the Yamaha already sends exact
+    notes, and transcription would only add guesses.
+
+  Comes back once the log shows she uses **Add a song** (`song_added`).
 
 **Connection refinements** (deferred from step 3):
 - A check for **Touch Response Off** (every note at the same velocity). It
