@@ -31,11 +31,13 @@ export type LogEvent =
   | { type: 'journey_left'; step: string; mode: 'practice' | 'check'; ms: number }
   /** Studio: opened from its door or from a song's "Make it yours". */
   | { type: 'studio_opened'; from: 'door' | 'song'; songId?: string }
-  | { type: 'studio_recorded'; ms: number; notes: number; style: boolean; songId?: string }
+  | { type: 'studio_recorded'; ms: number; notes: number; style: boolean; songId?: string; countIn?: number }
   | { type: 'studio_kept'; takeId: string }
   | { type: 'studio_played'; takeId: string; via: 'keyboard' | 'phone' }
   | { type: 'studio_favourite'; takeId: string; on: boolean }
   | { type: 'studio_deleted'; takeId: string }
+  | { type: 'studio_renamed'; takeId: string }
+  | { type: 'studio_exported'; takeId: string; outcome: 'shared' | 'cancelled' | 'saved' | 'error' }
   /** Challenges: a game begun, finished (score, whether it beat the best) or left part-way. */
   | { type: 'challenge_started'; game: ChallengeGame; level: number }
   | { type: 'challenge_finished'; game: ChallengeGame; level: number; score: number; best: boolean; wrong?: number; ms: number }

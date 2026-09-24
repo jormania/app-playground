@@ -175,15 +175,11 @@
   box-sizing: border-box;
 }
 .stepScreen > .panel,
-.stepScreen > .prompt,
-.stepScreen > .status {
+.stepScreen > .prompt {
   width: 100%;
   max-width: 720px;
   margin-inline: auto;
   box-sizing: border-box;
-}
-.status {
-  min-height: 1.75rem;
 }
 .blurb {
   font: var(--weight-bold) var(--text-lg) / var(--leading-tight) var(--font-display);
@@ -303,4 +299,38 @@
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   background: var(--color-glow);
+}
+
+/* Landscape: as the Songs play screen, the step fits the screen with the keys in view. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .stepScreen {
+    height: 100dvh;
+    min-height: 0;
+    overflow-y: auto;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm) calc(var(--space-xs) + env(safe-area-inset-bottom));
+  }
+  .stepScreen > * {
+    flex-shrink: 0;
+  }
+  .stepScreen > .stage {
+    flex-shrink: 1;
+  }
+  .stepScreen > .panel {
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-xs);
+  }
+  .prompt {
+    padding: var(--space-2xs) var(--space-sm);
+  }
+  .stage {
+    min-height: 0;
+    gap: var(--space-xs);
+  }
+  /* The staff scales down to leave the keys their third. */
+  .staff {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 34dvh;
+  }
 }

@@ -7,7 +7,8 @@ import { setKeyboardConnection } from '../connect/keyboard'
 import { Shell } from '../Shell'
 import { EngagementLog } from '../log'
 import { ProfileRepo } from '../profiles'
-import { memoryStore } from '../store'
+import { parseSmf } from '../../engine'
+import { memoryStore, PREFIX } from '../store'
 import { TakeRepo } from './takes'
 
 vi.mock('../../App', () => ({ default: () => <div>probe screen</div> }))
@@ -114,11 +115,79 @@ describe('Studio', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Favourite' }))
     await waitFor(async () => expect((await new TakeRepo(store).list(profileId))[0].favourite).toBe(true))
+    fireEvent.click(screen.getByRole('button', { name: 'More for Take 1' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(await new TakeRepo(store).list(profileId)).toHaveLength(1)
     fireEvent.click(await screen.findByRole('button', { name: 'Sure?' }))
     await waitFor(async () => expect(await new TakeRepo(store).list(profileId)).toHaveLength(0))
     expect(await screen.findByText('Takes you keep appear here.')).toBeTruthy()
+  })
+
+  it('counts in four clicks, starts the take on the next beat, and remembers the tempo', async () => {
+    const { store, profileId } = await open('#/door/studio')
+    await screen.findByText(/KeyPath records what you play, not the Style/)
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('radio', { name: '120' }))
+    expect(screen.getByText(/Four clicks at 120 beats a minute/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '● Record' }))
+    expect(screen.getByText('Recording in 4…')).toBeTruthy()
+    kb.emit({ type: 'noteon', note: 50 }) // noodling during the count-in: not the take
+    kb.emit({ type: 'noteoff', note: 50 })
+    await act(() => new Promise((r) => setTimeout(r, 2200)))
+    // The four clicks went to the keyboard, the first one louder.
+    const clicks = kb.sent.filter((m) => m.data[0] === 0x90 && m.data[1] === 84)
+    expect(clicks.map((m) => m.data[2])).toEqual([110, 70, 70, 70])
+    expect(screen.getByRole('button', { name: '■ Stop' })).toBeTruthy()
+    kb.emit({ type: 'noteon', note: 60 })
+    kb.emit({ type: 'noteoff', note: 60 })
+    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep it' }))
+    await screen.findByText('Take 1')
+    const [take] = await new TakeRepo(store).list(profileId)
+    expect(take.notes.map((n) => n.pitch)).toEqual([60])
+    expect(take.bpm).toBe(120)
+    expect(await store.get(`${PREFIX}studioCountIn`)).toBe(120)
+    expect((await new EngagementLog(store).read(profileId)).find((e) => e.type === 'studio_recorded')).toMatchObject({ countIn: 120 })
+  })
+
+  it('cancels a count-in, and records nothing', async () => {
+    await open('#/door/studio')
+    await screen.findByText(/KeyPath records what you play/)
+    fireEvent.click(screen.getByRole('radio', { name: '60' }))
+    fireEvent.click(screen.getByRole('button', { name: '● Record' }))
+    fireEvent.click(screen.getByRole('button', { name: '✕ Cancel' }))
+    expect(screen.queryByText(/Recording in/)).toBeNull()
+    expect(screen.getByRole('button', { name: '● Record' })).toBeTruthy()
+    await act(() => new Promise((r) => setTimeout(r, 300)))
+    expect(screen.queryByText(/Recording ·/)).toBeNull()
+  })
+
+  it('renames a take and saves it as a MIDI file under its name', async () => {
+    const { store, profileId } = await open('#/door/studio')
+    await new TakeRepo(store).keep(profileId, { ms: 1500, notes: [{ pitch: 60, velocity: 80, startMs: 0, durationMs: 500 }], pedal: [] }, { style: false, bpm: 80 })
+    fireEvent.click(await screen.findByRole('button', { name: '● Record' }))
+    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'More for Take 1' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Morning song' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+    expect(await screen.findByText('Morning song')).toBeTruthy()
+
+    let blob: Blob | null = null
+    URL.createObjectURL = vi.fn((b: Blob) => ((blob = b), 'blob:take'))
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    fireEvent.click(screen.getByRole('button', { name: 'More for Morning song' }))
+    expect(screen.getByText(/after a count-in at 80/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Save as a MIDI file' }))
+    expect(await screen.findByText('Saved as Morning-song.mid, in the phone’s Downloads.')).toBeTruthy()
+    expect(click).toHaveBeenCalled()
+    const file = parseSmf(new Uint8Array(await blob!.arrayBuffer()))
+    expect(file.tracks[0].name).toBe('Morning song')
+    expect(file.notes.map((n) => n.pitch)).toEqual([60])
+    click.mockRestore()
+    const types = (await new EngagementLog(store).read(profileId)).map((e) => e.type)
+    expect(types).toContain('studio_renamed')
+    expect((await new EngagementLog(store).read(profileId)).find((e) => e.type === 'studio_exported')).toMatchObject({ outcome: 'saved' })
   })
 
   it('opens as “Make it yours” from a song, with its tune as a reminder, and names the take after it', async () => {

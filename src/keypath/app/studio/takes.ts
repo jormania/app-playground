@@ -13,7 +13,14 @@ export interface Take extends Recording {
   /** Made from a song's "Make it yours". */
   songId?: string
   songTitle?: string
+  /** Her own name for it; the numbered name otherwise. */
+  name?: string
+  /** Recorded after a count-in at this tempo: she started on its beat. */
+  bpm?: number
 }
+
+/** A take's name is kept short enough to fit its row. */
+export const MAX_NAME = 40
 
 /** Kept takes per player. At the limit, one has to go before another is kept. */
 export const MAX_KEPT = 50
@@ -27,7 +34,7 @@ export class TakeRepo {
     return [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }
 
-  async keep(profileId: string, r: Recording, meta: Pick<Take, 'style' | 'songId' | 'songTitle'>, now = new Date()): Promise<Take | null> {
+  async keep(profileId: string, r: Recording, meta: Pick<Take, 'style' | 'songId' | 'songTitle' | 'bpm'>, now = new Date()): Promise<Take | null> {
     const all = (await this.store.get<Take[]>(K.studio(profileId))) ?? []
     if (all.length >= MAX_KEPT) return null
     const n = all.reduce((m, t) => Math.max(m, t.n), 0) + 1
@@ -41,6 +48,20 @@ export class TakeRepo {
     await this.store.set(
       K.studio(profileId),
       all.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    )
+  }
+
+  /** Name a take; a blank name gives it back its numbered one. */
+  async rename(profileId: string, id: string, name: string): Promise<void> {
+    const clean = name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME)
+    const all = (await this.store.get<Take[]>(K.studio(profileId))) ?? []
+    await this.store.set(
+      K.studio(profileId),
+      all.map((t) => {
+        if (t.id !== id) return t
+        const { name: _old, ...rest } = t
+        return clean ? { ...rest, name: clean } : rest
+      }),
     )
   }
 

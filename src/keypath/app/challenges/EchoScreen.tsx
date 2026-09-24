@@ -184,11 +184,8 @@ export function EchoScreen() {
   const tn = turn.current
 
   return (
-    <main className={styles.playScreen}>
-      <TopBar title={t('echoTitle')} />
-      <div className={styles.status}>
-        <KeyboardStatus status={kb} missing="keyboardMissing" />
-      </div>
+    <main className={`${styles.playScreen} ${styles.echoScreen}`}>
+      <TopBar title={t('echoTitle')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
         <section className={styles.panel}>

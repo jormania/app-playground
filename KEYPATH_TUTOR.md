@@ -346,6 +346,42 @@ through Studio's `Playback` on the shared Keyboard/Phone route, and logs
 - Records saved before these existed read back with empty `staff` and
   `chord` tables, so nobody's bests are lost.
 
+### Studio additions
+
+- **Count-in.** *Off · 60 · 80 · 100 · 120*, remembered on the phone. Four
+  clicks (a high C on the piano, the first louder, on the keyboard or the
+  phone like everything else), and the take starts on the fifth beat. Keys
+  played during the count-in aren't recorded, except in its last half-beat,
+  which counts as the downbeat played a hair early. Record turns into
+  **Cancel** while counting. The take keeps the tempo (`bpm`).
+- **Rename.** A take's **⋯** opens its name, its file and Delete. A blank
+  name gives it back its number. At most 40 characters.
+- **Save as a MIDI file** (`midiExport.ts`, `saveFile.ts`): format 0, one
+  track named after the take, her notes and the pedal on channel 1. It is
+  written at the count-in's tempo when there was one, so bar lines fall
+  where she played them; otherwise at 120 BPM, with exact timing and
+  arbitrary bar lines (the screen says which). Chrome's share sheet refuses
+  MIDI files (its list of shareable types has no `.mid`, checked in
+  Chromium's `share_service_impl.cc` on 2026-09-24), so on Android the file
+  downloads to Downloads, and any app can open it from there. Where a
+  browser does accept it, the share sheet opens instead.
+- In the log: `studio_recorded` gains `countIn`; `studio_renamed` and
+  `studio_exported` (shared, cancelled, saved or error) are new.
+
+### Landscape
+
+A phone on its side has about 300–360 px of height, and the playing screens
+(a song, a Journey step, the three games) used to push the keys off the
+bottom. Under `(orientation: landscape) and (max-height: 560px)`:
+- Each playing screen is exactly the screen's height; the falling notes (or
+  the prompt) take what's left, and the keys a third of the height
+  (`clamp(4.5rem, 34dvh, 8rem)`).
+- The title row slims down, and the keyboard's status moves beside it
+  (`TopBar`'s `aside`). In portrait it stays on its own line under the title.
+- The staff scales down to fit; the race's note and the chord name shrink
+  with the height; Rhythm echo puts the Tap pad beside the rhythm.
+Portrait is unchanged. Home, Settings and Studio scroll as before.
+
 ### Progress (after step 6)
 
 ```
@@ -612,17 +648,21 @@ install it and get the full screen):
 - **A drum sound** for the clicks (General MIDI channel 10), if the MIDI-out
   test shows the Yamaha plays it.
 - **More games**, if the log says Challenges is her door: intervals by ear,
-  chords by name, a longer race.
+  a longer race. (Chords by name is done: chord catch, §9 "More
+  challenges".)
 
 **Studio refinements** (deferred from step 5; most depend on the MIDI-out test):
 - **Start the Style with playback**, if test 3 says the keyboard obeys MIDI
   Start: record the Style's tempo (MIDI Clock) with the take and start it
   in time. Today she starts it herself.
-- **"Listen first" in Songs**, the song played by the Yamaha before she
-  tries it, in a second voice if test 2 allows.
-- **Export a take** as a `.mid` file, to share or to open in Songs as her
-  own song.
-- **Rename** a take. For now they're numbered, or named after the song.
+- ~~**"Listen first" in Songs**~~ Done (§9, "More songs and Listen
+  first"). Still open: a second voice for it, if test 2 allows.
+- ~~**Export a take** as a `.mid` file~~ Done (§9, "Studio additions").
+  Still open: opening a take in Songs as her own song, which needs her free
+  timing snapped to beats first.
+- ~~**Rename** a take~~ Done (§9, "Studio additions").
+- **A metronome during the take**, not only before it. The count-in fixes
+  where bar 1 starts; a click throughout would keep the bars lined up.
 - **The phone's playback ignores the sustain pedal.** Notes end where the
   keys were released; the keyboard's playback does voice the pedal.
 
@@ -644,9 +684,29 @@ install it and get the full screen):
   already has what's needed.
 - **More starter songs.** "Melc, melc, codobelc" was left out: its melody
   hasn't been checked against a reliable source yet.
-- **Landscape layout** for the play screen: more keys, more width per key.
+- ~~**Landscape layout**~~ Done for fit (below "Studio additions"). Still
+  open: more keys in landscape, since the width is there.
 - A **sound for the on-screen keys** when no keyboard is connected (the
   probe's synth, through the output level that defaults to 0).
+- **Make a song from a recording.** A tune recorded on the phone (played,
+  or hummed) turned into a song in her library. Like **Add a song**, it
+  stays on the phone and never reaches the repo. The candidate is Spotify's
+  Basic Pitch (`@spotify/basic-pitch`, Apache 2.0): audio to MIDI, any
+  instrument, chords included, with a model of about 0.9 MB. Checked
+  2026-09-24:
+  - It transcribes a **whole recording**, not live, so it's no route to a
+    "no keyboard" mode.
+  - Its last release (1.0.1) is from August 2022, and it needs TensorFlow.js
+    3, a major version behind. Load it only when this feature opens, never in
+    the main bundle (the deploy-size rules in `CLAUDE.md`).
+  - The model is the easy part. The work is the cleanup: extra notes from
+    overtones, repeated notes merged, no hands split, and times that must be
+    snapped to beats before the engine can use them. So it needs a review
+    screen to fix the notes before the song is saved.
+  - Not for the playing itself: over USB the Yamaha already sends exact
+    notes, and transcription would only add guesses.
+
+  Comes back once the log shows she uses **Add a song** (`song_added`).
 
 **Connection refinements** (deferred from step 3):
 - A check for **Touch Response Off** (every note at the same velocity). It
