@@ -1,6 +1,7 @@
 import { Emitter } from '../midi/emitter'
 import { emptyTracker, track, type TrackerState } from '../midi/noteTracker'
 import { emptyClock, trackClock, type ClockState } from '../midi/clockTracker'
+import { isPlayerChannel } from '../midi/channels'
 import { pushSample } from '../midi/timing'
 import type { ConnectionSnapshot, MidiConnection, MidiEvent, Unsubscribe } from '../midi/types'
 import { evaluate, type NoteEvent, type TestKind, type TestResult } from './diagnostics'
@@ -59,13 +60,6 @@ const defaultFrame: Scheduler = (cb) => {
   else setTimeout(cb, 16)
 }
 
-/**
- * Channels the player's own keys arrive on. The PSR-E383 sent everything
- * played on channel 1, and a running Style's drums on 9 and 10 (S24,
- * 2026-09-24). Yamaha keyboards conventionally keep panel voices on the low
- * channels and Style parts on 9–16; the Split and built-in-Song tests are what
- * confirm this split for this model.
- */
 const pageVisible = () => typeof document === 'undefined' || document.visibilityState === 'visible'
 /** Bumped every time the page is hidden, so a frame sample can tell it spanned one. */
 let hiddenEpoch = 0
@@ -75,7 +69,8 @@ if (typeof document !== 'undefined') {
   })
 }
 
-export const isPlayerChannel = (channel: number) => channel >= 1 && channel <= 8
+// Re-exported: the rule lives in the MIDI layer so the tutor's engine shares it.
+export { isPlayerChannel }
 
 /**
  * The probe's whole state machine, outside React. It owns one MidiConnection,

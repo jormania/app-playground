@@ -1,0 +1,17 @@
+// KeyPath's lesson engine: songs in, judgement out, no UI. Every door (Songs,
+// Journey, Challenges, Studio) builds on this; see KEYPATH_TUTOR.md §4.
+export { parseSmf, SmfError } from './smf'
+export type { SmfFile, SmfNote, SmfTrack } from './smf'
+export { partsOf, suggestParts, songFromParts } from './parts'
+export type { Part, SongFromPartsOptions } from './parts'
+export { stepsOf, notesFor } from './song'
+export type { Song, SongNote, Step, Hand, Practice } from './song'
+export { checkRange, transposeSong, KEYBOARD_RANGE } from './range'
+export type { RangeCheck } from './range'
+export { octaveShift } from './octave'
+export { Judge } from './judge'
+export type { JudgeEvent, JudgeOptions, JudgeSummary, NoteResult, WrongNote, TimingVerdict } from './judge'
+export { buildReport, cueFor } from './feedback'
+export type { Report, Highlight, BarToWorkOn, Suggestion, LiveCue } from './feedback'
+export { DEFAULT_SETTINGS, TIMING_WINDOW_MS, ON_TIME_MS, MIN_VELOCITY } from './settings'
+export type { JudgeSettings, OnWrong, Timing, ReportDepth } from './settings'
