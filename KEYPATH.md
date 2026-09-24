@@ -68,7 +68,10 @@ Other things the run established:
   audio. Chrome reports **24 ms output latency** (+ 4 ms base). A metronome
   played through the keyboard should be scheduled that much early. KeyPath's
   own output stays at 0 until turned up (§2).
-- **No sustain pedal** messages. None was pressed or connected.
+- **Sustain pedal: untested.** There isn't one. The PSR-E383 documents
+  sending it as CC 64, and the probe and tracker already read it. Beginner
+  lessons don't need it; test it the same way if a pedal (e.g. Yamaha FC4A
+  or FC5, into the SUSTAIN jack) is added later.
 
 Still to do on other hardware: the **Poco F3** compatibility check (§2, §3)
 before Nora uses the app.
