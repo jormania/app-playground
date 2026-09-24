@@ -6,9 +6,12 @@ import '@fontsource-variable/jetbrains-mono'
 import '../ds/tokens.css'
 import './radar-b.css'
 import { watchInstalled } from '../shared/installFlag'
+import { fullscreenOnTap } from '../shared/fullscreen'
 import App from './App.jsx'
 
 watchInstalled('radar-b-react.html')
+// Run from a Chrome shortcut, the first tap takes the screen back (src/shared/fullscreen.ts).
+fullscreenOnTap()
 
 // Scoped service worker, registered ourselves so it stays confined to this page.
 // Production only — a cache-first worker under `vite dev` serves back the first

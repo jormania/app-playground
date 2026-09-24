@@ -4,8 +4,11 @@ import '../ds/tokens.css'
 import { Shell } from './app/Shell'
 import { systemPrefersDark } from '../shared/theme'
 import { watchInstalled } from '../shared/installFlag'
+import { fullscreenOnTap } from '../shared/fullscreen'
 
 watchInstalled('keypath-react.html')
+// Run from a Chrome shortcut, the first tap takes the screen back (src/shared/fullscreen.ts).
+fullscreenOnTap()
 
 // Scoped service worker, confined to this page like every other app's.
 // Production only (CLAUDE.md, "Service workers & dev"). Navigations are
