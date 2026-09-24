@@ -232,7 +232,8 @@ three ways that do work:
      match is only a hint. Any input that sends notes gets used.
 2. **Press keys freely.** They should light up on the on-screen keyboard; harder
    presses show as a brighter colour.
-3. **Any key**, **Repeated note** (4× middle C), **Chord** (C4+E4+G4),
+3. **Any key**, **Repeated note** (4× middle C), **Chord** (C4+E4+G4, marked
+   on the on-screen keyboard; a held key that isn't a target shows red),
    **Glissando**. Each shows pass/fail with its measurements.
 4. **Sustain pedal**, if there is one: the Sustain chip appears in Live.
 5. **Phone audio**: tap **Play test tone** and answer where you heard it (§2).

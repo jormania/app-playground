@@ -6,6 +6,7 @@ import { SimulatedConnection } from './midi/simulatedConnection'
 import { WebMidiConnection } from './midi/webMidiConnection'
 import { readEnvironment, type EnvironmentFacts } from './probe/environment'
 import { ProbeSession } from './probe/probeSession'
+import { TESTS } from './probe/diagnostics'
 import { buildReport, countDrops } from './probe/report'
 import { findYamahaOnUsb, type UsbFinding } from './probe/usb'
 import { playTestTone, previewKeyboardOutput, readAudioDevices, watchAudioDevices, type AudioDeviceView, type HeardFrom, type ToneResult } from './probe/audioRouting'
@@ -120,6 +121,11 @@ export default function App() {
 
   const t = snap.tracker
   const held = useMemo(() => new Map(t.held.map((h) => [h.note, h.velocity])), [t.held])
+  // While a test is running, mark its keys on the on-screen keyboard.
+  const targets = useMemo(() => {
+    const spec = snap.test && !snap.test.finished ? TESTS.find((x) => x.kind === snap.test!.kind) : undefined
+    return spec?.targets ? new Set(spec.targets) : undefined
+  }, [snap.test])
   const low = Math.min(PSR_E383_RANGE.low, t.lowest ?? Infinity)
   const high = Math.max(PSR_E383_RANGE.high, t.highest ?? -Infinity)
 
@@ -181,7 +187,7 @@ export default function App() {
       />
 
       <section className={styles.panel} aria-label="Keyboard">
-        <PianoKeyboard low={low} high={high} held={held} onPress={sim ? press : undefined} onRelease={sim ? release : undefined} />
+        <PianoKeyboard low={low} high={high} held={held} targets={targets} onPress={sim ? press : undefined} onRelease={sim ? release : undefined} />
         {sim && (
           <div className={styles.simBar}>
             <p className={styles.faint}>Simulator: tap keys (several fingers for a chord), or type A W S E D F T G Y H U J K for C4–C5.</p>

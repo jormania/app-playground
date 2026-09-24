@@ -10,6 +10,8 @@ export interface TestSpec {
   instruction: string
   /** Tests that can't know when the player is done show a Finish button. */
   needsFinish: boolean
+  /** Keys to mark on the on-screen keyboard while the test runs. */
+  targets?: number[]
 }
 
 export const MIDDLE_C = 60
@@ -23,8 +25,17 @@ export const TESTS: TestSpec[] = [
     title: 'Repeated note',
     instruction: `Play middle C (${noteName(MIDDLE_C)} — the third C from the left) ${REPEATS} times, clearly separated.`,
     needsFinish: false,
+    targets: [MIDDLE_C],
   },
-  { kind: 'chord', title: 'Chord', instruction: 'Play C4 + E4 + G4 together as one chord, hold briefly, release.', needsFinish: false },
+  {
+    kind: 'chord',
+    title: 'Chord',
+    // Spelled out because the first real run pressed three neighbouring white
+    // keys every time — "C4 + E4 + G4" alone doesn't say there are gaps.
+    instruction: 'Play the three marked keys together: C4, E4, G4 — skip one white key between each (C, skip D, E, skip F, G). Hold briefly, release.',
+    needsFinish: false,
+    targets: CHORD,
+  },
   {
     kind: 'sweep',
     title: 'Glissando',

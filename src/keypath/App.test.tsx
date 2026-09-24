@@ -45,6 +45,22 @@ describe('KeyPath probe', () => {
     expect((screen.getByRole('slider', { name: 'KeyPath sound volume' }) as HTMLInputElement).value).toBe('80')
   })
 
+  it('marks a running test’s target keys, and flags a held key that isn’t one', async () => {
+    const { container } = render(<App />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Simulator' }))
+    await screen.findByRole('button', { name: 'Sound on' })
+    fireEvent.click(screen.getByRole('button', { name: 'Chord' }))
+    const marked = () => [...container.querySelectorAll('[data-target]')].map((el) => el.getAttribute('aria-label'))
+    expect(marked()).toEqual(['C4', 'E4', 'G4'])
+    const d4 = screen.getByRole('button', { name: 'D4' })
+    fireEvent.pointerDown(d4, { pointerId: 1 })
+    await waitFor(() => expect(d4.hasAttribute('data-wrong')).toBe(true))
+    fireEvent.pointerUp(d4, { pointerId: 1 })
+    // Nothing is marked when no test is running.
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(marked()).toEqual([])
+  })
+
   it('in simulator mode, a pressed key shows as held and lands in the log', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('radio', { name: 'Simulator' }))
