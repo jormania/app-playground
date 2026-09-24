@@ -14,6 +14,8 @@ import { PlayKeyboard } from './PlayKeyboard'
 import { ReportView } from './ReportView'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
+import { useOutput } from '../studio/output'
+import { Playback, realClock } from '../studio/playback'
 import styles from './songs.module.css'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report'
@@ -171,6 +173,54 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   )
   const keyboard = useKeyboard(onMidi)
 
+  // Listen first: the song played for her (on the keyboard, or the phone) at the
+  // chosen hands and speed, the notes falling and their keys lighting as it goes.
+  const output = useOutput(keyboard)
+  const [listening, setListening] = useState(false)
+  const [listenKeys, setListenKeys] = useState<ReadonlySet<number>>(new Set())
+  const listenPlayback = useRef<Playback | null>(null)
+  const stopListening = useCallback(() => {
+    listenPlayback.current?.stop()
+    listenPlayback.current = null
+    setListening(false)
+    setListenKeys(new Set())
+    fall.current?.setTime(READY_TIME)
+  }, [])
+  const listen = () => {
+    if (listening) return stopListening()
+    const take = {
+      ms: Math.round(song.durationMs / tempo) + 300,
+      notes: notes.map((n) => ({ pitch: n.pitch, velocity: 80, startMs: Math.round(n.startMs / tempo), durationMs: Math.round(n.durationMs / tempo) })),
+      pedal: [],
+    }
+    const p = new Playback(take, output.sink(), realClock, stopListening)
+    listenPlayback.current = p
+    p.start()
+    setListening(true)
+    if (profileId) void log.add(profileId, { type: 'song_listened', songId: song.id, practice, tempo })
+  }
+  useEffect(() => {
+    if (!listening) return
+    let raf = 0
+    let lastKeys = ''
+    const frame = () => {
+      const p = listenPlayback.current
+      if (!p) return
+      const s = p.position() * tempo
+      fall.current?.setTime(s)
+      const sounding = notes.filter((n) => n.startMs <= s && s < n.startMs + n.durationMs).map((n) => n.pitch)
+      const key = sounding.join(',')
+      if (key !== lastKeys) {
+        lastKeys = key
+        setListenKeys(new Set(sounding))
+      }
+      raf = requestAnimationFrame(frame)
+    }
+    raf = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(raf)
+  }, [listening, notes, tempo])
+  useEffect(() => () => listenPlayback.current?.stop(), [])
+
   // Pause when the keyboard disappears or KeyPath leaves the screen; never count those as misses.
   const pause = useCallback((reason: 'disconnected' | 'hidden') => {
     if (phaseRef.current !== 'playing' || judge.current?.mode !== 'running') return
@@ -300,7 +350,20 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
             <SegmentedControl value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
           </div>
           <div>
-            <Button onClick={() => setPhase('ready')}>▶ {t('startSong')}</Button>
+            <div className={styles.actions}>
+              <Button
+                onClick={() => {
+                  stopListening()
+                  setPhase('ready')
+                }}
+              >
+                ▶ {t('startSong')}
+              </Button>
+              <Button variant="outline" onClick={listen}>
+                {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
+              </Button>
+            </div>
+            {output.phoneMuted && <p className={styles.hint}>{t('studioPhoneMuted')}</p>}
           </div>
         </section>
       )}
@@ -346,7 +409,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
           names={settings.keyNames}
           boxes={boxes}
           held={held}
-          targets={phase === 'ready' ? new Set([MIDDLE_C]) : targets}
+          targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : targets}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
           label={label}

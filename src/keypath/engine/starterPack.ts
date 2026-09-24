@@ -13,9 +13,19 @@ import type { Hand, Song, SongNote } from './song'
 //   ode       — Beethoven, Symphony No. 9, finale theme (1824). Beethoven d. 1827.
 //   jacques   — traditional French round “Frère Jacques”, 18th century.
 //   lune      — traditional French song “Au clair de la lune”, 18th century.
+//   buns      — “Hot Cross Buns”, English street cry, printed by the 1730s.
+//   lamb      — “Mary Had a Little Lamb”, Lowell Mason's tune (1830s). Mason d. 1872.
+//   london    — “London Bridge Is Falling Down”, English nursery rhyme, 18th century.
+//   jingle    — “Jingle Bells” (chorus), James Lord Pierpont, 1857. Pierpont d. 1893.
+//   birthday  — “Happy Birthday”: the Hill sisters' melody “Good Morning to All”
+//               (1893). Mildred Hill d. 1916, Patty Hill d. 1946; public domain
+//               in the EU since 2017, and in the US the claim fell in 2016.
+//   elise     — Beethoven, “Für Elise” WoO 59, the opening theme, right hand
+//               only (published 1867). Beethoven d. 1827.
 
 const C3 = 48, G2 = 43, F3 = 53, G3 = 55
-const C4 = 60, D4 = 62, E4 = 64, F4 = 65, G4 = 67, A4 = 69
+const C4 = 60, D4 = 62, E4 = 64, F4 = 65, G4 = 67, Gs4 = 68, A4 = 69, B4 = 71
+const C5 = 72, D5 = 74, Ds5 = 75, E5 = 76, F5 = 77, G5 = 79
 
 /** [pitch, beats] — one voice, one after another. */
 type Line = [number, number][]
@@ -77,6 +87,76 @@ export const STARTER_PACK: StarterSong[] = [
     right: [
       [C4, 1], [C4, 1], [C4, 1], [D4, 1], [E4, 2], [D4, 2], [C4, 1], [E4, 1], [D4, 1], [D4, 1], [C4, 4],
       [C4, 1], [C4, 1], [C4, 1], [D4, 1], [E4, 2], [D4, 2], [C4, 1], [E4, 1], [D4, 1], [D4, 1], [C4, 4],
+    ],
+  },
+  {
+    id: 'starter:buns',
+    title: { en: 'Hot Cross Buns', ro: 'Hot Cross Buns' },
+    bpm: 90,
+    beatsPerBar: 4,
+    right: [[E4, 1], [D4, 1], [C4, 2], [E4, 1], [D4, 1], [C4, 2], [C4, 0.5], [C4, 0.5], [C4, 0.5], [C4, 0.5], [D4, 0.5], [D4, 0.5], [D4, 0.5], [D4, 0.5], [E4, 1], [D4, 1], [C4, 2]],
+  },
+  {
+    id: 'starter:lamb',
+    title: { en: 'Mary Had a Little Lamb', ro: 'Mary Had a Little Lamb' },
+    bpm: 100,
+    beatsPerBar: 4,
+    right: [
+      [E4, 1], [D4, 1], [C4, 1], [D4, 1], [E4, 1], [E4, 1], [E4, 2], [D4, 1], [D4, 1], [D4, 2], [E4, 1], [G4, 1], [G4, 2],
+      [E4, 1], [D4, 1], [C4, 1], [D4, 1], [E4, 1], [E4, 1], [E4, 1], [E4, 1], [D4, 1], [D4, 1], [E4, 1], [D4, 1], [C4, 4],
+    ],
+  },
+  {
+    id: 'starter:london',
+    title: { en: 'London Bridge', ro: 'London Bridge' },
+    bpm: 100,
+    beatsPerBar: 4,
+    right: [
+      [G4, 1.5], [A4, 0.5], [G4, 1], [F4, 1], [E4, 1], [F4, 1], [G4, 2], [D4, 1], [E4, 1], [F4, 2], [E4, 1], [F4, 1], [G4, 2],
+      [G4, 1.5], [A4, 0.5], [G4, 1], [F4, 1], [E4, 1], [F4, 1], [G4, 2], [D4, 2], [G4, 2], [E4, 1], [C4, 3],
+    ],
+  },
+  {
+    id: 'starter:jingle',
+    title: { en: 'Jingle Bells', ro: 'Jingle Bells' },
+    bpm: 110,
+    beatsPerBar: 4,
+    right: [
+      [E4, 1], [E4, 1], [E4, 2], [E4, 1], [E4, 1], [E4, 2], [E4, 1], [G4, 1], [C4, 1.5], [D4, 0.5], [E4, 4],
+      [F4, 1], [F4, 1], [F4, 1.5], [F4, 0.5], [F4, 1], [E4, 1], [E4, 1], [E4, 0.5], [E4, 0.5], [E4, 1], [D4, 1], [D4, 1], [E4, 1], [D4, 2], [G4, 2],
+      [E4, 1], [E4, 1], [E4, 2], [E4, 1], [E4, 1], [E4, 2], [E4, 1], [G4, 1], [C4, 1.5], [D4, 0.5], [E4, 4],
+      [F4, 1], [F4, 1], [F4, 1.5], [F4, 0.5], [F4, 1], [E4, 1], [E4, 1], [E4, 0.5], [E4, 0.5], [G4, 1], [G4, 1], [F4, 1], [D4, 1], [C4, 4],
+    ],
+  },
+  {
+    id: 'starter:birthday',
+    title: { en: 'Happy Birthday', ro: 'Happy Birthday' },
+    bpm: 100,
+    beatsPerBar: 3,
+    // Starts on the last beat of a bar (the pickup), so the last bar is a beat short.
+    right: [
+      [G4, 0.75], [G4, 0.25], [A4, 1], [G4, 1], [C5, 1], [B4, 2],
+      [G4, 0.75], [G4, 0.25], [A4, 1], [G4, 1], [D5, 1], [C5, 2],
+      [G4, 0.75], [G4, 0.25], [G5, 1], [E5, 1], [C5, 1], [B4, 1], [A4, 1],
+      [F5, 0.75], [F5, 0.25], [E5, 1], [C5, 1], [D5, 1], [C5, 2],
+    ],
+  },
+  {
+    id: 'starter:elise',
+    title: { en: 'Für Elise (opening)', ro: 'Für Elise (începutul)' },
+    // Counted in sixteenths (six to a 3/8 bar), slow: a dotted quarter is 60 bpm.
+    bpm: 360,
+    beatsPerBar: 6,
+    right: [
+      [E5, 1], [Ds5, 1],
+      [E5, 1], [Ds5, 1], [E5, 1], [B4, 1], [D5, 1], [C5, 1],
+      [A4, 3], [C4, 1], [E4, 1], [A4, 1],
+      [B4, 3], [E4, 1], [Gs4, 1], [B4, 1],
+      [C5, 3], [E4, 1], [E5, 1], [Ds5, 1],
+      [E5, 1], [Ds5, 1], [E5, 1], [B4, 1], [D5, 1], [C5, 1],
+      [A4, 3], [C4, 1], [E4, 1], [A4, 1],
+      [B4, 3], [E4, 1], [C5, 1], [B4, 1],
+      [A4, 4],
     ],
   },
 ]

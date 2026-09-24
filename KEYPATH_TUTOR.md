@@ -131,8 +131,13 @@ MIDI layer (built, src/keypath/midi/)  →  Judge  →  Feedback policy  →  UI
    *Frère Jacques*, *Au clair de la lune*, *Melc, melc, codobelc*). The
    arrangements are ours; each gets a provenance note, as `KEYPATH.md` §7 and
    `content-boundary.test.js` require. They are stored as data in source code,
-   not as `.mid` files, so the boundary test stays strict. **Shipped with
-   four** (step 3); *Melc, melc, codobelc* waits for a checked melody (§10).
+   not as `.mid` files, so the boundary test stays strict. **Ten now**: the
+   first four with step 3, then Hot Cross Buns, Mary Had a Little Lamb,
+   London Bridge, Jingle Bells (chorus), Happy Birthday and the opening of
+   Für Elise, before Nora's first look. *Melc, melc, codobelc* still waits
+   for a checked melody (§10). Every song has **Listen**, which plays it on
+   the keyboard (or the phone) before she tries it, at the chosen hands and
+   speed, the keys lighting as it goes.
 2. **Your own MIDI files**: **Add song** opens a `.mid` from the phone.
    - It stays **on that phone** (IndexedDB), never uploaded, never committed.
    - **“Which part do you want to learn?”**: a short preview of each track, with
@@ -308,6 +313,15 @@ connected. `useCountUp` counts numbers up (WhereItWent's odometer).
   screen change fades in.
 
 All of it is off under the phone's reduced-motion setting, and in tests.
+
+### More songs and Listen first
+
+Six more public-domain melodies in `engine/starterPack.ts`, provenance in
+the file, written from memory: listen to each with **Listen** before
+relying on it. Songs with rests or 6/8 time (When the Saints, Row Row Row
+Your Boat) wait for rests in the song format. **Listen** plays the song
+through Studio's `Playback` on the shared Keyboard/Phone route, and logs
+`song_listened`.
 
 ### Progress (after step 6)
 

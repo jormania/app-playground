@@ -39,7 +39,7 @@ export interface ProgressSummary {
   /** Active days followed by another active day: "does she come back the next day?" */
   cameBackNextDay: number
   doors: Record<Door, DoorStats>
-  songs: { started: number; finished: number; abandoned: number; added: number; bySong: SongStats[] }
+  songs: { started: number; finished: number; abandoned: number; added: number; listened: number; bySong: SongStats[] }
   journey: { practices: number; checksPassed: number; checksFailed: number; testOuts: number; left: number }
   challenges: { race: number; echo: number; left: number }
   studio: { opened: number; recorded: number; kept: number; played: number }
@@ -76,7 +76,7 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
     days: [],
     cameBackNextDay: 0,
     doors,
-    songs: { started: 0, finished: 0, abandoned: 0, added: 0, bySong: [] },
+    songs: { started: 0, finished: 0, abandoned: 0, added: 0, listened: 0, bySong: [] },
     journey: { practices: 0, checksPassed: 0, checksFailed: 0, testOuts: 0, left: 0 },
     challenges: { race: 0, echo: 0, left: 0 },
     studio: { opened: 0, recorded: 0, kept: 0, played: 0 },
@@ -130,6 +130,9 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
         break
       case 'song_added':
         s.songs.added++
+        break
+      case 'song_listened':
+        s.songs.listened++
         break
       case 'journey_started':
         if (r.mode === 'practice') s.journey.practices++

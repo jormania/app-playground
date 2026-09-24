@@ -310,6 +310,7 @@ export const en = {
   // Celebrations
   streakChip: '{count} in a row',
   resumeTitle: 'Pick up where you left off',
+  listen: 'Listen',
 } as const
 
 export type StringKey = keyof typeof en

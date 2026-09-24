@@ -312,4 +312,5 @@ export const ro: Record<StringKey, string> = {
   // Celebrări
   streakChip: '{count} la rând',
   resumeTitle: 'Continuă de unde ai rămas',
+  listen: 'Ascultă',
 }

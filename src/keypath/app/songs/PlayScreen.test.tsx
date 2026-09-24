@@ -115,4 +115,13 @@ describe('Play screen', () => {
     expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
     await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_abandoned', hit: 1, total: 3 }))
   })
+
+  it('plays the song for her first with Listen, and logs it', async () => {
+    const { store, profileId } = await setUp({}, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Listen/ }))
+    expect(await screen.findByRole('button', { name: /■ Stop/ })).toBeTruthy()
+    await waitFor(async () => expect((await events(store, profileId)).find((e) => e.type === 'song_listened')).toMatchObject({ songId: 'Three notes', practice: 'right', tempo: 1 }))
+    fireEvent.click(screen.getByRole('button', { name: /■ Stop/ }))
+    expect(await screen.findByRole('button', { name: /Listen/ })).toBeTruthy()
+  })
 })
