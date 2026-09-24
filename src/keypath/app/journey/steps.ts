@@ -10,11 +10,13 @@ import { Chords, FindAll, Prompts, Tune, type Exercise, type Prompt } from './ex
 // Melodies here are public domain, arranged here, stored as data like the
 // starter pack: Ode to Joy (Beethoven, d. 1827), Twinkle Twinkle (French
 // melody, printed 1761), Mary Had a Little Lamb (Lowell Mason's 1830s tune).
+// Steps 7–9 were added before Nora's first look: the left hand alone, the
+// black keys, and reading up to the C above middle C.
 
-const C3 = 48, F3 = 53, G3 = 55
+const C3 = 48, D3 = 50, E3 = 52, F3 = 53, G3 = 55
 const C4 = 60, D4 = 62, E4 = 64, F4 = 65, G4 = 67, A4 = 69, B4 = 71, C5 = 72, D5 = 74
 
-export type StepId = 'middleC' | 'cde' | 'fiveFinger' | 'chord' | 'twoHands' | 'notation'
+export type StepId = 'middleC' | 'cde' | 'fiveFinger' | 'chord' | 'twoHands' | 'notation' | 'leftHand' | 'blackKeys' | 'readingHigher'
 
 /** One bar line in the staff step: pitches with their length in beats. */
 export type StaffNote = [pitch: number, beats: 1 | 2]
@@ -61,6 +63,13 @@ const TWINKLE = tune(
 )
 const READ_PRACTICE: StaffNote[] = [[C4, 1], [D4, 1], [E4, 1], [F4, 1], [G4, 1], [F4, 1], [E4, 1], [D4, 1]]
 const READ_CHECK: StaffNote[] = [[E4, 1], [D4, 1], [C4, 1], [D4, 1], [E4, 1], [E4, 1], [E4, 2]]
+// Step 9: up the ladder to C, then a tune she knows, read from the staff.
+const HIGHER_PRACTICE: StaffNote[] = [[C4, 1], [D4, 1], [E4, 1], [F4, 1], [G4, 1], [A4, 1], [B4, 1], [C5, 1]]
+const HIGHER_CHECK: StaffNote[] = [[C4, 1], [C4, 1], [G4, 1], [G4, 1], [A4, 1], [A4, 1], [G4, 2]]
+// Step 7: Ode to Joy's first line again, an octave down, in the left hand.
+const ODE_LEFT = tune('odeLeft', [], [[E3, 1], [E3, 1], [F3, 1], [G3, 1], [G3, 1], [F3, 1], [E3, 1], [D3, 1], [C3, 1], [C3, 1], [D3, 1], [E3, 1], [E3, 1.5], [D3, 0.5], [D3, 2]])
+// Step 8: the five black keys, as sharps.
+const SHARPS = [61, 63, 66, 68, 70] // C♯4 D♯4 F♯4 G♯4 A♯4
 
 const C_CHORD = { pitchClasses: [0, 4, 7], show: [C4, E4, G4], say: { key: 'jChord' as StringKey, notes: [C4, E4, G4] } }
 const G_CHORD = { pitchClasses: [7, 11, 2], show: [G4, B4, D5], say: { key: 'jChord' as StringKey, notes: [G4, B4, D5] } }
@@ -139,6 +148,40 @@ export const JOURNEY: JourneyStep[] = [
     practice: () => new Tune(starterSong(tune('read', READ_PRACTICE)), 'right', true, { key: 'jReadLabelled' }),
     check: () => new Tune(starterSong(tune('lamb', READ_CHECK)), 'right', false, { key: 'jReadStaff' }),
     staff: { practice: READ_PRACTICE, check: READ_CHECK },
+  },
+  {
+    id: 'leftHand',
+    title: 'j7Title',
+    blurb: 'j7Blurb',
+    tip: 'j7Tip',
+    range: { low: C3, high: C4 },
+    octaveGate: true,
+    allowWrong: 2,
+    practice: () => new Tune(starterSong(ODE_LEFT), 'left', true, { key: 'jFollowLit' }),
+    check: () => new Tune(starterSong(ODE_LEFT), 'left', false, { key: 'jPlayTune' }),
+  },
+  {
+    id: 'blackKeys',
+    title: 'j8Title',
+    blurb: 'j8Blurb',
+    tip: 'j8Tip',
+    range: { low: C3, high: C5 },
+    octaveGate: false,
+    allowWrong: 1,
+    practice: () => new Prompts([...SHARPS, 66, 61].map((p) => lit(p))),
+    check: () => new Prompts([63, 66, 70, 61, 68, 66].map(ask)),
+  },
+  {
+    id: 'readingHigher',
+    title: 'j9Title',
+    blurb: 'j9Blurb',
+    tip: 'j9Tip',
+    range: { low: C4, high: C5 },
+    octaveGate: true,
+    allowWrong: 2,
+    practice: () => new Tune(starterSong(tune('higher', HIGHER_PRACTICE)), 'right', true, { key: 'jReadLabelled' }),
+    check: () => new Tune(starterSong(tune('twinkleRead', HIGHER_CHECK)), 'right', false, { key: 'jReadStaff' }),
+    staff: { practice: HIGHER_PRACTICE, check: HIGHER_CHECK },
   },
 ]
 

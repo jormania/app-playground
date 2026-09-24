@@ -461,6 +461,11 @@ src/keypath/app/journey/
 | 4 | Your first chord | C, C, G, G chords | C, G, C chords |
 | 5 | Both hands | Twinkle, first line, with seven low left-hand notes, each starting with a right-hand note | the same |
 | 6 | Reading music | two bars on the staff, named: C D E F G F E D | Mary Had a Little Lamb, first bar and a half, unnamed |
+| 7 | Left hand | Ode to Joy's first line an octave down, in the left hand | the same |
+| 8 | The black keys | the five sharps, lit | six sharps by name, any octave |
+| 9 | Reading higher | the staff from C up to the next C, named (stems down from the middle line) | Twinkle's opening, unnamed |
+
+Steps 7–9 were added before Nora's first look, from the "more steps" list.
 
 Steps 1, 2 and 4 go by note *name* (any octave), so they need no octave
 check. The tune steps start with "press middle C", like Songs.
@@ -604,8 +609,9 @@ install it and get the full screen):
   a clock. Both are guesses until the log shows how she does.
 - ~~**Reading step:** key names during the check~~ Done: a **Names on the
   keys** setting, offered off after step 6 (§2, "The ramp").
-- **More steps** (rests, the left hand alone, a black key, a second line of
-  notation) once the log says the Journey is the door she uses.
+- **More steps**: rests and a second line of notation (the left hand, the
+  black keys and reading higher are done, steps 7–9), once the log says the
+  Journey is the door she uses.
 - **Chord togetherness** is judged in the chord step only. The engine's
   Songs judging doesn't use it yet (see Engine refinements).
 

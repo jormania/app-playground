@@ -160,7 +160,7 @@ export const en = {
   keyboardBack: 'The keyboard is back.',
   helpReconnect: 'Help me reconnect',
   // Journey
-  journeyIntro: 'Six small steps. Already know one? Test out of it and move on.',
+  journeyIntro: 'Small steps, one at a time. Already know one? Test out of it and move on.',
   jStepN: 'Step {n}',
   jLocked: 'Opens after step {n}.',
   jLearn: 'Learn it',
@@ -168,7 +168,7 @@ export const en = {
   jTestOut: 'I can do this already',
   jDoneCheck: 'Done',
   jDoneTestOut: 'Tested out',
-  jAllDone: 'All six steps done. The songs are waiting.',
+  jAllDone: 'Every step done. The songs are waiting.',
   j1Title: 'Find middle C',
   j1Blurb: 'The key everything starts from.',
   j1Tip: 'Look for two black keys side by side. The white key just left of them is a C. There’s one in every octave; middle C is the one nearest the middle of the keyboard.',
@@ -294,7 +294,7 @@ export const en = {
   pSongRow: '{finished} finished · {abandoned} stopped',
   pAdded: 'Songs added: {count}',
   pJourney: 'Journey',
-  pJourneyLine: '{done} of 6 steps done, {testOuts} of them tested out',
+  pJourneyLine: '{done} of {total} steps done, {testOuts} of them tested out',
   pChecks: 'Checks: {passed} passed, {failed} not yet',
   pChallenges: 'Challenges',
   pChallengesLine: 'Note race {race}×, rhythm echo {echo}×',
@@ -311,6 +311,15 @@ export const en = {
   streakChip: '{count} in a row',
   resumeTitle: 'Pick up where you left off',
   listen: 'Listen',
+  j7Title: 'Left hand',
+  j7Blurb: 'The same tune, played by the other hand.',
+  j7Tip: 'Little finger on the C below middle C, thumb on G. Play Ode to Joy again, now with your left hand.',
+  j8Title: 'The black keys',
+  j8Blurb: 'Sharps: the key just to the right.',
+  j8Tip: 'Black keys come in groups of two and three. The one just right of C is C♯, “C sharp”: a sharp always means the next key to the right.',
+  j9Title: 'Reading higher',
+  j9Blurb: 'A, B and C on the staff, and a tune you know.',
+  j9Tip: 'The ladder keeps going: A sits in the second space, B on the middle line, C in the third space. From the middle line up, a note’s stem hangs down.',
 } as const
 
 export type StringKey = keyof typeof en

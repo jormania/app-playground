@@ -144,7 +144,7 @@ export function ProgressScreen() {
 
           <section className={styles.panel}>
             <h2 className={styles.h2}>{t('pJourney')}</h2>
-            <p>{t('pJourneyLine', { done: doneSteps.length, testOuts: doneSteps.filter((x) => data.journey[x.id]?.how === 'testOut').length })}</p>
+            <p>{t('pJourneyLine', { done: doneSteps.length, total: JOURNEY.length, testOuts: doneSteps.filter((x) => data.journey[x.id]?.how === 'testOut').length })}</p>
             {doneSteps.length > 0 && <p className={styles.hint}>{doneSteps.map((x) => `✓ ${t(x.title)}`).join(' · ')}</p>}
             <p className={styles.hint}>{t('pChecks', { passed: s.journey.checksPassed, failed: s.journey.checksFailed })}</p>
           </section>

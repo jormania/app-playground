@@ -86,7 +86,12 @@ export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabe
             {/* Middle C's own short line */}
             {staffStep(pitch) <= 0 && <line x1={x - 10} x2={x + 10} y1={BOTTOM + SPACE} y2={BOTTOM + SPACE} className={styles.staffLine} />}
             <ellipse cx={x} cy={y} rx={6.2} ry={4.4} transform={`rotate(-20 ${x} ${y})`} className={beats >= 2 ? styles.headOpen : styles.headFilled} />
-            <line x1={x + 5.6} x2={x + 5.6} y1={y - 1} y2={y - 30} className={styles.stem} />
+            {/* From the middle line (B4) up, stems hang down on the left, as in print. */}
+            {staffStep(pitch) >= 6 ? (
+              <line x1={x - 5.6} x2={x - 5.6} y1={y + 1} y2={y + 30} className={styles.stem} />
+            ) : (
+              <line x1={x + 5.6} x2={x + 5.6} y1={y - 1} y2={y - 30} className={styles.stem} />
+            )}
             {label && (
               <text x={x} y={BOTTOM + 30} className={styles.noteName}>
                 {label(pitch)}

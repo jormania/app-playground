@@ -18,7 +18,7 @@ describe('resumeFrom', () => {
   it('points on to the next Journey step after a passed check, and stays on a step not yet passed', () => {
     expect(resumeFrom(log({ type: 'journey_finished', step: 'cde', mode: 'check', passed: true, wrong: 0, ms: 1 }))).toEqual({ kind: 'journey', step: 'fiveFinger' })
     expect(resumeFrom(log({ type: 'journey_finished', step: 'cde', mode: 'check', passed: false, wrong: 3, ms: 1 }))).toEqual({ kind: 'journey', step: 'cde' })
-    expect(resumeFrom(log({ type: 'journey_finished', step: 'notation', mode: 'check', passed: true, wrong: 0, ms: 1 }))).toBeNull()
+    expect(resumeFrom(log({ type: 'journey_finished', step: 'readingHigher', mode: 'check', passed: true, wrong: 0, ms: 1 }))).toBeNull()
   })
 
   it('has nothing to offer on a first visit', () => {

@@ -41,7 +41,7 @@ const tapLit = () => act(() => tap(document.querySelector('[data-target]')!))
 const stops = () => [...document.querySelectorAll('ol li')].map((li) => `${li.getAttribute('data-state')}: ${li.textContent}`)
 
 describe('Journey', () => {
-  it('shows six steps: the first open, the rest locked but offering a test-out', async () => {
+  it('shows every step: the first open, the rest locked but offering a test-out', async () => {
     await open('#/door/journey')
     await screen.findByText('Find middle C')
     expect(stops()).toEqual([
@@ -51,6 +51,9 @@ describe('Journey', () => {
       'locked: 🔒Your first chordI can do this already',
       'locked: 🔒Both handsI can do this already',
       'locked: 🔒Reading musicI can do this already',
+      'locked: 🔒Left handI can do this already',
+      'locked: 🔒The black keysI can do this already',
+      'locked: 🔒Reading higherI can do this already',
     ])
   })
 
