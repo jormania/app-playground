@@ -21,6 +21,7 @@ vi.mock('../connect/keyboard', () => ({
   },
 }))
 const key = (note: number) => act(() => yamaha!({ type: 'noteon', note, velocity: 80, channel: 1, time: performance.now() } as unknown as MidiEvent))
+const off = (note: number) => act(() => yamaha!({ type: 'noteoff', note, velocity: 0, channel: 1, time: performance.now() } as unknown as MidiEvent))
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'requestAnimationFrame', 'cancelAnimationFrame', 'Date'] })
@@ -43,12 +44,71 @@ const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms))
 const flush = () => act(async () => void (await vi.advanceTimersByTimeAsync(0)))
 
 describe('Challenges', () => {
-  it('shows both games with “no score yet”', async () => {
+  it('shows the three games with “no score yet”', async () => {
     await open('#/door/challenges')
     await flush()
     expect(screen.getByText('Note race')).toBeTruthy()
     expect(screen.getByText('Rhythm echo')).toBeTruthy()
-    expect(screen.getAllByText('No score yet')).toHaveLength(2)
+    expect(screen.getByText('Chord catch')).toBeTruthy()
+    expect(screen.getAllByText('No score yet')).toHaveLength(3)
+  })
+
+  it('note race on the staff: draws the note with no name, and keeps its own best', async () => {
+    const { store, profileId } = await open('#/challenge/race')
+    await flush()
+    fireEvent.click(screen.getByRole('radio', { name: 'On the staff' }))
+    expect(screen.getByText(/read it, then find it/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    const note = screen.getByRole('img', { name: 'A note on the staff' })
+    expect(note.querySelectorAll('ellipse')).toHaveLength(1)
+    expect(note.querySelector('text')).toBeNull() // no name, no time signature
+    // Level 1 on the staff is C to G around middle C, so trying each of them finds it.
+    for (const p of [60, 62, 64, 65, 67]) {
+      key(p)
+      if (screen.queryByText('1 found')) break
+    }
+    expect(screen.getByText('1 found')).toBeTruthy()
+    advance(30_000)
+    await flush()
+    const bests = await new RecordRepo(store).get(profileId)
+    expect(bests.staff[1]).toBe(1)
+    expect(bests.race[1]).toBeUndefined()
+    const log = await new EngagementLog(store).read(profileId)
+    expect(log.find((e) => e.type === 'challenge_finished')).toMatchObject({ game: 'staff', level: 1, score: 1 })
+  })
+
+  it('chord catch: lights the chord, counts it played together, and waits for the hand to lift', async () => {
+    const { store, profileId } = await open('#/challenge/chord')
+    await flush()
+    // G first: its keys from middle C would run off the screen keyboard, so it is lit an octave down.
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    const SPELL: Record<string, number[]> = { C: [60, 64, 67], F: [65, 69, 72], G: [55, 59, 62] }
+    const asked = () => document.querySelector('[class*="chordName"]')!.textContent!
+    const first = asked()
+    expect(first).toBe('G')
+    // Level 1 lights the chord's keys on screen.
+    const lit = [...document.querySelectorAll('[data-target]')].map((k) => k.getAttribute('aria-label'))
+    expect(lit).toHaveLength(3)
+    for (const p of SPELL[first]) key(p)
+    expect(screen.getByText('1 caught')).toBeTruthy()
+    expect(screen.getByText('Let go…')).toBeTruthy()
+    for (const p of SPELL[first]) off(p)
+    const second = asked()
+    expect(second).not.toBe(first)
+    // The right keys, but slowly: not a chord.
+    key(SPELL[second][0])
+    advance(400)
+    key(SPELL[second][1])
+    key(SPELL[second][2])
+    expect(screen.getByText('All together!')).toBeTruthy()
+    for (const p of SPELL[second]) off(p)
+    advance(45_000)
+    await flush()
+    expect(screen.getByText('1 caught in 45 seconds!')).toBeTruthy()
+    expect(screen.getByText('Right keys, not quite together: 1')).toBeTruthy()
+    expect((await new RecordRepo(store).get(profileId)).chord[1]).toBe(1)
+    random.mockRestore()
   })
 
   it('note race: counts the named keys found in 30 seconds and keeps the best', async () => {

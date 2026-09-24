@@ -85,7 +85,7 @@ The last one used is remembered, not forced.
 |---|---|---|
 | **A. Songs** (the backbone) | 5–10 starter pieces + your own MIDI files. Learn right hand → left hand → both. Falling notes on a keyboard, with letter names. Then play it through | Flowkey, Simply Piano |
 | **B. Journey** | A small map of ~6 steps: find middle C → C-D-E → a five-finger melody → first chord → first two-hand piece → first bar of real notation. Each step can be **tested out** in ~30 s: if you can already do it, it unlocks and you move on | Simply Piano |
-| **C. Challenges** | Two games: **note race** (find the key shown, against the clock) and **rhythm echo** (KeyPath plays a rhythm, you copy it) | Rhythm/party games |
+| **C. Challenges** | Three games: **note race** (find the key shown, by name or on a staff, against the clock), **rhythm echo** (KeyPath plays a rhythm, you copy it) and **chord catch** (a chord is named, play it) | Rhythm/party games |
 | **D. Studio** | Free play over a keyboard Style; record, play back, keep favourites. After a song in A: a **“make it yours”** moment: play its melody over a Style, or invent an ending | nothing mainstream |
 
 A and D are linked on purpose: every learned song offers a creative follow-up.
@@ -234,7 +234,8 @@ Each step ships on its own and is usable without the next.
 5. **MIDI-out probe test**, then **D. Studio** and the “make it yours” link
    from Songs — **built** (see below). The test is ready in Diagnostics and
    **hasn't been run on the Yamaha yet**; Studio works whatever it finds.
-6. **C. Challenges**: note race, rhythm echo — **built** (see below).
+6. **C. Challenges**: note race, rhythm echo — **built** (see below); then
+   chord catch and the race's “on the staff” mode (see *More challenges*).
 7. **Poco F3 check** (`KEYPATH.md` §2) before Nora starts, then two to three
    weeks of use, read the engagement log, and decide what to deepen.
    *Skipped for now at Gabriel's call; still worth doing before she relies
@@ -323,6 +324,28 @@ Your Boat) wait for rests in the song format. **Listen** plays the song
 through Studio's `Playback` on the shared Keyboard/Phone route, and logs
 `song_listened`.
 
+### More challenges
+
+- **Note race, on the staff.** A *Show the note* switch on the race's setup:
+  *By name* as before, or *On the staff*, where the note is drawn alone on
+  a treble staff (the Journey's `Staff`, with a `bare` option: no time
+  signature, no bar lines) and has no name anywhere. White keys only, rising
+  by level: C to G · C to C · up to the G above the staff. Any octave still
+  counts. Its bests are kept apart from the named race (`staff` in the
+  records, and in the log's `game`).
+- **Chord catch** (`chordCatch.ts`, `ChordCatchScreen.tsx`). A chord is
+  named; her three keys must go down together, any octave, any order, and
+  each chord is judged by the Journey's own `Chords` exercise, so the
+  togetherness window is the same Timing-based one as step 5 (150 / 100 /
+  70 ms). Right keys that were too far apart count as *spread* and get an
+  “All together!”; the next chord is only asked once every key is up, so the
+  hand that just played C isn't read as the start of F. Levels: C, F, G ·
+  plus Am, Dm, Em · plus D, E, A (the first black keys). Levels 1 and 2
+  light the keys and spell the notes; level 3 gives only the name. 45 s.
+  Names follow the note-name setting: C, Am in letters; Do, Lam in solfège.
+- Records saved before these existed read back with empty `staff` and
+  `chord` tables, so nobody's bests are lost.
+
 ### Progress (after step 6)
 
 ```
@@ -362,7 +385,7 @@ src/keypath/app/challenges/
                      late / missed, and passes with every note played and at
                      most one stray tap
   records.ts         each player's best per game and level
-  ChallengesHome.tsx the door: both games, with bests
+  ChallengesHome.tsx the door: every game, with bests
   NoteRaceScreen.tsx the race; the screen keys lose their names here, since
                      finding the key is the game
   EchoScreen.tsx     the echo: a KeyPath row and a You row, a playhead, marks

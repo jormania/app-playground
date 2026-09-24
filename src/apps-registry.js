@@ -51,7 +51,7 @@ export const APPS = [
       "Songs: a public-domain starter pack plus your own MIDI files, which never leave the phone — falling notes, one hand or both, 50–100% speed, and three wrong-note modes",
       "An end-of-song report that leads with what went well, names the one bar worth another go, and only ever suggests a harder setting",
       "Journey: six small steps from middle C to a first bar of written music, each with a lit-key practice and a check — test out of anything you already know",
-      "Challenges: a 30-second note race (find the name, anywhere on the keyboard) and a rhythm echo that marks every tap on time, early or late",
+      "Challenges: a 30-second note race (find the note by name, or read it off a staff), a rhythm echo that marks every tap on time, early or late, and chord catch (play the named chord, all three keys together)",
       "Studio: record what you play over the keyboard's own Style, keep your favourite takes, and play them back on the keyboard; “Make it yours” after any song",
       "A connection wizard that checks each step — browser, cable, permission, a key press — so practice never starts without a working keyboard",
       "Players with their own settings, English or Romanian, C D E or Do Re Mi",

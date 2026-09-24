@@ -1,3 +1,4 @@
+import type { ChallengeGame } from './challenges/records'
 import type { KeyValueStore } from './store'
 import { K } from './store'
 
@@ -36,9 +37,9 @@ export type LogEvent =
   | { type: 'studio_favourite'; takeId: string; on: boolean }
   | { type: 'studio_deleted'; takeId: string }
   /** Challenges: a game begun, finished (score, whether it beat the best) or left part-way. */
-  | { type: 'challenge_started'; game: 'race' | 'echo'; level: number }
-  | { type: 'challenge_finished'; game: 'race' | 'echo'; level: number; score: number; best: boolean; wrong?: number; ms: number }
-  | { type: 'challenge_left'; game: 'race' | 'echo'; level: number; ms: number }
+  | { type: 'challenge_started'; game: ChallengeGame; level: number }
+  | { type: 'challenge_finished'; game: ChallengeGame; level: number; score: number; best: boolean; wrong?: number; ms: number }
+  | { type: 'challenge_left'; game: ChallengeGame; level: number; ms: number }
 
 export type Door = 'songs' | 'journey' | 'challenges' | 'studio'
 

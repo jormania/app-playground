@@ -61,7 +61,7 @@ describe('summarise', () => {
 
   it('collects the rest of the doors, suggestions, setting changes and keyboard trouble', () => {
     expect(s.journey).toEqual({ practices: 0, checksPassed: 1, checksFailed: 0, testOuts: 1, left: 0 })
-    expect(s.challenges).toEqual({ race: 1, echo: 0, left: 0 })
+    expect(s.challenges).toEqual({ race: 1, staff: 0, echo: 0, chord: 0, left: 0 })
     expect(s.studio).toEqual({ opened: 0, recorded: 1, kept: 1, played: 0 })
     expect(s.suggestions).toEqual({ accepted: 1, declined: 0 })
     expect(s.settingsChanged).toEqual([{ key: 'onWrong', from: 'wait', to: 'show', at: new Date('2026-09-21T18:04:10').toISOString() }])

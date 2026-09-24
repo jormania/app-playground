@@ -151,7 +151,7 @@ export function ProgressScreen() {
 
           <section className={styles.panel}>
             <h2 className={styles.h2}>{t('pChallenges')}</h2>
-            <p>{t('pChallengesLine', { race: s.challenges.race, echo: s.challenges.echo })}</p>
+            <p>{t('pChallengesLine', { race: s.challenges.race, staff: s.challenges.staff, echo: s.challenges.echo, chord: s.challenges.chord })}</p>
             <h2 className={styles.h2}>{t('pStudio')}</h2>
             <p>{t('pStudioLine', { recorded: s.studio.recorded, kept: data.keptTakes, played: s.studio.played })}</p>
           </section>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { memoryStore } from '../store'
-import { NoteRace, RACE_NOTES } from './noteRace'
+import { K, memoryStore } from '../store'
+import { CHORDS, ChordCatch, pitchClassesOf, SCREEN_KEYS, shows, voicingOf } from './chordCatch'
+import { NoteRace, RACE_NOTES, STAFF_NOTES } from './noteRace'
 import { RecordRepo } from './records'
 import { beatMs, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, turnTimeline } from './rhythm'
 
@@ -13,12 +14,12 @@ const seq = (...xs: number[]) => {
 describe('NoteRace', () => {
   it('counts keys with the asked name, in any octave, and moves on to a different note', () => {
     const race = new NoteRace(1, seq(0, 0.5, 0.99))
-    expect(race.prompt).toBe(0) // C
+    expect(race.prompt).toBe(60) // C, shown as middle C
     expect(race.press(60, 0)).toBeNull() // not started
     race.start(1000)
     expect(race.press(62, 1100)).toBe('wrong')
     expect(race.press(48, 1200)).toBe('right') // a low C counts
-    expect(race.prompt).not.toBe(0)
+    expect(race.prompt % 12).not.toBe(0)
     expect(race).toMatchObject({ score: 1, wrong: 1 })
   })
 
@@ -35,10 +36,23 @@ describe('NoteRace', () => {
     race.start(0)
     let last = race.prompt
     for (let i = 0; i < 200; i++) {
-      expect(RACE_NOTES[2]).toContain(race.prompt)
-      race.press(60 + race.prompt, 1)
-      expect(race.prompt).not.toBe(last)
+      expect(RACE_NOTES[2]).toContain(race.prompt % 12)
+      race.press(race.prompt - 12, 1)
+      expect(race.prompt % 12).not.toBe(last % 12)
       last = race.prompt
+    }
+  })
+})
+
+describe('NoteRace, read-it mode', () => {
+  it('shows white keys on the staff, rising by level, and still takes any octave', () => {
+    const race = new NoteRace(3, seq(0.99), 30_000, 'staff')
+    expect(race.prompt).toBe(STAFF_NOTES[3].at(-1)) // G5, above the staff
+    race.start(0)
+    expect(race.press(55, 1)).toBe('right') // G3 counts
+    for (let i = 0; i < 50; i++) {
+      expect(STAFF_NOTES[3]).toContain(race.prompt)
+      race.press(race.prompt, 2)
     }
   })
 })
@@ -97,7 +111,71 @@ describe('RecordRepo', () => {
     expect(await repo.offer('nora', 'race', 1, 9)).toBe(false)
     expect(await repo.offer('nora', 'race', 1, 14)).toBe(true)
     expect(await repo.offer('nora', 'echo', 2, 0)).toBe(false) // a zero is never a “best”
-    expect(await repo.get('nora')).toEqual({ race: { 1: 14 }, echo: { 2: 0 } })
-    expect(await repo.get('gabriel')).toEqual({ race: {}, echo: {} })
+    expect(await repo.offer('nora', 'staff', 1, 6)).toBe(true) // the race on the staff keeps its own
+    expect(await repo.offer('nora', 'chord', 3, 4)).toBe(true)
+    expect(await repo.get('nora')).toEqual({ race: { 1: 14 }, staff: { 1: 6 }, echo: { 2: 0 }, chord: { 3: 4 } })
+    expect(await repo.get('gabriel')).toEqual({ race: {}, staff: {}, echo: {}, chord: {} })
+  })
+
+  it('reads records saved before the staff and chord games existed', async () => {
+    const store = memoryStore()
+    await store.set(K.challenges('nora'), { race: { 2: 9 }, echo: {} })
+    const repo = new RecordRepo(store)
+    expect(await repo.get('nora')).toEqual({ race: { 2: 9 }, staff: {}, echo: {}, chord: {} })
+    expect(await repo.offer('nora', 'chord', 1, 3)).toBe(true)
+    expect((await repo.get('nora')).race[2]).toBe(9)
+  })
+})
+
+describe('ChordCatch', () => {
+  it('spells each chord by name, and lights it from middle C', () => {
+    const byId = Object.fromEntries(CHORDS[3].map((c) => [c.id, c]))
+    expect(pitchClassesOf(byId.C)).toEqual([0, 4, 7])
+    expect(pitchClassesOf(byId.Am)).toEqual([9, 0, 4])
+    expect(pitchClassesOf(byId.D)).toEqual([2, 6, 9]) // F♯: the black key level 3 is for
+    expect(voicingOf(byId.C)).toEqual([60, 64, 67])
+    expect(voicingOf(byId.G)).toEqual([55, 59, 62]) // from middle C it would run off the screen keys
+    for (const c of CHORDS[3]) {
+      const v = voicingOf(c)
+      expect(v.map((p) => ((p % 12) + 12) % 12)).toEqual(pitchClassesOf(c))
+      expect(Math.min(...v)).toBeGreaterThanOrEqual(SCREEN_KEYS.low)
+      expect(Math.max(...v)).toBeLessThanOrEqual(SCREEN_KEYS.high)
+    }
+    expect(CHORDS[1].map((c) => c.id)).toEqual(['C', 'F', 'G'])
+    expect(CHORDS[2]).toHaveLength(6)
+    expect([shows(1), shows(2), shows(3)]).toEqual([true, true, false])
+  })
+
+  it('counts a chord played together, and asks the next one only once the hand is off', () => {
+    const g = new ChordCatch(1, 'relaxed', seq(0, 0.99)) // C, then G
+    expect(g.prompt.id).toBe('C')
+    g.start(0)
+    expect(g.press(48, 1000)).toBeNull() // any octave, any order
+    expect(g.press(55, 1040)).toBeNull()
+    expect(g.press(64, 1100)).toBe('right')
+    expect(g.score).toBe(1)
+    expect(g.caught).toBe(true)
+    g.release(48)
+    g.release(55)
+    expect(g.prompt.id).toBe('C') // one key still down
+    g.release(64)
+    expect(g.caught).toBe(false)
+    expect(g.prompt.id).toBe('G') // never the same chord twice
+  })
+
+  it('tells spread-out keys and wrong keys apart', () => {
+    const g = new ChordCatch(1, 'strict', seq(0))
+    g.start(0)
+    g.press(60, 100)
+    g.press(64, 150)
+    expect(g.press(67, 300)).toBe('spread') // 200 ms: more than strict's 70
+    for (const p of [60, 64, 67]) g.release(p)
+    expect(g.press(61, 400)).toBe('wrong')
+    g.release(61)
+    expect(g.press(60, 500)).toBeNull()
+    expect(g.press(64, 510)).toBeNull()
+    expect(g.press(67, 520)).toBe('right')
+    expect([g.score, g.spread, g.wrong]).toEqual([1, 1, 1])
+    expect(g.press(60, 45_000)).toBeNull() // time’s up
   })
 })

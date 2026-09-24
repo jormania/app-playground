@@ -140,6 +140,24 @@
   color: var(--color-danger);
   font-weight: var(--weight-bold);
 }
+/* "Read it" mode: the note drawn on a staff instead of named. */
+.raceStaff {
+  width: min(11rem, 50vw);
+  animation: notePop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Chord catch */
+.chordName {
+  font-size: clamp(3rem, 16vw, 6rem);
+}
+.chordName[data-caught] {
+  color: var(--color-success);
+}
+.chordNotes {
+  min-height: 1.5em;
+  color: var(--color-muted);
+  font-size: var(--text-lg);
+}
 
 /* Rhythm echo */
 .echo {
@@ -288,6 +306,7 @@
     opacity: 0;
   }
   .raceNote,
+  .raceStaff,
   .newBest {
     animation: none;
   }
