@@ -18,6 +18,13 @@ interface Voice {
 export class SimpleSynth {
   private voices = new Map<number, Voice>()
 
+  /**
+   * `output`: where the sound goes. The speaker by default; the tutor passes
+   * the keyboard bus (audioContext.ts) when the Yamaha is connected, so its
+   * level (default 0) applies.
+   */
+  constructor(private readonly output: (ctx: AudioContext) => Promise<AudioNode> | AudioNode = (ctx) => ctx.destination) {}
+
   async noteOn(note: number, velocity: number): Promise<void> {
     const ctx = await audioContext()
     this.noteOff(note)
@@ -29,7 +36,7 @@ export class SimpleSynth {
     // Piano-like: a quick fall to a quieter tail that keeps decaying while held.
     gain.gain.exponentialRampToValueAtTime(peak * 0.35, t + 0.3)
     gain.gain.exponentialRampToValueAtTime(0.001, t + 4)
-    gain.connect(ctx.destination)
+    gain.connect(await this.output(ctx))
     const osc = (['triangle', 'sine'] as const).map((type, i) => {
       const o = ctx.createOscillator()
       o.type = type

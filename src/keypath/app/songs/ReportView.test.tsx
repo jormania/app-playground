@@ -32,6 +32,7 @@ function renderReport(language: 'en' | 'ro' = 'en') {
   const store = memoryStore()
   const log = new EngagementLog(store)
   const updateSetting = vi.fn(async () => {})
+  const onMakeItYours = vi.fn()
   const app = {
     store,
     log,
@@ -41,14 +42,15 @@ function renderReport(language: 'en' | 'ro' = 'en') {
     t: (key, vars) => translate(language, key, vars),
     updateSetting,
     choose: async () => {},
+    removeProfile: async () => {},
     reload: async () => {},
   } as KeyPathApp
   render(
     <AppContext.Provider value={app}>
-      <ReportView report={report} songId="starter:ode" onPlayAgain={() => {}} onAnotherSong={() => {}} />
+      <ReportView report={report} songId="starter:ode" onPlayAgain={() => {}} onAnotherSong={() => {}} onMakeItYours={onMakeItYours} />
     </AppContext.Provider>,
   )
-  return { log, updateSetting }
+  return { log, updateSetting, onMakeItYours }
 }
 
 describe('ReportView', () => {
@@ -73,5 +75,11 @@ describe('ReportView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nu acum' }))
     await waitFor(async () => expect((await log.read('p1')).at(-1)).toMatchObject({ type: 'suggestion', accepted: false }))
     expect(updateSetting).not.toHaveBeenCalled()
+  })
+
+  it('offers “Make it yours” after a finished song', () => {
+    const { onMakeItYours } = renderReport()
+    fireEvent.click(screen.getByRole('button', { name: /Make it yours/ }))
+    expect(onMakeItYours).toHaveBeenCalled()
   })
 })

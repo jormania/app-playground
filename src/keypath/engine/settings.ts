@@ -14,9 +14,12 @@ export interface JudgeSettings {
   wrongAffectsStars: boolean
 }
 
-/** Confidence first: see the wrong key, never be stopped, never lose stars for it. */
+/**
+ * Confidence first: a new player starts where nothing can go wrong in time —
+ * the song waits for each note — and never loses stars for a wrong key.
+ */
 export const DEFAULT_SETTINGS: JudgeSettings = {
-  onWrong: 'show',
+  onWrong: 'wait',
   timing: 'relaxed',
   report: 'short',
   wrongAffectsStars: false,
@@ -47,9 +50,28 @@ export const ON_TIME_MS: Record<Timing, number> = {
 export const MIN_VELOCITY = 5
 
 /**
- * Progression, never automatic: once a piece goes well in the current setting,
- * the next one up is *suggested*. Keep going → Show it → Wait for it, and
- * relaxed → normal → strict timing.
+ * Progression, never automatic: once a piece goes well, the next rung up is
+ * *suggested*, one setting at a time (KEYPATH_TUTOR.md §2, "The ramp"):
+ *
+ *   1. Wait for it            the notes, with no clock
+ *   2. Show it   · relaxed    playing in time, mistakes shown
+ *   3. Show it   · normal     tighter timing
+ *   4. Keep going · normal    a performance: nothing live, a report at the end
+ *   5. Keep going · strict    polish
+ *
+ * Timing is stepped up before the next mode, so each rung changes one thing.
+ * From anywhere off the ladder (set by hand), the next useful change is
+ * suggested. Speed (50–100%) and hands are chosen per song, not here.
  */
-export const NEXT_ON_WRONG: Record<OnWrong, OnWrong | null> = { keepGoing: 'show', show: 'wait', wait: null }
-export const NEXT_TIMING: Record<Timing, Timing | null> = { relaxed: 'normal', normal: 'strict', strict: null }
+export type NextStep = { setting: 'onWrong'; to: OnWrong } | { setting: 'timing'; to: Timing }
+
+export function nextStep(s: Pick<JudgeSettings, 'onWrong' | 'timing'>): NextStep | null {
+  switch (s.onWrong) {
+    case 'wait':
+      return { setting: 'onWrong', to: 'show' }
+    case 'show':
+      return s.timing === 'relaxed' ? { setting: 'timing', to: 'normal' } : { setting: 'onWrong', to: 'keepGoing' }
+    case 'keepGoing':
+      return s.timing === 'relaxed' ? { setting: 'timing', to: 'normal' } : s.timing === 'normal' ? { setting: 'timing', to: 'strict' } : null
+  }
+}

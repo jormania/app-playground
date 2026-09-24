@@ -48,7 +48,7 @@ interface StepProps {
 }
 
 function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
-  const { t, settings, log } = useApp()
+  const { t, settings, log, updateSetting } = useApp()
   const n = JOURNEY.indexOf(step) + 1
   const state = stateOf(progress, step.id)
   const [phase, setPhase] = useState<Phase>('intro')
@@ -59,6 +59,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
   const [note, setNote] = useState<string | null>(null)
   const [passed, setPassed] = useState<{ ok: boolean; testOut: boolean } | null>(null)
   const [played, setPlayed] = useState<ReadonlyMap<number, NoteResult['outcome']>>(new Map())
+  const [keyNamesAnswered, setKeyNamesAnswered] = useState(false)
 
   const exercise = useRef<Exercise | null>(null)
   const shift = useRef(0)
@@ -181,6 +182,15 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
     return () => cancelAnimationFrame(raf)
   }, [tune, step.staff])
 
+  // Reading the staff is the moment to try the keys without their names:
+  // offered once she passes step 6's check, applied only on a Yes.
+  const offerKeyNamesOff = phase === 'result' && mode === 'check' && !!passed?.ok && step.id === 'notation' && settings.keyNames && !keyNamesAnswered
+  const answerKeyNames = async (accepted: boolean) => {
+    setKeyNamesAnswered(true)
+    void log.add(profileId, { type: 'suggestion', setting: 'keyNames', to: 'off', accepted, step: step.id })
+    if (accepted) await updateSetting('keyNames', false)
+  }
+
   const next = JOURNEY[n] ?? null
   const targets = phase === 'gate' ? new Set([MIDDLE_C]) : new Set(view?.targets ?? [])
 
@@ -237,6 +247,19 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
           <h2 className={styles.resultTitle} data-ok={passed.ok || undefined}>
             {mode === 'practice' ? t('jPracticeDone') : passed.ok ? t(passed.testOut ? 'jPassedTestOut' : 'jPassed') : t('jNotYet')}
           </h2>
+          {offerKeyNamesOff && (
+            <div className={styles.suggestion}>
+              <p>{t('jSuggestKeyNames')}</p>
+              <div className={styles.actions}>
+                <Button size="sm" onClick={() => void answerKeyNames(true)}>
+                  {t('yesChange')}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => void answerKeyNames(false)}>
+                  {t('notNow')}
+                </Button>
+              </div>
+            </div>
+          )}
           <div className={styles.actions}>
             {mode === 'practice' && <Button onClick={() => begin('check')}>{t('jCheck')}</Button>}
             {mode === 'check' && passed.ok && next && <Button onClick={() => navigate({ name: 'journeyStep', step: next.id }, { replace: true })}>{t('jNext')}</Button>}
@@ -268,6 +291,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
           )}
           {tune && !step.staff && <FallingNotes ref={fall} notes={tune.notes} boxes={boxes} results={played} label={label} />}
           <PlayKeyboard
+            names={settings.keyNames}
             boxes={boxes}
             held={held}
             targets={targets}

@@ -13,6 +13,8 @@ export interface PlayKeyboardProps {
   /** A key marked with a dot — middle C before the start. */
   marker?: number
   label: (pitch: number) => string
+  /** Print names on the keys (the player's "Names on the keys" setting). Screen readers get them either way. */
+  names?: boolean
   onPress: (pitch: number) => void
   onRelease: (pitch: number) => void
 }
@@ -22,7 +24,7 @@ export interface PlayKeyboardProps {
  * it lines up with the notes above it. Always playable by touch, so a song can
  * be tried without the Yamaha.
  */
-export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, wrong, marker, label, onPress, onRelease }: PlayKeyboardProps) {
+export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, wrong, marker, label, names = true, onPress, onRelease }: PlayKeyboardProps) {
   const pointers = useRef(new Map<number, number>())
   const down = (pitch: number) => (e: React.PointerEvent) => {
     e.preventDefault()
@@ -56,7 +58,7 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
             onPointerLeave={up}
           >
             {marker === b.pitch && <span className={styles.marker} aria-hidden />}
-            {!b.black && <span className={styles.keyLabel}>{label(b.pitch)}</span>}
+            {names && !b.black && <span className={styles.keyLabel}>{label(b.pitch)}</span>}
           </div>
         )
       })}

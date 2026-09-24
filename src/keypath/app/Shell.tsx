@@ -5,6 +5,7 @@ import { EngagementLog } from './log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo, type Profile, type ProfileSettings } from './profiles'
 import { navigate, useRoute } from './router'
 import { indexedDbStore, type KeyValueStore } from './store'
+import { useWakeLock } from '../../shared/useWakeLock'
 import { WhoIsPlaying } from './screens/WhoIsPlaying'
 import { Home } from './screens/Home'
 import { DoorScreen } from './screens/DoorScreen'
@@ -16,6 +17,7 @@ import { PlayScreen } from './songs/PlayScreen'
 import { ConnectWizard } from './connect/ConnectWizard'
 import { JourneyHome } from './journey/JourneyHome'
 import { StepScreen } from './journey/StepScreen'
+import { StudioScreen } from './studio/StudioScreen'
 import styles from './app.module.css'
 
 /**
@@ -76,6 +78,10 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [profile, startSession, endSession])
 
+  // Hands are on the keys, not the phone: the screen stays on while KeyPath is
+  // open. Chrome drops the lock when the page is hidden; the hook takes it back.
+  useWakeLock(true)
+
   // Language drives the page's own lang attribute too (screen readers, hyphenation).
   useEffect(() => {
     document.documentElement.lang = settings.language
@@ -103,6 +109,17 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
       setSettings(p ? await profiles.settings(p.id) : DEFAULT_PROFILE_SETTINGS)
       if (p) startSession(p)
     },
+    removeProfile: async (p) => {
+      if (profile?.id === p.id) {
+        // No session_end for a player being deleted: it would only re-create their log.
+        sessionStart.current = null
+        await profiles.setCurrent(null)
+        setProfile(null)
+        setSettings(DEFAULT_PROFILE_SETTINGS)
+      }
+      await log.settled()
+      await profiles.remove(p.id)
+    },
     reload: async () => {
       await load()
     },
@@ -117,12 +134,13 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
       <div className={styles.app}>
         {effective === 'who' && <WhoIsPlaying onChosen={() => navigate({ name: 'home' }, { replace: true })} />}
         {effective === 'home' && <Home />}
-        {effective === 'door' && route.name === 'door' && (route.door === 'songs' ? <SongsHome /> : route.door === 'journey' ? <JourneyHome /> : <DoorScreen door={route.door} />)}
+        {effective === 'door' && route.name === 'door' && (route.door === 'songs' ? <SongsHome /> : route.door === 'journey' ? <JourneyHome /> : route.door === 'studio' ? <StudioScreen /> : <DoorScreen door={route.door} />)}
         {effective === 'songImport' && <ImportSong />}
         {effective === 'play' && route.name === 'play' && <PlayScreen songId={route.songId} />}
         {effective === 'settings' && <SettingsScreen />}
         {effective === 'diagnostics' && <DiagnosticsScreen />}
         {effective === 'connect' && <ConnectWizard />}
+        {effective === 'studio' && route.name === 'studio' && <StudioScreen key={route.songId} songId={route.songId} />}
         {effective === 'journeyStep' && route.name === 'journeyStep' && <StepScreen stepId={route.step} />}
       </div>
     </AppContext.Provider>
