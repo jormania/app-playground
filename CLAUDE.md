@@ -190,6 +190,12 @@ it is complete:
   for range sliders inside a vertically scrolling list, where `touch-action:
   pan-y` on a native `<input type="range">` isn't reliably honoured. Touch Grass's
   Chorus and Yoru's mixer.
+- [`fullscreen.ts`](src/shared/fullscreen.ts) — `fullscreenOnTap()`: on a touch
+  device in a browser tab or Chrome shortcut, each tap that finds the page out of
+  full screen puts it back, hiding Chrome's toolbar and Android's button bar the
+  way an install would. A no-op when installed standalone, on desktop, or without
+  the API. For apps Chrome won't install properly on the owner's phone (CABINET.md,
+  "Update (2026-09-24)"): KeyPath and Radar-B.
 - [`haptics.ts`](src/shared/haptics.ts) — `triggerHaptic(type)` for a named intent
   (`light` / `heavy` / `success` / `transition`). Daily Stoic and Silva.
 - [`mediaSession.js`](src/shared/mediaSession.js) — `useMediaSession()`, which
