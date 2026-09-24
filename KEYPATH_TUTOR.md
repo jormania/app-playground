@@ -229,7 +229,7 @@ Each step ships on its own and is usable without the next.
 5. **MIDI-out probe test**, then **D. Studio** and the “make it yours” link
    from Songs — **built** (see below). The test is ready in Diagnostics and
    **hasn't been run on the Yamaha yet**; Studio works whatever it finds.
-6. **C. Challenges**: note race, rhythm echo.
+6. **C. Challenges**: note race, rhythm echo — **built** (see below).
 7. **Poco F3 check** (`KEYPATH.md` §2) before Nora starts, then two to three
    weeks of use, read the engagement log, and decide what to deepen.
 
@@ -281,6 +281,40 @@ src/keypath/app/
 
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
+
+### Step 6 as built
+
+```
+src/keypath/app/challenges/
+  noteRace.ts        a name is shown; any key with that name counts, in any
+                     octave; a new, different name each time; 30 s. Levels:
+                     C to G · white keys · all keys (black keys named ♯)
+  rhythm.ts          five one-bar patterns per level (steady quarters ·
+                     eighths · off the beat); a turn is four clicks, the
+                     rhythm, four clicks, her bar; judgeEcho matches each
+                     note to the nearest tap within a window from the Timing
+                     setting (140 / 100 / 65 ms), marks on time / early /
+                     late / missed, and passes with every note played and at
+                     most one stray tap
+  records.ts         each player's best per game and level
+  ChallengesHome.tsx the door: both games, with bests
+  NoteRaceScreen.tsx the race; the screen keys lose their names here, since
+                     finding the key is the game
+  EchoScreen.tsx     the echo: a KeyPath row and a You row, a playhead, marks
+                     after each turn; Again or Next; a round of five
+```
+
+Rhythm echo plays through Studio's `Playback`, on the keyboard (MIDI out)
+or the phone. The Keyboard/Phone choice is now shared by Studio and
+Challenges (`studio/output.tsx`). Clicks are a high C and the rhythm a C
+an octave lower, both on the piano, so no drum channel is assumed before the
+MIDI-out test has been run. Taps before her bar (the rhythm itself, or the
+keyboard echoing it back) are ignored.
+
+With all four doors built, the "coming soon" placeholder is gone.
+
+New in the engagement log: `challenge_started`, `challenge_finished` (score,
+whether it beat the best, wrong keys for the race) and `challenge_left`.
 
 ### Step 5 as built
 
@@ -474,6 +508,17 @@ install it and get the full screen):
 - **Import simplification**: "melody only" for arrangements too hard as
   written (the range check and whole-octave transposition exist now).
 - **MusicXML import** (with notation rendering, a late Journey skill).
+
+**Challenges refinements** (deferred from step 6):
+- **Audio latency.** When the rhythm plays on the phone, she hears it about
+  25 ms+ late (Chrome's output latency on the S24) and taps to what she
+  hears, so taps read slightly late. The keyboard route has no such lag.
+  Compensate with the AudioContext's `outputLatency` once measured on her
+  phone.
+- **A drum sound** for the clicks (General MIDI channel 10), if the MIDI-out
+  test shows the Yamaha plays it.
+- **More games**, if the log says Challenges is her door: intervals by ear,
+  chords by name, a longer race.
 
 **Studio refinements** (deferred from step 5; most depend on the MIDI-out test):
 - **Start the Style with playback**, if test 3 says the keyboard obeys MIDI

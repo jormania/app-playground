@@ -53,6 +53,11 @@ export class Playback {
     return this.cancel !== null
   }
 
+  /** When the take's time 0 falls, on the clock's timeline (set by start()). */
+  get startedAt() {
+    return this.origin
+  }
+
   /** Where the playback is, in ms of the take. */
   position(): number {
     return this.playing ? Math.min(this.recording.ms, this.clock.now() - this.origin) : 0

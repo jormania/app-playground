@@ -234,10 +234,6 @@
   line-height: 1.4;
 }
 
-.soon {
-  text-align: center;
-  padding: var(--space-2xl) var(--space-md);
-}
 
 .diagnosticsBar {
   max-width: 960px;

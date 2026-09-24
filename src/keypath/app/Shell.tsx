@@ -8,7 +8,6 @@ import { indexedDbStore, type KeyValueStore } from './store'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { WhoIsPlaying } from './screens/WhoIsPlaying'
 import { Home } from './screens/Home'
-import { DoorScreen } from './screens/DoorScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { DiagnosticsScreen } from './screens/DiagnosticsScreen'
 import { SongsHome } from './songs/SongsHome'
@@ -18,6 +17,9 @@ import { ConnectWizard } from './connect/ConnectWizard'
 import { JourneyHome } from './journey/JourneyHome'
 import { StepScreen } from './journey/StepScreen'
 import { StudioScreen } from './studio/StudioScreen'
+import { ChallengesHome } from './challenges/ChallengesHome'
+import { NoteRaceScreen } from './challenges/NoteRaceScreen'
+import { EchoScreen } from './challenges/EchoScreen'
 import styles from './app.module.css'
 
 /**
@@ -134,13 +136,17 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
       <div className={styles.app}>
         {effective === 'who' && <WhoIsPlaying onChosen={() => navigate({ name: 'home' }, { replace: true })} />}
         {effective === 'home' && <Home />}
-        {effective === 'door' && route.name === 'door' && (route.door === 'songs' ? <SongsHome /> : route.door === 'journey' ? <JourneyHome /> : route.door === 'studio' ? <StudioScreen /> : <DoorScreen door={route.door} />)}
+        {effective === 'door' && route.name === 'door' && route.door === 'songs' && <SongsHome />}
+        {effective === 'door' && route.name === 'door' && route.door === 'journey' && <JourneyHome />}
+        {effective === 'door' && route.name === 'door' && route.door === 'challenges' && <ChallengesHome />}
+        {effective === 'door' && route.name === 'door' && route.door === 'studio' && <StudioScreen />}
         {effective === 'songImport' && <ImportSong />}
         {effective === 'play' && route.name === 'play' && <PlayScreen songId={route.songId} />}
         {effective === 'settings' && <SettingsScreen />}
         {effective === 'diagnostics' && <DiagnosticsScreen />}
         {effective === 'connect' && <ConnectWizard />}
         {effective === 'studio' && route.name === 'studio' && <StudioScreen key={route.songId} songId={route.songId} />}
+        {effective === 'challenge' && route.name === 'challenge' && (route.game === 'race' ? <NoteRaceScreen /> : <EchoScreen />)}
         {effective === 'journeyStep' && route.name === 'journeyStep' && <StepScreen stepId={route.step} />}
       </div>
     </AppContext.Provider>
