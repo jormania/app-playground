@@ -389,6 +389,26 @@ enter full screen to hide Chrome's toolbar. Chrome answers every entry with a
 it covered the keys, so KeyPath no longer calls `fullscreenOnTap()`. The layout
 above is sized for a tab with the toolbar (about 290 px tall on the S24).
 
+### Songs for everyday use
+
+- **Her progress on the song list.** Each song she has played shows her
+  best stars from a finished run (★★☆) and when she last played it: today,
+  yesterday, or the date (`songs/songProgress.ts`, read from the log).
+- **Rename or remove an added song.** Its **⋯** opens the title and Remove,
+  which needs a second tap. Removing takes it off the phone for every
+  player; the plays already in the log stay, and Progress shows the id where
+  the title is gone. Starter songs have no ⋯. New in the log: `song_renamed`,
+  `song_removed`.
+- **The on-screen keys sound** on the phone (the probe's `SimpleSynth`)
+  while no keyboard is connected: a song, a Journey step, the note race and
+  chord catch. With the Yamaha connected they stay silent, since she plays
+  its keys and it makes the sound. (Studio already played its screen keys.)
+- **Three octaves in landscape.** On a phone on its side (the same query as
+  the landscape layout), every screen keyboard grows to at least three
+  octaves (`widenRange`): an octave at a time, on the side that keeps middle
+  C nearest the middle, within the Yamaha's C2–C7. A one-octave song no
+  longer gets keys as wide as a hand.
+
 ### Progress (after step 6)
 
 ```
@@ -686,15 +706,13 @@ install it and get the full screen):
   Songs judging doesn't use it yet (see Engine refinements).
 
 **Songs refinements** (deferred from step 3):
-- **Remove or rename** an added song. For now songs can only be added.
-- **Progress per song** (best stars, last played) on the song list. The log
-  already has what's needed.
+- ~~**Remove or rename** an added song~~ Done (§9, "Songs for everyday use").
+- ~~**Progress per song** on the song list~~ Done (same section).
 - **More starter songs.** "Melc, melc, codobelc" was left out: its melody
   hasn't been checked against a reliable source yet.
-- ~~**Landscape layout**~~ Done for fit (below "Studio additions"). Still
-  open: more keys in landscape, since the width is there.
-- A **sound for the on-screen keys** when no keyboard is connected (the
-  probe's synth, through the output level that defaults to 0).
+- ~~**Landscape layout**~~ Done: it fits, and shows three octaves (§9,
+  "Landscape" and "Songs for everyday use").
+- ~~A **sound for the on-screen keys**~~ Done (same section).
 - **Make a song from a recording.** A tune recorded on the phone (played,
   or hummed) turned into a song in her library. Like **Add a song**, it
   stays on the phone and never reaches the repo. The candidate is Spotify's

@@ -8,7 +8,8 @@ import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
 import { FallingNotes, type FallingNotesHandle } from './FallingNotes'
-import { keyBoxes, rangeFor } from './keyGeometry'
+import { keyBoxes, rangeFor, widenRange } from './keyGeometry'
+import { useWide, WIDE_OCTAVES } from './useWide'
 import { SongLibrary } from './library'
 import { PlayKeyboard } from './PlayKeyboard'
 import { ReportView } from './ReportView'
@@ -77,7 +78,11 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const shownTime = useRef(0)
 
   const notes = useMemo(() => notesFor(song, practice), [song, practice])
-  const range = useMemo(() => rangeFor(song.notes.map((n) => n.pitch)), [song])
+  const wide = useWide()
+  const range = useMemo(() => {
+    const r = rangeFor(song.notes.map((n) => n.pitch))
+    return wide ? widenRange(r, WIDE_OCTAVES) : r
+  }, [song, wide])
   const boxes = useMemo(() => keyBoxes(range.low, range.high), [range])
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
   const tempo = Number(speed)
@@ -403,6 +408,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
         )}
         <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} />
         <PlayKeyboard
+          sound={!keyboard.connected}
           names={settings.keyNames}
           boxes={boxes}
           held={held}

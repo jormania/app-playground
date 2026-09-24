@@ -11,7 +11,8 @@ import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
 import { FallingNotes, type FallingNotesHandle } from '../songs/FallingNotes'
-import { keyBoxes } from '../songs/keyGeometry'
+import { keyBoxes, widenRange } from '../songs/keyGeometry'
+import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
 import { Tune, type Exercise, type ExerciseView, type Say } from './exercises'
 import { JourneyRepo, stateOf, type JourneyProgress } from './progress'
@@ -69,7 +70,11 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
   const startedAt = useRef(0)
   const fall = useRef<FallingNotesHandle>(null)
 
-  const boxes = useMemo(() => keyBoxes(step.range.low, step.range.high), [step])
+  const wide = useWide()
+  const boxes = useMemo(() => {
+    const r = wide ? widenRange(step.range, WIDE_OCTAVES) : step.range
+    return keyBoxes(r.low, r.high)
+  }, [step, wide])
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
   const say = (s: Say) => {
     const [a, b, c] = (s.notes ?? []).map(label)
@@ -293,6 +298,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
           )}
           {tune && !step.staff && <FallingNotes ref={fall} notes={tune.notes} boxes={boxes} results={played} label={label} />}
           <PlayKeyboard
+            sound={!keyboard.connected}
             names={settings.keyNames}
             boxes={boxes}
             held={held}

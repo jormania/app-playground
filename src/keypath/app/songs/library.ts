@@ -32,7 +32,34 @@ export class SongLibrary {
     const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
     await this.store.set(SONGS_KEY, [...imported.filter((s) => s.id !== song.id), song])
   }
+
+  /** Retitle an added song. A blank title leaves it as it was; starter songs can't be renamed. */
+  async rename(id: string, title: string): Promise<void> {
+    const clean = title.replace(/\s+/g, ' ').trim().slice(0, MAX_TITLE)
+    if (!clean) return
+    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
+    await this.store.set(
+      SONGS_KEY,
+      imported.map((s) => (s.id === id ? { ...s, title: clean } : s)),
+    )
+  }
+
+  /**
+   * Take an added song off the phone, for every player. Their logs keep its
+   * plays (Progress shows the id where the title is gone); the starter pack
+   * can't be removed.
+   */
+  async remove(id: string): Promise<void> {
+    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
+    await this.store.set(
+      SONGS_KEY,
+      imported.filter((s) => s.id !== id),
+    )
+  }
 }
+
+/** Song titles are kept short enough for the list and the play screen's title bar. */
+export const MAX_TITLE = 80
 
 export interface ImportDraft {
   file: SmfFile

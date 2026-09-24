@@ -17,6 +17,8 @@ export type LogEvent =
   | { type: 'song_finished'; songId: string; practice: string; stars: number; score: number; hit: number; total: number; wrong: number }
   | { type: 'song_abandoned'; songId: string; practice: string; hit: number; total: number }
   | { type: 'song_added' }
+  | { type: 'song_renamed'; songId: string }
+  | { type: 'song_removed'; songId: string }
   /** "Listen first": the song played for her before she tries it. */
   | { type: 'song_listened'; songId: string; practice: string; tempo: number }
   /** A step up offered: after a song (songId) or at a Journey milestone (step). */

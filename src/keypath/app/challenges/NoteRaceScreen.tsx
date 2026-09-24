@@ -10,7 +10,8 @@ import { useApp } from '../context'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
-import { keyBoxes } from '../songs/keyGeometry'
+import { keyBoxes, widenRange } from '../songs/keyGeometry'
+import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
 import { Staff } from '../journey/Staff'
 import { RACE_LEVEL_NAME, STAFF_LEVEL_NAME } from './ChallengesHome'
@@ -116,7 +117,11 @@ export function NoteRaceScreen() {
     [log, profileId],
   )
 
-  const boxes = useMemo(() => keyBoxes(48, 72), [])
+  const wide = useWide()
+  const boxes = useMemo(() => {
+    const r = wide ? widenRange({ low: 48, high: 72 }, WIDE_OCTAVES) : { low: 48, high: 72 }
+    return keyBoxes(r.low, r.high)
+  }, [wide])
   const best = records?.[game][level]
   const levelNames = mode === 'staff' ? STAFF_LEVEL_NAME : RACE_LEVEL_NAME
 
@@ -202,7 +207,7 @@ export function NoteRaceScreen() {
       )}
 
       <div className={styles.keys}>
-        <PlayKeyboard boxes={boxes} held={flash.right} targets={new Set()} wrong={flash.wrong} label={label} names={false} onPress={(p) => press(p, performance.now())} onRelease={() => {}} />
+        <PlayKeyboard sound={!kb.connected} boxes={boxes} held={flash.right} targets={new Set()} wrong={flash.wrong} label={label} names={false} onPress={(p) => press(p, performance.now())} onRelease={() => {}} />
       </div>
     </main>
   )
