@@ -35,9 +35,11 @@ interface Props {
   beatsPerBar?: number
   /** What a screen reader hears: the names in a practice, a description in a check. */
   ariaLabel: string
+  /** Just the clef and the notes: no time signature, no bar lines (the note race's single note). */
+  bare?: boolean
 }
 
-export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabel }: Props) {
+export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabel, bare = false }: Props) {
   let beat = 0
   const placed = notes.map(([pitch, beats], i) => {
     const x = START_X + beat * BEAT_X + Math.floor(beat / beatsPerBar) * BAR_GAP
@@ -47,7 +49,7 @@ export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabe
   const bars = Math.ceil(beat / beatsPerBar)
   // Bar line k: halfway between the last beat of bar k-1 and the first of bar k.
   const barX = (k: number) => START_X + (k * beatsPerBar - 0.5) * BEAT_X + (k - 0.5) * BAR_GAP
-  const width = barX(bars) + 10
+  const width = bare ? START_X + beat * BEAT_X : barX(bars) + 10
   const lines = [0, 1, 2, 3, 4].map((k) => TOP + k * SPACE)
 
   return (
@@ -63,13 +65,17 @@ export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabe
             C 24 ${BOTTOM - 36} 22 ${TOP - 18} 18 ${TOP - 18} C 14 ${TOP - 18} 12 ${TOP - 8} 14 ${TOP}
             L 19 ${BOTTOM + 12} C 20 ${BOTTOM + 18} 13 ${BOTTOM + 20} 11 ${BOTTOM + 15}`}
       />
-      <text x={38} y={TOP + 2 * SPACE - 2} className={styles.timeSig}>
-        {beatsPerBar}
-      </text>
-      <text x={38} y={BOTTOM - 2} className={styles.timeSig}>
-        4
-      </text>
-      {Array.from({ length: bars }, (_, b) => b + 1).map((b) =>
+      {!bare && (
+        <>
+          <text x={38} y={TOP + 2 * SPACE - 2} className={styles.timeSig}>
+            {beatsPerBar}
+          </text>
+          <text x={38} y={BOTTOM - 2} className={styles.timeSig}>
+            4
+          </text>
+        </>
+      )}
+      {!bare && Array.from({ length: bars }, (_, b) => b + 1).map((b) =>
         b === bars ? (
           <g key={b}>
             <line x1={width - 10} x2={width - 10} y1={TOP} y2={BOTTOM} className={styles.barLine} />
@@ -86,7 +92,12 @@ export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabe
             {/* Middle C's own short line */}
             {staffStep(pitch) <= 0 && <line x1={x - 10} x2={x + 10} y1={BOTTOM + SPACE} y2={BOTTOM + SPACE} className={styles.staffLine} />}
             <ellipse cx={x} cy={y} rx={6.2} ry={4.4} transform={`rotate(-20 ${x} ${y})`} className={beats >= 2 ? styles.headOpen : styles.headFilled} />
-            <line x1={x + 5.6} x2={x + 5.6} y1={y - 1} y2={y - 30} className={styles.stem} />
+            {/* From the middle line (B4) up, stems hang down on the left, as in print. */}
+            {staffStep(pitch) >= 6 ? (
+              <line x1={x - 5.6} x2={x - 5.6} y1={y + 1} y2={y + 30} className={styles.stem} />
+            ) : (
+              <line x1={x + 5.6} x2={x + 5.6} y1={y - 1} y2={y - 30} className={styles.stem} />
+            )}
             {label && (
               <text x={x} y={BOTTOM + 30} className={styles.noteName}>
                 {label(pitch)}

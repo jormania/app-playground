@@ -85,7 +85,7 @@ The last one used is remembered, not forced.
 |---|---|---|
 | **A. Songs** (the backbone) | 5–10 starter pieces + your own MIDI files. Learn right hand → left hand → both. Falling notes on a keyboard, with letter names. Then play it through | Flowkey, Simply Piano |
 | **B. Journey** | A small map of ~6 steps: find middle C → C-D-E → a five-finger melody → first chord → first two-hand piece → first bar of real notation. Each step can be **tested out** in ~30 s: if you can already do it, it unlocks and you move on | Simply Piano |
-| **C. Challenges** | Two games: **note race** (find the key shown, against the clock) and **rhythm echo** (KeyPath plays a rhythm, you copy it) | Rhythm/party games |
+| **C. Challenges** | Three games: **note race** (find the key shown, by name or on a staff, against the clock), **rhythm echo** (KeyPath plays a rhythm, you copy it) and **chord catch** (a chord is named, play it) | Rhythm/party games |
 | **D. Studio** | Free play over a keyboard Style; record, play back, keep favourites. After a song in A: a **“make it yours”** moment: play its melody over a Style, or invent an ending | nothing mainstream |
 
 A and D are linked on purpose: every learned song offers a creative follow-up.
@@ -131,8 +131,13 @@ MIDI layer (built, src/keypath/midi/)  →  Judge  →  Feedback policy  →  UI
    *Frère Jacques*, *Au clair de la lune*, *Melc, melc, codobelc*). The
    arrangements are ours; each gets a provenance note, as `KEYPATH.md` §7 and
    `content-boundary.test.js` require. They are stored as data in source code,
-   not as `.mid` files, so the boundary test stays strict. **Shipped with
-   four** (step 3); *Melc, melc, codobelc* waits for a checked melody (§10).
+   not as `.mid` files, so the boundary test stays strict. **Ten now**: the
+   first four with step 3, then Hot Cross Buns, Mary Had a Little Lamb,
+   London Bridge, Jingle Bells (chorus), Happy Birthday and the opening of
+   Für Elise, before Nora's first look. *Melc, melc, codobelc* still waits
+   for a checked melody (§10). Every song has **Listen**, which plays it on
+   the keyboard (or the phone) before she tries it, at the chosen hands and
+   speed, the keys lighting as it goes.
 2. **Your own MIDI files**: **Add song** opens a `.mid` from the phone.
    - It stays **on that phone** (IndexedDB), never uploaded, never committed.
    - **“Which part do you want to learn?”**: a short preview of each track, with
@@ -229,9 +234,14 @@ Each step ships on its own and is usable without the next.
 5. **MIDI-out probe test**, then **D. Studio** and the “make it yours” link
    from Songs — **built** (see below). The test is ready in Diagnostics and
    **hasn't been run on the Yamaha yet**; Studio works whatever it finds.
-6. **C. Challenges**: note race, rhythm echo.
+6. **C. Challenges**: note race, rhythm echo — **built** (see below); then
+   chord catch and the race's “on the staff” mode (see *More challenges*).
 7. **Poco F3 check** (`KEYPATH.md` §2) before Nora starts, then two to three
    weeks of use, read the engagement log, and decide what to deepen.
+   *Skipped for now at Gabriel's call; still worth doing before she relies
+   on it.*
+8. **Progress** — **built** (see below): the engagement log read back for a
+   parent, and shared as text, so step 7's "read the log" needs no tooling.
 
 ### Step 1 as built
 
@@ -281,6 +291,118 @@ src/keypath/app/
 
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
+
+### Celebrations and polish (before Nora's first look)
+
+`src/keypath/app/celebrate/`: `celebrate(moment)` fires confetti in the
+doors' colours (canvas-confetti, loaded on demand as in Lexi5) and a haptic
+buzz. It's kept for real wins, so they stay special: a song finished (three
+stars get a star-shaped burst), a Journey step passed (all six get the
+biggest), a new best in Challenges, an echoed rhythm, the keyboard
+connected. `useCountUp` counts numbers up (WhereItWent's odometer).
+
+- **Report:** stars pop in one by one, the notes count up, highlights rise
+  in turn.
+- **Play screen:** a streak counter from five right notes in a row, bumping
+  on each, bigger on every ten, and reset quietly by a wrong or missed note.
+- **Journey map:** stops rise in, the path fills to how far she's come, the
+  open step pulses gently.
+- **Challenges:** a "+1" floats up in the race, the note pops in, a new best
+  glows.
+- **Home:** doors rise in, the avatar floats, and **Pick up where you left
+  off** offers the last song (with her best stars) or Journey step. Every
+  screen change fades in.
+
+All of it is off under the phone's reduced-motion setting, and in tests.
+
+### More songs and Listen first
+
+Six more public-domain melodies in `engine/starterPack.ts`, provenance in
+the file, written from memory: listen to each with **Listen** before
+relying on it. Songs with rests or 6/8 time (When the Saints, Row Row Row
+Your Boat) wait for rests in the song format. **Listen** plays the song
+through Studio's `Playback` on the shared Keyboard/Phone route, and logs
+`song_listened`.
+
+### More challenges
+
+- **Note race, on the staff.** A *Show the note* switch on the race's setup:
+  *By name* as before, or *On the staff*, where the note is drawn alone on
+  a treble staff (the Journey's `Staff`, with a `bare` option: no time
+  signature, no bar lines) and has no name anywhere. White keys only, rising
+  by level: C to G · C to C · up to the G above the staff. Any octave still
+  counts. Its bests are kept apart from the named race (`staff` in the
+  records, and in the log's `game`).
+- **Chord catch** (`chordCatch.ts`, `ChordCatchScreen.tsx`). A chord is
+  named; her three keys must go down together, any octave, any order, and
+  each chord is judged by the Journey's own `Chords` exercise, so the
+  togetherness window is the same Timing-based one as step 5 (150 / 100 /
+  70 ms). Right keys that were too far apart count as *spread* and get an
+  “All together!”; the next chord is only asked once every key is up, so the
+  hand that just played C isn't read as the start of F. Levels: C, F, G ·
+  plus Am, Dm, Em · plus D, E, A (the first black keys). Levels 1 and 2
+  light the keys and spell the notes; level 3 gives only the name. 45 s.
+  Names follow the note-name setting: C, Am in letters; Do, Lam in solfège.
+- Records saved before these existed read back with empty `staff` and
+  `chord` tables, so nobody's bests are lost.
+
+### Progress (after step 6)
+
+```
+src/keypath/app/progress/
+  summary.ts         the log read back as the taster's questions: days
+                     played, sessions and minutes, "came back the next day",
+                     per door how often it was opened, opened first, and
+                     roughly how long she stayed; songs finished, stopped
+                     and started, song by song with best stars; Journey
+                     checks, Challenges played, Studio takes; suggestions
+                     accepted or not; settings changed; the keyboard lost
+                     mid-song
+  ProgressScreen.tsx Settings → Progress: one player at a time (a switcher
+                     when there are several), and Share progress… / Copy,
+                     which send the same numbers as a small JSON text, plus
+                     Journey steps, Challenge bests and the number of kept
+                     takes. Titles, not ids, for songs. No recordings, no
+                     song files
+```
+
+Time per door is an estimate, and the screen says so: the log records
+opening a door, not leaving it, so a door's time runs until the next door or
+the end of the session, time back on Home included.
+
+### Step 6 as built
+
+```
+src/keypath/app/challenges/
+  noteRace.ts        a name is shown; any key with that name counts, in any
+                     octave; a new, different name each time; 30 s. Levels:
+                     C to G · white keys · all keys (black keys named ♯)
+  rhythm.ts          five one-bar patterns per level (steady quarters ·
+                     eighths · off the beat); a turn is four clicks, the
+                     rhythm, four clicks, her bar; judgeEcho matches each
+                     note to the nearest tap within a window from the Timing
+                     setting (140 / 100 / 65 ms), marks on time / early /
+                     late / missed, and passes with every note played and at
+                     most one stray tap
+  records.ts         each player's best per game and level
+  ChallengesHome.tsx the door: every game, with bests
+  NoteRaceScreen.tsx the race; the screen keys lose their names here, since
+                     finding the key is the game
+  EchoScreen.tsx     the echo: a KeyPath row and a You row, a playhead, marks
+                     after each turn; Again or Next; a round of five
+```
+
+Rhythm echo plays through Studio's `Playback`, on the keyboard (MIDI out)
+or the phone. The Keyboard/Phone choice is now shared by Studio and
+Challenges (`studio/output.tsx`). Clicks are a high C and the rhythm a C
+an octave lower, both on the piano, so no drum channel is assumed before the
+MIDI-out test has been run. Taps before her bar (the rhythm itself, or the
+keyboard echoing it back) are ignored.
+
+With all four doors built, the "coming soon" placeholder is gone.
+
+New in the engagement log: `challenge_started`, `challenge_finished` (score,
+whether it beat the best, wrong keys for the race) and `challenge_left`.
 
 ### Step 5 as built
 
@@ -362,6 +484,11 @@ src/keypath/app/journey/
 | 4 | Your first chord | C, C, G, G chords | C, G, C chords |
 | 5 | Both hands | Twinkle, first line, with seven low left-hand notes, each starting with a right-hand note | the same |
 | 6 | Reading music | two bars on the staff, named: C D E F G F E D | Mary Had a Little Lamb, first bar and a half, unnamed |
+| 7 | Left hand | Ode to Joy's first line an octave down, in the left hand | the same |
+| 8 | The black keys | the five sharps, lit | six sharps by name, any octave |
+| 9 | Reading higher | the staff from C up to the next C, named (stems down from the middle line) | Twinkle's opening, unnamed |
+
+Steps 7–9 were added before Nora's first look, from the "more steps" list.
 
 Steps 1, 2 and 4 go by note *name* (any octave), so they need no octave
 check. The tune steps start with "press middle C", like Songs.
@@ -445,8 +572,9 @@ forgotten; each item says when it comes back.
   **Delete this player**, confirmed in place. It deletes every key ending in
   the player's id (settings, log, Journey, Studio), and keeps the phone's
   songs, the other players and the keyboard it remembers.
-- **Share progress** as a report to a parent's phone, alongside the backup
-  file.
+- ~~**Share progress**~~ Done: Settings → Progress (§9, "Progress").
+- **Leaving a door** isn't logged, so time per door is an estimate. Logging
+  a `door_left` on Home would make it exact.
 - Translating the **Diagnostics** screen, which stays in English for now.
 
 **App distribution** — **done** (after step 5, at Gabriel's request, to
@@ -475,6 +603,17 @@ install it and get the full screen):
   written (the range check and whole-octave transposition exist now).
 - **MusicXML import** (with notation rendering, a late Journey skill).
 
+**Challenges refinements** (deferred from step 6):
+- **Audio latency.** When the rhythm plays on the phone, she hears it about
+  25 ms+ late (Chrome's output latency on the S24) and taps to what she
+  hears, so taps read slightly late. The keyboard route has no such lag.
+  Compensate with the AudioContext's `outputLatency` once measured on her
+  phone.
+- **A drum sound** for the clicks (General MIDI channel 10), if the MIDI-out
+  test shows the Yamaha plays it.
+- **More games**, if the log says Challenges is her door: intervals by ear,
+  chords by name, a longer race.
+
 **Studio refinements** (deferred from step 5; most depend on the MIDI-out test):
 - **Start the Style with playback**, if test 3 says the keyboard obeys MIDI
   Start: record the Style's tempo (MIDI Clock) with the take and start it
@@ -493,8 +632,9 @@ install it and get the full screen):
   a clock. Both are guesses until the log shows how she does.
 - ~~**Reading step:** key names during the check~~ Done: a **Names on the
   keys** setting, offered off after step 6 (§2, "The ramp").
-- **More steps** (rests, the left hand alone, a black key, a second line of
-  notation) once the log says the Journey is the door she uses.
+- **More steps**: rests and a second line of notation (the left hand, the
+  black keys and reading higher are done, steps 7–9), once the log says the
+  Journey is the door she uses.
 - **Chord togetherness** is judged in the chord step only. The engine's
   Songs judging doesn't use it yet (see Engine refinements).
 

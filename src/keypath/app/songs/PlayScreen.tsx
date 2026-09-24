@@ -14,6 +14,8 @@ import { PlayKeyboard } from './PlayKeyboard'
 import { ReportView } from './ReportView'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
+import { useOutput } from '../studio/output'
+import { Playback, realClock } from '../studio/playback'
 import styles from './songs.module.css'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report'
@@ -22,6 +24,8 @@ const SPEEDS = ['1', '0.75', '0.5'] as const
 const MIDDLE_C = 60
 /** How long a wrong key stays red. */
 const WRONG_FLASH_MS = 350
+/** The streak counter appears from this many right notes in a row. */
+const STREAK_SHOWN = 5
 /** Before the start, the first notes rest this far (song ms) above the hit line. */
 const READY_TIME = -1500
 
@@ -62,6 +66,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const [hint, setHint] = useState<string | null>(null)
   const [report, setReport] = useState<Report | null>(null)
   const [countIn, setCountIn] = useState<number | null>(null)
+  const [streak, setStreak] = useState(0)
 
   const judge = useRef<Judge | null>(null)
   /** The octave shift found by the middle-C check; applies to the Yamaha only, never to on-screen keys. */
@@ -98,6 +103,9 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
           setTimeout(() => setWrong((w) => { const n = new Set(w); n.delete(p); return n }), WRONG_FLASH_MS)
         }
         if (e.type === 'hit' || e.type === 'missed') outcomes.push([e.result.note.id, e.result.outcome])
+        // The streak: right notes in a row; a wrong or missed note starts it again, quietly.
+        if (e.type === 'hit') setStreak((n) => n + 1)
+        if (e.type === 'wrong' || e.type === 'missed') setStreak(0)
       }
       if (outcomes.length) setResults((r) => new Map([...r, ...outcomes]))
       if (events.some((e) => e.type === 'done')) finish()
@@ -125,6 +133,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       }
       shownTime.current = READY_TIME
       setResults(new Map())
+      setStreak(0)
       setPhase('playing')
       if (profileId) void log.add(profileId, { type: 'song_started', songId: song.id, practice, tempo, mode: j.mode })
     },
@@ -163,6 +172,54 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     [press, release],
   )
   const keyboard = useKeyboard(onMidi)
+
+  // Listen first: the song played for her (on the keyboard, or the phone) at the
+  // chosen hands and speed, the notes falling and their keys lighting as it goes.
+  const output = useOutput(keyboard)
+  const [listening, setListening] = useState(false)
+  const [listenKeys, setListenKeys] = useState<ReadonlySet<number>>(new Set())
+  const listenPlayback = useRef<Playback | null>(null)
+  const stopListening = useCallback(() => {
+    listenPlayback.current?.stop()
+    listenPlayback.current = null
+    setListening(false)
+    setListenKeys(new Set())
+    fall.current?.setTime(READY_TIME)
+  }, [])
+  const listen = () => {
+    if (listening) return stopListening()
+    const take = {
+      ms: Math.round(song.durationMs / tempo) + 300,
+      notes: notes.map((n) => ({ pitch: n.pitch, velocity: 80, startMs: Math.round(n.startMs / tempo), durationMs: Math.round(n.durationMs / tempo) })),
+      pedal: [],
+    }
+    const p = new Playback(take, output.sink(), realClock, stopListening)
+    listenPlayback.current = p
+    p.start()
+    setListening(true)
+    if (profileId) void log.add(profileId, { type: 'song_listened', songId: song.id, practice, tempo })
+  }
+  useEffect(() => {
+    if (!listening) return
+    let raf = 0
+    let lastKeys = ''
+    const frame = () => {
+      const p = listenPlayback.current
+      if (!p) return
+      const s = p.position() * tempo
+      fall.current?.setTime(s)
+      const sounding = notes.filter((n) => n.startMs <= s && s < n.startMs + n.durationMs).map((n) => n.pitch)
+      const key = sounding.join(',')
+      if (key !== lastKeys) {
+        lastKeys = key
+        setListenKeys(new Set(sounding))
+      }
+      raf = requestAnimationFrame(frame)
+    }
+    raf = requestAnimationFrame(frame)
+    return () => cancelAnimationFrame(raf)
+  }, [listening, notes, tempo])
+  useEffect(() => () => listenPlayback.current?.stop(), [])
 
   // Pause when the keyboard disappears or KeyPath leaves the screen; never count those as misses.
   const pause = useCallback((reason: 'disconnected' | 'hidden') => {
@@ -238,6 +295,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     judge.current = null
     setPhase('setup')
     setResults(new Map())
+    setStreak(0)
     setCountIn(null)
   }
 
@@ -251,6 +309,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     judge.current = null
     setReport(null)
     setResults(new Map())
+    setStreak(0)
     setPhase('ready')
   }
 
@@ -291,7 +350,20 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
             <SegmentedControl value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
           </div>
           <div>
-            <Button onClick={() => setPhase('ready')}>▶ {t('startSong')}</Button>
+            <div className={styles.actions}>
+              <Button
+                onClick={() => {
+                  stopListening()
+                  setPhase('ready')
+                }}
+              >
+                ▶ {t('startSong')}
+              </Button>
+              <Button variant="outline" onClick={listen}>
+                {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
+              </Button>
+            </div>
+            {output.phoneMuted && <p className={styles.hint}>{t('studioPhoneMuted')}</p>}
           </div>
         </section>
       )}
@@ -327,12 +399,17 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
 
       <div className={styles.stage}>
         {countIn !== null && phase === 'playing' && <div className={styles.countIn}>{countIn}</div>}
+        {phase === 'playing' && streak >= STREAK_SHOWN && (
+          <div key={streak} className={styles.streak} data-big={streak % 10 === 0 || undefined} aria-live="polite">
+            🔥 {t('streakChip', { count: streak })}
+          </div>
+        )}
         <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} />
         <PlayKeyboard
           names={settings.keyNames}
           boxes={boxes}
           held={held}
-          targets={phase === 'ready' ? new Set([MIDDLE_C]) : targets}
+          targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : targets}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
           label={label}

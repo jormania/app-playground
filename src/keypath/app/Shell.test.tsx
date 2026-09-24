@@ -41,7 +41,7 @@ describe('KeyPath shell', () => {
     await createPlayer('Nora')
     for (const door of ['Songs', 'Journey', 'Challenges', 'Studio']) expect(screen.getByRole('button', { name: new RegExp(door) })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Challenges/ }))
-    expect(await screen.findByText('Coming soon')).toBeTruthy()
+    expect(await screen.findByText('Note race')).toBeTruthy()
     const [p] = await new ProfileRepo(store).list()
     const events = await new EngagementLog(store).read(p.id)
     expect(events.map((e) => e.type)).toEqual(['profile_created', 'session_start', 'door_opened'])

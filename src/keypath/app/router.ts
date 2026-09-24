@@ -18,6 +18,8 @@ export type Route =
   | { name: 'journeyStep'; step: string }
   /** Studio opened from a song ("Make it yours"); from Home it's the studio door. */
   | { name: 'studio'; songId: string }
+  | { name: 'challenge'; game: 'race' | 'echo' | 'chord' }
+  | { name: 'progress' }
 
 const DOORS: readonly Door[] = ['songs', 'journey', 'challenges', 'studio']
 
@@ -30,11 +32,14 @@ export function parseRoute(hash: string): Route {
     case 'settings':
     case 'diagnostics':
     case 'connect':
+    case 'progress':
       return { name: head }
     case 'songs':
       return arg === 'import' ? { name: 'songImport' } : { name: 'door', door: 'songs' }
     case 'studio':
       return arg ? { name: 'studio', songId: decodeURIComponent(arg) } : { name: 'door', door: 'studio' }
+    case 'challenge':
+      return arg === 'race' || arg === 'echo' || arg === 'chord' ? { name: 'challenge', game: arg } : { name: 'door', door: 'challenges' }
     case 'journey':
       return arg ? { name: 'journeyStep', step: decodeURIComponent(arg) } : { name: 'door', door: 'journey' }
     case 'play':
@@ -58,6 +63,8 @@ export function hrefOf(route: Route): string {
       return `#/play/${encodeURIComponent(route.songId)}`
     case 'studio':
       return `#/studio/${encodeURIComponent(route.songId)}`
+    case 'challenge':
+      return `#/challenge/${route.game}`
     case 'journeyStep':
       return `#/journey/${encodeURIComponent(route.step)}`
     default:

@@ -46,11 +46,12 @@ export const APPS = [
     ds: true,
     kind: "react-vite",
     manifest: "/keypath.webmanifest",
-    description: "A piano tutor for the family's Yamaha PSR-E383, connected to the phone with a USB cable. The keyboard makes the sound; KeyPath listens over Web MIDI and teaches. Four doors, no fixed route: songs with falling notes, a six-step journey you can test out of, a studio to record your own playing, and challenges still to come. Confidence first: a wrong note is a setting, never a punishment.",
+    description: "A piano tutor for the family's Yamaha PSR-E383, connected to the phone with a USB cable. The keyboard makes the sound; KeyPath listens over Web MIDI and teaches. Four doors, no fixed route: songs with falling notes, a six-step journey you can test out of, quick challenges, and a studio to record your own playing. Confidence first: a wrong note is a setting, never a punishment.",
     features: [
       "Songs: a public-domain starter pack plus your own MIDI files, which never leave the phone — falling notes, one hand or both, 50–100% speed, and three wrong-note modes",
       "An end-of-song report that leads with what went well, names the one bar worth another go, and only ever suggests a harder setting",
       "Journey: six small steps from middle C to a first bar of written music, each with a lit-key practice and a check — test out of anything you already know",
+      "Challenges: a 30-second note race (find the note by name, or read it off a staff), a rhythm echo that marks every tap on time, early or late, and chord catch (play the named chord, all three keys together)",
       "Studio: record what you play over the keyboard's own Style, keep your favourite takes, and play them back on the keyboard; “Make it yours” after any song",
       "A connection wizard that checks each step — browser, cable, permission, a key press — so practice never starts without a working keyboard",
       "Players with their own settings, English or Romanian, C D E or Do Re Mi",

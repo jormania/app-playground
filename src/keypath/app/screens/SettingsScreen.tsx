@@ -147,8 +147,12 @@ export function SettingsScreen() {
           <Button variant="outline" onClick={() => navigate({ name: 'diagnostics' })}>
             {t('diagnostics')}
           </Button>
+          <Button variant="outline" onClick={() => navigate({ name: 'progress' })}>
+            {t('progress')}
+          </Button>
         </div>
         <p className={styles.hint}>{t('diagnosticsHint')}</p>
+        <p className={styles.hint}>{t('progressHint')}</p>
       </section>
 
       <section className={styles.panel}>

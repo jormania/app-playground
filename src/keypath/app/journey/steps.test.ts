@@ -16,9 +16,9 @@ function playLit(ex: ReturnType<(typeof JOURNEY)[number]['practice']>) {
   return ex
 }
 
-describe('the six Journey steps', () => {
-  it('are the six from the design, in order', () => {
-    expect(JOURNEY.map((s) => s.id)).toEqual(['middleC', 'cde', 'fiveFinger', 'chord', 'twoHands', 'notation'])
+describe('the Journey steps', () => {
+  it('are the six from the design, then the three added before Nora’s first look, in order', () => {
+    expect(JOURNEY.map((s) => s.id)).toEqual(['middleC', 'cde', 'fiveFinger', 'chord', 'twoHands', 'notation', 'leftHand', 'blackKeys', 'readingHigher'])
   })
 
   it('every practice can be played through by its lit keys, with nothing wrong', () => {
@@ -46,17 +46,18 @@ describe('the six Journey steps', () => {
   })
 
   it('only the tune steps ask for middle C first', () => {
-    expect(JOURNEY.filter((s) => s.octaveGate).map((s) => s.id)).toEqual(['fiveFinger', 'twoHands', 'notation'])
+    expect(JOURNEY.filter((s) => s.octaveGate).map((s) => s.id)).toEqual(['fiveFinger', 'twoHands', 'notation', 'leftHand', 'readingHigher'])
   })
 
-  it('the staff draws exactly the notes the reading step judges', () => {
-    const s = stepById('notation')!
-    for (const [staff, ex] of [
-      [s.staff!.practice, s.practice('relaxed')],
-      [s.staff!.check, s.check('relaxed')],
-    ] as const) {
-      expect((ex as Tune).notes.map((n) => n.pitch)).toEqual(staff.map(([p]) => p))
-      staff.forEach(([p]) => expect(() => staffStep(p)).not.toThrow())
+  it('the staff draws exactly the notes the reading steps judge', () => {
+    for (const s of JOURNEY.filter((x) => x.staff)) {
+      for (const [staff, ex] of [
+        [s.staff!.practice, s.practice('relaxed')],
+        [s.staff!.check, s.check('relaxed')],
+      ] as const) {
+        expect((ex as Tune).notes.map((n) => n.pitch), s.id).toEqual(staff.map(([p]) => p))
+        staff.forEach(([p]) => expect(() => staffStep(p)).not.toThrow())
+      }
     }
   })
 

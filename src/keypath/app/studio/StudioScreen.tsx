@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, SegmentedControl } from '../../../ds'
+import { Button } from '../../../ds'
 import type { Song } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
-import { loadOutputLevel } from '../../probe/outputLevel'
-import { keyboardConnection, useKeyboard } from '../connect/keyboard'
+import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useApp } from '../context'
 import { noteLabel } from '../i18n'
@@ -12,16 +11,12 @@ import { TopBar } from '../screens/TopBar'
 import { keyBoxes } from '../songs/keyGeometry'
 import { SongLibrary } from '../songs/library'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
-import { PREFIX } from '../store'
 import { Playback, realClock, type Sink } from './playback'
 import { MAX_TAKE_MS, Recorder, type Recording } from './recorder'
-import { keyboardSink, phoneSink } from './sinks'
+import { OutputChoice, useOutput } from './output'
 import { MAX_KEPT, TakeRepo, type Take } from './takes'
 import styles from './studio.module.css'
 
-type Via = 'keyboard' | 'phone'
-/** This phone's choice of where takes play, when the keyboard is connected. */
-const VIA_KEY = `${PREFIX}studioVia`
 const LOW = 60
 const HIGH = 84
 
@@ -38,7 +33,6 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const library = useMemo(() => new SongLibrary(store), [store])
   const [takes, setTakes] = useState<Take[] | null>(null)
   const [song, setSong] = useState<Song | null>(null)
-  const [via, setVia] = useState<Via>('keyboard')
   const [held, setHeld] = useState<ReadonlySet<number>>(new Set())
   const [recording, setRecording] = useState<{
     ms: number
@@ -63,9 +57,6 @@ export function StudioScreen({ songId }: { songId?: string }) {
   useEffect(() => {
     if (songId) void library.get(songId, settings.language).then(setSong)
   }, [library, songId, settings.language])
-  useEffect(() => {
-    void store.get<Via>(VIA_KEY).then((v) => v && setVia(v))
-  }, [store])
   useEffect(() => {
     if (profileId) void log.add(profileId, songId ? { type: 'studio_opened', from: 'song', songId } : { type: 'studio_opened', from: 'door' })
   }, [log, profileId, songId])
@@ -95,10 +86,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
   }, [])
   const kb = useKeyboard(onMidi)
 
-  const canSend = kb.connected && !!kb.snapshot.outputs?.some((o) => o.state === 'connected')
-  const route: Via = canSend ? via : 'phone'
-  const sinkFor = useCallback((r: Via): Sink => (r === 'keyboard' ? keyboardSink((d, at) => keyboardConnection().send?.(d, at) ?? false) : phoneSink(kb.connected)), [kb.connected])
-  const phoneMuted = route === 'phone' && kb.connected && loadOutputLevel().level === 0
+  const output = useOutput(kb)
+  const { route } = output
 
   const stopPlayback = useCallback(() => {
     playback.current?.stop()
@@ -110,7 +99,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const play = (id: string, r: Recording) => {
     if (playingId === id) return stopPlayback()
     stopPlayback()
-    const p = new Playback(r, sinkFor(route), realClock, () => {
+    const p = new Playback(r, output.sink(), realClock, () => {
       playback.current = null
       setPlayingId(null)
     })
@@ -213,7 +202,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
 
   // The screen's own keys play too: on the keyboard or the phone, and into the take.
   const screenPress = (p: number) => {
-    live.current ??= sinkFor(route)
+    live.current ??= output.sink()
     live.current.noteOn(p, 80, performance.now())
     recorder.current?.noteOn(p, 80, performance.now())
     setHeld((h) => new Set(h).add(p))
@@ -299,26 +288,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
             </div>
           </div>
         )}
-        {canSend ? (
-          <div className={styles.via}>
-            <span className={styles.hint}>{t('studioPlayOn')}</span>
-            <SegmentedControl
-              size="sm"
-              value={via}
-              onChange={(v) => {
-                setVia(v as Via)
-                void store.set(VIA_KEY, v)
-              }}
-              options={[
-                { value: 'keyboard', label: t('studioOnKeyboard') },
-                { value: 'phone', label: t('studioOnPhone') },
-              ]}
-            />
-          </div>
-        ) : (
-          <p className={styles.hint}>{t('studioPlaysOnPhone')}</p>
-        )}
-        {phoneMuted && <p className={styles.hint}>{t('studioPhoneMuted')}</p>}
+        <OutputChoice output={output} label={t('studioPlayOn')} phoneOnly={t('studioPlaysOnPhone')} />
       </section>
 
       <PlayKeyboard boxes={boxes} held={held} targets={new Set()} wrong={new Set()} label={label} names={settings.keyNames} onPress={screenPress} onRelease={screenRelease} />

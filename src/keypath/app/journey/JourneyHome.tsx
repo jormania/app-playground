@@ -21,12 +21,12 @@ export function JourneyHome() {
     <main className={styles.screen}>
       <TopBar title={t('doorJourney')} />
       <p className={styles.intro}>{allDone ? t('jAllDone') : t('journeyIntro')}</p>
-      <ol className={styles.path}>
+      <ol className={styles.path} style={{ '--done': JOURNEY.filter((s) => progress[s.id]).length / JOURNEY.length } as React.CSSProperties}>
         {JOURNEY.map((s, i) => {
           const state = stateOf(progress, s.id)
           const done = progress[s.id]
           return (
-            <li key={s.id} className={styles.stop} data-state={state}>
+            <li key={s.id} className={styles.stop} data-state={state} style={{ '--i': i } as React.CSSProperties}>
               <button type="button" className={styles.stopButton} onClick={() => navigate({ name: 'journeyStep', step: s.id })}>
                 <span className={styles.stopBadge} aria-hidden>
                   {state === 'done' ? '✓' : state === 'locked' ? '🔒' : i + 1}

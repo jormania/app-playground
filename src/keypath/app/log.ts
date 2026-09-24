@@ -1,3 +1,4 @@
+import type { ChallengeGame } from './challenges/records'
 import type { KeyValueStore } from './store'
 import { K } from './store'
 
@@ -16,6 +17,8 @@ export type LogEvent =
   | { type: 'song_finished'; songId: string; practice: string; stars: number; score: number; hit: number; total: number; wrong: number }
   | { type: 'song_abandoned'; songId: string; practice: string; hit: number; total: number }
   | { type: 'song_added' }
+  /** "Listen first": the song played for her before she tries it. */
+  | { type: 'song_listened'; songId: string; practice: string; tempo: number }
   /** A step up offered: after a song (songId) or at a Journey milestone (step). */
   | { type: 'suggestion'; setting: string; to: string; accepted: boolean; songId?: string; step?: string }
   /** The connection wizard: finished, or left at a step (where people get stuck). */
@@ -33,6 +36,10 @@ export type LogEvent =
   | { type: 'studio_played'; takeId: string; via: 'keyboard' | 'phone' }
   | { type: 'studio_favourite'; takeId: string; on: boolean }
   | { type: 'studio_deleted'; takeId: string }
+  /** Challenges: a game begun, finished (score, whether it beat the best) or left part-way. */
+  | { type: 'challenge_started'; game: ChallengeGame; level: number }
+  | { type: 'challenge_finished'; game: ChallengeGame; level: number; score: number; best: boolean; wrong?: number; ms: number }
+  | { type: 'challenge_left'; game: ChallengeGame; level: number; ms: number }
 
 export type Door = 'songs' | 'journey' | 'challenges' | 'studio'
 

@@ -41,6 +41,7 @@ export const K = {
   log: (profileId: string) => `${PREFIX}log:${profileId}`,
   journey: (profileId: string) => `${PREFIX}journey:${profileId}`,
   studio: (profileId: string) => `${PREFIX}studio:${profileId}`,
+  challenges: (profileId: string) => `${PREFIX}challenges:${profileId}`,
 }
 
 export type Persistence = 'persisted' | 'best-effort' | 'unknown'
