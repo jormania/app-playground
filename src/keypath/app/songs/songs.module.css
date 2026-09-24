@@ -88,6 +88,59 @@
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
+/* A row: the song, and for her own songs a ⋯ that opens its title and Remove. */
+.songRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-xs);
+}
+.songRow > .songItem:only-child {
+  grid-column: 1 / -1;
+}
+.songText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.songProgress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.songStars {
+  color: #d9a520;
+  letter-spacing: 1px;
+}
+.songMoreButton {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-ink);
+  font-size: var(--text-xl);
+  cursor: pointer;
+}
+.songMoreButton[aria-expanded='true'] {
+  background: var(--color-surface-2, var(--color-bg));
+}
+.songMore {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.renameRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--space-xs);
+}
 
 /* ── Play screen ── */
 .playScreen {

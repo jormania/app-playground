@@ -9,7 +9,8 @@ import { useApp } from '../context'
 import { noteLabel } from '../i18n'
 import { PREFIX } from '../store'
 import { TopBar } from '../screens/TopBar'
-import { keyBoxes } from '../songs/keyGeometry'
+import { keyBoxes, widenRange } from '../songs/keyGeometry'
+import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { SongLibrary } from '../songs/library'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
 import { Playback, realClock, type Sink } from './playback'
@@ -317,7 +318,11 @@ export function StudioScreen({ songId }: { songId?: string }) {
     live.current = null // a new route gets a new sink on the next tap
   }, [route])
 
-  const boxes = useMemo(() => keyBoxes(LOW, HIGH), [])
+  const wide = useWide()
+  const boxes = useMemo(() => {
+    const r = wide ? widenRange({ low: LOW, high: HIGH }, WIDE_OCTAVES) : { low: LOW, high: HIGH }
+    return keyBoxes(r.low, r.high)
+  }, [wide])
   const tune = useMemo(() => {
     if (!song) return null
     const bars = new Map<number, string[]>()

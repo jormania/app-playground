@@ -11,7 +11,8 @@ import { noteLabel } from '../i18n'
 import type { Language, NoteNames } from '../profiles'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
-import { keyBoxes } from '../songs/keyGeometry'
+import { keyBoxes, widenRange } from '../songs/keyGeometry'
+import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
 import { CHORD_LEVEL_NAME } from './ChallengesHome'
 import { ChordCatch, SCREEN_KEYS, shows, voicingOf, type ChordDef, type ChordLevel } from './chordCatch'
@@ -146,7 +147,12 @@ export function ChordCatchScreen() {
     [log, profileId],
   )
 
-  const boxes = useMemo(() => keyBoxes(SCREEN_KEYS.low, SCREEN_KEYS.high), [])
+  const wide = useWide()
+  // Wider in landscape; the lit chords stay inside SCREEN_KEYS either way.
+  const boxes = useMemo(() => {
+    const r = wide ? widenRange(SCREEN_KEYS, WIDE_OCTAVES) : SCREEN_KEYS
+    return keyBoxes(r.low, r.high)
+  }, [wide])
   const best = records?.chord[level]
   const lit = phase === 'run' && prompt && !caught && shows(level) ? new Set(voicingOf(prompt)) : new Set<number>()
   const notes = prompt ? voicingOf(prompt) : []
@@ -219,7 +225,7 @@ export function ChordCatchScreen() {
       )}
 
       <div className={styles.keys}>
-        <PlayKeyboard boxes={boxes} held={held} targets={lit} wrong={wrong} label={label} names={settings.keyNames} onPress={(p) => press(p, performance.now())} onRelease={release} />
+        <PlayKeyboard sound={!kb.connected} boxes={boxes} held={held} targets={lit} wrong={wrong} label={label} names={settings.keyNames} onPress={(p) => press(p, performance.now())} onRelease={release} />
       </div>
     </main>
   )

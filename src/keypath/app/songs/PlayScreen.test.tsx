@@ -53,7 +53,7 @@ describe('Songs door', () => {
   it('lists the starter pack and the family’s own songs, and opens one', async () => {
     await setUp({}, '#/door/songs')
     expect(await screen.findByText('Twinkle, Twinkle, Little Star')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Three notes/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Three notes/ }))
     expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
     expect(location.hash).toBe('#/play/Three%20notes')
   })
