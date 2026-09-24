@@ -68,6 +68,9 @@ describe('Studio', () => {
     const { store, profileId } = await open('#/door/studio')
     expect(await screen.findByText(/KeyPath records what you play, not the Style/)).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'Keyboard' }).getAttribute('aria-checked')).toBe('true')
+    // findByText resolves on the first paint, which can land before useKeyboard's effect
+    // subscribes to the keyboard. Flush it, or on a slow runner the Start below is lost.
+    await act(async () => {})
 
     kb.emit({ type: 'realtime', status: 0xfa }) // she starts a Style
     fireEvent.click(screen.getByRole('button', { name: '● Record' }))
