@@ -1,8 +1,8 @@
 # KeyPath — tutor design (v0 “taster”)
 
-The design of the learning app that follows the probe (`KEYPATH.md`). Nothing
-here is built yet. The hardware questions are answered in `KEYPATH.md` §1;
-this document is about **what Nora does with it**.
+The design of the learning app that follows the probe (`KEYPATH.md`), and
+the record of what's been built (§9). The hardware questions are answered in
+`KEYPATH.md` §1; this document is about **what Nora does with it**.
 
 Decisions below were taken with Gabriel on 2026-09-24. Open questions are at
 the end: some can only be answered by Nora.
@@ -423,11 +423,16 @@ forgotten; each item says when it comes back.
   file.
 - Translating the **Diagnostics** screen, which stays in English for now.
 
-**App distribution** (when the tutor is stable enough to hand to Nora):
-- Listing on the front page (`index.html`) and in The Cabinet, via
+**App distribution** — **done** (after step 5, at Gabriel's request, to
+install it and get the full screen):
+- Listed on the front page (`index.html`) and in The Cabinet, via
   `src/apps-registry.js` (`CABINET.md` checklist).
-- PWA: web manifest, icons, a scoped service worker, and the `watchInstalled`
-  install flag (`CLAUDE.md`, "Service workers & dev").
+- PWA: `public/keypath.webmanifest` (standalone, any orientation), icons from
+  `public/keypath-icon.svg` / `keypath-logo.svg` via `npm run
+  gen:keypath-icons`, a scoped service worker (`public/keypath-sw.js`,
+  production only; navigations network-first, so the installed app opens
+  the latest deploy when online), and `watchInstalled('keypath-react.html')`.
+- The screen stays on across the whole tutor (wake lock in `Shell.tsx`).
 
 **Engine refinements** (after Nora has used the taster; tune on her playing):
 - **Note length.** Only note *starts* are judged. Holding a note for its full

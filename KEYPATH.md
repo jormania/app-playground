@@ -14,11 +14,12 @@ F3**, which gets the same probe later as a compatibility check before she uses
 the app. It has one known Xiaomi-specific catch (the OTG switch, §2). The
 report records which phone it came from.
 
-Nothing here teaches yet. No lessons, no songs, no scoring. If the answer is
-yes, the next step is designing the lesson engine, not extending this page.
+The probe itself teaches nothing. The answer was yes, and the tutor built on
+it is designed in [`KEYPATH_TUTOR.md`](KEYPATH_TUTOR.md); the probe now lives
+inside it at **Settings → Diagnostics**.
 
-- Page: `/keypath-react.html` (unlisted: no registry entry, no Cabinet tile,
-  `noindex`)
+- Page: `/keypath-react.html`, an installable PWA listed on the front page
+  and in The Cabinet (still `noindex`: a family tool, not for search engines)
 - Code: `src/keypath/`, strict TypeScript, built on `src/ds/`
 - Tests: `npm test -- src/keypath`
 

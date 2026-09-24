@@ -5,6 +5,7 @@ import { EngagementLog } from './log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo, type Profile, type ProfileSettings } from './profiles'
 import { navigate, useRoute } from './router'
 import { indexedDbStore, type KeyValueStore } from './store'
+import { useWakeLock } from '../../shared/useWakeLock'
 import { WhoIsPlaying } from './screens/WhoIsPlaying'
 import { Home } from './screens/Home'
 import { DoorScreen } from './screens/DoorScreen'
@@ -76,6 +77,10 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [profile, startSession, endSession])
+
+  // Hands are on the keys, not the phone: the screen stays on while KeyPath is
+  // open. Chrome drops the lock when the page is hidden; the hook takes it back.
+  useWakeLock(true)
 
   // Language drives the page's own lang attribute too (screen readers, hyphenation).
   useEffect(() => {

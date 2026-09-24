@@ -4,16 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>KeyPath</title>
-  <meta name="description" content="Piano practice with a Yamaha keyboard over USB MIDI." />
-  <!-- Unlisted: not in the apps registry, and search engines are asked to leave it alone. -->
+  <meta name="description" content="Piano practice with a Yamaha keyboard over USB: songs, a step-by-step journey, and a studio to record your own." />
+  <!-- Listed in the apps registry, but a family tool: search engines are asked to leave it alone. -->
   <meta name="robots" content="noindex" />
   <meta name="color-scheme" content="light dark" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8E%B9%3C/text%3E%3C/svg%3E" />
+  <meta name="theme-color" content="#eee8d5" />
   <script>
+    // Follows the phone's light/dark setting, applied before first paint; the
+    // browser bar's colour follows too (main.tsx keeps both in step after).
     try {
-      document.documentElement.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#1a1b26' : '#eee8d5');
     } catch (e) {}
   </script>
+  <link rel="icon" type="image/svg+xml" href="/keypath-logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/keypath-favicon-32.png" />
+  <link rel="apple-touch-icon" href="/keypath-icon-192.png" />
+  <link rel="manifest" href="/keypath.webmanifest" />
 </head>
 <body>
   <div id="root"></div>
