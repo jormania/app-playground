@@ -73,3 +73,37 @@ describe('WebMidiConnection', () => {
     expect(got[0].time).toBe(77)
   })
 })
+
+describe('WebMidiConnection: sending', () => {
+  const fakeOutput = (id: string, name: string, manufacturer: string) => ({ id, name, manufacturer, state: 'connected', send: vi.fn() })
+
+  it('lists outputs and sends to the Yamaha in preference to anything else attached', async () => {
+    const { nav, access } = fakeNavigator([])
+    const other = fakeOutput('x', 'Some Synth', 'Acme')
+    const yamaha = fakeOutput('y', 'Digital Keyboard', 'Yamaha Corporation')
+    Object.assign(access, { outputs: new Map([['x', other], ['y', yamaha]]) })
+    const c = new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => 0 })
+    const snap = await c.open()
+    expect(snap.outputs?.map((o) => [o.id, o.looksLikeYamaha])).toEqual([['x', false], ['y', true]])
+    expect(c.send([0x90, 60, 90], 1234)).toBe(true)
+    expect(yamaha.send).toHaveBeenCalledWith([0x90, 60, 90], 1234)
+    expect(other.send).not.toHaveBeenCalled()
+  })
+
+  it('says so when there is nowhere to send', async () => {
+    const { nav } = fakeNavigator([])
+    const c = new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => 0 })
+    expect(c.send([0x90, 60, 90])).toBe(false)
+    await c.open()
+    expect(c.send([0x90, 60, 90])).toBe(false)
+  })
+
+  it('treats a port that throws on send as nothing sent', async () => {
+    const { nav, access } = fakeNavigator([])
+    const broken = { ...fakeOutput('y', 'Digital Keyboard', 'Yamaha'), send: vi.fn(() => { throw new Error('InvalidStateError') }) }
+    Object.assign(access, { outputs: new Map([['y', broken]]) })
+    const c = new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => 0 })
+    await c.open()
+    expect(c.send([0x90, 60, 90])).toBe(false)
+  })
+})

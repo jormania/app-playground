@@ -25,6 +25,13 @@ export type LogEvent =
   | { type: 'journey_started'; step: string; mode: 'practice' | 'check'; testOut: boolean }
   | { type: 'journey_finished'; step: string; mode: 'practice' | 'check'; passed: boolean; wrong: number; ms: number }
   | { type: 'journey_left'; step: string; mode: 'practice' | 'check'; ms: number }
+  /** Studio: opened from its door or from a song's "Make it yours". */
+  | { type: 'studio_opened'; from: 'door' | 'song'; songId?: string }
+  | { type: 'studio_recorded'; ms: number; notes: number; style: boolean; songId?: string }
+  | { type: 'studio_kept'; takeId: string }
+  | { type: 'studio_played'; takeId: string; via: 'keyboard' | 'phone' }
+  | { type: 'studio_favourite'; takeId: string; on: boolean }
+  | { type: 'studio_deleted'; takeId: string }
 
 export type Door = 'songs' | 'journey' | 'challenges' | 'studio'
 

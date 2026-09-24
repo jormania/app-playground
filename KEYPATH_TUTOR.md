@@ -176,8 +176,10 @@ listing (added when stable, per `CABINET.md`).
 - **Rewards**: stars only, or streaks, collectibles, unlockable Styles? Depends
   on Nora's answers and on the engagement log.
 - **MIDI out**: Studio playback and “listen first” in Songs are best played on
-  the Yamaha itself (it accepts MIDI on 16 channels). This needs one short probe
-  test before building Studio.
+  the Yamaha itself. Whether it plays what it receives, in which voices, and
+  whether it starts a Style on MIDI Start is untested: the test is built
+  (`KEYPATH.md` §3, "Phone → keyboard") and waits for the keyboard. Studio
+  was built to work either way.
 
 ---
 
@@ -202,7 +204,8 @@ Each step ships on its own and is usable without the next.
 4. **B. Journey** — **built** (`src/keypath/app/journey/`, see below): the
    six steps with test-out.
 5. **MIDI-out probe test**, then **D. Studio** and the “make it yours” link
-   from Songs.
+   from Songs — **built** (see below). The test is ready in Diagnostics and
+   **hasn't been run on the Yamaha yet**; Studio works whatever it finds.
 6. **C. Challenges**: note race, rhythm echo.
 7. **Poco F3 check** (`KEYPATH.md` §2) before Nora starts, then two to three
    weeks of use, read the engagement log, and decide what to deepen.
@@ -255,6 +258,52 @@ src/keypath/app/
 
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
+
+### Step 5 as built
+
+```
+src/keypath/midi/          outputs listed in the connection snapshot, and
+                           send(bytes, at) to the Yamaha (preferred if several
+                           outputs), scheduled on Web MIDI's own clock
+src/keypath/probe/midiOut.ts + components/MidiOutPanel.tsx
+                           the MIDI-out test in Diagnostics (KEYPATH.md §3,
+                           "Phone → keyboard"): four notes, another voice, a
+                           Style started from the phone; plus an automatic
+                           echo check. Answers go into the report
+src/keypath/app/studio/
+  recorder.ts              her notes and sustain pedal from channels 1–8,
+                           never the Style's channels; ten minutes at most
+  playback.ts              plays a take through a sink, handing events over
+                           250 ms ahead with their exact time, so timing
+                           doesn't depend on timers and Stop leaves at most
+                           that much in flight
+  sinks.ts                 the keyboard (MIDI out, channel 1; Stop silences
+                           twice, now and after the lookahead) or the phone
+                           (the probe's synth; through the "sound through the
+                           keyboard" level when the Yamaha is attached)
+  takes.ts                 kept takes per player, numbered, favourites; at
+                           most 50, and never dropped silently
+  StudioScreen.tsx         Record / Stop, keep or discard, my takes (play,
+                           ★, delete on a second tap), play takes on
+                           Keyboard or Phone. Opened from a song's report as
+                           "Make it yours", with the song's tune as a
+                           reminder and the take named after it
+```
+
+**What Studio records is what she plays, not the Style.** The Style's notes
+arrive on channels 9–16 and are left out. At playback the keyboard doesn't
+restart the Style, so she hears her part alone unless she starts the Style
+herself. Whether the app could start it (MIDI Start) is test 3 above. If
+the Yamaha turns out not to play what it receives (test 1), set "Play takes
+on" to Phone. The choice is remembered per phone.
+
+Takes can't be exported yet, and nothing leaves the phone except in the
+backup file, like everything else.
+
+New in the engagement log: `studio_opened` (from the door, or from a song),
+`studio_recorded` (length, notes, whether a Style ran), `studio_kept`,
+`studio_played` (on the keyboard or the phone), `studio_favourite` and
+`studio_deleted`.
 
 ### Step 4 as built
 
@@ -394,6 +443,18 @@ forgotten; each item says when it comes back.
 - **Import simplification**: "melody only" for arrangements too hard as
   written (the range check and whole-octave transposition exist now).
 - **MusicXML import** (with notation rendering, a late Journey skill).
+
+**Studio refinements** (deferred from step 5; most depend on the MIDI-out test):
+- **Start the Style with playback**, if test 3 says the keyboard obeys MIDI
+  Start: record the Style's tempo (MIDI Clock) with the take and start it
+  in time. Today she starts it herself.
+- **"Listen first" in Songs**, the song played by the Yamaha before she
+  tries it, in a second voice if test 2 allows.
+- **Export a take** as a `.mid` file, to share or to open in Songs as her
+  own song.
+- **Rename** a take. For now they're numbered, or named after the song.
+- **The phone's playback ignores the sustain pedal.** Notes end where the
+  keys were released; the keyboard's playback does voice the pedal.
 
 **Journey refinements** (deferred from step 4; tune on Nora's use):
 - **Pass marks.** A check passes with at most one wrong key (two in the tune

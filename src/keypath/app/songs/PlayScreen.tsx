@@ -258,7 +258,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onAnotherSong={() => history.back()} />
+        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onAnotherSong={() => history.back()} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }

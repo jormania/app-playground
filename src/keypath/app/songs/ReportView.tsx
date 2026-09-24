@@ -13,6 +13,8 @@ interface Props {
   songId: string
   onPlayAgain: () => void
   onAnotherSong: () => void
+  /** Studio with this song's tune: play it over a Style, or invent an ending. */
+  onMakeItYours: () => void
 }
 
 /**
@@ -20,7 +22,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours }: Props) {
   const { t, profile, log, updateSetting } = useApp()
   const [answered, setAnswered] = useState(false)
 
@@ -93,6 +95,11 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong }: Props
         <Button variant="outline" onClick={onAnotherSong}>
           {t('anotherSong')}
         </Button>
+        {report.stars > 0 && (
+          <Button variant="outline" onClick={onMakeItYours}>
+            🎨 {t('makeItYours')}
+          </Button>
+        )}
       </div>
     </section>
   )

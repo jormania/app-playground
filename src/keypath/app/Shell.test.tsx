@@ -40,12 +40,12 @@ describe('KeyPath shell', () => {
     const store = await start()
     await createPlayer('Nora')
     for (const door of ['Songs', 'Journey', 'Challenges', 'Studio']) expect(screen.getByRole('button', { name: new RegExp(door) })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Studio/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Challenges/ }))
     expect(await screen.findByText('Coming soon')).toBeTruthy()
     const [p] = await new ProfileRepo(store).list()
     const events = await new EngagementLog(store).read(p.id)
     expect(events.map((e) => e.type)).toEqual(['profile_created', 'session_start', 'door_opened'])
-    expect(events[2]).toMatchObject({ door: 'studio' })
+    expect(events[2]).toMatchObject({ door: 'challenges' })
   })
 
   it('switches the whole app to Romanian from settings, for that player only', async () => {

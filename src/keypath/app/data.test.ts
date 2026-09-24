@@ -106,6 +106,8 @@ describe('router', () => {
     expect(parseRoute('#/play/')).toEqual({ name: 'door', door: 'songs' })
     expect(parseRoute(hrefOf({ name: 'connect' }))).toEqual({ name: 'connect' })
     expect(parseRoute('#/journey')).toEqual({ name: 'door', door: 'journey' })
+    expect(parseRoute('#/studio')).toEqual({ name: 'door', door: 'studio' })
+    expect(parseRoute(hrefOf({ name: 'studio', songId: 'starter:ode' }))).toEqual({ name: 'studio', songId: 'starter:ode' })
     expect(parseRoute(hrefOf({ name: 'journeyStep', step: 'chord' }))).toEqual({ name: 'journeyStep', step: 'chord' })
   })
 })
