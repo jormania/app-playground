@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 
@@ -9,6 +9,14 @@ afterEach(() => {
 })
 
 describe('KeyPath probe', () => {
+  it('asks for a screen wake lock as soon as it opens, before anything is connected', async () => {
+    const request = vi.fn().mockResolvedValue({ addEventListener: () => {}, release: () => Promise.resolve() })
+    Object.defineProperty(navigator, 'wakeLock', { value: { request }, configurable: true })
+    render(<App />)
+    await waitFor(() => expect(request).toHaveBeenCalledWith('screen'))
+    delete (navigator as { wakeLock?: unknown }).wakeLock
+  })
+
   it('says plainly when the browser has no Web MIDI', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Connect MIDI' }))

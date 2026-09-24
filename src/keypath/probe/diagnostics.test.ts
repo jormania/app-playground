@@ -54,6 +54,23 @@ describe('chord test', () => {
     expect(r.details.join(' ')).toContain('11.0 ms')
   })
 
+  it('judges one attempt, ignoring single notes played first — the pattern from the first real run', () => {
+    // A lone C4, then the chord: before the fix this was scored as one 4.7 s "chord".
+    const r = evaluate('chord', [on(60, 0), off(60, 300), on(60, 5000), on(64, 5004), on(67, 5009), off(60, 5400), off(64, 5401), off(67, 5402)])
+    expect(r.verdict).toBe('pass')
+    expect(r.details.join(' ')).toContain('9.0 ms')
+  })
+
+  it('says why a wrong chord failed, naming only that attempt', () => {
+    const r = evaluate('chord', [on(60, 0), off(60, 300), on(59, 1000), on(57, 1200), on(55, 1400), off(59, 1800), off(57, 1800), off(55, 1800)])
+    expect(r.verdict).toBe('fail')
+    expect(r.summary).toBe('Missing: C4, E4, G4; Unexpected: B3, A3, G3')
+  })
+
+  it('keeps listening after a single note', () => {
+    expect(evaluate('chord', [on(60, 0), off(60, 300)]).summary).toMatch(/Single notes/)
+  })
+
   it('waits while the chord is held', () => {
     expect(evaluate('chord', [on(60, 0), on(64, 3), on(67, 5)]).verdict).toBe('waiting')
   })
