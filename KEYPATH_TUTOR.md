@@ -108,7 +108,8 @@ MIDI layer (built, src/keypath/midi/)  →  Judge  →  Feedback policy  →  UI
    *Frère Jacques*, *Au clair de la lune*, *Melc, melc, codobelc*). The
    arrangements are ours; each gets a provenance note, as `KEYPATH.md` §7 and
    `content-boundary.test.js` require. They are stored as data in source code,
-   not as `.mid` files, so the boundary test stays strict.
+   not as `.mid` files, so the boundary test stays strict. **Shipped with
+   four** (step 3); *Melc, melc, codobelc* waits for a checked melody (§10).
 2. **Your own MIDI files**: **Add song** opens a `.mid` from the phone.
    - It stays **on that phone** (IndexedDB), never uploaded, never committed.
    - **“Which part do you want to learn?”**: a short preview of each track, with
@@ -193,8 +194,11 @@ Each step ships on its own and is usable without the next.
    backup, the engagement log, the four-door home. The probe is **Settings →
    Diagnostics**, unchanged: the connection check, event monitor, tests, tempo
    readout, phone-audio check and report.
-3. **A. Songs** with the starter pack: falling notes, hands, the three
-   wrong-note modes, the end report.
+3. **A. Songs** with the starter pack — **built** (`src/keypath/app/songs/`,
+   see below): falling notes, hands, the three wrong-note modes, the end
+   report. Plus **Connect the keyboard** (`src/keypath/app/connect/`), a
+   step-by-step wizard so nobody reaches a song without a working
+   connection.
 4. **B. Journey**: the six steps with test-out.
 5. **MIDI-out probe test**, then **D. Studio** and the “make it yours” link
    from Songs.
@@ -251,6 +255,61 @@ src/keypath/app/
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
 
+### Step 3 as built
+
+```
+src/keypath/engine/starterPack.ts
+                     four public-domain melodies as data (no .mid files, so
+                     content-boundary.test.js stays strict): Twinkle and Ode
+                     to Joy with a simple left hand, Frère Jacques and Au
+                     clair de la lune right hand only. Provenance in the file
+src/keypath/app/songs/
+  library.ts         the starter pack + the family's own songs (IndexedDB,
+                     shared by every player on the phone); "Add a song" reads
+                     a MIDI file, suggests the hands, moves it by whole
+                     octaves to fit the 61 keys and says so
+  SongsHome.tsx      the Songs door: starter songs, your songs, Add a song
+  ImportSong.tsx     pick a file, confirm which part is which hand, save
+  PlayScreen.tsx     hands and speed (100/75/50%) → "press middle C" (the
+                     octave check) → play → report. Running mode counts in
+                     three beats; wait mode glides to the next step. Pauses
+                     when the keyboard drops or the app leaves the screen
+  FallingNotes.tsx   one transform per frame, no React re-render per frame
+  PlayKeyboard.tsx   full-width keys lined up with the notes; always
+                     playable by touch, so a song works without the Yamaha
+  keyGeometry.ts     key positions as percentages
+  ReportView.tsx     stars, what went well first, the bar worth another go,
+                     and the step-up suggestion (only applied on "Yes")
+src/keypath/app/connect/
+  keyboard.ts        the one tutor-wide Web MIDI connection. Opens by itself
+                     only when Chrome already allows it: the permission
+                     prompt is only ever raised from the wizard, explained
+  setup.ts           the wizard's steps as pure logic (tested on its own)
+  ConnectWizard.tsx  Browser → OTG (Xiaomi/Redmi/POCO only) → Plug in →
+                     Allow → Find the keyboard → Press any key. Each step is
+                     checked before the next opens; steps it can already see
+                     are done are skipped. Find shows what to check after 6 s
+                     and keeps listening, so plugging in moves it on by itself
+  KeyboardStatus.tsx the live "Keyboard ready / not connected · Connect" line
+                     on Home and above every song
+  remember.ts        this phone's keyboard, so Home shows a "Connect your
+                     keyboard" card until the first success
+```
+
+New in the engagement log: `song_started`, `song_finished`, `song_abandoned`,
+`song_added`, `suggestion` (accepted or not), `keyboard_setup` (done, or the
+step someone gave up on), and `keyboard_lost` mid-song. On the Poco F3 that
+last one is the signal for Xiaomi's OTG timeout.
+
+A keyboard pulled out mid-song pauses the song. "Help me reconnect" opens the
+wizard; when the keyboard is back the banner says so and Carry on resumes
+where it stopped.
+
+The wizard's detection is tested in happy-dom against a fake connection, and
+in Chromium against a fake Web MIDI device injected at `requestMIDIAccess`,
+which runs the real `WebMidiConnection`, hot-plug included. **It hasn't met
+the real Yamaha yet**: first thing to try on the S24.
+
 ---
 
 ## 10. Roadmap: deferred on purpose
@@ -287,5 +346,22 @@ forgotten; each item says when it comes back.
   written (the range check and whole-octave transposition exist now).
 - **MusicXML import** (with notation rendering, a late Journey skill).
 
-**Content**: the public-domain starter pack arrives with step 3 (Songs).
+**Songs refinements** (deferred from step 3):
+- **Remove or rename** an added song. For now songs can only be added.
+- **Progress per song** (best stars, last played) on the song list. The log
+  already has what's needed.
+- **More starter songs.** "Melc, melc, codobelc" was left out: its melody
+  hasn't been checked against a reliable source yet.
+- **Landscape layout** for the play screen: more keys, more width per key.
+- A **sound for the on-screen keys** when no keyboard is connected (the
+  probe's synth, through the output level that defaults to 0).
+
+**Connection refinements** (deferred from step 3):
+- A check for **Touch Response Off** (every note at the same velocity). It
+  doesn't matter until dynamics are judged.
+- The wizard doesn't test the **charging hub** (`KEYPATH.md` §2) or phone
+  audio; Diagnostics still does the audio check.
+
+**Content**: the public-domain starter pack shipped with step 3 (four
+melodies). More public-domain pieces can join it the same way, as data.
 
