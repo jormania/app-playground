@@ -635,7 +635,9 @@ on top of that, not a security rule, per the "Against" column above.
 
 ## 9. What to build next
 
-The probe passed on the S24 (§1), so this list is now the plan.
+The probe passed on the S24 (§1), so this list is now the plan. The tutor's
+own design (four-door taster, settings, songs, data, build order) is in
+[`KEYPATH_TUTOR.md`](KEYPATH_TUTOR.md).
 
 1. ~~**Record the result**~~ Done, §1.
 2. **Two rules from the probe for the lesson engine:** listen only to the
