@@ -82,6 +82,23 @@ describe('ProbeSession', () => {
     expect(report.midi.history[1].t).toBe(600_000)
   })
 
+  it('reads the keyboard tempo from MIDI Clock, and Style start/stop, into the report', async () => {
+    const port = { id: 'y', name: 'Digital Keyboard', manufacturer: 'Yamaha', state: 'connected', onmidimessage: null as null | ((e: unknown) => void) }
+    const access = { inputs: new Map([['y', port]]), onstatechange: null }
+    const nav = { requestMIDIAccess: () => Promise.resolve(access) } as unknown as Navigator
+    const session = new ProbeSession(new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => 0 }), () => 0, () => {})
+    await session.open()
+    const send = (bytes: number[], timeStamp: number) => port.onmidimessage!({ data: new Uint8Array(bytes), timeStamp })
+    send([0xfa], 1)
+    const interval = 60000 / (78 * 24)
+    for (let i = 0; i < 60; i++) send([0xf8], 10 + i * interval)
+    send([0xfc], 2000)
+    const r = buildReport(session.getSnapshot(), null, null)
+    expect(r.clock).toMatchObject({ tempo: { bpm: 78 }, transport: 'stopped', starts: 1, stops: 1 })
+    // Clock ticks are counted, never logged.
+    expect(session.getSnapshot().log).toEqual([])
+  })
+
   it('starts the counters over when the source is swapped', async () => {
     const { session, sim } = setup()
     await session.open()

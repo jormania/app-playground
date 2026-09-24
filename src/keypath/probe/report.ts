@@ -1,5 +1,6 @@
 import { noteName } from '../midi/noteNames'
 import { summarise } from '../midi/timing'
+import { tempoOf } from '../midi/clockTracker'
 import type { MidiEvent } from '../midi/types'
 import type { EnvironmentFacts } from './environment'
 import type { ProbeSnapshot } from './probeSession'
@@ -75,6 +76,13 @@ export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb:
     timingMs: {
       dispatchLag: summarise(s.dispatchLag),
       eventToNextFrame: summarise(s.toFrame),
+    },
+    // Last known tempo from the keyboard's MIDI Clock, read at the last tick.
+    clock: {
+      tempo: s.clock.ticks.length ? tempoOf(s.clock, s.clock.ticks[s.clock.ticks.length - 1]) : null,
+      transport: s.clock.transport,
+      starts: s.clock.starts,
+      stops: s.clock.stops,
     },
     tests: s.results,
     recentEvents: [...s.log].reverse().slice(-200).map((e) => eventRow(e, s.origin)),

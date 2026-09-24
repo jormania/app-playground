@@ -64,8 +64,9 @@ Other things the run established:
   bytes per second (≈ 78 BPM at 24 per beat), and no Start (FA) or Stop (FC)
   anywhere. Active Sensing arrives about every 300 ms. The probe ignores both.
   **Not yet checked:** whether the clock rate follows the keyboard's tempo
-  setting (change [TEMPO/TAP] and watch the F8 count). If it does, the app
-  can read the tempo Nora sets on the instrument.
+  setting. The probe's **Keyboard tempo (MIDI Clock)** readout in Live answers
+  it directly (§3, "Tempo readout"). If it does, the app can read the tempo
+  Nora sets on the instrument.
 - **The phone's audio goes to the keyboard.** The test tone was heard from
   the Yamaha's speakers, so Android does route media to the PSR-E383's USB
   audio. Chrome reports **24 ms output latency** (+ 4 ms base). A metronome
@@ -254,6 +255,34 @@ one of those notes correctly. The test now judges **one attempt**, from the
 first key down to the moment all keys are up again, and ignores single notes.
 That's also the rule the lesson engine's "together" detection should use.
 
+### Tempo readout (MIDI Clock)
+
+The PSR-E383 sends MIDI Clock (24 ticks per beat) continuously. The Live
+panel's **Keyboard tempo (MIDI Clock)** stat turns that into BPM, averaged
+over the last two beats of ticks, and adds "Style playing / stopped" once a
+Start or Stop arrives. It blanks ("no clock") a second after the ticks stop.
+The report carries the last tempo, the tick jitter, and the Start/Stop counts
+under `clock`.
+
+To test it:
+
+1. Connect as usual. Without touching anything, Live should show a tempo;
+   ~78 BPM was measured before.
+2. Press **[TEMPO/TAP]**. The keyboard shows "Tempo" and its current value.
+   **Compare it with the readout.** They should agree to within about 1 BPM.
+3. Type a new tempo on the SONG/STYLE category buttons, used as digits (e.g.
+   1, 2, 0 for 120), then press **[SHIFT]** to leave the Tempo display.
+   **Within about two seconds** the readout should move to the new value. Try
+   a slow one (60) and a fast one (180) too.
+4. Press **[START/STOP]**: the stat adds "Style playing" and the rhythm plays.
+   Press it again: "Style stopped".
+5. Tap **Share to Claude…**. The `clock` section records the result.
+
+If step 3 changes the readout, the app can take Nora's tempo straight from
+the instrument, with no tempo control on the phone. If the readout stays put
+while the keyboard's tempo changes, the clock is a fixed internal rate and
+the app will need its own tempo control.
+
 ### How to read the result
 
 Integrity carries more weight than speed. Unplugged USB MIDI either works
@@ -405,6 +434,7 @@ src/keypath/
     webMidiConnection.ts      MidiConnection over Web MIDI (hot-plug, permissions)
     simulatedConnection.ts    MidiConnection from on-screen taps (no cable needed)
     noteTracker.ts            pure reducer: held notes, durations, integrity counters
+    clockTracker.ts           pure reducer: MIDI Clock → the keyboard's tempo; Style start/stop
     noteNames.ts, identify.ts, timing.ts, emitter.ts
   probe/                    ← the probe's own logic, also UI-free
     probeSession.ts           owns a MidiConnection; external store for React

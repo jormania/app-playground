@@ -1,5 +1,6 @@
 import { Emitter } from '../midi/emitter'
 import { emptyTracker, track, type TrackerState } from '../midi/noteTracker'
+import { emptyClock, trackClock, type ClockState } from '../midi/clockTracker'
 import { pushSample } from '../midi/timing'
 import type { ConnectionSnapshot, MidiConnection, MidiEvent, Unsubscribe } from '../midi/types'
 import { evaluate, type NoteEvent, type TestKind, type TestResult } from './diagnostics'
@@ -27,6 +28,8 @@ export interface ProbeSnapshot {
   /** Newest first. Realtime bytes (clock, active sensing) are counted, not logged. */
   log: MidiEvent[]
   tracker: TrackerState
+  /** MIDI Clock ticks and Style transport — the keyboard's own tempo. */
+  clock: ClockState
   /** Platform timestamp → our handler, per note event. */
   dispatchLag: number[]
   /** Platform timestamp → the next animation frame: roughly when the key can appear on screen. */
@@ -123,6 +126,7 @@ export class ProbeSession {
       origin: this.now(),
       log: [],
       tracker: emptyTracker(),
+      clock: emptyClock(),
       dispatchLag: [],
       toFrame: [],
       test: null,
@@ -162,6 +166,7 @@ export class ProbeSession {
     let next: ProbeSnapshot = {
       ...s,
       tracker: track(s.tracker, e),
+      clock: e.type === 'realtime' ? trackClock(s.clock, e) : s.clock,
       log: e.type === 'realtime' ? s.log : [e, ...s.log].slice(0, LOG_KEEP),
       dispatchLag: isNote ? pushSample(s.dispatchLag, e.receivedAt - e.time) : s.dispatchLag,
     }
