@@ -24,30 +24,54 @@ yes, the next step is designing the lesson engine, not extending this page.
 
 ---
 
-## 1. Where the probe stands
+## 1. Result: **go**
 
-The probe was built and tested **before the cable arrived**, against the
-simulator and a fake Web MIDI implementation. Everything marked *hardware* has
-to wait for the cable. Nothing below is filled in from guesswork.
+**Tested 24 September 2026 on the Galaxy S24** (SM-S921B, Android 16,
+Chrome 153), launched from the home screen, with the Delock cable. Two reports,
+about three minutes of connection, 131 notes in total. The S24 receives the
+PSR-E383 reliably enough to build the app on, in the browser, with no native
+code.
 
-| # | Question | Status |
-|---|----------|--------|
-| 1 | Working minimal prototype | **Done.** Runs in a browser; simulator mode passes all four tests |
-| 2 | Connection steps | **Written**, §2. Not yet walked through with the real cable |
-| 3 | Is the Yamaha detected? | *Hardware.* Expected: yes (see §4) |
-| 4 | Note On / Off received? | *Hardware.* Parser already handles the Yamaha's documented Note Off form |
-| 5 | Velocity received? | *Hardware.* Documented: yes, 1–127, *unless Touch Response is Off* |
-| 6 | Chords detected? | *Hardware.* The chord test measures it |
-| 7 | Latency / limitations | *Hardware* for the numbers; the known limitations are in §5 |
-| 8 | Browser/PWA viable? | Expected yes. The probe run is what decides it |
-| 9 | Native preferable? | Expected no, with a stated fallback, §6 |
+| # | Question | Measured |
+|---|----------|----------|
+| 1 | Working minimal prototype | **Done**, and live at `/keypath-react.html` |
+| 2 | Connection steps | **Worked as written** (§2). Plug in, open, Connect MIDI, allow |
+| 3 | Is the Yamaha detected? | **Yes, on both layers.** USB: "Yamaha Corporation Digital Keyboard", `0x0499:0x1710`. Web MIDI input: "Digital Keyboard" / "Yamaha Corporation", id `native:port-in-0`. Identified by name automatically |
+| 4 | Note On / Off received? | **Yes.** 85 on / 85 off in the longer run. **Every** Note Off arrived as Note On velocity 0, as Yamaha's chart says. Lost, orphaned, reordered: **0 / 0 / 0** |
+| 5 | Velocity received? | **Yes.** 1–101 seen (a grazed key read 1). Touch Response on Medium |
+| 6 | Chords detected? | **Yes.** Three onsets within 12 ms (G4, A4, F4) arrived as three separate notes. A five-key cluster held together released cleanly. The first chord *test* failed because of a flaw in the test, not the transport (§3, "The first run"). Now fixed |
+| 7 | Latency / limitations | Timestamp → page handler: **median 1.6 ms**, p95 24 ms, max 36 ms. Timestamp → next screen frame: **median 11 ms**, p95 24 ms. Timestamps of near-simultaneous keys stayed 1–12 ms apart even when the handler ran up to 34 ms late, so judging by timestamp is sound. Limitations: §5 |
+| 8 | Browser/PWA viable? | **Yes.** Including launched from the home screen |
+| 9 | Native preferable? | **No.** Nothing measured calls for it (§6) |
 | 10 | Production architecture | §6 |
 | 11 | Private content architecture | §7 |
 | 12 | Copyright / security risks | §8 |
 | 13 | What to build next | §9 |
 
-When the cable arrives: run §2 and §3, tap **Copy report**, and paste the JSON
-back into a Claude session. That fills rows 3–8 with measured values.
+Other things the run established:
+
+- **Channel 1** for everything played on the keys. No other channel appeared.
+- **Range:** the top key is C7 (MIDI 96), confirming the 36–96 assumption at
+  the top. The lowest key pressed was D2 (38); C2 (36) is assumed.
+- **Repeated notes:** four C4 presses, 455–794 ms apart, each Note On matched
+  by its Note Off, in order.
+- **Glissando:** 53 notes across 35 keys, fastest gap 38 ms, overlapping keys
+  handled, nothing stuck.
+- **Connection stable:** no drops in about three minutes. An unexplained
+  single drop appeared once in an earlier page load and didn't recur.
+- **MIDI Clock runs throughout:** about 31 F8 bytes per second in both runs
+  (≈ 77 BPM at 24 per beat), alongside Active Sensing about every 300 ms. The
+  probe ignores both. Whether a Style or the metronome was running is
+  unconfirmed. Either way, a future app could follow the keyboard's own tempo.
+- **The phone's audio goes to the keyboard.** The test tone was heard from
+  the Yamaha's speakers, so Android does route media to the PSR-E383's USB
+  audio. Chrome reports **24 ms output latency** (+ 4 ms base). A metronome
+  played through the keyboard should be scheduled that much early. KeyPath's
+  own output stays at 0 until turned up (§2).
+- **No sustain pedal** messages. None was pressed or connected.
+
+Still to do on other hardware: the **Poco F3** compatibility check (§2, §3)
+before Nora uses the app.
 
 ---
 
@@ -215,6 +239,15 @@ three ways that do work:
    it into the KeyPath session instead, or just tell it to read the results.
 9. **Poco F3, later:** the same sequence plus the 15-minute idle test from §2.
 
+### The first run's chord test
+
+On the S24 the chord test first reported "Missing: E4, G4; Unexpected: B3, A3,
+G3, F3" with a 4.7-second "spread". It had scored everything played since the
+test started: a lone C4, then a run of held notes. The transport handled every
+one of those notes correctly. The test now judges **one attempt**, from the
+first key down to the moment all keys are up again, and ignores single notes.
+That's also the rule the lesson engine's "together" detection should use.
+
 ### How to read the result
 
 Integrity carries more weight than speed. Unplugged USB MIDI either works
@@ -268,7 +301,8 @@ and Reference Manual. These are the facts that shaped the code:
 - **Range:** 61 keys. The on-screen keyboard assumes MIDI 36–96 (C2–C7) and
   widens if a note arrives outside that. The report records the actual
   extremes.
-- **USB vendor id** `0x0499` (Yamaha Corp., per the USB ID registry). The
+- **USB vendor id** `0x0499` (Yamaha Corp., per the USB ID registry), **product
+  id `0x1710`** (measured on the S24). The
   **Look on USB** chooser filters on it.
 
 ---
@@ -526,12 +560,9 @@ on top of that, not a security rule, per the "Against" column above.
 
 ## 9. What to build next
 
-**Only after the probe passes on the real hardware.** If it fails, the next
-step is diagnosing the failure instead (see §5 for how the probe separates USB
-problems from MIDI problems), and possibly the hybrid route (§6).
+The probe passed on the S24 (§1), so this list is now the plan.
 
-1. **Record the result**: paste the probe report into a session and fill in §1
-   with measured values.
+1. ~~**Record the result**~~ Done, §1.
 2. **Design for a dropped keyboard from day one.** The lesson engine should
    pause when the input disappears and resume when it comes back. Hot-plug
    already works in the MIDI layer. This costs little now, and it covers

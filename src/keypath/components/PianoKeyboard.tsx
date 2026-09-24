@@ -24,11 +24,28 @@ export function PianoKeyboard({ low, high, held, onPress, onRelease }: PianoKeyb
   const playable = Boolean(onPress && onRelease)
 
   // A phone held upright can't fit 61 keys, so open centred on middle C —
-  // where every test happens — rather than on the bottom octave.
+  // where every test happens — rather than on the bottom octave. Centred once
+  // the scroller has a real width (on the S24 the first layout pass had none,
+  // so a one-shot centre at mount did nothing), and only once per range, so it
+  // never fights a hand that has scrolled the keys itself.
   useLayoutEffect(() => {
     const el = scroller.current
-    const c4 = el?.querySelector<HTMLElement>('[aria-label="C4"]')
-    if (el && c4 && el.scrollWidth > el.clientWidth) el.scrollLeft = c4.offsetLeft - el.clientWidth / 2 + c4.offsetWidth
+    if (!el) return
+    let done = false
+    const centre = () => {
+      const c4 = el.querySelector<HTMLElement>('[aria-label="C4"]')
+      if (done || !c4 || el.clientWidth === 0) return
+      done = true
+      if (el.scrollWidth > el.clientWidth) el.scrollLeft = c4.offsetLeft - el.clientWidth / 2 + c4.offsetWidth
+    }
+    centre()
+    if (done || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      centre()
+      if (done) ro.disconnect()
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [low, high])
 
   const whites: number[] = []
