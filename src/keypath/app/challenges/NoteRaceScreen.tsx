@@ -5,6 +5,7 @@ import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
+import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
@@ -62,6 +63,7 @@ export function NoteRaceScreen() {
     const best = await repo.offer(profileId, 'race', r.level, r.score)
     setRecords(await repo.get(profileId))
     setResult({ score: r.score, wrong: r.wrong, best })
+    if (best) celebrate('newBest')
     setPhase('result')
     void log.add(profileId, { type: 'challenge_finished', game: 'race', level: r.level, score: r.score, best, wrong: r.wrong, ms: r.durationMs })
   }, [repo, profileId, log])
@@ -143,9 +145,16 @@ export function NoteRaceScreen() {
       {phase === 'run' && (
         <section className={styles.race} role="status" aria-live="polite">
           <span className={styles.raceFind}>{t('raceFind')}</span>
-          <span className={styles.raceNote}>{label(60 + prompt)}</span>
+          <span key={score} className={styles.raceNote}>{label(60 + prompt)}</span>
           <span className={styles.raceMeta}>
-            <span>{t('raceScore', { score })}</span>
+            <span className={styles.scoreWrap}>
+              {t('raceScore', { score })}
+              {score > 0 && (
+                <span key={score} className={styles.plusOne} aria-hidden>
+                  +1
+                </span>
+              )}
+            </span>
             <span className={styles.raceClock} data-low={left < 5000 || undefined}>
               {Math.ceil(left / 1000)} s
             </span>

@@ -4,6 +4,7 @@ import { MIN_VELOCITY } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
 import { WebMidiConnection } from '../../midi/webMidiConnection'
+import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
 import { noteLabel, type StringKey } from '../i18n'
 import { navigate } from '../router'
@@ -66,6 +67,7 @@ export function ConnectWizard() {
     const first = !last.current.done && step === 'done'
     last.current = { step, done: last.current.done || step === 'done' }
     if (!first) return
+    celebrate('connected')
     if (kb.name) void rememberKeyboard(store, kb.name)
     if (profile) void log.add(profile.id, { type: 'keyboard_setup', outcome: 'done', step, ms: Math.round(performance.now() - started.current) })
   }, [step, kb.name, store, profile, log])

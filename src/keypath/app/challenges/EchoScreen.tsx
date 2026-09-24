@@ -5,6 +5,7 @@ import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
+import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
@@ -126,6 +127,7 @@ export function EchoScreen() {
         const r = judgeEcho(pattern, bpm, tn.downbeat, tapTimes.current, settings.timing)
         turn.current = null
         setResult(r)
+        if (r.passed) celebrate('echoPassed')
         setPassed((ps) => {
           const copy = [...ps]
           copy[index] = copy[index] || r.passed
@@ -161,6 +163,7 @@ export function EchoScreen() {
     if (!profileId) return
     const best = await repo.offer(profileId, 'echo', level, score)
     setNewBest(best)
+    if (best) celebrate('newBest')
     setRecords(await repo.get(profileId))
     void log.add(profileId, { type: 'challenge_finished', game: 'echo', level, score, best, ms: Math.round(performance.now() - roundStart.current) })
   }

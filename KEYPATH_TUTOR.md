@@ -286,6 +286,29 @@ src/keypath/app/
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
 
+### Celebrations and polish (before Nora's first look)
+
+`src/keypath/app/celebrate/`: `celebrate(moment)` fires confetti in the
+doors' colours (canvas-confetti, loaded on demand as in Lexi5) and a haptic
+buzz. It's kept for real wins, so they stay special: a song finished (three
+stars get a star-shaped burst), a Journey step passed (all six get the
+biggest), a new best in Challenges, an echoed rhythm, the keyboard
+connected. `useCountUp` counts numbers up (WhereItWent's odometer).
+
+- **Report:** stars pop in one by one, the notes count up, highlights rise
+  in turn.
+- **Play screen:** a streak counter from five right notes in a row, bumping
+  on each, bigger on every ten, and reset quietly by a wrong or missed note.
+- **Journey map:** stops rise in, the path fills to how far she's come, the
+  open step pulses gently.
+- **Challenges:** a "+1" floats up in the race, the note pops in, a new best
+  glows.
+- **Home:** doors rise in, the avatar floats, and **Pick up where you left
+  off** offers the last song (with her best stars) or Journey step. Every
+  screen change fades in.
+
+All of it is off under the phone's reduced-motion setting, and in tests.
+
 ### Progress (after step 6)
 
 ```

@@ -59,6 +59,52 @@
 }
 .stop {
   position: relative;
+  /* Above the path and its fill, so the line runs behind the badges. */
+  z-index: 1;
+  animation: stopIn 380ms ease-out both;
+  animation-delay: calc(var(--i) * 70ms);
+}
+@keyframes stopIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+/* How far she's come: the path fills from the first stop, over the grey track. */
+.path::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-md) + 1.375rem - 2px);
+  top: 1.5rem;
+  width: 4px;
+  height: calc((100% - 3rem) * var(--done));
+  border-radius: 2px;
+  background: linear-gradient(#4f9d8a, var(--color-success));
+  transform-origin: top;
+  animation: pathGrow 900ms 300ms ease-out both;
+}
+@keyframes pathGrow {
+  from {
+    transform: scaleY(0);
+  }
+}
+.stop[data-state='done'] .stopBadge {
+  box-shadow: 0 0 0 4px rgb(79 157 138 / 0.18);
+}
+.stop[data-state='open'] .stopBadge {
+  animation: openPulse 2.4s ease-in-out infinite;
+}
+@keyframes openPulse {
+  50% {
+    box-shadow: 0 0 0 7px rgb(79 157 138 / 0.22);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stop,
+  .path::after,
+  .stop[data-state='open'] .stopBadge {
+    animation: none;
+  }
 }
 .stopButton {
   width: 100%;

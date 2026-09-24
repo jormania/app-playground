@@ -3,7 +3,7 @@ import { AppContext, type KeyPathApp } from './context'
 import { translate } from './i18n'
 import { EngagementLog } from './log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo, type Profile, type ProfileSettings } from './profiles'
-import { navigate, useRoute } from './router'
+import { hrefOf, navigate, useRoute } from './router'
 import { indexedDbStore, type KeyValueStore } from './store'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { WhoIsPlaying } from './screens/WhoIsPlaying'
@@ -135,6 +135,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
   return (
     <AppContext.Provider value={app}>
       <div className={styles.app}>
+        <div key={hrefOf(route)} className={styles.view}>
         {effective === 'who' && <WhoIsPlaying onChosen={() => navigate({ name: 'home' }, { replace: true })} />}
         {effective === 'home' && <Home />}
         {effective === 'door' && route.name === 'door' && route.door === 'songs' && <SongsHome />}
@@ -150,6 +151,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
         {effective === 'studio' && route.name === 'studio' && <StudioScreen key={route.songId} songId={route.songId} />}
         {effective === 'challenge' && route.name === 'challenge' && (route.game === 'race' ? <NoteRaceScreen /> : <EchoScreen />)}
         {effective === 'journeyStep' && route.name === 'journeyStep' && <StepScreen stepId={route.step} />}
+        </div>
       </div>
     </AppContext.Provider>
   )

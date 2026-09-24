@@ -22,6 +22,8 @@ const SPEEDS = ['1', '0.75', '0.5'] as const
 const MIDDLE_C = 60
 /** How long a wrong key stays red. */
 const WRONG_FLASH_MS = 350
+/** The streak counter appears from this many right notes in a row. */
+const STREAK_SHOWN = 5
 /** Before the start, the first notes rest this far (song ms) above the hit line. */
 const READY_TIME = -1500
 
@@ -62,6 +64,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const [hint, setHint] = useState<string | null>(null)
   const [report, setReport] = useState<Report | null>(null)
   const [countIn, setCountIn] = useState<number | null>(null)
+  const [streak, setStreak] = useState(0)
 
   const judge = useRef<Judge | null>(null)
   /** The octave shift found by the middle-C check; applies to the Yamaha only, never to on-screen keys. */
@@ -98,6 +101,9 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
           setTimeout(() => setWrong((w) => { const n = new Set(w); n.delete(p); return n }), WRONG_FLASH_MS)
         }
         if (e.type === 'hit' || e.type === 'missed') outcomes.push([e.result.note.id, e.result.outcome])
+        // The streak: right notes in a row; a wrong or missed note starts it again, quietly.
+        if (e.type === 'hit') setStreak((n) => n + 1)
+        if (e.type === 'wrong' || e.type === 'missed') setStreak(0)
       }
       if (outcomes.length) setResults((r) => new Map([...r, ...outcomes]))
       if (events.some((e) => e.type === 'done')) finish()
@@ -125,6 +131,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       }
       shownTime.current = READY_TIME
       setResults(new Map())
+      setStreak(0)
       setPhase('playing')
       if (profileId) void log.add(profileId, { type: 'song_started', songId: song.id, practice, tempo, mode: j.mode })
     },
@@ -238,6 +245,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     judge.current = null
     setPhase('setup')
     setResults(new Map())
+    setStreak(0)
     setCountIn(null)
   }
 
@@ -251,6 +259,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     judge.current = null
     setReport(null)
     setResults(new Map())
+    setStreak(0)
     setPhase('ready')
   }
 
@@ -327,6 +336,11 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
 
       <div className={styles.stage}>
         {countIn !== null && phase === 'playing' && <div className={styles.countIn}>{countIn}</div>}
+        {phase === 'playing' && streak >= STREAK_SHOWN && (
+          <div key={streak} className={styles.streak} data-big={streak % 10 === 0 || undefined} aria-live="polite">
+            🔥 {t('streakChip', { count: streak })}
+          </div>
+        )}
         <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} />
         <PlayKeyboard
           names={settings.keyNames}

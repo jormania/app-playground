@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../../ds'
 import type { Highlight, OnWrong, Report, Timing } from '../../engine'
+import { celebrate } from '../celebrate/celebrate'
+import { useCountUp } from '../celebrate/useCountUp'
 import { useApp } from '../context'
 import type { StringKey } from '../i18n'
 import styles from './songs.module.css'
@@ -25,13 +27,20 @@ interface Props {
 export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours }: Props) {
   const { t, profile, log, updateSetting } = useApp()
   const [answered, setAnswered] = useState(false)
+  const notes = report.highlights.find((h) => h.kind === 'notes')
+  const hitShown = useCountUp(notes?.kind === 'notes' ? notes.hit : 0)
+
+  // Finishing a song is always worth a cheer; three stars get the big one.
+  useEffect(() => {
+    if (report.stars > 0) celebrate(report.stars === 3 ? 'threeStars' : 'finished')
+  }, [report.stars])
 
   const line = (h: Highlight): string => {
     switch (h.kind) {
       case 'finished':
         return t('hlFinished')
       case 'notes':
-        return t('hlNotes', { hit: h.hit, total: h.total })
+        return t('hlNotes', { hit: hitShown, total: h.total })
       case 'streak':
         return t('hlStreak', { count: h.count })
       case 'onTime':
@@ -58,14 +67,16 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
       </h2>
       <p className={styles.stars} aria-label={`${report.stars} / 3`}>
         {[0, 1, 2].map((i) => (
-          <span key={i} data-lit={i < report.stars || undefined}>
+          <span key={i} data-lit={i < report.stars || undefined} style={{ '--i': i } as React.CSSProperties}>
             ★
           </span>
         ))}
       </p>
       <ul className={styles.highlights}>
-        {report.highlights.map((h) => (
-          <li key={h.kind}>{line(h)}</li>
+        {report.highlights.map((h, i) => (
+          <li key={h.kind} style={{ '--i': i } as React.CSSProperties}>
+            {line(h)}
+          </li>
         ))}
       </ul>
       {report.toWorkOn.map((b) => (

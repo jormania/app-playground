@@ -5,6 +5,7 @@ import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
+import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
@@ -104,7 +105,11 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
     const ok = mode === 'practice' || ex.wrong <= step.allowWrong
     const testOut = state === 'locked'
     void log.add(profileId, { type: 'journey_finished', step: step.id, mode, passed: ok, wrong: ex.wrong, ms })
-    if (mode === 'check' && ok) onProgress(await repo.pass(profileId, step.id))
+    if (mode === 'check' && ok) {
+      const next = await repo.pass(profileId, step.id)
+      onProgress(next)
+      celebrate(JOURNEY.every((x) => next[x.id]) ? 'journeyDone' : 'stepPassed')
+    }
     setPassed({ ok, testOut })
     setPhase('result')
   }, [mode, step, state, log, profileId, repo, onProgress])

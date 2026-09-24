@@ -268,6 +268,38 @@
 }
 .stars [data-lit] {
   color: #d9a520;
+  display: inline-block;
+  animation: starPop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(250ms + var(--i) * 320ms);
+}
+@keyframes starPop {
+  0% {
+    transform: scale(0.2) rotate(-40deg);
+    color: var(--color-border-2);
+  }
+  60% {
+    transform: scale(1.35) rotate(8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    color: #d9a520;
+  }
+}
+.highlights li {
+  animation: riseIn 420ms ease-out both;
+  animation-delay: calc(900ms + var(--i) * 140ms);
+}
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stars [data-lit],
+  .highlights li {
+    animation: none;
+  }
 }
 .highlights {
   margin: 0;
@@ -285,4 +317,46 @@
 }
 .suggestion p {
   margin: 0;
+}
+
+/* The streak counter: bumps on every new note in a row, bigger on each ten. */
+.streak {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  z-index: 3;
+  padding: var(--space-3xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1px solid #e0795b;
+  color: var(--color-ink);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-sm);
+  animation: streakBump 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.streak[data-big] {
+  background: #e0795b;
+  color: #fff;
+  animation: streakBig 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes streakBump {
+  50% {
+    transform: scale(1.18);
+  }
+}
+@keyframes streakBig {
+  30% {
+    transform: scale(1.45) rotate(-4deg);
+  }
+  60% {
+    transform: scale(0.95) rotate(2deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .streak,
+  .streak[data-big] {
+    animation: none;
+  }
 }

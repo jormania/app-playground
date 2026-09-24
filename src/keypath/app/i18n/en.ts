@@ -307,6 +307,9 @@ export const en = {
   pCopy: 'Copy',
   pCopied: 'Copied',
   pShareHint: 'A small text summary, for you or for Claude to read. No songs, no recordings.',
+  // Celebrations
+  streakChip: '{count} in a row',
+  resumeTitle: 'Pick up where you left off',
 } as const
 
 export type StringKey = keyof typeof en

@@ -7,6 +7,7 @@ import { translate } from '../i18n'
 import { EngagementLog } from '../log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo } from '../profiles'
 import { memoryStore } from '../store'
+import { celebrated } from '../celebrate/celebrate'
 import { ReportView } from './ReportView'
 
 afterEach(cleanup)
@@ -81,5 +82,11 @@ describe('ReportView', () => {
     const { onMakeItYours } = renderReport()
     fireEvent.click(screen.getByRole('button', { name: /Make it yours/ }))
     expect(onMakeItYours).toHaveBeenCalled()
+  })
+
+  it('celebrates a finished song, and three stars with the big one', () => {
+    celebrated.length = 0
+    renderReport()
+    expect(celebrated).toEqual(['threeStars'])
   })
 })

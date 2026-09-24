@@ -6,6 +6,7 @@ import { Shell } from '../Shell'
 import { EngagementLog } from '../log'
 import { ProfileRepo } from '../profiles'
 import { memoryStore } from '../store'
+import { celebrated } from '../celebrate/celebrate'
 import { JourneyRepo } from './progress'
 
 vi.mock('../../App', () => ({ default: () => <div>probe screen</div> }))
@@ -65,6 +66,7 @@ describe('Journey', () => {
     expect(document.querySelector('[data-target]')).toBeNull()
     for (const c of [48, 60, 72]) key(c)
     expect(await screen.findByText('Step done!')).toBeTruthy()
+    expect(celebrated.at(-1)).toBe('stepPassed')
 
     expect((await new JourneyRepo(store).get(profileId)).middleC).toMatchObject({ how: 'check' })
     const log = (await new EngagementLog(store).read(profileId)).filter((e) => e.type.startsWith('journey'))

@@ -309,4 +309,7 @@ export const ro: Record<StringKey, string> = {
   pCopy: 'Copiază',
   pCopied: 'Copiat',
   pShareHint: 'Un rezumat scurt, pentru tine sau pentru Claude. Fără cântece, fără înregistrări.',
+  // Celebrări
+  streakChip: '{count} la rând',
+  resumeTitle: 'Continuă de unde ai rămas',
 }
