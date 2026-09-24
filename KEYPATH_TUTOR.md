@@ -199,7 +199,8 @@ Each step ships on its own and is usable without the next.
    report. Plus **Connect the keyboard** (`src/keypath/app/connect/`), a
    step-by-step wizard so nobody reaches a song without a working
    connection.
-4. **B. Journey**: the six steps with test-out.
+4. **B. Journey** — **built** (`src/keypath/app/journey/`, see below): the
+   six steps with test-out.
 5. **MIDI-out probe test**, then **D. Studio** and the “make it yours” link
    from Songs.
 6. **C. Challenges**: note race, rhythm echo.
@@ -254,6 +255,54 @@ src/keypath/app/
 
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
+
+### Step 4 as built
+
+```
+src/keypath/app/journey/
+  steps.ts           the six steps (practice with keys lit, check with keys
+                     dark), their keyboards, pass marks, and which need the
+                     middle-C check. Tunes are public domain, stored as data:
+                     Ode to Joy, Twinkle, Mary Had a Little Lamb
+  exercises.ts       one small judge per kind of task, free of React:
+                     Prompts (one named key at a time), FindAll ("three
+                     different Cs"), Chords (all keys within a window from
+                     the Timing setting: 150 / 100 / 70 ms; spread wider is
+                     "nearly", not wrong), Tune (the engine's judge in
+                     "Wait for it")
+  progress.ts        per player: which steps are done, and how (in order, or
+                     tested out)
+  JourneyHome.tsx    the map: six stops on a path
+  StepScreen.tsx     intro and tip → Learn it / Check (or "I can do this
+                     already" on a locked step) → middle C where needed →
+                     the exercise → result, with the next step one tap away
+  Staff.tsx          a small treble staff in SVG for step 6, drawn by hand
+                     (no notation library for one step); the clef is a
+                     drawn stroke, not the 𝄞 character, which Android's
+                     fonts may lack
+```
+
+| # | Step | Practice (keys lit) | Check (keys dark) |
+|---|---|---|---|
+| 1 | Find middle C | middle C, the C above, the C below, middle C | three different Cs |
+| 2 | C, D, E | C D E D C E D C | D C E D E C, by name |
+| 3 | A five-finger tune | Ode to Joy, first line | the same line |
+| 4 | Your first chord | C, C, G, G chords | C, G, C chords |
+| 5 | Both hands | Twinkle, first line, with seven low left-hand notes, each starting with a right-hand note | the same |
+| 6 | Reading music | two bars on the staff, named: C D E F G F E D | Mary Had a Little Lamb, first bar and a half, unnamed |
+
+Steps 1, 2 and 4 go by note *name* (any octave), so they need no octave
+check. The tune steps start with "press middle C", like Songs.
+
+**Passing a step's check is what completes it.** A locked step's check can be
+taken at any time ("I can do this already"). Passing it completes **that step
+only**, since each step proves its own skill (reading a staff says nothing
+about chords). The map then shows it as "Tested out", and the first step not
+yet done stays open. Practices always finish; they teach, and don't count.
+
+New in the engagement log: `journey_started` (practice or check, and whether
+it was a test-out), `journey_finished` (passed, wrong keys, time) and
+`journey_left`.
 
 ### Step 3 as built
 
@@ -345,6 +394,18 @@ forgotten; each item says when it comes back.
 - **Import simplification**: "melody only" for arrangements too hard as
   written (the range check and whole-octave transposition exist now).
 - **MusicXML import** (with notation rendering, a late Journey skill).
+
+**Journey refinements** (deferred from step 4; tune on Nora's use):
+- **Pass marks.** A check passes with at most one wrong key (two in the tune
+  steps). Checks have no time limit: "about 30 s" is how long they take, not
+  a clock. Both are guesses until the log shows how she does.
+- **Reading step:** the keyboard still shows note names during the check, so
+  she reads staff → name → key rather than staff → key. Hide them once she's
+  past it, as a setting.
+- **More steps** (rests, the left hand alone, a black key, a second line of
+  notation) once the log says the Journey is the door she uses.
+- **Chord togetherness** is judged in the chord step only. The engine's
+  Songs judging doesn't use it yet (see Engine refinements).
 
 **Songs refinements** (deferred from step 3):
 - **Remove or rename** an added song. For now songs can only be added.

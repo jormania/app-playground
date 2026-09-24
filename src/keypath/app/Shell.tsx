@@ -14,6 +14,8 @@ import { SongsHome } from './songs/SongsHome'
 import { ImportSong } from './songs/ImportSong'
 import { PlayScreen } from './songs/PlayScreen'
 import { ConnectWizard } from './connect/ConnectWizard'
+import { JourneyHome } from './journey/JourneyHome'
+import { StepScreen } from './journey/StepScreen'
 import styles from './app.module.css'
 
 /**
@@ -115,12 +117,13 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
       <div className={styles.app}>
         {effective === 'who' && <WhoIsPlaying onChosen={() => navigate({ name: 'home' }, { replace: true })} />}
         {effective === 'home' && <Home />}
-        {effective === 'door' && route.name === 'door' && (route.door === 'songs' ? <SongsHome /> : <DoorScreen door={route.door} />)}
+        {effective === 'door' && route.name === 'door' && (route.door === 'songs' ? <SongsHome /> : route.door === 'journey' ? <JourneyHome /> : <DoorScreen door={route.door} />)}
         {effective === 'songImport' && <ImportSong />}
         {effective === 'play' && route.name === 'play' && <PlayScreen songId={route.songId} />}
         {effective === 'settings' && <SettingsScreen />}
         {effective === 'diagnostics' && <DiagnosticsScreen />}
         {effective === 'connect' && <ConnectWizard />}
+        {effective === 'journeyStep' && route.name === 'journeyStep' && <StepScreen stepId={route.step} />}
       </div>
     </AppContext.Provider>
   )
