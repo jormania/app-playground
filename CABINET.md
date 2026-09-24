@@ -105,10 +105,35 @@ normally — only the hub is affected. The Cabinet's own PWA still installs on a
 device without the stale record (a phone reset, a fresh profile), so the
 manifest is kept fully valid rather than abandoned.
 
-If someone ever wants to chase it again, the untried lead is the OS side:
-`adb shell pm list packages | grep -i webapk`, then `dumpsys package <pkg>` to
-see which URL each claims. That is the only route left that could turn the
-inference above into a fact.
+### Update (2026-09-24): the likeliest culprit is a June Touch Grass WebAPK
+
+The same symptom then spread past the Cabinet: every app answered "already
+installed", and KeyPath — which has no manifest and was never installed —
+opened standalone. That points at one install whose scope covers the whole
+origin, and git history has exactly one: the first Touch Grass manifest,
+`/manifest.json`, said **`"scope": "/"`** from 2026-06-04 to 2026-06-24. A
+WebAPK minted from it registers Android intent filters for every URL on
+`coneofcold.vercel.app`. That fits all of the above: it is OS-level (Edge sees
+it), bound to the production origin (a preview origin was clean), and no
+change to any other manifest can touch it.
+
+Nothing ever narrowed it. Chrome rewrites a WebAPK only from the manifest it
+was built from, fetched from a page loaded inside that WebAPK; the scope fix of
+2026-06-24 needed one such launch to land, and on 2026-08-20 the manifest was
+deleted outright, which made the update impossible for good.
+
+So `public/manifest.json` is back as a tombstone: the same URL and id
+(`/touch-grass.html`), `"scope": "/touch-grass.html"`, linked only from
+`public/touch-grass.html`. The next time that WebAPK opens `/touch-grass.html`
+(tap its icon), Chrome should see the new scope and rebuild it — Android
+applies WebAPK updates only on Wi-Fi while charging, so it can take a day.
+**The immediate fix is on the phone:** `chrome://webapks` lists each WebAPK's
+scope; uninstall the one whose scope is the bare origin from Android Settings →
+Apps (it may be listed as "Touch Grass" beside the React one). Removing its
+home-screen icon is not enough.
+
+`scripts/pwa-scope.test.js` fails the suite on any manifest without an id or
+with a root scope, and on any unscoped service-worker registration.
 
 ## Launching into the installed app, not a browser tab (Android)
 

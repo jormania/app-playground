@@ -14,6 +14,9 @@
 importScripts('/shared-notify-idb.js');
 
 const CACHE = 'marquee-cache-v1';
+// Cache Storage is origin-wide and every app here shares one origin: activate only
+// ever deletes this worker's own older caches, never another app's.
+const CACHE_PREFIX = 'marquee-cache-';
 const REMINDERS_DB = 'marquee-reminders', REMINDERS_STORE = 'kv';
 const VENUES_KEY = 'venues', PREFS_KEY = 'prefs', SNAPSHOT_KEY = 'snapshot';
 const SCAN_URL = '/api/marquee-scan';
@@ -27,7 +30,7 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(
-        keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })
+        keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); })
       );
     }).then(function () { return self.clients.claim(); })
   );

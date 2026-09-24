@@ -2,6 +2,9 @@
 // the Cabinet page. Enables PWA installability and offline use after first visit.
 // Same shape as Law of the Day's sw.js.
 const CACHE = 'cabinet-cache-v1';
+// Cache Storage is origin-wide and every app here shares one origin: activate only
+// ever deletes this worker's own older caches, never another app's.
+const CACHE_PREFIX = 'cabinet-cache-';
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -11,7 +14,7 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(
-        keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })
+        keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); })
       );
     }).then(function () { return self.clients.claim(); })
   );
