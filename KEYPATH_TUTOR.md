@@ -368,6 +368,20 @@ through Studio's `Playback` on the shared Keyboard/Phone route, and logs
 - In the log: `studio_recorded` gains `countIn`; `studio_renamed` and
   `studio_exported` (shared, cancelled, saved or error) are new.
 
+### Landscape
+
+A phone on its side has about 300–360 px of height, and the playing screens
+(a song, a Journey step, the three games) used to push the keys off the
+bottom. Under `(orientation: landscape) and (max-height: 560px)`:
+- Each playing screen is exactly the screen's height; the falling notes (or
+  the prompt) take what's left, and the keys a third of the height
+  (`clamp(4.5rem, 34dvh, 8rem)`).
+- The title row slims down, and the keyboard's status moves beside it
+  (`TopBar`'s `aside`). In portrait it stays on its own line under the title.
+- The staff scales down to fit; the race's note and the chord name shrink
+  with the height; Rhythm echo puts the Tap pad beside the rhythm.
+Portrait is unchanged. Home, Settings and Studio scroll as before.
+
 ### Progress (after step 6)
 
 ```
@@ -670,7 +684,8 @@ install it and get the full screen):
   already has what's needed.
 - **More starter songs.** "Melc, melc, codobelc" was left out: its melody
   hasn't been checked against a reliable source yet.
-- **Landscape layout** for the play screen: more keys, more width per key.
+- ~~**Landscape layout**~~ Done for fit (below "Studio additions"). Still
+  open: more keys in landscape, since the width is there.
 - A **sound for the on-screen keys** when no keyboard is connected (the
   probe's synth, through the output level that defaults to 0).
 - **Make a song from a recording.** A tune recorded on the phone (played,

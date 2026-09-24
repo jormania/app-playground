@@ -98,9 +98,6 @@
   margin-inline: auto;
   box-sizing: border-box;
 }
-.status {
-  min-height: 1.75rem;
-}
 .resultTitle {
   margin: 0;
   font: var(--weight-bold) var(--text-xl) / var(--leading-tight) var(--font-display);
@@ -309,5 +306,79 @@
   .raceStaff,
   .newBest {
     animation: none;
+  }
+}
+
+/* Landscape: the game fits the screen, keys in view; the big prompt shrinks to fit. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .playScreen {
+    height: 100dvh;
+    min-height: 0;
+    overflow-y: auto;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm) calc(var(--space-xs) + env(safe-area-inset-bottom));
+  }
+  .playScreen > * {
+    flex-shrink: 0;
+  }
+  .race {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0;
+  }
+  .raceFind {
+    font-size: var(--text-base);
+  }
+  .raceNote {
+    font-size: min(6rem, 18dvh);
+  }
+  .chordName {
+    font-size: min(6rem, 16dvh);
+  }
+  .chordNotes,
+  .raceMeta {
+    font-size: var(--text-base);
+  }
+  .raceStaff {
+    width: min(11rem, 26dvh);
+  }
+  .panel {
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-xs);
+  }
+  .echo {
+    padding: var(--space-sm);
+    gap: var(--space-xs);
+  }
+  .tapPad {
+    min-height: 4.5rem;
+  }
+  /* Rhythm echo: the tap pad beside the rhythm, where a thumb reaches it, not under it. */
+  .echoScreen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(9rem, 28%);
+    grid-auto-rows: min-content;
+    align-content: start;
+    max-width: none;
+  }
+  .echoScreen > * {
+    grid-column: 1;
+    max-width: none;
+  }
+  .echoScreen > header {
+    grid-column: 1 / -1;
+  }
+  .echoScreen > .tapPad {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    align-self: stretch;
+    margin-top: 0;
+    min-height: 0;
+  }
+  .echoCue {
+    font-size: var(--text-xl);
+  }
+  .bar {
+    height: 2rem;
   }
 }

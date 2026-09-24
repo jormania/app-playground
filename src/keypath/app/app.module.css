@@ -93,6 +93,41 @@
   margin: 0;
   font: var(--weight-bold) var(--text-xl) / var(--leading-tight) var(--font-display);
 }
+/* The keyboard's status: its own line under the title, or beside it when height is short. */
+.topBar {
+  flex-wrap: wrap;
+}
+.topAside {
+  flex-basis: 100%;
+  min-height: 1.75rem;
+}
+
+/* A phone on its side has ~300–360 px of height. The playing screens give it to the keys:
+   a slimmer title row, with the keyboard's status on the same line. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .topBar {
+    flex-wrap: nowrap;
+    gap: var(--space-xs);
+  }
+  .backButton {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    font-size: var(--text-lg);
+  }
+  .title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-lg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topAside {
+    flex-basis: auto;
+    min-height: 0;
+  }
+}
 
 /* ── Who's playing ── */
 .profileGrid {

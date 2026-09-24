@@ -122,10 +122,7 @@ export function NoteRaceScreen() {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={t('raceTitle')} />
-      <div className={styles.status}>
-        <KeyboardStatus status={kb} missing="keyboardMissing" />
-      </div>
+      <TopBar title={t('raceTitle')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
         <section className={styles.panel}>

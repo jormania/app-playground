@@ -201,10 +201,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
 
   return (
     <main className={styles.stepScreen}>
-      <TopBar title={`${t('jStepN', { n })} · ${t(step.title)}`} />
-      <div className={styles.status}>
-        <KeyboardStatus status={keyboard} missing="keyboardMissing" />
-      </div>
+      <TopBar title={`${t('jStepN', { n })} · ${t(step.title)}`} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" />} />
 
       {phase === 'intro' && (
         <section className={styles.panel}>

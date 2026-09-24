@@ -324,10 +324,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={song.title} />
-      <div className={styles.connection}>
-        <KeyboardStatus status={keyboard} missing="keyboardMissing" />
-      </div>
+      <TopBar title={song.title} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
         <section className={styles.panel}>
