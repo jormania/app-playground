@@ -1,0 +1,17 @@
+{
+  "name": "KeyPath",
+  "short_name": "KeyPath",
+  "description": "Piano practice with a Yamaha keyboard over USB MIDI.",
+  "id": "/keypath-react.html",
+  "start_url": "/keypath-react.html",
+  "scope": "/keypath-react.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#efe9dc",
+  "theme_color": "#efe9dc",
+  "icons": [
+    { "src": "/keypath-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/keypath-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/keypath-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

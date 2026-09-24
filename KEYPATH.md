@@ -498,10 +498,17 @@ same reason the production app should let the instrument make the sound.
 
 ### What the probe is not
 
-It has no service worker, no manifest and no Cabinet entry, on purpose. A
-cached probe answering from yesterday's build is the last thing a hardware test
-needs, and CABINET.md reserves the registry for apps that are stable. The real
-app gets all three when it exists.
+It has no service worker and no Cabinet entry, on purpose. A cached probe
+answering from yesterday's build is the last thing a hardware test needs, and
+CABINET.md reserves the registry for apps that are stable. The real app gets
+both when it exists.
+
+It does have a manifest (`public/keypath.webmanifest`), since 2026-09-24, and
+only to pin its scope. Chrome will still install a page with no manifest, and
+the scope it then assumes is the page's directory, here the whole origin. A
+KeyPath installed that way caught every other app's links and flashed its logo
+on each launch from the Cabinet (CABINET.md, "Update (2026-09-24)"). A manifest
+caches nothing, so the reasoning above is unaffected.
 
 ---
 

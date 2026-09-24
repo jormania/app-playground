@@ -9,6 +9,11 @@
   <meta name="robots" content="noindex" />
   <meta name="color-scheme" content="light dark" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8E%B9%3C/text%3E%3C/svg%3E" />
+  <!-- A manifest only to pin the scope, not to enable offline use (there is still no service
+       worker, see KEYPATH_TUTOR.md §10). Without one, installing this page from Chrome's menu
+       made a WebAPK scoped to the whole origin, which then caught every other app's links. -->
+  <link rel="manifest" href="/keypath.webmanifest" />
+  <link rel="apple-touch-icon" href="/keypath-icon-192.png" />
   <script>
     try {
       document.documentElement.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
