@@ -190,7 +190,10 @@ Each step ships on its own and is usable without the next.
    report.
 2. **App shell**: profiles, per-profile settings, English/Romanian strings,
    IndexedDB storage with persist + backup, engagement log, the four-door home.
-   The probe becomes a **Diagnostics** screen inside it.
+   The probe becomes a **Diagnostics** screen, reached from **Settings**
+   (not the home screen): the connection check, event monitor, tests, tempo
+   readout, phone-audio check and report, for whenever something needs
+   looking at.
 3. **A. Songs** with the starter pack: falling notes, hands, the three
    wrong-note modes, the end report.
 4. **B. Journey**: the six steps with test-out.
