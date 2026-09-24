@@ -1,9 +1,11 @@
 // Every app in this repo shares one origin, so anything a PWA claims at the root claims
-// all of them. Each rule below has been broken once already:
+// all of them. A root-scoped install owns every URL on the origin from the OS: Chrome
+// answers "already installed" for any app, and opens pages never installed as a PWA.
+// One such install exists (a Radar-B WebAPK Chrome minted without reading its manifest,
+// see CABINET.md) and only the device can remove it; these rules keep the repo from
+// making another.
 //
-// - Manifests. The first Touch Grass manifest said "scope": "/". A WebAPK minted from it
-//   in June 2026 still owns every URL on the origin: Chrome answers "already installed"
-//   for any app you try to install, and opens pages that were never installed as a PWA.
+// - Manifests. Each needs an id and a scope narrower than "/".
 // - Service worker registrations. Lexi5 registered with no scope, which for a worker at
 //   the site root means "/" — the same registration Touch Grass's /sw.js holds, so each
 //   visit swapped the other's worker out.
@@ -20,7 +22,7 @@ const PUBLIC = join(REPO, 'public')
 // Touch Grass pages (see its header comment). The only root-scoped worker allowed.
 const ROOT_WORKERS = new Set(['/sw.js'])
 
-const manifests = readdirSync(PUBLIC).filter((f) => f.endsWith('.webmanifest') || f === 'manifest.json')
+const manifests = readdirSync(PUBLIC).filter((f) => f.endsWith('.webmanifest'))
 
 describe('web app manifests', () => {
   it.each(manifests)('%s declares a narrow scope and an id', (file) => {

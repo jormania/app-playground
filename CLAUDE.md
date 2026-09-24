@@ -229,8 +229,9 @@ declares an `id` and a `scope` narrower than `/`, each worker registers with an
 explicit `scope` (only Touch Grass's legacy `/sw.js` is root-scoped), and each
 worker's `activate` deletes only caches under its own `CACHE_PREFIX`.
 `scripts/pwa-scope.test.js` enforces all three. A root-scoped install owns
-every app's URLs from the OS and outlives any fix to its manifest — see
-CABINET.md, "Update (2026-09-24)".
+every app's URLs from the OS, and only uninstalling it on the device clears it —
+one did, a Radar-B WebAPK Chrome minted without its manifest; see CABINET.md,
+"Update (2026-09-24)".
 
 ## Deploy guardrail
 
