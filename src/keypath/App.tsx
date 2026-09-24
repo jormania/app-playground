@@ -43,7 +43,10 @@ export default function App() {
   const simulated = snap.sourceKind === 'simulated'
   const granted = snap.connection.access === 'granted'
 
-  useWakeLock(granted)
+  // The screen stays on for as long as KeyPath is open — hands are on the
+  // keys, not the phone. Chrome drops the lock when the page is hidden; the
+  // hook takes it back when the page is visible again.
+  useWakeLock(true)
 
   useEffect(() => {
     readEnvironment().then(setEnv)

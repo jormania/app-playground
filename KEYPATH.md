@@ -340,9 +340,10 @@ build.
   handler ran. If the platform stamp were ever missing, it falls back to arrival
   time, and the report would show the two agreeing exactly, so the case is
   visible.
-- **Background tabs.** Android throttles pages that aren't visible. The probe
-  holds a screen wake lock while connected so the screen doesn't sleep
-  mid-test. A practice app has to stay in the foreground anyway.
+- **Background tabs.** Android throttles pages that aren't visible. KeyPath
+  holds a screen wake lock for as long as it's open (keyboard or simulator),
+  so the screen never sleeps mid-practice. Chrome releases it when the page
+  is hidden; KeyPath takes it back when it's visible again. A practice app has to stay in the foreground anyway.
 - **WebUSB can see the device but can't take it over.** Android's MIDI service
   already owns the keyboard's MIDI interface. **Look on USB** only lists the
   device; it never opens it. That's what makes it a clean second check:
