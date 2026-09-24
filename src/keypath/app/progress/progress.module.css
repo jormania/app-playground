@@ -1,0 +1,81 @@
+/* Progress: the parent's view of the engagement log. */
+
+.screen {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-md);
+  padding-bottom: calc(var(--space-2xl) + env(safe-area-inset-bottom));
+  display: grid;
+  gap: var(--space-md);
+}
+.h2 {
+  margin: 0;
+  font: var(--weight-bold) var(--text-lg) / var(--leading-tight) var(--font-display);
+}
+.hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  display: grid;
+  gap: var(--space-xs);
+}
+.panel p {
+  margin: 0;
+  line-height: var(--leading-body);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+.facts {
+  margin: 0;
+  display: grid;
+  gap: var(--space-3xs);
+}
+.facts dd {
+  margin: 0;
+}
+.rows,
+.changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-xs);
+}
+.doorRow,
+.songRow {
+  display: grid;
+  gap: 2px;
+}
+.rowTitle {
+  font-weight: var(--weight-bold);
+}
+.rowMeta {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.meter {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-sunken);
+  overflow: hidden;
+}
+.meter span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+.changes {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}

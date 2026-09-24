@@ -9,12 +9,20 @@ type ShareNav = Pick<Navigator, 'share'> | undefined
  * attachment varies. A few tens of KB of text is well within what Android
  * passes between apps.
  */
-export async function shareReport(json: string, nav: ShareNav = typeof navigator === 'undefined' ? undefined : navigator): Promise<ShareOutcome> {
+export interface ShareLabels {
+  title: string
+  /** A line before the JSON, so whoever receives it knows what it is. */
+  intro: string
+}
+
+const PROBE: ShareLabels = { title: 'KeyPath probe report', intro: 'KeyPath probe report (PSR-E383 over USB MIDI). Please read these results.' }
+
+export async function shareReport(json: string, nav: ShareNav = typeof navigator === 'undefined' ? undefined : navigator, labels: ShareLabels = PROBE): Promise<ShareOutcome> {
   if (typeof nav?.share !== 'function') return 'unsupported'
   try {
     await nav.share({
-      title: 'KeyPath probe report',
-      text: `KeyPath probe report (PSR-E383 over USB MIDI). Please read these results.\n\n${json}`,
+      title: labels.title,
+      text: `${labels.intro}\n\n${json}`,
     })
     return 'shared'
   } catch (err) {

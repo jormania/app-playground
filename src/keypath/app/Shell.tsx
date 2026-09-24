@@ -20,6 +20,7 @@ import { StudioScreen } from './studio/StudioScreen'
 import { ChallengesHome } from './challenges/ChallengesHome'
 import { NoteRaceScreen } from './challenges/NoteRaceScreen'
 import { EchoScreen } from './challenges/EchoScreen'
+import { ProgressScreen } from './progress/ProgressScreen'
 import styles from './app.module.css'
 
 /**
@@ -145,6 +146,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
         {effective === 'settings' && <SettingsScreen />}
         {effective === 'diagnostics' && <DiagnosticsScreen />}
         {effective === 'connect' && <ConnectWizard />}
+        {effective === 'progress' && <ProgressScreen />}
         {effective === 'studio' && route.name === 'studio' && <StudioScreen key={route.songId} songId={route.songId} />}
         {effective === 'challenge' && route.name === 'challenge' && (route.game === 'race' ? <NoteRaceScreen /> : <EchoScreen />)}
         {effective === 'journeyStep' && route.name === 'journeyStep' && <StepScreen stepId={route.step} />}

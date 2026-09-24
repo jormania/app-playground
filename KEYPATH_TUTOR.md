@@ -232,6 +232,10 @@ Each step ships on its own and is usable without the next.
 6. **C. Challenges**: note race, rhythm echo — **built** (see below).
 7. **Poco F3 check** (`KEYPATH.md` §2) before Nora starts, then two to three
    weeks of use, read the engagement log, and decide what to deepen.
+   *Skipped for now at Gabriel's call; still worth doing before she relies
+   on it.*
+8. **Progress** — **built** (see below): the engagement log read back for a
+   parent, and shared as text, so step 7's "read the log" needs no tooling.
 
 ### Step 1 as built
 
@@ -281,6 +285,30 @@ src/keypath/app/
 
 The doors open to "coming soon", and opening one is already logged. The
 probe's own screens stay in English: Diagnostics is a technical tool.
+
+### Progress (after step 6)
+
+```
+src/keypath/app/progress/
+  summary.ts         the log read back as the taster's questions: days
+                     played, sessions and minutes, "came back the next day",
+                     per door how often it was opened, opened first, and
+                     roughly how long she stayed; songs finished, stopped
+                     and started, song by song with best stars; Journey
+                     checks, Challenges played, Studio takes; suggestions
+                     accepted or not; settings changed; the keyboard lost
+                     mid-song
+  ProgressScreen.tsx Settings → Progress: one player at a time (a switcher
+                     when there are several), and Share progress… / Copy,
+                     which send the same numbers as a small JSON text, plus
+                     Journey steps, Challenge bests and the number of kept
+                     takes. Titles, not ids, for songs. No recordings, no
+                     song files
+```
+
+Time per door is an estimate, and the screen says so: the log records
+opening a door, not leaving it, so a door's time runs until the next door or
+the end of the session, time back on Home included.
 
 ### Step 6 as built
 
@@ -479,8 +507,9 @@ forgotten; each item says when it comes back.
   **Delete this player**, confirmed in place. It deletes every key ending in
   the player's id (settings, log, Journey, Studio), and keeps the phone's
   songs, the other players and the keyboard it remembers.
-- **Share progress** as a report to a parent's phone, alongside the backup
-  file.
+- ~~**Share progress**~~ Done: Settings → Progress (§9, "Progress").
+- **Leaving a door** isn't logged, so time per door is an estimate. Logging
+  a `door_left` on Home would make it exact.
 - Translating the **Diagnostics** screen, which stays in English for now.
 
 **App distribution** — **done** (after step 5, at Gabriel's request, to
