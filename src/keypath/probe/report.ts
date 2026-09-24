@@ -74,6 +74,20 @@ export function buildReport(s: ProbeSnapshot, env: EnvironmentFacts | null, usb:
       range: t.lowest === null ? null : { lowest: noteName(t.lowest), highest: noteName(t.highest!) },
       velocity: t.velocities,
       stuckNow: t.held.map((h) => noteName(h.note)),
+      // The same, for what you played (channels 1–8). Integrity here is what
+      // matters for a lesson; the accompaniment's is reported above with it.
+      player: {
+        counts: {
+          noteOn: s.player.counts.noteOn,
+          noteOff: s.player.counts.noteOff,
+          orphanOffs: s.player.counts.orphanOffs,
+          doubleOns: s.player.counts.doubleOns,
+          outOfOrder: s.player.counts.outOfOrder,
+        },
+        range: s.player.lowest === null ? null : { lowest: noteName(s.player.lowest), highest: noteName(s.player.highest!) },
+        velocity: s.player.velocities,
+        stuckNow: s.player.held.map((h) => noteName(h.note)),
+      },
     },
     timingMs: {
       dispatchLag: summarise(s.dispatchLag),

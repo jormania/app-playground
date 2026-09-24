@@ -72,14 +72,33 @@ Other things the run established:
   audio. Chrome reports **24 ms output latency** (+ 4 ms base). A metronome
   played through the keyboard should be scheduled that much early. KeyPath's
   own output stays at 0 until turned up (§2).
-- **A running Style sends its accompaniment over MIDI.** With a Style
-  started (FA seen, tempo read as 109.1 BPM), its drums arrived as ordinary
-  Note On/Off on **channels 9 and 10** (GM drum notes: A1, D2, G#2, B3),
-  alongside 27 control changes and 5 other messages. Everything played on the
-  keys stayed on channel 1. **The tutor must listen to the player's channel
-  only**, or it will credit Nora with the drummer's notes. The probe now
-  treats channels 1–8 as the player and 9–16 as accompaniment. The Split and
-  built-in-Song checks are what confirm that line for this model.
+- **What the keyboard sends while it plays by itself.** Measured part by part:
+
+  | Source | Over MIDI | Channels |
+  |---|---|---|
+  | Keys, normal play | every note | **1** |
+  | Keys, Split on, left-hand area | every note, **shifted by the Split voice's Octave setting** (Function 014; −1 here, so the leftmost key arrives as C1, not C2) | **3** |
+  | Style, rhythm only (ACMP off, or no chord yet) | drums and percussion | 9, 10 |
+  | Style with ACMP and a left-hand chord | percussion, drums, **bass** (11), **chord/pad parts** (12–15, plus CC 74 brightness on 15) | 9–15 |
+  | Built-in Song | **no notes at all**: only Start/Stop and its tempo clock | none |
+
+  **The rule for the tutor: channels 1–8 are the player, 9–16 the
+  accompaniment.** It held in every run, with the full band playing. Built-in
+  Songs never leak notes, so Nora can play along with one and only her keys
+  reach the app. Style/Song Start (FA) and Stop (FC) are sent, so the tutor can
+  also tell when the keyboard starts or stops playing.
+- **A note number is the pitch that sounds, not the key pressed.** Transpose
+  and the per-voice Octave settings (Functions 006 Main, 010 Dual, 014 Split,
+  −2 to +2) shift what's sent. The Octave defaults depend on the voice, so they
+  can change when a voice is chosen. The tutor should open with a one-key check
+  ("press middle C") rather than trust note numbers blindly.
+- **The tempo readout follows the keyboard.** 78, 88, 109, 117 BPM as the
+  tempo, Style and Song changed, and 96 BPM taken from a Song. The clock stutters
+  briefly at Start/Stop (tick spacing up to ~68 ms irregular, against 3–5 ms
+  normally), so ignore it for a beat after either.
+- **MIDI keeps arriving while KeyPath is in the background.** Notes played
+  while another app was in front were handled on time (median 2.6 ms). Only
+  the screen updates wait, which is expected.
 - **The probe itself fell behind under a Style's traffic.** About 60 messages a
   second (clock plus drums), each triggering a full redraw, pushed its handler
   up to **12.8 s** late. The drums' timestamps stayed exactly one beat apart
