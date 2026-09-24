@@ -382,6 +382,13 @@ bottom. Under `(orientation: landscape) and (max-height: 560px)`:
   with the height; Rhythm echo puts the Tap pad beside the rhythm.
 Portrait is unchanged. Home, Settings and Studio scroll as before.
 
+No full screen. KeyPath runs from a Chrome shortcut on Gabriel's phone (an
+install there claims the whole site, `CABINET.md`), and #100 made the first tap
+enter full screen to hide Chrome's toolbar. Chrome answers every entry with a
+"to exit full screen, drag from the top" toast that no page can suppress, and
+it covered the keys, so KeyPath no longer calls `fullscreenOnTap()`. The layout
+above is sized for a tab with the toolbar (about 290 px tall on the S24).
+
 ### Progress (after step 6)
 
 ```
