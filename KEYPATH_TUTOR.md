@@ -346,6 +346,28 @@ through Studio's `Playback` on the shared Keyboard/Phone route, and logs
 - Records saved before these existed read back with empty `staff` and
   `chord` tables, so nobody's bests are lost.
 
+### Studio additions
+
+- **Count-in.** *Off · 60 · 80 · 100 · 120*, remembered on the phone. Four
+  clicks (a high C on the piano, the first louder, on the keyboard or the
+  phone like everything else), and the take starts on the fifth beat. Keys
+  played during the count-in aren't recorded, except in its last half-beat,
+  which counts as the downbeat played a hair early. Record turns into
+  **Cancel** while counting. The take keeps the tempo (`bpm`).
+- **Rename.** A take's **⋯** opens its name, its file and Delete. A blank
+  name gives it back its number. At most 40 characters.
+- **Save as a MIDI file** (`midiExport.ts`, `saveFile.ts`): format 0, one
+  track named after the take, her notes and the pedal on channel 1. It is
+  written at the count-in's tempo when there was one, so bar lines fall
+  where she played them; otherwise at 120 BPM, with exact timing and
+  arbitrary bar lines (the screen says which). Chrome's share sheet refuses
+  MIDI files (its list of shareable types has no `.mid`, checked in
+  Chromium's `share_service_impl.cc` on 2026-09-24), so on Android the file
+  downloads to Downloads, and any app can open it from there. Where a
+  browser does accept it, the share sheet opens instead.
+- In the log: `studio_recorded` gains `countIn`; `studio_renamed` and
+  `studio_exported` (shared, cancelled, saved or error) are new.
+
 ### Progress (after step 6)
 
 ```
@@ -621,9 +643,12 @@ install it and get the full screen):
   in time. Today she starts it herself.
 - ~~**"Listen first" in Songs**~~ Done (§9, "More songs and Listen
   first"). Still open: a second voice for it, if test 2 allows.
-- **Export a take** as a `.mid` file, to share or to open in Songs as her
-  own song.
-- **Rename** a take. For now they're numbered, or named after the song.
+- ~~**Export a take** as a `.mid` file~~ Done (§9, "Studio additions").
+  Still open: opening a take in Songs as her own song, which needs her free
+  timing snapped to beats first.
+- ~~**Rename** a take~~ Done (§9, "Studio additions").
+- **A metronome during the take**, not only before it. The count-in fixes
+  where bar 1 starts; a click throughout would keep the bars lined up.
 - **The phone's playback ignores the sustain pedal.** Notes end where the
   keys were released; the keyboard's playback does voice the pedal.
 

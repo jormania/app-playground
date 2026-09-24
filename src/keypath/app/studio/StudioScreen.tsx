@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button } from '../../../ds'
+import { Button, Field, SegmentedControl } from '../../../ds'
 import type { Song } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -7,18 +7,27 @@ import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useApp } from '../context'
 import { noteLabel } from '../i18n'
+import { PREFIX } from '../store'
 import { TopBar } from '../screens/TopBar'
 import { keyBoxes } from '../songs/keyGeometry'
 import { SongLibrary } from '../songs/library'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
 import { Playback, realClock, type Sink } from './playback'
+import { midiFilename, takeToSmf } from './midiExport'
 import { MAX_TAKE_MS, Recorder, type Recording } from './recorder'
 import { OutputChoice, useOutput } from './output'
-import { MAX_KEPT, TakeRepo, type Take } from './takes'
+import { saveFile } from './saveFile'
+import { MAX_KEPT, MAX_NAME, TakeRepo, type Take } from './takes'
 import styles from './studio.module.css'
 
 const LOW = 60
 const HIGH = 84
+
+/** Count-in tempos on offer; 0 is off. Chosen once per phone, like where takes play. */
+const COUNT_INS = [0, 60, 80, 100, 120] as const
+const COUNT_IN_KEY = `${PREFIX}studioCountIn`
+const CLICK = 84 // C6 on the piano, as in Challenges' rhythm echo
+const BEATS = 4
 
 const clock = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
 
@@ -38,13 +47,24 @@ export function StudioScreen({ songId }: { songId?: string }) {
     ms: number
     count: number
   } | null>(null)
-  const [pending, setPending] = useState<(Recording & { style: boolean }) | null>(null)
+  const [pending, setPending] = useState<(Recording & { style: boolean; bpm?: number }) | null>(null)
+  const [countIn, setCountIn] = useState(0)
+  /** Clicks still to come before recording starts; null when not counting in. */
+  const [counting, setCounting] = useState<number | null>(null)
+  /** The take whose name, file and delete are open. */
+  const [open, setOpen] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [saved, setSaved] = useState<{ id: string; text: string } | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [sure, setSure] = useState<string | null>(null)
 
   const recorder = useRef<Recorder | null>(null)
   const recordStart = useRef(0)
+  /** Keys before this don't go into the take: the count-in's noodling. Half a beat early still counts, as the downbeat. */
+  const recordFrom = useRef(-Infinity)
+  const takeBpm = useRef<number | undefined>(undefined)
+  const countingIn = useRef<(() => void) | null>(null)
   const styleOn = useRef(false)
   const styleDuringTake = useRef(false)
   const playback = useRef<Playback | null>(null)
@@ -54,6 +74,13 @@ export function StudioScreen({ songId }: { songId?: string }) {
   useEffect(() => {
     if (profileId) void repo.list(profileId).then(setTakes)
   }, [repo, profileId])
+  useEffect(() => {
+    void store.get<number>(COUNT_IN_KEY).then((v) => typeof v === 'number' && setCountIn(v))
+  }, [store])
+  const chooseCountIn = (v: number) => {
+    setCountIn(v)
+    void store.set(COUNT_IN_KEY, v)
+  }
   useEffect(() => {
     if (songId) void library.get(songId, settings.language).then(setSong)
   }, [library, songId, settings.language])
@@ -73,7 +100,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
     }
     // While a take plays on the keyboard, anything it echoes back isn't her.
     if (playback.current?.playing) return
-    recorder.current?.feed(e)
+    if (!('time' in e) || e.time >= recordFrom.current) recorder.current?.feed(e)
     if ((e.type === 'noteon' || e.type === 'noteoff') && isPlayerChannel(e.channel)) {
       const on = e.type === 'noteon'
       setHeld((h) => {
@@ -126,7 +153,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
       return
     }
     const style = styleDuringTake.current
-    setPending({ ...r, style })
+    const bpm = takeBpm.current
+    setPending({ ...r, style, ...(bpm ? { bpm } : {}) })
     if (profileId)
       void log.add(profileId, {
         type: 'studio_recorded',
@@ -134,16 +162,60 @@ export function StudioScreen({ songId }: { songId?: string }) {
         notes: r.notes.length,
         style,
         ...(songId ? { songId } : {}),
+        ...(bpm ? { countIn: bpm } : {}),
       })
   }, [t, profileId, log, songId])
+
+  const cancelCountIn = useCallback(() => {
+    countingIn.current?.()
+    countingIn.current = null
+    recorder.current = null
+    setCounting(null)
+  }, [])
+  useEffect(() => () => countingIn.current?.(), [])
+
   const startRecording = () => {
     stopPlayback()
     setPending(null)
     setMessage(null)
+    setSaved(null)
     styleDuringTake.current = styleOn.current
-    recordStart.current = performance.now()
-    recorder.current = new Recorder(recordStart.current)
-    setRecording({ ms: 0, count: 0 })
+    if (!countIn) {
+      recordStart.current = performance.now()
+      recordFrom.current = -Infinity
+      takeBpm.current = undefined
+      recorder.current = new Recorder(recordStart.current)
+      setRecording({ ms: 0, count: 0 })
+      return
+    }
+    // Four clicks, and the take starts on the fifth beat. The recorder is ready
+    // from now, so a downbeat played a hair early still lands at 0:00.
+    const beat = 60_000 / countIn
+    const clicks: Recording = {
+      ms: BEATS * beat,
+      notes: Array.from({ length: BEATS }, (_, i) => ({ pitch: CLICK, velocity: i === 0 ? 110 : 70, startMs: Math.round(i * beat), durationMs: 120 })),
+      pedal: [],
+    }
+    const p = new Playback(clicks, output.sink(), realClock)
+    p.start()
+    const startAt = p.startedAt + BEATS * beat
+    recordStart.current = startAt
+    recordFrom.current = startAt - beat / 2
+    takeBpm.current = countIn
+    recorder.current = new Recorder(startAt)
+    setCounting(BEATS)
+    const id = setInterval(() => {
+      const now = performance.now()
+      if (now < startAt) return setCounting(Math.max(1, BEATS - Math.max(0, Math.floor((now - p.startedAt) / beat))))
+      clearInterval(id)
+      countingIn.current = null
+      setCounting(null)
+      setRecording({ ms: now - startAt, count: recorder.current?.noteCount ?? 0 })
+    }, 20)
+    countingIn.current = () => {
+      clearInterval(id)
+      p.stop()
+    }
   }
   const isRecording = recording !== null
   useEffect(() => {
@@ -166,8 +238,10 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const keep = async () => {
     if (!pending || !profileId) return
     const { style, ...r } = pending
-    const take = await repo.keep(profileId, r, {
+    const { bpm, ...notes } = r
+    const take = await repo.keep(profileId, notes, {
       style,
+      ...(bpm ? { bpm } : {}),
       ...(song ? { songId: song.id, songTitle: song.title } : {}),
     })
     if (!take) return setMessage(t('studioFull', { max: MAX_KEPT }))
@@ -190,12 +264,35 @@ export function StudioScreen({ songId }: { songId?: string }) {
       on: !take.favourite,
     })
   }
+  const toggleOpen = (take: Take) => {
+    setSure(null)
+    setSaved(null)
+    setDraft(take.name ?? '')
+    setOpen((o) => (o === take.id ? null : take.id))
+  }
+  const rename = async (take: Take) => {
+    if (!profileId) return
+    await repo.rename(profileId, take.id, draft)
+    setTakes(await repo.list(profileId))
+    setOpen(null)
+    void log.add(profileId, { type: 'studio_renamed', takeId: take.id })
+  }
+  const exportTake = async (take: Take) => {
+    const name = nameOf(take)
+    const bytes = takeToSmf(take, { name, ...(take.bpm ? { bpm: take.bpm } : {}) })
+    const file = new File([bytes as BlobPart], midiFilename(name), { type: 'audio/midi' })
+    const outcome = await saveFile(file, name)
+    if (outcome === 'saved') setSaved({ id: take.id, text: t('studioMidiSaved', { file: file.name }) })
+    if (outcome === 'error') setSaved({ id: take.id, text: t('studioMidiError') })
+    if (profileId) void log.add(profileId, { type: 'studio_exported', takeId: take.id, outcome })
+  }
   const remove = async (take: Take) => {
     if (!profileId) return
     if (sure !== take.id) return setSure(take.id)
     if (playingId === take.id) stopPlayback()
     await repo.remove(profileId, take.id)
     setSure(null)
+    setOpen(null)
     setTakes(await repo.list(profileId))
     void log.add(profileId, { type: 'studio_deleted', takeId: take.id })
   }
@@ -204,7 +301,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const screenPress = (p: number) => {
     live.current ??= output.sink()
     live.current.noteOn(p, 80, performance.now())
-    recorder.current?.noteOn(p, 80, performance.now())
+    if (performance.now() >= recordFrom.current) recorder.current?.noteOn(p, 80, performance.now())
     setHeld((h) => new Set(h).add(p))
   }
   const screenRelease = (p: number) => {
@@ -231,7 +328,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
     return [...bars.values()].map((b) => b.join(' ')).join('  |  ')
   }, [song, label])
 
-  const nameOf = (take: Take) => (take.songTitle ? t('studioTakeOf', { title: take.songTitle, n: take.n }) : t('studioTakeN', { n: take.n }))
+  const numbered = (take: Take) => (take.songTitle ? t('studioTakeOf', { title: take.songTitle, n: take.n }) : t('studioTakeN', { n: take.n }))
+  const nameOf = (take: Take) => take.name ?? numbered(take)
 
   return (
     <main className={styles.screen}>
@@ -256,9 +354,19 @@ export function StudioScreen({ songId }: { songId?: string }) {
 
       <section className={styles.panel} aria-live="polite">
         <div className={styles.recordRow}>
-          <button type="button" className={styles.record} data-recording={recording ? true : undefined} onClick={recording ? stopRecording : startRecording}>
-            {recording ? t('studioStop') : t('studioRecord')}
+          <button
+            type="button"
+            className={styles.record}
+            data-recording={recording || counting !== null ? true : undefined}
+            onClick={counting !== null ? cancelCountIn : recording ? stopRecording : startRecording}
+          >
+            {counting !== null ? t('studioCancel') : recording ? t('studioStop') : t('studioRecord')}
           </button>
+          {counting !== null && (
+            <span key={counting} className={styles.countIn} role="status">
+              {t('studioCountingIn', { n: counting })}
+            </span>
+          )}
           {recording && (
             <span className={styles.recordStatus}>
               {t('studioRecording', {
@@ -268,6 +376,18 @@ export function StudioScreen({ songId }: { songId?: string }) {
             </span>
           )}
         </div>
+        {!recording && counting === null && (
+          <div className={styles.via}>
+            <span className={styles.hint}>{t('studioCountIn')}</span>
+            <SegmentedControl
+              size="sm"
+              value={String(countIn)}
+              onChange={(v) => chooseCountIn(Number(v))}
+              options={COUNT_INS.map((b) => ({ value: String(b), label: b ? String(b) : t('studioCountInOff') }))}
+            />
+          </div>
+        )}
+        {countIn > 0 && !recording && counting === null && <p className={styles.hint}>{t('studioCountInHint', { bpm: countIn })}</p>}
         {message && <p className={styles.hint}>{message}</p>}
         {pending && (
           <div className={styles.pending}>
@@ -317,9 +437,35 @@ export function StudioScreen({ songId }: { songId?: string }) {
               <button type="button" className={styles.star} aria-pressed={take.favourite} aria-label={t('studioFavourite')} onClick={() => void toggleFavourite(take)}>
                 {take.favourite ? '★' : '☆'}
               </button>
-              <Button size="sm" variant={sure === take.id ? 'danger' : 'ghost'} aria-label={sure === take.id ? t('studioSure') : t('studioDelete')} onClick={() => void remove(take)}>
-                {sure === take.id ? t('studioSure') : '🗑'}
-              </Button>
+              <button type="button" className={styles.more} aria-expanded={open === take.id} aria-label={t('studioMore', { name: nameOf(take) })} onClick={() => toggleOpen(take)}>
+                ⋯
+              </button>
+              {open === take.id && (
+                <div className={styles.takeMore}>
+                  <form
+                    className={styles.renameRow}
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void rename(take)
+                    }}
+                  >
+                    <Field label={t('studioName')} value={draft} placeholder={numbered(take)} maxLength={MAX_NAME} onChange={(e) => setDraft(e.target.value)} />
+                    <Button type="submit" size="sm">
+                      {t('studioSaveName')}
+                    </Button>
+                  </form>
+                  <div className={styles.actions}>
+                    <Button size="sm" variant="outline" onClick={() => void exportTake(take)}>
+                      {t('studioSaveMidi')}
+                    </Button>
+                    <Button size="sm" variant={sure === take.id ? 'danger' : 'ghost'} onClick={() => void remove(take)}>
+                      {sure === take.id ? t('studioSure') : t('studioDelete')}
+                    </Button>
+                  </div>
+                  {saved?.id === take.id && <p className={styles.hint}>{saved.text}</p>}
+                  <p className={styles.hint}>{take.bpm ? t('studioMidiBars', { bpm: take.bpm }) : t('studioMidiNoBars')}</p>
+                </div>
+              )}
             </li>
           ))}
         </ul>
