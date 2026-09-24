@@ -11,7 +11,7 @@ describe('ProfileRepo', () => {
     const p = await repo.create('  Nora  ', '🐺')
     expect(p).toMatchObject({ name: 'Nora', avatar: '🐺' })
     expect(await repo.settings(p.id)).toEqual(DEFAULT_PROFILE_SETTINGS)
-    expect(DEFAULT_PROFILE_SETTINGS).toMatchObject({ language: 'en', noteNames: 'auto', onWrong: 'show', timing: 'relaxed', report: 'short', wrongAffectsStars: false })
+    expect(DEFAULT_PROFILE_SETTINGS).toMatchObject({ language: 'en', noteNames: 'auto', onWrong: 'wait', timing: 'relaxed', report: 'short', wrongAffectsStars: false })
   })
 
   it('keeps each player’s settings apart', async () => {

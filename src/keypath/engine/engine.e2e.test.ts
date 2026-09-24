@@ -20,7 +20,7 @@ describe('KeyPath engine, end to end', () => {
     const song = songFromParts(file, { id: 'ode', title: 'Ode to Joy', right, left })
     expect(checkRange(song.notes.map((n) => n.pitch)).fits).toBe(true)
 
-    const judge = new Judge(song, { practice: 'right', settings: DEFAULT_SETTINGS })
+    const judge = new Judge(song, { practice: 'right', settings: { ...DEFAULT_SETTINGS, onWrong: 'show' } })
     const t0 = 50_000
     judge.start(t0)
     // She plays it on the PSR-E383: channel 1, Note Off as velocity 0, a little
@@ -35,7 +35,7 @@ describe('KeyPath engine, end to end', () => {
     })
     judge.tick(t0 + song.durationMs + 1000)
 
-    const report = buildReport(judge.summary(), DEFAULT_SETTINGS)
+    const report = buildReport(judge.summary(), { ...DEFAULT_SETTINGS, onWrong: 'show' })
     expect(report).toMatchObject({ stars: 3, hit: 14, total: 15, missed: 1, wrong: 1 })
     expect(report.highlights[0]).toEqual({ kind: 'finished' })
     expect(report.toWorkOn).toEqual([{ bar: 0, missed: 1, wrong: 1, early: 0, late: 0 }])

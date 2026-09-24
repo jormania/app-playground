@@ -40,13 +40,36 @@ steps (§4, Journey).
 |---|---|---|
 | Language | English · Română | **English** |
 | Note names | Follow language (C D E / Do Re Mi) · C D E · Do Re Mi · Both (“C / Do”) | Follow language |
-| On a wrong note | **Keep going** (nothing live; report at the end) · **Show it** (wrong key flashes, song continues) · **Wait for it** (song pauses until the right note) | Show it |
+| Names on the keys | On · Off (the falling notes keep their names either way) | On |
+| On a wrong note | Easiest first: **Wait for it** (song pauses until the right note) · **Show it** (wrong key flashes, song continues) · **Keep going** (nothing live; report at the end) | **Wait for it** (changed after step 5; players created before keep what they had) |
 | Timing | Relaxed (wide window; early/late never counts against) · Normal · Strict | Relaxed |
 | End-of-piece report | Off · Short (stars + one “try this next”) · Detailed (which bars/notes, early/late) | Short |
 | Wrong notes affect stars | Yes · No | No |
 | Sound through the keyboard | 0–100 (the probe's control) | 0 |
 
 Reports lead with **what went right** before any correction.
+
+### The ramp
+
+After a piece that went very well, the report suggests the next rung, one
+setting at a time, and changes nothing unless she says yes
+(`nextStep()` in `engine/settings.ts`):
+
+| Rung | On a wrong note | Timing | What she's learning |
+|---|---|---|---|
+| 1 | Wait for it | (none: no clock) | the notes, with no time pressure |
+| 2 | Show it | Relaxed | playing in time, mistakes shown gently |
+| 3 | Show it | Normal | tighter timing |
+| 4 | Keep going | Normal | playing it through, like a performance |
+| 5 | Keep going | Strict | polish |
+
+Two more axes are chosen per song, not suggested: **speed** (50 → 75 →
+100%) and **hands** (right → left → both). **Names on the keys** has its own
+moment: passing the Journey's reading check (step 6) offers to turn them
+off, since she can then read a note and find its key without the label.
+
+Until then, key names stay on in the reading check: its skill is staff →
+name, and name → key was already tested in step 2.
 
 Romanian needs ș ț ă â î: fonts must include the **latin-ext** subset (see the
 font rules in `CLAUDE.md`; Loom's `fonts.css` is the worked example).
@@ -465,9 +488,8 @@ install it and get the full screen):
 - **Pass marks.** A check passes with at most one wrong key (two in the tune
   steps). Checks have no time limit: "about 30 s" is how long they take, not
   a clock. Both are guesses until the log shows how she does.
-- **Reading step:** the keyboard still shows note names during the check, so
-  she reads staff → name → key rather than staff → key. Hide them once she's
-  past it, as a setting.
+- ~~**Reading step:** key names during the check~~ Done: a **Names on the
+  keys** setting, offered off after step 6 (§2, "The ramp").
 - **More steps** (rests, the left hand alone, a black key, a second line of
   notation) once the log says the Journey is the door she uses.
 - **Chord togetherness** is judged in the chord step only. The engine's

@@ -15,12 +15,15 @@ export interface Profile {
 export interface ProfileSettings extends JudgeSettings {
   language: Language
   noteNames: NoteNames
+  /** Names printed on the on-screen keys. Off once she knows where the notes are (the falling notes keep theirs). */
+  keyNames: boolean
 }
 
 export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
   ...DEFAULT_SETTINGS,
   language: 'en',
   noteNames: 'auto',
+  keyNames: true,
 }
 
 /** Picked when creating a profile — a face, not a photo. */

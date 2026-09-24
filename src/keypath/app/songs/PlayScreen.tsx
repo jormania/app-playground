@@ -329,6 +329,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
         {countIn !== null && phase === 'playing' && <div className={styles.countIn}>{countIn}</div>}
         <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} />
         <PlayKeyboard
+          names={settings.keyNames}
           boxes={boxes}
           held={held}
           targets={phase === 'ready' ? new Set([MIDDLE_C]) : targets}

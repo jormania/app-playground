@@ -321,7 +321,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
         {phoneMuted && <p className={styles.hint}>{t('studioPhoneMuted')}</p>}
       </section>
 
-      <PlayKeyboard boxes={boxes} held={held} targets={new Set()} wrong={new Set()} label={label} onPress={screenPress} onRelease={screenRelease} />
+      <PlayKeyboard boxes={boxes} held={held} targets={new Set()} wrong={new Set()} label={label} names={settings.keyNames} onPress={screenPress} onRelease={screenRelease} />
 
       <section className={styles.panel}>
         <h2 className={styles.h2}>{t('studioMyTakes')}</h2>

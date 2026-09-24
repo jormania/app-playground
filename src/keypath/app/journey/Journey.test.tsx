@@ -114,4 +114,33 @@ describe('Journey', () => {
     cleanup()
     await waitFor(async () => expect((await new EngagementLog(store).read(profileId)).at(-1)).toMatchObject({ type: 'journey_left', step: 'middleC', mode: 'practice' }))
   })
+
+  it('after passing the reading check, offers the keys without names, and a Yes turns them off everywhere', async () => {
+    const { store, profileId } = await open('#/journey/notation')
+    fireEvent.click(await screen.findByRole('button', { name: 'I can do this already' }))
+    await screen.findByText('Press middle C to begin')
+    key(60)
+    await screen.findByText('Read the staff and play it. No lit keys this time.')
+    // Mary Had a Little Lamb: E D C D E E E
+    for (const p of [64, 62, 60, 62, 64, 64, 64]) key(p)
+    expect(await screen.findByText('You can read the staff now. Try the keys without their names?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, change it' }))
+    await waitFor(async () => expect((await new ProfileRepo(store).settings(profileId)).keyNames).toBe(false))
+    expect((await new EngagementLog(store).read(profileId)).find((e) => e.type === 'suggestion')).toMatchObject({ setting: 'keyNames', to: 'off', accepted: true, step: 'notation' })
+    expect(screen.queryByText('You can read the staff now. Try the keys without their names?')).toBeNull()
+  })
+
+  it('draws the keys without names once the setting is off, but screen readers still hear them', async () => {
+    const store = memoryStore()
+    const profiles = new ProfileRepo(store)
+    const p = await profiles.create('Nora', '🐺')
+    await profiles.setCurrent(p.id)
+    await profiles.saveSettings(p.id, { ...(await profiles.settings(p.id)), keyNames: false })
+    history.replaceState(null, '', '#/journey/middleC')
+    render(<Shell store={store} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Learn it' }))
+    const cKeys = await screen.findAllByRole('button', { name: 'C' })
+    expect(cKeys.length).toBeGreaterThan(0)
+    for (const k of cKeys) expect(k.textContent).toBe('')
+  })
 })

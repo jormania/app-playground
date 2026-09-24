@@ -1,5 +1,5 @@
 import type { JudgeEvent, JudgeSummary } from './judge'
-import { NEXT_ON_WRONG, NEXT_TIMING, type JudgeSettings, type OnWrong, type Timing } from './settings'
+import { nextStep, type JudgeSettings, type NextStep } from './settings'
 
 /**
  * What the screen should do right now for one judge event. The engine decides
@@ -45,7 +45,7 @@ export interface BarToWorkOn {
   late: number
 }
 
-export type Suggestion = { setting: 'onWrong'; to: OnWrong } | { setting: 'timing'; to: Timing }
+export type Suggestion = NextStep
 
 export interface Report {
   /** 1–3 once the piece is finished (finishing always earns one); 0 if abandoned. */
@@ -122,12 +122,7 @@ export function buildReport(s: JudgeSummary, settings: JudgeSettings): Report {
 
   let suggestion: Suggestion | null = null
   const cleanScore = s.total === 0 ? 0 : hits.length / (s.total + wrong)
-  if (s.done && cleanScore >= SUGGEST_AT) {
-    const nextWrong = NEXT_ON_WRONG[settings.onWrong]
-    const nextTiming = NEXT_TIMING[settings.timing]
-    if (nextWrong) suggestion = { setting: 'onWrong', to: nextWrong }
-    else if (running && nextTiming) suggestion = { setting: 'timing', to: nextTiming }
-  }
+  if (s.done && cleanScore >= SUGGEST_AT) suggestion = nextStep(settings)
 
   return { stars, score, hit: hits.length, total: s.total, missed: missed.length, wrong, timing, highlights, toWorkOn, suggestion }
 }

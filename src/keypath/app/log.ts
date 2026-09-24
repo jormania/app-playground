@@ -16,7 +16,8 @@ export type LogEvent =
   | { type: 'song_finished'; songId: string; practice: string; stars: number; score: number; hit: number; total: number; wrong: number }
   | { type: 'song_abandoned'; songId: string; practice: string; hit: number; total: number }
   | { type: 'song_added' }
-  | { type: 'suggestion'; setting: string; to: string; accepted: boolean; songId: string }
+  /** A step up offered: after a song (songId) or at a Journey milestone (step). */
+  | { type: 'suggestion'; setting: string; to: string; accepted: boolean; songId?: string; step?: string }
   /** The connection wizard: finished, or left at a step (where people get stuck). */
   | { type: 'keyboard_setup'; outcome: 'done' | 'left'; step: string; ms: number }
   /** The keyboard vanished mid-song; on the Poco F3, suspect Xiaomi's OTG timeout (KEYPATH.md §2). */

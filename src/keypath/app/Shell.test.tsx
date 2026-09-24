@@ -88,4 +88,14 @@ describe('KeyPath shell', () => {
       expect((await new EngagementLog(store).read(p.id)).map((e) => e.type)).toEqual(['profile_created', 'session_start', 'session_end', 'session_start'])
     })
   })
+
+  it('starts a new player on “Wait for it”, and turns the key names off from settings', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    const [p] = await new ProfileRepo(store).list()
+    expect((await new ProfileRepo(store).settings(p.id)).onWrong).toBe('wait')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Names on the keys' }))
+    await waitFor(async () => expect((await new ProfileRepo(store).settings(p.id)).keyNames).toBe(false))
+  })
 })

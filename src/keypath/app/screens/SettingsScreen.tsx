@@ -84,6 +84,7 @@ export function SettingsScreen() {
             ]}
           />
         </Row>
+        <SettingsToggle label={t('keyNames')} hint={t('keyNamesHint')} checked={settings.keyNames} onChange={(e) => void updateSetting('keyNames', e.target.checked)} />
       </section>
 
       <section className={styles.panel}>
@@ -93,9 +94,9 @@ export function SettingsScreen() {
             value={settings.onWrong}
             onChange={set('onWrong')}
             options={[
-              { value: 'keepGoing' satisfies OnWrong, label: t('onWrongKeepGoing') },
-              { value: 'show' satisfies OnWrong, label: t('onWrongShow') },
               { value: 'wait' satisfies OnWrong, label: t('onWrongWait') },
+              { value: 'show' satisfies OnWrong, label: t('onWrongShow') },
+              { value: 'keepGoing' satisfies OnWrong, label: t('onWrongKeepGoing') },
             ]}
           />
         </Row>
