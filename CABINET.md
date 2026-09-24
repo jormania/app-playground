@@ -131,11 +131,19 @@ fetch, and it had run that same morning without narrowing anything.
 
 `public/radar-b.webmanifest` has been valid and narrowly scoped since the app
 was created (2026-08-21), so why Chrome skipped it at install time is not
-known. The repo cannot reach the record. **The fix is on the phone:** uninstall
-Radar-B (Settings → Apps → Radar-B → Uninstall; removing the home-screen icon
-is not enough), then install it again from `/radar-b-react.html` and check
-`chrome://webapks` shows `Manifest URL: …/radar-b.webmanifest` and a scope of
-`/radar-b-react.html`. The Cabinet should then install normally too.
+known — and it is not a one-off: **reinstalling reproduced it.** The second
+install ("Radar-Bi", a new package) came back with the same bare-origin scope,
+empty manifest URL and `minimal-ui`, and the Cabinet's launches flashed its
+logo again (a Cabinet tap is resolved by URL, so the root-scoped app catches it
+before Chrome hands it on; a home-screen icon launches its own package and is
+unaffected). The repo cannot reach the record.
+
+**What to do on the phone until the cause is known:** uninstall Radar-B
+(Settings → Apps → Radar-B → Uninstall; removing the home-screen icon is not
+enough), use it in a browser tab, and **don't reinstall it**. Next diagnostic:
+remote-inspect the Radar-B tab from a desktop (`chrome://inspect`) and read
+Application → Manifest → Installability, which states why Chrome won't install
+from the manifest.
 
 The same can happen to any page without a manifest — KeyPath, the front page,
 the guides: installed from the browser menu, each would claim the whole origin.
