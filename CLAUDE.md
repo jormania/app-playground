@@ -195,7 +195,9 @@ it is complete:
   full screen puts it back, hiding Chrome's toolbar and Android's button bar the
   way an install would. A no-op when installed standalone, on desktop, or without
   the API. For apps Chrome won't install properly on the owner's phone (CABINET.md,
-  "Update (2026-09-24)"): KeyPath and Radar-B.
+  "Update (2026-09-24)"): Radar-B. KeyPath tried it and dropped it: Chrome shows a
+  "to exit full screen" toast on every entry, which no page can hide, and on
+  KeyPath it sat over the keys; its landscape layout fits beside the toolbar instead.
 - [`haptics.ts`](src/shared/haptics.ts) — `triggerHaptic(type)` for a named intent
   (`light` / `heavy` / `success` / `transition`). Daily Stoic and Silva.
 - [`mediaSession.js`](src/shared/mediaSession.js) — `useMediaSession()`, which
