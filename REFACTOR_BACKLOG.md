@@ -373,7 +373,7 @@ Two things worth carrying forward:
 - **R-014's step 3 is now unblocked.** `scratch_debug.js` was `puppeteer`'s only
   consumer in the repo; with it gone, `puppeteer` has none. See that item.
 
-## R-022 — WhereItWent's empty-state float animation reaches almost nothing · `visual` · `open`
+## R-022 — WhereItWent's empty-state float animation reaches almost nothing · `visual` · `done 2026-09-24`
 
 **Impact:** empty states that were meant to float and no longer do. Small, but
 it is a user-visible flair toggle that silently does less than it claims.
@@ -404,6 +404,46 @@ The first is probably right — the toggle exists and users can turn it on.
 Being `visual`: before/after screenshots in both themes, phone and desktop, on
 `claude/shots`, and never auto-merged. Screenshot it with `flairEmpty` on, or
 the diff shows nothing either way.
+
+**Done 2026-09-24 — and it was not "almost nothing", it was nothing.** This
+item's group 1 was too generous to the inline-style selectors: `[style*=
+"font-size: 48px"] svg` does match the empty state's container, but the
+container holds an **emoji** and the descendant `svg` never resolves. All four
+empty states are emoji. So together with the dead `width="48"` attributes from
+group 2, **`float-icon` had never once run on any screen** since it was written
+— which the before shots prove rather than argue: `getComputedStyle(icon)
+.animationName` is `none` on `main` and `float-icon` after.
+
+Took the first of the two options, as the item guessed: the four empty states
+now carry `className="empty-state-icon"` (`TransactionsList.jsx`,
+`Dashboard.jsx`, `InsightsView.jsx`, `App.jsx`'s load error) and the six
+selectors collapse to one, `.flair-empty .empty-state-icon`.
+
+Three things worth carrying forward:
+
+- **It animates the container, not an icon inside it.** That is what makes it
+  work for an emoji, and an `<svg>` dropped in later floats identically —
+  whereas animating a descendant is precisely what broke twice. The rule now
+  matches a hook, never a markup shape; don't reintroduce one.
+- **Turning it on meant it needed a `prefers-reduced-motion` guard**, since it
+  is the first motion `.flair-empty` has ever actually produced. It is in the
+  consolidated block near the top of `index.css`, with `!important` — the float
+  rule sits further down the same file at equal specificity, so source order
+  would otherwise beat the guard. The **other two flair animations,
+  `fab-pulse` and `slideRight`, are still outside that block**; proposed
+  separately rather than fixed here.
+- **Playwright cannot screenshot this the obvious way.** `scrollIntoViewIfNeeded`
+  and `locator.screenshot()` both wait for the element to be *stable*, which an
+  infinite 4s float never is — the run times out. Park the animation first
+  (`animationDelay = '-2s'`, `animationPlayState = 'paused'`), which also puts
+  the still frame at the -8px peak rather than a random point on the curve.
+
+`src/where-it-went/emptyStateFloat.test.jsx` (7 tests) pins the join the two
+earlier versions had no way to notice was broken: three empty states rendered
+and asserted to carry the hook, App's error state checked as source, and the
+stylesheet parsed to assert the animation hangs off that class and on nothing
+attribute- or `svg`-shaped. Mutation-checked both ways — dropping the class
+from one component, and reverting the selector to `… .empty-state-icon svg`.
 
 ## R-026 — The theme mechanism's second half: following the OS · `refactor` · `done 2026-09-22`
 
@@ -1655,4 +1695,32 @@ To reject one, delete it — or just close the PR that proposed it, which is the
 same answer said faster. The agent treats a proposal that vanished from `main`
 as declined and will not raise it again.
 
-_(nothing proposed right now.)_
+## P-003 — Two WhereItWent flair animations ignore `prefers-reduced-motion` · `qol` · `proposed`
+
+**Impact:** someone who has asked their OS to reduce motion stops seeing a
+pulsing Add button and a sliding budget bar. Nobody else notices anything.
+
+Found while doing R-022 on 2026-09-24. `src/where-it-went/index.css` has a
+consolidated `@media (prefers-reduced-motion: reduce)` block (~line 296) whose
+comment claims it covers "every animated affordance in the app". It does not:
+
+- **`fab-pulse`** — `.flair-pulse .nav-add-btn:hover` and
+  `.nav-add-btn-classic:hover`, a 1.5s infinite box-shadow pulse.
+- **`slideRight`** — `.flair-budget .budget-bar-fill` and
+  `.budget-bar-fill-large`. The block already names `.budget-bar-wrapper > div`
+  and kills its `transition`, but the `fill` element's `animation` is a separate
+  declaration and survives.
+
+R-022 added the guard for `float-icon` because it was switching that animation
+on for the first time and would otherwise have shipped a regression; it
+deliberately left these two alone as adjacent scope. Both need the same
+`animation: none !important;` treatment — `!important` because all three rules
+are declared further down the file at equal specificity, so source order beats
+the guard without it.
+
+Cheap, but `qol` rather than `refactor`: it changes what a real user sees, just
+only the ones who asked for it. Worth pairing with a test in
+`src/where-it-went/emptyStateFloat.test.jsx`'s stylesheet style — parse the
+reduced-motion block and assert every `@keyframes` name the file declares is
+switched off somewhere inside it, which would stop the next animation from
+arriving unguarded too.

@@ -687,7 +687,7 @@ export default function App() {
           <SkeletonState activeTab={activeTab} />
         ) : loadError ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', marginTop: 'var(--space-xl)' }}>
-            <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>⚠️</div>
+            <div className="empty-state-icon" style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>⚠️</div>
             <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-danger)' }}>Could Not Load Data</h3>
             <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', maxWidth: '400px' }}>
               {loadError} — Check your Notion token and database IDs in Settings.

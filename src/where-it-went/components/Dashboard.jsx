@@ -680,7 +680,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
           </h2>
           {chartData.length === 0 ? (
             <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>📊</div>
+              <div className="empty-state-icon" style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>📊</div>
               <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Nothing to chart</h3>
               <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>
                 {filter === 'Transfer'

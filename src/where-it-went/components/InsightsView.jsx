@@ -118,7 +118,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
       {!insights ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
-          <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>✨</div>
+          <div className="empty-state-icon" style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>✨</div>
           <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Nothing to analyse yet</h3>
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', maxWidth: '380px', marginBottom: 0 }}>
             Insights compare this period against the ones before it, so they need a few

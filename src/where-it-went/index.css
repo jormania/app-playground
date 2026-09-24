@@ -292,11 +292,17 @@ select option {
 
 /* Respect the OS-level motion preference across every animated affordance in
    the app: KPI count-up (handled in JS — see lib/useCountUp.js), budget bar
-   fills, the shimmer skeleton, row hover lift, and the bottom-sheet slide-in. */
+   fills, the shimmer skeleton, row hover lift, the bottom-sheet slide-in, and
+   the empty-state float. */
 @media (prefers-reduced-motion: reduce) {
   .shimmer-bg {
     animation: none;
     background: var(--color-surface-2);
+  }
+  /* `!important` because the float rule is declared further down this file at
+     the same specificity, so source order would otherwise win. */
+  .flair-empty .empty-state-icon {
+    animation: none !important;
   }
   .transaction-row,
   .kpi-card,
@@ -680,18 +686,18 @@ select option {
   100% { transform: translateY(0); }
 }
 /* Float the large icon in an empty state, and only that one — never the small
-   icons inside buttons. Reached two ways: an inline 48px container, or the
-   .empty-state-icon hook. An earlier attempt selected every unstyled SVG under
-   .flair-empty and was abandoned; its empty rule body sat here until 2026-09-22. */
-.flair-empty [style*="font-size: 48px"] svg,
-.flair-empty [style*="height: 48px"] svg,
-.flair-empty [style*="width: 48px"] svg,
-.flair-empty .empty-state-icon svg {
-  animation: float-icon 4s ease-in-out infinite;
-}
-/* Specifically targeting the empty state SVGs we found with width/height > 32px */
-.flair-empty main > div > svg[width="48"],
-.flair-empty main > div > svg[width="64"] {
+   icons inside buttons. One hook, `.empty-state-icon`, on the element that holds
+   the icon; the four empty states that exist all carry it (TransactionsList's
+   "Nothing here", Dashboard's "Nothing to chart", InsightsView's "Nothing to
+   analyse yet", App's "Could Not Load Data").
+
+   The hook animates the *container*, not an `<svg>` inside it, and that is the
+   whole fix: all four hold an emoji, so every earlier selector here — a
+   descendant `svg`, or a literal `width="48"` attribute the 2026-09-21 icon pass
+   removed — resolved to nothing and the animation had never once run. Matching
+   on markup shape rather than on a hook is what let that happen quietly; don't
+   reintroduce it. An emoji or an `<svg>` placed inside floats either way. */
+.flair-empty .empty-state-icon {
   animation: float-icon 4s ease-in-out infinite;
 }
 
