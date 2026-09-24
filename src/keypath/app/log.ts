@@ -21,6 +21,10 @@ export type LogEvent =
   | { type: 'keyboard_setup'; outcome: 'done' | 'left'; step: string; ms: number }
   /** The keyboard vanished mid-song; on the Poco F3, suspect Xiaomi's OTG timeout (KEYPATH.md §2). */
   | { type: 'keyboard_lost'; songId: string }
+  /** Journey: a practice or check begun; `testOut` when the step was still locked. */
+  | { type: 'journey_started'; step: string; mode: 'practice' | 'check'; testOut: boolean }
+  | { type: 'journey_finished'; step: string; mode: 'practice' | 'check'; passed: boolean; wrong: number; ms: number }
+  | { type: 'journey_left'; step: string; mode: 'practice' | 'check'; ms: number }
 
 export type Door = 'songs' | 'journey' | 'challenges' | 'studio'
 

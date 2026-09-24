@@ -15,6 +15,7 @@ export type Route =
   | { name: 'songImport' }
   | { name: 'play'; songId: string }
   | { name: 'connect' }
+  | { name: 'journeyStep'; step: string }
 
 const DOORS: readonly Door[] = ['songs', 'journey', 'challenges', 'studio']
 
@@ -30,6 +31,8 @@ export function parseRoute(hash: string): Route {
       return { name: head }
     case 'songs':
       return arg === 'import' ? { name: 'songImport' } : { name: 'door', door: 'songs' }
+    case 'journey':
+      return arg ? { name: 'journeyStep', step: decodeURIComponent(arg) } : { name: 'door', door: 'journey' }
     case 'play':
       return arg ? { name: 'play', songId: decodeURIComponent(arg) } : { name: 'door', door: 'songs' }
     case 'door':
@@ -49,6 +52,8 @@ export function hrefOf(route: Route): string {
       return '#/songs/import'
     case 'play':
       return `#/play/${encodeURIComponent(route.songId)}`
+    case 'journeyStep':
+      return `#/journey/${encodeURIComponent(route.step)}`
     default:
       return `#/${route.name}`
   }

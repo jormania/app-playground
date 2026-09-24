@@ -39,6 +39,7 @@ export const K = {
   keyboard: `${PREFIX}keyboard`,
   settings: (profileId: string) => `${PREFIX}settings:${profileId}`,
   log: (profileId: string) => `${PREFIX}log:${profileId}`,
+  journey: (profileId: string) => `${PREFIX}journey:${profileId}`,
 }
 
 export type Persistence = 'persisted' | 'best-effort' | 'unknown'
