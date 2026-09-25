@@ -1,4 +1,4 @@
-/* The Journey door: the map of six steps, and one step's screen. */
+/* The Journey door: the map of its steps, and one step's screen. */
 
 .screen {
   max-width: 720px;
@@ -286,11 +286,54 @@
   fill: currentColor;
   text-anchor: middle;
 }
+.staffFinger {
+  font: 700 10px / 1 var(--font-sans);
+  fill: currentColor;
+  text-anchor: middle;
+}
 .noteNow {
   color: var(--color-accent);
 }
 .notePlayed {
   color: var(--color-success);
+}
+
+/* ── The hands (the finger-numbers step) ── */
+.hands {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  max-height: 12rem;
+  margin: auto;
+}
+.palm,
+.finger rect {
+  fill: #f1d3bd;
+}
+.finger[data-on] rect {
+  fill: var(--color-accent);
+}
+.fingerBadge {
+  fill: var(--color-surface);
+  stroke: #b98e70;
+  stroke-width: 1;
+}
+.finger[data-on] .fingerBadge {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.fingerNumber {
+  font: 700 10px / 1 var(--font-sans);
+  fill: var(--color-ink);
+  text-anchor: middle;
+}
+.handName {
+  font: 600 10px / 1 var(--font-sans);
+  fill: var(--color-muted);
+  text-anchor: middle;
+}
+.handName[data-on] {
+  fill: var(--color-accent);
 }
 
 .suggestion {
@@ -328,7 +371,8 @@
     gap: var(--space-xs);
   }
   /* The staff scales down to leave the keys their third. */
-  .staff {
+  .staff,
+  .hands {
     flex: 0 1 auto;
     min-height: 0;
     max-height: 34dvh;

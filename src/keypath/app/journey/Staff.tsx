@@ -37,9 +37,11 @@ interface Props {
   ariaLabel: string
   /** Just the clef and the notes: no time signature, no bar lines (the note race's single note). */
   bare?: boolean
+  /** Finger numbers above the notes, as a beginner's score prints them (the practice only). */
+  fingers?: readonly (number | undefined)[]
 }
 
-export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabel, bare = false }: Props) {
+export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabel, bare = false, fingers }: Props) {
   let beat = 0
   const placed = notes.map(([pitch, beats], i) => {
     const x = START_X + beat * BEAT_X + Math.floor(beat / beatsPerBar) * BAR_GAP
@@ -97,6 +99,11 @@ export function Staff({ notes, current, played, label, beatsPerBar = 4, ariaLabe
               <line x1={x - 5.6} x2={x - 5.6} y1={y + 1} y2={y + 30} className={styles.stem} />
             ) : (
               <line x1={x + 5.6} x2={x + 5.6} y1={y - 1} y2={y - 30} className={styles.stem} />
+            )}
+            {fingers?.[i] && (
+              <text x={x} y={TOP - 13} className={styles.staffFinger}>
+                {fingers[i]}
+              </text>
             )}
             {label && (
               <text x={x} y={BOTTOM + 30} className={styles.noteName}>

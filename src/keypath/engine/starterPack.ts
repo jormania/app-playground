@@ -1,4 +1,4 @@
-import type { Hand, Song, SongNote } from './song'
+import type { Finger, Hand, Song, SongNote } from './song'
 
 // The starter pack (KEYPATH_TUTOR.md §5): short public-domain melodies,
 // arranged by us for beginners. Stored as data in source, not as .mid files,
@@ -37,6 +37,12 @@ export interface StarterSong {
   beatsPerBar: number
   right: Line
   left?: Line
+  /**
+   * Finger numbers, one digit per note of each hand (1 = thumb, 5 = little
+   * finger); spaces and | are only for reading. Written here for beginners:
+   * the simplest hand positions, a shift where the tune leaves one.
+   */
+  fingers?: { right?: string; left?: string }
 }
 
 // C C G G | A A G- | F F E E | D D C- , then G G F F | E E D- twice, then the opening again.
@@ -56,6 +62,7 @@ export const STARTER_PACK: StarterSong[] = [
     beatsPerBar: 4,
     right: [...twinkleA, ...twinkleB, ...twinkleB, ...twinkleA],
     left: [...twinkleLeftA, ...twinkleLeftB, ...twinkleLeftB, ...twinkleLeftA],
+    fingers: { right: '1144554 4433221 5544332 5544332 1144554 4433221', left: '5252515 5151 5151 5252515' },
   },
   {
     id: 'starter:ode',
@@ -66,6 +73,7 @@ export const STARTER_PACK: StarterSong[] = [
     right: [...odePhrase([[E4, 1.5], [D4, 0.5], [D4, 2]]), ...odePhrase([[D4, 1.5], [C4, 0.5], [C4, 2]])],
     // I | V | I | V , then I | V | I | V I
     left: [[C3, 4], [G2, 4], [C3, 4], [G2, 4], [C3, 4], [G2, 4], [C3, 4], [G2, 2], [C3, 2]],
+    fingers: { right: '334554321123 322 334554321123 211', left: '151515151' },
   },
   {
     id: 'starter:jacques',
@@ -78,6 +86,7 @@ export const STARTER_PACK: StarterSong[] = [
       [G4, 0.5], [A4, 0.5], [G4, 0.5], [F4, 0.5], [E4, 1], [C4, 1], [G4, 0.5], [A4, 0.5], [G4, 0.5], [F4, 0.5], [E4, 1], [C4, 1],
       [C4, 1], [G3, 1], [C4, 2], [C4, 1], [G3, 1], [C4, 2],
     ],
+    fingers: { right: '12311231 345345 454321454321 414414' },
   },
   {
     id: 'starter:lune',
@@ -88,6 +97,7 @@ export const STARTER_PACK: StarterSong[] = [
       [C4, 1], [C4, 1], [C4, 1], [D4, 1], [E4, 2], [D4, 2], [C4, 1], [E4, 1], [D4, 1], [D4, 1], [C4, 4],
       [C4, 1], [C4, 1], [C4, 1], [D4, 1], [E4, 2], [D4, 2], [C4, 1], [E4, 1], [D4, 1], [D4, 1], [C4, 4],
     ],
+    fingers: { right: '11123213221 11123213221' },
   },
   {
     id: 'starter:buns',
@@ -95,6 +105,7 @@ export const STARTER_PACK: StarterSong[] = [
     bpm: 90,
     beatsPerBar: 4,
     right: [[E4, 1], [D4, 1], [C4, 2], [E4, 1], [D4, 1], [C4, 2], [C4, 0.5], [C4, 0.5], [C4, 0.5], [C4, 0.5], [D4, 0.5], [D4, 0.5], [D4, 0.5], [D4, 0.5], [E4, 1], [D4, 1], [C4, 2]],
+    fingers: { right: '32132111112222321' },
   },
   {
     id: 'starter:lamb',
@@ -105,6 +116,7 @@ export const STARTER_PACK: StarterSong[] = [
       [E4, 1], [D4, 1], [C4, 1], [D4, 1], [E4, 1], [E4, 1], [E4, 2], [D4, 1], [D4, 1], [D4, 2], [E4, 1], [G4, 1], [G4, 2],
       [E4, 1], [D4, 1], [C4, 1], [D4, 1], [E4, 1], [E4, 1], [E4, 1], [E4, 1], [D4, 1], [D4, 1], [E4, 1], [D4, 1], [C4, 4],
     ],
+    fingers: { right: '3212333222355 3212333322321' },
   },
   {
     id: 'starter:london',
@@ -115,6 +127,7 @@ export const STARTER_PACK: StarterSong[] = [
       [G4, 1.5], [A4, 0.5], [G4, 1], [F4, 1], [E4, 1], [F4, 1], [G4, 2], [D4, 1], [E4, 1], [F4, 2], [E4, 1], [F4, 1], [G4, 2],
       [G4, 1.5], [A4, 0.5], [G4, 1], [F4, 1], [E4, 1], [F4, 1], [G4, 2], [D4, 2], [G4, 2], [E4, 1], [C4, 3],
     ],
+    fingers: { right: '4543234123234 45432342531' },
   },
   {
     id: 'starter:jingle',
@@ -127,6 +140,7 @@ export const STARTER_PACK: StarterSong[] = [
       [E4, 1], [E4, 1], [E4, 2], [E4, 1], [E4, 1], [E4, 2], [E4, 1], [G4, 1], [C4, 1.5], [D4, 0.5], [E4, 4],
       [F4, 1], [F4, 1], [F4, 1.5], [F4, 0.5], [F4, 1], [E4, 1], [E4, 1], [E4, 0.5], [E4, 0.5], [G4, 1], [G4, 1], [F4, 1], [D4, 1], [C4, 4],
     ],
+    fingers: { right: '33333335123 444443333322325 33333335123 44444333355421' },
   },
   {
     id: 'starter:birthday',
@@ -140,6 +154,7 @@ export const STARTER_PACK: StarterSong[] = [
       [G4, 0.75], [G4, 0.25], [G5, 1], [E5, 1], [C5, 1], [B4, 1], [A4, 1],
       [F5, 0.75], [F5, 0.25], [E5, 1], [C5, 1], [D5, 1], [C5, 2],
     ],
+    fingers: { right: '112143 112154 1153132 443121' },
   },
   {
     id: 'starter:elise',
@@ -158,8 +173,14 @@ export const STARTER_PACK: StarterSong[] = [
       [B4, 3], [E4, 1], [C5, 1], [B4, 1],
       [A4, 4],
     ],
+    fingers: { right: '54 545243 1123 4134 5154 545243 1123 4132 1' },
   },
 ]
+
+/** A fingering string as digits, one per note; spaces and | are for reading only. */
+export function fingerList(written: string | undefined): Finger[] {
+  return [...(written ?? '').replace(/[\s|]/g, '')].map((d) => Number(d) as Finger)
+}
 
 /**
  * Turn a starter song into the engine's Song. Notes sound for 90% of their
@@ -169,8 +190,9 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
   const msPerBeat = 60000 / s.bpm
   const notes: SongNote[] = []
   const add = (line: Line, hand: Hand) => {
+    const fingers = fingerList(s.fingers?.[hand])
     let beat = 0
-    for (const [pitch, beats] of line) {
+    for (const [i, [pitch, beats]] of line.entries()) {
       notes.push({
         id: 0,
         pitch,
@@ -178,6 +200,7 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
         durationMs: Math.round(beats * msPerBeat * 0.9),
         hand,
         bar: Math.floor(beat / s.beatsPerBar + 1e-9),
+        ...(fingers[i] ? { finger: fingers[i] } : {}),
       })
       beat += beats
     }

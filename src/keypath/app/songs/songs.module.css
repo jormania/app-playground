@@ -221,11 +221,16 @@
   box-sizing: border-box;
   border-radius: var(--radius-sm);
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 2px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
   overflow: hidden;
   border: 1px solid rgb(0 0 0 / 0.15);
+}
+/* The name alone sits at the bottom, where the note meets its key. */
+.noteLabel:only-child {
+  margin-top: auto;
 }
 .noteRight {
   background: #e0795b;
@@ -246,6 +251,26 @@
   color: #fff;
   line-height: 1;
   white-space: nowrap;
+}
+.noteFinger {
+  display: grid;
+  place-items: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: #3a3a3a;
+  font-size: 0.625rem;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  flex-shrink: 0;
+}
+/* A bar to work on, and the button that loops it. */
+.workOn {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-sm);
 }
 .hitLine {
   position: absolute;

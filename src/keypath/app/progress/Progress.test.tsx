@@ -49,7 +49,7 @@ describe('Progress', () => {
     expect(screen.getByText('opened 1× · first 1× · ~9 min')).toBeTruthy()
     expect(screen.getByText('Ode to Joy')).toBeTruthy()
     expect(screen.getByText(/1 finished · 0 stopped · ★★★/)).toBeTruthy()
-    expect(screen.getByText('1 of 9 steps done, 0 of them tested out')).toBeTruthy()
+    expect(screen.getByText('1 of 10 steps done, 0 of them tested out')).toBeTruthy()
   })
 
   it('switches to another player, who has nothing yet', async () => {

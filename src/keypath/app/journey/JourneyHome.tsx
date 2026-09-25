@@ -6,7 +6,7 @@ import { JourneyRepo, stateOf, type JourneyProgress } from './progress'
 import { JOURNEY } from './steps'
 import styles from './journey.module.css'
 
-/** The Journey door: six steps on a path. Every one can be opened; the locked ones offer a test-out. */
+/** The Journey door: its steps on a path. Every one can be opened; the locked ones offer a test-out. */
 export function JourneyHome() {
   const { t, store, profile } = useApp()
   const repo = useMemo(() => new JourneyRepo(store), [store])

@@ -5,9 +5,9 @@ import type { MidiEvent } from '../../midi/types'
 import { Shell } from '../Shell'
 import { EngagementLog } from '../log'
 import { ProfileRepo } from '../profiles'
-import { memoryStore } from '../store'
+import { K, memoryStore } from '../store'
 import { celebrated } from '../celebrate/celebrate'
-import { JourneyRepo } from './progress'
+import { JourneyRepo, type JourneyProgress } from './progress'
 
 vi.mock('../../App', () => ({ default: () => <div>probe screen</div> }))
 
@@ -23,11 +23,12 @@ const key = (note: number) => act(() => yamaha!({ type: 'noteon', note, velocity
 
 afterEach(cleanup)
 
-async function open(route: string) {
+async function open(route: string, progress?: JourneyProgress) {
   const store = memoryStore()
   const profiles = new ProfileRepo(store)
   const p = await profiles.create('Nora', '🐺')
   await profiles.setCurrent(p.id)
+  if (progress) await store.set(K.journey(p.id), progress)
   history.replaceState(null, '', route)
   render(<Shell store={store} />)
   return { store, profileId: p.id }
@@ -46,6 +47,7 @@ describe('Journey', () => {
     await screen.findByText('Find middle C')
     expect(stops()).toEqual([
       'open: 1Find middle CThe key everything starts from.',
+      'locked: 🔒Finger numbersI can do this already',
       'locked: 🔒C, D, EI can do this already',
       'locked: 🔒A five-finger tuneI can do this already',
       'locked: 🔒Your first chordI can do this already',
@@ -77,12 +79,12 @@ describe('Journey', () => {
     expect(log[3]).toMatchObject({ step: 'middleC', mode: 'check', passed: true, wrong: 0 })
 
     fireEvent.click(screen.getByRole('button', { name: 'Next step' }))
-    expect(await screen.findByText('Step 2 · C, D, E')).toBeTruthy()
+    expect(await screen.findByText('Step 2 · Finger numbers')).toBeTruthy()
   })
 
   it('tests out of a locked tune step from the Yamaha, set an octave down', async () => {
     const { store, profileId } = await open('#/journey/fiveFinger')
-    expect(await screen.findByText('Opens after step 2.')).toBeTruthy()
+    expect(await screen.findByText('Opens after step 3.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'I can do this already' }))
     expect(await screen.findByText('Press middle C to begin')).toBeTruthy()
     key(48) // middle C, arriving an octave low
@@ -95,8 +97,36 @@ describe('Journey', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to the map' }))
     await screen.findByText('Find middle C')
-    expect(stops()[2]).toBe('done: ✓A five-finger tuneTested out')
+    expect(stops()[3]).toBe('done: ✓A five-finger tuneTested out')
     expect(stops()[0]).toMatch(/^open/)
+  })
+
+  it('finger numbers: the hands light the finger asked for, then the check asks from memory', async () => {
+    const { store, profileId } = await open('#/journey/fingers')
+    // The hands are there before she starts.
+    expect(await screen.findByRole('img', { name: /thumbs are 1/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'I can do this already' }))
+    key(60)
+    expect(await screen.findByText('Right hand, finger 3.')).toBeTruthy()
+    // No hands and no lit key in the check.
+    expect(screen.queryByRole('img', { name: /thumbs are 1/ })).toBeNull()
+    expect(document.querySelector('[data-target]')).toBeNull()
+    for (const p of [64, 60, 55, 67, 48, 53, 65, 52]) key(p)
+    expect(await screen.findByText('You knew it already: step done.')).toBeTruthy()
+    expect((await new JourneyRepo(store).get(profileId)).fingers).toMatchObject({ how: 'testOut' })
+  })
+
+  it('the finger-numbers practice lights the finger on the hands, and its key', async () => {
+    await open('#/journey/fingers', { middleC: { at: '', how: 'check' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Learn it' }))
+    key(60)
+    expect(await screen.findByText('Right hand, finger 1: that’s C.')).toBeTruthy()
+    const lit = () => document.querySelector('[data-hand] [data-on] text')?.textContent
+    expect(lit()).toBe('1')
+    expect(document.querySelector('[data-target]')?.getAttribute('aria-label')).toMatch(/^C/)
+    for (const p of [60, 62, 64, 65, 67]) key(p)
+    expect(await screen.findByText('Left hand, finger 5: that’s C.')).toBeTruthy()
+    expect(document.querySelector('[data-hand="left"] [data-on] text')?.textContent).toBe('5')
   })
 
   it('a check with too many wrong keys is “nearly”, with another go or practice', async () => {

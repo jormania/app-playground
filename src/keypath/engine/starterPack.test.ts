@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { KEYBOARD_RANGE } from './range'
-import { lineBeats, STARTER_PACK, starterSong } from './starterPack'
+import { fingerList, lineBeats, STARTER_PACK, starterSong } from './starterPack'
+import { fingeringProblems } from './testing/fingering'
 
 describe('starter pack', () => {
   it('has a title in both languages for every song, and unique ids', () => {
@@ -8,6 +9,15 @@ describe('starter pack', () => {
     for (const s of STARTER_PACK) {
       expect(s.title.en).toBeTruthy()
       expect(s.title.ro).toBeTruthy()
+    }
+  })
+
+  it('writes a finger for every note of every hand, and the fingering holds together', () => {
+    for (const s of STARTER_PACK) {
+      expect(fingerList(s.fingers?.right).length, s.id).toBe(s.right.length)
+      if (s.left) expect(fingerList(s.fingers?.left).length, `${s.id} left`).toBe(s.left.length)
+      expect(fingeringProblems(starterSong(s)), s.id).toEqual([])
+      for (const n of starterSong(s).notes) expect([1, 2, 3, 4, 5], s.id).toContain(n.finger)
     }
   })
 

@@ -17,6 +17,8 @@ export interface ProfileSettings extends JudgeSettings {
   noteNames: NoteNames
   /** Names printed on the on-screen keys. Off once she knows where the notes are (the falling notes keep theirs). */
   keyNames: boolean
+  /** Finger numbers on the falling notes, and on the staff while practising. Only songs that carry fingering show any. */
+  fingers: boolean
 }
 
 export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
@@ -24,6 +26,7 @@ export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
   language: 'en',
   noteNames: 'auto',
   keyNames: true,
+  fingers: true,
 }
 
 /** Picked when creating a profile — a face, not a photo. */
