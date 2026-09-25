@@ -64,7 +64,7 @@ describe('SongLibrary: rename and remove', () => {
 
 describe('choosePart', () => {
   const part = (key: string) => ({ key, track: 1, channel: 1, name: key, noteCount: 10, low: 48, high: 72, meanPitch: 60, isDrums: false }) as unknown as ImportDraft['parts'][number]
-  const d: ImportDraft = { file: {} as ImportDraft['file'], title: 't', parts: [part('a'), part('b'), part('c')], right: part('a'), left: part('b') }
+  const d: ImportDraft = { file: { notes: [] } as unknown as ImportDraft['file'], title: 't', parts: [part('a'), part('b'), part('c')], right: part('a'), left: part('b'), split: null, splitSuggested: null }
 
   it('never gives one part to both hands', () => {
     expect(choosePart(d, 'right', 'b')).toMatchObject({ right: { key: 'b' }, left: null })

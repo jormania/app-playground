@@ -5,6 +5,13 @@ hardware: [`KEYPATH.md`](KEYPATH.md)). A release is a point on `main` worth nami
 number shows at the foot of Settings (`src/keypath/app/release.ts`). The user's guide is a
 shared doc, linked from the top of Home.
 
+## Since release 1
+
+- **Your own songs.** A piano MIDI with both hands in one track is offered a split
+  between the hands, at a line it suggests and she can move. Notes past the 61 keys
+  default to moving only those notes when they're few (under 5% of the song); "move
+  only" isn't offered when it would change nothing (KEYPATH_TUTOR.md §9).
+
 ## Release 1 — 2026-09-25
 
 The first whole version: a piano tutor for the Yamaha PSR-E383 over USB, on the phone,

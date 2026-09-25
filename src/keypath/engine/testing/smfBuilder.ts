@@ -64,3 +64,36 @@ export function melodyFile(notes: [number, number][], { bpm = 120, channel = 1, 
   }
   return smf(0, 480, [track(events)])
 }
+
+/**
+ * Both hands in one track, as many piano files come: [pitch, startBeat, beats]
+ * triples, notes free to overlap, at `bpm`, 480 ticks per quarter.
+ */
+export function pianoFile(notes: [number, number, number][], { bpm = 120, channel = 1, name = 'Piano', beatsPerBar = 4 } = {}): Uint8Array {
+  const timed: { at: number; off: boolean; pitch: number }[] = []
+  for (const [pitch, start, beats] of notes) {
+    timed.push({ at: Math.round(start * 480), off: false, pitch }, { at: Math.round((start + beats) * 480), off: true, pitch })
+  }
+  // At the same moment, a note ends before the next one starts.
+  timed.sort((a, b) => a.at - b.at || Number(b.off) - Number(a.off))
+  const events: TrackEvent[] = [meta.name(0, name), meta.tempo(0, bpm), meta.timeSig(0, beatsPerBar, 4)]
+  let now = 0
+  for (const e of timed) {
+    events.push(e.off ? off(e.at - now, channel, e.pitch) : on(e.at - now, channel, e.pitch))
+    now = e.at
+  }
+  return smf(0, 480, [track(events)])
+}
+
+/**
+ * Eight bars in the manner of a slow waltz for piano (bass note, then a chord,
+ * and a melody above): the left hand's chords rise past middle C, to F sharp.
+ */
+export const waltzPiano = (): [number, number, number][] => {
+  const melody = [78, 81, 79, 78, 76, 74, 76, 74]
+  return melody.flatMap((m, bar): [number, number, number][] => {
+    const b = bar * 3
+    const [bass, chord] = bar % 2 ? [38, [57, 61, 66]] : [43, [59, 62, 66]]
+    return [[bass, b, 1], ...chord.map((p): [number, number, number] => [p, b + 1, 2]), [m, b + 1, 2]]
+  })
+}

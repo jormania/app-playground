@@ -324,6 +324,24 @@
   font-size: var(--text-sm);
   line-height: 1.4;
 }
+/* One part, two hands: the switch, where the line goes, and what each hand gets. */
+.split {
+  display: grid;
+  gap: var(--space-xs);
+}
+.splitToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+.splitToggle input {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--color-accent);
+}
 .hitLine {
   position: absolute;
   left: 0;

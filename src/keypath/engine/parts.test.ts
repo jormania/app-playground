@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { splitHands, suggestSplit } from './parts'
+import type { SongNote } from './song'
 import { parseSmf } from './smf'
 import { partsOf, songFromParts, suggestParts } from './parts'
 import { stepsOf } from './song'
@@ -84,5 +86,36 @@ describe('octaveShift', () => {
 
   it('refuses a key that is not a C', () => {
     expect(octaveShift(62)).toBeNull()
+  })
+})
+
+describe('one part, two hands', () => {
+  const notes = (triples: [number, number, number][]) => triples.map(([pitch, start]) => ({ pitch, startMs: start * 500 }))
+  // A waltz for piano in one track: bass, then a chord up to F#4, and a melody from A4 up.
+  const waltz: [number, number, number][] = [0, 1, 2, 3, 4, 5, 6, 7].flatMap((bar): [number, number, number][] => {
+    const b = bar * 3
+    return [[bar % 2 ? 38 : 43, b, 1], [bar % 2 ? 57 : 59, b + 1, 2], [62, b + 1, 2], [66, b + 1, 2], [[78, 81, 79, 78, 76, 74, 76, 74][bar], b + 1, 2]]
+  })
+
+  it('finds the gap between the hands, not just middle C: the chords stay in the left hand', () => {
+    // G4: under it the bass and every chord (up to F#4), from it the melody (A4 up).
+    expect(suggestSplit(notes(waltz))).toBe(67)
+  })
+
+  it('a melody alone is not split, however far it wanders either side of middle C', () => {
+    const melody = [55, 57, 59, 60, 62, 64, 65, 67, 65, 64, 62, 60, 59, 57, 55, 60].map((p, i): [number, number, number] => [p, i, 1])
+    expect(suggestSplit(notes(melody))).toBeNull()
+  })
+
+  it('a part all above middle C is not split', () => {
+    const high = [60, 64, 67, 72, 64, 67, 72, 76, 60, 64, 67, 72].map((p, i): [number, number, number] => [p, Math.floor(i / 2), 1])
+    expect(suggestSplit(notes(high))).toBeNull()
+  })
+
+  it('gives the notes below the line to the left hand', () => {
+    const song = { id: 's', title: 's', bpm: 120, beatsPerBar: 3, durationMs: 0, notes: waltz.map(([pitch, start], id): SongNote => ({ id, pitch, startMs: start * 500, durationMs: 400, hand: 'right', bar: 0 })) }
+    const split = splitHands(song, 68)
+    expect(split.notes.filter((n) => n.hand === 'left').map((n) => n.pitch).sort((a, b) => a - b).at(-1)).toBe(66)
+    expect(split.notes.filter((n) => n.hand === 'right').every((n) => n.pitch >= 69)).toBe(true)
   })
 })

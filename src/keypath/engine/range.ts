@@ -45,7 +45,8 @@ export function transposeSong(song: Song, semitones: number): Song {
 //   moveHands  each hand by its own whole octaves, when the song as a whole
 //              is too wide but each hand fits
 //   moveNotes  only the notes that don't fit, each by the fewest octaves; the
-//              rest stay as written, those notes jump out of line
+//              rest stay as written, those notes jump out of line (the
+//              default when they are only a few: under 5% of the song)
 //   dropNotes  leave out the notes that don't fit; nothing else changes
 
 export type FitMode = NonNullable<Song['fit']>
@@ -129,16 +130,37 @@ export function fitOptions(notes: readonly SongNote[], range = KEYBOARD_RANGE): 
   const modes: FitMode[] = []
   if (applyFit(notes, 'moveSong', range)) modes.push('moveSong')
   else if (applyFit(notes, 'moveHands', range)) modes.push('moveHands')
-  modes.push('moveNotes', 'dropNotes')
+  // Moving the stray notes is offered only if one of them actually moves: when
+  // each would land on a key already sounding, it is the same as leaving them out.
+  if (applyFit(notes, 'moveNotes', range)!.moved > 0) modes.push('moveNotes')
+  modes.push('dropNotes')
   return modes.map((mode) => ({ mode, ...applyFit(notes, mode, range)! }))
 }
 
-/** The song as it will be played: its notes as written (`source`) put through the chosen fit. */
+/** Below this share of a song's notes outside the keyboard, only those move by default. */
+export const FEW_OUTSIDE = 0.05
+
+/**
+ * The choice made when none is asked for. A few stray notes (under 5% of the
+ * song, like five low bass notes in three hundred) move on their own, so the
+ * rest stay where they were written, or are left out when moving them would
+ * only double a key already sounding; a song that sits in the wrong octave as
+ * a whole moves whole, or by hands.
+ */
+export function defaultFit(options: readonly FitOption[], total: number): FitMode | null {
+  if (options.length === 0) return null
+  const outside = options.find((o) => o.mode === 'dropNotes')?.dropped ?? 0
+  if (total > 0 && outside / total < FEW_OUTSIDE) return options.some((o) => o.mode === 'moveNotes') ? 'moveNotes' : 'dropNotes'
+  return options[0].mode
+}
+
+/** The song as it will be played: its notes as written (`source`) put through the chosen fit, or the default one. */
 export function fitSong(song: Song, mode: FitMode | null, range = KEYBOARD_RANGE): Song {
   const source = song.source ?? song.notes
   const options = fitOptions(source, range)
   if (options.length === 0) return { ...song, notes: source, source: undefined, fit: undefined }
-  const chosen = options.find((o) => o.mode === mode) ?? options[0]
+  const want = mode ?? defaultFit(options, source.length)
+  const chosen = options.find((o) => o.mode === want) ?? options[0]
   const durationMs = chosen.notes.length ? Math.max(...chosen.notes.map((n) => n.startMs + n.durationMs)) : 0
   return { ...song, notes: chosen.notes, source, fit: chosen.mode, durationMs }
 }

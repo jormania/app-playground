@@ -1,4 +1,4 @@
-import { parseSmf, partsOf, songFromParts, suggestParts, fitOptions, fitSong, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
+import { parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import type { Language } from '../profiles'
 import { PREFIX, type KeyValueStore } from '../store'
@@ -78,6 +78,22 @@ export interface ImportDraft {
   parts: Part[]
   right: Part | null
   left: Part | null
+  /** With no left-hand part: split the right-hand part between the hands below this pitch; null keeps it whole. */
+  split: number | null
+  /** Where a split would go, when the right-hand part looks like both hands in one; null if it doesn't. */
+  splitSuggested: number | null
+}
+
+/** Where to split a part between the hands, if it looks like both hands in one track. */
+function splitFor(file: SmfFile, part: Part | null): number | null {
+  if (!part) return null
+  return suggestSplit(file.notes.filter((n) => `${n.track}:${n.channel}` === part.key))
+}
+
+/** The split offered with this choice of parts: only when there's no left-hand part, and on when the part looks two-handed. */
+function withSplit(d: Omit<ImportDraft, 'split' | 'splitSuggested'>): ImportDraft {
+  const suggested = d.left ? null : splitFor(d.file, d.right)
+  return { ...d, split: suggested, splitSuggested: suggested }
 }
 
 export type ImportProblem = 'not-midi' | 'unsupported' | 'no-notes'
@@ -90,9 +106,9 @@ export type ImportProblem = 'not-midi' | 'unsupported' | 'no-notes'
  */
 export function choosePart(d: ImportDraft, hand: 'right' | 'left', key: string): ImportDraft {
   const part = d.parts.find((p) => p.key === key) ?? null
-  if (part && hand === 'right' && d.left?.key === part.key) return { ...d, right: part, left: null }
-  if (part && hand === 'left' && d.right?.key === part.key) return { ...d, left: part, right: d.left ?? d.parts.find((p) => p.key !== part.key) ?? null }
-  return { ...d, [hand]: part }
+  if (part && hand === 'right' && d.left?.key === part.key) return withSplit({ ...d, right: part, left: null })
+  if (part && hand === 'left' && d.right?.key === part.key) return withSplit({ ...d, left: part, right: d.left ?? d.parts.find((p) => p.key !== part.key) ?? null })
+  return withSplit({ ...d, [hand]: part })
 }
 
 /** Read a picked file into a draft for the "Which part?" step. */
@@ -108,7 +124,7 @@ export function draftFromFile(bytes: ArrayBuffer, fileName: string): ImportDraft
   if (parts.length === 0) return 'no-notes'
   const { right, left } = suggestParts(parts)
   const title = fileName.replace(/\.(mid|midi|kar)$/i, '').replace(/[_-]+/g, ' ').trim() || 'Untitled'
-  return { file, title, parts, right, left }
+  return withSplit({ file, title, parts, right, left })
 }
 
 export interface Built {
@@ -122,7 +138,9 @@ export interface Built {
 
 /** Build the song from the chosen parts, fitted to the keyboard the chosen way (the best way, if none is chosen). */
 export function buildImport(d: ImportDraft, title: string, fit: FitMode | null = null): Built {
-  const song = songFromParts(d.file, { id: `import:${Date.now().toString(36)}`, title: title.trim() || d.title, right: d.right, left: d.left })
+  const built = songFromParts(d.file, { id: `import:${Date.now().toString(36)}`, title: title.trim() || d.title, right: d.right, left: d.left })
+  // One part holding both hands: shared out by pitch before anything else, so each hand fits the keys on its own terms.
+  const song = !d.left && d.split !== null ? splitHands(built, d.split) : built
   const options = fitOptions(song.notes)
   const outside = options.find((o) => o.mode === 'dropNotes')?.dropped ?? 0
   return { song: fitSong(song, fit), options, outside }

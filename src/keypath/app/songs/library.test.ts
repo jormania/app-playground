@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { melodyFile, meta, on, off, smf, track } from '../../engine/testing/smfBuilder'
+import { melodyFile, meta, on, off, pianoFile, smf, track, waltzPiano } from '../../engine/testing/smfBuilder'
 import { memoryStore } from '../store'
-import { buildImport, draftFromFile, SongLibrary, type ImportDraft } from './library'
+import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft } from './library'
 
 const bytes = (u: Uint8Array) => u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) as ArrayBuffer
 
@@ -91,5 +91,32 @@ describe('songs wider than the keyboard', () => {
     const read = await lib.get(old.id, 'en')
     expect(read?.fit).toBe('moveNotes')
     expect(read?.notes.every((n) => n.pitch >= 36 && n.pitch <= 96)).toBe(true)
+  })
+})
+
+describe('both hands in one track', () => {
+  const draft = () => draftFromFile(bytes(pianoFile(waltzPiano(), { beatsPerBar: 3 })), 'waltz.mid') as ImportDraft
+
+  it('is noticed, and split between the hands where they part', () => {
+    const d = draft()
+    expect(d.left).toBeNull()
+    expect(d.split).toBe(67)
+    const { song } = buildImport(d, '')
+    const hands = (h: string) => song.notes.filter((x) => x.hand === h).length
+    expect([hands('left'), hands('right')]).toEqual([32, 8])
+  })
+
+  it('can be moved, or turned off to keep it all in the right hand', () => {
+    expect(buildImport({ ...draft(), split: 60 }, '').song.notes.filter((x) => x.hand === 'left').length).toBe(16)
+    expect(buildImport({ ...draft(), split: null }, '').song.notes.every((x) => x.hand === 'right')).toBe(true)
+  })
+
+  it('a melody file is not offered a split', () => {
+    expect(draftFromFile(bytes(melodyFile([[60, 1], [62, 1], [64, 1]])), 'm.mid')).toMatchObject({ split: null, splitSuggested: null })
+  })
+
+  it('choosing a part for the left hand turns the split off', () => {
+    const d = { ...draft(), parts: [...draft().parts, { ...draft().parts[0], key: 'other', name: 'Bass' }] }
+    expect(choosePart(d, 'left', 'other')).toMatchObject({ split: null })
   })
 })

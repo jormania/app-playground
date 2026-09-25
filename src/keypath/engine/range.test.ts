@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFit, checkRange, fitOptions, fitSong, KEYBOARD_RANGE } from './range'
+import { applyFit, checkRange, defaultFit, fitOptions, fitSong, KEYBOARD_RANGE } from './range'
 import type { Hand, Song, SongNote } from './song'
 
 const n = (id: number, pitch: number, startMs: number, hand: Hand = 'right'): SongNote => ({ id, pitch, startMs, durationMs: 400, hand, bar: Math.floor(startMs / 2000) })
@@ -47,6 +47,26 @@ describe('fitting a song to the 61 keys', () => {
     const r = applyFit(notes, 'moveNotes')!
     expect(pitches(r.notes)).toEqual([36, 38])
     expect([r.moved, r.dropped]).toEqual([1, 1])
+  })
+
+  it('by default, a few stray notes move on their own; a song in the wrong octave moves whole', () => {
+    // Five low bass notes in three hundred and seventeen (the Gymnop\u00e9die case): only they move.
+    const mostlyFine = [...Array.from({ length: 312 }, (_, i) => n(i, 50 + (i % 30), i * 100)), ...[0, 1, 2, 3, 4].map((k) => n(312 + k, 31, k * 1000, 'left'))]
+    const opts = fitOptions(mostlyFine)
+    expect(opts[0].mode).toBe('moveSong')
+    expect(defaultFit(opts, mostlyFine.length)).toBe('moveNotes')
+    expect(fitSong(song(mostlyFine), null).fit).toBe('moveNotes')
+    // Everything an octave too high: the whole song moves.
+    const allHigh = [n(0, 100, 0), n(1, 103, 500), n(2, 98, 1000)]
+    expect(defaultFit(fitOptions(allHigh), allHigh.length)).toBe('moveSong')
+  })
+
+  it('when the one stray note would only double a key already sounding, moving is not offered, and leaving it out is the default', () => {
+    // A low C under the C an octave above it, played together (the Stranger Things case: 1 note in 249).
+    const notes = [n(0, 24, 0, 'left'), n(1, 36, 0, 'left'), ...Array.from({ length: 60 }, (_, i) => n(2 + i, 60 + (i % 12), 500 + i * 250))]
+    const opts = fitOptions(notes)
+    expect(opts.map((o) => o.mode)).toEqual(['moveSong', 'dropNotes'])
+    expect(defaultFit(opts, notes.length)).toBe('dropNotes')
   })
 
   it('keeps the notes as written, so the choice can be changed later', () => {

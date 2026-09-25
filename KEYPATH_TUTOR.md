@@ -649,10 +649,19 @@ menu in the song list:
   the song as a whole is too wide but each hand fits. Each hand keeps its
   shape; the gap between them changes.
 - **Move only the notes that don't fit**, each by the fewest octaves onto
-  the keys; the rest stay as written. Always possible; those notes jump out
-  of line. A moved note landing on a key already starting at that moment is
-  left out rather than pressed twice. The default when no move above is.
+  the keys; the rest stay as written. Those notes jump out of line. A moved
+  note landing on a key already starting at that moment is left out rather
+  than pressed twice, so when *every* stray note would land that way (a bass
+  line doubled in octaves), this choice is the same as the next one and isn't
+  offered.
 - **Leave out the notes that don't fit**; nothing else changes.
+
+The default depends on how many notes are outside. Under 5% of the song
+(`FEW_OUTSIDE`: say five low bass notes in three hundred), only those move,
+so the rest stay where the composer wrote them rather than the whole
+song dropping an octave; or, if moving them would only double keys already
+sounding, they're left out. At 5% or more the song is simply in the wrong
+place, and the first choice above is the default (`defaultFit`).
 
 Each choice says what it would change ("3 notes move an octave or two…").
 Moves are always whole octaves, so the key never changes.
@@ -662,6 +671,27 @@ the choice, so it can be changed later without adding the song again. Bars
 don't change, so parts already learnt stay learnt. A song added before this
 existed, with notes past the keys, is given the default choice when it's
 read, so none can get stuck.
+
+### Both hands in one track
+
+Many piano MIDI files put both hands in one track. Imported as it was, all of
+it went to the right hand: Practise hands never had a left hand to offer and
+Other hand plays did nothing.
+
+When there's no left-hand part, the right-hand part is checked for two hands
+(`suggestSplit`, `engine/parts.ts`): a real share of notes below and above
+middle C, and enough of them struck together. A plain melody isn't offered a
+split. When it looks two-handed, "Split this part between two hands" is on,
+with the line where the hands part: tried at each key from F3 to C5, it's the
+one that cuts fewest chords (notes a fifth or less apart, struck together)
+and leaves fewest reaches over an octave for one hand, drawn toward middle C
+on a tie. For a waltz with the bass low and chords under the tune, it lands
+between the chord's top and the tune. She can move the line or switch the
+split off, with a count of how many notes each hand gets. The split comes
+before the fit to the keyboard, so each hand is then fitted as a hand.
+
+A split by pitch is a guess: where the hands cross, a note goes to the wrong
+one. Choosing a left-hand part turns the split off.
 
 ### Progress (after step 6)
 

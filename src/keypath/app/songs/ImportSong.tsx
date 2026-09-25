@@ -4,8 +4,9 @@ import { SelectField } from '../../../ds/components/SelectField'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
-import type { FitMode } from '../../engine'
+import { SPLIT_RANGE, type FitMode } from '../../engine'
 import { FitChoice } from './FitChoice'
+import { noteLabel } from '../i18n'
 import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
@@ -13,7 +14,7 @@ const PROBLEM_TEXT = { 'not-midi': 'importNotMidi', unsupported: 'importUnsuppor
 
 /** "Add a song": pick a MIDI file, confirm which part is which hand, save it to this phone. */
 export function ImportSong() {
-  const { t, store, log, profile } = useApp()
+  const { t, store, log, profile, settings } = useApp()
   const library = useMemo(() => new SongLibrary(store), [store])
   const fileInput = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState<ImportDraft | null>(null)
@@ -51,6 +52,9 @@ export function ImportSong() {
     if (profile) await log.add(profile.id, { type: 'song_added' })
     navigate({ name: 'play', songId: preview.song.id }, { replace: true })
   }
+
+  /** A key by name and octave, middle C marked: C4 (middle C). */
+  const keyName = (p: number) => `${noteLabel(p, settings.noteNames, settings.language)}${Math.floor(p / 12) - 1}${p === 60 ? ` (${t('middleCShort')})` : ''}`
 
   const partSelect = (hand: 'right' | 'left') => (
     <SelectField label={t(hand === 'right' ? 'rightHand' : 'leftHand')} value={draft?.[hand]?.key ?? ''} onChange={(e) => choose(hand, e.target.value)}>
@@ -93,6 +97,31 @@ export function ImportSong() {
           <h2 className={styles.h2}>{t('whichPart')}</h2>
           {partSelect('right')}
           {partSelect('left')}
+          {draft.right && !draft.left && (draft.splitSuggested !== null || (draft.right.low < 60 && draft.right.high >= 60)) && (
+            <div className={styles.split}>
+              <label className={styles.splitToggle}>
+                <input type="checkbox" checked={draft.split !== null} onChange={(e) => setDraft({ ...draft, split: e.target.checked ? (draft.splitSuggested ?? 60) : null })} />
+                <span>{t('splitHands')}</span>
+              </label>
+              {draft.splitSuggested !== null && <p className={styles.hint}>{t('splitHint')}</p>}
+              {draft.split !== null && (
+                <>
+                  <SelectField label={t('splitAt')} value={String(draft.split)} onChange={(e) => setDraft({ ...draft, split: Number(e.target.value) })}>
+                    {Array.from({ length: SPLIT_RANGE.high - SPLIT_RANGE.low + 1 }, (_, i) => SPLIT_RANGE.low + i).map((p) => (
+                      <option key={p} value={p}>
+                        {keyName(p)}
+                      </option>
+                    ))}
+                  </SelectField>
+                  {preview && (
+                    <p className={styles.hint}>
+                      {t('splitCounts', { left: preview.song.notes.filter((n) => n.hand === 'left').length, right: preview.song.notes.filter((n) => n.hand === 'right').length })}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           {preview && preview.options.length > 0 && <FitChoice options={preview.options} value={preview.song.fit ?? preview.options[0].mode} onChange={setFit} outside={preview.outside} atImport />}
           <div>
             <Button onClick={save} disabled={!preview}>
