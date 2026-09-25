@@ -68,6 +68,20 @@ describe('summarise', () => {
     expect(s.keyboard).toEqual({ setupsDone: 0, setupsLeft: 0, lostMidSong: 1 })
   })
 
+  it('stops a door’s time when she is back on Home, rather than at the next door', () => {
+    const t = summarise(
+      log(
+        ['2026-09-25T18:00:00', { type: 'session_start' }],
+        ['2026-09-25T18:00:00', { type: 'door_opened', door: 'songs' }],
+        ['2026-09-25T18:04:00', { type: 'door_left', door: 'songs' }],
+        ['2026-09-25T18:10:00', { type: 'door_opened', door: 'journey' }],
+        ['2026-09-25T18:12:00', { type: 'session_end', durationMs: 12 * 60000 }],
+      ),
+    )
+    expect(t.doors.songs.minutes).toBe(4) // not 10: six minutes on Home between the doors
+    expect(t.doors.journey.minutes).toBe(2)
+  })
+
   it('is empty, not broken, for a player with no log yet', () => {
     expect(summarise([])).toMatchObject({ from: null, sessions: 0, days: [], cameBackNextDay: 0 })
   })

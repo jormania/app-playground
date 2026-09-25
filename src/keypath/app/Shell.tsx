@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppContext, type KeyPathApp } from './context'
 import { translate } from './i18n'
-import { EngagementLog } from './log'
+import { EngagementLog, type Door } from './log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo, type Profile, type ProfileSettings } from './profiles'
-import { hrefOf, navigate, useRoute } from './router'
+import { hrefOf, navigate, useRoute, type Route } from './router'
 import { indexedDbStore, type KeyValueStore } from './store'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { WhoIsPlaying } from './screens/WhoIsPlaying'
@@ -23,6 +23,25 @@ import { EchoScreen } from './challenges/EchoScreen'
 import { ChordCatchScreen } from './challenges/ChordCatchScreen'
 import { ProgressScreen } from './progress/ProgressScreen'
 import styles from './app.module.css'
+
+/** The door a screen belongs to, for Progress's time per door; null for Home, Settings and the like. */
+export function doorOf(route: Route): Door | null {
+  switch (route.name) {
+    case 'door':
+      return route.door
+    case 'songImport':
+    case 'play':
+      return 'songs'
+    case 'journeyStep':
+      return 'journey'
+    case 'challenge':
+      return 'challenges'
+    case 'studio':
+      return 'studio'
+    default:
+      return null
+  }
+}
 
 /**
  * The KeyPath app: who's playing, the four doors, settings, diagnostics.
@@ -82,6 +101,19 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [profile, startSession, endSession])
 
+  // Back on Home from a door: the door's time stops here (Progress). A detour to
+  // Settings or the connection wizard mid-song still counts to the door.
+  const openDoor = useRef<Door | null>(null)
+  useEffect(() => {
+    if (!profile) return
+    const door = doorOf(route)
+    if (door) openDoor.current = door
+    else if ((route.name === 'home' || route.name === 'start') && openDoor.current) {
+      void log.add(profile.id, { type: 'door_left', door: openDoor.current })
+      openDoor.current = null
+    }
+  }, [route, profile, log])
+
   // Hands are on the keys, not the phone: the screen stays on while KeyPath is
   // open. Chrome drops the lock when the page is hidden; the hook takes it back.
   useWakeLock(true)
@@ -107,6 +139,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
       await log.add(profile.id, { type: 'setting_changed', key, from, to: value })
     },
     choose: async (p) => {
+      openDoor.current = null
       endSession(profile)
       await profiles.setCurrent(p?.id ?? null)
       setProfile(p)

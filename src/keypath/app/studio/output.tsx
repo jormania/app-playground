@@ -18,6 +18,8 @@ export interface Output {
   choose: (v: Via) => void
   /** A keyboard with a MIDI output is attached. */
   canSend: boolean
+  /** A keyboard is attached at all (whether or not it can take MIDI). */
+  keyboardConnected: boolean
   /** Where sound actually goes now. */
   route: Via
   sink: () => Sink
@@ -47,10 +49,13 @@ export function useOutput(kb: KeyboardStatus): Output {
   const route: Via = canSend ? via : 'phone'
   const sink = useCallback((): Sink => (route === 'keyboard' ? keyboardSink((d, at) => keyboardConnection().send?.(d, at) ?? false) : phoneSink(kb.connected)), [route, kb.connected])
   const phoneMuted = route === 'phone' && kb.connected && loadOutputLevel().level === 0
-  return { via, choose, canSend, route, sink, phoneMuted }
+  return { via, choose, canSend, keyboardConnected: kb.connected, route, sink, phoneMuted }
 }
 
-/** The Keyboard / Phone choice, or a line saying the phone plays when there is no choice. */
+/**
+ * The Keyboard / Phone choice. When a keyboard is attached but can't take MIDI,
+ * a line says the phone plays; with no keyboard at all that goes without saying.
+ */
 export function OutputChoice({ output, label, phoneOnly }: { output: Output; label: string; phoneOnly: string }) {
   const { t } = useApp()
   return (
@@ -69,9 +74,11 @@ export function OutputChoice({ output, label, phoneOnly }: { output: Output; lab
           />
         </div>
       ) : (
-        <p className={setup.note} data-inline>
-          {phoneOnly}
-        </p>
+        output.keyboardConnected && (
+          <p className={setup.note} data-inline>
+            {phoneOnly}
+          </p>
+        )
       )}
       {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
     </>

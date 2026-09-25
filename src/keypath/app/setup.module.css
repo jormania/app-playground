@@ -28,6 +28,36 @@
   color: var(--color-muted);
 }
 
+/* A control and its companions on one line (a count-in and its metronome chip). */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.controls > :first-child {
+  flex: 1 1 100%;
+}
+/* An on/off choice beside a segmented control, at its height and in its colours. */
+.chip {
+  height: 32px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2, transparent);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip[aria-pressed='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
 /* The start button and its companions. */
 .go {
   display: flex;
@@ -95,8 +125,15 @@
     flex: 1 1 10rem;
   }
   /* The segmented controls size to their options instead of the full width. */
-  .field > :last-child {
+  .field > :last-child,
+  .controls > * {
     width: auto;
+  }
+  .controls {
+    flex-wrap: nowrap;
+  }
+  .controls > :first-child {
+    flex: 0 1 auto;
   }
   .note,
   .lead {

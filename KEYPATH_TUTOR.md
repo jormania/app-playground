@@ -687,8 +687,9 @@ forgotten; each item says when it comes back.
   the player's id (settings, log, Journey, Studio), and keeps the phone's
   songs, the other players and the keyboard it remembers.
 - ~~**Share progress**~~ Done: Settings → Progress (§9, "Progress").
-- **Leaving a door** isn't logged, so time per door is an estimate. Logging
-  a `door_left` on Home would make it exact.
+- ~~**Leaving a door**~~ Done: `door_left` is logged when she's back on
+  Home (a detour to Settings or the connection wizard still counts to the
+  door), and Progress stops the door's time there.
 - Translating the **Diagnostics** screen, which stays in English for now.
 
 **App distribution** — **done** (after step 5, at Gabriel's request, to
@@ -739,10 +740,15 @@ install it and get the full screen):
   Still open: opening a take in Songs as her own song, which needs her free
   timing snapped to beats first.
 - ~~**Rename** a take~~ Done (§9, "Studio additions").
-- **A metronome during the take**, not only before it. The count-in fixes
-  where bar 1 starts; a click throughout would keep the bars lined up.
+- ~~**A metronome during the take**~~ Done: with a count-in chosen, **♩ Keep
+  clicking** carries the click on every beat of the take (the first of each
+  bar louder), remembered on the phone (`studio/metronome.ts`). A click the
+  keyboard might send back is recognised by its key and moment and never
+  recorded. Logged as `click` on `studio_recorded`.
 - **The phone's playback ignores the sustain pedal.** Notes end where the
-  keys were released; the keyboard's playback does voice the pedal.
+  keys were released; the keyboard's playback does voice the pedal. Parked:
+  there is no pedal (a footswitch, FC5 or FC4A, in the SUSTAIN jack), so no
+  take has any. Comes back if one is bought.
 
 **Journey refinements** (deferred from step 4; tune on Nora's use):
 - **Pass marks.** A check passes with at most one wrong key (two in the tune

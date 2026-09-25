@@ -128,7 +128,7 @@ describe('Studio', () => {
     await screen.findByText(/KeyPath records what you play, not the Style/)
     await act(async () => {})
     fireEvent.click(screen.getByRole('radio', { name: '120' }))
-    expect(screen.getByText(/Four clicks at 120 beats a minute/)).toBeTruthy()
+    expect(screen.getByText(/Four clicks at 120, then recording starts/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '● Record' }))
     expect(screen.getByText('Recording in 4…')).toBeTruthy()
     kb.emit({ type: 'noteon', note: 50 }) // noodling during the count-in: not the take
@@ -148,6 +148,31 @@ describe('Studio', () => {
     expect(take.bpm).toBe(120)
     expect(await store.get(`${PREFIX}studioCountIn`)).toBe(120)
     expect((await new EngagementLog(store).read(profileId)).find((e) => e.type === 'studio_recorded')).toMatchObject({ countIn: 120 })
+  })
+
+  it('keeps clicking through the whole take when asked, and never records its own echoed clicks', async () => {
+    const { store, profileId } = await open('#/door/studio')
+    await screen.findByText(/KeyPath records what you play/)
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('radio', { name: '120' }))
+    fireEvent.click(screen.getByRole('button', { name: '♩ Keep clicking' }))
+    expect(screen.getByText(/one on every beat as you play/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '● Record' }))
+    await act(() => new Promise((r) => setTimeout(r, 2200)))
+    // The keyboard sends a click straight back, as some do: it arrives at the click's own moment.
+    const click = kb.sent.filter((m) => m.data[0] === 0x90 && m.data[1] === 84).at(-1)!
+    kb.emit({ type: 'noteon', note: 84, time: click.at })
+    kb.emit({ type: 'noteon', note: 60 })
+    kb.emit({ type: 'noteoff', note: 60 })
+    await act(() => new Promise((r) => setTimeout(r, 1100)))
+    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+    // Four count-in clicks, then the metronome's, beat after beat.
+    expect(kb.sent.filter((m) => m.data[0] === 0x90 && m.data[1] === 84).length).toBeGreaterThanOrEqual(7)
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep it' }))
+    await screen.findByText('Take 1')
+    expect((await new TakeRepo(store).list(profileId))[0].notes.map((n) => n.pitch)).toEqual([60])
+    expect((await new EngagementLog(store).read(profileId)).find((e) => e.type === 'studio_recorded')).toMatchObject({ countIn: 120, click: true })
+    expect(await store.get(`${PREFIX}studioClick`)).toBe(true)
   })
 
   it('cancels a count-in, and records nothing', async () => {
