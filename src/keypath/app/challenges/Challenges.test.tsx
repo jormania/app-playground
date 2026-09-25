@@ -132,6 +132,15 @@ describe('Challenges', () => {
     expect(log.find((e) => e.type === 'challenge_finished')).toMatchObject({ game: 'race', level: 1, score: 5, best: true, wrong: 1 })
   })
 
+  it('note race: a round with nothing found says so kindly, not “0 found!”', async () => {
+    await open('#/challenge/race')
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    advance(30_000)
+    await flush()
+    expect(screen.getByText('None found this time. Have another go!')).toBeTruthy()
+  })
+
   it('note race hides the names on the screen keys: finding them is the game', async () => {
     await open('#/challenge/race')
     await flush()

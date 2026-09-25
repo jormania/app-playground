@@ -44,6 +44,10 @@
 }
 
 /* ── The door ── */
+.games {
+  display: grid;
+  gap: var(--space-md);
+}
 .game {
   display: grid;
   grid-template-columns: 3rem 1fr;
@@ -380,5 +384,27 @@
   }
   .bar {
     height: 2rem;
+  }
+}
+
+/* The door on a phone on its side: the three games side by side, icon above the title. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .screen {
+    max-width: none;
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-sm);
+  }
+  .games {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-sm);
+  }
+  .game {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    padding: var(--space-sm) var(--space-md);
+  }
+  .gameIcon {
+    grid-row: auto;
+    justify-self: start;
   }
 }

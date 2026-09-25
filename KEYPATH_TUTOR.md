@@ -409,6 +409,57 @@ above is sized for a tab with the toolbar (about 290 px tall on the S24).
   C nearest the middle, within the Yamaha's C2–C7. A one-octave song no
   longer gets keys as wide as a hand.
 
+### Audit (2026-09-25), landscape first
+
+A pass over the whole app, with landscape treated as the main way it's used.
+
+**Landscape.** Every setup panel (a song; the three games; Studio's record
+bar) shares one layout, `app/setup.module.css`: small segmented controls,
+labels beside them, the standard 44 px start button, with the same weights in
+both orientations. In portrait each choice is its own row (label above); on a
+phone on its side they flow into one row, two at most, so the keyboard stays
+in view. Checked at 780×290 (the S24 as a tab) and 780×340 (as an app).
+- A song's Stop sits in the corner of the falling notes, not in a row under
+  the keys.
+- The song report: heading, stars and buttons on the left, the rest on the
+  right, so Play again needs no scrolling.
+- Home: the four doors side by side. Challenges: the three games side by side.
+  The song lists: two columns.
+- Studio: tighter spacing; a waiting take is one row (Play, Keep, Discard).
+- Rhythm echo: the two-column layout (Tap on the right) only during a turn.
+
+**Bugs fixed.**
+- A new screen opened at the previous screen's scroll position; `navigate()`
+  now scrolls to the top (back keeps the browser's own restore).
+- Leaving a song mid-way with the back arrow wasn't logged; it is now logged
+  as stopped, like the Stop button.
+- "Another song" went back in history (to Home, from the resume card); it
+  opens the song list.
+- Leaving Rhythm echo between rhythms wasn't logged as leaving.
+- The resume card didn't log opening its door, so Progress undercounted it.
+- Import let one part be both hands, doubling every note (`choosePart`).
+- A song's keys spanned both hands even when practising one: right-hand Ode
+  to Joy drew 22 slivers in portrait, now 8 keys.
+
+**Messages.** Plurals in both languages: `{count|# note|# notes}` in
+English, three forms in Romanian (o notă · 5 note · 25 de note; o dată · de
+3 ori · de 21 de ori), `pluralIndex` in `i18n/index.ts`, and a test that each
+token has a form for every plural its language has. Timing and the end-of-song
+report now say what they do. A score of 0 says "None found this time. Have
+another go!" rather than "0 found!". Progress shows dates the way people write
+them (24 Sep), once when it's a single day.
+
+**Consistency.** Restore asks on the page, like Delete, instead of a browser
+dialog. The resume card shows stars as the song list does (★★☆). The
+keyboard status sits in the title row on every playing screen, Studio too.
+Tap targets: the Connect pill and text links get a finger-sized hit area.
+
+**Small improvements.**
+- The song setup says which wrong-note mode and timing are on, with Change.
+- "Press middle C" has a way back to change hands or speed.
+- A new player's language is chosen on the form, which switches to it at once.
+- Settings → Edit name and face.
+
 ### Progress (after step 6)
 
 ```
@@ -631,7 +682,7 @@ forgotten; each item says when it comes back.
 **App shell refinements** (deferred from step 2):
 - A **PIN** on a player (the family-account design in `KEYPATH.md` §7). For
   now each phone simply opens into its last player.
-- **Edit a player** (rename, change face). *Remove* is done: Settings →
+- ~~**Edit a player**~~ Done (§9, "Audit"). *Remove* is done too: Settings →
   **Delete this player**, confirmed in place. It deletes every key ending in
   the player's id (settings, log, Journey, Studio), and keeps the phone's
   songs, the other players and the keyboard it remembers.
@@ -739,6 +790,7 @@ install it and get the full screen):
 - The wizard doesn't test the **charging hub** (`KEYPATH.md` §2) or phone
   audio; Diagnostics still does the audio check.
 
-**Content**: the public-domain starter pack shipped with step 3 (four
-melodies). More public-domain pieces can join it the same way, as data.
+**Content**: the public-domain starter pack, four melodies with step 3 and
+ten since "More songs and Listen first". More public-domain pieces can join it
+the same way, as data.
 

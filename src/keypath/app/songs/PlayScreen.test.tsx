@@ -111,7 +111,7 @@ describe('Play screen', () => {
     tap(target()!)
     await waitFor(() => expect(target()?.getAttribute('aria-label')).toBe('C'))
     act(() => tap(target()!))
-    fireEvent.click(await screen.findByRole('button', { name: 'Stop' }))
+    fireEvent.click(await screen.findByRole('button', { name: '■ Stop' }))
     expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
     await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_abandoned', hit: 1, total: 3 }))
   })
@@ -123,5 +123,55 @@ describe('Play screen', () => {
     await waitFor(async () => expect((await events(store, profileId)).find((e) => e.type === 'song_listened')).toMatchObject({ songId: 'Three notes', practice: 'right', tempo: 1 }))
     fireEvent.click(screen.getByRole('button', { name: /■ Stop/ }))
     expect(await screen.findByRole('button', { name: /Listen/ })).toBeTruthy()
+  })
+})
+
+describe('Play screen, after the audit', () => {
+  it('logs leaving a song mid-way (the back arrow) as stopping it', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    tap(target()!)
+    await waitFor(() => expect(target()?.getAttribute('aria-label')).toBe('C'))
+    act(() => tap(target()!))
+    act(() => {
+      history.pushState(null, '', '#/door/songs')
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    await screen.findByText('Starter songs')
+    await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_abandoned', songId: 'Three notes', hit: 1, total: 3 }))
+  })
+
+  it('draws the keys the chosen hands need, not the whole song', async () => {
+    await setUp({}, '#/play/starter%3Aode')
+    await screen.findByRole('button', { name: /Start/ })
+    const keys = () => document.querySelectorAll('[aria-pressed]').length
+    const right = keys()
+    fireEvent.click(screen.getByRole('radio', { name: 'Both' }))
+    await waitFor(() => expect(keys()).toBeGreaterThan(right))
+    expect(right).toBeLessThanOrEqual(25) // two octaves at most for the right hand of Ode to Joy
+  })
+
+  it('says which mode and timing are on, with the way to change them, and lets the middle-C wait go back', async () => {
+    await setUp({ onWrong: 'wait', timing: 'relaxed' }, '#/play/Three%20notes')
+    expect(await screen.findByText('On a wrong note: Wait for it · Timing: Relaxed')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    expect(screen.getByText('Press middle C to begin')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change speed' }))
+    expect(screen.getByRole('button', { name: /Start/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+    expect(await screen.findByText('Settings for Nora')).toBeTruthy()
+  })
+
+  it('sends “Another song” to the song list, wherever the song was opened from', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    tap(target()!)
+    for (const pitch of [60, 62, 64]) {
+      await waitFor(() => expect(target()?.getAttribute('aria-label')).toBe({ 60: 'C', 62: 'D', 64: 'E' }[pitch]))
+      act(() => tap(target()!))
+    }
+    fireEvent.click(await screen.findByRole('button', { name: 'Another song' }))
+    expect(await screen.findByText('Starter songs')).toBeTruthy()
+    expect(location.hash).toBe('#/door/songs')
   })
 })

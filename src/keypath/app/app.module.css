@@ -372,3 +372,27 @@
     animation: none;
   }
 }
+
+/* A phone on its side: the four doors side by side, so all of Home fits without scrolling.
+   The same sizes as in portrait; the icon moves above the title to make room. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .homeScreen {
+    max-width: none;
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-sm);
+  }
+  .doors {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .door {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    min-height: 0;
+    padding: var(--space-sm) var(--space-md);
+  }
+  .doorIcon {
+    grid-row: auto;
+    justify-self: start;
+  }
+}

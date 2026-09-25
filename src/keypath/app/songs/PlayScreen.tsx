@@ -19,6 +19,7 @@ import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useOutput } from '../studio/output'
 import { Playback, realClock } from '../studio/playback'
 import styles from './songs.module.css'
+import setup from '../setup.module.css'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report'
 
@@ -350,11 +351,12 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       <TopBar title={song.title} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
-        <section className={styles.panel}>
+        <section className={setup.bar}>
           {hasLeft && (
-            <div className={styles.row}>
-              <span className={styles.label}>{t('hands')}</span>
+            <div className={setup.field}>
+              <span className={setup.label}>{t('hands')}</span>
               <SegmentedControl
+                size="sm"
                 value={practice}
                 onChange={(v) => setPractice(v as Practice)}
                 options={[
@@ -365,32 +367,30 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
               />
             </div>
           )}
-          <div className={styles.row}>
-            <span className={styles.label}>{t('speed')}</span>
-            <SegmentedControl value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+          <div className={setup.field}>
+            <span className={setup.label}>{t('speed')}</span>
+            <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
           </div>
-          <div>
-            <div className={styles.actions}>
-              <Button
-                onClick={() => {
-                  stopListening()
-                  setPhase('ready')
-                }}
-              >
-                ▶ {t('startSong')}
-              </Button>
-              <Button variant="outline" onClick={listen}>
-                {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
-              </Button>
-            </div>
-            {output.phoneMuted && <p className={styles.hint}>{t('studioPhoneMuted')}</p>}
+          <div className={setup.go}>
+            <Button
+              onClick={() => {
+                stopListening()
+                setPhase('ready')
+              }}
+            >
+              ▶ {t('startSong')}
+            </Button>
+            <Button variant="outline" onClick={listen}>
+              {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
+            </Button>
           </div>
-          <p className={styles.modeLine}>
+          <p className={setup.note} data-inline>
             <span>{t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
-            <button type="button" className={styles.linkButton} onClick={() => navigate({ name: 'settings' })}>
+            <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
               {t('playModeChange')}
             </button>
           </p>
+          {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
         </section>
       )}
 
@@ -435,6 +435,11 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
             🔥 {t('streakChip', { count: streak })}
           </div>
         )}
+        {phase === 'playing' && (
+          <Button size="sm" variant="ghost" className={styles.stageStop} onClick={stop}>
+            ■ {t('stop')}
+          </Button>
+        )}
         <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} />
         <PlayKeyboard
           sound={!keyboard.connected}
@@ -450,13 +455,6 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
         />
       </div>
 
-      {phase === 'playing' && (
-        <div className={styles.actions}>
-          <Button variant="ghost" onClick={stop}>
-            {t('stop')}
-          </Button>
-        </div>
-      )}
     </main>
   )
 }

@@ -3,7 +3,8 @@ import { melodyFile } from '../../engine/testing/smfBuilder'
 import type { LogRecord } from '../log'
 import { memoryStore } from '../store'
 import { KEYBOARD, keyBoxes, widenRange } from './keyGeometry'
-import { buildImport, draftFromFile, MAX_TITLE, SongLibrary, type ImportDraft } from './library'
+import { buildImport, choosePart, draftFromFile, MAX_TITLE, SongLibrary, type ImportDraft } from './library'
+import { ProfileRepo } from '../profiles'
 import { playedWhen, songProgress } from './songProgress'
 
 const bytes = (u: Uint8Array) => u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) as ArrayBuffer
@@ -58,5 +59,29 @@ describe('SongLibrary: rename and remove', () => {
     expect(await lib.get('starter:twinkle', 'en')).not.toBeNull()
     await lib.remove(song.id)
     expect(await lib.get(song.id, 'en')).toBeNull()
+  })
+})
+
+describe('choosePart', () => {
+  const part = (key: string) => ({ key, track: 1, channel: 1, name: key, noteCount: 10, low: 48, high: 72, meanPitch: 60, isDrums: false }) as unknown as ImportDraft['parts'][number]
+  const d: ImportDraft = { file: {} as ImportDraft['file'], title: 't', parts: [part('a'), part('b'), part('c')], right: part('a'), left: part('b') }
+
+  it('never gives one part to both hands', () => {
+    expect(choosePart(d, 'right', 'b')).toMatchObject({ right: { key: 'b' }, left: null })
+    expect(choosePart(d, 'left', 'a')).toMatchObject({ left: { key: 'a' }, right: { key: 'b' } }) // the hands swap
+    expect(choosePart({ ...d, left: null }, 'left', 'a')).toMatchObject({ left: { key: 'a' }, right: { key: 'b' } }) // the right moves to another part
+    expect(choosePart(d, 'left', '')).toMatchObject({ right: { key: 'a' }, left: null })
+    expect(choosePart(d, 'right', 'c')).toMatchObject({ right: { key: 'c' }, left: { key: 'b' } })
+  })
+})
+
+describe('ProfileRepo.update', () => {
+  it('renames and re-faces a player; a blank name keeps the old one', async () => {
+    const repo = new ProfileRepo(memoryStore())
+    const p = await repo.create('Nora', '🐺')
+    await repo.update(p.id, { name: '  Nora B. ', avatar: '🦉' })
+    expect((await repo.list())[0]).toMatchObject({ name: 'Nora B.', avatar: '🦉' })
+    await repo.update(p.id, { name: '   ' })
+    expect((await repo.list())[0].name).toBe('Nora B.')
   })
 })

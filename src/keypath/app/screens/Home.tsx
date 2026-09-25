@@ -61,7 +61,7 @@ export function Home() {
   }
 
   return (
-    <main className={styles.screen}>
+    <main className={`${styles.screen} ${styles.homeScreen}`}>
       <header className={styles.homeHeader}>
         <button type="button" className={styles.meButton} onClick={() => navigate({ name: 'settings' })} aria-label={t('settings')}>
           <span className={styles.avatarSmall} aria-hidden>
@@ -93,12 +93,17 @@ export function Home() {
         <button
           type="button"
           className={styles.resume}
-          onClick={() => (resume.at.kind === 'song' ? navigate({ name: 'play', songId: resume.at.songId }) : navigate({ name: 'journeyStep', step: resume.at.step }))}
+          onClick={() => {
+            // Through its door, as far as Progress is concerned: time spent there counts to it.
+            void log.add(profile.id, { type: 'door_opened', door: resume.at.kind === 'song' ? 'songs' : 'journey' })
+            if (resume.at.kind === 'song') navigate({ name: 'play', songId: resume.at.songId })
+            else navigate({ name: 'journeyStep', step: resume.at.step })
+          }}
         >
           <span className={styles.resumeLabel}>{t('resumeTitle')}</span>
           <span className={styles.resumeWhat}>
             {resume.at.kind === 'song' ? `▶ ${resume.songTitle}` : `🗺️ ${resumeStep ? t(resumeStep.title) : ''}`}
-            {resume.at.kind === 'song' && resume.at.bestStars !== null && <span className={styles.resumeStars}> {'★'.repeat(resume.at.bestStars)}</span>}
+            {resume.at.kind === 'song' && resume.at.bestStars !== null && <span className={styles.resumeStars}> {'★'.repeat(resume.at.bestStars) + '☆'.repeat(Math.max(0, 3 - resume.at.bestStars))}</span>}
           </span>
         </button>
       )}

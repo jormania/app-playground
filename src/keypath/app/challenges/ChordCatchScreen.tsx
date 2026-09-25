@@ -18,6 +18,7 @@ import { CHORD_LEVEL_NAME } from './ChallengesHome'
 import { ChordCatch, SCREEN_KEYS, shows, voicingOf, type ChordDef, type ChordLevel } from './chordCatch'
 import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
+import setup from '../setup.module.css'
 
 type Phase = 'setup' | 'run' | 'result'
 const FLASH_MS = 300
@@ -162,10 +163,10 @@ export function ChordCatchScreen() {
       <TopBar title={t('chordTitle')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
-        <section className={styles.panel}>
-          <p>{t('chordBlurb')}</p>
-          <div className={styles.row}>
-            <span className={styles.label}>{t('level')}</span>
+        <section className={setup.bar}>
+          <p className={setup.lead}>{t('chordBlurb')}</p>
+          <div className={setup.field}>
+            <span className={setup.label}>{t('level')}</span>
             <SegmentedControl
               size="sm"
               value={String(level)}
@@ -173,10 +174,14 @@ export function ChordCatchScreen() {
               options={[1, 2, 3].map((l) => ({ value: String(l), label: t(CHORD_LEVEL_NAME[l]) }))}
             />
           </div>
-          <p className={styles.hint}>{best !== undefined ? t('best', { score: best }) : t('noBest')}</p>
-          <p className={styles.hint}>{t(shows(level) ? 'chordHintShown' : 'chordHintNamed')}</p>
-          <div>
+          <div className={setup.go}>
             <Button onClick={start}>▶ {t('go')}</Button>
+            <span className={setup.note} data-inline>
+              {best !== undefined ? t('best', { score: best }) : t('noBest')}
+            </span>
+            <span className={setup.note} data-inline>
+              {t(shows(level) ? 'chordHintShown' : 'chordHintNamed')}
+            </span>
           </div>
         </section>
       )}
@@ -208,7 +213,7 @@ export function ChordCatchScreen() {
 
       {phase === 'result' && result && (
         <section className={styles.panel} role="status">
-          <h2 className={styles.resultTitle}>{t('chordDone', { score: result.score })}</h2>
+          <h2 className={styles.resultTitle}>{result.score > 0 ? t('chordDone', { score: result.score }) : t('chordNone')}</h2>
           {result.best && <p className={styles.newBest}>★ {t('newBest')}</p>}
           {result.spread > 0 && <p className={styles.hint}>{t('chordSpread', { count: result.spread })}</p>}
           {result.wrong > 0 && <p className={styles.hint}>{t('raceWrong', { count: result.wrong })}</p>}

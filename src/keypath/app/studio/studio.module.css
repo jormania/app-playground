@@ -57,14 +57,15 @@
   gap: var(--space-sm);
 }
 .record {
-  min-width: 10rem;
-  min-height: 3.25rem;
-  padding: var(--space-xs) var(--space-lg);
+  /* The standard 44 px of a main button, in Studio's red. */
+  min-width: 9rem;
+  min-height: 2.75rem;
+  padding: var(--space-2xs) var(--space-lg);
   border-radius: var(--radius-pill);
   border: 2px solid #c8463a;
   background: var(--color-surface);
   color: #c8463a;
-  font: var(--weight-bold) var(--text-lg) / 1 var(--font-sans);
+  font: var(--weight-bold) var(--text-base) / 1 var(--font-sans);
   cursor: pointer;
 }
 .record[data-recording] {
@@ -87,11 +88,18 @@
   color: var(--color-muted);
 }
 .pending {
-  display: grid;
-  gap: var(--space-xs);
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-md);
   padding: var(--space-sm);
   border-radius: var(--radius-md);
   background: var(--color-glow);
+}
+
+.pending > p {
+  margin: 0;
 }
 
 /* ── Takes ── */
@@ -146,10 +154,6 @@
   cursor: pointer;
 }
 
-.via {
-  display: grid;
-  gap: var(--space-2xs);
-}
 
 /* Count-in: the number steps down with each click. */
 .countIn {
@@ -195,5 +199,13 @@
 @media (prefers-reduced-motion: reduce) {
   .countIn {
     animation: none;
+  }
+}
+
+/* A phone on its side: tighter spacing, so the keys sit in view under the record bar. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .screen {
+    padding: var(--space-xs) var(--space-sm);
+    gap: var(--space-xs);
   }
 }

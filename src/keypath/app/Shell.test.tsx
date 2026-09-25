@@ -124,3 +124,71 @@ describe('KeyPath shell', () => {
     expect((await store.keys()).filter((k) => k.includes(nora.id))).toEqual([])
   })
 })
+
+describe('KeyPath shell, after the audit', () => {
+  it('creates a player in the language picked on the form, which speaks it as soon as it is picked', async () => {
+    const store = await start()
+    fireEvent.click(await screen.findByRole('radio', { name: 'Română' }))
+    expect(screen.getByText('Cine cântă?')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText(/^Nume/), { target: { value: 'Nora' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Creează' }))
+    expect(await screen.findByText('Salut, Nora!')).toBeTruthy()
+    const [p] = await new ProfileRepo(store).list()
+    expect((await new ProfileRepo(store).settings(p.id)).language).toBe('ro')
+  })
+
+  it('edits a player’s name and face from settings', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit name and face' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Nora B.' } })
+    fireEvent.click(screen.getByRole('radio', { name: '🦉' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Settings for Nora B.')).toBeTruthy()
+    expect((await new ProfileRepo(store).list())[0]).toMatchObject({ name: 'Nora B.', avatar: '🦉' })
+  })
+
+  it('asks before a restore on the page itself, not in a browser dialog', async () => {
+    const confirm = vi.fn(() => true)
+    window.confirm = confirm
+    await start()
+    await createPlayer('Nora')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    const input = (await screen.findByText('Restore from a backup')).closest('div')!.querySelector('input[type=file]')!
+    const file = new File(['{}'], 'keypath-backup.json', { type: 'application/json' })
+    fireEvent.change(input, { target: { files: [file] } })
+    expect(await screen.findByRole('alertdialog', { name: 'Replace everything on this phone with this backup?' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(confirm).not.toHaveBeenCalled()
+  })
+
+  it('logs the resume card as opening its door, and shows the stars as the song list does', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    const [p] = await new ProfileRepo(store).list()
+    const log = new EngagementLog(store)
+    await log.add(p.id, { type: 'song_finished', songId: 'starter:ode', practice: 'right', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
+    cleanup()
+    history.replaceState(null, '', '#/')
+    await start(store)
+    const card = await screen.findByRole('button', { name: /Pick up where you left off/ })
+    expect(card.textContent).toContain('★★☆')
+    fireEvent.click(card)
+    await waitFor(async () => expect((await log.read(p.id)).at(-1)).toMatchObject({ type: 'door_opened', door: 'songs' }))
+  })
+
+  it('shows Progress dates the way people write them, once when it is all one day', async () => {
+    await start()
+    await createPlayer('Nora')
+    act(() => {
+      history.pushState(null, '', '#/progress')
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    expect(await screen.findByText('At a glance')).toBeTruthy()
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    expect(screen.getByText(today)).toBeTruthy()
+    expect(screen.queryByText(/\d{4}-\d{2}-\d{2}/)).toBeNull()
+  })
+})

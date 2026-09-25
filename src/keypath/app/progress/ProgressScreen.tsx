@@ -81,6 +81,8 @@ export function ProgressScreen() {
   }
 
   const s = data?.summary
+  /** "24 Sep" (or "24 sept." in Romanian) from the summary's local YYYY-MM-DD. */
+  const day = (d: string | null) => (d ? new Date(`${d}T12:00`).toLocaleDateString(settings.language === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'short' }) : '')
   const doneSteps = data ? JOURNEY.filter((x) => data.journey[x.id]) : []
 
   return (
@@ -96,7 +98,7 @@ export function ProgressScreen() {
         <>
           <section className={styles.panel}>
             <h2 className={styles.h2}>{t('pGlance')}</h2>
-            <p className={styles.hint}>{t('pRange', { from: s.from ?? '', to: s.to ?? '' })}</p>
+            <p className={styles.hint}>{s.from === s.to ? day(s.from) : t('pRange', { from: day(s.from), to: day(s.to) })}</p>
             <dl className={styles.facts}>
               <dd>{t('pDays', { count: s.days.length })}</dd>
               <dd>{t('pSessions', { count: s.sessions, minutes: Math.round(s.minutes) })}</dd>
