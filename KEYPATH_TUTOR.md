@@ -775,6 +775,19 @@ the keys; once the song starts the setup panel goes and the fall grows).
 Checked at 412×892 (the owner's phone), 360×740 and landscape: no
 scrolling, the whole keyboard in view.
 
+**Seeing what's coming, in landscape.** On a phone on its side the fall was
+a strip of 70 to 125 px, and at a fixed 110 px a second that is half a
+second to a second of music: the next note arrived almost as it appeared.
+Three changes, all measured at 892×412:
+- the notes pack closer when the fall is short (`pxPerMsFor`,
+  `FallingNotes.tsx`): at least 2.2 seconds of the song stay in view, never
+  tighter than 45 px a second; a tall fall (portrait) keeps 110 px a second;
+- while **Listen** plays, the setup choices (hands, parts, speed) fold away,
+  leaving only the start and stop row;
+- the on-screen keys are a little shorter in landscape (at most 6.5rem).
+The fall is now 142 to 186 px, with 2.2 seconds in it (was about 0.6 while
+listening).
+
 ### Settings, regrouped
 
 Settings had grown into unlabelled panels in the order things were added,

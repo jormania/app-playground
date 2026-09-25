@@ -607,7 +607,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
       {phase === 'setup' && (
         <section className={setup.bar}>
-          {hasLeft && (
+          {/* While she listens the choices fold away, so the notes have the room to fall where she can see them. */}
+          {!listening && hasLeft && (
             <div className={setup.field}>
               <span className={setup.label}>{t('hands')}</span>
               <div className={setup.controls}>
@@ -629,7 +630,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               </div>
             </div>
           )}
-          {steps.length > 0 && (
+          {!listening && steps.length > 0 && (
             <div className={setup.field}>
               <span className={setup.label}>{t('parts')}</span>
               {/* The same chips for every song; a long one's run on one line that scrolls sideways, the chosen one in view. */}
@@ -650,10 +651,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               </div>
             </div>
           )}
-          <div className={setup.field}>
-            <span className={setup.label}>{t('speed')}</span>
-            <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
-          </div>
+          {!listening && (
+            <div className={setup.field}>
+              <span className={setup.label}>{t('speed')}</span>
+              <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+            </div>
+          )}
           <div className={setup.go}>
             <Button onClick={go}>
               ▶ {span ? partName(span) : t('startSong')}

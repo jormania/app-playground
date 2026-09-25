@@ -567,11 +567,12 @@
   .fall {
     min-height: 0;
   }
+  /* The keys a little shorter on a phone on its side: the notes above them need the height more. */
   .keys {
-    height: clamp(4.5rem, 34dvh, 8rem);
+    height: clamp(4rem, 27dvh, 6.5rem);
   }
   .countIn {
-    inset: 0 0 clamp(4.5rem, 34dvh, 8rem);
+    inset: 0 0 clamp(4rem, 27dvh, 6.5rem);
   }
 }
 
