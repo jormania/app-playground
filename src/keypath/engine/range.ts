@@ -1,4 +1,4 @@
-import type { Song } from './song'
+import type { Hand, Song, SongNote } from './song'
 
 /** The PSR-E383's 61 keys, measured on the S24: C2–C7, MIDI 36–96. */
 export const KEYBOARD_RANGE = { low: 36, high: 96 } as const
@@ -34,4 +34,111 @@ export function checkRange(pitches: readonly number[], range = KEYBOARD_RANGE): 
 
 export function transposeSong(song: Song, semitones: number): Song {
   return { ...song, notes: song.notes.map((n) => ({ ...n, pitch: n.pitch + semitones })) }
+}
+
+// ── Notes outside the keyboard ──────────────────────────────────────────────
+// An added song can reach past the 61 keys. What to do about it is a choice
+// with a cost either way, so it is offered, and can be changed later
+// (KEYPATH_TUTOR.md §9, "Songs wider than the keyboard"):
+//   moveSong   every note by the same whole octaves: sounds the same, lower or
+//              higher; only possible when the song spans 61 keys or fewer
+//   moveHands  each hand by its own whole octaves, when the song as a whole
+//              is too wide but each hand fits
+//   moveNotes  only the notes that don't fit, each by the fewest octaves; the
+//              rest stay as written, those notes jump out of line
+//   dropNotes  leave out the notes that don't fit; nothing else changes
+
+export type FitMode = NonNullable<Song['fit']>
+
+export interface Fitted {
+  notes: SongNote[]
+  /** Semitones each hand was moved by, for the whole-song and per-hand moves. */
+  shift: Record<Hand, number>
+  /** Notes moved on their own (moveNotes). */
+  moved: number
+  /** Notes left out: the ones that don't fit (dropNotes), or a moved note that landed on one already sounding (moveNotes). */
+  dropped: number
+}
+
+const inRange = (p: number, range: { low: number; high: number }) => p >= range.low && p <= range.high
+const HANDS: Hand[] = ['right', 'left']
+
+/** The fewest whole octaves that bring one pitch onto the keyboard. */
+function octaveInto(p: number, range: { low: number; high: number }): number {
+  let q = p
+  while (q < range.low) q += 12
+  while (q > range.high) q -= 12
+  return q
+}
+
+/** Apply one of the choices. Ids are kept, so nothing that refers to a note by id moves. */
+export function applyFit(notes: readonly SongNote[], mode: FitMode, range = KEYBOARD_RANGE): Fitted | null {
+  const none: Record<Hand, number> = { right: 0, left: 0 }
+  if (mode === 'moveSong') {
+    const shift = checkRange(notes.map((n) => n.pitch), range).suggestedShift
+    if (shift === null) return null
+    return { notes: notes.map((n) => ({ ...n, pitch: n.pitch + shift })), shift: { right: shift, left: shift }, moved: 0, dropped: 0 }
+  }
+  if (mode === 'moveHands') {
+    const shift = { ...none }
+    for (const h of HANDS) {
+      const s = checkRange(notes.filter((n) => n.hand === h).map((n) => n.pitch), range).suggestedShift
+      if (s === null) return null
+      shift[h] = s
+    }
+    return { notes: notes.map((n) => ({ ...n, pitch: n.pitch + shift[n.hand] })), shift, moved: 0, dropped: 0 }
+  }
+  if (mode === 'dropNotes') {
+    const kept = notes.filter((n) => inRange(n.pitch, range))
+    return { notes: kept, shift: none, moved: 0, dropped: notes.length - kept.length }
+  }
+  // moveNotes: a moved note that lands on the same key as another note starting
+  // with it would be one key pressed twice; it is left out instead.
+  const out: SongNote[] = []
+  let moved = 0
+  let dropped = 0
+  const kept = notes.filter((n) => inRange(n.pitch, range))
+  for (const n of notes) {
+    if (inRange(n.pitch, range)) {
+      out.push(n)
+      continue
+    }
+    const pitch = octaveInto(n.pitch, range)
+    if (kept.some((k) => k.pitch === pitch && Math.abs(k.startMs - n.startMs) <= 30) || out.some((k) => k.id !== n.id && k.pitch === pitch && Math.abs(k.startMs - n.startMs) <= 30)) {
+      dropped++
+      continue
+    }
+    out.push({ ...n, pitch })
+    moved++
+  }
+  return { notes: out, shift: none, moved, dropped }
+}
+
+export interface FitOption extends Fitted {
+  mode: FitMode
+}
+
+/**
+ * The choices for a song with notes outside the keyboard, best first: the
+ * whole-song move when it's possible, else each hand on its own when that is;
+ * then moving just the stray notes, and leaving them out. Empty when every
+ * note already fits.
+ */
+export function fitOptions(notes: readonly SongNote[], range = KEYBOARD_RANGE): FitOption[] {
+  if (notes.every((n) => inRange(n.pitch, range))) return []
+  const modes: FitMode[] = []
+  if (applyFit(notes, 'moveSong', range)) modes.push('moveSong')
+  else if (applyFit(notes, 'moveHands', range)) modes.push('moveHands')
+  modes.push('moveNotes', 'dropNotes')
+  return modes.map((mode) => ({ mode, ...applyFit(notes, mode, range)! }))
+}
+
+/** The song as it will be played: its notes as written (`source`) put through the chosen fit. */
+export function fitSong(song: Song, mode: FitMode | null, range = KEYBOARD_RANGE): Song {
+  const source = song.source ?? song.notes
+  const options = fitOptions(source, range)
+  if (options.length === 0) return { ...song, notes: source, source: undefined, fit: undefined }
+  const chosen = options.find((o) => o.mode === mode) ?? options[0]
+  const durationMs = chosen.notes.length ? Math.max(...chosen.notes.map((n) => n.startMs + n.durationMs)) : 0
+  return { ...song, notes: chosen.notes, source, fit: chosen.mode, durationMs }
 }

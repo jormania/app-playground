@@ -615,6 +615,38 @@ remembered on the phone (chip **🎹 Other hand** beside Hands).
 Hoffman teaches: a note on the beat lasting a beat or more is ta, a half
 beat or one off the beat is ti. The setup line says to speak them.
 
+### Songs wider than the keyboard
+
+An added MIDI file can reach past the PSR-E383's 61 keys (C2–C7, MIDI
+36–96). Before, a song that could be moved by whole octaves was moved
+silently, and one too wide for that kept its notes past the keys: they
+weren't drawn and couldn't be pressed, so in **Wait for it** the song stopped
+for good at the first one, and with a clock they only ever counted as missed.
+
+Now each way of fitting it has a cost, so it's a choice (`engine/range.ts`,
+`songs/FitChoice.tsx`), offered when a song is added and again from its ⋯
+menu in the song list:
+- **Move the whole song** by whole octaves: it sounds the same, lower or
+  higher. Offered only when the song spans 61 keys or fewer. The default
+  when it's offered.
+- **Move each hand on its own**, by whole octaves each: offered instead when
+  the song as a whole is too wide but each hand fits. Each hand keeps its
+  shape; the gap between them changes.
+- **Move only the notes that don't fit**, each by the fewest octaves onto
+  the keys; the rest stay as written. Always possible; those notes jump out
+  of line. A moved note landing on a key already starting at that moment is
+  left out rather than pressed twice. The default when no move above is.
+- **Leave out the notes that don't fit**; nothing else changes.
+
+Each choice says what it would change ("3 notes move an octave or two…").
+Moves are always whole octaves, so the key never changes.
+
+The notes as written are kept with the song (`Song.source`), and `fit` names
+the choice, so it can be changed later without adding the song again. Bars
+don't change, so parts already learnt stay learnt. A song added before this
+existed, with notes past the keys, is given the default choice when it's
+read, so none can get stuck.
+
 ### Progress (after step 6)
 
 ```
@@ -928,7 +960,8 @@ install it and get the full screen):
 - **Hand from the Split channel**: using channel 3 as "left hand" when Split
   is on.
 - **Import simplification**: "melody only" for arrangements too hard as
-  written (the range check and whole-octave transposition exist now).
+  written; it could become a fifth way in the choice for songs wider than
+  the keyboard (§9, "Songs wider than the keyboard").
 - **MusicXML import** (with notation rendering, a late Journey skill).
 
 **Challenges refinements** (deferred from step 6):

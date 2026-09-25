@@ -4,6 +4,8 @@ import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
 import { MAX_TITLE, SongLibrary, type LibraryEntry } from './library'
+import { fitOptions, type FitMode } from '../../engine'
+import { FitChoice } from './FitChoice'
 import { byLevel, levelOf, type Level } from './level'
 import { playedWhen, songProgress, type SongProgress } from './songProgress'
 import styles from './songs.module.css'
@@ -52,6 +54,10 @@ export function SongsHome() {
     setOpen(null)
     if (profile) void log.add(profile.id, { type: 'song_renamed', songId: id })
   }
+  const refit = async (id: string, mode: FitMode) => {
+    await library.refit(id, mode)
+    setEntries(await library.list(settings.language))
+  }
   const remove = async (id: string) => {
     if (!sure) return setSure(true)
     await library.remove(id)
@@ -59,6 +65,14 @@ export function SongsHome() {
     setOpen(null)
     setSure(false)
     if (profile) void log.add(profile.id, { type: 'song_removed', songId: id })
+  }
+
+  /** Notes past the keyboard: the choice made when it was added, to change here. */
+  const fitSection = (e: LibraryEntry) => {
+    const options = fitOptions(e.song.source ?? [])
+    if (options.length === 0) return null
+    const outside = options.find((o) => o.mode === 'dropNotes')?.dropped ?? 0
+    return <FitChoice options={options} value={e.song.fit ?? options[0].mode} onChange={(m) => void refit(e.song.id, m)} outside={outside} />
   }
 
   const item = (e: LibraryEntry, editable: boolean) => {
@@ -106,6 +120,7 @@ export function SongsHome() {
                 {t('songSaveTitle')}
               </Button>
             </form>
+            {e.song.source && fitSection(e)}
             <div className={styles.actions}>
               <Button size="sm" variant={sure ? 'danger' : 'ghost'} onClick={() => void remove(e.song.id)}>
                 {sure ? t('songRemoveSure') : t('songRemove')}

@@ -45,11 +45,51 @@ describe('Add a song', () => {
     expect(draftFromFile(bytes(drums), 'beat.mid')).toBe('no-notes')
   })
 
-  it('moves a song that sits too high by whole octaves, and says so', () => {
+  it('moves a song that sits too high by whole octaves by default, keeping the notes as written', () => {
     const draft = draftFromFile(bytes(melodyFile([[100, 1], [103, 1]])), 'high.mid') as ImportDraft
     const built = buildImport(draft, '')
-    expect(built.shifted).toBe(-12)
+    expect(built.options.map((o) => o.mode)).toEqual(['moveSong', 'moveNotes', 'dropNotes'])
+    expect(built.outside).toBe(2)
+    expect(built.song).toMatchObject({ fit: 'moveSong', title: 'high' })
     expect(built.song.notes.map((n) => n.pitch)).toEqual([88, 91])
-    expect(built.song.title).toBe('high')
+    expect(built.song.source?.map((n) => n.pitch)).toEqual([100, 103])
+    // Or the other ways, when chosen.
+    expect(buildImport(draft, '', 'dropNotes').song.notes).toEqual([])
+  })
+
+  it('a song that fits carries no choice', () => {
+    const draft = draftFromFile(bytes(melodyFile([[60, 1], [62, 1]])), 'ok.mid') as ImportDraft
+    const built = buildImport(draft, '')
+    expect(built.options).toEqual([])
+    expect(built.song.fit).toBeUndefined()
+  })
+})
+
+describe('songs wider than the keyboard', () => {
+  // A melody from A0 to C8: 87 keys, wider than the 61 on the Yamaha.
+  const wide = () => buildImport(draftFromFile(bytes(melodyFile([[21, 1], [60, 1], [108, 1]])), 'wide.mid') as ImportDraft, 'Wide')
+
+  it('too wide to move whole: the stray notes move by default, and the choice can be changed later', async () => {
+    const built = wide()
+    expect(built.options.map((o) => o.mode)).toEqual(['moveNotes', 'dropNotes'])
+    expect(built.song.notes.map((n) => n.pitch)).toEqual([45, 60, 96])
+    const store = memoryStore()
+    const lib = new SongLibrary(store)
+    await lib.add(built.song)
+    await lib.refit(built.song.id, 'dropNotes')
+    expect((await lib.get(built.song.id, 'en'))?.notes.map((n) => n.pitch)).toEqual([60])
+    await lib.refit(built.song.id, 'moveNotes')
+    expect((await lib.get(built.song.id, 'en'))?.notes.map((n) => n.pitch)).toEqual([45, 60, 96])
+  })
+
+  it('a song saved before the choice existed, with notes past the keys, is fitted when read, so it never waits for a key that isn’t there', async () => {
+    const store = memoryStore()
+    const lib = new SongLibrary(store)
+    const { source, fit, ...old } = wide().song
+    expect(fit).toBe('moveNotes')
+    await store.set('keypath:v1:songs', [{ ...old, notes: source }])
+    const read = await lib.get(old.id, 'en')
+    expect(read?.fit).toBe('moveNotes')
+    expect(read?.notes.every((n) => n.pitch >= 36 && n.pitch <= 96)).toBe(true)
   })
 })

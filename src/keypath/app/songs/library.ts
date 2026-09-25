@@ -1,4 +1,4 @@
-import { parseSmf, partsOf, songFromParts, suggestParts, checkRange, transposeSong, SmfError, type Part, type Song, type SmfFile } from '../../engine'
+import { parseSmf, partsOf, songFromParts, suggestParts, fitOptions, fitSong, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import type { Language } from '../profiles'
 import { PREFIX, type KeyValueStore } from '../store'
@@ -20,7 +20,9 @@ export class SongLibrary {
 
   async list(lang: Language): Promise<LibraryEntry[]> {
     const starters = STARTER_PACK.map((s): LibraryEntry => ({ song: starterSong(s, lang), source: 'starter' }))
-    const imported = ((await this.store.get<Song[]>(SONGS_KEY)) ?? []).map((song): LibraryEntry => ({ song, source: 'import' }))
+    // A song saved before the fitting choice existed, with notes past the keys, gets the best one on the way out:
+    // left as it was, the song would wait for keys that aren't there.
+    const imported = ((await this.store.get<Song[]>(SONGS_KEY)) ?? []).map((song): LibraryEntry => ({ song: song.fit ? song : fitSong(song, null), source: 'import' }))
     return [...starters, ...imported]
   }
 
@@ -41,6 +43,15 @@ export class SongLibrary {
     await this.store.set(
       SONGS_KEY,
       imported.map((s) => (s.id === id ? { ...s, title: clean } : s)),
+    )
+  }
+
+  /** Change how an added song's notes are fitted to the keyboard, from the notes as written. */
+  async refit(id: string, mode: FitMode): Promise<void> {
+    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
+    await this.store.set(
+      SONGS_KEY,
+      imported.map((s) => (s.id === id ? fitSong(s, mode) : s)),
     )
   }
 
@@ -101,17 +112,18 @@ export function draftFromFile(bytes: ArrayBuffer, fileName: string): ImportDraft
 }
 
 export interface Built {
+  /** The song as it will be saved: fitted to the keyboard the chosen way. */
   song: Song
-  /** Semitones applied to fit the 61 keys (0 if none were needed). */
-  shifted: number
-  /** Notes still off the keyboard after any shift (0 when it fits). */
+  /** The ways to fit it, best first; empty when every note is on the keyboard as written. */
+  options: FitOption[]
+  /** Notes past the keyboard as written. */
   outside: number
 }
 
-/** Build the song from the chosen parts, moving it by whole octaves if it doesn't fit the keyboard. */
-export function buildImport(d: ImportDraft, title: string): Built {
+/** Build the song from the chosen parts, fitted to the keyboard the chosen way (the best way, if none is chosen). */
+export function buildImport(d: ImportDraft, title: string, fit: FitMode | null = null): Built {
   const song = songFromParts(d.file, { id: `import:${Date.now().toString(36)}`, title: title.trim() || d.title, right: d.right, left: d.left })
-  const range = checkRange(song.notes.map((n) => n.pitch))
-  if (range.fits || range.suggestedShift === null) return { song, shifted: 0, outside: range.outside }
-  return { song: transposeSong(song, range.suggestedShift), shifted: range.suggestedShift, outside: 0 }
+  const options = fitOptions(song.notes)
+  const outside = options.find((o) => o.mode === 'dropNotes')?.dropped ?? 0
+  return { song: fitSong(song, fit), options, outside }
 }

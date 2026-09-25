@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { songOf } from '../../engine/testing/songs'
+import { melodyFile } from '../../engine/testing/smfBuilder'
 import { Shell } from '../Shell'
 import { EngagementLog } from '../log'
 import { ProfileRepo } from '../profiles'
@@ -119,6 +120,38 @@ describe('Songs, for everyday use', () => {
     act(() => key(60))
     await new Promise((r) => setTimeout(r, 50))
     expect(played).not.toContain(48)
+  })
+
+  it('asks what to do with notes past the keyboard when a song is added, and again from its ⋯ menu', async () => {
+    const { store, go } = await setUp('#/songs/import')
+    go()
+    await screen.findByRole('button', { name: 'Choose a MIDI file' })
+    // A0 to C8: wider than the 61 keys, so the whole song can't simply move.
+    const midi = melodyFile([[21, 1], [60, 1], [108, 1]])
+    const file = new File([midi.slice().buffer as ArrayBuffer], 'wide.mid', { type: 'audio/midi' })
+    fireEvent.change(document.querySelector('input[type=file]')!, { target: { files: [file] } })
+    expect(await screen.findByText('Notes outside your keyboard')).toBeTruthy()
+    expect(screen.getByText(/2 notes of this song are lower or higher than your 61 keys/)).toBeTruthy()
+    const moveNotes = screen.getByRole('radio', { name: /Move only the notes that don’t fit/ }) as HTMLInputElement
+    expect(moveNotes.checked).toBe(true)
+    fireEvent.click(screen.getByRole('radio', { name: /Leave out the notes that don’t fit/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add to my songs' }))
+    await waitFor(() => expect(location.hash).toMatch(/^#\/play\/import/))
+    const saved = (await store.get<{ title: string; notes: { pitch: number }[]; fit: string }[]>('keypath:v1:songs'))!.find((x) => x.title === 'wide')!
+    expect(saved.fit).toBe('dropNotes')
+    expect(saved.notes.map((n) => n.pitch)).toEqual([60])
+
+    // Changed later, from the song list.
+    cleanup()
+    history.replaceState(null, '', '#/door/songs')
+    go()
+    fireEvent.click(await screen.findByRole('button', { name: /More for wide/ }))
+    expect((screen.getByRole('radio', { name: /Leave out/ }) as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(screen.getByRole('radio', { name: /Move only the notes/ }))
+    await waitFor(async () => {
+      const again = (await store.get<{ title: string; notes: { pitch: number }[] }[]>('keypath:v1:songs'))!.find((x) => x.title === 'wide')!
+      expect(again.notes.map((n) => n.pitch)).toEqual([45, 60, 96])
+    })
   })
 
   it('sounds the on-screen keys on the phone when no keyboard is connected', async () => {
