@@ -76,6 +76,9 @@ export function navigate(route: Route, { replace = false } = {}): void {
   const href = hrefOf(route)
   if (replace) history.replaceState(null, '', href)
   else history.pushState(null, '', href)
+  // A new screen opens at its top. (Back and forward go through popstate and
+  // keep the browser's own scroll restoration.)
+  window.scrollTo?.(0, 0)
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 

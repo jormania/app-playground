@@ -61,55 +61,59 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
   }
 
   return (
-    <section className={styles.panel} aria-labelledby="report-title">
-      <h2 className={styles.h2} id="report-title">
-        {t('howItWent')}
-      </h2>
-      <p className={styles.stars} aria-label={`${report.stars} / 3`}>
-        {[0, 1, 2].map((i) => (
-          <span key={i} data-lit={i < report.stars || undefined} style={{ '--i': i } as React.CSSProperties}>
-            ★
-          </span>
-        ))}
-      </p>
-      <ul className={styles.highlights}>
-        {report.highlights.map((h, i) => (
-          <li key={h.kind} style={{ '--i': i } as React.CSSProperties}>
-            {line(h)}
-          </li>
-        ))}
-      </ul>
-      {report.toWorkOn.map((b) => (
-        <p key={b.bar} className={styles.hint}>
-          {t('workOnBar', { bar: b.bar + 1 })}
+    <section className={`${styles.panel} ${styles.report}`} aria-labelledby="report-title">
+      <div className={styles.reportHead}>
+        <h2 className={styles.h2} id="report-title">
+          {t('howItWent')}
+        </h2>
+        <p className={styles.stars} aria-label={`${report.stars} / 3`}>
+          {[0, 1, 2].map((i) => (
+            <span key={i} data-lit={i < report.stars || undefined} style={{ '--i': i } as React.CSSProperties}>
+              ★
+            </span>
+          ))}
         </p>
-      ))}
-      {s && !answered && (
-        <div className={styles.suggestion}>
-          <p>
-            {s.setting === 'onWrong'
-              ? t('suggestOnWrong', { mode: t(ON_WRONG_LABEL[s.to]) })
-              : t('suggestTiming', { timing: t(TIMING_LABEL[s.to]).toLowerCase() })}
-          </p>
-          <div className={styles.actions}>
-            <Button size="sm" onClick={() => void answer(true)}>
-              {t('yesChange')}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => void answer(false)}>
-              {t('notNow')}
-            </Button>
-          </div>
-        </div>
-      )}
-      <div className={styles.actions}>
-        <Button onClick={onPlayAgain}>{t('playAgain')}</Button>
-        <Button variant="outline" onClick={onAnotherSong}>
-          {t('anotherSong')}
-        </Button>
-        {report.stars > 0 && (
-          <Button variant="outline" onClick={onMakeItYours}>
-            🎨 {t('makeItYours')}
+        <div className={`${styles.actions} ${styles.reportActions}`}>
+          <Button onClick={onPlayAgain}>{t('playAgain')}</Button>
+          <Button variant="outline" onClick={onAnotherSong}>
+            {t('anotherSong')}
           </Button>
+          {report.stars > 0 && (
+            <Button variant="outline" onClick={onMakeItYours}>
+              🎨 {t('makeItYours')}
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className={styles.reportBody}>
+        <ul className={styles.highlights}>
+          {report.highlights.map((h, i) => (
+            <li key={h.kind} style={{ '--i': i } as React.CSSProperties}>
+              {line(h)}
+            </li>
+          ))}
+        </ul>
+        {report.toWorkOn.map((b) => (
+          <p key={b.bar} className={styles.hint}>
+            {t('workOnBar', { bar: b.bar + 1 })}
+          </p>
+        ))}
+        {s && !answered && (
+          <div className={styles.suggestion}>
+            <p>
+              {s.setting === 'onWrong'
+                ? t('suggestOnWrong', { mode: t(ON_WRONG_LABEL[s.to]) })
+                : t('suggestTiming', { timing: t(TIMING_LABEL[s.to]).toLowerCase() })}
+            </p>
+            <div className={styles.actions}>
+              <Button size="sm" onClick={() => void answer(true)}>
+                {t('yesChange')}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => void answer(false)}>
+                {t('notNow')}
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </section>

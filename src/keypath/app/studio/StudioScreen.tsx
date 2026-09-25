@@ -20,6 +20,7 @@ import { OutputChoice, useOutput } from './output'
 import { saveFile } from './saveFile'
 import { MAX_KEPT, MAX_NAME, TakeRepo, type Take } from './takes'
 import styles from './studio.module.css'
+import setup from '../setup.module.css'
 
 const LOW = 60
 const HIGH = 84
@@ -338,27 +339,24 @@ export function StudioScreen({ songId }: { songId?: string }) {
 
   return (
     <main className={styles.screen}>
-      <TopBar title={t('doorStudio')} />
-      <KeyboardStatus status={kb} missing="keyboardMissing" />
+      <TopBar title={t('doorStudio')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
 
-      <section className={styles.panel}>
+      <section className={setup.bar} aria-live="polite">
         {song ? (
           <>
-            <h2 className={styles.h2}>{t('studioMakeItYours', { title: song.title })}</h2>
-            <p>{t('studioMakeItYoursBody')}</p>
+            <p className={setup.lead}>
+              <strong>{t('studioMakeItYours', { title: song.title })}</strong> {t('studioMakeItYoursBody')}
+            </p>
             {tune && (
-              <p className={styles.tune} aria-label={t('studioTune')}>
+              <p className={`${setup.lead} ${styles.tune}`} aria-label={t('studioTune')}>
                 {tune}
               </p>
             )}
           </>
         ) : (
-          <p>{t('studioIntro')}</p>
+          <p className={setup.lead}>{t('studioIntro')}</p>
         )}
-      </section>
-
-      <section className={styles.panel} aria-live="polite">
-        <div className={styles.recordRow}>
+        <div className={setup.go}>
           <button
             type="button"
             className={styles.record}
@@ -382,8 +380,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
           )}
         </div>
         {!recording && counting === null && (
-          <div className={styles.via}>
-            <span className={styles.hint}>{t('studioCountIn')}</span>
+          <div className={setup.field}>
+            <span className={setup.label}>{t('studioCountIn')}</span>
             <SegmentedControl
               size="sm"
               value={String(countIn)}
@@ -392,8 +390,9 @@ export function StudioScreen({ songId }: { songId?: string }) {
             />
           </div>
         )}
-        {countIn > 0 && !recording && counting === null && <p className={styles.hint}>{t('studioCountInHint', { bpm: countIn })}</p>}
-        {message && <p className={styles.hint}>{message}</p>}
+        {!recording && counting === null && <OutputChoice output={output} label={t('studioPlayOn')} phoneOnly={t('studioPlaysOnPhone')} />}
+        {countIn > 0 && !recording && counting === null && <p className={setup.note}>{t('studioCountInHint', { bpm: countIn })}</p>}
+        {message && <p className={setup.note}>{message}</p>}
         {pending && (
           <div className={styles.pending}>
             <p>
@@ -413,7 +412,6 @@ export function StudioScreen({ songId }: { songId?: string }) {
             </div>
           </div>
         )}
-        <OutputChoice output={output} label={t('studioPlayOn')} phoneOnly={t('studioPlaysOnPhone')} />
       </section>
 
       <PlayKeyboard boxes={boxes} held={held} targets={new Set()} wrong={new Set()} label={label} names={settings.keyNames} onPress={screenPress} onRelease={screenRelease} />

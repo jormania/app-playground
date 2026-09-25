@@ -6,7 +6,7 @@ import { useApp } from '../context'
 import { PREFIX } from '../store'
 import type { Sink } from './playback'
 import { keyboardSink, phoneSink } from './sinks'
-import styles from './studio.module.css'
+import setup from '../setup.module.css'
 
 export type Via = 'keyboard' | 'phone'
 /** Where KeyPath's own sound goes, chosen once per phone (Studio's takes, Challenges' rhythms). */
@@ -56,8 +56,8 @@ export function OutputChoice({ output, label, phoneOnly }: { output: Output; lab
   return (
     <>
       {output.canSend ? (
-        <div className={styles.via}>
-          <span className={styles.hint}>{label}</span>
+        <div className={setup.field}>
+          <span className={setup.label}>{label}</span>
           <SegmentedControl
             size="sm"
             value={output.via}
@@ -69,9 +69,11 @@ export function OutputChoice({ output, label, phoneOnly }: { output: Output; lab
           />
         </div>
       ) : (
-        <p className={styles.hint}>{phoneOnly}</p>
+        <p className={setup.note} data-inline>
+          {phoneOnly}
+        </p>
       )}
-      {output.phoneMuted && <p className={styles.hint}>{t('studioPhoneMuted')}</p>}
+      {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
     </>
   )
 }

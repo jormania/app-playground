@@ -4,7 +4,7 @@ import { SelectField } from '../../../ds/components/SelectField'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
-import { buildImport, draftFromFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
+import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
 const PROBLEM_TEXT = { 'not-midi': 'importNotMidi', unsupported: 'importUnsupported', 'no-notes': 'importNoNotes' } as const
@@ -33,8 +33,7 @@ export function ImportSong() {
 
   const choose = (hand: 'right' | 'left', key: string) => {
     if (!draft) return
-    const part = draft.parts.find((p) => p.key === key) ?? null
-    setDraft({ ...draft, [hand]: part })
+    setDraft(choosePart(draft, hand, key))
   }
 
   // What saving would produce, shown before saving: an octave move to fit

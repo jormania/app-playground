@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Button, Field } from '../../../ds'
+import { Button, Field, SegmentedControl } from '../../../ds'
 import { useApp } from '../context'
-import { AVATARS, type Profile } from '../profiles'
+import { translate, type StringKey } from '../i18n'
+import { AVATARS, DEFAULT_PROFILE_SETTINGS, type Language, type Profile } from '../profiles'
 import { requestPersistence } from '../store'
 import styles from '../app.module.css'
 
 export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
-  const { profiles, log, t, choose } = useApp()
+  const { profiles, log, choose } = useApp()
+  // Before anyone is chosen there are no settings yet: the screen speaks the
+  // language being picked for the new player, so a Romanian speaker can read it.
+  const [language, setLanguage] = useState<Language>(DEFAULT_PROFILE_SETTINGS.language)
+  const t = (key: StringKey, vars?: Record<string, string | number>) => translate(language, key, vars)
   const [list, setList] = useState<Profile[] | null>(null)
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
@@ -28,6 +33,7 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
     e.preventDefault()
     if (!name.trim()) return
     const p = await profiles.create(name, avatar)
+    if (language !== DEFAULT_PROFILE_SETTINGS.language) await profiles.saveSettings(p.id, { ...DEFAULT_PROFILE_SETTINGS, language })
     await log.add(p.id, { type: 'profile_created' })
     // The first real data on this phone: ask Chrome to keep it (store.ts).
     void requestPersistence()
@@ -58,6 +64,17 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
       {adding && (
         <form className={styles.panel} onSubmit={create}>
           <h2 className={styles.h2}>{t('newProfileTitle')}</h2>
+          <div className={styles.row}>
+            <span className={styles.label}>{t('language')}</span>
+            <SegmentedControl
+              value={language}
+              onChange={(v) => setLanguage(v as Language)}
+              options={[
+                { value: 'en' satisfies Language, label: 'English' },
+                { value: 'ro' satisfies Language, label: 'Română' },
+              ]}
+            />
+          </div>
           <Field label={t('name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={40} autoFocus required />
           <fieldset className={styles.fieldset}>
             <legend className={styles.label}>{t('pickFace')}</legend>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type NoteResult, type Practice, type Report, type Song } from '../../engine'
+import { buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
+import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
 import { useApp } from '../context'
@@ -18,10 +19,13 @@ import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useOutput } from '../studio/output'
 import { Playback, realClock } from '../studio/playback'
 import styles from './songs.module.css'
+import setup from '../setup.module.css'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report'
 
 const SPEEDS = ['1', '0.75', '0.5'] as const
+const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
+const TIMING_LABEL: Record<Timing, StringKey> = { relaxed: 'timingRelaxed', normal: 'timingNormal', strict: 'timingStrict' }
 const MIDDLE_C = 60
 /** How long a wrong key stays red. */
 const WRONG_FLASH_MS = 350
@@ -79,10 +83,12 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
 
   const notes = useMemo(() => notesFor(song, practice), [song, practice])
   const wide = useWide()
+  // The keys the chosen hands need, not the whole song: right hand alone on a
+  // phone gets keys a finger can hit, instead of three octaves of slivers.
   const range = useMemo(() => {
-    const r = rangeFor(song.notes.map((n) => n.pitch))
+    const r = rangeFor(notes.map((n) => n.pitch))
     return wide ? widenRange(r, WIDE_OCTAVES) : r
-  }, [song, wide])
+  }, [notes, wide])
   const boxes = useMemo(() => keyBoxes(range.low, range.high), [range])
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
   const tempo = Number(speed)
@@ -291,6 +297,19 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     if (phase === 'setup' || phase === 'ready') fall.current?.setTime(READY_TIME)
   }, [phase, notes])
 
+  // Leaving mid-song (the back arrow, the phone's back) counts as stopping it, as the Stop button does.
+  const practiceRef = useRef(practice)
+  practiceRef.current = practice
+  useEffect(
+    () => () => {
+      const j = judge.current
+      if (!j || !profileId || (phaseRef.current !== 'playing' && phaseRef.current !== 'paused')) return
+      const s = j.summary()
+      void log.add(profileId, { type: 'song_abandoned', songId: song.id, practice: practiceRef.current, hit: s.results.filter((r) => r.outcome === 'hit').length, total: s.total })
+    },
+    [log, profileId, song.id],
+  )
+
   const stop = () => {
     const j = judge.current
     if (j && profileId && phaseRef.current !== 'report') {
@@ -322,7 +341,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onAnotherSong={() => history.back()} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }
@@ -332,11 +351,12 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       <TopBar title={song.title} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
-        <section className={styles.panel}>
+        <section className={setup.bar}>
           {hasLeft && (
-            <div className={styles.row}>
-              <span className={styles.label}>{t('hands')}</span>
+            <div className={setup.field}>
+              <span className={setup.label}>{t('hands')}</span>
               <SegmentedControl
+                size="sm"
                 value={practice}
                 onChange={(v) => setPractice(v as Practice)}
                 options={[
@@ -347,26 +367,30 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
               />
             </div>
           )}
-          <div className={styles.row}>
-            <span className={styles.label}>{t('speed')}</span>
-            <SegmentedControl value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+          <div className={setup.field}>
+            <span className={setup.label}>{t('speed')}</span>
+            <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
           </div>
-          <div>
-            <div className={styles.actions}>
-              <Button
-                onClick={() => {
-                  stopListening()
-                  setPhase('ready')
-                }}
-              >
-                ▶ {t('startSong')}
-              </Button>
-              <Button variant="outline" onClick={listen}>
-                {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
-              </Button>
-            </div>
-            {output.phoneMuted && <p className={styles.hint}>{t('studioPhoneMuted')}</p>}
+          <div className={setup.go}>
+            <Button
+              onClick={() => {
+                stopListening()
+                setPhase('ready')
+              }}
+            >
+              ▶ {t('startSong')}
+            </Button>
+            <Button variant="outline" onClick={listen}>
+              {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
+            </Button>
           </div>
+          <p className={setup.note} data-inline>
+            <span>{t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
+            <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
+              {t('playModeChange')}
+            </button>
+          </p>
+          {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
         </section>
       )}
 
@@ -374,6 +398,11 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
         <div className={styles.prompt} role="status">
           <strong>{t('pressMiddleC')}</strong>
           <span>{hint ?? t('pressMiddleCHint')}</span>
+          <div className={styles.actions}>
+            <Button size="sm" variant="ghost" onClick={() => setPhase('setup')}>
+              {t(hasLeft ? 'backToSetupHands' : 'backToSetupSpeed')}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -406,6 +435,11 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
             🔥 {t('streakChip', { count: streak })}
           </div>
         )}
+        {phase === 'playing' && (
+          <Button size="sm" variant="ghost" className={styles.stageStop} onClick={stop}>
+            ■ {t('stop')}
+          </Button>
+        )}
         <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} />
         <PlayKeyboard
           sound={!keyboard.connected}
@@ -421,13 +455,6 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
         />
       </div>
 
-      {phase === 'playing' && (
-        <div className={styles.actions}>
-          <Button variant="ghost" onClick={stop}>
-            {t('stop')}
-          </Button>
-        </div>
-      )}
     </main>
   )
 }

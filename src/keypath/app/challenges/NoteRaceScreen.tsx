@@ -18,6 +18,7 @@ import { RACE_LEVEL_NAME, STAFF_LEVEL_NAME } from './ChallengesHome'
 import { NoteRace, RACE_MS, type RaceLevel, type RaceMode } from './noteRace'
 import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
+import setup from '../setup.module.css'
 
 type Phase = 'setup' | 'run' | 'result'
 const FLASH_MS = 300
@@ -130,10 +131,10 @@ export function NoteRaceScreen() {
       <TopBar title={t('raceTitle')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
-        <section className={styles.panel}>
-          <p>{t('raceBlurb')}</p>
-          <div className={styles.row}>
-            <span className={styles.label}>{t('raceShow')}</span>
+        <section className={setup.bar}>
+          <p className={setup.lead}>{t('raceBlurb')}</p>
+          <div className={setup.field}>
+            <span className={setup.label}>{t('raceShow')}</span>
             <SegmentedControl
               size="sm"
               value={mode}
@@ -144,8 +145,8 @@ export function NoteRaceScreen() {
               ]}
             />
           </div>
-          <div className={styles.row}>
-            <span className={styles.label}>{t('level')}</span>
+          <div className={setup.field}>
+            <span className={setup.label}>{t('level')}</span>
             <SegmentedControl
               size="sm"
               value={String(level)}
@@ -153,10 +154,14 @@ export function NoteRaceScreen() {
               options={[1, 2, 3].map((l) => ({ value: String(l), label: t(levelNames[l]) }))}
             />
           </div>
-          <p className={styles.hint}>{best !== undefined ? t('best', { score: best }) : t('noBest')}</p>
-          <p className={styles.hint}>{t(mode === 'staff' ? 'raceStaffHint' : 'raceKeysHidden')}</p>
-          <div>
+          <div className={setup.go}>
             <Button onClick={start}>▶ {t('go')}</Button>
+            <span className={setup.note} data-inline>
+              {best !== undefined ? t('best', { score: best }) : t('noBest')}
+            </span>
+            <span className={setup.note} data-inline>
+              {t(mode === 'staff' ? 'raceStaffHint' : 'raceKeysHidden')}
+            </span>
           </div>
         </section>
       )}
@@ -191,7 +196,7 @@ export function NoteRaceScreen() {
 
       {phase === 'result' && result && (
         <section className={styles.panel} role="status">
-          <h2 className={styles.resultTitle}>{t('raceDone', { score: result.score })}</h2>
+          <h2 className={styles.resultTitle}>{result.score > 0 ? t('raceDone', { score: result.score }) : t('raceNone')}</h2>
           {result.best && <p className={styles.newBest}>★ {t('newBest')}</p>}
           {result.wrong > 0 && <p className={styles.hint}>{t('raceWrong', { count: result.wrong })}</p>}
           <div className={styles.actions}>

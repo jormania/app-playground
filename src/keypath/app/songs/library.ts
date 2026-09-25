@@ -71,6 +71,19 @@ export interface ImportDraft {
 
 export type ImportProblem = 'not-midi' | 'unsupported' | 'no-notes'
 
+/**
+ * Give a hand a part ('' for none). One part can't be both hands, or every
+ * note would be there twice: taking the left hand's part for the right leaves
+ * the left with none; taking the right's for the left moves the right hand to
+ * the left's old part, or else to any other.
+ */
+export function choosePart(d: ImportDraft, hand: 'right' | 'left', key: string): ImportDraft {
+  const part = d.parts.find((p) => p.key === key) ?? null
+  if (part && hand === 'right' && d.left?.key === part.key) return { ...d, right: part, left: null }
+  if (part && hand === 'left' && d.right?.key === part.key) return { ...d, left: part, right: d.left ?? d.parts.find((p) => p.key !== part.key) ?? null }
+  return { ...d, [hand]: part }
+}
+
 /** Read a picked file into a draft for the "Which part?" step. */
 export function draftFromFile(bytes: ArrayBuffer, fileName: string): ImportDraft | ImportProblem {
   let file: SmfFile

@@ -165,6 +165,23 @@
   display: grid;
   gap: var(--space-xs);
 }
+/* A legend carries its own inline padding; without this it sits indented from the labels above it. */
+.fieldset > legend {
+  padding: 0;
+}
+
+/* Settings: the player at the top, with Edit. */
+.playerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.playerName {
+  flex: 1;
+  min-width: 0;
+  font: var(--weight-bold) var(--text-lg) / var(--leading-tight) var(--font-display);
+  overflow-wrap: anywhere;
+}
 .avatarGrid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -353,5 +370,29 @@
   .avatarSmall,
   .resume {
     animation: none;
+  }
+}
+
+/* A phone on its side: the four doors side by side, so all of Home fits without scrolling.
+   The same sizes as in portrait; the icon moves above the title to make room. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .homeScreen {
+    max-width: none;
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-sm);
+  }
+  .doors {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .door {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    min-height: 0;
+    padding: var(--space-sm) var(--space-md);
+  }
+  .doorIcon {
+    grid-row: auto;
+    justify-self: start;
   }
 }

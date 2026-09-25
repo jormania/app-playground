@@ -172,12 +172,23 @@
   justify-content: center;
 }
 
+
 .stage {
   position: relative;
   flex: 1;
   min-height: 22rem;
   display: flex;
   flex-direction: column;
+}
+
+/* Stop, in the corner of the falling notes rather than a row of its own under the keys. */
+.stageStop {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  z-index: 3;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .countIn {
@@ -442,5 +453,42 @@
   }
   .countIn {
     inset: 0 0 clamp(4.5rem, 34dvh, 8rem);
+  }
+}
+
+/* The report: heading, stars, what went well, the suggestion, then the buttons.
+   On a phone on its side: heading, stars and buttons on the left, the rest on the
+   right, so Play again is in view without scrolling. */
+.reportHead,
+.reportBody {
+  display: contents;
+}
+.reportActions {
+  order: 1;
+}
+
+/* The song lists on a phone on its side: two columns, half the scrolling. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .screen {
+    max-width: none;
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-sm);
+  }
+  .songList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+    column-gap: var(--space-xl);
+    padding: var(--space-sm) var(--space-md);
+  }
+  .reportHead,
+  .reportBody {
+    display: grid;
+    gap: var(--space-sm);
+    align-content: start;
+  }
+  .reportActions {
+    order: 0;
   }
 }

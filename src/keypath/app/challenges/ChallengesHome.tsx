@@ -34,6 +34,7 @@ export function ChallengesHome() {
     <main className={styles.screen}>
       <TopBar title={t('doorChallenges')} />
       <p className={styles.intro}>{t('challengesIntro')}</p>
+      <div className={styles.games}>
       <button type="button" className={styles.game} onClick={() => navigate({ name: 'challenge', game: 'race' })}>
         <span className={styles.gameIcon} aria-hidden>
           🏁
@@ -61,6 +62,7 @@ export function ChallengesHome() {
         <span className={styles.gameBlurb}>{t('chordBlurb')}</span>
         <span className={styles.gameBest}>{bests(records.chord, CHORD_LEVEL_NAME)}</span>
       </button>
+      </div>
     </main>
   )
 }

@@ -16,6 +16,7 @@ import { ECHO_LEVEL_NAME } from './ChallengesHome'
 import { RecordRepo, type ChallengeRecords } from './records'
 import { beatMs, ECHO_BPM, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, turnTimeline, type EchoLevel, type EchoResult } from './rhythm'
 import styles from './challenges.module.css'
+import setup from '../setup.module.css'
 
 type Phase = 'setup' | 'turn' | 'result' | 'done'
 /** What the turn is doing now, for the big label. */
@@ -48,6 +49,8 @@ export function EchoScreen() {
   const turn = useRef<{ downbeat: number; end: number; start: number } | null>(null)
   const tapTimes = useRef<number[]>([])
   const roundStart = useRef(0)
+  /** From the first rhythm of a round until its score: leaving in between is logged as leaving. */
+  const inRound = useRef(false)
   const headKeyPath = useRef<HTMLSpanElement>(null)
   const headYou = useRef<HTMLSpanElement>(null)
 
@@ -147,6 +150,7 @@ export function EchoScreen() {
     setPassed([])
     setNewBest(false)
     roundStart.current = performance.now()
+    inRound.current = true
     if (profileId) void log.add(profileId, { type: 'challenge_started', game: 'echo', level })
   }
   // A new round, or the next rhythm: play as soon as the index settles.
@@ -158,6 +162,7 @@ export function EchoScreen() {
   }, [pending, play])
 
   const finishRound = async () => {
+    inRound.current = false
     const score = passed.filter(Boolean).length
     setPhase('done')
     if (!profileId) return
@@ -172,7 +177,7 @@ export function EchoScreen() {
   useEffect(
     () => () => {
       playback.current?.stop()
-      if (turn.current && profileId) void log.add(profileId, { type: 'challenge_left', game: 'echo', level, ms: Math.round(performance.now() - roundStart.current) })
+      if (inRound.current && profileId) void log.add(profileId, { type: 'challenge_left', game: 'echo', level, ms: Math.round(performance.now() - roundStart.current) })
     },
     [log, profileId, level],
   )
@@ -184,14 +189,14 @@ export function EchoScreen() {
   const tn = turn.current
 
   return (
-    <main className={`${styles.playScreen} ${styles.echoScreen}`}>
+    <main className={`${styles.playScreen} ${phase === 'turn' ? styles.echoScreen : ''}`}>
       <TopBar title={t('echoTitle')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
 
       {phase === 'setup' && (
-        <section className={styles.panel}>
-          <p>{t('echoBlurb')}</p>
-          <div className={styles.row}>
-            <span className={styles.label}>{t('level')}</span>
+        <section className={setup.bar}>
+          <p className={setup.lead}>{t('echoBlurb')}</p>
+          <div className={setup.field}>
+            <span className={setup.label}>{t('level')}</span>
             <SegmentedControl
               size="sm"
               value={String(level)}
@@ -199,9 +204,8 @@ export function EchoScreen() {
               options={[1, 2, 3].map((l) => ({ value: String(l), label: t(ECHO_LEVEL_NAME[l]) }))}
             />
           </div>
-          <p className={styles.hint}>{best !== undefined ? t('best', { score: `${best}/${ROUND}` }) : t('noBest')}</p>
           <OutputChoice output={output} label={t('echoPlayOn')} phoneOnly={t('echoPlaysOnPhone')} />
-          <div>
+          <div className={setup.go}>
             <Button
               onClick={() => {
                 startRound()
@@ -210,6 +214,9 @@ export function EchoScreen() {
             >
               ▶ {t('go')}
             </Button>
+            <span className={setup.note} data-inline>
+              {best !== undefined ? t('best', { score: `${best}/${ROUND}` }) : t('noBest')}
+            </span>
           </div>
         </section>
       )}
