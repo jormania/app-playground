@@ -764,6 +764,17 @@ it as her song, *Answer to Take 3*, and opens it) (`studio/answer.ts`).
   beats at most. Anything else is dropped: "No answer came back this time."
   Answers aren't kept unless learnt.
 
+### The play screen in portrait
+
+In portrait the play screen was as tall as its parts: the setup panel, then
+a stage held to at least 22rem, so on a phone the keys ran off the bottom
+and their names were cut off. Now portrait works as landscape always did:
+the screen is exactly the phone's height, the title, setup and keys take
+what they need, and the falling notes get the rest (at least a little above
+the keys; once the song starts the setup panel goes and the fall grows).
+Checked at 412×892 (the owner's phone), 360×740 and landscape: no
+scrolling, the whole keyboard in view.
+
 ### Settings, regrouped
 
 Settings had grown into unlabelled panels in the order things were added,

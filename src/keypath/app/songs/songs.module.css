@@ -164,13 +164,24 @@
 }
 
 /* ── Play screen ── */
+/* The whole screen at once, in portrait as on a phone on its side: the page is
+   exactly the screen's height, the title, setup and keys take what they need,
+   and the falling notes get the rest. Only a screen too short for even a small
+   fall scrolls. */
 .playScreen {
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-md) var(--space-sm) calc(var(--space-md) + env(safe-area-inset-bottom));
   box-sizing: border-box;
+}
+.playScreen > * {
+  flex-shrink: 0;
+}
+.playScreen > .stage {
+  flex-shrink: 1;
 }
 .playScreen > .panel,
 .playScreen > .prompt {
@@ -197,7 +208,8 @@
 .stage {
   position: relative;
   flex: 1;
-  min-height: 22rem;
+  /* The keys (7rem) and a little fall above them: the setup panel goes away once the song starts, and the fall grows into its room. */
+  min-height: 11rem;
   display: flex;
   flex-direction: column;
 }
@@ -227,7 +239,7 @@
 .fall {
   position: relative;
   flex: 1;
-  min-height: 14rem;
+  min-height: 0;
   overflow: hidden;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--color-bg-sunken);
@@ -545,17 +557,8 @@
    title, prompt and keys leave, and the keys a third of the height. */
 @media (orientation: landscape) and (max-height: 560px) {
   .playScreen {
-    height: 100dvh;
-    min-height: 0;
-    overflow-y: auto;
     gap: var(--space-xs);
     padding: var(--space-xs) var(--space-sm) calc(var(--space-xs) + env(safe-area-inset-bottom));
-  }
-  .playScreen > * {
-    flex-shrink: 0;
-  }
-  .playScreen > .stage {
-    flex-shrink: 1;
   }
   .prompt {
     padding: var(--space-2xs) var(--space-sm);
