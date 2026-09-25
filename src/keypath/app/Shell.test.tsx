@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Shell } from './Shell'
+import { GUIDE_URL } from './screens/Home'
 import { EngagementLog } from './log'
 import { ProfileRepo } from './profiles'
 import { K, memoryStore, type KeyValueStore } from './store'
@@ -184,6 +185,15 @@ describe('KeyPath shell, after the audit', () => {
     fireEvent.click(song)
     await waitFor(async () => expect((await log.read(p.id)).at(-1)).toMatchObject({ type: 'door_opened', door: 'songs' }))
     expect(location.hash).toBe('#/play/starter%3Aode')
+  })
+
+  it('links the user’s guide from the top of Home, in a new tab', async () => {
+    await start()
+    await createPlayer('Nora')
+    const guide = screen.getByRole('link', { name: 'User’s guide' })
+    expect(guide.getAttribute('href')).toBe(GUIDE_URL)
+    expect(guide.getAttribute('target')).toBe('_blank')
+    expect(guide.getAttribute('rel')).toContain('noopener')
   })
 
   it('Today all done is noted once, for its sticker', async () => {

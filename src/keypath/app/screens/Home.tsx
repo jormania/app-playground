@@ -19,6 +19,9 @@ const DOORS: { door: Door; icon: string; title: StringKey; blurb: StringKey }[] 
   { door: 'studio', icon: '🎨', title: 'doorStudio', blurb: 'doorStudioBlurb' },
 ]
 
+/** KeyPath's user's guide: a shared doc (Claude Docs), opened in a new tab. Only people it is shared with can open it. */
+export const GUIDE_URL = 'https://claude.ai/code/artifact/2cf64f1e-a27f-4a69-b305-4eeb0ec8c5dd'
+
 /** Four equal doors, no order, no gate (KEYPATH_TUTOR.md §3). */
 export function Home() {
   const { profile, t, log, store } = useApp()
@@ -59,6 +62,13 @@ export function Home() {
           <h1 className={styles.hero}>{t('hello', { name: profile.name })}</h1>
           <p className={styles.sub}>{t('whereToday')}</p>
         </div>
+        <a className={styles.guideLink} href={GUIDE_URL} target="_blank" rel="noopener noreferrer" aria-label={t('userGuide')} title={t('userGuide')}>
+          {/* An open book. */}
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M2 5.5c2.8-1.2 6-1.2 10 1v13c-4-2.2-7.2-2.2-10-1z" />
+            <path d="M22 5.5c-2.8-1.2-6-1.2-10 1v13c4-2.2 7.2-2.2 10-1z" />
+          </svg>
+        </a>
       </header>
       {!keyboard.checking && knownKeyboard === false && !keyboard.connected ? (
         <button type="button" className={connectStyles.card} onClick={() => navigate({ name: 'connect' })}>
