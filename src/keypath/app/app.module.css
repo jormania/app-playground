@@ -165,6 +165,23 @@
   display: grid;
   gap: var(--space-xs);
 }
+/* A legend carries its own inline padding; without this it sits indented from the labels above it. */
+.fieldset > legend {
+  padding: 0;
+}
+
+/* Settings: the player at the top, with Edit. */
+.playerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.playerName {
+  flex: 1;
+  min-width: 0;
+  font: var(--weight-bold) var(--text-lg) / var(--leading-tight) var(--font-display);
+  overflow-wrap: anywhere;
+}
 .avatarGrid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

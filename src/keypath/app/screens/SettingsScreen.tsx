@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, SegmentedControl, SettingsToggle } from '../../../ds'
+import { Button, Field, SegmentedControl, SettingsToggle } from '../../../ds'
 import { BackupError, exportBackup, restoreBackup } from '../backup'
 import { useApp } from '../context'
-import type { Language, NoteNames, ProfileSettings } from '../profiles'
+import { AVATARS, type Language, type NoteNames, type ProfileSettings } from '../profiles'
 import { navigate } from '../router'
 import { persistenceState, type Persistence } from '../store'
 import type { OnWrong, ReportDepth, Timing } from '../../engine'
@@ -20,10 +20,13 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 export function SettingsScreen() {
-  const { profile, settings, t, updateSetting, choose, removeProfile, store, reload } = useApp()
+  const { profile, profiles, settings, t, updateSetting, choose, removeProfile, store, reload } = useApp()
   const [persisted, setPersisted] = useState<Persistence>('unknown')
   const [message, setMessage] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  /** A backup file picked, waiting for "Replace everything". */
+  const [pendingRestore, setPendingRestore] = useState<File | null>(null)
+  const [editing, setEditing] = useState<{ name: string; avatar: string } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -44,9 +47,8 @@ export function SettingsScreen() {
     setMessage(t('backupDone'))
   }
 
-  const restore = async (file: File | undefined) => {
-    if (!file) return
-    if (!window.confirm(t('restoreConfirm'))) return
+  const restore = async (file: File) => {
+    setPendingRestore(null)
     try {
       const count = await restoreBackup(store, await file.text())
       await reload()
@@ -57,9 +59,65 @@ export function SettingsScreen() {
     }
   }
 
+  const savePlayer = async () => {
+    if (!editing) return
+    await profiles.update(profile.id, editing)
+    await reload()
+    setEditing(null)
+  }
+
   return (
     <main className={styles.screen}>
       <TopBar title={t('settingsFor', { name: profile.name })} />
+
+      <section className={styles.panel}>
+        {editing ? (
+          <form
+            className={styles.row}
+            onSubmit={(e) => {
+              e.preventDefault()
+              void savePlayer()
+            }}
+          >
+            <Field label={t('name')} value={editing.name} maxLength={40} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+            <fieldset className={styles.fieldset}>
+              <legend className={styles.label}>{t('pickFace')}</legend>
+              <div className={styles.avatarGrid} role="radiogroup">
+                {AVATARS.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    role="radio"
+                    aria-checked={editing.avatar === a}
+                    className={`${styles.avatarChoice} ${editing.avatar === a ? styles.avatarChosen : ''}`}
+                    onClick={() => setEditing({ ...editing, avatar: a })}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <div className={styles.actions}>
+              <Button type="submit" disabled={!editing.name.trim()}>
+                {t('savePlayer')}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+                {t('cancel')}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className={styles.playerRow}>
+            <span className={styles.avatarSmall} aria-hidden>
+              {profile.avatar}
+            </span>
+            <span className={styles.playerName}>{profile.name}</span>
+            <Button size="sm" variant="outline" onClick={() => setEditing({ name: profile.name, avatar: profile.avatar })}>
+              {t('editPlayer')}
+            </Button>
+          </div>
+        )}
+      </section>
 
       <section className={styles.panel}>
         <Row label={t('language')}>
@@ -101,7 +159,7 @@ export function SettingsScreen() {
             ]}
           />
         </Row>
-        <Row label={t('timing')}>
+        <Row label={t('timing')} hint={t('timingHint')}>
           <SegmentedControl
             size="sm"
             value={settings.timing}
@@ -113,7 +171,7 @@ export function SettingsScreen() {
             ]}
           />
         </Row>
-        <Row label={t('report')}>
+        <Row label={t('report')} hint={t('reportHint')}>
           <SegmentedControl
             size="sm"
             value={settings.report}
@@ -168,11 +226,25 @@ export function SettingsScreen() {
               accept="application/json,.json"
               hidden
               onChange={(e) => {
-                void restore(e.target.files?.[0])
+                setPendingRestore(e.target.files?.[0] ?? null)
+                setMessage(null)
                 e.target.value = ''
               }}
             />
           </div>
+          {pendingRestore && (
+            <div className={styles.confirm} role="alertdialog" aria-label={t('restoreConfirm')}>
+              <p className={styles.confirmText}>{t('restoreConfirm')}</p>
+              <div className={styles.actions}>
+                <Button variant="danger" onClick={() => void restore(pendingRestore)}>
+                  {t('restoreConfirmYes')}
+                </Button>
+                <Button variant="ghost" onClick={() => setPendingRestore(null)}>
+                  {t('cancel')}
+                </Button>
+              </div>
+            </div>
+          )}
         </Row>
         {message && (
           <p className={styles.message} role="status">

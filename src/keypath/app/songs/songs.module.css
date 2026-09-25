@@ -172,6 +172,27 @@
   justify-content: center;
 }
 
+/* The play setup's reminder of the wrong-note mode and timing, with the way to change them. */
+.modeLine {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2xs) var(--space-sm);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.linkButton {
+  padding: var(--space-2xs) 0;
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .stage {
   position: relative;
   flex: 1;

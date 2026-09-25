@@ -47,6 +47,15 @@ export class ProfileRepo {
     return profile
   }
 
+  /** A new name or face for a player. A blank name keeps the old one. */
+  async update(profileId: string, patch: { name?: string; avatar?: string }): Promise<void> {
+    const name = patch.name?.trim().slice(0, 40)
+    await this.store.set(
+      K.profiles,
+      (await this.list()).map((p) => (p.id === profileId ? { ...p, ...(name ? { name } : {}), ...(patch.avatar ? { avatar: patch.avatar } : {}) } : p)),
+    )
+  }
+
   /** The profile this phone opens into — "pinned" by simply remembering it. */
   async current(): Promise<Profile | null> {
     const id = await this.store.get<string>(K.current)

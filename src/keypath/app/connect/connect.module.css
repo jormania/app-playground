@@ -162,7 +162,10 @@
   color: var(--color-faint);
 }
 .pillAction {
-  padding: var(--space-3xs) var(--space-sm);
+  /* Big enough for a child's finger: the visible pill stays slim, the tap area doesn't. */
+  position: relative;
+  min-height: 2rem;
+  padding: var(--space-3xs) var(--space-md);
   border-radius: var(--radius-pill);
   border: 1px solid var(--color-accent);
   background: none;
@@ -170,6 +173,11 @@
   font: inherit;
   font-weight: var(--weight-medium);
   cursor: pointer;
+}
+.pillAction::after {
+  content: '';
+  position: absolute;
+  inset: -6px -4px;
 }
 
 /* Home, until this phone has reached a keyboard once. */
