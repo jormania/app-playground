@@ -592,6 +592,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const chipName = (x: PartStep) => (x.kind === 'phrase' ? String(x.first) : x.kind === 'join' ? `${x.first}–${x.last}` : t('partWholeShort'))
   const afterPart = part ? (steps[steps.indexOf(part) + 1] ?? null) : null
 
+  /** Listening, or anywhere from "press middle C" to the end of a take: the screen is for the notes. */
+  const musicOn = listening || phase !== 'setup'
+
   if (phase === 'report' && report) {
     return (
       <main className={styles.screen}>
@@ -603,12 +606,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={song.title} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" />} />
+      <TopBar title={song.title} compact={musicOn} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" compact={musicOn} />} />
 
-      {phase === 'setup' && (
+      {/* The choices are for before the music; once it plays, or while she listens, they fold away and the notes get the screen. */}
+      {phase === 'setup' && !listening && (
         <section className={setup.bar}>
-          {/* While she listens the choices fold away, so the notes have the room to fall where she can see them. */}
-          {!listening && hasLeft && (
+          {hasLeft && (
             <div className={setup.field}>
               <span className={setup.label}>{t('hands')}</span>
               <div className={setup.controls}>
@@ -630,7 +633,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               </div>
             </div>
           )}
-          {!listening && steps.length > 0 && (
+          {steps.length > 0 && (
             <div className={setup.field}>
               <span className={setup.label}>{t('parts')}</span>
               {/* The same chips for every song; a long one's run on one line that scrolls sideways, the chosen one in view. */}
@@ -651,18 +654,16 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               </div>
             </div>
           )}
-          {!listening && (
-            <div className={setup.field}>
-              <span className={setup.label}>{t('speed')}</span>
-              <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
-            </div>
-          )}
+          <div className={setup.field}>
+            <span className={setup.label}>{t('speed')}</span>
+            <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+          </div>
           <div className={setup.go}>
             <Button onClick={go}>
               ▶ {span ? partName(span) : t('startSong')}
             </Button>
             <Button variant="outline" onClick={listen}>
-              {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
+              🎧 {t('listen')}
             </Button>
           </div>
           {span ? (
@@ -679,6 +680,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           )}
           {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
         </section>
+      )}
+
+      {listening && output.phoneMuted && (
+        <div className={styles.prompt} role="status">
+          {t('studioPhoneMuted')}
+        </div>
       )}
 
       {phase === 'ready' && (
@@ -780,8 +787,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             🔥 {t('streakChip', { count: streak })}
           </div>
         )}
-        {phase === 'playing' && (
-          <Button size="sm" variant="ghost" className={styles.stageStop} onClick={stop}>
+        {(phase === 'playing' || listening) && (
+          <Button size="sm" variant="ghost" className={styles.stageStop} onClick={listening ? stopListening : stop}>
             ■ {t('stop')}
           </Button>
         )}

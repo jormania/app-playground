@@ -118,6 +118,30 @@
 
 /* A phone on its side has ~300–360 px of height. The playing screens give it to the keys:
    a slimmer title row, with the keyboard's status on the same line. */
+/* While the music is on (`compact`), portrait gets the same slim line: the
+   title in one line, the keyboard's status a dot beside it. */
+.topBar[data-compact] {
+  flex-wrap: nowrap;
+  gap: var(--space-xs);
+}
+.topBar[data-compact] .backButton {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  font-size: var(--text-lg);
+}
+.topBar[data-compact] .title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-lg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topBar[data-compact] .topAside {
+  flex-basis: auto;
+  min-height: 0;
+}
 @media (orientation: landscape) and (max-height: 560px) {
   .topBar {
     flex-wrap: nowrap;

@@ -160,7 +160,7 @@ export function ChordCatchScreen() {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={t('chordTitle')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
+      <TopBar title={t('chordTitle')} compact={phase === 'run'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'run'} />} />
 
       {phase === 'setup' && (
         <section className={setup.bar}>

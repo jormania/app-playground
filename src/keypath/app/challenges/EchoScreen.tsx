@@ -191,7 +191,7 @@ export function EchoScreen() {
 
   return (
     <main className={`${styles.playScreen} ${phase === 'turn' ? styles.echoScreen : ''}`}>
-      <TopBar title={t('echoTitle')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
+      <TopBar title={t('echoTitle')} compact={phase === 'turn'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'turn'} />} />
 
       {phase === 'setup' && (
         <section className={setup.bar}>

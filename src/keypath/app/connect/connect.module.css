@@ -161,6 +161,18 @@
 .pillName {
   color: var(--color-faint);
 }
+/* Just the dot, while the music is on; the words stay for a screen reader. */
+.pill[data-compact] {
+  padding: var(--space-2xs);
+}
+.pill[data-compact] .pillWords {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .pillAction {
   /* Big enough for a child's finger: the visible pill stays slim, the tap area doesn't. */
   position: relative;

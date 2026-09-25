@@ -782,11 +782,26 @@ Three changes, all measured at 892×412:
 - the notes pack closer when the fall is short (`pxPerMsFor`,
   `FallingNotes.tsx`): at least 2.2 seconds of the song stay in view, never
   tighter than 45 px a second; a tall fall (portrait) keeps 110 px a second;
-- while **Listen** plays, the setup choices (hands, parts, speed) fold away,
-  leaving only the start and stop row;
+- while **Listen** plays, the setup choices fold away (see below);
 - the on-screen keys are a little shorter in landscape (at most 6.5rem).
-The fall is now 142 to 186 px, with 2.2 seconds in it (was about 0.6 while
-listening).
+The fall is now 142 px in setup and about 245 px while listening or
+playing, with 2.2 seconds in it (was about 0.6 while listening).
+
+**The choices before the music, not during it.** Hands, parts, speed, the
+other hand and the play mode are for setting up a take; once the music
+starts they are clutter. So from Listen, or from "press middle C" to the
+end of a take (`musicOn` in `PlayScreen.tsx`), in both orientations alike:
+- the setup panel is gone entirely, Listen included: Listen and a take look
+  the same, falling notes and keys, with **■ Stop** in the corner of the
+  fall;
+- the title bar is one slim line (`TopBar compact`), the title in one line
+  with an ellipsis;
+- the keyboard's status is just its dot, its words kept for a screen reader
+  (`KeyboardStatus compact`). A keyboard lost mid-song pauses the song with
+  its own way to reconnect, so the Connect button isn't needed there.
+The Journey's steps and the three games take the same slim bar while they
+run. Only a muted phone still gets a line during Listen, since it is why she
+would hear nothing.
 
 ### Settings, regrouped
 
