@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LogEvent, LogRecord } from '../log'
 import { memoryStore } from '../store'
-import { earnedStickers, markSeen, seenStickers, STICKERS } from './stickers'
+import { earnedStickers, markSeen, monthsAfter, seenStickers, STICKERS } from './stickers'
 
 const at = (day: string, e: LogEvent): LogRecord => ({ ...e, at: new Date(`${day}T10:00:00`).toISOString(), profileId: 'p' }) as LogRecord
 
@@ -33,9 +33,34 @@ describe('stickers', () => {
     expect(earnedStickers(r).get('week')).toBe('2026-09-15')
   })
 
+  it('three months, six months and a year: kept at it that long since the first practice day', () => {
+    const played = (day: string) => at(day, { type: 'song_started', songId: 'x', practice: 'right', tempo: 1, mode: 'wait' })
+    const r = [played('2026-01-15'), played('2026-04-14')]
+    expect(earnedStickers(r).has('threeMonths')).toBe(false)
+    r.push(played('2026-04-20'))
+    expect(earnedStickers(r).get('threeMonths')).toBe('2026-04-20')
+    expect(earnedStickers(r).has('sixMonths')).toBe(false)
+    r.push(played('2026-07-15'), played('2027-01-14'))
+    expect(earnedStickers(r).get('sixMonths')).toBe('2026-07-15')
+    expect(earnedStickers(r).has('year')).toBe(false)
+    r.push(played('2027-01-15'))
+    expect(earnedStickers(r).get('year')).toBe('2027-01-15')
+    // Only practice counts: opening the app on the day isn't enough.
+    const idle = [played('2026-01-15'), at('2026-05-01', { type: 'door_opened', door: 'songs' })]
+    expect(earnedStickers(idle).has('threeMonths')).toBe(false)
+  })
+
+  it('counts months on the calendar, kept inside short months', () => {
+    expect(monthsAfter('2026-01-15', 3)).toBe('2026-04-15')
+    expect(monthsAfter('2026-01-31', 3)).toBe('2026-04-30')
+    expect(monthsAfter('2026-11-30', 3)).toBe('2027-02-28')
+    expect(monthsAfter('2027-11-29', 3)).toBe('2028-02-29')
+    expect(monthsAfter('2026-09-25', 12)).toBe('2027-09-25')
+  })
+
   it('every sticker has its own id', () => {
     expect(new Set(STICKERS.map((s) => s.id)).size).toBe(STICKERS.length)
-    expect(STICKERS.length).toBe(20)
+    expect(STICKERS.length).toBe(23)
   })
 
   it('the milestones that depend on what came before', () => {

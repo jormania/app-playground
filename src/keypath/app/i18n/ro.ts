@@ -463,6 +463,9 @@ export const ro: Record<StringKey, string> = {
   stOwnSong: 'Un cântec al tău, adăugat',
   stToday: 'Un „Azi” întreg, gata',
   stMonth: 'Treizeci de zile de exercițiu',
+  stThreeMonths: 'Trei luni de exercițiu',
+  stSixMonths: 'Șase luni de exercițiu',
+  stYear: 'Un an de exercițiu',
   // Numerele degetelor (al doilea pas din Călătorie)
   jFingersTitle: 'Numerele degetelor',
   jFingersBlurb: 'Fiecare deget are un număr, iar muzica le folosește.',

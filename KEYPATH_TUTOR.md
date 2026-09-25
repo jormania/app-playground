@@ -591,6 +591,11 @@ the log has shown so far (how each song was started, songs finished, parts
 learnt, steps passed, practice days) and is told each song's level. Today
 all done is logged once a day (`today_done`) when Home first sees it.
 
+A third batch made it twenty-three: three months, six months and a year of
+practice. Unlike the week and the thirty days (days she played, counted),
+these count calendar time: she practises on a day at least that long after
+her first practice day (three months after 31 January is 30 April).
+
 **The other hand plays itself** (`songs/accompany.ts`). With a two-handed
 song and one hand chosen, the other hand's notes sound, on by default and
 remembered on the phone (chip **🎹 Other hand** beside Hands).

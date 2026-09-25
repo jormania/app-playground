@@ -461,6 +461,9 @@ export const en = {
   stOwnSong: 'A song of your own added',
   stToday: 'A whole Today done',
   stMonth: 'Thirty days of practice',
+  stThreeMonths: 'Three months of practice',
+  stSixMonths: 'Six months of practice',
+  stYear: 'A year of practice',
   // Finger numbers (the Journey's second step)
   jFingersTitle: 'Finger numbers',
   jFingersBlurb: 'Every finger has a number, and music uses them.',

@@ -5,7 +5,7 @@ import { localDate } from '../progress/summary'
 import { K, type KeyValueStore } from '../store'
 
 // Stickers for firsts and milestones (KEYPATH_TUTOR.md §10, "Learning curve",
-// slice 3; twenty since the second batch). Read
+// slice 3; twenty-three since the second and third batches). Read
 // from the engagement log, which only ever grows, so a sticker once earned is
 // never taken away. Each is shown as new once, then kept on her Home.
 
@@ -21,6 +21,8 @@ export interface So {
   stepsPassed: Set<string>
   /** Days she practised on. */
   days: Set<string>
+  /** The first of them, for the stickers that count months since she started. */
+  firstDay?: string
   /** A song's level, when the phone knows the song. */
   level: (songId: string) => number | undefined
 }
@@ -37,6 +39,21 @@ export interface Sticker {
 const PRACTICE = new Set(['song_started', 'journey_started', 'challenge_started', 'studio_recorded'])
 export const WEEK_DAYS = 7
 export const MONTH_DAYS = 30
+/**
+ * The calendar day `months` after `date` (YYYY-MM-DD), kept inside the month:
+ * three months after 31 January is 30 April.
+ */
+export function monthsAfter(date: string, months: number): string {
+  const [y, m, d] = date.split('-').map(Number)
+  const total = y * 12 + (m - 1) + months
+  const year = Math.floor(total / 12)
+  const month = (total % 12) + 1
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  return `${year}-${String(month).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`
+}
+/** Practising on a day at least `months` after the first: she has kept at it that long. */
+const keptAt = (months: number) => (r: LogRecord, so: So) => PRACTICE.has(r.type) && !!so.firstDay && localDate(r.at) >= monthsAfter(so.firstDay, months)
+
 /** Rhythm echo's round. */
 const ECHO_ROUND = 5
 
@@ -62,6 +79,10 @@ export const STICKERS: Sticker[] = [
   { id: 'today', icon: '☀️', title: 'stToday', earns: (r) => r.type === 'today_done' },
   { id: 'week', icon: '📅', title: 'stWeek', earns: (r, so) => PRACTICE.has(r.type) && so.days.size >= WEEK_DAYS },
   { id: 'month', icon: '🗓️', title: 'stMonth', earns: (r, so) => PRACTICE.has(r.type) && so.days.size >= MONTH_DAYS },
+  // How long she has kept at it, in calendar time from her first practice day.
+  { id: 'threeMonths', icon: '🌿', title: 'stThreeMonths', earns: keptAt(3) },
+  { id: 'sixMonths', icon: '🌳', title: 'stSixMonths', earns: keptAt(6) },
+  { id: 'year', icon: '🏆', title: 'stYear', earns: keptAt(12) },
 ]
 
 /** Each sticker earned, with the day it was earned on. `level` tells a song's level, for "a Harder song". */
@@ -74,7 +95,10 @@ export function earnedStickers(records: readonly LogRecord[], level: So['level']
     if (r.type === 'song_finished') so.finished.add(r.songId)
     if (r.type === 'song_part' && r.passed && r.part !== 'whole') so.partLearnt.add(r.songId)
     if (r.type === 'journey_finished' && r.mode === 'check' && r.passed) so.stepsPassed.add(r.step)
-    if (PRACTICE.has(r.type)) so.days.add(localDate(r.at))
+    if (PRACTICE.has(r.type)) {
+      so.days.add(localDate(r.at))
+      so.firstDay ??= localDate(r.at)
+    }
     for (const s of STICKERS) if (!out.has(s.id) && s.earns(r, so)) out.set(s.id, localDate(r.at))
   }
   return out

@@ -224,7 +224,7 @@ describe('KeyPath shell, after the audit', () => {
     history.replaceState(null, '', '#/')
     await start(store)
     const shelf = within(await screen.findByRole('region', { name: /Stickers/ }))
-    expect(shelf.getByText('2 of 20')).toBeTruthy()
+    expect(shelf.getByText('2 of 23')).toBeTruthy()
     // Two at once (first song, three stars): counted, not named.
     expect(await shelf.findByText('2 new stickers! Tap one to see what it’s for.')).toBeTruthy()
     expect(shelf.getByRole('button', { name: 'Three stars on a song' }).getAttribute('data-earned')).toBe('true')
