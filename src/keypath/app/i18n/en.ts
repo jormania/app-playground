@@ -427,6 +427,7 @@ export const en = {
   j9Tip: 'The ladder keeps going: A sits in the second space, B on the middle line, C in the third space. From the middle line up, a note’s stem hangs down.',
   // Today and stickers (Home)
   userGuide: 'User’s guide',
+  release: 'KeyPath, release {n}',
   todayTitle: 'Today',
   todayHint: 'Three small things, about five minutes.',
   todayAllDone: 'All done for today. See you tomorrow!',

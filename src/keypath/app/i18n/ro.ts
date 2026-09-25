@@ -429,6 +429,7 @@ export const ro: Record<StringKey, string> = {
   j9Tip: 'Scara continuă: La stă în al doilea spațiu, Si pe linia din mijloc, Do în al treilea spațiu. De la linia din mijloc în sus, codița notei stă în jos.',
   // Azi și abțibilduri (ecranul principal)
   userGuide: 'Ghidul de utilizare',
+  release: 'KeyPath, versiunea {n}',
   todayTitle: 'Azi',
   todayHint: 'Trei lucruri mici, cam cinci minute.',
   todayAllDone: 'Gata pe azi. Pe mâine!',

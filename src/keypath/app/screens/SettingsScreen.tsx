@@ -7,6 +7,7 @@ import { navigate } from '../router'
 import { persistenceState, type Persistence } from '../store'
 import type { OnWrong, ReportDepth, Timing } from '../../engine'
 import { TopBar } from './TopBar'
+import { RELEASE } from '../release'
 import styles from '../app.module.css'
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -287,6 +288,7 @@ export function SettingsScreen() {
           )}
         </Row>
       </section>
+      <p className={styles.hint}>{t('release', { n: RELEASE })}</p>
     </main>
   )
 }

@@ -187,6 +187,13 @@ describe('KeyPath shell, after the audit', () => {
     expect(location.hash).toBe('#/play/starter%3Aode')
   })
 
+  it('says which release this is at the foot of Settings', async () => {
+    await start()
+    await createPlayer('Nora')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(await screen.findByText('KeyPath, release 1')).toBeTruthy()
+  })
+
   it('links the user’s guide from the top of Home, in a new tab', async () => {
     await start()
     await createPlayer('Nora')
