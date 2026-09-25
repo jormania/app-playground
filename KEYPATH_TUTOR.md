@@ -582,7 +582,7 @@ were shown). Below the doors; in landscape a scroll away.
 
 **The other hand plays itself** (`songs/accompany.ts`). With a two-handed
 song and one hand chosen, the other hand's notes sound, on by default and
-remembered on the phone (chip **🎹 Other hand plays** beside Hands).
+remembered on the phone (chip **🎹 Other hand** beside Hands).
 - With a clock (Show it, Keep going) the notes are handed over a little
   ahead, at their moments; a note whose moment passed during a pause is
   skipped, not played late.
@@ -593,6 +593,23 @@ remembered on the phone (chip **🎹 Other hand plays** beside Hands).
   MIDI-out test; if the keyboard sends the notes back, a note arriving within
   80 ms of one sent at that pitch is taken as the echo and never judged.
 - Loops of a bar play the other hand too.
+
+**Audit of the day's work (2026-09-25, landscape first).**
+- The middle-C check is asked once a visit: Start, Play again and Whole song
+  go straight in once it's known, and it's asked again only if a keyboard is
+  plugged in or out (it may be set to another octave).
+- Whole song after a practised bar started the bar again, not the song.
+- A song with more than seven parts steps through them (‹ Part 3 · 5 of 17 ›)
+  instead of a wall of chips.
+- The finger-numbers intro puts the hands beside the words in landscape,
+  so its buttons stay in view. The Journey map is two columns in landscape.
+- Finishing the whole song no longer earns "a part of a song learnt", nor
+  counts as a part in Progress. Several new stickers at once are counted
+  ("3 new stickers!") rather than one named.
+- The other-hand chip says **🎹 Other hand** (Romanian: Cealaltă mână), so
+  a two-handed song's setup stays on two rows in either language; its full
+  meaning is its accessible name.
+- Today's song gets the widest column in landscape; song titles are longest.
 
 **Rhythm syllables.** Rhythm echo's dots say ta or ti, the Kodály way
 Hoffman teaches: a note on the beat lasting a beat or more is ta, a half

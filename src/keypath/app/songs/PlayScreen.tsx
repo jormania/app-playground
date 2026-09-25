@@ -40,6 +40,8 @@ const WRONG_FLASH_MS = 350
 const STREAK_SHOWN = 5
 /** Before the start, the first notes rest this far (song ms) above the hit line. */
 const READY_TIME = -1500
+/** More parts than this and they're stepped through one at a time instead of shown as chips. */
+const MAX_CHIPS = 7
 /** The other hand plays itself while she practises one: remembered on the phone. */
 const OTHER_HAND_KEY = `${PREFIX}otherHand`
 /** Between two passes of a practised bar: long enough to read how it went. */
@@ -438,6 +440,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       // Its Note Offs will never come: let go of every key it was holding.
       setHeld(new Set())
     }
+    // A keyboard plugged in or out may be set to another octave: ask for middle C again.
+    if (wasConnected.current !== keyboard.connected) shiftKnown.current = false
     wasConnected.current = keyboard.connected
   }, [keyboard.connected, pause])
   useEffect(() => {
@@ -543,15 +547,26 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   }
   const wholeSong = () => {
     setLoopBoth(null)
-    playAgain()
+    setLoopStep(null)
+    judge.current = null
+    setReport(null)
+    // The whole song, not the bar just looped: this render's `playing` is still the bar.
+    if (shiftKnown.current) startJudge(song, settings, performance.now(), part)
+    else setPhase('ready')
   }
 
+  /** From the setup or the report: straight in once middle C has been found this visit, else ask for it. */
+  const go = () => {
+    stopListening()
+    if (shiftKnown.current) startJudge(playing, playSettings, performance.now(), part)
+    else setPhase('ready')
+  }
   const playAgain = () => {
     judge.current = null
     setReport(null)
     setResults(new Map())
     setStreak(0)
-    setPhase('ready')
+    go()
   }
 
   const partName = (x: PartStep) => (x.kind === 'phrase' ? t('partPhrase', { n: x.first }) : x.kind === 'join' ? t('partJoin', { a: x.first, b: x.last }) : t('partWhole'))
@@ -588,7 +603,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                   ]}
                 />
                 {practice !== 'both' && (
-                  <button type="button" className={setup.chip} aria-pressed={otherHand} onClick={() => chooseOtherHand(!otherHand)}>
+                  <button type="button" className={setup.chip} aria-pressed={otherHand} aria-label={t('otherHandFull')} onClick={() => chooseOtherHand(!otherHand)}>
                     🎹 {t('otherHand')}
                   </button>
                 )}
@@ -598,21 +613,37 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           {steps.length > 0 && (
             <div className={setup.field}>
               <span className={setup.label}>{t('parts')}</span>
-              <div className={setup.chips} role="group" aria-label={t('parts')}>
-                {steps.map((x) => (
-                  <button
-                    key={x.id}
-                    type="button"
-                    className={setup.chip}
-                    aria-pressed={x.id === partId}
-                    aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
-                    onClick={() => setPartId(x.id)}
-                  >
-                    {chipName(x)}
-                    {learnt.has(x.id) && ' ✓'}
+              {steps.length > MAX_CHIPS && part ? (
+                // A long song has too many parts for chips: one at a time, with its place in the way through.
+                <div className={setup.controls}>
+                  <button type="button" className={setup.chip} aria-label={t('partPrev')} disabled={steps.indexOf(part) === 0} onClick={() => setPartId(steps[steps.indexOf(part) - 1].id)}>
+                    ‹
                   </button>
-                ))}
-              </div>
+                  <span className={setup.stepper} aria-live="polite">
+                    {partName(part)}
+                    {learnt.has(part.id) && ' ✓'} · {t('partOf', { n: steps.indexOf(part) + 1, total: steps.length })}
+                  </span>
+                  <button type="button" className={setup.chip} aria-label={t('partNextOne')} disabled={steps.indexOf(part) === steps.length - 1} onClick={() => setPartId(steps[steps.indexOf(part) + 1].id)}>
+                    ›
+                  </button>
+                </div>
+              ) : (
+                <div className={setup.chips} role="group" aria-label={t('parts')}>
+                  {steps.map((x) => (
+                    <button
+                      key={x.id}
+                      type="button"
+                      className={setup.chip}
+                      aria-pressed={x.id === partId}
+                      aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
+                      onClick={() => setPartId(x.id)}
+                    >
+                      {chipName(x)}
+                      {learnt.has(x.id) && ' ✓'}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <div className={setup.field}>
@@ -620,12 +651,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
           </div>
           <div className={setup.go}>
-            <Button
-              onClick={() => {
-                stopListening()
-                setPhase('ready')
-              }}
-            >
+            <Button onClick={go}>
               ▶ {span ? partName(span) : t('startSong')}
             </Button>
             <Button variant="outline" onClick={listen}>

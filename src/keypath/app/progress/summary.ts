@@ -139,6 +139,8 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
         s.songs.listened++
         break
       case 'song_part':
+        // The whole song is the last step of the way, not a part: it counts as finished, above.
+        if (r.part === 'whole') break
         s.songs.parts.played++
         if (r.passed) s.songs.parts.learnt++
         break

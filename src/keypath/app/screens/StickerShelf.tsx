@@ -34,7 +34,7 @@ export function StickerShelf() {
   if (!earned) return null
   const day = (d: string) => new Date(`${d}T12:00`).toLocaleDateString(settings.language === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'short' })
   const name = (id: string) => t(STICKERS.find((s) => s.id === id)!.title)
-  const line = chosen ? (earned.has(chosen) ? t('stickerEarnedOn', { name: name(chosen), date: day(earned.get(chosen)!) }) : t('stickerNotYet', { name: name(chosen) })) : fresh.length ? t('stickerNew', { name: name(fresh[0]) }) : null
+  const line = chosen ? (earned.has(chosen) ? t('stickerEarnedOn', { name: name(chosen), date: day(earned.get(chosen)!) }) : t('stickerNotYet', { name: name(chosen) })) : fresh.length === 1 ? t('stickerNew', { name: name(fresh[0]) }) : fresh.length > 1 ? t('stickersNew', { count: fresh.length }) : null
 
   return (
     <section className={styles.stickers} aria-labelledby="stickers-title">

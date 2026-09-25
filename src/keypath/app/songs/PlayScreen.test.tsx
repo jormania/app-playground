@@ -137,6 +137,35 @@ describe('Play screen', () => {
     expect(await new PartsRepo(store).get(profileId, 'starter:ode', 'right')).toEqual(new Set())
   })
 
+  it('once middle C is found, Play again starts straight away', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    tap(target()!)
+    await playThrough([60, 62, 64])
+    fireEvent.click(await screen.findByRole('button', { name: 'Play again' }))
+    // No "Press middle C" this time: the first note is waiting.
+    await waitFor(() => expect(Number(target()?.getAttribute('data-pitch'))).toBe(60))
+    expect(screen.queryByText('Press middle C to begin')).toBeNull()
+  })
+
+  it('a long song’s parts are stepped through one at a time, not as a wall of chips', async () => {
+    const store = memoryStore()
+    const profiles = new ProfileRepo(store)
+    const p = await profiles.create('Nora', '🐺')
+    await profiles.setCurrent(p.id)
+    // 36 bars, every four a phrase of its own: 9 phrases, 17 parts.
+    const long = songOf(Array.from({ length: 144 }, (_, i): [number, number] => [48 + Math.floor(i / 16) * 2 + (i % 4), i * 500]), 'Long')
+    await new SongLibrary(store).add(long)
+    history.replaceState(null, '', '#/play/Long')
+    render(<Shell store={store} />)
+    expect(await screen.findByText('Part 1 · 1 of 17')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Previous part' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Next part' }))
+    expect(screen.getByText('Part 2 · 2 of 17')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next part' }))
+    expect(screen.getByText('Parts 1–2 · 3 of 17')).toBeTruthy()
+  })
+
   it('an added song has no fingering, so no numbers', async () => {
     await setUp({}, '#/play/Three%20notes')
     await screen.findByRole('button', { name: /Start/ })

@@ -24,7 +24,7 @@ export const STICKERS: Sticker[] = [
   { id: 'threeStars', icon: '⭐', title: 'stThreeStars', earns: (r) => r.type === 'song_finished' && r.stars === 3 },
   { id: 'fingers', icon: '✋', title: 'stFingers', earns: (r) => r.type === 'journey_finished' && r.step === 'fingers' && r.mode === 'check' && r.passed },
   { id: 'cleanStep', icon: '🗺️', title: 'stCleanStep', earns: (r) => r.type === 'journey_finished' && r.mode === 'check' && r.passed && r.wrong === 0 },
-  { id: 'part', icon: '🧩', title: 'stPart', earns: (r) => r.type === 'song_part' && r.passed },
+  { id: 'part', icon: '🧩', title: 'stPart', earns: (r) => r.type === 'song_part' && r.passed && r.part !== 'whole' },
   { id: 'cleanBar', icon: '🔁', title: 'stCleanBar', earns: (r) => r.type === 'song_loop' && r.done },
   { id: 'newBest', icon: '⚡', title: 'stNewBest', earns: (r) => r.type === 'challenge_finished' && r.best },
   { id: 'recording', icon: '🎨', title: 'stRecording', earns: (r) => r.type === 'studio_kept' },

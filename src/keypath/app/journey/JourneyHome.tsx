@@ -21,7 +21,7 @@ export function JourneyHome() {
     <main className={styles.screen}>
       <TopBar title={t('doorJourney')} />
       <p className={styles.intro}>{allDone ? t('jAllDone') : t('journeyIntro')}</p>
-      <ol className={styles.path} style={{ '--done': JOURNEY.filter((s) => progress[s.id]).length / JOURNEY.length } as React.CSSProperties}>
+      <ol className={styles.path} style={{ '--done': JOURNEY.filter((s) => progress[s.id]).length / JOURNEY.length, '--rows': Math.ceil(JOURNEY.length / 2) } as React.CSSProperties}>
         {JOURNEY.map((s, i) => {
           const state = stateOf(progress, s.id)
           const done = progress[s.id]

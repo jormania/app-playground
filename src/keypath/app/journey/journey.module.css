@@ -187,6 +187,10 @@
 .tip {
   line-height: var(--leading-body);
 }
+.introBody {
+  display: grid;
+  gap: var(--space-md);
+}
 
 .prompt {
   display: grid;
@@ -346,6 +350,20 @@
 
 /* Landscape: as the Songs play screen, the step fits the screen with the keys in view. */
 @media (orientation: landscape) and (max-height: 560px) {
+  /* The map in two columns, down one then the other, so a phone on its side sees most of it. */
+  .screen {
+    max-width: none;
+  }
+  .path {
+    grid-template-rows: repeat(var(--rows), auto);
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    column-gap: var(--space-md);
+  }
+  .path::before,
+  .path::after {
+    display: none;
+  }
   .stepScreen {
     height: 100dvh;
     min-height: 0;
@@ -376,5 +394,13 @@
     flex: 0 1 auto;
     min-height: 0;
     max-height: 34dvh;
+  }
+  /* The finger-numbers intro: the hands beside the words, so its buttons stay in view. */
+  .introBody[data-hands] {
+    grid-template-columns: minmax(9rem, 15rem) 1fr;
+    align-items: center;
+  }
+  .introBody .hands {
+    max-height: 38dvh;
   }
 }

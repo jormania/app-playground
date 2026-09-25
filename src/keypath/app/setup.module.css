@@ -47,6 +47,16 @@
 .chips > .chip {
   min-width: 2.5rem;
 }
+.chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* The part shown when a long song's parts are stepped through. */
+.stepper {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
 /* An on/off choice beside a segmented control, at its height and in its colours. */
 .chip {
   height: 32px;
