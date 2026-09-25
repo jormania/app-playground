@@ -580,6 +580,17 @@ yet show faintly; tapping one says what it's for, or when it was earned. A
 new one is announced once, with a cheer (`stickers:<player>` remembers which
 were shown). Below the doors; in landscape a scroll away.
 
+A second batch (2026-09-25, at Gabriel's request) made it twenty, in
+roughly the order she'll meet them: first music read from the staff, a whole
+song learnt in parts (after learning a part of it), a song with both hands,
+a song played in time (finished after a start with a clock), five different
+songs finished, a Harder song finished, every Journey step, all five rhythms
+of a Rhythm echo round, a song of her own added, a whole Today done, thirty
+practice days. Some need more than one record; `earnedStickers` keeps what
+the log has shown so far (how each song was started, songs finished, parts
+learnt, steps passed, practice days) and is told each song's level. Today
+all done is logged once a day (`today_done`) when Home first sees it.
+
 **The other hand plays itself** (`songs/accompany.ts`). With a two-handed
 song and one hand chosen, the other hand's notes sound, on by default and
 remembered on the phone (chip **🎹 Other hand** beside Hands).
