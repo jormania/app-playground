@@ -19,6 +19,8 @@ export interface ProfileSettings extends JudgeSettings {
   keyNames: boolean
   /** Finger numbers on the falling notes, and on the staff while practising. Only songs that carry fingering show any. */
   fingers: boolean
+  /** A coach's note under the report, written by Claude, when the phone has a key (songs/coach.ts). */
+  coach: boolean
 }
 
 export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
@@ -27,6 +29,7 @@ export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
   noteNames: 'auto',
   keyNames: true,
   fingers: true,
+  coach: true,
 }
 
 /** Picked when creating a profile — a face, not a photo. */

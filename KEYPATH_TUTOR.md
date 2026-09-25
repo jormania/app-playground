@@ -693,6 +693,53 @@ before the fit to the keyboard, so each hand is then fitted as a hand.
 A split by pitch is a guess: where the hands cross, a note goes to the wrong
 one. Choosing a left-hand part turns the split off.
 
+### The coach's note
+
+KeyPath's first use of AI: after a song, under the report, two or three
+sentences a teacher would say. For example: one thing that went well, then
+the one thing to fix and how to practise it ("In bar 6 you keep playing F
+where the song wants F♯, the black key just to its right…"). The report
+itself is unchanged; the note is added (`songs/coach.ts`, `CoachNote.tsx`).
+
+- **What Claude is told** (`coachFacts`): the song's title and level, the
+  hands, speed and mode, the counts, the three bars with most to fix (as
+  printed, with their notes named as she reads them and their fingers), the
+  wrong keys that sit beside a note of the same bar (F for F♯, twice), and
+  her last five finishes of the song. Never a name.
+- **What it may say**: only those facts; two or three sentences, 60 words at
+  most, in her language (`tu` in Romanian). A note naming a bar the song
+  doesn't have, or running long, cut off or refused, is dropped
+  (`checkNote`): nothing shows rather than something wrong.
+- **Never in the way**: the report shows at once; "Your coach is writing a
+  note…" waits beside it for up to 15 seconds. No key, offline, the report
+  set to Off, or any failure: no note, and no message about it.
+- **The model**: Claude Haiku 4.5 through `src/shared/anthropic.ts`, as the
+  repo's other apps call Claude: BYO key, straight from the browser. About a
+  quarter of a cent a note.
+
+**The key** is the phone's, not a player's: Settings → Coach → *Anthropic
+API key*, with **Test the key** (one request of one token: works, not
+accepted, no credit, limited, busy, offline). It's kept in `localStorage`
+(`keypath:anthropicKey`), outside KeyPath's store, so a backup file never
+carries it. The hint suggests a key in its own workspace with a small
+monthly limit, since it sits on a child's phone. Each player can turn the
+note off (`coach` in their settings).
+
+### Settings, regrouped
+
+Settings had grown into unlabelled panels in the order things were added,
+with *Switch player* among Diagnostics and Progress and *Delete* at the
+bottom. Now, under headings:
+1. **Player**: name and avatar ("face" is now "avatar"), *Edit name and
+   avatar*, *Switch player*, *Delete this player* (asks first, in place).
+2. **Language and names**: language, note names, names on the keys, finger
+   numbers.
+3. **Playing a song**: on a wrong note, timing, wrong notes cost stars, the
+   end-of-piece report.
+4. **Coach**: the note on or off, the phone's key and its test.
+5. **Progress and backup**: Progress, backup and restore, storage.
+6. **Keyboard**: Diagnostics.
+
 ### Songs from a score (MusicXML)
 
 **Add a song** takes MusicXML as well as MIDI: `.mxl` (compressed, what

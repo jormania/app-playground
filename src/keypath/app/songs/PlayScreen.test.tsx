@@ -199,6 +199,38 @@ describe('Play screen', () => {
     expect(log.find((e) => e.type === 'song_finished')).toMatchObject({ songId: 'Three notes', stars: 3, hit: 3, total: 3, wrong: 0 })
   })
 
+  it('adds the coach’s note under the report when the phone has a key, and not when the player turned it off', async () => {
+    localStorage.setItem('keypath:anthropicKey', JSON.stringify('sk-ant-test'))
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: 'text', text: 'Steady and even. Next, try it at full speed with the song keeping time.' }], stop_reason: 'end_turn' }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+      fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+      tap(target()!)
+      await playThrough([60, 62, 64])
+      expect(await screen.findByText('Steady and even. Next, try it at full speed with the song keeping time.')).toBeTruthy()
+      expect(screen.getByText(/Your coach/)).toBeTruthy()
+      // Asked once, with the facts of this attempt and none of her name.
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const body = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string
+      expect(body).toContain('Three notes')
+      expect(body).not.toContain('Nora')
+
+      cleanup()
+      fetchMock.mockClear()
+      await setUp({ onWrong: 'wait', coach: false }, '#/play/Three%20notes')
+      fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+      tap(target()!)
+      await playThrough([60, 62, 64])
+      await screen.findByText('How it went')
+      expect(screen.queryByText(/Your coach/)).toBeNull()
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+      localStorage.clear()
+    }
+  })
+
   it('practises a bar from the report until it’s clean, then goes back to the report', async () => {
     const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
     fireEvent.click(await screen.findByRole('button', { name: /Start/ }))

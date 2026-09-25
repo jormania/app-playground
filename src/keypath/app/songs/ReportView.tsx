@@ -6,6 +6,8 @@ import { useCountUp } from '../celebrate/useCountUp'
 import { useApp } from '../context'
 import type { StringKey } from '../i18n'
 import styles from './songs.module.css'
+import type { FactsInput } from './coach'
+import { CoachNote } from './CoachNote'
 
 const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
 const TIMING_LABEL: Record<Timing, StringKey> = { relaxed: 'timingRelaxed', normal: 'timingNormal', strict: 'timingStrict' }
@@ -23,6 +25,8 @@ interface Props {
   barLabel?: (bar: number) => string
   /** The song to try after this one, when there is one. */
   next?: { title: string; onOpen: () => void } | null
+  /** What the coach is told, once it's ready; the note shows only with a key, online, and the report on. */
+  coach?: FactsInput | null
 }
 
 /**
@@ -30,8 +34,8 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, next, barLabel = (b) => String(b + 1) }: Props) {
-  const { t, profile, log, updateSetting } = useApp()
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, next, coach, barLabel = (b) => String(b + 1) }: Props) {
+  const { t, profile, log, updateSetting, settings } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
   const hitShown = useCountUp(notes?.kind === 'notes' ? notes.hit : 0)
@@ -99,6 +103,7 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
             </li>
           ))}
         </ul>
+        {coach && settings.coach && settings.report !== 'off' && <CoachNote input={coach} />}
         {report.toWorkOn.map((b) => (
           <div key={b.bar} className={styles.workOn}>
             <p className={styles.hint}>{t('workOnBar', { bar: barLabel(b.bar) })}</p>

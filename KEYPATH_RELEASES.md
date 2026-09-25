@@ -17,6 +17,9 @@ shared doc, linked from the top of Home.
 - **Songs from MuseScore as scores** (MusicXML, `.mxl`): the hands from the two staves, the
   printed finger numbers, repeats written out and bars numbered as on the page.
 - **A long song's parts** are the same chips as any song's, on one scrolling line.
+- **The coach's note**: after a song, a few words from Claude on what went well and what to
+  practise, when the phone has an Anthropic key (Settings → Coach, with a test).
+- **Settings regrouped** under headings, the player's options first.
 - **MuseScore's own files** (`.mscz`, MuseScore 2 to 4) open the same way as MusicXML, with no
   subscription needed.
 

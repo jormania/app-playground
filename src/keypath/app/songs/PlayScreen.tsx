@@ -15,6 +15,7 @@ import { useWide, WIDE_OCTAVES } from './useWide'
 import { SongLibrary } from './library'
 import { PlayKeyboard } from './PlayKeyboard'
 import { ReportView } from './ReportView'
+import type { FactsInput } from './coach'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
 import { nextStep, partPassed, PartsRepo, partSteps, rangeSong, type PartStep } from './parts'
 import { tryNext } from './level'
@@ -84,6 +85,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [results, setResults] = useState<ReadonlyMap<number, NoteResult['outcome']>>(new Map())
   const [hint, setHint] = useState<string | null>(null)
   const [report, setReport] = useState<Report | null>(null)
+  /** What the coach is told about this attempt, with her finishes of the song before it. */
+  const [coach, setCoach] = useState<FactsInput | null>(null)
   const [countIn, setCountIn] = useState<number | null>(null)
   const [streak, setStreak] = useState(0)
   // Practising one bar from the report: the loop, and what the last pass came to.
@@ -264,8 +267,16 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     const r = buildReport(summary, settings)
     setReport(r)
     setPhase('report')
-    if (profileId) void log.add(profileId, { type: 'song_finished', songId: song.id, practice, stars: r.stars, score: Math.round(r.score * 100) / 100, hit: r.hit, total: r.total, wrong: r.wrong })
-  }, [settings, profileId, log, song.id, practice, endLoop, startPass, part, partsRepo])
+    setCoach(null)
+    if (profileId) {
+      // Her earlier finishes are read before this one is written, for the coach.
+      void log.read(profileId).then((records) => {
+        const earlier = records.flatMap((x) => (x.type === 'song_finished' && x.songId === song.id ? [{ stars: x.stars, score: Math.round(x.score * 100) }] : []))
+        setCoach({ song, summary, report: r, practice, tempo, names: settings.noteNames, language: settings.language, earlier })
+        return log.add(profileId, { type: 'song_finished', songId: song.id, practice, stars: r.stars, score: Math.round(r.score * 100) / 100, hit: r.hit, total: r.total, wrong: r.wrong })
+      })
+    }
+  }, [settings, profileId, log, song, practice, tempo, endLoop, startPass, part, partsRepo])
 
   const apply = useCallback(
     (events: JudgeEvent[]) => {
@@ -585,7 +596,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} coach={coach} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }

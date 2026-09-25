@@ -8,7 +8,32 @@ import { persistenceState, type Persistence } from '../store'
 import type { OnWrong, ReportDepth, Timing } from '../../engine'
 import { TopBar } from './TopBar'
 import { RELEASE } from '../release'
+import { readCoachKey, saveCoachKey, testCoachKey, type KeyCheck } from '../songs/coach'
+import type { StringKey } from '../i18n'
 import styles from '../app.module.css'
+
+const KEY_CHECK: Record<KeyCheck, StringKey> = {
+  ok: 'coachTestOk',
+  'bad-key': 'coachTestBadKey',
+  'no-credit': 'coachTestNoCredit',
+  limited: 'coachTestLimited',
+  busy: 'coachTestBusy',
+  offline: 'coachTestOffline',
+  error: 'coachTestError',
+}
+
+/** A saved key, shown only by its ends: sk-ant-…a1B2. */
+const keyHint = (key: string) => `${key.slice(0, 7)}…${key.slice(-4)}`
+
+/** A group of settings under its heading. */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className={styles.panel} aria-label={title}>
+      <h2 className={styles.sectionTitle}>{title}</h2>
+      {children}
+    </section>
+  )
+}
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -29,6 +54,10 @@ export function SettingsScreen() {
   const [pendingRestore, setPendingRestore] = useState<File | null>(null)
   const [editing, setEditing] = useState<{ name: string; avatar: string } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  /** The phone's Anthropic key: what's saved, what's being typed, and the last test's answer. */
+  const [savedKey, setSavedKey] = useState(readCoachKey)
+  const [keyDraft, setKeyDraft] = useState('')
+  const [keyCheck, setKeyCheck] = useState<KeyCheck | 'testing' | null>(null)
 
   useEffect(() => {
     void persistenceState().then(setPersisted)
@@ -60,6 +89,22 @@ export function SettingsScreen() {
     }
   }
 
+  const saveKey = () => {
+    saveCoachKey(keyDraft)
+    setSavedKey(readCoachKey())
+    setKeyDraft('')
+    setKeyCheck(null)
+  }
+  const removeKey = () => {
+    saveCoachKey('')
+    setSavedKey('')
+    setKeyCheck(null)
+  }
+  const testKey = async () => {
+    setKeyCheck('testing')
+    setKeyCheck(await testCoachKey(keyDraft.trim() || savedKey))
+  }
+
   const savePlayer = async () => {
     if (!editing) return
     await profiles.update(profile.id, editing)
@@ -71,7 +116,8 @@ export function SettingsScreen() {
     <main className={styles.screen}>
       <TopBar title={t('settingsFor', { name: profile.name })} />
 
-      <section className={styles.panel}>
+      {/* Who's playing: name and avatar, another player, or this one gone. */}
+      <Section title={t('settingsPlayer')}>
         {editing ? (
           <form
             className={styles.row}
@@ -113,14 +159,53 @@ export function SettingsScreen() {
               {profile.avatar}
             </span>
             <span className={styles.playerName}>{profile.name}</span>
+          </div>
+        )}
+        {!editing && (
+          <div className={styles.actions}>
             <Button size="sm" variant="outline" onClick={() => setEditing({ name: profile.name, avatar: profile.avatar })}>
               {t('editPlayer')}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                await choose(null)
+                navigate({ name: 'who' }, { replace: true })
+              }}
+            >
+              {t('switchPlayer')}
+            </Button>
+            {!confirmDelete && (
+              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>
+                {t('deletePlayer')}
+              </Button>
+            )}
           </div>
         )}
-      </section>
+        {confirmDelete && (
+          <div className={styles.confirm} role="alertdialog" aria-label={t('deletePlayerConfirm', { name: profile.name })}>
+            <p className={styles.confirmText}>{t('deletePlayerConfirm', { name: profile.name })}</p>
+            <div className={styles.actions}>
+              <Button
+                variant="danger"
+                onClick={async () => {
+                  await removeProfile(profile)
+                  navigate({ name: 'who' }, { replace: true })
+                }}
+              >
+                {t('deletePlayerYes', { name: profile.name })}
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+                {t('cancel')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Section>
 
-      <section className={styles.panel}>
+      {/* What she reads: the language, the notes' names, and what's printed on keys and notes. */}
+      <Section title={t('settingsNames')}>
         <Row label={t('language')}>
           <SegmentedControl
             value={settings.language}
@@ -146,9 +231,10 @@ export function SettingsScreen() {
         </Row>
         <SettingsToggle label={t('keyNames')} hint={t('keyNamesHint')} checked={settings.keyNames} onChange={(e) => void updateSetting('keyNames', e.target.checked)} />
         <SettingsToggle label={t('fingerNumbers')} hint={t('fingerNumbersHint')} checked={settings.fingers} onChange={(e) => void updateSetting('fingers', e.target.checked)} />
-      </section>
+      </Section>
 
-      <section className={styles.panel}>
+      {/* How a song is judged, and what the end of it shows. */}
+      <Section title={t('settingsPlaying')}>
         <Row label={t('onWrong')} hint={t('onWrongHint')}>
           <SegmentedControl
             size="sm"
@@ -173,6 +259,12 @@ export function SettingsScreen() {
             ]}
           />
         </Row>
+        <SettingsToggle
+          label={t('wrongAffectsStars')}
+          hint={t('wrongAffectsStarsHint')}
+          checked={settings.wrongAffectsStars}
+          onChange={(e) => void updateSetting('wrongAffectsStars', e.target.checked)}
+        />
         <Row label={t('report')} hint={t('reportHint')}>
           <SegmentedControl
             size="sm"
@@ -185,37 +277,63 @@ export function SettingsScreen() {
             ]}
           />
         </Row>
-        <SettingsToggle
-          label={t('wrongAffectsStars')}
-          hint={t('wrongAffectsStarsHint')}
-          checked={settings.wrongAffectsStars}
-          onChange={(e) => void updateSetting('wrongAffectsStars', e.target.checked)}
-        />
-      </section>
+      </Section>
 
-      <section className={styles.panel}>
-        <div className={styles.actions}>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await choose(null)
-              navigate({ name: 'who' }, { replace: true })
+      {/* The coach's note: on or off for this player; the key is the phone's. */}
+      <Section title={t('settingsCoach')}>
+        <SettingsToggle label={t('coachToggle')} hint={t('coachToggleHint')} checked={settings.coach} onChange={(e) => void updateSetting('coach', e.target.checked)} />
+        <form
+          className={styles.row}
+          onSubmit={(e) => {
+            e.preventDefault()
+            saveKey()
+          }}
+        >
+          <Field
+            label={t('coachKey')}
+            hint={t('coachKeyHint')}
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="sk-ant-…"
+            value={keyDraft}
+            onChange={(e) => {
+              setKeyDraft(e.target.value)
+              setKeyCheck(null)
             }}
-          >
-            {t('switchPlayer')}
-          </Button>
-          <Button variant="outline" onClick={() => navigate({ name: 'diagnostics' })}>
-            {t('diagnostics')}
-          </Button>
-          <Button variant="outline" onClick={() => navigate({ name: 'progress' })}>
-            {t('progress')}
-          </Button>
-        </div>
-        <p className={styles.hint}>{t('diagnosticsHint')}</p>
-        <p className={styles.hint}>{t('progressHint')}</p>
-      </section>
+          />
+          <p className={styles.muted}>{savedKey ? t('coachKeySaved', { hint: keyHint(savedKey) }) : t('coachKeyNone')}</p>
+          <div className={styles.actions}>
+            <Button type="submit" size="sm" disabled={!keyDraft.trim()}>
+              {t('coachKeySave')}
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={!keyDraft.trim() && !savedKey} onClick={() => void testKey()}>
+              {keyCheck === 'testing' ? t('coachTesting') : t('coachKeyTest')}
+            </Button>
+            {savedKey && (
+              <Button type="button" size="sm" variant="ghost" onClick={removeKey}>
+                {t('coachKeyRemove')}
+              </Button>
+            )}
+          </div>
+          {keyCheck && keyCheck !== 'testing' && (
+            <p className={keyCheck === 'ok' ? styles.message : styles.problem} role="status">
+              {t(KEY_CHECK[keyCheck])}
+            </p>
+          )}
+        </form>
+      </Section>
 
-      <section className={styles.panel}>
+      {/* What's on this phone: the family's progress, and keeping it safe. */}
+      <Section title={t('settingsPhone')}>
+        <div className={styles.row}>
+          <div>
+            <Button variant="outline" onClick={() => navigate({ name: 'progress' })}>
+              {t('progress')}
+            </Button>
+          </div>
+          <p className={styles.hint}>{t('progressHint')}</p>
+        </div>
         <Row label={t('backup')} hint={t('backupHint')}>
           <div className={styles.actions}>
             <Button onClick={saveBackup}>{t('backupSave')}</Button>
@@ -258,36 +376,19 @@ export function SettingsScreen() {
             {persisted === 'persisted' ? t('storagePersisted') : persisted === 'best-effort' ? t('storageBestEffort') : t('storageUnknown')}
           </span>
         </Row>
-      </section>
-      <section className={styles.panel}>
-        <Row label={t('deletePlayer')} hint={t('deletePlayerHint')}>
-          {confirmDelete ? (
-            <div className={styles.confirm} role="alertdialog" aria-label={t('deletePlayerConfirm', { name: profile.name })}>
-              <p className={styles.confirmText}>{t('deletePlayerConfirm', { name: profile.name })}</p>
-              <div className={styles.actions}>
-                <Button
-                  variant="danger"
-                  onClick={async () => {
-                    await removeProfile(profile)
-                    navigate({ name: 'who' }, { replace: true })
-                  }}
-                >
-                  {t('deletePlayerYes', { name: profile.name })}
-                </Button>
-                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-                  {t('cancel')}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <Button variant="outline" onClick={() => setConfirmDelete(true)}>
-                {t('deletePlayer')}
-              </Button>
-            </div>
-          )}
-        </Row>
-      </section>
+      </Section>
+
+      {/* The Yamaha: its connection and the hardware tests. */}
+      <Section title={t('settingsKeyboard')}>
+        <div className={styles.row}>
+          <div>
+            <Button variant="outline" onClick={() => navigate({ name: 'diagnostics' })}>
+              {t('diagnostics')}
+            </Button>
+          </div>
+          <p className={styles.hint}>{t('diagnosticsHint')}</p>
+        </div>
+      </Section>
       <p className={styles.hint}>{t('release', { n: RELEASE })}</p>
     </main>
   )

@@ -71,6 +71,20 @@
   font-weight: var(--weight-medium);
   color: var(--color-success);
 }
+.problem {
+  margin: 0;
+  font-weight: var(--weight-medium);
+  color: var(--color-danger, #c0392b);
+}
+/* A settings group's heading: small and quiet, so the settings read first. */
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
 
 /* ── Top bar ── */
 .topBar {

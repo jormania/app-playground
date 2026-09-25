@@ -608,3 +608,38 @@
     order: 0;
   }
 }
+
+/* The coach's note under the report (songs/CoachNote.tsx). */
+.coach {
+  display: grid;
+  gap: var(--space-3xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border-left: 3px solid #8a6fd1;
+  background: var(--color-surface-2, var(--color-bg));
+}
+.coachLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-muted);
+}
+.coachText {
+  margin: 0;
+  line-height: var(--leading-body);
+}
+.coachWaiting {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  animation: coachPulse 1.4s ease-in-out infinite;
+}
+@keyframes coachPulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coachWaiting {
+    animation: none;
+  }
+}

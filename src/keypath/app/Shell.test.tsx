@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { Shell } from './Shell'
 import { GUIDE_URL } from './screens/Home'
 import { EngagementLog } from './log'
+import { exportBackup } from './backup'
 import { ProfileRepo } from './profiles'
 import { K, memoryStore, type KeyValueStore } from './store'
 
@@ -143,12 +144,48 @@ describe('KeyPath shell, after the audit', () => {
     const store = await start()
     await createPlayer('Nora')
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit name and face' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit name and avatar' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Nora B.' } })
     fireEvent.click(screen.getByRole('radio', { name: '🦉' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText('Settings for Nora B.')).toBeTruthy()
     expect((await new ProfileRepo(store).list())[0]).toMatchObject({ name: 'Nora B.', avatar: '🦉' })
+  })
+
+  it('keeps the player’s options together at the top of Settings, then the rest under headings', async () => {
+    await start()
+    await createPlayer('Nora')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    const headings = (await screen.findAllByRole('heading', { level: 2 })).map((h) => h.textContent)
+    expect(headings).toEqual(['Player', 'Language and names', 'Playing a song', 'Coach', 'Progress and backup', 'Keyboard'])
+    const player = within(screen.getByRole('region', { name: 'Player' }))
+    for (const name of ['Edit name and avatar', 'Switch player', 'Delete this player']) expect(player.getByRole('button', { name })).toBeTruthy()
+  })
+
+  it('saves the phone’s Anthropic key, tests it, and removes it; the key never goes into a backup', async () => {
+    localStorage.clear()
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: { message: 'invalid x-api-key' } }), { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const store = await start()
+      await createPlayer('Nora')
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      expect(await screen.findByText('No key yet.')).toBeTruthy()
+      fireEvent.change(screen.getByLabelText('Anthropic API key'), { target: { value: 'sk-ant-api03-abcdefWXYZ' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
+      expect(await screen.findByText('A key is saved: sk-ant-…WXYZ')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Test the key' }))
+      expect(await screen.findByText('Anthropic doesn’t accept this key. Check it was copied whole.')).toBeTruthy()
+      fetchMock.mockImplementation(async () => new Response(JSON.stringify({ content: [] }), { status: 200 }))
+      fireEvent.click(screen.getByRole('button', { name: 'Test the key' }))
+      expect(await screen.findByText('The key works.')).toBeTruthy()
+      expect(JSON.stringify(await exportBackup(store))).not.toContain('sk-ant-api03')
+      fireEvent.click(screen.getByRole('button', { name: 'Remove key' }))
+      expect(await screen.findByText('No key yet.')).toBeTruthy()
+      expect(localStorage.getItem('keypath:anthropicKey')).toBeNull()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('asks before a restore on the page itself, not in a browser dialog', async () => {
