@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Shell } from './Shell'
 import { EngagementLog } from './log'
 import { ProfileRepo } from './profiles'
-import { memoryStore, type KeyValueStore } from './store'
+import { K, memoryStore, type KeyValueStore } from './store'
 
 vi.mock('../App', () => ({ default: () => <div>probe screen</div> }))
 
@@ -39,8 +39,9 @@ describe('KeyPath shell', () => {
   it('shows four doors, and logs which one she opens', async () => {
     const store = await start()
     await createPlayer('Nora')
-    for (const door of ['Songs', 'Journey', 'Challenges', 'Studio']) expect(screen.getByRole('button', { name: new RegExp(door) })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Challenges/ }))
+    const doors = within(screen.getByRole('navigation'))
+    for (const door of ['Songs', 'Journey', 'Challenges', 'Studio']) expect(doors.getByRole('button', { name: new RegExp(door) })).toBeTruthy()
+    fireEvent.click(doors.getByRole('button', { name: /Challenges/ }))
     expect(await screen.findByText('Note race')).toBeTruthy()
     const [p] = await new ProfileRepo(store).list()
     const events = await new EngagementLog(store).read(p.id)
@@ -164,19 +165,48 @@ describe('KeyPath shell, after the audit', () => {
     expect(confirm).not.toHaveBeenCalled()
   })
 
-  it('logs the resume card as opening its door, and shows the stars as the song list does', async () => {
+  it('Today: a song, a Journey step and a game, the song the one she is on, logged as opening its door', async () => {
     const store = await start()
     await createPlayer('Nora')
     const [p] = await new ProfileRepo(store).list()
     const log = new EngagementLog(store)
     await log.add(p.id, { type: 'song_finished', songId: 'starter:ode', practice: 'right', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
+    // Today's picks are kept for the day; a new day makes new ones.
+    await store.del(K.today(p.id))
     cleanup()
     history.replaceState(null, '', '#/')
     await start(store)
-    const card = await screen.findByRole('button', { name: /Pick up where you left off/ })
-    expect(card.textContent).toContain('★★☆')
-    fireEvent.click(card)
+    const today = within(await screen.findByRole('region', { name: /Today/ }))
+    // Finished today with two stars: still the one to play, and already ticked off.
+    const song = today.getByRole('button', { name: /^A song: 🎵 Ode to Joy · done$/ })
+    expect(today.getByRole('button', { name: /^A Journey step: 🗺️ Find middle C$/ })).toBeTruthy()
+    expect(today.getByRole('button', { name: /^A quick game:/ })).toBeTruthy()
+    fireEvent.click(song)
     await waitFor(async () => expect((await log.read(p.id)).at(-1)).toMatchObject({ type: 'door_opened', door: 'songs' }))
+    expect(location.hash).toBe('#/play/starter%3Aode')
+  })
+
+  it('stickers: the earned ones in colour, a new one announced once', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    const [p] = await new ProfileRepo(store).list()
+    await new EngagementLog(store).add(p.id, { type: 'song_finished', songId: 'starter:ode', practice: 'right', stars: 3, score: 1, hit: 12, total: 12, wrong: 0 })
+    cleanup()
+    history.replaceState(null, '', '#/')
+    await start(store)
+    const shelf = within(await screen.findByRole('region', { name: /Stickers/ }))
+    expect(shelf.getByText('2 of 9')).toBeTruthy()
+    expect(await shelf.findByText('New sticker: First song played to the end!')).toBeTruthy()
+    expect(shelf.getByRole('button', { name: 'Three stars on a song' }).getAttribute('data-earned')).toBe('true')
+    expect(shelf.getByRole('button', { name: 'A tricky bar made clean · not yet' }).getAttribute('data-earned')).toBeNull()
+    // Tapping one says what it's for.
+    fireEvent.click(shelf.getByRole('button', { name: 'A tricky bar made clean · not yet' }))
+    expect(shelf.getByText('A tricky bar made clean · not yet')).toBeTruthy()
+    // Next time, nothing new.
+    cleanup()
+    await start(store)
+    await screen.findByRole('region', { name: /Stickers/ })
+    expect(screen.queryByText(/New sticker/)).toBeNull()
   })
 
   it('shows Progress dates the way people write them, once when it is all one day', async () => {
