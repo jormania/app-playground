@@ -455,9 +455,16 @@
 .keyWrong.blackKey {
   background: var(--color-danger);
 }
+/* The note's name at the foot of a white key: bold and dark enough to read at a
+   glance, as large as the key's width allows (the key is its own container):
+   15 px on a phone's one-octave keys, never under 11 px on a crowded row. */
+.whiteKey {
+  container-type: inline-size;
+}
 .keyLabel {
-  font-size: 0.625rem;
-  color: #6b665e;
+  font-size: clamp(0.6875rem, 36cqi, 0.9375rem);
+  font-weight: var(--weight-bold);
+  color: #3d3934;
   line-height: 1;
   pointer-events: none;
 }
