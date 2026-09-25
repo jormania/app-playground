@@ -679,6 +679,59 @@ the real Yamaha yet**: first thing to try on the S24.
 Left out of the steps above to keep each one small. Nothing here is
 forgotten; each item says when it comes back.
 
+**Learning curve** (next, in this order; from reading Flowkey, Simply Piano
+and the Hoffman Academy method, 2026-09-25). The gap it closes is between
+"I can play five notes" and "I can play a whole song". Nora doesn't know
+finger numbers yet, so they come first. Borrowed: methods only. Hoffman's
+songs, videos and sheet music are copyrighted and stay out, like any other
+copyrighted music.
+
+1. **Fingers, and practising the hard bars** (the next slice):
+   - **A Journey step, "Your fingers have numbers"**, between *Middle C* and
+     *C, D, E*. Thumb = 1 on both hands, and the hands mirror: right thumb on
+     middle C, left little finger (5) on the C below. Then a game: "Right
+     hand, finger 3!" and she presses E. MIDI can't say *which finger*
+     pressed a key, so every question is set inside a fixed hand position,
+     where the finger names exactly one key. That's how Hoffman teaches it
+     too: numbers and the hand position together. Step ids are strings and a
+     step already done stays done, so inserting it only opens it for a player
+     who has passed later steps; it blocks nothing.
+   - **Finger numbers on the notes**, falling and on the staff, switchable in
+     Settings, on by default for a player who is still in the Journey.
+     Fingering is written by hand for the starter songs, as data beside the
+     melodies. Imported songs show none: no number is better than a wrong
+     one.
+   - **Tips in words and numbers** ("thumb (1), middle finger (3)"). The words
+     drop once the finger step is passed, as Hoffman drops them.
+   - **Loop the tricky bars, with a speed ladder.** The report's "Bar 5 is
+     worth another go" becomes a button that loops that bar at 50%; each
+     clean pass steps up (50 → 75 → 100%), then it's back to the whole song.
+2. **Songs in parts:**
+   - A song opens as phrase 1, then phrase 2, then both together, each
+     passed in *Wait for it* before the next opens.
+   - A difficulty mark on every song (★ to ★★★), and a "try next" after each
+     finished one.
+3. **A short day:**
+   - A **Today** card on Home: one song part, one Journey step, one quick
+     game, picked from her log and done in about five minutes. Shown as a
+     checklist, like the practice list after a Hoffman lesson. No streak to
+     break; a missed day costs nothing.
+   - **Stickers** for firsts (first song finished, first three stars, first
+     step passed without help, a week of practice days), kept on her Home and
+     never taken away.
+4. **Later**, when the above has been used:
+   - **The other hand plays itself** while she practises one. On the phone it
+     works today; on the Yamaha it waits on the MIDI-out test.
+   - **Rhythm syllables** (ta, ti-ti), from Kodály via Hoffman, under the beats
+     in Rhythm echo instead of counting.
+
+Left out on purpose: a video of a pianist (Flowkey), a big pop library
+(Simply Piano: copyrighted, and **Add a song** is the route for those),
+streaks that can break, singing in solfège (Hoffman's first lessons: the app
+only hears the keyboard; *Listen first* and Echo cover "sound before
+symbol"), and long video lessons. Hoffman's own videos are free to watch and
+make a fine companion: its finger-numbers lesson once, then the practice here.
+
 **App shell refinements** (deferred from step 2):
 - A **PIN** on a player (the family-account design in `KEYPATH.md` §7). For
   now each phone simply opens into its last player.
