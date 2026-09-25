@@ -49,6 +49,10 @@ export type LogEvent =
   | { type: 'studio_deleted'; takeId: string }
   | { type: 'studio_renamed'; takeId: string }
   | { type: 'studio_exported'; takeId: string; outcome: 'shared' | 'cancelled' | 'saved' | 'error' }
+  /** Claude answered a take with a phrase of its own (ok), or no usable answer came back. */
+  | { type: 'studio_answer'; takeId: string; ok: boolean }
+  /** She took Claude's answer into Songs, to learn it. */
+  | { type: 'studio_answer_learnt'; takeId: string; songId: string }
   /** Challenges: a game begun, finished (score, whether it beat the best) or left part-way. */
   | { type: 'challenge_started'; game: ChallengeGame; level: number }
   | { type: 'challenge_finished'; game: ChallengeGame; level: number; score: number; best: boolean; wrong?: number; ms: number }

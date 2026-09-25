@@ -8,7 +8,7 @@ import { persistenceState, type Persistence } from '../store'
 import type { OnWrong, ReportDepth, Timing } from '../../engine'
 import { TopBar } from './TopBar'
 import { RELEASE } from '../release'
-import { readCoachKey, saveCoachKey, testCoachKey, type KeyCheck } from '../songs/coach'
+import { readAiKey, saveAiKey, testAiKey, type KeyCheck } from '../ai'
 import type { StringKey } from '../i18n'
 import styles from '../app.module.css'
 
@@ -55,7 +55,7 @@ export function SettingsScreen() {
   const [editing, setEditing] = useState<{ name: string; avatar: string } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   /** The phone's Anthropic key: what's saved, what's being typed, and the last test's answer. */
-  const [savedKey, setSavedKey] = useState(readCoachKey)
+  const [savedKey, setSavedKey] = useState(readAiKey)
   const [keyDraft, setKeyDraft] = useState('')
   const [keyCheck, setKeyCheck] = useState<KeyCheck | 'testing' | null>(null)
 
@@ -90,19 +90,19 @@ export function SettingsScreen() {
   }
 
   const saveKey = () => {
-    saveCoachKey(keyDraft)
-    setSavedKey(readCoachKey())
+    saveAiKey(keyDraft)
+    setSavedKey(readAiKey())
     setKeyDraft('')
     setKeyCheck(null)
   }
   const removeKey = () => {
-    saveCoachKey('')
+    saveAiKey('')
     setSavedKey('')
     setKeyCheck(null)
   }
   const testKey = async () => {
     setKeyCheck('testing')
-    setKeyCheck(await testCoachKey(keyDraft.trim() || savedKey))
+    setKeyCheck(await testAiKey(keyDraft.trim() || savedKey))
   }
 
   const savePlayer = async () => {

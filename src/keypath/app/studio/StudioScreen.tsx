@@ -20,6 +20,9 @@ import { MAX_TAKE_MS, Recorder, type Recording } from './recorder'
 import { OutputChoice, useOutput } from './output'
 import { saveFile } from './saveFile'
 import { MAX_KEPT, MAX_NAME, TakeRepo, type Take } from './takes'
+import { readAiKey } from '../ai'
+import { navigate } from '../router'
+import { answerLine, answerRecording, answerSong, askAnswer, callOf, type Answer } from './answer'
 import styles from './studio.module.css'
 import setup from '../setup.module.css'
 
@@ -62,6 +65,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const [message, setMessage] = useState<string | null>(null)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [sure, setSure] = useState<string | null>(null)
+  /** Claude's answers to her takes, by take: asked for, failed, or here to hear and learn. Not kept: learning one keeps it, as a song. */
+  const [answers, setAnswers] = useState<Record<string, { state: 'asking' } | { state: 'failed' } | { state: 'ok'; answer: Answer }>>({})
 
   const recorder = useRef<Recorder | null>(null)
   const recordStart = useRef(0)
@@ -146,7 +151,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
     playback.current = p
     setPlayingId(id)
     p.start()
-    if (profileId && id !== 'new')
+    if (profileId && id !== 'new' && !id.startsWith('answer:'))
       void log.add(profileId, {
         type: 'studio_played',
         takeId: id,
@@ -327,6 +332,28 @@ export function StudioScreen({ songId }: { songId?: string }) {
     void log.add(profileId, { type: 'studio_deleted', takeId: take.id })
   }
 
+  /** Long enough for a slow connection; then the answer is given up on. */
+  const ANSWER_TIMEOUT_MS = 40_000
+  const answerTake = async (take: Take) => {
+    const key = readAiKey()
+    const call = callOf(take)
+    if (!key || !call) return
+    setAnswers((a) => ({ ...a, [take.id]: { state: 'asking' } }))
+    const abort = new AbortController()
+    const timer = setTimeout(() => abort.abort(), ANSWER_TIMEOUT_MS)
+    const answer = await askAnswer(key, call, settings.language, { signal: abort.signal })
+    clearTimeout(timer)
+    setAnswers((a) => ({ ...a, [take.id]: answer ? { state: 'ok', answer } : { state: 'failed' } }))
+    if (profileId) void log.add(profileId, { type: 'studio_answer', takeId: take.id, ok: !!answer })
+  }
+  const learnAnswer = async (take: Take, answer: Answer) => {
+    const song = answerSong(answer, `answer:${Date.now().toString(36)}`, t('studioAnswerTitle', { name: nameOf(take) }))
+    await library.add(song)
+    if (profileId) await log.add(profileId, { type: 'studio_answer_learnt', takeId: take.id, songId: song.id })
+    stopPlayback()
+    navigate({ name: 'play', songId: song.id })
+  }
+
   // The screen's own keys play too: on the keyboard or the phone, and into the take.
   const screenPress = (p: number) => {
     live.current ??= output.sink()
@@ -493,6 +520,11 @@ export function StudioScreen({ songId }: { songId?: string }) {
                     </Button>
                   </form>
                   <div className={styles.actions}>
+                    {readAiKey() && take.notes.length >= 3 && (
+                      <Button size="sm" variant="outline" disabled={answers[take.id]?.state === 'asking'} onClick={() => void answerTake(take)}>
+                        🎶 {t('studioAnswer')}
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => void exportTake(take)}>
                       {t('studioSaveMidi')}
                     </Button>
@@ -502,6 +534,36 @@ export function StudioScreen({ songId }: { songId?: string }) {
                   </div>
                   {saved?.id === take.id && <p className={styles.hint}>{saved.text}</p>}
                   <p className={styles.hint}>{take.bpm ? t('studioMidiBars', { bpm: take.bpm }) : t('studioMidiNoBars')}</p>
+                </div>
+              )}
+              {answers[take.id] && (
+                <div className={styles.answer} aria-live="polite">
+                  {(() => {
+                    const a = answers[take.id]
+                    if (a.state === 'asking') return <p className={styles.answerWaiting}>{t('studioAnswering')}</p>
+                    if (a.state === 'failed') return <p className={styles.hint}>{t('studioAnswerFailed')}</p>
+                    const id = `answer:${take.id}`
+                    return (
+                      <>
+                        <span className={styles.answerLabel}>🎶 {t('studioAnswerFrom')}</span>
+                        {a.answer.idea && <p>{a.answer.idea}</p>}
+                        <p className={styles.tune} aria-label={t('studioTune')}>
+                          {answerLine(a.answer, label)}
+                        </p>
+                        <div className={styles.actions}>
+                          <Button size="sm" onClick={() => play(id, answerRecording(a.answer))}>
+                            {playingId === id ? `■ ${t('studioStopPlaying')}` : `▶ ${t('studioAnswerPlay')}`}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => void learnAnswer(take, a.answer)}>
+                            {t('studioAnswerLearn')}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => void answerTake(take)}>
+                            {t('studioAnswerAgain')}
+                          </Button>
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
               )}
             </li>

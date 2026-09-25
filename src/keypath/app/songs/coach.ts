@@ -1,6 +1,6 @@
 import { barName, notesFor, type JudgeSummary, type Practice, type Report, type Song } from '../../engine'
-import { extractAnthropicText, MODEL_HAIKU, requestAnthropic } from '../../../shared/anthropic'
-import { readJson, removeJson, writeJson } from '../../../shared/storage'
+import { MODEL_HAIKU } from '../../../shared/anthropic'
+import { askClaude } from '../ai'
 import { noteLabel } from '../i18n'
 import type { Language, NoteNames } from '../profiles'
 import { levelOf } from './level'
@@ -11,15 +11,6 @@ import { levelOf } from './level'
 // note is added below it when a key is set, the phone is online and the
 // answer comes back in time. No name is sent: the song's title and how it
 // went, that's all.
-
-/** The phone's Anthropic key, kept outside KeyPath's store so a backup file never carries it. */
-const KEY = 'keypath:anthropicKey'
-export const readCoachKey = (): string => readJson<string>(KEY, '')
-export function saveCoachKey(key: string): void {
-  const clean = key.trim()
-  if (clean) writeJson(KEY, clean)
-  else removeJson(KEY)
-}
 
 const BLACK = new Set([1, 3, 6, 8, 10])
 const isBlack = (p: number) => BLACK.has(((p % 12) + 12) % 12)
@@ -183,43 +174,10 @@ export const COACH_TIMEOUT_MS = 15_000
 
 /** Ask Claude for the note. Null when there's no answer worth showing; never throws. */
 export async function askCoach(key: string, facts: CoachFacts, language: Language, song: Song, signal?: AbortSignal, fetchImpl?: typeof fetch): Promise<string | null> {
-  try {
-    const res = await requestAnthropic(
-      key,
-      {
-        model: MODEL_HAIKU,
-        max_tokens: 300,
-        system: `${SYSTEM}\n\n${LANGUAGE_LINE[language]}`,
-        messages: [{ role: 'user', content: `Facts about this attempt, as JSON:\n${JSON.stringify(facts)}` }],
-      },
-      { signal, fetchImpl },
-    )
-    if (!res.ok) return null
-    const payload = (await res.json()) as { stop_reason?: string }
-    if (payload.stop_reason === 'refusal' || payload.stop_reason === 'max_tokens') return null
-    return checkNote(extractAnthropicText(payload), song)
-  } catch {
-    return null
-  }
-}
-
-export type KeyCheck = 'ok' | 'bad-key' | 'no-credit' | 'limited' | 'busy' | 'offline' | 'error'
-
-/** One tiny request, to say whether the key works: Settings' "Test". */
-export async function testCoachKey(key: string, fetchImpl?: typeof fetch): Promise<KeyCheck> {
-  let res: Response
-  try {
-    res = await requestAnthropic(key.trim(), { model: MODEL_HAIKU, max_tokens: 1, messages: [{ role: 'user', content: 'Hi' }] }, { fetchImpl })
-  } catch {
-    return 'offline'
-  }
-  if (res.ok) return 'ok'
-  if (res.status === 401 || res.status === 403) return 'bad-key'
-  if (res.status === 429) return 'limited'
-  if (res.status === 529 || res.status >= 500) return 'busy'
-  if (res.status === 400) {
-    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-    if (/credit/i.test(body?.error?.message ?? '')) return 'no-credit'
-  }
-  return 'error'
+  const text = await askClaude(
+    key,
+    { model: MODEL_HAIKU, maxTokens: 300, system: `${SYSTEM}\n\n${LANGUAGE_LINE[language]}`, user: `Facts about this attempt, as JSON:\n${JSON.stringify(facts)}` },
+    { signal, fetchImpl },
+  )
+  return text === null ? null : checkNote(text, song)
 }

@@ -2,7 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { JudgeSummary, NoteResult, Report } from '../../engine'
 import { songOf } from '../../engine/testing/songs'
-import { askCoach, checkNote, coachFacts, readCoachKey, saveCoachKey, testCoachKey, type FactsInput } from './coach'
+import { readAiKey, saveAiKey, testAiKey } from '../ai'
+import { askCoach, checkNote, coachFacts, type FactsInput } from './coach'
 
 // Two bars: G A F# G | G F# E D, with fingers on the first bar.
 const song = (() => {
@@ -99,28 +100,28 @@ describe('the key', () => {
   beforeEach(() => localStorage.clear())
 
   it('is kept on the phone, trimmed, and removed when saved empty', () => {
-    expect(readCoachKey()).toBe('')
-    saveCoachKey('  sk-ant-abc  ')
-    expect(readCoachKey()).toBe('sk-ant-abc')
-    saveCoachKey('')
-    expect(readCoachKey()).toBe('')
+    expect(readAiKey()).toBe('')
+    saveAiKey('  sk-ant-abc  ')
+    expect(readAiKey()).toBe('sk-ant-abc')
+    saveAiKey('')
+    expect(readAiKey()).toBe('')
   })
 
   it('is tested with one tiny request, and the answer says what’s wrong', async () => {
     const status = (code: number, message = '') => vi.fn(async () => new Response(JSON.stringify({ error: { message } }), { status: code }))
-    expect(await testCoachKey('k', status(200))).toBe('ok')
-    expect(await testCoachKey('k', status(401))).toBe('bad-key')
-    expect(await testCoachKey('k', status(400, 'Your credit balance is too low'))).toBe('no-credit')
-    expect(await testCoachKey('k', status(429))).toBe('limited')
-    expect(await testCoachKey('k', status(529))).toBe('busy')
-    expect(await testCoachKey('k', status(400, 'something else'))).toBe('error')
+    expect(await testAiKey('k', status(200))).toBe('ok')
+    expect(await testAiKey('k', status(401))).toBe('bad-key')
+    expect(await testAiKey('k', status(400, 'Your credit balance is too low'))).toBe('no-credit')
+    expect(await testAiKey('k', status(429))).toBe('limited')
+    expect(await testAiKey('k', status(529))).toBe('busy')
+    expect(await testAiKey('k', status(400, 'something else'))).toBe('error')
     expect(
-      await testCoachKey('k', vi.fn(async () => {
+      await testAiKey('k', vi.fn(async () => {
         throw new TypeError('offline')
       })),
     ).toBe('offline')
     const one = status(200)
-    await testCoachKey(' sk-ant-x ', one)
+    await testAiKey(' sk-ant-x ', one)
     const body = JSON.parse((one.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
     expect(body.max_tokens).toBe(1)
   })

@@ -185,7 +185,7 @@ it is complete:
 
 - [`anthropic.ts`](src/shared/anthropic.ts) — the client-side Claude call every
   app makes the same way: BYO key straight from the browser, the endpoint and
-  API version, `anthropicHeaders()`, and the model ids. Used by Silva and KeyPath's coach's note.
+  API version, `anthropicHeaders()`, and the model ids. Used by Silva and KeyPath (coach's note, weekly note, Studio answers: `keypath/app/ai.ts`).
 - [`axisLockSlider.js`](src/shared/axisLockSlider.js) — a touch-safe drag handler
   for range sliders inside a vertically scrolling list, where `touch-action:
   pan-y` on a native `<input type="range">` isn't reliably honoured. Touch Grass's

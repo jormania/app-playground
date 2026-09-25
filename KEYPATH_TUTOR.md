@@ -717,13 +717,52 @@ itself is unchanged; the note is added (`songs/coach.ts`, `CoachNote.tsx`).
   repo's other apps call Claude: BYO key, straight from the browser. About a
   quarter of a cent a note.
 
-**The key** is the phone's, not a player's: Settings → Coach → *Anthropic
+**The key** is the phone's, not a player's: Settings → Claude → *Anthropic
 API key*, with **Test the key** (one request of one token: works, not
 accepted, no credit, limited, busy, offline). It's kept in `localStorage`
 (`keypath:anthropicKey`), outside KeyPath's store, so a backup file never
 carries it. The hint suggests a key in its own workspace with a small
 monthly limit, since it sits on a child's phone. Each player can turn the
 note off (`coach` in their settings).
+
+### The weekly note
+
+In Progress, at the top: *This week, in a few words*, a paragraph for the
+parent about a player's last seven days, written by Claude Haiku 4.5 when
+**Write this week's note** is tapped, never on its own (`progress/weekly.ts`,
+`WeeklyNote.tsx`).
+
+- **What Claude is told** (`weekFacts`): days, minutes and sessions; time in
+  each door; songs finished (with best stars) and songs left unfinished,
+  by title; parts learnt, bars made clean, Journey checks passed and not,
+  games played, takes kept, Today cards done, stickers earned; and the week
+  before, for a comparison. No name: Claude writes `{name}` and the phone
+  puts the name in (`withName`), so a rename doesn't leave the old one in a
+  kept note. In Romanian it's asked for wordings that need no gender.
+- **Kept** (`weekly:<player>` in the store): opening Progress again shows it,
+  with the day it was written, and **Write it again** asks for a fresh one.
+  A note with any other placeholder, or too long, is dropped.
+- Without a key, Progress says where one goes.
+
+### Call and answer
+
+In the Studio, a kept take's ⋯ has **Answer me**: Claude answers her phrase
+with one of its own, which she can hear (**Play the answer**, on the
+keyboard or the phone like a take) and learn (**Learn it in Songs** saves
+it as her song, *Answer to Take 3*, and opens it) (`studio/answer.ts`).
+
+- **Her phrase** (`callOf`): the take's first 24 notes, on a grid of
+  sixteenths, the beat from its count-in or else from her own pace; its key
+  (`keyOf`: the major or minor scale holding most of her notes, leaning to
+  one she starts or ends on) and range.
+- **The ask**: Claude Sonnet 5 at low effort, since composing wants more
+  judgement than a note of words: stay in her key, within a fifth of her
+  range, about as long, plain rhythms, pick up one idea from the call and
+  come home. JSON back: the notes and one sentence to her about the answer.
+- **Checked before it plays** (`checkAnswer`): every note in the key and
+  range, every value a plain one (sixteenth to whole), 2 to 32 notes, 16
+  beats at most. Anything else is dropped: "No answer came back this time."
+  Answers aren't kept unless learnt.
 
 ### Settings, regrouped
 
@@ -736,7 +775,8 @@ bottom. Now, under headings:
    numbers.
 3. **Playing a song**: on a wrong note, timing, wrong notes cost stars, the
    end-of-piece report.
-4. **Coach**: the note on or off, the phone's key and its test.
+4. **Claude** (was *Coach*): the coach's note on or off, the phone's key
+   and its test. The key serves all three uses of Claude below.
 5. **Progress and backup**: Progress, backup and restore, storage.
 6. **Keyboard**: Diagnostics.
 

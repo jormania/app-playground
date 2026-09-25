@@ -9,7 +9,7 @@
  * Promoted from six apps hand-rolling this fetch call — fit-check/lib/tagging,
  * lexi5, where-it-went/lib/aiParser, sol-odyssey/lib/companion,
  * daily-stoic/lib/mentor, touch-grass/engine — once Silva became the seventh.
- * KeyPath's coach's note (keypath/app/songs/coach.ts) uses it too.
+ * KeyPath (keypath/app/ai.ts) uses it too.
  * Each app keeps its own prompt building, response parsing and user-facing
  * error copy; only the request itself (endpoint, headers, model ids) moved
  * here, so every app's existing tests still assert their own behaviour.

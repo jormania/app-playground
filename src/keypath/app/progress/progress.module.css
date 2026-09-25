@@ -79,3 +79,17 @@
   color: var(--color-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* The weekly note (WeeklyNote.tsx): Claude's few sentences, above the numbers. */
+.weekly {
+  border-left: 3px solid #8a6fd1;
+}
+.weeklyText {
+  margin: 0;
+  line-height: var(--leading-body);
+}
+.problem {
+  margin: 0;
+  font-weight: var(--weight-medium);
+  color: var(--color-danger);
+}

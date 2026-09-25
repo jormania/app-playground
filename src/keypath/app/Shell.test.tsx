@@ -157,7 +157,7 @@ describe('KeyPath shell, after the audit', () => {
     await createPlayer('Nora')
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     const headings = (await screen.findAllByRole('heading', { level: 2 })).map((h) => h.textContent)
-    expect(headings).toEqual(['Player', 'Language and names', 'Playing a song', 'Coach', 'Progress and backup', 'Keyboard'])
+    expect(headings).toEqual(['Player', 'Language and names', 'Playing a song', 'Claude', 'Progress and backup', 'Keyboard'])
     const player = within(screen.getByRole('region', { name: 'Player' }))
     for (const name of ['Edit name and avatar', 'Switch player', 'Delete this player']) expect(player.getByRole('button', { name })).toBeTruthy()
   })
@@ -228,7 +228,7 @@ describe('KeyPath shell, after the audit', () => {
     await start()
     await createPlayer('Nora')
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
-    expect(await screen.findByText('KeyPath, release 1')).toBeTruthy()
+    expect(await screen.findByText('KeyPath, release 2')).toBeTruthy()
   })
 
   it('links the user’s guide from the top of Home, in a new tab', async () => {

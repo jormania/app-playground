@@ -6,7 +6,9 @@ import { useApp } from '../context'
 import type { StringKey } from '../i18n'
 import { JourneyRepo, type JourneyProgress } from '../journey/progress'
 import { JOURNEY } from '../journey/steps'
-import type { Door } from '../log'
+import type { Door, LogRecord } from '../log'
+import { levelOf } from '../songs/level'
+import { WeeklyNote } from './WeeklyNote'
 import type { Profile } from '../profiles'
 import { TopBar } from '../screens/TopBar'
 import { SongLibrary } from '../songs/library'
@@ -23,6 +25,8 @@ interface Loaded {
   bests: ChallengeRecords
   keptTakes: number
   titles: Map<string, string>
+  records: LogRecord[]
+  levels: Map<string, 1 | 2 | 3>
 }
 
 /**
@@ -47,7 +51,16 @@ export function ProgressScreen() {
     if (!p) return
     void (async () => {
       const [records, journey, bests, takes, songs] = await Promise.all([log.read(p.id), repos.journey.get(p.id), repos.bests.get(p.id), repos.takes.list(p.id), repos.songs.list(settings.language)])
-      setData({ profile: p, summary: summarise(records), journey, bests, keptTakes: takes.length, titles: new Map(songs.map((e) => [e.song.id, e.song.title])) })
+      setData({
+        profile: p,
+        summary: summarise(records),
+        journey,
+        bests,
+        keptTakes: takes.length,
+        titles: new Map(songs.map((e) => [e.song.id, e.song.title])),
+        records,
+        levels: new Map(songs.map((e) => [e.song.id, levelOf(e.song)])),
+      })
     })()
   }, [who, players, log, repos, settings.language])
 
@@ -96,6 +109,7 @@ export function ProgressScreen() {
 
       {data && s && s.sessions > 0 && (
         <>
+          <WeeklyNote key={data.profile.id} player={data.profile} records={data.records} titles={data.titles} levels={data.levels} />
           <section className={styles.panel}>
             <h2 className={styles.h2}>{t('pGlance')}</h2>
             <p className={styles.hint}>{s.from === s.to ? day(s.from) : t('pRange', { from: day(s.from), to: day(s.to) })}</p>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../context'
-import { askCoach, coachFacts, COACH_TIMEOUT_MS, readCoachKey, type FactsInput } from './coach'
+import { readAiKey } from '../ai'
+import { askCoach, coachFacts, COACH_TIMEOUT_MS, type FactsInput } from './coach'
 import styles from './songs.module.css'
 
 /**
@@ -11,11 +12,11 @@ import styles from './songs.module.css'
 export function CoachNote({ input }: { input: FactsInput }) {
   const { t } = useApp()
   const [state, setState] = useState<{ kind: 'asking' } | { kind: 'note'; text: string } | { kind: 'none' }>(() =>
-    readCoachKey() && (typeof navigator === 'undefined' || navigator.onLine !== false) ? { kind: 'asking' } : { kind: 'none' },
+    readAiKey() && (typeof navigator === 'undefined' || navigator.onLine !== false) ? { kind: 'asking' } : { kind: 'none' },
   )
 
   useEffect(() => {
-    const key = readCoachKey()
+    const key = readAiKey()
     if (!key || (typeof navigator !== 'undefined' && navigator.onLine === false)) return
     let live = true
     const abort = new AbortController()

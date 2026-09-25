@@ -5,23 +5,33 @@ hardware: [`KEYPATH.md`](KEYPATH.md)). A release is a point on `main` worth nami
 number shows at the foot of Settings (`src/keypath/app/release.ts`). The user's guide is a
 shared doc, linked from the top of Home.
 
-## Since release 1
+## Release 2 — 2026-09-25
 
-- **Your own songs.** A piano MIDI with both hands in one track is offered a split
-  between the hands, at a line it suggests and she can move. Notes past the 61 keys
-  default to moving only those notes when they're few (under 5% of the song); "move
-  only" isn't offered when it would change nothing (KEYPATH_TUTOR.md §9).
-- **Every song says how hard, one hand or two, and how long** (Easy · Two hands · 0:32).
-  An added song is rated by what it asks of the hands, held to the starter pack's
-  own levels, and the level can be changed at import or later.
-- **Songs from MuseScore as scores** (MusicXML, `.mxl`): the hands from the two staves, the
-  printed finger numbers, repeats written out and bars numbered as on the page.
+Songs from MuseScore, and Claude in KeyPath. Everything built after release 1 through the
+release-2 commit on `main`.
+
+**Your own songs**
+- **MuseScore files.** `.mscz` from MuseScore 2 to 4, with no subscription needed, and
+  MusicXML (`.mxl`, `.musicxml`). The hands come from the two staves, with the printed finger
+  numbers, repeats and first/second endings written out, and bars numbered as on the page.
+- **Both hands in one track.** A piano MIDI with both hands in one track is offered a split,
+  at a line KeyPath suggests and she can move.
+- **Notes past the 61 keys.** When they're few (under 5% of the song), the default is to move
+  only those notes. "Move only" isn't offered when it would change nothing.
+- **Every song shows its level, hands and length** (Easy · Two hands · 0:32). An added song is
+  rated by what it asks of the hands, held to the starter pack's own levels. The level can be
+  changed at import or later.
+
+**Claude** (with an Anthropic key on the phone: Settings → Claude, with a test)
+- **The coach's note.** After a song, a few words on what went well and what to practise next.
+- **The weekly note.** In Progress, a short paragraph for the parent about the last seven
+  days, written when asked.
+- **Call and answer.** In the Studio, Claude answers her take with a phrase of its own. She can
+  play the answer and learn it in Songs.
+
+**Around the app**
 - **A long song's parts** are the same chips as any song's, on one scrolling line.
-- **The coach's note**: after a song, a few words from Claude on what went well and what to
-  practise, when the phone has an Anthropic key (Settings → Coach, with a test).
-- **Settings regrouped** under headings, the player's options first.
-- **MuseScore's own files** (`.mscz`, MuseScore 2 to 4) open the same way as MusicXML, with no
-  subscription needed.
+- **Settings regrouped** under headings, the player's options first. "Face" is now "avatar".
 
 ## Release 1 — 2026-09-25
 

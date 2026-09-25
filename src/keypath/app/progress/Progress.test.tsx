@@ -72,4 +72,34 @@ describe('Progress', () => {
     expect(json.journeySteps.middleC.how).toBe('check')
     expect(json.summary.songs.bySong[0]).toMatchObject({ songId: 'starter:ode', title: 'Ode to Joy', bestStars: 3 })
   })
+
+  it('writes the weekly note when asked, with the player’s name put in, and keeps it', async () => {
+    localStorage.setItem('keypath:anthropicKey', JSON.stringify('sk-ant-test'))
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: 'text', text: '{name} finished Ode to Joy with three stars.' }], stop_reason: 'end_turn' }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const { store } = await setUp()
+      fireEvent.click(await screen.findByRole('button', { name: 'Write this week’s note' }))
+      expect(await screen.findByText('Nora finished Ode to Joy with three stars.')).toBeTruthy()
+      // The name never left the phone.
+      expect((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body).not.toContain('Nora')
+      // Opening Progress again shows the kept note without asking.
+      cleanup()
+      history.replaceState(null, '', '#/progress')
+      render(<Shell store={store} />)
+      expect(await screen.findByText('Nora finished Ode to Joy with three stars.')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Write it again' })).toBeTruthy()
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.unstubAllGlobals()
+      localStorage.clear()
+    }
+  })
+
+  it('says where a key goes when there is none', async () => {
+    localStorage.clear()
+    await setUp()
+    expect(await screen.findByText(/With an Anthropic key in Settings → Claude/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Write this week’s note' })).toBeNull()
+  })
 })

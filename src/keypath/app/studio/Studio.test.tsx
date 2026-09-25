@@ -226,4 +226,39 @@ describe('Studio', () => {
     expect(await screen.findByText('Ode to Joy, take 1')).toBeTruthy()
     expect((await new EngagementLog(store).read(profileId)).find((e) => e.type === 'studio_opened')).toMatchObject({ from: 'song', songId: 'starter:ode' })
   })
+
+  it('answers a take with Claude’s phrase, plays it, and takes it into Songs to learn', async () => {
+    localStorage.setItem('keypath:anthropicKey', JSON.stringify('sk-ant-test'))
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ idea: 'Yours went up, so mine comes back down.', notes: [{ note: 'G4', beats: 1 }, { note: 'E4', beats: 1 }, { note: 'D4', beats: 1 }, { note: 'C4', beats: 1 }] }) }], stop_reason: 'end_turn' }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const store = memoryStore()
+      const profiles = new ProfileRepo(store)
+      const p = await profiles.create('Nora', '🐺')
+      await profiles.setCurrent(p.id)
+      const notes = [60, 62, 64, 65, 67].map((pitch, i) => ({ pitch, velocity: 80, startMs: i * 500, durationMs: 450 }))
+      await new TakeRepo(store).keep(p.id, { ms: 2500, notes, pedal: [] }, { style: false, bpm: 120 })
+      history.replaceState(null, '', '#/door/studio')
+      render(<Shell store={store} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'More for Take 1' }))
+      fireEvent.click(screen.getByRole('button', { name: /Answer me/ }))
+      expect(await screen.findByText('Yours went up, so mine comes back down.')).toBeTruthy()
+      expect(screen.getByText('G E D C')).toBeTruthy()
+      // Her phrase went out as notes on beats; nothing of her name.
+      const body = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string
+      expect(body).toContain('C major')
+      expect(body).not.toContain('Nora')
+      fireEvent.click(screen.getByRole('button', { name: /Play the answer/ }))
+      await waitFor(() => expect(kb.sent.some((m) => (m.data[0] & 0xf0) === 0x90 && m.data[1] === 67)).toBe(true))
+      fireEvent.click(screen.getByRole('button', { name: 'Learn it in Songs' }))
+      await waitFor(() => expect(location.hash).toMatch(/^#\/play\/answer/))
+      const log = await new EngagementLog(store).read(p.id)
+      expect(log.map((e) => e.type)).toEqual(expect.arrayContaining(['studio_answer', 'studio_answer_learnt']))
+    } finally {
+      vi.unstubAllGlobals()
+      localStorage.clear()
+    }
+  })
 })

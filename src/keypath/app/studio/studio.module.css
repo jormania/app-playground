@@ -209,3 +209,38 @@
     gap: var(--space-xs);
   }
 }
+
+/* Claude's answer to a take (call and answer): under the take's row. */
+.answer {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-2xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border-left: 3px solid #8a6fd1;
+  background: var(--color-surface-2, var(--color-bg));
+}
+.answer p {
+  margin: 0;
+  line-height: var(--leading-body);
+}
+.answerLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-muted);
+}
+.answerWaiting {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  animation: answerPulse 1.4s ease-in-out infinite;
+}
+@keyframes answerPulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .answerWaiting {
+    animation: none;
+  }
+}
