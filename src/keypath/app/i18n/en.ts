@@ -86,7 +86,7 @@ export const en = {
   songRemoveSure: 'Sure? Remove it',
   songRemoveHint: 'Removes it from this phone, for every player. Stars and plays already in Progress stay.',
   addSong: 'Add a song',
-  addSongHint: 'A MusicXML (.mxl) or MIDI file from this phone: MuseScore has both. It stays on this phone.',
+  addSongHint: 'A MuseScore (.mscz), MusicXML (.mxl) or MIDI file from this phone. It stays on this phone.',
   chooseFile: 'Choose a file',
   whichPart: 'Which part do you want to learn?',
   rightHand: 'Right hand',
@@ -98,7 +98,7 @@ export const en = {
   notesCount: '{count|# note|# notes}',
   songTitle: 'Title',
   addToSongs: 'Add to my songs',
-  importNotMidi: 'That file isn’t a MusicXML or MIDI file.',
+  importNotMidi: 'That file isn’t a MuseScore, MusicXML or MIDI file.',
   importUnsupported: 'This file uses a format KeyPath can’t read yet.',
   importNoNotes: 'There are no notes to learn in this file.',
   // Play

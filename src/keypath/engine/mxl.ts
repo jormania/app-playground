@@ -1,7 +1,8 @@
 import { child, decodeText, parseXml } from './xml'
 
-// Compressed MusicXML (.mxl, what MuseScore offers as "MusicXML"): a zip
-// holding the score and META-INF/container.xml, which names it. Read with the
+// Compressed MusicXML (.mxl, what MuseScore offers as "MusicXML") and
+// MuseScore's own files (.mscz): each a zip holding the score and
+// META-INF/container.xml, which names it. Read with the
 // platform's own inflater (DecompressionStream, in Chrome and Node alike),
 // so no zip library joins the bundle. Stored and deflated entries only; no
 // ZIP64, which a score never needs.
@@ -63,7 +64,7 @@ async function read(bytes: Uint8Array, e: Entry): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
-/** The score inside an .mxl file, as XML text. */
+/** The score inside an .mxl or .mscz file, as XML text: MusicXML, or MuseScore's .mscx. */
 export async function unzipScore(bytes: Uint8Array): Promise<string> {
   const entries = entriesOf(bytes)
   const container = entries.find((e) => e.name === 'META-INF/container.xml')
@@ -75,7 +76,9 @@ export async function unzipScore(bytes: Uint8Array): Promise<string> {
       path = ''
     }
   }
-  const score = entries.find((e) => e.name === path) ?? entries.find((e) => !e.name.startsWith('META-INF/') && /\.(musicxml|xml)$/i.test(e.name))
+  // Without a container: MuseScore's own score first (not a part in Excerpts/), then MusicXML.
+  const inside = entries.filter((e) => !e.name.startsWith('META-INF/') && !e.name.startsWith('Excerpts/'))
+  const score = entries.find((e) => e.name === path) ?? inside.find((e) => /\.mscx$/i.test(e.name)) ?? inside.find((e) => /\.(musicxml|xml)$/i.test(e.name))
   if (!score) throw new MxlError('No score in this file')
   return decodeText(await read(bytes, score))
 }

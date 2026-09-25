@@ -725,7 +725,45 @@ order), ornaments and dynamics. Timewise scores (rare) are refused.
 
 The file picker has no type filter: Android doesn't know `.mxl` and would
 grey MuseScore's download out. The file is read to tell what it is, and
-anything else gets "That file isn't a MusicXML or MIDI file."
+anything else gets "That file isn't a MuseScore, MusicXML or MIDI file."
+
+### Songs from MuseScore (.mscz)
+
+MuseScore's MusicXML download needs its paid plan; its own `.mscz` files
+don't. So **Add a song** reads those too, and `.mscx` (the same score,
+uncompressed). An `.mscz` is a zip like `.mxl`: `META-INF/container.xml`
+names the `.mscx` inside, and without a container the score beside
+`Excerpts/` is taken (`engine/mxl.ts`).
+
+`engine/mscx.ts` reads MuseScore 2, 3 and 4 into the same bars as a MusicXML
+score, and `fileFromParts` (in `engine/musicxml.ts`) lays both out in time,
+so both formats get the same repeats, endings, ties, tempo map, printed bars
+and fingers. What differs by version:
+- **voices**: 3–4 give each its own `<voice>`; 2 writes the first, then a
+  `<tick>` back to the bar's start and `<track>` on the next voice's chords;
+- **tuplets**: 3–4 put a `<Tuplet>` before its notes and `<endTuplet/>`
+  after; 2 defines `<Tuplet id>` and each note names it;
+- **ties**: 3–4 put `<Spanner type="Tie">` with a `<next>` on the first note;
+  2 puts a `<Tie>` in it. Either way the next note of that pitch in that
+  voice is joined on;
+- **endings**: 3–4 use `<Spanner type="Volta">` saying how many bars it
+  lasts; 2 opens `<Volta id>` and closes it with `<endSpanner id>`;
+- **bar numbers**: 2 writes them; 3–4 are counted, an irregular bar (a
+  pickup) not counting, as MuseScore prints them.
+
+Pitches are stored as they sound, so a transposing instrument needs nothing.
+Tablature and percussion staves are left out. The rest (grace notes, jumps,
+dynamics) is as for MusicXML.
+
+**How it was checked.** `webmscore`, MuseScore compiled to WebAssembly, was
+run outside the repo as an oracle; it is 24 MB, too heavy to ship, and
+never joins the bundle. On a real MuseScore 2.06 file (a 100-bar two-hand
+piano arrangement) and on the same file saved as MuseScore 4, every one of
+its 1468 notes matched MuseScore's own MIDI export in pitch and start. A
+test score with a pickup, repeat and endings, tie, triplet, second voice,
+chord and tempo change matched too, except the grace note MuseScore plays
+and KeyPath leaves out on purpose. The tests (`engine/mscx.test.ts`) use
+small hand-written scores laid out as each version writes them.
 
 **The Parts row for a long song.** A song with more than seven parts used to
 step through them one at a time (‹ Part 3 · 3 of 29 ›), and a CSS rule meant
@@ -1079,7 +1117,8 @@ install it and get the full screen):
 - **Import simplification**: "melody only" for arrangements too hard as
   written; it could become a fifth way in the choice for songs wider than
   the keyboard (§9, "Songs wider than the keyboard").
-- ~~**MusicXML import**~~ Done (§9, "Songs from a score"). Still open:
+- ~~**MusicXML import**~~ Done (§9, "Songs from a score"), and MuseScore's
+  own `.mscz` (§9, "Songs from MuseScore"). Still open:
   **notation rendering** of a song's score (a late Journey skill), and the
   D.C./D.S./Coda jumps.
 

@@ -17,6 +17,8 @@ shared doc, linked from the top of Home.
 - **Songs from MuseScore as scores** (MusicXML, `.mxl`): the hands from the two staves, the
   printed finger numbers, repeats written out and bars numbered as on the page.
 - **A long song's parts** are the same chips as any song's, on one scrolling line.
+- **MuseScore's own files** (`.mscz`, MuseScore 2 to 4) open the same way as MusicXML, with no
+  subscription needed.
 
 ## Release 1 — 2026-09-25
 

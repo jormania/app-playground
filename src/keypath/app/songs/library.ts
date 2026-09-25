@@ -1,4 +1,4 @@
-import { isZip, looksLikeXml, MusicXmlError, MxlError, parseMusicXml, unzipScore, suggestScoreParts, parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
+import { isZip, looksLikeXml, MscxError, parseMscx, MusicXmlError, MxlError, parseMusicXml, unzipScore, suggestScoreParts, parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import { decodeText } from '../../engine/xml'
 import type { Language } from '../profiles'
@@ -127,7 +127,7 @@ export function choosePart(d: ImportDraft, hand: 'right' | 'left', key: string):
 }
 
 /** A file name as a title: no extension, underscores and dashes as spaces. */
-const titleFrom = (fileName: string) => fileName.replace(/\.(mid|midi|kar|musicxml|xml|mxl)$/i, '').replace(/[_-]+/g, ' ').trim() || 'Untitled'
+const titleFrom = (fileName: string) => fileName.replace(/\.(mid|midi|kar|musicxml|xml|mxl|mscz|mscx)$/i, '').replace(/[_-]+/g, ' ').trim() || 'Untitled'
 
 /** A read file, MIDI or score, as a draft: its parts, the hands guessed, a title. */
 function draftOf(file: SmfFile, fileName: string): ImportDraft | ImportProblem {
@@ -138,19 +138,20 @@ function draftOf(file: SmfFile, fileName: string): ImportDraft | ImportProblem {
   return withSplit({ file, title: file.score?.title.trim() || titleFrom(fileName), parts, right, left })
 }
 
+/** A score as text: MuseScore's own (.mscx, as inside an .mscz), or MusicXML. */
 function draftFromScore(text: string, fileName: string): ImportDraft | ImportProblem {
   try {
-    return draftOf(parseMusicXml(text), fileName)
+    return draftOf(/<museScore[\s>]/.test(text.slice(0, 1000)) ? parseMscx(text) : parseMusicXml(text), fileName)
   } catch (err) {
-    if (err instanceof MusicXmlError) return err.kind === 'unsupported' ? 'unsupported' : 'not-midi'
+    if (err instanceof MusicXmlError || err instanceof MscxError) return err.kind === 'unsupported' ? 'unsupported' : 'not-midi'
     throw err
   }
 }
 
 /**
  * Read a picked file into a draft for the "Which part?" step: a MIDI file, or
- * an uncompressed MusicXML score (.musicxml, .xml). For a compressed score
- * (.mxl) use `openSongFile`.
+ * an uncompressed score (.musicxml, .xml, .mscx). For a compressed one (.mxl,
+ * .mscz) use `openSongFile`.
  */
 export function draftFromFile(bytes: ArrayBuffer, fileName: string): ImportDraft | ImportProblem {
   const head = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 512))
@@ -167,7 +168,7 @@ export function draftFromFile(bytes: ArrayBuffer, fileName: string): ImportDraft
   return draftOf(file, fileName)
 }
 
-/** Any file "Add a song" takes: MIDI, MusicXML, or compressed MusicXML (.mxl, MuseScore's download). */
+/** Any file "Add a song" takes: MuseScore (.mscz, .mscx), MusicXML (.mxl, .musicxml, .xml) or MIDI. */
 export async function openSongFile(bytes: ArrayBuffer, fileName: string): Promise<ImportDraft | ImportProblem> {
   if (!isZip(new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 4)))) return draftFromFile(bytes, fileName)
   try {

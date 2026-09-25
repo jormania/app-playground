@@ -37,7 +37,7 @@ const STEP: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11
 const EPS = 1e-6
 
 /** A note as written in its bar, before the repeats are laid out. */
-interface Written {
+export interface Written {
   /** From the start of the bar, in quarter notes. */
   at: number
   length: number
@@ -49,7 +49,7 @@ interface Written {
   finger?: Finger
 }
 
-interface Bar {
+export interface Bar {
   label: string
   notes: Written[]
   tempos: { at: number; bpm: number }[]
@@ -64,7 +64,7 @@ interface Bar {
   ending: number[] | null
 }
 
-interface ReadPart {
+export interface ReadPart {
   name: string
   staves: number
   bars: Bar[]
@@ -250,7 +250,15 @@ export function parseMusicXml(text: string): SmfFile {
   for (const sp of childrenOf(child(root, 'part-list'), 'score-part')) names.set(sp.attrs.id ?? '', textOf(sp, 'part-name'))
   const parts = childrenOf(root, 'part').map((p, i) => readPart(p, names.get(p.attrs.id ?? '') || `Part ${i + 1}`))
   if (parts.length === 0) throw new MusicXmlError('A score without parts', 'unsupported')
+  return fileFromParts(parts, textOf(root, 'movement-title') || textOf(child(root, 'work'), 'work-title'))
+}
 
+/**
+ * A score's parts, read bar by bar (from MusicXML here, or MuseScore's own
+ * format in engine/mscx.ts), laid out in time: repeats in playing order, the
+ * tempo map, tied notes joined, each note's printed bar and finger kept.
+ */
+export function fileFromParts(parts: readonly ReadPart[], title: string): SmfFile {
   // The repeats are the score's, written alike in every part: read from the first.
   const lead = parts[0].bars
   const order = playingOrder(lead)
@@ -346,7 +354,7 @@ export function parseMusicXml(text: string): SmfFile {
     tempos,
     timeSignatures: [{ tick: 0, numerator: parts[0].beats, denominator: parts[0].beatType }],
     score: {
-      title: textOf(root, 'movement-title') || textOf(child(root, 'work'), 'work-title'),
+      title,
       barLabels: order.map((i) => lead[i].label),
       parts: scoreParts,
     },

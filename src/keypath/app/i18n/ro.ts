@@ -88,7 +88,7 @@ export const ro: Record<StringKey, string> = {
   songRemoveSure: 'Sigur? Scoate-l',
   songRemoveHint: 'Îl scoate de pe telefon, pentru toți jucătorii. Stelele și cântările deja în Progres rămân.',
   addSong: 'Adaugă un cântec',
-  addSongHint: 'Un fișier MusicXML (.mxl) sau MIDI de pe acest telefon: MuseScore le are pe amândouă. Rămâne pe acest telefon.',
+  addSongHint: 'Un fișier MuseScore (.mscz), MusicXML (.mxl) sau MIDI de pe acest telefon. Rămâne pe acest telefon.',
   chooseFile: 'Alege un fișier',
   whichPart: 'Ce parte vrei să înveți?',
   rightHand: 'Mâna dreaptă',
@@ -100,7 +100,7 @@ export const ro: Record<StringKey, string> = {
   notesCount: '{count|o notă|# note|# de note}',
   songTitle: 'Titlu',
   addToSongs: 'Adaugă la cântecele mele',
-  importNotMidi: 'Fișierul nu este un fișier MusicXML sau MIDI.',
+  importNotMidi: 'Fișierul nu este un fișier MuseScore, MusicXML sau MIDI.',
   importUnsupported: 'Acest fișier folosește un format pe care KeyPath încă nu îl poate citi.',
   importNoNotes: 'Nu sunt note de învățat în acest fișier.',
   // Cântat

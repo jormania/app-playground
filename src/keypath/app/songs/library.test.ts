@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { melodyFile, meta, on, off, pianoFile, smf, track, waltzPiano } from '../../engine/testing/smfBuilder'
 import { memoryStore } from '../store'
 import { ratedLevel } from './level'
+import { chord as mchord, measure4, mscx, tempo as mtempo, timeSig } from '../../engine/testing/mscxBuilder'
 import { attributes, CONTAINER, measure, note, pianoBar, repeatEnd, score, tempo, zip } from '../../engine/testing/xmlBuilder'
 import { buildImport, choosePart, draftFromFile, openSongFile, SongLibrary, type ImportDraft } from './library'
 
@@ -191,5 +192,34 @@ describe('a MusicXML score', () => {
     expect(draftFromFile(bytesOf('<score-timewise version="4.0"/>'), 'x.musicxml')).toBe('unsupported')
     expect(await openSongFile(bytes(await zip([{ name: 'photo.jpg', text: 'x' }])), 'photos.zip')).toBe('not-midi')
     expect(draftFromFile(bytesOf(score({ parts: [{ name: 'Rests', measures: [measure(1, attributes() + note({ pitch: null, beats: 4 }))] }] })), 'r.xml')).toBe('no-notes')
+  })
+})
+
+describe('a MuseScore file (.mscz)', () => {
+  const text = mscx({
+    version: '4.20',
+    title: 'Two Staves',
+    parts: [{ name: 'Piano', staves: [[measure4([timeSig(4, 4) + mtempo(60) + mchord({ type: 'whole', notes: [{ pitch: 64, finger: 3 }] })])], [measure4([mchord({ type: 'whole', notes: [{ pitch: 48, finger: 5 }] })])]] }],
+  })
+
+  it('opens like any score: the hands from its staves, its title, its fingers', async () => {
+    const mscz = await zip([
+      { name: 'META-INF/container.xml', text: CONTAINER('two_staves.mscx'), deflate: true },
+      { name: 'two_staves.mscx', text, deflate: true },
+    ])
+    const d = (await openSongFile(bytes(mscz), 'two_staves.mscz')) as ImportDraft
+    expect(d.title).toBe('Two Staves')
+    expect([d.right?.staff, d.left?.staff]).toEqual([1, 2])
+    const { song } = buildImport(d, '')
+    expect(song.notes.map((n) => [n.hand, n.pitch, n.finger])).toEqual([
+      ['left', 48, 5],
+      ['right', 64, 3],
+    ])
+    // Uncompressed (.mscx) too.
+    expect((draftFromFile(bytes(new TextEncoder().encode(text)), 'two_staves.mscx') as ImportDraft).parts).toHaveLength(2)
+  })
+
+  it('says so for a MuseScore file it can’t read', () => {
+    expect(draftFromFile(bytes(new TextEncoder().encode('<museScore version="1.14"><Score/></museScore>')), 'old.mscx')).toBe('unsupported')
   })
 })
