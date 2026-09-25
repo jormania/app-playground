@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
+import { buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -16,6 +16,9 @@ import { SongLibrary } from './library'
 import { PlayKeyboard } from './PlayKeyboard'
 import { ReportView } from './ReportView'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
+import { nextStep, partPassed, PartsRepo, partSteps, rangeSong, type PartStep } from './parts'
+import { tryNext } from './level'
+import { songProgress } from './songProgress'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useOutput } from '../studio/output'
@@ -23,7 +26,7 @@ import { Playback, realClock } from '../studio/playback'
 import styles from './songs.module.css'
 import setup from '../setup.module.css'
 
-type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone'
+type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone' | 'partDone'
 
 const SPEEDS = ['1', '0.75', '0.5'] as const
 const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
@@ -51,7 +54,7 @@ export function PlayScreen({ songId }: { songId: string }) {
   }, [song])
 
   if (!song) return null
-  return <Player song={song} key={song.id} t={t} settings={settings} profileId={profile?.id ?? null} log={log} />
+  return <Player song={song} key={song.id} t={t} settings={settings} profileId={profile?.id ?? null} log={log} store={store} />
 }
 
 type PlayerProps = {
@@ -60,9 +63,10 @@ type PlayerProps = {
   settings: ReturnType<typeof useApp>['settings']
   profileId: string | null
   log: ReturnType<typeof useApp>['log']
+  store: ReturnType<typeof useApp>['store']
 }
 
-function Player({ song, t, settings, profileId, log }: PlayerProps) {
+function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const hasLeft = song.notes.some((n) => n.hand === 'left')
   const [practice, setPractice] = useState<Practice>('right')
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>('1')
@@ -82,6 +86,45 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const loopRef = useRef<Loop | null>(null)
   const loopTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  // Learning it in parts: the way through (phrases, joins, the whole song), what
+  // she has learnt, and the part chosen, which starts as the first not learnt.
+  const partsRepo = useMemo(() => new PartsRepo(store), [store])
+  const steps = useMemo(() => partSteps(song, practice), [song, practice])
+  const [learnt, setLearnt] = useState<ReadonlySet<string>>(new Set())
+  const [partId, setPartId] = useState<string | null>(null)
+  const [partResult, setPartResult] = useState<{ passed: boolean; wrong: number } | null>(null)
+  useEffect(() => {
+    let live = true
+    void (profileId ? partsRepo.get(profileId, song.id, practice) : Promise.resolve(new Set<string>())).then((l) => {
+      if (!live) return
+      setLearnt(l)
+      setPartId(nextStep(steps, l)?.id ?? null)
+    })
+    return () => {
+      live = false
+    }
+  }, [partsRepo, profileId, song.id, practice, steps])
+  // "Try next" on the report: the easiest song she hasn't finished yet.
+  const [next, setNext] = useState<{ id: string; title: string } | null>(null)
+  useEffect(() => {
+    if (phase !== 'report' || !profileId) return
+    let live = true
+    void (async () => {
+      const [entries, records] = await Promise.all([new SongLibrary(store).list(settings.language), log.read(profileId)])
+      const done = songProgress(records)
+      const pick = tryNext(entries, (id) => id === song.id || done.get(id)?.bestStars != null, song.id)
+      if (live) setNext(pick ? { id: pick.song.id, title: pick.song.title } : null)
+    })()
+    return () => {
+      live = false
+    }
+  }, [phase, profileId, store, settings.language, log, song.id])
+  const part = steps.find((x) => x.id === partId) ?? null
+  /** A part short of the whole song: played on its own, always in "Wait for it". */
+  const span = part && part.kind !== 'whole' ? part : null
+  /** The middle-C check is done once per visit; the next part starts straight away. */
+  const shiftKnown = useRef(false)
+
   const judge = useRef<Judge | null>(null)
   /** The octave shift found by the middle-C check; applies to the Yamaha only, never to on-screen keys. */
   const shift = useRef(0)
@@ -90,9 +133,16 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const fall = useRef<FallingNotesHandle>(null)
   const shownTime = useRef(0)
 
-  // What's being played: the song, or the one bar being practised.
+  // What's being played: the song, one part of it, or the one bar being practised.
   const loopBar = loop?.bar ?? null
-  const playing = useMemo(() => (loopBar === null ? null : barSong(song, loopBar)) ?? song, [song, loopBar])
+  const spanFrom = span?.from ?? null
+  const spanTo = span?.to ?? null
+  const playing = useMemo(() => {
+    if (loopBar !== null) return barSong(song, loopBar) ?? song
+    if (spanFrom !== null && spanTo !== null) return rangeSong(song, spanFrom, spanTo) ?? song
+    return song
+  }, [song, loopBar, spanFrom, spanTo])
+  const playSettings = useMemo((): typeof settings => (spanFrom !== null ? { ...settings, onWrong: 'wait' } : settings), [settings, spanFrom])
   const notes = useMemo(() => notesFor(playing, practice), [playing, practice])
   const songNotes = useMemo(() => notesFor(song, practice), [song, practice])
   const wide = useWide()
@@ -156,18 +206,32 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       }
       return
     }
-    const r = buildReport(j.summary(), settings)
+    const summary = j.summary()
+    if (part) {
+      const passed = partPassed(summary)
+      if (profileId) {
+        void log.add(profileId, { type: 'song_part', songId: song.id, practice, part: part.id, passed, wrong: summary.wrong.length })
+        if (passed) void partsRepo.pass(profileId, song.id, practice, part.id).then(setLearnt)
+      }
+      if (part.kind !== 'whole') {
+        setPartResult({ passed, wrong: summary.wrong.length })
+        setPhase('partDone')
+        if (passed) celebrate('stepPassed')
+        return
+      }
+    }
+    const r = buildReport(summary, settings)
     setReport(r)
     setPhase('report')
     if (profileId) void log.add(profileId, { type: 'song_finished', songId: song.id, practice, stars: r.stars, score: Math.round(r.score * 100) / 100, hit: r.hit, total: r.total, wrong: r.wrong })
-  }, [settings, profileId, log, song.id, practice, endLoop, startPass])
+  }, [settings, profileId, log, song.id, practice, endLoop, startPass, part, partsRepo])
 
   const apply = useCallback(
     (events: JudgeEvent[]) => {
       if (events.length === 0) return
       const outcomes: [number, NoteResult['outcome']][] = []
       for (const e of events) {
-        const cue = cueFor(e, settings)
+        const cue = cueFor(e, playSettings)
         if (cue?.flashWrong !== undefined) {
           const p = cue.flashWrong
           setWrong((w) => new Set(w).add(p))
@@ -181,8 +245,37 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       if (outcomes.length) setResults((r) => new Map([...r, ...outcomes]))
       if (events.some((e) => e.type === 'done')) finish()
     },
-    [settings, finish],
+    [playSettings, finish],
   )
+
+  /** Judge from now: the song, or its part, as chosen. */
+  const startJudge = useCallback(
+    (target: Song, js: JudgeSettings, at: number, partOf: PartStep | null) => {
+      const j = new Judge(target, { practice, settings: js, tempo, shift: shift.current })
+      judge.current = j
+      if (j.mode === 'running') {
+        // Three beats of lead-in: the first notes are already falling.
+        const leadIn = (3 * 60000) / song.bpm / tempo
+        j.start(at + leadIn)
+      }
+      shownTime.current = READY_TIME
+      setResults(new Map())
+      setStreak(0)
+      setPartResult(null)
+      setPhase('playing')
+      if (profileId) void log.add(profileId, { type: 'song_started', songId: song.id, practice, tempo, mode: j.mode, ...(partOf ? { part: partOf.id } : {}) })
+    },
+    [song, practice, tempo, profileId, log],
+  )
+
+  /** Straight into a part (from "Next" or "Again"): no middle C again once it's known. */
+  const startPart = (step: PartStep) => {
+    setPartId(step.id)
+    const target = step.kind === 'whole' ? song : (rangeSong(song, step.from, step.to) ?? song)
+    const js: JudgeSettings = step.kind === 'whole' ? settings : { ...settings, onWrong: 'wait' }
+    if (shiftKnown.current) startJudge(target, js, performance.now(), step)
+    else setPhase('ready')
+  }
 
   /** Start after the middle-C check: the key pressed tells us the keyboard's octave shift. */
   const begin = useCallback(
@@ -195,20 +288,10 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       }
       setHint(null)
       shift.current = found
-      const j = new Judge(song, { practice, settings, tempo, shift: found })
-      judge.current = j
-      if (j.mode === 'running') {
-        // Three beats of lead-in: the first notes are already falling.
-        const leadIn = (3 * 60000) / song.bpm / tempo
-        j.start(at + leadIn)
-      }
-      shownTime.current = READY_TIME
-      setResults(new Map())
-      setStreak(0)
-      setPhase('playing')
-      if (profileId) void log.add(profileId, { type: 'song_started', songId: song.id, practice, tempo, mode: j.mode })
+      shiftKnown.current = true
+      startJudge(playing, playSettings, at, part)
     },
-    [song, practice, settings, tempo, t, label, profileId, log],
+    [t, label, startJudge, playing, playSettings, part],
   )
 
   /**
@@ -260,7 +343,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const listen = () => {
     if (listening) return stopListening()
     const take = {
-      ms: Math.round(song.durationMs / tempo) + 300,
+      ms: Math.round(playing.durationMs / tempo) + 300,
       notes: notes.map((n) => ({ pitch: n.pitch, velocity: 80, startMs: Math.round(n.startMs / tempo), durationMs: Math.round(n.durationMs / tempo) })),
       pedal: [],
     }
@@ -420,11 +503,15 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     setPhase('ready')
   }
 
+  const partName = (x: PartStep) => (x.kind === 'phrase' ? t('partPhrase', { n: x.first }) : x.kind === 'join' ? t('partJoin', { a: x.first, b: x.last }) : t('partWhole'))
+  const chipName = (x: PartStep) => (x.kind === 'phrase' ? String(x.first) : x.kind === 'join' ? `${x.first}–${x.last}` : t('partWholeShort'))
+  const afterPart = part ? (steps[steps.indexOf(part) + 1] ?? null) : null
+
   if (phase === 'report' && report) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onPractiseBar={practiseBar} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }
@@ -450,6 +537,26 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
               />
             </div>
           )}
+          {steps.length > 0 && (
+            <div className={setup.field}>
+              <span className={setup.label}>{t('parts')}</span>
+              <div className={setup.chips} role="group" aria-label={t('parts')}>
+                {steps.map((x) => (
+                  <button
+                    key={x.id}
+                    type="button"
+                    className={setup.chip}
+                    aria-pressed={x.id === partId}
+                    aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
+                    onClick={() => setPartId(x.id)}
+                  >
+                    {chipName(x)}
+                    {learnt.has(x.id) && ' ✓'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className={setup.field}>
             <span className={setup.label}>{t('speed')}</span>
             <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
@@ -461,18 +568,24 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
                 setPhase('ready')
               }}
             >
-              ▶ {t('startSong')}
+              ▶ {span ? partName(span) : t('startSong')}
             </Button>
             <Button variant="outline" onClick={listen}>
               {listening ? `■ ${t('stop')}` : `🎧 ${t('listen')}`}
             </Button>
           </div>
-          <p className={setup.note} data-inline>
-            <span>{t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
-            <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
-              {t('playModeChange')}
-            </button>
-          </p>
+          {span ? (
+            <p className={setup.note} data-inline>
+              {t('partMode', { from: span.from + 1, to: span.to })}
+            </p>
+          ) : (
+            <p className={setup.note} data-inline>
+              <span>{t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
+              <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
+                {t('playModeChange')}
+              </button>
+            </p>
+          )}
           {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
         </section>
       )}
@@ -532,6 +645,26 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
       {loop && phase === 'loopBreak' && (
         <div className={styles.prompt} role="status">
           <strong>{loopStep === 'up' ? t('loopUp', { speed: Math.round(tempoOf(loop) * 100) }) : t('loopAgain')}</strong>
+        </div>
+      )}
+
+      {phase === 'partDone' && part && partResult && (
+        <div className={styles.prompt} role="status">
+          <strong>{partResult.passed ? `✓ ${t('partLearnt', { part: partName(part) })}` : t('partNearly', { count: partResult.wrong })}</strong>
+          {partResult.passed && afterPart && <span>{t('partNext', { part: partName(afterPart) })}</span>}
+          <div className={styles.actions}>
+            {partResult.passed && afterPart && (
+              <Button size="sm" onClick={() => startPart(afterPart)}>
+                ▶ {partName(afterPart)}
+              </Button>
+            )}
+            <Button size="sm" variant={partResult.passed && afterPart ? 'outline' : 'primary'} onClick={() => startPart(part)}>
+              {t('partAgain')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setPhase('setup')}>
+              {t('partChoose')}
+            </Button>
+          </div>
         </div>
       )}
 

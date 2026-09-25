@@ -42,6 +42,12 @@ export const K = {
   journey: (profileId: string) => `${PREFIX}journey:${profileId}`,
   studio: (profileId: string) => `${PREFIX}studio:${profileId}`,
   challenges: (profileId: string) => `${PREFIX}challenges:${profileId}`,
+  /** Songs learnt in parts: which parts, per song and hands. */
+  parts: (profileId: string) => `${PREFIX}parts:${profileId}`,
+  /** Today's card: the day's three picks, kept for the day so they don't move as she plays. */
+  today: (profileId: string) => `${PREFIX}today:${profileId}`,
+  /** Stickers she has already been shown, so a new one gets its moment once. */
+  stickers: (profileId: string) => `${PREFIX}stickers:${profileId}`,
 }
 
 export type Persistence = 'persisted' | 'best-effort' | 'unknown'

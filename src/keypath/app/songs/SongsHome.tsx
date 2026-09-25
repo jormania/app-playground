@@ -4,8 +4,12 @@ import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
 import { MAX_TITLE, SongLibrary, type LibraryEntry } from './library'
+import { byLevel, levelOf, type Level } from './level'
 import { playedWhen, songProgress, type SongProgress } from './songProgress'
 import styles from './songs.module.css'
+import type { StringKey } from '../i18n'
+
+export const LEVEL_NAME: Record<Level, StringKey> = { 1: 'levelEasy', 2: 'levelMedium', 3: 'levelHard' }
 
 /** The Songs door: the starter pack, then the family's own songs, then "Add a song". Each with her stars and when she last played it. */
 export function SongsHome() {
@@ -26,7 +30,8 @@ export function SongsHome() {
   }, [log, profile])
 
   if (!entries) return null
-  const starters = entries.filter((e) => e.source === 'starter')
+  // Easiest first, so the list itself is a way up.
+  const starters = byLevel(entries.filter((e) => e.source === 'starter'))
   const own = entries.filter((e) => e.source === 'import')
 
   const when = (iso: string) => {
@@ -76,6 +81,9 @@ export function SongsHome() {
             )}
           </span>
           <span className={styles.songMeta}>
+            <span className={styles.songLevel} data-level={levelOf(e.song)}>
+              {t(LEVEL_NAME[levelOf(e.song)])}
+            </span>{' '}
             {e.song.notes.some((n) => n.hand === 'left') ? '🖐🖐' : '🖐'} · {Math.round(e.song.durationMs / 1000)} s
           </span>
         </button>

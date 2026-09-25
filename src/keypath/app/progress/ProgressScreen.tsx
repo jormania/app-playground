@@ -141,6 +141,7 @@ export function ProgressScreen() {
                 ))}
               </ul>
             )}
+            {s.songs.parts.played > 0 && <p className={styles.hint}>{t('pParts', { count: s.songs.parts.played, learnt: s.songs.parts.learnt })}</p>}
             {s.songs.bars.practised > 0 && <p className={styles.hint}>{t('pBars', { count: s.songs.bars.practised, clean: s.songs.bars.clean })}</p>}
             {s.songs.added > 0 && <p className={styles.hint}>{t('pAdded', { count: s.songs.added })}</p>}
           </section>

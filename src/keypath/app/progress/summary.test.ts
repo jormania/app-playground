@@ -27,6 +27,8 @@ describe('summarise', () => {
     ['2026-09-22T17:05:30', { type: 'door_opened', door: 'songs' }],
     ['2026-09-22T17:06:00', { type: 'song_started', songId: 'starter:twinkle', practice: 'both', tempo: 0.75, mode: 'running' }],
     ['2026-09-22T17:07:00', { type: 'song_abandoned', songId: 'starter:twinkle', practice: 'both', hit: 4, total: 30 }],
+    ['2026-09-22T17:07:30', { type: 'song_part', songId: 'starter:twinkle', practice: 'both', part: 'p1', passed: true, wrong: 1 }],
+    ['2026-09-22T17:07:40', { type: 'song_part', songId: 'starter:twinkle', practice: 'both', part: 'p2', passed: false, wrong: 4 }],
     ['2026-09-22T17:08:00', { type: 'song_loop', songId: 'starter:twinkle', practice: 'both', bar: 5, passes: 3, done: true, tempo: 0.75 }],
     ['2026-09-22T17:09:00', { type: 'song_loop', songId: 'starter:twinkle', practice: 'both', bar: 7, passes: 1, done: false, tempo: 0.5 }],
     ['2026-09-22T17:10:30', { type: 'session_end', durationMs: 10.5 * 60000 }],
@@ -54,7 +56,7 @@ describe('summarise', () => {
   })
 
   it('shows what she finishes and what she abandons, song by song', () => {
-    expect(s.songs).toMatchObject({ started: 3, finished: 2, abandoned: 1, bars: { practised: 2, clean: 1 } })
+    expect(s.songs).toMatchObject({ started: 3, finished: 2, abandoned: 1, bars: { practised: 2, clean: 1 }, parts: { played: 2, learnt: 1 } })
     expect(s.songs.bySong).toEqual([
       { songId: 'starter:ode', started: 2, finished: 2, abandoned: 0, bestStars: 3 },
       { songId: 'starter:twinkle', started: 1, finished: 0, abandoned: 1, bestStars: null },

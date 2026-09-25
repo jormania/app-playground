@@ -47,6 +47,18 @@ async function setUp(route: string) {
 }
 
 describe('Songs, for everyday use', () => {
+  it('lists the starter songs easiest first, each with its level', async () => {
+    ;(await setUp('#/door/songs')).go()
+    await screen.findByText('Twinkle, Twinkle, Little Star')
+    const rows = [...document.querySelectorAll('[class*="songTitle"]')].map((e) => e.textContent)
+    // The level-1 songs come first, Für Elise last.
+    expect(rows.slice(0, 5)).toEqual(['Twinkle, Twinkle, Little Star', 'Ode to Joy', 'Au clair de la lune', 'Hot Cross Buns', 'Mary Had a Little Lamb'])
+    expect(rows[9]).toBe('Für Elise (opening)')
+    // Five starter songs, and the added three-note one, worked out from its notes.
+    expect(screen.getAllByText('Easy').length).toBe(6)
+    expect(screen.getAllByText('Harder').length).toBe(2)
+  })
+
   it('shows her best stars and when she last played, song by song', async () => {
     const { profileId, log, go } = await setUp('#/door/songs')
     await log.add(profileId, { type: 'song_started', songId: 'starter:ode', practice: 'right', tempo: 1, mode: 'wait' })

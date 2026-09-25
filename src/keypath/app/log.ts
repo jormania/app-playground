@@ -15,7 +15,10 @@ export type LogEvent =
   | { type: 'door_left'; door: Door }
   | { type: 'setting_changed'; key: string; from: unknown; to: unknown }
   | { type: 'profile_created' }
-  | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string }
+  /** `part` when a part of it was started (learning in parts; 'whole' is the whole song as the last part). */
+  | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string; part?: string }
+  /** A part played to its end: learnt (passed) or not, with its wrong keys. */
+  | { type: 'song_part'; songId: string; practice: string; part: string; passed: boolean; wrong: number }
   | { type: 'song_finished'; songId: string; practice: string; stars: number; score: number; hit: number; total: number; wrong: number }
   | { type: 'song_abandoned'; songId: string; practice: string; hit: number; total: number }
   | { type: 'song_added' }

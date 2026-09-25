@@ -38,6 +38,15 @@
 .controls > :first-child {
   flex: 1 1 100%;
 }
+/* A row of chips to pick one from (a song's parts): they wrap rather than squeeze. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3xs);
+}
+.chips > .chip {
+  min-width: 2.5rem;
+}
 /* An on/off choice beside a segmented control, at its height and in its colours. */
 .chip {
   height: 32px;
@@ -131,6 +140,9 @@
   }
   .controls {
     flex-wrap: nowrap;
+  }
+  .chips {
+    width: auto;
   }
   .controls > :first-child {
     flex: 0 1 auto;
