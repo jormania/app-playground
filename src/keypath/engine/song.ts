@@ -37,6 +37,13 @@ export interface Song {
    */
   source?: SongNote[]
   fit?: 'moveSong' | 'moveHands' | 'moveNotes' | 'dropNotes'
+  /**
+   * An added song played as its easy version (engine/easy.ts): the tune
+   * alone in the right hand, a bass note a bar in the left. Made from
+   * `source`, the notes as written, before the fit; unset on a song added
+   * before there was one, which gets it when it is rated Harder.
+   */
+  easy?: boolean
   /** The printed number of each bar, when the song came from a score; bar 0 is labelled `barLabels[0]`. */
   barLabels?: string[]
 }

@@ -98,6 +98,9 @@
   color: var(--color-muted);
   font-weight: var(--weight-regular);
 }
+.songEasy {
+  color: var(--color-accent);
+}
 .songHands[data-hands='2'] {
   color: var(--color-ink);
 }

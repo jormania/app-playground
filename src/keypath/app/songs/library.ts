@@ -1,4 +1,4 @@
-import { isZip, looksLikeXml, MscxError, parseMscx, MusicXmlError, MxlError, parseMusicXml, unzipScore, suggestScoreParts, parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
+import { isZip, looksLikeXml, MscxError, parseMscx, MusicXmlError, MxlError, parseMusicXml, unzipScore, suggestScoreParts, parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, notesToFit, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import { decodeText } from '../../engine/xml'
 import type { Language } from '../profiles'
@@ -23,8 +23,12 @@ export class SongLibrary {
   async list(lang: Language): Promise<LibraryEntry[]> {
     const starters = STARTER_PACK.map((s): LibraryEntry => ({ song: starterSong(s, lang), source: 'starter' }))
     // A song saved before the fitting choice existed, with notes past the keys, gets the best one on the way out:
-    // left as it was, the song would wait for keys that aren't there.
-    const imported = ((await this.store.get<Song[]>(SONGS_KEY)) ?? []).map((song): LibraryEntry => ({ song: song.fit ? song : fitSong(song, null), source: 'import' }))
+    // left as it was, the song would wait for keys that aren't there. One saved before the easy
+    // version existed gets it when its notes as written are rated Harder, as a song added now would.
+    const imported = ((await this.store.get<Song[]>(SONGS_KEY)) ?? []).map((song): LibraryEntry => {
+      if (song.easy === undefined) return { song: fitSong({ ...song, easy: suggestEasy(song) }, song.fit ?? null), source: 'import' }
+      return { song: song.fit || song.easy ? song : fitSong(song, null), source: 'import' }
+    })
     return [...starters, ...imported]
   }
 
@@ -54,6 +58,15 @@ export class SongLibrary {
     await this.store.set(
       SONGS_KEY,
       imported.map((s) => (s.id === id ? fitSong(s, mode) : s)),
+    )
+  }
+
+  /** Play an added song as its easy version, or as written. The fit is kept where it still applies. */
+  async setEasy(id: string, easy: boolean): Promise<void> {
+    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
+    await this.store.set(
+      SONGS_KEY,
+      imported.map((s) => (s.id === id ? fitSong({ ...s, easy }, s.fit ?? null) : s)),
     )
   }
 
@@ -180,20 +193,38 @@ export async function openSongFile(bytes: ArrayBuffer, fileName: string): Promis
 }
 
 export interface Built {
-  /** The song as it will be saved: fitted to the keyboard the chosen way. */
+  /** The song as it will be saved: made easy or not, and fitted to the keyboard the chosen way. */
   song: Song
-  /** The ways to fit it, best first; empty when every note is on the keyboard as written. */
+  /** The ways to fit it, best first; empty when every note it plays is on the keyboard. */
   options: FitOption[]
-  /** Notes past the keyboard as written. */
+  /** Notes past the keyboard, of the ones it plays. */
   outside: number
+  /** Whether the easy version is the one suggested: the song as written is rated Harder. */
+  easySuggested: boolean
 }
 
-/** Build the song from the chosen parts, fitted to the keyboard the chosen way (the best way, if none is chosen). */
-export function buildImport(d: ImportDraft, title: string, fit: FitMode | null = null): Built {
+/**
+ * The easy version is suggested for a song rated Harder as written: an
+ * arrangement for someone who already plays (KEYPATH_TUTOR.md §9, "The easy
+ * version"). Rated from the notes as written, never from a level chosen for it.
+ */
+export function suggestEasy(song: Song): boolean {
+  const { level: _chosen, ...written } = { ...song, notes: song.source ?? song.notes }
+  return ratedLevel(written) === 3
+}
+
+/**
+ * Build the song from the chosen parts: as its easy version or as written (the
+ * suggested one, if none is chosen), fitted to the keyboard the chosen way (the
+ * best way, if none is chosen).
+ */
+export function buildImport(d: ImportDraft, title: string, fit: FitMode | null = null, easy: boolean | null = null): Built {
   const built = songFromParts(d.file, { id: `import:${Date.now().toString(36)}`, title: title.trim() || d.title, right: d.right, left: d.left })
   // One part holding both hands: shared out by pitch before anything else, so each hand fits the keys on its own terms.
-  const song = !d.left && d.split !== null ? splitHands(built, d.split) : built
-  const options = fitOptions(song.notes)
+  const written = !d.left && d.split !== null ? splitHands(built, d.split) : built
+  const easySuggested = suggestEasy(written)
+  const song = { ...written, easy: easy ?? easySuggested }
+  const options = fitOptions(notesToFit(song))
   const outside = options.find((o) => o.mode === 'dropNotes')?.dropped ?? 0
-  return { song: fitSong(song, fit), options, outside }
+  return { song: fitSong(song, fit), options, outside, easySuggested }
 }

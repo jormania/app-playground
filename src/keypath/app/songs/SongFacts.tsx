@@ -28,6 +28,7 @@ export function SongFacts({ song, showLevel = true }: { song: Song; showLevel?: 
           {t(LEVEL_NAME[level])}
         </span>
       )}
+      {song.easy && <span className={styles.songEasy}>{t('easyMark')}</span>}
       <span className={styles.songHands} data-hands={hands}>
         {t(hands === 2 ? 'twoHands' : 'oneHand')}
       </span>
@@ -43,6 +44,29 @@ export function LevelPick({ level, rated, onChange }: { level: Level; rated: Lev
       <span className={styles.levelPickLabel}>{t('level')}</span>
       <SegmentedControl size="sm" value={String(level)} onChange={(v) => onChange(Number(v) as Level)} options={([1, 2, 3] as const).map((l) => ({ value: String(l), label: t(LEVEL_NAME[l]) }))} />
       <p className={styles.hint}>{t('levelRated', { level: t(LEVEL_NAME[rated]) })}</p>
+    </div>
+  )
+}
+
+/** An added song as its easy version or as written: at "Add a song", and again from its ⋯ menu. */
+export function EasyPick({ easy, suggested, onChange }: { easy: boolean; suggested: boolean; onChange: (easy: boolean) => void }) {
+  const { t } = useApp()
+  return (
+    <div className={styles.levelPick}>
+      <span className={styles.levelPickLabel}>{t('easyTitle')}</span>
+      <SegmentedControl
+        size="sm"
+        value={easy ? 'easy' : 'written'}
+        onChange={(v) => onChange(v === 'easy')}
+        options={[
+          { value: 'easy', label: t('easyOn') },
+          { value: 'written', label: t('easyOff') },
+        ]}
+      />
+      <p className={styles.hint}>
+        {t('easyHint')}
+        {suggested && ` ${t('easySuggested')}`}
+      </p>
     </div>
   )
 }

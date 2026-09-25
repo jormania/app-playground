@@ -1,3 +1,4 @@
+import { easyNotes } from './easy'
 import type { Hand, Song, SongNote } from './song'
 
 /** The PSR-E383's 61 keys, measured on the S24: C2–C7, MIDI 36–96. */
@@ -154,13 +155,26 @@ export function defaultFit(options: readonly FitOption[], total: number): FitMod
   return options[0].mode
 }
 
-/** The song as it will be played: its notes as written (`source`) put through the chosen fit, or the default one. */
+/** The notes the fit starts from: as written, or their easy version when the song is played easy. */
+export const notesToFit = (song: Pick<Song, 'notes' | 'source' | 'easy'>): SongNote[] => {
+  const source = song.source ?? song.notes
+  return song.easy ? easyNotes(source) : source
+}
+
+const endOf = (notes: readonly SongNote[]) => (notes.length ? Math.max(...notes.map((n) => n.startMs + n.durationMs)) : 0)
+
+/**
+ * The song as it will be played: its notes as written (`source`), made easy
+ * when it is played easy, put through the chosen fit, or the default one.
+ * The notes as written are kept whenever what is played differs from them.
+ */
 export function fitSong(song: Song, mode: FitMode | null, range = KEYBOARD_RANGE): Song {
   const source = song.source ?? song.notes
-  const options = fitOptions(source, range)
-  if (options.length === 0) return { ...song, notes: source, source: undefined, fit: undefined }
-  const want = mode ?? defaultFit(options, source.length)
-  const chosen = options.find((o) => o.mode === want) ?? options[0]
-  const durationMs = chosen.notes.length ? Math.max(...chosen.notes.map((n) => n.startMs + n.durationMs)) : 0
-  return { ...song, notes: chosen.notes, source, fit: chosen.mode, durationMs }
+  const base = notesToFit(song)
+  const options = fitOptions(base, range)
+  if (options.length === 0) return song.easy ? { ...song, notes: base, source, fit: undefined, durationMs: endOf(base) } : { ...song, notes: source, source: undefined, fit: undefined, durationMs: endOf(source) }
+  const best = defaultFit(options, base.length)
+  // A choice made for other notes (the song as written, before the easy version) may not be on offer: the best one, then.
+  const chosen = options.find((o) => o.mode === (mode ?? best)) ?? options.find((o) => o.mode === best)!
+  return { ...song, notes: chosen.notes, source, fit: chosen.mode, durationMs: endOf(chosen.notes) }
 }

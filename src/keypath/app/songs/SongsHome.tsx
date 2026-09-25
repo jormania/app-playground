@@ -3,11 +3,11 @@ import { Button, Field } from '../../../ds'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
-import { MAX_TITLE, SongLibrary, type LibraryEntry } from './library'
-import { fitOptions, type FitMode } from '../../engine'
+import { MAX_TITLE, SongLibrary, suggestEasy, type LibraryEntry } from './library'
+import { fitOptions, notesToFit, type FitMode } from '../../engine'
 import { FitChoice } from './FitChoice'
 import { byLevel, levelOf, ratedLevel, type Level } from './level'
-import { LevelPick, SongFacts } from './SongFacts'
+import { EasyPick, LevelPick, SongFacts } from './SongFacts'
 import { playedWhen, songProgress, type SongProgress } from './songProgress'
 import styles from './songs.module.css'
 
@@ -56,6 +56,10 @@ export function SongsHome() {
     await library.refit(id, mode)
     setEntries(await library.list(settings.language))
   }
+  const reeasy = async (id: string, easy: boolean) => {
+    await library.setEasy(id, easy)
+    setEntries(await library.list(settings.language))
+  }
   const relevel = async (id: string, level: Level) => {
     await library.setLevel(id, level)
     setEntries(await library.list(settings.language))
@@ -71,7 +75,8 @@ export function SongsHome() {
 
   /** Notes past the keyboard: the choice made when it was added, to change here. */
   const fitSection = (e: LibraryEntry) => {
-    const options = fitOptions(e.song.source ?? [])
+    // Of the notes it plays: the easy version's, when it's played easy.
+    const options = fitOptions(notesToFit(e.song))
     if (options.length === 0) return null
     const outside = options.find((o) => o.mode === 'dropNotes')?.dropped ?? 0
     return <FitChoice options={options} value={e.song.fit ?? options[0].mode} onChange={(m) => void refit(e.song.id, m)} outside={outside} />
@@ -117,6 +122,7 @@ export function SongsHome() {
                 {t('songSaveTitle')}
               </Button>
             </form>
+            <EasyPick easy={!!e.song.easy} suggested={suggestEasy(e.song)} onChange={(on) => void reeasy(e.song.id, on)} />
             <LevelPick level={levelOf(e.song)} rated={ratedLevel(e.song)} onChange={(l) => void relevel(e.song.id, l)} />
             {e.song.source && fitSection(e)}
             <div className={styles.actions}>

@@ -672,6 +672,55 @@ don't change, so parts already learnt stay learnt. A song added before this
 existed, with notes past the keys, is given the default choice when it's
 read, so none can get stuck.
 
+### The easy version
+
+An arrangement downloaded for a song she likes is usually written for someone
+who already plays. Believer, from MuseScore, came in at Harder: a left hand
+running at about four notes a second for three minutes, 185 chords in the
+right hand, in B♭ minor. It had 12 bass notes in the right hand's staff, two
+octaves below the tune, and those alone stretched the keyboard on screen from
+three octaves to all 61 keys. The goal is learning, not fidelity, so an added
+song can be played as its **easy version** (`engine/easy.ts`), made from the
+notes as written every time:
+- **Right hand:** the tune alone. It takes the top note wherever notes start
+  together. It skips an inner voice moving under a held note, and a lower note
+  the tune enters over before it is half done.
+- **Left hand:** one note a bar, the lowest of the bar's first notes, held
+  through the bar and never into the next.
+- **Stray notes:** a note more than an octave beyond the middle half of its
+  hand moves by whole octaves to the octave nearest the hand's middle (at
+  least ten notes in the hand, or it is left alone).
+- **Key:** a song with more than 10% black keys moves by up to half an octave
+  (the smallest move, down before up) to the key with the fewest, when that at
+  least halves them. Believer's B♭ minor becomes A minor, one semitone lower.
+  It sounds lower than the recording; that is the cost.
+
+The easy version runs before the keyboard fit (`notesToFit`, `fitSong`), so
+the fit sees the notes she will actually play. A fit choice that no longer
+applies falls back to the best one. `source` keeps the notes as written
+whenever what is played differs, so switching back is exact (`easy.test.ts`,
+`library.test.ts`).
+
+**When it applies.** A song rated Harder as written (`suggestEasy`, rated from
+the notes as written and never from a level she chose) comes in as its easy
+version. "Add a song" shows the choice (**Play it: Easy version / As
+written**) with why it is suggested; the song's ⋯ menu has the same switch;
+the song list marks it *Easy version*. A song added before this existed has no
+`easy` field and gets the same rule when read.
+
+**Believer, measured:**
+
+| | As written | Easy version |
+|---|---|---|
+| Notes (right / left) | 728 / 740 | 520 / 98 |
+| Keys drawn for the right hand | 61 (5 octaves) | 37 (3 octaves) |
+| Black keys | 78% | 6% |
+| Rated | Harder (9 points) | Harder (6 points) |
+
+It still rates Harder: the tune is fast at the score's tempo and spans more
+than an octave and a half. Those she handles with the speed setting, parts
+and "wait for it", not by rewriting the tune further.
+
 ### Both hands in one track
 
 Many piano MIDI files put both hands in one track. Imported as it was, all of

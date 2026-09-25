@@ -88,7 +88,7 @@ describe('songs wider than the keyboard', () => {
   it('a song saved before the choice existed, with notes past the keys, is fitted when read, so it never waits for a key that isn’t there', async () => {
     const store = memoryStore()
     const lib = new SongLibrary(store)
-    const { source, fit, ...old } = wide().song
+    const { source, fit, easy: _easy, ...old } = wide().song
     expect(fit).toBe('moveNotes')
     await store.set('keypath:v1:songs', [{ ...old, notes: source }])
     const read = await lib.get(old.id, 'en')
@@ -104,18 +104,19 @@ describe('both hands in one track', () => {
     const d = draft()
     expect(d.left).toBeNull()
     expect(d.split).toBe(67)
-    const { song } = buildImport(d, '')
+    // As written: the split is what's being checked, not the easy version a song this hard is offered.
+    const { song } = buildImport(d, '', null, false)
     const hands = (h: string) => song.notes.filter((x) => x.hand === h).length
     expect([hands('left'), hands('right')]).toEqual([32, 8])
   })
 
   it('can be moved, or turned off to keep it all in the right hand', () => {
-    expect(buildImport({ ...draft(), split: 60 }, '').song.notes.filter((x) => x.hand === 'left').length).toBe(16)
-    expect(buildImport({ ...draft(), split: null }, '').song.notes.every((x) => x.hand === 'right')).toBe(true)
+    expect(buildImport({ ...draft(), split: 60 }, '', null, false).song.notes.filter((x) => x.hand === 'left').length).toBe(16)
+    expect(buildImport({ ...draft(), split: null }, '', null, false).song.notes.every((x) => x.hand === 'right')).toBe(true)
   })
 
   it('is rated as played, bass and chords in the left hand, and a level she sets is kept', async () => {
-    const { song } = buildImport(draft(), 'Waltz')
+    const { song } = buildImport(draft(), 'Waltz', null, false)
     // The left hand jumps from the bass to the chords, and has four notes to the tune's one: Harder.
     expect(ratedLevel(song)).toBe(3)
     const lib = new SongLibrary(memoryStore())
@@ -221,5 +222,46 @@ describe('a MuseScore file (.mscz)', () => {
 
   it('says so for a MuseScore file it can’t read', () => {
     expect(draftFromFile(bytes(new TextEncoder().encode('<museScore version="1.14"><Score/></museScore>')), 'old.mscx')).toBe('unsupported')
+  })
+})
+
+describe('the easy version', () => {
+  const waltz = () => draftFromFile(bytes(pianoFile(waltzPiano(), { beatsPerBar: 3 })), 'waltz.mid') as ImportDraft
+  const tune = () => draftFromFile(bytes(melodyFile([[60, 1], [62, 1], [64, 1]])), 'tune.mid') as ImportDraft
+
+  it('is suggested for a song rated Harder as written, and is what it comes in as unless she chooses', () => {
+    const hard = buildImport(waltz(), 'Waltz')
+    expect(hard.easySuggested).toBe(true)
+    expect(hard.song.easy).toBe(true)
+    const written = buildImport(waltz(), 'Waltz', null, false).song
+    expect(hard.song.notes.length).toBeLessThan(written.notes.length)
+    expect(hard.song.source).toEqual(written.notes)
+    const easyTune = buildImport(tune(), 'Tune')
+    expect([easyTune.easySuggested, easyTune.song.easy]).toEqual([false, false])
+  })
+
+  it('can be switched off, which is the song exactly as written, and on again', async () => {
+    const lib = new SongLibrary(memoryStore())
+    const hard = buildImport(waltz(), 'Waltz').song
+    const written = buildImport(waltz(), 'Waltz', null, false).song
+    await lib.add(hard)
+    await lib.setEasy(hard.id, false)
+    const off = await lib.get(hard.id, 'en')
+    expect(off?.easy).toBe(false)
+    expect(off?.notes).toEqual(written.notes)
+    await lib.setEasy(hard.id, true)
+    expect((await lib.get(hard.id, 'en'))?.notes).toEqual(hard.notes)
+  })
+
+  it('comes to a song added before it existed when the song is rated Harder, and not otherwise', async () => {
+    const store = memoryStore()
+    const lib = new SongLibrary(store)
+    const { easy: _a, ...oldHard } = buildImport(waltz(), 'Waltz', null, false).song
+    const { easy: _b, ...oldEasy } = buildImport(tune(), 'Tune', null, false).song
+    oldEasy.id = 'import:tune'
+    await store.set('keypath:v1:songs', [oldHard, oldEasy])
+    expect((await lib.get(oldHard.id, 'en'))?.easy).toBe(true)
+    expect((await lib.get(oldEasy.id, 'en'))?.easy).toBe(false)
+    expect((await lib.get(oldEasy.id, 'en'))?.notes).toEqual(oldEasy.notes)
   })
 })

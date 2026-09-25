@@ -8,7 +8,7 @@ import { SPLIT_RANGE, type FitMode } from '../../engine'
 import { FitChoice } from './FitChoice'
 import { noteLabel } from '../i18n'
 import { ratedLevel, type Level } from './level'
-import { LevelPick, SongFacts } from './SongFacts'
+import { EasyPick, LevelPick, SongFacts } from './SongFacts'
 import { buildImport, choosePart, openSongFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
@@ -26,6 +26,8 @@ export function ImportSong() {
   const [fit, setFit] = useState<FitMode | null>(null)
   /** The level she chose; null keeps the one its notes earn. */
   const [level, setLevel] = useState<Level | null>(null)
+  /** The easy version or as written; null is the one suggested for this song. */
+  const [easy, setEasy] = useState<boolean | null>(null)
 
   const pick = async (file: File | undefined) => {
     if (!file) return
@@ -38,6 +40,7 @@ export function ImportSong() {
     setProblem(null)
     setFit(null)
     setLevel(null)
+    setEasy(null)
     setDraft(result)
     setTitle(result.title)
   }
@@ -49,7 +52,7 @@ export function ImportSong() {
 
   // What saving would produce, shown before saving: notes past the keyboard
   // are offered their choices while the parts are still being chosen.
-  const preview = useMemo(() => (draft?.right ? buildImport(draft, title, fit) : null), [draft, title, fit])
+  const preview = useMemo(() => (draft?.right ? buildImport(draft, title, fit, easy) : null), [draft, title, fit, easy])
 
   const save = async () => {
     if (!preview) return
@@ -130,6 +133,17 @@ export function ImportSong() {
                 </>
               )}
             </div>
+          )}
+          {preview && (
+            <EasyPick
+              easy={!!preview.song.easy}
+              suggested={preview.easySuggested}
+              onChange={(on) => {
+                // The fit was chosen for the other notes: the best one for these, unless chosen again.
+                setFit(null)
+                setEasy(on)
+              }}
+            />
           )}
           {preview && preview.options.length > 0 && <FitChoice options={preview.options} value={preview.song.fit ?? preview.options[0].mode} onChange={setFit} outside={preview.outside} atImport />}
           {preview && (
