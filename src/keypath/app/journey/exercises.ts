@@ -1,4 +1,4 @@
-import { Judge, notesFor, type Practice, type Song, type SongNote, type Step } from '../../engine'
+import { Judge, notesFor, type Finger, type Hand, type Practice, type Song, type SongNote, type Step } from '../../engine'
 import type { StringKey } from '../i18n'
 
 // The Journey's exercises: small judges for one kind of task each, free of
@@ -19,6 +19,13 @@ export interface ExerciseView {
   say: Say
   done: number
   total: number
+  /** The finger asked for, when the task names one (the finger-numbers step). */
+  finger?: FingerAsk
+}
+
+export interface FingerAsk {
+  hand: Hand
+  finger: Finger
 }
 
 /** 'spread': the right keys, not together enough to be a chord. */
@@ -39,6 +46,7 @@ export interface Prompt {
   /** Keys shown as the answer (a practice); omit for a check. */
   show?: number[]
   say: Say
+  finger?: FingerAsk
 }
 
 /** One key at a time, each asked for in turn. A wrong key counts; the prompt stays. */
@@ -62,7 +70,7 @@ export class Prompts implements Exercise {
   release() {}
   view(): ExerciseView {
     const p = this.prompts[Math.min(this.i, this.prompts.length - 1)]
-    return { targets: this.finished ? [] : (p.show ?? []), say: p.say, done: this.i, total: this.prompts.length }
+    return { targets: this.finished ? [] : (p.show ?? []), say: p.say, done: this.i, total: this.prompts.length, finger: p.finger }
   }
 }
 

@@ -144,6 +144,7 @@ export function SettingsScreen() {
           />
         </Row>
         <SettingsToggle label={t('keyNames')} hint={t('keyNamesHint')} checked={settings.keyNames} onChange={(e) => void updateSetting('keyNames', e.target.checked)} />
+        <SettingsToggle label={t('fingerNumbers')} hint={t('fingerNumbersHint')} checked={settings.fingers} onChange={(e) => void updateSetting('fingers', e.target.checked)} />
       </section>
 
       <section className={styles.panel}>

@@ -17,6 +17,8 @@ interface Props {
   onAnotherSong: () => void
   /** Studio with this song's tune: play it over a Style, or invent an ending. */
   onMakeItYours: () => void
+  /** Loop one bar (0-based) until it's clean. */
+  onPractiseBar?: (bar: number) => void
 }
 
 /**
@@ -24,7 +26,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar }: Props) {
   const { t, profile, log, updateSetting } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
@@ -94,9 +96,14 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
           ))}
         </ul>
         {report.toWorkOn.map((b) => (
-          <p key={b.bar} className={styles.hint}>
-            {t('workOnBar', { bar: b.bar + 1 })}
-          </p>
+          <div key={b.bar} className={styles.workOn}>
+            <p className={styles.hint}>{t('workOnBar', { bar: b.bar + 1 })}</p>
+            {onPractiseBar && (
+              <Button size="sm" variant="outline" onClick={() => onPractiseBar(b.bar)}>
+                🔁 {t('practiseBar', { bar: b.bar + 1 })}
+              </Button>
+            )}
+          </div>
         ))}
         {s && !answered && (
           <div className={styles.suggestion}>

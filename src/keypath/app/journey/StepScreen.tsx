@@ -15,6 +15,7 @@ import { keyBoxes, widenRange } from '../songs/keyGeometry'
 import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
 import { Tune, type Exercise, type ExerciseView, type Say } from './exercises'
+import { Hands } from './Hands'
 import { JourneyRepo, stateOf, type JourneyProgress } from './progress'
 import { Staff } from './Staff'
 import { JOURNEY, stepById, type JourneyStep } from './steps'
@@ -201,6 +202,10 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
     if (accepted) await updateSetting('keyNames', false)
   }
 
+  const hands = (active?: ExerciseView['finger']) => (
+    <Hands active={active} ariaLabel={t('jFingersAria')} leftLabel={t('handLeft')} rightLabel={t('handRight')} />
+  )
+
   const next = JOURNEY[n] ?? null
   const targets = phase === 'gate' ? new Set([MIDDLE_C]) : new Set(view?.targets ?? [])
 
@@ -211,6 +216,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
       {phase === 'intro' && (
         <section className={styles.panel}>
           <p className={styles.blurb}>{t(step.blurb)}</p>
+          {step.id === 'fingers' && hands()}
           <p className={styles.tip}>{t(step.tip)}</p>
           {state === 'locked' ? (
             <>
@@ -287,16 +293,19 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
 
       {(phase === 'gate' || phase === 'run') && (
         <div className={styles.stage}>
+          {/* The finger-numbers step: the hands, the finger asked for lit (the practice only; the check asks from memory). */}
+          {step.id === 'fingers' && phase === 'run' && mode === 'practice' && hands(view?.finger)}
           {tune && step.staff && (
             <Staff
               notes={mode === 'practice' ? step.staff.practice : step.staff.check}
               current={tune.step?.index ?? -1}
               played={new Set(played.keys())}
               label={mode === 'practice' ? label : undefined}
+              fingers={mode === 'practice' && settings.fingers ? tune.notes.map((x) => x.finger) : undefined}
               ariaLabel={mode === 'practice' ? step.staff.practice.map(([p]) => label(p)).join(' ') : t('j6Title')}
             />
           )}
-          {tune && !step.staff && <FallingNotes ref={fall} notes={tune.notes} boxes={boxes} results={played} label={label} />}
+          {tune && !step.staff && <FallingNotes ref={fall} notes={tune.notes} boxes={boxes} results={played} label={label} fingers={settings.fingers} />}
           <PlayKeyboard
             sound={!keyboard.connected}
             names={settings.keyNames}

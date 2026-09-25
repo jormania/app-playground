@@ -64,6 +64,7 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
             role="button"
             aria-label={label(b.pitch)}
             aria-pressed={held.has(b.pitch)}
+            data-pitch={b.pitch}
             data-target={targets.has(b.pitch) || undefined}
             className={`${b.black ? styles.blackKey : styles.whiteKey} ${state}`}
             style={{ left: `${b.left}%`, width: `${b.width}%` }}

@@ -2,6 +2,8 @@
 // from an imported MIDI file (parts.ts) or, later, the starter pack.
 
 export type Hand = 'right' | 'left'
+/** Pianists' finger numbers: 1 is the thumb on both hands, 5 the little finger. */
+export type Finger = 1 | 2 | 3 | 4 | 5
 
 export interface SongNote {
   /** Stable within the song; the judge reports against it. */
@@ -12,6 +14,8 @@ export interface SongNote {
   hand: Hand
   /** 0-based bar number, from the time signature. */
   bar: number
+  /** Which finger plays it, where the song says (the starter pack does; imported files don't). */
+  finger?: Finger
 }
 
 export interface Song {

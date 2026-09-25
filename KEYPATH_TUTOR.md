@@ -41,6 +41,7 @@ steps (§4, Journey).
 | Language | English · Română | **English** |
 | Note names | Follow language (C D E / Do Re Mi) · C D E · Do Re Mi · Both (“C / Do”) | Follow language |
 | Names on the keys | On · Off (the falling notes keep their names either way) | On |
+| Finger numbers on the notes | On · Off (only songs with written fingering have any: the starter pack and the Journey's tunes, not added songs) | On |
 | On a wrong note | Easiest first: **Wait for it** (song pauses until the right note) · **Show it** (wrong key flashes, song continues) · **Keep going** (nothing live; report at the end) | **Wait for it** (changed after step 5; players created before keep what they had) |
 | Timing | Relaxed (wide window; early/late never counts against) · Normal · Strict | Relaxed |
 | End-of-piece report | Off · Short (stars + one “try this next”) · Detailed (which bars/notes, early/late) | Short |
@@ -460,6 +461,72 @@ Tap targets: the Connect pill and text links get a finger-sized hit area.
 - A new player's language is chosen on the form, which switches to it at once.
 - Settings → Edit name and face.
 
+### Fingers, and practising the hard bars (learning curve, slice 1)
+
+The first slice of §10's "Learning curve", for a player who doesn't know
+finger numbers yet. Borrowed from the Hoffman Academy method (numbers taught
+inside a hand position), Simply Piano (numbers on the notes) and Flowkey
+(looping a hard passage slower); none of their material.
+
+**Journey step 2, "Finger numbers"** (`fingers`, between *Middle C* and
+*C, D, E*; the Journey has ten steps now).
+- A drawing of both hands, seen from above as they rest on the keys, each
+  finger numbered: 5 4 3 2 1 | 1 2 3 4 5 (`journey/Hands.tsx`, SVG by hand).
+  It's on the step's first page, and during the practice with the asked
+  finger lit.
+- The practice: right hand 1→5 on C…G, left hand 5→1 on C…G below, then two
+  mixed, each key lit. The check: eight asks from memory, no hands and no lit
+  keys, one wrong key allowed.
+- MIDI can't say which finger pressed a key, so every ask sits inside the C
+  position (right thumb on middle C, left little finger on the C below),
+  where a finger names exactly one key. The keys are exact, not by name: E an
+  octave up is the wrong finger. So the step asks for middle C first, like
+  the tune steps.
+- Inserting it moved nothing already done: step ids are strings, and a
+  player past later steps just finds this one open (test in
+  `progress.test.ts`). Progress now counts ten steps.
+
+**Finger numbers on the notes.** `SongNote.finger` (1–5) where the song has
+it. The starter pack writes it per hand as a digit string
+(`fingers: { right: '1144554 4433221 …' }`, one digit a note, spaces for
+reading), in the simplest positions with a shift where a tune leaves one
+(Twinkle's A, Frère Jacques' low G). The Journey's tunes carry it too.
+`engine/testing/fingering.ts` checks each: one finger a note, and within a
+bar a repeated note keeps its finger and neighbouring keys move the finger
+the way the hand goes (the thumb exempt, for crossings). It caught one
+misaligned string on the first run.
+- The falling notes show the number in a small white circle, above the
+  name; a note too short for both shows the number only. The staff shows it
+  above the notes in the reading steps' practice, not the check.
+- Settings → **Finger numbers on the notes**, on by default for everyone,
+  existing players included (a new setting merges over the defaults).
+  Simpler than the roadmap's "on while still in the Journey"; Gabriel can
+  switch it off for himself.
+
+**Tips in words and numbers**: "Thumb (1) on C, then fingers 2 and 3",
+"fingers 1, 3 and 5 (thumb, middle finger, little finger)". The roadmap had
+the words dropping once the finger step is passed; they stay for now, since
+both together cost nothing and a second set of tips would.
+
+**Practise a bar** (`songs/loop.ts`, pure). Each bar the report names ("Bar 5
+is worth another go") gets **🔁 Practise bar 5**, which plays that bar alone
+(`barSong`: its notes, moved to start at 0, same ids and fingers) with no
+middle-C check, since the octave is already known.
+- With a clock (Show it, Keep going) it climbs a ladder, 50% → 75% → 100%,
+  one clean pass a rung, never above the speed the song was played at. A
+  pass that isn't clean (a missed note or a wrong key) goes round again at
+  the same speed after a short break, with its own count-in.
+- In **Wait for it** there's no clock to speed up, so one clean pass
+  finishes it.
+- Done: "Bar 5 is clean!", a cheer, then **Whole song** or **Back to how it
+  went**. Stop (or leaving) also goes back to the report.
+- The keyboard keeps the song's keys during the loop, so nothing moves under
+  her hands.
+- Logged as `song_loop` (bar from 1, passes, done, the tempo it ended at);
+  Progress counts bars practised and how many came clean.
+- Not yet: stepping down a rung after several unclean passes. `passes` in
+  the log will say whether she needs it.
+
 ### Progress (after step 6)
 
 ```
@@ -686,7 +753,9 @@ finger numbers yet, so they come first. Borrowed: methods only. Hoffman's
 songs, videos and sheet music are copyrighted and stay out, like any other
 copyrighted music.
 
-1. **Fingers, and practising the hard bars** (the next slice):
+1. ~~**Fingers, and practising the hard bars**~~ Done (§9, "Fingers, and
+   practising the hard bars"), with two simplifications noted there: the
+   numbers are on for every player, and the tips keep their words.
    - **A Journey step, "Your fingers have numbers"**, between *Middle C* and
      *C, D, E*. Thumb = 1 on both hands, and the hands mirror: right thumb on
      middle C, left little finger (5) on the C below. Then a game: "Right

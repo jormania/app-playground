@@ -4,6 +4,7 @@ import { buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type J
 import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
+import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
@@ -14,6 +15,7 @@ import { useWide, WIDE_OCTAVES } from './useWide'
 import { SongLibrary } from './library'
 import { PlayKeyboard } from './PlayKeyboard'
 import { ReportView } from './ReportView'
+import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useOutput } from '../studio/output'
@@ -21,7 +23,7 @@ import { Playback, realClock } from '../studio/playback'
 import styles from './songs.module.css'
 import setup from '../setup.module.css'
 
-type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report'
+type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone'
 
 const SPEEDS = ['1', '0.75', '0.5'] as const
 const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
@@ -33,6 +35,8 @@ const WRONG_FLASH_MS = 350
 const STREAK_SHOWN = 5
 /** Before the start, the first notes rest this far (song ms) above the hit line. */
 const READY_TIME = -1500
+/** Between two passes of a practised bar: long enough to read how it went. */
+const LOOP_BREAK_MS = 1600
 
 export function PlayScreen({ songId }: { songId: string }) {
   const { t, store, settings, profile, log } = useApp()
@@ -72,6 +76,11 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const [report, setReport] = useState<Report | null>(null)
   const [countIn, setCountIn] = useState<number | null>(null)
   const [streak, setStreak] = useState(0)
+  // Practising one bar from the report: the loop, and what the last pass came to.
+  const [loop, setLoop] = useState<Loop | null>(null)
+  const [loopStep, setLoopStep] = useState<LoopStep | null>(null)
+  const loopRef = useRef<Loop | null>(null)
+  const loopTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const judge = useRef<Judge | null>(null)
   /** The octave shift found by the middle-C check; applies to the Yamaha only, never to on-screen keys. */
@@ -81,26 +90,77 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   const fall = useRef<FallingNotesHandle>(null)
   const shownTime = useRef(0)
 
-  const notes = useMemo(() => notesFor(song, practice), [song, practice])
+  // What's being played: the song, or the one bar being practised.
+  const loopBar = loop?.bar ?? null
+  const playing = useMemo(() => (loopBar === null ? null : barSong(song, loopBar)) ?? song, [song, loopBar])
+  const notes = useMemo(() => notesFor(playing, practice), [playing, practice])
+  const songNotes = useMemo(() => notesFor(song, practice), [song, practice])
   const wide = useWide()
   // The keys the chosen hands need, not the whole song: right hand alone on a
-  // phone gets keys a finger can hit, instead of three octaves of slivers.
+  // phone gets keys a finger can hit, instead of three octaves of slivers. A
+  // practised bar keeps the song's keys, so nothing moves under her hands.
   const range = useMemo(() => {
-    const r = rangeFor(notes.map((n) => n.pitch))
+    const r = rangeFor(songNotes.map((n) => n.pitch))
     return wide ? widenRange(r, WIDE_OCTAVES) : r
-  }, [notes, wide])
+  }, [songNotes, wide])
   const boxes = useMemo(() => keyBoxes(range.low, range.high), [range])
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
   const tempo = Number(speed)
 
+  const setLoopBoth = (l: Loop | null) => {
+    loopRef.current = l
+    setLoop(l)
+  }
+  /** One pass of the practised bar: its own judge, at the loop's tempo, with a count-in when there's a clock. */
+  const startPass = useCallback(
+    (l: Loop) => {
+      const bar = barSong(song, l.bar)
+      if (!bar) return
+      const j = new Judge(bar, { practice, settings, tempo: tempoOf(l), shift: shift.current })
+      judge.current = j
+      if (j.mode === 'running') j.start(performance.now() + (3 * 60000) / song.bpm / tempoOf(l))
+      shownTime.current = READY_TIME
+      setResults(new Map())
+      setStreak(0)
+      setPhase('playing')
+    },
+    [song, practice, settings],
+  )
+  /** The loop is over: finished clean, or left. Logged once, with how far it got. */
+  const endLoop = useCallback(
+    (done: boolean) => {
+      const l = loopRef.current
+      if (!l) return
+      clearTimeout(loopTimer.current)
+      if (profileId) void log.add(profileId, { type: 'song_loop', songId: song.id, practice, bar: l.bar + 1, passes: l.passes, done, tempo: tempoOf(l) })
+      loopRef.current = null
+    },
+    [profileId, log, song.id, practice],
+  )
+
   const finish = useCallback(() => {
     const j = judge.current
     if (!j) return
+    const l = loopRef.current
+    if (l) {
+      const { loop: next, step } = afterPass(l, isClean(j.summary()))
+      setLoopBoth(next)
+      setLoopStep(step)
+      if (step === 'done') {
+        endLoop(true)
+        celebrate('stepPassed')
+        setPhase('loopDone')
+      } else {
+        setPhase('loopBreak')
+        loopTimer.current = setTimeout(() => startPass(next), LOOP_BREAK_MS)
+      }
+      return
+    }
     const r = buildReport(j.summary(), settings)
     setReport(r)
     setPhase('report')
     if (profileId) void log.add(profileId, { type: 'song_finished', songId: song.id, practice, stars: r.stars, score: Math.round(r.score * 100) / 100, hit: r.hit, total: r.total, wrong: r.wrong })
-  }, [settings, profileId, log, song.id, practice])
+  }, [settings, profileId, log, song.id, practice, endLoop, startPass])
 
   const apply = useCallback(
     (events: JudgeEvent[]) => {
@@ -300,8 +360,11 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   // Leaving mid-song (the back arrow, the phone's back) counts as stopping it, as the Stop button does.
   const practiceRef = useRef(practice)
   practiceRef.current = practice
+  const endLoopRef = useRef(endLoop)
+  endLoopRef.current = endLoop
   useEffect(
     () => () => {
+      if (loopRef.current) return endLoopRef.current(false)
       const j = judge.current
       if (!j || !profileId || (phaseRef.current !== 'playing' && phaseRef.current !== 'paused')) return
       const s = j.summary()
@@ -311,6 +374,8 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
   )
 
   const stop = () => {
+    // Stopping a practised bar goes back to the report it came from.
+    if (loopRef.current) return backToReport()
     const j = judge.current
     if (j && profileId && phaseRef.current !== 'report') {
       const s = j.summary()
@@ -329,6 +394,24 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     setPhase('playing')
   }
 
+  const practiseBar = (bar: number) => {
+    const l = startLoop(bar, settings.onWrong === 'wait' ? 'wait' : 'running', tempo)
+    setLoopBoth(l)
+    setLoopStep(null)
+    startPass(l)
+  }
+  const backToReport = () => {
+    endLoop(false)
+    setLoopBoth(null)
+    judge.current = null
+    setCountIn(null)
+    setPhase('report')
+  }
+  const wholeSong = () => {
+    setLoopBoth(null)
+    playAgain()
+  }
+
   const playAgain = () => {
     judge.current = null
     setReport(null)
@@ -341,7 +424,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onPractiseBar={practiseBar} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }
@@ -428,6 +511,45 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
         </div>
       )}
 
+      {loop && phase === 'playing' && (
+        <div className={styles.prompt} role="status">
+          <strong>
+            🔁 {t('loopBar', { bar: loop.bar + 1 })}
+            {settings.onWrong !== 'wait' && ` · ${Math.round(tempoOf(loop) * 100)}%`}
+          </strong>
+          <span>
+            {loopStep === null && loop.rungs.length > 1
+              ? t('loopHintClock', { speed: Math.round(loop.rungs[loop.rungs.length - 1] * 100) })
+              : loopStep === null
+                ? t('loopHintOnce')
+                : loopStep === 'again'
+                  ? t('loopAgain')
+                  : t('loopUp', { speed: Math.round(tempoOf(loop) * 100) })}
+          </span>
+        </div>
+      )}
+
+      {loop && phase === 'loopBreak' && (
+        <div className={styles.prompt} role="status">
+          <strong>{loopStep === 'up' ? t('loopUp', { speed: Math.round(tempoOf(loop) * 100) }) : t('loopAgain')}</strong>
+        </div>
+      )}
+
+      {loop && phase === 'loopDone' && (
+        <div className={styles.prompt} role="status">
+          <strong>🎉 {t('loopDone', { bar: loop.bar + 1 })}</strong>
+          <span>{t('loopDoneHint')}</span>
+          <div className={styles.actions}>
+            <Button size="sm" onClick={wholeSong}>
+              ▶ {t('wholeSong')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={backToReport}>
+              {t('backToReport')}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.stage}>
         {countIn !== null && phase === 'playing' && <div className={styles.countIn}>{countIn}</div>}
         {phase === 'playing' && streak >= STREAK_SHOWN && (
@@ -440,7 +562,7 @@ function Player({ song, t, settings, profileId, log }: PlayerProps) {
             ■ {t('stop')}
           </Button>
         )}
-        <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} />
+        <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} fingers={settings.fingers} />
         <PlayKeyboard
           sound={!keyboard.connected}
           names={settings.keyNames}

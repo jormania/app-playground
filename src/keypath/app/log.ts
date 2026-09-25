@@ -21,6 +21,8 @@ export type LogEvent =
   | { type: 'song_added' }
   | { type: 'song_renamed'; songId: string }
   | { type: 'song_removed'; songId: string }
+  /** One bar practised on its own from the report, until clean (done) or left; bar as she saw it (from 1), tempo where it ended. */
+  | { type: 'song_loop'; songId: string; practice: string; bar: number; passes: number; done: boolean; tempo: number }
   /** "Listen first": the song played for her before she tries it. */
   | { type: 'song_listened'; songId: string; practice: string; tempo: number }
   /** A step up offered: after a song (songId) or at a Journey milestone (step). */
