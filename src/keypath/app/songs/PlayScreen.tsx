@@ -18,11 +18,13 @@ import { ReportView } from './ReportView'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
 import { nextStep, partPassed, PartsRepo, partSteps, rangeSong, type PartStep } from './parts'
 import { tryNext } from './level'
+import { Accompanist } from './accompany'
+import { PREFIX } from '../store'
 import { songProgress } from './songProgress'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useOutput } from '../studio/output'
-import { Playback, realClock } from '../studio/playback'
+import { Playback, realClock, type Sink } from '../studio/playback'
 import styles from './songs.module.css'
 import setup from '../setup.module.css'
 
@@ -38,6 +40,8 @@ const WRONG_FLASH_MS = 350
 const STREAK_SHOWN = 5
 /** Before the start, the first notes rest this far (song ms) above the hit line. */
 const READY_TIME = -1500
+/** The other hand plays itself while she practises one: remembered on the phone. */
+const OTHER_HAND_KEY = `${PREFIX}otherHand`
 /** Between two passes of a practised bar: long enough to read how it went. */
 const LOOP_BREAK_MS = 1600
 
@@ -125,6 +129,32 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   /** The middle-C check is done once per visit; the next part starts straight away. */
   const shiftKnown = useRef(false)
 
+  // The other hand, played for her while she practises one (a song with both hands only).
+  const [otherHand, setOtherHand] = useState(true)
+  useEffect(() => {
+    void store.get<boolean>(OTHER_HAND_KEY).then((v) => typeof v === 'boolean' && setOtherHand(v))
+  }, [store])
+  const chooseOtherHand = (on: boolean) => {
+    setOtherHand(on)
+    void store.set(OTHER_HAND_KEY, on)
+  }
+  const accompanist = useRef<Accompanist | null>(null)
+  /** "Wait for it": where in the song her last step was, for the other hand to carry on from. */
+  const waitFrom = useRef(0)
+  /** Where sound goes (set once the keyboard is known, below). */
+  const outputRef = useRef<{ sink: () => Sink } | null>(null)
+  const accompany = useCallback(
+    (target: Song, j: Judge, speed: number) => {
+      accompanist.current?.stop()
+      accompanist.current = null
+      waitFrom.current = j.currentStep?.startMs ?? 0
+      if (!otherHand || practice === 'both' || !outputRef.current) return
+      const other = notesFor(target, practice === 'right' ? 'left' : 'right')
+      if (other.length) accompanist.current = new Accompanist(outputRef.current.sink(), other, speed)
+    },
+    [otherHand, practice],
+  )
+
   const judge = useRef<Judge | null>(null)
   /** The octave shift found by the middle-C check; applies to the Yamaha only, never to on-screen keys. */
   const shift = useRef(0)
@@ -168,13 +198,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       if (!bar) return
       const j = new Judge(bar, { practice, settings, tempo: tempoOf(l), shift: shift.current })
       judge.current = j
+      accompany(bar, j, tempoOf(l))
       if (j.mode === 'running') j.start(performance.now() + (3 * 60000) / song.bpm / tempoOf(l))
       shownTime.current = READY_TIME
       setResults(new Map())
       setStreak(0)
       setPhase('playing')
     },
-    [song, practice, settings],
+    [song, practice, settings, accompany],
   )
   /** The loop is over: finished clean, or left. Logged once, with how far it got. */
   const endLoop = useCallback(
@@ -238,6 +269,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           setTimeout(() => setWrong((w) => { const n = new Set(w); n.delete(p); return n }), WRONG_FLASH_MS)
         }
         if (e.type === 'hit' || e.type === 'missed') outcomes.push([e.result.note.id, e.result.outcome])
+        // "Wait for it": each step she plays lets the other hand carry on to her next one.
+        if (e.type === 'advance' || (e.type === 'done' && judge.current?.mode === 'wait')) {
+          const to = e.type === 'advance' ? e.step.startMs : Infinity
+          accompanist.current?.stepPlayed(waitFrom.current, to, performance.now())
+          waitFrom.current = to
+        }
         // The streak: right notes in a row; a wrong or missed note starts it again, quietly.
         if (e.type === 'hit') setStreak((n) => n + 1)
         if (e.type === 'wrong' || e.type === 'missed') setStreak(0)
@@ -253,6 +290,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     (target: Song, js: JudgeSettings, at: number, partOf: PartStep | null) => {
       const j = new Judge(target, { practice, settings: js, tempo, shift: shift.current })
       judge.current = j
+      accompany(target, j, tempo)
       if (j.mode === 'running') {
         // Three beats of lead-in: the first notes are already falling.
         const leadIn = (3 * 60000) / song.bpm / tempo
@@ -265,7 +303,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       setPhase('playing')
       if (profileId) void log.add(profileId, { type: 'song_started', songId: song.id, practice, tempo, mode: j.mode, ...(partOf ? { part: partOf.id } : {}) })
     },
-    [song, practice, tempo, profileId, log],
+    [song, practice, tempo, profileId, log, accompany],
   )
 
   /** Straight into a part (from "Next" or "Again"): no middle C again once it's known. */
@@ -321,6 +359,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       if ((e.type !== 'noteon' && e.type !== 'noteoff') || !isPlayerChannel(e.channel)) return
       if (e.type === 'noteoff') return release(e.note + shift.current)
       if (e.velocity < MIN_VELOCITY) return
+      // The other hand's own notes, if the keyboard sends them back, are not hers.
+      if (accompanist.current?.isEcho(e.note, e.time)) return
       press(e.note, e.time, false)
     },
     [press, release],
@@ -330,6 +370,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   // Listen first: the song played for her (on the keyboard, or the phone) at the
   // chosen hands and speed, the notes falling and their keys lighting as it goes.
   const output = useOutput(keyboard)
+  outputRef.current = output
   const [listening, setListening] = useState(false)
   const [listenKeys, setListenKeys] = useState<ReadonlySet<number>>(new Set())
   const listenPlayback = useRef<Playback | null>(null)
@@ -373,12 +414,19 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
   }, [listening, notes, tempo])
-  useEffect(() => () => listenPlayback.current?.stop(), [])
+  useEffect(
+    () => () => {
+      listenPlayback.current?.stop()
+      accompanist.current?.stop()
+    },
+    [],
+  )
 
   // Pause when the keyboard disappears or KeyPath leaves the screen; never count those as misses.
   const pause = useCallback((reason: 'disconnected' | 'hidden') => {
     if (phaseRef.current !== 'playing' || judge.current?.mode !== 'running') return
     judge.current.pause(performance.now())
+    accompanist.current?.stop()
     setPauseReason(reason)
     setPhase('paused')
     if (reason === 'disconnected' && profileId) void log.add(profileId, { type: 'keyboard_lost', songId: song.id })
@@ -411,6 +459,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       let next: number[]
       if (j.mode === 'running') {
         apply(j.tick(now))
+        accompanist.current?.tick(j.songTime(now), now)
         target = j.songTime(now)
         shownTime.current = target
         const s = j.songTime(now)
@@ -459,6 +508,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const stop = () => {
     // Stopping a practised bar goes back to the report it came from.
     if (loopRef.current) return backToReport()
+    accompanist.current?.stop()
     const j = judge.current
     if (j && profileId && phaseRef.current !== 'report') {
       const s = j.summary()
@@ -484,6 +534,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     startPass(l)
   }
   const backToReport = () => {
+    accompanist.current?.stop()
     endLoop(false)
     setLoopBoth(null)
     judge.current = null
@@ -525,16 +576,23 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           {hasLeft && (
             <div className={setup.field}>
               <span className={setup.label}>{t('hands')}</span>
-              <SegmentedControl
-                size="sm"
-                value={practice}
-                onChange={(v) => setPractice(v as Practice)}
-                options={[
-                  { value: 'right', label: t('handRight') },
-                  { value: 'left', label: t('handLeft') },
-                  { value: 'both', label: t('handBoth') },
-                ]}
-              />
+              <div className={setup.controls}>
+                <SegmentedControl
+                  size="sm"
+                  value={practice}
+                  onChange={(v) => setPractice(v as Practice)}
+                  options={[
+                    { value: 'right', label: t('handRight') },
+                    { value: 'left', label: t('handLeft') },
+                    { value: 'both', label: t('handBoth') },
+                  ]}
+                />
+                {practice !== 'both' && (
+                  <button type="button" className={setup.chip} aria-pressed={otherHand} onClick={() => chooseOtherHand(!otherHand)}>
+                    🎹 {t('otherHand')}
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {steps.length > 0 && (

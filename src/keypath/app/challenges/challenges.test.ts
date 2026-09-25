@@ -3,7 +3,7 @@ import { K, memoryStore } from '../store'
 import { CHORDS, ChordCatch, pitchClassesOf, SCREEN_KEYS, shows, voicingOf } from './chordCatch'
 import { NoteRace, RACE_NOTES, STAFF_NOTES } from './noteRace'
 import { RecordRepo } from './records'
-import { beatMs, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, turnTimeline } from './rhythm'
+import { beatMs, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, syllables, turnTimeline } from './rhythm'
 
 /** A fixed sequence of "random" numbers. */
 const seq = (...xs: number[]) => {
@@ -177,5 +177,16 @@ describe('ChordCatch', () => {
     expect(g.press(67, 520)).toBe('right')
     expect([g.score, g.spread, g.wrong]).toEqual([1, 1, 1])
     expect(g.press(60, 45_000)).toBeNull() // time’s up
+  })
+})
+
+describe('rhythm syllables', () => {
+  it('ta for a beat, ti ti for two halves, ti off the beat', () => {
+    expect(syllables([0, 1, 2, 3])).toEqual(['ta', 'ta', 'ta', 'ta'])
+    expect(syllables([0, 1, 1.5, 2, 3])).toEqual(['ta', 'ti', 'ti', 'ta', 'ta'])
+    expect(syllables([0.5, 1, 2, 3])).toEqual(['ti', 'ta', 'ta', 'ta'])
+    // A rest after a note doesn't make it a ti.
+    expect(syllables([0, 2])).toEqual(['ta', 'ta'])
+    for (const p of Object.values(ECHO_PATTERNS).flat()) expect(syllables(p)).toHaveLength(p.length)
   })
 })

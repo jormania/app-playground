@@ -14,7 +14,7 @@ import { Playback, realClock } from '../studio/playback'
 import type { TakeNote } from '../studio/recorder'
 import { ECHO_LEVEL_NAME } from './ChallengesHome'
 import { RecordRepo, type ChallengeRecords } from './records'
-import { beatMs, ECHO_BPM, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, turnTimeline, type EchoLevel, type EchoResult } from './rhythm'
+import { beatMs, ECHO_BPM, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, syllables, turnTimeline, type EchoLevel, type EchoResult } from './rhythm'
 import styles from './challenges.module.css'
 import setup from '../setup.module.css'
 
@@ -186,6 +186,7 @@ export function EchoScreen() {
   const cueText = cue.kind === 'listen' ? t('echoListen') : cue.kind === 'countIn' ? t('echoYourTurn', { count: cue.count }) : t('echoGo')
   const score = passed.filter(Boolean).length
   const showRows = phase === 'turn' || phase === 'result'
+  const said = syllables(pattern)
   const tn = turn.current
 
   return (
@@ -234,7 +235,9 @@ export function EchoScreen() {
                 <span key={beat} className={styles.beatLine} style={{ left: `${(beat / 4) * 100}%` }} />
               ))}
               {pattern.map((beat, i) => (
-                <span key={i} className={styles.dot} data-verdict={result?.marks[i].verdict} style={{ left: `${(beat / 4) * 100}%` }} />
+                <span key={i} className={styles.dot} data-verdict={result?.marks[i].verdict} style={{ left: `${(beat / 4) * 100}%` }}>
+                  {said[i]}
+                </span>
               ))}
               <span ref={headKeyPath} className={styles.playhead} aria-hidden />
             </div>
