@@ -21,6 +21,8 @@
 .field {
   display: grid;
   gap: var(--space-3xs);
+  /* So a row that scrolls sideways (a long song's parts) stays inside the panel. */
+  min-width: 0;
 }
 .label {
   font-size: var(--text-sm);
@@ -51,11 +53,25 @@
   opacity: 0.4;
   cursor: default;
 }
-/* The part shown when a long song's parts are stepped through. */
-.stepper {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
+/* A long song's parts (more than seven): the same chips on one line, scrolled sideways. */
+.chips[data-scroll] {
+  position: relative;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+.chips[data-scroll]::-webkit-scrollbar {
+  display: none;
+}
+.chips[data-scroll] > .chip {
+  flex: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chips[data-scroll] {
+    scroll-behavior: auto;
+  }
 }
 /* An on/off choice beside a segmented control, at its height and in its colours. */
 .chip {
@@ -153,6 +169,14 @@
   }
   .chips {
     width: auto;
+  }
+  /* A long song's parts take a row of their own and scroll within it. */
+  .field:has(> .chips[data-scroll]) {
+    flex: 1 1 100%;
+  }
+  .chips[data-scroll] {
+    flex: 1 1 auto;
+    min-width: 0;
   }
   .controls > :first-child {
     flex: 0 1 auto;

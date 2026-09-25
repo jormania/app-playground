@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
+import { barName, barSpan, buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -110,6 +110,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       live = false
     }
   }, [partsRepo, profileId, song.id, practice, steps])
+  // A long song's chips run on one line: keep the chosen one in view, in the middle where it can be.
+  const chipRow = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const row = chipRow.current
+    const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!row || !chip || row.scrollWidth <= row.clientWidth) return
+    row.scrollLeft = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2
+  }, [partId, steps, phase])
   // "Try next" on the report: the easiest song she hasn't finished yet.
   const [next, setNext] = useState<{ id: string; title: string } | null>(null)
   useEffect(() => {
@@ -577,7 +585,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }
@@ -613,37 +621,22 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           {steps.length > 0 && (
             <div className={setup.field}>
               <span className={setup.label}>{t('parts')}</span>
-              {steps.length > MAX_CHIPS && part ? (
-                // A long song has too many parts for chips: one at a time, with its place in the way through.
-                <div className={setup.controls}>
-                  <button type="button" className={setup.chip} aria-label={t('partPrev')} disabled={steps.indexOf(part) === 0} onClick={() => setPartId(steps[steps.indexOf(part) - 1].id)}>
-                    ‹
+              {/* The same chips for every song; a long one's run on one line that scrolls sideways, the chosen one in view. */}
+              <div ref={chipRow} className={setup.chips} data-scroll={steps.length > MAX_CHIPS || undefined} role="group" aria-label={t('parts')}>
+                {steps.map((x) => (
+                  <button
+                    key={x.id}
+                    type="button"
+                    className={setup.chip}
+                    aria-pressed={x.id === partId}
+                    aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
+                    onClick={() => setPartId(x.id)}
+                  >
+                    {chipName(x)}
+                    {learnt.has(x.id) && ' ✓'}
                   </button>
-                  <span className={setup.stepper} aria-live="polite">
-                    {partName(part)}
-                    {learnt.has(part.id) && ' ✓'} · {t('partOf', { n: steps.indexOf(part) + 1, total: steps.length })}
-                  </span>
-                  <button type="button" className={setup.chip} aria-label={t('partNextOne')} disabled={steps.indexOf(part) === steps.length - 1} onClick={() => setPartId(steps[steps.indexOf(part) + 1].id)}>
-                    ›
-                  </button>
-                </div>
-              ) : (
-                <div className={setup.chips} role="group" aria-label={t('parts')}>
-                  {steps.map((x) => (
-                    <button
-                      key={x.id}
-                      type="button"
-                      className={setup.chip}
-                      aria-pressed={x.id === partId}
-                      aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
-                      onClick={() => setPartId(x.id)}
-                    >
-                      {chipName(x)}
-                      {learnt.has(x.id) && ' ✓'}
-                    </button>
-                  ))}
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
           <div className={setup.field}>
@@ -660,7 +653,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           </div>
           {span ? (
             <p className={setup.note} data-inline>
-              {t('partMode', { from: span.from + 1, to: span.to })}
+              {t('partMode', { bars: barSpan(song, span.from, span.to) })}
             </p>
           ) : (
             <p className={setup.note} data-inline>
@@ -711,7 +704,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       {loop && phase === 'playing' && (
         <div className={styles.prompt} role="status">
           <strong>
-            🔁 {t('loopBar', { bar: loop.bar + 1 })}
+            🔁 {t('loopBar', { bar: barName(song, loop.bar) })}
             {settings.onWrong !== 'wait' && ` · ${Math.round(tempoOf(loop) * 100)}%`}
           </strong>
           <span>
@@ -753,7 +746,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
       {loop && phase === 'loopDone' && (
         <div className={styles.prompt} role="status">
-          <strong>🎉 {t('loopDone', { bar: loop.bar + 1 })}</strong>
+          <strong>🎉 {t('loopDone', { bar: barName(song, loop.bar) })}</strong>
           <span>{t('loopDoneHint')}</span>
           <div className={styles.actions}>
             <Button size="sm" onClick={wholeSong}>

@@ -9,7 +9,7 @@ import { FitChoice } from './FitChoice'
 import { noteLabel } from '../i18n'
 import { ratedLevel, type Level } from './level'
 import { LevelPick, SongFacts } from './SongFacts'
-import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
+import { buildImport, choosePart, openSongFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
 const PROBLEM_TEXT = { 'not-midi': 'importNotMidi', unsupported: 'importUnsupported', 'no-notes': 'importNoNotes' } as const
@@ -29,7 +29,7 @@ export function ImportSong() {
 
   const pick = async (file: File | undefined) => {
     if (!file) return
-    const result = draftFromFile(await file.arrayBuffer(), file.name)
+    const result = await openSongFile(await file.arrayBuffer(), file.name)
     if (typeof result === 'string') {
       setProblem(result)
       setDraft(null)
@@ -69,7 +69,8 @@ export function ImportSong() {
       {hand === 'left' && <option value="">{t('noPart')}</option>}
       {draft?.parts.map((p) => (
         <option key={p.key} value={p.key}>
-          {p.name} · {t('notesCount', { count: p.noteCount })}
+          {p.name}
+          {p.staves && p.staves > 1 ? ` · ${p.staff === 1 ? t('staffUpper') : p.staff === p.staves ? t('staffLower') : t('staffN', { n: p.staff ?? 1 })}` : ''} · {t('notesCount', { count: p.noteCount })}
         </option>
       ))}
     </SelectField>
@@ -86,7 +87,7 @@ export function ImportSong() {
         <input
           ref={fileInput}
           type="file"
-          accept=".mid,.midi,.kar,audio/midi,audio/x-midi"
+          // No accept filter: Android doesn't know .mxl, and would grey out MuseScore's download. The file is read to tell.
           hidden
           onChange={(e) => {
             void pick(e.target.files?.[0])

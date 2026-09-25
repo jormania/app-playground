@@ -19,6 +19,8 @@ interface Props {
   onMakeItYours: () => void
   /** Loop one bar (0-based) until it's clean. */
   onPractiseBar?: (bar: number) => void
+  /** A bar as printed, for a song from a score; counted from 1 otherwise. */
+  barLabel?: (bar: number) => string
   /** The song to try after this one, when there is one. */
   next?: { title: string; onOpen: () => void } | null
 }
@@ -28,7 +30,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, next }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, next, barLabel = (b) => String(b + 1) }: Props) {
   const { t, profile, log, updateSetting } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
@@ -50,7 +52,7 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
       case 'onTime':
         return t('hlOnTime', { count: h.count })
       case 'cleanBars':
-        return t('hlCleanBars', { bars: h.bars.map((b) => b + 1).join(', ') })
+        return t('hlCleanBars', { bars: h.bars.map(barLabel).join(', ') })
     }
   }
 
@@ -99,10 +101,10 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
         </ul>
         {report.toWorkOn.map((b) => (
           <div key={b.bar} className={styles.workOn}>
-            <p className={styles.hint}>{t('workOnBar', { bar: b.bar + 1 })}</p>
+            <p className={styles.hint}>{t('workOnBar', { bar: barLabel(b.bar) })}</p>
             {onPractiseBar && (
               <Button size="sm" variant="outline" onClick={() => onPractiseBar(b.bar)}>
-                🔁 {t('practiseBar', { bar: b.bar + 1 })}
+                🔁 {t('practiseBar', { bar: barLabel(b.bar) })}
               </Button>
             )}
           </div>

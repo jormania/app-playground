@@ -37,6 +37,26 @@ export interface Song {
    */
   source?: SongNote[]
   fit?: 'moveSong' | 'moveHands' | 'moveNotes' | 'dropNotes'
+  /** The printed number of each bar, when the song came from a score; bar 0 is labelled `barLabels[0]`. */
+  barLabels?: string[]
+}
+
+/** A bar as she'd find it on the page: its printed number for a song from a score, else counted from 1. */
+export const barName = (song: Pick<Song, 'barLabels'>, bar: number): string => song.barLabels?.[bar] || String(bar + 1)
+
+/**
+ * Bars [from, to) as she'd find them on the page: "5–8", or, where a repeat
+ * goes back, each run on its own ("7–8, 5–6").
+ */
+export function barSpan(song: Pick<Song, 'barLabels'>, from: number, to: number): string {
+  const runs: [string, string][] = []
+  for (let b = from; b < to; b++) {
+    const label = barName(song, b)
+    const run = runs[runs.length - 1]
+    if (run && Number(label) === Number(run[1]) + 1) run[1] = label
+    else runs.push([label, label])
+  }
+  return runs.map(([a, z]) => (a === z ? a : `${a}–${z}`)).join(', ')
 }
 
 /** Notes meant to be played together: a chord, or a single note. */

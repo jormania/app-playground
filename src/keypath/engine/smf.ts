@@ -3,6 +3,8 @@
 // since 1988, and this reads only what the tutor needs: notes, tempo, time
 // signature and track names.
 
+import type { Finger } from './song'
+
 export interface SmfNote {
   track: number
   /** 1–16. */
@@ -13,6 +15,10 @@ export interface SmfNote {
   endTick: number
   startMs: number
   endMs: number
+  /** Set from a score (engine/musicxml.ts): its bar, 0-based in playing order, repeats written out. */
+  bar?: number
+  /** Set from a score that prints one: the finger that plays it. */
+  finger?: Finger
 }
 
 export interface SmfTrack {
@@ -39,6 +45,17 @@ export interface SmfFile {
   notes: SmfNote[]
   tempos: TempoChange[]
   timeSignatures: TimeSignature[]
+  /** Set when the file is a MusicXML score rather than MIDI (engine/musicxml.ts). */
+  score?: ScoreInfo
+}
+
+/** What a score says that MIDI can't. */
+export interface ScoreInfo {
+  title: string
+  /** The printed number of each bar, in playing order: a repeat's bars come round again under their own numbers. */
+  barLabels: string[]
+  /** Each part (by `track:channel`, the channel being the staff): its instrument, its staff, and how many staves the instrument has. */
+  parts: Record<string, { name: string; staff: number; staves: number }>
 }
 
 export class SmfError extends Error {

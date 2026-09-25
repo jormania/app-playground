@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { MidiEvent } from '../../midi/types'
 import { songOf } from '../../engine/testing/songs'
 import { Shell } from '../Shell'
@@ -148,7 +148,7 @@ describe('Play screen', () => {
     expect(screen.queryByText('Press middle C to begin')).toBeNull()
   })
 
-  it('a long song’s parts are stepped through one at a time, not as a wall of chips', async () => {
+  it('a long song’s parts are the same chips as any song’s, on one line', async () => {
     const store = memoryStore()
     const profiles = new ProfileRepo(store)
     const p = await profiles.create('Nora', '🐺')
@@ -158,12 +158,14 @@ describe('Play screen', () => {
     await new SongLibrary(store).add(long)
     history.replaceState(null, '', '#/play/Long')
     render(<Shell store={store} />)
-    expect(await screen.findByText('Part 1 · 1 of 17')).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Previous part' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Next part' }))
-    expect(screen.getByText('Part 2 · 2 of 17')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Next part' }))
-    expect(screen.getByText('Parts 1–2 · 3 of 17')).toBeTruthy()
+    const row = await screen.findByRole('group', { name: 'Parts' })
+    expect(row.hasAttribute('data-scroll')).toBe(true)
+    const chips = within(row).getAllByRole('button')
+    expect(chips.map((c) => c.textContent)).toEqual(['1', '2', '1–2', '3', '1–3', '4', '1–4', '5', '1–5', '6', '1–6', '7', '1–7', '8', '1–8', '9', 'All'])
+    // The first part not learnt is chosen once her progress is read.
+    await waitFor(() => expect(chips[0].getAttribute('aria-pressed')).toBe('true'))
+    fireEvent.click(chips[2])
+    expect(screen.getByRole('button', { name: '▶ Parts 1–2' })).toBeTruthy()
   })
 
   it('an added song has no fingering, so no numbers', async () => {

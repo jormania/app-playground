@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { melodyFile, meta, on, off, pianoFile, smf, track, waltzPiano } from '../../engine/testing/smfBuilder'
 import { memoryStore } from '../store'
 import { ratedLevel } from './level'
-import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft } from './library'
+import { attributes, CONTAINER, measure, note, pianoBar, repeatEnd, score, tempo, zip } from '../../engine/testing/xmlBuilder'
+import { buildImport, choosePart, draftFromFile, openSongFile, SongLibrary, type ImportDraft } from './library'
 
 const bytes = (u: Uint8Array) => u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) as ArrayBuffer
 
@@ -135,5 +136,60 @@ describe('both hands in one track', () => {
   it('choosing a part for the left hand turns the split off', () => {
     const d = { ...draft(), parts: [...draft().parts, { ...draft().parts[0], key: 'other', name: 'Bass' }] }
     expect(choosePart(d, 'left', 'other')).toMatchObject({ split: null })
+  })
+})
+
+describe('a MusicXML score', () => {
+  const text = score({
+    title: 'Two Hands',
+    parts: [
+      {
+        name: 'Piano',
+        measures: [
+          measure(1, attributes({ staves: 2 }) + tempo(60) + pianoBar([{ pitch: 'E4', beats: 2, finger: 3 }, { pitch: 'D4', beats: 2, finger: 2 }], [{ pitch: 'C3', beats: 4, finger: 5 }])),
+          measure(2, pianoBar([{ pitch: 'C4', beats: 4, finger: 1 }], [{ pitch: 'G2', beats: 4, finger: 1 }]) + repeatEnd()),
+          measure(3, pianoBar([{ pitch: 'G4', beats: 4, finger: 5 }], [{ pitch: 'C3', beats: 4, finger: 5 }])),
+        ],
+      },
+    ],
+  })
+  const bytesOf = (s: string) => bytes(new TextEncoder().encode(s))
+
+  it('takes the hands from its staves, its title from the score, and keeps fingers and printed bars', () => {
+    const d = draftFromFile(bytesOf(text), 'two_hands.musicxml') as ImportDraft
+    expect(d.title).toBe('Two Hands')
+    expect([d.right?.staff, d.left?.staff]).toEqual([1, 2])
+    // Both hands are printed apart, so nothing is offered to split.
+    expect(d.split).toBeNull()
+    const { song } = buildImport(d, '')
+    expect(song.notes.filter((n) => n.hand === 'right').map((n) => [n.pitch, n.finger])).toEqual([
+      [64, 3],
+      [62, 2],
+      [60, 1],
+      [64, 3],
+      [62, 2],
+      [60, 1],
+      [67, 5],
+    ])
+    expect(song.barLabels).toEqual(['1', '2', '1', '2', '3'])
+  })
+
+  it('opens MuseScore’s compressed download (.mxl) the same way', async () => {
+    const mxl = await zip([
+      { name: 'META-INF/container.xml', text: CONTAINER('two_hands.xml'), deflate: true },
+      { name: 'two_hands.xml', text, deflate: true },
+    ])
+    const d = (await openSongFile(bytes(mxl), 'two_hands.mxl')) as ImportDraft
+    expect(d.title).toBe('Two Hands')
+    expect(d.parts).toHaveLength(2)
+    // A MIDI file still opens through the same door.
+    expect(((await openSongFile(bytes(melodyFile([[60, 1]])), 'a.mid')) as ImportDraft).parts).toHaveLength(1)
+  })
+
+  it('says what is wrong with a file that isn’t a song, or a score it can’t read', async () => {
+    expect(draftFromFile(bytesOf('<html><body>hi</body></html>'), 'page.xml')).toBe('not-midi')
+    expect(draftFromFile(bytesOf('<score-timewise version="4.0"/>'), 'x.musicxml')).toBe('unsupported')
+    expect(await openSongFile(bytes(await zip([{ name: 'photo.jpg', text: 'x' }])), 'photos.zip')).toBe('not-midi')
+    expect(draftFromFile(bytesOf(score({ parts: [{ name: 'Rests', measures: [measure(1, attributes() + note({ pitch: null, beats: 4 }))] }] })), 'r.xml')).toBe('no-notes')
   })
 })

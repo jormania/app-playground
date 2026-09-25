@@ -14,6 +14,9 @@ shared doc, linked from the top of Home.
 - **Every song says how hard, one hand or two, and how long** (Easy · Two hands · 0:32).
   An added song is rated by what it asks of the hands, held to the starter pack's
   own levels, and the level can be changed at import or later.
+- **Songs from MuseScore as scores** (MusicXML, `.mxl`): the hands from the two staves, the
+  printed finger numbers, repeats written out and bars numbered as on the page.
+- **A long song's parts** are the same chips as any song's, on one scrolling line.
 
 ## Release 1 — 2026-09-25
 

@@ -693,6 +693,46 @@ before the fit to the keyboard, so each hand is then fitted as a hand.
 A split by pitch is a guess: where the hands cross, a note goes to the wrong
 one. Choosing a left-hand part turns the split off.
 
+### Songs from a score (MusicXML)
+
+**Add a song** takes MusicXML as well as MIDI: `.mxl` (compressed, what
+MuseScore offers as its MusicXML download), `.musicxml` and `.xml`. Gabriel
+gets songs from MuseScore and prefers the score, because it says what MIDI
+only lets us guess:
+- **The hands.** A piano's two staves are the two hands: the top staff is
+  offered as the right hand, the one below as the left (`suggestScoreParts`),
+  and the parts read *Piano · upper staff*, *Piano · lower staff*. No split
+  is offered, since the hands are already apart.
+- **Finger numbers**, where the score prints them (`<fingering>`), on the
+  falling notes like the starter songs'. A MIDI file still shows none.
+- **The bars as printed.** Repeats and first and second endings are written
+  out in playing order, and each bar keeps its printed number
+  (`Song.barLabels`): "Bar 12 is worth another go" is bar 12 on the page,
+  and a part reads "Bars 5–8", or "Bars 7–8, 5–6" where it runs over a
+  repeat (`barName`, `barSpan`). A pickup is a short bar of its own.
+- **Rhythm as written**: note values and tempo marks, not a recording's
+  timing. Ties become one held note.
+
+How (`engine/xml.ts`, `engine/mxl.ts`, `engine/musicxml.ts`): a small XML
+reader of our own, since the engine runs without a DOM; the `.mxl` zip read
+with the browser's own `DecompressionStream`, so no zip library joins the
+bundle; the score read into the same shape as a MIDI file (`SmfFile`, with a
+`score` field for what MIDI can't carry), so it goes through the same steps:
+which part, fit, level. Notes sound for 90% of their value, as in the
+starter pack. Left out on purpose: grace notes (too quick to wait for), cue
+notes (not played), D.C./D.S./Coda/Fine jumps (their bars play once, in
+order), ornaments and dynamics. Timewise scores (rare) are refused.
+
+The file picker has no type filter: Android doesn't know `.mxl` and would
+grey MuseScore's download out. The file is read to tell what it is, and
+anything else gets "That file isn't a MusicXML or MIDI file."
+
+**The Parts row for a long song.** A song with more than seven parts used to
+step through them one at a time (‹ Part 3 · 3 of 29 ›), and a CSS rule meant
+for count-in rows stretched the ‹ across the panel. Now every song has the
+same chips; a long song's run on one line that scrolls sideways, the chosen
+chip brought to the middle.
+
 ### How hard, how long, how many hands
 
 Every song in the list now reads, under its title, *Easy · Two hands · 0:32*:
@@ -1039,7 +1079,9 @@ install it and get the full screen):
 - **Import simplification**: "melody only" for arrangements too hard as
   written; it could become a fifth way in the choice for songs wider than
   the keyboard (§9, "Songs wider than the keyboard").
-- **MusicXML import** (with notation rendering, a late Journey skill).
+- ~~**MusicXML import**~~ Done (§9, "Songs from a score"). Still open:
+  **notation rendering** of a song's score (a late Journey skill), and the
+  D.C./D.S./Coda jumps.
 
 **Challenges refinements** (deferred from step 6):
 - **Audio latency.** When the rhythm plays on the phone, she hears it about

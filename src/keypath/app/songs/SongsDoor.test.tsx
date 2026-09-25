@@ -151,7 +151,7 @@ describe('Songs, for everyday use', () => {
   it('asks what to do with notes past the keyboard when a song is added, and again from its ⋯ menu', async () => {
     const { store, go } = await setUp('#/songs/import')
     go()
-    await screen.findByRole('button', { name: 'Choose a MIDI file' })
+    await screen.findByRole('button', { name: 'Choose a file' })
     // A0 to C8: wider than the 61 keys, so the whole song can't simply move.
     const midi = melodyFile([[21, 1], [60, 1], [108, 1]])
     const file = new File([midi.slice().buffer as ArrayBuffer], 'wide.mid', { type: 'audio/midi' })

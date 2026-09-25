@@ -14,6 +14,9 @@ export interface Part {
   meanPitch: number
   /** GM channel 10 is percussion: never a part to learn. */
   isDrums: boolean
+  /** From a score: which staff of its instrument this is (1 the top), of how many. */
+  staff?: number
+  staves?: number
 }
 
 const partKey = (n: Pick<SmfNote, 'track' | 'channel'>) => `${n.track}:${n.channel}`
@@ -25,16 +28,19 @@ export function partsOf(file: SmfFile): Part[] {
     .map(([key, notes]) => {
       const pitches = notes.map((n) => n.pitch)
       const { track, channel } = notes[0]
+      const scored = file.score?.parts[key]
       return {
         key,
         track,
         channel,
-        name: file.tracks[track]?.name || `Track ${track + 1}`,
+        name: scored?.name || file.tracks[track]?.name || `Track ${track + 1}`,
+        ...(scored ? { staff: scored.staff, staves: scored.staves } : {}),
         noteCount: notes.length,
         low: Math.min(...pitches),
         high: Math.max(...pitches),
         meanPitch: pitches.reduce((a, b) => a + b, 0) / pitches.length,
-        isDrums: channel === 10,
+        // A score's channel is its staff, and its percussion never reaches here.
+        isDrums: !scored && channel === 10,
       }
     })
     .sort((a, b) => a.track - b.track || a.channel - b.channel)
@@ -83,6 +89,8 @@ export function songFromParts(file: SmfFile, opts: SongFromPartsOptions): Song {
   const firstMs = chosen.length ? Math.min(...chosen.map((n) => n.startMs)) : 0
   const firstTick = chosen.length ? Math.min(...chosen.map((n) => n.startTick)) : 0
   const barOffsetTicks = Math.floor(firstTick / ticksPerBar) * ticksPerBar
+  // A score says its bars (a pickup, a change of metre, repeats written out); MIDI's are counted from the metre.
+  const firstBar = chosen.length && chosen.every((n) => n.bar !== undefined) ? Math.min(...chosen.map((n) => n.bar!)) : null
 
   const notes: SongNote[] = chosen.map((n, i) => ({
     id: i,
@@ -90,7 +98,8 @@ export function songFromParts(file: SmfFile, opts: SongFromPartsOptions): Song {
     startMs: n.startMs - firstMs,
     durationMs: Math.max(1, n.endMs - n.startMs),
     hand: handOf.get(partKey(n))!,
-    bar: Math.floor((n.startTick - barOffsetTicks) / ticksPerBar),
+    bar: firstBar !== null ? n.bar! - firstBar : Math.floor((n.startTick - barOffsetTicks) / ticksPerBar),
+    ...(n.finger ? { finger: n.finger } : {}),
   }))
   const usPerQuarter = file.tempos[0]?.usPerQuarter ?? 500_000
   return {
@@ -100,7 +109,22 @@ export function songFromParts(file: SmfFile, opts: SongFromPartsOptions): Song {
     bpm: Math.round(60_000_000 / usPerQuarter),
     beatsPerBar,
     durationMs: notes.length ? Math.max(...notes.map((n) => n.startMs + n.durationMs)) : 0,
+    ...(file.score && firstBar !== null ? { barLabels: file.score.barLabels.slice(firstBar) } : {}),
   }
+}
+
+/**
+ * For a score: the hands as printed, the top staff of a keyboard instrument
+ * to the right hand and the one below to the left (the busiest such
+ * instrument, if there are several). Otherwise the guess for MIDI.
+ */
+export function suggestScoreParts(parts: readonly Part[]): { right: Part | null; left: Part | null } {
+  const byInstrument = new Map<number, Part[]>()
+  for (const p of parts) if (p.staves && p.staves > 1) byInstrument.set(p.track, [...(byInstrument.get(p.track) ?? []), p])
+  const keyboards = [...byInstrument.values()].filter((ps) => ps.some((p) => p.staff === 1) && ps.some((p) => p.staff === 2))
+  if (keyboards.length === 0) return suggestParts(parts)
+  const busiest = keyboards.reduce((a, b) => (b.reduce((s, p) => s + p.noteCount, 0) > a.reduce((s, p) => s + p.noteCount, 0) ? b : a))
+  return { right: busiest.find((p) => p.staff === 1)!, left: busiest.find((p) => p.staff === 2)! }
 }
 
 // ── One part, two hands ─────────────────────────────────────────────────────

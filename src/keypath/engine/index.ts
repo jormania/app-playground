@@ -1,10 +1,12 @@
 // KeyPath's lesson engine: songs in, judgement out, no UI. Every door (Songs,
 // Journey, Challenges, Studio) builds on this; see KEYPATH_TUTOR.md §4.
 export { parseSmf, SmfError } from './smf'
-export type { SmfFile, SmfNote, SmfTrack } from './smf'
-export { partsOf, suggestParts, songFromParts, suggestSplit, splitHands, SPLIT_RANGE } from './parts'
+export type { SmfFile, SmfNote, SmfTrack, ScoreInfo } from './smf'
+export { parseMusicXml, looksLikeXml, MusicXmlError } from './musicxml'
+export { unzipScore, isZip, MxlError } from './mxl'
+export { partsOf, suggestParts, suggestScoreParts, songFromParts, suggestSplit, splitHands, SPLIT_RANGE } from './parts'
 export type { Part, SongFromPartsOptions } from './parts'
-export { stepsOf, notesFor } from './song'
+export { stepsOf, notesFor, barName, barSpan } from './song'
 export type { Song, SongNote, Step, Hand, Finger, Practice } from './song'
 export { checkRange, transposeSong, KEYBOARD_RANGE, applyFit, fitOptions, fitSong, defaultFit, FEW_OUTSIDE } from './range'
 export type { RangeCheck, FitMode, FitOption, Fitted } from './range'
