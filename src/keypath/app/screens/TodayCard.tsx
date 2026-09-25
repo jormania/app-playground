@@ -30,7 +30,10 @@ export function TodayCard() {
       const date = localDate(new Date().toISOString())
       const [records, journey, songs] = await Promise.all([log.read(profile.id), new JourneyRepo(store).get(profile.id), new SongLibrary(store).list(settings.language)])
       const plan = await todayFor(store, profile.id, () => planToday(records, journey, songs, date), date)
-      if (live) setToday({ plan, done: plan.items.map((i) => isDone(i, records, date)), titles: new Map(songs.map((e) => [e.song.id, e.song.title])) })
+      const done = plan.items.map((i) => isDone(i, records, date))
+      // All three done: noted once for the day (the Today sticker reads it).
+      if (done.length && done.every(Boolean) && !records.some((r) => r.type === 'today_done' && localDate(r.at) === date)) void log.add(profile.id, { type: 'today_done' })
+      if (live) setToday({ plan, done, titles: new Map(songs.map((e) => [e.song.id, e.song.title])) })
     })()
     return () => {
       live = false

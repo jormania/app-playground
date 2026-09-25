@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
+import { SongLibrary } from '../songs/library'
+import { levelOf } from '../songs/level'
 import { earnedStickers, markSeen, seenStickers, STICKERS } from './stickers'
 import styles from '../app.module.css'
 
@@ -15,8 +17,9 @@ export function StickerShelf() {
     if (!profile) return
     let live = true
     void (async () => {
-      const [records, seen] = await Promise.all([log.read(profile.id), seenStickers(store, profile.id)])
-      const e = earnedStickers(records)
+      const [records, seen, songs] = await Promise.all([log.read(profile.id), seenStickers(store, profile.id), new SongLibrary(store).list(settings.language)])
+      const levels = new Map(songs.map((x) => [x.song.id, levelOf(x.song)]))
+      const e = earnedStickers(records, (id) => levels.get(id))
       const now = [...e.keys()].filter((id) => !seen.has(id))
       if (!live) return
       setEarned(e)
@@ -29,7 +32,7 @@ export function StickerShelf() {
     return () => {
       live = false
     }
-  }, [profile, log, store])
+  }, [profile, log, store, settings.language])
 
   if (!earned) return null
   const day = (d: string) => new Date(`${d}T12:00`).toLocaleDateString(settings.language === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'short' })

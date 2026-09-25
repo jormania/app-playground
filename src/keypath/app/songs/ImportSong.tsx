@@ -4,6 +4,8 @@ import { SelectField } from '../../../ds/components/SelectField'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
+import type { FitMode } from '../../engine'
+import { FitChoice } from './FitChoice'
 import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
@@ -17,6 +19,8 @@ export function ImportSong() {
   const [draft, setDraft] = useState<ImportDraft | null>(null)
   const [problem, setProblem] = useState<ImportProblem | null>(null)
   const [title, setTitle] = useState('')
+  /** How notes past the keyboard are handled; null is the best choice for this song. */
+  const [fit, setFit] = useState<FitMode | null>(null)
 
   const pick = async (file: File | undefined) => {
     if (!file) return
@@ -27,6 +31,7 @@ export function ImportSong() {
       return
     }
     setProblem(null)
+    setFit(null)
     setDraft(result)
     setTitle(result.title)
   }
@@ -36,9 +41,9 @@ export function ImportSong() {
     setDraft(choosePart(draft, hand, key))
   }
 
-  // What saving would produce, shown before saving: an octave move to fit
-  // the keyboard is announced while the parts are still being chosen.
-  const preview = useMemo(() => (draft?.right ? buildImport(draft, title) : null), [draft, title])
+  // What saving would produce, shown before saving: notes past the keyboard
+  // are offered their choices while the parts are still being chosen.
+  const preview = useMemo(() => (draft?.right ? buildImport(draft, title, fit) : null), [draft, title, fit])
 
   const save = async () => {
     if (!preview) return
@@ -88,13 +93,12 @@ export function ImportSong() {
           <h2 className={styles.h2}>{t('whichPart')}</h2>
           {partSelect('right')}
           {partSelect('left')}
+          {preview && preview.options.length > 0 && <FitChoice options={preview.options} value={preview.song.fit ?? preview.options[0].mode} onChange={setFit} outside={preview.outside} atImport />}
           <div>
             <Button onClick={save} disabled={!preview}>
               {t('addToSongs')}
             </Button>
           </div>
-          {preview && preview.shifted !== 0 && <p className={styles.hint}>{t('importShifted', { octaves: Math.abs(preview.shifted / 12) })}</p>}
-          {preview && preview.outside > 0 && <p className={styles.problem}>{t('importOutside', { count: preview.outside })}</p>}
         </section>
       )}
     </main>

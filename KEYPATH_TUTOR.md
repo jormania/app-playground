@@ -580,6 +580,22 @@ yet show faintly; tapping one says what it's for, or when it was earned. A
 new one is announced once, with a cheer (`stickers:<player>` remembers which
 were shown). Below the doors; in landscape a scroll away.
 
+A second batch (2026-09-25, at Gabriel's request) made it twenty, in
+roughly the order she'll meet them: first music read from the staff, a whole
+song learnt in parts (after learning a part of it), a song with both hands,
+a song played in time (finished after a start with a clock), five different
+songs finished, a Harder song finished, every Journey step, all five rhythms
+of a Rhythm echo round, a song of her own added, a whole Today done, thirty
+practice days. Some need more than one record; `earnedStickers` keeps what
+the log has shown so far (how each song was started, songs finished, parts
+learnt, steps passed, practice days) and is told each song's level. Today
+all done is logged once a day (`today_done`) when Home first sees it.
+
+A third batch made it twenty-three: three months, six months and a year of
+practice. Unlike the week and the thirty days (days she played, counted),
+these count calendar time: she practises on a day at least that long after
+her first practice day (three months after 31 January is 30 April).
+
 **The other hand plays itself** (`songs/accompany.ts`). With a two-handed
 song and one hand chosen, the other hand's notes sound, on by default and
 remembered on the phone (chip **🎹 Other hand** beside Hands).
@@ -614,6 +630,38 @@ remembered on the phone (chip **🎹 Other hand** beside Hands).
 **Rhythm syllables.** Rhythm echo's dots say ta or ti, the Kodály way
 Hoffman teaches: a note on the beat lasting a beat or more is ta, a half
 beat or one off the beat is ti. The setup line says to speak them.
+
+### Songs wider than the keyboard
+
+An added MIDI file can reach past the PSR-E383's 61 keys (C2–C7, MIDI
+36–96). Before, a song that could be moved by whole octaves was moved
+silently, and one too wide for that kept its notes past the keys: they
+weren't drawn and couldn't be pressed, so in **Wait for it** the song stopped
+for good at the first one, and with a clock they only ever counted as missed.
+
+Now each way of fitting it has a cost, so it's a choice (`engine/range.ts`,
+`songs/FitChoice.tsx`), offered when a song is added and again from its ⋯
+menu in the song list:
+- **Move the whole song** by whole octaves: it sounds the same, lower or
+  higher. Offered only when the song spans 61 keys or fewer. The default
+  when it's offered.
+- **Move each hand on its own**, by whole octaves each: offered instead when
+  the song as a whole is too wide but each hand fits. Each hand keeps its
+  shape; the gap between them changes.
+- **Move only the notes that don't fit**, each by the fewest octaves onto
+  the keys; the rest stay as written. Always possible; those notes jump out
+  of line. A moved note landing on a key already starting at that moment is
+  left out rather than pressed twice. The default when no move above is.
+- **Leave out the notes that don't fit**; nothing else changes.
+
+Each choice says what it would change ("3 notes move an octave or two…").
+Moves are always whole octaves, so the key never changes.
+
+The notes as written are kept with the song (`Song.source`), and `fit` names
+the choice, so it can be changed later without adding the song again. Bars
+don't change, so parts already learnt stay learnt. A song added before this
+existed, with notes past the keys, is given the default choice when it's
+read, so none can get stuck.
 
 ### Progress (after step 6)
 
@@ -928,7 +976,8 @@ install it and get the full screen):
 - **Hand from the Split channel**: using channel 3 as "left hand" when Split
   is on.
 - **Import simplification**: "melody only" for arrangements too hard as
-  written (the range check and whole-octave transposition exist now).
+  written; it could become a fifth way in the choice for songs wider than
+  the keyboard (§9, "Songs wider than the keyboard").
 - **MusicXML import** (with notation rendering, a late Journey skill).
 
 **Challenges refinements** (deferred from step 6):

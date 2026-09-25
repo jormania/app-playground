@@ -30,6 +30,13 @@ export interface Song {
   phrases?: number[]
   /** How hard it is, 1 (easy) to 3, when the song says; otherwise worked out from the notes. */
   level?: 1 | 2 | 3
+  /**
+   * An added song that reaches past the keyboard keeps its notes as written
+   * here, and `fit` says how `notes` were made to fit (engine/range.ts), so the
+   * choice can be changed later without adding the song again.
+   */
+  source?: SongNote[]
+  fit?: 'moveSong' | 'moveHands' | 'moveNotes' | 'dropNotes'
 }
 
 /** Notes meant to be played together: a chord, or a single note. */

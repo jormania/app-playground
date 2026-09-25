@@ -196,6 +196,25 @@ describe('KeyPath shell, after the audit', () => {
     expect(guide.getAttribute('rel')).toContain('noopener')
   })
 
+  it('Today all done is noted once, for its sticker', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    const [p] = await new ProfileRepo(store).list()
+    const log = new EngagementLog(store)
+    await log.add(p.id, { type: 'song_finished', songId: 'starter:twinkle', practice: 'right', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
+    await log.add(p.id, { type: 'journey_finished', step: 'middleC', mode: 'practice', passed: true, wrong: 0, ms: 1 })
+    for (const game of ['race', 'echo', 'chord'] as const) await log.add(p.id, { type: 'challenge_finished', game, level: 1, score: 3, best: false, ms: 1 })
+    await store.del(K.today(p.id))
+    const doneCount = async () => (await log.read(p.id)).filter((e) => e.type === 'today_done').length
+    for (let visit = 0; visit < 2; visit++) {
+      cleanup()
+      history.replaceState(null, '', '#/')
+      await start(store)
+      expect(await screen.findByText('All done for today. See you tomorrow!')).toBeTruthy()
+      await waitFor(async () => expect(await doneCount()).toBe(1))
+    }
+  })
+
   it('stickers: the earned ones in colour, a new one announced once', async () => {
     const store = await start()
     await createPlayer('Nora')
@@ -205,7 +224,7 @@ describe('KeyPath shell, after the audit', () => {
     history.replaceState(null, '', '#/')
     await start(store)
     const shelf = within(await screen.findByRole('region', { name: /Stickers/ }))
-    expect(shelf.getByText('2 of 9')).toBeTruthy()
+    expect(shelf.getByText('2 of 23')).toBeTruthy()
     // Two at once (first song, three stars): counted, not named.
     expect(await shelf.findByText('2 new stickers! Tap one to see what it’s for.')).toBeTruthy()
     expect(shelf.getByRole('button', { name: 'Three stars on a song' }).getAttribute('data-earned')).toBe('true')
