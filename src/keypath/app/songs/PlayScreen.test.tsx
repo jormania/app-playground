@@ -102,7 +102,6 @@ describe('Play screen', () => {
     // A part waits for each note, whatever her own setting ("Keep going" here).
     await playThrough(ODE_1)
     expect(await screen.findByText('✓ Part 1 learnt!')).toBeTruthy()
-    expect(screen.getByText('Next: Part 2.')).toBeTruthy()
 
     // Straight on: no middle C this time.
     fireEvent.click(screen.getByRole('button', { name: '▶ Part 2' }))

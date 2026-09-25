@@ -142,7 +142,6 @@ export const en = {
   partMode: 'Bars {from}–{to}. A part waits for each note.',
   partLearnt: '{part} learnt!',
   partNearly: '{count|# key|# keys} went astray. Once more?',
-  partNext: 'Next: {part}.',
   partAgain: 'Again',
   partChoose: 'Choose a part',
   loopBar: 'Bar {bar}',

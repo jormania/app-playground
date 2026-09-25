@@ -144,7 +144,6 @@ export const ro: Record<StringKey, string> = {
   partMode: 'Măsurile {from}–{to}. O parte te așteaptă la fiecare notă.',
   partLearnt: '{part}: învățată!',
   partNearly: '{count|O clapă a|# clape au|# de clape au} luat-o razna. Încă o dată?',
-  partNext: 'Urmează: {part}.',
   partAgain: 'Încă o dată',
   partChoose: 'Alege o parte',
   loopBar: 'Măsura {bar}',

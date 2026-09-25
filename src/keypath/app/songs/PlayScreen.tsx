@@ -709,7 +709,6 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       {phase === 'partDone' && part && partResult && (
         <div className={styles.prompt} role="status">
           <strong>{partResult.passed ? `✓ ${t('partLearnt', { part: partName(part) })}` : t('partNearly', { count: partResult.wrong })}</strong>
-          {partResult.passed && afterPart && <span>{t('partNext', { part: partName(afterPart) })}</span>}
           <div className={styles.actions}>
             {partResult.passed && afterPart && (
               <Button size="sm" onClick={() => startPart(afterPart)}>
