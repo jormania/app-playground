@@ -1682,6 +1682,186 @@ development work. Delete it last, or re-cut it from `main`.
   not on the list above: confirming it means reading three old trees, which is a
   separate afternoon rather than a line in a table.
 
+## R-029 — The most-imported module in `src/shared/` has no test · `modernise` · `open`
+
+**Impact:** none visible. Puts coverage under the one shared module whose promise
+another app's test already depends on.
+
+Found on the Friday read, 2026-09-25. `src/shared/storage.ts` is imported by
+**23 files across seven apps** (Silva, Lexi5, WhereItWent via its re-export,
+Marquee, Radar-B, Fit Check, KeyPath) — the widest reach of anything in
+`src/shared/` — and there is no `src/shared/storage.test.ts`. The only test file
+that names `readJson` at all is
+`src/where-it-went/components/TransactionForm.test.jsx`, which uses it as a
+fixture helper rather than testing it.
+
+**Why this one matters more than an ordinary coverage gap.** The module's whole
+reason to exist is that it *cannot throw* — its header says so, and
+`src/lexi5/lib/storageBoundary.test.js` is a boundary test whose entire job is
+forcing Lexi5 through these helpers because an unguarded `setItem` in a React
+effect once blanked the app in Safari private mode. So the repo already has a
+test enforcing "use this module" and no test proving the module keeps its side of
+the bargain. Weaken a `catch` here and the boundary test still passes.
+
+Write `src/shared/storage.test.ts` against all six exports. What is worth pinning
+is the defensiveness, not the round-trip: `setItem` throwing (quota / private
+mode) returning `false` rather than propagating, malformed JSON reading as the
+fallback, a missing `localStorage`/`sessionStorage` binding, `removeJson`
+swallowing a throw, and — the subtle one — **a stored literal `null` reading as
+the fallback**, which is what `parsed ?? fallback` does and what R-030 below
+turns out to depend on. Mutation-check by removing a `catch` and confirming a
+test goes red.
+
+**Do this before R-030**, which points four more apps at this module.
+
+## R-030 — Four apps hand-write the storage triple `src/shared/storage.ts` already is · `refactor` · `open`
+
+**Impact:** none visible. Four private copies of the same six lines become three
+one-line wrappers each.
+
+Found on the Friday read, 2026-09-25, while checking R-029's reach. Cabinet,
+Tempo, Yoru and Law of the Day each open their own `lib/storage.js` with a
+private `read(key, fallback)` / `write(key, value)` / `remove(key)` triple that
+is character-for-character the body of `readJson` / `writeJson` / `removeJson`,
+down to the `// private browsing / quota exceeded — persistence is a
+nice-to-have, skip silently` comment:
+
+| File | Lines | Key prefix | Public exports |
+|---|---|---|---|
+| `src/cabinet/lib/storage.js` | 71 | `cabinet:` | 9 |
+| `src/tempo/lib/storage.js` | 81 | `tempo:` | 11 |
+| `src/yoru/lib/storage.js` | 226 | `yoru:` | 10 |
+| `src/law-of-the-day/lib/storage.js` | 93 | `lawofday:` | 16 |
+
+`src/cabinet/lib/storage.js`'s own header says *"Same read/write shape as Tempo's
+storage"* — the duplication is acknowledged in the code. Tempo's says the copy is
+kept *"per the repo's per-app convention for small pure utils"*, and **there is no
+such convention**: `CLAUDE.md` says the opposite in as many words — "Promoted here
+once a second app needed them — **extend these rather than copying an app's local
+copy**". That sentence needs deleting along with the copy.
+
+**This is the R-004 shape, not the `haptics` shape.** Unlike `haptics` (a named
+intent versus a raw vibrate pattern, genuinely different APIs), these four take
+the same arguments and mean the same thing. The only structural difference is that
+the private helpers take a key *suffix* and prepend `PREFIX`, where the shared
+ones take a whole key. So each app's three private functions collapse to
+`const read = (k, fb) => readJson(PREFIX + k, fb)` and the app's own 9–16 public
+exports (`loadOrder`, `loadModeConfig`, `loadSeason`, …) are untouched. Yoru's 226
+lines are mostly its mixer vocabulary, not storage.
+
+**Two real behavioural differences, and one of them bites** — so this is not a
+blind `git mv`:
+
+1. **A stored literal `null`.** The shared `readJson` returns `parsed ?? fallback`,
+   so `'null'` in storage reads as the *fallback*. The private `read` returns
+   `raw ? JSON.parse(raw) : fallback`, and `'null'` is a truthy string, so it
+   returns **`null`**. Verified in node. Any of these apps that persists a
+   deliberate `null` — `loadOrder()` returns `read('order', null)`, so the two
+   agree there by luck — changes answer. Check each key before converting.
+2. **`writeJson` returns a boolean**; the private `write` returns nothing. Adopting
+   the shared one is strictly more information and no caller reads it today.
+
+**None of the four apps has a storage test** (`ls src/{cabinet,tempo,yoru,law-of-the-day}/lib/*.test.*`
+— no `storage.test.js` anywhere), so the existing suite will *not* prove this move
+the way R-004's did. That is the main cost of the item: each conversion needs its
+own test first. **One app per run**, and take Cabinet first — it is the smallest
+and its header already admits the copy.
+
+## R-031 — `formatRelativeTime` is byte-identical in Cabinet and Tempo · `refactor` · `open`
+
+**Impact:** none visible. The cleanest duplicate in the repo: twelve lines and a
+27-line test file, twice.
+
+Found on the Friday read, 2026-09-25. `src/cabinet/lib/relativeTime.js` and
+`src/tempo/lib/relativeTime.js` are the same function character for character
+(comments aside), and `src/cabinet/lib/relativeTime.test.js` and
+`src/tempo/lib/relativeTime.test.js` are both 27 lines of the same assertions.
+One importer each — `src/cabinet/components/AppTile.jsx` and
+`src/tempo/components/ModePicker.jsx` — both rendering a "last opened" line.
+
+This is the R-004 pattern with nothing in the way: promote to
+`src/shared/relativeTime.ts`, leave both app paths as thin re-exports, and **both
+apps' existing tests prove the move** — which is exactly what R-030 above cannot
+offer. It is the smaller and safer of the two, so it is the better warm-up.
+
+`now` is already an injectable second parameter defaulting to `Date.now()`, so
+there is no R-013-shaped clock hazard here. Add the `src/shared/` clause to
+`CLAUDE.md` when it lands.
+
+**Tempo's copy carries the same false convention note as R-030's** — *"kept as a
+separate local copy, not shared, per the repo's per-app convention for small pure
+utils"*. Delete it rather than move it; whichever of these two items lands first
+should take the sentence out of `CLAUDE.md`'s way for the other.
+
+**One more of the same family, recorded rather than filed** — `useHashRoute` is
+duplicated in `src/sol-odyssey/lib/useHashRoute.ts` (31 lines) and
+`src/daily-stoic/lib/useHashRoute.ts` (33), differing only in the
+service-worker message type it listens for (`sol-odyssey:navigate` vs
+`daily-stoic:navigate`) and its doc comment. It would promote as
+`useHashRoute(navigateMessageType)`. Not filed as its own item because **neither
+copy has a test in either app** — `grep -rln useHashRoute --include='*.test.*'`
+is empty — so it is a promotion *and* first coverage for the thing that routes
+two apps, which is a bigger morning than this item. Written down here so the
+evidence survives; promote it to a real item if it is wanted.
+
+## R-032 — `src/ds/index.ts` omits four components that four apps import past it · `refactor` · `open`
+
+**Impact:** none visible. Makes the design system's documented front door tell the
+truth.
+
+Found on the Friday read, 2026-09-25. `src/ds/index.ts` opens with *"Public entry
+for the design system. Consumers import from here"*, and mostly they do — **88
+import sites** use the barrel (`from '../../ds'`). But **73 sites reach past it**
+to `ds/components/<X>`, and for four components that is not a style preference,
+it is the only option, because the barrel does not export them at all:
+
+| Component | In `index.ts` | Importers | Apps |
+|---|---|---|---|
+| `SelectField` | no | 8 | WhereItWent, Lexi5, Marquee, KeyPath |
+| `FormError` | no | 6 | WhereItWent |
+| `ModalFooter` | no | 5 | WhereItWent |
+| `FormField` | no | 2 | WhereItWent |
+
+So the barrel exports all fourteen of the components an app *could* reach either
+way and none of the four it *must* reach around. A new app following
+`src/ds/README.md` and importing from `'../../ds'` finds no select field and
+concludes the DS has none.
+
+The fix is four `export` lines plus their prop types, in the shape the existing
+entries use. Whether to then convert the deep-path call sites is a separate
+question and probably a no — 73 rewrites is not a ten-minute review, and mixed
+styles are not a defect once both work. **Add the exports, leave the call sites,
+and say so on the PR.** Behaviour-preserving: nothing currently importing these
+changes path.
+
+Check `src/ds/boundary.test.js` still passes unchanged — it enforces the one-way
+DS → new-apps rule and a new export must not give a legacy app a new way in.
+
+## R-033 — The DS confirm/alert dialogs have no test, in five apps that delete things with them · `modernise` · `open`
+
+**Impact:** none visible. Coverage under the component that asks "are you sure?"
+before something is destroyed.
+
+Found on the Friday read, 2026-09-25. `src/ds/components/Dialogs.tsx` (119 lines,
+`ConfirmModal` / `PromptModal` / `AlertModal`) has **no test file**, and it is
+reached from **48 call sites in five apps** — WhereItWent 22, Silva 13, Lexi5 6,
+Fit Check 5, Marquee 2. `src/ds/components/Modal.test.tsx` mentions `ConfirmModal`
+exactly once, in a comment, and never imports it.
+
+`ConfirmModal` takes `variant: 'primary' | 'danger'` and an `onConfirm` /
+`onCancel` pair, and it is what stands between a tap and a deleted transaction,
+specimen or garment. The failure worth pinning is not a crash — it is
+`onConfirm` firing on the cancel path, or `variant="danger"` silently rendering as
+primary after a `Button` change, neither of which any current test would catch.
+
+Three other DS components have no test either, and they are — not coincidentally
+— three of R-032's four: `FormError`, `FormField`, `SelectField`. `SelectField`
+has eight importers across four apps. Every other component under
+`src/ds/components/` has one.
+
+**Take `Dialogs.tsx` first**, as the item title says; the other three are a
+follow-up run, not this one. `src/ds/components/Modal.test.tsx` is the house style
+to copy — it already renders a nested dialog, so the harness is there.
 
 ---
 
