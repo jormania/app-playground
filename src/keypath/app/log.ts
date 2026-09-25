@@ -11,6 +11,8 @@ export type LogEvent =
   | { type: 'session_start' }
   | { type: 'session_end'; durationMs: number }
   | { type: 'door_opened'; door: Door }
+  /** Back on Home from a door: where the door's time stops (Progress). */
+  | { type: 'door_left'; door: Door }
   | { type: 'setting_changed'; key: string; from: unknown; to: unknown }
   | { type: 'profile_created' }
   | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string }
@@ -33,7 +35,7 @@ export type LogEvent =
   | { type: 'journey_left'; step: string; mode: 'practice' | 'check'; ms: number }
   /** Studio: opened from its door or from a song's "Make it yours". */
   | { type: 'studio_opened'; from: 'door' | 'song'; songId?: string }
-  | { type: 'studio_recorded'; ms: number; notes: number; style: boolean; songId?: string; countIn?: number }
+  | { type: 'studio_recorded'; ms: number; notes: number; style: boolean; songId?: string; countIn?: number; click?: boolean }
   | { type: 'studio_kept'; takeId: string }
   | { type: 'studio_played'; takeId: string; via: 'keyboard' | 'phone' }
   | { type: 'studio_favourite'; takeId: string; on: boolean }

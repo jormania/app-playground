@@ -15,6 +15,7 @@ import { SongLibrary } from '../songs/library'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
 import { Playback, realClock, type Sink } from './playback'
 import { midiFilename, takeToSmf } from './midiExport'
+import { CLICK, Metronome } from './metronome'
 import { MAX_TAKE_MS, Recorder, type Recording } from './recorder'
 import { OutputChoice, useOutput } from './output'
 import { saveFile } from './saveFile'
@@ -28,7 +29,8 @@ const HIGH = 84
 /** Count-in tempos on offer; 0 is off. Chosen once per phone, like where takes play. */
 const COUNT_INS = [0, 60, 80, 100, 120] as const
 const COUNT_IN_KEY = `${PREFIX}studioCountIn`
-const CLICK = 84 // C6 on the piano, as in Challenges' rhythm echo
+/** The metronome: clicks for the count-in only, or on every beat of the take too. Remembered like the count-in. */
+const CLICK_KEY = `${PREFIX}studioClick`
 const BEATS = 4
 
 const clock = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`
@@ -67,6 +69,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const recordFrom = useRef(-Infinity)
   const takeBpm = useRef<number | undefined>(undefined)
   const countingIn = useRef<(() => void) | null>(null)
+  const metronome = useRef<Metronome | null>(null)
+  const [clickAll, setClickAll] = useState(false)
   const styleOn = useRef(false)
   const styleDuringTake = useRef(false)
   const playback = useRef<Playback | null>(null)
@@ -78,7 +82,12 @@ export function StudioScreen({ songId }: { songId?: string }) {
   }, [repo, profileId])
   useEffect(() => {
     void store.get<number>(COUNT_IN_KEY).then((v) => typeof v === 'number' && setCountIn(v))
+    void store.get<boolean>(CLICK_KEY).then((v) => typeof v === 'boolean' && setClickAll(v))
   }, [store])
+  const chooseClick = (all: boolean) => {
+    setClickAll(all)
+    void store.set(CLICK_KEY, all)
+  }
   const chooseCountIn = (v: number) => {
     setCountIn(v)
     void store.set(COUNT_IN_KEY, v)
@@ -102,6 +111,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
     }
     // While a take plays on the keyboard, anything it echoes back isn't her.
     if (playback.current?.playing) return
+    // The metronome's own clicks, should the keyboard send them back, aren't her playing.
+    if ((e.type === 'noteon' || e.type === 'noteoff') && metronome.current?.isClick(e.note, e.time)) return
     if (!('time' in e) || e.time >= recordFrom.current) recorder.current?.feed(e)
     if ((e.type === 'noteon' || e.type === 'noteoff') && isPlayerChannel(e.channel)) {
       const on = e.type === 'noteon'
@@ -148,6 +159,9 @@ export function StudioScreen({ songId }: { songId?: string }) {
     const rec = recorder.current
     if (!rec) return
     recorder.current = null
+    const clicked = !!metronome.current
+    metronome.current?.stop()
+    metronome.current = null
     setRecording(null)
     const r = rec.stop(performance.now())
     if (r.notes.length === 0) {
@@ -165,16 +179,25 @@ export function StudioScreen({ songId }: { songId?: string }) {
         style,
         ...(songId ? { songId } : {}),
         ...(bpm ? { countIn: bpm } : {}),
+        ...(clicked ? { click: true } : {}),
       })
   }, [t, profileId, log, songId])
 
   const cancelCountIn = useCallback(() => {
     countingIn.current?.()
     countingIn.current = null
+    metronome.current?.stop()
+    metronome.current = null
     recorder.current = null
     setCounting(null)
   }, [])
-  useEffect(() => () => countingIn.current?.(), [])
+  useEffect(
+    () => () => {
+      countingIn.current?.()
+      metronome.current?.stop()
+    },
+    [],
+  )
 
   const startRecording = () => {
     stopPlayback()
@@ -205,6 +228,11 @@ export function StudioScreen({ songId }: { songId?: string }) {
     recordFrom.current = startAt - beat / 2
     takeBpm.current = countIn
     recorder.current = new Recorder(startAt)
+    // "Whole take": the clicks carry on from beat 1, so the bars stay where the count-in put them.
+    if (clickAll) {
+      metronome.current = new Metronome(output.sink(), countIn, startAt)
+      metronome.current.start()
+    }
     setCounting(BEATS)
     const id = setInterval(() => {
       const now = performance.now()
@@ -382,16 +410,23 @@ export function StudioScreen({ songId }: { songId?: string }) {
         {!recording && counting === null && (
           <div className={setup.field}>
             <span className={setup.label}>{t('studioCountIn')}</span>
-            <SegmentedControl
-              size="sm"
-              value={String(countIn)}
-              onChange={(v) => chooseCountIn(Number(v))}
-              options={COUNT_INS.map((b) => ({ value: String(b), label: b ? String(b) : t('studioCountInOff') }))}
-            />
+            <div className={setup.controls}>
+              <SegmentedControl
+                size="sm"
+                value={String(countIn)}
+                onChange={(v) => chooseCountIn(Number(v))}
+                options={COUNT_INS.map((b) => ({ value: String(b), label: b ? String(b) : t('studioCountInOff') }))}
+              />
+              {countIn > 0 && (
+                <button type="button" className={setup.chip} aria-pressed={clickAll} onClick={() => chooseClick(!clickAll)}>
+                  {t('studioClickTake')}
+                </button>
+              )}
+            </div>
           </div>
         )}
         {!recording && counting === null && <OutputChoice output={output} label={t('studioPlayOn')} phoneOnly={t('studioPlaysOnPhone')} />}
-        {countIn > 0 && !recording && counting === null && <p className={setup.note}>{t('studioCountInHint', { bpm: countIn })}</p>}
+        {countIn > 0 && !recording && counting === null && <p className={setup.note}>{t(clickAll ? 'studioClickTakeHint' : 'studioCountInHint', { bpm: countIn })}</p>}
         {message && <p className={setup.note}>{message}</p>}
         {pending && (
           <div className={styles.pending}>

@@ -21,9 +21,9 @@ export interface DoorStats {
   /** Sessions in which this was the first door opened. */
   firstOpens: number
   /**
-   * Roughly how long she spent there: from opening the door until the next
-   * door, or the end of the session. Time back on Home is counted in it,
-   * because the log records opening a door, not leaving one.
+   * How long she spent there: from opening the door until she's back on Home
+   * (`door_left`), or else until the next door or the end of the session.
+   * Logs from before `door_left` existed still count time on Home to the door.
    */
   minutes: number
 }
@@ -105,6 +105,10 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
       case 'session_end':
         closeDoor(t)
         sessionMs += r.durationMs
+        break
+      case 'door_left':
+        // Back on Home: the door's time stops, rather than running on until the next door.
+        if (open?.door === r.door) closeDoor(t)
         break
       case 'door_opened':
         closeDoor(t)

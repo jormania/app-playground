@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { MidiEvent } from '../../midi/types'
 import { memoryStore } from '../store'
 import { LOOKAHEAD_MS, Playback, type Clock, type Sink } from './playback'
+import { CLICK, Metronome } from './metronome'
 import { Recorder, type Recording } from './recorder'
 import { keyboardSink } from './sinks'
 import { MAX_KEPT, TakeRepo } from './takes'
@@ -173,5 +174,36 @@ describe('TakeRepo', () => {
     for (let i = 0; i < MAX_KEPT; i++) await repo.keep('nora', rec, { style: false })
     expect(await repo.keep('nora', rec, { style: false })).toBeNull()
     expect(await repo.list('nora')).toHaveLength(MAX_KEPT)
+  })
+})
+
+describe('Metronome', () => {
+  it('clicks every beat from the take’s first beat, louder on each bar’s first, a little ahead of time', () => {
+    const c = fakeClock()
+    const { sink, sent } = recordingSink()
+    const m = new Metronome(sink, 120, 1000, c.clock) // a beat every 500 ms, beat 1 at 1000
+    m.start()
+    expect(sent).toEqual([]) // nothing yet: beat 1 is further off than the lookahead
+    c.advance(1000)
+    const ons = () => sent.filter((x) => x.startsWith('on'))
+    expect(ons()).toEqual([`on ${CLICK} 110 @1000`]) // handed over with its exact time; 1500 is past the lookahead
+    c.advance(1800)
+    expect(ons().map((x) => x.split(' ')[2])).toEqual(['110', '70', '70', '70', '110']) // bar 2 starts at 3000
+    expect(sent.some((x) => x.startsWith(`off ${CLICK}`))).toBe(true)
+    m.stop()
+    expect(sent.at(-1)).toBe('silence')
+    expect(c.running).toBe(false)
+  })
+
+  it('knows its own clicks when the keyboard sends them back, and not her notes', () => {
+    const c = fakeClock()
+    const { sink } = recordingSink()
+    const m = new Metronome(sink, 120, 0, c.clock)
+    m.start()
+    c.advance(600)
+    expect(m.isClick(CLICK, 505)).toBe(true) // the 500 ms click, echoed 5 ms late
+    expect(m.isClick(CLICK, 250)).toBe(false) // the same key between clicks: hers
+    expect(m.isClick(60, 500)).toBe(false) // another key on the beat: hers
+    m.stop()
   })
 })

@@ -192,3 +192,28 @@ describe('KeyPath shell, after the audit', () => {
     expect(screen.queryByText(/\d{4}-\d{2}-\d{2}/)).toBeNull()
   })
 })
+
+describe('KeyPath shell: time per door', () => {
+  it('logs leaving a door when she is back on Home, and not for a detour to Settings', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    fireEvent.click(screen.getByRole('button', { name: /Songs/ }))
+    await screen.findByText('Starter songs')
+    act(() => {
+      history.pushState(null, '', '#/settings')
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    await screen.findByText('Settings for Nora')
+    act(() => {
+      history.pushState(null, '', '#/')
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    await screen.findByText('Hi, Nora!')
+    const [p] = await new ProfileRepo(store).list()
+    await waitFor(async () => {
+      const types = (await new EngagementLog(store).read(p.id)).map((e) => e.type)
+      expect(types.filter((x) => x === 'door_left')).toHaveLength(1)
+    })
+    expect((await new EngagementLog(store).read(p.id)).find((e) => e.type === 'door_left')).toMatchObject({ door: 'songs' })
+  })
+})
