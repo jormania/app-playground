@@ -11,6 +11,9 @@ shared doc, linked from the top of Home.
   between the hands, at a line it suggests and she can move. Notes past the 61 keys
   default to moving only those notes when they're few (under 5% of the song); "move
   only" isn't offered when it would change nothing (KEYPATH_TUTOR.md §9).
+- **Every song says how hard, one hand or two, and how long** (Easy · Two hands · 0:32).
+  An added song is rated by what it asks of the hands, held to the starter pack's
+  own levels, and the level can be changed at import or later.
 
 ## Release 1 — 2026-09-25
 

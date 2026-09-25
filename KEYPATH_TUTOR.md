@@ -556,8 +556,8 @@ Slices 2, 3 and 4 of §10's "Learning curve", in one go at Gabriel's request.
 
 **Levels** (`songs/level.ts`). Easy, Medium, Harder on every song in the
 list, which is now easiest first. The starter pack says its own (`level`);
-an added song is judged from its notes: notes a second, spread, black keys,
-chords, both hands. The report offers **Try next:** the easiest song she
+an added song is rated from its notes (see "How hard, how long, how many
+hands" below). The report offers **Try next:** the easiest song she
 hasn't finished, at this song's level or above.
 
 **Today** (`screens/today.ts`, `TodayCard.tsx`), in place of the resume
@@ -692,6 +692,37 @@ before the fit to the keyboard, so each hand is then fitted as a hand.
 
 A split by pitch is a guess: where the hands cross, a note goes to the wrong
 one. Choosing a left-hand part turns the split off.
+
+### How hard, how long, how many hands
+
+Every song in the list now reads, under its title, *Easy · Two hands · 0:32*:
+its level, whether it has notes for one hand or both, and its length at its
+own tempo (`songs/SongFacts.tsx`). The hands were a 🖐/🖐🖐 and the length
+was "32 s" at the far right of the row; neither read as a marker.
+
+**The rating** (`songs/level.ts`). An added song's level used to come from a
+count (notes a second, overall spread, black keys, chords, two hands) that
+agreed with the starter pack's hand-set levels on only four of ten songs; it
+called Happy Birthday Easy. It now scores what each hand is asked to do, as
+the starter levels were set, and takes the harder hand:
+- reach: a hand's lowest to highest key past a sixth (+1), past two octaves (+2);
+- jumps between one note or chord and the next (the top note for the right
+  hand, the bottom for the left): past a fifth (+1), an octave or more (+2);
+- speed at the written tempo: at least 5% of the gaps under 320 ms (+1),
+  under 200 ms (+2), so a few grace notes don't count;
+- black keys over 10% of the notes (+1); chords in a hand (+1);
+- a left hand that keeps pace with the tune, three notes to its four or more
+  (+1): a waltz's bass and chords count, Twinkle's slow roots don't.
+
+0 points is Easy, 1–3 Medium, 4 or more Harder. `level.test.ts` rates every
+starter song with its level hidden and requires its own level back, so the
+two scales can't drift apart.
+
+**Setting it.** At import, under *This song* (hands, length), *Level* shows
+the rating and lets her pick another; the same is in the song's ⋯ menu. A
+level equal to the rating isn't stored, so the rating follows later changes
+(a different fit, say); one that differs is kept as `Song.level`, and
+survives a refit. Built-in songs keep theirs.
 
 ### Progress (after step 6)
 

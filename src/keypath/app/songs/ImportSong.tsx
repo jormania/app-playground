@@ -7,6 +7,8 @@ import { TopBar } from '../screens/TopBar'
 import { SPLIT_RANGE, type FitMode } from '../../engine'
 import { FitChoice } from './FitChoice'
 import { noteLabel } from '../i18n'
+import { ratedLevel, type Level } from './level'
+import { LevelPick, SongFacts } from './SongFacts'
 import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
@@ -22,6 +24,8 @@ export function ImportSong() {
   const [title, setTitle] = useState('')
   /** How notes past the keyboard are handled; null is the best choice for this song. */
   const [fit, setFit] = useState<FitMode | null>(null)
+  /** The level she chose; null keeps the one its notes earn. */
+  const [level, setLevel] = useState<Level | null>(null)
 
   const pick = async (file: File | undefined) => {
     if (!file) return
@@ -33,6 +37,7 @@ export function ImportSong() {
     }
     setProblem(null)
     setFit(null)
+    setLevel(null)
     setDraft(result)
     setTitle(result.title)
   }
@@ -48,10 +53,13 @@ export function ImportSong() {
 
   const save = async () => {
     if (!preview) return
-    await library.add(preview.song)
+    // A chosen level is kept only when it differs from the rating, so the rating stays live otherwise.
+    await library.add(level !== null && level !== rated ? { ...preview.song, level } : preview.song)
     if (profile) await log.add(profile.id, { type: 'song_added' })
     navigate({ name: 'play', songId: preview.song.id }, { replace: true })
   }
+
+  const rated = preview ? ratedLevel(preview.song) : 1
 
   /** A key by name and octave, middle C marked: C4 (middle C). */
   const keyName = (p: number) => `${noteLabel(p, settings.noteNames, settings.language)}${Math.floor(p / 12) - 1}${p === 60 ? ` (${t('middleCShort')})` : ''}`
@@ -123,6 +131,15 @@ export function ImportSong() {
             </div>
           )}
           {preview && preview.options.length > 0 && <FitChoice options={preview.options} value={preview.song.fit ?? preview.options[0].mode} onChange={setFit} outside={preview.outside} atImport />}
+          {preview && (
+            <>
+              <div className={styles.levelPick}>
+                <span className={styles.levelPickLabel}>{t('thisSong')}</span>
+                <SongFacts song={preview.song} showLevel={false} />
+              </div>
+              <LevelPick level={level ?? rated} rated={rated} onChange={setLevel} />
+            </>
+          )}
           <div>
             <Button onClick={save} disabled={!preview}>
               {t('addToSongs')}

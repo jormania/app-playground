@@ -6,12 +6,10 @@ import { TopBar } from '../screens/TopBar'
 import { MAX_TITLE, SongLibrary, type LibraryEntry } from './library'
 import { fitOptions, type FitMode } from '../../engine'
 import { FitChoice } from './FitChoice'
-import { byLevel, levelOf, type Level } from './level'
+import { byLevel, levelOf, ratedLevel, type Level } from './level'
+import { LevelPick, SongFacts } from './SongFacts'
 import { playedWhen, songProgress, type SongProgress } from './songProgress'
 import styles from './songs.module.css'
-import type { StringKey } from '../i18n'
-
-export const LEVEL_NAME: Record<Level, StringKey> = { 1: 'levelEasy', 2: 'levelMedium', 3: 'levelHard' }
 
 /** The Songs door: the starter pack, then the family's own songs, then "Add a song". Each with her stars and when she last played it. */
 export function SongsHome() {
@@ -58,6 +56,10 @@ export function SongsHome() {
     await library.refit(id, mode)
     setEntries(await library.list(settings.language))
   }
+  const relevel = async (id: string, level: Level) => {
+    await library.setLevel(id, level)
+    setEntries(await library.list(settings.language))
+  }
   const remove = async (id: string) => {
     if (!sure) return setSure(true)
     await library.remove(id)
@@ -82,6 +84,7 @@ export function SongsHome() {
         <button type="button" className={styles.songItem} onClick={() => navigate({ name: 'play', songId: e.song.id })}>
           <span className={styles.songText}>
             <span className={styles.songTitle}>{e.song.title}</span>
+            <SongFacts song={e.song} />
             {p && (
               <span className={styles.songProgress}>
                 {p.bestStars !== null && (
@@ -93,12 +96,6 @@ export function SongsHome() {
                 <span>{when(p.lastPlayed)}</span>
               </span>
             )}
-          </span>
-          <span className={styles.songMeta}>
-            <span className={styles.songLevel} data-level={levelOf(e.song)}>
-              {t(LEVEL_NAME[levelOf(e.song)])}
-            </span>{' '}
-            {e.song.notes.some((n) => n.hand === 'left') ? '🖐🖐' : '🖐'} · {Math.round(e.song.durationMs / 1000)} s
           </span>
         </button>
         {editable && (
@@ -120,6 +117,7 @@ export function SongsHome() {
                 {t('songSaveTitle')}
               </Button>
             </form>
+            <LevelPick level={levelOf(e.song)} rated={ratedLevel(e.song)} onChange={(l) => void relevel(e.song.id, l)} />
             {e.song.source && fitSection(e)}
             <div className={styles.actions}>
               <Button size="sm" variant={sure ? 'danger' : 'ghost'} onClick={() => void remove(e.song.id)}>

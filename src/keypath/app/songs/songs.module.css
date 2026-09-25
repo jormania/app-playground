@@ -83,10 +83,31 @@
 .songTitle {
   font-weight: var(--weight-bold);
 }
-.songMeta {
-  flex: none;
+.songFacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-xs);
   color: var(--color-muted);
   font-size: var(--text-sm);
+}
+/* A dot between the facts: Easy · Two hands · 0:32 */
+.songFacts > * + *::before {
+  content: '·';
+  margin-right: var(--space-xs);
+  color: var(--color-muted);
+  font-weight: var(--weight-regular);
+}
+.songHands[data-hands='2'] {
+  color: var(--color-ink);
+}
+.levelPick {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: start;
+}
+.levelPickLabel {
+  font-weight: var(--weight-medium);
 }
 /* A row: the song, and for her own songs a ⋯ that opens its title and Remove. */
 .songRow {

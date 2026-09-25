@@ -1,13 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { songOf } from '../../engine/testing/songs'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
-import { byLevel, levelOf, tryNext } from './level'
+import { byLevel, levelOf, ratedLevel, tryNext } from './level'
 
 describe('song levels', () => {
   it('the starter pack says its own, and every song has one', () => {
     for (const s of STARTER_PACK) expect([1, 2, 3], s.id).toContain(levelOf(starterSong(s)))
     expect(levelOf(starterSong(STARTER_PACK.find((s) => s.id === 'starter:twinkle')!))).toBe(1)
     expect(levelOf(starterSong(STARTER_PACK.find((s) => s.id === 'starter:elise')!))).toBe(3)
+  })
+
+  it('rates each starter song at the level it was given, with that level hidden', () => {
+    // The starter levels were set by hand; the rating for added songs is held to them.
+    for (const s of STARTER_PACK) expect(ratedLevel(starterSong(s)), s.id).toBe(s.level)
+  })
+
+  it('a level she chose wins over the rating', () => {
+    const easy = songOf([60, 62, 64, 65, 67].map((p, i): [number, number] => [p, i * 1000]))
+    expect(levelOf({ ...easy, level: 3 })).toBe(3)
+    expect(ratedLevel({ ...easy, level: 3 })).toBe(1)
   })
 
   it('an added song is judged from its notes', () => {
@@ -19,6 +30,10 @@ describe('song levels', () => {
       busy.push([61 + (i % 3) * 12, i * 150, 'right'], [66 + (i % 2) * 12, i * 150, 'right'], [36, i * 150, 'left'])
     }
     expect(levelOf(songOf(busy))).toBe(3)
+    // A tune that moves about the keys in quick notes, one hand, white keys: medium.
+    expect(levelOf(songOf([60, 64, 67, 71, 72, 71, 67, 64].map((p, i): [number, number] => [p, i * 280])))).toBe(2)
+    // An octave leap in quick notes, and black keys: harder, as Happy Birthday is.
+    expect(levelOf(songOf([67, 67, 79, 76, 72, 71, 69, 77, 77, 76, 72, 74, 72].map((p, i): [number, number] => [p, i * 150])))).toBe(3)
   })
 
   it('suggests the easiest song not finished yet, at this song’s level or above', () => {

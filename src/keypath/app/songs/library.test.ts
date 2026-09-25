@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { melodyFile, meta, on, off, pianoFile, smf, track, waltzPiano } from '../../engine/testing/smfBuilder'
 import { memoryStore } from '../store'
+import { ratedLevel } from './level'
 import { buildImport, choosePart, draftFromFile, SongLibrary, type ImportDraft } from './library'
 
 const bytes = (u: Uint8Array) => u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) as ArrayBuffer
@@ -109,6 +110,22 @@ describe('both hands in one track', () => {
   it('can be moved, or turned off to keep it all in the right hand', () => {
     expect(buildImport({ ...draft(), split: 60 }, '').song.notes.filter((x) => x.hand === 'left').length).toBe(16)
     expect(buildImport({ ...draft(), split: null }, '').song.notes.every((x) => x.hand === 'right')).toBe(true)
+  })
+
+  it('is rated as played, bass and chords in the left hand, and a level she sets is kept', async () => {
+    const { song } = buildImport(draft(), 'Waltz')
+    // The left hand jumps from the bass to the chords, and has four notes to the tune's one: Harder.
+    expect(ratedLevel(song)).toBe(3)
+    const lib = new SongLibrary(memoryStore())
+    await lib.add(song)
+    await lib.setLevel(song.id, 2)
+    expect((await lib.get(song.id, 'en'))?.level).toBe(2)
+    // Changing how it fits the keys keeps her level.
+    await lib.refit(song.id, 'dropNotes')
+    expect((await lib.get(song.id, 'en'))?.level).toBe(2)
+    // Set back to its rating, nothing is kept.
+    await lib.setLevel(song.id, 3)
+    expect((await lib.get(song.id, 'en'))?.level).toBeUndefined()
   })
 
   it('a melody file is not offered a split', () => {

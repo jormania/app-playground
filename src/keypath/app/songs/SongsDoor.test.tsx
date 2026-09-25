@@ -60,6 +60,32 @@ describe('Songs, for everyday use', () => {
     expect(screen.getAllByText('Harder').length).toBe(2)
   })
 
+  it('says for each song how hard, one hand or two, and how long', async () => {
+    ;(await setUp('#/door/songs')).go()
+    const twinkle = await screen.findByRole('button', { name: /Twinkle/ })
+    expect(twinkle.textContent).toContain('Easy')
+    expect(twinkle.textContent).toContain('Two hands')
+    expect(twinkle.textContent).toContain('0:32')
+    expect(screen.getByRole('button', { name: /Frère Jacques/ }).textContent).toContain('One hand')
+  })
+
+  it('an added song’s level can be changed, and set back to its rating', async () => {
+    const { store, go } = await setUp('#/door/songs')
+    go()
+    const row = () => screen.getByRole('button', { name: /^Three notes/ })
+    await screen.findByText('Three notes')
+    expect(row().textContent).toContain('Easy')
+    fireEvent.click(screen.getByRole('button', { name: 'More for Three notes' }))
+    expect(screen.getByText('Rated from its notes: Easy. If it plays easier or harder than that, choose another.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('radio', { name: 'Harder' }))
+    await waitFor(() => expect(row().textContent).toContain('Harder'))
+    expect((await new SongLibrary(store).get(SHORT.id, 'en'))?.level).toBe(3)
+    // Back to the rating: nothing is kept, so the rating stays live.
+    fireEvent.click(screen.getByRole('radio', { name: 'Easy' }))
+    await waitFor(() => expect(row().textContent).toContain('Easy'))
+    expect((await new SongLibrary(store).get(SHORT.id, 'en'))?.level).toBeUndefined()
+  })
+
   it('shows her best stars and when she last played, song by song', async () => {
     const { profileId, log, go } = await setUp('#/door/songs')
     await log.add(profileId, { type: 'song_started', songId: 'starter:ode', practice: 'right', tempo: 1, mode: 'wait' })

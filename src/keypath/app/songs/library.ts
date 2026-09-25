@@ -1,6 +1,7 @@
 import { parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import type { Language } from '../profiles'
+import { ratedLevel, type Level } from './level'
 import { PREFIX, type KeyValueStore } from '../store'
 
 const SONGS_KEY = `${PREFIX}songs`
@@ -52,6 +53,19 @@ export class SongLibrary {
     await this.store.set(
       SONGS_KEY,
       imported.map((s) => (s.id === id ? fitSong(s, mode) : s)),
+    )
+  }
+
+  /** Set an added song's level. The level its notes earn is kept as none, so the rating stays live. */
+  async setLevel(id: string, level: Level): Promise<void> {
+    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
+    await this.store.set(
+      SONGS_KEY,
+      imported.map((s): Song => {
+        if (s.id !== id) return s
+        const { level: _set, ...rest } = s
+        return ratedLevel(rest) === level ? rest : { ...rest, level }
+      }),
     )
   }
 
