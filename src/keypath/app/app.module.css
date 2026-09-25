@@ -336,39 +336,154 @@
   }
 }
 
-/* "Pick up where you left off" */
-.resume {
-  display: grid;
-  gap: 2px;
-  text-align: left;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  border-left: 6px solid var(--color-accent);
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font: inherit;
-  cursor: pointer;
-  animation: doorIn 420ms ease-out both;
-}
-.resume:active {
-  transform: scale(0.99);
-}
-.resumeLabel {
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-.resumeWhat {
-  font: var(--weight-bold) var(--text-lg) / 1.25 var(--font-display);
-}
-.resumeStars {
-  color: #d9a520;
-}
 @media (prefers-reduced-motion: reduce) {
   .view,
   .door,
-  .avatarSmall,
-  .resume {
+  .avatarSmall {
+    animation: none;
+  }
+}
+
+/* ── Today, and the stickers ── */
+.today,
+.stickers {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  animation: doorIn 420ms ease-out both;
+}
+.today {
+  border-top: 4px solid #d9a520;
+}
+.todayHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3xs) var(--space-sm);
+}
+.todayTitle {
+  margin: 0;
+  font: var(--weight-bold) var(--text-lg) / 1.2 var(--font-display);
+}
+.todayHint {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.todayItems,
+.stickerRow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.todayItems {
+  display: grid;
+  gap: var(--space-2xs);
+}
+.todayItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.todayItem:active {
+  transform: scale(0.99);
+}
+.todayCheck {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--color-border-2);
+  display: grid;
+  place-items: center;
+  font-weight: var(--weight-bold);
+  color: var(--color-on-accent);
+}
+.todayItem[data-done] .todayCheck {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+.todayItem[data-done] .todayWhat {
+  color: var(--color-muted);
+}
+.todayText {
+  display: grid;
+  min-width: 0;
+}
+.todayKind {
+  color: var(--color-muted);
+  font-size: var(--text-xs, 0.75rem);
+}
+.todayWhat {
+  font-weight: var(--weight-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stickerRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+.sticker {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  border: 2px dashed var(--color-border-2);
+  background: var(--color-bg);
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+.sticker > span {
+  filter: grayscale(1);
+  opacity: 0.25;
+}
+.sticker[data-earned] {
+  border-style: solid;
+  border-color: #d9a520;
+  background: var(--color-surface);
+}
+.sticker[data-earned] > span {
+  filter: none;
+  opacity: 1;
+}
+.sticker[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px var(--color-accent);
+}
+.sticker[data-new] {
+  animation: stickerNew 900ms ease-out 400ms both;
+}
+@keyframes stickerNew {
+  0% {
+    transform: scale(0.4) rotate(-20deg);
+  }
+  60% {
+    transform: scale(1.25) rotate(8deg);
+  }
+}
+.stickerLine {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+@media (prefers-reduced-motion: reduce) {
+  .today,
+  .stickers,
+  .sticker[data-new] {
     animation: none;
   }
 }
@@ -383,6 +498,37 @@
   }
   .doors {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  /* Today in one row above the doors, its three items side by side; the
+     stickers wait below the doors, a scroll away. */
+  .todayItems {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .sticker {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.1rem;
+  }
+  /* One line an item: what it is shows in its icon. */
+  .todayItem {
+    min-height: 2.25rem;
+    padding: 2px var(--space-sm);
+  }
+  .todayKind {
+    display: none;
+  }
+  .todayCheck {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  /* The doors keep their titles; the blurbs are for a first look, in portrait. */
+  .doorBlurb {
+    display: none;
+  }
+  .sticker {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.1rem;
   }
   .door {
     grid-template-columns: minmax(0, 1fr);

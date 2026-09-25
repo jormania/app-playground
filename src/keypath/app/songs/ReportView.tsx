@@ -19,6 +19,8 @@ interface Props {
   onMakeItYours: () => void
   /** Loop one bar (0-based) until it's clean. */
   onPractiseBar?: (bar: number) => void
+  /** The song to try after this one, when there is one. */
+  next?: { title: string; onOpen: () => void } | null
 }
 
 /**
@@ -26,7 +28,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, next }: Props) {
   const { t, profile, log, updateSetting } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
@@ -105,6 +107,14 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
             )}
           </div>
         ))}
+        {next && report.stars > 0 && (
+          <div className={styles.workOn}>
+            <p className={styles.hint}>{t('tryNext')}</p>
+            <Button size="sm" variant="outline" onClick={next.onOpen}>
+              ▶ {next.title}
+            </Button>
+          </div>
+        )}
         {s && !answered && (
           <div className={styles.suggestion}>
             <p>

@@ -43,6 +43,10 @@ export interface StarterSong {
    * the simplest hand positions, a shift where the tune leaves one.
    */
   fingers?: { right?: string; left?: string }
+  /** Where each phrase starts (0-based bars), for learning the song in parts. */
+  phrases?: number[]
+  /** 1 easy (five fingers, one hand's worth of notes) to 3 (leaps, black keys, quick notes). */
+  level?: 1 | 2 | 3
 }
 
 // C C G G | A A G- | F F E E | D D C- , then G G F F | E E D- twice, then the opening again.
@@ -62,6 +66,8 @@ export const STARTER_PACK: StarterSong[] = [
     beatsPerBar: 4,
     right: [...twinkleA, ...twinkleB, ...twinkleB, ...twinkleA],
     left: [...twinkleLeftA, ...twinkleLeftB, ...twinkleLeftB, ...twinkleLeftA],
+    phrases: [0, 4, 6, 8],
+    level: 1,
     fingers: { right: '1144554 4433221 5544332 5544332 1144554 4433221', left: '5252515 5151 5151 5252515' },
   },
   {
@@ -73,6 +79,8 @@ export const STARTER_PACK: StarterSong[] = [
     right: [...odePhrase([[E4, 1.5], [D4, 0.5], [D4, 2]]), ...odePhrase([[D4, 1.5], [C4, 0.5], [C4, 2]])],
     // I | V | I | V , then I | V | I | V I
     left: [[C3, 4], [G2, 4], [C3, 4], [G2, 4], [C3, 4], [G2, 4], [C3, 4], [G2, 2], [C3, 2]],
+    phrases: [0, 4],
+    level: 1,
     fingers: { right: '334554321123 322 334554321123 211', left: '151515151' },
   },
   {
@@ -86,6 +94,8 @@ export const STARTER_PACK: StarterSong[] = [
       [G4, 0.5], [A4, 0.5], [G4, 0.5], [F4, 0.5], [E4, 1], [C4, 1], [G4, 0.5], [A4, 0.5], [G4, 0.5], [F4, 0.5], [E4, 1], [C4, 1],
       [C4, 1], [G3, 1], [C4, 2], [C4, 1], [G3, 1], [C4, 2],
     ],
+    phrases: [0, 2, 4, 6],
+    level: 2,
     fingers: { right: '12311231 345345 454321454321 414414' },
   },
   {
@@ -97,6 +107,8 @@ export const STARTER_PACK: StarterSong[] = [
       [C4, 1], [C4, 1], [C4, 1], [D4, 1], [E4, 2], [D4, 2], [C4, 1], [E4, 1], [D4, 1], [D4, 1], [C4, 4],
       [C4, 1], [C4, 1], [C4, 1], [D4, 1], [E4, 2], [D4, 2], [C4, 1], [E4, 1], [D4, 1], [D4, 1], [C4, 4],
     ],
+    phrases: [0, 4],
+    level: 1,
     fingers: { right: '11123213221 11123213221' },
   },
   {
@@ -105,6 +117,8 @@ export const STARTER_PACK: StarterSong[] = [
     bpm: 90,
     beatsPerBar: 4,
     right: [[E4, 1], [D4, 1], [C4, 2], [E4, 1], [D4, 1], [C4, 2], [C4, 0.5], [C4, 0.5], [C4, 0.5], [C4, 0.5], [D4, 0.5], [D4, 0.5], [D4, 0.5], [D4, 0.5], [E4, 1], [D4, 1], [C4, 2]],
+    phrases: [0, 2],
+    level: 1,
     fingers: { right: '32132111112222321' },
   },
   {
@@ -116,6 +130,8 @@ export const STARTER_PACK: StarterSong[] = [
       [E4, 1], [D4, 1], [C4, 1], [D4, 1], [E4, 1], [E4, 1], [E4, 2], [D4, 1], [D4, 1], [D4, 2], [E4, 1], [G4, 1], [G4, 2],
       [E4, 1], [D4, 1], [C4, 1], [D4, 1], [E4, 1], [E4, 1], [E4, 1], [E4, 1], [D4, 1], [D4, 1], [E4, 1], [D4, 1], [C4, 4],
     ],
+    phrases: [0, 4],
+    level: 1,
     fingers: { right: '3212333222355 3212333322321' },
   },
   {
@@ -127,6 +143,8 @@ export const STARTER_PACK: StarterSong[] = [
       [G4, 1.5], [A4, 0.5], [G4, 1], [F4, 1], [E4, 1], [F4, 1], [G4, 2], [D4, 1], [E4, 1], [F4, 2], [E4, 1], [F4, 1], [G4, 2],
       [G4, 1.5], [A4, 0.5], [G4, 1], [F4, 1], [E4, 1], [F4, 1], [G4, 2], [D4, 2], [G4, 2], [E4, 1], [C4, 3],
     ],
+    phrases: [0, 4],
+    level: 2,
     fingers: { right: '4543234123234 45432342531' },
   },
   {
@@ -140,6 +158,8 @@ export const STARTER_PACK: StarterSong[] = [
       [E4, 1], [E4, 1], [E4, 2], [E4, 1], [E4, 1], [E4, 2], [E4, 1], [G4, 1], [C4, 1.5], [D4, 0.5], [E4, 4],
       [F4, 1], [F4, 1], [F4, 1.5], [F4, 0.5], [F4, 1], [E4, 1], [E4, 1], [E4, 0.5], [E4, 0.5], [G4, 1], [G4, 1], [F4, 1], [D4, 1], [C4, 4],
     ],
+    phrases: [0, 4, 8, 12],
+    level: 2,
     fingers: { right: '33333335123 444443333322325 33333335123 44444333355421' },
   },
   {
@@ -154,6 +174,8 @@ export const STARTER_PACK: StarterSong[] = [
       [G4, 0.75], [G4, 0.25], [G5, 1], [E5, 1], [C5, 1], [B4, 1], [A4, 1],
       [F5, 0.75], [F5, 0.25], [E5, 1], [C5, 1], [D5, 1], [C5, 2],
     ],
+    phrases: [0, 2, 4, 6],
+    level: 3,
     fingers: { right: '112143 112154 1153132 443121' },
   },
   {
@@ -173,6 +195,8 @@ export const STARTER_PACK: StarterSong[] = [
       [B4, 3], [E4, 1], [C5, 1], [B4, 1],
       [A4, 4],
     ],
+    phrases: [0, 4],
+    level: 3,
     fingers: { right: '54 545243 1123 4134 5154 545243 1123 4132 1' },
   },
 ]
@@ -216,6 +240,8 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
     bpm: s.bpm,
     beatsPerBar: s.beatsPerBar,
     durationMs: Math.max(...notes.map((n) => n.startMs + n.durationMs)),
+    ...(s.phrases ? { phrases: s.phrases } : {}),
+    ...(s.level ? { level: s.level } : {}),
   }
 }
 

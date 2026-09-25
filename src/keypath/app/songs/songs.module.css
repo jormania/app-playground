@@ -272,6 +272,15 @@
   align-items: center;
   gap: var(--space-2xs) var(--space-sm);
 }
+.songLevel {
+  font-weight: var(--weight-medium);
+}
+.songLevel[data-level='1'] {
+  color: var(--color-success);
+}
+.songLevel[data-level='3'] {
+  color: var(--color-warning);
+}
 .hitLine {
   position: absolute;
   left: 0;

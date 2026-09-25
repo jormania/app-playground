@@ -26,6 +26,10 @@ export interface Song {
   bpm: number
   beatsPerBar: number
   durationMs: number
+  /** Where each phrase starts (0-based bars), when the song says; songs in parts split there. */
+  phrases?: number[]
+  /** How hard it is, 1 (easy) to 3, when the song says; otherwise worked out from the notes. */
+  level?: 1 | 2 | 3
 }
 
 /** Notes meant to be played together: a chord, or a single note. */

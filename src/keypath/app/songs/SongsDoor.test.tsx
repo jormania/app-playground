@@ -47,6 +47,18 @@ async function setUp(route: string) {
 }
 
 describe('Songs, for everyday use', () => {
+  it('lists the starter songs easiest first, each with its level', async () => {
+    ;(await setUp('#/door/songs')).go()
+    await screen.findByText('Twinkle, Twinkle, Little Star')
+    const rows = [...document.querySelectorAll('[class*="songTitle"]')].map((e) => e.textContent)
+    // The level-1 songs come first, Für Elise last.
+    expect(rows.slice(0, 5)).toEqual(['Twinkle, Twinkle, Little Star', 'Ode to Joy', 'Au clair de la lune', 'Hot Cross Buns', 'Mary Had a Little Lamb'])
+    expect(rows[9]).toBe('Für Elise (opening)')
+    // Five starter songs, and the added three-note one, worked out from its notes.
+    expect(screen.getAllByText('Easy').length).toBe(6)
+    expect(screen.getAllByText('Harder').length).toBe(2)
+  })
+
   it('shows her best stars and when she last played, song by song', async () => {
     const { profileId, log, go } = await setUp('#/door/songs')
     await log.add(profileId, { type: 'song_started', songId: 'starter:ode', practice: 'right', tempo: 1, mode: 'wait' })
@@ -75,6 +87,38 @@ describe('Songs, for everyday use', () => {
     expect(await new SongLibrary(store).get(SHORT.id, 'en')).toBeNull()
     const types = (await new EngagementLog(store).read(profileId)).map((e) => e.type)
     expect(types).toEqual(expect.arrayContaining(['song_renamed', 'song_removed']))
+  })
+
+  it('plays the other hand for her while she practises one, and can be told not to', async () => {
+    const { store, go } = await setUp('#/play/starter%3Atwinkle')
+    go()
+    // Right hand, with the left played for her: the default.
+    expect((await screen.findByRole('button', { name: 'Other hand plays along' })).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(await screen.findByRole('button', { name: '▶ Part 1' }))
+    const key = (p: number) => {
+      const el = document.querySelector<HTMLElement>(`[data-pitch="${p}"]`)!
+      fireEvent.pointerDown(el, { pointerId: 1 })
+      fireEvent.pointerUp(el, { pointerId: 1 })
+    }
+    key(60) // middle C: begin
+    await waitFor(() => expect(document.querySelector('[data-target]')?.getAttribute('data-pitch')).toBe('60'))
+    played.length = 0
+    act(() => key(60)) // her first note: Twinkle's left hand starts on the C below, with it
+    await waitFor(() => expect(played).toContain(48))
+
+    // Off, and remembered on the phone.
+    cleanup()
+    played.length = 0
+    go()
+    fireEvent.click(await screen.findByRole('button', { name: 'Other hand plays along' }))
+    await waitFor(async () => expect(await store.get('keypath:v1:otherHand')).toBe(false))
+    fireEvent.click(screen.getByRole('button', { name: '▶ Part 1' }))
+    key(60)
+    await waitFor(() => expect(document.querySelector('[data-target]')?.getAttribute('data-pitch')).toBe('60'))
+    played.length = 0
+    act(() => key(60))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(played).not.toContain(48)
   })
 
   it('sounds the on-screen keys on the phone when no keyboard is connected', async () => {

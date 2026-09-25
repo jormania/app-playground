@@ -527,6 +527,94 @@ middle-C check, since the octave is already known.
 - Not yet: stepping down a rung after several unclean passes. `passes` in
   the log will say whether she needs it.
 
+### Songs in parts, a short day, the other hand (learning curve, slices 2–4)
+
+Slices 2, 3 and 4 of §10's "Learning curve", in one go at Gabriel's request.
+
+**Songs in parts** (`songs/parts.ts`, pure).
+- The way through a song: each new phrase alone, and after each one from
+  the second on, everything from the start up to it; then the whole song.
+  Ode to Joy is 1, 2, All; Frère Jacques 1, 2, 1–2, 3, 1–3, 4, All.
+- A phrase that repeats an earlier one isn't learnt twice: Twinkle (A B B A)
+  is 1, 2, 1–2, All, and Au clair de la lune (one line twice) 1, All.
+  Compared by pitches and rhythm to the nearest 20 ms, since the same rhythm
+  rounds a millisecond apart where beats don't divide evenly.
+- The starter pack marks its phrases (`phrases`, start bars). An added song
+  is cut every four bars, a last single bar joining the one before. Songs of
+  four bars or fewer aren't split.
+- A part is played alone, always in **Wait for it**, whatever her setting;
+  the whole song is played her own way. A part is learnt with at most two
+  wrong keys (one in ten for a long one; missed notes count too). The first
+  not learnt is chosen when the song opens.
+- After a part: "✓ Part 1 learnt!" and **▶ Part 2**, which starts straight
+  away; the middle-C check happens once a visit. Or Again, or Choose a part.
+- Learnt per player, per song and per hands (`parts:<player>`): right, left
+  and both are learnt separately. Logged as `song_part`; `song_started`
+  carries `part`. Progress counts parts played and learnt.
+- Setup: a **Parts** row of chips (1, 2, 1–2, All, ✓ when learnt); the Start
+  button names the part, and the mode line gives its bars.
+
+**Levels** (`songs/level.ts`). Easy, Medium, Harder on every song in the
+list, which is now easiest first. The starter pack says its own (`level`);
+an added song is judged from its notes: notes a second, spread, black keys,
+chords, both hands. The report offers **Try next:** the easiest song she
+hasn't finished, at this song's level or above.
+
+**Today** (`screens/today.ts`, `TodayCard.tsx`), in place of the resume
+card. Three things: the song she's on until it has three stars (then the
+easiest not finished), the first Journey step not done, and the game she
+has played least (equals take turns by the day).
+- Picked once a day and kept (`today:<player>`), so the picks don't move as
+  she plays; each is ticked off from today's log: a song finished or a part
+  learnt, a step practised or checked, a game played through. No streak.
+- Opening one logs its door, as the resume card did.
+- Landscape: one row above the doors, the items side by side, and the door
+  blurbs hidden, so Home still fits a phone on its side.
+
+**Stickers** (`screens/stickers.ts`, `StickerShelf.tsx`). Nine firsts:
+first song finished, three stars, finger numbers, a Journey check with no
+wrong key, a part learnt, a bar made clean, a new best in a game, a
+recording kept, seven practice days (not necessarily in a row). Read from
+the log, which only grows, so none is ever taken away. The ones not earned
+yet show faintly; tapping one says what it's for, or when it was earned. A
+new one is announced once, with a cheer (`stickers:<player>` remembers which
+were shown). Below the doors; in landscape a scroll away.
+
+**The other hand plays itself** (`songs/accompany.ts`). With a two-handed
+song and one hand chosen, the other hand's notes sound, on by default and
+remembered on the phone (chip **🎹 Other hand** beside Hands).
+- With a clock (Show it, Keep going) the notes are handed over a little
+  ahead, at their moments; a note whose moment passed during a pause is
+  skipped, not played late.
+- In Wait for it, each step she plays lets the other hand carry on up to her
+  next step, in the song's rhythm from that moment.
+- Through the keyboard when it takes MIDI, as Studio's takes and Listen do
+  (channel 1), otherwise the phone. On the Yamaha this is untried until the
+  MIDI-out test; if the keyboard sends the notes back, a note arriving within
+  80 ms of one sent at that pitch is taken as the echo and never judged.
+- Loops of a bar play the other hand too.
+
+**Audit of the day's work (2026-09-25, landscape first).**
+- The middle-C check is asked once a visit: Start, Play again and Whole song
+  go straight in once it's known, and it's asked again only if a keyboard is
+  plugged in or out (it may be set to another octave).
+- Whole song after a practised bar started the bar again, not the song.
+- A song with more than seven parts steps through them (‹ Part 3 · 5 of 17 ›)
+  instead of a wall of chips.
+- The finger-numbers intro puts the hands beside the words in landscape,
+  so its buttons stay in view. The Journey map is two columns in landscape.
+- Finishing the whole song no longer earns "a part of a song learnt", nor
+  counts as a part in Progress. Several new stickers at once are counted
+  ("3 new stickers!") rather than one named.
+- The other-hand chip says **🎹 Other hand** (Romanian: Cealaltă mână), so
+  a two-handed song's setup stays on two rows in either language; its full
+  meaning is its accessible name.
+- Today's song gets the widest column in landscape; song titles are longest.
+
+**Rhythm syllables.** Rhythm echo's dots say ta or ti, the Kodály way
+Hoffman teaches: a note on the beat lasting a beat or more is ta, a half
+beat or one off the beat is ti. The setup line says to speak them.
+
 ### Progress (after step 6)
 
 ```
@@ -775,12 +863,15 @@ copyrighted music.
    - **Loop the tricky bars, with a speed ladder.** The report's "Bar 5 is
      worth another go" becomes a button that loops that bar at 50%; each
      clean pass steps up (50 → 75 → 100%), then it's back to the whole song.
-2. **Songs in parts:**
+2. ~~**Songs in parts**~~ Done (§9, "Songs in parts, a short day, the other
+   hand"). Levels are words (Easy, Medium, Harder), not stars, since stars
+   already mean her score:
    - A song opens as phrase 1, then phrase 2, then both together, each
      passed in *Wait for it* before the next opens.
    - A difficulty mark on every song (★ to ★★★), and a "try next" after each
      finished one.
-3. **A short day:**
+3. ~~**A short day**~~ Done (same section). Today replaced Home's resume
+   card:
    - A **Today** card on Home: one song part, one Journey step, one quick
      game, picked from her log and done in about five minutes. Shown as a
      checklist, like the practice list after a Hoffman lesson. No streak to
@@ -788,7 +879,7 @@ copyrighted music.
    - **Stickers** for firsts (first song finished, first three stars, first
      step passed without help, a week of practice days), kept on her Home and
      never taken away.
-4. **Later**, when the above has been used:
+4. ~~**Later**~~ Built with 2 and 3, at Gabriel's request (same section):
    - **The other hand plays itself** while she practises one. On the phone it
      works today; on the Yamaha it waits on the MIDI-out test.
    - **Rhythm syllables** (ta, ti-ti), from Kodály via Hoffman, under the beats

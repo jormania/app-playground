@@ -1,4 +1,5 @@
 import type { JudgeSummary, Song } from '../../engine'
+import { rangeSong } from './parts'
 
 // Practising one bar (KEYPATH_TUTOR.md §10, "Learning curve"): the report's
 // "Bar 5 is worth another go" becomes a loop of that bar alone. With a clock
@@ -23,13 +24,7 @@ export interface Loop {
 export type LoopStep = 'again' | 'up' | 'done'
 
 /** One bar of the song on its own, moved to start at 0; null if the bar has no notes. */
-export function barSong(song: Song, bar: number): Song | null {
-  const inBar = song.notes.filter((n) => n.bar === bar)
-  if (inBar.length === 0) return null
-  const from = Math.min(...inBar.map((n) => n.startMs))
-  const notes = inBar.map((n) => ({ ...n, startMs: n.startMs - from }))
-  return { ...song, id: `${song.id}#bar${bar + 1}`, notes, durationMs: Math.max(...notes.map((n) => n.startMs + n.durationMs)) }
-}
+export const barSong = (song: Song, bar: number): Song | null => rangeSong(song, bar, bar + 1, `${song.id}#bar${bar + 1}`)
 
 export function startLoop(bar: number, mode: 'wait' | 'running', songTempo: number): Loop {
   const climb = LADDER.filter((s) => s <= songTempo + 1e-9)

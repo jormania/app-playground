@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { backupDue } from '../backup'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
@@ -8,9 +8,8 @@ import { useApp } from '../context'
 import type { Door } from '../log'
 import { navigate } from '../router'
 import type { StringKey } from '../i18n'
-import { JOURNEY } from '../journey/steps'
-import { SongLibrary } from '../songs/library'
-import { resumeFrom, type Resume } from './resume'
+import { StickerShelf } from './StickerShelf'
+import { TodayCard } from './TodayCard'
 import styles from '../app.module.css'
 
 const DOORS: { door: Door; icon: string; title: StringKey; blurb: StringKey }[] = [
@@ -22,23 +21,8 @@ const DOORS: { door: Door; icon: string; title: StringKey; blurb: StringKey }[] 
 
 /** Four equal doors, no order, no gate (KEYPATH_TUTOR.md §3). */
 export function Home() {
-  const { profile, t, log, store, settings } = useApp()
+  const { profile, t, log, store } = useApp()
   const [nudge, setNudge] = useState(false)
-
-  // "Pick up where you left off": the last song or Journey step in her log.
-  const library = useMemo(() => new SongLibrary(store), [store])
-  const [resume, setResume] = useState<{ at: Resume; songTitle?: string } | null>(null)
-  useEffect(() => {
-    if (!profile) return
-    void (async () => {
-      const at = resumeFrom(await log.read(profile.id))
-      if (!at) return setResume(null)
-      if (at.kind === 'journey') return setResume({ at })
-      const song = await library.get(at.songId, settings.language)
-      setResume(song ? { at, songTitle: song.title } : null)
-    })()
-  }, [profile, log, library, settings.language])
-  const resumeStep = resume?.at.kind === 'journey' ? JOURNEY.find((s) => s.id === (resume.at as { step: string }).step) : undefined
 
   useEffect(() => {
     void backupDue(store).then(setNudge)
@@ -89,24 +73,7 @@ export function Home() {
           {t('backupDue')}
         </button>
       )}
-      {resume && (resume.songTitle || resumeStep) && (
-        <button
-          type="button"
-          className={styles.resume}
-          onClick={() => {
-            // Through its door, as far as Progress is concerned: time spent there counts to it.
-            void log.add(profile.id, { type: 'door_opened', door: resume.at.kind === 'song' ? 'songs' : 'journey' })
-            if (resume.at.kind === 'song') navigate({ name: 'play', songId: resume.at.songId })
-            else navigate({ name: 'journeyStep', step: resume.at.step })
-          }}
-        >
-          <span className={styles.resumeLabel}>{t('resumeTitle')}</span>
-          <span className={styles.resumeWhat}>
-            {resume.at.kind === 'song' ? `▶ ${resume.songTitle}` : `🗺️ ${resumeStep ? t(resumeStep.title) : ''}`}
-            {resume.at.kind === 'song' && resume.at.bestStars !== null && <span className={styles.resumeStars}> {'★'.repeat(resume.at.bestStars) + '☆'.repeat(Math.max(0, 3 - resume.at.bestStars))}</span>}
-          </span>
-        </button>
-      )}
+      <TodayCard />
       <nav className={styles.doors}>
         {DOORS.map((d, i) => (
           <button key={d.door} type="button" className={`${styles.door} ${styles[d.door]}`} style={{ '--i': i } as React.CSSProperties} onClick={() => open(d.door)}>
@@ -118,6 +85,7 @@ export function Home() {
           </button>
         ))}
       </nav>
+      <StickerShelf />
     </main>
   )
 }

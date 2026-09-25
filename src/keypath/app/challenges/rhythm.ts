@@ -43,6 +43,19 @@ export const ECHO_ON_TIME_MS: Record<Timing, number> = { relaxed: 70, normal: 50
 export const beatMs = (bpm: number) => 60000 / bpm
 
 /**
+ * The rhythm said aloud, the Kodály way (as Hoffman Academy teaches it): a
+ * note on the beat that lasts a beat or more is "ta"; a half-beat note, or
+ * one off the beat, is "ti", so two eighths are "ti ti". Only when each tap
+ * lands matters here, so a longer note is still just "ta".
+ */
+export function syllables(pattern: readonly number[]): ('ta' | 'ti')[] {
+  return pattern.map((beat, i) => {
+    const gap = (pattern[i + 1] ?? 4) - beat
+    return beat % 1 !== 0 || gap < 1 ? 'ti' : 'ta'
+  })
+}
+
+/**
  * One turn, as a timeline from `start`: four count-in clicks, the pattern,
  * four more clicks, then her bar (silent). Times are absolute ms.
  */

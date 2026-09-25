@@ -216,8 +216,10 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
       {phase === 'intro' && (
         <section className={styles.panel}>
           <p className={styles.blurb}>{t(step.blurb)}</p>
-          {step.id === 'fingers' && hands()}
-          <p className={styles.tip}>{t(step.tip)}</p>
+          <div className={styles.introBody} data-hands={step.id === 'fingers' || undefined}>
+            {step.id === 'fingers' && hands()}
+            <p className={styles.tip}>{t(step.tip)}</p>
+          </div>
           {state === 'locked' ? (
             <>
               <p className={styles.hint}>{t('jLocked', { n: n - 1 })}</p>

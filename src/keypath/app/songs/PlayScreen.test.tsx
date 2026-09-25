@@ -8,6 +8,7 @@ import { EngagementLog } from '../log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo, type ProfileSettings } from '../profiles'
 import { memoryStore, type KeyValueStore } from '../store'
 import { SongLibrary } from './library'
+import { PartsRepo } from './parts'
 
 vi.mock('../../App', () => ({ default: () => <div>probe screen</div> }))
 
@@ -26,6 +27,17 @@ beforeEach(() => {
   yamaha = null
 })
 afterEach(cleanup)
+
+// Ode to Joy's two phrases (right hand), as the starter pack has them.
+const ODE_1 = [64, 64, 65, 67, 67, 65, 64, 62, 60, 60, 62, 64, 64, 62, 62]
+const ODE_2 = [64, 64, 65, 67, 67, 65, 64, 62, 60, 60, 62, 64, 62, 60, 60]
+/** Play these keys on the screen, each once the song is waiting for it (a repeated note is simply played again). */
+async function playThrough(pitches: number[]) {
+  for (const p of pitches) {
+    await waitFor(() => expect(Number(target()?.getAttribute('data-pitch'))).toBe(p))
+    act(() => tap(document.querySelector<HTMLElement>(`[data-pitch="${p}"]`)!))
+  }
+}
 
 const THREE = songOf([[60, 0], [62, 500], [64, 1000]], 'Three notes')
 
@@ -67,14 +79,91 @@ describe('Songs door', () => {
 describe('Play screen', () => {
   it('shows finger numbers on a starter song’s notes, and none once the setting is off', async () => {
     await setUp({}, '#/play/starter%3Aode')
-    await screen.findByRole('button', { name: /Start/ })
+    await screen.findByRole('button', { name: /Listen/ })
     // Ode to Joy's right hand starts E E F G: fingers 3 3 4 5.
     const fingers = () => [...document.querySelectorAll('[data-finger]')].map((e) => e.textContent)
     expect(fingers().slice(0, 4)).toEqual(['3', '3', '4', '5'])
     cleanup()
     await setUp({ fingers: false }, '#/play/starter%3Aode')
-    await screen.findByRole('button', { name: /Start/ })
+    await screen.findByRole('button', { name: /Listen/ })
     expect(fingers()).toEqual([])
+  })
+
+  it('learns a song in parts: part 1, part 2, then the whole song, each straight after the last', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'keepGoing' }, '#/play/starter%3Aode')
+    // Ode to Joy is two phrases: 1, 2, then all of it. The first not learnt is chosen.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Part 1' }).getAttribute('aria-pressed')).toBe('true'))
+    expect(screen.getByRole('button', { name: 'Part 2' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Whole song' })).toBeTruthy()
+    expect(screen.getByText('Bars 1–4. A part waits for each note.')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '▶ Part 1' }))
+    tap(target()!) // middle C
+    // A part waits for each note, whatever her own setting ("Keep going" here).
+    await playThrough(ODE_1)
+    expect(await screen.findByText('✓ Part 1 learnt!')).toBeTruthy()
+
+    // Straight on: no middle C this time.
+    fireEvent.click(screen.getByRole('button', { name: '▶ Part 2' }))
+    await playThrough(ODE_2)
+    expect(await screen.findByText('✓ Part 2 learnt!')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '▶ Whole song' }))
+    // The whole song is played her own way: "Keep going" runs on a clock, with a count-in.
+    await waitFor(() => expect(document.querySelector('[class*="countIn"]')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+    await screen.findByRole('button', { name: 'Whole song' })
+
+    const learnt = await new PartsRepo(store).get(profileId, 'starter:ode', 'right')
+    expect([...learnt].sort()).toEqual(['p1', 'p2'])
+    const parts = (await events(store, profileId)).filter((e) => e.type === 'song_part')
+    expect(parts.map((e) => (e.type === 'song_part' ? [e.part, e.passed] : null))).toEqual([
+      ['p1', true],
+      ['p2', true],
+    ])
+    // Back in the setup, the whole song is the one still to learn.
+    expect(screen.getByRole('button', { name: 'Whole song' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('a part with too many wrong keys isn’t learnt, and offers another go', async () => {
+    const { store, profileId } = await setUp({}, '#/play/starter%3Aode')
+    fireEvent.click(await screen.findByRole('button', { name: '▶ Part 1' }))
+    tap(target()!)
+    // Ode to Joy starts on E.
+    await waitFor(() => expect(target()?.getAttribute('aria-label')).toBe('E'))
+    for (const k of ['A', 'B', 'A']) act(() => tap(screen.getAllByRole('button', { name: k })[0]))
+    await playThrough(ODE_1)
+    expect(await screen.findByText('3 keys went astray. Once more?')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '▶ Part 2' })).toBeNull()
+    expect(await new PartsRepo(store).get(profileId, 'starter:ode', 'right')).toEqual(new Set())
+  })
+
+  it('once middle C is found, Play again starts straight away', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    tap(target()!)
+    await playThrough([60, 62, 64])
+    fireEvent.click(await screen.findByRole('button', { name: 'Play again' }))
+    // No "Press middle C" this time: the first note is waiting.
+    await waitFor(() => expect(Number(target()?.getAttribute('data-pitch'))).toBe(60))
+    expect(screen.queryByText('Press middle C to begin')).toBeNull()
+  })
+
+  it('a long song’s parts are stepped through one at a time, not as a wall of chips', async () => {
+    const store = memoryStore()
+    const profiles = new ProfileRepo(store)
+    const p = await profiles.create('Nora', '🐺')
+    await profiles.setCurrent(p.id)
+    // 36 bars, every four a phrase of its own: 9 phrases, 17 parts.
+    const long = songOf(Array.from({ length: 144 }, (_, i): [number, number] => [48 + Math.floor(i / 16) * 2 + (i % 4), i * 500]), 'Long')
+    await new SongLibrary(store).add(long)
+    history.replaceState(null, '', '#/play/Long')
+    render(<Shell store={store} />)
+    expect(await screen.findByText('Part 1 · 1 of 17')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Previous part' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Next part' }))
+    expect(screen.getByText('Part 2 · 2 of 17')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next part' }))
+    expect(screen.getByText('Parts 1–2 · 3 of 17')).toBeTruthy()
   })
 
   it('an added song has no fingering, so no numbers', async () => {
@@ -100,6 +189,8 @@ describe('Play screen', () => {
     expect(await screen.findByText('How it went')).toBeTruthy()
     expect(screen.getByText('You played it to the end!')).toBeTruthy()
     expect(screen.getByLabelText('3 / 3')).toBeTruthy()
+    // Next up: the easiest song she hasn't finished.
+    expect(await screen.findByRole('button', { name: '▶ Twinkle, Twinkle, Little Star' })).toBeTruthy()
 
     const log = await events(store, profileId)
     expect(log.find((e) => e.type === 'song_started')).toMatchObject({ songId: 'Three notes', practice: 'right', tempo: 1, mode: 'wait' })
