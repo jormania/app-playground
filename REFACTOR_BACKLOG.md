@@ -622,6 +622,38 @@ narrow: `/scratch_*`, `/debug_*`, `/*_dump.*`, `/diff.txt`, `/lint-output.txt`,
 matches any of them — note the `--no-index`, without which `check-ignore` stays
 silent about tracked paths and the check proves nothing.
 
+## R-029 — The most-imported module in `src/shared/` has no test · `modernise` · `open`
+
+**Impact:** none visible. Puts coverage under the one shared module whose promise
+another app's test already depends on.
+
+Found on the Friday read, 2026-09-25. `src/shared/storage.ts` is imported by
+**23 files across seven apps** (Silva, Lexi5, WhereItWent via its re-export,
+Marquee, Radar-B, Fit Check, KeyPath) — the widest reach of anything in
+`src/shared/` — and there is no `src/shared/storage.test.ts`. The only test file
+that names `readJson` at all is
+`src/where-it-went/components/TransactionForm.test.jsx`, which uses it as a
+fixture helper rather than testing it.
+
+**Why this one matters more than an ordinary coverage gap.** The module's whole
+reason to exist is that it *cannot throw* — its header says so, and
+`src/lexi5/lib/storageBoundary.test.js` is a boundary test whose entire job is
+forcing Lexi5 through these helpers because an unguarded `setItem` in a React
+effect once blanked the app in Safari private mode. So the repo already has a
+test enforcing "use this module" and no test proving the module keeps its side of
+the bargain. Weaken a `catch` here and the boundary test still passes.
+
+Write `src/shared/storage.test.ts` against all six exports. What is worth pinning
+is the defensiveness, not the round-trip: `setItem` throwing (quota / private
+mode) returning `false` rather than propagating, malformed JSON reading as the
+fallback, a missing `localStorage`/`sessionStorage` binding, `removeJson`
+swallowing a throw, and — the subtle one — **a stored literal `null` reading as
+the fallback**, which is what `parsed ?? fallback` does and what R-030 below
+turns out to depend on. Mutation-check by removing a `catch` and confirming a
+test goes red.
+
+**Do this before R-030**, which points four more apps at this module.
+
 ## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
 
 **Impact:** the smallest of the three, and the one most likely to come back
@@ -1681,38 +1713,6 @@ development work. Delete it last, or re-cut it from `main`.
   almost certainly landed by another route. "Almost certainly" is why they are
   not on the list above: confirming it means reading three old trees, which is a
   separate afternoon rather than a line in a table.
-
-## R-029 — The most-imported module in `src/shared/` has no test · `modernise` · `open`
-
-**Impact:** none visible. Puts coverage under the one shared module whose promise
-another app's test already depends on.
-
-Found on the Friday read, 2026-09-25. `src/shared/storage.ts` is imported by
-**23 files across seven apps** (Silva, Lexi5, WhereItWent via its re-export,
-Marquee, Radar-B, Fit Check, KeyPath) — the widest reach of anything in
-`src/shared/` — and there is no `src/shared/storage.test.ts`. The only test file
-that names `readJson` at all is
-`src/where-it-went/components/TransactionForm.test.jsx`, which uses it as a
-fixture helper rather than testing it.
-
-**Why this one matters more than an ordinary coverage gap.** The module's whole
-reason to exist is that it *cannot throw* — its header says so, and
-`src/lexi5/lib/storageBoundary.test.js` is a boundary test whose entire job is
-forcing Lexi5 through these helpers because an unguarded `setItem` in a React
-effect once blanked the app in Safari private mode. So the repo already has a
-test enforcing "use this module" and no test proving the module keeps its side of
-the bargain. Weaken a `catch` here and the boundary test still passes.
-
-Write `src/shared/storage.test.ts` against all six exports. What is worth pinning
-is the defensiveness, not the round-trip: `setItem` throwing (quota / private
-mode) returning `false` rather than propagating, malformed JSON reading as the
-fallback, a missing `localStorage`/`sessionStorage` binding, `removeJson`
-swallowing a throw, and — the subtle one — **a stored literal `null` reading as
-the fallback**, which is what `parsed ?? fallback` does and what R-030 below
-turns out to depend on. Mutation-check by removing a `catch` and confirming a
-test goes red.
-
-**Do this before R-030**, which points four more apps at this module.
 
 ## R-030 — Four apps hand-write the storage triple `src/shared/storage.ts` already is · `refactor` · `open`
 
