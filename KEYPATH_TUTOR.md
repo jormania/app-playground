@@ -803,6 +803,23 @@ The Journey's steps and the three games take the same slim bar while they
 run. Only a muted phone still gets a line during Listen, since it is why she
 would hear nothing.
 
+**Easing, not jumping.** The setup folding away was a sudden jump, so each
+change of layout now eases (`morph`, `app/morph.ts`), using the browser's view
+transitions: the rest of the screen cross-fades in about a quarter of a
+second, and the falling notes move on their own. As the setup goes, the fall
+opens upward from the keys like a curtain; as it comes back, the fall closes
+down onto them. The notes keep their size and stay on the hit line throughout
+(`kp-fall` in `songs.module.css`). The same easing covers Start, Listen,
+Stop, the report and back, a part or a bar's loop starting and ending, the
+three games' start and result, and a Journey step's start and result.
+- Where the browser has no view transitions (they need Chrome 111 or later),
+  or the phone is set to reduce motion, the change is instant, as before.
+- A limit to know: while a transition runs (0.26 to 0.32 s), Chrome takes no
+  taps on the screen, and `pointer-events: none` on the overlay doesn't
+  change that. The Yamaha's keys, over MIDI, always count. Nothing is timed
+  so tightly that a third of a second matters; don't lengthen these without
+  weighing that.
+
 ### Settings, regrouped
 
 Settings had grown into unlabelled panels in the order things were added,

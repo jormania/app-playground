@@ -5,6 +5,7 @@ import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
 import { celebrate } from '../celebrate/celebrate'
+import { morph } from '../morph'
 import { useApp } from '../context'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
@@ -301,7 +302,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         if (e.type === 'wrong' || e.type === 'missed') setStreak(0)
       }
       if (outcomes.length) setResults((r) => new Map([...r, ...outcomes]))
-      if (events.some((e) => e.type === 'done')) finish()
+      if (events.some((e) => e.type === 'done')) morph(finish)
     },
     [playSettings, finish],
   )
@@ -328,13 +329,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   )
 
   /** Straight into a part (from "Next" or "Again"): no middle C again once it's known. */
-  const startPart = (step: PartStep) => {
-    setPartId(step.id)
-    const target = step.kind === 'whole' ? song : (rangeSong(song, step.from, step.to) ?? song)
-    const js: JudgeSettings = step.kind === 'whole' ? settings : { ...settings, onWrong: 'wait' }
-    if (shiftKnown.current) startJudge(target, js, performance.now(), step)
-    else setPhase('ready')
-  }
+  const startPart = (step: PartStep) =>
+    morph(() => {
+      setPartId(step.id)
+      const target = step.kind === 'whole' ? song : (rangeSong(song, step.from, step.to) ?? song)
+      const js: JudgeSettings = step.kind === 'whole' ? settings : { ...settings, onWrong: 'wait' }
+      if (shiftKnown.current) startJudge(target, js, performance.now(), step)
+      else setPhase('ready')
+    })
 
   /** Start after the middle-C check: the key pressed tells us the keyboard's octave shift. */
   const begin = useCallback(
@@ -348,7 +350,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       setHint(null)
       shift.current = found
       shiftKnown.current = true
-      startJudge(playing, playSettings, at, part)
+      morph(() => startJudge(playing, playSettings, at, part))
     },
     [t, label, startJudge, playing, playSettings, part],
   )
@@ -398,9 +400,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const stopListening = useCallback(() => {
     listenPlayback.current?.stop()
     listenPlayback.current = null
-    setListening(false)
-    setListenKeys(new Set())
-    fall.current?.setTime(READY_TIME)
+    morph(() => {
+      setListening(false)
+      setListenKeys(new Set())
+      fall.current?.setTime(READY_TIME)
+    })
   }, [])
   const listen = () => {
     if (listening) return stopListening()
@@ -412,7 +416,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     const p = new Playback(take, output.sink(), realClock, stopListening)
     listenPlayback.current = p
     p.start()
-    setListening(true)
+    morph(() => setListening(true))
     if (profileId) void log.add(profileId, { type: 'song_listened', songId: song.id, practice, tempo })
   }
   useEffect(() => {
@@ -538,10 +542,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       void log.add(profileId, { type: 'song_abandoned', songId: song.id, practice, hit: s.results.filter((r) => r.outcome === 'hit').length, total: s.total })
     }
     judge.current = null
-    setPhase('setup')
-    setResults(new Map())
-    setStreak(0)
-    setCountIn(null)
+    morph(() => {
+      setPhase('setup')
+      setResults(new Map())
+      setStreak(0)
+      setCountIn(null)
+    })
   }
 
   const carryOn = () => {
@@ -550,43 +556,48 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     setPhase('playing')
   }
 
-  const practiseBar = (bar: number) => {
-    const l = startLoop(bar, settings.onWrong === 'wait' ? 'wait' : 'running', tempo)
-    setLoopBoth(l)
-    setLoopStep(null)
-    startPass(l)
-  }
-  const backToReport = () => {
-    accompanist.current?.stop()
-    endLoop(false)
-    setLoopBoth(null)
-    judge.current = null
-    setCountIn(null)
-    setPhase('report')
-  }
-  const wholeSong = () => {
-    setLoopBoth(null)
-    setLoopStep(null)
-    judge.current = null
-    setReport(null)
-    // The whole song, not the bar just looped: this render's `playing` is still the bar.
-    if (shiftKnown.current) startJudge(song, settings, performance.now(), part)
-    else setPhase('ready')
-  }
+  const practiseBar = (bar: number) =>
+    morph(() => {
+      const l = startLoop(bar, settings.onWrong === 'wait' ? 'wait' : 'running', tempo)
+      setLoopBoth(l)
+      setLoopStep(null)
+      startPass(l)
+    })
+  const backToReport = () =>
+    morph(() => {
+      accompanist.current?.stop()
+      endLoop(false)
+      setLoopBoth(null)
+      judge.current = null
+      setCountIn(null)
+      setPhase('report')
+    })
+  const wholeSong = () =>
+    morph(() => {
+      setLoopBoth(null)
+      setLoopStep(null)
+      judge.current = null
+      setReport(null)
+      // The whole song, not the bar just looped: this render's `playing` is still the bar.
+      if (shiftKnown.current) startJudge(song, settings, performance.now(), part)
+      else setPhase('ready')
+    })
 
   /** From the setup or the report: straight in once middle C has been found this visit, else ask for it. */
-  const go = () => {
-    stopListening()
-    if (shiftKnown.current) startJudge(playing, playSettings, performance.now(), part)
-    else setPhase('ready')
-  }
-  const playAgain = () => {
-    judge.current = null
-    setReport(null)
-    setResults(new Map())
-    setStreak(0)
-    go()
-  }
+  const go = () =>
+    morph(() => {
+      stopListening()
+      if (shiftKnown.current) startJudge(playing, playSettings, performance.now(), part)
+      else setPhase('ready')
+    })
+  const playAgain = () =>
+    morph(() => {
+      judge.current = null
+      setReport(null)
+      setResults(new Map())
+      setStreak(0)
+      go()
+    })
 
   const partName = (x: PartStep) => (x.kind === 'phrase' ? t('partPhrase', { n: x.first }) : x.kind === 'join' ? t('partJoin', { a: x.first, b: x.last }) : t('partWhole'))
   const chipName = (x: PartStep) => (x.kind === 'phrase' ? String(x.first) : x.kind === 'join' ? `${x.first}–${x.last}` : t('partWholeShort'))
@@ -693,7 +704,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           <strong>{t('pressMiddleC')}</strong>
           <span>{hint ?? t('pressMiddleCHint')}</span>
           <div className={styles.actions}>
-            <Button size="sm" variant="ghost" onClick={() => setPhase('setup')}>
+            <Button size="sm" variant="ghost" onClick={() => morph(() => setPhase('setup'))}>
               {t(hasLeft ? 'backToSetupHands' : 'backToSetupSpeed')}
             </Button>
           </div>
@@ -758,7 +769,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             <Button size="sm" variant={partResult.passed && afterPart ? 'outline' : 'primary'} onClick={() => startPart(part)}>
               {t('partAgain')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setPhase('setup')}>
+            <Button size="sm" variant="ghost" onClick={() => morph(() => setPhase('setup'))}>
               {t('partChoose')}
             </Button>
           </div>

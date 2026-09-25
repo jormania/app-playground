@@ -214,6 +214,27 @@
   flex-direction: column;
 }
 
+/* The falling notes move on their own when the music starts or stops (`morph`
+   in app/morph.ts): as the setup fades away the fall opens upwards from the
+   keys, like a curtain, instead of jumping; as it comes back the fall closes
+   down onto them. The notes keep their size and stay on the hit line, and the
+   rest of the screen cross-fades. */
+.playScreen .fall {
+  view-transition-name: kp-fall;
+}
+::view-transition-group(kp-fall) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+::view-transition-image-pair(kp-fall) {
+  overflow: clip;
+}
+::view-transition-old(kp-fall),
+::view-transition-new(kp-fall) {
+  height: 100%;
+  object-fit: none;
+  object-position: bottom center;
+}
 /* Stop, in the corner of the falling notes rather than a row of its own under the keys. */
 .stageStop {
   position: absolute;

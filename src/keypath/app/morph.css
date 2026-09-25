@@ -1,0 +1,8 @@
+/* The transitions made by `morph` (morph.ts): brief, because while one runs
+   Chrome takes no taps on the screen (the Yamaha's keys, over MIDI, still
+   count). A third of a second is shorter than the time it takes to read what
+   the new screen asks for. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 260ms;
+}

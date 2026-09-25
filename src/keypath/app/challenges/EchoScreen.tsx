@@ -7,6 +7,7 @@ import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
+import { morph } from '../morph'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
 import { OutputChoice, useOutput } from '../studio/output'
@@ -97,8 +98,10 @@ export function EchoScreen() {
     p.start()
     const origin = p.startedAt
     turn.current = { start: origin, downbeat: origin + tl.downbeat, end: origin + tl.end }
-    setCue({ kind: 'listen' })
-    setPhase('turn')
+    morph(() => {
+      setCue({ kind: 'listen' })
+      setPhase('turn')
+    })
   }, [pattern, bpm, output])
 
   // One frame loop per turn: the big label, the playhead, and the end of her bar.
@@ -129,14 +132,16 @@ export function EchoScreen() {
       if (now >= tn.end) {
         const r = judgeEcho(pattern, bpm, tn.downbeat, tapTimes.current, settings.timing)
         turn.current = null
-        setResult(r)
         if (r.passed) celebrate('echoPassed')
-        setPassed((ps) => {
-          const copy = [...ps]
-          copy[index] = copy[index] || r.passed
-          return copy
+        morph(() => {
+          setResult(r)
+          setPassed((ps) => {
+            const copy = [...ps]
+            copy[index] = copy[index] || r.passed
+            return copy
+          })
+          setPhase('result')
         })
-        setPhase('result')
         return
       }
       raf = requestAnimationFrame(frame)
@@ -164,7 +169,7 @@ export function EchoScreen() {
   const finishRound = async () => {
     inRound.current = false
     const score = passed.filter(Boolean).length
-    setPhase('done')
+    morph(() => setPhase('done'))
     if (!profileId) return
     const best = await repo.offer(profileId, 'echo', level, score)
     setNewBest(best)
@@ -297,7 +302,7 @@ export function EchoScreen() {
             >
               {t('playAgain')}
             </Button>
-            <Button variant="outline" onClick={() => setPhase('setup')}>
+            <Button variant="outline" onClick={() => morph(() => setPhase('setup'))}>
               {t('changeLevel')}
             </Button>
             <Button variant="ghost" onClick={() => navigate({ name: 'door', door: 'challenges' }, { replace: true })}>

@@ -7,6 +7,7 @@ import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
+import { morph } from '../morph'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
@@ -97,7 +98,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
     setMode(m)
     setPassed(null)
     void log.add(profileId, { type: 'journey_started', step: step.id, mode: m, testOut: m === 'check' && state === 'locked' })
-    setPhase(step.octaveGate ? 'gate' : 'run')
+    morph(() => setPhase(step.octaveGate ? 'gate' : 'run'))
   }
   // Entering 'run' from intro or the gate builds a fresh exercise for the chosen mode.
   useEffect(() => {
@@ -116,8 +117,10 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
       onProgress(next)
       celebrate(JOURNEY.every((x) => next[x.id]) ? 'journeyDone' : 'stepPassed')
     }
-    setPassed({ ok, testOut })
-    setPhase('result')
+    morph(() => {
+      setPassed({ ok, testOut })
+      setPhase('result')
+    })
   }, [mode, step, state, log, profileId, repo, onProgress])
 
   const flashWrong = (p: number) => {
@@ -135,7 +138,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
         shift.current = found
         setHeld(new Set())
         exercise.current = null
-        setPhase('run')
+        morph(() => setPhase('run'))
         return
       }
       const ex = exercise.current

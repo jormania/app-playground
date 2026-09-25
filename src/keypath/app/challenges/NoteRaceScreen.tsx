@@ -7,6 +7,7 @@ import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
+import { morph } from '../morph'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
@@ -47,19 +48,20 @@ export function NoteRaceScreen() {
 
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
 
-  const start = () => {
-    const r = new NoteRace(level, Math.random, RACE_MS, mode)
-    const now = performance.now()
-    r.start(now)
-    race.current = r
-    startedAt.current = now
-    setPrompt(r.prompt)
-    setScore(0)
-    setLeft(r.durationMs)
-    setResult(null)
-    setPhase('run')
-    if (profileId) void log.add(profileId, { type: 'challenge_started', game, level })
-  }
+  const start = () =>
+    morph(() => {
+      const r = new NoteRace(level, Math.random, RACE_MS, mode)
+      const now = performance.now()
+      r.start(now)
+      race.current = r
+      startedAt.current = now
+      setPrompt(r.prompt)
+      setScore(0)
+      setLeft(r.durationMs)
+      setResult(null)
+      setPhase('run')
+      if (profileId) void log.add(profileId, { type: 'challenge_started', game, level })
+    })
 
   const finish = useCallback(async () => {
     const r = race.current
@@ -68,9 +70,11 @@ export function NoteRaceScreen() {
     const g = r.mode === 'staff' ? 'staff' : 'race'
     const best = await repo.offer(profileId, g, r.level, r.score)
     setRecords(await repo.get(profileId))
-    setResult({ score: r.score, wrong: r.wrong, best })
+    morph(() => {
+      setResult({ score: r.score, wrong: r.wrong, best })
+      setPhase('result')
+    })
     if (best) celebrate('newBest')
-    setPhase('result')
     void log.add(profileId, { type: 'challenge_finished', game: g, level: r.level, score: r.score, best, wrong: r.wrong, ms: r.durationMs })
   }, [repo, profileId, log])
 
@@ -201,7 +205,7 @@ export function NoteRaceScreen() {
           {result.wrong > 0 && <p className={styles.hint}>{t('raceWrong', { count: result.wrong })}</p>}
           <div className={styles.actions}>
             <Button onClick={start}>{t('playAgain')}</Button>
-            <Button variant="outline" onClick={() => setPhase('setup')}>
+            <Button variant="outline" onClick={() => morph(() => setPhase('setup'))}>
               {t('changeLevel')}
             </Button>
             <Button variant="ghost" onClick={() => navigate({ name: 'door', door: 'challenges' }, { replace: true })}>

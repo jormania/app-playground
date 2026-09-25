@@ -7,6 +7,7 @@ import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
+import { morph } from '../morph'
 import { noteLabel } from '../i18n'
 import type { Language, NoteNames } from '../profiles'
 import { navigate } from '../router'
@@ -56,21 +57,22 @@ export function ChordCatchScreen() {
 
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
 
-  const start = () => {
-    const g = new ChordCatch(level, settings.timing)
-    const now = performance.now()
-    g.start(now)
-    game.current = g
-    startedAt.current = now
-    setPrompt(g.prompt)
-    setCaught(false)
-    setScore(0)
-    setLeft(g.durationMs)
-    setResult(null)
-    setHeld(new Set())
-    setPhase('run')
-    if (profileId) void log.add(profileId, { type: 'challenge_started', game: 'chord', level })
-  }
+  const start = () =>
+    morph(() => {
+      const g = new ChordCatch(level, settings.timing)
+      const now = performance.now()
+      g.start(now)
+      game.current = g
+      startedAt.current = now
+      setPrompt(g.prompt)
+      setCaught(false)
+      setScore(0)
+      setLeft(g.durationMs)
+      setResult(null)
+      setHeld(new Set())
+      setPhase('run')
+      if (profileId) void log.add(profileId, { type: 'challenge_started', game: 'chord', level })
+    })
 
   const finish = useCallback(async () => {
     const g = game.current
@@ -78,9 +80,11 @@ export function ChordCatchScreen() {
     game.current = null
     const best = await repo.offer(profileId, 'chord', g.level, g.score)
     setRecords(await repo.get(profileId))
-    setResult({ score: g.score, wrong: g.wrong, spread: g.spread, best })
+    morph(() => {
+      setResult({ score: g.score, wrong: g.wrong, spread: g.spread, best })
+      setPhase('result')
+    })
     if (best) celebrate('newBest')
-    setPhase('result')
     void log.add(profileId, { type: 'challenge_finished', game: 'chord', level: g.level, score: g.score, best, wrong: g.wrong, ms: g.durationMs })
   }, [repo, profileId, log])
 
@@ -219,7 +223,7 @@ export function ChordCatchScreen() {
           {result.wrong > 0 && <p className={styles.hint}>{t('raceWrong', { count: result.wrong })}</p>}
           <div className={styles.actions}>
             <Button onClick={start}>{t('playAgain')}</Button>
-            <Button variant="outline" onClick={() => setPhase('setup')}>
+            <Button variant="outline" onClick={() => morph(() => setPhase('setup'))}>
               {t('changeLevel')}
             </Button>
             <Button variant="ghost" onClick={() => navigate({ name: 'door', door: 'challenges' }, { replace: true })}>
