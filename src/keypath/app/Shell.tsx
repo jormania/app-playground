@@ -6,6 +6,7 @@ import { DEFAULT_PROFILE_SETTINGS, ProfileRepo, type Profile, type ProfileSettin
 import { hrefOf, navigate, useRoute, type Route } from './router'
 import { indexedDbStore, type KeyValueStore } from './store'
 import { useWakeLock } from '../../shared/useWakeLock'
+import { useReminderSync } from './reminder'
 import { WhoIsPlaying } from './screens/WhoIsPlaying'
 import { Home } from './screens/Home'
 import { SettingsScreen } from './screens/SettingsScreen'
@@ -51,6 +52,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
   const profiles = useMemo(() => new ProfileRepo(store), [store])
   const log = useMemo(() => new EngagementLog(store), [store])
   const route = useRoute()
+  useReminderSync(profiles, log)
   const [loaded, setLoaded] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<ProfileSettings>(DEFAULT_PROFILE_SETTINGS)

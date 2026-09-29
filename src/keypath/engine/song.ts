@@ -46,6 +46,8 @@ export interface Song {
   easy?: boolean
   /** An added song moved up or down by this many semitones, by choice (its ⋯ menu), after the easy version's own key. */
   transpose?: number
+  /** The finger numbers on `notes` were worked out (engine/fingering.ts), not written by the score: shown as suggestions. */
+  fingersSuggested?: boolean
   /** The printed number of each bar, when the song came from a score; bar 0 is labelled `barLabels[0]`. */
   barLabels?: string[]
 }

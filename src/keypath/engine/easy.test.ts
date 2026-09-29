@@ -90,7 +90,8 @@ describe('the easy version of a song', () => {
     expect(on.notes.length).toBe(15)
     expect(on.source).toHaveLength(48)
     const off = fitSong({ ...on, easy: false }, null)
-    expect(off.notes).toEqual(s.notes)
+    // The notes as written; the fingers on them are suggestions, made for whatever notes are played.
+    expect(off.notes.map(({ finger: _f, ...x }) => x)).toEqual(s.notes)
     expect(off.source).toBeUndefined()
   })
 })

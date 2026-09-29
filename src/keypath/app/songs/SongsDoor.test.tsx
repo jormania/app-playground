@@ -54,7 +54,7 @@ describe('Songs, for everyday use', () => {
     const rows = [...document.querySelectorAll('[class*="songTitle"]')].map((e) => e.textContent)
     // The level-1 songs come first, the Minuet in G last.
     expect(rows.slice(0, 6)).toEqual(['Twinkle, Twinkle, Little Star', 'Ode to Joy', 'Au clair de la lune', 'Hot Cross Buns', 'Mary Had a Little Lamb', 'When the Saints Go Marching In'])
-    expect(rows[13]).toBe('Minuet in G')
+    expect(rows[14]).toBe('Minuet in G')
     // Six starter songs, and the added three-note one, worked out from its notes.
     expect(screen.getAllByText('Easy').length).toBe(7)
     expect(screen.getAllByText('Harder').length).toBe(3)

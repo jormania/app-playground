@@ -23,6 +23,18 @@ describe('stickers', () => {
     expect(earned.has('cleanStep')).toBe(false)
   })
 
+  it('the warm-up is a day of practice and nothing about songs', () => {
+    const warm = (day: string, three = false) => [
+      at(day, { type: 'song_started', songId: 'starter:warmup', practice: 'both', tempo: 1, mode: 'wait' }),
+      at(day, { type: 'song_finished', songId: 'starter:warmup', practice: 'both', stars: three ? 3 : 2, score: 1, hit: 10, total: 10, wrong: 0 }),
+    ]
+    // Three stars, both hands, a first song finished: none of it counts for the warm-up.
+    expect(earnedStickers(warm('2026-09-20', true)).size).toBe(0)
+    // But seven days of it are seven days.
+    const week = ['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07'].flatMap((d) => warm(d))
+    expect([...earnedStickers(week).keys()]).toEqual(['week'])
+  })
+
   it('a week of practice days: seven days she played, not necessarily in a row', () => {
     const days = ['2026-09-01', '2026-09-03', '2026-09-04', '2026-09-08', '2026-09-10', '2026-09-11']
     const r = days.map((d) => at(d, { type: 'song_started', songId: 'x', practice: 'right', tempo: 1, mode: 'wait' }))

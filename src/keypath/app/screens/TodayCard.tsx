@@ -7,6 +7,7 @@ import type { Door } from '../log'
 import { localDate } from '../progress/summary'
 import { navigate } from '../router'
 import { SongLibrary } from '../songs/library'
+import { WARMUP_ID } from '../../engine/starterPack'
 import { isDone, planToday, todayFor, type TodayItem, type TodayPlan } from './today'
 import styles from '../app.module.css'
 
@@ -15,10 +16,10 @@ const GAME: Record<'race' | 'echo' | 'chord', { icon: string; title: StringKey }
   echo: { icon: '🥁', title: 'echoTitle' },
   chord: { icon: '🎹', title: 'chordTitle' },
 }
-const KIND: Record<TodayItem['kind'], StringKey> = { song: 'todaySong', journey: 'todayJourney', game: 'todayGame' }
-const DOOR: Record<TodayItem['kind'], Door> = { song: 'songs', journey: 'journey', game: 'challenges' }
+const KIND: Record<TodayItem['kind'], StringKey> = { warmup: 'todayWarmup', song: 'todaySong', journey: 'todayJourney', game: 'todayGame' }
+const DOOR: Record<TodayItem['kind'], Door> = { warmup: 'songs', song: 'songs', journey: 'journey', game: 'challenges' }
 
-/** Home's "Today": a song, a Journey step and a game, each ticked off as she does it. */
+/** Home's "Today": a warm-up, a song, a Journey step and a game, each ticked off as she does it. */
 export function TodayCard() {
   const { t, store, log, profile, settings } = useApp()
   const [today, setToday] = useState<{ plan: TodayPlan; done: boolean[]; titles: Map<string, string> } | null>(null)
@@ -31,7 +32,7 @@ export function TodayCard() {
       const [records, journey, songs] = await Promise.all([log.read(profile.id), new JourneyRepo(store).get(profile.id), new SongLibrary(store).list(settings.language)])
       const plan = await todayFor(store, profile.id, () => planToday(records, journey, songs, date), date)
       const done = plan.items.map((i) => isDone(i, records, date))
-      // All three done: noted once for the day (the Today sticker reads it).
+      // All done: noted once for the day (the Today sticker reads it).
       if (done.length && done.every(Boolean) && !records.some((r) => r.type === 'today_done' && localDate(r.at) === date)) void log.add(profile.id, { type: 'today_done' })
       if (live) setToday({ plan, done, titles: new Map(songs.map((e) => [e.song.id, e.song.title])) })
     })()
@@ -42,6 +43,7 @@ export function TodayCard() {
 
   if (!profile || !today) return null
   const what = (i: TodayItem): string | null => {
+    if (i.kind === 'warmup') return today.titles.has(WARMUP_ID) ? `🤲 ${today.titles.get(WARMUP_ID)}` : null
     if (i.kind === 'song') return today.titles.has(i.songId) ? `🎵 ${today.titles.get(i.songId)}` : null
     if (i.kind === 'journey') {
       const step = stepById(i.step)
@@ -54,7 +56,8 @@ export function TodayCard() {
   const allDone = shown.every((x) => x.done)
   const open = (i: TodayItem) => {
     void log.add(profile.id, { type: 'door_opened', door: DOOR[i.kind] })
-    if (i.kind === 'song') navigate({ name: 'play', songId: i.songId })
+    if (i.kind === 'warmup') navigate({ name: 'play', songId: WARMUP_ID })
+    else if (i.kind === 'song') navigate({ name: 'play', songId: i.songId })
     else if (i.kind === 'journey') navigate({ name: 'journeyStep', step: i.step })
     else navigate({ name: 'challenge', game: i.game })
   }

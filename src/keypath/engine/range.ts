@@ -1,4 +1,5 @@
 import { easyNotes } from './easy'
+import { withSuggestedFingers } from './fingering'
 import type { Hand, Song, SongNote } from './song'
 
 /** The PSR-E383's 61 keys, measured on the S24: C2–C7, MIDI 36–96. */
@@ -172,7 +173,9 @@ const endOf = (notes: readonly SongNote[]) => (notes.length ? Math.max(...notes.
  * when it is played easy, put through the chosen fit, or the default one.
  * The notes as written are kept whenever what is played differs from them.
  */
-export function fitSong(song: Song, mode: FitMode | null, range = KEYBOARD_RANGE): Song {
+export const fitSong = (song: Song, mode: FitMode | null, range = KEYBOARD_RANGE): Song => withSuggestedFingers(fitNotes(song, mode, range))
+
+function fitNotes(song: Song, mode: FitMode | null, range: typeof KEYBOARD_RANGE): Song {
   const source = song.source ?? song.notes
   const base = notesToFit(song)
   const options = fitOptions(base, range)

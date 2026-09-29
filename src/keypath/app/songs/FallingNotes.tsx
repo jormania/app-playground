@@ -28,6 +28,8 @@ interface Props {
   label: (pitch: number) => string
   /** Show each note's finger number, where the song has one. */
   fingers?: boolean
+  /** The numbers are suggestions, worked out for a song whose file had none: drawn dashed. */
+  suggested?: boolean
 }
 
 /**
@@ -36,7 +38,7 @@ interface Props {
  * its own key. The whole layer moves with one transform per frame.
  */
 export const FallingNotes = memo(
-  forwardRef<FallingNotesHandle, Props>(function FallingNotes({ notes, boxes, results, label, fingers = false }, ref) {
+  forwardRef<FallingNotesHandle, Props>(function FallingNotes({ notes, boxes, results, label, fingers = false, suggested = false }, ref) {
     const layer = useRef<HTMLDivElement>(null)
     const box = useRef<HTMLDivElement>(null)
     const [scale, setScale] = useState(PX_PER_MS)
@@ -90,7 +92,7 @@ export const FallingNotes = memo(
                 }}
               >
                 {finger && (
-                  <span className={styles.noteFinger} data-finger={finger}>
+                  <span className={styles.noteFinger} data-finger={finger} data-suggested={suggested || undefined}>
                     {finger}
                   </span>
                 )}

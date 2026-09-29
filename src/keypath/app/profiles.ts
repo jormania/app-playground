@@ -19,6 +19,8 @@ export interface ProfileSettings extends JudgeSettings {
   keyNames: boolean
   /** Finger numbers on the falling notes, and on the staff while practising. Only songs that carry fingering show any. */
   fingers: boolean
+  /** The music written on a staff above the falling notes: this bar and the next (songs/ScoreStrip.tsx). */
+  score: boolean
   /** Finger numbers fade from a song once she has learnt it (its whole song played through), and stay on new ones. */
   fingersFade: boolean
   /** A coach's note under the report, written by Claude, when the phone has a key (songs/coach.ts). */
@@ -32,6 +34,7 @@ export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
   keyNames: true,
   fingers: true,
   fingersFade: true,
+  score: false,
   coach: true,
 }
 

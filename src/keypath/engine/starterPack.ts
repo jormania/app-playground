@@ -27,6 +27,9 @@ import type { Finger, Hand, Song, SongNote } from './song'
 //   macdonald — “Old MacDonald Had a Farm”, traditional; the E-I-E-I-O tune
 //               printed by 1917.
 //   brahms    — Brahms, “Wiegenlied” Op. 49 No. 4 (1868). Brahms d. 1897.
+//   warmup    — a five-finger exercise written here: the notes of one hand
+//               position, up, down and in thirds. No source: it is a pattern,
+//               not a piece.
 //   minuet    — Minuet in G, BWV Anh. 114, from the 1725 Notebook for Anna
 //               Magdalena Bach, now given to Christian Petzold (d. 1733).
 
@@ -214,7 +217,27 @@ const minuetOpening: Line = [
   [E5, 1], [C5, 0.5], [D5, 0.5], [E5, 0.5], [Fs5, 0.5], [G5, 1], [G4, 1], [G4, 1],
   [C5, 1], [D5, 0.5], [C5, 0.5], [B4, 0.5], [A4, 0.5], [B4, 1], [C5, 0.5], [B4, 0.5], [A4, 0.5], [G4, 0.5],
 ]
+/** The five-finger warm-up: Today opens with it, and it is kept out of "try next" and the song Today picks. */
+export const WARMUP_ID = 'starter:warmup'
+
+// Five fingers on C D E F G: up and down, then in thirds, both hands an octave apart.
+const fiveFingers = (low: number): Line =>
+  [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0, 2, 1, 3, 2, 4, 3, 2, 1, 3, 2, 1].map((step) => [low + [0, 2, 4, 5, 7][step], 1] as [number, number]).concat([[low, 4]])
 STARTER_PACK.push(
+  {
+    id: WARMUP_ID,
+    title: { en: 'Five-finger warm-up', ro: 'Încălzire cu cinci degete' },
+    bpm: 80,
+    beatsPerBar: 4,
+    right: fiveFingers(C4),
+    left: fiveFingers(C3),
+    phrases: [0, 2, 4, 6],
+    level: 2,
+    fingers: {
+      right: '1234 5432 1234 5432 1324 3543 2432 1'.replaceAll(' ', ''),
+      left: '5432 1234 5432 1234 5342 3123 4234 5'.replaceAll(' ', ''),
+    },
+  },
   {
     id: 'starter:saints',
     title: { en: 'When the Saints Go Marching In', ro: 'When the Saints Go Marching In' },

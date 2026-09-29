@@ -235,7 +235,7 @@ describe('the easy version', () => {
     expect(hard.song.easy).toBe(true)
     const written = buildImport(waltz(), 'Waltz', null, false).song
     expect(hard.song.notes.length).toBeLessThan(written.notes.length)
-    expect(hard.song.source).toEqual(written.notes)
+    expect(hard.song.source).toEqual(written.notes.map(({ finger: _f, ...x }) => x))
     const easyTune = buildImport(tune(), 'Tune')
     expect([easyTune.easySuggested, easyTune.song.easy]).toEqual([false, false])
   })

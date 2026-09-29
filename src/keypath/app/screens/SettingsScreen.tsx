@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Field, SegmentedControl, SettingsToggle } from '../../../ds'
+import { SelectField } from '../../../ds/components/SelectField'
 import { BackupError, exportBackup, restoreBackup } from '../backup'
 import { useApp } from '../context'
 import { AVATARS, type Language, type NoteNames, type ProfileSettings } from '../profiles'
@@ -9,6 +10,7 @@ import type { OnWrong, ReportDepth, Timing } from '../../engine'
 import { TopBar } from './TopBar'
 import { RELEASE } from '../release'
 import { readAiKey, saveAiKey, testAiKey, type KeyCheck } from '../ai'
+import { disableReminder, enableReminder, readReminder, REMINDER_HOURS, reminderCapability, saveReminder, sendTestReminder, syncReminder } from '../reminder'
 import type { StringKey } from '../i18n'
 import styles from '../app.module.css'
 
@@ -46,7 +48,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 export function SettingsScreen() {
-  const { profile, profiles, settings, t, updateSetting, choose, removeProfile, store, reload } = useApp()
+  const { profile, profiles, settings, t, updateSetting, choose, removeProfile, store, reload, log } = useApp()
   const [persisted, setPersisted] = useState<Persistence>('unknown')
   const [message, setMessage] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -58,6 +60,9 @@ export function SettingsScreen() {
   const [savedKey, setSavedKey] = useState(readAiKey)
   const [keyDraft, setKeyDraft] = useState('')
   const [keyCheck, setKeyCheck] = useState<KeyCheck | 'testing' | null>(null)
+  /** The phone's daily reminder: on or off and when; and what the last tap on it found. */
+  const [reminder, setReminder] = useState(readReminder)
+  const [reminderNote, setReminderNote] = useState<'blocked' | 'unsupported' | 'sent' | 'cannot' | null>(null)
 
   useEffect(() => {
     void persistenceState().then(setPersisted)
@@ -104,6 +109,25 @@ export function SettingsScreen() {
     setKeyCheck('testing')
     setKeyCheck(await testAiKey(keyDraft.trim() || savedKey))
   }
+
+  const changeReminder = async (next: typeof reminder) => {
+    setReminder(next)
+    saveReminder(next)
+    await syncReminder(profiles, log)
+  }
+  const toggleReminder = async (on: boolean) => {
+    if (!on) {
+      setReminderNote(null)
+      await changeReminder({ ...reminder, enabled: false })
+      return void disableReminder()
+    }
+    if (reminderCapability() === 'unsupported') return setReminderNote('unsupported')
+    const permission = await enableReminder()
+    if (permission !== 'granted') return setReminderNote('blocked')
+    setReminderNote(null)
+    await changeReminder({ ...reminder, enabled: true })
+  }
+  const testReminder = async () => setReminderNote((await sendTestReminder(settings.language)) ? 'sent' : 'cannot')
 
   const savePlayer = async () => {
     if (!editing) return
@@ -231,6 +255,7 @@ export function SettingsScreen() {
         </Row>
         <SettingsToggle label={t('keyNames')} hint={t('keyNamesHint')} checked={settings.keyNames} onChange={(e) => void updateSetting('keyNames', e.target.checked)} />
         <SettingsToggle label={t('fingerNumbers')} hint={t('fingerNumbersHint')} checked={settings.fingers} onChange={(e) => void updateSetting('fingers', e.target.checked)} />
+        <SettingsToggle label={t('scoreToggle')} hint={t('scoreToggleHint')} checked={settings.score} onChange={(e) => void updateSetting('score', e.target.checked)} />
         {settings.fingers && <SettingsToggle label={t('fingerFade')} hint={t('fingerFadeHint')} checked={settings.fingersFade} onChange={(e) => void updateSetting('fingersFade', e.target.checked)} />}
       </Section>
 
@@ -323,6 +348,32 @@ export function SettingsScreen() {
             </p>
           )}
         </form>
+      </Section>
+
+      {/* A nudge at a set time, if nobody has practised yet: the phone's, not one player's. */}
+      <Section title={t('settingsReminder')}>
+        <SettingsToggle label={t('reminderToggle')} hint={t('reminderHint')} checked={reminder.enabled} onChange={(e) => void toggleReminder(e.target.checked)} />
+        {reminder.enabled && (
+          <>
+            <SelectField label={t('reminderTime')} value={String(Math.round(reminder.minutes / 60))} onChange={(e) => void changeReminder({ ...reminder, minutes: Number(e.target.value) * 60 })}>
+              {REMINDER_HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {`${h}:00`}
+                </option>
+              ))}
+            </SelectField>
+            <div className={styles.actions}>
+              <Button type="button" size="sm" variant="outline" onClick={() => void testReminder()}>
+                {t('reminderTest')}
+              </Button>
+            </div>
+          </>
+        )}
+        {reminderNote && (
+          <p className={reminderNote === 'sent' ? styles.message : styles.problem} role="status">
+            {t(reminderNote === 'blocked' ? 'reminderBlocked' : reminderNote === 'unsupported' ? 'reminderUnsupported' : reminderNote === 'sent' ? 'reminderSent' : 'reminderCannot')}
+          </p>
+        )}
       </Section>
 
       {/* What's on this phone: the family's progress, and keeping it safe. */}

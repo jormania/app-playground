@@ -1,4 +1,5 @@
 import type { Song } from '../../engine'
+import { WARMUP_ID } from '../../engine/starterPack'
 import { JOURNEY, type StepId } from '../journey/steps'
 import type { JourneyProgress } from '../journey/progress'
 import type { LogRecord } from '../log'
@@ -6,14 +7,14 @@ import { localDate } from '../progress/summary'
 import { tryNext } from '../songs/level'
 import { K, type KeyValueStore } from '../store'
 
-// Today (KEYPATH_TUTOR.md §10, "Learning curve", slice 3): three small things
-// for about five minutes: a song (or its next part), a Journey step, a quick
-// game, picked from her log. The picks are kept for the day, so they don't
+// Today (KEYPATH_TUTOR.md §10, "Learning curve", slice 3): four small things
+// for about five minutes: a warm-up, a song (or its next part), a Journey
+// step, a quick game, picked from her log. The picks are kept for the day, so they don't
 // move as she plays; whether each is done is read from today's log. No
 // streak: a missed day costs nothing, and tomorrow brings new picks.
 
 export type TodayGame = 'race' | 'echo' | 'chord'
-export type TodayItem = { kind: 'song'; songId: string } | { kind: 'journey'; step: StepId } | { kind: 'game'; game: TodayGame }
+export type TodayItem = { kind: 'warmup' } | { kind: 'song'; songId: string } | { kind: 'journey'; step: StepId } | { kind: 'game'; game: TodayGame }
 
 export interface TodayPlan {
   /** The phone's calendar day it was made for. */
@@ -28,13 +29,16 @@ const gameOf = (g: string): TodayGame | null => (g === 'staff' ? 'race' : GAMES.
 /** Days since 1970 on the phone's calendar: a number that moves by one each day. */
 const dayNumber = (date: string) => Math.round(Date.parse(`${date}T12:00:00Z`) / 86400000)
 
-export function planToday(records: readonly LogRecord[], journey: JourneyProgress, songs: readonly { song: Song }[], date: string): TodayPlan {
-  const items: TodayItem[] = []
+export function planToday(records: readonly LogRecord[], journey: JourneyProgress, allSongs: readonly { song: Song }[], date: string): TodayPlan {
+  // The warm-up first, every day: about twenty seconds of the five fingers. It is not the day's song.
+  const items: TodayItem[] = [{ kind: 'warmup' }]
+  const songs = allSongs.filter((e) => e.song.id !== WARMUP_ID)
 
   // The song: the one she played last, until it has three stars; then the easiest one not finished yet.
   const best = new Map<string, number>()
   let last: string | null = null
   for (const r of records) {
+    if ('songId' in r && r.songId === WARMUP_ID) continue
     if (r.type === 'song_finished') best.set(r.songId, Math.max(best.get(r.songId) ?? 0, r.stars))
     if (r.type === 'song_started' || r.type === 'song_finished' || r.type === 'song_abandoned' || r.type === 'song_part') last = r.songId
   }
@@ -68,6 +72,8 @@ export function isDone(item: TodayItem, records: readonly LogRecord[], date: str
   return records.some((r) => {
     if (localDate(r.at) !== date) return false
     switch (item.kind) {
+      case 'warmup':
+        return (r.type === 'song_finished' && r.songId === WARMUP_ID) || (r.type === 'song_part' && r.songId === WARMUP_ID && r.passed)
       case 'song':
         return (r.type === 'song_finished' && r.songId === item.songId) || (r.type === 'song_part' && r.songId === item.songId && r.passed)
       case 'journey':

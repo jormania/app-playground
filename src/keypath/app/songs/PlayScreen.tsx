@@ -15,10 +15,12 @@ import { keyBoxes, rangeFor, widenRange } from './keyGeometry'
 import { useWide, WIDE_OCTAVES } from './useWide'
 import { SongLibrary } from './library'
 import { PlayKeyboard } from './PlayKeyboard'
+import { ScoreStrip } from './ScoreStrip'
 import { ReportView } from './ReportView'
 import type { FactsInput } from './coach'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
 import { nextStep, partPassed, PartsRepo, partSteps, rangeSong, type PartStep } from './parts'
+import { WARMUP_ID } from '../../engine/starterPack'
 import { tryNext } from './level'
 import { SetupRepo, SPEEDS, suggestedSpeed, type Speed } from './setup'
 import { Accompanist } from './accompany'
@@ -123,6 +125,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [hearing, setHearing] = useState(false)
   const tryPlayback = useRef<Playback | null>(null)
   // "Practise one bar" from the setup: which bar, and one waiting for middle C to be found first.
+  // The bar the music strip opens on.
+  const [scoreBar, setScoreBar] = useState(0)
   const [barOpen, setBarOpen] = useState(false)
   const [barPick, setBarPick] = useState(0)
   const pendingBar = useRef<number | null>(null)
@@ -161,7 +165,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     void (async () => {
       const [entries, records] = await Promise.all([new SongLibrary(store).list(settings.language), log.read(profileId)])
       const done = songProgress(records)
-      const pick = tryNext(entries, (id) => id === song.id || done.get(id)?.bestStars != null, song.id)
+      const pick = tryNext(entries.filter((e) => e.song.id !== WARMUP_ID), (id) => id === song.id || done.get(id)?.bestStars != null, song.id)
       if (live) setNext(pick ? { id: pick.song.id, title: pick.song.title } : null)
     })()
     return () => {
@@ -222,6 +226,25 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const playSettings = useMemo((): typeof settings => (spanFrom !== null ? { ...settings, onWrong: 'wait' } : settings), [settings, spanFrom])
   const notes = useMemo(() => notesFor(playing, practice), [playing, practice])
   const songNotes = useMemo(() => notesFor(song, practice), [song, practice])
+  /** The bar being played at song time `s`: the last note started (or about to), else the first. */
+  const barAtTime = useCallback(
+    (s: number) => {
+      let lo = 0
+      let hi = notes.length - 1
+      let at = 0
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1
+        if (notes[mid].startMs <= s + 50) {
+          at = mid
+          lo = mid + 1
+        } else hi = mid - 1
+      }
+      return notes[at]?.bar ?? 0
+    },
+    [notes],
+  )
+  // Before the music starts, and whenever the notes change (another part), the first bar.
+  useEffect(() => setScoreBar(notes[0]?.bar ?? 0), [notes])
   const wide = useWide()
   // The keys the chosen hands need, not the whole song: right hand alone on a
   // phone gets keys a finger can hit, instead of three octaves of slivers. A
@@ -510,6 +533,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       if (!p) return
       const s = p.position() * tempo
       fall.current?.setTime(s)
+      setScoreBar((b) => {
+        const next = barAtTime(s)
+        return next === b ? b : next
+      })
       const sounding = notes.filter((n) => n.startMs <= s && s < n.startMs + n.durationMs).map((n) => n.pitch)
       const key = sounding.join(',')
       if (key !== lastKeys) {
@@ -520,7 +547,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [listening, notes, tempo])
+  }, [listening, notes, tempo, barAtTime])
   useEffect(
     () => () => {
       listenPlayback.current?.stop()
@@ -572,10 +599,15 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         target = j.songTime(now)
         shownTime.current = target
         const s = j.songTime(now)
+        setScoreBar((b) => {
+          const next = barAtTime(s)
+          return next === b ? b : next
+        })
         setCountIn(s < 0 ? Math.ceil(-s / (60000 / song.bpm)) : null)
         next = notes.filter((n) => n.startMs >= s - 150 && n.startMs <= s + 450 && !results.has(n.id)).map((n) => n.pitch)
       } else {
         const step = j.currentStep
+        if (step?.notes[0]) setScoreBar((b) => (step.notes[0].bar === b ? b : step.notes[0].bar))
         target = step?.startMs ?? shownTime.current
         // Glide to the waiting step rather than jumping.
         shownTime.current += (target - shownTime.current) * 0.2
@@ -591,7 +623,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [phase, apply, notes, results, song.bpm])
+  }, [phase, apply, notes, results, song.bpm, barAtTime])
 
   // Before playing, show the start of the song resting at the top.
   useEffect(() => {
@@ -825,6 +857,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               {places.map((pl) => t(pl.hand === 'right' ? (pl.finger === 1 ? 'placeRightThumb' : 'placeRightLittle') : pl.finger === 1 ? 'placeLeftThumb' : 'placeLeftLittle', { note: label(pl.pitch) })).join(' · ')}
             </span>
           )}
+          {song.fingersSuggested && showFingers && <span className={styles.placeLine}>{t('fingersSuggestedNote')}</span>}
           <div className={styles.actions}>
             <Button
               size="sm"
@@ -937,7 +970,18 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             ■ {t('stop')}
           </Button>
         )}
-        <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} fingers={showFingers} />
+        {settings.score && musicOn && (
+          <ScoreStrip
+            notes={notes}
+            practice={practice}
+            bar={scoreBar}
+            active={phase === 'ready' ? new Set<number>() : listening ? listenKeys : targets}
+            results={results}
+            beatMs={60000 / song.bpm}
+            ariaLabel={t('scoreAria', { a: barName(song, scoreBar), b: barName(song, scoreBar + 1) })}
+          />
+        )}
+        <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} fingers={showFingers} suggested={song.fingersSuggested} />
         <PlayKeyboard
           sound={!keyboard.connected}
           names={settings.keyNames}

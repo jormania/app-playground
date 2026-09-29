@@ -1,3 +1,4 @@
+import { WARMUP_ID } from '../../engine/starterPack'
 import type { StringKey } from '../i18n'
 import { JOURNEY } from '../journey/steps'
 import type { LogRecord } from '../log'
@@ -85,12 +86,25 @@ export const STICKERS: Sticker[] = [
   { id: 'year', icon: '🏆', title: 'stYear', earns: keptAt(12) },
 ]
 
+/** The stickers for time kept at it, which any practice can earn: the warm-up included. */
+const DAY_BASED = new Set(['week', 'month', 'threeMonths', 'sixMonths', 'year'])
+
 /** Each sticker earned, with the day it was earned on. `level` tells a song's level, for "a Harder song". */
 export function earnedStickers(records: readonly LogRecord[], level: So['level'] = () => undefined): Map<string, string> {
   const out = new Map<string, string>()
   const so: So = { startedAs: new Map(), finished: new Set(), partLearnt: new Set(), stepsPassed: new Set(), days: new Set(), level }
   for (const r of records) {
+    // The five-finger warm-up is a song only in name: it counts as a day of practice, and earns nothing about songs.
+    const warm = 'songId' in r && r.songId === WARMUP_ID
     // What this record adds comes first, so the fifth song finished counts on the fifth.
+    if (warm) {
+      if (PRACTICE.has(r.type)) {
+        so.days.add(localDate(r.at))
+        so.firstDay ??= localDate(r.at)
+      }
+      for (const s of STICKERS) if (DAY_BASED.has(s.id) && !out.has(s.id) && s.earns(r, so)) out.set(s.id, localDate(r.at))
+      continue
+    }
     if (r.type === 'song_started') so.startedAs.set(r.songId, r.mode)
     if (r.type === 'song_finished') so.finished.add(r.songId)
     if (r.type === 'song_part' && r.passed && r.part !== 'whole') so.partLearnt.add(r.songId)

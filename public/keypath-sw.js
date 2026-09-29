@@ -2,6 +2,10 @@
 // the KeyPath page. Enables PWA installability and offline use after first visit.
 // Same shape as Law of the Day's. Songs, takes and progress live in IndexedDB,
 // never in this cache, so clearing it loses nothing but speed.
+// The daily reminder's wake and click handlers (public/keypath-notify.js), on the shared
+// notifications foundation (NOTIFICATIONS.md).
+importScripts('/shared-notify-idb.js', '/keypath-notify.js');
+
 const CACHE = 'keypath-cache-v1';
 // Cache Storage is origin-wide and every app here shares one origin: activate only
 // ever deletes this worker's own older caches, never another app's.

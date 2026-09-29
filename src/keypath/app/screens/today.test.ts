@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STARTER_PACK, starterSong } from '../../engine/starterPack'
+import { STARTER_PACK, starterSong, WARMUP_ID } from '../../engine/starterPack'
 import type { LogEvent, LogRecord } from '../log'
 import { memoryStore } from '../store'
 import { isDone, planToday, todayFor } from './today'
@@ -8,24 +8,32 @@ const songs = STARTER_PACK.map((s) => ({ song: starterSong(s) }))
 const at = (day: string, e: LogEvent): LogRecord => ({ ...e, at: new Date(`${day}T10:00:00`).toISOString(), profileId: 'p' }) as LogRecord
 
 describe('Today', () => {
-  it('for a new player: the easiest song, the first step, and a game', () => {
+  it('for a new player: the warm-up, the easiest song, the first step, and a game', () => {
     const plan = planToday([], {}, songs, '2026-09-25')
-    expect(plan.items[0]).toEqual({ kind: 'song', songId: 'starter:twinkle' })
-    expect(plan.items[1]).toEqual({ kind: 'journey', step: 'middleC' })
-    expect(plan.items[2].kind).toBe('game')
+    expect(plan.items[0]).toEqual({ kind: 'warmup' })
+    expect(plan.items[1]).toEqual({ kind: 'song', songId: 'starter:twinkle' })
+    expect(plan.items[2]).toEqual({ kind: 'journey', step: 'middleC' })
+    expect(plan.items[3].kind).toBe('game')
+  })
+
+  it('never makes the warm-up the day’s song, however lately she played it', () => {
+    const played = [at('2026-09-24', { type: 'song_finished', songId: WARMUP_ID, practice: 'both', stars: 2, score: 0.8, hit: 8, total: 10, wrong: 1 })]
+    expect(planToday(played, {}, songs, '2026-09-25').items[1]).toEqual({ kind: 'song', songId: 'starter:twinkle' })
+    expect(isDone({ kind: 'warmup' }, played, '2026-09-24')).toBe(true)
+    expect(isDone({ kind: 'warmup' }, played, '2026-09-25')).toBe(false)
   })
 
   it('keeps the song she’s on until it has three stars, then moves to the next one not finished', () => {
     const on = [at('2026-09-24', { type: 'song_finished', songId: 'starter:ode', practice: 'right', stars: 2, score: 0.8, hit: 8, total: 10, wrong: 1 })]
-    expect(planToday(on, {}, songs, '2026-09-25').items[0]).toEqual({ kind: 'song', songId: 'starter:ode' })
+    expect(planToday(on, {}, songs, '2026-09-25').items[1]).toEqual({ kind: 'song', songId: 'starter:ode' })
     const done = [...on, at('2026-09-24', { type: 'song_finished', songId: 'starter:ode', practice: 'right', stars: 3, score: 1, hit: 10, total: 10, wrong: 0 })]
-    expect(planToday(done, {}, songs, '2026-09-25').items[0]).toEqual({ kind: 'song', songId: 'starter:twinkle' })
+    expect(planToday(done, {}, songs, '2026-09-25').items[1]).toEqual({ kind: 'song', songId: 'starter:twinkle' })
   })
 
   it('offers the first Journey step not done, and none once the Journey is done', () => {
-    expect(planToday([], { middleC: { at: '', how: 'check' } }, songs, '2026-09-25').items[1]).toEqual({ kind: 'journey', step: 'fingers' })
+    expect(planToday([], { middleC: { at: '', how: 'check' } }, songs, '2026-09-25').items[2]).toEqual({ kind: 'journey', step: 'fingers' })
     const all = Object.fromEntries(['middleC', 'fingers', 'cde', 'fiveFinger', 'chord', 'twoHands', 'notation', 'leftHand', 'blackKeys', 'readingHigher'].map((id) => [id, { at: '', how: 'check' as const }]))
-    expect(planToday([], all, songs, '2026-09-25').items.map((i) => i.kind)).toEqual(['song', 'game'])
+    expect(planToday([], all, songs, '2026-09-25').items.map((i) => i.kind)).toEqual(['warmup', 'song', 'game'])
   })
 
   it('picks the game she has played least, taking turns day by day between equals', () => {

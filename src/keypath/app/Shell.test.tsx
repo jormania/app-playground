@@ -157,9 +157,44 @@ describe('KeyPath shell, after the audit', () => {
     await createPlayer('Nora')
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     const headings = (await screen.findAllByRole('heading', { level: 2 })).map((h) => h.textContent)
-    expect(headings).toEqual(['Player', 'Language and names', 'Playing a song', 'Claude', 'Progress and backup', 'Keyboard'])
+    expect(headings).toEqual(['Player', 'Language and names', 'Playing a song', 'Claude', 'Reminder', 'Progress and backup', 'Keyboard'])
     const player = within(screen.getByRole('region', { name: 'Player' }))
     for (const name of ['Edit name and avatar', 'Switch player', 'Delete this player']) expect(player.getByRole('button', { name })).toBeTruthy()
+  })
+
+  it('turns the daily reminder on once notifications are allowed, and says so when they are blocked', async () => {
+    localStorage.clear()
+    class Allowed {
+      static permission = 'default'
+      static requestPermission = async () => (Allowed.permission = 'granted')
+    }
+    vi.stubGlobal('Notification', Allowed)
+    try {
+      await start()
+      await createPlayer('Nora')
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      const toggle = await screen.findByRole('checkbox', { name: /A daily reminder/ })
+      fireEvent.click(toggle)
+      await screen.findByLabelText('Remind at')
+      expect(JSON.parse(localStorage.getItem('keypath:reminder')!)).toMatchObject({ enabled: true, minutes: 17 * 60 })
+      fireEvent.change(screen.getByLabelText('Remind at'), { target: { value: '19' } })
+      await waitFor(() => expect(JSON.parse(localStorage.getItem('keypath:reminder')!).minutes).toBe(19 * 60))
+      fireEvent.click(toggle)
+      await waitFor(() => expect(JSON.parse(localStorage.getItem('keypath:reminder')!).enabled).toBe(false))
+
+      // Blocked: nothing turns on, and it says why.
+      class Blocked {
+        static permission = 'denied'
+        static requestPermission = async () => 'denied'
+      }
+      vi.stubGlobal('Notification', Blocked)
+      fireEvent.click(toggle)
+      expect(await screen.findByText(/Notifications are blocked for KeyPath/)).toBeTruthy()
+      expect(JSON.parse(localStorage.getItem('keypath:reminder')!).enabled).toBe(false)
+    } finally {
+      vi.unstubAllGlobals()
+      localStorage.clear()
+    }
   })
 
   it('saves the phone’s Anthropic key, tests it, and removes it; the key never goes into a backup', async () => {
@@ -246,6 +281,7 @@ describe('KeyPath shell, after the audit', () => {
     const [p] = await new ProfileRepo(store).list()
     const log = new EngagementLog(store)
     await log.add(p.id, { type: 'song_finished', songId: 'starter:twinkle', practice: 'right', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
+    await log.add(p.id, { type: 'song_finished', songId: 'starter:warmup', practice: 'both', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
     await log.add(p.id, { type: 'journey_finished', step: 'middleC', mode: 'practice', passed: true, wrong: 0, ms: 1 })
     for (const game of ['race', 'echo', 'chord'] as const) await log.add(p.id, { type: 'challenge_finished', game, level: 1, score: 3, best: false, ms: 1 })
     await store.del(K.today(p.id))

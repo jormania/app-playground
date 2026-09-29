@@ -169,8 +169,15 @@ describe('Play screen', () => {
     expect(screen.getByRole('button', { name: '▶ Parts 1–2' })).toBeTruthy()
   })
 
-  it('an added song has no fingering, so no numbers', async () => {
+  it('an added song’s finger numbers are suggestions, drawn dashed, and go with the setting', async () => {
     await setUp({}, '#/play/Three%20notes')
+    await screen.findByRole('button', { name: /Start/ })
+    const nums = [...document.querySelectorAll('[data-finger]')]
+    // Three notes, C D E, one hand: 1 2 3.
+    expect(nums.map((e) => e.textContent)).toEqual(['1', '2', '3'])
+    expect(nums.every((e) => e.hasAttribute('data-suggested'))).toBe(true)
+    cleanup()
+    await setUp({ fingers: false }, '#/play/Three%20notes')
     await screen.findByRole('button', { name: /Start/ })
     expect(document.querySelector('[data-finger]')).toBeNull()
   })
@@ -461,5 +468,18 @@ describe('Play screen: practice tools', () => {
     // No report to go back to: the setup.
     fireEvent.click(screen.getByRole('button', { name: 'Change speed' }))
     expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
+  })
+})
+
+describe('Play screen: the music written', () => {
+  it('is over the notes once a song is under way, when it is switched on, and not otherwise', async () => {
+    await setUp({ score: true }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    expect(await screen.findByRole('img', { name: 'The music: bars 1 and 2' })).toBeTruthy()
+    cleanup()
+    await setUp({}, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    await screen.findByText('Press middle C to begin')
+    expect(screen.queryByRole('img', { name: /The music/ })).toBeNull()
   })
 })
