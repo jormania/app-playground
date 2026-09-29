@@ -49,8 +49,24 @@ export interface Written {
   finger?: Finger
 }
 
+/** What a bar says about jumping (D.C., D.S., Coda, Fine): read from the score's first part. */
+export interface BarMarks {
+  /** A segno here, by its label: a D.S. goes back to the bar that has it. */
+  segno?: string
+  /** A coda here, by its label. */
+  coda?: string
+  /** "Fine": on the pass after a jump, the piece ends with this bar. */
+  fine?: boolean
+  /** "To Coda": on the pass after a jump, after this bar go on to the coda (the one named, or the first). */
+  toCoda?: string
+  /** After this bar, go back: to the start (D.C.) or to a segno (D.S.); `coda` names the coda it will continue at. */
+  jump?: { to: 'start' | { segno: string }; coda?: string }
+}
+
 export interface Bar {
   label: string
+  /** Jump marks (D.C., D.S., Coda, Fine), when the bar has any. */
+  marks?: BarMarks
   notes: Written[]
   tempos: { at: number; bpm: number }[]
   /** How far the bar's content reaches, in quarter notes. */
@@ -164,6 +180,17 @@ function readPart(part: XmlElement, name: string): ReadPart {
           const sound = el.name === 'sound' ? el : child(el, 'sound')
           const bpm = num(sound?.attrs.tempo ?? '')
           if (bpm > 0) bar.tempos.push({ at: cursor, bpm })
+          if (sound) {
+            const a = sound.attrs
+            const m: BarMarks = bar.marks ?? {}
+            if (a.segno) m.segno = a.segno
+            if (a.coda) m.coda = a.coda
+            if (a.fine !== undefined && a.fine !== 'no') m.fine = true
+            if (a.tocoda) m.toCoda = a.tocoda
+            if (a.dacapo === 'yes') m.jump = { to: 'start' }
+            if (a.dalsegno) m.jump = { to: { segno: a.dalsegno } }
+            if (Object.keys(m).length) bar.marks = m
+          }
           break
         }
         case 'barline': {
@@ -191,16 +218,36 @@ function readPart(part: XmlElement, name: string): ReadPart {
 /**
  * The bars in playing order: repeats taken, each ending on its own pass. A
  * backward repeat plays its section `times` times (twice, or once more than
- * its highest ending when it's inside one).
+ * its highest ending when it's inside one). A D.C. or D.S. goes back once;
+ * after it there are no repeats, only the last ending is played, "Fine" ends
+ * the piece and "To Coda" skips on to the coda. A jump whose target isn't in
+ * the score is ignored.
  */
-export function playingOrder(bars: readonly Pick<Bar, 'forward' | 'backward' | 'ending'>[]): number[] {
+export function playingOrder(bars: readonly Pick<Bar, 'forward' | 'backward' | 'ending' | 'marks'>[]): number[] {
   const order: number[] = []
   const played = new Map<number, number>()
+  const lastEnding = Math.max(0, ...bars.flatMap((b) => b.ending ?? []))
+  const codaFor = (label: string) => {
+    const named = bars.findIndex((b) => b.marks?.coda === label)
+    return named >= 0 ? named : bars.map((b) => !!b.marks?.coda).lastIndexOf(true)
+  }
   let start = 0
   let pass = 1
   let wasEnding = false
+  let jumped = false
   for (let i = 0; i < bars.length && order.length < bars.length * 16; ) {
     const b = bars[i]
+    if (jumped) {
+      if (b.ending && !b.ending.includes(lastEnding)) {
+        i++
+        continue
+      }
+      order.push(i)
+      if (b.marks?.fine) break
+      const c = b.marks?.toCoda !== undefined ? codaFor(b.marks.toCoda) : -1
+      i = c > i ? c : i + 1
+      continue
+    }
     // Past the endings, a new section begins: its repeat goes back to here.
     if (wasEnding && !b.ending) {
       start = i
@@ -229,6 +276,16 @@ export function playingOrder(bars: readonly Pick<Bar, 'forward' | 'backward' | '
       pass = 1
       start = i + 1
       wasEnding = false
+    }
+    const jump = b.marks?.jump
+    if (jump) {
+      const to = jump.to
+      const target = to === 'start' ? 0 : bars.findIndex((x) => x.marks?.segno === to.segno)
+      if (target >= 0) {
+        jumped = true
+        i = target
+        continue
+      }
     }
     i++
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { looksLikeXml, MusicXmlError, parseMusicXml, playingOrder } from './musicxml'
+import { looksLikeXml, MusicXmlError, parseMusicXml, playingOrder, type BarMarks } from './musicxml'
 import { isZip, MxlError, unzipScore } from './mxl'
 import { partsOf, songFromParts, suggestScoreParts } from './parts'
 import { barName, barSpan } from './song'
@@ -105,6 +105,25 @@ describe('parseMusicXml', () => {
     expect(playingOrder([b(true), b(false, null), b(), b(true, 3)])).toEqual([0, 1, 0, 1, 2, 3, 3, 3])
     // No forward sign: back to the start. Endings 1 and 2 share a bar, 3 goes on.
     expect(playingOrder([b(), b(false, null, [1, 2]), b(false, undefined, [3]), b()])).toEqual([0, 1, 0, 1, 0, 2, 3])
+  })
+
+  it('follows D.C., D.S., Fine and Coda: one jump, then no repeats', () => {
+    const b = (marks?: BarMarks, forward = false, backward = false) => ({ forward, backward: backward ? { times: null } : null, ending: null, marks })
+    // D.C. al Fine: 1 2(fine) 3(D.C.) -> 1 2 3 1 2
+    expect(playingOrder([b(), b({ fine: true }), b({ jump: { to: 'start' } })])).toEqual([0, 1, 2, 0, 1])
+    // A plain D.C. plays the piece again to the end, without its repeats.
+    expect(playingOrder([b(undefined, true), b(undefined, false, true), b({ jump: { to: 'start' } })])).toEqual([0, 1, 0, 1, 2, 0, 1, 2])
+    // D.S. al Coda: 1 2(segno) 3(to coda) 4(D.S.) 5(coda) -> 1 2 3 4 2 3 5
+    expect(playingOrder([b(), b({ segno: 's' }), b({ toCoda: 'c' }), b({ jump: { to: { segno: 's' } } }), b({ coda: 'c' })])).toEqual([0, 1, 2, 3, 1, 2, 4])
+    // A jump to a segno the score doesn't have is ignored.
+    expect(playingOrder([b(), b({ jump: { to: { segno: 'nowhere' } } })])).toEqual([0, 1])
+  })
+
+  it('reads the jump signs from <sound>', () => {
+    const bars = [measure(1, attributes() + note({ pitch: 'C4', beats: 4 })), measure(2, '<direction><sound fine="yes"/></direction>' + note({ pitch: 'D4', beats: 4 })), measure(3, note({ pitch: 'E4', beats: 4 }) + '<sound dacapo="yes"/>')]
+    const file = parseMusicXml(score({ parts: [{ name: 'Piano', measures: bars }] }))
+    expect(file.score?.barLabels).toEqual(['1', '2', '3', '1', '2'])
+    expect(file.notes.map((n) => n.pitch)).toEqual([60, 62, 64, 60, 62])
   })
 
   it('counts a pickup as a short bar of its own', () => {

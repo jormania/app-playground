@@ -18,8 +18,9 @@ import { child, childrenOf, parseXml, textOf, XmlError, type XmlElement } from '
 //            <Tie> in it. Either way the next note of that pitch is joined on.
 //   endings  3–4: <Spanner type="Volta"> saying how many bars it lasts;
 //            2: <Volta id> closed by an <endSpanner id>.
-// Left out, as for MusicXML: grace notes, jumps (D.C., D.S., Coda, Fine),
-// ornaments, dynamics. Tablature and percussion staves are skipped.
+// Jumps (D.C., D.S., Coda, Fine) come from <Marker> and <Jump> on the first
+// staff and are followed by playingOrder, as for MusicXML.
+// Left out, as for MusicXML: grace notes, ornaments, dynamics. Tablature and percussion staves are skipped.
 
 export class MscxError extends Error {
   constructor(
@@ -106,6 +107,23 @@ function readStaff(staff: XmlElement, staffNumber: number, division: number): { 
           case 'Tempo': {
             const qps = num(textOf(el, 'tempo'))
             if (qps > 0) bar.tempos.push({ at: cursor, bpm: qps * 60 })
+            break
+          }
+          case 'Marker': {
+            // label: segno / varsegno (where a D.S. returns to), codab / varcoda (the coda), coda / varcodab ("To Coda"), fine.
+            const label = textOf(el, 'label').trim()
+            const m = bar.marks ?? {}
+            if (/^(var)?segno/.test(label)) m.segno = label
+            else if (label === 'codab' || label === 'varcoda') m.coda = label
+            else if (label === 'coda' || label === 'varcodab') m.toCoda = label === 'coda' ? 'codab' : 'varcoda'
+            else if (label === 'fine') m.fine = true
+            if (Object.keys(m).length) bar.marks = m
+            break
+          }
+          case 'Jump': {
+            const to = textOf(el, 'jumpTo').trim()
+            if (!to) break
+            bar.marks = { ...bar.marks, jump: { to: to === 'start' ? 'start' : { segno: to }, coda: textOf(el, 'continueAt').trim() || undefined } }
             break
           }
           case 'Tuplet': {
@@ -246,6 +264,6 @@ export function parseMscx(text: string): SmfFile {
     return { name: p.name, staves: p.ids.length, bars, beats: num(textOf(firstMetre, 'sigN'), 4) || 4, beatType: num(textOf(firstMetre, 'sigD'), 4) || 4 }
   })
   // The first part carries the score's repeats (fileFromParts reads them from there).
-  parts[0] = { ...parts[0], bars: parts[0].bars.map((b, m) => ({ ...b, forward: first.bars[m].forward, backward: first.bars[m].backward, ending: first.bars[m].ending })) }
+  parts[0] = { ...parts[0], bars: parts[0].bars.map((b, m) => ({ ...b, forward: first.bars[m].forward, backward: first.bars[m].backward, ending: first.bars[m].ending, marks: first.bars[m].marks })) }
   return fileFromParts(parts, title)
 }

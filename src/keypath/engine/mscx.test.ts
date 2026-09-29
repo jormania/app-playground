@@ -101,6 +101,23 @@ describe('parseMscx: MuseScore 3 and 4', () => {
     expect([right?.staff, left?.staff]).toEqual([1, 2])
   })
 
+  it('follows a D.S. al Coda from its markers and jump', () => {
+    const marker = (label: string) => `<Marker><label>${label}</label></Marker>`
+    const jump = '<Jump><jumpTo>segno</jumpTo><playUntil>coda</playUntil><continueAt>codab</continueAt></Jump>'
+    const file = parseMscx(
+      mscx({
+        version: '4.20',
+        parts: [
+          {
+            name: 'Piano',
+            staves: [[measure4([timeSig(4, 4) + whole(60)]), measure4([marker('segno') + whole(62)]), measure4([whole(64) + marker('coda')]), measure4([whole(65) + jump]), measure4([marker('codab') + whole(67)])]],
+          },
+        ],
+      }),
+    )
+    expect(file.notes.map((n) => n.pitch)).toEqual([60, 62, 64, 65, 62, 64, 67])
+  })
+
   it('leaves out tablature and percussion staves, and names each instrument', () => {
     const file = parseMscx(
       mscx({
