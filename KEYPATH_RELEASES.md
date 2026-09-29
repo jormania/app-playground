@@ -5,6 +5,35 @@ hardware: [`KEYPATH.md`](KEYPATH.md)). A release is a point on `main` worth nami
 number shows at the foot of Settings (`src/keypath/app/release.ts`). The user's guide is a
 shared doc, linked from the top of Home.
 
+## Release 3 — 2026-09-29
+
+The roadmap's first two tiers, and most of the third. Details in `KEYPATH_TUTOR.md` §9,
+"Release 3".
+
+**On the play screen**
+- **Each song remembers its setup**: hands and speed, per player.
+- **Where your hands go**: badges on the keys and a line in words before a part starts.
+- **Finger numbers fade** once a song is learnt (Settings can keep them).
+- **Suggested fingers** on songs that come without them, paler and marked as suggested.
+- **The music, written**: this bar and the next on a staff above the falling notes.
+- **Hear your try**, **practise one bar** from the setup, and **change a song's key**.
+- Bigger, bold note names on the falling notes.
+
+**Habit**
+- **A daily reminder** at a time the family picks, and **a warm-up** as a fourth thing in Today.
+
+**Together**
+- **Play together**: two players, one keyboard, one hand each, scored in their own names.
+- **A PIN** on a player, if wanted.
+
+**Library and games**
+- **Search and filter** the song list; **Ear check**, a fourth game.
+- **D.C., D.S., Coda and Fine** followed in downloaded scores.
+- Four more starter songs, and MuseScore 4.1 files (Interstellar) now open.
+
+**Still to come**: the MIDI-out test at the keyboard, judging how long notes are held, and
+what needs Nora's answers. See `KEYPATH_ROADMAP.md`.
+
 ## Release 2 — 2026-09-25
 
 Songs from MuseScore, and Claude in KeyPath. Everything built after release 1 through the

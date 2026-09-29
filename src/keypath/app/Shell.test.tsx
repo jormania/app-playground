@@ -297,7 +297,7 @@ describe('KeyPath shell, after the audit', () => {
     await start()
     await createPlayer('Nora')
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
-    expect(await screen.findByText('KeyPath, release 2')).toBeTruthy()
+    expect(await screen.findByText('KeyPath, release 3')).toBeTruthy()
   })
 
   it('links the user’s guide from the top of Home, in a new tab', async () => {

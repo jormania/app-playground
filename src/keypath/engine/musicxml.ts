@@ -11,9 +11,9 @@ import { child, childrenOf, parseXml, textOf, XmlError, type XmlElement } from '
 // Read: partwise scores; notes, chords, rests, backup/forward, voices, ties,
 // grace notes (left out: too quick to wait for), cue notes (not played),
 // tempo marks, time signatures, transposing instruments, repeats and first
-// and second endings (written out in playing order). Not read: D.C., D.S.,
-// Coda and Fine jumps (the bars play once, in order), ornaments, and
-// dynamics (loud or soft isn't judged).
+// and second endings and D.C., D.S., Coda and Fine jumps (all written out in
+// playing order; see playingOrder). Not read: ornaments, and dynamics (loud or
+// soft isn't judged).
 
 export class MusicXmlError extends Error {
   constructor(

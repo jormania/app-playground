@@ -912,8 +912,8 @@ bundle; the score read into the same shape as a MIDI file (`SmfFile`, with a
 `score` field for what MIDI can't carry), so it goes through the same steps:
 which part, fit, level. Notes sound for 90% of their value, as in the
 starter pack. Left out on purpose: grace notes (too quick to wait for), cue
-notes (not played), D.C./D.S./Coda/Fine jumps (their bars play once, in
-order), ornaments and dynamics. Timewise scores (rare) are refused.
+notes (not played), ornaments and dynamics. D.C./D.S./Coda/Fine are followed
+(§9, "Release 3", "Jumps"). Timewise scores (rare) are refused.
 
 The file picker has no type filter: Android doesn't know `.mxl` and would
 grey MuseScore's download out. The file is read to tell what it is, and
@@ -944,8 +944,8 @@ and fingers. What differs by version:
   pickup) not counting, as MuseScore prints them.
 
 Pitches are stored as they sound, so a transposing instrument needs nothing.
-Tablature and percussion staves are left out. The rest (grace notes, jumps,
-dynamics) is as for MusicXML.
+Tablature and percussion staves are left out. The rest (grace notes,
+dynamics) is as for MusicXML; jumps are read from `<Marker>` and `<Jump>`.
 
 **How it was checked.** `webmscore`, MuseScore compiled to WebAssembly, was
 run outside the repo as an oracle; it is 24 MB, too heavy to ship, and
@@ -1002,6 +1002,74 @@ the rating and lets her pick another; the same is in the song's ⋯ menu. A
 level equal to the rating isn't stored, so the rating follows later changes
 (a different fit, say); one that differs is kept as `Song.level`, and
 survives a refit. Built-in songs keep theirs.
+
+### Release 3: the roadmap, in four batches
+
+Built in one go from `KEYPATH_ROADMAP.md` (2026-09-29), in the order that let each
+batch use the last. Items marked ✅ there are these; the rest is listed at the end.
+
+**A. The play screen remembers and guides.**
+- *A song's setup* (`songs/setup.ts`, `K.setup`): hands and speed kept per song and
+  per player, applied when the song opens. A song whose easy version still rates
+  Harder opens at 75%.
+- *Where your hands go* (`engine/position.ts`, `handPlaces`): from the notes' fingers,
+  which finger is on which key at the start; shown as small badges on the keys
+  (over the black ones too) and as a line in words ("Right thumb on C").
+- *Fingers fade* (`fingersFade`, on by default in Settings): once a song's whole
+  song is learnt for these hands, its finger numbers stop showing.
+- *Bigger names on the falling notes*, bold and sized to the note with container
+  units, like the keys'.
+
+**B. Practice tools.**
+- *Hear your try*: every take is recorded quietly (`studio/recorder`) and the report
+  offers **▶ Hear your try** beside Listen.
+- *Practise one bar from the setup*, not only from the report: pick a bar under the
+  music strip, and it loops on the speed ladder as before.
+- *A song's key by hand* (`library.nudgeTranspose`, ± semitones, in ⋯ and the song
+  facts): relative and serialised, so two quick taps both count; clamped to
+  `MAX_TRANSPOSE`.
+
+**C. Habit and reading.**
+- *A daily reminder* (`app/reminder.ts`, `public/keypath-notify.js`, imported by
+  `keypath-sw.js`): a time the family picks in Settings, through `src/shared/notify`.
+  Android may delay it; the notify docs cover why.
+- *A warm-up in Today* (a fourth item: a sixty-second five-finger pattern, a built-in
+  song with id `WARMUP_ID`, kept out of Try next and the counts).
+- *Suggested fingers* (`engine/fingering.ts`): for songs without written fingering,
+  a small dynamic programme over each hand's notes (a five-finger position where it
+  can, thumb-under and stretch costs, the weak fingers costing extra; a repeated
+  note keeps its finger). They are marked `Song.fingersSuggested` and shown paler.
+- *The music, written* (`songs/ScoreStrip.tsx`, `ProfileSettings.score`): this bar and
+  the next on a staff above the falling notes, switchable.
+
+**D. Together, games and library.**
+- *Search and filter* (`songs/filter.ts`): level, hands, easy version, added by us.
+- *Ear check* (`challenges/earTrain.ts`, `EarScreen.tsx`): a fourth game, which of two
+  notes is higher and, at the top level, the interval; three levels, best kept, counted
+  in Progress and the weekly note like the others.
+- *A PIN on a player* (`profiles.ts`): four digits, kept as a salted SHA-256 hash. It
+  guards against a mix-up between siblings, not against anyone who wants in:
+  **Forgot the PIN?** removes it (the player's data is untouched), and a backup keeps
+  the hash like any other key.
+- *Jumps* (`engine/musicxml.ts`, `engine/mscx.ts`): D.C., D.S., Coda and Fine, from
+  `<sound>` attributes and MuseScore's `<Marker>`/`<Jump>`. `playingOrder` takes one
+  jump; after it there are no repeats, only the last ending, "Fine" stops the piece and
+  "To Coda" skips to the coda. A jump to a sign the score lacks is ignored, so a
+  malformed file plays straight through as before.
+- *Play together* (`engine/together.ts`, `songs/PlayScreen.tsx`): with **Both** hands
+  chosen and another player on the phone, one is picked as a partner and the current
+  player chooses their hand. The run is judged whole; on the report `summaryForHand`
+  splits it, so each is scored on their own notes (a wrong key goes to whichever hand's
+  keys it lies nearest) and each gets a `song_finished` in their own log. The coach's
+  note is off in this mode.
+
+**Not built, and why.** *MIDI-out test* (item 5): a session at the keyboard, planned
+for the day after. *Note length* (14) and *audio-latency compensation* (21) need
+Nora's own playing to tune against: a guess would misjudge a child's honest notes.
+*Romanian folk songs* (16): no reliable melody source, and a wrong tune is worse than
+none. *A song from a recording* (19): heavy dependency and a whole review screen, for a
+feature the log hasn't shown she wants. *A look of her own* (20): only her answers can
+say which way. *Dynamics* (23): far off for a beginner.
 
 ### Progress (after step 6)
 
@@ -1322,8 +1390,8 @@ install it and get the full screen):
   the keyboard (§9, "Songs wider than the keyboard").
 - ~~**MusicXML import**~~ Done (§9, "Songs from a score"), and MuseScore's
   own `.mscz` (§9, "Songs from MuseScore"). Still open:
-  **notation rendering** of a song's score (a late Journey skill), and the
-  D.C./D.S./Coda jumps.
+  **notation rendering** of a song's score (a late Journey skill). The
+  D.C./D.S./Coda jumps are done (§9, "Release 3").
 
 **Challenges refinements** (deferred from step 6):
 - **Audio latency.** When the rhythm plays on the phone, she hears it about
