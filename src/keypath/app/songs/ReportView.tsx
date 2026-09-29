@@ -23,6 +23,8 @@ interface Props {
   onPractiseBar?: (bar: number) => void
   /** A bar as printed, for a song from a score; counted from 1 otherwise. */
   barLabel?: (bar: number) => string
+  /** Her own try, played back: shown when she pressed any keys. */
+  hear?: { playing: boolean; onToggle: () => void } | null
   /** The song to try after this one, when there is one. */
   next?: { title: string; onOpen: () => void } | null
   /** What the coach is told, once it's ready; the note shows only with a key, online, and the report on. */
@@ -34,7 +36,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, next, coach, barLabel = (b) => String(b + 1) }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, hear, next, coach, barLabel = (b) => String(b + 1) }: Props) {
   const { t, profile, log, updateSetting, settings } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
@@ -85,6 +87,11 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
         </p>
         <div className={`${styles.actions} ${styles.reportActions}`}>
           <Button onClick={onPlayAgain}>{t('playAgain')}</Button>
+          {hear && (
+            <Button variant="outline" onClick={hear.onToggle}>
+              🎧 {hear.playing ? t('hearStop') : t('hearTry')}
+            </Button>
+          )}
           <Button variant="outline" onClick={onAnotherSong}>
             {t('anotherSong')}
           </Button>

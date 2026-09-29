@@ -70,6 +70,30 @@ export class SongLibrary {
     )
   }
 
+  /**
+   * Move an added song up or down by whole semitones, from where it is now (0 puts it back), from the
+   * notes as written. Relative, so two quick taps make two steps, not one.
+   */
+  nudgeTranspose(id: string, by: number): Promise<void> {
+    const run = this.nudges.then(() => this.nudge(id, by))
+    this.nudges = run.catch(() => {})
+    return run
+  }
+  /** One step at a time, so a second tap reads what the first wrote. */
+  private nudges: Promise<void> = Promise.resolve()
+  private async nudge(id: string, by: number): Promise<void> {
+    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
+    await this.store.set(
+      SONGS_KEY,
+      imported.map((s) => {
+        if (s.id !== id) return s
+        const shift = Math.max(-MAX_TRANSPOSE, Math.min(MAX_TRANSPOSE, Math.round((s.transpose ?? 0) + by)))
+        const { transpose: _old, ...rest } = s
+        return fitSong(shift ? { ...rest, transpose: shift } : rest, s.fit ?? null)
+      }),
+    )
+  }
+
   /** Set an added song's level. The level its notes earn is kept as none, so the rating stays live. */
   async setLevel(id: string, level: Level): Promise<void> {
     const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
@@ -96,6 +120,9 @@ export class SongLibrary {
     )
   }
 }
+
+/** How far a song can be moved by hand: half an octave either way. */
+export const MAX_TRANSPOSE = 6
 
 /** Song titles are kept short enough for the list and the play screen's title bar. */
 export const MAX_TITLE = 80

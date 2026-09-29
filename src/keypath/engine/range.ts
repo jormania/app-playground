@@ -155,10 +155,14 @@ export function defaultFit(options: readonly FitOption[], total: number): FitMod
   return options[0].mode
 }
 
-/** The notes the fit starts from: as written, or their easy version when the song is played easy. */
-export const notesToFit = (song: Pick<Song, 'notes' | 'source' | 'easy'>): SongNote[] => {
+/**
+ * The notes the fit starts from: as written, or their easy version when the
+ * song is played easy, then moved by the semitones she chose, if any.
+ */
+export const notesToFit = (song: Pick<Song, 'notes' | 'source' | 'easy' | 'transpose'>): SongNote[] => {
   const source = song.source ?? song.notes
-  return song.easy ? easyNotes(source) : source
+  const base = song.easy ? easyNotes(source) : source
+  return song.transpose ? base.map((n) => ({ ...n, pitch: n.pitch + song.transpose! })) : base
 }
 
 const endOf = (notes: readonly SongNote[]) => (notes.length ? Math.max(...notes.map((n) => n.startMs + n.durationMs)) : 0)
@@ -172,7 +176,7 @@ export function fitSong(song: Song, mode: FitMode | null, range = KEYBOARD_RANGE
   const source = song.source ?? song.notes
   const base = notesToFit(song)
   const options = fitOptions(base, range)
-  if (options.length === 0) return song.easy ? { ...song, notes: base, source, fit: undefined, durationMs: endOf(base) } : { ...song, notes: source, source: undefined, fit: undefined, durationMs: endOf(source) }
+  if (options.length === 0) return song.easy || song.transpose ? { ...song, notes: base, source, fit: undefined, durationMs: endOf(base) } : { ...song, notes: source, source: undefined, fit: undefined, durationMs: endOf(source) }
   const best = defaultFit(options, base.length)
   // A choice made for other notes (the song as written, before the easy version) may not be on offer: the best one, then.
   const chosen = options.find((o) => o.mode === (mode ?? best)) ?? options.find((o) => o.mode === best)!

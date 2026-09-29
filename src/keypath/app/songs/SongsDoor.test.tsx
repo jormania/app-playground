@@ -86,6 +86,23 @@ describe('Songs, for everyday use', () => {
     expect((await new SongLibrary(store).get(SHORT.id, 'en'))?.level).toBeUndefined()
   })
 
+  it('moves an added song up or down by semitones from its menu, and back', async () => {
+    const { store, go } = await setUp('#/door/songs')
+    go()
+    fireEvent.click(await screen.findByRole('button', { name: 'More for Three notes' }))
+    expect(screen.getByText('As it is')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'A semitone higher' }))
+    fireEvent.click(screen.getByRole('button', { name: 'A semitone higher' }))
+    await screen.findByText('+2 semitones')
+    expect((await new SongLibrary(store).get(SHORT.id, 'en'))?.notes.map((n) => n.pitch)).toEqual([62, 64, 66])
+    fireEvent.click(screen.getByRole('button', { name: 'A semitone lower' }))
+    fireEvent.click(screen.getByRole('button', { name: 'A semitone lower' }))
+    await screen.findByText('As it is')
+    const back = await new SongLibrary(store).get(SHORT.id, 'en')
+    expect(back?.notes.map((n) => n.pitch)).toEqual([60, 62, 64])
+    expect(back?.transpose).toBeUndefined()
+  })
+
   it('shows her best stars and when she last played, song by song', async () => {
     const { profileId, log, go } = await setUp('#/door/songs')
     await log.add(profileId, { type: 'song_started', songId: 'starter:ode', practice: 'right', tempo: 1, mode: 'wait' })

@@ -427,3 +427,39 @@ describe('Play screen: memory and guidance', () => {
     expect(document.querySelector('[data-hand="right"][aria-hidden]')?.textContent).toBe('1')
   })
 })
+
+describe('Play screen: practice tools', () => {
+  const aria = (l: string) => waitFor(() => expect(target()?.getAttribute('aria-label')).toBe(l))
+
+  it('plays her try back from the report, once she has pressed some keys', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    tap(target()!)
+    await playThrough([60, 62, 64])
+    await screen.findByText('How it went')
+    fireEvent.click(screen.getByRole('button', { name: '🎧 Hear your try' }))
+    expect(await screen.findByRole('button', { name: '🎧 Stop listening' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '🎧 Stop listening' }))
+    expect(await screen.findByRole('button', { name: '🎧 Hear your try' })).toBeTruthy()
+  })
+
+  it('practises any bar from the setup: middle C first, then the loop, then back to the setup', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise one bar' }))
+    expect(screen.getByText('Bar')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    // The octave isn't known yet: middle C first, as for a song.
+    expect(await screen.findByText('Press middle C to begin')).toBeTruthy()
+    tap(target()!)
+    expect(await screen.findByText('Play it clean: every note, no wrong key.')).toBeTruthy()
+    for (const l of ['C', 'D', 'E']) {
+      await aria(l)
+      act(() => tap(target()!))
+    }
+    expect(await screen.findByText('🎉 Bar 1 is clean!')).toBeTruthy()
+    await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_loop', bar: 1, done: true }))
+    // No report to go back to: the setup.
+    fireEvent.click(screen.getByRole('button', { name: 'Change speed' }))
+    expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
+  })
+})

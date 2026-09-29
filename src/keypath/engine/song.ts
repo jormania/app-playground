@@ -44,6 +44,8 @@ export interface Song {
    * before there was one, which gets it when it is rated Harder.
    */
   easy?: boolean
+  /** An added song moved up or down by this many semitones, by choice (its ⋯ menu), after the easy version's own key. */
+  transpose?: number
   /** The printed number of each bar, when the song came from a score; bar 0 is labelled `barLabels[0]`. */
   barLabels?: string[]
 }

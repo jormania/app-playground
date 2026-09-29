@@ -1,4 +1,4 @@
-import { SegmentedControl } from '../../../ds'
+import { Button, SegmentedControl } from '../../../ds'
 import type { Song } from '../../engine'
 import { useApp } from '../context'
 import type { StringKey } from '../i18n'
@@ -67,6 +67,28 @@ export function EasyPick({ easy, suggested, onChange }: { easy: boolean; suggest
         {t('easyHint')}
         {suggested && ` ${t('easySuggested')}`}
       </p>
+    </div>
+  )
+}
+
+/** An added song moved up or down by semitones: from its ⋯ menu. */
+export function KeyPick({ transpose, max, onChange }: { transpose: number; max: number; onChange: (by: number) => void }) {
+  const { t } = useApp()
+  return (
+    <div className={styles.levelPick}>
+      <span className={styles.levelPickLabel}>{t('keyTitle')}</span>
+      <div className={styles.keyPick}>
+        <Button size="sm" variant="outline" disabled={transpose <= -max} onClick={() => onChange(-1)} aria-label={t('keyLower')}>
+          −
+        </Button>
+        <span className={styles.keyPickValue} aria-live="polite">
+          {transpose === 0 ? t('keyAsIs') : t('keySemitones', { n: `${transpose > 0 ? '+' : '−'}${Math.abs(transpose)}` })}
+        </span>
+        <Button size="sm" variant="outline" disabled={transpose >= max} onClick={() => onChange(1)} aria-label={t('keyHigher')}>
+          +
+        </Button>
+      </div>
+      <p className={styles.hint}>{t('keyHint')}</p>
     </div>
   )
 }

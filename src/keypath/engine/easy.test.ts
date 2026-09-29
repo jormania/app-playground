@@ -94,3 +94,23 @@ describe('the easy version of a song', () => {
     expect(off.source).toBeUndefined()
   })
 })
+
+describe('moving a song by hand', () => {
+  const song = (): Song => ({ id: 'import:t', title: 'T', notes: [60, 62, 64].map((p, i) => n(p, i * 500)), bpm: 120, beatsPerBar: 4, durationMs: 1500 })
+
+  it('moves every note, keeps the song as written, and goes back exactly', () => {
+    const up = fitSong({ ...song(), transpose: 3 }, null)
+    expect(up.notes.map((x) => x.pitch)).toEqual([63, 65, 67])
+    expect(up.source?.map((x) => x.pitch)).toEqual([60, 62, 64])
+    const back = fitSong({ ...up, transpose: undefined }, null)
+    expect(back.notes.map((x) => x.pitch)).toEqual([60, 62, 64])
+    expect(back.source).toBeUndefined()
+  })
+
+  it('leaves what no longer fits the keyboard to the fit', () => {
+    // Middle C moved down five octaves would fall off the keys: the stray note is moved back in, as any is.
+    const low = fitSong({ ...song(), transpose: -30 }, null)
+    expect(low.notes.every((x) => x.pitch >= 36 && x.pitch <= 96)).toBe(true)
+    expect(low.fit).toBeDefined()
+  })
+})

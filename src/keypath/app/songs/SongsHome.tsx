@@ -3,11 +3,11 @@ import { Button, Field } from '../../../ds'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
-import { MAX_TITLE, SongLibrary, suggestEasy, type LibraryEntry } from './library'
+import { MAX_TITLE, MAX_TRANSPOSE, SongLibrary, suggestEasy, type LibraryEntry } from './library'
 import { fitOptions, notesToFit, type FitMode } from '../../engine'
 import { FitChoice } from './FitChoice'
 import { byLevel, levelOf, ratedLevel, type Level } from './level'
-import { EasyPick, LevelPick, SongFacts } from './SongFacts'
+import { EasyPick, KeyPick, LevelPick, SongFacts } from './SongFacts'
 import { playedWhen, songProgress, type SongProgress } from './songProgress'
 import styles from './songs.module.css'
 
@@ -58,6 +58,10 @@ export function SongsHome() {
   }
   const reeasy = async (id: string, easy: boolean) => {
     await library.setEasy(id, easy)
+    setEntries(await library.list(settings.language))
+  }
+  const retranspose = async (id: string, by: number) => {
+    await library.nudgeTranspose(id, by)
     setEntries(await library.list(settings.language))
   }
   const relevel = async (id: string, level: Level) => {
@@ -123,6 +127,7 @@ export function SongsHome() {
               </Button>
             </form>
             <EasyPick easy={!!e.song.easy} suggested={suggestEasy(e.song)} onChange={(on) => void reeasy(e.song.id, on)} />
+            <KeyPick transpose={e.song.transpose ?? 0} max={MAX_TRANSPOSE} onChange={(by) => void retranspose(e.song.id, by)} />
             <LevelPick level={levelOf(e.song)} rated={ratedLevel(e.song)} onChange={(l) => void relevel(e.song.id, l)} />
             {e.song.source && fitSection(e)}
             <div className={styles.actions}>

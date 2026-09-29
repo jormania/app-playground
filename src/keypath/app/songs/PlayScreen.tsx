@@ -28,6 +28,7 @@ import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useOutput } from '../studio/output'
 import { Playback, realClock, type Sink } from '../studio/playback'
+import { Recorder, type Recording } from '../studio/recorder'
 import styles from './songs.module.css'
 import setup from '../setup.module.css'
 
@@ -116,6 +117,15 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [loopStep, setLoopStep] = useState<LoopStep | null>(null)
   const loopRef = useRef<Loop | null>(null)
   const loopTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // Her last try, kept until the next one starts: the keys she pressed, to hear back from the report.
+  const tryRec = useRef<Recorder | null>(null)
+  const [tryTake, setTryTake] = useState<Recording | null>(null)
+  const [hearing, setHearing] = useState(false)
+  const tryPlayback = useRef<Playback | null>(null)
+  // "Practise one bar" from the setup: which bar, and one waiting for middle C to be found first.
+  const [barOpen, setBarOpen] = useState(false)
+  const [barPick, setBarPick] = useState(0)
+  const pendingBar = useRef<number | null>(null)
 
   // Learning it in parts: the way through (phrases, joins, the whole song), what
   // she has learnt, and the part chosen, which starts as the first not learnt.
@@ -239,6 +249,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       const j = new Judge(bar, { practice, settings, tempo: tempoOf(l), shift: shift.current })
       judge.current = j
       accompany(bar, j, tempoOf(l))
+      tryRec.current = null
       if (j.mode === 'running') j.start(performance.now() + (3 * 60000) / song.bpm / tempoOf(l))
       shownTime.current = READY_TIME
       setResults(new Map())
@@ -259,6 +270,16 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     [profileId, log, song.id, practice],
   )
 
+  /** Loop one bar (0-based) until it's clean, from the report or the setup: at the speed chosen. */
+  const beginLoop = (bar: number) => {
+    const l = startLoop(bar, settings.onWrong === 'wait' ? 'wait' : 'running', tempo)
+    setLoopBoth(l)
+    setLoopStep(null)
+    startPass(l)
+  }
+  const beginLoopRef = useRef(beginLoop)
+  beginLoopRef.current = beginLoop
+
   const finish = useCallback(() => {
     const j = judge.current
     if (!j) return
@@ -278,6 +299,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       return
     }
     const summary = j.summary()
+    if (tryRec.current) {
+      setTryTake(tryRec.current.stop(performance.now()))
+      tryRec.current = null
+    }
     if (part) {
       const passed = partPassed(summary)
       if (profileId) {
@@ -348,6 +373,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         j.start(at + leadIn)
       }
       shownTime.current = READY_TIME
+      tryRec.current = new Recorder(at)
+      setTryTake(null)
       setResults(new Map())
       setStreak(0)
       setPartResult(null)
@@ -379,6 +406,13 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       setHint(null)
       shift.current = found
       shiftKnown.current = true
+      // A bar asked for from the setup was waiting for the keyboard's octave to be known.
+      if (pendingBar.current !== null) {
+        const bar = pendingBar.current
+        pendingBar.current = null
+        morph(() => beginLoopRef.current(bar))
+        return
+      }
       morph(() => startJudge(playing, playSettings, at, part))
     },
     [t, label, startJudge, playing, playSettings, part],
@@ -392,12 +426,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     (pitch: number, at: number, fromScreen: boolean) => {
       const drawn = fromScreen ? pitch : pitch + shift.current
       setHeld((h) => new Set(h).add(drawn))
+      if (phaseRef.current === 'playing') tryRec.current?.noteOn(drawn, 80, at)
       if (phaseRef.current === 'ready') begin(pitch, at, fromScreen)
       else if (phaseRef.current === 'playing' && judge.current) apply(judge.current.press(fromScreen ? pitch - shift.current : pitch, at))
     },
     [begin, apply],
   )
-  const release = useCallback((drawn: number) => {
+  const release = useCallback((drawn: number, at = performance.now()) => {
+    tryRec.current?.noteOff(drawn, at)
     setHeld((h) => {
       const n = new Set(h)
       n.delete(drawn)
@@ -409,7 +445,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const onMidi = useCallback(
     (e: MidiEvent) => {
       if ((e.type !== 'noteon' && e.type !== 'noteoff') || !isPlayerChannel(e.channel)) return
-      if (e.type === 'noteoff') return release(e.note + shift.current)
+      if (e.type === 'noteoff') return release(e.note + shift.current, e.time)
       if (e.velocity < MIN_VELOCITY) return
       // The other hand's own notes, if the keyboard sends them back, are not hers.
       if (accompanist.current?.isEcho(e.note, e.time)) return
@@ -448,6 +484,23 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     morph(() => setListening(true))
     if (profileId) void log.add(profileId, { type: 'song_listened', songId: song.id, practice, tempo })
   }
+  // Hear her try back: the keys she pressed, played as she pressed them, from the report.
+  const stopHearing = useCallback(() => {
+    tryPlayback.current?.stop()
+    tryPlayback.current = null
+    setHearing(false)
+  }, [])
+  const hearTry = () => {
+    if (hearing) return stopHearing()
+    if (!tryTake || tryTake.notes.length === 0) return
+    const p = new Playback({ ...tryTake, ms: tryTake.ms + 300 }, output.sink(), realClock, stopHearing)
+    tryPlayback.current = p
+    p.start()
+    setHearing(true)
+  }
+  useEffect(() => () => tryPlayback.current?.stop(), [])
+  const hear = tryTake && tryTake.notes.length > 0 ? { playing: hearing, onToggle: hearTry } : null
+
   useEffect(() => {
     if (!listening) return
     let raf = 0
@@ -571,6 +624,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       void log.add(profileId, { type: 'song_abandoned', songId: song.id, practice, hit: s.results.filter((r) => r.outcome === 'hit').length, total: s.total })
     }
     judge.current = null
+    tryRec.current = null
     morph(() => {
       setPhase('setup')
       setResults(new Map())
@@ -585,13 +639,15 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     setPhase('playing')
   }
 
-  const practiseBar = (bar: number) =>
-    morph(() => {
-      const l = startLoop(bar, settings.onWrong === 'wait' ? 'wait' : 'running', tempo)
-      setLoopBoth(l)
-      setLoopStep(null)
-      startPass(l)
-    })
+  const practiseBar = (bar: number) => morph(() => beginLoop(bar))
+  /** From the setup: straight in once middle C has been found this visit, else ask for it first. */
+  const practiseBarFromSetup = (bar: number) => {
+    stopListening()
+    if (shiftKnown.current) return practiseBar(bar)
+    pendingBar.current = bar
+    morph(() => setPhase('ready'))
+  }
+  /** Out of a practised bar: to the report it came from, or, from the setup, back to the setup. */
   const backToReport = () =>
     morph(() => {
       accompanist.current?.stop()
@@ -599,7 +655,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       setLoopBoth(null)
       judge.current = null
       setCountIn(null)
-      setPhase('report')
+      setPhase(report ? 'report' : 'setup')
     })
   const wholeSong = () =>
     morph(() => {
@@ -616,6 +672,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const go = () =>
     morph(() => {
       stopListening()
+      stopHearing()
       if (shiftKnown.current) startJudge(playing, playSettings, performance.now(), part)
       else setPhase('ready')
     })
@@ -635,11 +692,19 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   /** Listening, or anywhere from "press middle C" to the end of a take: the screen is for the notes. */
   const musicOn = listening || phase !== 'setup'
 
+  const barTotal = songNotes.length ? Math.max(...songNotes.map((n) => n.bar)) + 1 : 1
+  const barAt = Math.min(barPick, barTotal - 1)
+  const barLink = (
+    <button type="button" className={setup.link} aria-expanded={barOpen} onClick={() => setBarOpen((o) => !o)}>
+      🔁 {barOpen ? t('practiseBarHide') : t('practiseOneBar')}
+    </button>
+  )
+
   if (phase === 'report' && report) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} coach={coach} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} coach={coach} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }
@@ -709,6 +774,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           {span ? (
             <p className={setup.note} data-inline>
               {t('partMode', { bars: barSpan(song, span.from, span.to) })}
+              {barLink}
             </p>
           ) : (
             <p className={setup.note} data-inline>
@@ -716,7 +782,29 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
                 {t('playModeChange')}
               </button>
+              {barLink}
             </p>
+          )}
+          {barOpen && (
+            <div className={setup.field}>
+              <span className={setup.label}>{t('barPickLabel')}</span>
+              <div className={setup.controls}>
+                <div className={styles.keyPick}>
+                  <Button size="sm" variant="outline" disabled={barAt <= 0} onClick={() => setBarPick(barAt - 1)} aria-label={t('barPickLower')}>
+                    −
+                  </Button>
+                  <span className={styles.keyPickValue} aria-live="polite">
+                    {barName(song, barAt)}
+                  </span>
+                  <Button size="sm" variant="outline" disabled={barAt >= barTotal - 1} onClick={() => setBarPick(barAt + 1)} aria-label={t('barPickHigher')}>
+                    +
+                  </Button>
+                </div>
+                <Button size="sm" onClick={() => practiseBarFromSetup(barAt)}>
+                  🔁 {t('barLoop')}
+                </Button>
+              </div>
+            </div>
           )}
           {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
         </section>
@@ -738,7 +826,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             </span>
           )}
           <div className={styles.actions}>
-            <Button size="sm" variant="ghost" onClick={() => morph(() => setPhase('setup'))}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                pendingBar.current = null
+                morph(() => setPhase('setup'))
+              }}
+            >
               {t(hasLeft ? 'backToSetupHands' : 'backToSetupSpeed')}
             </Button>
           </div>
@@ -806,6 +901,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             <Button size="sm" variant="ghost" onClick={() => morph(() => setPhase('setup'))}>
               {t('partChoose')}
             </Button>
+            {hear && (
+              <Button size="sm" variant="ghost" onClick={hear.onToggle}>
+                🎧 {hear.playing ? t('hearStop') : t('hearTry')}
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -819,7 +919,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               ▶ {t('wholeSong')}
             </Button>
             <Button size="sm" variant="outline" onClick={backToReport}>
-              {t('backToReport')}
+              {report ? t('backToReport') : t(hasLeft ? 'backToSetupHands' : 'backToSetupSpeed')}
             </Button>
           </div>
         </div>
@@ -849,7 +949,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           badges={phase === 'ready' ? badges : undefined}
           label={label}
           onPress={(p) => press(p, performance.now(), true)}
-          onRelease={release}
+          onRelease={(p) => release(p)}
         />
       </div>
 
