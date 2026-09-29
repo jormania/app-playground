@@ -48,6 +48,8 @@ export const K = {
   today: (profileId: string) => `${PREFIX}today:${profileId}`,
   /** Stickers she has already been shown, so a new one gets its moment once. */
   stickers: (profileId: string) => `${PREFIX}stickers:${profileId}`,
+  /** What she chose on each song's setup last time: the hands and the speed. */
+  setup: (profileId: string) => `${PREFIX}setup:${profileId}`,
   /** The weekly note in Progress, as last written, so opening Progress doesn't ask again. */
   weekly: (profileId: string) => `${PREFIX}weekly:${profileId}`,
 }

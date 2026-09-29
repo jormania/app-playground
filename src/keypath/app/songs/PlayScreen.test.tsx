@@ -9,6 +9,7 @@ import { DEFAULT_PROFILE_SETTINGS, ProfileRepo, type ProfileSettings } from '../
 import { memoryStore, type KeyValueStore } from '../store'
 import { SongLibrary } from './library'
 import { PartsRepo } from './parts'
+import { SetupRepo } from './setup'
 
 vi.mock('../../App', () => ({ default: () => <div>probe screen</div> }))
 
@@ -372,5 +373,57 @@ describe('Play screen, after the audit', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Another song' }))
     expect(await screen.findByText('Starter songs')).toBeTruthy()
     expect(location.hash).toBe('#/door/songs')
+  })
+})
+
+describe('Play screen: memory and guidance', () => {
+  const fingers = () => [...document.querySelectorAll('[data-finger]')].map((e) => e.textContent)
+
+  it('fades a song’s finger numbers once its whole song is learnt, and only for the hands learnt', async () => {
+    const { store, profileId } = await setUp({}, '#/play/starter%3Aode')
+    await screen.findByRole('button', { name: /Listen/ })
+    expect(fingers().length).toBeGreaterThan(0)
+    cleanup()
+    await new PartsRepo(store).pass(profileId, 'starter:ode', 'right', 'whole')
+    history.replaceState(null, '', '#/play/starter%3Aode')
+    render(<Shell store={store} />)
+    await screen.findByRole('button', { name: /Listen/ })
+    await waitFor(() => expect(fingers()).toEqual([]))
+  })
+
+  it('keeps them when the fade is switched off, or the song is another’s', async () => {
+    const { store, profileId } = await setUp({ fingersFade: false }, '#/play/starter%3Aode')
+    await new PartsRepo(store).pass(profileId, 'starter:ode', 'right', 'whole')
+    cleanup()
+    history.replaceState(null, '', '#/play/starter%3Aode')
+    render(<Shell store={store} />)
+    await screen.findByRole('button', { name: /Listen/ })
+    expect(fingers().length).toBeGreaterThan(0)
+  })
+
+  it('remembers the hands and the speed for this song, and for this player', async () => {
+    const { store, profileId } = await setUp({}, '#/play/starter%3Atwinkle')
+    fireEvent.click(await screen.findByRole('radio', { name: 'Left' }))
+    fireEvent.click(screen.getByRole('radio', { name: '75%' }))
+    await waitFor(async () => expect(await new SetupRepo(store).get(profileId, 'starter:twinkle')).toEqual({ practice: 'left', speed: '0.75' }))
+    cleanup()
+    history.replaceState(null, '', '#/play/starter%3Atwinkle')
+    render(<Shell store={store} />)
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Left' }).getAttribute('aria-checked')).toBe('true'))
+    expect(screen.getByRole('radio', { name: '75%' }).getAttribute('aria-checked')).toBe('true')
+    // Another song starts as it always did.
+    cleanup()
+    history.replaceState(null, '', '#/play/starter%3Aode')
+    render(<Shell store={store} />)
+    await screen.findByRole('radio', { name: '100%' })
+    expect(screen.getByRole('radio', { name: '100%' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('says where the hands go before the start: the thumb from the finger numbers, marked on the keys', async () => {
+    await setUp({}, '#/play/starter%3Aode')
+    fireEvent.click(await screen.findByRole('button', { name: '▶ Part 1' }))
+    // Ode to Joy opens E E F G with fingers 3 3 4 5: the right thumb sits on C.
+    expect(await screen.findByText('Right thumb on C')).toBeTruthy()
+    expect(document.querySelector('[data-hand="right"][aria-hidden]')?.textContent).toBe('1')
   })
 })

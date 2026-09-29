@@ -231,6 +231,7 @@ export function SettingsScreen() {
         </Row>
         <SettingsToggle label={t('keyNames')} hint={t('keyNamesHint')} checked={settings.keyNames} onChange={(e) => void updateSetting('keyNames', e.target.checked)} />
         <SettingsToggle label={t('fingerNumbers')} hint={t('fingerNumbersHint')} checked={settings.fingers} onChange={(e) => void updateSetting('fingers', e.target.checked)} />
+        {settings.fingers && <SettingsToggle label={t('fingerFade')} hint={t('fingerFadeHint')} checked={settings.fingersFade} onChange={(e) => void updateSetting('fingersFade', e.target.checked)} />}
       </Section>
 
       {/* How a song is judged, and what the end of it shows. */}

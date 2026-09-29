@@ -13,6 +13,8 @@ export interface PlayKeyboardProps {
   wrong: ReadonlySet<number>
   /** A key marked with a dot — middle C before the start. */
   marker?: number
+  /** Keys marked with the finger that goes there, by hand: where the hands sit before the start. */
+  badges?: ReadonlyMap<number, { text: string; hand: 'right' | 'left' }>
   label: (pitch: number) => string
   /** Print names on the keys (the player's "Names on the keys" setting). Screen readers get them either way. */
   names?: boolean
@@ -31,7 +33,7 @@ export interface PlayKeyboardProps {
  * it lines up with the notes above it. Always playable by touch, so a song can
  * be tried without the Yamaha.
  */
-export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, wrong, marker, label, names = true, onPress, onRelease, sound = false }: PlayKeyboardProps) {
+export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, wrong, marker, badges, label, names = true, onPress, onRelease, sound = false }: PlayKeyboardProps) {
   const pointers = useRef(new Map<number, number>())
   // The probe's synth, created on the first tap (browsers start audio only from a gesture).
   const synth = useRef<SimpleSynth | null>(null)
@@ -74,10 +76,20 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
             onPointerLeave={up}
           >
             {marker === b.pitch && <span className={styles.marker} aria-hidden />}
+
             {names && !b.black && <span className={styles.keyLabel}>{label(b.pitch)}</span>}
           </div>
         )
       })}
+      {/* Over the black keys, so a badge on a white key is seen whichever way they fall. */}
+      {badges &&
+        boxes
+          .filter((b) => badges.has(b.pitch))
+          .map((b) => (
+            <span key={`badge-${b.pitch}`} className={styles.keyBadge} data-hand={badges.get(b.pitch)!.hand} style={{ left: `${b.left + b.width / 2}%` }} aria-hidden>
+              {badges.get(b.pitch)!.text}
+            </span>
+          ))}
     </div>
   )
 })

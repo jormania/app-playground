@@ -14,7 +14,7 @@ export const LOOK_AHEAD_MS = 2200
 const MIN_PX_PER_MS = 0.045
 export const pxPerMsFor = (fallPx: number) => Math.min(PX_PER_MS, Math.max(MIN_PX_PER_MS, fallPx / LOOK_AHEAD_MS))
 /** A note shorter than this (px) has room for its finger or its name, not both: the finger wins. */
-const ROOM_FOR_BOTH = 28
+const ROOM_FOR_BOTH = 38
 
 export interface FallingNotesHandle {
   /** Move the notes to this song time. Called every frame; never re-renders React. */
@@ -76,7 +76,7 @@ export const FallingNotes = memo(
             const box = byPitch.get(n.pitch)
             if (!box) return null
             const outcome = results.get(n.id)
-            const height = Math.max(14, n.durationMs * scale)
+            const height = Math.max(18, n.durationMs * scale)
             const finger = fingers ? n.finger : undefined
             return (
               <div

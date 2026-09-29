@@ -302,8 +302,12 @@
 .noteMissed {
   opacity: 0.25;
 }
+/* Each note is its key's width, and its name is as large as that allows: 15 px on a wide key, never under 11 px. */
+.note {
+  container-type: inline-size;
+}
 .noteLabel {
-  font-size: 0.625rem;
+  font-size: clamp(0.6875rem, 36cqi, 0.9375rem);
   font-weight: var(--weight-bold);
   color: #fff;
   line-height: 1;
@@ -312,12 +316,12 @@
 .noteFinger {
   display: grid;
   place-items: center;
-  width: 0.95rem;
-  height: 0.95rem;
+  width: clamp(1rem, 40cqi, 1.3rem);
+  height: clamp(1rem, 40cqi, 1.3rem);
   border-radius: var(--radius-pill);
   background: #fff;
   color: #3a3a3a;
-  font-size: 0.625rem;
+  font-size: clamp(0.6875rem, 32cqi, 0.875rem);
   font-weight: var(--weight-bold);
   line-height: 1;
   flex-shrink: 0;
@@ -470,6 +474,31 @@
   color: #3d3934;
   line-height: 1;
   pointer-events: none;
+}
+/* The finger that goes on this key, before the start: right hand in the notes' orange, left in their teal. */
+.keyBadge {
+  position: absolute;
+  top: 0.4rem;
+  z-index: 2;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: var(--radius-pill);
+  background: #e0795b;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  pointer-events: none;
+}
+.keyBadge[data-hand='left'] {
+  background: #4f9d8a;
+}
+.placeLine {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
 }
 .marker {
   position: absolute;

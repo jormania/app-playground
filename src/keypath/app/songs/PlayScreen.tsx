@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { barName, barSpan, buildReport, cueFor, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
+import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -20,6 +20,7 @@ import type { FactsInput } from './coach'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
 import { nextStep, partPassed, PartsRepo, partSteps, rangeSong, type PartStep } from './parts'
 import { tryNext } from './level'
+import { SetupRepo, SPEEDS, suggestedSpeed, type Speed } from './setup'
 import { Accompanist } from './accompany'
 import { PREFIX } from '../store'
 import { songProgress } from './songProgress'
@@ -32,7 +33,6 @@ import setup from '../setup.module.css'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone' | 'partDone'
 
-const SPEEDS = ['1', '0.75', '0.5'] as const
 const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
 const TIMING_LABEL: Record<Timing, StringKey> = { relaxed: 'timingRelaxed', normal: 'timingNormal', strict: 'timingStrict' }
 const MIDDLE_C = 60
@@ -77,7 +77,28 @@ type PlayerProps = {
 function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const hasLeft = song.notes.some((n) => n.hand === 'left')
   const [practice, setPractice] = useState<Practice>('right')
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>('1')
+  const [speed, setSpeed] = useState<Speed>(() => suggestedSpeed(song))
+  // What she chose here last time: the hands and the speed, kept per song.
+  const setupRepo = useMemo(() => new SetupRepo(store), [store])
+  useEffect(() => {
+    if (!profileId) return
+    let live = true
+    void setupRepo.get(profileId, song.id).then((s) => {
+      if (!live || !s) return
+      if (s.practice !== 'right' && !hasLeft) return
+      setPractice(s.practice)
+      setSpeed(s.speed)
+    })
+    return () => {
+      live = false
+    }
+  }, [setupRepo, profileId, song.id, hasLeft])
+  const choose = (next: { practice?: Practice; speed?: Speed }) => {
+    const setup = { practice: next.practice ?? practice, speed: next.speed ?? speed }
+    setPractice(setup.practice)
+    setSpeed(setup.speed)
+    if (profileId) void setupRepo.set(profileId, song.id, setup)
+  }
   const [phase, setPhase] = useState<Phase>('setup')
   const [pauseReason, setPauseReason] = useState<'disconnected' | 'hidden' | null>(null)
   const [held, setHeld] = useState<ReadonlySet<number>>(new Set())
@@ -138,6 +159,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
   }, [phase, profileId, store, settings.language, log, song.id])
   const part = steps.find((x) => x.id === partId) ?? null
+  /** Finger numbers, unless she has learnt the whole song (these hands) and they are set to fade. */
+  const showFingers = settings.fingers && !(settings.fingersFade && learnt.has('whole'))
   /** A part short of the whole song: played on its own, always in "Wait for it". */
   const span = part && part.kind !== 'whole' ? part : null
   /** The middle-C check is done once per visit; the next part starts straight away. */
@@ -200,6 +223,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const boxes = useMemo(() => keyBoxes(range.low, range.high), [range])
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
   const tempo = Number(speed)
+  // Where the hands go, before the start: on the keys, and in words.
+  const places = useMemo(() => handPlaces(notes, practice), [notes, practice])
+  const badges = useMemo(() => new Map(places.map((pl) => [pl.pitch, { text: String(pl.finger), hand: pl.hand }] as const)), [places])
 
   const setLoopBoth = (l: Loop | null) => {
     loopRef.current = l
@@ -264,6 +290,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         if (passed) celebrate('stepPassed')
         return
       }
+    } else if (profileId && partPassed(summary)) {
+      // A song too short for parts is learnt once played through: kept the same way, without a part logged.
+      void partsRepo.pass(profileId, song.id, practice, 'whole').then(setLearnt)
     }
     const r = buildReport(summary, settings)
     setReport(r)
@@ -629,7 +658,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                 <SegmentedControl
                   size="sm"
                   value={practice}
-                  onChange={(v) => setPractice(v as Practice)}
+                  onChange={(v) => choose({ practice: v as Practice })}
                   options={[
                     { value: 'right', label: t('handRight') },
                     { value: 'left', label: t('handLeft') },
@@ -667,7 +696,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           )}
           <div className={setup.field}>
             <span className={setup.label}>{t('speed')}</span>
-            <SegmentedControl size="sm" value={speed} onChange={(v) => setSpeed(v as (typeof SPEEDS)[number])} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+            <SegmentedControl size="sm" value={speed} onChange={(v) => choose({ speed: v as Speed })} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
           </div>
           <div className={setup.go}>
             <Button onClick={go}>
@@ -703,6 +732,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         <div className={styles.prompt} role="status">
           <strong>{t('pressMiddleC')}</strong>
           <span>{hint ?? t('pressMiddleCHint')}</span>
+          {places.length > 0 && (
+            <span className={styles.placeLine}>
+              {places.map((pl) => t(pl.hand === 'right' ? (pl.finger === 1 ? 'placeRightThumb' : 'placeRightLittle') : pl.finger === 1 ? 'placeLeftThumb' : 'placeLeftLittle', { note: label(pl.pitch) })).join(' · ')}
+            </span>
+          )}
           <div className={styles.actions}>
             <Button size="sm" variant="ghost" onClick={() => morph(() => setPhase('setup'))}>
               {t(hasLeft ? 'backToSetupHands' : 'backToSetupSpeed')}
@@ -803,7 +837,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             ■ {t('stop')}
           </Button>
         )}
-        <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} fingers={settings.fingers} />
+        <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} fingers={showFingers} />
         <PlayKeyboard
           sound={!keyboard.connected}
           names={settings.keyNames}
@@ -812,6 +846,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : targets}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
+          badges={phase === 'ready' ? badges : undefined}
           label={label}
           onPress={(p) => press(p, performance.now(), true)}
           onRelease={release}
