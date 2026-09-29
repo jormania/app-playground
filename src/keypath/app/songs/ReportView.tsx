@@ -29,6 +29,8 @@ interface Props {
   next?: { title: string; onOpen: () => void } | null
   /** What the coach is told, once it's ready; the note shows only with a key, online, and the report on. */
   coach?: FactsInput | null
+  /** Two players at one keyboard: each one's stars, for their own hand. */
+  together?: { name: string; avatar: string; hand: 'right' | 'left'; stars: number }[] | null
 }
 
 /**
@@ -36,7 +38,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, hear, next, coach, barLabel = (b) => String(b + 1) }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, hear, next, coach, together, barLabel = (b) => String(b + 1) }: Props) {
   const { t, profile, log, updateSetting, settings } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
@@ -110,6 +112,15 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
             </li>
           ))}
         </ul>
+        {together && (
+          <ul className={styles.highlights} aria-label={t('together')}>
+            {together.map((p) => (
+              <li key={p.hand}>
+                {p.avatar} {t('togetherResult', { name: p.name, hand: t(p.hand === 'right' ? 'handRight' : 'handLeft').toLowerCase(), stars: '★'.repeat(p.stars) + '☆'.repeat(3 - p.stars) })}
+              </li>
+            ))}
+          </ul>
+        )}
         {coach && settings.coach && settings.report !== 'off' && <CoachNote input={coach} />}
         {report.toWorkOn.map((b) => (
           <div key={b.bar} className={styles.workOn}>

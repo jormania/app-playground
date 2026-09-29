@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
+import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, octaveShift, summaryForHand, type Hand, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
 import { celebrate } from '../celebrate/celebrate'
 import { morph } from '../morph'
 import { useApp } from '../context'
+import type { Profile } from '../profiles'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
@@ -102,6 +103,16 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     setSpeed(setup.speed)
     if (profileId) void setupRepo.set(profileId, song.id, setup)
   }
+  // Two players on one keyboard: the partner, and the hand the current player takes.
+  const { profiles: profileRepo, profile } = useApp()
+  const [players, setPlayers] = useState<Profile[]>([])
+  useEffect(() => {
+    void profileRepo.list().then(setPlayers)
+  }, [profileRepo])
+  const partners = useMemo(() => players.filter((p) => p.id !== profileId), [players, profileId])
+  const [duo, setDuo] = useState<{ partnerId: string; mine: Hand } | null>(null)
+  const mate = practice === 'both' && duo ? (partners.find((p) => p.id === duo.partnerId) ?? null) : null
+  const [duoResults, setDuoResults] = useState<{ name: string; avatar: string; hand: Hand; stars: number }[] | null>(null)
   const [phase, setPhase] = useState<Phase>('setup')
   const [pauseReason, setPauseReason] = useState<'disconnected' | 'hidden' | null>(null)
   const [held, setHeld] = useState<ReadonlySet<number>>(new Set())
@@ -344,9 +355,21 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
     const r = buildReport(summary, settings)
     setReport(r)
+    setDuoResults(null)
     setPhase('report')
     setCoach(null)
-    if (profileId) {
+    if (profileId && mate && duo) {
+      // Together: each is scored on their own hand, and it goes in their own log.
+      const theirs: Hand = duo.mine === 'right' ? 'left' : 'right'
+      const rows = [
+        { who: { id: profileId, name: profile?.name ?? '', avatar: profile?.avatar ?? '' }, hand: duo.mine },
+        { who: mate, hand: theirs },
+      ].map(({ who, hand }) => ({ who, hand, own: buildReport(summaryForHand(summary, hand), settings) }))
+      setDuoResults(rows.map(({ who, hand, own }) => ({ name: who.name, avatar: who.avatar, hand, stars: own.stars })))
+      for (const { who, hand, own } of rows) {
+        void log.add(who.id, { type: 'song_finished', songId: song.id, practice: hand, stars: own.stars, score: Math.round(own.score * 100) / 100, hit: own.hit, total: own.total, wrong: own.wrong })
+      }
+    } else if (profileId) {
       // Her earlier finishes are read before this one is written, for the coach.
       void log.read(profileId).then((records) => {
         const earlier = records.flatMap((x) => (x.type === 'song_finished' && x.songId === song.id ? [{ stars: x.stars, score: Math.round(x.score * 100) }] : []))
@@ -354,7 +377,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         return log.add(profileId, { type: 'song_finished', songId: song.id, practice, stars: r.stars, score: Math.round(r.score * 100) / 100, hit: r.hit, total: r.total, wrong: r.wrong })
       })
     }
-  }, [settings, profileId, log, song, practice, tempo, endLoop, startPass, part, partsRepo])
+  }, [settings, profileId, profile, log, song, practice, tempo, endLoop, startPass, part, partsRepo, mate, duo])
 
   const apply = useCallback(
     (events: JudgeEvent[]) => {
@@ -736,7 +759,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} coach={coach} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }
@@ -768,6 +791,32 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+          {hasLeft && practice === 'both' && partners.length > 0 && (
+            <div className={setup.field}>
+              <span className={setup.label}>{t('together')}</span>
+              <div className={setup.chips} role="group" aria-label={t('togetherFull')}>
+                <button type="button" className={setup.chip} aria-pressed={!mate} onClick={() => setDuo(null)}>
+                  {t('togetherAlone')}
+                </button>
+                {partners.map((p) => (
+                  <button key={p.id} type="button" className={setup.chip} aria-pressed={mate?.id === p.id} onClick={() => setDuo({ partnerId: p.id, mine: duo?.mine ?? 'right' })}>
+                    {p.avatar} {p.name}
+                  </button>
+                ))}
+              </div>
+              {mate && duo && (
+                <SegmentedControl
+                  size="sm"
+                  value={duo.mine}
+                  onChange={(v) => setDuo({ partnerId: mate.id, mine: v as Hand })}
+                  options={[
+                    { value: 'right', label: t('togetherYouRight') },
+                    { value: 'left', label: t('togetherYouLeft') },
+                  ]}
+                />
+              )}
             </div>
           )}
           {steps.length > 0 && (

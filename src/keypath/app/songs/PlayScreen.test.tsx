@@ -383,6 +383,30 @@ describe('Play screen, after the audit', () => {
   })
 })
 
+describe('Play together', () => {
+  it('scores two players on one keyboard, each on their own hand, each in their own log', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/door/songs')
+    const gabriel = await new ProfileRepo(store).create('Gabriel', '🦊')
+    await new SongLibrary(store).add(songOf([[64, 0, 'right'], [48, 500, 'left']], 'Duet'))
+    cleanup()
+    history.replaceState(null, '', '#/play/Duet')
+    render(<Shell store={store} />)
+    fireEvent.click(await screen.findByRole('radio', { name: 'Both' }))
+    // Only "Both" hands offers it, and one player is picked from the others.
+    fireEvent.click(await screen.findByRole('button', { name: /Gabriel/ }))
+    fireEvent.click(screen.getByRole('radio', { name: 'I play the left' }))
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    tap(target()!)
+    await playThrough([64, 48])
+    // Nora took the left hand, so Gabriel has the right.
+    expect(await screen.findByText(/Nora, left hand: ★★★/)).toBeTruthy()
+    expect(screen.getByText(/Gabriel, right hand: ★★★/)).toBeTruthy()
+    const finished = async (id: string) => (await events(store, id)).filter((e) => e.type === 'song_finished').map((e) => (e.type === 'song_finished' ? [e.songId, e.practice, e.stars] : null))
+    await waitFor(async () => expect(await finished(profileId)).toEqual([['Duet', 'left', 3]]))
+    expect(await finished(gabriel.id)).toEqual([['Duet', 'right', 3]])
+  })
+})
+
 describe('Play screen: memory and guidance', () => {
   const fingers = () => [...document.querySelectorAll('[data-finger]')].map((e) => e.textContent)
 
