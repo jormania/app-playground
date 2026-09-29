@@ -3,7 +3,7 @@ import { Button, Field, SegmentedControl, SettingsToggle } from '../../../ds'
 import { SelectField } from '../../../ds/components/SelectField'
 import { BackupError, exportBackup, restoreBackup } from '../backup'
 import { useApp } from '../context'
-import { AVATARS, type Language, type NoteNames, type ProfileSettings } from '../profiles'
+import { AVATARS, PIN_LENGTH, type Language, type NoteNames, type ProfileSettings } from '../profiles'
 import { navigate } from '../router'
 import { persistenceState, type Persistence } from '../store'
 import type { OnWrong, ReportDepth, Timing } from '../../engine'
@@ -60,6 +60,9 @@ export function SettingsScreen() {
   const [savedKey, setSavedKey] = useState(readAiKey)
   const [keyDraft, setKeyDraft] = useState('')
   const [keyCheck, setKeyCheck] = useState<KeyCheck | 'testing' | null>(null)
+  /** A PIN being typed for this player, and what saving or removing one said. */
+  const [pinDraft, setPinDraft] = useState('')
+  const [pinNote, setPinNote] = useState<'pinSaved' | 'pinRemoved' | null>(null)
   /** The phone's daily reminder: on or off and when; and what the last tap on it found. */
   const [reminder, setReminder] = useState(readReminder)
   const [reminderNote, setReminderNote] = useState<'blocked' | 'unsupported' | 'sent' | 'cannot' | null>(null)
@@ -128,6 +131,19 @@ export function SettingsScreen() {
     await changeReminder({ ...reminder, enabled: true })
   }
   const testReminder = async () => setReminderNote((await sendTestReminder(settings.language)) ? 'sent' : 'cannot')
+
+  const savePin = async () => {
+    if (!(await profiles.setPin(profile.id, pinDraft))) return
+    setPinDraft('')
+    setPinNote('pinSaved')
+    await reload()
+  }
+  const removePin = async () => {
+    await profiles.setPin(profile.id, null)
+    setPinDraft('')
+    setPinNote('pinRemoved')
+    await reload()
+  }
 
   const savePlayer = async () => {
     if (!editing) return
@@ -206,6 +222,45 @@ export function SettingsScreen() {
               </Button>
             )}
           </div>
+        )}
+        {/* A PIN, so one player isn't opened by another by mistake. */}
+        {!editing && (
+          <form
+            className={styles.row}
+            onSubmit={(e) => {
+              e.preventDefault()
+              void savePin()
+            }}
+          >
+            <Field
+              label={profile.pin ? t('pinChange') : t('pinSet')}
+              hint={profile.pin ? t('pinIsSet') : t('pinHint')}
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={PIN_LENGTH}
+              value={pinDraft}
+              onChange={(e) => {
+                setPinDraft(e.target.value.replace(/\D/g, ''))
+                setPinNote(null)
+              }}
+            />
+            <div className={styles.actions}>
+              <Button type="submit" size="sm" disabled={pinDraft.length !== PIN_LENGTH}>
+                {t('pinSave')}
+              </Button>
+              {profile.pin && (
+                <Button type="button" size="sm" variant="ghost" onClick={() => void removePin()}>
+                  {t('pinRemove')}
+                </Button>
+              )}
+            </div>
+            {pinNote && (
+              <p className={styles.message} role="status">
+                {t(pinNote)}
+              </p>
+            )}
+          </form>
         )}
         {confirmDelete && (
           <div className={styles.confirm} role="alertdialog" aria-label={t('deletePlayerConfirm', { name: profile.name })}>

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { songOf } from '../../engine/testing/songs'
 import { melodyFile } from '../../engine/testing/smfBuilder'
 import { Shell } from '../Shell'
@@ -56,8 +56,9 @@ describe('Songs, for everyday use', () => {
     expect(rows.slice(0, 6)).toEqual(['Twinkle, Twinkle, Little Star', 'Ode to Joy', 'Au clair de la lune', 'Hot Cross Buns', 'Mary Had a Little Lamb', 'When the Saints Go Marching In'])
     expect(rows[14]).toBe('Minuet in G')
     // Six starter songs, and the added three-note one, worked out from its notes.
-    expect(screen.getAllByText('Easy').length).toBe(7)
-    expect(screen.getAllByText('Harder').length).toBe(3)
+    // (Each is also a choice in the filter above the list.)
+    expect(screen.getAllByText('Easy').length).toBe(7 + 1)
+    expect(screen.getAllByText('Harder').length).toBe(3 + 1)
   })
 
   it('says for each song how hard, one hand or two, and how long', async () => {
@@ -77,11 +78,12 @@ describe('Songs, for everyday use', () => {
     expect(row().textContent).toContain('Easy')
     fireEvent.click(screen.getByRole('button', { name: 'More for Three notes' }))
     expect(screen.getByText('Rated from its notes: Easy. If it plays easier or harder than that, choose another.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('radio', { name: 'Harder' }))
+    const menu = within(document.querySelector<HTMLElement>('[class*="_songMore_"]')!)
+    fireEvent.click(menu.getByRole('radio', { name: 'Harder' }))
     await waitFor(() => expect(row().textContent).toContain('Harder'))
     expect((await new SongLibrary(store).get(SHORT.id, 'en'))?.level).toBe(3)
     // Back to the rating: nothing is kept, so the rating stays live.
-    fireEvent.click(screen.getByRole('radio', { name: 'Easy' }))
+    fireEvent.click(menu.getByRole('radio', { name: 'Easy' }))
     await waitFor(() => expect(row().textContent).toContain('Easy'))
     expect((await new SongLibrary(store).get(SHORT.id, 'en'))?.level).toBeUndefined()
   })
@@ -101,6 +103,22 @@ describe('Songs, for everyday use', () => {
     const back = await new SongLibrary(store).get(SHORT.id, 'en')
     expect(back?.notes.map((n) => n.pitch)).toEqual([60, 62, 64])
     expect(back?.transpose).toBeUndefined()
+  })
+
+  it('finds a song in the longer list: by title, level and hands, and back to all of them', async () => {
+    const { go } = await setUp('#/door/songs')
+    go()
+    const titles = () => [...document.querySelectorAll('[class*="songTitle"]')].map((e) => e.textContent)
+    fireEvent.change(await screen.findByLabelText('Find a song'), { target: { value: 'elise' } })
+    await waitFor(() => expect(titles()).toEqual(['Für Elise (opening)']))
+    expect(screen.getByText('1 songs')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }))
+    await waitFor(() => expect(titles().length).toBeGreaterThan(14))
+    fireEvent.click(screen.getByRole('radio', { name: 'Harder' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'One hand' }))
+    await waitFor(() => expect(titles()).toEqual(['Happy Birthday', 'Für Elise (opening)', 'Minuet in G']))
+    fireEvent.change(screen.getByLabelText('Find a song'), { target: { value: 'nothing like it' } })
+    expect(await screen.findByText(/No song matches/)).toBeTruthy()
   })
 
   it('shows her best stars and when she last played, song by song', async () => {

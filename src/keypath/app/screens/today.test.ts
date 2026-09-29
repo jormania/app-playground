@@ -39,9 +39,12 @@ describe('Today', () => {
   it('picks the game she has played least, taking turns day by day between equals', () => {
     const races = [1, 2].map(() => at('2026-09-20', { type: 'challenge_finished', game: 'staff', level: 1, score: 5, best: false, ms: 1 }))
     const echo = at('2026-09-20', { type: 'challenge_finished', game: 'echo', level: 1, score: 5, best: false, ms: 1 })
-    expect(planToday([...races, echo], {}, songs, '2026-09-25').items.at(-1)).toEqual({ kind: 'game', game: 'chord' })
-    const games = new Set(['2026-09-25', '2026-09-26', '2026-09-27'].map((d) => JSON.stringify(planToday([], {}, songs, d).items.at(-1))))
-    expect(games.size).toBe(3)
+    const chord = at('2026-09-20', { type: 'challenge_finished', game: 'chord', level: 1, score: 5, best: false, ms: 1 })
+    const ear = at('2026-09-20', { type: 'challenge_finished', game: 'ear', level: 1, score: 5, best: false, ms: 1 })
+    expect(planToday([...races, echo, chord], {}, songs, '2026-09-25').items.at(-1)).toEqual({ kind: 'game', game: 'ear' })
+    expect(planToday([...races, echo, ear], {}, songs, '2026-09-25').items.at(-1)).toEqual({ kind: 'game', game: 'chord' })
+    const games = new Set(['2026-09-25', '2026-09-26', '2026-09-27', '2026-09-28'].map((d) => JSON.stringify(planToday([], {}, songs, d).items.at(-1))))
+    expect(games.size).toBe(4)
   })
 
   it('ticks each off from today’s log only', () => {

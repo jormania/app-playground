@@ -1,10 +1,11 @@
 import { K, type KeyValueStore } from '../store'
 import type { ChordLevel } from './chordCatch'
+import type { EarLevel } from './earTrain'
 import type { RaceLevel } from './noteRace'
 import type { EchoLevel } from './rhythm'
 
 /** Each game a score is kept for. The note race read off a staff ('staff') keeps its own, apart from the named race. */
-export type ChallengeGame = 'race' | 'staff' | 'echo' | 'chord'
+export type ChallengeGame = 'race' | 'staff' | 'echo' | 'chord' | 'ear'
 
 /** Best results per player: notes found in a race, patterns echoed in a round of five, chords caught. */
 export interface ChallengeRecords {
@@ -12,9 +13,11 @@ export interface ChallengeRecords {
   staff: Partial<Record<RaceLevel, number>>
   echo: Partial<Record<EchoLevel, number>>
   chord: Partial<Record<ChordLevel, number>>
+  /** Notes found by ear, first time, in a round of five. */
+  ear: Partial<Record<EarLevel, number>>
 }
 
-const empty = (): ChallengeRecords => ({ race: {}, staff: {}, echo: {}, chord: {} })
+const empty = (): ChallengeRecords => ({ race: {}, staff: {}, echo: {}, chord: {}, ear: {} })
 
 export class RecordRepo {
   constructor(private readonly store: KeyValueStore) {}

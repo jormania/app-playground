@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Field, SegmentedControl } from '../../../ds'
 import { useApp } from '../context'
 import { translate, type StringKey } from '../i18n'
-import { AVATARS, DEFAULT_PROFILE_SETTINGS, type Language, type Profile } from '../profiles'
+import { AVATARS, DEFAULT_PROFILE_SETTINGS, PIN_LENGTH, type Language, type Profile } from '../profiles'
 import { requestPersistence } from '../store'
 import styles from '../app.module.css'
 
@@ -24,9 +24,36 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
     })
   }, [profiles])
 
-  const pick = async (p: Profile) => {
+  /** The player whose PIN is being asked, what has been typed, and whether it was wrong. */
+  const [asking, setAsking] = useState<Profile | null>(null)
+  const [pinDraft, setPinDraft] = useState('')
+  const [pinWrong, setPinWrong] = useState(false)
+  const [forgot, setForgot] = useState(false)
+
+  const open = async (p: Profile) => {
     await choose(p)
     onChosen()
+  }
+  const pick = async (p: Profile) => {
+    if (!p.pin) return open(p)
+    setAsking(p)
+    setPinDraft('')
+    setPinWrong(false)
+    setForgot(false)
+  }
+  const tryPin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!asking) return
+    if (await profiles.checkPin(asking, pinDraft)) return open(asking)
+    setPinWrong(true)
+    setPinDraft('')
+  }
+  /** The PIN is a guard against mix-ups: whoever holds the phone can take it off. */
+  const forgotPin = async () => {
+    if (!asking) return
+    await profiles.setPin(asking.id, null)
+    const { pin: _gone, ...rest } = asking
+    await open(rest)
   }
 
   const create = async (e: React.FormEvent) => {
@@ -44,7 +71,50 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
   return (
     <main className={styles.screen}>
       <h1 className={styles.hero}>{t('whoIsPlaying')}</h1>
-      {!adding && (
+      {asking && (
+        <form className={styles.panel} onSubmit={tryPin}>
+          <h2 className={styles.h2}>
+            <span aria-hidden>{asking.avatar}</span> {t('pinFor', { name: asking.name })}
+          </h2>
+          <Field
+            label={t('pinLabel')}
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={PIN_LENGTH}
+            value={pinDraft}
+            onChange={(e) => {
+              setPinDraft(e.target.value.replace(/\D/g, ''))
+              setPinWrong(false)
+            }}
+            autoFocus
+          />
+          {pinWrong && (
+            <p className={styles.problem} role="alert">
+              {t('pinWrong')}
+            </p>
+          )}
+          {forgot && <p className={styles.hint}>{t('pinForgotHint')}</p>}
+          <div className={styles.actions}>
+            <Button type="submit" disabled={pinDraft.length !== PIN_LENGTH}>
+              {t('pinOpen')}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setAsking(null)}>
+              {t('cancel')}
+            </Button>
+            {forgot ? (
+              <Button type="button" variant="outline" onClick={() => void forgotPin()}>
+                {t('pinRemoveAndOpen')}
+              </Button>
+            ) : (
+              <Button type="button" variant="ghost" onClick={() => setForgot(true)}>
+                {t('pinForgot')}
+              </Button>
+            )}
+          </div>
+        </form>
+      )}
+      {!adding && !asking && (
         <>
           <div className={styles.profileGrid}>
             {list.map((p) => (

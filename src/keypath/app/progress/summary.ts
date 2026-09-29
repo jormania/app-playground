@@ -41,7 +41,7 @@ export interface ProgressSummary {
   doors: Record<Door, DoorStats>
   songs: { started: number; finished: number; abandoned: number; added: number; listened: number; bySong: SongStats[]; bars: { practised: number; clean: number }; parts: { played: number; learnt: number } }
   journey: { practices: number; checksPassed: number; checksFailed: number; testOuts: number; left: number }
-  challenges: { race: number; staff: number; echo: number; chord: number; left: number }
+  challenges: { race: number; staff: number; echo: number; chord: number; ear: number; left: number }
   studio: { opened: number; recorded: number; kept: number; played: number }
   suggestions: { accepted: number; declined: number }
   settingsChanged: { key: string; from: unknown; to: unknown; at: string }[]
@@ -78,7 +78,7 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
     doors,
     songs: { started: 0, finished: 0, abandoned: 0, added: 0, listened: 0, bySong: [], bars: { practised: 0, clean: 0 }, parts: { played: 0, learnt: 0 } },
     journey: { practices: 0, checksPassed: 0, checksFailed: 0, testOuts: 0, left: 0 },
-    challenges: { race: 0, staff: 0, echo: 0, chord: 0, left: 0 },
+    challenges: { race: 0, staff: 0, echo: 0, chord: 0, ear: 0, left: 0 },
     studio: { opened: 0, recorded: 0, kept: 0, played: 0 },
     suggestions: { accepted: 0, declined: 0 },
     settingsChanged: [],

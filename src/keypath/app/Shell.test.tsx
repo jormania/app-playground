@@ -162,6 +162,40 @@ describe('KeyPath shell, after the audit', () => {
     for (const name of ['Edit name and avatar', 'Switch player', 'Delete this player']) expect(player.getByRole('button', { name })).toBeTruthy()
   })
 
+  it('a PIN is asked when its player is chosen, and can be forgotten: it stops a mix-up, not a determined hand', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.change(await screen.findByLabelText('A PIN for this player'), { target: { value: '12ab34' } })
+    // Only digits are taken, four at most.
+    expect((screen.getByLabelText('A PIN for this player') as HTMLInputElement).value).toBe('1234')
+    fireEvent.click(screen.getByRole('button', { name: 'Save PIN' }))
+    expect(await screen.findByText('The PIN is set.')).toBeTruthy()
+    // Only a hash is kept, never the digits.
+    const [nora] = await new ProfileRepo(store).list()
+    expect(JSON.stringify(nora.pin)).not.toContain('1234')
+    expect(nora.pin?.hash).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch player' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Nora/ }))
+    expect(await screen.findByText('PIN for Nora')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '0000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(await screen.findByText('That isn’t the PIN. Try again.')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '1234' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+    expect(await screen.findByText('Hi, Nora!')).toBeTruthy()
+
+    // Forgotten: anyone with the phone can take it off.
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Switch player' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Nora/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot the PIN?' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the PIN and open' }))
+    expect(await screen.findByText('Hi, Nora!')).toBeTruthy()
+    expect((await new ProfileRepo(store).list())[0].pin).toBeUndefined()
+  })
+
   it('turns the daily reminder on once notifications are allowed, and says so when they are blocked', async () => {
     localStorage.clear()
     class Allowed {
@@ -283,7 +317,7 @@ describe('KeyPath shell, after the audit', () => {
     await log.add(p.id, { type: 'song_finished', songId: 'starter:twinkle', practice: 'right', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
     await log.add(p.id, { type: 'song_finished', songId: 'starter:warmup', practice: 'both', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
     await log.add(p.id, { type: 'journey_finished', step: 'middleC', mode: 'practice', passed: true, wrong: 0, ms: 1 })
-    for (const game of ['race', 'echo', 'chord'] as const) await log.add(p.id, { type: 'challenge_finished', game, level: 1, score: 3, best: false, ms: 1 })
+    for (const game of ['race', 'echo', 'chord', 'ear'] as const) await log.add(p.id, { type: 'challenge_finished', game, level: 1, score: 3, best: false, ms: 1 })
     await store.del(K.today(p.id))
     const doneCount = async () => (await log.read(p.id)).filter((e) => e.type === 'today_done').length
     for (let visit = 0; visit < 2; visit++) {

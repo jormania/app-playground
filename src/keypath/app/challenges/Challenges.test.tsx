@@ -44,13 +44,14 @@ const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms))
 const flush = () => act(async () => void (await vi.advanceTimersByTimeAsync(0)))
 
 describe('Challenges', () => {
-  it('shows the three games with “no score yet”', async () => {
+  it('shows the four games with “no score yet”', async () => {
     await open('#/door/challenges')
     await flush()
     expect(screen.getByText('Note race')).toBeTruthy()
     expect(screen.getByText('Rhythm echo')).toBeTruthy()
     expect(screen.getByText('Chord catch')).toBeTruthy()
-    expect(screen.getAllByText('No score yet')).toHaveLength(3)
+    expect(screen.getByText('Ear check')).toBeTruthy()
+    expect(screen.getAllByText('No score yet')).toHaveLength(4)
   })
 
   it('note race on the staff: draws the note with no name, and keeps its own best', async () => {
@@ -189,5 +190,44 @@ describe('Challenges', () => {
     await flush()
     expect(screen.getByText('1 of 5 rhythms echoed.')).toBeTruthy()
     expect((await new RecordRepo(store).get(profileId)).echo[1]).toBe(1)
+  })
+})
+
+describe('Ear check', () => {
+  it('plays two notes, hints which way after a wrong key, and keeps the notes found first time as its best', async () => {
+    // With no randomness the questions are: find D, then E, D, E, D (the root is always middle C).
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const { store, profileId } = await open('#/challenge/ear')
+      await flush()
+      fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+      expect(screen.getByText('Listen…')).toBeTruthy()
+      // A key struck while the notes play is not an answer.
+      key(62)
+      advance(3000)
+      expect(screen.getByText('Find the second note')).toBeTruthy()
+      // F for D: too high, so "lower"; then D, found, but not first time.
+      key(65)
+      expect(screen.getByText('Try lower.')).toBeTruthy()
+      key(62)
+      expect(screen.getByText('Yes! That’s it.')).toBeTruthy()
+      expect(screen.getByText('0 found first time')).toBeTruthy()
+      advance(1200)
+      expect(screen.getByText('2 of 5')).toBeTruthy()
+      advance(3000)
+      // The rest first time: E, D, E, D.
+      for (const p of [64, 62, 64, 62]) {
+        key(p)
+        advance(1200)
+        advance(3000)
+      }
+      await flush()
+      expect(screen.getByText('4 of 5 found first time!')).toBeTruthy()
+      expect((await new RecordRepo(store).get(profileId)).ear[1]).toBe(4)
+      const log = await new EngagementLog(store).read(profileId)
+      expect(log.find((e) => e.type === 'challenge_finished')).toMatchObject({ game: 'ear', level: 1, score: 4, wrong: 1 })
+    } finally {
+      vi.restoreAllMocks()
+    }
   })
 })

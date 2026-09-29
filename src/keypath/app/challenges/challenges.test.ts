@@ -113,15 +113,16 @@ describe('RecordRepo', () => {
     expect(await repo.offer('nora', 'echo', 2, 0)).toBe(false) // a zero is never a “best”
     expect(await repo.offer('nora', 'staff', 1, 6)).toBe(true) // the race on the staff keeps its own
     expect(await repo.offer('nora', 'chord', 3, 4)).toBe(true)
-    expect(await repo.get('nora')).toEqual({ race: { 1: 14 }, staff: { 1: 6 }, echo: { 2: 0 }, chord: { 3: 4 } })
-    expect(await repo.get('gabriel')).toEqual({ race: {}, staff: {}, echo: {}, chord: {} })
+    expect(await repo.offer('nora', 'ear', 2, 3)).toBe(true)
+    expect(await repo.get('nora')).toEqual({ race: { 1: 14 }, staff: { 1: 6 }, echo: { 2: 0 }, chord: { 3: 4 }, ear: { 2: 3 } })
+    expect(await repo.get('gabriel')).toEqual({ race: {}, staff: {}, echo: {}, chord: {}, ear: {} })
   })
 
   it('reads records saved before the staff and chord games existed', async () => {
     const store = memoryStore()
     await store.set(K.challenges('nora'), { race: { 2: 9 }, echo: {} })
     const repo = new RecordRepo(store)
-    expect(await repo.get('nora')).toEqual({ race: { 2: 9 }, staff: {}, echo: {}, chord: {} })
+    expect(await repo.get('nora')).toEqual({ race: { 2: 9 }, staff: {}, echo: {}, chord: {}, ear: {} })
     expect(await repo.offer('nora', 'chord', 1, 3)).toBe(true)
     expect((await repo.get('nora')).race[2]).toBe(9)
   })

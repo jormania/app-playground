@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Field } from '../../../ds'
+import { Button, Field, SegmentedControl } from '../../../ds'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
@@ -7,7 +7,8 @@ import { MAX_TITLE, MAX_TRANSPOSE, SongLibrary, suggestEasy, type LibraryEntry }
 import { fitOptions, notesToFit, type FitMode } from '../../engine'
 import { FitChoice } from './FitChoice'
 import { byLevel, levelOf, ratedLevel, type Level } from './level'
-import { EasyPick, KeyPick, LevelPick, SongFacts } from './SongFacts'
+import { EasyPick, KeyPick, LEVEL_NAME, LevelPick, SongFacts } from './SongFacts'
+import { FILTER_FROM, filterSongs, isFiltering, NO_FILTER, type SongFilter } from './filter'
 import { playedWhen, songProgress, type SongProgress } from './songProgress'
 import styles from './songs.module.css'
 
@@ -21,6 +22,7 @@ export function SongsHome() {
   const [open, setOpen] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [sure, setSure] = useState(false)
+  const [filter, setFilter] = useState<SongFilter>(NO_FILTER)
 
   useEffect(() => {
     void library.list(settings.language).then(setEntries)
@@ -31,8 +33,10 @@ export function SongsHome() {
 
   if (!entries) return null
   // Easiest first, so the list itself is a way up.
-  const starters = byLevel(entries.filter((e) => e.source === 'starter'))
-  const own = entries.filter((e) => e.source === 'import')
+  const filtering = entries.length >= FILTER_FROM
+  const shown = filtering ? filterSongs(entries, filter) : entries
+  const starters = byLevel(shown.filter((e) => e.source === 'starter'))
+  const own = shown.filter((e) => e.source === 'import')
 
   const when = (iso: string) => {
     const w = playedWhen(iso)
@@ -145,10 +149,43 @@ export function SongsHome() {
   return (
     <main className={styles.screen}>
       <TopBar title={t('doorSongs')} />
-      <section className={styles.panel}>
-        <h2 className={styles.h2}>{t('starterSongs')}</h2>
-        <ul className={styles.songList}>{starters.map((e) => item(e, false))}</ul>
-      </section>
+      {filtering && (
+        <section className={styles.panel} aria-label={t('songFilter')}>
+          <Field label={t('songFind')} type="search" value={filter.text} onChange={(e) => setFilter({ ...filter, text: e.target.value })} maxLength={MAX_TITLE} />
+          <div className={styles.filterRow}>
+            <SegmentedControl
+              size="sm"
+              value={String(filter.level)}
+              onChange={(v) => setFilter({ ...filter, level: v === 'any' ? 'any' : (Number(v) as Level) })}
+              options={[{ value: 'any', label: t('filterAnyLevel') }, ...([1, 2, 3] as const).map((l) => ({ value: String(l), label: t(LEVEL_NAME[l]) }))]}
+            />
+            <SegmentedControl
+              size="sm"
+              value={String(filter.hands)}
+              onChange={(v) => setFilter({ ...filter, hands: v === 'any' ? 'any' : (Number(v) as 1 | 2) })}
+              options={[
+                { value: 'any', label: t('filterAnyHands') },
+                { value: '1', label: t('oneHand') },
+                { value: '2', label: t('twoHands') },
+              ]}
+            />
+          </div>
+          {isFiltering(filter) && (
+            <p className={styles.hint} role="status">
+              {shown.length === 0 ? t('filterNone') : t('filterCount', { count: shown.length })}
+              <button type="button" className={styles.filterClear} onClick={() => setFilter(NO_FILTER)}>
+                {t('filterClear')}
+              </button>
+            </p>
+          )}
+        </section>
+      )}
+      {starters.length > 0 && (
+        <section className={styles.panel}>
+          <h2 className={styles.h2}>{t('starterSongs')}</h2>
+          <ul className={styles.songList}>{starters.map((e) => item(e, false))}</ul>
+        </section>
+      )}
       <section className={styles.panel}>
         <h2 className={styles.h2}>{t('yourSongs')}</h2>
         {own.length > 0 && <ul className={styles.songList}>{own.map((e) => item(e, true))}</ul>}

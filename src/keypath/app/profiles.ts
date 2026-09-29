@@ -5,11 +5,42 @@ export type Language = 'en' | 'ro'
 /** 'auto' follows the language: C D E in English, Do Re Mi in Romanian. */
 export type NoteNames = 'auto' | 'letters' | 'solfege' | 'both'
 
+/**
+ * A player's PIN, kept as a salted hash. It is there to stop a mix-up on a phone
+ * more than one person plays on (a sibling opening Nora's progress by mistake),
+ * not to keep anyone out: whoever has the phone can remove it (`forgotPin`).
+ */
+export interface PinRecord {
+  salt: string
+  hash: string
+}
+
 export interface Profile {
   id: string
   name: string
   avatar: string
   createdAt: string
+  pin?: PinRecord
+}
+
+export const PIN_LENGTH = 4
+export const isPin = (s: string) => new RegExp(`^\\d{${PIN_LENGTH}}$`).test(s)
+
+/** SHA-256 of the salt and PIN, where the browser has it; a plain string hash where it doesn't. Either way, only a hash is kept. */
+export async function hashPin(pin: string, salt: string): Promise<string> {
+  const text = `${salt}:${pin}`
+  try {
+    const subtle = globalThis.crypto?.subtle
+    if (subtle) {
+      const digest = await subtle.digest('SHA-256', new TextEncoder().encode(text))
+      return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+    }
+  } catch {
+    /* fall through */
+  }
+  let h = 5381
+  for (const c of text) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0
+  return `x${h.toString(16)}`
 }
 
 export interface ProfileSettings extends JudgeSettings {
@@ -66,6 +97,28 @@ export class ProfileRepo {
       K.profiles,
       (await this.list()).map((p) => (p.id === profileId ? { ...p, ...(name ? { name } : {}), ...(patch.avatar ? { avatar: patch.avatar } : {}) } : p)),
     )
+  }
+
+  /** Set a player's PIN (four digits), or take it off with `null`. Returns false for something that isn't four digits. */
+  async setPin(profileId: string, pin: string | null): Promise<boolean> {
+    if (pin !== null && !isPin(pin)) return false
+    const salt = newId()
+    const record = pin === null ? undefined : { salt, hash: await hashPin(pin, salt) }
+    await this.store.set(
+      K.profiles,
+      (await this.list()).map((p) => {
+        if (p.id !== profileId) return p
+        const { pin: _old, ...rest } = p
+        return record ? { ...rest, pin: record } : rest
+      }),
+    )
+    return true
+  }
+
+  /** Whether this is the player's PIN. A player with none accepts anything. */
+  async checkPin(profile: Profile, pin: string): Promise<boolean> {
+    if (!profile.pin) return true
+    return (await hashPin(pin, profile.pin.salt)) === profile.pin.hash
   }
 
   /** The profile this phone opens into — "pinned" by simply remembering it. */

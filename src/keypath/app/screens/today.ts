@@ -13,7 +13,7 @@ import { K, type KeyValueStore } from '../store'
 // move as she plays; whether each is done is read from today's log. No
 // streak: a missed day costs nothing, and tomorrow brings new picks.
 
-export type TodayGame = 'race' | 'echo' | 'chord'
+export type TodayGame = 'race' | 'echo' | 'chord' | 'ear'
 export type TodayItem = { kind: 'warmup' } | { kind: 'song'; songId: string } | { kind: 'journey'; step: StepId } | { kind: 'game'; game: TodayGame }
 
 export interface TodayPlan {
@@ -22,7 +22,7 @@ export interface TodayPlan {
   items: TodayItem[]
 }
 
-const GAMES: TodayGame[] = ['race', 'echo', 'chord']
+const GAMES: TodayGame[] = ['race', 'echo', 'chord', 'ear']
 /** The note race read off a staff counts as the race. */
 const gameOf = (g: string): TodayGame | null => (g === 'staff' ? 'race' : GAMES.includes(g as TodayGame) ? (g as TodayGame) : null)
 

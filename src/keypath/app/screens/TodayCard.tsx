@@ -11,10 +11,11 @@ import { WARMUP_ID } from '../../engine/starterPack'
 import { isDone, planToday, todayFor, type TodayItem, type TodayPlan } from './today'
 import styles from '../app.module.css'
 
-const GAME: Record<'race' | 'echo' | 'chord', { icon: string; title: StringKey }> = {
+const GAME: Record<'race' | 'echo' | 'chord' | 'ear', { icon: string; title: StringKey }> = {
   race: { icon: '🏁', title: 'raceTitle' },
   echo: { icon: '🥁', title: 'echoTitle' },
   chord: { icon: '🎹', title: 'chordTitle' },
+  ear: { icon: '👂', title: 'earTitle' },
 }
 const KIND: Record<TodayItem['kind'], StringKey> = { warmup: 'todayWarmup', song: 'todaySong', journey: 'todayJourney', game: 'todayGame' }
 const DOOR: Record<TodayItem['kind'], Door> = { warmup: 'songs', song: 'songs', journey: 'journey', game: 'challenges' }
