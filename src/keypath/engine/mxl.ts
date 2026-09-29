@@ -1,4 +1,4 @@
-import { child, decodeText, parseXml } from './xml'
+import { child, childrenOf, decodeText, parseXml } from './xml'
 
 // Compressed MusicXML (.mxl, what MuseScore offers as "MusicXML") and
 // MuseScore's own files (.mscz): each a zip holding the score and
@@ -64,6 +64,9 @@ async function read(bytes: Uint8Array, e: Entry): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
+/** A file that holds the music: MuseScore's own, or MusicXML. */
+const SCORE = /\.(mscx|musicxml|xml)$/i
+
 /** The score inside an .mxl or .mscz file, as XML text: MusicXML, or MuseScore's .mscx. */
 export async function unzipScore(bytes: Uint8Array): Promise<string> {
   const entries = entriesOf(bytes)
@@ -71,7 +74,10 @@ export async function unzipScore(bytes: Uint8Array): Promise<string> {
   let path = ''
   if (container) {
     try {
-      path = child(child(parseXml(decodeText(await read(bytes, container))), 'rootfiles'), 'rootfile')?.attrs['full-path'] ?? ''
+      // The first rootfile that is a score: MuseScore 4 also lists its style sheet (score_style.mss, first),
+      // thumbnail and settings there, so the first one is not always the music.
+      const paths = childrenOf(child(parseXml(decodeText(await read(bytes, container))), 'rootfiles'), 'rootfile').map((r) => r.attrs['full-path'] ?? '')
+      path = paths.find((p) => SCORE.test(p)) ?? ''
     } catch {
       path = ''
     }

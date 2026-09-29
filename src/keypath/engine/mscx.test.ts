@@ -198,4 +198,19 @@ describe('an .mscz file', () => {
     ])
     expect(await unzipScore(without)).toBe(text)
   })
+
+  it('from MuseScore 4.1 on: the container lists the style sheet first, and the score after it', async () => {
+    const text = piano4()
+    const rootfiles = ['score_style.mss', 'score-444f87d2.mscx', 'Thumbnails/thumbnail.png', 'audiosettings.json', 'viewsettings.json']
+    const container = `<?xml version="1.0" encoding="UTF-8"?><container><rootfiles>${rootfiles.map((p) => `<rootfile full-path="${p}"/>`).join('')}</rootfiles></container>`
+    const file = await zip([
+      { name: 'score_style.mss', text: '<museScore version="4.10"><Style/></museScore>', deflate: true },
+      { name: 'score-444f87d2.mscx', text, deflate: true },
+      { name: 'Thumbnails/thumbnail.png', text: 'png' },
+      { name: 'audiosettings.json', text: '{}' },
+      { name: 'viewsettings.json', text: '{}' },
+      { name: 'META-INF/container.xml', text: container, deflate: true },
+    ])
+    expect(await unzipScore(file)).toBe(text)
+  })
 })

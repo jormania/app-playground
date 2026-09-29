@@ -22,10 +22,17 @@ import type { Finger, Hand, Song, SongNote } from './song'
 //               in the EU since 2017, and in the US the claim fell in 2016.
 //   elise     — Beethoven, “Für Elise” WoO 59, the opening theme, right hand
 //               only (published 1867). Beethoven d. 1827.
+//   saints    — “When the Saints Go Marching In”, traditional spiritual, sung
+//               and printed by the 1890s.
+//   macdonald — “Old MacDonald Had a Farm”, traditional; the E-I-E-I-O tune
+//               printed by 1917.
+//   brahms    — Brahms, “Wiegenlied” Op. 49 No. 4 (1868). Brahms d. 1897.
+//   minuet    — Minuet in G, BWV Anh. 114, from the 1725 Notebook for Anna
+//               Magdalena Bach, now given to Christian Petzold (d. 1733).
 
 const C3 = 48, G2 = 43, F3 = 53, G3 = 55
-const C4 = 60, D4 = 62, E4 = 64, F4 = 65, G4 = 67, Gs4 = 68, A4 = 69, B4 = 71
-const C5 = 72, D5 = 74, Ds5 = 75, E5 = 76, F5 = 77, G5 = 79
+const C4 = 60, D4 = 62, E4 = 64, F4 = 65, Fs4 = 66, G4 = 67, Gs4 = 68, A4 = 69, B4 = 71
+const C5 = 72, D5 = 74, Ds5 = 75, E5 = 76, F5 = 77, Fs5 = 78, G5 = 79
 
 /** [pitch, beats] — one voice, one after another. */
 type Line = [number, number][]
@@ -200,6 +207,77 @@ export const STARTER_PACK: StarterSong[] = [
     fingers: { right: '54 545243 1123 4134 5154 545243 1123 4132 1' },
   },
 ]
+
+// Minuet in G: the same eight bars twice, the second time ending home on G.
+const minuetOpening: Line = [
+  [D5, 1], [G4, 0.5], [A4, 0.5], [B4, 0.5], [C5, 0.5], [D5, 1], [G4, 1], [G4, 1],
+  [E5, 1], [C5, 0.5], [D5, 0.5], [E5, 0.5], [Fs5, 0.5], [G5, 1], [G4, 1], [G4, 1],
+  [C5, 1], [D5, 0.5], [C5, 0.5], [B4, 0.5], [A4, 0.5], [B4, 1], [C5, 0.5], [B4, 0.5], [A4, 0.5], [G4, 0.5],
+]
+STARTER_PACK.push(
+  {
+    id: 'starter:saints',
+    title: { en: 'When the Saints Go Marching In', ro: 'When the Saints Go Marching In' },
+    bpm: 110,
+    beatsPerBar: 4,
+    // Five fingers on C D E F G, never moving: C E F G, held.
+    right: [
+      [C4, 1], [E4, 1], [F4, 1], [G4, 5], [C4, 1], [E4, 1], [F4, 1], [G4, 5],
+      [C4, 1], [E4, 1], [F4, 1], [G4, 2], [E4, 2], [C4, 2], [E4, 2], [D4, 5],
+      [E4, 1], [E4, 1], [D4, 1], [C4, 3], [C4, 1], [E4, 1], [G4, 2], [G4, 1], [F4, 5],
+      [E4, 1], [F4, 1], [G4, 2], [E4, 2], [C4, 2], [D4, 4], [C4, 4],
+    ],
+    phrases: [0, 4, 8, 12],
+    level: 1,
+    fingers: { right: '1345 1345 13453132 332113554 3453121' },
+  },
+  {
+    id: 'starter:macdonald',
+    title: { en: 'Old MacDonald', ro: 'Old MacDonald' },
+    bpm: 110,
+    beatsPerBar: 4,
+    // Thumb on D: D E, G A B under fingers 1 2, 3 4 5. The leap from D up to B is the new thing.
+    right: [
+      [G4, 1], [G4, 1], [G4, 1], [D4, 1], [E4, 1], [E4, 1], [D4, 2], [B4, 1], [B4, 1], [A4, 1], [A4, 1], [G4, 3], [D4, 1],
+      [G4, 1], [G4, 1], [G4, 1], [D4, 1], [E4, 1], [E4, 1], [D4, 2], [B4, 1], [B4, 1], [A4, 1], [A4, 1], [G4, 4],
+      [D4, 0.5], [D4, 0.5], [G4, 1], [G4, 1], [G4, 1], [D4, 0.5], [D4, 0.5], [G4, 1], [G4, 1], [G4, 1],
+      [G4, 0.5], [G4, 0.5], [G4, 1], [G4, 0.5], [G4, 0.5], [G4, 1], [G4, 0.5], [G4, 0.5], [G4, 0.5], [G4, 0.5], [G4, 1], [G4, 1],
+      [G4, 1], [G4, 1], [G4, 1], [D4, 1], [E4, 1], [E4, 1], [D4, 2], [B4, 1], [B4, 1], [A4, 1], [A4, 1], [G4, 4],
+    ],
+    phrases: [0, 4, 8, 12],
+    level: 2,
+    fingers: { right: '3331 221 5544 31 3331 221 5544 3 11333 11333 333333 333333 3331 221 5544 3' },
+  },
+  {
+    id: 'starter:brahms',
+    title: { en: 'Brahms’ Lullaby', ro: 'Cântec de leagăn (Brahms)' },
+    bpm: 72,
+    beatsPerBar: 3,
+    // Lullaby and good night: E E G, E E G, E G C B A A G; then D E F D, D E F, D F B A G B C; then the octave leaps.
+    right: [
+      [E4, 0.5], [E4, 0.5], [G4, 2], [E4, 0.5], [E4, 0.5], [G4, 2], [E4, 0.5], [G4, 0.5], [C5, 1], [B4, 1], [A4, 1], [A4, 1], [G4, 1],
+      [D4, 0.5], [E4, 0.5], [F4, 1], [D4, 1], [D4, 0.5], [E4, 0.5], [F4, 2], [D4, 0.5], [F4, 0.5], [B4, 0.5], [A4, 0.5], [G4, 1], [B4, 1], [C5, 2],
+      [C4, 0.5], [C4, 0.5], [C5, 2], [A4, 0.5], [F4, 0.5], [G4, 2], [E4, 0.5], [C4, 0.5], [F4, 1], [G4, 0.5], [A4, 0.5], [G4, 3],
+      [C4, 0.5], [C4, 0.5], [C5, 2], [A4, 0.5], [F4, 0.5], [G4, 2], [E4, 0.5], [C4, 0.5], [E4, 1], [D4, 1], [C4, 3],
+    ],
+    phrases: [0, 4, 8, 12],
+    level: 2,
+    fingers: { right: '112 112 1254 332 1231 123 12543 45 115 312 21345 4 115 312 3132 1' },
+  },
+  {
+    id: 'starter:minuet',
+    title: { en: 'Minuet in G', ro: 'Menuet în Sol' },
+    bpm: 100,
+    beatsPerBar: 3,
+    right: [
+      ...minuetOpening, [Fs4, 1], [G4, 0.5], [A4, 0.5], [B4, 0.5], [G4, 0.5], [A4, 3],
+      ...minuetOpening, [A4, 1], [B4, 0.5], [A4, 0.5], [G4, 0.5], [Fs4, 0.5], [G4, 3],
+    ],
+    phrases: [0, 4, 8, 12],
+    level: 3,
+    fingers: { right: '51234 511 31234 511 45432 34321 12342 3 51234 511 31234 511 45432 34321 34321 2' },
+  },
+)
 
 /** A fingering string as digits, one per note; spaces and | are for reading only. */
 export function fingerList(written: string | undefined): Finger[] {

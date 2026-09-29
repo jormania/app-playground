@@ -957,6 +957,15 @@ chord and tempo change matched too, except the grace note MuseScore plays
 and KeyPath leaves out on purpose. The tests (`engine/mscx.test.ts`) use
 small hand-written scores laid out as each version writes them.
 
+**MuseScore 4.1 and later.** An "Interstellar Theme (Easy Piano)" saved by
+MuseScore 4.1 wouldn't open. The score inside was the same 4.x format; the
+change was in the zip's `META-INF/container.xml`. Earlier versions list only
+the score there. From 4.1 on it lists everything in the zip: `score_style.mss`
+first, then the score (`score-<hash>.mscx`), the thumbnail and two settings
+files. KeyPath took the first entry and tried to read a style sheet as music.
+It now takes the first entry that is a score (`.mscx`, `.musicxml`, `.xml`).
+The test copies 4.1's layout.
+
 **The Parts row for a long song.** A song with more than seven parts used to
 step through them one at a time (‹ Part 3 · 3 of 29 ›), and a CSS rule meant
 for count-in rows stretched the ‹ across the panel. Now every song has the
@@ -1211,7 +1220,9 @@ the real Yamaha yet**: first thing to try on the S24.
 ## 10. Roadmap: deferred on purpose
 
 Left out of the steps above to keep each one small. Nothing here is
-forgotten; each item says when it comes back.
+forgotten; each item says when it comes back. **The order to take them in,
+with new ideas added, is [`KEYPATH_ROADMAP.md`](KEYPATH_ROADMAP.md)**; this
+section keeps the detail.
 
 **Learning curve** (next, in this order; from reading Flowkey, Simply Piano
 and the Hoffman Academy method, 2026-09-25). The gap it closes is between
@@ -1392,7 +1403,9 @@ install it and get the full screen):
 - The wizard doesn't test the **charging hub** (`KEYPATH.md` §2) or phone
   audio; Diagnostics still does the audio check.
 
-**Content**: the public-domain starter pack, four melodies with step 3 and
-ten since "More songs and Listen first". More public-domain pieces can join it
-the same way, as data.
+**Content**: the public-domain starter pack, four melodies with step 3, ten
+since "More songs and Listen first", and fourteen since 2026-09-29: When the
+Saints Go Marching In (Easy), Old MacDonald and Brahms' Lullaby (Medium), and
+the Minuet in G (Harder), each rated by `ratedLevel` at the level given. More
+public-domain pieces can join it the same way, as data.
 
