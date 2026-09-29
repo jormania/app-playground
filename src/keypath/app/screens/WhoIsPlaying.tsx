@@ -41,10 +41,9 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
     setPinWrong(false)
     setForgot(false)
   }
-  const tryPin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const tryPin = async (pin: string) => {
     if (!asking) return
-    if (await profiles.checkPin(asking, pinDraft)) return open(asking)
+    if (await profiles.checkPin(asking, pin)) return open(asking)
     setPinWrong(true)
     setPinDraft('')
   }
@@ -72,7 +71,13 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
     <main className={styles.screen}>
       <h1 className={styles.hero}>{t('whoIsPlaying')}</h1>
       {asking && (
-        <form className={styles.panel} onSubmit={tryPin}>
+        <form
+          className={styles.panel}
+          onSubmit={(e) => {
+            e.preventDefault()
+            void tryPin(pinDraft)
+          }}
+        >
           <h2 className={styles.h2}>
             <span aria-hidden>{asking.avatar}</span> {t('pinFor', { name: asking.name })}
           </h2>
@@ -84,8 +89,11 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
             maxLength={PIN_LENGTH}
             value={pinDraft}
             onChange={(e) => {
-              setPinDraft(e.target.value.replace(/\D/g, ''))
+              const pin = e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH)
+              setPinDraft(pin)
               setPinWrong(false)
+              // The fourth digit opens it: no button to find on a small screen.
+              if (pin.length === PIN_LENGTH) void tryPin(pin)
             }}
             autoFocus
           />

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MscxError, parseMscx } from './mscx'
 import { unzipScore } from './mxl'
 import { partsOf, suggestScoreParts } from './parts'
-import { chord, measure2, measure4, mscx, tempo, timeSig, tuplet4, volta4 } from './testing/mscxBuilder'
+import { chord, jump, marker, measure2, measure4, mscx, tempo, timeSig, tuplet4, volta4 } from './testing/mscxBuilder'
 import { CONTAINER, zip } from './testing/xmlBuilder'
 
 const q = (pitch: number, o: { finger?: number; tie?: boolean } = {}) => ({ type: 'quarter', notes: [{ pitch, ...o }] })
@@ -101,21 +101,14 @@ describe('parseMscx: MuseScore 3 and 4', () => {
     expect([right?.staff, left?.staff]).toEqual([1, 2])
   })
 
-  it('follows a D.S. al Coda from its markers and jump', () => {
-    const marker = (label: string) => `<Marker><label>${label}</label></Marker>`
-    const jump = '<Jump><jumpTo>segno</jumpTo><playUntil>coda</playUntil><continueAt>codab</continueAt></Jump>'
-    const file = parseMscx(
-      mscx({
-        version: '4.20',
-        parts: [
-          {
-            name: 'Piano',
-            staves: [[measure4([timeSig(4, 4) + whole(60)]), measure4([marker('segno') + whole(62)]), measure4([whole(64) + marker('coda')]), measure4([whole(65) + jump]), measure4([marker('codab') + whole(67)])]],
-          },
-        ],
-      }),
-    )
-    expect(file.notes.map((n) => n.pitch)).toEqual([60, 62, 64, 65, 62, 64, 67])
+  it('follows jumps from the bar’s own markers: D.S. al Coda, and a D.C. that plays to the end past a Fine', () => {
+    const piano = (...bars: string[]) => parseMscx(mscx({ version: '4.20', parts: [{ name: 'Piano', staves: [bars] }] })).notes.map((n) => n.pitch)
+    // 1 | 2 segno | 3 To Coda | 4 D.S. al Coda | 5 coda  ->  1 2 3 4 2 3 5
+    expect(piano(measure4([timeSig(4, 4) + whole(60)]), measure4([whole(62)], { marks: marker('segno') }), measure4([whole(64)], { marks: marker('coda') }), measure4([whole(65)], { marks: jump('segno', 'coda', 'codab') }), measure4([whole(67)], { marks: marker('codab') }))).toEqual([60, 62, 64, 65, 62, 64, 67])
+    // D.C. al Fine stops at the Fine; a plain D.C. ("until the end") doesn't.
+    const dc = (until: string) => piano(measure4([timeSig(4, 4) + whole(60)]), measure4([whole(62)], { marks: marker('fine') }), measure4([whole(64)], { marks: jump('start', until) }))
+    expect(dc('fine')).toEqual([60, 62, 64, 60, 62])
+    expect(dc('end')).toEqual([60, 62, 64, 60, 62, 64])
   })
 
   it('leaves out tablature and percussion staves, and names each instrument', () => {

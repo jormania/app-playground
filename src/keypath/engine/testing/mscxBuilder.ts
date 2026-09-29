@@ -43,10 +43,14 @@ export const timeSig = (n: number, d: number) => `<TimeSig><sigN>${n}</sigN><sig
 export const tuplet4 = (normal: number, actual: number) => `<Tuplet><normalNotes>${normal}</normalNotes><actualNotes>${actual}</actualNotes><baseNote>eighth</baseNote></Tuplet>`
 export const volta4 = (endings: string, measures = 1) => `<Spanner type="Volta"><Volta><endings>${endings}</endings></Volta><next><location><measures>${measures}</measures></location></next></Spanner>`
 
-/** A MuseScore 4 bar: optional repeat signs, then each voice's contents. */
-export function measure4(voices: string[], o: { len?: string; start?: boolean; end?: number } = {}): string {
-  return `<Measure${o.len ? ` len="${o.len}"` : ''}>${o.len ? '<irregular>1</irregular>' : ''}${o.start ? '<startRepeat/>' : ''}${o.end ? `<endRepeat>${o.end}</endRepeat>` : ''}${voices.map((v) => `<voice>${v}</voice>`).join('')}</Measure>`
+/** A MuseScore 4 bar: optional repeat signs, the bar's own jumps and signs (`marks`), then each voice's contents. */
+export function measure4(voices: string[], o: { len?: string; start?: boolean; end?: number; marks?: string } = {}): string {
+  return `<Measure${o.len ? ` len="${o.len}"` : ''}>${o.len ? '<irregular>1</irregular>' : ''}${o.start ? '<startRepeat/>' : ''}${o.end ? `<endRepeat>${o.end}</endRepeat>` : ''}${o.marks ?? ''}${voices.map((v) => `<voice>${v}</voice>`).join('')}</Measure>`
 }
+
+/** MuseScore's jump signs, written at the bar's level: a marker by its label, and a jump. */
+export const marker = (label: string) => `<Marker><style>repeat_left</style><text>${label}</text><label>${label}</label></Marker>`
+export const jump = (to: string, until: string, at = '') => `<Jump><text>D.S.</text><jumpTo>${to}</jumpTo><playUntil>${until}</playUntil><continueAt>${at}</continueAt></Jump>`
 
 /** A MuseScore 2 bar: numbered, no <voice>; a second voice follows a <tick> back to the bar's start. */
 export const measure2 = (number: number, body: string, o: { start?: boolean; end?: number } = {}) => `<Measure number="${number}">${o.start ? '<startRepeat/>' : ''}${o.end ? `<endRepeat>${o.end}</endRepeat>` : ''}${body}</Measure>`

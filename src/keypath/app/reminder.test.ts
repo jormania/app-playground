@@ -17,6 +17,12 @@ describe('shouldFire', () => {
     expect(shouldFire(state(), '2026-09-28', at(18))).toBe(true)
   })
 
+  it('stays quiet from ten at night, however late the phone wakes it', () => {
+    expect(shouldFire(state({ minutes: 21 * 60 }), '', at(21, 59))).toBe(true)
+    expect(shouldFire(state({ minutes: 21 * 60 }), '', at(22))).toBe(false)
+    expect(shouldFire(state(), '', at(23, 30))).toBe(false)
+  })
+
   it('stays quiet when someone has played today, when it is off, or when nothing is known', () => {
     expect(shouldFire(state({ practisedDay: '2026-09-29' }), '', at(18))).toBe(false)
     expect(shouldFire(state({ enabled: false, minutes: null }), '', at(18))).toBe(false)
@@ -40,6 +46,9 @@ describe('the worker’s copy of it', () => {
       [state({ practisedDay: '2026-09-29' }), '', at(20)],
       [state({ enabled: false, minutes: null }), '', at(20)],
       [state({ minutes: 0 }), '', at(0, 1)],
+      [state({ minutes: 21 * 60 }), '', at(21, 59)],
+      [state(), '', at(22)],
+      [state(), '', at(23, 59)],
       [undefined, '', at(20)],
     ]
     for (const [s, last, now] of cases) expect(worker(s, last, now), JSON.stringify([s, last, now])).toBe(shouldFire(s, last, now))

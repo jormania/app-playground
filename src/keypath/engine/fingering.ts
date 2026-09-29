@@ -87,13 +87,12 @@ function runFingers(hand: Hand, pitches: readonly number[]): Finger[] {
 
 /** Fingers for a chord, lowest note first (whichever hand): thumb-side first. */
 function chordFingers(hand: Hand, pitches: readonly number[]): Finger[] | null {
-  const sorted = [...pitches].sort((a, b) => a - b)
-  const span = sorted[sorted.length - 1] - sorted[0]
-  const set: Finger[] | null = sorted.length === 2 ? (span <= 4 ? [1, 3] : [1, 5]) : sorted.length === 3 ? [1, 3, 5] : sorted.length === 4 ? [1, 2, 3, 5] : sorted.length === 5 ? [1, 2, 3, 4, 5] : null
+  const span = Math.max(...pitches) - Math.min(...pitches)
+  const size = pitches.length
+  const set: Finger[] | null = size === 2 ? (span <= 4 ? [1, 3] : [1, 5]) : size === 3 ? [1, 3, 5] : size === 4 ? [1, 2, 3, 5] : size === 5 ? [1, 2, 3, 4, 5] : null
   if (!set) return null
   // The right thumb is the lowest note, the left thumb the highest.
-  const byPitch = hand === 'right' ? set : [...set].reverse()
-  return byPitch.map((f, i) => ({ f, p: sorted[i] })).map((x) => x.f)
+  return hand === 'right' ? set : [...set].reverse()
 }
 
 /** A hand's notes in order, in onsets: singles gather into runs, chords stand alone. */

@@ -1,4 +1,4 @@
-import { fileFromParts, type Bar, type ReadPart, type Written } from './musicxml'
+import { fileFromParts, type Bar, type BarMarks, type ReadPart, type Written } from './musicxml'
 import type { SmfFile } from './smf'
 import type { Finger } from './song'
 import { child, childrenOf, parseXml, textOf, XmlError, type XmlElement } from './xml'
@@ -67,6 +67,30 @@ interface VoltaMark {
   id?: string
 }
 
+/**
+ * A jump or a sign for one (MuseScore's <Jump> and <Marker>). A marker's label
+ * says what it is: segno / varsegno (where a D.S. returns to), codab /
+ * varcoda / codetta (a coda), coda ("To Coda"), fine. A jump names the label
+ * it goes back to, the one it plays until, and the coda it continues at.
+ */
+function markBar(bar: Bar, el: XmlElement) {
+  if (el.name === 'Marker') {
+    const label = textOf(el, 'label').trim()
+    const m: BarMarks = { ...bar.marks }
+    if (/segno/.test(label)) m.segno = label
+    else if (label === 'codab' || label === 'varcoda' || label === 'codetta') m.coda = label
+    else if (label === 'coda') m.toCoda = label
+    else if (label === 'fine') m.fine = true
+    else return
+    bar.marks = m
+  } else if (el.name === 'Jump') {
+    const to = textOf(el, 'jumpTo').trim()
+    if (!to) return
+    const until = textOf(el, 'playUntil').trim()
+    bar.marks = { ...bar.marks, jump: { to: to === 'start' ? 'start' : { segno: to }, coda: textOf(el, 'continueAt').trim() || undefined, until: until || undefined } }
+  }
+}
+
 /** One staff read bar by bar: its notes and, for the first staff, the score's repeats and endings. */
 function readStaff(staff: XmlElement, staffNumber: number, division: number): { bars: Bar[]; voltas: VoltaMark[] } {
   const bars: Bar[] = []
@@ -107,23 +131,6 @@ function readStaff(staff: XmlElement, staffNumber: number, division: number): { 
           case 'Tempo': {
             const qps = num(textOf(el, 'tempo'))
             if (qps > 0) bar.tempos.push({ at: cursor, bpm: qps * 60 })
-            break
-          }
-          case 'Marker': {
-            // label: segno / varsegno (where a D.S. returns to), codab / varcoda (the coda), coda / varcodab ("To Coda"), fine.
-            const label = textOf(el, 'label').trim()
-            const m = bar.marks ?? {}
-            if (/^(var)?segno/.test(label)) m.segno = label
-            else if (label === 'codab' || label === 'varcoda') m.coda = label
-            else if (label === 'coda' || label === 'varcodab') m.toCoda = label === 'coda' ? 'codab' : 'varcoda'
-            else if (label === 'fine') m.fine = true
-            if (Object.keys(m).length) bar.marks = m
-            break
-          }
-          case 'Jump': {
-            const to = textOf(el, 'jumpTo').trim()
-            if (!to) break
-            bar.marks = { ...bar.marks, jump: { to: to === 'start' ? 'start' : { segno: to }, coda: textOf(el, 'continueAt').trim() || undefined } }
             break
           }
           case 'Tuplet': {
@@ -200,6 +207,8 @@ function readStaff(staff: XmlElement, staffNumber: number, division: number): { 
       }
     }
     const voices = childrenOf(measure, 'voice')
+    // Jumps and their signs belong to the bar, not a voice: MuseScore writes them before the voices.
+    for (const el of [...measure.children, ...voices.flatMap((v) => v.children)]) markBar(bar, el)
     if (voices.length) voices.forEach((v, i) => readVoice(v.children, String(i)))
     else readVoice(measure.children, '0')
     bars.push(bar)

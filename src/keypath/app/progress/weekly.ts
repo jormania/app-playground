@@ -28,6 +28,7 @@ export interface WeekFacts {
   journeyChecksPassed: number
   journeyChecksFailed: number
   gamesPlayed: number
+  warmUpsDone: number
   studioTakesKept: number
   todayCardsDone: number
   stickersEarned: string[]
@@ -75,6 +76,7 @@ export function weekFacts({ records, today, title, stickers, stickerName }: Week
     journeyChecksPassed: s.journey.checksPassed,
     journeyChecksFailed: s.journey.checksFailed,
     gamesPlayed: s.challenges.race + s.challenges.staff + s.challenges.echo + s.challenges.chord + s.challenges.ear,
+    warmUpsDone: s.warmUps,
     studioTakesKept: s.studio.kept,
     todayCardsDone: inWeek.filter((r) => r.type === 'today_done').length,
     stickersEarned: [...stickers.entries()].filter(([, day]) => day >= from && day <= today).map(([id]) => stickerName(id)),

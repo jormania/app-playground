@@ -86,6 +86,19 @@ describe('summarise', () => {
     expect(t.doors.journey.minutes).toBe(2)
   })
 
+  it('counts the warm-up apart: it is not a song finished every day', () => {
+    const s = summarise(
+      log(
+        ['2026-09-21T18:00:00', { type: 'session_start' }],
+        ['2026-09-21T18:01:00', { type: 'song_started', songId: 'starter:warmup', practice: 'right', tempo: 1, mode: 'wait' }],
+        ['2026-09-21T18:02:00', { type: 'song_finished', songId: 'starter:warmup', practice: 'right', stars: 3, score: 1, hit: 10, total: 10, wrong: 0 }],
+      ),
+    )
+    expect(s.warmUps).toBe(1)
+    expect([s.songs.started, s.songs.finished, s.songs.bySong.length]).toEqual([0, 0, 0])
+    expect(s.days).toEqual(['2026-09-21'])
+  })
+
   it('is empty, not broken, for a player with no log yet', () => {
     expect(summarise([])).toMatchObject({ from: null, sessions: 0, days: [], cameBackNextDay: 0 })
   })

@@ -3,9 +3,7 @@
 // in IndexedDB (src/keypath/app/reminder.ts) and, after the chosen time, if nobody has practised
 // today and it hasn't been sent today, show it. No server, no push service. The decision below is
 // the same as `shouldFire` in reminder.ts (shared/notify/schedule.ts's once-per-day shape); a test
-// runs both on the same cases. See NOTIFICATIONS.md.
-importScripts('/shared-notify-idb.js');
-
+// runs both on the same cases. See NOTIFICATIONS.md. keypath-sw.js imports shared-notify-idb.js first.
 (function () {
   var DB = 'keypath-reminders', STORE = 'kv', APP = '/keypath-react.html';
   var TEXT = {
@@ -18,8 +16,12 @@ importScripts('/shared-notify-idb.js');
   }
   function minutesOfDay(d) { return d.getHours() * 60 + d.getMinutes(); }
 
+  // Quiet from 22:00 (QUIET_FROM in reminder.ts): a late wake waits for tomorrow.
+  var QUIET_FROM = 22 * 60;
+
   function shouldFire(state, lastSent, now) {
     if (!state || !state.enabled || state.minutes == null) return false;
+    if (minutesOfDay(now) >= QUIET_FROM) return false;
     var today = dayKey(now);
     if (state.practisedDay === today) return false;
     if (lastSent === today) return false;

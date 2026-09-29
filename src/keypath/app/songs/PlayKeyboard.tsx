@@ -76,7 +76,6 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
             onPointerLeave={up}
           >
             {marker === b.pitch && <span className={styles.marker} aria-hidden />}
-
             {names && !b.black && <span className={styles.keyLabel}>{label(b.pitch)}</span>}
           </div>
         )

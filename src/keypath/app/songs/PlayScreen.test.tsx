@@ -493,6 +493,39 @@ describe('Play screen: practice tools', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change speed' }))
     expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
   })
+
+  it('says where the hands go for the bar picked, not the start of the song', async () => {
+    const { store } = await setUp({ onWrong: 'wait' }, '#/door/songs')
+    // A bar of C D E with the thumb on C (eight notes, all a hand's place is read from), then G A B with the thumb on G.
+    const first = [60, 62, 64, 62, 60, 62, 64, 62].map((p, i): [number, number] => [p, i * 250])
+    const shift = songOf([...first, [67, 2000], [69, 2500], [71, 3000]], 'Shift')
+    const fingers = [1, 2, 3, 2, 1, 2, 3, 2, 1, 2, 3] as const
+    await new SongLibrary(store).add({ ...shift, notes: shift.notes.map((n, i) => ({ ...n, finger: fingers[i] })) })
+    cleanup()
+    history.replaceState(null, '', '#/play/Shift')
+    render(<Shell store={store} />)
+    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise one bar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'The bar after' }))
+    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    expect(await screen.findByText('Right thumb on G')).toBeTruthy()
+  })
+
+  it('goes from a bar practised with a part chosen to the whole song, and counts it as the whole song', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/play/starter%3Aode')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Part 1' }).getAttribute('aria-pressed')).toBe('true'))
+    // The keys show where the hands go before anything starts: the right thumb on C.
+    expect(document.querySelector('[data-hand="right"][aria-hidden]')?.textContent).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: '🔁 Practise one bar' }))
+    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    tap(target()!) // middle C
+    await playThrough(ODE_1.slice(0, 4))
+    fireEvent.click(await screen.findByRole('button', { name: '▶ Whole song' }))
+    await playThrough([...ODE_1, ...ODE_2])
+    expect(await screen.findByRole('button', { name: 'Play again' })).toBeTruthy()
+    const parts = (await events(store, profileId)).flatMap((e) => (e.type === 'song_part' ? [e.part] : []))
+    expect(parts).toEqual(['whole'])
+    expect([...(await new PartsRepo(store).get(profileId, 'starter:ode', 'right'))]).toEqual(['whole'])
+  })
 })
 
 describe('Play screen: the music written', () => {

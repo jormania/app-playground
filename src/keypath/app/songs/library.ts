@@ -1,4 +1,4 @@
-import { isZip, looksLikeXml, MscxError, parseMscx, MusicXmlError, MxlError, parseMusicXml, unzipScore, suggestScoreParts, parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, notesToFit, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
+import { isZip, looksLikeXml, MscxError, parseMscx, MusicXmlError, MxlError, parseMusicXml, unzipScore, suggestScoreParts, parseSmf, partsOf, songFromParts, suggestParts, suggestSplit, splitHands, fitOptions, fitSong, notesToFit, withSuggestedFingers, SmfError, type FitMode, type FitOption, type Part, type Song, type SmfFile } from '../../engine'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import { decodeText } from '../../engine/xml'
 import type { Language } from '../profiles'
@@ -25,9 +25,11 @@ export class SongLibrary {
     // A song saved before the fitting choice existed, with notes past the keys, gets the best one on the way out:
     // left as it was, the song would wait for keys that aren't there. One saved before the easy
     // version existed gets it when its notes as written are rated Harder, as a song added now would.
+    // One saved before suggested fingers existed, with none written, gets them the same way.
     const imported = ((await this.store.get<Song[]>(SONGS_KEY)) ?? []).map((song): LibraryEntry => {
       if (song.easy === undefined) return { song: fitSong({ ...song, easy: suggestEasy(song) }, song.fit ?? null), source: 'import' }
-      return { song: song.fit || song.easy ? song : fitSong(song, null), source: 'import' }
+      const ready = song.fit || song.easy ? song : fitSong(song, null)
+      return { song: ready.fingersSuggested || ready.notes.some((n) => n.finger) ? ready : withSuggestedFingers(ready), source: 'import' }
     })
     return [...starters, ...imported]
   }

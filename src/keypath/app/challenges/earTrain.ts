@@ -26,12 +26,14 @@ const pc = (p: number) => ((p % 12) + 12) % 12
 
 /**
  * What a level asks: 1, a neighbouring white key (one or two along); 2, up to
- * four along; 3, any key within an octave, black ones too.
+ * four along; 3, any key within an octave, black ones too, but not the same
+ * note an octave away.
  */
 export function targetsFor(level: EarLevel, root: number): number[] {
   if (level === 3) {
     const out: number[] = []
-    for (let p = Math.max(LOW, root - 12); p <= Math.min(HIGH, root + 12); p++) if (p !== root) out.push(p)
+    // Never the same note an octave away: any octave counts, so that would be the lit key itself.
+    for (let p = Math.max(LOW, root - 12); p <= Math.min(HIGH, root + 12); p++) if (pc(p) !== pc(root)) out.push(p)
     return out
   }
   const reach = level === 1 ? 2 : 4

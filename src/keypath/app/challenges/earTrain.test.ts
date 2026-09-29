@@ -9,8 +9,10 @@ describe('what a level asks', () => {
     expect(targetsFor(2, 60)).toEqual([62, 64, 65, 67])
     const l3 = targetsFor(3, 60)
     expect(l3).toContain(61) // a black key
-    expect(l3).toContain(72)
+    expect(l3).toContain(71)
+    // Not C again an octave away: any octave counts, so that would be the lit key itself.
     expect(l3).not.toContain(60)
+    expect(l3).not.toContain(72)
     expect(Math.min(...l3)).toBe(55)
   })
 

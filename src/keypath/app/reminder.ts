@@ -45,9 +45,18 @@ export interface ReminderState {
   practisedDay: string
 }
 
+/**
+ * From this time (minutes since midnight) it stays quiet until tomorrow. The
+ * phone decides when the worker wakes, often hours after the time chosen, and
+ * a child's phone shouldn't buzz at bedtime about piano.
+ */
+export const QUIET_FROM = 22 * 60
+
 /** Should the reminder fire now? The worker (public/keypath-notify.js) reimplements exactly this. */
 export const shouldFire = (state: ReminderState | undefined, lastSentDay: string, now: Date): boolean =>
-  !!state && shouldFireOncePerDay({ enabled: state.enabled, now, targetMinutes: state.minutes, lastSentDayKey: lastSentDay, doneDayKey: state.practisedDay })
+  !!state &&
+  now.getHours() * 60 + now.getMinutes() < QUIET_FROM &&
+  shouldFireOncePerDay({ enabled: state.enabled, now, targetMinutes: state.minutes, lastSentDayKey: lastSentDay, doneDayKey: state.practisedDay })
 
 export const REMINDER_TEXT: Record<Language, { title: string; body: string }> = {
   en: { title: 'KeyPath', body: 'Time for your five minutes of piano.' },

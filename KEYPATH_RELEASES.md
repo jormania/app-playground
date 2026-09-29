@@ -27,9 +27,14 @@ The roadmap's first two tiers, and most of the third. Details in `KEYPATH_TUTOR.
 - **A PIN** on a player, if wanted.
 
 **Library and games**
-- **Search and filter** the song list; **Ear check**, a fourth game.
+- **Search and filter** the song list; **Ear check**, a fourth game: find the second of two notes by ear.
 - **D.C., D.S., Coda and Fine** followed in downloaded scores.
 - Four more starter songs, and MuseScore 4.1 files (Interstellar) now open.
+
+**Fixed after an audit the same day**: D.C./D.S. in real MuseScore files, **Whole song** after
+a practised bar, a try playing on over the next take, Ear check asking for the lit note, the
+warm-up counting as a song, older added songs without suggested fingers, and a reminder that
+could come near midnight (it now stays quiet from 22:00).
 
 **Still to come**: the MIDI-out test at the keyboard, judging how long notes are held, and
 what needs Nora's answers. See `KEYPATH_ROADMAP.md`.

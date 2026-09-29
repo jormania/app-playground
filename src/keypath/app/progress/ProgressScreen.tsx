@@ -142,6 +142,7 @@ export function ProgressScreen() {
           <section className={styles.panel}>
             <h2 className={styles.h2}>{t('pSongs')}</h2>
             <p>{t('pSongsLine', { finished: s.songs.finished, abandoned: s.songs.abandoned, started: s.songs.started })}</p>
+            {s.warmUps > 0 && <p className={styles.hint}>{t('pWarmUpsLine', { count: s.warmUps })}</p>}
             {s.songs.bySong.length > 0 && (
               <ul className={styles.rows}>
                 {s.songs.bySong.map((x) => (

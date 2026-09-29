@@ -84,13 +84,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [speed, setSpeed] = useState<Speed>(() => suggestedSpeed(song))
   // What she chose here last time: the hands and the speed, kept per song.
   const setupRepo = useMemo(() => new SetupRepo(store), [store])
+  const chosen = useRef(false)
   useEffect(() => {
     if (!profileId) return
     let live = true
     void setupRepo.get(profileId, song.id).then((s) => {
-      if (!live || !s) return
-      if (s.practice !== 'right' && !hasLeft) return
-      setPractice(s.practice)
+      // A choice she made while it was being read wins over the one remembered.
+      if (!live || !s || chosen.current) return
+      if (s.practice === 'right' || hasLeft) setPractice(s.practice)
       setSpeed(s.speed)
     })
     return () => {
@@ -98,6 +99,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
   }, [setupRepo, profileId, song.id, hasLeft])
   const choose = (next: { practice?: Practice; speed?: Speed }) => {
+    chosen.current = true
     const setup = { practice: next.practice ?? practice, speed: next.speed ?? speed }
     setPractice(setup.practice)
     setSpeed(setup.speed)
@@ -141,6 +143,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [barOpen, setBarOpen] = useState(false)
   const [barPick, setBarPick] = useState(0)
   const pendingBar = useRef<number | null>(null)
+  const [waitingBar, setWaitingBar] = useState<number | null>(null)
+  const waitForBar = (bar: number | null) => {
+    pendingBar.current = bar
+    setWaitingBar(bar)
+  }
 
   // Learning it in parts: the way through (phrases, joins, the whole song), what
   // she has learnt, and the part chosen, which starts as the first not learnt.
@@ -268,18 +275,26 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const label = useCallback((p: number) => noteLabel(p, settings.noteNames, settings.language), [settings.noteNames, settings.language])
   const tempo = Number(speed)
   // Where the hands go, before the start: on the keys, and in words.
-  const places = useMemo(() => handPlaces(notes, practice), [notes, practice])
+  // A bar picked from the setup starts there, not at the part's start.
+  const places = useMemo(() => handPlaces(waitingBar !== null ? notesFor(barSong(song, waitingBar) ?? song, practice) : notes, practice), [notes, practice, song, waitingBar])
   const badges = useMemo(() => new Map(places.map((pl) => [pl.pitch, { text: String(pl.finger), hand: pl.hand }] as const)), [places])
 
   const setLoopBoth = (l: Loop | null) => {
     loopRef.current = l
     setLoop(l)
   }
+  /** Her last try, if it is playing back, stops when a new take begins. */
+  const silenceTry = () => {
+    tryPlayback.current?.stop()
+    tryPlayback.current = null
+    setHearing(false)
+  }
   /** One pass of the practised bar: its own judge, at the loop's tempo, with a count-in when there's a clock. */
   const startPass = useCallback(
     (l: Loop) => {
       const bar = barSong(song, l.bar)
       if (!bar) return
+      silenceTry()
       const j = new Judge(bar, { practice, settings, tempo: tempoOf(l), shift: shift.current })
       judge.current = j
       accompany(bar, j, tempoOf(l))
@@ -419,6 +434,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         j.start(at + leadIn)
       }
       shownTime.current = READY_TIME
+      silenceTry()
       tryRec.current = new Recorder(at)
       setTryTake(null)
       setResults(new Map())
@@ -456,6 +472,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       if (pendingBar.current !== null) {
         const bar = pendingBar.current
         pendingBar.current = null
+        setWaitingBar(null)
         morph(() => beginLoopRef.current(bar))
         return
       }
@@ -699,7 +716,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const practiseBarFromSetup = (bar: number) => {
     stopListening()
     if (shiftKnown.current) return practiseBar(bar)
-    pendingBar.current = bar
+    waitForBar(bar)
     morph(() => setPhase('ready'))
   }
   /** Out of a practised bar: to the report it came from, or, from the setup, back to the setup. */
@@ -718,8 +735,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       setLoopStep(null)
       judge.current = null
       setReport(null)
-      // The whole song, not the bar just looped: this render's `playing` is still the bar.
-      if (shiftKnown.current) startJudge(song, settings, performance.now(), part)
+      // The whole song, not the bar just looped (this render's `playing` is still the bar),
+      // nor the phrase chosen before it: finished, it counts as the whole song learnt.
+      const whole = steps.find((x) => x.kind === 'whole') ?? null
+      if (whole) setPartId(whole.id)
+      if (shiftKnown.current) startJudge(song, settings, performance.now(), whole)
       else setPhase('ready')
     })
 
@@ -912,7 +932,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               size="sm"
               variant="ghost"
               onClick={() => {
-                pendingBar.current = null
+                waitForBar(null)
                 morph(() => setPhase('setup'))
               }}
             >
@@ -1039,7 +1059,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : targets}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
-          badges={phase === 'ready' ? badges : undefined}
+          badges={phase === 'ready' || (phase === 'setup' && !listening) ? badges : undefined}
           label={label}
           onPress={(p) => press(p, performance.now(), true)}
           onRelease={(p) => release(p)}

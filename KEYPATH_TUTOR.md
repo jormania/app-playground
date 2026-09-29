@@ -1032,29 +1032,40 @@ batch use the last. Items marked ✅ there are these; the rest is listed at the 
 **C. Habit and reading.**
 - *A daily reminder* (`app/reminder.ts`, `public/keypath-notify.js`, imported by
   `keypath-sw.js`): a time the family picks in Settings, through `src/shared/notify`.
-  Android may delay it; the notify docs cover why.
-- *A warm-up in Today* (a fourth item: a sixty-second five-finger pattern, a built-in
-  song with id `WARMUP_ID`, kept out of Try next and the counts).
+  Android may delay it; the notify docs cover why. Since the phone, not the app, decides
+  when the worker wakes (as late as midnight), it stays quiet from 22:00 (`QUIET_FROM`,
+  in both copies of the decision) and waits for the next day.
+- *A warm-up in Today* (a first item: about twenty-five seconds of a five-finger pattern,
+  a built-in song with id `WARMUP_ID`). It is kept out of Try next, the song Today picks,
+  the stickers about songs and Progress's song counts, which show it on a line of its own
+  (`ProgressSummary.warmUps`); it still counts as a day of practice.
 - *Suggested fingers* (`engine/fingering.ts`): for songs without written fingering,
   a small dynamic programme over each hand's notes (a five-finger position where it
   can, thumb-under and stretch costs, the weak fingers costing extra; a repeated
-  note keeps its finger). They are marked `Song.fingersSuggested` and shown paler.
+  note keeps its finger). They are marked `Song.fingersSuggested` and drawn dashed. An
+  added song saved before they existed gets them when the library reads it.
 - *The music, written* (`songs/ScoreStrip.tsx`, `ProfileSettings.score`): this bar and
   the next on a staff above the falling notes, switchable.
 
 **D. Together, games and library.**
-- *Search and filter* (`songs/filter.ts`): level, hands, easy version, added by us.
-- *Ear check* (`challenges/earTrain.ts`, `EarScreen.tsx`): a fourth game, which of two
-  notes is higher and, at the top level, the interval; three levels, best kept, counted
-  in Progress and the weekly note like the others.
+- *Search and filter* (`songs/filter.ts`): part of the title (accents ignored), level,
+  and one hand or two; shown once the list has twelve songs or more.
+- *Ear check* (`challenges/earTrain.ts`, `EarScreen.tsx`): a fourth game. Two notes are
+  played, the first lit on the keys; she finds the second by ear, in any octave. Level 1
+  is a neighbouring white key, level 2 up to four along, level 3 any key within an octave
+  (never the first note again an octave away, which would be the lit key). Five to a
+  round, a point for each found first time, three tries, a "higher" or "lower" after a
+  wrong key. Best kept, counted in Progress and the weekly note like the others.
 - *A PIN on a player* (`profiles.ts`): four digits, kept as a salted SHA-256 hash. It
   guards against a mix-up between siblings, not against anyone who wants in:
   **Forgot the PIN?** removes it (the player's data is untouched), and a backup keeps
   the hash like any other key.
 - *Jumps* (`engine/musicxml.ts`, `engine/mscx.ts`): D.C., D.S., Coda and Fine, from
-  `<sound>` attributes and MuseScore's `<Marker>`/`<Jump>`. `playingOrder` takes one
-  jump; after it there are no repeats, only the last ending, "Fine" stops the piece and
-  "To Coda" skips to the coda. A jump to a sign the score lacks is ignored, so a
+  `<sound>` attributes and MuseScore's `<Marker>`/`<Jump>`, which MuseScore writes on
+  the bar itself, before its voices. `playingOrder` takes one jump; after it there are
+  no repeats, only the last ending, "Fine" stops the piece and "To Coda" skips to the
+  coda. A MuseScore jump says which it plays until (`playUntil`: a plain D.C. plays to
+  the end past a Fine) and which coda it continues at (`continueAt`). A jump to a sign the score lacks is ignored, so a
   malformed file plays straight through as before.
 - *Play together* (`engine/together.ts`, `songs/PlayScreen.tsx`): with **Both** hands
   chosen and another player on the phone, one is picked as a partner and the current
@@ -1070,6 +1081,18 @@ Nora's own playing to tune against: a guess would misjudge a child's honest note
 none. *A song from a recording* (19): heavy dependency and a whole review screen, for a
 feature the log hasn't shown she wants. *A look of her own* (20): only her answers can
 say which way. *Dynamics* (23): far off for a beginner.
+
+**Audit, the same day.** A read of everything since release 2 found and fixed:
+MuseScore's jump signs read only inside a voice, so a real .mscz's D.C./D.S. were
+missed (tests now put them where MuseScore writes them); **Whole song** after a bar
+practised from the setup credited the phrase chosen before it; a try being played back
+went on over the next take; the remembered setup could overwrite a choice made while it
+loaded, and was dropped whole when only its hands no longer applied; the hand places
+before a bar picked from the setup were the part's start; Ear check level 3 could ask
+for the lit note itself an octave away; the warm-up counted as a song finished each
+day; an added song saved before suggested fingers stayed without them; the reminder
+could buzz close to midnight. Also: the key badges show on the setup too, a PIN opens
+on its fourth digit, and the docs' account of Ear check and the filter is corrected.
 
 ### Progress (after step 6)
 

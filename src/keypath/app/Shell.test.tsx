@@ -179,11 +179,11 @@ describe('KeyPath shell, after the audit', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Switch player' }))
     fireEvent.click(await screen.findByRole('button', { name: /Nora/ }))
     expect(await screen.findByText('PIN for Nora')).toBeTruthy()
+    // The fourth digit tries it: no button to press.
     fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '0000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(await screen.findByText('That isn’t the PIN. Try again.')).toBeTruthy()
+    expect((screen.getByLabelText('PIN') as HTMLInputElement).value).toBe('')
     fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '1234' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(await screen.findByText('Hi, Nora!')).toBeTruthy()
 
     // Forgotten: anyone with the phone can take it off.

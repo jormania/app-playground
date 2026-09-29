@@ -59,8 +59,13 @@ export interface BarMarks {
   fine?: boolean
   /** "To Coda": on the pass after a jump, after this bar go on to the coda (the one named, or the first). */
   toCoda?: string
-  /** After this bar, go back: to the start (D.C.) or to a segno (D.S.); `coda` names the coda it will continue at. */
-  jump?: { to: 'start' | { segno: string }; coda?: string }
+  /**
+   * After this bar, go back: to the start (D.C.) or to a segno (D.S.). `coda`
+   * names the coda it continues at; `until` (MuseScore) the sign it plays
+   * until, "fine" or a To Coda's label, or "end" for neither. Without it,
+   * both a Fine and a To Coda are taken.
+   */
+  jump?: { to: 'start' | { segno: string }; coda?: string; until?: string }
 }
 
 export interface Bar {
@@ -234,7 +239,7 @@ export function playingOrder(bars: readonly Pick<Bar, 'forward' | 'backward' | '
   let start = 0
   let pass = 1
   let wasEnding = false
-  let jumped = false
+  let jumped: NonNullable<BarMarks['jump']> | null = null
   for (let i = 0; i < bars.length && order.length < bars.length * 16; ) {
     const b = bars[i]
     if (jumped) {
@@ -243,8 +248,10 @@ export function playingOrder(bars: readonly Pick<Bar, 'forward' | 'backward' | '
         continue
       }
       order.push(i)
-      if (b.marks?.fine) break
-      const c = b.marks?.toCoda !== undefined ? codaFor(b.marks.toCoda) : -1
+      const until = jumped.until
+      if (b.marks?.fine && (until === undefined || until === 'fine')) break
+      const toCoda = b.marks?.toCoda
+      const c = toCoda !== undefined && (until === undefined || until === toCoda) ? codaFor(jumped.coda ?? toCoda) : -1
       i = c > i ? c : i + 1
       continue
     }
@@ -282,7 +289,7 @@ export function playingOrder(bars: readonly Pick<Bar, 'forward' | 'backward' | '
       const to = jump.to
       const target = to === 'start' ? 0 : bars.findIndex((x) => x.marks?.segno === to.segno)
       if (target >= 0) {
-        jumped = true
+        jumped = jump
         i = target
         continue
       }

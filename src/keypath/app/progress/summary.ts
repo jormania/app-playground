@@ -1,3 +1,4 @@
+import { WARMUP_ID } from '../../engine/starterPack'
 import type { Door, LogRecord } from '../log'
 
 // Progress: the engagement log read back as answers to the taster's own
@@ -42,6 +43,8 @@ export interface ProgressSummary {
   songs: { started: number; finished: number; abandoned: number; added: number; listened: number; bySong: SongStats[]; bars: { practised: number; clean: number }; parts: { played: number; learnt: number } }
   journey: { practices: number; checksPassed: number; checksFailed: number; testOuts: number; left: number }
   challenges: { race: number; staff: number; echo: number; chord: number; ear: number; left: number }
+  /** Today's warm-up, played through: counted here, not among the songs. */
+  warmUps: number
   studio: { opened: number; recorded: number; kept: number; played: number }
   suggestions: { accepted: number; declined: number }
   settingsChanged: { key: string; from: unknown; to: unknown; at: string }[]
@@ -79,6 +82,7 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
     songs: { started: 0, finished: 0, abandoned: 0, added: 0, listened: 0, bySong: [], bars: { practised: 0, clean: 0 }, parts: { played: 0, learnt: 0 } },
     journey: { practices: 0, checksPassed: 0, checksFailed: 0, testOuts: 0, left: 0 },
     challenges: { race: 0, staff: 0, echo: 0, chord: 0, ear: 0, left: 0 },
+    warmUps: 0,
     studio: { opened: 0, recorded: 0, kept: 0, played: 0 },
     suggestions: { accepted: 0, declined: 0 },
     settingsChanged: [],
@@ -95,6 +99,11 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
 
   for (const r of records) {
     const t = Date.parse(r.at)
+    // The five-finger warm-up is a song only in name: a daily one would read as a song finished every day.
+    if ('songId' in r && r.songId === WARMUP_ID) {
+      if (r.type === 'song_finished') s.warmUps++
+      continue
+    }
     switch (r.type) {
       case 'session_start':
         closeDoor(t)

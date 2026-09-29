@@ -18,7 +18,7 @@ export const NO_FILTER: SongFilter = { text: '', level: 'any', hands: 'any' }
 export const FILTER_FROM = 12
 
 /** Letters without their accents, lower case: "Für Elise" is found by "fur", "Încălzire" by "incalz". */
-const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const plain = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 export const isFiltering = (f: SongFilter) => f.text.trim() !== '' || f.level !== 'any' || f.hands !== 'any'
 

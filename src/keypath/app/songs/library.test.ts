@@ -24,6 +24,22 @@ describe('SongLibrary', () => {
     expect(await lib.get('nope', 'en')).toBeNull()
   })
 
+  it('gives a song saved before suggested fingers existed its suggestions when read, and leaves written ones alone', async () => {
+    const store = memoryStore()
+    const draft = draftFromFile(bytes(melodyFile([[60, 1], [62, 1], [64, 1]])), 'a.mid') as ImportDraft
+    const { song } = buildImport(draft, 'A')
+    // As such a song was saved, fitted to the keys: no fingers, nothing marked suggested.
+    const notes = song.notes.map(({ finger: _f, ...n }) => n)
+    const bare = { ...song, easy: false, fit: 'moveSong' as const, source: notes, fingersSuggested: undefined, notes }
+    const written = { ...bare, id: 'import:written', notes: bare.notes.map((n) => ({ ...n, finger: 2 as const })) }
+    await store.set('keypath:v1:songs', [bare, written])
+    const lib = new SongLibrary(store)
+    const read = await lib.get(song.id, 'en')
+    expect(read?.fingersSuggested).toBe(true)
+    expect(read?.notes.map((n) => n.finger)).toEqual([1, 2, 3])
+    expect((await lib.get('import:written', 'en'))?.notes.map((n) => n.finger)).toEqual([2, 2, 2])
+  })
+
   it('replaces a song saved again under the same id rather than listing it twice', async () => {
     const lib = new SongLibrary(memoryStore())
     const draft = draftFromFile(bytes(melodyFile([[60, 1]])), 'a.mid') as ImportDraft
