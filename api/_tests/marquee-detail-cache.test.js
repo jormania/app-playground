@@ -348,14 +348,13 @@ describe('the cache boundary — which venues may remember, and which may not', 
   // src/ds/boundary.test.js: a new adapter that opts into caching has to come
   // past this list, and a venue that must stay ephemeral cannot drift into it
   // by someone copying `extractDetail` from the venue above.
-  const MAY_CACHE = ['tnb', 'metropolis', 'arcub', 'quantic', 'salaradio']
+  const MAY_CACHE = ['tnb', 'metropolis', 'arcub', 'quantic', 'salaradio', 'iabilet']
 
   const MUST_NOT_CACHE = {
     // Their extra hops ARE the programme — caching those caches the answer
     // rather than the lookup.
     eventbook: 'follows its own pagination; every page is more showings',
     oveit: 'follows a paged event feed; every page is more concerts',
-    iabilet: 'follows bundle children whose tariff accordion holds the showings',
     // The instructive one: detail pages of exactly TNB's shape, which a later
     // hop still needs in hand.
     excelsior: 'enrich mines each detail page for eiIds and posts a live seat lookup per showing',
@@ -394,6 +393,10 @@ describe('the cache boundary — which venues may remember, and which may not', 
     arcub: { url: 'https://arcub.ro/x', body: fixture('arcub-detail-cineva-are-sa-vina.html') },
     quantic: { url: 'https://www.iabilet.ro/bilete-x-1/', body: fixture('quantic-event.html') },
     salaradio: { url: 'https://salaradio.ro/events/x/', body: fixture('salaradio-event.html') },
+    // iabilet caches only ONE of the two kinds of page it follows (§9.91): a
+    // screening, never a bundle. The sample is therefore a screening; the
+    // bundle's refusal is asserted on its own, below.
+    iabilet: { url: 'https://www.iabilet.ro/bilete-x-1/', body: fixture('iabilet-screening.html') },
   }
 
   it('no cached record carries an AVAILABILITY fact', () => {
@@ -401,7 +404,9 @@ describe('the cache boundary — which venues may remember, and which may not', 
     // miss; a stale "tickets available" sends someone to a sold-out night.
     // Whatever else the records grow, these keys must never appear among them.
     for (const [id, page] of Object.entries(samples)) {
-      const record = ADAPTERS[id].extractDetail(page)
+      // null is a legal record: it means "store nothing", which is trivially
+      // safe and is how iabilet refuses to remember a bundle page.
+      const record = ADAPTERS[id].extractDetail(page) ?? {}
       expect(Object.keys(record).some((k) => NEVER_CACHED.includes(k))).toBe(false)
       // And small — this has to fit alongside sixty siblings in one KV value.
       expect(JSON.stringify(record).length).toBeLessThan(4096)
@@ -418,7 +423,7 @@ describe('the cache boundary — which venues may remember, and which may not', 
     // for the week a poster gets. Without this, adding `time` to a record would
     // silently inherit the seven-day default.
     for (const [id, page] of Object.entries(samples)) {
-      const record = ADAPTERS[id].extractDetail(page)
+      const record = ADAPTERS[id].extractDetail(page) ?? {}
       if (!Object.keys(record).some((k) => NEEDS_SHORT_TTL.includes(k))) continue
       expect(ADAPTERS[id].detailTtlMs).toBeLessThan(DEFAULT_TTL_MS)
     }
@@ -605,7 +610,54 @@ describe('the cold-start trap (§9.78) — the cache has to be able to warm up',
     // not reach them.
     expect(ADAPTERS.eventbook.extractDetail).toBeUndefined()
     expect(ADAPTERS.oveit.extractDetail).toBeUndefined()
-    expect(ADAPTERS.iabilet.extractDetail).toBeUndefined()
+  })
+
+  it('iabilet caches some of its pages, and a bundle is never one of them', async () => {
+    // iabilet is the exception the blanket rule could not express (§9.91): it
+    // follows screenings, whose hour is worth remembering, AND bundles, whose
+    // tariff rows ARE the programme. `extractDetail` returns null for a bundle,
+    // so a bundle is never stored — and therefore never fresh, never skipped,
+    // and re-read on every single scan.
+    const ld = (o) => `<script type="application/ld+json">/*<![CDATA[*/${JSON.stringify({ '@type': 'Event', ...o })}/*]]>*/</script>`
+    // Two bundles and fifteen screenings: seventeen children against a budget
+    // of twelve, so the cap genuinely bites.
+    const venuePage = '<html>'
+      + ld({ name: 'W1', url: 'https://www.iabilet.ro/b1/', startDate: '2026-10-02', endDate: '2026-10-04' })
+      + ld({ name: 'W2', url: 'https://www.iabilet.ro/b2/', startDate: '2026-10-09', endDate: '2026-10-11' })
+      + Array.from({ length: 15 }, (_, i) =>
+        ld({ name: `S${i}`, url: `https://www.iabilet.ro/s${i}/`, startDate: '2026-10-0' + (1 + (i % 7)), endDate: '2026-10-0' + (1 + (i % 7)), offers: { '@type': 'Offer', price: '20' } })).join('')
+      + '</html>'
+    const bundleBody = ld({ name: 'W1', url: 'https://www.iabilet.ro/b1/', startDate: '2026-10-02', endDate: '2026-10-04' })
+      + '<div data-is-tariff="1" data-tariff-name="Vineri, 2 octombrie - 18:00 | Speed - Bilet pret intreg" data-tariff-sell-price="20"></div>'
+    const screeningBody = (u) => ld({ name: 'S', url: u, startDate: '2026-10-02', endDate: '2026-10-02' })
+      + '<div class="date">vineri, 2 octombrie, ora 19:00</div>'
+
+    const venue = { name: 'Cinema Europa', url: 'https://www.iabilet.ro/venue/', adapter: 'iabilet' }
+    const store = memoryStore()
+    const fetched = []
+    const impl = async (url) => {
+      fetched.push(url)
+      return {
+        ok: true, status: 200, headers: new Headers(),
+        text: async () => (url === venue.url ? venuePage : /\/b\d\//.test(url) ? bundleBody : screeningBody(url)),
+      }
+    }
+
+    await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
+    // Both bundles reached on the cold scan, despite the budget.
+    expect(fetched).toContain('https://www.iabilet.ro/b1/')
+    expect(fetched).toContain('https://www.iabilet.ro/b2/')
+    // Nothing stored under a bundle's URL.
+    const saved = store.data['marquee:details:v1:iabilet'] ?? {}
+    expect(Object.keys(saved).some((u) => /\/b\d\//.test(u))).toBe(false)
+    expect(Object.keys(saved).length).toBeGreaterThan(0)
+
+    // And on a warm scan the bundles are STILL fetched — they can never go stale
+    // silently, because they were never remembered.
+    fetched.length = 0
+    await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
+    expect(fetched).toContain('https://www.iabilet.ro/b1/')
+    expect(fetched).toContain('https://www.iabilet.ro/b2/')
   })
 })
 
@@ -880,7 +932,7 @@ describe('the cache never holds anything that can go stale under you (§9.80)', 
     }
     for (const [id, adapter] of Object.entries(ADAPTERS)) {
       if (typeof adapter.extractDetail !== 'function') continue
-      const keys = Object.keys(adapter.extractDetail(probe))
+      const keys = Object.keys(adapter.extractDetail(probe) ?? {})
       expect({ id, offending: keys.filter((k) => volatile.includes(k)) }).toEqual({ id, offending: [] })
     }
   })
@@ -892,7 +944,7 @@ describe('the cache never holds anything that can go stale under you (§9.80)', 
     for (const [id, adapter] of Object.entries(ADAPTERS)) {
       if (typeof adapter.extractDetail !== 'function') continue
       const probe = { url: 'x', body: '<div class="date">ora 19:00</div><div class="em-event-time">7:00 pm</div>' }
-      if (!('time' in adapter.extractDetail(probe))) continue
+      if (!('time' in (adapter.extractDetail(probe) ?? {}))) continue
       expect({ id, shortened: adapter.detailTtlMs < DEFAULT_TTL_MS }).toEqual({ id, shortened: true })
     }
   })

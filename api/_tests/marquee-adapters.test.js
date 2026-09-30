@@ -745,6 +745,10 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
     url: 'https://www.iabilet.ro/bilete-keanu-reeves-weekend-131369/',
     body: fixture('iabilet-bundle-pipe.html'),
   }
+  const screeningPage = {
+    url: 'https://www.iabilet.ro/bilete-best-of-the-office-131764/',
+    body: fixture('iabilet-screening.html'),
+  }
 
   it('finds the child bundle links on the venue page — the venue page itself lists nothing', () => {
     // The venue page is a JS shell to a server fetch: it names five weekend
@@ -903,12 +907,15 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
       expect(events.every((e) => e.date)).toBe(true)
     })
 
-    it('follows the bundles and nothing else', () => {
-      // Eleven hops became two on the day this was measured: a screening's own
-      // page would cost a request to learn nothing the venue page did not say.
+    it('follows every child, but for two different reasons', () => {
+      // §9.90 cut this to the bundles alone, on the grounds that a screening's
+      // page would cost a request to learn nothing the venue page had not said.
+      // §9.91 put the screenings back, because there WAS one thing: the hour.
+      // The difference is that those hops are now cached and the bundles are
+      // not — see the caching tests below.
       const followed = iabilet.follow([mixedVenue], { venue })
-      expect(followed).toHaveLength(2)
-      expect(followed.every((r) => /weekend/i.test(r.url))).toBe(true)
+      expect(followed).toHaveLength(5)
+      expect(followed.filter((r) => /weekend/i.test(r.url))).toHaveLength(2)
     })
 
     it('never emits a showing twice across the two passes', () => {
@@ -922,6 +929,53 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
       // The 2026-08 fixture has no single-day blocks at all, so the original
       // behaviour is unchanged where the premise still holds.
       expect(iabilet.parse([venuePage], { venue })).toEqual([])
+    })
+  })
+
+
+  describe('the hour a screening keeps on its own page (§9.91)', () => {
+    it('gives a one-off screening its start time', () => {
+      const events = iabilet.parse([mixedVenue, screeningPage], { venue })
+      const office = events.find((e) => e.title === 'Best of The Office')
+      expect(office.time).toBe('19:00')
+      expect(office.key).toContain('19:00')
+    })
+
+    it('leaves a screening whose page was not fetched without an hour', () => {
+      // A skipped or failed hop costs that screening its time and nothing else
+      // — never a guessed one.
+      const events = iabilet.parse([mixedVenue, screeningPage], { venue })
+      expect(events.filter((e) => e.time === null).length).toBe(2)
+      expect(events.every((e) => e.date && e.title)).toBe(true)
+    })
+
+    it('reads a remembered hour exactly as it reads a fetched one', () => {
+      const record = iabilet.extractDetail(screeningPage)
+      const cached = iabilet.parse([mixedVenue], { venue, details: { [screeningPage.url]: record } })
+      const fetched = iabilet.parse([mixedVenue, screeningPage], { venue })
+      expect(cached).toEqual(fetched)
+    })
+
+    it('follows the bundles FIRST, so the per-scan budget never starves one', () => {
+      // A starved screening costs an hour; a starved bundle costs its showings.
+      // §9.78's budget is handed out in request order on a cold cache, so the
+      // cheap loss has to come last.
+      const followed = iabilet.follow([mixedVenue], { venue }).map((r) => r.url)
+      expect(followed).toHaveLength(5)
+      expect(followed.slice(0, 2).every((u) => /weekend/i.test(u))).toBe(true)
+      expect(followed.slice(2).every((u) => !/weekend/i.test(u))).toBe(true)
+    })
+
+    it('REFUSES to cache a bundle page, because that page is the programme', () => {
+      // detailCache.js's third condition, expressed per page rather than per
+      // adapter — the first reader that had to. Remembering a bundle would mean
+      // not re-fetching it, and its tariff rows ARE the showings.
+      expect(iabilet.extractDetail(pipeBundle)).toBeNull()
+      expect(iabilet.extractDetail(screeningPage)).toEqual({ time: '19:00' })
+    })
+
+    it('trusts a remembered hour for three days, not the default week', () => {
+      expect(iabilet.detailTtlMs).toBe(3 * 24 * 60 * 60 * 1000)
     })
   })
 

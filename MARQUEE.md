@@ -4219,13 +4219,75 @@ question.
 
 **What those nine screenings do not get is a start time**, because their
 `startDate` is a bare date — the identical gap quantic.js found on this host
-(§9.87). They read with no hour rather than a guessed one. Closing it would cost
-one hop per screening, which is exactly what `follow` just stopped doing; since
-§9.88 a screening's hour is cacheable, so the honest price is nine requests once
-and near-nothing after. Left undone deliberately, and worth doing if the missing
-hour proves annoying in practice — for a cinema it may well.
+(§9.87). ~~They read with no hour rather than a guessed one … left undone
+deliberately.~~ **Done the same day, in §9.91 below** — it turned out to need a
+change to what the cache rule is about, which is why it has its own section.
 
 `npm test` (5247), `npm run typecheck` and `npx eslint api/ src/` all pass.
+
+### 9.91 A page, not an adapter, is what may be remembered (2026-09-30)
+
+Asked for the start times §9.90 had just left out. Nine screenings, one hop
+each, one `.date` block each — and it should have been a twenty-minute job. It
+wasn't, because iabilet is the first reader whose followed pages are **not all
+the same kind of thing**, and the cache rule could not say that.
+
+`detailCache.js`'s third condition is that the page must NOT be the programme.
+That is what put iabilet on the never-cache roster in the first place: its
+bundle pages carry the tariff rows that ARE the showings, and remembering one
+would mean not re-fetching it, which would silently drop a weekend. Perfectly
+correct — about bundle pages. A screening page is a different animal: the venue
+page has already described the screening in full, and the page adds one static
+hour. One adapter, two kinds of page, opposite answers.
+
+**The rule was always about a page; only its enforcement was about an adapter.**
+`extractDetail` is called per page, and the scan already reads a `null` return as
+"store nothing, ask again next time" — so the distinction could be expressed
+exactly, with no change to the machinery at all:
+
+```js
+extractDetail(page) {
+  const own = parseLdBlocks(page.body ?? '')[0]
+  if (!own || isBundle(own)) return null   // the programme: never remembered
+  return { time: startTimeOf(page.body ?? '') }
+}
+```
+
+The page classifies itself — a bundle's own JSON-LD spans several days — so this
+needs nothing from the venue page to decide, and a bundle that happened to have
+no tariff rows that week still refuses correctly.
+
+**The hazard this creates, and the guard.** Once an adapter is cacheable the
+per-scan budget (§9.78) applies to it, and a skipped page is simply not fetched.
+For TNB that costs a poster. Here it could cost a *bundle* — a whole weekend of
+showings — which is the exact failure the never-cache roster existed to prevent.
+Two things stop it, and both matter:
+
+- A bundle is never stored, so it is never fresh, so it is always due. It cannot
+  age out quietly; it is re-read on every single scan.
+- **`follow` returns bundles before screenings, and the order is load-bearing.**
+  The budget is handed out oldest-record-first, and a never-fetched page sorts
+  equal to every other never-fetched page — so on a cold cache it goes in request
+  order. A starved screening costs an hour; a starved bundle costs its showings.
+  The cheap loss goes last. With `MAX_BUNDLES` (12) equal to the budget (12),
+  bundles always fit.
+
+A test pins the whole of that behaviourally rather than by assertion about the
+roster: seventeen children against a budget of twelve, both bundles fetched on
+the cold scan, nothing stored under a bundle's URL, and both bundles fetched
+*again* on the warm one. The old test — "iabilet declares no `extractDetail`" —
+was a proxy for this, and the real thing is stricter.
+
+`startTimeOf` moved from quantic.js to iabilet.js, since it parses an
+iabilet.ro event page and two venues on that host now want it; quantic.js
+re-exports it, so its own tests prove the move was behaviour-preserving. The
+hour is trusted for three days, not the default week — the §9.88 bargain, taken
+for the same reason: an hour is what you act on.
+
+Cinema Europa now reads seventeen events, every one with its hour. Cold cost is
+seventeen requests once; warm is two, because only the bundles come back.
+
+`npm test` (5253), `npm run typecheck` and `npx eslint api/ src/` all pass.
 
 ## Open — known source limits, checked and not fixable here
 
@@ -4253,10 +4315,6 @@ absences at the source, not gaps in a reader:
   seats.io chart the venue's own seat picker reads.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
   upcoming listed, not a failure.
-- **Cinema Europa's one-off screenings carry no start time** (§9.90) — iabilet
-  publishes a bare `startDate` for them, as it does for Quantic (§9.87). The
-  hour exists only on each screening's own page, which `follow` deliberately no
-  longer fetches.
 - **Sala Radio runs Cloudflare JS Detections** (§9.86) — the served page embeds
   `/cdn-cgi/challenge-platform/scripts/jsd/main.js`. It passes from a dev
   machine and has challenged at least once from Vercel's egress, the same

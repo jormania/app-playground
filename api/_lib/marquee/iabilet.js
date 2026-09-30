@@ -29,8 +29,21 @@
 // now fetches two pages where it used to fetch eleven (§9.90).
 //
 // What a single-day block does NOT carry is the start time: its `startDate` is
-// a bare date, the same gap quantic.js found on this host. Those screenings
-// therefore read without an hour rather than with a guessed one.
+// a bare date, the same gap quantic.js found on this host. So a screening IS
+// followed after all — for its hour alone, off the same `.date` block
+// quantic.js reads ("miercuri, 30 septembrie, ora 19:00") — and that hop is
+// **cached**, which is what keeps it nearly free (§9.91).
+//
+// **This adapter follows two kinds of page, and only one of them may be
+// remembered.** A bundle page IS the programme: its tariff rows are the
+// showings, and caching it would cache the answer rather than the lookup —
+// detailCache.js's third condition, and the reason iabilet was on the
+// never-cache roster. A screening page is not the programme; the venue page
+// already described the screening in full, and the page adds one static hour.
+// So `extractDetail` returns a record for a screening and **null for a bundle**,
+// which the scan already reads as "store nothing, ask again next time". The
+// condition was always a property of a PAGE rather than of an adapter; this is
+// the first reader that had to say so per page.
 //
 // A showing sells out per PRICE TIER, not per showing — "Stoc epuizat" can mark
 // the discounted tariff while the full-price one is still open. The showing
@@ -52,6 +65,42 @@ const EVENT_LD = /<script type="application\/ld\+json">\s*\/\*<!\[CDATA\[\*\/([\
 const TARIFF = /data-is-tariff="1"[^>]*data-tariff-name="([^"]+)"[^>]*data-tariff-sell-price="([^"]*)"[\s\S]{0,8000}?(?=data-is-tariff="1"|$)/g
 
 const MAX_BUNDLES = 12
+// One hop per one-off screening, for its hour. Eleven children on the day this
+// was written; capped so a programme that grows cannot outrun the per-scan
+// detail budget and start starving the bundles (see `follow`).
+const MAX_SCREENINGS = 20
+
+// One screening's own page, in a single flat block:
+//   <div class="date"> miercuri, 30 septembrie, ora 19:00 <meta …></div>
+const DATE_BLOCK = /<div class="date">([\s\S]{0,500}?)<\/div>/
+const SHOW_TIME = /\bora\s+(\d{1,2}):(\d{2})/i
+const DOOR_TIME = /acces\s+de\s+la\s+(\d{1,2}):(\d{2})/i
+
+function clock(match) {
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) return null
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+/**
+ * The hour to show for one event, off its own iabilet page.
+ *
+ * Lives here rather than in quantic.js — where it was written (§9.87) — because
+ * it reads an iabilet.ro event page, and two venues on this host now need it.
+ * quantic.js re-exports it, so its own tests still prove the move.
+ *
+ * `ora` is the show and `acces de la` is the doors, and the doors are EARLIER;
+ * taking the last clock on the line would print a 19:00 start for a 20:00
+ * concert. Bounded to the `.date` block because a description routinely names
+ * an hour that is right often enough to tempt.
+ */
+export function startTimeOf(body) {
+  const block = DATE_BLOCK.exec(String(body ?? ''))?.[1]
+  if (!block) return null
+  return clock(SHOW_TIME.exec(block)) ?? clock(DOOR_TIME.exec(block))
+}
 
 /** "Mai sunt doar 4 bilete disponibile" / "Mai este doar 1 bilet disponibil" —
  *  iabilet's own low-stock line on a tariff row, singular and plural. */
@@ -157,13 +206,62 @@ export default {
    *  fetching its page would buy nothing but a start time and cost a request
    *  per screening — eleven hops instead of two, on the day this was measured. */
   follow(pages) {
-    const blocks = parseLdBlocks(pages[0]?.body ?? '').filter(isBundle)
-    const urls = [...new Set(blocks.map((b) => b?.url).filter(Boolean))].slice(0, MAX_BUNDLES)
-    return urls.map((url) => ({ url }))
+    const blocks = parseLdBlocks(pages[0]?.body ?? '')
+    const bundles = [...new Set(blocks.filter(isBundle).map((b) => b?.url).filter(Boolean))]
+      .slice(0, MAX_BUNDLES)
+    const screenings = [...new Set(blocks.filter((b) => !isBundle(b)).map((b) => b?.url).filter(Boolean))]
+      .slice(0, MAX_SCREENINGS)
+      .filter((url) => !bundles.includes(url))
+    // **Bundles first, and the order is load-bearing.** A scan refreshes a
+    // BUDGET of detail pages per check (§9.78), oldest record first, and a
+    // never-fetched page sorts equal to every other never-fetched page — so on
+    // a cold cache the budget is handed out in this order. A starved screening
+    // costs an hour; a starved bundle costs its showings. The cheap loss goes
+    // last.
+    return [...bundles, ...screenings].map((url) => ({ url }))
   },
 
-  parse(pages, { venue } = {}) {
+  /**
+   * What may be remembered about a followed page — and what may not.
+   *
+   * A SCREENING page is worth one static hour, so it is cached for three days
+   * (the §9.88 rule, and the same span quantic.js and salaradio.js take: an
+   * hour is what you act on, so it is trusted for less time than a poster).
+   *
+   * A BUNDLE page returns **null**, which the scan reads as "store nothing,
+   * fetch it again next time". That page IS the programme — its tariff rows are
+   * the showings — and detailCache.js's third condition forbids remembering it.
+   * The page classifies itself: its own JSON-LD spans several days if it is a
+   * bundle, so this needs nothing from the venue page to decide.
+   */
+  extractDetail(page) {
+    const own = parseLdBlocks(page.body ?? '')[0]
+    if (!own || isBundle(own)) return null
+    return { time: startTimeOf(page.body ?? '') }
+  },
+
+  detailTtlMs: 3 * 24 * 60 * 60 * 1000,
+
+  parse(pages, { venue, details } = {}) {
     const events = []
+
+    // An hour per screening, by the URL its venue-page block already links to.
+    // Remembered records first, pages read in THIS scan second, so a fetched
+    // page always beats a cached account of it. Gathered BEFORE the events are
+    // built, never patched on afterwards: `key` is venue+date+title+time
+    // (§9.87), so a time attached to a finished event would leave a key
+    // describing an event that no longer exists.
+    const times = new Map()
+    for (const [url, record] of Object.entries(details ?? {})) {
+      if (record?.time) times.set(url, record.time)
+    }
+    for (const page of pages.slice(1)) {
+      if (!page.url) continue
+      const own = parseLdBlocks(page.body ?? '')[0]
+      if (own && isBundle(own)) continue // its showings come from the tariff rows
+      const t = startTimeOf(page.body ?? '')
+      if (t) times.set(page.url, t)
+    }
 
     // The one-off screenings, straight off the venue page. Read before the
     // tariff loop only so the programme comes out in a stable order; the two
@@ -185,8 +283,10 @@ export default {
         venue: venue.name,
         title: typeof block.name === 'string' ? block.name : textOf(block.name),
         date,
-        // Null, not guessed: the block carries a bare date (see the header).
-        time,
+        // The block itself carries a bare date, so the hour comes from the
+        // screening's own page (cached). Still null when that hop was skipped
+        // or failed — never guessed.
+        time: time ?? times.get(block.url) ?? null,
         link: block.url ?? null,
         ticketState: /SoldOut/i.test(String(offer?.availability ?? '')) ? TICKET.SOLD_OUT
           : (offer?.url || Number.isFinite(price)) ? TICKET.OPEN

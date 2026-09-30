@@ -42,6 +42,7 @@
 // `detailTtlMs` below.
 
 import jsonld from './jsonld.js'
+import { startTimeOf } from './iabilet.js'
 import { makeEvent } from './shared.js'
 
 const HOST = 'https://www.iabilet.ro/'
@@ -52,35 +53,10 @@ const HOST = 'https://www.iabilet.ro/'
 // MARQUEE.md §9.75's lesson, learned on TNB at 61.
 const MAX_DETAIL_PAGES = 30
 
-// Exactly one per detail page, flat, no nested divs — verified against the real
-// markup rather than assumed, which is why the non-greedy bound to the first
-// `</div>` is safe here.
-const DATE_BLOCK = /<div class="date">([\s\S]{0,500}?)<\/div>/
-const SHOW_TIME = /\bora\s+(\d{1,2}):(\d{2})/i
-const DOOR_TIME = /acces\s+de\s+la\s+(\d{1,2}):(\d{2})/i
-
-function clock(match) {
-  if (!match) return null
-  const hour = Number(match[1])
-  const minute = Number(match[2])
-  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) return null
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-}
-
-/**
- * The hour to show for one event, off its own page.
- *
- * Bounded to the `.date` block on purpose: a description is free text and
- * routinely mentions an hour ("un concert acustic … de la ora 19:00"), which is
- * right often enough to be tempting and wrong often enough to matter. The
- * structured block is the venue speaking; the blurb is prose about it.
- */
-export function startTimeOf(body) {
-  const block = DATE_BLOCK.exec(String(body ?? ''))?.[1]
-  if (!block) return null
-  // Doors only as a fallback — never in preference to a published start.
-  return clock(SHOW_TIME.exec(block)) ?? clock(DOOR_TIME.exec(block))
-}
+/** Re-exported from iabilet.js, where it now lives: it reads an iabilet.ro
+ *  event page, and Cinema Europa needs the same parser (§9.91). The move left
+ *  this path working so these tests keep proving it behaves identically. */
+export { startTimeOf }
 
 export default {
   ...jsonld,
