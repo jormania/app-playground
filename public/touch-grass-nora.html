@@ -310,7 +310,7 @@ input:focus { border-color:rgba(200,40,120,0.5); }
 
 /* ── constants ── */
 const DEF_LAT = 44.4268, DEF_LON = 26.1025;
-const MODEL   = 'claude-sonnet-4-6';
+const MODEL   = 'claude-sonnet-5-5'; // thinking kept off below, as on 4.6: omitted, 5.5 would think and eat max_tokens
 const TIERS   = ['legendary','rare','uncommon','common'];
 
 const SKY = {
@@ -711,7 +711,7 @@ async function generateFinds(secs){
     +'Weave in the location, time, and weather. Make each find specific and vivid. '
     +'CRITICAL: every item must be genuinely distinct — vary between contemporary/traditional, kawaii/serious, urban/nature. No two finds may share a theme, type, or cultural register.';
   try{
-    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODEL,max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODEL,max_tokens:1000,thinking:{type:'between_tools'},messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
     var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
     return JSON.parse(raw.replace(/```json|```/g,'').trim());

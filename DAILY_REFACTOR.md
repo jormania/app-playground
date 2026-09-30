@@ -322,7 +322,7 @@ always proceeds; the gate only applies to scheduled ones.
 
 **Model and costs:** `modernise` items run on **Sonnet** (`claude-sonnet-5-5`);
 everything else — `refactor`, `visual`, `qol`, Friday discovery, and a morning
-with nothing eligible — runs on **Opus** (`claude-opus-5`). `--model` is fixed
+with nothing eligible — runs on **Opus** (`claude-opus-5-5`). `--model` is fixed
 when the agent starts, so the workflow works out tonight's item first, by the
 skill's own four eligibility conditions, in `scripts/pick-model.mjs` (tested in
 `scripts/pick-model.test.js`). On a Sonnet run the prompt names the item and

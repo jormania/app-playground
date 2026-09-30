@@ -21,7 +21,7 @@ export const ANTHROPIC_VERSION = '2023-06-01'
 /** The two model ids in use across the repo today. Callers that need a
  *  specific one still name it explicitly — nothing here picks a default. */
 export const MODEL_HAIKU = 'claude-haiku-4-5-20251001'
-export const MODEL_SONNET = 'claude-sonnet-5'
+export const MODEL_SONNET = 'claude-sonnet-5-5'
 
 export function anthropicHeaders(apiKey: string): Record<string, string> {
   return {

@@ -193,7 +193,7 @@ describe('buildCharacterArcPrompt', () => {
 
 describe('requestMentor', () => {
   const okResponse = (text: string) =>
-    ({ ok: true, json: async () => ({ content: [{ text }] }) }) as unknown as Response;
+    ({ ok: true, json: async () => ({ content: [{ type: 'text', text }] }) }) as unknown as Response;
 
   it('posts to Anthropic with the direct-browser header and the user key, returns trimmed text', async () => {
     const fetchMock = vi.fn(
@@ -214,6 +214,23 @@ describe('requestMentor', () => {
     const body = JSON.parse((init?.body as string) ?? '{}');
     expect(body.system).toBe('S');
     expect(body.messages[0].content).toBe('U');
+  });
+
+  it('keeps thinking off the way Sonnet 5.5 accepts, and reads text past a thinking block', async () => {
+    const fetchMock = vi.fn(
+      async (_url: RequestInfo | URL, _init?: RequestInit) =>
+        ({
+          ok: true,
+          json: async () => ({ content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'Begin.' }] }),
+        }) as unknown as Response,
+    );
+    const out = await requestMentor('k', { system: 's', user: 'u' }, fetchMock as unknown as typeof fetch);
+    expect(out).toBe('Begin.');
+    const body = JSON.parse((fetchMock.mock.calls[0][1]?.body as string) ?? '{}');
+    expect(body.model).toBe('claude-sonnet-5-5');
+    // `disabled` is a 400 on Sonnet 5.5.
+    expect(body.thinking).toEqual({ type: 'between_tools' });
+    expect(body).not.toHaveProperty('temperature');
   });
 
   it('throws before calling when the key is blank', async () => {
@@ -248,6 +265,9 @@ describe('verifyAnthropicKey', () => {
   it('resolves on an ok response and throws a calm error otherwise', async () => {
     const ok = vi.fn(async () => ({ ok: true }) as unknown as Response) as unknown as typeof fetch;
     await expect(verifyAnthropicKey('k', ok)).resolves.toBeUndefined();
+    // The key test mirrors the real call's shape, so it catches a 400 on it.
+    const sent = JSON.parse(((ok as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit).body as string);
+    expect(sent.thinking).toEqual({ type: 'between_tools' });
     const bad = vi.fn(async () => ({ ok: false, status: 401 }) as unknown as Response) as unknown as typeof fetch;
     await expect(verifyAnthropicKey('k', bad)).rejects.toThrow(/rejected the key/);
   });

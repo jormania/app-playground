@@ -21,7 +21,7 @@ import { titleLeakWords, scenarioLeaksTitle } from '../src/law-of-the-day/lib/le
 const here = dirname(fileURLToPath(import.meta.url))
 const laws = JSON.parse(readFileSync(resolve(here, '../src/law-of-the-day/data/laws.json'), 'utf8'))
 
-const MODEL = 'claude-sonnet-5'
+const MODEL = 'claude-sonnet-5-5'
 const BLOB_PATH_PREFIX = 'law-of-the-day'
 const MAX_ATTEMPTS = 2
 const MIN_FIELD_CHARS = 30
@@ -122,7 +122,9 @@ export default async function handler(req, res) {
         max_tokens: 2000,
         thinking: { type: 'adaptive' },
         system,
-        output_config: { format: { type: 'json_schema', schema: SCHEMA } },
+        // Explicit, because Sonnet 5.5 recalibrated its effort levels; medium leaves
+        // the thinking well inside max_tokens for two short paragraphs.
+        output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
         messages,
       })
 

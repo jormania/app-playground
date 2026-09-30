@@ -25,10 +25,12 @@ import { SelectField } from '../../ds/components/SelectField'
 import styles from './Settings.module.css'
 
 const CURATE_TIMEOUT_MS = 30000
-// Sonnet 5 runs adaptive thinking by default (Haiku 4.5 doesn't unless asked) — this
+// Sonnet runs adaptive thinking by default (Haiku 4.5 doesn't unless asked) — this
 // task is a plain word-list generation with no reasoning to do, so thinking is pure
-// wasted cost and latency on Sonnet. Explicitly disabled below only for that model.
-const THINKS_BY_DEFAULT = new Set(['claude-sonnet-5'])
+// wasted cost and latency on Sonnet, and it counts against max_tokens, which is sized
+// for the words alone. Turned off below only for that model: Sonnet 5.5 400s on
+// `disabled`, and `between_tools` is its lowest setting (no extended thinking).
+const THINKS_BY_DEFAULT = new Set(['claude-sonnet-5-5'])
 // Sending the full existing list as an exclusion prompt scales input cost with list
 // size for no real benefit past a certain point — a representative sample is enough
 // to steer the model away from obvious repeats at a fraction of the token cost.
@@ -57,7 +59,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
     const count = Number(wordCount)
     if (!Number.isFinite(count) || count <= 0) return ''
     const outputTokens = count * 6
-    const perMillion = model.includes('haiku') ? 5 : 25
+    const perMillion = model.includes('haiku') ? 5 : 10
     const cents = (outputTokens / 1_000_000) * perMillion * 100
     return `Curating ${count} words costs roughly ${cents < 1 ? 'under a cent' : `${cents.toFixed(cents < 10 ? 1 : 0)}¢`}.`
   })()
@@ -127,7 +129,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         messages: [{ role: 'user', content: `Generate a JSON array of exactly ${wordCount} interesting, REAL 5-letter English words for a word game. All words must be valid dictionary words.${themeToUse ? ` They must all relate to this theme: ${themeToUse}. If you run out of highly relevant words before reaching ${wordCount}, stop early—do NOT pad with unrelated words.` : ` If you run out of good words before reaching ${wordCount}, stop early—do NOT pad with fake words.`}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
       }
       if (THINKS_BY_DEFAULT.has(model)) {
-        requestBody.thinking = { type: 'disabled' }
+        requestBody.thinking = { type: 'between_tools' }
       }
 
       const res = await fetch('/api/anthropic-proxy/v1/messages', {
@@ -146,7 +148,8 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         throw new Error(`Status ${res.status}: ${errText}`)
       }
       const data = await res.json()
-      const text = data.content[0].text
+      // By block type, not position — a Sonnet reply may open with a thinking block.
+      const text = data.content?.find(b => b?.type === 'text')?.text ?? ''
       const match = text.match(/\[([\s\S]*?)\]/)
 
       // Recover whatever complete quoted words came back. Used when the reply was
@@ -327,7 +330,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               hint="Haiku is faster. Sonnet has a wider vocabulary and understands complex themes better."
             >
               <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fast)</option>
-              <option value="claude-sonnet-5">Claude Sonnet 5 (Smart)</option>
+              <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (Smart)</option>
             </SelectField>
             <Field
               label="Word Count"

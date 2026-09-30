@@ -18,7 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const OPUS = 'claude-opus-5';
+export const OPUS = 'claude-opus-5-5';
 export const SONNET = 'claude-sonnet-5-5';
 
 const CLASSES = new Set(['refactor', 'modernise', 'qol', 'visual', 'idea']);

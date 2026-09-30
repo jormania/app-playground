@@ -51,7 +51,7 @@ function messageResponse(text) {
       id: 'msg_test',
       type: 'message',
       role: 'assistant',
-      model: 'claude-sonnet-5',
+      model: 'claude-sonnet-5-5',
       content: [{ type: 'text', text }],
       stop_reason: 'end_turn',
       stop_sequence: null,
@@ -133,7 +133,7 @@ describe('the call the SDK builds', () => {
   it('sends the model, adaptive thinking and the json_schema output_config', async () => {
     await call()
     const body = sentBody(0)
-    expect(body.model).toBe('claude-sonnet-5')
+    expect(body.model).toBe('claude-sonnet-5-5')
     expect(body.max_tokens).toBe(2000)
     expect(body.thinking).toEqual({ type: 'adaptive' })
     expect(body.output_config.format.type).toBe('json_schema')

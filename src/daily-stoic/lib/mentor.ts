@@ -20,7 +20,7 @@ export interface MentorPrompt {
 const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 // A real Socratic driver needs range and judgement, so this defaults higher than
 // a mere witness would. It is the user's own key, called at most a few times a day.
-const MENTOR_MODEL = 'claude-sonnet-5';
+const MENTOR_MODEL = 'claude-sonnet-5-5';
 
 export const MENTOR_KEY_STORAGE = 'daily-stoic:anthropic-key';
 export const MENTOR_ENABLED_STORAGE = 'daily-stoic:mentor-enabled';
@@ -363,19 +363,22 @@ export async function requestMentor(
     body: JSON.stringify({
       model: MENTOR_MODEL,
       max_tokens: 512,
-      // claude-sonnet-5 rejects temperature/top_p/top_k with a 400, so we steer
-      // tone through the system prompt only. Thinking is disabled deliberately:
-      // the mentor's reply is short and bounded, and adaptive thinking (the
-      // default when omitted on Sonnet 5) would spend the token budget before
-      // the visible answer.
-      thinking: { type: 'disabled' },
+      // Sonnet rejects temperature/top_p/top_k with a 400, so we steer tone
+      // through the system prompt only. Thinking is kept off deliberately: the
+      // mentor's reply is short and bounded, and adaptive thinking (the default
+      // when omitted) would spend the token budget before the visible answer.
+      // Sonnet 5.5 400s on `disabled`; `between_tools` is its lowest setting —
+      // no extended thinking — and is valid at the default effort.
+      thinking: { type: 'between_tools' },
       system: prompt.system,
       messages: [{ role: 'user', content: prompt.user }],
     }),
   });
   if (!res.ok) throw new Error(friendlyMentorError(res.status));
-  const data = (await res.json()) as { content?: { text?: string }[] };
-  const text = data?.content?.[0]?.text;
+  const data = (await res.json()) as { content?: { type?: string; text?: string }[] };
+  // By block type, not position: a reply may open with a (possibly empty)
+  // `thinking` block ahead of the text.
+  const text = data?.content?.find((b) => b?.type === 'text')?.text;
   if (!text || !text.trim()) throw new Error('The mentor had nothing to say just now.');
   return text.trim();
 }
@@ -401,7 +404,7 @@ export async function verifyAnthropicKey(
       // accepted — not just that the key authenticates.
       model: MENTOR_MODEL,
       max_tokens: 16,
-      thinking: { type: 'disabled' },
+      thinking: { type: 'between_tools' },
       messages: [{ role: 'user', content: 'ping' }],
     }),
   });

@@ -804,7 +804,7 @@ it as her song, *Answer to Take 3*, and opens it) (`studio/answer.ts`).
   sixteenths, the beat from its count-in or else from her own pace; its key
   (`keyOf`: the major or minor scale holding most of her notes, leaning to
   one she starts or ends on) and range.
-- **The ask**: Claude Sonnet 5 at low effort, since composing wants more
+- **The ask**: Claude Sonnet 5.5 at low effort, since composing wants more
   judgement than a note of words: stay in her key, within a fifth of her
   range, about as long, plain rhythms, pick up one idea from the call and
   come home. JSON back: the notes and one sentence to her about the answer.

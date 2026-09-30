@@ -123,6 +123,7 @@ describe('Settings component', () => {
     const mockApiResponse = {
       content: [
         {
+          type: 'text',
           text: JSON.stringify(["APPLE", "APPLE", "BERRY", "ROBOT", "TOOOOLONG", "CAT"])
         }
       ]
@@ -281,7 +282,7 @@ describe('Settings component', () => {
     )
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ content: [{ text: rawText }] })
+      json: async () => ({ content: [{ type: 'text', text: rawText }] })
     })
     fireEvent.click(screen.getByText('AI Curation'))
     fireEvent.change(await screen.findByPlaceholderText('sk-ant-...'), { target: { value: 'sk-ant-test-key' } })
@@ -290,6 +291,46 @@ describe('Settings component', () => {
   }
 
   const storedDict = () => JSON.parse(localStorage.getItem('lexi5_custom_dict') || 'null')
+
+  it('reads the text block by type when a thinking block comes first', async () => {
+    const onToast = vi.fn()
+    render(
+      <Settings
+        open={true}
+        onClose={() => {}}
+        config={defaultConfig}
+        onConfigChange={mockOnConfigChange}
+        onDictionaryChange={mockOnDictionaryChange}
+        onDifficultyChange={mockOnDifficultyChange}
+        onResetStats={mockOnResetStats}
+        onToast={onToast}
+        openToCurate={false}
+      />
+    )
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: '["alien", "orbit"]' }] })
+    })
+    fireEvent.click(screen.getByText('AI Curation'))
+    fireEvent.change(await screen.findByPlaceholderText('sk-ant-...'), { target: { value: 'sk-ant-test-key' } })
+    fireEvent.change(screen.getByDisplayValue('Claude Haiku 4.5 (Fast)'), { target: { value: 'claude-sonnet-5-5' } })
+    fireEvent.click(screen.getByText('Start Curation'))
+
+    await waitFor(() => expect(onToast).toHaveBeenCalled())
+    expect(storedDict().sort()).toEqual(['alien', 'orbit'])
+    // Sonnet 5.5 400s on `disabled`; its no-thinking setting is `between_tools`.
+    const body = JSON.parse(global.fetch.mock.calls.at(-1)[1].body)
+    expect(body.model).toBe('claude-sonnet-5-5')
+    expect(body.thinking).toEqual({ type: 'between_tools' })
+  })
+
+  it('sends no thinking field to Haiku', async () => {
+    await curateWith('["alien"]')
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    const body = JSON.parse(global.fetch.mock.calls.at(-1)[1].body)
+    expect(body.model).toBe('claude-haiku-4-5-20251001')
+    expect(body).not.toHaveProperty('thinking')
+  })
 
   it('pulls the array out of a reply that wrapped it in prose', async () => {
     const onToast = await curateWith(`Here is the list you requested:
