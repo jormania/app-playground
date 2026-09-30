@@ -586,7 +586,7 @@ a hook that four apps use happily, and R-015's warning about the obvious large
 version applies. Recorded here so the next person weighing it has the evidence
 rather than the impulse.
 
-## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `open`
+## P-001b — Lexi5: the sun/moon/monitor triple · `visual` · `done 2026-09-30`
 
 **Impact:** three fewer pasted glyphs, in an app that already ships the library
 they were copied from. Part of P-001, Group 1.
@@ -597,6 +597,30 @@ WhereItWent's, so P-001a settles the convention and this follows it.
 
 Note `src/lexi5/App.jsx`'s two `<svg>` are data-URI favicons, not icons — out of
 scope. Being `visual`: screenshots, and never auto-merged.
+
+**Done 2026-09-30.** One file, three glyph sites: `Monitor` / `Sun` / `Moon`
+from `lucide-react` at `size={16}`, following P-001a's convention
+(named import, `size` prop) rather than re-pasting markup. `App.jsx`'s two
+data-URI favicons are now the only `<svg>` left in the app, as intended. The
+theme picker's values (`system` / `light` / `dark`) and the `null`-for-system
+mapping in `onChange` are untouched.
+
+Two notes for whoever takes P-001c:
+
+- **Only one of the three actually changes shape at a glance.** lucide's
+  `Monitor` is the Feather markup to the coordinate (`ry="2"` on a rect that
+  already has `rx="2"` is redundant, so even that is not a rendering
+  difference). `Sun` is r=4 against Feather's r=5 with the rays pushed out to
+  match, and `Moon`'s crescent is cut by a 6-radius arc instead of a 7-radius
+  one, so it reads very slightly fatter. At the 16px they render at, all of it
+  is subtle — the PR carried a 96px side-by-side because the real screenshots
+  genuinely do not show it.
+- **Group 1 ends with P-001c.** Swept the tree for the same pattern while here:
+  every other app that bundles lucide and still holds an inline `<svg>` holds
+  one the P-001 audit already excluded by name — Sol Odyssey's `Logo` and
+  `Sparkline`, WhereItWent's `Sparkline` and `NoraAvatar`, Daily Stoic's
+  `Ornament`, Fit Check's `fc-guide-link-mark`. Nothing new turned up, so there
+  is no P-001d to write.
 
 ## R-002 — Stop the root from refilling with scratch files · `refactor` · `done 2026-09-22`
 
@@ -1862,6 +1886,30 @@ has eight importers across four apps. Every other component under
 **Take `Dialogs.tsx` first**, as the item title says; the other three are a
 follow-up run, not this one. `src/ds/components/Modal.test.tsx` is the house style
 to copy — it already renders a nested dialog, so the harness is there.
+
+## R-034 — Lexi5's Settings test mocks the theme picker away entirely · `modernise` · `open`
+
+**Impact:** none visible. Closes a gap where the app's only theme control could
+lose an option, or stop mapping `system` to `null`, with the suite still green.
+
+Noticed while doing P-001b on 2026-09-30.
+`src/lexi5/components/Settings.test.jsx:14` replaces DS's `SegmentedControl`
+with a bare `<select>` that reads `value` and `onChange` and **drops `options`
+on the floor**. So nothing in 5,000-odd tests asserts that the theme picker
+offers three choices, that their values are `system` / `light` / `dark`, or —
+the load-bearing one — that `onChange` stores `null` rather than the string
+`'system'` (`Settings.jsx:299`). `config.ts`'s effect branches on
+`config.theme ? config.theme === 'dark' : query.matches`, so a falsy value is
+what makes the app follow the OS. Were that mapping ever to regress to the
+string `'system'`, it would be truthy and not `'dark'` — the app would pin
+itself to light for anyone on the System setting, and the suite would stay
+green.
+
+The mock is right to exist — this test is about the settings panel, not about
+DS's control. The fix is to make it forward what it is given: render each
+`options[]` entry as an `<option value>` with a `data-testid`, then add one test
+that picks each of the three and asserts the resulting `updateConfig` call.
+Roughly a dozen lines, no production code touched.
 
 ---
 
