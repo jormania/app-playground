@@ -4289,6 +4289,66 @@ seventeen requests once; warm is two, because only the bundles come back.
 
 `npm test` (5253), `npm run typecheck` and `npx eslint api/ src/` all pass.
 
+### 9.92 A poster asked for three times (2026-09-30)
+
+Reported from the app: every CNDB card showing the outline where its poster
+should be. The reader was fine — it extracts real, direct URLs
+(`cndb.ro/wp-content/uploads/…/11-piese-7-august-1380.jpg`). The site is what
+refuses.
+
+Ten requests for one poster, from this machine:
+
+```
+4 × content-type: image/jpeg   254 KB   the file
+6 × content-type: text/html     12 KB   "One moment, please…", at HTTP 200
+```
+
+**cndb.ro answers roughly half its image requests with a bot-check page instead
+of the image**, at a 200, so nothing in the response says "error" except the
+content type. A browser cannot decode HTML as a picture, `onError` fires, and
+the slot falls back to its outline — correctly, on a URL that was never wrong.
+Each card gave up after one attempt, so almost all of them were blank.
+
+**A wrong answer I nearly shipped.** The first four probes lined up perfectly:
+no referrer and a same-origin referrer both got the interstitial, a `vercel.app`
+referrer got the image. That reads as hotlink protection, and the fix would have
+been a `referrerPolicy` on the `<img>`. Ten more requests killed it — the split
+is the same either way, and the referrer makes no difference. It was coincidence
+across four samples, and four samples is not a finding.
+
+So the slot asks up to **three times**. At that rate one attempt shows about half
+the posters and three about seven in eight; past three the returns are small and
+every try is another request to a site already saying no.
+
+**The retry has to bust the cache or it is not a retry.** The browser holds the
+failed response for that exact URL and would re-serve it without a request, so
+the second attempt would fail instantly and for free. `posterUrl` appends
+`?mq-retry=N` — to the existing query where there is one, since iabilet's
+posters arrive through imgcdn already parameterised. **Attempt 0 is the URL
+untouched**, so every venue whose posters load first time keeps a cacheable URL
+and never pays for this.
+
+One thing this fixed on the way past: the attempt count is keyed to the `src`
+and resets when it changes. React keeps a component instance alive across a
+re-ordered list, so without that reset a slot that had used up its retries would
+have handed its exhaustion to whichever production took its place — a blank
+poster no reload could bring back. That would have been a new bug, introduced by
+the fix, in a component that previously had no state worth leaking.
+
+**What this does not do** is make CNDB's posters reliable. It makes them
+*likely*. The site can tighten at any time, and the honest fallback is still
+there underneath. The alternative — proxying posters through our own endpoint —
+was weighed and not taken: `api/*.js` is at 12 of 12 on Hobby, so it would have
+to fold into `marquee-scan.js` as a mode, and it puts our deploy budget and
+bandwidth behind another site's images.
+
+Related, same day: cndb.ro also served *this machine* the same interstitial for
+`/calendar/` itself. Vercel still gets through — the scheduled scan read 8 events
+that morning — so the listing is unaffected and only the browser's image
+requests are hitting it.
+
+`npm test` (5270), `npm run typecheck` and `npx eslint api/ src/` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -4315,6 +4375,10 @@ absences at the source, not gaps in a reader:
   seats.io chart the venue's own seat picker reads.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
   upcoming listed, not a failure.
+- **CNDB serves a bot-check page instead of a poster about half the time**
+  (§9.92) — at HTTP 200 with `content-type: text/html`, regardless of referrer
+  or user agent. The slot retries up to three times, which makes its posters
+  likely rather than reliable.
 - **Sala Radio runs Cloudflare JS Detections** (§9.86) — the served page embeds
   `/cdn-cgi/challenge-platform/scripts/jsd/main.js`. It passes from a dev
   machine and has challenged at least once from Vercel's egress, the same

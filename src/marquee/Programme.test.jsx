@@ -72,11 +72,18 @@ describe('Programme — the poster slot renders for every card, cover or not', (
     expect(poster.querySelector('svg')).toBeTruthy()
   })
 
-  it('falls back to the placeholder when a real cover URL fails to load', () => {
+  it('falls back to the placeholder once a real cover URL has failed three times', () => {
+    // One failure no longer settles it (§9.92): cndb.ro answers roughly half of
+    // its image requests with a bot-check page instead of the file, so the slot
+    // asks three times before believing it. Poster.test.jsx covers the retry
+    // itself; this pins that the fallback still arrives at the end of it.
     const days = byDate(toProductions([event({ image: 'https://example.com/broken.jpg' })]))
     const { container } = render(<Programme {...baseProps} days={days} venues={[{ name: 'Teatrul Excelsior', category: 'play' }]} />)
-    const img = container.querySelector('.prod__poster img')
-    fireEvent.error(img)
+    for (let i = 0; i < 3; i++) {
+      const img = container.querySelector('.prod__poster img')
+      expect(img).not.toBeNull()
+      fireEvent.error(img)
+    }
     const poster = container.querySelector('.prod__poster')
     expect(poster.classList.contains('prod__poster--placeholder')).toBe(true)
     expect(poster.querySelector('img')).toBeNull()
