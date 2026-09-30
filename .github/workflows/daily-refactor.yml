@@ -178,6 +178,33 @@ jobs:
 
       - run: npm ci
 
+      # `modernise` items run on Sonnet, everything else on Opus. --model is
+      # fixed at launch, so the workflow reads the topmost eligible item itself —
+      # by the skill's own four conditions, in scripts/pick-model.mjs, which is
+      # tested. Every uncertain path lands on Opus: a wrong guess that way costs
+      # tokens, the other way puts a `visual` item in front of a cheaper model.
+      - name: Choose the model for today's item
+        id: model
+        env:
+          GH_TOKEN: ${{ secrets.REFACTOR_PAT || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          # An item named on an open PR's Backlog-Item line is claimed, and
+          # skipped — the same rule the agent follows. If the PRs can't be read,
+          # nothing can be said about what is claimed, and that is Opus too.
+          if bodies=$(gh pr list --repo "$GH_REPO" --state open --limit 100 --json body --jq '.[].body' 2>/dev/null); then
+            claimed=$(printf '%s\n' "$bodies" | grep -oE '^Backlog-Item: *[A-Z]+-[0-9A-Za-z]+' \
+                        | sed 's/^Backlog-Item: *//' | paste -sd, -)
+            out=$(CLAIMED="$claimed" node scripts/pick-model.mjs --day "${{ steps.when.outputs.day }}") \
+              || out="model=claude-opus-5"
+          else
+            echo "Could not read open PRs, so cannot tell what is claimed — staying on Opus."
+            out="model=claude-opus-5"
+          fi
+          printf '%s\n' "$out" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$out" | head -3
+
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -192,11 +219,13 @@ jobs:
           # spent 9m15s on 62 turns, so 150 lands near 22 minutes, inside 45.
           # Nothing here may be a comment: these lines are parsed as CLI args.
           claude_args: |
-            --model claude-opus-5
+            --model ${{ steps.model.outputs.model || 'claude-opus-5' }}
             --max-turns 150
             --allowedTools Bash,Read,Edit,Write,Glob,Grep,TodoWrite
           prompt: |
             Run today's autonomous improvement pass over this repository.
+
+            ${{ steps.model.outputs.note }}
 
             You are already inside a full clone of jormania/app-playground with
             dependencies installed and push rights. Do not clone anything, do not

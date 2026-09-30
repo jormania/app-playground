@@ -320,9 +320,21 @@ always proceeds; the gate only applies to scheduled ones.
   requests** must be **on**. It was off for the second-ever run, which is why that
   run could not open its PR.
 
-**Costs:** ~$1–2 of token value per run at Opus 5 rates, which is a meter rather
-than a charge when the OAuth token is subscription-backed. Budget per run:
-45 minutes wall clock, 60 turns, tools limited to
+**Model and costs:** `modernise` items run on **Sonnet** (`claude-sonnet-5-5`);
+everything else — `refactor`, `visual`, `qol`, Friday discovery, and a morning
+with nothing eligible — runs on **Opus** (`claude-opus-5`). `--model` is fixed
+when the agent starts, so the workflow works out tonight's item first, by the
+skill's own four eligibility conditions, in `scripts/pick-model.mjs` (tested in
+`scripts/pick-model.test.js`). On a Sonnet run the prompt names the item and
+tells the agent to stop rather than move on if it has to drop or block it, so a
+cheaper model never ends up on the next item down. Every uncertain path — the
+script failing, open PRs unreadable so claims are unknown — lands on Opus.
+
+This came from the weekly subscription limit running out in the week of
+2026-09-28, when the workflow had to be switched off for two mornings. The
+tokens are a meter rather than a charge when the OAuth token is
+subscription-backed, but a meter that runs out stops the work. Budget per run:
+45 minutes wall clock, 150 turns, tools limited to
 `Bash,Read,Edit,Write,Glob,Grep,TodoWrite`.
 
 ---
