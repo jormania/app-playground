@@ -1160,3 +1160,78 @@ layout, and ending there would drop the real sources under it.
 
 Worth keeping in mind for anything else that reads this page: it is a log, not a
 document, and the current week is only its first section.
+
+## 26. The hero asked once and believed the answer (2026-09-30)
+
+A Kulterra exhibition — *Bande à part — RONE*, found through Modernism —
+showed a broken-image box the full width of the detail view, above the event's
+name. Two unrelated faults, stacked.
+
+### modernism.ro answers an image request with a bot check
+
+The same thing cndb.ro does (MARQUEE.md §9.92), from the same stack — LiteSpeed
+behind Cloudflare. Ask for the article's picture and you get, at random, a 12KB
+page instead:
+
+```
+...-bucuresti-3.jpg  →  200 text/html   12166   "One moment, please..."
+                     →  200 text/html   12064
+                     →  200 image/jpeg  91546   (three times)
+```
+
+HTTP 200, `content-type: text/html`, a `<meta>` refresh and a spinner. No
+browser can decode that as a picture, so `onError` fires on a URL that is
+perfectly good. What decides it is the edge cache, not the request: the same
+host's cached thumbnail answered twenty times without a single failure
+(`cf-cache-status: HIT`), never reaching the origin's challenge at all.
+Referrer and user agent make no difference, as at CNDB.
+
+`EventDetail` asked once:
+
+```jsx
+{event.image && <img className="detailHero" src={event.image} alt="" loading="lazy" />}
+```
+
+No `onError`. One interstitial and the hero was the browser's broken-image
+chrome, sitting inside the 16∶9 box `.detailHero` reserves — about a third of a
+phone screen, pushing the event's name below it to say nothing.
+
+### `Hero.jsx` — three attempts, then nothing
+
+Marquee's `Poster` already solved the asking part, and this is the same solution
+transplanted, not shared: a cache-busted retry (`?rb-retry=n`, since the browser
+holds the failed response and would re-serve it without a request), three
+attempts, and a reset keyed to `src` because `EventDetail` is mounted unkeyed —
+without it, an event whose picture failed three times would hand that exhaustion
+to the next event opened in the same instance.
+
+It is deliberately **not** promoted to `src/shared/`. The two differ where it
+matters: Marquee's slot falls back to a placeholder outline so every list row's
+title starts from the same left edge, and Radar-B's **renders nothing**. A
+detail view has one hero and nothing to line it up with; an empty
+`--color-surface-2` box says only "a picture failed", which the reader can
+neither use nor act on, and charges a third of a screen to say it. Without the
+picture the name is simply first.
+
+### The picture was a 150×150 Pinterest thumbnail
+
+Separate fault, and the reason the block was ugly even when it loaded. The
+stored `Image` was:
+
+```
+...-kulterra-art-gallery-bucuresti-3-150x150.jpg   →  JPEG 150x150, 7.9 KB
+```
+
+`.detailHero` is `width: 100%; aspect-ratio: 16/9; object-fit: cover`, so that
+150px square is upscaled about 2.5× on a phone and cropped to a strip.
+
+That URL appears on the Modernism article exactly once, inside the **Pinterest
+share button's `media=` parameter**. The `/recommend in Bucharest` skill took
+the share widget's thumbnail rather than the post's own picture, which is right
+there at 800px (`...-bucuresti-3.jpg`).
+
+**Not fixed here** — it is the skill that writes `Image`, not this app. Worth a
+rule there: reject a WordPress size suffix (`-\d+x\d+` before the extension), or
+strip it to reach the original. Of the four Radar rows carrying an `Image` at
+the time, only this one was affected; the other three (Eventbook ×2,
+curatorial.ro) all serve real bytes at a usable size.

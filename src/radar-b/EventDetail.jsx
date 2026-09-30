@@ -6,6 +6,7 @@ import { fold } from './dedupe.js'
 import { BackIcon, ExternalIcon, HideIcon, CalendarIcon, CheckIcon } from './icons.jsx'
 import { formatWhen as formatWhenDate } from './dates.js'
 import { useT } from './i18n.js'
+import { Hero } from './Hero.jsx'
 
 /** Which store a mention came through, said in words rather than in a code. */
 const kindLabel = (kind, t) => t(`kind.${kind}`)
@@ -133,7 +134,7 @@ export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) 
           </button>
         </div>
 
-        {event.image && <img className="detailHero" src={event.image} alt="" loading="lazy" />}
+        <Hero src={event.image} />
 
         <h1 className="detailName">{event.name}</h1>
 
