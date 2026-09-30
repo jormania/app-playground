@@ -738,6 +738,13 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
   }
   const venuePage = { body: fixture('iabilet-venue.html') }
   const bundlePage = { body: fixture('iabilet-bundle.html') }
+  // 2026-09-30: the same venue page, after iabilet started mixing one-off
+  // screenings in with the weekend bundles (§9.90).
+  const mixedVenue = { url: venue.url, body: fixture('iabilet-venue-mixed.html') }
+  const pipeBundle = {
+    url: 'https://www.iabilet.ro/bilete-keanu-reeves-weekend-131369/',
+    body: fixture('iabilet-bundle-pipe.html'),
+  }
 
   it('finds the child bundle links on the venue page — the venue page itself lists nothing', () => {
     // The venue page is a JS shell to a server fetch: it names five weekend
@@ -859,6 +866,65 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
       ticketState: 'open',
     })
   })
+
+  describe('the pipe separator, and the screenings that are not bundles (§9.90)', () => {
+    it('reads a tariff row whose title is introduced by a pipe', () => {
+      // The break: iabilet respelled the separator before the film title a
+      // THIRD time — em dash, then hyphen, now "18:00 | Speed". Every row on
+      // every bundle page stopped parsing at once, Cinema Europa went to zero
+      // events, and the health gate reported markup change. It was right.
+      const events = iabilet.parse([pipeBundle], { venue })
+      expect(events.length).toBeGreaterThan(0)
+      expect(events.map((e) => e.title)).toContain('Speed')
+      expect(events.find((e) => e.title === 'Speed'))
+        .toMatchObject({ date: '2026-10-02', time: '18:00', price: 20 })
+    })
+
+    it('still reads the two older spellings', () => {
+      // Accepting all three is the point: a reversion must not break this again.
+      expect(iabilet.parse([bundlePage], { venue }).length).toBeGreaterThan(0)
+      expect(iabilet.parse([{ body: fixture('iabilet-bundle-hyphen.html') }], { venue }).length)
+        .toBeGreaterThan(0)
+    })
+
+    it('reads a single-day screening straight off the venue page', () => {
+      // A single-day block is already a complete Event — name, date, poster,
+      // synopsis and price — so it needs no hop at all.
+      const events = iabilet.parse([mixedVenue], { venue })
+      expect(events).toHaveLength(3)
+      expect(events.every((e) => e.image && e.price === 20 && e.ticketState === 'open')).toBe(true)
+      expect(events.map((e) => e.title)).toContain('Best of The Office')
+    })
+
+    it('leaves a screening without an hour rather than inventing one', () => {
+      // Its startDate is a bare date, the same gap quantic.js found on this host.
+      const events = iabilet.parse([mixedVenue], { venue })
+      expect(events.every((e) => e.time === null)).toBe(true)
+      expect(events.every((e) => e.date)).toBe(true)
+    })
+
+    it('follows the bundles and nothing else', () => {
+      // Eleven hops became two on the day this was measured: a screening's own
+      // page would cost a request to learn nothing the venue page did not say.
+      const followed = iabilet.follow([mixedVenue], { venue })
+      expect(followed).toHaveLength(2)
+      expect(followed.every((r) => /weekend/i.test(r.url))).toBe(true)
+    })
+
+    it('never emits a showing twice across the two passes', () => {
+      const events = iabilet.parse([mixedVenue, pipeBundle], { venue })
+      expect(new Set(events.map((e) => e.key)).size).toBe(events.length)
+      expect(events.filter((e) => e.time === null)).toHaveLength(3)
+      expect(events.filter((e) => e.time !== null).length).toBeGreaterThan(0)
+    })
+
+    it('a venue page of bundles alone still yields nothing without its children', () => {
+      // The 2026-08 fixture has no single-day blocks at all, so the original
+      // behaviour is unchanged where the premise still holds.
+      expect(iabilet.parse([venuePage], { venue })).toEqual([])
+    })
+  })
+
 })
 
 describe('tnb (one venue, 7 halls sharing it)', () => {

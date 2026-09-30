@@ -4166,6 +4166,67 @@ exactly as invisible, one venue further down the list.
 
 `npm test` (4567), `npm run typecheck` and `npx eslint api/ src/` all pass.
 
+### 9.90 Cinema Europa: one pipe, and a premise that expired (2026-09-30)
+
+Reported from the app: *"Cinema Europa — The page loaded but no events could be
+read from it — its markup has probably changed."* It had. The gate was right,
+and saying so is the point of §9.61's wording — nobody went looking at the
+reader first.
+
+**The break is one character.** iabilet names each tariff row in its
+`data-tariff-name`, and the reader splits that into date, time and film. The
+separator before the film title has now been spelled three different ways:
+
+```
+2026-08   em dash   "18:15 — Chungking Express - Bilet preț întreg"
+2026-09   hyphen    "18:00 - Dr. Strangelove - Bilet pret intreg"
+2026-09   pipe      "18:00 | Speed - Bilet pret intreg"
+```
+
+Sixteen of sixteen dated rows on the live bundle page used the pipe, and zero
+matched. Every row on every bundle failed together, so the venue fell to zero
+events rather than to a gap — which is what made it visible. The character class
+now accepts all three; a fourth respelling is a one-character fix and a
+reversion is a non-event.
+
+**The larger find was not the bug.** With the separator fixed the venue came
+back with eight events — and the page was advertising seventeen. Reading the
+venue page's own JSON-LD showed why:
+
+| 2026-08-26 (the old fixture) | 2026-09-30 (live) |
+|------------------------------|-------------------|
+| 5 multi-day bundles          | 2 multi-day bundles |
+| 0 single-day screenings      | **9 single-day screenings** |
+
+This reader opens by asserting that "a venue page never lists a single showing —
+it carries exactly one schema.org Event block per WEEKLY THEMED BUNDLE". That
+was true when it was written and is now false for four children in five. Cinema
+Europa has shifted toward one-off nights — *Joia Voluntarilor*, *Martea ta*,
+single screenings — and every one of them was invisible.
+
+They did not need a new hop. A single-day block is **already a complete Event**
+on the venue page: name, url, date, poster, synopsis and price, nine out of nine.
+So it is read straight off it, and `follow` now fetches only the multi-day
+bundles — **eleven requests became two**, while events went 0 → 17.
+
+The bundle/screening test is structural rather than by name: a block whose run
+ends after it starts is a bundle whose showings live on its own page; one that
+begins and ends on the same day is a screening already described. A block with
+no `endDate` reads as a screening — there is no evidence of a run, and guessing
+otherwise costs a request to discover nothing. It is the same distinction
+`dropUmbrellaListings` already draws in `jsonld.js`, applied to the opposite
+question.
+
+**What those nine screenings do not get is a start time**, because their
+`startDate` is a bare date — the identical gap quantic.js found on this host
+(§9.87). They read with no hour rather than a guessed one. Closing it would cost
+one hop per screening, which is exactly what `follow` just stopped doing; since
+§9.88 a screening's hour is cacheable, so the honest price is nine requests once
+and near-nothing after. Left undone deliberately, and worth doing if the missing
+hour proves annoying in practice — for a cinema it may well.
+
+`npm test` (5247), `npm run typecheck` and `npx eslint api/ src/` all pass.
+
 ## Open — known source limits, checked and not fixable here
 
 These were each verified against the live page rather than assumed, and are
@@ -4192,6 +4253,10 @@ absences at the source, not gaps in a reader:
   seats.io chart the venue's own seat picker reads.
 - **Cinema Union read `empty`** on the day of the sweep — genuinely nothing
   upcoming listed, not a failure.
+- **Cinema Europa's one-off screenings carry no start time** (§9.90) — iabilet
+  publishes a bare `startDate` for them, as it does for Quantic (§9.87). The
+  hour exists only on each screening's own page, which `follow` deliberately no
+  longer fetches.
 - **Sala Radio runs Cloudflare JS Detections** (§9.86) — the served page embeds
   `/cdn-cgi/challenge-platform/scripts/jsd/main.js`. It passes from a dev
   machine and has challenged at least once from Vercel's egress, the same
