@@ -23,14 +23,10 @@ import {
 import { snapshot } from '../lib/undo'
 import { SelectField } from '../../ds/components/SelectField'
 import styles from './Settings.module.css'
+import { extractAnthropicText, MODEL_HAIKU, MODEL_SONNET } from '../../shared/anthropic'
+import { curationRequest } from '../lib/curate'
 
 const CURATE_TIMEOUT_MS = 30000
-// Sonnet runs adaptive thinking by default (Haiku 4.5 doesn't unless asked) — this
-// task is a plain word-list generation with no reasoning to do, so thinking is pure
-// wasted cost and latency on Sonnet, and it counts against max_tokens, which is sized
-// for the words alone. Turned off below only for that model: Sonnet 5.5 400s on
-// `disabled`, and `between_tools` is its lowest setting (no extended thinking).
-const THINKS_BY_DEFAULT = new Set(['claude-sonnet-5-5'])
 // Sending the full existing list as an exclusion prompt scales input cost with list
 // size for no real benefit past a certain point — a representative sample is enough
 // to steer the model away from obvious repeats at a fraction of the token cost.
@@ -43,7 +39,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
   const [curateError, setCurateError] = useState(null)
   const [wordCount, setWordCount] = useState(500)
   const [customTheme, setCustomTheme] = useState('')
-  const [model, setModel] = useState('claude-haiku-4-5-20251001')
+  const [model, setModel] = useState(MODEL_HAIKU)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
@@ -119,18 +115,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         }
       }
 
-      // ~6 tokens/word covers the quotes, comma, and occasional multi-token word with
-      // headroom; a fixed 4096 ceiling risked truncating the largest allowed requests.
-      const dynamicMaxTokens = Math.min(8192, Math.max(1024, Math.round(wordCount * 6) + 200))
-
-      const requestBody = {
-        model,
-        max_tokens: dynamicMaxTokens,
-        messages: [{ role: 'user', content: `Generate a JSON array of exactly ${wordCount} interesting, REAL 5-letter English words for a word game. All words must be valid dictionary words.${themeToUse ? ` They must all relate to this theme: ${themeToUse}. If you run out of highly relevant words before reaching ${wordCount}, stop early—do NOT pad with unrelated words.` : ` If you run out of good words before reaching ${wordCount}, stop early—do NOT pad with fake words.`}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
-      }
-      if (THINKS_BY_DEFAULT.has(model)) {
-        requestBody.thinking = { type: 'between_tools' }
-      }
+      const requestBody = curationRequest({ model, wordCount, theme: themeToUse, exclusions })
 
       const res = await fetch('/api/anthropic-proxy/v1/messages', {
         method: 'POST',
@@ -149,7 +134,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
       }
       const data = await res.json()
       // By block type, not position — a Sonnet reply may open with a thinking block.
-      const text = data.content?.find(b => b?.type === 'text')?.text ?? ''
+      const text = extractAnthropicText(data)
       const match = text.match(/\[([\s\S]*?)\]/)
 
       // Recover whatever complete quoted words came back. Used when the reply was
@@ -329,8 +314,8 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               onChange={e => setModel(e.target.value)}
               hint="Haiku is faster. Sonnet has a wider vocabulary and understands complex themes better."
             >
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fast)</option>
-              <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (Smart)</option>
+              <option value={MODEL_HAIKU}>Claude Haiku (Fast)</option>
+              <option value={MODEL_SONNET}>Claude Sonnet (Smart)</option>
             </SelectField>
             <Field
               label="Word Count"

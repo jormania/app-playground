@@ -3,6 +3,7 @@ import LoadingLine from './LoadingLine.jsx'
 import { useWorld } from './world.jsx'
 import ThresholdFill from './ThresholdFill.jsx'
 import { describeSetting, describeMoments } from './engine.js'
+import { extractAnthropicText, MODEL_HAIKU } from '../shared/anthropic'
 
 const FALLBACKS = [
   'The world is larger than this screen',
@@ -90,7 +91,8 @@ function readingSpec(mode) {
   return ''
 }
 
-async function fetchThreshold(apiKey, ctx, mode) {
+// Exported for the live API check (scripts/anthropic.live.test.js).
+export async function fetchThreshold(apiKey, ctx, mode) {
   const wantReading = mode === 'tonight' || mode === 'almanac'
   const lens = ` This time, lean fresh — invite: ${rand(INVITE_ANGLES)}; tagline: ${rand(TAGLINE_FLAVOURS)}.`
     + (mode === 'tonight' ? ` Reading: dwell on ${rand(TONIGHT_FACETS)}.`
@@ -104,7 +106,7 @@ async function fetchThreshold(apiKey, ctx, mode) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODEL_HAIKU,
       max_tokens: 160,
       temperature: 1,
       system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."${wantReading ? ', "reading": "..."' : ''}}.
@@ -119,7 +121,7 @@ Everything MUST fit the real time of day stated below. At night never invoke the
   })
   if (!res.ok) throw new Error(`API ${res.status}`)
   const data = await res.json()
-  const text = data.content[0].text.trim()
+  const text = extractAnthropicText(data).trim()
   const start = text.indexOf('{'), end = text.lastIndexOf('}')
   if (start === -1 || end === -1) throw new Error('no JSON in response')
   const parsed = JSON.parse(text.slice(start, end + 1))

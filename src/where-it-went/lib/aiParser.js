@@ -6,8 +6,9 @@ import { CURRENCIES, canConvert, fetchRate, convert, BASE_CURRENCY } from './fx'
 import { pickDefaultAccount } from './accountPicker';
 import { buildVendorMemory, lookupVendor, preferredAccountForTrip } from './vendorMemory';
 import { formatTripDates, isTripOngoing } from '../domain/Trip';
+import { extractAnthropicText, MODEL_HAIKU } from '../../shared/anthropic';
 
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = MODEL_HAIKU;
 /** Generous, but bounded — without this a hung connection left isParsing true
  * (and the input disabled) indefinitely, with no way to cancel. */
 const REQUEST_TIMEOUT_MS = 20000;
@@ -60,8 +61,9 @@ async function callClaude(apiKey, { system, message, maxTokens, temperature }) {
   }
 
   const data = await res.json();
-  const rawText = data?.content?.[0]?.text;
-  if (typeof rawText !== 'string') {
+  // By block type, not position, so a model that opens with a thinking block still parses.
+  const rawText = extractAnthropicText(data);
+  if (!rawText) {
     throw new Error('The AI returned an empty response. Please try again.');
   }
   return rawText;

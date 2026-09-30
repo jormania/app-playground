@@ -1,4 +1,5 @@
 import { getTimeOfDay, getSeason } from './context.js'
+import { extractAnthropicText, MODEL_HAIKU } from '../shared/anthropic'
 
 const DISCOVERIES = {
   // a small wrongness, a quiet omen — the world tilting half a degree
@@ -210,7 +211,7 @@ async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODEL_HAIKU,
       max_tokens: 130,
       temperature: 1,
       system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Let the subject range widely across finds and rarely repeat — moths, butterflies and other insects are welcome but should be occasional guests, never your default. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is ONE complete sentence of about 10 to 14 words — never more than 16. It MUST be a whole, finished sentence that ends properly with a full stop; never let it trail off, run on, or get cut mid-thought. If a thought is running long, choose fewer words and a simpler image rather than a longer sentence — completeness matters more than detail. Lean short; never pad. Hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
@@ -226,7 +227,7 @@ async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
   if (!res.ok) throw new Error(`API ${res.status}`)
 
   const data = await res.json()
-  const text = data.content[0].text.trim()
+  const text = extractAnthropicText(data).trim()
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
   if (start === -1 || end === -1) throw new Error('no JSON in response')

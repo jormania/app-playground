@@ -1,0 +1,84 @@
+name: AI models (live)
+
+# Sends every app's real Claude request once and fails on any the API rejects
+# (scripts/anthropic.live.test.js). The unit tests fake fetch, so this is the
+# only check that sees a model upgrade break a request. See AI_MODELS.md.
+#
+# Runs when a model id or a request changes, weekly (a retired model shows up
+# here before it shows up in an app), and by hand. A few cents a run.
+# Needs the ANTHROPIC_API_KEY repository secret; without it the run fails on
+# purpose, since a check that quietly skips is one nobody finds out is off.
+
+# The two `paths` lists are the same on purpose; src/shared/models.test.js
+# checks every file that calls Claude is in them.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - src/shared/models.js
+      - src/shared/anthropic.ts
+      - src/daily-stoic/lib/mentor.ts
+      - src/lexi5/lib/curate.js
+      - src/lexi5/components/Settings.jsx
+      - api/generate-law-of-the-day.js
+      - src/keypath/app/ai.ts
+      - src/keypath/app/songs/coach.ts
+      - src/keypath/app/progress/weekly.ts
+      - src/keypath/app/studio/answer.ts
+      - src/silva/lib/ocr.ts
+      - src/silva/lib/tension.ts
+      - src/fit-check/lib/tagging.ts
+      - src/where-it-went/lib/aiParser.js
+      - src/sol-odyssey/lib/companion.ts
+      - src/touch-grass/engine.js
+      - src/touch-grass/DeparturePanel.jsx
+      - scripts/anthropic.live.test.js
+      - vitest.live.config.js
+      - .github/workflows/ai-models.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - src/shared/models.js
+      - src/shared/anthropic.ts
+      - src/daily-stoic/lib/mentor.ts
+      - src/lexi5/lib/curate.js
+      - src/lexi5/components/Settings.jsx
+      - api/generate-law-of-the-day.js
+      - src/keypath/app/ai.ts
+      - src/keypath/app/songs/coach.ts
+      - src/keypath/app/progress/weekly.ts
+      - src/keypath/app/studio/answer.ts
+      - src/silva/lib/ocr.ts
+      - src/silva/lib/tension.ts
+      - src/fit-check/lib/tagging.ts
+      - src/where-it-went/lib/aiParser.js
+      - src/sol-odyssey/lib/companion.ts
+      - src/touch-grass/engine.js
+      - src/touch-grass/DeparturePanel.jsx
+      - scripts/anthropic.live.test.js
+      - vitest.live.config.js
+      - .github/workflows/ai-models.yml
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Live API check
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret is not set — see AI_MODELS.md"
+            exit 1
+          fi
+          npm run test:live

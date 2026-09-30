@@ -16,13 +16,14 @@
  * parser is the guarantee.
  */
 import { resizePhoto } from '../../shared/photo.ts'
+import { MODEL_HAIKU } from '../../shared/anthropic.ts'
 import {
   CATEGORIES, COLOURS, STYLES, WARMTHS,
   coerceMany, coerceOne, vocabularyForPrompt,
   type Category, type Colour, type Style, type Warmth,
 } from './vocabulary.ts'
 
-const MODEL = 'claude-haiku-4-5-20251001'
+const MODEL = MODEL_HAIKU
 /** Generous but bounded — without it a hung connection leaves the form stuck. */
 const REQUEST_TIMEOUT_MS = 20000
 /**

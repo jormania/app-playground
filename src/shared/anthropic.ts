@@ -18,10 +18,10 @@
 export const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages'
 export const ANTHROPIC_VERSION = '2023-06-01'
 
-/** The two model ids in use across the repo today. Callers that need a
- *  specific one still name it explicitly — nothing here picks a default. */
-export const MODEL_HAIKU = 'claude-haiku-4-5-20251001'
-export const MODEL_SONNET = 'claude-sonnet-5-5'
+/** The model ids, and `noThinking(model)`, live in models.js so the serverless
+ *  functions can import them too. Callers still name a tier explicitly —
+ *  nothing here picks a default. */
+export { MODEL_HAIKU, MODEL_SONNET, noThinking } from './models.js'
 
 export function anthropicHeaders(apiKey: string): Record<string, string> {
   return {

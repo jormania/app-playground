@@ -185,7 +185,14 @@ it is complete:
 
 - [`anthropic.ts`](src/shared/anthropic.ts) — the client-side Claude call every
   app makes the same way: BYO key straight from the browser, the endpoint and
-  API version, `anthropicHeaders()`, and the model ids. Used by Silva and KeyPath (coach's note, weekly note, Studio answers: `keypath/app/ai.ts`).
+  API version, `anthropicHeaders()`, `extractAnthropicText()` (reads replies by
+  block type). Used by Silva and KeyPath (coach's note, weekly note, Studio answers: `keypath/app/ai.ts`).
+- [`models.js`](src/shared/models.js) — **the only place a Claude model id may be
+  written** (`MODEL_HAIKU`, `MODEL_SONNET`) and `noThinking(model)`, the per-model
+  way to keep a model from thinking. Every app that calls Claude imports from it;
+  `models.test.js` fails on an id anywhere else and on a caller missing from the
+  live API check (`npm run test:live`, needs `ANTHROPIC_API_KEY`). **Upgrading a
+  model: read [`AI_MODELS.md`](AI_MODELS.md).**
 - [`axisLockSlider.js`](src/shared/axisLockSlider.js) — a touch-safe drag handler
   for range sliders inside a vertically scrolling list, where `touch-action:
   pan-y` on a native `<input type="range">` isn't reliably honoured. Touch Grass's

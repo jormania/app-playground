@@ -10,6 +10,7 @@ import type { OdysseyDetail } from './notion'
 import type { CheckinRecord } from './checkins'
 import type { ReflectionDraft } from './reflections'
 import { CYCLE_DAYS, dayReached, identitySentence } from './charter'
+import { extractAnthropicText, MODEL_HAIKU } from '../../shared/anthropic'
 
 export interface CompanionPrompt {
   system: string
@@ -17,7 +18,7 @@ export interface CompanionPrompt {
 }
 
 const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages'
-const COMPANION_MODEL = 'claude-haiku-4-5-20251001'
+const COMPANION_MODEL = MODEL_HAIKU
 
 // The role contract. Deliberately generic: it describes the practice in plain words and never
 // names any person, book, programme, or source of the method (the app's first hard rule), and it
@@ -160,8 +161,8 @@ export async function requestCompanionReflection(
     }),
   })
   if (!res.ok) throw new Error(friendlyCompanionError(res.status))
-  const data = (await res.json()) as { content?: { text?: string }[] }
-  const text = data?.content?.[0]?.text
+  // By block type, not position, so a model that opens with a thinking block still parses.
+  const text = extractAnthropicText(await res.json())
   if (!text || !text.trim()) throw new Error('The companion didn’t have anything to say just now.')
   return text.trim()
 }

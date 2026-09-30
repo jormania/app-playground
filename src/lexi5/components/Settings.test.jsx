@@ -313,7 +313,7 @@ describe('Settings component', () => {
     })
     fireEvent.click(screen.getByText('AI Curation'))
     fireEvent.change(await screen.findByPlaceholderText('sk-ant-...'), { target: { value: 'sk-ant-test-key' } })
-    fireEvent.change(screen.getByDisplayValue('Claude Haiku 4.5 (Fast)'), { target: { value: 'claude-sonnet-5-5' } })
+    fireEvent.change(screen.getByDisplayValue('Claude Haiku (Fast)'), { target: { value: 'claude-sonnet-5-5' } })
     fireEvent.click(screen.getByText('Start Curation'))
 
     await waitFor(() => expect(onToast).toHaveBeenCalled())

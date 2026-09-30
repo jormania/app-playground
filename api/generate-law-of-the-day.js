@@ -15,13 +15,14 @@ import Anthropic from '@anthropic-ai/sdk'
 import { put } from '@vercel/blob'
 import { getGeneratorLawId } from './_lib/generatorRotation.js'
 import { titleLeakWords, scenarioLeaksTitle } from '../src/law-of-the-day/lib/leakCheck.js'
+import { MODEL_SONNET } from '../src/shared/models.js'
 
 // Read as a plain file rather than a JSON module import — avoids depending
 // on Vercel's exact Node runtime version supporting import attributes.
 const here = dirname(fileURLToPath(import.meta.url))
 const laws = JSON.parse(readFileSync(resolve(here, '../src/law-of-the-day/data/laws.json'), 'utf8'))
 
-const MODEL = 'claude-sonnet-5-5'
+const MODEL = MODEL_SONNET
 const BLOB_PATH_PREFIX = 'law-of-the-day'
 const MAX_ATTEMPTS = 2
 const MIN_FIELD_CHARS = 30
@@ -34,6 +35,23 @@ const SCHEMA = {
   },
   required: ['scenarioText', 'explanationText'],
   additionalProperties: false,
+}
+
+/**
+ * One attempt's Messages API request. Exported so the live check
+ * (scripts/anthropic.live.test.js) sends exactly this.
+ */
+export function generationRequest(system, messages) {
+  return {
+    model: MODEL,
+    max_tokens: 2000,
+    thinking: { type: 'adaptive' },
+    system,
+    // Explicit, because Sonnet 5.5 recalibrated its effort levels; medium leaves
+    // the thinking well inside max_tokens for two short paragraphs.
+    output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
+    messages,
+  }
 }
 
 function buildPrompt(law, referenceLaws) {
@@ -117,16 +135,7 @@ export default async function handler(req, res) {
     let lastError = null
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 2000,
-        thinking: { type: 'adaptive' },
-        system,
-        // Explicit, because Sonnet 5.5 recalibrated its effort levels; medium leaves
-        // the thinking well inside max_tokens for two short paragraphs.
-        output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
-        messages,
-      })
+      const response = await client.messages.create(generationRequest(system, messages))
 
       const textBlock = response.content.find((b) => b.type === 'text')
       if (!textBlock) throw new Error('No text block in Claude response')
