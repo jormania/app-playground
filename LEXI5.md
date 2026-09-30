@@ -199,6 +199,17 @@ Two things to watch if you touch this:
    cascade ties (this matters for the light theme, where the DS/Lexi5 rules for these tokens are
    equally specific).
 
+## Icons: lucide, never pasted markup
+Every glyph in the app comes from `lucide-react` — the header actions in `App.jsx`, the
+share and play marks in `Stats.jsx`/`Archive.jsx`, and the theme picker's
+system/light/dark triple in `Settings.jsx` (`Monitor`/`Sun`/`Moon` at `size={16}`). That
+last one used to be three blocks of pasted Feather markup; it was converted on 2026-09-30
+(backlog P-001b) so the app draws one icon family rather than two. The library is already
+in the bundle, so an import costs less than a paste.
+
+The only `<svg>` left in `src/lexi5/` is the pair in `App.jsx` that builds the **data-URI
+favicons** — those are not icons and must stay inline.
+
 ## Features & Polish
 - **Crown Mode vs Infinite**: The first game played each day is the "Crown" word, which tracks its own special streak separate from infinite practice mode. The UI now intelligently displays the global session streak by default, enabling players of endless custom games to track their active win streaks continuously.
 - **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in. The dots are decorative/`aria-hidden`; every key's actual Wordle status (correct/present/absent) is exposed to assistive tech via `aria-label` regardless of this setting, since color alone doesn't reach a screen reader.
