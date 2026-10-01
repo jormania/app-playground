@@ -646,7 +646,7 @@ narrow: `/scratch_*`, `/debug_*`, `/*_dump.*`, `/diff.txt`, `/lint-output.txt`,
 matches any of them — note the `--no-index`, without which `check-ignore` stays
 silent about tracked paths and the check proves nothing.
 
-## R-029 — The most-imported module in `src/shared/` has no test · `modernise` · `open`
+## R-029 — The most-imported module in `src/shared/` has no test · `modernise` · `done 2026-10-01`
 
 **Impact:** none visible. Puts coverage under the one shared module whose promise
 another app's test already depends on.
@@ -677,6 +677,12 @@ turns out to depend on. Mutation-check by removing a `catch` and confirming a
 test goes red.
 
 **Do this before R-030**, which points four more apps at this module.
+
+**Done 2026-10-01.** `src/shared/storage.test.ts` — 21 tests, run once per store
+(local and session) against all six exports: round-trip, missing key, malformed
+JSON, stored `null` → fallback, `setItem` throwing, unserialisable value,
+`removeItem`/`getItem` throwing, binding undefined, binding null. Mutation-checked:
+swapping the `writeJson` catch for a `finally` turns two tests red.
 
 ## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
 
