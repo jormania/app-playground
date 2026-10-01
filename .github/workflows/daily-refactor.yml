@@ -194,7 +194,10 @@ jobs:
           # skipped — the same rule the agent follows. If the PRs can't be read,
           # nothing can be said about what is claimed, and that is Opus too.
           if bodies=$(gh pr list --repo "$GH_REPO" --state open --limit 100 --json body --jq '.[].body' 2>/dev/null); then
-            claimed=$(printf '%s\n' "$bodies" | grep -oE '^Backlog-Item: *[A-Z]+-[0-9A-Za-z]+' \
+            # `|| true`: no open PR claiming anything is the ordinary case, and
+            # grep exits 1 on no match — under pipefail and the runner's -e that
+            # ended the step before the agent started (2026-10-01).
+            claimed=$(printf '%s\n' "$bodies" | { grep -oE '^Backlog-Item: *[A-Z]+-[0-9A-Za-z]+' || true; } \
                         | sed 's/^Backlog-Item: *//' | paste -sd, -)
             out=$(CLAIMED="$claimed" node scripts/pick-model.mjs --day "${{ steps.when.outputs.day }}") \
               || out="model=claude-opus-5-5"
