@@ -1038,6 +1038,23 @@ Remaining, in the order I would take them: `@types/node` 22 → 26
 `lucide-react` 0.460 → **1.47** (a 1.0 major across every icon — expect renames,
 and P-001's remaining slices depend on it), and the React 19 types last, as this
 item already says.
+
+**The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
+`npm outdated` on the Friday read. Five majors behind that this item never
+listed:
+
+| Package | Installed | Latest | Note |
+|---|---|---|---|
+| `react` / `react-dom` | 18.3.1 | 19.3.0 | The **runtime**, not just the types. "React 19 types last" really means React 19, types and runtime in one family: `@types/react@19` over a React 18 runtime describes APIs that are not there |
+| `vitest` | 4.1.9 | 5.0.3 | The test runner every gate goes through. Read its release notes for the `test` script's `NODE_OPTIONS` / `TZ` handling before trusting a green run |
+| `typescript` | 5.9.3 | 7.0.2 | Two majors. `npm run typecheck` is one of the three gates |
+| `tailwindcss` / `tailwind-merge` | 3.4.19 / 2.6.1 | 4.3.3 / 3.7.0 | v4 replaces the JS config with CSS-first configuration; bump the pair together |
+| `recharts` | 2.15.4 | 3.10.1 | Loom is the only importer, so this is a one-app blast radius |
+
+Also drifted since: `lucide-react` latest is now **1.49**, `@anthropic-ai/sdk`
+0.128 → 0.131, `sharp` 0.33 → 0.35, and the `@fontsource*` family 5.2 → 5.3
+across all seven packages. Same rule as before: one family per run, and the
+React family last.
 ## R-009 — Kettlebell Training has no tests at all · `modernise` · `open` — first tests landed
 
 **Impact:** none visible. Makes the one untested app safe to change later.
@@ -1916,6 +1933,141 @@ DS's control. The fix is to make it forward what it is given: render each
 `options[]` entry as an `<option value>` with a `data-testid`, then add one test
 that picks each of the three and asserts the resulting `updateConfig` call.
 Roughly a dozen lines, no production code touched.
+
+## R-035 — The service-worker `PROD` guard is a hard rule with no test · `modernise` · `open`
+
+**Impact:** none visible. Turns a broken dev server, which is how you find out
+today, into a red suite.
+
+Found on the Friday read, 2026-10-02. `CLAUDE.md` ("Service workers & dev") and
+the daily-refactor skill both make it a hard rule that every service-worker
+registration is gated on `import.meta.env.PROD`, because a cache-first worker
+under `vite dev` serves the first-cached copy of every unhashed URL forever.
+Commit 593ea15 added the guard everywhere. **Nothing checks it stays.** All 19
+`src/*/main.{jsx,tsx}` entries are guarded today, checked by hand on this read.
+A twentieth app that copies a registration snippet from anywhere but a sibling's
+`main` would go unnoticed until someone's localhost went stale.
+
+`scripts/pwa-scope.test.js` already collects every `serviceWorker.register(…)`
+call in `src/` (its `calls` array, with `where`) to check scopes. Extend it:
+for each call under `src/`, assert the source text before it contains an
+`import.meta.env.PROD` condition. A regex over the enclosing `if (…)` is enough.
+The house pattern is `if (import.meta.env.PROD && 'serviceWorker' in navigator)`.
+Mutation-check by dropping the guard from one `main` file.
+
+**Scope it to `src/` only.** The three `public/touch-grass*.html` pages also
+register `/sw.js`, but Vite serves them untransformed and there is no
+`import.meta.env` there to test. Exempt them by path and say why in a comment.
+
+One trap when checking this by hand. Six entries (Journal, Yoru, Silva, Sol
+Odyssey, Fit Check, WhereItWent) write `navigator.serviceWorker` and `.register(`
+on separate lines, so a line-based `grep` for the call misses them. The test's
+own regex uses `\s*`, which crosses the newline, and finds all 19 (checked with
+node on this read). The guard check therefore needs to look back across lines
+too, not just at the register call's own line.
+
+## R-036 — `src/shared/useWakeLock.ts` has no test, in four apps that keep a screen on with it · `modernise` · `open`
+
+**Impact:** none visible. Coverage under the hook whose whole job is a promise
+the suite never checks: it re-takes the lock after the OS drops it, and it never
+throws.
+
+Found on the Friday read, 2026-10-02. Same shape as R-029 was for `storage.ts`.
+The hook is reached from five call sites in four apps: Tempo's `Player.jsx` and
+Yoru's `Session.jsx` (through their re-exports), Lexi5's `App.jsx`, and
+KeyPath's `App.tsx` and `app/Shell.tsx`. The only assertion anywhere is
+`src/keypath/App.test.tsx:12`, which checks that `request('screen')` was called
+once on mount. Nothing covers the 54 lines' actual logic:
+
+- **re-acquiring on `visibilitychange`** after the sentinel fires `release`.
+  This is what keeps Tempo's timer screen awake after a notification shade, and
+  it hangs on the `sentinelRef.current === sentinel` check at line 30;
+- **the `cancelled` race**: a `request()` that resolves *after* unmount or after
+  `active` goes false must release the sentinel it got, not keep it;
+- releasing on unmount and when `active` flips false, and removing the
+  `visibilitychange` listener;
+- no request at all while `active` is false, or with no `navigator.wakeLock`;
+- a rejected `request()` (denied, or a hidden tab) degrading silently.
+
+Write `src/shared/useWakeLock.test.ts` with a fake `navigator.wakeLock` whose
+sentinel is an `EventTarget` with a `release` spy. `src/shared/theme.test.ts`'s
+`useSystemThemeFollow` block is the house style for a listener-lifecycle hook.
+Mutation-check: remove the `cancelled` early-release and the `release` listener,
+one at a time, and each should go red.
+
+`src/shared/mediaSession.js` (Tempo, Yoru) is untested too. It is a follow-up
+run, not this one.
+
+## R-037 — Six apps still hand-write the Anthropic request `src/shared/anthropic.ts` was promoted to replace · `refactor` · `open`
+
+**Impact:** none visible. Nine copies of the endpoint and four headers become
+one. The next `anthropic-version` change is one line instead of ten.
+
+Found on the Friday read, 2026-10-02. `src/shared/anthropic.ts`'s header says
+it was *"promoted from six apps hand-rolling this fetch call: fit-check/lib/tagging,
+lexi5, where-it-went/lib/aiParser, sol-odyssey/lib/companion,
+daily-stoic/lib/mentor, touch-grass/engine"*. Those six import its model ids and
+`extractAnthropicText`, but **every one still writes the request out itself**.
+Only Silva and KeyPath call `requestAnthropic`. The nine hand-written sites:
+
+| File | Sites | Endpoint |
+|---|---|---|
+| `src/fit-check/lib/tagging.ts:183` | 1 | literal URL |
+| `src/lexi5/components/Settings.jsx:120` | 1 | `/api/anthropic-proxy/v1/messages` |
+| `src/where-it-went/lib/aiParser.js:26` | 1 | literal URL |
+| `src/sol-odyssey/lib/companion.ts:145, :172` | 2 | local `ANTHROPIC_ENDPOINT` const |
+| `src/daily-stoic/lib/mentor.ts:355, :389` | 2 | local `ANTHROPIC_ENDPOINT` const |
+| `src/touch-grass/engine.js:205`, `DeparturePanel.jsx:100` | 2 | literal URL |
+
+**All nine send exactly the four headers `anthropicHeaders()` builds**, checked
+site by site. The only difference is Daily Stoic passing `apiKey.trim()`, which
+it keeps by trimming before the call. `requestAnthropic` already takes
+`endpoint`, `signal` and `fetchImpl` options, and its doc comment names Lexi5's
+proxy as the reason `endpoint` exists. So each conversion is
+`requestAnthropic(key, body, { endpoint?, signal, fetchImpl })`, and each app
+keeps its own timeout, status handling and parsing, as the shared header says
+it should.
+
+**One app per run.** Start with Fit Check (one site, strict TS). Daily Stoic and
+Sol Odyssey inject `fetchImpl` in their tests, so their suites prove the move
+directly. For the others, check whether a test asserts the fetch's URL and
+headers before relying on it. If none does, add that assertion first. Touch
+Grass is legacy, but it already imports from `src/shared/anthropic`, and that
+boundary only covers `src/ds/`. Sol Odyssey has its own `CLAUDE.md`, so read it
+first. Delete each local `ANTHROPIC_ENDPOINT` const as its app converts. When
+the last one lands, correct `anthropic.ts`'s header, which today claims the
+promotion already happened.
+
+## R-038 — `CLAUDE.md`'s `src/shared/` section undercounts who uses what · `modernise` · `open`
+
+**Impact:** none visible. Fixes the section whose only job is telling the next
+session what already exists, and who would break if it changed.
+
+Found on the Friday read, 2026-10-02, by matching each module against its real
+importers. R-007 made the module *list* complete. The "used by" clauses have
+drifted since, always the same way: a newer app (mostly KeyPath and Fit Check)
+started importing, and the prose never heard.
+
+| Module | `CLAUDE.md` says | Actually (non-test importers) |
+|---|---|---|
+| `anthropic.ts` | "Used by Silva and KeyPath" | **eight apps**: those two call `requestAnthropic`, and Daily Stoic, Fit Check, Lexi5, Sol Odyssey, Touch Grass and WhereItWent import ids / `extractAnthropicText` (see R-037) |
+| `models.js` | "Every app that calls Claude imports from it" | only `api/generate-law-of-the-day.js` imports it directly. Every app reaches it through `anthropic.ts`'s re-export |
+| `useWakeLock.ts` | Tempo, Yoru re-export; Lexi5 direct | also **KeyPath**, directly, in `App.tsx` and `app/Shell.tsx` |
+| `haptics.ts` | Daily Stoic and Silva | also **KeyPath** (`app/celebrate/celebrate.ts`) |
+| `photo.ts` | Wanderlist and Journal re-export | also **Silva** and **Fit Check**, directly |
+| `weather.ts` | Touch Grass wraps it | also **Fit Check** (`lib/useWeather.ts` plus four type imports) |
+| `notionId.ts` | Loom, Wanderlist, Journal re-export | also **Marquee**, **Radar-B** and **Fit Check**, directly |
+| `storage.ts` | WhereItWent re-exports it | seven apps (R-029 counted them) |
+
+The `models.js` row matters most. `models.test.js` is how a stray model id gets
+caught, and a reader trusting "every app imports from it" would look for imports
+that are not there. Reword it to say apps reach the ids through `anthropic.ts`.
+
+Do not change any code in this run. Do not fold R-037's correction to
+`anthropic.ts`'s header in here either. That header becomes true only when
+R-037 finishes, so leave it to R-037's last slice. Re-run the importer check
+before writing, since R-037 slices may have landed first:
+`grep -rnE "shared/<module>" src api` minus `src/shared/` and `.test.`.
 
 ---
 
