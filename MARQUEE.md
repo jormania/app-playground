@@ -4509,6 +4509,48 @@ queue would have its whole programme read as having vanished overnight.
 status that already means *held at the door, venue fine* and whose events
 `changes.js` and `notify.js` already carry forward.
 
+### Prepared for the next one (same day)
+
+The queue is for the **FNT** — the Festivalul Național de Teatru on-sale, with
+Excelsior's *Metamorfoza* among the programme. So it lifts, and it comes back:
+every festival, every big on-sale, at whichever venue's ticketing provider has
+the feature switched on. That makes it a standing condition to read correctly,
+not an incident to wait out.
+
+Detecting it from `redirect count exceeded` alone is a **race, and the scheduled
+check is where it would be lost.** Exhausting twenty redirects took 5–6.5s against
+the 15s per-request budget. But `serverScan` narrows that budget to whatever is
+left of the cron's own time (§9.89), so late in a run the abort fires before the
+twentieth redirect, the error reads `no answer within 3s`, and the venue is
+indistinguishable from a dead host — reported `UNREACHABLE`, its whole programme
+dropped as vanished. A queue that slows down under the load it exists to manage
+does the same thing.
+
+So on **either** failure — a loop or a timeout — `fetchOne` asks once more with
+`redirect: 'manual'` and reads the `location` header. One hop instead of twenty,
+no race, and the answer is positive evidence rather than an inference from having
+given up:
+
+```
+The venue's site is behind a ticket queue (royaltickets.queue-it.net)
+ — nothing is broken, and it lifts when the on-sale rush does.
+```
+
+Three things keep the probe honest:
+
+- **It is matched on the registrable host**, `(^|\.)(queue-it\.net|queue-fair\.net|nkchk\.com)$`,
+  not a substring — otherwise anyone could register `queue-it.net.example.com`
+  and mark a venue as queued.
+- **It is capped at `min(2000ms, the request's own timeout)`.** A waiting room's
+  302 is a header with no body; it answers in a few hundred milliseconds or it
+  is not what is happening. The budget it spends belongs to every venue after
+  this one, and on the scheduled path to Wanderlist's evening email.
+- **Its own failure is uninteresting** and swallowed. There is already a failure
+  in hand; this only ever upgrades the description of one. An `optional` page is
+  never probed at all, since it cannot change the venue's status.
+
+The loop-text match stays as the fallback, for any path with no probe to hand.
+
 ### What was deliberately not built
 
 Replaying Queue-it's pass cookie would walk straight through it. Queue-it exists
