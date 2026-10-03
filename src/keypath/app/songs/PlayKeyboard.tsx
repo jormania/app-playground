@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { SimpleSynth } from '../../probe/synth'
 import type { KeyBox } from './keyGeometry'
 import styles from './songs.module.css'
@@ -60,8 +60,9 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
     onRelease(pitch)
   }
   const ordered = [...boxes.filter((b) => !b.black), ...boxes.filter((b) => b.black)]
+  const raised = useRaised(boxes)
   return (
-    <div className={styles.keys} onContextMenu={(e) => e.preventDefault()}>
+    <div ref={raised.ref} className={styles.keys} data-raised={raised.on || undefined} onContextMenu={(e) => e.preventDefault()}>
       {ordered.map((b) => {
         // Three things a key can say: play me (a quiet, steady wash), yes (a brief green), not that one (red).
         // A key held down sinks, whatever it says.
@@ -108,3 +109,30 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
     </div>
   )
 })
+
+/** A black key at least this wide (px) has room to stand above the white keys, with its front edge and shadow. */
+const RAISED_MIN_BLACK_PX = 18
+/** And the keyboard at least this tall (px): on a short one the front edge would eat the key. */
+const RAISED_MIN_HEIGHT_PX = 72
+
+/**
+ * Whether the black keys are drawn standing above the white ones. Only where
+ * there is room: two octaves on a phone held upright leave a black key about
+ * 15 px wide, and there it keeps its plain, flatter look.
+ */
+function useRaised(boxes: readonly KeyBox[]) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [on, setOn] = useState(false)
+  const black = boxes.find((b) => b.black)?.width ?? 0
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setOn(el.clientHeight >= RAISED_MIN_HEIGHT_PX && (el.clientWidth * black) / 100 >= RAISED_MIN_BLACK_PX)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [black])
+  return { ref, on }
+}

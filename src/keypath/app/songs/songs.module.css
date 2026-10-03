@@ -579,6 +579,58 @@
     inset 0 -2px 0 #0c0b0a,
     0 1px 1px rgba(0, 0, 0, 0.3);
 }
+/* Where there is room (PlayKeyboard's useRaised), a black key stands above the
+   white ones: a front edge catching the light, bevelled sides, and a shadow
+   cast down onto the white keys. An overlay, so the states' colours show
+   through it. Pressed, the front edge shortens and the shadow tucks in. */
+.keys[data-raised] .blackKey {
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.7),
+    2px 5px 6px rgba(0, 0, 0, 0.42),
+    0 1px 1px rgba(0, 0, 0, 0.5);
+}
+.keys[data-raised] .blackKey::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0) 30%,
+      rgba(255, 255, 255, 0) calc(100% - 9px),
+      rgba(255, 255, 255, 0.2) calc(100% - 9px),
+      rgba(255, 255, 255, 0.07) calc(100% - 2px),
+      rgba(0, 0, 0, 0.35)
+    ),
+    linear-gradient(to right, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 2.5px, rgba(255, 255, 255, 0) calc(100% - 2.5px), rgba(0, 0, 0, 0.4));
+  transition: background 70ms ease-out;
+}
+.keys[data-raised] .blackKey[data-held] {
+  transform: translateY(1.5px);
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.7),
+    1px 2px 2px rgba(0, 0, 0, 0.35);
+}
+.keys[data-raised] .blackKey[data-held]::before {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0) 30%,
+      rgba(255, 255, 255, 0) calc(100% - 4px),
+      rgba(255, 255, 255, 0.14) calc(100% - 4px),
+      rgba(0, 0, 0, 0.35)
+    ),
+    linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 2.5px, rgba(255, 255, 255, 0) calc(100% - 2.5px), rgba(0, 0, 0, 0.4));
+}
+@media (prefers-reduced-motion: reduce) {
+  .keys[data-raised] .blackKey[data-held] {
+    transform: none;
+  }
+}
 /* Play me: a steady, quiet wash in the score's blue, and a line at the key's front. */
 .keyTarget.whiteKey {
   background: linear-gradient(to bottom, #e7eef6, #edf3fa 30%, #e3edf7);

@@ -1034,7 +1034,10 @@ tempo and metre.
 
 **The keyboard** (`PlayKeyboard.tsx`, `songs.module.css`): the dark rail and red felt of a
 fallboard, white keys with a little depth that sink when pressed, black keys standing above
-them and leaning as on a real keyboard (`keyGeometry.ts`'s `BLACK_LEAN`). Three states, told
+them and leaning as on a real keyboard (`keyGeometry.ts`'s `BLACK_LEAN`). Where a black key is
+at least 18 px wide and the keyboard 72 px tall, it is drawn standing above the white keys, with
+a lit front edge and a shadow cast onto them (`useRaised`); with two octaves on a phone held
+upright (black keys about 15 px) it keeps a plainer look, which reads better that small. Three states, told
 apart before they are bright: the key to play is a quiet blue wash with a bar at its front
 edge; a key just played right flashes green for a quarter second; a wrong key is red. Middle C
 says so in words while it is asked for.
