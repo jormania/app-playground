@@ -132,7 +132,7 @@
 }
 .topBar[data-compact] .title {
   flex: 1;
-  min-width: 0;
+  min-width: min(7rem, 35%);
   font-size: var(--text-lg);
   white-space: nowrap;
   overflow: hidden;
@@ -595,5 +595,114 @@
   .doorIcon {
     grid-row: auto;
     justify-self: start;
+  }
+}
+
+/* ── A first look at a game or the Journey (screens/IntroCard.tsx) ──
+   Half a screen at most, over a dimmed page: an icon, the name, three lines,
+   and two ways on. */
+.introBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-md);
+  background: rgba(20, 18, 16, 0.42);
+  animation: introFade 180ms ease-out;
+  /* On document.body, outside the app's root: its type and ink come with it. */
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+}
+.introCard {
+  width: min(30rem, 100%);
+  max-height: min(60dvh, 26rem);
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-xs);
+  justify-items: start;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  animation: introRise 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.introIcon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.introTitle {
+  margin: 0;
+  font: var(--weight-bold) var(--text-xl) / var(--leading-tight) var(--font-display);
+}
+.introLines {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: var(--space-2xs);
+  line-height: 1.4;
+}
+.introActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-2xs);
+}
+.introLink {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+@keyframes introFade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes introRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .introBackdrop,
+  .introCard {
+    animation: none;
+  }
+}
+/* A phone on its side: wider and shorter, the icon beside the title, the lines a size smaller. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .introBackdrop {
+    padding: var(--space-xs);
+  }
+  .introCard {
+    width: min(40rem, 100%);
+    max-height: 92dvh;
+    grid-template-columns: auto 1fr;
+    column-gap: var(--space-sm);
+    row-gap: var(--space-2xs);
+    padding: var(--space-sm) var(--space-md);
+  }
+  .introIcon {
+    font-size: 1.4rem;
+  }
+  .introTitle {
+    font-size: var(--text-lg);
+    align-self: center;
+  }
+  .introLines,
+  .introActions {
+    grid-column: 1 / -1;
+  }
+  .introLines {
+    font-size: var(--text-sm);
+    gap: 2px;
   }
 }

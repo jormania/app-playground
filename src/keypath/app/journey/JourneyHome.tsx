@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../context'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
+import { IntroCard, IntroLink, useIntro } from '../screens/IntroCard'
 import { JourneyRepo, stateOf, type JourneyProgress } from './progress'
 import { JOURNEY } from './steps'
 import styles from './journey.module.css'
@@ -9,6 +10,7 @@ import styles from './journey.module.css'
 /** The Journey door: its steps on a path. Every one can be opened; the locked ones offer a test-out. */
 export function JourneyHome() {
   const { t, store, profile } = useApp()
+  const intro = useIntro('journey')
   const repo = useMemo(() => new JourneyRepo(store), [store])
   const [progress, setProgress] = useState<JourneyProgress | null>(null)
   useEffect(() => {
@@ -20,7 +22,10 @@ export function JourneyHome() {
   return (
     <main className={styles.screen}>
       <TopBar title={t('doorJourney')} />
-      <p className={styles.intro}>{allDone ? t('jAllDone') : t('journeyIntro')}</p>
+      <IntroCard id="journey" open={intro.open} onClose={intro.close} onNever={intro.never} />
+      <p className={styles.intro}>
+        {allDone ? t('jAllDone') : t('journeyIntro')} <IntroLink onShow={intro.show} />
+      </p>
       <ol className={styles.path} style={{ '--done': JOURNEY.filter((s) => progress[s.id]).length / JOURNEY.length, '--rows': Math.ceil(JOURNEY.length / 2) } as React.CSSProperties}>
         {JOURNEY.map((s, i) => {
           const state = stateOf(progress, s.id)

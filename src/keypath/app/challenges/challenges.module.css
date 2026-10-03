@@ -423,16 +423,34 @@
 
 /* Read and play: a line over the staff, and the staff taking the room above the keys. */
 .readHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas: 'count say score stop';
+  align-items: center;
   gap: var(--space-2xs) var(--space-sm);
-  text-align: center;
+}
+.readHead > :nth-child(1) {
+  grid-area: count;
 }
 .readSay {
-  flex: 1;
+  grid-area: say;
+  text-align: center;
   font-weight: var(--weight-bold);
+}
+.readHead > :nth-child(3) {
+  grid-area: score;
+}
+.readHead > :nth-child(4) {
+  grid-area: stop;
+}
+/* A narrow screen: what to do gets its own line under the count and the score. */
+@media (max-width: 560px) {
+  .readHead {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'count score stop'
+      'say say say';
+  }
 }
 .readStage {
   flex: 1;

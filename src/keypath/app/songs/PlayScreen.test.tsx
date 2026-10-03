@@ -111,7 +111,7 @@ describe('Play screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '▶ Whole song' }))
     // The whole song is played her own way: "Keep going" runs on a clock, with a count-in.
     await waitFor(() => expect(document.querySelector('[class*="countIn"]')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
     await screen.findByRole('button', { name: 'Whole song' })
 
     const learnt = await new PartsRepo(store).get(profileId, 'starter:ode', 'right')
@@ -267,7 +267,7 @@ describe('Play screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '🔁 Practise bar 1' }))
     expect(await screen.findByText('Play it clean: every note, no wrong key.')).toBeTruthy()
     // Stopping part-way goes back to the report too, logged as not done.
-    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
     expect(await screen.findByText('How it went')).toBeTruthy()
     await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_loop', passes: 0, done: false }))
   })
@@ -318,7 +318,7 @@ describe('Play screen', () => {
     tap(target()!)
     await waitFor(() => expect(target()?.getAttribute('aria-label')).toBe('C'))
     act(() => tap(target()!))
-    fireEvent.click(await screen.findByRole('button', { name: '■ Stop' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop' }))
     expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
     await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_abandoned', hit: 1, total: 3 }))
   })
@@ -326,9 +326,9 @@ describe('Play screen', () => {
   it('plays the song for her first with Listen, and logs it', async () => {
     const { store, profileId } = await setUp({}, '#/play/Three%20notes')
     fireEvent.click(await screen.findByRole('button', { name: /Listen/ }))
-    expect(await screen.findByRole('button', { name: /■ Stop/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Stop' })).toBeTruthy()
     await waitFor(async () => expect((await events(store, profileId)).find((e) => e.type === 'song_listened')).toMatchObject({ songId: 'Three notes', practice: 'right', tempo: 1 }))
-    fireEvent.click(screen.getByRole('button', { name: /■ Stop/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
     expect(await screen.findByRole('button', { name: /Listen/ })).toBeTruthy()
   })
 
@@ -336,7 +336,7 @@ describe('Play screen', () => {
     await setUp({ score: true }, '#/play/Three%20notes')
     fireEvent.click(await screen.findByRole('button', { name: /Listen/ }))
     await waitFor(() => expect(document.querySelector('svg [class*="scoreNow"]')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: /■ Stop/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
   })
 })
 

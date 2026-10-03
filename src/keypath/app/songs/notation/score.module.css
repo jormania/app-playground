@@ -1,0 +1,104 @@
+/*
+ * The engraved score (Score.tsx). Engraving ink on warm paper in both themes,
+ * as a printed page is: the music reads the same by day and by night. The
+ * states are quiet: the notes to play in the accent with a soft glow, those
+ * played fading back, the bar being played a faint tint.
+ */
+.score {
+  --score-paper: #fcfbf7;
+  --score-ink: #1d1b18;
+  --score-quiet: #8a8478;
+  --score-now: #1f6fb2;
+  --score-now-glow: rgba(31, 111, 178, 0.35);
+  --score-wrong: #c0362c;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--score-paper);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  color: var(--score-ink);
+}
+.score[data-size='strip'] {
+  align-items: center;
+  flex: none;
+  height: clamp(4.5rem, 18dvh, 8rem);
+  margin-bottom: var(--space-2xs);
+  border-radius: var(--radius-md);
+}
+/* A shade down at night, by KeyPath's own theme (main.tsx sets it), not the phone's. */
+:global([data-theme='dark']) .score {
+  --score-paper: #efede6;
+}
+.svg {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: visible;
+}
+.svg text,
+.svg path,
+.svg rect:not([data-bar]) {
+  transition:
+    fill 160ms ease,
+    stroke 160ms ease,
+    opacity 200ms ease;
+}
+
+/* The bar being played: a faint wash behind both staves. */
+.barTint {
+  fill: transparent;
+  stroke: none;
+  transition: fill 300ms ease;
+}
+.barNow {
+  fill: rgba(31, 111, 178, 0.07);
+}
+.barNumber {
+  font: 600 11px / 1 var(--font-body, system-ui);
+  fill: var(--score-quiet);
+  stroke: none;
+}
+
+/* The notes to play now: the accent, a soft glow, nothing louder. */
+.now text,
+.now path {
+  fill: var(--score-now);
+}
+.now path {
+  stroke: var(--score-now);
+}
+.now {
+  filter: drop-shadow(0 0 2.5px var(--score-now-glow));
+}
+/* Played: they step back, so the eye goes on to what comes next. */
+.hit {
+  opacity: 0.42;
+}
+.missed text {
+  fill: var(--score-wrong);
+}
+/* Bars outside the part being played. */
+.quiet {
+  opacity: 0.45;
+}
+.wrong ellipse,
+.wrong text {
+  fill: var(--score-wrong);
+  stroke: none;
+}
+.wrong text {
+  font-size: 14px;
+}
+.wrong ellipse {
+  opacity: 0.85;
+}
+.playhead {
+  stroke: var(--score-now);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.28;
+}

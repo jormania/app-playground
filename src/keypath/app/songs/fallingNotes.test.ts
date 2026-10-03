@@ -10,4 +10,11 @@ describe('how tightly the notes fall', () => {
     // Never so tight that a note stops reading as a note.
     expect(pxPerMsFor(20)).toBe(0.045)
   })
+
+  it('spends a phone held upright on taller notes: an eighth at 100 bpm is tall enough for its finger over its name', () => {
+    // About 390 px of fall on a phone upright: no more than the look-ahead in view, so the notes grow.
+    const upright = pxPerMsFor(390)
+    expect(390 / upright).toBeCloseTo(LOOK_AHEAD_MS)
+    expect(300 * upright).toBeGreaterThanOrEqual(42)
+  })
 })

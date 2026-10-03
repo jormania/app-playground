@@ -319,6 +319,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
             targets={targets}
             wrong={wrong}
             marker={phase === 'gate' ? MIDDLE_C : undefined}
+            markerLabel={t('markerMiddleC')}
             label={label}
             onPress={(p) => press(p, performance.now(), true)}
             onRelease={release}

@@ -10,6 +10,7 @@ import { useApp } from '../context'
 import { morph } from '../morph'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
+import { IntroCard, IntroLink, useIntro } from '../screens/IntroCard'
 import { OutputChoice, useOutput } from '../studio/output'
 import { Playback, realClock } from '../studio/playback'
 import type { TakeNote } from '../studio/recorder'
@@ -34,6 +35,8 @@ const ROUND = 5
  */
 export function EchoScreen() {
   const { t, store, profile, log, settings } = useApp()
+  // The first look: what the game is, until she says not to show it again.
+  const intro = useIntro('echo')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
   const [level, setLevel] = useState<EchoLevel>(1)
@@ -197,6 +200,7 @@ export function EchoScreen() {
   return (
     <main className={`${styles.playScreen} ${phase === 'turn' ? styles.echoScreen : ''}`}>
       <TopBar title={t('echoTitle')} compact={phase === 'turn'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'turn'} />} />
+      <IntroCard id="echo" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
         <section className={setup.bar}>
@@ -220,6 +224,7 @@ export function EchoScreen() {
             >
               ▶ {t('go')}
             </Button>
+            <IntroLink onShow={intro.show} />
             <span className={setup.note} data-inline>
               {best !== undefined ? t('best', { score: `${best}/${ROUND}` }) : t('noBest')}
             </span>

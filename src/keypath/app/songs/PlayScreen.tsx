@@ -16,7 +16,7 @@ import { keyBoxes, rangeFor, widenRange } from './keyGeometry'
 import { useWide, WIDE_OCTAVES } from './useWide'
 import { SongLibrary } from './library'
 import { PlayKeyboard } from './PlayKeyboard'
-import { BigScore, ScoreStrip } from './ScoreStrip'
+import { Score, type ScoreHandle } from './notation/Score'
 import { ReportView } from './ReportView'
 import type { FactsInput } from './coach'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
@@ -41,6 +41,8 @@ type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' |
 const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
 const TIMING_LABEL: Record<Timing, StringKey> = { relaxed: 'timingRelaxed', normal: 'timingNormal', strict: 'timingStrict' }
 const MIDDLE_C = 60
+/** How long a key played right stays green. */
+const RIGHT_FLASH_MS = 260
 /** How long a wrong key stays red. */
 const WRONG_FLASH_MS = 350
 /** The streak counter appears from this many right notes in a row. */
@@ -131,6 +133,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [pauseReason, setPauseReason] = useState<'disconnected' | 'hidden' | null>(null)
   const [held, setHeld] = useState<ReadonlySet<number>>(new Set())
   const [wrong, setWrong] = useState<ReadonlySet<number>>(new Set())
+  /** Keys just played right, for a moment: the keyboard says yes. */
+  const [right, setRight] = useState<ReadonlySet<number>>(new Set())
   const [targets, setTargets] = useState<ReadonlySet<number>>(new Set())
   /** The same, as the notes themselves (by id): the staff marks exactly these, not every note on those keys. */
   const [nowIds, setNowIds] = useState<ReadonlySet<number>>(new Set())
@@ -244,6 +248,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const phaseRef = useRef<Phase>(phase)
   phaseRef.current = phase
   const fall = useRef<FallingNotesHandle>(null)
+  const score = useRef<ScoreHandle>(null)
   const shownTime = useRef(0)
 
   // What's being played: the song, one part of it, or the one bar being practised.
@@ -258,6 +263,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const playSettings = useMemo((): typeof settings => (spanFrom !== null ? { ...viewSettings, onWrong: 'wait' } : viewSettings), [viewSettings, spanFrom])
   const notes = useMemo(() => notesFor(playing, practice), [playing, practice])
   const songNotes = useMemo(() => notesFor(song, practice), [song, practice])
+  /** A part or a practised bar starts at 0 ms: how far into the song it really is, for the score's playhead. */
+  const playOffset = useMemo(() => {
+    const first = notes[0]
+    const own = first && songNotes.find((n) => n.id === first.id)
+    return own ? own.startMs - first.startMs : 0
+  }, [notes, songNotes])
+  /** The bars being played, when it is a part or a bar: the score draws the rest quieter. */
+  const scoreFocus = useMemo(() => (loopBar !== null ? { from: loopBar, to: loopBar + 1 } : spanFrom !== null && spanTo !== null ? { from: spanFrom, to: spanTo } : null), [loopBar, spanFrom, spanTo])
   /** The bar being played at song time `s`: the last note started (or about to), else the first. */
   const barAtTime = useCallback(
     (s: number) => {
@@ -426,6 +439,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           setTimeout(() => setWrong((w) => { const n = new Set(w); n.delete(p); return n }), WRONG_FLASH_MS)
         }
         if (e.type === 'hit' || e.type === 'missed') outcomes.push([e.result.note.id, e.result.outcome])
+        if (e.type === 'hit') {
+          const p = e.result.note.pitch
+          setRight((r) => new Set(r).add(p))
+          setTimeout(() => setRight((r) => { const n = new Set(r); n.delete(p); return n }), RIGHT_FLASH_MS)
+        }
         // "Wait for it": each step she plays lets the other hand carry on to her next one.
         if (e.type === 'advance' || (e.type === 'done' && judge.current?.mode === 'wait')) {
           const to = e.type === 'advance' ? e.step.startMs : Infinity
@@ -596,6 +614,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       if (!p) return
       const s = p.position() * tempo
       fall.current?.setTime(s)
+      score.current?.setTime(s + playOffset)
       setScoreBar((b) => {
         const next = barAtTime(s)
         return next === b ? b : next
@@ -612,7 +631,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [listening, notes, tempo, barAtTime])
+  }, [listening, notes, tempo, barAtTime, playOffset])
   useEffect(
     () => () => {
       listenPlayback.current?.stop()
@@ -679,6 +698,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         next = step ? step.notes : []
       }
       fall.current?.setTime(shownTime.current)
+      score.current?.setTime(shownTime.current + playOffset)
       const key = next.map((n) => n.id).sort((a, b) => a - b).join(',')
       if (key !== lastTargets) {
         lastTargets = key
@@ -689,7 +709,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [phase, apply, notes, results, song.bpm, barAtTime])
+  }, [phase, apply, notes, results, song.bpm, barAtTime, playOffset])
 
   // Before playing, show the start of the song resting at the top.
   useEffect(() => {
@@ -812,7 +832,27 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={song.title} compact={musicOn} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" compact={musicOn} />} />
+      <TopBar
+        title={song.title}
+        compact={musicOn}
+        aside={
+          <div className={styles.headAside}>
+            {/* Where she is, while the music is on: the part and the bar. */}
+            {(phase === 'playing' || listening) && (
+              <span className={styles.progress}>
+                {span && <span className={styles.progressPart}>{`${partName(span)} · `}</span>}
+                {t('progressBar', { bar: barName(song, scoreBar), total: barTotal })}
+              </span>
+            )}
+            <KeyboardStatus status={keyboard} missing="keyboardMissing" compact={musicOn} />
+            {(phase === 'playing' || listening) && (
+              <Button size="sm" variant="outline" className={styles.headStop} aria-label={t('stop')} onClick={listening ? stopListening : stop}>
+                ■<span className={styles.headStopWord}> {t('stop')}</span>
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {/* The choices are for before the music; once it plays, or while she listens, they fold away and the notes get the screen. */}
       {phase === 'setup' && !listening && (
@@ -1075,30 +1115,34 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             🔥 {t('streakChip', { count: streak })}
           </div>
         )}
-        {(phase === 'playing' || listening) && (
-          <Button size="sm" variant="ghost" className={styles.stageStop} onClick={listening ? stopListening : stop}>
-            ■ {t('stop')}
-          </Button>
-        )}
         {written && (
-          <BigScore
-            notes={notes}
+          <Score
+            song={song}
+            notes={songNotes}
             practice={practice}
             bar={scoreBar}
             now={listening ? listenIds : phase === 'ready' || phase === 'setup' ? NO_KEYS : nowIds}
             results={results}
-            beatMs={60000 / song.bpm}
             wrong={wrong}
+            focus={scoreFocus}
+            size="big"
+            follow="now"
+            beatMs={60000 / song.bpm}
             ariaLabel={t('scoreAria', { a: barName(song, scoreBar), b: barName(song, scoreBar + 1) })}
           />
         )}
         {!written && settings.score && musicOn && (
-          <ScoreStrip
-            notes={notes}
+          <Score
+            ref={score}
+            song={song}
+            notes={songNotes}
             practice={practice}
             bar={scoreBar}
             now={listening ? listenIds : phase === 'ready' || phase === 'setup' ? NO_KEYS : nowIds}
             results={results}
+            focus={scoreFocus}
+            size="strip"
+            follow="time"
             beatMs={60000 / song.bpm}
             ariaLabel={t('scoreAria', { a: barName(song, scoreBar), b: barName(song, scoreBar + 1) })}
           />
@@ -1112,6 +1156,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : written && !stuck ? NO_KEYS : targets}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
+          markerLabel={t('markerMiddleC')}
+          right={right}
           badges={phase === 'ready' || (phase === 'setup' && !listening) ? badges : undefined}
           label={label}
           onPress={(p) => press(p, performance.now(), true)}

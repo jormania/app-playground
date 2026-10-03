@@ -54,6 +54,8 @@ export interface ScoreInfo {
   title: string
   /** The printed number of each bar, in playing order: a repeat's bars come round again under their own numbers. */
   barLabels: string[]
+  /** Where each played bar starts, in quarter notes, and where the last one ends (one more than the bars): for drawing the music. */
+  barStarts?: number[]
   /** Each part (by `track:channel`, the channel being the staff): its instrument, its staff, and how many staves the instrument has. */
   parts: Record<string, { name: string; staff: number; staves: number }>
 }

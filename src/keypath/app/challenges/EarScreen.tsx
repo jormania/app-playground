@@ -11,6 +11,7 @@ import { noteLabel } from '../i18n'
 import { morph } from '../morph'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
+import { IntroCard, IntroLink, useIntro } from '../screens/IntroCard'
 import { useOutput } from '../studio/output'
 import { Playback, realClock } from '../studio/playback'
 import { keyBoxes, widenRange } from '../songs/keyGeometry'
@@ -34,6 +35,8 @@ const SECOND_AT_MS = 1000
 /** Ear check: a note is played and shown, another is played; find the second by ear. Five to a round. */
 export function EarScreen() {
   const { t, store, profile, log, settings } = useApp()
+  // The first look: what the game is, until she says not to show it again.
+  const intro = useIntro('ear')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
   const [level, setLevel] = useState<EarLevel>(1)
@@ -182,6 +185,7 @@ export function EarScreen() {
   return (
     <main className={styles.playScreen}>
       <TopBar title={t('earTitle')} compact={running} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={running} />} />
+      <IntroCard id="ear" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
         <section className={setup.bar}>
@@ -192,6 +196,7 @@ export function EarScreen() {
           </div>
           <div className={setup.go}>
             <Button onClick={start}>▶ {t('go')}</Button>
+            <IntroLink onShow={intro.show} />
             <span className={setup.note} data-inline>
               {best !== undefined ? t('best', { score: best }) : t('noBest')}
             </span>

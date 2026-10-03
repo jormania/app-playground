@@ -5,6 +5,20 @@ hardware: [`KEYPATH.md`](KEYPATH.md)). A release is a point on `main` worth nami
 number shows at the foot of Settings (`src/keypath/app/release.ts`). The user's guide is a
 shared doc, linked from the top of Home.
 
+## Release 5 — 2026-10-04
+
+The play screen, drawn properly. Details in `KEYPATH_TUTOR.md` §9, "Release 5".
+
+- **An engraved score** (VexFlow): real clefs, beams, ties and rests, both hands on a grand
+  staff, bar numbers matching "Practise bar", the bar being played tinted and the notes to play
+  glowing. In the written view and in the music strip, which now shows on a phone on its side
+  too, with a line moving in time with the falling notes.
+- **A new keyboard**: a fallboard, keys with depth, and three distinct states: the key to play,
+  a key just played right, a wrong key. Middle C is named while it's asked for.
+- **Bigger falling notes** on a phone held upright, each with its name as well as its finger.
+- **A first look** at the Journey and each game: three lines, "Don't show this again", and
+  "How it works" to see it later.
+
 ## Release 4 — 2026-10-03
 
 Reading. Details in `KEYPATH_TUTOR.md` §9, "Release 4".

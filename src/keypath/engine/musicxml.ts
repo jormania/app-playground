@@ -420,6 +420,7 @@ export function fileFromParts(parts: readonly ReadPart[], title: string): SmfFil
     score: {
       title,
       barLabels: order.map((i) => lead[i].label),
+      barStarts: [...barStart, q],
       parts: scoreParts,
     },
   }

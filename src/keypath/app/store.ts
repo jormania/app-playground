@@ -52,6 +52,8 @@ export const K = {
   setup: (profileId: string) => `${PREFIX}setup:${profileId}`,
   /** The weekly note in Progress, as last written, so opening Progress doesn't ask again. */
   weekly: (profileId: string) => `${PREFIX}weekly:${profileId}`,
+  /** The games' and the Journey's first-look cards this player asked not to see again. */
+  intros: (profileId: string) => `${PREFIX}intros:${profileId}`,
 }
 
 export type Persistence = 'persisted' | 'best-effort' | 'unknown'

@@ -11,8 +11,12 @@ export interface PlayKeyboardProps {
   targets: ReadonlySet<number>
   /** Keys to flash as a mistake (only in modes that show mistakes). */
   wrong: ReadonlySet<number>
+  /** Keys to flash as right: the key asked for, just played. */
+  right?: ReadonlySet<number>
   /** A key marked with a dot — middle C before the start. */
   marker?: number
+  /** Words for the marked key, shown on it ("Middle C"). */
+  markerLabel?: string
   /** Keys marked with the finger that goes there, by hand: where the hands sit before the start. */
   badges?: ReadonlyMap<number, { text: string; hand: 'right' | 'left' }>
   label: (pitch: number) => string
@@ -33,7 +37,7 @@ export interface PlayKeyboardProps {
  * it lines up with the notes above it. Always playable by touch, so a song can
  * be tried without the Yamaha.
  */
-export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, wrong, marker, badges, label, names = true, onPress, onRelease, sound = false }: PlayKeyboardProps) {
+export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, wrong, right, marker, markerLabel, badges, label, names = true, onPress, onRelease, sound = false }: PlayKeyboardProps) {
   const pointers = useRef(new Map<number, number>())
   // The probe's synth, created on the first tap (browsers start audio only from a gesture).
   const synth = useRef<SimpleSynth | null>(null)
@@ -59,7 +63,9 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
   return (
     <div className={styles.keys} onContextMenu={(e) => e.preventDefault()}>
       {ordered.map((b) => {
-        const state = wrong.has(b.pitch) ? styles.keyWrong : held.has(b.pitch) ? styles.keyDown : targets.has(b.pitch) ? styles.keyTarget : ''
+        // Three things a key can say: play me (a quiet, steady wash), yes (a brief green), not that one (red).
+        // A key held down sinks, whatever it says.
+        const state = wrong.has(b.pitch) ? styles.keyWrong : right?.has(b.pitch) ? styles.keyRight : targets.has(b.pitch) ? styles.keyTarget : held.has(b.pitch) ? styles.keyDown : ''
         return (
           <div
             key={b.pitch}
@@ -68,6 +74,7 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
             aria-pressed={held.has(b.pitch)}
             data-pitch={b.pitch}
             data-target={targets.has(b.pitch) || undefined}
+            data-held={held.has(b.pitch) || undefined}
             className={`${b.black ? styles.blackKey : styles.whiteKey} ${state}`}
             style={{ left: `${b.left}%`, width: `${b.width}%` }}
             onPointerDown={down(b.pitch)}
@@ -80,6 +87,15 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
           </div>
         )
       })}
+      {/* The marked key's words, over the black keys so they are never cut off. */}
+      {markerLabel &&
+        boxes
+          .filter((b) => b.pitch === marker)
+          .map((b) => (
+            <span key="marker-label" className={styles.markerLabel} style={{ left: `${b.left + b.width / 2}%` }}>
+              {markerLabel}
+            </span>
+          ))}
       {/* Over the black keys, so a badge on a white key is seen whichever way they fall. */}
       {badges &&
         boxes

@@ -57,6 +57,8 @@ export interface StarterSong {
   phrases?: number[]
   /** 1 easy (five fingers, one hand's worth of notes) to 3 (leaps, black keys, quick notes). */
   level?: 1 | 2 | 3
+  /** The note a beat is (4, a quarter, unless said): only for drawing the music, so 6 beats of sixteenths is 3/8. */
+  beatUnit?: 4 | 8 | 16
 }
 
 // C C G G | A A G- | F F E E | D D C- , then G G F F | E E D- twice, then the opening again.
@@ -194,6 +196,7 @@ export const STARTER_PACK: StarterSong[] = [
     // Counted in sixteenths (six to a 3/8 bar), slow: a dotted quarter is 60 bpm.
     bpm: 360,
     beatsPerBar: 6,
+    beatUnit: 16,
     right: [
       [E5, 1], [Ds5, 1],
       [E5, 1], [Ds5, 1], [E5, 1], [B4, 1], [D5, 1], [C5, 1],
@@ -334,6 +337,10 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
   if (s.left) add(s.left, 'left')
   notes.sort((a, b) => a.startMs - b.startMs || a.pitch - b.pitch)
   notes.forEach((n, i) => (n.id = i))
+  // For drawing the music: every bar is the metre's length, from the first note.
+  const barMs = s.beatsPerBar * msPerBeat
+  const bars = notes.length ? Math.max(...notes.map((n) => n.bar)) + 1 : 0
+  const barTimes = Array.from({ length: bars }, (_, b) => ({ startMs: Math.round(b * barMs), endMs: Math.round((b + 1) * barMs), quarters: (s.beatsPerBar * 4) / (s.beatUnit ?? 4) }))
   return {
     id: s.id,
     title: s.title[lang],
@@ -343,6 +350,7 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
     durationMs: Math.max(...notes.map((n) => n.startMs + n.durationMs)),
     ...(s.phrases ? { phrases: s.phrases } : {}),
     ...(s.level ? { level: s.level } : {}),
+    barTimes,
   }
 }
 

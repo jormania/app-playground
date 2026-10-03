@@ -12,6 +12,7 @@ import { noteLabel } from '../i18n'
 import type { Language, NoteNames } from '../profiles'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
+import { IntroCard, IntroLink, useIntro } from '../screens/IntroCard'
 import { keyBoxes, widenRange } from '../songs/keyGeometry'
 import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
@@ -35,6 +36,8 @@ export function chordLabel(c: ChordDef, names: NoteNames, lang: Language): strin
 /** Chord catch: a chord is named, play its keys together; as many as she can in 45 seconds. */
 export function ChordCatchScreen() {
   const { t, store, profile, log, settings } = useApp()
+  // The first look: what the game is, until she says not to show it again.
+  const intro = useIntro('chord')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
   const [level, setLevel] = useState<ChordLevel>(1)
@@ -165,6 +168,7 @@ export function ChordCatchScreen() {
   return (
     <main className={styles.playScreen}>
       <TopBar title={t('chordTitle')} compact={phase === 'run'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'run'} />} />
+      <IntroCard id="chord" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
         <section className={setup.bar}>
@@ -180,6 +184,7 @@ export function ChordCatchScreen() {
           </div>
           <div className={setup.go}>
             <Button onClick={start}>▶ {t('go')}</Button>
+            <IntroLink onShow={intro.show} />
             <span className={setup.note} data-inline>
               {best !== undefined ? t('best', { score: best }) : t('noBest')}
             </span>

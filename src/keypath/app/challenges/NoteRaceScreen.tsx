@@ -11,6 +11,7 @@ import { morph } from '../morph'
 import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
+import { IntroCard, IntroLink, useIntro } from '../screens/IntroCard'
 import { keyBoxes, widenRange } from '../songs/keyGeometry'
 import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
@@ -27,6 +28,8 @@ const FLASH_MS = 300
 /** Note race: a note is shown, by name or on a staff; find that key anywhere, as many as she can in 30 seconds. */
 export function NoteRaceScreen() {
   const { t, store, profile, log, settings } = useApp()
+  // The first look: what the game is, until she says not to show it again.
+  const intro = useIntro('race')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
   const [level, setLevel] = useState<RaceLevel>(1)
@@ -133,6 +136,7 @@ export function NoteRaceScreen() {
   return (
     <main className={styles.playScreen}>
       <TopBar title={t('raceTitle')} compact={phase === 'run'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'run'} />} />
+      <IntroCard id="race" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
         <section className={setup.bar}>
@@ -160,6 +164,7 @@ export function NoteRaceScreen() {
           </div>
           <div className={setup.go}>
             <Button onClick={start}>▶ {t('go')}</Button>
+            <IntroLink onShow={intro.show} />
             <span className={setup.note} data-inline>
               {best !== undefined ? t('best', { score: best }) : t('noBest')}
             </span>

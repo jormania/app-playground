@@ -71,7 +71,8 @@
     "recharts": "^2.12.7",
     "sql.js": "^1.14.2",
     "suncalc": "^2.0.0",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "vexflow": "^5.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

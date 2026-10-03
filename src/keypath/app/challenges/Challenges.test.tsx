@@ -43,6 +43,42 @@ async function open(route: string) {
 const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms))
 const flush = () => act(async () => void (await vi.advanceTimersByTimeAsync(0)))
 
+describe('A first look', () => {
+  it('shows a game’s card on entry until she says not to, and brings it back on asking', async () => {
+    const { store, profileId } = await open('#/challenge/race')
+    await flush()
+    const card = () => screen.queryByRole('dialog', { name: 'Note race' })
+    expect(card()).toBeTruthy()
+    expect(screen.getByText(/Find as many as you can in 30 seconds/)).toBeTruthy()
+    // "Let's go" closes it for now: the next visit shows it again.
+    fireEvent.click(screen.getByRole('button', { name: 'Let’s go' }))
+    expect(card()).toBeNull()
+    cleanup()
+    history.replaceState(null, '', '#/challenge/race')
+    render(<Shell store={store} />)
+    await flush()
+    expect(card()).toBeTruthy()
+    // Not again: kept for this player.
+    fireEvent.click(screen.getByRole('button', { name: 'Don’t show this again' }))
+    await flush()
+    expect(await store.get<string[]>(`keypath:v1:intros:${profileId}`)).toEqual(['race'])
+    cleanup()
+    history.replaceState(null, '', '#/challenge/race')
+    render(<Shell store={store} />)
+    await flush()
+    expect(card()).toBeNull()
+    // Still there when asked for.
+    fireEvent.click(screen.getByRole('button', { name: /How it works/ }))
+    expect(card()).toBeTruthy()
+    // Another game has its own.
+    cleanup()
+    history.replaceState(null, '', '#/challenge/ear')
+    render(<Shell store={store} />)
+    await flush()
+    expect(screen.getByRole('dialog', { name: 'Ear check' })).toBeTruthy()
+  })
+})
+
 describe('Challenges', () => {
   it('shows the five games with “no score yet”', async () => {
     await open('#/door/challenges')

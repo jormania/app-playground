@@ -231,6 +231,49 @@
 .prompt .actions {
   justify-content: center;
 }
+/* On the playing screen the prompts are one quiet band, not a panel: the music keeps the room. */
+.playScreen > .prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: var(--space-sm);
+  row-gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-sm);
+  background: color-mix(in srgb, var(--key-expected, #1f6fb2) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, #1f6fb2 18%, transparent);
+}
+.playScreen > .prompt strong {
+  font-size: var(--text-base);
+}
+.playScreen > .prompt .actions {
+  gap: var(--space-2xs);
+}
+/* The title row while the music is on: where she is, the keyboard, and Stop. */
+.headAside {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+/* On a narrow screen the title keeps its room: the part's name goes, the bar stays. */
+@media (max-width: 520px) {
+  .progressPart,
+  .headStopWord {
+    display: none;
+  }
+}
+.progress {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.headStop {
+  flex: none;
+}
 
 
 .stage {
@@ -338,6 +381,17 @@
   line-height: 1;
   white-space: nowrap;
 }
+/* Too short to stack: finger and name side by side, and on a key too narrow for both (a black key on a phone), the finger alone. */
+.noteRow {
+  flex-direction: row;
+  justify-content: center;
+  gap: 2px;
+}
+@container (max-width: 1.95rem) {
+  .noteRow .noteLabel {
+    display: none;
+  }
+}
 .noteFinger[data-suggested] {
   background: transparent;
   color: #fff;
@@ -443,14 +497,35 @@
   background: var(--color-accent);
 }
 
-/* The keyboard: full width, keys placed by percentage (keyGeometry.ts). */
+/* The keyboard: full width, keys placed by percentage (keyGeometry.ts), on
+   the dark rail and red felt of a piano's fallboard. White keys have a little
+   depth and sink when pressed; black keys stand above them, lit from the
+   front. Its states are distinct before they are bright: the key to play is a
+   quiet wash, the key just played right a short green, a wrong key red. */
 .keys {
+  --key-expected: #1f6fb2;
+  --key-right: #2e9a63;
+  --key-wrong: #c8443a;
   position: relative;
   height: 7rem;
   flex: none;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  border-top: 7px solid #26221e;
+  box-shadow: 0 -1px 0 #3a342e;
+  border-radius: 3px 3px 0 0;
+  background: #26221e;
+}
+.keys::before {
+  /* The felt along the fallboard's edge. */
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: #8c2f2a;
+  z-index: 3;
+  pointer-events: none;
 }
 .whiteKey,
 .blackKey {
@@ -458,40 +533,95 @@
   top: 0;
   box-sizing: border-box;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   cursor: pointer;
+  transition:
+    transform 70ms ease-out,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
 }
 .whiteKey {
   height: 100%;
-  background: #fbfaf7;
-  border: 1px solid #b9b4aa;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  padding-bottom: var(--space-2xs);
+  background: linear-gradient(to bottom, #f1efe9, #ffffff 18%, #fdfcf9);
+  border: 1px solid #c4bfb5;
+  border-top: none;
+  border-radius: 0 0 5px 5px;
+  box-shadow:
+    inset 0 -4px 0 rgba(0, 0, 0, 0.07),
+    0 1px 1px rgba(0, 0, 0, 0.12);
+  padding-bottom: calc(var(--space-2xs) + 3px);
   z-index: 0;
 }
 .blackKey {
-  height: 62%;
-  background: #22211f;
-  border-radius: 0 0 3px 3px;
+  height: 63%;
+  background: linear-gradient(to bottom, #151413, #2b2926 85%, #3a3733);
+  border-radius: 0 0 4px 4px;
+  box-shadow:
+    inset 0 -5px 0 #0c0b0a,
+    inset 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset -1px 0 0 rgba(255, 255, 255, 0.07),
+    0 3px 3px rgba(0, 0, 0, 0.35);
   z-index: 1;
 }
+/* Held down: the key sinks, its front edge shortens. */
+.whiteKey[data-held] {
+  transform: translateY(1.5px);
+  background: linear-gradient(to bottom, #e6e3dc, #f3f1ec 30%, #f3f1ec);
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+    0 0 0 rgba(0, 0, 0, 0);
+}
+.blackKey[data-held] {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 -2px 0 #0c0b0a,
+    0 1px 1px rgba(0, 0, 0, 0.3);
+}
+/* Play me: a steady, quiet wash in the score's blue, and a line at the key's front. */
 .keyTarget.whiteKey {
-  background: #f6d6ca;
-  box-shadow: inset 0 -6px 0 #e0795b;
+  background: linear-gradient(to bottom, #e7eef6, #edf3fa 30%, #e3edf7);
+  box-shadow:
+    inset 0 -4px 0 var(--key-expected),
+    0 1px 1px rgba(0, 0, 0, 0.12);
 }
 .keyTarget.blackKey {
-  background: #b0553b;
+  background: linear-gradient(to bottom, #1d3a55, #2a5a86 85%, #3f75a6);
+}
+.keyTarget .keyLabel {
+  color: var(--key-expected);
+}
+/* Yes: the right key, just played. */
+.keyRight.whiteKey {
+  background: linear-gradient(to bottom, #cfe9da, #e1f3e8);
+  box-shadow:
+    inset 0 -4px 0 var(--key-right),
+    0 0 10px rgba(46, 154, 99, 0.45);
+}
+.keyRight.blackKey {
+  background: linear-gradient(to bottom, #1f5c3d, #2e9a63);
+}
+/* Not that one. */
+.keyWrong.whiteKey {
+  background: linear-gradient(to bottom, #f6d3cf, #fbe4e1);
+  box-shadow: inset 0 -4px 0 var(--key-wrong);
+}
+.keyWrong.blackKey {
+  background: linear-gradient(to bottom, #6e211b, #c8443a);
 }
 .keyDown.whiteKey {
-  background: #d7e9e2;
+  background: linear-gradient(to bottom, #e6e3dc, #f1efea 30%);
 }
-.keyDown.blackKey {
-  background: #4f9d8a;
-}
-.keyWrong.whiteKey,
-.keyWrong.blackKey {
-  background: var(--color-danger);
+@media (prefers-reduced-motion: reduce) {
+  .whiteKey,
+  .blackKey {
+    transition: none;
+  }
+  .whiteKey[data-held],
+  .blackKey[data-held] {
+    transform: none;
+  }
 }
 /* The note's name at the foot of a white key: bold and dark enough to read at a
    glance, as large as the key's width allows (the key is its own container):
@@ -502,8 +632,10 @@
 .keyLabel {
   font-size: clamp(0.6875rem, 36cqi, 0.9375rem);
   font-weight: var(--weight-bold);
-  color: #3d3934;
+  color: #4a4540;
   line-height: 1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 /* The finger that goes on this key, before the start: right hand in the notes' orange, left in their teal. */
@@ -533,11 +665,42 @@
 }
 .marker {
   position: absolute;
-  bottom: 1.4rem;
+  bottom: 1.5rem;
   width: 0.6rem;
   height: 0.6rem;
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
+  background: var(--key-expected);
+  box-shadow: 0 0 0 0 rgba(31, 111, 178, 0.45);
+  animation: markerPulse 1.6s ease-out infinite;
+}
+@keyframes markerPulse {
+  70% {
+    box-shadow: 0 0 0 8px rgba(31, 111, 178, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(31, 111, 178, 0);
+  }
+}
+/* "Middle C", on its key just above the dot: below the black keys and the thumbs' badges. */
+.markerLabel {
+  position: absolute;
+  bottom: 2.35rem;
+  transform: translateX(-50%);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--key-expected);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: 4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marker {
+    animation: none;
+  }
 }
 
 /* ── Report ── */

@@ -1,10 +1,14 @@
-import { forwardRef, memo, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
+import { forwardRef, memo, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { NoteResult, SongNote } from '../../engine'
 import type { KeyBox } from './keyGeometry'
 import styles from './songs.module.css'
 
-/** Song milliseconds to pixels: one second of music is 110 px of fall, where there's room. */
-export const PX_PER_MS = 0.11
+/**
+ * Song milliseconds to pixels, at most: one second of music is 180 px of fall,
+ * where there's room. A phone held upright has it, and spends it on taller
+ * notes rather than on more seconds of song above the keys.
+ */
+export const PX_PER_MS = 0.18
 /**
  * However short the fall (a phone on its side, the setup panel open), this
  * much of the song stays in view above the keys: the notes pack closer rather
@@ -13,8 +17,14 @@ export const PX_PER_MS = 0.11
 export const LOOK_AHEAD_MS = 2200
 const MIN_PX_PER_MS = 0.045
 export const pxPerMsFor = (fallPx: number) => Math.min(PX_PER_MS, Math.max(MIN_PX_PER_MS, fallPx / LOOK_AHEAD_MS))
-/** A note shorter than this (px) has room for its finger or its name, not both: the finger wins. */
-const ROOM_FOR_BOTH = 38
+/**
+ * A note shorter than this (px) can't stack its finger over its name. It grows
+ * to this, where its key is free above it (the bottom, where it is played,
+ * never moves); where the next note on the key is too close, the two go side by side.
+ */
+const ROOM_FOR_BOTH = 42
+/** Space kept between a note grown taller and the next note on its key (px). */
+const KEY_GAP = 3
 
 export interface FallingNotesHandle {
   /** Move the notes to this song time. Called every frame; never re-renders React. */
@@ -71,6 +81,17 @@ export const FallingNotes = memo(
       return () => ro.disconnect()
     }, [])
     const byPitch = new Map(boxes.map((b) => [b.pitch, b]))
+    // When the next note on each note's key starts (ms): how far a short note may grow.
+    const nextOnKey = useMemo(() => {
+      const next = new Map<number, number>()
+      const last = new Map<number, number>()
+      for (const n of [...notes].sort((a, b) => b.startMs - a.startMs)) {
+        const after = last.get(n.pitch)
+        if (after !== undefined) next.set(n.id, after)
+        last.set(n.pitch, n.startMs)
+      }
+      return next
+    }, [notes])
     return (
       <div ref={box} className={styles.fall}>
         <div ref={layer} className={styles.fallLayer}>
@@ -78,12 +99,15 @@ export const FallingNotes = memo(
             const box = byPitch.get(n.pitch)
             if (!box) return null
             const outcome = results.get(n.id)
-            const height = Math.max(18, n.durationMs * scale)
             const finger = fingers ? n.finger : undefined
+            const after = nextOnKey.get(n.id)
+            const room = after === undefined ? Infinity : (after - n.startMs) * scale - KEY_GAP
+            const height = Math.max(18, n.durationMs * scale, finger ? Math.min(ROOM_FOR_BOTH, room) : 0)
+            const row = !!finger && height < ROOM_FOR_BOTH
             return (
               <div
                 key={n.id}
-                className={`${styles.note} ${n.hand === 'left' ? styles.noteLeft : styles.noteRight} ${outcome === 'hit' ? styles.noteHit : outcome === 'missed' ? styles.noteMissed : ''}`}
+                className={`${styles.note} ${row ? styles.noteRow : ''} ${n.hand === 'left' ? styles.noteLeft : styles.noteRight} ${outcome === 'hit' ? styles.noteHit : outcome === 'missed' ? styles.noteMissed : ''}`}
                 style={{
                   left: `${box.left}%`,
                   width: `${box.width}%`,
@@ -96,7 +120,7 @@ export const FallingNotes = memo(
                     {finger}
                   </span>
                 )}
-                {(!finger || height >= ROOM_FOR_BOTH) && <span className={styles.noteLabel}>{label(n.pitch)}</span>}
+                <span className={styles.noteLabel}>{label(n.pitch)}</span>
               </div>
             )
           })}

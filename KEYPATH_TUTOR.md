@@ -1003,6 +1003,62 @@ level equal to the rating isn't stored, so the rating follows later changes
 (a different fit, say); one that differs is kept as `Song.level`, and
 survives a refit. Built-in songs keep theirs.
 
+### Release 5: the play screen, engraved; a first look at each game
+
+Two asks on the same day: a short "what is this" the first time a game or the Journey opens,
+for a player who won't read the guide; and the play screen drawn properly, the staff above
+all. Presentation only: the judge, timing, MIDI, parts, loops, hands, levels and scoring
+are untouched (one display-only field was added to a song, below).
+
+**The score is engraved** (`songs/notation/`). `model.ts` turns a song's notes (when a key goes
+down, for how long) into what a score says: per bar and per staff, notes and rests of written
+lengths, chords, ties across bar lines, a whole-bar rest for an empty bar. Positions are on a
+sixteenth grid; a short note followed by a beat or more of silence is written as a plain
+value and a rest, not stretched to fill the gap. `Score.tsx` draws it with VexFlow 5 (Bravura
+font, SVG): clefs, time signature, beams, accidentals for the bar, dots, ties, a grand staff
+with brace for both hands, bar numbers that match "Practise bar N". It fits as many bars as
+read comfortably (two to four on a line on a phone on its side, more lines on a tall screen),
+tints the bar being played, marks the notes to play in the accent with a soft glow and fades
+those played, and writes a wrong key as a red notehead on its own staff. Two uses: the written
+view, large, following the step in hand; and the music strip above the falling notes, which
+now shows on a phone on its side too, with a thin line moving in time with the falling notes.
+VexFlow is loaded on first use (a 720 KB chunk with its font, cached by the worker after);
+where it can't run (tests, no canvas) or fails to load (offline before it was ever fetched),
+the earlier hand-drawn staff (`ScoreStrip.tsx`) stands in.
+
+To bar the music as written, a song may carry `barTimes` (each bar's start, end and length in
+quarters), filled in by the MusicXML/MuseScore reader from the score's own bars, by the MIDI
+reader from its time signatures, and by the starter pack (Für Elise in 3/8, via `beatUnit`).
+Display only: nothing that judges or counts reads it. A song without it is barred from its
+tempo and metre.
+
+**The keyboard** (`PlayKeyboard.tsx`, `songs.module.css`): the dark rail and red felt of a
+fallboard, white keys with a little depth that sink when pressed, black keys standing above
+them and leaning as on a real keyboard (`keyGeometry.ts`'s `BLACK_LEAN`). Three states, told
+apart before they are bright: the key to play is a quiet blue wash with a bar at its front
+edge; a key just played right flashes green for a quarter second; a wrong key is red. Middle C
+says so in words while it is asked for.
+
+**Layout.** The header carries the title, "Bar 3 of 8" (with the part, where there's room) and
+Stop; nothing sits over the music. The prompt above the staff is a slim band.
+
+**Falling notes, bigger** (from a screenshot of a phone held upright, the same day: tiny notes, names
+missing). The fall was capped at 110 px a second of music whatever the room, and a note under
+38 px dropped its name for its finger. Now the cap is 180 px, so a phone held upright spends
+its height on taller notes (the 2.2-second look-ahead floor still holds where the fall is
+short); a short note with a finger number grows to fit both, upward only as far as the next
+note on its key; and where even that is too tight, finger and name go side by side.
+
+**A first look** (`screens/IntroCard.tsx`): for the Journey and each game, a card of three
+lines on what it is and how to play, the first time it is opened and each time after until
+"Don't show this again" (kept per player, `intros:<profile>`). "ⓘ How it works" beside Start
+brings it back. It sits on the page itself, not inside the screen, and lays out beside its
+icon on a phone on its side.
+
+Left as they are: every black key is written as a sharp (as before); triplets and swing are
+written to the nearest sixteenth; the starter songs with a pickup are still barred from their
+first note (KEYPATH_ROADMAP.md, item 28), which the engraving now makes plainer.
+
 ### Release 4: reading
 
 From a look at clefPlayer (KEYPATH_ROADMAP.md, "Reading"): the falling notes can be followed

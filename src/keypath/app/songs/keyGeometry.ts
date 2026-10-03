@@ -8,6 +8,9 @@ export interface KeyBox {
   width: number
 }
 
+/** How far each black key sits from the line between its two white keys, in white keys' widths. */
+const BLACK_LEAN: Record<number, number> = { 1: -0.1, 3: 0.1, 6: -0.13, 8: 0, 10: 0.13 }
+
 /**
  * Where each key sits, as percentages — shared by the play keyboard and the
  * falling notes above it, so a note lands exactly on its key at any width.
@@ -20,8 +23,11 @@ export function keyBoxes(low: number, high: number): KeyBox[] {
   const boxes: KeyBox[] = []
   for (let n = low; n <= high; n++) {
     if (isBlackKey(n)) {
-      const bw = w * 0.6
-      boxes.push({ pitch: n, black: true, left: (index.get(n - 1)! + 1) * w - bw / 2, width: bw })
+      // As on a piano: a little narrower than half again a white key's gap, and not centred on it —
+      // C♯ and D♯ lean apart, F♯ and A♯ lean out, G♯ sits in the middle.
+      const bw = w * 0.58
+      const lean = BLACK_LEAN[((n % 12) + 12) % 12] ?? 0
+      boxes.push({ pitch: n, black: true, left: (index.get(n - 1)! + 1) * w - bw / 2 + lean * w, width: bw })
     } else boxes.push({ pitch: n, black: false, left: index.get(n)! * w, width: w })
   }
   return boxes

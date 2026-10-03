@@ -11,9 +11,10 @@ import { noteLabel } from '../i18n'
 import { morph } from '../morph'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
+import { IntroCard, IntroLink, useIntro } from '../screens/IntroCard'
 import { keyBoxes, rangeFor, widenRange } from '../songs/keyGeometry'
 import { PlayKeyboard } from '../songs/PlayKeyboard'
-import { BigScore } from '../songs/ScoreStrip'
+import { Score } from '../songs/notation/Score'
 import { useStuck } from '../songs/stuck'
 import { useWide, WIDE_OCTAVES } from '../songs/useWide'
 import { READ_LEVEL_NAME } from './ChallengesHome'
@@ -33,6 +34,8 @@ const NO_KEYS: ReadonlySet<number> = new Set()
 /** Read and play: a short piece, made up on the spot, read from the staff with the keys dark. Five to a round. */
 export function ReadPlayScreen() {
   const { t, store, profile, log, settings } = useApp()
+  // The first look: what the game is, until she says not to show it again.
+  const intro = useIntro('read')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
   const [level, setLevel] = useState<ReadLevel>(1)
@@ -48,6 +51,7 @@ export function ReadPlayScreen() {
   const [bar, setBar] = useState(0)
   const [held, setHeld] = useState<ReadonlySet<number>>(new Set())
   const [wrong, setWrong] = useState<ReadonlySet<number>>(new Set())
+  const [right, setRight] = useState<ReadonlySet<number>>(new Set())
   const [hint, setHint] = useState<string | null>(null)
   const [result, setResult] = useState<{ score: number; wrong: number; best: boolean } | null>(null)
   const judge = useRef<Judge | null>(null)
@@ -140,7 +144,12 @@ export function ReadPlayScreen() {
     if (!r) return
     const hits: [number, NoteResult['outcome']][] = []
     for (const e of events) {
-      if (e.type === 'hit') hits.push([e.result.note.id, 'hit'])
+      if (e.type === 'hit') {
+        hits.push([e.result.note.id, 'hit'])
+        const p = e.result.note.pitch
+        setRight((s) => new Set(s).add(p))
+        setTimeout(() => setRight((s) => { const n = new Set(s); n.delete(p); return n }), 260)
+      }
       if (e.type === 'wrong') {
         r.wrong++
         flashWrong(drawn)
@@ -236,6 +245,7 @@ export function ReadPlayScreen() {
   return (
     <main className={styles.playScreen}>
       <TopBar title={t('readTitle')} compact={running} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={running} />} />
+      <IntroCard id="read" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
         <section className={setup.bar}>
@@ -246,6 +256,7 @@ export function ReadPlayScreen() {
           </div>
           <div className={setup.go}>
             <Button onClick={start}>▶ {t('go')}</Button>
+            <IntroLink onShow={intro.show} />
             <span className={setup.note} data-inline>
               {best !== undefined ? t('best', { score: best }) : t('noBest')}
             </span>
@@ -308,8 +319,7 @@ export function ReadPlayScreen() {
 
       <div className={`${songStyles.stage} ${styles.readStage}`}>
         {piece && (phase === 'play' || phase === 'between') && (
-          // Two bars a page, turned like a book's: a short tune is seen whole before it is played.
-          <BigScore notes={notes} practice={piece.practice} bar={Math.floor(bar / 2) * 2} now={phase === 'play' ? nowIds : NO_KEYS} results={results} beatMs={READ_BEAT_MS} wrong={wrong} ariaLabel={t('readAria', { n: number })} />
+          <Score song={piece.song} notes={notes} practice={piece.practice} bar={bar} now={phase === 'play' ? nowIds : NO_KEYS} results={results} wrong={wrong} size="big" follow="now" beatMs={READ_BEAT_MS} ariaLabel={t('readAria', { n: number })} />
         )}
         <PlayKeyboard
           sound={!kb.connected}
@@ -318,6 +328,8 @@ export function ReadPlayScreen() {
           targets={keysLit}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
+          markerLabel={t('markerMiddleC')}
+          right={right}
           badges={phase === 'play' && results.size === 0 ? badges : undefined}
           label={label}
           names={settings.keyNames}

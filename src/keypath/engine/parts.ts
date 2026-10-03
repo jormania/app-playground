@@ -1,5 +1,5 @@
-import type { SmfFile, SmfNote } from './smf'
-import type { Hand, Song, SongNote } from './song'
+import { tickToMs, type SmfFile, type SmfNote } from './smf'
+import type { BarTime, Hand, Song, SongNote } from './song'
 
 /** One instrument line in a file: a track+channel pair with notes. */
 export interface Part {
@@ -102,6 +102,18 @@ export function songFromParts(file: SmfFile, opts: SongFromPartsOptions): Song {
     ...(n.finger ? { finger: n.finger } : {}),
   }))
   const usPerQuarter = file.tempos[0]?.usPerQuarter ?? 500_000
+  // For drawing the music: each bar's span, from the score's own bars, or from the metre for MIDI.
+  const toMs = tickToMs(file.tempos, file.ticksPerQuarter)
+  const barCount = notes.length ? Math.max(...notes.map((n) => n.bar)) + 1 : 0
+  const starts = file.score?.barStarts
+  const barTimes: BarTime[] = []
+  for (let b = 0; b < barCount; b++) {
+    const [from, to] =
+      firstBar !== null && starts && starts[firstBar + b + 1] !== undefined
+        ? [starts[firstBar + b] * file.ticksPerQuarter, starts[firstBar + b + 1] * file.ticksPerQuarter]
+        : [barOffsetTicks + b * ticksPerBar, barOffsetTicks + (b + 1) * ticksPerBar]
+    barTimes.push({ startMs: toMs(from) - firstMs, endMs: toMs(to) - firstMs, quarters: (to - from) / file.ticksPerQuarter })
+  }
   return {
     id: opts.id,
     title: opts.title,
@@ -110,6 +122,7 @@ export function songFromParts(file: SmfFile, opts: SongFromPartsOptions): Song {
     beatsPerBar,
     durationMs: notes.length ? Math.max(...notes.map((n) => n.startMs + n.durationMs)) : 0,
     ...(file.score && firstBar !== null ? { barLabels: file.score.barLabels.slice(firstBar) } : {}),
+    ...(barTimes.length ? { barTimes } : {}),
   }
 }
 

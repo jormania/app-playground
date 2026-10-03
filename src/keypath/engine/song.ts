@@ -50,6 +50,20 @@ export interface Song {
   fingersSuggested?: boolean
   /** The printed number of each bar, when the song came from a score; bar 0 is labelled `barLabels[0]`. */
   barLabels?: string[]
+  /**
+   * For drawing the music only (app/songs/notation): when each bar starts and
+   * ends, in the same ms as the notes, and how many quarter notes it holds.
+   * Nothing judges, scores or numbers bars from it. Unset on a song saved
+   * before it existed: the drawing then works it out from the tempo.
+   */
+  barTimes?: BarTime[]
+}
+
+export interface BarTime {
+  startMs: number
+  endMs: number
+  /** Its length in quarter notes: 4 in 4/4, 1.5 in 3/8, less for a pickup. */
+  quarters: number
 }
 
 /** A bar as she'd find it on the page: its printed number for a song from a score, else counted from 1. */
