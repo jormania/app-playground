@@ -22,7 +22,7 @@ import { ADAPTERS } from '../_lib/marquee/registry.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
 import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
 import { inferYear, slug, eventKey, parseTime, parseIsoDateTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
-import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
+import { assess, scanVenue, horizonFor, failureReason, looksLikeWaitingRoom, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
 import { summarize } from '../_lib/marquee/diff.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
@@ -1321,6 +1321,41 @@ describe('a request that never answers', () => {
   })
 })
 
+describe('failureReason — Node hides the reason one level down', () => {
+  it('pairs the generic message with the cause that actually says something', () => {
+    // Every transport failure arrives as `TypeError: fetch failed`. Reporting
+    // only that is what made Excelsior's waiting room (§9.93) indistinguishable
+    // from a dead host for a day.
+    const err = new TypeError('fetch failed', { cause: new Error('redirect count exceeded') })
+    expect(failureReason(err)).toBe('fetch failed (redirect count exceeded)')
+  })
+
+  it('does not say the same thing twice', () => {
+    expect(failureReason(new Error('socket hang up', { cause: new Error('socket hang up') })))
+      .toBe('socket hang up')
+  })
+
+  it('falls back when there is nothing to read', () => {
+    expect(failureReason(new TypeError('fetch failed'))).toBe('fetch failed')
+    expect(failureReason({ cause: { message: 'ENOTFOUND' } })).toBe('ENOTFOUND')
+    expect(failureReason(undefined)).toBe('fetch failed')
+  })
+})
+
+describe('looksLikeWaitingRoom', () => {
+  it('reads a redirect loop off a failed page', () => {
+    expect(looksLikeWaitingRoom({ status: 0, error: 'fetch failed (redirect count exceeded)' })).toBe(true)
+  })
+
+  it('is not fooled by a page that answered', () => {
+    // Only a thrown fetch carries status 0. A 302 that resolved is a redirect
+    // the runtime followed to somewhere, which is not a loop.
+    expect(looksLikeWaitingRoom({ status: 302, error: 'redirect count exceeded' })).toBe(false)
+    expect(looksLikeWaitingRoom({ status: 0, error: 'no answer within 8s' })).toBe(false)
+    expect(looksLikeWaitingRoom(undefined)).toBe(false)
+  })
+})
+
 describe('horizonFor', () => {
   it('gives a cinema a short horizon and everything else the long one', () => {
     // Cinemas list weeks of showings nobody plans a trip around this far out —
@@ -1352,6 +1387,32 @@ describe('scanVenue', () => {
     expect(r.status).toBe(STATUS.EMPTY)
     expect(r.detail).toMatch(/nothing upcoming/i)
     expect(r.events).toEqual([])
+  })
+
+  it('a ticket queue in front of the site is being held at the door, not a breakage', async () => {
+    // What Excelsior actually did on 2026-10-03 (§9.93): Queue-it on every page,
+    // 302 to royaltickets.queue-it.net, back to the site, round again — twenty
+    // times, until undici gave up. Reported as a breakage this would send
+    // someone to rewrite a reader that is perfectly fine, and would drop the
+    // venue's whole programme as vanished.
+    const loop = async () => {
+      throw new TypeError('fetch failed', { cause: new Error('redirect count exceeded') })
+    }
+    const r = await scanVenue(venue, { now: AUG, fetchImpl: loop })
+    expect(r.status).toBe(STATUS.THROTTLED)
+    expect(r.status).not.toBe(STATUS.PARSER_BROKEN)
+    expect(r.detail).toMatch(/redirect loop/i)
+    expect(r.detail).toMatch(/not a markup change/i)
+    expect(r.events).toEqual([])
+  })
+
+  it('an ordinary dead host still reads as unreachable, and now says why', async () => {
+    const dead = async () => {
+      throw new TypeError('fetch failed', { cause: new Error('getaddrinfo ENOTFOUND teatrul-excelsior.ro') })
+    }
+    const r = await scanVenue(venue, { now: AUG, fetchImpl: dead })
+    expect(r.status).toBe(STATUS.UNREACHABLE)
+    expect(r.detail).toMatch(/ENOTFOUND/)
   })
 
   describe('the enrichment hop (§9.68)', () => {

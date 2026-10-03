@@ -72,6 +72,42 @@ export function horizonFor(venue) {
  */
 const BOT_CHECK = /One moment, please|Checking your browser|Just a moment\b|Enable JavaScript and cookies to continue|DDoS-?Guard|cf-browser-verification/i
 
+/**
+ * What a thrown fetch actually said.
+ *
+ * Node's fetch reports every transport failure as `TypeError: fetch failed` and
+ * puts the real reason one level down, in `cause`. Reading only `err.message`
+ * meant DNS gone, connection reset, certificate expired and redirect loop all
+ * read identically in the Venues tab — "Could not reach the page: fetch
+ * failed." — which names no fault and suggests no next step. Teatrul
+ * Excelsior spent a day saying exactly that (§9.93) while the site was
+ * perfectly up.
+ *
+ * The outer message is kept rather than replaced: `cause` alone can be as bare
+ * as `ECONNRESET`, and "fetch failed (ECONNRESET)" is the pair that reads.
+ */
+export function failureReason(err) {
+  const own = err?.message
+  const cause = err?.cause?.message
+  if (!own) return cause || 'fetch failed'
+  if (!cause || cause === own) return own
+  return `${own} (${cause})`
+}
+
+/** A site that bounced us in a circle rather than answering.
+ *
+ *  Not a broken site and not a broken reader: something in front of it wants a
+ *  cookie we don't keep. Excelsior put Queue-it — a ticket-rush waiting room —
+ *  on every page of teatrul-excelsior.ro, which 302s to
+ *  `royaltickets.queue-it.net`, sets its pass, and sends the visitor back; with
+ *  no cookie jar the site doesn't see the pass and sends us round again, twenty
+ *  times, until undici gives up with `redirect count exceeded`. */
+const REDIRECT_LOOP = /redirect count exceeded|too many redirects/i
+
+export function looksLikeWaitingRoom(page) {
+  return page?.status === 0 && REDIRECT_LOOP.test(page?.error ?? '')
+}
+
 export function looksLikeBotCheck(pages) {
   return (pages ?? []).some((p) => typeof p.body === 'string' && BOT_CHECK.test(p.body))
 }
@@ -218,7 +254,7 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
       tag: request.tag ?? null,
       ok: false,
       status: 0,
-      error: timedOut ? `no answer within ${Math.round(timeoutMs / 1000)}s` : (err?.message || 'fetch failed'),
+      error: timedOut ? `no answer within ${Math.round(timeoutMs / 1000)}s` : failureReason(err),
       optional: request.optional === true,
     }
   } finally {
@@ -269,7 +305,13 @@ export async function scanVenue(venue, {
   // a 403 seconds after answering happily; calling that "parser broken" would
   // send someone hunting a markup change that never happened. It is also the one
   // failure never worth parsing through: a rate-limit page is not a programme.
-  const throttled = failed ? (adapter.throttleStatuses ?? [429]).includes(failed.status) : false
+  const rateLimited = failed ? (adapter.throttleStatuses ?? [429]).includes(failed.status) : false
+  // A waiting room is the same kind of answer as a rate limiter — we are being
+  // held at the door, the venue is fine — so it reports as one, which also means
+  // the venue's known events are carried forward instead of reading as a whole
+  // programme that vanished overnight (changes.js, notify.js).
+  const waitingRoom = failed ? looksLikeWaitingRoom(failed) : false
+  const throttled = rateLimited || waitingRoom
   // Everything else that came back with a body still gets read, and stands or
   // falls on the health gate (§9.61 — see fetchOne). A status line is a claim
   // about the request; the gate is a measurement of what arrived.
@@ -283,7 +325,9 @@ export async function scanVenue(venue, {
     return {
       ...base,
       status: throttled ? STATUS.THROTTLED : STATUS.UNREACHABLE,
-      detail: throttled
+      detail: waitingRoom
+        ? 'The site sent us round a redirect loop instead of the page — usually a ticket queue or cookie wall in front of it, not a markup change.'
+        : rateLimited
         ? `The venue’s server is rate-limiting us (${failed.status}). Try again in a few minutes.`
         : failed.status
           ? `The page answered ${failed.status}.`
