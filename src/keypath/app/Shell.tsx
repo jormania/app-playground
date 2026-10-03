@@ -23,6 +23,7 @@ import { NoteRaceScreen } from './challenges/NoteRaceScreen'
 import { EchoScreen } from './challenges/EchoScreen'
 import { ChordCatchScreen } from './challenges/ChordCatchScreen'
 import { EarScreen } from './challenges/EarScreen'
+import { ReadPlayScreen } from './challenges/ReadPlayScreen'
 import { ProgressScreen } from './progress/ProgressScreen'
 import styles from './app.module.css'
 
@@ -186,7 +187,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
         {effective === 'connect' && <ConnectWizard />}
         {effective === 'progress' && <ProgressScreen />}
         {effective === 'studio' && route.name === 'studio' && <StudioScreen key={route.songId} songId={route.songId} />}
-        {effective === 'challenge' && route.name === 'challenge' && (route.game === 'race' ? <NoteRaceScreen /> : route.game === 'chord' ? <ChordCatchScreen /> : route.game === 'ear' ? <EarScreen /> : <EchoScreen />)}
+        {effective === 'challenge' && route.name === 'challenge' && (route.game === 'race' ? <NoteRaceScreen /> : route.game === 'chord' ? <ChordCatchScreen /> : route.game === 'ear' ? <EarScreen /> : route.game === 'read' ? <ReadPlayScreen /> : <EchoScreen />)}
         {effective === 'journeyStep' && route.name === 'journeyStep' && <StepScreen stepId={route.step} />}
         </div>
       </div>

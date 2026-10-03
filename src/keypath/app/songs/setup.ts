@@ -3,16 +3,21 @@ import { K, type KeyValueStore } from '../store'
 import { ratedLevel } from './level'
 
 // What a player chose on a song's setup last time (KEYPATH_ROADMAP.md, "Remember
-// each song's setup"): the hands and the speed, per song, so practising the
-// left hand at 75% is still there tomorrow. Which part comes next is worked out
+// each song's setup"): the hands, the speed and how the notes are shown, per
+// song, so practising the left hand at 75% is still there tomorrow. Which part comes next is worked out
 // from what she has learnt (parts.ts), not remembered.
 
 export const SPEEDS = ['1', '0.75', '0.5'] as const
 export type Speed = (typeof SPEEDS)[number]
 
+/** How the notes are shown: falling onto the keys, or written on the staff alone (the read-it view). */
+export type NotesView = 'falling' | 'written'
+
 export interface SongSetup {
   practice: Practice
   speed: Speed
+  /** Unset is falling, as every song was before the written view. */
+  view?: NotesView
 }
 
 /**
@@ -33,6 +38,7 @@ export class SetupRepo {
     return {
       practice: s.practice === 'left' || s.practice === 'both' ? s.practice : 'right',
       speed: SPEEDS.includes(s.speed as Speed) ? (s.speed as Speed) : '1',
+      ...(s.view === 'written' ? { view: 'written' as const } : {}),
     }
   }
 

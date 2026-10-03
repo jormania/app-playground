@@ -11,8 +11,9 @@ export const STAFF_LEVEL_NAME: Record<number, StringKey> = { 1: 'raceLevel1', 2:
 export const ECHO_LEVEL_NAME: Record<number, StringKey> = { 1: 'echoLevel1', 2: 'echoLevel2', 3: 'echoLevel3' }
 export const CHORD_LEVEL_NAME: Record<number, StringKey> = { 1: 'chordLevel1', 2: 'chordLevel2', 3: 'chordLevel3' }
 export const EAR_LEVEL_NAME: Record<number, StringKey> = { 1: 'earLevel1', 2: 'earLevel2', 3: 'earLevel3' }
+export const READ_LEVEL_NAME: Record<number, StringKey> = { 1: 'readLevel1', 2: 'readLevel2', 3: 'readLevel3' }
 
-/** The Challenges door: four short games, each with this player's bests. */
+/** The Challenges door: five short games, each with this player's bests. */
 export function ChallengesHome() {
   const { t, store, profile } = useApp()
   const repo = useMemo(() => new RecordRepo(store), [store])
@@ -70,6 +71,14 @@ export function ChallengesHome() {
         <span className={styles.gameTitle}>{t('earTitle')}</span>
         <span className={styles.gameBlurb}>{t('earBlurb')}</span>
         <span className={styles.gameBest}>{bests(records.ear, EAR_LEVEL_NAME)}</span>
+      </button>
+      <button type="button" className={styles.game} onClick={() => navigate({ name: 'challenge', game: 'read' })}>
+        <span className={styles.gameIcon} aria-hidden>
+          📖
+        </span>
+        <span className={styles.gameTitle}>{t('readTitle')}</span>
+        <span className={styles.gameBlurb}>{t('readBlurb')}</span>
+        <span className={styles.gameBest}>{bests(records.read, READ_LEVEL_NAME)}</span>
       </button>
       </div>
     </main>

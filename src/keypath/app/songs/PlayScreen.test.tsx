@@ -528,6 +528,36 @@ describe('Play screen: practice tools', () => {
   })
 })
 
+describe('Play screen: the written view', () => {
+  it('shows the notes on the staff alone, keeps the keys dark until she is stuck, and writes a wrong key in red', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'keepGoing' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('radio', { name: 'Written' }))
+    // The staff is there before the start, and there are no falling notes.
+    await waitFor(() => expect(document.querySelector('svg[data-big]')).toBeTruthy())
+    expect(document.querySelector('[class*="fallLayer"]')).toBeNull()
+    expect(screen.getByText(/Written: read the notes/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    tap(target()!) // middle C, lit as always
+    // It waits, whatever her own setting ("Keep going" here), and C is not lit.
+    await waitFor(() => expect(screen.queryByText('Press middle C to begin')).toBeNull())
+    // The staff marks where she is; the key stays dark.
+    await waitFor(() => expect(document.querySelector('svg[data-big] [class*="scoreNow"]')).toBeTruthy())
+    expect(target()).toBeNull()
+    // A wrong key: red on the staff, and now the key to play lights up.
+    act(() => tap(document.querySelector<HTMLElement>('[data-pitch="65"]')!))
+    await waitFor(() => expect(document.querySelector('[data-wrong="65"]')).toBeTruthy())
+    expect(target()?.getAttribute('data-pitch')).toBe('60')
+    for (const p of [60, 62, 64]) {
+      await waitFor(() => expect(document.querySelector('svg[data-big]')).toBeTruthy())
+      act(() => tap(document.querySelector<HTMLElement>(`[data-pitch="${p}"]`)!))
+    }
+    expect(await screen.findByRole('button', { name: 'Play again' })).toBeTruthy()
+    const started = (await events(store, profileId)).find((e) => e.type === 'song_started')
+    expect(started).toMatchObject({ mode: 'wait', view: 'written' })
+    expect(await new SetupRepo(store).get(profileId, 'Three notes')).toMatchObject({ view: 'written' })
+  })
+})
+
 describe('Play screen: the music written', () => {
   it('is over the notes once a song is under way, when it is switched on, and not otherwise', async () => {
     await setUp({ score: true }, '#/play/Three%20notes')

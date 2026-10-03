@@ -64,6 +64,24 @@ Bigger steps in the learning itself.
 | 22 | ✅ *Done, release 3.* **A PIN on a player.** | Only needed if a sibling starts playing on the same phone. | S |
 | 23 | **Loud and soft** (dynamics). | Musical, but far off for a beginner. | M |
 
+## Reading (release 4), from clefPlayer
+
+Taken on 2026-10-03 from [clefPlayer](https://apps.apple.com/ch/app/clefplayer-learn-piano/id6793831932),
+a piano practice app its author built for themselves and described on r/pianolearning. Most of
+what it offers KeyPath already had; what it does better is reading the music rather than
+following lights, which is where KeyPath was weakest.
+
+| # | Item | Why it matters | Effort |
+| --- | --- | --- | --- |
+| 24 | ✅ *Done, release 4.* **The written view.** On a song's setup, *Notes: Falling / Written*: the staff alone, large, no falling notes; it waits for each note; a wrong key is written in red; the keys light only when she is stuck. | Falling notes can be played without reading a note: this is the way to read a song she plays. | M |
+| 25 | ✅ *Done, release 4.* **Read and play**, a fifth game: short tunes made up on the spot, read from the staff with the keys dark, three levels from the Journey's notes. | Sight-reading needs music she hasn't memorised; a generator gives endless new tunes. | M |
+| 26 | **Loop a stretch of bars**, not only one: a from–to in the bar picker, on the speed ladder. | Stumbles are at bar lines and hand shifts; worth it once she plays longer songs of her own. | S |
+| 27 | **Keys lit only when stuck, for falling notes too.** | Little on its own: a falling note already shows its key. Built into the written view, where it matters. | S |
+
+Left out: hiding the screen's keyboard (on a phone it is the touch fallback and shows the hands'
+places), engraved sheet music (months of work, a heavy library, and MIDI files carry no notation
+to engrave), and horizontal scrolling (the written view does that job).
+
 ## Left out on purpose
 
 A pianist on video, a big pop library (copyright; **Add a song** is the way in

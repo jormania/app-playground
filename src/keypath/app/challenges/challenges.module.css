@@ -420,3 +420,20 @@
     justify-self: start;
   }
 }
+
+/* Read and play: a line over the staff, and the staff taking the room above the keys. */
+.readHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2xs) var(--space-sm);
+  text-align: center;
+}
+.readSay {
+  flex: 1;
+  font-weight: var(--weight-bold);
+}
+.readStage {
+  flex: 1;
+}

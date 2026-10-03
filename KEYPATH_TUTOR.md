@@ -1003,6 +1003,41 @@ level equal to the rating isn't stored, so the rating follows later changes
 (a different fit, say); one that differs is kept as `Song.level`, and
 survives a refit. Built-in songs keep theirs.
 
+### Release 4: reading
+
+From a look at clefPlayer (KEYPATH_ROADMAP.md, "Reading"): the falling notes can be followed
+without reading a note, so two ways to read.
+
+**The written view** (`songs/PlayScreen.tsx`, `songs/ScoreStrip.tsx`'s `BigScore`). On a song's
+setup, *Notes: Falling / Written*, kept per song with the hands and speed (`SongSetup.view`).
+Written puts the staff alone where the falling notes were, drawn large: the two bars side by
+side on a phone on its side, one above the other when it is upright, each twice the size one
+line would allow. It always waits for each note (`viewSettings`, whatever her On a wrong note
+setting; loops too), since reading takes the time it takes. The keys stay dark until she is
+stuck (`songs/stuck.ts`: three seconds on a step, or a wrong key), and a wrong key is written
+in red on the staff, just after the note she should play. The strip now marks only the notes
+of the step in hand, not every later note on the same key. A start is logged with
+`view: 'written'`.
+
+**Read and play** (`challenges/readPlay.ts`, `ReadPlayScreen.tsx`), a fifth game. Five short
+tunes to a round, made up on the spot so none can be played from memory; a point for each
+played without a wrong key. Middle C first, as for songs, so the keyboard's octave is known
+(an exact pitch matters when reading). The tune walks the five keys of a hand position, never
+further from home than the notes left can walk back, and ends on the thumb's key.
+
+| Level | Position | Moves | Rhythm | Bars |
+| --- | --- | --- | --- | --- |
+| 1, Five fingers | C, right hand | a step, or the same key | quarter notes, a half note to end | 2 |
+| 2, Skips | C or G, right hand | up to a third | quarters and halves | 3 |
+| 3, Both hands | C or G, the left a note a bar (home, the fifth) | up to a fifth | pairs of eighths too | 4 |
+
+The notes are the Journey's: the C position on the staff ("Reading music"), up to the C above
+("Reading higher"), and the left hand's C position for the bass. The G position's D5 is one
+above anything the Journey reads. Two things described before building were changed: level 2
+stays in the right hand, since the bass clef is not read anywhere before level 3, and the F
+position is left out, since its B♭ would be written as an A♯ on the strip (it writes every
+black key as a sharp). It joins Today's game rotation, Progress and the weekly note.
+
 ### Release 3: the roadmap, in four batches
 
 Built in one go from `KEYPATH_ROADMAP.md` (2026-09-29), in the order that let each

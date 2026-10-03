@@ -805,9 +805,39 @@
 .scoreMissed .scoreFilled {
   fill: #b3261e;
 }
+/* A wrong key, written where it would be: red, beside the notes to play. */
+.scoreWrong ellipse {
+  fill: #b3261e;
+  stroke: #b3261e;
+}
+.scoreWrong .scoreSharp {
+  fill: #b3261e;
+}
 /* A phone on its side has no room for it above the notes. */
 @media (orientation: landscape) and (max-height: 560px) {
   .scoreStrip {
     display: none;
   }
+}
+/* The written view in portrait: two lines, one bar each, sharing the room. */
+.scoreStack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fbfaf7;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.scoreStack > .scoreStrip[data-big] {
+  border-radius: 0;
+}
+/* The written view: the staff alone, in the room the falling notes had, in either orientation. */
+.scoreStrip[data-big] {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+  margin-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }

@@ -16,7 +16,7 @@ export type LogEvent =
   | { type: 'setting_changed'; key: string; from: unknown; to: unknown }
   | { type: 'profile_created' }
   /** `part` when a part of it was started (learning in parts; 'whole' is the whole song as the last part). */
-  | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string; part?: string }
+  | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string; part?: string; view?: 'written' }
   /** Home's Today card, all three done (logged once a day, the first time Home sees it). */
   | { type: 'today_done' }
   /** A part played to its end: learnt (passed) or not, with its wrong keys. */

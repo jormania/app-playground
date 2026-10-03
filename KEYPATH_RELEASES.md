@@ -5,6 +5,16 @@ hardware: [`KEYPATH.md`](KEYPATH.md)). A release is a point on `main` worth nami
 number shows at the foot of Settings (`src/keypath/app/release.ts`). The user's guide is a
 shared doc, linked from the top of Home.
 
+## Release 4 — 2026-10-03
+
+Reading. Details in `KEYPATH_TUTOR.md` §9, "Release 4".
+
+- **The written view.** On a song's setup, *Notes: Written* shows the music on the staff alone,
+  large, with no falling notes. It waits for each note, writes a wrong key in red, and lights a
+  key only when she is stuck.
+- **Read and play**, a fifth game: short tunes made up on the spot, read from the staff with the
+  keys dark. Three levels, from five fingers in the right hand to both hands.
+
 ## Release 3 — 2026-09-29
 
 The roadmap's first two tiers, and most of the third. Details in `KEYPATH_TUTOR.md` §9,

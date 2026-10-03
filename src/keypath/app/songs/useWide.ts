@@ -11,16 +11,24 @@ export const WIDE_QUERY = '(orientation: landscape) and (max-height: 560px)'
 export const WIDE_OCTAVES = 3
 
 /** True while the screen is wide (see WIDE_QUERY); follows rotation. */
-export function useWide(): boolean {
-  const query = () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(WIDE_QUERY) : null)
-  const [wide, setWide] = useState(() => query()?.matches ?? false)
+export const useWide = (): boolean => useMedia(WIDE_QUERY)
+
+/** A screen taller than it is wide: the written view stacks its two bars there. */
+export const PORTRAIT_QUERY = '(orientation: portrait)'
+
+const mediaQuery = (q: string) => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(q) : null)
+
+/** True while a media query matches; follows rotation. */
+export function useMedia(q: string): boolean {
+  const query = () => mediaQuery(q)
+  const [matches, setMatches] = useState(() => query()?.matches ?? false)
   useEffect(() => {
-    const mq = query()
+    const mq = mediaQuery(q)
     if (!mq) return
-    const on = () => setWide(mq.matches)
+    const on = () => setMatches(mq.matches)
     on()
     mq.addEventListener?.('change', on)
     return () => mq.removeEventListener?.('change', on)
-  }, [])
-  return wide
+  }, [q])
+  return matches
 }

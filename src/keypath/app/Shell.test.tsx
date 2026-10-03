@@ -297,7 +297,7 @@ describe('KeyPath shell, after the audit', () => {
     await start()
     await createPlayer('Nora')
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
-    expect(await screen.findByText('KeyPath, release 3')).toBeTruthy()
+    expect(await screen.findByText('KeyPath, release 4')).toBeTruthy()
   })
 
   it('links the user’s guide from the top of Home, in a new tab', async () => {
@@ -317,7 +317,7 @@ describe('KeyPath shell, after the audit', () => {
     await log.add(p.id, { type: 'song_finished', songId: 'starter:twinkle', practice: 'right', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
     await log.add(p.id, { type: 'song_finished', songId: 'starter:warmup', practice: 'both', stars: 2, score: 0.8, hit: 10, total: 12, wrong: 1 })
     await log.add(p.id, { type: 'journey_finished', step: 'middleC', mode: 'practice', passed: true, wrong: 0, ms: 1 })
-    for (const game of ['race', 'echo', 'chord', 'ear'] as const) await log.add(p.id, { type: 'challenge_finished', game, level: 1, score: 3, best: false, ms: 1 })
+    for (const game of ['race', 'echo', 'chord', 'ear', 'read'] as const) await log.add(p.id, { type: 'challenge_finished', game, level: 1, score: 3, best: false, ms: 1 })
     await store.del(K.today(p.id))
     const doneCount = async () => (await log.read(p.id)).filter((e) => e.type === 'today_done').length
     for (let visit = 0; visit < 2; visit++) {

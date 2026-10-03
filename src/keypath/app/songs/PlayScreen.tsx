@@ -16,14 +16,15 @@ import { keyBoxes, rangeFor, widenRange } from './keyGeometry'
 import { useWide, WIDE_OCTAVES } from './useWide'
 import { SongLibrary } from './library'
 import { PlayKeyboard } from './PlayKeyboard'
-import { ScoreStrip } from './ScoreStrip'
+import { BigScore, ScoreStrip } from './ScoreStrip'
 import { ReportView } from './ReportView'
 import type { FactsInput } from './coach'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
 import { nextStep, partPassed, PartsRepo, partSteps, rangeSong, type PartStep } from './parts'
 import { WARMUP_ID } from '../../engine/starterPack'
 import { tryNext } from './level'
-import { SetupRepo, SPEEDS, suggestedSpeed, type Speed } from './setup'
+import { SetupRepo, SPEEDS, suggestedSpeed, type NotesView, type Speed } from './setup'
+import { useStuck } from './stuck'
 import { Accompanist } from './accompany'
 import { PREFIX } from '../store'
 import { songProgress } from './songProgress'
@@ -50,6 +51,7 @@ const READY_TIME = -1500
 const MAX_CHIPS = 7
 /** The other hand plays itself while she practises one: remembered on the phone. */
 const OTHER_HAND_KEY = `${PREFIX}otherHand`
+const NO_KEYS: ReadonlySet<number> = new Set()
 /** Between two passes of a practised bar: long enough to read how it went. */
 const LOOP_BREAK_MS = 1600
 
@@ -82,7 +84,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const hasLeft = song.notes.some((n) => n.hand === 'left')
   const [practice, setPractice] = useState<Practice>('right')
   const [speed, setSpeed] = useState<Speed>(() => suggestedSpeed(song))
-  // What she chose here last time: the hands and the speed, kept per song.
+  const [view, setView] = useState<NotesView>('falling')
+  // What she chose here last time: the hands, the speed and the notes' view, kept per song.
   const setupRepo = useMemo(() => new SetupRepo(store), [store])
   const chosen = useRef(false)
   useEffect(() => {
@@ -93,18 +96,27 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       if (!live || !s || chosen.current) return
       if (s.practice === 'right' || hasLeft) setPractice(s.practice)
       setSpeed(s.speed)
+      setView(s.view ?? 'falling')
     })
     return () => {
       live = false
     }
   }, [setupRepo, profileId, song.id, hasLeft])
-  const choose = (next: { practice?: Practice; speed?: Speed }) => {
+  const choose = (next: { practice?: Practice; speed?: Speed; view?: NotesView }) => {
     chosen.current = true
-    const setup = { practice: next.practice ?? practice, speed: next.speed ?? speed }
+    const setup = { practice: next.practice ?? practice, speed: next.speed ?? speed, view: next.view ?? view }
     setPractice(setup.practice)
     setSpeed(setup.speed)
+    morph(() => setView(setup.view))
     if (profileId) void setupRepo.set(profileId, song.id, setup)
   }
+  /**
+   * The written view: the notes on the staff alone, no falling notes. It always
+   * waits for each note (reading takes the time it takes), and a key lights only
+   * once she is stuck.
+   */
+  const written = view === 'written'
+  const viewSettings = useMemo((): typeof settings => (written ? { ...settings, onWrong: 'wait' } : settings), [settings, written])
   // Two players on one keyboard: the partner, and the hand the current player takes.
   const { profiles: profileRepo, profile } = useApp()
   const [players, setPlayers] = useState<Profile[]>([])
@@ -241,7 +253,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     if (spanFrom !== null && spanTo !== null) return rangeSong(song, spanFrom, spanTo) ?? song
     return song
   }, [song, loopBar, spanFrom, spanTo])
-  const playSettings = useMemo((): typeof settings => (spanFrom !== null ? { ...settings, onWrong: 'wait' } : settings), [settings, spanFrom])
+  const playSettings = useMemo((): typeof settings => (spanFrom !== null ? { ...viewSettings, onWrong: 'wait' } : viewSettings), [viewSettings, spanFrom])
   const notes = useMemo(() => notesFor(playing, practice), [playing, practice])
   const songNotes = useMemo(() => notesFor(song, practice), [song, practice])
   /** The bar being played at song time `s`: the last note started (or about to), else the first. */
@@ -295,7 +307,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       const bar = barSong(song, l.bar)
       if (!bar) return
       silenceTry()
-      const j = new Judge(bar, { practice, settings, tempo: tempoOf(l), shift: shift.current })
+      const j = new Judge(bar, { practice, settings: viewSettings, tempo: tempoOf(l), shift: shift.current })
       judge.current = j
       accompany(bar, j, tempoOf(l))
       tryRec.current = null
@@ -305,7 +317,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       setStreak(0)
       setPhase('playing')
     },
-    [song, practice, settings, accompany],
+    [song, practice, viewSettings, accompany],
   )
   /** The loop is over: finished clean, or left. Logged once, with how far it got. */
   const endLoop = useCallback(
@@ -321,7 +333,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
   /** Loop one bar (0-based) until it's clean, from the report or the setup: at the speed chosen. */
   const beginLoop = (bar: number) => {
-    const l = startLoop(bar, settings.onWrong === 'wait' ? 'wait' : 'running', tempo)
+    const l = startLoop(bar, viewSettings.onWrong === 'wait' ? 'wait' : 'running', tempo)
     setLoopBoth(l)
     setLoopStep(null)
     startPass(l)
@@ -394,6 +406,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
   }, [settings, profileId, profile, log, song, practice, tempo, endLoop, startPass, part, partsRepo, mate, duo])
 
+  // Written view: the keys stay dark until she is stuck. A step is the notes asked for, and how many are played.
+  const stepKey = `${results.size}|${[...targets].sort((a, b) => a - b).join(',')}`
+  const { stuck, wrongKey } = useStuck(stepKey, written && phase === 'playing')
+
   const apply = useCallback(
     (events: JudgeEvent[]) => {
       if (events.length === 0) return
@@ -415,11 +431,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         // The streak: right notes in a row; a wrong or missed note starts it again, quietly.
         if (e.type === 'hit') setStreak((n) => n + 1)
         if (e.type === 'wrong' || e.type === 'missed') setStreak(0)
+        if (e.type === 'wrong') wrongKey()
       }
       if (outcomes.length) setResults((r) => new Map([...r, ...outcomes]))
       if (events.some((e) => e.type === 'done')) morph(finish)
     },
-    [playSettings, finish],
+    [playSettings, finish, wrongKey],
   )
 
   /** Judge from now: the song, or its part, as chosen. */
@@ -441,9 +458,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       setStreak(0)
       setPartResult(null)
       setPhase('playing')
-      if (profileId) void log.add(profileId, { type: 'song_started', songId: song.id, practice, tempo, mode: j.mode, ...(partOf ? { part: partOf.id } : {}) })
+      if (profileId) void log.add(profileId, { type: 'song_started', songId: song.id, practice, tempo, mode: j.mode, ...(partOf ? { part: partOf.id } : {}), ...(written ? { view: 'written' } : {}) })
     },
-    [song, practice, tempo, profileId, log, accompany],
+    [song, practice, tempo, profileId, log, accompany, written],
   )
 
   /** Straight into a part (from "Next" or "Again"): no middle C again once it's known. */
@@ -451,7 +468,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     morph(() => {
       setPartId(step.id)
       const target = step.kind === 'whole' ? song : (rangeSong(song, step.from, step.to) ?? song)
-      const js: JudgeSettings = step.kind === 'whole' ? settings : { ...settings, onWrong: 'wait' }
+      const js: JudgeSettings = step.kind === 'whole' ? viewSettings : { ...viewSettings, onWrong: 'wait' }
       if (shiftKnown.current) startJudge(target, js, performance.now(), step)
       else setPhase('ready')
     })
@@ -739,7 +756,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       // nor the phrase chosen before it: finished, it counts as the whole song learnt.
       const whole = steps.find((x) => x.kind === 'whole') ?? null
       if (whole) setPartId(whole.id)
-      if (shiftKnown.current) startJudge(song, settings, performance.now(), whole)
+      if (shiftKnown.current) startJudge(song, viewSettings, performance.now(), whole)
       else setPhase('ready')
     })
 
@@ -864,6 +881,18 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             <span className={setup.label}>{t('speed')}</span>
             <SegmentedControl size="sm" value={speed} onChange={(v) => choose({ speed: v as Speed })} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
           </div>
+          <div className={setup.field}>
+            <span className={setup.label}>{t('notesView')}</span>
+            <SegmentedControl
+              size="sm"
+              value={view}
+              onChange={(v) => choose({ view: v as NotesView })}
+              options={[
+                { value: 'falling', label: t('viewFalling') },
+                { value: 'written', label: t('viewWritten') },
+              ]}
+            />
+          </div>
           <div className={setup.go}>
             <Button onClick={go}>
               ▶ {span ? partName(span) : t('startSong')}
@@ -879,7 +908,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             </p>
           ) : (
             <p className={setup.note} data-inline>
-              <span>{t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
+              <span>{written ? t('writtenMode') : t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
               <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
                 {t('playModeChange')}
               </button>
@@ -968,7 +997,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         <div className={styles.prompt} role="status">
           <strong>
             🔁 {t('loopBar', { bar: barName(song, loop.bar) })}
-            {settings.onWrong !== 'wait' && ` · ${Math.round(tempoOf(loop) * 100)}%`}
+            {viewSettings.onWrong !== 'wait' && ` · ${Math.round(tempoOf(loop) * 100)}%`}
           </strong>
           <span>
             {loopStep === null && loop.rungs.length > 1
@@ -1039,24 +1068,36 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             ■ {t('stop')}
           </Button>
         )}
-        {settings.score && musicOn && (
+        {written && (
+          <BigScore
+            notes={notes}
+            practice={practice}
+            bar={scoreBar}
+            active={phase === 'ready' || phase === 'setup' ? NO_KEYS : listening ? listenKeys : targets}
+            results={results}
+            beatMs={60000 / song.bpm}
+            wrong={wrong}
+            ariaLabel={t('scoreAria', { a: barName(song, scoreBar), b: barName(song, scoreBar + 1) })}
+          />
+        )}
+        {!written && settings.score && musicOn && (
           <ScoreStrip
             notes={notes}
             practice={practice}
             bar={scoreBar}
-            active={phase === 'ready' ? new Set<number>() : listening ? listenKeys : targets}
+            active={phase === 'ready' || phase === 'setup' ? new Set<number>() : listening ? listenKeys : targets}
             results={results}
             beatMs={60000 / song.bpm}
             ariaLabel={t('scoreAria', { a: barName(song, scoreBar), b: barName(song, scoreBar + 1) })}
           />
         )}
-        <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} fingers={showFingers} suggested={song.fingersSuggested} />
+        {!written && <FallingNotes ref={fall} notes={notes} boxes={boxes} results={results} label={label} fingers={showFingers} suggested={song.fingersSuggested} />}
         <PlayKeyboard
           sound={!keyboard.connected}
           names={settings.keyNames}
           boxes={boxes}
           held={held}
-          targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : targets}
+          targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : written && !stuck ? NO_KEYS : targets}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
           badges={phase === 'ready' || (phase === 'setup' && !listening) ? badges : undefined}

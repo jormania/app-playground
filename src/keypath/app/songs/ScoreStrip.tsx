@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { PORTRAIT_QUERY, useMedia } from './useWide'
 import type { NoteResult, Practice, SongNote } from '../../engine'
 import styles from './songs.module.css'
 
@@ -13,7 +14,9 @@ const SPACE = 8
 const TREBLE_BOTTOM = 50 // y of E4, the bottom line
 const BASS_BOTTOM = 114 // y of G2, the bottom line
 const LEFT = 34 // after the clef
-const WIDTH = 320
+const FULL_WIDTH = 320
+/** One bar alone (a line of the written view in portrait): about the width each of two bars has. */
+const SINGLE_WIDTH = 180
 const RIGHT = 10
 
 /** Diatonic steps above middle C: C4 = 0, D4 = 1 … A sharp is the natural below it. */
@@ -49,16 +52,27 @@ interface Props {
   /** For the length of a note in beats: ms a beat lasts at the song's own tempo. */
   beatMs: number
   ariaLabel: string
+  /** The written view: the staff takes the room the falling notes had. */
+  big?: boolean
+  /** Keys just pressed that were wrong: drawn in red beside the notes to play, where they would be written. */
+  wrong?: ReadonlySet<number>
+  /** Bars drawn: this one and the next (2), or this one alone (1). */
+  span?: 1 | 2
 }
 
-export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, active, results, beatMs, ariaLabel }: Props) {
+export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, active, results, beatMs, ariaLabel, big = false, wrong, span = 2 }: Props) {
   const treble = practice !== 'left'
   const bass = practice !== 'right'
-  const bars = [bar, bar + 1]
+  const bars = span === 2 ? [bar, bar + 1] : [bar]
+  const width = span === 2 ? FULL_WIDTH : SINGLE_WIDTH
+  // The notes to play now: of those asked for and not yet played, the earliest. A later note on the same key waits its turn.
+  const pending = notes.filter((n) => active.has(n.pitch) && !results.has(n.id))
+  const nowStart = pending.length ? Math.min(...pending.map((n) => n.startMs)) : null
+  const isNow = (n: SongNote) => nowStart !== null && active.has(n.pitch) && !results.has(n.id) && n.startMs - nowStart < 40
   // Each bar's notes, placed across its width by when they start within it.
   const byBar = bars.map((b) => notes.filter((n) => n.bar === b))
   const startOf = (b: number) => Math.min(...notes.filter((n) => n.bar === b).map((n) => n.startMs))
-  const barWidth = (WIDTH - LEFT - RIGHT) / 2
+  const barWidth = (width - LEFT - RIGHT) / span
   const placed = bars.flatMap((b, k) => {
     const mine = byBar[k]
     if (mine.length === 0) return []
@@ -72,14 +86,18 @@ export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, activ
   const bottom = bass ? 132 : 82
   const line = (bottomY: number) => [0, 1, 2, 3, 4].map((i) => bottomY - i * SPACE)
   const staffLines = [...(treble ? line(TREBLE_BOTTOM) : []), ...(bass ? line(BASS_BOTTOM) : [])]
-  const barXs = [LEFT, LEFT + barWidth, WIDTH - RIGHT]
+  const barXs = span === 2 ? [LEFT, LEFT + barWidth, width - RIGHT] : [LEFT, width - RIGHT]
   const systemTop = treble ? TREBLE_BOTTOM - 4 * SPACE : BASS_BOTTOM - 4 * SPACE
   const systemBottom = bass ? BASS_BOTTOM : TREBLE_BOTTOM
+  // Where she is: the notes to play now. A wrong key is written just after them, in red.
+  const nowXs = placed.filter(({ n }) => isNow(n)).map(({ x }) => x)
+  const wrongX = nowXs.length ? Math.min(...nowXs) + 14 : null
+  const clefFor = (pitch: number): 'treble' | 'bass' => (treble && bass ? (pitch >= 60 ? 'treble' : 'bass') : treble ? 'treble' : 'bass')
 
   return (
-    <svg className={styles.scoreStrip} viewBox={`0 ${top} ${WIDTH} ${bottom - top}`} role="img" aria-label={ariaLabel}>
+    <svg className={styles.scoreStrip} data-big={big || undefined} viewBox={`0 ${top} ${width} ${bottom - top}`} role={ariaLabel ? 'img' : undefined} aria-label={ariaLabel || undefined} aria-hidden={ariaLabel ? undefined : true}>
       {staffLines.map((y) => (
-        <line key={y} x1={4} x2={WIDTH - RIGHT} y1={y} y2={y} className={styles.scoreLine} />
+        <line key={y} x1={4} x2={width - RIGHT} y1={y} y2={y} className={styles.scoreLine} />
       ))}
       {barXs.map((x) => (
         <line key={x} x1={x} x2={x} y1={systemTop} y2={systemBottom} className={styles.scoreLine} />
@@ -111,7 +129,7 @@ export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, activ
         const stemUp = y >= middle
         const beats = n.durationMs / beatMs
         const open = beats >= 1.7
-        const state = results.get(n.id) === 'hit' ? styles.scoreHit : results.get(n.id) === 'missed' ? styles.scoreMissed : active.has(n.pitch) ? styles.scoreNow : ''
+        const state = results.get(n.id) === 'hit' ? styles.scoreHit : results.get(n.id) === 'missed' ? styles.scoreMissed : isNow(n) ? styles.scoreNow : ''
         return (
           <g key={n.id} className={`${styles.scoreNote} ${state}`}>
             {ledgerSteps(step, clef).map((s) => {
@@ -129,6 +147,43 @@ export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, activ
           </g>
         )
       })}
+      {wrongX !== null &&
+        [...(wrong ?? [])].map((pitch) => {
+          const clef = clefFor(pitch)
+          const step = stepOf(pitch)
+          const y = clef === 'treble' ? trebleY(step) : bassY(step)
+          return (
+            <g key={`wrong-${pitch}`} className={styles.scoreWrong} data-wrong={pitch}>
+              {ledgerSteps(step, clef).map((s) => {
+                const ly = clef === 'treble' ? trebleY(s) : bassY(s)
+                return <line key={s} x1={wrongX - 8} x2={wrongX + 8} y1={ly} y2={ly} className={styles.scoreLine} />
+              })}
+              {BLACK.has(((pitch % 12) + 12) % 12) && (
+                <text x={wrongX - 15} y={y + 4} className={styles.scoreSharp}>
+                  ♯
+                </text>
+              )}
+              <ellipse cx={wrongX} cy={y} rx={5.4} ry={3.8} transform={`rotate(-20 ${wrongX} ${y})`} />
+            </g>
+          )
+        })}
     </svg>
   )
 })
+
+/**
+ * The written view's staff, as large as the room allows: this bar and the next
+ * side by side, or, on a phone held upright, one above the other, each twice
+ * the size it would be squeezed into one line. A wrong key is written in the
+ * line she is playing.
+ */
+export function BigScore(props: Omit<Props, 'big' | 'span'>) {
+  const portrait = useMedia(PORTRAIT_QUERY)
+  if (!portrait) return <ScoreStrip {...props} big />
+  return (
+    <div className={styles.scoreStack}>
+      <ScoreStrip {...props} big span={1} />
+      <ScoreStrip {...props} bar={props.bar + 1} wrong={undefined} big span={1} ariaLabel="" />
+    </div>
+  )
+}

@@ -44,14 +44,15 @@ const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms))
 const flush = () => act(async () => void (await vi.advanceTimersByTimeAsync(0)))
 
 describe('Challenges', () => {
-  it('shows the four games with “no score yet”', async () => {
+  it('shows the five games with “no score yet”', async () => {
     await open('#/door/challenges')
     await flush()
     expect(screen.getByText('Note race')).toBeTruthy()
     expect(screen.getByText('Rhythm echo')).toBeTruthy()
     expect(screen.getByText('Chord catch')).toBeTruthy()
     expect(screen.getByText('Ear check')).toBeTruthy()
-    expect(screen.getAllByText('No score yet')).toHaveLength(4)
+    expect(screen.getByText('Read and play')).toBeTruthy()
+    expect(screen.getAllByText('No score yet')).toHaveLength(5)
   })
 
   it('note race on the staff: draws the note with no name, and keeps its own best', async () => {
@@ -226,6 +227,50 @@ describe('Ear check', () => {
       expect((await new RecordRepo(store).get(profileId)).ear[1]).toBe(4)
       const log = await new EngagementLog(store).read(profileId)
       expect(log.find((e) => e.type === 'challenge_finished')).toMatchObject({ game: 'ear', level: 1, score: 4, wrong: 1 })
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+})
+
+describe('Read and play', () => {
+  it('writes a tune on the staff with the keys dark, lights one once she is stuck, and counts the tunes played clean', async () => {
+    // With no randomness every tune is the same: C C D C C D C, in the C position.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const { store, profileId } = await open('#/challenge/read')
+      await flush()
+      fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+      // Middle C first, to know the keyboard's octave.
+      expect(screen.getByText('Press middle C to begin')).toBeTruthy()
+      key(60)
+      expect(screen.getByText('Tune 1 of 5')).toBeTruthy()
+      expect(document.querySelector('svg[data-big]')).toBeTruthy()
+      expect(screen.getByText('Right thumb on C')).toBeTruthy()
+      expect(document.querySelector('[data-target]')).toBeNull()
+      // A wrong key: written in red, and the key to play lights up.
+      key(65)
+      expect(document.querySelector('[data-wrong="65"]')).toBeTruthy()
+      expect(document.querySelector('[data-target]')?.getAttribute('data-pitch')).toBe('60')
+      const TUNE = [60, 60, 62, 60, 60, 62, 60]
+      for (const p of TUNE) key(p)
+      expect(screen.getByText('Played! A key or two went astray.')).toBeTruthy()
+      // The next tune: no middle C again, and a pause on it lights the key by itself.
+      advance(1300)
+      expect(screen.getByText('Tune 2 of 5')).toBeTruthy()
+      expect(document.querySelector('[data-target]')).toBeNull()
+      advance(3000)
+      expect(document.querySelector('[data-target]')?.getAttribute('data-pitch')).toBe('60')
+      for (let n = 2; n <= 5; n++) {
+        for (const p of TUNE) key(p)
+        expect(screen.getByText('✓ Not one wrong key!')).toBeTruthy()
+        advance(1300)
+      }
+      await flush()
+      expect(screen.getByText('4 of 5 clean!')).toBeTruthy()
+      expect((await new RecordRepo(store).get(profileId)).read[1]).toBe(4)
+      const log = await new EngagementLog(store).read(profileId)
+      expect(log.find((e) => e.type === 'challenge_finished')).toMatchObject({ game: 'read', level: 1, score: 4, wrong: 1 })
     } finally {
       vi.restoreAllMocks()
     }

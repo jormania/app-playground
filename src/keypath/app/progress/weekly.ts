@@ -75,7 +75,7 @@ export function weekFacts({ records, today, title, stickers, stickerName }: Week
     barsMadeClean: s.songs.bars.clean,
     journeyChecksPassed: s.journey.checksPassed,
     journeyChecksFailed: s.journey.checksFailed,
-    gamesPlayed: s.challenges.race + s.challenges.staff + s.challenges.echo + s.challenges.chord + s.challenges.ear,
+    gamesPlayed: s.challenges.race + s.challenges.staff + s.challenges.echo + s.challenges.chord + s.challenges.ear + s.challenges.read,
     warmUpsDone: s.warmUps,
     studioTakesKept: s.studio.kept,
     todayCardsDone: inWeek.filter((r) => r.type === 'today_done').length,
