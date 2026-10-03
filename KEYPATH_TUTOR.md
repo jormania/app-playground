@@ -1038,6 +1038,35 @@ stays in the right hand, since the bass clef is not read anywhere before level 3
 position is left out, since its B♭ would be written as an A♯ on the strip (it writes every
 black key as a sharp). It joins Today's game rotation, Progress and the weekly note.
 
+**Audit, the same day.** Driven through both on a phone-sized screen, upright and on its side,
+in light and dark, and read line by line:
+- *Listen no longer moved along the staff* (a slip in the written view's first build: listening
+  happens on the setup, which counted as "nothing to mark"), in the written view and in the
+  falling view's music strip alike. Fixed, with a test.
+- *The staff marked every later note on the key asked for*, then, once fixed by guessing the
+  earliest, would have marked the wrong note while listening. The strip is now told the notes
+  themselves, by id (`now`): the step's notes when waiting, the notes due on the clock, or the
+  notes sounding while she listens.
+- *A chord half played went dark again* after she was stuck, since "the step" was counted by
+  notes played. A step is now its notes, so it stays lit until it is done.
+- The staff is sized from the whole song, so one high note doesn't shrink it for a bar; a
+  note far above or below it widens it rather than being cut off.
+- A white key after a sharp on its line in the same bar now gets its natural; a sharp is still
+  written on every black key, as a courtesy for a beginner.
+- After a written run, no harder "On a wrong note" or timing is suggested (neither applies),
+  and the setup's "Change" link to those settings is hidden.
+- Read and play turns two bars a page, so a short tune is seen whole before it starts; has a
+  Stop and a way back from middle C; and asks for middle C again before the next tune if the
+  keyboard was unplugged and plugged back in.
+- The streak badge moved to the top left: it sat under Stop.
+
+Found and left, as it is older than this release and its fix reaches further: the starter songs
+count bars from their first note, so the four that start with a pickup (Happy Birthday, Für
+Elise, When the Saints, Brahms' Lullaby) are barred a beat or two off the printed music, in the
+written view, the music strip and "Practise bar". Their parts are cut at those bars, and a
+phrase there starts with its own pickup, so a fix needs pickups in the starter format and
+phrase starts measured in beats rather than bars (KEYPATH_ROADMAP.md, item 28).
+
 ### Release 3: the roadmap, in four batches
 
 Built in one go from `KEYPATH_ROADMAP.md` (2026-09-29), in the order that let each

@@ -331,6 +331,13 @@ describe('Play screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /■ Stop/ }))
     expect(await screen.findByRole('button', { name: /Listen/ })).toBeTruthy()
   })
+
+  it('marks the note sounding on the music strip while she listens', async () => {
+    await setUp({ score: true }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Listen/ }))
+    await waitFor(() => expect(document.querySelector('svg [class*="scoreNow"]')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /■ Stop/ }))
+  })
 })
 
 describe('Play screen, after the audit', () => {
@@ -552,6 +559,8 @@ describe('Play screen: the written view', () => {
       act(() => tap(document.querySelector<HTMLElement>(`[data-pitch="${p}"]`)!))
     }
     expect(await screen.findByRole('button', { name: 'Play again' })).toBeTruthy()
+    // All three found: in the falling view that would offer a harder setting, which the written view doesn't use.
+    expect(screen.queryByText(/next time\?/)).toBeNull()
     const started = (await events(store, profileId)).find((e) => e.type === 'song_started')
     expect(started).toMatchObject({ mode: 'wait', view: 'written' })
     expect(await new SetupRepo(store).get(profileId, 'Three notes')).toMatchObject({ view: 'written' })

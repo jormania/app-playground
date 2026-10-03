@@ -275,4 +275,29 @@ describe('Read and play', () => {
       vi.restoreAllMocks()
     }
   })
+
+  it('keeps a chord lit once she is stuck, even after one of its keys, and Stop leaves the round', async () => {
+    // Both hands, no randomness: the first step is middle C over the C below.
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    try {
+      const { store, profileId } = await open('#/challenge/read')
+      await flush()
+      fireEvent.click(screen.getByRole('radio', { name: 'Both hands' }))
+      fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+      key(60)
+      const lit = () => [...document.querySelectorAll('[data-target]')].map((k) => Number(k.getAttribute('data-pitch'))).sort((a, b) => a - b)
+      expect(lit()).toEqual([])
+      advance(3000)
+      expect(lit()).toEqual([48, 60])
+      key(60)
+      expect(lit()).toContain(48)
+      fireEvent.click(screen.getByRole('button', { name: /Stop/ }))
+      await flush()
+      expect(screen.getByRole('radio', { name: 'Both hands' })).toBeTruthy()
+      const log = await new EngagementLog(store).read(profileId)
+      expect(log.at(-1)).toMatchObject({ type: 'challenge_left', game: 'read', level: 3 })
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
 })

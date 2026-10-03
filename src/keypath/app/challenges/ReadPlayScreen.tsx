@@ -43,6 +43,8 @@ export function ReadPlayScreen() {
   const [clean, setClean] = useState<boolean | null>(null)
   const [results, setResults] = useState<ReadonlyMap<number, NoteResult['outcome']>>(new Map())
   const [targets, setTargets] = useState<ReadonlySet<number>>(NO_KEYS)
+  /** The same notes, by id, for the staff to mark. */
+  const [nowIds, setNowIds] = useState<ReadonlySet<number>>(NO_KEYS)
   const [bar, setBar] = useState(0)
   const [held, setHeld] = useState<ReadonlySet<number>>(new Set())
   const [wrong, setWrong] = useState<ReadonlySet<number>>(new Set())
@@ -68,6 +70,7 @@ export function ReadPlayScreen() {
   const showStep = (j: Judge) => {
     const step = j.currentStep
     setTargets(step ? new Set(step.notes.map((n) => n.pitch)) : NO_KEYS)
+    setNowIds(step ? new Set(step.notes.map((n) => n.id)) : NO_KEYS)
     if (step?.notes[0]) setBar(step.notes[0].bar)
   }
 
@@ -113,12 +116,23 @@ export function ReadPlayScreen() {
     void log.add(profileId, { type: 'challenge_finished', game: 'read', level: r.level, score: r.score, best, wrong: r.wrong, ms: Math.round(performance.now() - r.startedAt) })
   }, [repo, profileId, log])
 
+  /** Out of a round before its end (Stop, or back from middle C): counted as left, as leaving the screen is. */
+  const leave = () => {
+    clearTimeout(timer.current)
+    const r = round.current
+    round.current = null
+    judge.current = null
+    if (r && profileId) void log.add(profileId, { type: 'challenge_left', game: 'read', level: r.level, ms: Math.round(performance.now() - r.startedAt) })
+    morph(() => setPhase('setup'))
+  }
+
   const flashWrong = (pitch: number) => {
     setWrong((w) => new Set(w).add(pitch))
     setTimeout(() => setWrong((w) => { const s = new Set(w); s.delete(pitch); return s }), FLASH_MS)
   }
 
-  const stepKey = `${number}|${results.size}`
+  // A step is the notes asked for: a chord half played is still the same step, and stays lit once she was stuck.
+  const stepKey = `${number}|${[...nowIds].join(',')}`
   const { stuck, wrongKey } = useStuck(stepKey, phase === 'play')
 
   const apply = (j: Judge, events: JudgeEvent[], drawn: number) => {
@@ -147,7 +161,14 @@ export function ReadPlayScreen() {
       if (r.number >= READ_ROUND) return void finish()
       r.number++
       setNumber(r.number)
-      morph(() => beginPiece(pieceFor(r.level, Math.random, r.number)))
+      const next = pieceFor(r.level, Math.random, r.number)
+      // A keyboard plugged in or out since may be set to another octave: middle C again first.
+      if (shiftKnown.current) morph(() => beginPiece(next))
+      else
+        morph(() => {
+          setPiece(next)
+          setPhase('ready')
+        })
     }, BETWEEN_MS)
   }
 
@@ -239,6 +260,11 @@ export function ReadPlayScreen() {
         <div className={songStyles.prompt} role="status">
           <strong>{t('pressMiddleC')}</strong>
           <span>{hint ?? t('pressMiddleCHint')}</span>
+          <div className={songStyles.actions}>
+            <Button size="sm" variant="ghost" onClick={leave}>
+              {t('changeLevel')}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -257,6 +283,9 @@ export function ReadPlayScreen() {
                   : t('readGo')}
           </span>
           <span className={styles.scoreWrap}>{t('readScore', { score })}</span>
+          <Button size="sm" variant="ghost" onClick={leave}>
+            ■ {t('stop')}
+          </Button>
         </section>
       )}
 
@@ -279,7 +308,8 @@ export function ReadPlayScreen() {
 
       <div className={`${songStyles.stage} ${styles.readStage}`}>
         {piece && (phase === 'play' || phase === 'between') && (
-          <BigScore notes={notes} practice={piece.practice} bar={bar} active={phase === 'play' ? targets : NO_KEYS} results={results} beatMs={READ_BEAT_MS} wrong={wrong} ariaLabel={t('readAria', { n: number })} />
+          // Two bars a page, turned like a book's: a short tune is seen whole before it is played.
+          <BigScore notes={notes} practice={piece.practice} bar={Math.floor(bar / 2) * 2} now={phase === 'play' ? nowIds : NO_KEYS} results={results} beatMs={READ_BEAT_MS} wrong={wrong} ariaLabel={t('readAria', { n: number })} />
         )}
         <PlayKeyboard
           sound={!kb.connected}

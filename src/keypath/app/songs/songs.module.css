@@ -605,7 +605,8 @@
 .streak {
   position: absolute;
   top: var(--space-xs);
-  right: var(--space-xs);
+  /* The opposite corner from Stop, which sits top right. */
+  left: var(--space-xs);
   z-index: 3;
   padding: var(--space-3xs) var(--space-sm);
   border-radius: var(--radius-pill);

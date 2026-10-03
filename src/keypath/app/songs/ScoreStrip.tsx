@@ -46,8 +46,8 @@ interface Props {
   practice: Practice
   /** The bar to show first; the next is shown beside it. */
   bar: number
-  /** Pitches to play now: drawn in the accent colour. */
-  active: ReadonlySet<number>
+  /** The notes to play now (or sounding now, while she listens), by id: drawn in the accent colour. */
+  now: ReadonlySet<number>
   results: ReadonlyMap<number, NoteResult['outcome']>
   /** For the length of a note in beats: ms a beat lasts at the song's own tempo. */
   beatMs: number
@@ -60,15 +60,12 @@ interface Props {
   span?: 1 | 2
 }
 
-export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, active, results, beatMs, ariaLabel, big = false, wrong, span = 2 }: Props) {
+export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, now, results, beatMs, ariaLabel, big = false, wrong, span = 2 }: Props) {
   const treble = practice !== 'left'
   const bass = practice !== 'right'
   const bars = span === 2 ? [bar, bar + 1] : [bar]
   const width = span === 2 ? FULL_WIDTH : SINGLE_WIDTH
-  // The notes to play now: of those asked for and not yet played, the earliest. A later note on the same key waits its turn.
-  const pending = notes.filter((n) => active.has(n.pitch) && !results.has(n.id))
-  const nowStart = pending.length ? Math.min(...pending.map((n) => n.startMs)) : null
-  const isNow = (n: SongNote) => nowStart !== null && active.has(n.pitch) && !results.has(n.id) && n.startMs - nowStart < 40
+  const isNow = (n: SongNote) => now.has(n.id) && !results.has(n.id)
   // Each bar's notes, placed across its width by when they start within it.
   const byBar = bars.map((b) => notes.filter((n) => n.bar === b))
   const startOf = (b: number) => Math.min(...notes.filter((n) => n.bar === b).map((n) => n.startMs))
@@ -79,11 +76,25 @@ export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, activ
     const from = startOf(b)
     const next = notes.some((n) => n.bar === b + 1) ? startOf(b + 1) : Math.max(...mine.map((n) => n.startMs + n.durationMs))
     const span = Math.max(1, next - from)
-    return mine.map((n) => ({ n, x: LEFT + k * barWidth + 10 + ((n.startMs - from) / span) * (barWidth - 20) }))
+    return mine.map((n) => ({ n, k, x: LEFT + k * barWidth + 10 + ((n.startMs - from) / span) * (barWidth - 20) }))
   })
-  // Room for ledger lines and stems above and below the staff or staves shown.
-  const top = treble ? -6 : 52
-  const bottom = bass ? 132 : 82
+  const clefOf = (n: SongNote): 'treble' | 'bass' => (n.hand === 'left' ? 'bass' : 'treble')
+  const yOf = (pitch: number, clef: 'treble' | 'bass') => (clef === 'treble' ? trebleY(stepOf(pitch)) : bassY(stepOf(pitch)))
+  // A sharp is written on every black key; a white key on the same line later in the bar gets a natural, as it must.
+  const accidental = new Map<number, '♯' | '♮'>()
+  const sharpened = new Set<string>()
+  for (const { n, k } of [...placed].sort((a, b) => a.n.startMs - b.n.startMs)) {
+    const at = `${k}|${clefOf(n)}|${stepOf(n.pitch)}`
+    if (BLACK.has(((n.pitch % 12) + 12) % 12)) {
+      accidental.set(n.id, '♯')
+      sharpened.add(at)
+    } else if (sharpened.delete(at)) accidental.set(n.id, '♮')
+  }
+  // Room for ledger lines and stems above and below the staff or staves shown, and more for a note far beyond them:
+  // measured over the whole song, so the staff keeps one size from bar to bar.
+  const ys = notes.filter((n) => (clefOf(n) === 'treble' ? treble : bass)).map((n) => yOf(n.pitch, clefOf(n)))
+  const top = Math.min(treble ? -6 : 52, ...ys.map((y) => y - 28))
+  const bottom = Math.max(bass ? 132 : 82, ...ys.map((y) => y + 28))
   const line = (bottomY: number) => [0, 1, 2, 3, 4].map((i) => bottomY - i * SPACE)
   const staffLines = [...(treble ? line(TREBLE_BOTTOM) : []), ...(bass ? line(BASS_BOTTOM) : [])]
   const barXs = span === 2 ? [LEFT, LEFT + barWidth, width - RIGHT] : [LEFT, width - RIGHT]
@@ -136,9 +147,9 @@ export const ScoreStrip = memo(function ScoreStrip({ notes, practice, bar, activ
               const ly = clef === 'treble' ? trebleY(s) : bassY(s)
               return <line key={s} x1={x - 8} x2={x + 8} y1={ly} y2={ly} className={styles.scoreLine} />
             })}
-            {BLACK.has(((n.pitch % 12) + 12) % 12) && (
+            {accidental.has(n.id) && (
               <text x={x - 15} y={y + 4} className={styles.scoreSharp}>
-                ♯
+                {accidental.get(n.id)}
               </text>
             )}
             <ellipse cx={x} cy={y} rx={5.4} ry={3.8} transform={`rotate(-20 ${x} ${y})`} className={open ? styles.scoreOpen : styles.scoreFilled} />

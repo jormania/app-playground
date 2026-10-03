@@ -14,6 +14,9 @@ Reading. Details in `KEYPATH_TUTOR.md` §9, "Release 4".
   key only when she is stuck.
 - **Read and play**, a fifth game: short tunes made up on the spot, read from the staff with the
   keys dark. Three levels, from five fingers in the right hand to both hands.
+- **After an audit the same day**: the staff follows Listen again and marks only the note to
+  play; a chord stays lit once she's stuck; naturals after a sharp; Read and play shows a short
+  tune whole, has a Stop, and asks for middle C again after the keyboard is reconnected.
 
 ## Release 3 — 2026-09-29
 

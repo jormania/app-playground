@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, octaveShift, summaryForHand, type Hand, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type Timing } from '../../engine'
+import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, octaveShift, summaryForHand, type Hand, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type SongNote, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -132,6 +132,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [held, setHeld] = useState<ReadonlySet<number>>(new Set())
   const [wrong, setWrong] = useState<ReadonlySet<number>>(new Set())
   const [targets, setTargets] = useState<ReadonlySet<number>>(new Set())
+  /** The same, as the notes themselves (by id): the staff marks exactly these, not every note on those keys. */
+  const [nowIds, setNowIds] = useState<ReadonlySet<number>>(new Set())
   const [results, setResults] = useState<ReadonlyMap<number, NoteResult['outcome']>>(new Map())
   const [hint, setHint] = useState<string | null>(null)
   const [report, setReport] = useState<Report | null>(null)
@@ -380,7 +382,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       // A song too short for parts is learnt once played through: kept the same way, without a part logged.
       void partsRepo.pass(profileId, song.id, practice, 'whole').then(setLearnt)
     }
-    const r = buildReport(summary, settings)
+    // Written, it always waited: a harder "On a wrong note" or timing wouldn't change how it plays, so none is offered.
+    const built = buildReport(summary, settings)
+    const r = written ? { ...built, suggestion: null } : built
     setReport(r)
     setDuoResults(null)
     setPhase('report')
@@ -404,10 +408,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         return log.add(profileId, { type: 'song_finished', songId: song.id, practice, stars: r.stars, score: Math.round(r.score * 100) / 100, hit: r.hit, total: r.total, wrong: r.wrong })
       })
     }
-  }, [settings, profileId, profile, log, song, practice, tempo, endLoop, startPass, part, partsRepo, mate, duo])
+  }, [settings, profileId, profile, log, song, practice, tempo, endLoop, startPass, part, partsRepo, mate, duo, written])
 
-  // Written view: the keys stay dark until she is stuck. A step is the notes asked for, and how many are played.
-  const stepKey = `${results.size}|${[...targets].sort((a, b) => a - b).join(',')}`
+  // Written view: the keys stay dark until she is stuck. A step is the notes asked for: a chord half played is still the same step.
+  const stepKey = [...nowIds].join(',')
   const { stuck, wrongKey } = useStuck(stepKey, written && phase === 'playing')
 
   const apply = useCallback(
@@ -541,6 +545,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   outputRef.current = output
   const [listening, setListening] = useState(false)
   const [listenKeys, setListenKeys] = useState<ReadonlySet<number>>(new Set())
+  const [listenIds, setListenIds] = useState<ReadonlySet<number>>(new Set())
   const listenPlayback = useRef<Playback | null>(null)
   const stopListening = useCallback(() => {
     listenPlayback.current?.stop()
@@ -548,6 +553,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     morph(() => {
       setListening(false)
       setListenKeys(new Set())
+      setListenIds(new Set())
       fall.current?.setTime(READY_TIME)
     })
   }, [])
@@ -594,11 +600,13 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         const next = barAtTime(s)
         return next === b ? b : next
       })
-      const sounding = notes.filter((n) => n.startMs <= s && s < n.startMs + n.durationMs).map((n) => n.pitch)
-      const key = sounding.join(',')
+      const playingNow = notes.filter((n) => n.startMs <= s && s < n.startMs + n.durationMs)
+      const sounding = playingNow.map((n) => n.pitch)
+      const key = playingNow.map((n) => n.id).join(',')
       if (key !== lastKeys) {
         lastKeys = key
         setListenKeys(new Set(sounding))
+        setListenIds(new Set(playingNow.map((n) => n.id)))
       }
       raf = requestAnimationFrame(frame)
     }
@@ -649,7 +657,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       if (!j) return
       const now = performance.now()
       let target: number
-      let next: number[]
+      let next: SongNote[]
       if (j.mode === 'running') {
         apply(j.tick(now))
         accompanist.current?.tick(j.songTime(now), now)
@@ -661,20 +669,21 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           return next === b ? b : next
         })
         setCountIn(s < 0 ? Math.ceil(-s / (60000 / song.bpm)) : null)
-        next = notes.filter((n) => n.startMs >= s - 150 && n.startMs <= s + 450 && !results.has(n.id)).map((n) => n.pitch)
+        next = notes.filter((n) => n.startMs >= s - 150 && n.startMs <= s + 450 && !results.has(n.id))
       } else {
         const step = j.currentStep
         if (step?.notes[0]) setScoreBar((b) => (step.notes[0].bar === b ? b : step.notes[0].bar))
         target = step?.startMs ?? shownTime.current
         // Glide to the waiting step rather than jumping.
         shownTime.current += (target - shownTime.current) * 0.2
-        next = step ? step.notes.map((n) => n.pitch) : []
+        next = step ? step.notes : []
       }
       fall.current?.setTime(shownTime.current)
-      const key = next.sort((a, b) => a - b).join(',')
+      const key = next.map((n) => n.id).sort((a, b) => a - b).join(',')
       if (key !== lastTargets) {
         lastTargets = key
-        setTargets(new Set(next))
+        setTargets(new Set(next.map((n) => n.pitch)))
+        setNowIds(new Set(next.map((n) => n.id)))
       }
       raf = requestAnimationFrame(frame)
     }
@@ -909,9 +918,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           ) : (
             <p className={setup.note} data-inline>
               <span>{written ? t('writtenMode') : t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
-              <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
-                {t('playModeChange')}
-              </button>
+              {/* Written always waits: her On a wrong note setting doesn't apply, so there is nothing to change there. */}
+              {!written && (
+                <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
+                  {t('playModeChange')}
+                </button>
+              )}
               {barLink}
             </p>
           )}
@@ -1073,7 +1085,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             notes={notes}
             practice={practice}
             bar={scoreBar}
-            active={phase === 'ready' || phase === 'setup' ? NO_KEYS : listening ? listenKeys : targets}
+            now={listening ? listenIds : phase === 'ready' || phase === 'setup' ? NO_KEYS : nowIds}
             results={results}
             beatMs={60000 / song.bpm}
             wrong={wrong}
@@ -1085,7 +1097,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             notes={notes}
             practice={practice}
             bar={scoreBar}
-            active={phase === 'ready' || phase === 'setup' ? new Set<number>() : listening ? listenKeys : targets}
+            now={listening ? listenIds : phase === 'ready' || phase === 'setup' ? NO_KEYS : nowIds}
             results={results}
             beatMs={60000 / song.bpm}
             ariaLabel={t('scoreAria', { a: barName(song, scoreBar), b: barName(song, scoreBar + 1) })}
