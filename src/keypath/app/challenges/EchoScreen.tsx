@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
+import { BarChart3, Play } from 'lucide-react'
 import { MIN_VELOCITY } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -19,7 +20,7 @@ import { ECHO_LEVEL_NAME } from './ChallengesHome'
 import { RecordRepo, type ChallengeRecords } from './records'
 import { beatMs, ECHO_BPM, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, syllables, turnTimeline, type EchoLevel, type EchoResult } from './rhythm'
 import styles from './challenges.module.css'
-import setup from '../setup.module.css'
+import { con, Setting } from '../console/SetupConsole'
 
 type Phase = 'setup' | 'turn' | 'result' | 'done'
 /** What the turn is doing now, for the big label. */
@@ -210,35 +211,38 @@ export function EchoScreen() {
 
   return (
     <main className={`${styles.playScreen} ${phase === 'turn' ? styles.echoScreen : ''}`}>
-      <TopBar title={t('echoTitle')} compact={phase === 'turn'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'turn'} />} />
+      <TopBar title={t('echoTitle')} dense compact={phase === 'turn'} aside={<KeyboardStatus status={kb} missing="keyboardMissingShort" compact={phase === 'turn'} />} />
       <IntroCard id="echo" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
-        <section className={setup.bar}>
-          <p className={setup.lead}>{t('echoBlurb')}</p>
-          <div className={setup.field}>
-            <span className={setup.label}>{t('level')}</span>
-            <SegmentedControl
-              size="sm"
-              value={String(level)}
-              onChange={(v) => setLevel(Number(v) as EchoLevel)}
-              options={[1, 2, 3].map((l) => ({ value: String(l), label: t(ECHO_LEVEL_NAME[l]) }))}
-            />
-          </div>
-          <OutputChoice output={output} label={t('echoPlayOn')} phoneOnly={t('echoPlaysOnPhone')} />
-          <div className={setup.go}>
-            <Button
-              onClick={() => {
-                startRound()
-                setPending(true)
-              }}
-            >
-              ▶ {t('go')}
-            </Button>
-            <IntroLink onShow={intro.show} />
-            <span className={setup.note} data-inline>
-              {best !== undefined ? t('best', { score: `${best}/${ROUND}` }) : t('noBest')}
-            </span>
+        <section className={con.setup} aria-label={t('setupGame')}>
+          <div className={con.console}>
+            <p className={con.lead}>{t('echoBlurb')}</p>
+            <div className={con.settings}>
+              <Setting icon={BarChart3}>
+                <SegmentedControl
+                  size="sm"
+                  label={t('level')}
+                  value={String(level)}
+                  onChange={(v) => setLevel(Number(v) as EchoLevel)}
+                  options={[1, 2, 3].map((l) => ({ value: String(l), label: t(ECHO_LEVEL_NAME[l]) }))}
+                />
+              </Setting>
+              <OutputChoice output={output} label={t('echoPlayOn')} phoneOnly={t('echoPlaysOnPhone')} />
+            </div>
+            <div className={con.actions}>
+              <Button
+                onClick={() => {
+                  startRound()
+                  setPending(true)
+                }}
+              >
+                <Play className={con.btnIcon} size={20} fill="currentColor" aria-hidden />
+                {t('go')}
+              </Button>
+              <IntroLink onShow={intro.show} />
+            </div>
+            <p className={con.note}>{best !== undefined ? t('best', { score: `${best}/${ROUND}` }) : t('noBest')}</p>
           </div>
         </section>
       )}

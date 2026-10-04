@@ -415,7 +415,8 @@ above is sized for a tab with the toolbar (about 290 px tall on the S24).
 A pass over the whole app, with landscape treated as the main way it's used.
 
 **Landscape.** Every setup panel (a song; the three games; Studio's record
-bar) shares one layout, `app/setup.module.css`: small segmented controls,
+bar) shared one layout, `app/setup.module.css` (since replaced by the setup
+console, `app/console/`; see "A shorter song setup"): small segmented controls,
 labels beside them, the standard 44 px start button, with the same weights in
 both orientations. In portrait each choice is its own row (label above); on a
 phone on its side they flow into one row, two at most, so the keyboard stays
@@ -1034,6 +1035,27 @@ The header on this screen is `TopBar`'s new `dense` variant: the title beside th
 the same `choose`, `partId`, `barPick`/`toPick` and `barOpen`, and the console still renders
 only in `phase === 'setup' && !listening`, so Play, Listen and a loop take the screen as before
 and Stop brings it back with every choice as it was (tested).
+
+**The same console everywhere a session starts** (asked for the same day). The pieces live in
+`app/console/` (`SetupConsole.tsx`: the `Setting` row and the styles; `console.module.css`,
+which took in the old `setup.module.css` and replaced it) and every pre-play screen uses them:
+- *The five games*: their blurb, then icon rows (an eye for what's shown, bars for the level, a
+  speaker for where Rhythm echo plays), Start filling the row with *How it works* beside it, as
+  Listen sits beside Play, and the best score and the game's tip run together on one line under.
+- *The Studio*: count-in (a stopwatch, with its click chip) and where takes play (the speaker)
+  as rows, Record across the width under them. Its console stays while she records.
+- *Keyboard / Phone* (`OutputChoice`, Rhythm echo and the Studio) is a console row itself.
+- *A Journey step*: no settings, so no rows; it keeps its lesson card, laid out for the hand
+  drawing, and takes the header and the start row: Learn it across the width, Check beside it.
+- `TopBar dense` and the short "No keyboard" words on every one of them.
+
+Measured the same way (where the panel ends, 360 / 390 / 412 px, before → after): Note race
+488/460/440 → 412/393/393; Rhythm echo 375/347/327 → 330/330/330; Chord catch 422/394/374 →
+349/349/327; Ear check 419/392/372 → 345/345/345; Read and play 439/392/372 → 364/364/345; the
+Studio 374/374/354 → 330; a Journey step 455/369/349 → 389/343/343. On its side (915 × 412
+and 780 × 360 alike) the games end 4–56 px higher (Read and play 230 → 174, Ear check 211 → 174,
+Note race 191 → 176, Chord catch 176 → 164, Rhythm echo 182 → 178); the Studio and a step are
+unchanged. The one that grew is Rhythm echo upright at 412 px, by 3 px.
 
 Measured with Playwright, from the top of the screen to the falling notes (the keyboard stays
 where it was, at the bottom): Twinkle 634 → 497 px at 360 and 634 → 461 at 390/412; Ode to Joy

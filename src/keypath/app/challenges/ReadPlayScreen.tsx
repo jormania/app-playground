@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
+import { BarChart3, Play } from 'lucide-react'
 import { handPlaces, Judge, MIN_VELOCITY, notesFor, notMiddleC, octaveShift, type JudgeEvent, type NoteResult } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -23,7 +24,7 @@ import { levelPitches, pieceFor, READ_BEAT_MS, READ_ROUND, type ReadLevel, type 
 import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
 import songStyles from '../songs/songs.module.css'
-import setup from '../setup.module.css'
+import { con, Setting } from '../console/SetupConsole'
 
 type Phase = 'setup' | 'ready' | 'play' | 'between' | 'result'
 const MIDDLE_C = 60
@@ -259,25 +260,32 @@ export function ReadPlayScreen() {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={t('readTitle')} compact={running} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={running} />} />
+      <TopBar title={t('readTitle')} dense compact={running} aside={<KeyboardStatus status={kb} missing="keyboardMissingShort" compact={running} />} />
       <IntroCard id="read" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
-        <section className={setup.bar}>
-          <p className={setup.lead}>{t('readBlurb')}</p>
-          <div className={setup.field}>
-            <span className={setup.label}>{t('level')}</span>
-            <SegmentedControl size="sm" value={String(level)} onChange={(v) => setLevel(Number(v) as ReadLevel)} options={[1, 2, 3].map((l) => ({ value: String(l), label: t(READ_LEVEL_NAME[l]) }))} />
-          </div>
-          <div className={setup.go}>
-            <Button onClick={start}>▶ {t('go')}</Button>
-            <IntroLink onShow={intro.show} />
-            <span className={setup.note} data-inline>
-              {best !== undefined ? t('best', { score: best }) : t('noBest')}
-            </span>
-            <span className={setup.note} data-inline>
-              {t('readHintPlain')}
-            </span>
+        <section className={con.setup} aria-label={t('setupGame')}>
+          <div className={con.console}>
+            <p className={con.lead}>{t('readBlurb')}</p>
+            <div className={con.settings}>
+              <Setting icon={BarChart3}>
+                <SegmentedControl
+                  size="sm"
+                  label={t('level')}
+                  value={String(level)}
+                  onChange={(v) => setLevel(Number(v) as ReadLevel)}
+                  options={[1, 2, 3].map((l) => ({ value: String(l), label: t(READ_LEVEL_NAME[l]) }))}
+                />
+              </Setting>
+            </div>
+            <div className={con.actions}>
+              <Button onClick={start}>
+                <Play className={con.btnIcon} size={20} fill="currentColor" aria-hidden />
+                {t('go')}
+              </Button>
+              <IntroLink onShow={intro.show} />
+            </div>
+            <p className={con.note}>{best !== undefined ? t('best', { score: best }) : t('noBest')} · {t('readHintPlain')}</p>
           </div>
         </section>
       )}

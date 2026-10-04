@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
+import { BarChart3, Play } from 'lucide-react'
 import { MIN_VELOCITY } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -20,7 +21,7 @@ import { CHORD_LEVEL_NAME } from './ChallengesHome'
 import { ChordCatch, SCREEN_KEYS, shows, voicingOf, type ChordDef, type ChordLevel } from './chordCatch'
 import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
-import setup from '../setup.module.css'
+import { con, Setting } from '../console/SetupConsole'
 
 type Phase = 'setup' | 'run' | 'result'
 const FLASH_MS = 300
@@ -172,30 +173,32 @@ export function ChordCatchScreen() {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={t('chordTitle')} compact={phase === 'run'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'run'} />} />
+      <TopBar title={t('chordTitle')} dense compact={phase === 'run'} aside={<KeyboardStatus status={kb} missing="keyboardMissingShort" compact={phase === 'run'} />} />
       <IntroCard id="chord" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
-        <section className={setup.bar}>
-          <p className={setup.lead}>{t('chordBlurb')}</p>
-          <div className={setup.field}>
-            <span className={setup.label}>{t('level')}</span>
-            <SegmentedControl
-              size="sm"
-              value={String(level)}
-              onChange={(v) => setLevel(Number(v) as ChordLevel)}
-              options={[1, 2, 3].map((l) => ({ value: String(l), label: t(CHORD_LEVEL_NAME[l]) }))}
-            />
-          </div>
-          <div className={setup.go}>
-            <Button onClick={start}>▶ {t('go')}</Button>
-            <IntroLink onShow={intro.show} />
-            <span className={setup.note} data-inline>
-              {best !== undefined ? t('best', { score: best }) : t('noBest')}
-            </span>
-            <span className={setup.note} data-inline>
-              {t(shows(level) ? 'chordHintShown' : 'chordHintNamed')}
-            </span>
+        <section className={con.setup} aria-label={t('setupGame')}>
+          <div className={con.console}>
+            <p className={con.lead}>{t('chordBlurb')}</p>
+            <div className={con.settings}>
+              <Setting icon={BarChart3}>
+                <SegmentedControl
+                  size="sm"
+                  label={t('level')}
+                  value={String(level)}
+                  onChange={(v) => setLevel(Number(v) as ChordLevel)}
+                  options={[1, 2, 3].map((l) => ({ value: String(l), label: t(CHORD_LEVEL_NAME[l]) }))}
+                />
+              </Setting>
+            </div>
+            <div className={con.actions}>
+              <Button onClick={start}>
+                <Play className={con.btnIcon} size={20} fill="currentColor" aria-hidden />
+                {t('go')}
+              </Button>
+              <IntroLink onShow={intro.show} />
+            </div>
+            <p className={con.note}>{best !== undefined ? t('best', { score: best }) : t('noBest')} · {t(shows(level) ? 'chordHintShown' : 'chordHintNamed')}</p>
           </div>
         </section>
       )}

@@ -128,6 +128,8 @@ export const ro: Record<StringKey, string> = {
   playJoin: 'Cântă părțile {a}–{b}',
   playWhole: 'Cântă tot',
   setupLabel: 'Pregătește cântecul',
+  setupGame: 'Pregătește jocul',
+  setupStudio: 'Pregătește o înregistrare',
   playMode: 'La o notă greșită: {mode} · Ritm: {timing}',
   introGo: 'Hai să începem',
   introNever: 'Nu mai arăta asta',

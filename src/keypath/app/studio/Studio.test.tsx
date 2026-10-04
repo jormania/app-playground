@@ -262,3 +262,13 @@ describe('Studio', () => {
     }
   })
 })
+
+describe('Studio: the setup console', () => {
+  it('sets up a take the way a song is set up: named rows with no headings, and Record across the width', async () => {
+    await open('#/door/studio')
+    expect(await screen.findByRole('region', { name: 'Set up a take' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Count-in' })).toBeTruthy()
+    expect(screen.queryByText('Count-in', { selector: 'span' })).toBeNull()
+    expect(screen.getByRole('button', { name: /Record/ })).toBeTruthy()
+  })
+})

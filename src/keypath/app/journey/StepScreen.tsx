@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../../ds'
+import { ClipboardCheck, Play } from 'lucide-react'
 import { MIN_VELOCITY, notMiddleC, octaveShift, type NoteResult } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -21,6 +22,7 @@ import { Hands } from './Hands'
 import { JourneyRepo, stateOf, type JourneyProgress } from './progress'
 import { Staff } from './Staff'
 import { JOURNEY, stepById, type JourneyStep } from './steps'
+import { con } from '../console/SetupConsole'
 import styles from './journey.module.css'
 
 type Mode = 'practice' | 'check'
@@ -258,7 +260,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
 
   return (
     <main className={styles.stepScreen}>
-      <TopBar title={`${t('jStepN', { n })} · ${t(step.title)}`} compact={phase === 'run'} aside={<KeyboardStatus status={keyboard} missing="keyboardMissing" compact={phase === 'run'} />} />
+      <TopBar title={`${t('jStepN', { n })} · ${t(step.title)}`} dense compact={phase === 'run'} aside={<KeyboardStatus status={keyboard} missing="keyboardMissingShort" compact={phase === 'run'} />} />
 
       {phase === 'intro' && (
         <section className={styles.panel}>
@@ -267,17 +269,25 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
             {step.id === 'fingers' && hands()}
             <p className={styles.tip}>{t(step.tip)}</p>
           </div>
+          {/* The same start row as a song's or a game's setup: the one filled button takes the width. */}
           {state === 'locked' ? (
             <>
               <p className={styles.hint}>{t('jLocked', { n: n - 1 })}</p>
-              <div className={styles.actions}>
-                <Button onClick={() => begin('check')}>{t('jTestOut')}</Button>
+              <div className={con.actions} data-single>
+                <Button onClick={() => begin('check')}>
+                  <ClipboardCheck className={con.btnIcon} size={20} aria-hidden />
+                  {t('jTestOut')}
+                </Button>
               </div>
             </>
           ) : (
-            <div className={styles.actions}>
-              <Button onClick={() => begin('practice')}>{t('jLearn')}</Button>
+            <div className={con.actions}>
+              <Button onClick={() => begin('practice')}>
+                <Play className={con.btnIcon} size={20} fill="currentColor" aria-hidden />
+                {t('jLearn')}
+              </Button>
               <Button variant="outline" onClick={() => begin('check')}>
+                <ClipboardCheck className={con.btnIcon} size={20} aria-hidden />
                 {t('jCheck')}
               </Button>
             </div>

@@ -6,7 +6,8 @@ import { useApp } from '../context'
 import { PREFIX } from '../store'
 import type { Sink } from './playback'
 import { keyboardSink, phoneSink } from './sinks'
-import setup from '../setup.module.css'
+import { Volume2 } from 'lucide-react'
+import { con, Setting } from '../console/SetupConsole'
 
 export type Via = 'keyboard' | 'phone'
 /** Where KeyPath's own sound goes, chosen once per phone (Studio's takes, Challenges' rhythms). */
@@ -53,18 +54,19 @@ export function useOutput(kb: KeyboardStatus): Output {
 }
 
 /**
- * The Keyboard / Phone choice. When a keyboard is attached but can't take MIDI,
- * a line says the phone plays; with no keyboard at all that goes without saying.
+ * The Keyboard / Phone choice, as a row of the setup console (a speaker where its
+ * heading was). When a keyboard is attached but can't take MIDI, a line says the
+ * phone plays; with no keyboard at all that goes without saying.
  */
 export function OutputChoice({ output, label, phoneOnly }: { output: Output; label: string; phoneOnly: string }) {
   const { t } = useApp()
   return (
     <>
       {output.canSend ? (
-        <div className={setup.field}>
-          <span className={setup.label}>{label}</span>
+        <Setting icon={Volume2}>
           <SegmentedControl
             size="sm"
+            label={label}
             value={output.via}
             onChange={(v) => output.choose(v as Via)}
             options={[
@@ -72,15 +74,11 @@ export function OutputChoice({ output, label, phoneOnly }: { output: Output; lab
               { value: 'phone', label: t('studioOnPhone') },
             ]}
           />
-        </div>
+        </Setting>
       ) : (
-        output.keyboardConnected && (
-          <p className={setup.note} data-inline>
-            {phoneOnly}
-          </p>
-        )
+        output.keyboardConnected && <p className={con.note}>{phoneOnly}</p>
       )}
-      {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
+      {output.phoneMuted && <p className={con.note}>{t('studioPhoneMuted')}</p>}
     </>
   )
 }

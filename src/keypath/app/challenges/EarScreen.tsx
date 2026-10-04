@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
+import { BarChart3, Play } from 'lucide-react'
 import { MIN_VELOCITY } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -22,7 +23,7 @@ import { EarTrain, type EarLevel } from './earTrain'
 import { RecordRepo, type ChallengeRecords } from './records'
 import { SCREEN_KEYS } from './chordCatch'
 import styles from './challenges.module.css'
-import setup from '../setup.module.css'
+import { con, Setting } from '../console/SetupConsole'
 
 type Phase = 'setup' | 'listen' | 'find' | 'result'
 const FLASH_MS = 350
@@ -189,27 +190,34 @@ export function EarScreen() {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={t('earTitle')} compact={running} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={running} />} />
+      <TopBar title={t('earTitle')} dense compact={running} aside={<KeyboardStatus status={kb} missing="keyboardMissingShort" compact={running} />} />
       <IntroCard id="ear" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
-        <section className={setup.bar}>
-          <p className={setup.lead}>{t('earBlurb')}</p>
-          <div className={setup.field}>
-            <span className={setup.label}>{t('level')}</span>
-            <SegmentedControl size="sm" value={String(level)} onChange={(v) => setLevel(Number(v) as EarLevel)} options={[1, 2, 3].map((l) => ({ value: String(l), label: t(EAR_LEVEL_NAME[l]) }))} />
+        <section className={con.setup} aria-label={t('setupGame')}>
+          <div className={con.console}>
+            <p className={con.lead}>{t('earBlurb')}</p>
+            <div className={con.settings}>
+              <Setting icon={BarChart3}>
+                <SegmentedControl
+                  size="sm"
+                  label={t('level')}
+                  value={String(level)}
+                  onChange={(v) => setLevel(Number(v) as EarLevel)}
+                  options={[1, 2, 3].map((l) => ({ value: String(l), label: t(EAR_LEVEL_NAME[l]) }))}
+                />
+              </Setting>
+            </div>
+            <div className={con.actions}>
+              <Button onClick={start}>
+                <Play className={con.btnIcon} size={20} fill="currentColor" aria-hidden />
+                {t('go')}
+              </Button>
+              <IntroLink onShow={intro.show} />
+            </div>
+            <p className={con.note}>{best !== undefined ? t('best', { score: best }) : t('noBest')} · {t('earHintPlain')}</p>
+            {output.phoneMuted && <p className={con.note}>{t('studioPhoneMuted')}</p>}
           </div>
-          <div className={setup.go}>
-            <Button onClick={start}>▶ {t('go')}</Button>
-            <IntroLink onShow={intro.show} />
-            <span className={setup.note} data-inline>
-              {best !== undefined ? t('best', { score: best }) : t('noBest')}
-            </span>
-            <span className={setup.note} data-inline>
-              {t('earHintPlain')}
-            </span>
-          </div>
-          {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
         </section>
       )}
 

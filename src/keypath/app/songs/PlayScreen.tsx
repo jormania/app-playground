@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, Gauge, Hand as HandIcon, Headphones, ListMusic, Music, Play, Repeat, Users, type LucideIcon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Gauge, Hand as HandIcon, Headphones, ListMusic, Music, Play, Repeat, Users } from 'lucide-react'
 import { Button, SegmentedControl } from '../../../ds'
 import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, notMiddleC, octaveShift, summaryForHand, type Hand, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type SongNote, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
@@ -37,8 +37,7 @@ import { useOutput } from '../studio/output'
 import { Playback, realClock, type Sink } from '../studio/playback'
 import { Recorder, type Recording } from '../studio/recorder'
 import styles from './songs.module.css'
-import setup from '../setup.module.css'
-import con from './setupConsole.module.css'
+import { con, Setting } from '../console/SetupConsole'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone' | 'partDone'
 /** The phases after a run, when nothing is asked of her. */
@@ -59,21 +58,6 @@ const READY_TIME = -1500
 const MAX_CHIPS = 7
 const RANGE_ID = 'practice-range'
 
-/**
- * One row of the setup console: an icon where a heading used to be, then the control.
- * The control names itself for a screen reader (a segmented control's label, a chip
- * row's aria-label), so the icon is only for the eye. `wide` keeps it a full row where
- * the console puts two settings side by side; `chips` for a row of chips, which sit
- * lower than a segmented control, so the icon lines up with them.
- */
-function Setting({ icon: Icon, wide, chips, children }: { icon: LucideIcon; wide?: boolean; chips?: boolean; children: ReactNode }) {
-  return (
-    <div className={con.setting} data-wide={wide || undefined} data-chips={chips || undefined}>
-      <Icon className={con.icon} size={22} aria-hidden />
-      <div className={con.control}>{children}</div>
-    </div>
-  )
-}
 /** The other hand plays itself while she practises one: remembered on the phone. */
 const OTHER_HAND_KEY = `${PREFIX}otherHand`
 const NO_KEYS: ReadonlySet<number> = new Set()
@@ -929,7 +913,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                   ]}
                 />
                 {practice !== 'both' && (
-                  <button type="button" className={setup.chip} aria-pressed={otherHand} aria-label={t('otherHandFull')} onClick={() => chooseOtherHand(!otherHand)}>
+                  <button type="button" className={con.chip} aria-pressed={otherHand} aria-label={t('otherHandFull')} onClick={() => chooseOtherHand(!otherHand)}>
                     🎹 {t('otherHand')}
                   </button>
                 )}
@@ -937,12 +921,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             )}
             {hasLeft && practice === 'both' && partners.length > 0 && (
               <Setting icon={Users} wide chips>
-                <div className={setup.chips} role="group" aria-label={t('togetherFull')}>
-                  <button type="button" className={setup.chip} aria-pressed={!mate} onClick={() => setDuo(null)}>
+                <div className={con.chips} role="group" aria-label={t('togetherFull')}>
+                  <button type="button" className={con.chip} aria-pressed={!mate} onClick={() => setDuo(null)}>
                     {t('togetherAlone')}
                   </button>
                   {partners.map((p) => (
-                    <button key={p.id} type="button" className={setup.chip} aria-pressed={mate?.id === p.id} onClick={() => setDuo({ partnerId: p.id, mine: duo?.mine ?? 'right' })}>
+                    <button key={p.id} type="button" className={con.chip} aria-pressed={mate?.id === p.id} onClick={() => setDuo({ partnerId: p.id, mine: duo?.mine ?? 'right' })}>
                       {p.avatar} {p.name}
                     </button>
                   ))}
@@ -964,12 +948,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             {steps.length > 0 && (
               <Setting icon={Music} wide={steps.length > MAX_CHIPS}>
                 {/* The same chips for every song, drawn as one track like the rows around them; a long one's run scrolls sideways, the chosen one in view. */}
-                <div ref={chipRow} className={`${setup.chips} ${con.track}`} data-scroll={steps.length > MAX_CHIPS || undefined} role="group" aria-label={t('parts')}>
+                <div ref={chipRow} className={`${con.chips} ${con.track}`} data-scroll={steps.length > MAX_CHIPS || undefined} role="group" aria-label={t('parts')}>
                   {steps.map((x) => (
                     <button
                       key={x.id}
                       type="button"
-                      className={setup.chip}
+                      className={con.chip}
                       aria-pressed={x.id === partId}
                       aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
                       onClick={() => setPartId(x.id)}
@@ -1016,7 +1000,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               <span>{written ? t('writtenMode') : t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
               {/* Written always waits: her On a wrong note setting doesn't apply, so there is nothing to change there. */}
               {!written && (
-                <button type="button" className={setup.link} onClick={() => navigate({ name: 'settings' })}>
+                <button type="button" className={con.link} onClick={() => navigate({ name: 'settings' })}>
                   {t('playModeChange')}
                 </button>
               )}

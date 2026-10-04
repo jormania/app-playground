@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
+import { BarChart3, Eye, Play } from 'lucide-react'
 import { MIN_VELOCITY } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -20,7 +21,7 @@ import { RACE_LEVEL_NAME, STAFF_LEVEL_NAME } from './ChallengesHome'
 import { NoteRace, RACE_MS, type RaceLevel, type RaceMode } from './noteRace'
 import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
-import setup from '../setup.module.css'
+import { con, Setting } from '../console/SetupConsole'
 
 type Phase = 'setup' | 'run' | 'result'
 const FLASH_MS = 300
@@ -135,42 +136,44 @@ export function NoteRaceScreen() {
 
   return (
     <main className={styles.playScreen}>
-      <TopBar title={t('raceTitle')} compact={phase === 'run'} aside={<KeyboardStatus status={kb} missing="keyboardMissing" compact={phase === 'run'} />} />
+      <TopBar title={t('raceTitle')} dense compact={phase === 'run'} aside={<KeyboardStatus status={kb} missing="keyboardMissingShort" compact={phase === 'run'} />} />
       <IntroCard id="race" open={intro.open && phase === 'setup'} onClose={intro.close} onNever={intro.never} />
 
       {phase === 'setup' && (
-        <section className={setup.bar}>
-          <p className={setup.lead}>{t('raceBlurb')}</p>
-          <div className={setup.field}>
-            <span className={setup.label}>{t('raceShow')}</span>
-            <SegmentedControl
-              size="sm"
-              value={mode}
-              onChange={(v) => setMode(v as RaceMode)}
-              options={[
-                { value: 'names', label: t('raceModeNames') },
-                { value: 'staff', label: t('raceModeStaff') },
-              ]}
-            />
-          </div>
-          <div className={setup.field}>
-            <span className={setup.label}>{t('level')}</span>
-            <SegmentedControl
-              size="sm"
-              value={String(level)}
-              onChange={(v) => setLevel(Number(v) as RaceLevel)}
-              options={[1, 2, 3].map((l) => ({ value: String(l), label: t(levelNames[l]) }))}
-            />
-          </div>
-          <div className={setup.go}>
-            <Button onClick={start}>▶ {t('go')}</Button>
-            <IntroLink onShow={intro.show} />
-            <span className={setup.note} data-inline>
-              {best !== undefined ? t('best', { score: best }) : t('noBest')}
-            </span>
-            <span className={setup.note} data-inline>
-              {t(mode === 'staff' ? 'raceStaffHint' : 'raceKeysHidden')}
-            </span>
+        <section className={con.setup} aria-label={t('setupGame')}>
+          <div className={con.console}>
+            <p className={con.lead}>{t('raceBlurb')}</p>
+            <div className={con.settings}>
+              <Setting icon={Eye}>
+                <SegmentedControl
+                  size="sm"
+                  label={t('raceShow')}
+                  value={mode}
+                  onChange={(v) => setMode(v as RaceMode)}
+                  options={[
+                    { value: 'names', label: t('raceModeNames') },
+                    { value: 'staff', label: t('raceModeStaff') },
+                  ]}
+                />
+              </Setting>
+              <Setting icon={BarChart3}>
+                <SegmentedControl
+                  size="sm"
+                  label={t('level')}
+                  value={String(level)}
+                  onChange={(v) => setLevel(Number(v) as RaceLevel)}
+                  options={[1, 2, 3].map((l) => ({ value: String(l), label: t(levelNames[l]) }))}
+                />
+              </Setting>
+            </div>
+            <div className={con.actions}>
+              <Button onClick={start}>
+                <Play className={con.btnIcon} size={20} fill="currentColor" aria-hidden />
+                {t('go')}
+              </Button>
+              <IntroLink onShow={intro.show} />
+            </div>
+            <p className={con.note}>{best !== undefined ? t('best', { score: best }) : t('noBest')} · {t(mode === 'staff' ? 'raceStaffHint' : 'raceKeysHidden')}</p>
           </div>
         </section>
       )}

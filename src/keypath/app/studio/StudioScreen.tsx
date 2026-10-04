@@ -24,7 +24,8 @@ import { readAiKey } from '../ai'
 import { navigate } from '../router'
 import { answerLine, answerRecording, answerSong, askAnswer, callOf, type Answer } from './answer'
 import styles from './studio.module.css'
-import setup from '../setup.module.css'
+import { Timer } from 'lucide-react'
+import { con, Setting } from '../console/SetupConsole'
 
 const LOW = 60
 const HIGH = 84
@@ -401,86 +402,89 @@ export function StudioScreen({ songId }: { songId?: string }) {
 
   return (
     <main className={styles.screen}>
-      <TopBar title={t('doorStudio')} aside={<KeyboardStatus status={kb} missing="keyboardMissing" />} />
+      <TopBar title={t('doorStudio')} dense aside={<KeyboardStatus status={kb} missing="keyboardMissingShort" />} />
 
-      <section className={setup.bar} aria-live="polite">
-        {song ? (
-          <>
-            <p className={setup.lead}>
-              <strong>{t('studioMakeItYours', { title: song.title })}</strong> {t('studioMakeItYoursBody')}
-            </p>
-            {tune && (
-              <p className={`${setup.lead} ${styles.tune}`} aria-label={t('studioTune')}>
-                {tune}
+      {/* The setup console, as on a song or a game; it stays while she records, the keys below. */}
+      <section className={con.setup} aria-label={t('setupStudio')} aria-live="polite">
+        <div className={con.console}>
+          {song ? (
+            <>
+              <p className={con.lead}>
+                <strong>{t('studioMakeItYours', { title: song.title })}</strong> {t('studioMakeItYoursBody')}
               </p>
-            )}
-          </>
-        ) : (
-          <p className={setup.lead}>{t('studioIntro')}</p>
-        )}
-        <div className={setup.go}>
-          <button
-            type="button"
-            className={styles.record}
-            data-recording={recording || counting !== null ? true : undefined}
-            onClick={counting !== null ? cancelCountIn : recording ? stopRecording : startRecording}
-          >
-            {counting !== null ? t('studioCancel') : recording ? t('studioStop') : t('studioRecord')}
-          </button>
-          {counting !== null && (
-            <span key={counting} className={styles.countIn} role="status">
-              {t('studioCountingIn', { n: counting })}
-            </span>
+              {tune && (
+                <p className={`${con.lead} ${styles.tune}`} aria-label={t('studioTune')}>
+                  {tune}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className={con.lead}>{t('studioIntro')}</p>
           )}
-          {recording && (
-            <span className={styles.recordStatus}>
-              {t('studioRecording', {
-                time: clock(recording.ms),
-                count: recording.count,
-              })}
-            </span>
+          {!recording && counting === null && (
+            <div className={con.settings}>
+              <Setting icon={Timer}>
+                <SegmentedControl
+                  size="sm"
+                  label={t('studioCountIn')}
+                  value={String(countIn)}
+                  onChange={(v) => chooseCountIn(Number(v))}
+                  options={COUNT_INS.map((b) => ({ value: String(b), label: b ? String(b) : t('studioCountInOff') }))}
+                />
+                {countIn > 0 && (
+                  <button type="button" className={con.chip} aria-pressed={clickAll} onClick={() => chooseClick(!clickAll)}>
+                    {t('studioClickTake')}
+                  </button>
+                )}
+              </Setting>
+              <OutputChoice output={output} label={t('studioPlayOn')} phoneOnly={t('studioPlaysOnPhone')} />
+            </div>
+          )}
+          <div className={`${con.actions} ${styles.recordRow}`} data-single>
+            <button
+              type="button"
+              className={styles.record}
+              data-recording={recording || counting !== null ? true : undefined}
+              onClick={counting !== null ? cancelCountIn : recording ? stopRecording : startRecording}
+            >
+              {counting !== null ? t('studioCancel') : recording ? t('studioStop') : t('studioRecord')}
+            </button>
+            {counting !== null && (
+              <span key={counting} className={styles.countIn} role="status">
+                {t('studioCountingIn', { n: counting })}
+              </span>
+            )}
+            {recording && (
+              <span className={styles.recordStatus}>
+                {t('studioRecording', {
+                  time: clock(recording.ms),
+                  count: recording.count,
+                })}
+              </span>
+            )}
+          </div>
+          {countIn > 0 && !recording && counting === null && <p className={con.note}>{t(clickAll ? 'studioClickTakeHint' : 'studioCountInHint', { bpm: countIn })}</p>}
+          {message && <p className={con.note}>{message}</p>}
+          {pending && (
+            <div className={styles.pending}>
+              <p>
+                {t('studioTakeReady', {
+                  time: clock(pending.ms),
+                  count: pending.notes.length,
+                })}
+              </p>
+              <div className={styles.actions}>
+                <Button variant="outline" onClick={() => play('new', pending)}>
+                  {playingId === 'new' ? t('studioStopPlaying') : t('studioPlay')}
+                </Button>
+                <Button onClick={() => void keep()}>{t('studioKeep')}</Button>
+                <Button variant="ghost" onClick={discard}>
+                  {t('studioDiscard')}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
-        {!recording && counting === null && (
-          <div className={setup.field}>
-            <span className={setup.label}>{t('studioCountIn')}</span>
-            <div className={setup.controls}>
-              <SegmentedControl
-                size="sm"
-                value={String(countIn)}
-                onChange={(v) => chooseCountIn(Number(v))}
-                options={COUNT_INS.map((b) => ({ value: String(b), label: b ? String(b) : t('studioCountInOff') }))}
-              />
-              {countIn > 0 && (
-                <button type="button" className={setup.chip} aria-pressed={clickAll} onClick={() => chooseClick(!clickAll)}>
-                  {t('studioClickTake')}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {!recording && counting === null && <OutputChoice output={output} label={t('studioPlayOn')} phoneOnly={t('studioPlaysOnPhone')} />}
-        {countIn > 0 && !recording && counting === null && <p className={setup.note}>{t(clickAll ? 'studioClickTakeHint' : 'studioCountInHint', { bpm: countIn })}</p>}
-        {message && <p className={setup.note}>{message}</p>}
-        {pending && (
-          <div className={styles.pending}>
-            <p>
-              {t('studioTakeReady', {
-                time: clock(pending.ms),
-                count: pending.notes.length,
-              })}
-            </p>
-            <div className={styles.actions}>
-              <Button variant="outline" onClick={() => play('new', pending)}>
-                {playingId === 'new' ? t('studioStopPlaying') : t('studioPlay')}
-              </Button>
-              <Button onClick={() => void keep()}>{t('studioKeep')}</Button>
-              <Button variant="ghost" onClick={discard}>
-                {t('studioDiscard')}
-              </Button>
-            </div>
-          </div>
-        )}
       </section>
 
       <PlayKeyboard boxes={boxes} held={held} targets={new Set()} wrong={new Set()} label={label} names={settings.keyNames} onPress={screenPress} onRelease={screenRelease} />

@@ -337,3 +337,20 @@ describe('Read and play', () => {
     }
   })
 })
+
+describe('The setup console, as on a song', () => {
+  it('names its rows without visible headings, starts with one button, and goes away while the game runs', async () => {
+    await open('#/challenge/race')
+    await flush()
+    const console = () => screen.queryByRole('region', { name: 'Set up the game' })
+    expect(console()).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Show the note' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Level' })).toBeTruthy()
+    expect(screen.queryByText('Level', { selector: 'span' })).toBeNull()
+    // The best score and the hint run together under the button; "How it works" sits beside it.
+    expect(screen.getByText('No score yet · The keys on screen have no names in this game: finding them is the game.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /How it works/ }).parentElement).toBe(screen.getByRole('button', { name: 'Start' }).parentElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    expect(console()).toBeNull()
+  })
+})

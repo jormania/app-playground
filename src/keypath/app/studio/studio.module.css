@@ -68,6 +68,14 @@
   font: var(--weight-bold) var(--text-base) / 1 var(--font-sans);
   cursor: pointer;
 }
+/* In the setup console, Record is its start button: the full width, like a song's Play. */
+.recordRow > .record {
+  width: 100%;
+}
+.recordRow > .countIn,
+.recordRow > .recordStatus {
+  justify-self: center;
+}
 .record[data-recording] {
   background: #c8463a;
   color: #fff;

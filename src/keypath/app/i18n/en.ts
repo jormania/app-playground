@@ -126,6 +126,8 @@ export const en = {
   playJoin: 'Play Parts {a}–{b}',
   playWhole: 'Play All',
   setupLabel: 'Set up the song',
+  setupGame: 'Set up the game',
+  setupStudio: 'Set up a take',
   playMode: 'On a wrong note: {mode} · Timing: {timing}',
   introGo: 'Let’s go',
   introNever: 'Don’t show this again',
