@@ -1063,6 +1063,42 @@ where it was, at the bottom): Twinkle 634 → 497 px at 360 and 634 → 461 at 3
 merge into one surface again and the practice line shrinks to its tile and bars: 126 → 98 px
 closed at 915 × 412; at 780 × 360 it is 12 px taller closed (138) and 7 px shorter open (140).
 
+**Audited the same day.** A Playwright sweep over every pre-play screen (all fifteen starter
+songs and a 32-bar imported one, folded and with the range open, right hand and both; the five
+games; the Studio with and without a count-in; a Journey step, open and locked), at 320 × 640,
+360, 390, 412, 768 × 1024 and on its side at 915 × 412, 780 × 360 and 640 × 360, in English and
+Romanian, light and dark. It checked for a page that scrolls sideways, an option hidden behind a
+control's own scroll, anything outside its panel, a tap target under 30 px and a keyboard
+pushed below the fold; no page or console errors in any run. Separately, with a stand-in Yamaha
+that takes MIDI (the Keyboard / Phone row) and with two players (the Together row). Found and
+fixed:
+- *Options hidden behind a scroll* (540 findings on the first run, nearly all of them): the icon
+  column costs 32 px, and a segmented control was allowed to shrink below its own options, so
+  "All keys", "Both" or "120" scrolled out of sight (games' Level from 320 to 390 px and on a
+  tablet in Romanian, Hands at 390, the Studio's count-in at 320). A control now never narrows
+  below its words; a companion chip wraps under it first, then an option's words take two lines.
+- *Six or seven parts wrapped inside the parts track* (the track still had the chip row's wrap).
+  It stays one line, with less padding per chip; from 340 px they fit, and below that it scrolls,
+  brings the chosen part into view and fades at the edge it continues past (`data-overflow`).
+- *"Cântă partea 1" clipped at 320 px*: on the narrowest phones Listen shows only its icon (a
+  container query), its name kept for a screen reader.
+- *"How it works" was 18 px tall* beside a 44 px Start (and on the Journey's map): now 44.
+- *The practice toggle named a region that wasn't there* while folded (`aria-controls`).
+- *A parts chip's focus ring* could be cut by the scrolling track: drawn inside it.
+- *The rest of the flow still spoke in glyphs*: the next part after one is learnt ("Play Part 2",
+  named as on the setup), Whole song after a clean bar, Hear your try, the report's song to try
+  next, Ear check's replay, and the Studio's take and answer buttons now carry the same lucide
+  icons. Two Studio strings had a glyph inside them (`studioPlay` "▶ Play", `studioStopPlaying`
+  "■ Stop"), which an icon would have doubled; the glyph left the strings. Record / Stop / Cancel
+  keep theirs: that red button is its own control.
+- *The report's header* jumped back to the tall layout after a song: it is dense too now.
+- `keyboardMissing`, unused once every screen took the short words, is gone.
+
+Left as it is: on a 320 × 640 phone with the practice range open the keyboard starts at the
+bottom edge (scroll to it; folded, it all fits; the old setup was worse there). The fall above
+the keys gives up some room on short phones before a song (`.stage[data-setup]`), which is what
+keeps the folded case on screen. Paused mid-song stays the slim band over the music it was.
+
 ### Loop a stretch of bars (2026-10-04, roadmap item 26)
 
 "Practise one bar" on a song's setup is now **Practise a few bars**: two steppers, *Bars 5 to 7*,

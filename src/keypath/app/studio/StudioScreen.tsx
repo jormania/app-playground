@@ -24,7 +24,7 @@ import { readAiKey } from '../ai'
 import { navigate } from '../router'
 import { answerLine, answerRecording, answerSong, askAnswer, callOf, type Answer } from './answer'
 import styles from './studio.module.css'
-import { Timer } from 'lucide-react'
+import { Play, Square, Timer } from 'lucide-react'
 import { con, Setting } from '../console/SetupConsole'
 
 const LOW = 60
@@ -475,6 +475,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
               </p>
               <div className={styles.actions}>
                 <Button variant="outline" onClick={() => play('new', pending)}>
+                  {playingId === 'new' ? <Square className={con.btnIcon} size={14} fill="currentColor" aria-hidden /> : <Play className={con.btnIcon} size={14} fill="currentColor" aria-hidden />}
                   {playingId === 'new' ? t('studioStopPlaying') : t('studioPlay')}
                 </Button>
                 <Button onClick={() => void keep()}>{t('studioKeep')}</Button>
@@ -501,7 +502,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
                 aria-label={`${playingId === take.id ? t('studioStopPlaying') : t('studioPlay')} ${nameOf(take)}`}
                 onClick={() => play(take.id, take)}
               >
-                {playingId === take.id ? '■' : '▶'}
+                {playingId === take.id ? <Square size={16} fill="currentColor" aria-hidden /> : <Play size={16} fill="currentColor" aria-hidden />}
               </button>
               <span className={styles.takeText}>
                 <span className={styles.takeName}>{nameOf(take)}</span>
@@ -563,7 +564,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
                         </p>
                         <div className={styles.actions}>
                           <Button size="sm" onClick={() => play(id, answerRecording(a.answer))}>
-                            {playingId === id ? `■ ${t('studioStopPlaying')}` : `▶ ${t('studioAnswerPlay')}`}
+                            {playingId === id ? <Square className={con.btnIcon} size={14} fill="currentColor" aria-hidden /> : <Play className={con.btnIcon} size={14} fill="currentColor" aria-hidden />}
+                            {playingId === id ? t('studioStopPlaying') : t('studioAnswerPlay')}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => void learnAnswer(take, a.answer)}>
                             {t('studioAnswerLearn')}

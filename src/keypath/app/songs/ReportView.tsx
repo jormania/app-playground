@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../../../ds'
+import { Headphones, Play } from 'lucide-react'
 import type { Highlight, OnWrong, Report, Timing } from '../../engine'
 import { celebrate } from '../celebrate/celebrate'
 import { useCountUp } from '../celebrate/useCountUp'
@@ -91,7 +92,8 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
           <Button onClick={onPlayAgain}>{t('playAgain')}</Button>
           {hear && (
             <Button variant="outline" onClick={hear.onToggle}>
-              🎧 {hear.playing ? t('hearStop') : t('hearTry')}
+              <Headphones className={styles.btnIcon} size={18} aria-hidden />
+              {hear.playing ? t('hearStop') : t('hearTry')}
             </Button>
           )}
           <Button variant="outline" onClick={onAnotherSong}>
@@ -136,7 +138,8 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
           <div className={styles.workOn}>
             <p className={styles.hint}>{t('tryNext')}</p>
             <Button size="sm" variant="outline" onClick={next.onOpen}>
-              ▶ {next.title}
+              <Play className={styles.btnIcon} size={16} fill="currentColor" aria-hidden />
+              {next.title}
             </Button>
           </div>
         )}

@@ -89,9 +89,9 @@ describe('Studio', () => {
     const [take] = await new TakeRepo(store).list(profileId)
     expect(take.notes.map((n) => n.pitch)).toEqual([60, 64])
 
-    fireEvent.click(screen.getByRole('button', { name: '▶ Play Take 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play Take 1' }))
     await waitFor(() => expect(kb.sent.some((m) => m.data[0] === 0x90 && m.data[1] === 60)).toBe(true))
-    fireEvent.click(screen.getByRole('button', { name: '■ Stop Take 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Take 1' }))
     expect(kb.sent.some((m) => m.data[0] === 0xb0 && m.data[1] === 123)).toBe(true)
 
     const types = (await new EngagementLog(store).read(profileId)).map((e) => e.type).filter((x) => x.startsWith('studio'))

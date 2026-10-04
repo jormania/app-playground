@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { BarChart3, Play } from 'lucide-react'
+import { BarChart3, Headphones, Play } from 'lucide-react'
 import { MIN_VELOCITY } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -244,7 +244,8 @@ export function EarScreen() {
             <span className={styles.scoreWrap}>{t('earScore', { score })}</span>
             {phase === 'find' && (note === null || note === 'hint-higher' || note === 'hint-lower') && (
               <Button size="sm" variant="ghost" onClick={() => { setPhase('listen'); hear() }}>
-                🎧 {t('earAgain')}
+                <Headphones className={con.btnIcon} size={16} aria-hidden />
+                {t('earAgain')}
               </Button>
             )}
           </span>

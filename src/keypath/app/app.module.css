@@ -669,6 +669,10 @@
   margin-top: var(--space-2xs);
 }
 .introLink {
+  /* A finger-sized target around a text link: it sits beside a 44 px Start. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
   border: 0;
   background: none;
   padding: 0;

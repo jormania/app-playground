@@ -105,10 +105,10 @@ describe('Play screen', () => {
     expect(await screen.findByText('✓ Part 1 learnt!')).toBeTruthy()
 
     // Straight on: no middle C this time.
-    fireEvent.click(screen.getByRole('button', { name: '▶ Part 2' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play Part 2' }))
     await playThrough(ODE_2)
     expect(await screen.findByText('✓ Part 2 learnt!')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: '▶ Whole song' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play All' }))
     // The whole song is played her own way: "Keep going" runs on a clock, with a count-in.
     await waitFor(() => expect(document.querySelector('[class*="countIn"]')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
@@ -134,7 +134,7 @@ describe('Play screen', () => {
     for (const k of ['A', 'B', 'A']) act(() => tap(screen.getAllByRole('button', { name: k })[0]))
     await playThrough(ODE_1)
     expect(await screen.findByText('3 keys went astray. Once more?')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '▶ Part 2' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Play Part 2' })).toBeNull()
     expect(await new PartsRepo(store).get(profileId, 'starter:ode', 'right')).toEqual(new Set())
   })
 
@@ -200,7 +200,7 @@ describe('Play screen', () => {
     expect(screen.getByText('You played it to the end!')).toBeTruthy()
     expect(screen.getByLabelText('3 / 3')).toBeTruthy()
     // Next up: the easiest song she hasn't finished.
-    expect(await screen.findByRole('button', { name: '▶ Twinkle, Twinkle, Little Star' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Twinkle, Twinkle, Little Star' })).toBeTruthy()
 
     const log = await events(store, profileId)
     expect(log.find((e) => e.type === 'song_started')).toMatchObject({ songId: 'Three notes', practice: 'right', tempo: 1, mode: 'wait' })
@@ -486,10 +486,10 @@ describe('Play screen: practice tools', () => {
     tap(target()!)
     await playThrough([60, 62, 64])
     await screen.findByText('How it went')
-    fireEvent.click(screen.getByRole('button', { name: '🎧 Hear your try' }))
-    expect(await screen.findByRole('button', { name: '🎧 Stop listening' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: '🎧 Stop listening' }))
-    expect(await screen.findByRole('button', { name: '🎧 Hear your try' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hear your try' }))
+    expect(await screen.findByRole('button', { name: 'Stop listening' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Stop listening' }))
+    expect(await screen.findByRole('button', { name: 'Hear your try' })).toBeTruthy()
   })
 
   it('practises any bar from the setup: middle C first, then the loop, then back to the setup', async () => {
@@ -577,7 +577,7 @@ describe('Play screen: practice tools', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Loop it' }))
     tap(target()!) // middle C
     await playThrough(ODE_1.slice(0, 4))
-    fireEvent.click(await screen.findByRole('button', { name: '▶ Whole song' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Whole song' }))
     await playThrough([...ODE_1, ...ODE_2])
     expect(await screen.findByRole('button', { name: 'Play again' })).toBeTruthy()
     const parts = (await events(store, profileId)).flatMap((e) => (e.type === 'song_part' ? [e.part] : []))
@@ -656,10 +656,13 @@ describe('Play screen: the setup console', () => {
     await setUp({ onWrong: 'wait' }, '#/play/starter%3Aode')
     const toggle = await screen.findByRole('button', { name: /Practice range/ })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    // It names what it opens only while that is there to open.
+    expect(toggle.getAttribute('aria-controls')).toBeNull()
     expect(toggle.textContent).toContain('Bar 1')
     expect(screen.queryByRole('button', { name: 'Loop it' })).toBeNull()
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toBeTruthy()
     expect(toggle.textContent).toContain('Hide')
     fireEvent.click(screen.getByRole('button', { name: 'End a bar later' }))
     fireEvent.click(screen.getByRole('button', { name: 'End a bar later' }))

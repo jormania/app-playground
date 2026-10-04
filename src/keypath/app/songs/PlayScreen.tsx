@@ -195,13 +195,37 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
   }, [partsRepo, profileId, song.id, practice, steps])
   // A long song's chips run on one line: keep the chosen one in view, in the middle where it can be.
-  const chipRow = useRef<HTMLDivElement>(null)
+  const chipRow = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     const row = chipRow.current
     const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
     if (!row || !chip || row.scrollWidth <= row.clientWidth) return
     row.scrollLeft = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2
   }, [partId, steps, phase])
+  // A parts row too long for its line fades at the edge it carries on past, so it's plain there's more.
+  // A callback ref, since the row comes and goes with the setup (Listen, a take, a loop).
+  const unwatchRow = useRef<(() => void) | null>(null)
+  const watchChipRow = useCallback((row: HTMLDivElement | null) => {
+    unwatchRow.current?.()
+    unwatchRow.current = null
+    chipRow.current = row
+    if (!row || typeof ResizeObserver === 'undefined') return
+    const mark = () => {
+      const more = row.scrollWidth - row.clientWidth
+      const left = row.scrollLeft > 1
+      const right = row.scrollLeft < more - 1
+      if (more <= 1 || (!left && !right)) delete row.dataset.overflow
+      else row.dataset.overflow = left && right ? 'both' : left ? 'start' : 'end'
+    }
+    mark()
+    const seen = new ResizeObserver(mark)
+    seen.observe(row)
+    row.addEventListener('scroll', mark, { passive: true })
+    unwatchRow.current = () => {
+      seen.disconnect()
+      row.removeEventListener('scroll', mark)
+    }
+  }, [])
   // "Try next" on the report: the easiest song she hasn't finished yet.
   const [next, setNext] = useState<{ id: string; title: string } | null>(null)
   useEffect(() => {
@@ -852,13 +876,15 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const toIndex = ends.indexOf(toAt)
   /** The practice range in a few words, for its card's line: "Bar 5", "Bars 5–7". */
   const rangeName = toAt > barAt ? t('loopBars', { bars: barSpan(song, barAt, toAt + 1) }) : t('loopBar', { bar: barName(song, barAt) })
-  /** Play says which part: "Play Part 2", "Play Parts 1–2", "Play All"; a song without parts just starts. */
-  const playLabel = span ? (span.kind === 'join' ? t('playJoin', { a: span.first, b: span.last }) : t('playPhrase', { n: span.first })) : part?.kind === 'whole' ? t('playWhole') : t('startSong')
+  /** A part's Play, named for it: "Play Part 2", "Play Parts 1–2", "Play All". */
+  const playName = (x: PartStep) => (x.kind === 'join' ? t('playJoin', { a: x.first, b: x.last }) : x.kind === 'phrase' ? t('playPhrase', { n: x.first }) : t('playWhole'))
+  /** Play says which part; a song without parts just starts. */
+  const playLabel = part ? playName(part) : t('startSong')
 
   if (phase === 'report' && report) {
     return (
       <main className={styles.screen}>
-        <TopBar title={song.title} />
+        <TopBar title={song.title} dense />
         <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={(bar) => practiseBar(bar)} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
@@ -948,7 +974,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             {steps.length > 0 && (
               <Setting icon={Music} wide={steps.length > MAX_CHIPS}>
                 {/* The same chips for every song, drawn as one track like the rows around them; a long one's run scrolls sideways, the chosen one in view. */}
-                <div ref={chipRow} className={`${con.chips} ${con.track}`} data-scroll={steps.length > MAX_CHIPS || undefined} role="group" aria-label={t('parts')}>
+                <div ref={watchChipRow} className={`${con.chips} ${con.track}`} data-scroll={steps.length > MAX_CHIPS || undefined} role="group" aria-label={t('parts')}>
                   {steps.map((x) => (
                     <button
                       key={x.id}
@@ -989,7 +1015,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             </Button>
             <Button variant="outline" onClick={listen}>
               <Headphones className={con.btnIcon} size={20} aria-hidden />
-              {t('listen')}
+              <span className={con.btnText}>{t('listen')}</span>
             </Button>
           </div>
           {/* What Play will do: the part's bars, or how a whole song is judged (and where to change that). */}
@@ -1012,7 +1038,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
           {/* The practice range, a card of its own under the console: one line that says which bars, opened to change them and loop them. */}
           <div className={con.practice} data-open={barOpen || undefined}>
-            <button type="button" className={con.practiceToggle} aria-expanded={barOpen} aria-controls={RANGE_ID} onClick={() => setBarOpen((o) => !o)}>
+            <button type="button" className={con.practiceToggle} aria-expanded={barOpen} aria-controls={barOpen ? RANGE_ID : undefined} onClick={() => setBarOpen((o) => !o)}>
               <span className={con.tile} aria-hidden>
                 <Repeat size={18} />
               </span>
@@ -1142,7 +1168,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           <div className={styles.actions}>
             {partResult.passed && afterPart && (
               <Button size="sm" onClick={() => startPart(afterPart)}>
-                ▶ {partName(afterPart)}
+                <Play className={con.btnIcon} size={16} fill="currentColor" aria-hidden />
+                {playName(afterPart)}
               </Button>
             )}
             <Button size="sm" variant={partResult.passed && afterPart ? 'outline' : 'primary'} onClick={() => startPart(part)}>
@@ -1153,7 +1180,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             </Button>
             {hear && (
               <Button size="sm" variant="ghost" onClick={hear.onToggle}>
-                🎧 {hear.playing ? t('hearStop') : t('hearTry')}
+                <Headphones className={con.btnIcon} size={16} aria-hidden />
+                {hear.playing ? t('hearStop') : t('hearTry')}
               </Button>
             )}
           </div>
@@ -1166,7 +1194,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           <span>{t('loopDoneHint')}</span>
           <div className={styles.actions}>
             <Button size="sm" onClick={wholeSong}>
-              ▶ {t('wholeSong')}
+              <Play className={con.btnIcon} size={16} fill="currentColor" aria-hidden />
+              {t('wholeSong')}
             </Button>
             <Button size="sm" variant="outline" onClick={backToReport}>
               {report ? t('backToReport') : t(hasLeft ? 'backToSetupHands' : 'backToSetupSpeed')}
@@ -1175,7 +1204,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         </div>
       )}
 
-      <div className={styles.stage}>
+      <div className={styles.stage} data-setup={(phase === 'setup' && !listening) || undefined}>
         {countIn !== null && phase === 'playing' && <div className={styles.countIn}>{countIn}</div>}
         {phase === 'playing' && streak >= STREAK_SHOWN && (
           <div key={streak} className={styles.streak} data-big={streak % 10 === 0 || undefined} aria-live="polite">

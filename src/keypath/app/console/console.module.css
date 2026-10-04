@@ -56,11 +56,24 @@
   gap: var(--space-2xs) var(--space-xs);
   min-width: 0;
 }
-/* A track never squeezes below its options' width: a companion chip (the other
-   hand) wraps under it instead, on the narrowest phones. */
-.control > [role='radiogroup'],
+/* A segmented control never hides an option behind a scroll. It takes the width
+   its options want; where that and a companion chip (the other hand) don't fit,
+   the chip wraps under it; where the options alone don't fit (a 320 px phone,
+   Romanian's longer words), an option's words take two lines. */
+.control > [role='radiogroup'] {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: min-content;
+}
+.control > [role='radiogroup'] > button {
+  height: auto;
+  min-height: 32px;
+  padding: var(--space-3xs) var(--space-xs);
+  line-height: 1.15;
+  white-space: normal;
+}
 .control > .track {
-  flex: 1 1 10.75rem;
+  flex: 1 1 auto;
   min-width: 0;
 }
 /* Room for two (a tablet, a wide window): settings pair up, each at its own width.
@@ -150,24 +163,48 @@
    They stay toggle buttons (aria-pressed), with their ✓ for a part learnt. */
 .track {
   display: flex;
-  gap: var(--space-2xs);
+  flex-wrap: nowrap;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
   padding: var(--space-2xs);
   background: var(--color-surface-2, var(--color-bg-sunken));
   border-radius: var(--radius-md);
 }
-.track > button {
-  flex: 1 1 0;
+/* Six or seven parts fit on one line from 340 px with a little less padding. Past
+   that the track scrolls (the chosen part is brought into view) and fades at the
+   edge it continues past, so it's plain there is more. */
+.track::-webkit-scrollbar {
+  display: none;
+}
+.track > .chip {
+  flex: 1 0 auto;
   height: 32px;
-  min-width: 2.5rem;
+  min-width: 2rem;
+  padding-inline: 6px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
 }
-.track > button[aria-pressed='true'] {
+/* Drawn inside the chip, so a scrolling, fading track can't cut the ring off. */
+.track > .chip:focus-visible {
+  outline: 2px solid var(--color-ring, var(--color-accent));
+  outline-offset: -2px;
+}
+.track > .chip[aria-pressed='true'] {
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
-.track[data-scroll] > button {
+.track[data-overflow='end'] {
+  mask-image: linear-gradient(to right, #000 85%, transparent);
+}
+.track[data-overflow='start'] {
+  mask-image: linear-gradient(to left, #000 85%, transparent);
+}
+.track[data-overflow='both'] {
+  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+}
+.track[data-scroll] > .chip {
   flex: none;
 }
 
@@ -194,6 +231,19 @@
 }
 .btnIcon {
   flex: none;
+}
+/* On the narrowest phones (a 320 px screen) the second button (Listen) keeps
+   only its icon, so the first can say all of "Play Part 1"; its name stays for
+   a screen reader. */
+@container (max-width: 18.5rem) {
+  .actions > :not(:first-child) .btnText {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 .note {
   margin: 0;
