@@ -119,6 +119,29 @@
   text-align: center;
   font-weight: var(--weight-medium);
 }
+/* Practise a few bars: from one bar to another. The two steppers share a row
+   where there's room; on a narrow phone "to" and its stepper wrap together. */
+.barRange {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.barStepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.barValue {
+  min-width: 2.25rem;
+  text-align: center;
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+.barTo {
+  padding-inline: var(--space-xs);
+  color: var(--color-muted);
+}
 .filterRow {
   display: flex;
   flex-wrap: wrap;

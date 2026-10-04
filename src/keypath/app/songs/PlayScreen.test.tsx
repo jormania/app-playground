@@ -494,8 +494,8 @@ describe('Play screen: practice tools', () => {
 
   it('practises any bar from the setup: middle C first, then the loop, then back to the setup', async () => {
     const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
-    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise one bar' }))
-    expect(screen.getByText('Bar')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
+    expect(screen.getByText('Bars')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
     // The octave isn't known yet: middle C first, as for a song.
     expect(await screen.findByText('Press middle C to begin')).toBeTruthy()
@@ -509,7 +509,7 @@ describe('Play screen: practice tools', () => {
     await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_loop', bar: 1, done: true }))
     // No report to go back to: the setup.
     fireEvent.click(screen.getByRole('button', { name: 'Change speed' }))
-    expect(await screen.findByRole('button', { name: /Start/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Start$/ })).toBeTruthy()
   })
 
   it('says where the hands go for the bar picked, not the start of the song', async () => {
@@ -522,10 +522,50 @@ describe('Play screen: practice tools', () => {
     cleanup()
     history.replaceState(null, '', '#/play/Shift')
     render(<Shell store={store} />)
-    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise one bar' }))
-    fireEvent.click(screen.getByRole('button', { name: 'The bar after' }))
+    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start a bar later' }))
     fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
     expect(await screen.findByText('Right thumb on G')).toBeTruthy()
+  })
+
+  it('loops a stretch of bars, from one to another, until it is all clean', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/door/songs')
+    const pitches = [60, 62, 64, 62, 60, 62, 64, 62, 67, 69, 71]
+    const first = pitches.slice(0, 8).map((p, i): [number, number] => [p, i * 250])
+    await new SongLibrary(store).add(songOf([...first, [67, 2000], [69, 2500], [71, 3000]], 'Shift'))
+    cleanup()
+    history.replaceState(null, '', '#/play/Shift')
+    render(<Shell store={store} />)
+    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
+    // The end starts on the same bar: one bar, unless she moves it on. It can't go before the start.
+    expect(screen.getByLabelText('From bar 1')).toBeTruthy()
+    expect(screen.getByLabelText('To bar 1')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'End a bar earlier' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'End a bar later' }))
+    expect(screen.getByLabelText('To bar 2')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'End a bar later' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    tap(target()!) // middle C
+    expect(await screen.findByText('🔁 Bars 1–2')).toBeTruthy()
+    for (const p of pitches) {
+      await aria(({ 60: 'C', 62: 'D', 64: 'E', 67: 'G', 69: 'A', 71: 'B' } as Record<number, string>)[p])
+      act(() => tap(target()!))
+    }
+    expect(await screen.findByText('🎉 Bars 1–2 are clean!')).toBeTruthy()
+    await waitFor(async () => expect((await events(store, profileId)).at(-1)).toMatchObject({ type: 'song_loop', bar: 1, to: 2, passes: 1, done: true }))
+  })
+
+  it('moves the end along when the start passes it', async () => {
+    const { store } = await setUp({ onWrong: 'wait' }, '#/door/songs')
+    const first = [60, 62, 64, 62, 60, 62, 64, 62].map((p, i): [number, number] => [p, i * 250])
+    await new SongLibrary(store).add(songOf([...first, [67, 2000], [69, 2500], [71, 3000]], 'Shift'))
+    cleanup()
+    history.replaceState(null, '', '#/play/Shift')
+    render(<Shell store={store} />)
+    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start a bar later' }))
+    expect(screen.getByLabelText('From bar 2')).toBeTruthy()
+    expect(screen.getByLabelText('To bar 2')).toBeTruthy()
   })
 
   it('goes from a bar practised with a part chosen to the whole song, and counts it as the whole song', async () => {
@@ -533,7 +573,7 @@ describe('Play screen: practice tools', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Part 1' }).getAttribute('aria-pressed')).toBe('true'))
     // The keys show where the hands go before anything starts: the right thumb on C.
     expect(document.querySelector('[data-hand="right"][aria-hidden]')?.textContent).toBe('1')
-    fireEvent.click(screen.getByRole('button', { name: '🔁 Practise one bar' }))
+    fireEvent.click(screen.getByRole('button', { name: '🔁 Practise a few bars' }))
     fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
     tap(target()!) // middle C
     await playThrough(ODE_1.slice(0, 4))

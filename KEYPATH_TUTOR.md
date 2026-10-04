@@ -1003,6 +1003,28 @@ level equal to the rating isn't stored, so the rating follows later changes
 (a different fit, say); one that differs is kept as `Song.level`, and
 survives a refit. Built-in songs keep theirs.
 
+### Loop a stretch of bars (2026-10-04, roadmap item 26)
+
+"Practise one bar" on a song's setup is now **Practise a few bars**: two steppers, *Bars 5 to 7*,
+and **Loop it**. The end starts on the same bar, so the old one-bar loop is what she gets until
+she moves it; it never goes before the start, follows the start when that passes it, and, like
+the start, stops only on bars with notes for the hands chosen (`stretchEnd`). The bars between
+may be empty: a rest inside a stretch is part of it.
+
+A stretch loops exactly as a bar did (`loop.ts`): cut from the song with `rangeSong`, one judge
+per pass, the speed ladder with a clock (50% → 75% → 100%, one clean pass a rung), one clean pass
+in Wait for it, and **clean** still means every note, no wrong key, across the whole stretch.
+`Loop` gained `to` (one past the last bar; `bar + 1` for a single bar), and the log's `song_loop`
+an optional `to`, the last bar as she saw it. Progress and the Clean bar sticker count a
+stretch once, as they did a bar. The banner says *Bars 5–7*, and the end *Bars 5–7
+are clean!* The report's **Practise bar N** stays one bar: it names the bar that went wrong.
+
+No cap on the length. A long stretch is harder to play clean at every rung, and parts already
+cover the song in phrases; the picker is for the few bars around a stumble.
+
+On a phone the two steppers wrap as units, *to* with its own, so nothing overflows at 320 px; in
+landscape they sit on one row with Loop it.
+
 ### Audit after release 5 (2026-10-04): correctness, data, MIDI
 
 A grounds-up audit against the user's guide, correctness-critical systems first (MIDI and

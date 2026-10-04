@@ -19,7 +19,7 @@ import { PlayKeyboard } from './PlayKeyboard'
 import { Score, type ScoreHandle } from './notation/Score'
 import { ReportView } from './ReportView'
 import type { FactsInput } from './coach'
-import { afterPass, barSong, isClean, nearestPlayable, playableBars, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
+import { afterPass, barSong, isClean, nearestPlayable, playableBars, startLoop, stretchEnd, tempoOf, type BarRange, type Loop, type LoopStep } from './loop'
 import { countBeatMs } from './countIn'
 import { nextStep, partPassed, PartsRepo, partSteps, phraseSong, phraseStartMs, type PartStep } from './parts'
 import { WARMUP_ID } from '../../engine/starterPack'
@@ -159,16 +159,18 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const [tryTake, setTryTake] = useState<Recording | null>(null)
   const [hearing, setHearing] = useState(false)
   const tryPlayback = useRef<Playback | null>(null)
-  // "Practise one bar" from the setup: which bar, and one waiting for middle C to be found first.
+  // "Practise bars" from the setup: which bars, and a stretch waiting for middle C to be found first.
   // The bar the music strip opens on.
   const [scoreBar, setScoreBar] = useState(0)
   const [barOpen, setBarOpen] = useState(false)
   const [barPick, setBarPick] = useState(0)
-  const pendingBar = useRef<number | null>(null)
-  const [waitingBar, setWaitingBar] = useState<number | null>(null)
-  const waitForBar = (bar: number | null) => {
-    pendingBar.current = bar
-    setWaitingBar(bar)
+  /** The stretch's last bar, as picked; null keeps it to the one bar. */
+  const [toPick, setToPick] = useState<number | null>(null)
+  const pendingBar = useRef<BarRange | null>(null)
+  const [waitingBar, setWaitingBar] = useState<BarRange | null>(null)
+  const waitForBar = (bars: BarRange | null) => {
+    pendingBar.current = bars
+    setWaitingBar(bars)
   }
 
   // Learning it in parts: the way through (phrases, joins, the whole song), what
@@ -260,13 +262,14 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
   // What's being played: the song, one part of it, or the one bar being practised.
   const loopBar = loop?.bar ?? null
+  const loopTo = loop?.to ?? null
   const spanFrom = span?.from ?? null
   const spanTo = span?.to ?? null
   const playing = useMemo(() => {
-    if (loopBar !== null) return barSong(song, loopBar) ?? song
+    if (loopBar !== null && loopTo !== null) return barSong(song, loopBar, loopTo) ?? song
     if (spanFrom !== null && spanTo !== null) return phraseSong(song, spanFrom, spanTo) ?? song
     return song
-  }, [song, loopBar, spanFrom, spanTo])
+  }, [song, loopBar, loopTo, spanFrom, spanTo])
   const playSettings = useMemo((): typeof settings => (spanFrom !== null ? { ...viewSettings, onWrong: 'wait' } : viewSettings), [viewSettings, spanFrom])
   const notes = useMemo(() => notesFor(playing, practice), [playing, practice])
   const songNotes = useMemo(() => notesFor(song, practice), [song, practice])
@@ -278,11 +281,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   }, [notes, songNotes])
   /** The bars being played, when it is a part or a bar: the score draws the rest quieter. */
   const scoreFocus = useMemo(() => {
-    if (loopBar !== null) return { from: loopBar, to: loopBar + 1 }
+    if (loopBar !== null && loopTo !== null) return { from: loopBar, to: loopTo }
     if (spanFrom === null || spanTo === null) return null
     // A part that starts with its pickup keeps the bar the pickup is in bright too.
     return { from: phraseStartMs(song, spanFrom) !== null ? spanFrom - 1 : spanFrom, to: spanTo }
-  }, [song, loopBar, spanFrom, spanTo])
+  }, [song, loopBar, loopTo, spanFrom, spanTo])
   /** The bar being played at song time `s`: the last note started (or about to), else the first. */
   const barAtTime = useCallback(
     (s: number) => {
@@ -315,7 +318,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const tempo = Number(speed)
   // Where the hands go, before the start: on the keys, and in words.
   // A bar picked from the setup starts there, not at the part's start.
-  const places = useMemo(() => handPlaces(waitingBar !== null ? notesFor(barSong(song, waitingBar) ?? song, practice) : notes, practice), [notes, practice, song, waitingBar])
+  const places = useMemo(() => handPlaces(waitingBar !== null ? notesFor(barSong(song, waitingBar.from, waitingBar.to) ?? song, practice) : notes, practice), [notes, practice, song, waitingBar])
   const badges = useMemo(() => new Map(places.map((pl) => [pl.pitch, { text: String(pl.finger), hand: pl.hand }] as const)), [places])
 
   const setLoopBoth = (l: Loop | null) => {
@@ -331,7 +334,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   /** One pass of the practised bar: its own judge, at the loop's tempo, with a count-in when there's a clock. */
   const startPass = useCallback(
     (l: Loop) => {
-      const bar = barSong(song, l.bar)
+      const bar = barSong(song, l.bar, l.to)
       if (!bar) return
       silenceTry()
       const j = new Judge(bar, { practice, settings: viewSettings, tempo: tempoOf(l), shift: shift.current })
@@ -352,17 +355,17 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       const l = loopRef.current
       if (!l) return
       clearTimeout(loopTimer.current)
-      if (profileId) void log.add(profileId, { type: 'song_loop', songId: song.id, practice, bar: l.bar + 1, passes: l.passes, done, tempo: tempoOf(l) })
+      if (profileId) void log.add(profileId, { type: 'song_loop', songId: song.id, practice, bar: l.bar + 1, ...(l.to - l.bar > 1 ? { to: l.to } : {}), passes: l.passes, done, tempo: tempoOf(l) })
       loopRef.current = null
     },
     [profileId, log, song.id, practice],
   )
 
-  /** Loop one bar (0-based) until it's clean, from the report or the setup: at the speed chosen. */
-  const beginLoop = (bar: number) => {
-    // A bar with no note for these hands has nothing to loop: it would wait for ever, or count as clean unplayed.
-    if (!songNotes.some((n) => n.bar === bar)) return
-    const l = startLoop(bar, viewSettings.onWrong === 'wait' ? 'wait' : 'running', tempo)
+  /** Loop bars [bar, to) (0-based) until they're clean, from the report or the setup: at the speed chosen. */
+  const beginLoop = (bar: number, to = bar + 1) => {
+    // Bars with no note for these hands have nothing to loop: it would wait for ever, or count as clean unplayed.
+    if (!songNotes.some((n) => n.bar >= bar && n.bar < to)) return
+    const l = startLoop(bar, viewSettings.onWrong === 'wait' ? 'wait' : 'running', tempo, to)
     setLoopBoth(l)
     setLoopStep(null)
     startPass(l)
@@ -526,10 +529,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       shiftKnown.current = true
       // A bar asked for from the setup was waiting for the keyboard's octave to be known.
       if (pendingBar.current !== null) {
-        const bar = pendingBar.current
+        const { from, to } = pendingBar.current
         pendingBar.current = null
         setWaitingBar(null)
-        morph(() => beginLoopRef.current(bar))
+        morph(() => beginLoopRef.current(from, to))
         return
       }
       morph(() => startJudge(playing, playSettings, at, part))
@@ -777,12 +780,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     setPhase('playing')
   }
 
-  const practiseBar = (bar: number) => morph(() => beginLoop(bar))
+  const practiseBar = (bar: number, to = bar + 1) => morph(() => beginLoop(bar, to))
   /** From the setup: straight in once middle C has been found this visit, else ask for it first. */
-  const practiseBarFromSetup = (bar: number) => {
+  const practiseBarFromSetup = (from: number, to: number) => {
     stopListening()
-    if (shiftKnown.current) return practiseBar(bar)
-    waitForBar(bar)
+    if (shiftKnown.current) return practiseBar(from, to)
+    waitForBar({ from, to })
     morph(() => setPhase('ready'))
   }
   /** Out of a practised bar: to the report it came from, or, from the setup, back to the setup. */
@@ -840,6 +843,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const playable = useMemo(() => playableBars(songNotes, firstBar === 1), [songNotes, firstBar])
   const barAt = nearestPlayable(playable, barPick) ?? firstBar
   const barIndex = playable.indexOf(barAt)
+  // Where the stretch ends: the bar itself unless she moves it on, never before it.
+  const ends = playable.filter((b) => b >= barAt)
+  const toAt = stretchEnd(playable, barAt, toPick ?? barAt)
+  const toIndex = ends.indexOf(toAt)
   const barLink = (
     <button type="button" className={setup.link} aria-expanded={barOpen} onClick={() => setBarOpen((o) => !o)}>
       🔁 {barOpen ? t('practiseBarHide') : t('practiseOneBar')}
@@ -850,7 +857,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} />
-        <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={practiseBar} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={(bar) => practiseBar(bar)} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
       </main>
     )
   }
@@ -996,18 +1003,32 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             <div className={setup.field}>
               <span className={setup.label}>{t('barPickLabel')}</span>
               <div className={setup.controls}>
-                <div className={styles.keyPick}>
-                  <Button size="sm" variant="outline" disabled={barIndex <= 0} onClick={() => setBarPick(playable[barIndex - 1])} aria-label={t('barPickLower')}>
-                    −
-                  </Button>
-                  <span className={styles.keyPickValue} aria-live="polite">
-                    {barName(song, barAt)}
+                <div className={styles.barRange}>
+                  <span className={styles.barStepper}>
+                    <Button size="sm" variant="outline" disabled={barIndex <= 0} onClick={() => setBarPick(playable[barIndex - 1])} aria-label={t('barPickLower')}>
+                      −
+                    </Button>
+                    <span className={styles.barValue} aria-live="polite" aria-label={t('barPickFrom', { bar: barName(song, barAt) })}>
+                      {barName(song, barAt)}
+                    </span>
+                    <Button size="sm" variant="outline" disabled={barIndex < 0 || barIndex >= playable.length - 1} onClick={() => setBarPick(playable[barIndex + 1])} aria-label={t('barPickHigher')}>
+                      +
+                    </Button>
                   </span>
-                  <Button size="sm" variant="outline" disabled={barIndex < 0 || barIndex >= playable.length - 1} onClick={() => setBarPick(playable[barIndex + 1])} aria-label={t('barPickHigher')}>
-                    +
-                  </Button>
+                  <span className={styles.barStepper}>
+                    <span className={styles.barTo}>{t('barPickTo')}</span>
+                    <Button size="sm" variant="outline" disabled={toIndex <= 0} onClick={() => setToPick(ends[toIndex - 1])} aria-label={t('barPickEndLower')}>
+                      −
+                    </Button>
+                    <span className={styles.barValue} aria-live="polite" aria-label={t('barPickUntil', { bar: barName(song, toAt) })}>
+                      {barName(song, toAt)}
+                    </span>
+                    <Button size="sm" variant="outline" disabled={toIndex < 0 || toIndex >= ends.length - 1} onClick={() => setToPick(ends[toIndex + 1])} aria-label={t('barPickEndHigher')}>
+                      +
+                    </Button>
+                  </span>
                 </div>
-                <Button size="sm" onClick={() => practiseBarFromSetup(barAt)}>
+                <Button size="sm" onClick={() => practiseBarFromSetup(barAt, toAt + 1)}>
                   🔁 {t('barLoop')}
                 </Button>
               </div>
@@ -1073,7 +1094,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       {loop && phase === 'playing' && (
         <div className={styles.prompt} role="status">
           <strong>
-            🔁 {t('loopBar', { bar: barName(song, loop.bar) })}
+            🔁 {loop.to - loop.bar > 1 ? t('loopBars', { bars: barSpan(song, loop.bar, loop.to) }) : t('loopBar', { bar: barName(song, loop.bar) })}
             {viewSettings.onWrong !== 'wait' && ` · ${Math.round(tempoOf(loop) * 100)}%`}
           </strong>
           <span>
@@ -1120,7 +1141,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
       {loop && phase === 'loopDone' && (
         <div className={styles.prompt} role="status">
-          <strong>🎉 {t('loopDone', { bar: barName(song, loop.bar) })}</strong>
+          <strong>🎉 {loop.to - loop.bar > 1 ? t('loopDoneBars', { bars: barSpan(song, loop.bar, loop.to) }) : t('loopDone', { bar: barName(song, loop.bar) })}</strong>
           <span>{t('loopDoneHint')}</span>
           <div className={styles.actions}>
             <Button size="sm" onClick={wholeSong}>

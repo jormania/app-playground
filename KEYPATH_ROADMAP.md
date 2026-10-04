@@ -7,6 +7,9 @@ Updated the same day: release 3 built everything marked ✅ below. What remains 
 test (item 5, a session at the keyboard) and the items that need something a session of code
 can't give: Nora's playing to tune against (14, 21), her answers (20), a reliable melody
 source (16) or a heavy dependency worth deciding on first (19, 23).
+Updated 2026-10-04, after release 5 and its audit: item 21 is half done (below), item 26 is
+built, and the note on engraved music under the reading items is out of date (release 5
+engraved it).
 
 The ranking is a judgement, not a measurement. Two things should re-rank it:
 - **Nora's answers** to the open questions in `KEYPATH_TUTOR.md` §8 (what she
@@ -60,7 +63,7 @@ Bigger steps in the learning itself.
 | 18 | ✅ *Done, release 3.* **Intervals by ear**, a fourth game. | Ear training, if the log shows Challenges is her door. | M |
 | 19 | **Make a song from a recording** (Spotify's Basic Pitch; detail in `KEYPATH_TUTOR.md` §10). | "Play the song I hummed" is magical, but the cleanup screen is most of the work. Comes back if she uses Add a song. | L |
 | 20 | **A look of her own**: art direction, collectibles or unlockable Styles, from her answers (her email hints at *Wolfwalkers*). | Could matter a lot for motivation, but only her answers can say which way. | M–L |
-| 21 | **Rhythm echo latency**: compensate for the phone's audio delay once measured on her phone. | Her taps read a little late when the rhythm plays on the phone. | S |
+| 21 | *Half done, release 5 audit.* **Rhythm echo latency**: Rhythm echo now allows for the audio delay the phone itself reports (`phoneLatencyMs`, capped at 300 ms). What's left is checking that figure against a delay measured on her phone, and correcting it if the two differ. | Her taps read a little late when the rhythm plays on the phone. Through the keyboard nothing changes. | S |
 | 22 | ✅ *Done, release 3.* **A PIN on a player.** | Only needed if a sibling starts playing on the same phone. | S |
 | 23 | **Loud and soft** (dynamics). | Musical, but far off for a beginner. | M |
 
@@ -75,13 +78,14 @@ following lights, which is where KeyPath was weakest.
 | --- | --- | --- | --- |
 | 24 | ✅ *Done, release 4.* **The written view.** On a song's setup, *Notes: Falling / Written*: the staff alone, large, no falling notes; it waits for each note; a wrong key is written in red; the keys light only when she is stuck. | Falling notes can be played without reading a note: this is the way to read a song she plays. | M |
 | 25 | ✅ *Done, release 4.* **Read and play**, a fifth game: short tunes made up on the spot, read from the staff with the keys dark, three levels from the Journey's notes. | Sight-reading needs music she hasn't memorised; a generator gives endless new tunes. | M |
-| 26 | **Loop a stretch of bars**, not only one: a from–to in the bar picker, on the speed ladder. | Stumbles are at bar lines and hand shifts; worth it once she plays longer songs of her own. | S |
+| 26 | ✅ *Done, 2026-10-04.* **Loop a stretch of bars**, not only one: a from–to in the bar picker, on the speed ladder. | Stumbles are at bar lines and hand shifts; worth it once she plays longer songs of her own. | S |
 | 27 | **Keys lit only when stuck, for falling notes too.** | Little on its own: a falling note already shows its key. Built into the written view, where it matters. | S |
 | 28 | ✅ *Done, release 5.* **Pickups in the starter songs.** Happy Birthday, Für Elise, When the Saints and Brahms' Lullaby count bars from their first note, so their bar lines sit a beat or two off the printed music. Needs a pickup in the starter format, and phrase starts in beats (a phrase there begins with its own pickup). | The written view shows bar lines where no score has them; a reader learns the bar from them. | M |
 
 Left out: hiding the screen's keyboard (on a phone it is the touch fallback and shows the hands'
-places), engraved sheet music (months of work, a heavy library, and MIDI files carry no notation
-to engrave), and horizontal scrolling (the written view does that job).
+places) and horizontal scrolling (the written view does that job). Engraved sheet music was left
+out here too, as months of work with a heavy library; release 5 engraved the score with VexFlow
+after all (`KEYPATH_TUTOR.md` §9, "Release 5").
 
 ## Left out on purpose
 

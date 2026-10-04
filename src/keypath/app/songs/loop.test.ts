@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Judge, DEFAULT_SETTINGS } from '../../engine'
 import { starterSong, STARTER_PACK } from '../../engine/starterPack'
-import { afterPass, barSong, isClean, startLoop, tempoOf, nearestPlayable, playableBars } from './loop'
+import { afterPass, barSong, isClean, startLoop, stretchEnd, tempoOf, nearestPlayable, playableBars } from './loop'
 
 const ode = starterSong(STARTER_PACK.find((s) => s.id === 'starter:ode')!)
 
@@ -73,5 +73,28 @@ describe('the bars there is something to practise in', () => {
     expect(nearestPlayable([1, 3], 9)).toBe(3)
     expect(nearestPlayable([1, 3], 0)).toBe(1)
     expect(nearestPlayable([], 0)).toBeNull()
+  })
+})
+
+describe('practising a stretch of bars', () => {
+  it('takes bars from one to another, from 0, and climbs the same ladder', () => {
+    const two = barSong(ode, 1, 3)!
+    const original = ode.notes.filter((n) => n.bar === 1 || n.bar === 2)
+    expect(two.notes.map((n) => n.id)).toEqual(original.map((n) => n.id))
+    expect(Math.min(...two.notes.map((n) => n.startMs))).toBe(0)
+    expect(two.id).not.toBe(barSong(ode, 1)!.id)
+    const loop = startLoop(1, 'running', 1, 3)
+    expect(loop).toMatchObject({ bar: 1, to: 3, rungs: [0.5, 0.75, 1] })
+    // One bar is a stretch of one; an end before the start is read as one bar.
+    expect(startLoop(4, 'wait', 1)).toMatchObject({ bar: 4, to: 5 })
+    expect(startLoop(4, 'wait', 1, 2)).toMatchObject({ bar: 4, to: 5 })
+  })
+
+  it('ends a stretch on a bar with notes, never before its start', () => {
+    const playable = [1, 2, 4, 5]
+    expect(stretchEnd(playable, 2, 2)).toBe(2)
+    expect(stretchEnd(playable, 2, 3)).toBe(4) // 3 is empty: the next bar with notes
+    expect(stretchEnd(playable, 4, 1)).toBe(4) // the start moved past the end: the end follows
+    expect(stretchEnd(playable, 2, 9)).toBe(5)
   })
 })
