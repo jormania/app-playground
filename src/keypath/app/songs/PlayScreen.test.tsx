@@ -98,7 +98,7 @@ describe('Play screen', () => {
     expect(screen.getByRole('button', { name: 'Whole song' })).toBeTruthy()
     expect(screen.getByText('Bars 1–4. A part waits for each note.')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: '▶ Part 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play Part 1' }))
     tap(target()!) // middle C
     // A part waits for each note, whatever her own setting ("Keep going" here).
     await playThrough(ODE_1)
@@ -127,7 +127,7 @@ describe('Play screen', () => {
 
   it('a part with too many wrong keys isn’t learnt, and offers another go', async () => {
     const { store, profileId } = await setUp({}, '#/play/starter%3Aode')
-    fireEvent.click(await screen.findByRole('button', { name: '▶ Part 1' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Play Part 1' }))
     tap(target()!)
     // Ode to Joy starts on E.
     await waitFor(() => expect(target()?.getAttribute('aria-label')).toBe('E'))
@@ -166,7 +166,7 @@ describe('Play screen', () => {
     // The first part not learnt is chosen once her progress is read.
     await waitFor(() => expect(chips[0].getAttribute('aria-pressed')).toBe('true'))
     fireEvent.click(chips[2])
-    expect(screen.getByRole('button', { name: '▶ Parts 1–2' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Play Parts 1–2' })).toBeTruthy()
   })
 
   it('an added song’s finger numbers are suggestions, drawn dashed, and go with the setting', async () => {
@@ -470,7 +470,7 @@ describe('Play screen: memory and guidance', () => {
 
   it('says where the hands go before the start: the thumb from the finger numbers, marked on the keys', async () => {
     await setUp({}, '#/play/starter%3Aode')
-    fireEvent.click(await screen.findByRole('button', { name: '▶ Part 1' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Play Part 1' }))
     // Ode to Joy opens E E F G with fingers 3 3 4 5: the right thumb sits on C.
     expect(await screen.findByText('Right thumb on C')).toBeTruthy()
     expect(document.querySelector('[data-hand="right"][aria-hidden]')?.textContent).toBe('1')
@@ -494,9 +494,9 @@ describe('Play screen: practice tools', () => {
 
   it('practises any bar from the setup: middle C first, then the loop, then back to the setup', async () => {
     const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
-    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
-    expect(screen.getByText('Bars')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Practice range/ }))
+    expect(screen.getByRole('group', { name: 'Bars' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Loop it' }))
     // The octave isn't known yet: middle C first, as for a song.
     expect(await screen.findByText('Press middle C to begin')).toBeTruthy()
     tap(target()!)
@@ -522,9 +522,9 @@ describe('Play screen: practice tools', () => {
     cleanup()
     history.replaceState(null, '', '#/play/Shift')
     render(<Shell store={store} />)
-    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Practice range/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Start a bar later' }))
-    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Loop it' }))
     expect(await screen.findByText('Right thumb on G')).toBeTruthy()
   })
 
@@ -536,7 +536,7 @@ describe('Play screen: practice tools', () => {
     cleanup()
     history.replaceState(null, '', '#/play/Shift')
     render(<Shell store={store} />)
-    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Practice range/ }))
     // The end starts on the same bar: one bar, unless she moves it on. It can't go before the start.
     expect(screen.getByLabelText('From bar 1')).toBeTruthy()
     expect(screen.getByLabelText('To bar 1')).toBeTruthy()
@@ -544,7 +544,7 @@ describe('Play screen: practice tools', () => {
     fireEvent.click(screen.getByRole('button', { name: 'End a bar later' }))
     expect(screen.getByLabelText('To bar 2')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'End a bar later' }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Loop it' }))
     tap(target()!) // middle C
     expect(await screen.findByText('🔁 Bars 1–2')).toBeTruthy()
     for (const p of pitches) {
@@ -562,7 +562,7 @@ describe('Play screen: practice tools', () => {
     cleanup()
     history.replaceState(null, '', '#/play/Shift')
     render(<Shell store={store} />)
-    fireEvent.click(await screen.findByRole('button', { name: '🔁 Practise a few bars' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Practice range/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Start a bar later' }))
     expect(screen.getByLabelText('From bar 2')).toBeTruthy()
     expect(screen.getByLabelText('To bar 2')).toBeTruthy()
@@ -573,8 +573,8 @@ describe('Play screen: practice tools', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Part 1' }).getAttribute('aria-pressed')).toBe('true'))
     // The keys show where the hands go before anything starts: the right thumb on C.
     expect(document.querySelector('[data-hand="right"][aria-hidden]')?.textContent).toBe('1')
-    fireEvent.click(screen.getByRole('button', { name: '🔁 Practise a few bars' }))
-    fireEvent.click(screen.getByRole('button', { name: '🔁 Loop it' }))
+    fireEvent.click(screen.getByRole('button', { name: /Practice range/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Loop it' }))
     tap(target()!) // middle C
     await playThrough(ODE_1.slice(0, 4))
     fireEvent.click(await screen.findByRole('button', { name: '▶ Whole song' }))
@@ -628,5 +628,63 @@ describe('Play screen: the music written', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
     await screen.findByText('Press middle C to begin')
     expect(screen.queryByRole('img', { name: /The music/ })).toBeNull()
+  })
+})
+
+describe('Play screen: the setup console', () => {
+  const setupRegion = () => screen.queryByRole('region', { name: 'Set up the song' })
+
+  it('names its rows without headings, and Play says which part', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/starter%3Atwinkle')
+    expect(await screen.findByRole('radiogroup', { name: 'Hands' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Speed' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Notes' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Parts' })).toBeTruthy()
+    // No visible headings any more: an icon stands where each was.
+    expect(screen.queryByText('Hands', { selector: 'span' })).toBeNull()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Play Part 1' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Part 2' }))
+    expect(screen.getByRole('button', { name: 'Play Part 2' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Parts 1–2' }))
+    expect(screen.getByRole('button', { name: 'Play Parts 1–2' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Whole song' }))
+    expect(screen.getByRole('button', { name: 'Play All' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Listen' })).toBeTruthy()
+  })
+
+  it('keeps the practice range folded to one line until it is opened, and says which bars', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/starter%3Aode')
+    const toggle = await screen.findByRole('button', { name: /Practice range/ })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(toggle.textContent).toContain('Bar 1')
+    expect(screen.queryByRole('button', { name: 'Loop it' })).toBeNull()
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(toggle.textContent).toContain('Hide')
+    fireEvent.click(screen.getByRole('button', { name: 'End a bar later' }))
+    fireEvent.click(screen.getByRole('button', { name: 'End a bar later' }))
+    // Folded again, the line keeps the range she set.
+    fireEvent.click(toggle)
+    expect(toggle.textContent).toContain('Bars 1–3')
+    expect(screen.queryByRole('button', { name: 'Loop it' })).toBeNull()
+  })
+
+  it('goes away while the song plays, and comes back after Stop with every choice as it was', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/starter%3Aode')
+    await screen.findByRole('button', { name: 'Play Part 1' })
+    fireEvent.click(screen.getByRole('radio', { name: '75%' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Written' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Part 2' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play Part 2' }))
+    expect(setupRegion()).toBeNull()
+    tap(target()!) // middle C
+    await waitFor(() => expect(screen.queryByText('Press middle C to begin')).toBeNull())
+    expect(setupRegion()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    await waitFor(() => expect(setupRegion()).toBeTruthy())
+    expect(screen.getByRole('radio', { name: '75%' }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('radio', { name: 'Written' }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Part 2' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Play Part 2' })).toBeTruthy()
   })
 })

@@ -13,6 +13,11 @@ const OPTIONS = [
 ]
 
 describe('SegmentedControl', () => {
+  it('names the group when given a label, for a control with no visible heading', () => {
+    render(<SegmentedControl options={OPTIONS} value="work" onChange={() => {}} label="Speed" />)
+    expect(screen.getByRole('radiogroup', { name: 'Speed' })).toBeTruthy()
+  })
+
   it('renders every option', () => {
     render(<SegmentedControl options={OPTIONS} value="work" onChange={() => {}} />)
     expect(screen.getByRole('radio', { name: 'Prep' })).toBeTruthy()

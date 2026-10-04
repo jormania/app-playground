@@ -7,12 +7,14 @@ import styles from '../app.module.css'
  * `aside` (the keyboard's status on the playing screens) sits under the title in portrait, and
  * beside it on a short landscape screen, where every line of height goes to the keys.
  * `compact` while the music is on: one slim line in either orientation, so the
- * notes and keys get the screen and the title stays out of the way.
+ * notes and keys get the screen and the title stays out of the way. `dense` for a
+ * setup screen that wants its height for the choices: the title beside the back
+ * arrow (two lines at most), the status under them on one line.
  */
-export function TopBar({ title, aside, compact }: { title: string; aside?: ReactNode; compact?: boolean }) {
+export function TopBar({ title, aside, compact, dense }: { title: string; aside?: ReactNode; compact?: boolean; dense?: boolean }) {
   const { t } = useApp()
   return (
-    <header className={styles.topBar} data-compact={compact || undefined}>
+    <header className={styles.topBar} data-compact={compact || undefined} data-dense={(dense && !compact) || undefined}>
       <button type="button" className={styles.backButton} onClick={() => history.back()} aria-label={t('back')}>
         ←
       </button>

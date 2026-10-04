@@ -1003,6 +1003,44 @@ level equal to the rating isn't stored, so the rating follows later changes
 (a different fit, say); one that differs is kept as `Song.level`, and
 survives a refit. Built-in songs keep theirs.
 
+### A shorter song setup (2026-10-04)
+
+The setup before a song (and after Stop) had grown into a form: a heading over every choice,
+the Other hand chip on a row of its own, the practice range's steppers always a tap from full
+height. It is now a small console in three levels (`songs/setupConsole.module.css`):
+
+1. **The four settings**, one row each, with a lucide icon where the heading was (hand, note,
+   dial, list). The headings live on as accessible names: `SegmentedControl` gained an optional
+   `label`, the parts row keeps its `aria-label`. Parts are drawn as one track like the others
+   but stay toggle buttons with their ✓. Two settings side by side was tried and doesn't fit at
+   360–412 px without shrinking controls below a finger's width; a container query pairs them
+   only where there is room (36rem), and the Other hand chip wraps under Hands on the narrowest
+   phones rather than squeezing it.
+2. **Play and Listen**, Play the one filled button and named for what it plays: *Play Part 2*,
+   *Play Parts 1–2*, *Play All*; a song without parts still says *Start*. The line under it is
+   still what Play does: a part's bars and that it waits, or how a whole song is judged with
+   its Change link.
+3. **The practice range**, its own slim card: one line, *Practice range: Bars 5–6*, that opens
+   to the two steppers and Loop it, and folds again with Hide (`barOpen`). Loop it stays an
+   action, not a toggle: a loop starts at once, and there is no loop "on" to show.
+
+A mock-up the family made with ChatGPT put the part's line ("Bars 5–6. A part waits for each
+note") inside the practice card. It isn't there: that line is about the part Play will play,
+and the range is a different set of bars, so under it the two would contradict each other.
+
+The header on this screen is `TopBar`'s new `dense` variant: the title beside the back arrow
+(two lines at most) and the keyboard's status on one line, with shorter words
+(`keyboardMissingShort`) so Connect fits beside them at 360 px. Nothing about state changed:
+the same `choose`, `partId`, `barPick`/`toPick` and `barOpen`, and the console still renders
+only in `phase === 'setup' && !listening`, so Play, Listen and a loop take the screen as before
+and Stop brings it back with every choice as it was (tested).
+
+Measured with Playwright, from the top of the screen to the falling notes (the keyboard stays
+where it was, at the bottom): Twinkle 634 → 497 px at 360 and 634 → 461 at 390/412; Ode to Joy
+567 → 497 / 461. With the range open at 360 px, 784 → 593. On a phone on its side the two cards
+merge into one surface again and the practice line shrinks to its tile and bars: 126 → 98 px
+closed at 915 × 412; at 780 × 360 it is 12 px taller closed (138) and 7 px shorter open (140).
+
 ### Loop a stretch of bars (2026-10-04, roadmap item 26)
 
 "Practise one bar" on a song's setup is now **Practise a few bars**: two steppers, *Bars 5 to 7*,

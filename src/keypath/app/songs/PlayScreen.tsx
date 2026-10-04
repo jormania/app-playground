@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronUp, Gauge, Hand as HandIcon, Headphones, ListMusic, Music, Play, Repeat, Users, type LucideIcon } from 'lucide-react'
 import { Button, SegmentedControl } from '../../../ds'
 import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, notMiddleC, octaveShift, summaryForHand, type Hand, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type SongNote, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
@@ -37,6 +38,7 @@ import { Playback, realClock, type Sink } from '../studio/playback'
 import { Recorder, type Recording } from '../studio/recorder'
 import styles from './songs.module.css'
 import setup from '../setup.module.css'
+import con from './setupConsole.module.css'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone' | 'partDone'
 /** The phases after a run, when nothing is asked of her. */
@@ -55,6 +57,23 @@ const STREAK_SHOWN = 5
 const READY_TIME = -1500
 /** More parts than this and they're stepped through one at a time instead of shown as chips. */
 const MAX_CHIPS = 7
+const RANGE_ID = 'practice-range'
+
+/**
+ * One row of the setup console: an icon where a heading used to be, then the control.
+ * The control names itself for a screen reader (a segmented control's label, a chip
+ * row's aria-label), so the icon is only for the eye. `wide` keeps it a full row where
+ * the console puts two settings side by side; `chips` for a row of chips, which sit
+ * lower than a segmented control, so the icon lines up with them.
+ */
+function Setting({ icon: Icon, wide, chips, children }: { icon: LucideIcon; wide?: boolean; chips?: boolean; children: ReactNode }) {
+  return (
+    <div className={con.setting} data-wide={wide || undefined} data-chips={chips || undefined}>
+      <Icon className={con.icon} size={22} aria-hidden />
+      <div className={con.control}>{children}</div>
+    </div>
+  )
+}
 /** The other hand plays itself while she practises one: remembered on the phone. */
 const OTHER_HAND_KEY = `${PREFIX}otherHand`
 const NO_KEYS: ReadonlySet<number> = new Set()
@@ -847,11 +866,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const ends = playable.filter((b) => b >= barAt)
   const toAt = stretchEnd(playable, barAt, toPick ?? barAt)
   const toIndex = ends.indexOf(toAt)
-  const barLink = (
-    <button type="button" className={setup.link} aria-expanded={barOpen} onClick={() => setBarOpen((o) => !o)}>
-      🔁 {barOpen ? t('practiseBarHide') : t('practiseOneBar')}
-    </button>
-  )
+  /** The practice range in a few words, for its card's line: "Bar 5", "Bars 5–7". */
+  const rangeName = toAt > barAt ? t('loopBars', { bars: barSpan(song, barAt, toAt + 1) }) : t('loopBar', { bar: barName(song, barAt) })
+  /** Play says which part: "Play Part 2", "Play Parts 1–2", "Play All"; a song without parts just starts. */
+  const playLabel = span ? (span.kind === 'join' ? t('playJoin', { a: span.first, b: span.last }) : t('playPhrase', { n: span.first })) : part?.kind === 'whole' ? t('playWhole') : t('startSong')
 
   if (phase === 'report' && report) {
     return (
@@ -867,6 +885,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       <TopBar
         title={song.title}
         compact={musicOn}
+        dense
         aside={
           <div className={styles.headAside}>
             {/* Where she is, while the music is on: the part and the bar. */}
@@ -876,7 +895,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                 {t('progressBar', { bar: barName(song, Math.max(scoreBar, firstBar)), total: barName(song, barTotal - 1) })}
               </span>
             )}
-            <KeyboardStatus status={keyboard} missing="keyboardMissing" compact={musicOn} />
+            <KeyboardStatus status={keyboard} missing="keyboardMissingShort" compact={musicOn} />
             {(phase === 'playing' || listening) && (
               <Button size="sm" variant="outline" className={styles.headStop} aria-label={t('stop')} onClick={listening ? stopListening : stop}>
                 ■<span className={styles.headStopWord}> {t('stop')}</span>
@@ -886,15 +905,21 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
         }
       />
 
-      {/* The choices are for before the music; once it plays, or while she listens, they fold away and the notes get the screen. */}
+      {/*
+        The setup console: the choices are for before the music; once it plays, or while she
+        listens, the whole console folds away and the notes get the screen. Three levels:
+        the four settings (always there, an icon each instead of a heading), Play and Listen,
+        then the practice range, folded to one line until she opens it.
+      */}
       {phase === 'setup' && !listening && (
-        <section className={setup.bar}>
-          {hasLeft && (
-            <div className={setup.field}>
-              <span className={setup.label}>{t('hands')}</span>
-              <div className={setup.controls}>
+        <section className={con.setup} aria-label={t('setupLabel')}>
+          <div className={con.console}>
+          <div className={con.settings}>
+            {hasLeft && (
+              <Setting icon={HandIcon}>
                 <SegmentedControl
                   size="sm"
+                  label={t('hands')}
                   value={practice}
                   onChange={(v) => choose({ practice: v as Practice })}
                   options={[
@@ -908,87 +933,86 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                     🎹 {t('otherHand')}
                   </button>
                 )}
-              </div>
-            </div>
-          )}
-          {hasLeft && practice === 'both' && partners.length > 0 && (
-            <div className={setup.field}>
-              <span className={setup.label}>{t('together')}</span>
-              <div className={setup.chips} role="group" aria-label={t('togetherFull')}>
-                <button type="button" className={setup.chip} aria-pressed={!mate} onClick={() => setDuo(null)}>
-                  {t('togetherAlone')}
-                </button>
-                {partners.map((p) => (
-                  <button key={p.id} type="button" className={setup.chip} aria-pressed={mate?.id === p.id} onClick={() => setDuo({ partnerId: p.id, mine: duo?.mine ?? 'right' })}>
-                    {p.avatar} {p.name}
+              </Setting>
+            )}
+            {hasLeft && practice === 'both' && partners.length > 0 && (
+              <Setting icon={Users} wide chips>
+                <div className={setup.chips} role="group" aria-label={t('togetherFull')}>
+                  <button type="button" className={setup.chip} aria-pressed={!mate} onClick={() => setDuo(null)}>
+                    {t('togetherAlone')}
                   </button>
-                ))}
-              </div>
-              {mate && duo && (
-                <SegmentedControl
-                  size="sm"
-                  value={duo.mine}
-                  onChange={(v) => setDuo({ partnerId: mate.id, mine: v as Hand })}
-                  options={[
-                    { value: 'right', label: t('togetherYouRight') },
-                    { value: 'left', label: t('togetherYouLeft') },
-                  ]}
-                />
-              )}
-            </div>
-          )}
-          {steps.length > 0 && (
-            <div className={setup.field}>
-              <span className={setup.label}>{t('parts')}</span>
-              {/* The same chips for every song; a long one's run on one line that scrolls sideways, the chosen one in view. */}
-              <div ref={chipRow} className={setup.chips} data-scroll={steps.length > MAX_CHIPS || undefined} role="group" aria-label={t('parts')}>
-                {steps.map((x) => (
-                  <button
-                    key={x.id}
-                    type="button"
-                    className={setup.chip}
-                    aria-pressed={x.id === partId}
-                    aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
-                    onClick={() => setPartId(x.id)}
-                  >
-                    {chipName(x)}
-                    {learnt.has(x.id) && ' ✓'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className={setup.field}>
-            <span className={setup.label}>{t('speed')}</span>
-            <SegmentedControl size="sm" value={speed} onChange={(v) => choose({ speed: v as Speed })} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+                  {partners.map((p) => (
+                    <button key={p.id} type="button" className={setup.chip} aria-pressed={mate?.id === p.id} onClick={() => setDuo({ partnerId: p.id, mine: duo?.mine ?? 'right' })}>
+                      {p.avatar} {p.name}
+                    </button>
+                  ))}
+                </div>
+                {mate && duo && (
+                  <SegmentedControl
+                    size="sm"
+                    label={t('together')}
+                    value={duo.mine}
+                    onChange={(v) => setDuo({ partnerId: mate.id, mine: v as Hand })}
+                    options={[
+                      { value: 'right', label: t('togetherYouRight') },
+                      { value: 'left', label: t('togetherYouLeft') },
+                    ]}
+                  />
+                )}
+              </Setting>
+            )}
+            {steps.length > 0 && (
+              <Setting icon={Music} wide={steps.length > MAX_CHIPS}>
+                {/* The same chips for every song, drawn as one track like the rows around them; a long one's run scrolls sideways, the chosen one in view. */}
+                <div ref={chipRow} className={`${setup.chips} ${con.track}`} data-scroll={steps.length > MAX_CHIPS || undefined} role="group" aria-label={t('parts')}>
+                  {steps.map((x) => (
+                    <button
+                      key={x.id}
+                      type="button"
+                      className={setup.chip}
+                      aria-pressed={x.id === partId}
+                      aria-label={`${partName(x)}${learnt.has(x.id) ? ` · ${t('partLearntShort')}` : ''}`}
+                      onClick={() => setPartId(x.id)}
+                    >
+                      {chipName(x)}
+                      {learnt.has(x.id) && ' ✓'}
+                    </button>
+                  ))}
+                </div>
+              </Setting>
+            )}
+            <Setting icon={Gauge}>
+              <SegmentedControl size="sm" label={t('speed')} value={speed} onChange={(v) => choose({ speed: v as Speed })} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+            </Setting>
+            <Setting icon={ListMusic}>
+              <SegmentedControl
+                size="sm"
+                label={t('notesView')}
+                value={view}
+                onChange={(v) => choose({ view: v as NotesView })}
+                options={[
+                  { value: 'falling', label: t('viewFalling') },
+                  { value: 'written', label: t('viewWritten') },
+                ]}
+              />
+            </Setting>
           </div>
-          <div className={setup.field}>
-            <span className={setup.label}>{t('notesView')}</span>
-            <SegmentedControl
-              size="sm"
-              value={view}
-              onChange={(v) => choose({ view: v as NotesView })}
-              options={[
-                { value: 'falling', label: t('viewFalling') },
-                { value: 'written', label: t('viewWritten') },
-              ]}
-            />
-          </div>
-          <div className={setup.go}>
+
+          <div className={con.actions}>
             <Button onClick={go}>
-              ▶ {span ? partName(span) : t('startSong')}
+              <Play className={con.btnIcon} size={20} fill="currentColor" aria-hidden />
+              {playLabel}
             </Button>
             <Button variant="outline" onClick={listen}>
-              🎧 {t('listen')}
+              <Headphones className={con.btnIcon} size={20} aria-hidden />
+              {t('listen')}
             </Button>
           </div>
+          {/* What Play will do: the part's bars, or how a whole song is judged (and where to change that). */}
           {span ? (
-            <p className={setup.note} data-inline>
-              {t('partMode', { bars: barSpan(song, span.from, span.to) })}
-              {barLink}
-            </p>
+            <p className={con.note}>{t('partMode', { bars: barSpan(song, span.from, span.to) })}</p>
           ) : (
-            <p className={setup.note} data-inline>
+            <p className={con.note}>
               <span>{written ? t('writtenMode') : t('playMode', { mode: t(ON_WRONG_LABEL[settings.onWrong]), timing: t(TIMING_LABEL[settings.timing]) })}</span>
               {/* Written always waits: her On a wrong note setting doesn't apply, so there is nothing to change there. */}
               {!written && (
@@ -996,13 +1020,26 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                   {t('playModeChange')}
                 </button>
               )}
-              {barLink}
             </p>
           )}
-          {barOpen && (
-            <div className={setup.field}>
-              <span className={setup.label}>{t('barPickLabel')}</span>
-              <div className={setup.controls}>
+
+          {output.phoneMuted && <p className={con.note}>{t('studioPhoneMuted')}</p>}
+          </div>
+
+          {/* The practice range, a card of its own under the console: one line that says which bars, opened to change them and loop them. */}
+          <div className={con.practice} data-open={barOpen || undefined}>
+            <button type="button" className={con.practiceToggle} aria-expanded={barOpen} aria-controls={RANGE_ID} onClick={() => setBarOpen((o) => !o)}>
+              <span className={con.tile} aria-hidden>
+                <Repeat size={18} />
+              </span>
+              <span className={con.practiceTitle}>
+                <strong>{t('practiceRange')}:</strong> {rangeName}
+              </span>
+              {barOpen && <span className={con.practiceState}>{t('practiseBarHide')}</span>}
+              {barOpen ? <ChevronUp className={con.chevron} size={20} aria-hidden /> : <ChevronDown className={con.chevron} size={20} aria-hidden />}
+            </button>
+            {barOpen && (
+              <div id={RANGE_ID} className={con.range} role="group" aria-label={t('barPickLabel')}>
                 <div className={styles.barRange}>
                   <span className={styles.barStepper}>
                     <Button size="sm" variant="outline" disabled={barIndex <= 0} onClick={() => setBarPick(playable[barIndex - 1])} aria-label={t('barPickLower')}>
@@ -1028,13 +1065,13 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                     </Button>
                   </span>
                 </div>
-                <Button size="sm" onClick={() => practiseBarFromSetup(barAt, toAt + 1)}>
-                  🔁 {t('barLoop')}
+                <Button size="sm" className={con.loop} onClick={() => practiseBarFromSetup(barAt, toAt + 1)}>
+                  <Repeat className={con.btnIcon} size={16} aria-hidden />
+                  {t('barLoop')}
                 </Button>
               </div>
-            </div>
-          )}
-          {output.phoneMuted && <p className={setup.note}>{t('studioPhoneMuted')}</p>}
+            )}
+          </div>
         </section>
       )}
 

@@ -156,7 +156,7 @@ describe('Songs, for everyday use', () => {
     go()
     // Right hand, with the left played for her: the default.
     expect((await screen.findByRole('button', { name: 'Other hand plays along' })).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(await screen.findByRole('button', { name: '▶ Part 1' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Play Part 1' }))
     const key = (p: number) => {
       const el = document.querySelector<HTMLElement>(`[data-pitch="${p}"]`)!
       fireEvent.pointerDown(el, { pointerId: 1 })
@@ -174,7 +174,7 @@ describe('Songs, for everyday use', () => {
     go()
     fireEvent.click(await screen.findByRole('button', { name: 'Other hand plays along' }))
     await waitFor(async () => expect(await store.get('keypath:v1:otherHand')).toBe(false))
-    fireEvent.click(screen.getByRole('button', { name: '▶ Part 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play Part 1' }))
     key(60)
     await waitFor(() => expect(document.querySelector('[data-target]')?.getAttribute('data-pitch')).toBe('60'))
     played.length = 0

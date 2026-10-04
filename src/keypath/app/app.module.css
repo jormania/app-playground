@@ -142,6 +142,25 @@
   flex-basis: auto;
   min-height: 0;
 }
+/* A setup screen (a song before it plays): the title beside the back arrow, wrapping to
+   two lines at most, and the status on one slim line under both. */
+.topBar[data-dense] {
+  column-gap: var(--space-xs);
+  row-gap: var(--space-3xs);
+}
+.topBar[data-dense] .title {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--text-lg);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.topBar[data-dense] .topAside {
+  min-height: 0;
+}
 @media (orientation: landscape) and (max-height: 560px) {
   .topBar {
     flex-wrap: nowrap;

@@ -13,6 +13,8 @@ export interface SegmentedControlProps {
   size?: 'sm' | 'md'
   disabled?: boolean
   className?: string
+  /** The group's accessible name, for when no visible label names it. */
+  label?: string
 }
 
 /** A compact multi-option toggle: a track holding N buttons, one active. */
@@ -23,11 +25,13 @@ export function SegmentedControl({
   size = 'md',
   disabled = false,
   className,
+  label,
 }: SegmentedControlProps) {
   return (
     <div
       className={cx(styles.track, styles[size], disabled && styles.disabled, className)}
       role="radiogroup"
+      aria-label={label}
       aria-disabled={disabled || undefined}
     >
       {options.map((option) => {
