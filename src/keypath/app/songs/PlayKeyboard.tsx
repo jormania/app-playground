@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { SimpleSynth } from '../../probe/synth'
-import type { KeyBox } from './keyGeometry'
+import { nameLines, type KeyBox } from './keyGeometry'
 import styles from './songs.module.css'
 
 export interface PlayKeyboardProps {
@@ -84,7 +84,7 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
             onPointerLeave={up}
           >
             {marker === b.pitch && <span className={styles.marker} aria-hidden />}
-            {names && !b.black && <span className={styles.keyLabel}>{label(b.pitch)}</span>}
+            {names && !b.black && <KeyName className={styles.keyLabel} name={label(b.pitch)} />}
           </div>
         )
       })}
@@ -93,7 +93,13 @@ export const PlayKeyboard = memo(function PlayKeyboard({ boxes, held, targets, w
         boxes
           .filter((b) => b.pitch === marker)
           .map((b) => (
-            <span key="marker-label" className={styles.markerLabel} style={{ left: `${b.left + b.width / 2}%` }}>
+            // Centred on its key, unless that would run it off the keyboard: then held to the edge.
+            <span
+              key="marker-label"
+              className={styles.markerLabel}
+              data-edge={b.left < 8 ? 'start' : b.left + b.width > 92 ? 'end' : undefined}
+              style={b.left < 8 ? { left: '0.25rem' } : b.left + b.width > 92 ? { right: '0.25rem' } : { left: `${b.left + b.width / 2}%` }}
+            >
               {markerLabel}
             </span>
           ))}
@@ -135,4 +141,16 @@ function useRaised(boxes: readonly KeyBox[]) {
     return () => ro.disconnect()
   }, [black])
   return { ref, on }
+}
+
+/** A key's name, sized by its length; both names one above the other. */
+export function KeyName({ className, name }: { className: string; name: string }) {
+  const { lines, len } = nameLines(name)
+  return (
+    <span className={className} data-len={len}>
+      {lines.map((l, i) => (
+        <span key={i}>{l}</span>
+      ))}
+    </span>
+  )
 }

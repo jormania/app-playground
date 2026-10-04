@@ -1,6 +1,7 @@
 import { forwardRef, memo, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { NoteResult, SongNote } from '../../engine'
-import type { KeyBox } from './keyGeometry'
+import { blackCover, type KeyBox } from './keyGeometry'
+import { KeyName } from './PlayKeyboard'
 import styles from './songs.module.css'
 
 /**
@@ -22,7 +23,7 @@ export const pxPerMsFor = (fallPx: number) => Math.min(PX_PER_MS, Math.max(MIN_P
  * to this, where its key is free above it (the bottom, where it is played,
  * never moves); where the next note on the key is too close, the two go side by side.
  */
-const ROOM_FOR_BOTH = 42
+const ROOM_FOR_BOTH = 48
 /** Space kept between a note grown taller and the next note on its key (px). */
 const KEY_GAP = 3
 
@@ -81,6 +82,7 @@ export const FallingNotes = memo(
       return () => ro.disconnect()
     }, [])
     const byPitch = new Map(boxes.map((b) => [b.pitch, b]))
+    const cover = useMemo(() => blackCover(boxes), [boxes])
     // When the next note on each note's key starts (ms): how far a short note may grow.
     const nextOnKey = useMemo(() => {
       const next = new Map<number, number>()
@@ -92,27 +94,46 @@ export const FallingNotes = memo(
       }
       return next
     }, [notes])
+    // Each note's place and height; then, where a black key's note falls over part of a white key's
+    // note at the same time (a trill on E and D♯), the white one's finger and name move clear of it.
+    const placed = notes.flatMap((n) => {
+      const box = byPitch.get(n.pitch)
+      if (!box) return []
+      const finger = fingers ? n.finger : undefined
+      const after = nextOnKey.get(n.id)
+      const room = after === undefined ? Infinity : (after - n.startMs) * scale - KEY_GAP
+      const height = Math.max(18, n.durationMs * scale, finger ? Math.min(ROOM_FOR_BOTH, room) : 0)
+      return [{ n, box, height, finger, squeezed: !!finger && height < ROOM_FOR_BOTH, pad: null as { left: number; right: number } | null }]
+    })
+    const spans = new Map<number, [number, number][]>()
+    for (const p of placed) if (p.box.black) spans.set(p.n.pitch, [...(spans.get(p.n.pitch) ?? []), [p.n.startMs * scale, p.n.startMs * scale + p.height]])
+    for (const p of placed) {
+      if (p.box.black || spans.size === 0) continue
+      const lo = p.n.startMs * scale
+      const hi = lo + p.height
+      const meets = (pitch: number) => (spans.get(pitch) ?? []).some(([a, b]) => a < hi && b > lo)
+      const c = cover.get(p.n.pitch)
+      if (!c) continue
+      const left = meets(p.n.pitch - 1) ? c.left : 0
+      const right = meets(p.n.pitch + 1) ? c.right : 0
+      if (left || right) p.pad = { left, right }
+    }
     return (
       <div ref={box} className={styles.fall}>
         <div ref={layer} className={styles.fallLayer}>
-          {notes.map((n) => {
-            const box = byPitch.get(n.pitch)
-            if (!box) return null
+          {placed.map(({ n, box, height, finger, squeezed, pad }) => {
             const outcome = results.get(n.id)
-            const finger = fingers ? n.finger : undefined
-            const after = nextOnKey.get(n.id)
-            const room = after === undefined ? Infinity : (after - n.startMs) * scale - KEY_GAP
-            const height = Math.max(18, n.durationMs * scale, finger ? Math.min(ROOM_FOR_BOTH, room) : 0)
-            const row = !!finger && height < ROOM_FOR_BOTH
+            const row = squeezed && !box.black
             return (
               <div
                 key={n.id}
-                className={`${styles.note} ${row ? styles.noteRow : ''} ${n.hand === 'left' ? styles.noteLeft : styles.noteRight} ${outcome === 'hit' ? styles.noteHit : outcome === 'missed' ? styles.noteMissed : ''}`}
+                className={`${styles.note} ${row ? styles.noteRow : ''} ${box.black ? styles.noteBlack : ''} ${n.hand === 'left' ? styles.noteLeft : styles.noteRight} ${outcome === 'hit' ? styles.noteHit : outcome === 'missed' ? styles.noteMissed : ''}`}
                 style={{
                   left: `${box.left}%`,
                   width: `${box.width}%`,
                   bottom: `${n.startMs * scale}px`,
                   height: `${height}px`,
+                  ...(pad ? { paddingLeft: `${pad.left}%`, paddingRight: `${pad.right}%` } : {}),
                 }}
               >
                 {finger && (
@@ -120,7 +141,8 @@ export const FallingNotes = memo(
                     {finger}
                   </span>
                 )}
-                <span className={styles.noteLabel}>{label(n.pitch)}</span>
+                {/* A black key's note is narrow: its name never goes beside the finger, and is left off when the next note is too close to put it under. */}
+                {!(squeezed && box.black) && <KeyName className={styles.noteLabel} name={label(n.pitch)} />}
               </div>
             )
           })}

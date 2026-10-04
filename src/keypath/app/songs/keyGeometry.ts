@@ -66,3 +66,39 @@ export function widenRange(range: { low: number; high: number }, octaves: number
   }
   return { low, high }
 }
+
+/**
+ * A key's name laid out for a narrow space: "C / Do" (both names) as two
+ * lines, and how long the longest line is, so a lone letter can be drawn as
+ * large as its key allows and "Sol♯" smaller.
+ */
+export function nameLines(name: string): { lines: string[]; len: 1 | 2 | 3 } {
+  const lines = name.split(' / ')
+  // Measured roughly as drawn: "Sol" is no wider than "Re", for an l is narrow and a ♯ small.
+  const width = (line: string) => [...line].reduce((w, c) => w + ('ilIjtfr'.includes(c) ? 0.5 : c === '♯' ? 0.6 : 1), 0)
+  const widest = Math.max(...lines.map(width))
+  return { lines, len: widest <= 1 ? 1 : widest <= 2.5 ? 2 : 3 }
+}
+
+/**
+ * How much of each white key's column the black keys beside it cover, left
+ * and right, in the same % as the boxes: a falling note on a white key keeps
+ * its finger and name in the part a black key's note can't fall over.
+ */
+export function blackCover(boxes: readonly KeyBox[]): Map<number, { left: number; right: number }> {
+  const blacks = boxes.filter((b) => b.black)
+  const cover = new Map<number, { left: number; right: number }>()
+  for (const b of boxes) {
+    if (b.black) continue
+    const end = b.left + b.width
+    let left = 0
+    let right = 0
+    for (const k of blacks) {
+      const kEnd = k.left + k.width
+      if (k.left < b.left && kEnd > b.left) left = Math.max(left, kEnd - b.left)
+      if (k.left < end && kEnd > end) right = Math.max(right, end - k.left)
+    }
+    cover.set(b.pitch, { left, right })
+  }
+  return cover
+}

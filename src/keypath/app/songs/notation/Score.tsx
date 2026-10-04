@@ -385,10 +385,11 @@ function draw(
   // Only the notes stretch: a clef and a metre are the same width however wide the bar.
   const leadOf = (line: Measure[]) => line.reduce((w, m) => w + m.lead, 0)
   const notesOf = (line: Measure[]) => line.reduce((w, m) => w + m.minWidth - m.lead, 0)
-  const fill = (line: Measure[]) => Math.min(MAX_STRETCH, (width - margin * 2 - leadOf(line)) / notesOf(line))
-  const stretch = Math.min(...measures.map(fill))
-  // A full line is justified to the margins, as printed; a short last line keeps the others' spacing.
-  const stretchOf = (line: Measure[]) => (measures.length > 1 && line.length === perLine ? fill(line) : stretch)
+  const fill = (line: Measure[], most: number) => Math.min(most, (width - margin * 2 - leadOf(line)) / notesOf(line))
+  const stretch = Math.min(...measures.map((line) => fill(line, MAX_STRETCH)))
+  // A full line on a page of several is justified to the margins, as printed (a line of plain quarters
+  // takes more pulling than one of eighths); a short last line keeps the common spacing.
+  const stretchOf = (line: Measure[]) => (measures.length > 1 && line.length === perLine ? fill(line, MAX_STRETCH * 2) : stretch)
   const longest = Math.max(...measures.map((line) => leadOf(line) + notesOf(line) * stretchOf(line)))
   measures.forEach((line, l) => {
     const lineStretch = stretchOf(line)

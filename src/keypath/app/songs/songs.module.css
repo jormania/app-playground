@@ -358,26 +358,53 @@
   margin-top: auto;
 }
 .noteRight {
-  background: #e0795b;
+  --note-bg: #e0795b;
+  background: var(--note-bg);
 }
 .noteLeft {
-  background: #4f9d8a;
+  --note-bg: #4f9d8a;
+  background: var(--note-bg);
+}
+/* A black key's note: a shade deeper, as its key is, and drawn over the white keys' notes it
+   overlaps. Narrower than its name can be, so the name sits on a tab of the note's colour that
+   may reach past its sides. */
+.noteBlack {
+  z-index: 1;
+  overflow: visible;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.22);
+}
+.noteBlack.noteRight {
+  --note-bg: #c9603f;
+}
+.noteBlack.noteLeft {
+  --note-bg: #3b8270;
+}
+.noteBlack .noteLabel {
+  padding: 1px 3px;
+  border-radius: 4px;
+  background: var(--note-bg);
 }
 .noteHit {
-  background: var(--color-success);
+  --note-bg: var(--color-success);
+  background: var(--note-bg);
   opacity: 0.55;
 }
 .noteMissed {
   opacity: 0.25;
 }
-/* Each note is its key's width, and its name is as large as that allows: 15 px on a wide key, never under 11 px. */
+/* Each note is its key's width, and its name is as large as that allows: 18 px on a wide key, never under 12 px;
+   heavier than bold, and lifted off the colour by a faint shadow, so it reads at a glance. */
 .note {
   container-type: inline-size;
 }
 .noteLabel {
-  font-size: clamp(0.6875rem, 36cqi, 0.9375rem);
-  font-weight: var(--weight-bold);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: clamp(0.75rem, 56cqi, 1.125rem);
+  font-weight: 800;
   color: #fff;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.28);
   line-height: 1;
   white-space: nowrap;
 }
@@ -387,10 +414,17 @@
   justify-content: center;
   gap: 2px;
 }
-@container (max-width: 1.95rem) {
+@container (max-width: 2.05rem) {
   .noteRow .noteLabel {
     display: none;
   }
+}
+.noteLabel[data-len='2'] {
+  font-size: clamp(0.6875rem, 36cqi, 1.0625rem);
+}
+.noteLabel[data-len='3'] {
+  font-size: clamp(0.625rem, 27cqi, 1rem);
+  letter-spacing: -0.02em;
 }
 .noteFinger[data-suggested] {
   background: transparent;
@@ -401,13 +435,13 @@
 .noteFinger {
   display: grid;
   place-items: center;
-  width: clamp(1rem, 40cqi, 1.3rem);
-  height: clamp(1rem, 40cqi, 1.3rem);
+  width: clamp(1.125rem, 50cqi, 1.625rem);
+  height: clamp(1.125rem, 50cqi, 1.625rem);
   border-radius: var(--radius-pill);
   background: #fff;
-  color: #3a3a3a;
-  font-size: clamp(0.6875rem, 32cqi, 0.875rem);
-  font-weight: var(--weight-bold);
+  color: #2a2724;
+  font-size: clamp(0.75rem, 38cqi, 1.0625rem);
+  font-weight: 800;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -677,18 +711,28 @@
 }
 /* The note's name at the foot of a white key: bold and dark enough to read at a
    glance, as large as the key's width allows (the key is its own container):
-   15 px on a phone's one-octave keys, never under 11 px on a crowded row. */
+   18 px on a phone's one-octave keys, never under 12 px on a crowded row. */
 .whiteKey {
   container-type: inline-size;
 }
 .keyLabel {
-  font-size: clamp(0.6875rem, 36cqi, 0.9375rem);
-  font-weight: var(--weight-bold);
-  color: #4a4540;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: clamp(0.8125rem, 50cqi, 1.25rem);
+  font-weight: 800;
+  color: #3d3934;
   line-height: 1;
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+}
+.keyLabel[data-len='2'] {
+  font-size: clamp(0.75rem, 36cqi, 1.125rem);
+}
+.keyLabel[data-len='3'] {
+  font-size: clamp(0.6875rem, 28cqi, 1.0625rem);
+  letter-spacing: -0.02em;
 }
 /* The finger that goes on this key, before the start: right hand in the notes' orange, left in their teal. */
 .keyBadge {
@@ -698,13 +742,13 @@
   transform: translateX(-50%);
   display: grid;
   place-items: center;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: var(--radius-pill);
   background: #e0795b;
   color: #fff;
-  font-size: 0.8125rem;
-  font-weight: var(--weight-bold);
+  font-size: 0.9375rem;
+  font-weight: 800;
   line-height: 1;
   pointer-events: none;
 }
@@ -748,6 +792,9 @@
   line-height: 1.2;
   pointer-events: none;
   z-index: 4;
+}
+.markerLabel[data-edge] {
+  transform: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .marker {

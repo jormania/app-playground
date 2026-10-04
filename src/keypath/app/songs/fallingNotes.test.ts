@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LOOK_AHEAD_MS, PX_PER_MS, pxPerMsFor } from './FallingNotes'
+import { nameLines } from './keyGeometry'
 
 describe('how tightly the notes fall', () => {
   it('keeps the usual spacing where the fall is tall, and packs closer where it is short, so over two seconds stay in view', () => {
@@ -15,6 +16,17 @@ describe('how tightly the notes fall', () => {
     // About 390 px of fall on a phone upright: no more than the look-ahead in view, so the notes grow.
     const upright = pxPerMsFor(390)
     expect(390 / upright).toBeCloseTo(LOOK_AHEAD_MS)
-    expect(300 * upright).toBeGreaterThanOrEqual(42)
+    expect(300 * upright).toBeGreaterThanOrEqual(48)
+  })
+})
+
+describe('a key’s name, sized for a narrow space', () => {
+  it('draws a letter largest, "Sol" as large as "Re", and both names one above the other', () => {
+    expect(nameLines('C')).toEqual({ lines: ['C'], len: 1 })
+    expect(nameLines('Re').len).toBe(2)
+    expect(nameLines('Sol').len).toBe(2)
+    expect(nameLines('G♯').len).toBe(2)
+    expect(nameLines('Sol♯').len).toBe(3)
+    expect(nameLines('C / Do')).toEqual({ lines: ['C', 'Do'], len: 2 })
   })
 })

@@ -19,8 +19,8 @@ describe('a short note with its finger', () => {
     // A sixteenth on C (18 px at this scale), then C again 150 ms on, then E with its key free above.
     const el = draw([note(0, 60, 0), note(1, 60, 150), note(2, 64, 0)])
     const [first, second, free] = heights(el)
-    expect(free).toBe(42)
-    expect(second).toBe(42)
+    expect(free).toBe(48)
+    expect(second).toBe(48)
     // Hemmed in: as tall as the gap allows, and never into the next note.
     expect(first).toBeLessThanOrEqual(150 * PX_PER_MS - 3)
     expect(first).toBeGreaterThan(18)
@@ -31,4 +31,14 @@ describe('a short note with its finger', () => {
   it('without finger numbers, is drawn at its own length', () => {
     expect(heights(draw([note(0, 64, 0, 200)], false))).toEqual([200 * PX_PER_MS])
   })
+
+  it('moves a white key’s finger and name clear of a black key’s note only while one falls beside it', () => {
+    // E and D♯ in turn, as in Für Elise; then an E alone, a second later.
+    const el = draw([note(0, 64, 0), note(1, 63, 120), note(2, 64, 240), note(3, 64, 2000)])
+    const es = [...el.querySelectorAll<HTMLElement>('[data-pitch], [style*="bottom"]')].filter((n) => n.textContent?.includes('E'))
+    const pads = es.map((n) => parseFloat(n.style.paddingLeft || '0'))
+    expect(pads.slice(0, 2).every((p) => p > 0)).toBe(true)
+    expect(pads[2]).toBe(0)
+  })
 })
+
