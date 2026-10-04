@@ -55,6 +55,14 @@ export interface StarterSong {
   fingers?: { right?: string; left?: string }
   /** Where each phrase starts (0-based bars), for learning the song in parts. */
   phrases?: number[]
+  /**
+   * The song starts with a pickup of this many beats: it is bar 0 (numbered 0,
+   * as printed), and bar 1 is the first whole bar. The last bar is then the
+   * rest of the bar the pickup started, as on the page.
+   */
+  pickup?: number
+  /** Beats each phrase starts before its bar in `phrases`, with its own pickup (the same index; 0 on the bar line). */
+  phraseLeads?: number[]
   /** 1 easy (five fingers, one hand's worth of notes) to 3 (leaps, black keys, quick notes). */
   level?: 1 | 2 | 3
   /** The note a beat is (4, a quarter, unless said): only for drawing the music, so 6 beats of sixteenths is 3/8. */
@@ -179,14 +187,17 @@ export const STARTER_PACK: StarterSong[] = [
     title: { en: 'Happy Birthday', ro: 'Happy Birthday' },
     bpm: 100,
     beatsPerBar: 3,
-    // Starts on the last beat of a bar (the pickup), so the last bar is a beat short.
+    // Starts on the last beat of a bar (the pickup), so the last bar is a beat short;
+    // each line starts with the same pickup ("Happy").
+    pickup: 1,
     right: [
       [G4, 0.75], [G4, 0.25], [A4, 1], [G4, 1], [C5, 1], [B4, 2],
       [G4, 0.75], [G4, 0.25], [A4, 1], [G4, 1], [D5, 1], [C5, 2],
       [G4, 0.75], [G4, 0.25], [G5, 1], [E5, 1], [C5, 1], [B4, 1], [A4, 1],
       [F5, 0.75], [F5, 0.25], [E5, 1], [C5, 1], [D5, 1], [C5, 2],
     ],
-    phrases: [0, 2, 4, 6],
+    phrases: [0, 3, 5, 7],
+    phraseLeads: [0, 1, 1, 1],
     level: 3,
     fingers: { right: '112143 112154 1153132 443121' },
   },
@@ -197,6 +208,8 @@ export const STARTER_PACK: StarterSong[] = [
     bpm: 360,
     beatsPerBar: 6,
     beatUnit: 16,
+    // E D♯ is the pickup, and starts the second phrase too.
+    pickup: 2,
     right: [
       [E5, 1], [Ds5, 1],
       [E5, 1], [Ds5, 1], [E5, 1], [B4, 1], [D5, 1], [C5, 1],
@@ -208,7 +221,8 @@ export const STARTER_PACK: StarterSong[] = [
       [B4, 3], [E4, 1], [C5, 1], [B4, 1],
       [A4, 4],
     ],
-    phrases: [0, 4],
+    phrases: [0, 5],
+    phraseLeads: [0, 2],
     level: 3,
     fingers: { right: '54 545243 1123 4134 5154 545243 1123 4132 1' },
   },
@@ -246,14 +260,18 @@ STARTER_PACK.push(
     title: { en: 'When the Saints Go Marching In', ro: 'When the Saints Go Marching In' },
     bpm: 110,
     beatsPerBar: 4,
-    // Five fingers on C D E F G, never moving: C E F G, held.
+    // Five fingers on C D E F G, never moving: C E F G, held. "Oh when the" is a
+    // three-beat pickup, and each line starts with one ("when the", the last, two),
+    // so "saints" always lands on the bar line.
+    pickup: 3,
     right: [
       [C4, 1], [E4, 1], [F4, 1], [G4, 5], [C4, 1], [E4, 1], [F4, 1], [G4, 5],
       [C4, 1], [E4, 1], [F4, 1], [G4, 2], [E4, 2], [C4, 2], [E4, 2], [D4, 5],
-      [E4, 1], [E4, 1], [D4, 1], [C4, 3], [C4, 1], [E4, 1], [G4, 2], [G4, 1], [F4, 5],
-      [E4, 1], [F4, 1], [G4, 2], [E4, 2], [C4, 2], [D4, 4], [C4, 4],
+      [E4, 1], [E4, 1], [D4, 1], [C4, 3], [C4, 1], [E4, 1], [G4, 2], [G4, 1], [F4, 6],
+      [E4, 1], [F4, 1], [G4, 2], [E4, 2], [C4, 2], [D4, 2], [C4, 4],
     ],
-    phrases: [0, 4, 8, 12],
+    phrases: [0, 5, 9, 13],
+    phraseLeads: [0, 3, 3, 2],
     level: 1,
     fingers: { right: '1345 1345 13453132 332113554 3453121' },
   },
@@ -280,15 +298,19 @@ STARTER_PACK.push(
     bpm: 72,
     beatsPerBar: 3,
     // Lullaby and good night: E E G, E E G, E G C B A A G; then D E F D, D E F, D F B A G B C; then the octave leaps.
+    // Two eighths are the pickup, and every line starts with its own; bar for bar
+    // as Op. 49 No. 4 (in C), with the opening's dotted rhythms made even.
+    pickup: 1,
     right: [
       [E4, 0.5], [E4, 0.5], [G4, 2], [E4, 0.5], [E4, 0.5], [G4, 2], [E4, 0.5], [G4, 0.5], [C5, 1], [B4, 1], [A4, 1], [A4, 1], [G4, 1],
       [D4, 0.5], [E4, 0.5], [F4, 1], [D4, 1], [D4, 0.5], [E4, 0.5], [F4, 2], [D4, 0.5], [F4, 0.5], [B4, 0.5], [A4, 0.5], [G4, 1], [B4, 1], [C5, 2],
-      [C4, 0.5], [C4, 0.5], [C5, 2], [A4, 0.5], [F4, 0.5], [G4, 2], [E4, 0.5], [C4, 0.5], [F4, 1], [G4, 0.5], [A4, 0.5], [G4, 3],
-      [C4, 0.5], [C4, 0.5], [C5, 2], [A4, 0.5], [F4, 0.5], [G4, 2], [E4, 0.5], [C4, 0.5], [E4, 1], [D4, 1], [C4, 3],
+      [C4, 0.5], [C4, 0.5], [C5, 2], [A4, 0.5], [F4, 0.5], [G4, 2], [E4, 0.5], [C4, 0.5], [F4, 1], [G4, 1], [A4, 1], [G4, 2],
+      [C4, 0.5], [C4, 0.5], [C5, 2], [A4, 0.5], [F4, 0.5], [G4, 2], [E4, 0.5], [C4, 0.5], [F4, 1], [E4, 1], [D4, 1], [C4, 2],
     ],
-    phrases: [0, 4, 8, 12],
+    phrases: [0, 5, 9, 13],
+    phraseLeads: [0, 1, 1, 1],
     level: 2,
-    fingers: { right: '112 112 1254 332 1231 123 12543 45 115 312 21345 4 115 312 3132 1' },
+    fingers: { right: '112 112 1254 332 1231 123 12543 45 115 312 21345 4 115 312 31 4321' },
   },
   {
     id: 'starter:minuet',
@@ -316,6 +338,9 @@ export function fingerList(written: string | undefined): Finger[] {
  */
 export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
   const msPerBeat = 60000 / s.bpm
+  const pickup = s.pickup ?? 0
+  /** The bar a beat falls in: with a pickup, bar 0 is the pickup and bar 1 the first whole bar. */
+  const barOf = (beat: number) => (pickup > 0 ? (beat < pickup - 1e-9 ? 0 : Math.floor((beat - pickup) / s.beatsPerBar + 1e-9) + 1) : Math.floor(beat / s.beatsPerBar + 1e-9))
   const notes: SongNote[] = []
   const add = (line: Line, hand: Hand) => {
     const fingers = fingerList(s.fingers?.[hand])
@@ -327,7 +352,7 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
         startMs: Math.round(beat * msPerBeat),
         durationMs: Math.round(beats * msPerBeat * 0.9),
         hand,
-        bar: Math.floor(beat / s.beatsPerBar + 1e-9),
+        bar: barOf(beat),
         ...(fingers[i] ? { finger: fingers[i] } : {}),
       })
       beat += beats
@@ -337,10 +362,19 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
   if (s.left) add(s.left, 'left')
   notes.sort((a, b) => a.startMs - b.startMs || a.pitch - b.pitch)
   notes.forEach((n, i) => (n.id = i))
-  // For drawing the music: every bar is the metre's length, from the first note.
-  const barMs = s.beatsPerBar * msPerBeat
+  // For drawing the music: every bar the metre's length; with a pickup, the
+  // pickup is a short bar 0 and the last bar holds what is left of the song.
   const bars = notes.length ? Math.max(...notes.map((n) => n.bar)) + 1 : 0
-  const barTimes = Array.from({ length: bars }, (_, b) => ({ startMs: Math.round(b * barMs), endMs: Math.round((b + 1) * barMs), quarters: (s.beatsPerBar * 4) / (s.beatUnit ?? 4) }))
+  const beats = Math.max(lineBeats(s.right), s.left ? lineBeats(s.left) : 0)
+  const quarter = 4 / (s.beatUnit ?? 4)
+  const barTimes = Array.from({ length: bars }, (_, b) => {
+    const from = pickup > 0 ? (b === 0 ? 0 : pickup + (b - 1) * s.beatsPerBar) : b * s.beatsPerBar
+    const full = pickup > 0 && b === 0 ? pickup : s.beatsPerBar
+    const length = pickup > 0 && b === bars - 1 ? Math.min(full, Math.max(beats - from, 0)) || full : full
+    return { startMs: Math.round(from * msPerBeat), endMs: Math.round((from + length) * msPerBeat), quarters: length * quarter }
+  })
+  // Where a phrase starts with its own pickup, it starts that many beats before its bar.
+  const leads = s.phrases && s.phraseLeads?.some((l) => l > 0) ? s.phraseLeads.map((l) => Math.round(l * msPerBeat)) : null
   return {
     id: s.id,
     title: s.title[lang],
@@ -349,7 +383,10 @@ export function starterSong(s: StarterSong, lang: 'en' | 'ro' = 'en'): Song {
     beatsPerBar: s.beatsPerBar,
     durationMs: Math.max(...notes.map((n) => n.startMs + n.durationMs)),
     ...(s.phrases ? { phrases: s.phrases } : {}),
+    ...(leads ? { phraseLeadMs: leads } : {}),
     ...(s.level ? { level: s.level } : {}),
+    // Numbered as printed: the pickup is 0, the first whole bar 1.
+    ...(pickup > 0 ? { barLabels: Array.from({ length: bars }, (_, b) => String(b)) } : {}),
     barTimes,
   }
 }

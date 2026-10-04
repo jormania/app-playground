@@ -69,7 +69,12 @@ const STAR_AT = { three: 0.9, two: 0.7 }
 /** A piece has to go this well before a harder setting is suggested. */
 const SUGGEST_AT = 0.95
 
-export function buildReport(s: JudgeSummary, settings: JudgeSettings): Report {
+/**
+ * `barOf` says which bar a note's bar is counted with: a song with a pickup
+ * counts it with bar 1, so a slip on the first note or two never asks for
+ * the pickup to be practised on its own.
+ */
+export function buildReport(s: JudgeSummary, settings: JudgeSettings, barOf: (bar: number) => number = (b) => b): Report {
   const hits = s.results.filter((r) => r.outcome === 'hit')
   const missed = s.results.filter((r) => r.outcome === 'missed')
   const wrong = s.wrong.length
@@ -88,7 +93,8 @@ export function buildReport(s: JudgeSummary, settings: JudgeSettings): Report {
 
   // Per bar, in song order.
   const bars = new Map<number, BarToWorkOn & { total: number }>()
-  const bar = (b: number) => {
+  const bar = (at: number) => {
+    const b = barOf(at)
     if (!bars.has(b)) bars.set(b, { bar: b, total: 0, missed: 0, wrong: 0, early: 0, late: 0 })
     return bars.get(b)!
   }

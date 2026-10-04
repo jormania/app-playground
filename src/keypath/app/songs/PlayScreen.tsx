@@ -20,7 +20,7 @@ import { Score, type ScoreHandle } from './notation/Score'
 import { ReportView } from './ReportView'
 import type { FactsInput } from './coach'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
-import { nextStep, partPassed, PartsRepo, partSteps, rangeSong, type PartStep } from './parts'
+import { nextStep, partPassed, PartsRepo, partSteps, phraseSong, phraseStartMs, type PartStep } from './parts'
 import { WARMUP_ID } from '../../engine/starterPack'
 import { tryNext } from './level'
 import { SetupRepo, SPEEDS, suggestedSpeed, type NotesView, type Speed } from './setup'
@@ -257,7 +257,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const spanTo = span?.to ?? null
   const playing = useMemo(() => {
     if (loopBar !== null) return barSong(song, loopBar) ?? song
-    if (spanFrom !== null && spanTo !== null) return rangeSong(song, spanFrom, spanTo) ?? song
+    if (spanFrom !== null && spanTo !== null) return phraseSong(song, spanFrom, spanTo) ?? song
     return song
   }, [song, loopBar, spanFrom, spanTo])
   const playSettings = useMemo((): typeof settings => (spanFrom !== null ? { ...viewSettings, onWrong: 'wait' } : viewSettings), [viewSettings, spanFrom])
@@ -270,7 +270,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     return own ? own.startMs - first.startMs : 0
   }, [notes, songNotes])
   /** The bars being played, when it is a part or a bar: the score draws the rest quieter. */
-  const scoreFocus = useMemo(() => (loopBar !== null ? { from: loopBar, to: loopBar + 1 } : spanFrom !== null && spanTo !== null ? { from: spanFrom, to: spanTo } : null), [loopBar, spanFrom, spanTo])
+  const scoreFocus = useMemo(() => {
+    if (loopBar !== null) return { from: loopBar, to: loopBar + 1 }
+    if (spanFrom === null || spanTo === null) return null
+    // A part that starts with its pickup keeps the bar the pickup is in bright too.
+    return { from: phraseStartMs(song, spanFrom) !== null ? spanFrom - 1 : spanFrom, to: spanTo }
+  }, [song, loopBar, spanFrom, spanTo])
   /** The bar being played at song time `s`: the last note started (or about to), else the first. */
   const barAtTime = useCallback(
     (s: number) => {
@@ -396,7 +401,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       void partsRepo.pass(profileId, song.id, practice, 'whole').then(setLearnt)
     }
     // Written, it always waited: a harder "On a wrong note" or timing wouldn't change how it plays, so none is offered.
-    const built = buildReport(summary, settings)
+    const built = buildReport(summary, settings, pickupFold(song))
     const r = written ? { ...built, suggestion: null } : built
     setReport(r)
     setDuoResults(null)
@@ -408,7 +413,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       const rows = [
         { who: { id: profileId, name: profile?.name ?? '', avatar: profile?.avatar ?? '' }, hand: duo.mine },
         { who: mate, hand: theirs },
-      ].map(({ who, hand }) => ({ who, hand, own: buildReport(summaryForHand(summary, hand), settings) }))
+      ].map(({ who, hand }) => ({ who, hand, own: buildReport(summaryForHand(summary, hand), settings, pickupFold(song)) }))
       setDuoResults(rows.map(({ who, hand, own }) => ({ name: who.name, avatar: who.avatar, hand, stars: own.stars })))
       for (const { who, hand, own } of rows) {
         void log.add(who.id, { type: 'song_finished', songId: song.id, practice: hand, stars: own.stars, score: Math.round(own.score * 100) / 100, hit: own.hit, total: own.total, wrong: own.wrong })
@@ -489,7 +494,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const startPart = (step: PartStep) =>
     morph(() => {
       setPartId(step.id)
-      const target = step.kind === 'whole' ? song : (rangeSong(song, step.from, step.to) ?? song)
+      const target = step.kind === 'whole' ? song : (phraseSong(song, step.from, step.to) ?? song)
       const js: JudgeSettings = step.kind === 'whole' ? viewSettings : { ...viewSettings, onWrong: 'wait' }
       if (shiftKnown.current) startJudge(target, js, performance.now(), step)
       else setPhase('ready')
@@ -814,7 +819,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const musicOn = listening || phase !== 'setup'
 
   const barTotal = songNotes.length ? Math.max(...songNotes.map((n) => n.bar)) + 1 : 1
-  const barAt = Math.min(barPick, barTotal - 1)
+  // A pickup (bar 0, as printed) is a note or two: the bars to practise start at the first whole one.
+  const firstBar = barTotal > 1 && barName(song, 0) === '0' ? 1 : 0
+  const barAt = Math.max(firstBar, Math.min(barPick, barTotal - 1))
   const barLink = (
     <button type="button" className={setup.link} aria-expanded={barOpen} onClick={() => setBarOpen((o) => !o)}>
       🔁 {barOpen ? t('practiseBarHide') : t('practiseOneBar')}
@@ -841,7 +848,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             {(phase === 'playing' || listening) && (
               <span className={styles.progress}>
                 {span && <span className={styles.progressPart}>{`${partName(span)} · `}</span>}
-                {t('progressBar', { bar: barName(song, scoreBar), total: barTotal })}
+                {t('progressBar', { bar: barName(song, scoreBar), total: barName(song, barTotal - 1) })}
               </span>
             )}
             <KeyboardStatus status={keyboard} missing="keyboardMissing" compact={musicOn} />
@@ -972,7 +979,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               <span className={setup.label}>{t('barPickLabel')}</span>
               <div className={setup.controls}>
                 <div className={styles.keyPick}>
-                  <Button size="sm" variant="outline" disabled={barAt <= 0} onClick={() => setBarPick(barAt - 1)} aria-label={t('barPickLower')}>
+                  <Button size="sm" variant="outline" disabled={barAt <= firstBar} onClick={() => setBarPick(barAt - 1)} aria-label={t('barPickLower')}>
                     −
                   </Button>
                   <span className={styles.keyPickValue} aria-live="polite">
@@ -1168,3 +1175,6 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     </main>
   )
 }
+
+/** A song with a pickup (bar 0, as printed) counts it with bar 1 in the report. */
+const pickupFold = (song: Song) => (barName(song, 0) === '0' ? (b: number) => Math.max(b, 1) : undefined)

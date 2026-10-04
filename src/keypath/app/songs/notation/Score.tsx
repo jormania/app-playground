@@ -236,7 +236,19 @@ function placePlayhead(d: Drawn, x: number | null) {
 interface Measure {
   bar: NotationBar
   staves: { clef: Clef; events: NotationEvent[]; notes: InstanceType<VF['StaveNote']>[]; voice: InstanceType<VF['Voice']> }[]
+  /** Its natural width: the clef and metre at the start of a line (`lead`), then the notes. */
   minWidth: number
+  /** The part of `minWidth` before the notes, which is never stretched. */
+  lead: number
+}
+
+/** The metre the music is written in: its commonest bar, so a pickup (a short first bar) doesn't set it. */
+export function metreOf(bars: readonly Pick<NotationBar, 'quarters'>[]): number {
+  const count = new Map<number, number>()
+  for (const b of bars) count.set(b.quarters, (count.get(b.quarters) ?? 0) + 1)
+  let best = bars[0]?.quarters ?? 4
+  for (const [q, n] of count) if (n > (count.get(best) ?? 0)) best = q
+  return best
 }
 
 /**
@@ -262,6 +274,7 @@ function draw(
   // never larger on a big screen, and smaller only when nothing else would fit.
   const [minSpace, maxSpace] = size === 'big' ? [7, 12] : [6.2, 8.5]
   const margin = LEFT + (clefs.length === 2 ? 18 : 0) // room for the brace
+  const metre = metreOf(model)
 
   // Each bar as voices, with its natural width; `first` adds the clef (and the metre, on the first bar).
   const measureOf = (b: number, first: boolean): Measure => {
@@ -287,7 +300,11 @@ function draw(
     const f = new Formatter()
     for (const s of staves) f.joinVoices([s.voice])
     const lead = first ? 46 + (b === 0 ? 26 : 0) : 14
-    return { bar: nb, staves, minWidth: Math.max(70, f.preCalculateMinTotalWidth(staves.map((s) => s.voice)) * 1.25 + 28) + lead }
+    // A short bar (a pickup) is given the room its notes need and no more, as printed: a whole bar's breathing space would make it look like one.
+    const short = nb.quarters < metre - 1e-9
+    const notes = f.preCalculateMinTotalWidth(staves.map((s) => s.voice))
+    const width = short ? Math.max(36, notes * 1.05 + 14) : Math.max(70, notes * 1.25 + 28)
+    return { bar: nb, staves, lead, minWidth: width + lead }
   }
   const natural = new Map<string, number>()
   const widthOf = (b: number, first: boolean) => {
@@ -306,16 +323,21 @@ function draw(
     const scale = Math.min(maxSpace / 10, area.w / wide, area.h / (rows.length * lineHeight))
     return { first, rows, scale }
   }
-  // The most bars a line that reach a readable size; then, on a big score, as many lines as the height
-  // holds at that size (up to four: a tall screen gets a page of music, not one line in a white field).
+  // Of the layouts at a readable size (up to four bars a line, and on a big score up to four lines),
+  // the one showing the most music, counting each bar by its area on screen: a tall phone gets a
+  // page of two-bar lines, not one line of four in a white field; a wide one, four to a line.
   let choice: ReturnType<typeof pageOf> | null = null
+  let best = 0
   for (const n of barsPerLine ? [barsPerLine] : [4, 3, 2, 1]) {
-    const one = pageOf(n, 1)
-    if (one.scale * 10 < minSpace) continue
-    const lines = size === 'big' ? Math.max(1, Math.min(4, Math.floor(area.h / (lineHeight * one.scale)))) : 1
-    const p = lines > 1 ? pageOf(n, lines) : one
-    choice = p.scale >= one.scale * 0.97 ? p : one
-    break
+    for (let lines = 1; lines <= (size === 'big' ? 4 : 1); lines++) {
+      const p = pageOf(n, lines)
+      if (p.scale * 10 < minSpace) break
+      const value = p.rows.reduce((k, r) => k + r.length, 0) * p.scale * p.scale
+      if (value > best * 1.02) {
+        best = value
+        choice = p
+      }
+    }
   }
   // Too short for the readable size: the height decides the size, and as many bars as fit at it go on one line.
   if (!choice) {
@@ -360,20 +382,27 @@ function draw(
   const tied: Partial<Record<Clef, { note: InstanceType<VF['StaveNote']>; count: number }>> = {}
 
   // One stretch for every line, so bars keep their proportions from line to line; a short line isn't pulled across the page.
-  const stretch = Math.min(MAX_STRETCH, ...measures.map((line) => (width - margin * 2) / line.reduce((w, m) => w + m.minWidth, 0)))
-  const longest = Math.max(...measures.map((line) => line.reduce((w, m) => w + m.minWidth, 0))) * stretch
+  // Only the notes stretch: a clef and a metre are the same width however wide the bar.
+  const leadOf = (line: Measure[]) => line.reduce((w, m) => w + m.lead, 0)
+  const notesOf = (line: Measure[]) => line.reduce((w, m) => w + m.minWidth - m.lead, 0)
+  const fill = (line: Measure[]) => Math.min(MAX_STRETCH, (width - margin * 2 - leadOf(line)) / notesOf(line))
+  const stretch = Math.min(...measures.map(fill))
+  // A full line is justified to the margins, as printed; a short last line keeps the others' spacing.
+  const stretchOf = (line: Measure[]) => (measures.length > 1 && line.length === perLine ? fill(line) : stretch)
+  const longest = Math.max(...measures.map((line) => leadOf(line) + notesOf(line) * stretchOf(line)))
   measures.forEach((line, l) => {
+    const lineStretch = stretchOf(line)
     let x = margin + Math.max(0, (width - margin * 2 - longest) / 2)
     const top = l * lineHeight + TOP
     let systemTop = 0
     let systemBottom = 0
     line.forEach((m, k) => {
-      const w = m.minWidth * stretch
+      const w = m.lead + (m.minWidth - m.lead) * lineStretch
       const staves = m.staves.map((s, i) => {
         const y = top + (i === 0 ? 0 : 40 + STAFF_GAP) - 40 // a stave's first line is 40 below its y
         const stave = new Stave(x, y, w)
         if (k === 0) stave.addClef(s.clef)
-        if (k === 0 && m.bar.index === 0) stave.addTimeSignature(timeSignature(m.bar.quarters))
+        if (k === 0 && m.bar.index === 0) stave.addTimeSignature(timeSignature(metre))
         return stave
       })
       // Notes start together on both staves.

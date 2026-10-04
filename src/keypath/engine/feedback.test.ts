@@ -65,6 +65,22 @@ describe('buildReport', () => {
     expect(short.highlights).toContainEqual({ kind: 'cleanBars', bars: [0] })
   })
 
+  it('counts a pickup with the bar after it, so a slip on the first note never asks for the pickup alone', () => {
+    const song = songOf([[60, 0], [62, 500], [64, 2000], [65, 2500], [67, 4000]])
+    const j = new Judge(song, { practice: 'both', settings: RUNNING })
+    j.start(0)
+    j.press(70, 0) // a wrong key in bar 0, the pickup…
+    j.press(60, 10)
+    j.press(62, 500)
+    j.press(64, 2000)
+    j.press(65, 2500)
+    j.press(67, 4000)
+    const r = buildReport(j.summary(), { ...RUNNING, report: 'detailed' }, (b) => Math.max(b, 1))
+    // …is bar 1's to work on, and no bar 0 is named at all.
+    expect(r.toWorkOn.map((b) => [b.bar, b.wrong])).toEqual([[1, 1]])
+    expect(r.highlights).toContainEqual({ kind: 'cleanBars', bars: [2] })
+  })
+
   it('suggests the next rung of the ramp after a piece that went very well, one setting at a time', () => {
     const next = (onWrong: 'wait' | 'show' | 'keepGoing', timing: 'relaxed' | 'normal' | 'strict') => {
       const s = { ...DEFAULT_SETTINGS, onWrong, timing }

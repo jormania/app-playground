@@ -36,23 +36,28 @@ describe('notationBars', () => {
   })
 
   it('ties a note held over the bar line into the next bar', () => {
-    // When the Saints: C E F G, the G held five beats.
+    // When the Saints: C E F, the pickup, then G held five beats, into the bar with the next C E F.
     const song = starter('saints')
     const bars = notationBars(song, notesFor(song, 'right'), ['treble'])
-    const [first, second] = [bars[0].staves.treble!, bars[1].staves.treble!]
-    expect(lengths(first)).toEqual([1, 1, 1, 1])
-    expect(first[3].tie).toBe(true)
-    expect(lengths(second)).toEqual([4])
-    expect(second[0].keys[0].id).toBe(first[3].keys[0].id)
+    const [pickup, first, second] = [bars[0].staves.treble!, bars[1].staves.treble!, bars[2].staves.treble!]
+    expect(bars[0].quarters).toBe(3)
+    expect(lengths(pickup)).toEqual([1, 1, 1])
+    expect(lengths(first)).toEqual([4])
+    expect(first[0].tie).toBe(true)
+    expect(lengths(second)).toEqual([1, 1, 1, 1])
+    expect(second[0].keys[0].id).toBe(first[0].keys[0].id)
     expect(second[0].tie).toBe(false)
   })
 
   it('writes Für Elise in 3/8: six sixteenths a bar', () => {
     const song = starter('elise')
     const bars = notationBars(song, notesFor(song, 'right'), ['treble'])
-    expect(bars[0].quarters).toBe(1.5)
-    expect(lengths(bars[0].staves.treble)).toEqual([0.25, 0.25, 0.25, 0.25, 0.25, 0.25])
-    expect(lengths(bars[1].staves.treble)).toEqual([0.25, 0.25, 0.75, 0.25])
+    // E D♯, the pickup; then E D♯ E B D C; then A, C E A, as printed.
+    expect(bars[0].quarters).toBe(0.5)
+    expect(lengths(bars[0].staves.treble)).toEqual([0.25, 0.25])
+    expect(bars[1].quarters).toBe(1.5)
+    expect(lengths(bars[1].staves.treble)).toEqual([0.25, 0.25, 0.25, 0.25, 0.25, 0.25])
+    expect(lengths(bars[2].staves.treble)).toEqual([0.75, 0.25, 0.25, 0.25])
   })
 
   it('gives a short note a plain value and a rest for the silence after it, and an empty bar a whole rest', () => {

@@ -3,7 +3,8 @@ import { Judge, DEFAULT_SETTINGS } from '../../engine'
 import { songOf } from '../../engine/testing/songs'
 import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import { memoryStore } from '../store'
-import { nextStep, partPassed, partSteps, phraseStarts, PartsRepo, rangeSong } from './parts'
+import { barSpan } from '../../engine'
+import { nextStep, partPassed, partSteps, phraseSong, phraseStarts, PartsRepo, rangeSong } from './parts'
 
 const starter = (id: string) => starterSong(STARTER_PACK.find((s) => s.id === `starter:${id}`)!)
 
@@ -41,6 +42,29 @@ describe('songs in parts', () => {
     const part = rangeSong(starter('ode'), 4, 8)!
     expect(Math.min(...part.notes.map((n) => n.startMs))).toBe(0)
     expect(part.notes.every((n) => n.bar >= 4 && n.bar < 8)).toBe(true)
+  })
+
+  it('a phrase with a pickup starts with it, and the phrase before ends without it', () => {
+    // Happy Birthday: each line starts on "Hap-py" (G G), a beat before its bar.
+    const song = starter('birthday')
+    const pitches = (from: number, to: number) => phraseSong(song, from, to)!.notes.map((n) => n.pitch)
+    const [p1, p2] = partSteps(song, 'right')
+    expect(pitches(p1.from, p1.to)).toEqual([67, 67, 69, 67, 72, 71])
+    expect(pitches(p2.from, p2.to)).toEqual([67, 67, 69, 67, 74, 72])
+    // Named by its whole bars, as on the page: the first line is bars 1–2, its pickup with it.
+    expect(barSpan(song, p1.from, p1.to)).toBe('1–2')
+    expect(barSpan(song, p2.from, p2.to)).toBe('3–4')
+    // A bar on its own is still just that bar, pickup and all ("you, Hap-py").
+    expect(rangeSong(song, 2, 3)!.notes.map((n) => n.pitch)).toEqual([71, 67, 67])
+  })
+
+  it('cuts every starter phrase between notes, losing none and playing none twice', () => {
+    for (const s of STARTER_PACK) {
+      const song = starterSong(s)
+      const starts = phraseStarts(song)
+      const ids = starts.flatMap((from, i) => phraseSong(song, from, starts[i + 1] ?? Infinity)?.notes.map((n) => n.id) ?? [])
+      expect(ids, s.id).toEqual(song.notes.map((n) => n.id))
+    }
   })
 
   it('learnt with two wrong keys at most (one in ten for a long part)', () => {

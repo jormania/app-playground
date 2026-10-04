@@ -1,4 +1,4 @@
-import { notesFor, type JudgeSummary, type Practice, type Song } from '../../engine'
+import { notesFor, type JudgeSummary, type Practice, type Song, type SongNote } from '../../engine'
 import { K, type KeyValueStore } from '../store'
 
 // Learning a song in parts (KEYPATH_TUTOR.md §10, "Learning curve", slice 2):
@@ -37,7 +37,33 @@ export function phraseStarts(song: Song): number[] {
 
 /** Bars [from, to) of the song on their own, moved to start at 0 (ids and fingers kept); null if there are no notes there. */
 export function rangeSong(song: Song, from: number, to: number, id = `${song.id}#${from + 1}-${to}`): Song | null {
-  const inRange = song.notes.filter((n) => n.bar >= from && n.bar < to)
+  return cut(song, song.notes.filter((n) => n.bar >= from && n.bar < to), id)
+}
+
+/**
+ * Where a phrase starting at this bar really starts (ms), when it begins with
+ * its own pickup at the end of the bar before; null where it starts on the bar line.
+ */
+export function phraseStartMs(song: Song, bar: number): number | null {
+  const i = song.phrases?.indexOf(bar) ?? -1
+  const lead = i >= 0 ? (song.phraseLeadMs?.[i] ?? 0) : 0
+  const at = song.barTimes?.[bar]?.startMs
+  return lead > 0 && at !== undefined ? at - lead : null
+}
+
+/**
+ * Phrases [from, to) on their own, as rangeSong, but cut where the phrases
+ * start: a phrase with a pickup brings it along, and the phrase before ends
+ * without it ("Happy" belongs to the "Happy birthday" after it).
+ */
+export function phraseSong(song: Song, from: number, to: number, id = `${song.id}#${from + 1}-${to}`): Song | null {
+  const lo = phraseStartMs(song, from)
+  const hi = phraseStartMs(song, to)
+  const inRange = song.notes.filter((n) => (lo === null ? n.bar >= from : n.startMs >= lo - 1) && (hi === null ? n.bar < to : n.startMs < hi - 1))
+  return cut(song, inRange, id)
+}
+
+function cut(song: Song, inRange: SongNote[], id: string): Song | null {
   if (inRange.length === 0) return null
   const start = Math.min(...inRange.map((n) => n.startMs))
   const notes = inRange.map((n) => ({ ...n, startMs: n.startMs - start }))
@@ -46,7 +72,7 @@ export function rangeSong(song: Song, from: number, to: number, id = `${song.id}
 
 /** What a stretch of the song sounds like for these hands: the same shape twice is the same phrase. */
 function shape(song: Song, practice: Practice, from: number, to: number): string {
-  const part = rangeSong(song, from, to)
+  const part = phraseSong(song, from, to)
   if (!part) return ''
   return notesFor(part, practice)
     // To the nearest 20 ms: the same rhythm lands a millisecond apart where beats don't divide evenly.

@@ -28,6 +28,13 @@ export interface Song {
   durationMs: number
   /** Where each phrase starts (0-based bars), when the song says; songs in parts split there. */
   phrases?: number[]
+  /**
+   * A phrase that begins with its own pickup starts this many ms before its
+   * bar in `phrases` (the same index), at the end of the bar before: a part is
+   * cut there, so it starts with its pickup and the part before ends without
+   * it. 0, or unset, where a phrase starts on its bar line.
+   */
+  phraseLeadMs?: number[]
   /** How hard it is, 1 (easy) to 3, when the song says; otherwise worked out from the notes. */
   level?: 1 | 2 | 3
   /**
@@ -66,7 +73,10 @@ export interface BarTime {
   quarters: number
 }
 
-/** A bar as she'd find it on the page: its printed number for a song from a score, else counted from 1. */
+/**
+ * A bar as she'd find it on the page: its printed number for a song from a
+ * score or with a pickup (the pickup is bar 0, as printed), else counted from 1.
+ */
 export const barName = (song: Pick<Song, 'barLabels'>, bar: number): string => song.barLabels?.[bar] || String(bar + 1)
 
 /**
@@ -75,7 +85,9 @@ export const barName = (song: Pick<Song, 'barLabels'>, bar: number): string => s
  */
 export function barSpan(song: Pick<Song, 'barLabels'>, from: number, to: number): string {
   const runs: [string, string][] = []
-  for (let b = from; b < to; b++) {
+  // A pickup goes with the bars after it, as a phrase is named on the page: "1–2", not "0–2".
+  const start = to - from > 1 && barName(song, from) === '0' ? from + 1 : from
+  for (let b = start; b < to; b++) {
     const label = barName(song, b)
     const run = runs[runs.length - 1]
     if (run && Number(label) === Number(run[1]) + 1) run[1] = label
