@@ -3,7 +3,7 @@ import { STARTER_PACK, starterSong } from '../../engine/starterPack'
 import { decodeText } from '../../engine/xml'
 import type { Language } from '../profiles'
 import { ratedLevel, type Level } from './level'
-import { PREFIX, type KeyValueStore } from '../store'
+import { PREFIX, update, type KeyValueStore } from '../store'
 
 const SONGS_KEY = `${PREFIX}songs`
 
@@ -39,35 +39,28 @@ export class SongLibrary {
   }
 
   async add(song: Song): Promise<void> {
-    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
-    await this.store.set(SONGS_KEY, [...imported.filter((s) => s.id !== song.id), song])
+    await update<Song[]>(this.store, SONGS_KEY, (imported = []) => [...imported.filter((s) => s.id !== song.id), song])
   }
 
   /** Retitle an added song. A blank title leaves it as it was; starter songs can't be renamed. */
   async rename(id: string, title: string): Promise<void> {
     const clean = title.replace(/\s+/g, ' ').trim().slice(0, MAX_TITLE)
     if (!clean) return
-    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
-    await this.store.set(
-      SONGS_KEY,
+    await update<Song[]>(this.store, SONGS_KEY, (imported = []) =>
       imported.map((s) => (s.id === id ? { ...s, title: clean } : s)),
     )
   }
 
   /** Change how an added song's notes are fitted to the keyboard, from the notes as written. */
   async refit(id: string, mode: FitMode): Promise<void> {
-    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
-    await this.store.set(
-      SONGS_KEY,
+    await update<Song[]>(this.store, SONGS_KEY, (imported = []) =>
       imported.map((s) => (s.id === id ? fitSong(s, mode) : s)),
     )
   }
 
   /** Play an added song as its easy version, or as written. The fit is kept where it still applies. */
   async setEasy(id: string, easy: boolean): Promise<void> {
-    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
-    await this.store.set(
-      SONGS_KEY,
+    await update<Song[]>(this.store, SONGS_KEY, (imported = []) =>
       imported.map((s) => (s.id === id ? fitSong({ ...s, easy }, s.fit ?? null) : s)),
     )
   }
@@ -76,17 +69,8 @@ export class SongLibrary {
    * Move an added song up or down by whole semitones, from where it is now (0 puts it back), from the
    * notes as written. Relative, so two quick taps make two steps, not one.
    */
-  nudgeTranspose(id: string, by: number): Promise<void> {
-    const run = this.nudges.then(() => this.nudge(id, by))
-    this.nudges = run.catch(() => {})
-    return run
-  }
-  /** One step at a time, so a second tap reads what the first wrote. */
-  private nudges: Promise<void> = Promise.resolve()
-  private async nudge(id: string, by: number): Promise<void> {
-    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
-    await this.store.set(
-      SONGS_KEY,
+  async nudgeTranspose(id: string, by: number): Promise<void> {
+    await update<Song[]>(this.store, SONGS_KEY, (imported = []) =>
       imported.map((s) => {
         if (s.id !== id) return s
         const shift = Math.max(-MAX_TRANSPOSE, Math.min(MAX_TRANSPOSE, Math.round((s.transpose ?? 0) + by)))
@@ -98,9 +82,7 @@ export class SongLibrary {
 
   /** Set an added song's level. The level its notes earn is kept as none, so the rating stays live. */
   async setLevel(id: string, level: Level): Promise<void> {
-    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
-    await this.store.set(
-      SONGS_KEY,
+    await update<Song[]>(this.store, SONGS_KEY, (imported = []) =>
       imported.map((s): Song => {
         if (s.id !== id) return s
         const { level: _set, ...rest } = s
@@ -115,9 +97,7 @@ export class SongLibrary {
    * can't be removed.
    */
   async remove(id: string): Promise<void> {
-    const imported = (await this.store.get<Song[]>(SONGS_KEY)) ?? []
-    await this.store.set(
-      SONGS_KEY,
+    await update<Song[]>(this.store, SONGS_KEY, (imported = []) =>
       imported.filter((s) => s.id !== id),
     )
   }
@@ -153,7 +133,16 @@ function withSplit(d: Omit<ImportDraft, 'split' | 'splitSuggested'>): ImportDraf
   return { ...d, split: suggested, splitSuggested: suggested }
 }
 
-export type ImportProblem = 'not-midi' | 'unsupported' | 'no-notes'
+export type ImportProblem = 'not-midi' | 'unsupported' | 'no-notes' | 'too-long'
+
+/**
+ * The most a song may hold: an hour of music, or 20,000 notes. A long sonata
+ * movement is a fraction of either; past them a file is damaged or not meant
+ * to be learnt (a note that never ends, a tempo of one beat a minute), and
+ * would only make a song days long that the phone has to draw and judge.
+ */
+export const MAX_SONG_MS = 60 * 60 * 1000
+export const MAX_SONG_NOTES = 20_000
 
 /**
  * Give a hand a part ('' for none). One part can't be both hands, or every
@@ -175,6 +164,12 @@ const titleFrom = (fileName: string) => fileName.replace(/\.(mid|midi|kar|musicx
 function draftOf(file: SmfFile, fileName: string): ImportDraft | ImportProblem {
   const parts = partsOf(file).filter((p) => !p.isDrums)
   if (parts.length === 0) return 'no-notes'
+  const played = new Set(parts.map((p) => p.key))
+  let count = 0
+  for (const n of file.notes) {
+    if (!played.has(`${n.track}:${n.channel}`)) continue
+    if (++count > MAX_SONG_NOTES || n.endMs > MAX_SONG_MS) return 'too-long'
+  }
   // A score prints its hands on two staves; a MIDI file has to be guessed from.
   const { right, left } = file.score ? suggestScoreParts(parts) : suggestParts(parts)
   return withSplit({ file, title: file.score?.title.trim() || titleFrom(fileName), parts, right, left })

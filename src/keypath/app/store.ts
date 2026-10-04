@@ -29,6 +29,33 @@ export function memoryStore(initial: Record<string, unknown> = {}): KeyValueStor
   }
 }
 
+const locks = new WeakMap<KeyValueStore, Map<string, Promise<unknown>>>()
+
+/**
+ * Run `fn` once every earlier `exclusive` call on the same key of the same
+ * store has finished. The repos are made afresh by each screen, so a queue
+ * of their own wouldn't see each other's writes: two quick taps (a favourite
+ * and a rename, two stickers seen at once) would each read the same list and
+ * the second write would undo the first. Not re-entrant: `fn` must not wait
+ * on another `exclusive` call for the same key.
+ */
+export function exclusive<T>(store: KeyValueStore, key: string, fn: () => Promise<T>): Promise<T> {
+  let held = locks.get(store)
+  if (!held) locks.set(store, (held = new Map()))
+  const run = (held.get(key) ?? Promise.resolve()).then(fn)
+  const done = run.catch(() => {})
+  held.set(key, done)
+  void done.then(() => {
+    if (held.get(key) === done) held.delete(key)
+  })
+  return run
+}
+
+/** Read a key, change it, write it back, with no other change to that key in between. */
+export function update<T>(store: KeyValueStore, key: string, change: (current: T | undefined) => T): Promise<void> {
+  return exclusive(store, key, async () => store.set(key, change(await store.get<T>(key))))
+}
+
 /** Every KeyPath key starts with this; a backup is exactly the keys under it. */
 export const PREFIX = 'keypath:v1:'
 export const K = {
@@ -39,6 +66,8 @@ export const K = {
   keyboard: `${PREFIX}keyboard`,
   settings: (profileId: string) => `${PREFIX}settings:${profileId}`,
   log: (profileId: string) => `${PREFIX}log:${profileId}`,
+  /** The log's earlier records, put away a chunk at a time (log.ts), oldest first from 0. */
+  logArchive: (profileId: string, n: number) => `${PREFIX}logArchive:${n}:${profileId}`,
   journey: (profileId: string) => `${PREFIX}journey:${profileId}`,
   studio: (profileId: string) => `${PREFIX}studio:${profileId}`,
   challenges: (profileId: string) => `${PREFIX}challenges:${profileId}`,

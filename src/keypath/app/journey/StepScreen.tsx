@@ -65,6 +65,9 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
   const [passed, setPassed] = useState<{ ok: boolean; testOut: boolean } | null>(null)
   const [played, setPlayed] = useState<ReadonlyMap<number, NoteResult['outcome']>>(new Map())
   const [keyNamesAnswered, setKeyNamesAnswered] = useState(false)
+  /** The keyboard came back mid-step: its octave may have changed, so middle C is asked for again, and the exercise carries on. */
+  const [recheck, setRecheck] = useState(false)
+  const recheckRef = useRef(false)
 
   const exercise = useRef<Exercise | null>(null)
   const shift = useRef(0)
@@ -136,6 +139,21 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
   const press = useCallback(
     (drawn: number, at: number, fromScreen: boolean) => {
       setHeld((h) => new Set(h).add(drawn))
+      if (recheckRef.current) {
+        const found = fromScreen ? (drawn === MIDDLE_C ? 0 : null) : octaveShift(drawn, MIDDLE_C)
+        if (found === null) {
+          const transposed = !fromScreen && notMiddleC(drawn, lastMiss.current) === 'transposed'
+          lastMiss.current = fromScreen ? null : drawn
+          return setNote(t(transposed ? 'notACTransposed' : 'notAC', { note: label(drawn) }))
+        }
+        lastMiss.current = null
+        if (!fromScreen) shift.current = found
+        recheckRef.current = false
+        setRecheck(false)
+        setHeld(new Set())
+        setNote(null)
+        return
+      }
       if (phaseRef.current === 'gate') {
         const found = fromScreen ? (drawn === MIDDLE_C ? 0 : null) : octaveShift(drawn, MIDDLE_C)
         if (found === null) {
@@ -172,17 +190,28 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
       if (e.type === 'noteoff') return release(heldKeys.current.up(e.note, e.note + shift.current))
       if (e.velocity < MIN_VELOCITY) return
       // Before the gate the shift is unknown; the gate itself works it out from this key.
-      press(heldKeys.current.down(e.note, phaseRef.current === 'gate' ? e.note : e.note + shift.current), e.time, false)
+      press(heldKeys.current.down(e.note, phaseRef.current === 'gate' || recheckRef.current ? e.note : e.note + shift.current), e.time, false)
     },
     [press, release],
   )
   const keyboard = useKeyboard(onMidi)
   // Unplugged, the keyboard's Note Offs never come: let go of every key it was holding.
+  // Plugged back in mid-step, it may be set to another octave: middle C again, then on.
+  const wasConnected = useRef(keyboard.connected)
   useEffect(() => {
-    if (keyboard.connected) return
-    setHeld(new Set())
-    heldKeys.current.clear()
-  }, [keyboard.connected])
+    const was = wasConnected.current
+    wasConnected.current = keyboard.connected
+    if (!keyboard.connected) {
+      setHeld(new Set())
+      heldKeys.current.clear()
+      return
+    }
+    if (!was && step.octaveGate && phaseRef.current === 'run') {
+      recheckRef.current = true
+      setRecheck(true)
+      setNote(t('jRecheck'))
+    }
+  }, [keyboard.connected, step.octaveGate, t])
 
   // Leaving mid-exercise is logged, so the map shows where attention ran out.
   const modeRef = useRef(mode)
@@ -225,7 +254,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
   )
 
   const next = JOURNEY[n] ?? null
-  const targets = phase === 'gate' ? new Set([MIDDLE_C]) : new Set(view?.targets ?? [])
+  const targets = phase === 'gate' || recheck ? new Set([MIDDLE_C]) : new Set(view?.targets ?? [])
 
   return (
     <main className={styles.stepScreen}>
@@ -333,7 +362,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
             held={held}
             targets={targets}
             wrong={wrong}
-            marker={phase === 'gate' ? MIDDLE_C : undefined}
+            marker={phase === 'gate' || recheck ? MIDDLE_C : undefined}
             markerLabel={t('markerMiddleC')}
             label={label}
             onPress={(p) => press(p, performance.now(), true)}

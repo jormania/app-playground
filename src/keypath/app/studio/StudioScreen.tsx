@@ -131,6 +131,13 @@ export function StudioScreen({ songId }: { songId?: string }) {
   }, [])
   const kb = useKeyboard(onMidi)
 
+  // Unplugged mid-take: the keys she held end now, not when Stop is pressed.
+  useEffect(() => {
+    if (kb.connected) return
+    recorder.current?.releaseAll(performance.now())
+    setHeld(new Set())
+  }, [kb.connected])
+
   const output = useOutput(kb)
   const { route } = output
 

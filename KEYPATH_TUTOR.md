@@ -1045,10 +1045,32 @@ Fine; malformed MIDI, MusicXML and zip files (fuzzed: only their own errors); no
 request (tested end to end); the key outside the backup and out of the source and history; players'
 data deleted with them; Today on the phone's own calendar day.
 
-Found and not changed: the Journey doesn't ask for middle C again after the keyboard is replugged
-mid-step (it would restart the exercise); a page left open across midnight keeps yesterday's Today
-until it's opened again; the guide's Home section says Today holds three things, but it holds four
-with the warm-up (the release 3 notes say so).
+The rest, fixed in a second pass the same day:
+
+- *The Journey after a replug* (`StepScreen.tsx`): the keyboard coming back mid-step now asks for
+  middle C again (the octave may have been changed while it was away) and carries on from the
+  same note; the exercise isn't restarted.
+- *Today across midnight* (`TodayCard.tsx`, `useLocalDay`): Home left open overnight moved on only
+  when it was opened again. The day now turns at local midnight, and on the phone waking or the page
+  coming back into view, since a sleeping phone may hold the timer past it.
+- *No length limit on imports* (`library.ts`): a damaged file (a note that never ends, a tempo of a
+  beat a minute) could make a song days long for the phone to draw and judge. Past an hour of music
+  or 20,000 notes, Add a song says the file is too long.
+- *The log rewritten whole on every event* (`log.ts`): a year of daily play is tens of thousands of
+  records, every one rewritten on each tap. The log is now put away 2,000 records at a time
+  (`logArchive:<n>:<player>` keys, oldest first); an append rewrites only the open part, nothing is
+  dropped (stickers and Progress count from the first day), and a log from before is put away whole
+  on its next append. Reads still load the whole log; if that ever shows, it's the next step.
+- *Lost updates in the other stores* (`store.ts`, `exclusive`/`update`): takes, stickers seen,
+  intros, records, Journey progress, parts, song setup, the song library, the player list and the
+  remembered keyboard were read-change-write with nothing between two changes made at once, and the
+  repos are made afresh by each screen, so their own queues wouldn't have seen each other. Every such
+  change now waits for the one before on the same key of the same store. Not re-entrant.
+- *A newer backup was called "not a KeyPath backup"* (`backup.ts`): a format above 1 now says it
+  comes from a newer KeyPath and how to get it.
+- *Studio and a lost keyboard* (`recorder.ts`, `releaseAll`): unplugged while recording, the keys
+  held stayed open until Stop. They now end when the keyboard goes.
+- *The guide's Today* said three things; it now says a warm-up and three, four ticks.
 
 ### Release 5: the play screen, engraved; a first look at each game; pickups
 

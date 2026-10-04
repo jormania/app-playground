@@ -1,5 +1,5 @@
 import type { Practice, Song } from '../../engine'
-import { K, type KeyValueStore } from '../store'
+import { K, update, type KeyValueStore } from '../store'
 import { ratedLevel } from './level'
 
 // What a player chose on a song's setup last time (KEYPATH_ROADMAP.md, "Remember
@@ -43,7 +43,6 @@ export class SetupRepo {
   }
 
   async set(profileId: string, songId: string, setup: SongSetup): Promise<void> {
-    const all = (await this.store.get<Record<string, SongSetup>>(K.setup(profileId))) ?? {}
-    await this.store.set(K.setup(profileId), { ...all, [songId]: setup })
+    await update<Record<string, SongSetup>>(this.store, K.setup(profileId), (all = {}) => ({ ...all, [songId]: setup }))
   }
 }

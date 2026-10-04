@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Button } from '../../../ds'
 import { useApp } from '../context'
 import type { StringKey } from '../i18n'
-import { K } from '../store'
+import { K, update } from '../store'
 import styles from '../app.module.css'
 
 // A first look at a game or the Journey (KEYPATH_TUTOR.md §9, "Release 5"):
@@ -29,8 +29,7 @@ export class IntroRepo {
     return (await this.store.get<string[]>(K.intros(profileId))) ?? []
   }
   async dismiss(profileId: string, id: IntroId): Promise<void> {
-    const now = await this.dismissed(profileId)
-    if (!now.includes(id)) await this.store.set(K.intros(profileId), [...now, id])
+    await update<string[]>(this.store, K.intros(profileId), (now = []) => (now.includes(id) ? now : [...now, id]))
   }
 }
 

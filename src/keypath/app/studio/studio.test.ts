@@ -47,6 +47,21 @@ describe('Recorder', () => {
       { pitch: 60, velocity: 90, startMs: 300, durationMs: 200 },
     ])
   })
+
+  it('lets go of every key and the pedal when the keyboard goes away, and records on after', () => {
+    const r = new Recorder(0)
+    r.noteOn(60, 80, 100)
+    r.pedal(true, 120)
+    r.releaseAll(400) // unplugged
+    r.noteOff(60, 2000) // a release that can't come any more, should it arrive anyway
+    r.noteOn(62, 80, 3000) // plugged back, playing on
+    const take = r.stop(3500)
+    expect(take.notes).toEqual([
+      { pitch: 60, velocity: 80, startMs: 100, durationMs: 300 },
+      { pitch: 62, velocity: 80, startMs: 3000, durationMs: 500 },
+    ])
+    expect(take.pedal).toEqual([{ atMs: 120, down: true }, { atMs: 400, down: false }])
+  })
 })
 
 /** A clock the test moves by hand. */

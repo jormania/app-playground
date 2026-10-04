@@ -77,6 +77,7 @@ export const en = {
   backupDone: 'Backup saved.',
   restoreDone: 'Restored {count|# item|# items}.',
   restoreFailed: 'That file isn’t a KeyPath backup.',
+  restoreNewer: 'That backup was made by a newer KeyPath than the one on this phone. Close KeyPath and open it again while online to get the newest, then try again. Nothing was changed.',
   restoreDamaged: 'That backup file is damaged, so nothing was changed.',
   restoreWriteFailed: 'The phone couldn’t take the backup (it may be out of room), so everything is as it was.',
   restoreConfirm: 'Replace everything on this phone with this backup?',
@@ -113,6 +114,7 @@ export const en = {
   importNotMidi: 'That file isn’t a MuseScore, MusicXML or MIDI file.',
   importUnsupported: 'This file uses a format KeyPath can’t read yet.',
   importNoNotes: 'There are no notes to learn in this file.',
+  importTooLong: 'This file is far too long for a song: over an hour of music, or over 20,000 notes. It may be damaged.',
   // Play
   hands: 'Hands',
   handRight: 'Right',
@@ -348,6 +350,7 @@ export const en = {
   jReadLabelled: 'Play the notes on the staff, left to right.',
   jReadStaff: 'Read the staff and play it. No lit keys this time.',
   jSpread: 'Nearly! Press all three at the same moment.',
+  jRecheck: 'The keyboard is back. Press middle C, the marked key, and carry on where you were.',
   jPracticeDone: 'Nice! Ready for the check?',
   jPassed: 'Step done!',
   jPassedTestOut: 'You knew it already: step done.',

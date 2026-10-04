@@ -1,4 +1,4 @@
-import { K, type KeyValueStore } from '../store'
+import { exclusive, K, type KeyValueStore } from '../store'
 import { JOURNEY, type StepId } from './steps'
 
 export interface StepDone {
@@ -30,11 +30,13 @@ export class JourneyRepo {
    * (reading a staff says nothing about chords). If it was still locked, it
    * was tested out; the steps before it stay open to do or test out in turn.
    */
-  async pass(profileId: string, id: StepId, now = new Date()): Promise<JourneyProgress> {
-    const progress = await this.get(profileId)
-    if (progress[id]) return progress
-    const next: JourneyProgress = { ...progress, [id]: { at: now.toISOString(), how: stateOf(progress, id) === 'locked' ? 'testOut' : 'check' } }
-    await this.store.set(K.journey(profileId), next)
-    return next
+  pass(profileId: string, id: StepId, now = new Date()): Promise<JourneyProgress> {
+    return exclusive(this.store, K.journey(profileId), async () => {
+      const progress = await this.get(profileId)
+      if (progress[id]) return progress
+      const next: JourneyProgress = { ...progress, [id]: { at: now.toISOString(), how: stateOf(progress, id) === 'locked' ? 'testOut' : 'check' } }
+      await this.store.set(K.journey(profileId), next)
+      return next
+    })
   }
 }

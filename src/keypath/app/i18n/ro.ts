@@ -79,6 +79,7 @@ export const ro: Record<StringKey, string> = {
   backupDone: 'Copie salvată.',
   restoreDone: 'Am restaurat {count|un element|# elemente|# de elemente}.',
   restoreFailed: 'Fișierul nu este o copie KeyPath.',
+  restoreNewer: 'Copia a fost făcută de un KeyPath mai nou decât cel de pe acest telefon. Închide KeyPath și deschide-l din nou cu internet ca să ai cea mai nouă versiune, apoi încearcă iar. Nu s-a schimbat nimic.',
   restoreDamaged: 'Fișierul de rezervă e deteriorat, așa că nu s-a schimbat nimic.',
   restoreWriteFailed: 'Telefonul nu a putut primi copia (poate nu mai are loc), așa că totul a rămas cum era.',
   restoreConfirm: 'Înlocuiești tot ce e pe acest telefon cu această copie?',
@@ -115,6 +116,7 @@ export const ro: Record<StringKey, string> = {
   importNotMidi: 'Fișierul nu este un fișier MuseScore, MusicXML sau MIDI.',
   importUnsupported: 'Acest fișier folosește un format pe care KeyPath încă nu îl poate citi.',
   importNoNotes: 'Nu sunt note de învățat în acest fișier.',
+  importTooLong: 'Fișierul e mult prea lung pentru un cântec: peste o oră de muzică sau peste 20.000 de note. S-ar putea să fie deteriorat.',
   // Cântat
   hands: 'Mâini',
   handRight: 'Dreapta',
@@ -350,6 +352,7 @@ export const ro: Record<StringKey, string> = {
   jReadLabelled: 'Cântă notele de pe portativ, de la stânga la dreapta.',
   jReadStaff: 'Citește portativul și cântă-l. De data asta fără clape luminate.',
   jSpread: 'Aproape! Apasă-le pe toate trei în același moment.',
+  jRecheck: 'Orga e din nou conectată. Apasă Do central, clapa marcată, și continuă de unde ai rămas.',
   jPracticeDone: 'Foarte bine! Treci la verificare?',
   jPassed: 'Pas terminat!',
   jPassedTestOut: 'Știai deja: pas terminat.',

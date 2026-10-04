@@ -12,7 +12,7 @@ import { EasyPick, LevelPick, SongFacts } from './SongFacts'
 import { buildImport, choosePart, openSongFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
-const PROBLEM_TEXT = { 'not-midi': 'importNotMidi', unsupported: 'importUnsupported', 'no-notes': 'importNoNotes' } as const
+const PROBLEM_TEXT = { 'not-midi': 'importNotMidi', unsupported: 'importUnsupported', 'no-notes': 'importNoNotes', 'too-long': 'importTooLong' } as const
 
 /** "Add a song": pick a MIDI file, confirm which part is which hand, save it to this phone. */
 export function ImportSong() {

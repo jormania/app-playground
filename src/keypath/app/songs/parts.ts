@@ -1,5 +1,5 @@
 import { notesFor, type JudgeSummary, type Practice, type Song, type SongNote } from '../../engine'
-import { K, type KeyValueStore } from '../store'
+import { exclusive, K, type KeyValueStore } from '../store'
 
 // Learning a song in parts (KEYPATH_TUTOR.md §10, "Learning curve", slice 2):
 // phrase 1, then phrase 2, then the two together, and so on to the whole
@@ -132,13 +132,15 @@ export class PartsRepo {
     return new Set(all[this.key(songId, practice)] ?? [])
   }
 
-  async pass(profileId: string, songId: string, practice: Practice, stepId: string): Promise<Set<string>> {
-    const all = (await this.store.get<Record<string, string[]>>(K.parts(profileId))) ?? {}
-    const k = this.key(songId, practice)
-    const learnt = new Set(all[k] ?? [])
-    learnt.add(stepId)
-    await this.store.set(K.parts(profileId), { ...all, [k]: [...learnt] })
-    return learnt
+  pass(profileId: string, songId: string, practice: Practice, stepId: string): Promise<Set<string>> {
+    return exclusive(this.store, K.parts(profileId), async () => {
+      const all = (await this.store.get<Record<string, string[]>>(K.parts(profileId))) ?? {}
+      const k = this.key(songId, practice)
+      const learnt = new Set(all[k] ?? [])
+      learnt.add(stepId)
+      await this.store.set(K.parts(profileId), { ...all, [k]: [...learnt] })
+      return learnt
+    })
   }
 
   /** Every song this player is learning in parts, with what's learnt: for Today's pick. */

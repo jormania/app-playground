@@ -1,4 +1,4 @@
-import { K, type KeyValueStore } from '../store'
+import { exclusive, K, type KeyValueStore } from '../store'
 import type { ChordLevel } from './chordCatch'
 import type { EarLevel } from './earTrain'
 import type { ReadLevel } from './readPlay'
@@ -31,13 +31,15 @@ export class RecordRepo {
   }
 
   /** Keep the better of the old best and this score. True if this is a new best. */
-  async offer(profileId: string, game: ChallengeGame, level: number, score: number): Promise<boolean> {
-    const r = await this.get(profileId)
-    const table = r[game] as Record<number, number>
-    const before = table[level]
-    if (before !== undefined && before >= score) return false
-    table[level] = score
-    await this.store.set(K.challenges(profileId), r)
-    return score > 0
+  offer(profileId: string, game: ChallengeGame, level: number, score: number): Promise<boolean> {
+    return exclusive(this.store, K.challenges(profileId), async () => {
+      const r = await this.get(profileId)
+      const table = r[game] as Record<number, number>
+      const before = table[level]
+      if (before !== undefined && before >= score) return false
+      table[level] = score
+      await this.store.set(K.challenges(profileId), r)
+      return score > 0
+    })
   }
 }

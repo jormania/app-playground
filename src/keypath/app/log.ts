@@ -17,7 +17,7 @@ export type LogEvent =
   | { type: 'profile_created' }
   /** `part` when a part of it was started (learning in parts; 'whole' is the whole song as the last part). */
   | { type: 'song_started'; songId: string; practice: string; tempo: number; mode: string; part?: string; view?: 'written' }
-  /** Home's Today card, all three done (logged once a day, the first time Home sees it). */
+  /** Home's Today card, all of it done (logged once a day, the first time Home sees it). */
   | { type: 'today_done' }
   /** A part played to its end: learnt (passed) or not, with its wrong keys. */
   | { type: 'song_part'; songId: string; practice: string; part: string; passed: boolean; wrong: number }
@@ -62,22 +62,34 @@ export type Door = 'songs' | 'journey' | 'challenges' | 'studio'
 
 export type LogRecord = LogEvent & { at: string; profileId: string }
 
+/**
+ * How many records the open part of a log holds before it is put away. Every
+ * append rewrites the open part, so without this a year of daily practice
+ * (tens of thousands of records) would be rewritten whole on every tap.
+ * Nothing is ever dropped: stickers and Progress count from the first day.
+ */
+export const LOG_CHUNK = 2000
+
 export class EngagementLog {
-  // Appends are chained so two quick events can't read the same old list and
-  // lose one of the writes.
   private queue: Promise<void> = Promise.resolve()
 
-  constructor(private readonly store: KeyValueStore) {}
+  constructor(
+    private readonly store: KeyValueStore,
+    private readonly chunk = LOG_CHUNK,
+  ) {}
 
   add(profileId: string, event: LogEvent, now = new Date()): Promise<void> {
     const write = this.queue.then(async () => {
       const records = (await this.store.get<LogRecord[]>(K.log(profileId))) ?? []
       records.push({ ...event, at: now.toISOString(), profileId })
-      await this.store.set(K.log(profileId), records)
+      if (records.length < this.chunk) return this.store.set(K.log(profileId), records)
+      // Full: put it away under the next archive number, then start afresh.
+      // (A log from before chunking is put away whole the first time.)
+      let n = 0
+      while ((await this.store.get(K.logArchive(profileId, n))) !== undefined) n++
+      await this.store.set(K.logArchive(profileId, n), records)
+      await this.store.set(K.log(profileId), [])
     })
-    // One write that fails (the phone's storage full, say) is that write's: the caller hears
-    // of it, and the queue goes on. Chained on a rejection, every later append would be
-    // skipped and every read refused, Today, Progress and deleting a player with them.
     this.queue = write.catch(() => {})
     return write
   }
@@ -87,8 +99,16 @@ export class EngagementLog {
     return this.queue
   }
 
+  /** The whole log, oldest first: the chunks put away, then the open one. */
   async read(profileId: string): Promise<LogRecord[]> {
     await this.queue
-    return (await this.store.get<LogRecord[]>(K.log(profileId))) ?? []
+    const all: LogRecord[] = []
+    for (let n = 0; ; n++) {
+      const old = await this.store.get<LogRecord[]>(K.logArchive(profileId, n))
+      if (old === undefined) break
+      all.push(...old)
+    }
+    all.push(...((await this.store.get<LogRecord[]>(K.log(profileId))) ?? []))
+    return all
   }
 }

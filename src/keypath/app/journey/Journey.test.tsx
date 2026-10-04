@@ -13,13 +13,15 @@ vi.mock('../../App', () => ({ default: () => <div>probe screen</div> }))
 
 // Stand-in for the Yamaha, as in the Songs tests.
 let yamaha: ((e: MidiEvent) => void) | null = null
+let plugged = true
 vi.mock('../connect/keyboard', () => ({
   useKeyboard: (onEvent?: (e: MidiEvent) => void) => {
     if (onEvent) yamaha = onEvent
-    return { connected: true, access: 'granted', name: 'Digital Keyboard', checking: false, snapshot: { access: 'granted', error: null, inputs: [] } }
+    return { connected: plugged, access: 'granted', name: 'Digital Keyboard', checking: false, snapshot: { access: 'granted', error: null, inputs: [] } }
   },
 }))
 const key = (note: number) => act(() => yamaha!({ type: 'noteon', note, velocity: 80, channel: 1, time: performance.now() } as unknown as MidiEvent))
+const keyUp = (note: number) => act(() => yamaha!({ type: 'noteoff', note, velocity: 0, channel: 1, time: performance.now() } as unknown as MidiEvent))
 
 afterEach(cleanup)
 
@@ -99,6 +101,24 @@ describe('Journey', () => {
     await screen.findByText('Find middle C')
     expect(stops()[3]).toBe('done: ✓A five-finger tuneTested out')
     expect(stops()[0]).toMatch(/^open/)
+  })
+
+  it('asks for middle C again when the keyboard comes back mid-step, and carries on where she was', async () => {
+    await open('#/journey/fiveFinger')
+    fireEvent.click(await screen.findByRole('button', { name: 'I can do this already' }))
+    expect(await screen.findByText('Press middle C to begin')).toBeTruthy()
+    key(48) // set an octave down
+    await screen.findByText('Play the tune. The notes fall onto their keys.')
+    for (const p of [64, 64, 65, 67]) key(p - 12)
+    // Unplugged, and back set as it should be: its notes now arrive as they are.
+    plugged = false
+    keyUp(52)
+    plugged = true
+    keyUp(52)
+    expect(await screen.findByText('The keyboard is back. Press middle C, the marked key, and carry on where you were.')).toBeTruthy()
+    key(60)
+    for (const p of [67, 65, 64, 62, 60, 60, 62, 64, 64, 62, 62]) key(p)
+    expect(await screen.findByText('You knew it already: step done.')).toBeTruthy()
   })
 
   it('finger numbers: the hands light the finger asked for, then the check asks from memory', async () => {

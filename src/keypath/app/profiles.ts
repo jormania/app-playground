@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, type JudgeSettings } from '../engine'
-import { K, PREFIX, type KeyValueStore } from './store'
+import { exclusive, K, PREFIX, type KeyValueStore } from './store'
 
 export type Language = 'en' | 'ro'
 /** 'auto' follows the language: C D E in English, Do Re Mi in Romanian. */
@@ -85,7 +85,7 @@ export class ProfileRepo {
     const trimmed = name.trim()
     if (!trimmed) throw new Error('A profile needs a name')
     const profile: Profile = { id: newId(), name: trimmed.slice(0, 40), avatar, createdAt: now.toISOString() }
-    await this.store.set(K.profiles, [...(await this.list()), profile])
+    await exclusive(this.store, K.profiles, async () => this.store.set(K.profiles, [...(await this.list()), profile]))
     await this.store.set(K.settings(profile.id), DEFAULT_PROFILE_SETTINGS)
     return profile
   }
@@ -93,9 +93,11 @@ export class ProfileRepo {
   /** A new name or face for a player. A blank name keeps the old one. */
   async update(profileId: string, patch: { name?: string; avatar?: string }): Promise<void> {
     const name = patch.name?.trim().slice(0, 40)
-    await this.store.set(
-      K.profiles,
-      (await this.list()).map((p) => (p.id === profileId ? { ...p, ...(name ? { name } : {}), ...(patch.avatar ? { avatar: patch.avatar } : {}) } : p)),
+    await exclusive(this.store, K.profiles, async () =>
+      this.store.set(
+        K.profiles,
+        (await this.list()).map((p) => (p.id === profileId ? { ...p, ...(name ? { name } : {}), ...(patch.avatar ? { avatar: patch.avatar } : {}) } : p)),
+      ),
     )
   }
 
@@ -104,13 +106,15 @@ export class ProfileRepo {
     if (pin !== null && !isPin(pin)) return false
     const salt = newId()
     const record = pin === null ? undefined : { salt, hash: await hashPin(pin, salt) }
-    await this.store.set(
-      K.profiles,
-      (await this.list()).map((p) => {
-        if (p.id !== profileId) return p
-        const { pin: _old, ...rest } = p
-        return record ? { ...rest, pin: record } : rest
-      }),
+    await exclusive(this.store, K.profiles, async () =>
+      this.store.set(
+        K.profiles,
+        (await this.list()).map((p) => {
+          if (p.id !== profileId) return p
+          const { pin: _old, ...rest } = p
+          return record ? { ...rest, pin: record } : rest
+        }),
+      ),
     )
     return true
   }
@@ -144,9 +148,11 @@ export class ProfileRepo {
    * the phone are the family's and stay.
    */
   async remove(profileId: string): Promise<void> {
-    await this.store.set(
-      K.profiles,
-      (await this.list()).filter((p) => p.id !== profileId),
+    await exclusive(this.store, K.profiles, async () =>
+      this.store.set(
+        K.profiles,
+        (await this.list()).filter((p) => p.id !== profileId),
+      ),
     )
     if ((await this.store.get<string>(K.current)) === profileId) await this.store.del(K.current)
     for (const key of await this.store.keys()) if (key.startsWith(PREFIX) && key.endsWith(`:${profileId}`)) await this.store.del(key)

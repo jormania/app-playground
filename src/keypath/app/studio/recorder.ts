@@ -69,10 +69,19 @@ export class Recorder {
     else if (e.type === 'cc' && e.controller === 64 && isPlayerChannel(e.channel)) this.pedal(e.value >= 64, e.time)
   }
 
-  /** End the take: keys still down end here, and so does the pedal. */
-  stop(at: number): Recording {
+  /**
+   * Let go of every key and the pedal at `at`: the keyboard went away, so
+   * their releases will never come, and a take that goes on (on the phone's
+   * keys, or once it's back) shouldn't carry notes held to the end.
+   */
+  releaseAll(at: number) {
     for (const pitch of [...this.held.keys()]) this.noteOff(pitch, at)
     if (this.pedalDown) this.pedal(false, at)
+  }
+
+  /** End the take: keys still down end here, and so does the pedal. */
+  stop(at: number): Recording {
+    this.releaseAll(at)
     const ms = this.rel(at)
     return { ms, notes: [...this.notes].sort((a, b) => a.startMs - b.startMs || a.pitch - b.pitch), pedal: [...this.pedalChanges] }
   }

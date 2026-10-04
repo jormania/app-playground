@@ -3,7 +3,7 @@ import type { StringKey } from '../i18n'
 import { JOURNEY } from '../journey/steps'
 import type { LogRecord } from '../log'
 import { localDate } from '../progress/summary'
-import { K, type KeyValueStore } from '../store'
+import { K, update, type KeyValueStore } from '../store'
 
 // Stickers for firsts and milestones (KEYPATH_TUTOR.md §10, "Learning curve",
 // slice 3; twenty-three since the second and third batches). Read
@@ -124,5 +124,5 @@ export async function seenStickers(store: KeyValueStore, profileId: string): Pro
 }
 
 export async function markSeen(store: KeyValueStore, profileId: string, ids: Iterable<string>): Promise<void> {
-  await store.set(K.stickers(profileId), [...new Set([...(await seenStickers(store, profileId)), ...ids])])
+  await update<string[]>(store, K.stickers(profileId), (seen = []) => [...new Set([...seen, ...ids])])
 }

@@ -21,16 +21,37 @@ const GAME: Record<'race' | 'echo' | 'chord' | 'ear' | 'read', { icon: string; t
 const KIND: Record<TodayItem['kind'], StringKey> = { warmup: 'todayWarmup', song: 'todaySong', journey: 'todayJourney', game: 'todayGame' }
 const DOOR: Record<TodayItem['kind'], Door> = { warmup: 'songs', song: 'songs', journey: 'journey', game: 'challenges' }
 
+/** Today's local date, which moves on at midnight even if Home stays open overnight. */
+export function useLocalDay(): string {
+  const [day, setDay] = useState(() => localDate(new Date().toISOString()))
+  useEffect(() => {
+    const check = () => setDay(localDate(new Date().toISOString()))
+    // A timer to the next midnight, and a look whenever the phone comes back
+    // (a sleeping phone may have held the timer past it).
+    const now = new Date()
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime()
+    const timer = setTimeout(check, midnight + 1000)
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [day])
+  return day
+}
+
 /** Home's "Today": a warm-up, a song, a Journey step and a game, each ticked off as she does it. */
 export function TodayCard() {
   const { t, store, log, profile, settings } = useApp()
   const [today, setToday] = useState<{ plan: TodayPlan; done: boolean[]; titles: Map<string, string> } | null>(null)
+  const date = useLocalDay()
 
   useEffect(() => {
     if (!profile) return
     let live = true
     void (async () => {
-      const date = localDate(new Date().toISOString())
       const [records, journey, songs] = await Promise.all([log.read(profile.id), new JourneyRepo(store).get(profile.id), new SongLibrary(store).list(settings.language)])
       const plan = await todayFor(store, profile.id, () => planToday(records, journey, songs, date), date)
       const done = plan.items.map((i) => isDone(i, records, date))
@@ -41,7 +62,7 @@ export function TodayCard() {
     return () => {
       live = false
     }
-  }, [profile, log, store, settings.language])
+  }, [profile, log, store, settings.language, date])
 
   if (!profile || !today) return null
   const what = (i: TodayItem): string | null => {

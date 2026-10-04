@@ -16,9 +16,9 @@ export async function exportBackup(store: KeyValueStore, now = new Date()): Prom
   return { keypathBackup: 1, exportedAt: now.toISOString(), data }
 }
 
-/** Why a restore didn't happen: not a backup at all, a backup that's damaged, or the phone refused the writes. */
+/** Why a restore didn't happen: not a backup at all, one from a newer KeyPath, a backup that's damaged, or the phone refused the writes. */
 export class BackupError extends Error {
-  constructor(readonly reason: 'not-json' | 'not-keypath' | 'damaged' | 'write-failed') {
+  constructor(readonly reason: 'not-json' | 'not-keypath' | 'newer' | 'damaged' | 'write-failed') {
     super(reason)
   }
 }
@@ -34,7 +34,7 @@ function damaged(data: Record<string, unknown>): boolean {
     if (!Array.isArray(profiles)) return true
     if (!profiles.every((p) => p && typeof p === 'object' && typeof (p as { id?: unknown }).id === 'string' && typeof (p as { name?: unknown }).name === 'string')) return true
   }
-  return Object.entries(data).some(([k, v]) => k.startsWith(`${PREFIX}log:`) && !Array.isArray(v))
+  return Object.entries(data).some(([k, v]) => (k.startsWith(`${PREFIX}log:`) || k.startsWith(`${PREFIX}logArchive:`)) && !Array.isArray(v))
 }
 
 /**
@@ -50,6 +50,8 @@ export async function restoreBackup(store: KeyValueStore, text: string): Promise
   } catch {
     throw new BackupError('not-json')
   }
+  // A later format this version can't read: say so, rather than "not a backup".
+  if (typeof parsed?.keypathBackup === 'number' && parsed.keypathBackup > 1) throw new BackupError('newer')
   if (parsed?.keypathBackup !== 1 || typeof parsed.data !== 'object' || parsed.data === null || Array.isArray(parsed.data)) throw new BackupError('not-keypath')
   const entries = Object.entries(parsed.data).filter(([k]) => k.startsWith(PREFIX) && k !== K.meta)
   if (damaged(Object.fromEntries(entries))) throw new BackupError('damaged')

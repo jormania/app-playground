@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { backupDue, BackupError, exportBackup, markBackedUp, restoreBackup } from './backup'
 import { EngagementLog } from './log'
 import { DEFAULT_PROFILE_SETTINGS, ProfileRepo } from './profiles'
-import { K, PREFIX, memoryStore } from './store'
+import { exclusive, K, PREFIX, memoryStore, update } from './store'
+import { TakeRepo } from './studio/takes'
+import { markSeen, seenStickers } from './screens/stickers'
 import { hrefOf, parseRoute } from './router'
 
 describe('ProfileRepo', () => {
@@ -85,6 +87,63 @@ describe('EngagementLog', () => {
     await expect(log.settled()).resolves.toBeUndefined()
     expect((await log.read('p')).map((r) => r.type)).toEqual(['door_opened'])
   })
+
+  it('puts a full log away in chunks, so an append rewrites only the open one, and reads it all back in order', async () => {
+    const store = memoryStore()
+    const log = new EngagementLog(store, 3)
+    for (let i = 0; i < 7; i++) await log.add('p', { type: 'door_opened', door: i % 2 ? 'songs' : 'studio' }, new Date(2026, 0, 1, 0, i))
+    expect(await store.get(K.logArchive('p', 0))).toHaveLength(3)
+    expect(await store.get(K.logArchive('p', 1))).toHaveLength(3)
+    expect(await store.get(K.log('p'))).toHaveLength(1)
+    const all = await log.read('p')
+    expect(all.map((r) => new Date(r.at).getMinutes())).toEqual([0, 1, 2, 3, 4, 5, 6])
+    // A player removed takes the chunks with them; a backup carries them.
+    const backup = await exportBackup(store)
+    expect(Object.keys(backup.data)).toContain(K.logArchive('p', 1))
+    await new ProfileRepo(store).remove('p')
+    expect((await store.keys()).sort()).toEqual([K.meta, K.profiles])
+  })
+
+  it('puts a long log from before chunking away whole on its next append, losing nothing', async () => {
+    const at = new Date(2026, 0, 1).toISOString()
+    const store = memoryStore({ [K.log('p')]: Array.from({ length: 5 }, () => ({ type: 'session_start', at, profileId: 'p' })) })
+    const log = new EngagementLog(store, 3)
+    await log.add('p', { type: 'today_done' })
+    expect(await store.get(K.logArchive('p', 0))).toHaveLength(6)
+    expect(await store.get(K.log('p'))).toEqual([])
+    expect((await log.read('p')).map((r) => r.type)).toEqual([...Array(5).fill('session_start'), 'today_done'])
+  })
+})
+
+describe('store: one change to a key at a time', () => {
+  // A store whose reads take a moment, as IndexedDB's do: without the lock,
+  // two changes started together both read the old value and one is lost.
+  const slow = () => {
+    const m = memoryStore()
+    return { ...m, get: async <T,>(k: string) => { await new Promise((r) => setTimeout(r, 1)); return m.get<T>(k) } }
+  }
+
+  it('keeps both of two changes made at once, across separate repos on the same store', async () => {
+    const store = slow()
+    await Promise.all([update<number[]>(store, 'k', (a = []) => [...a, 1]), update<number[]>(store, 'k', (a = []) => [...a, 2])])
+    expect(await store.get('k')).toEqual([1, 2])
+    await Promise.all([markSeen(store, 'p', ['a']), markSeen(store, 'p', ['b'])])
+    expect([...(await seenStickers(store, 'p'))].sort()).toEqual(['a', 'b'])
+  })
+
+  it('a favourite and a rename tapped together both stick', async () => {
+    const store = slow()
+    const take = await new TakeRepo(store).keep('p', { ms: 1000, notes: [], pedal: [] }, { style: false, bpm: 100 })
+    await Promise.all([new TakeRepo(store).update('p', take!.id, { favourite: true }), new TakeRepo(store).rename('p', take!.id, 'Mine')])
+    expect((await new TakeRepo(store).list('p'))[0]).toMatchObject({ favourite: true, name: 'Mine' })
+  })
+
+  it('goes on after a change that fails', async () => {
+    const store = memoryStore()
+    await expect(exclusive(store, 'k', async () => { throw new Error('full') })).rejects.toThrow('full')
+    await update<number>(store, 'k', () => 1)
+    expect(await store.get('k')).toBe(1)
+  })
 })
 
 describe('backup: restore keeps the phone safe', () => {
@@ -143,6 +202,15 @@ describe('backup', () => {
     await new ProfileRepo(store).create('A', '🦊')
     await expect(restoreBackup(store, 'not json')).rejects.toBeInstanceOf(BackupError)
     await expect(restoreBackup(store, '{"hello":1}')).rejects.toBeInstanceOf(BackupError)
+    expect(await new ProfileRepo(store).list()).toHaveLength(1)
+  })
+
+  it('says a backup from a newer KeyPath is newer, not "not a backup", and changes nothing', async () => {
+    const store = memoryStore()
+    await new ProfileRepo(store).create('A', '🦊')
+    const newer = JSON.stringify({ keypathBackup: 2, exportedAt: new Date().toISOString(), data: { [K.profiles]: [] } })
+    await expect(restoreBackup(store, newer)).rejects.toMatchObject({ reason: 'newer' })
+    await expect(restoreBackup(store, '{"hello":1}')).rejects.toMatchObject({ reason: 'not-keypath' })
     expect(await new ProfileRepo(store).list()).toHaveLength(1)
   })
 

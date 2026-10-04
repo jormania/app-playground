@@ -93,7 +93,7 @@ export function SettingsScreen() {
       setMessage(t('restoreDone', { count }))
     } catch (err) {
       if (!(err instanceof BackupError)) throw err
-      setMessage(t(err.reason === 'damaged' ? 'restoreDamaged' : err.reason === 'write-failed' ? 'restoreWriteFailed' : 'restoreFailed'))
+      setMessage(t(err.reason === 'damaged' ? 'restoreDamaged' : err.reason === 'write-failed' ? 'restoreWriteFailed' : err.reason === 'newer' ? 'restoreNewer' : 'restoreFailed'))
     }
   }
 

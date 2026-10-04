@@ -1,4 +1,4 @@
-import { K, type KeyValueStore } from '../store'
+import { exclusive, K, update, type KeyValueStore } from '../store'
 import type { Recording } from './recorder'
 
 /** A take she chose to keep. Takes stay on this phone, with the player who made them. */
@@ -34,19 +34,19 @@ export class TakeRepo {
     return [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }
 
-  async keep(profileId: string, r: Recording, meta: Pick<Take, 'style' | 'songId' | 'songTitle' | 'bpm'>, now = new Date()): Promise<Take | null> {
-    const all = (await this.store.get<Take[]>(K.studio(profileId))) ?? []
-    if (all.length >= MAX_KEPT) return null
-    const n = all.reduce((m, t) => Math.max(m, t.n), 0) + 1
-    const take: Take = { ...r, ...meta, id: `take:${now.getTime().toString(36)}:${n}`, n, createdAt: now.toISOString(), favourite: false }
-    await this.store.set(K.studio(profileId), [...all, take])
-    return take
+  keep(profileId: string, r: Recording, meta: Pick<Take, 'style' | 'songId' | 'songTitle' | 'bpm'>, now = new Date()): Promise<Take | null> {
+    return exclusive(this.store, K.studio(profileId), async () => {
+      const all = (await this.store.get<Take[]>(K.studio(profileId))) ?? []
+      if (all.length >= MAX_KEPT) return null
+      const n = all.reduce((m, t) => Math.max(m, t.n), 0) + 1
+      const take: Take = { ...r, ...meta, id: `take:${now.getTime().toString(36)}:${n}`, n, createdAt: now.toISOString(), favourite: false }
+      await this.store.set(K.studio(profileId), [...all, take])
+      return take
+    })
   }
 
   async update(profileId: string, id: string, patch: Partial<Pick<Take, 'favourite'>>): Promise<void> {
-    const all = (await this.store.get<Take[]>(K.studio(profileId))) ?? []
-    await this.store.set(
-      K.studio(profileId),
+    await update<Take[]>(this.store, K.studio(profileId), (all = []) =>
       all.map((t) => (t.id === id ? { ...t, ...patch } : t)),
     )
   }
@@ -54,9 +54,7 @@ export class TakeRepo {
   /** Name a take; a blank name gives it back its numbered one. */
   async rename(profileId: string, id: string, name: string): Promise<void> {
     const clean = name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME)
-    const all = (await this.store.get<Take[]>(K.studio(profileId))) ?? []
-    await this.store.set(
-      K.studio(profileId),
+    await update<Take[]>(this.store, K.studio(profileId), (all = []) =>
       all.map((t) => {
         if (t.id !== id) return t
         const { name: _old, ...rest } = t
@@ -66,9 +64,7 @@ export class TakeRepo {
   }
 
   async remove(profileId: string, id: string): Promise<void> {
-    const all = (await this.store.get<Take[]>(K.studio(profileId))) ?? []
-    await this.store.set(
-      K.studio(profileId),
+    await update<Take[]>(this.store, K.studio(profileId), (all = []) =>
       all.filter((t) => t.id !== id),
     )
   }

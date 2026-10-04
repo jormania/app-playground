@@ -64,6 +64,16 @@ describe('Add a song', () => {
     expect(draftFromFile(bytes(drums), 'beat.mid')).toBe('no-notes')
   })
 
+  it('refuses a song far too long to learn: a note held for hours, or tens of thousands of notes', () => {
+    // At 120 bpm a quarter is half a second: 14,400 quarters is two hours.
+    const held = smf(0, 480, [track([meta.tempo(0, 120), on(0, 1, 60), off(14_400 * 480, 1, 60)])])
+    expect(draftFromFile(bytes(held), 'stuck.mid')).toBe('too-long')
+    const many = melodyFile(Array.from({ length: 20_001 }, (_, i) => [60 + (i % 12), 0.1] as [number, number]))
+    expect(draftFromFile(bytes(many), 'many.mid')).toBe('too-long')
+    // A long piece that is still a piece imports.
+    expect(draftFromFile(bytes(melodyFile(Array.from({ length: 2000 }, () => [60, 1] as [number, number]))), 'long.mid')).toMatchObject({ right: { noteCount: 2000 } })
+  })
+
   it('moves a song that sits too high by whole octaves by default, keeping the notes as written', () => {
     const draft = draftFromFile(bytes(melodyFile([[100, 1], [103, 1]])), 'high.mid') as ImportDraft
     const built = buildImport(draft, '')
