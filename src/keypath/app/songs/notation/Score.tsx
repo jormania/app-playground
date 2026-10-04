@@ -35,8 +35,10 @@ export interface ScoreProps {
   focus?: { from: number; to: number } | null
   /** `big`: the written view, the score is the screen. `strip`: a line above the falling notes. */
   size: 'big' | 'strip'
-  /** Bars a line, when the screen should not decide (Read and play shows a tune whole). */
+  /** At most this many bars a line (four, unless said). */
   barsPerLine?: number
+  /** Keep the whole piece on one page when it can be read at all (a short tune, seen whole before it starts). */
+  whole?: boolean
   /** The playhead follows the clock (`setTime`), or sits at the notes to play now. */
   follow?: 'time' | 'now'
   /** Ms a quarter lasts, for the hand-drawn stand-in. */
@@ -104,7 +106,7 @@ interface Drawn {
 
 export const Score = memo(
   forwardRef<ScoreHandle, ScoreProps>(function Score(props, ref) {
-    const { song, notes, practice, bar, now, results, wrong, focus, size, barsPerLine, follow = 'now', ariaLabel } = props
+    const { song, notes, practice, bar, now, results, wrong, focus, size, barsPerLine, whole = false, follow = 'now', ariaLabel } = props
     const [engrave] = useState(canEngrave)
     const [vf, setVf] = useState<VF | null>(null)
     const [failed, setFailed] = useState(false)
@@ -139,19 +141,19 @@ export const Score = memo(
     const drawn = useRef<Drawn | null>(null)
 
     // Draw: when the music, the room or the page changes.
-    const [page, setPage] = useState<{ first: number; perLine: number; lines: number } | null>(null)
+    const [page, setPage] = useState<{ first: number; end: number } | null>(null)
     useLayoutEffect(() => {
       const el = box.current
       if (!vf || !el || !area || area.w < 40 || model.length === 0) return
       try {
-        const result = draw(vf, el, model, times, clefs, area, bar, size, barsPerLine, song.barLabels, focus ?? null)
+        const result = draw(vf, el, model, times, clefs, area, bar, size, barsPerLine, whole, song.barLabels, focus ?? null)
         drawn.current = result.drawn
         setPage(result.page)
       } catch (e) {
         console.warn('KeyPath: the score could not be engraved', e)
         setFailed(true)
       }
-    }, [vf, area, model, times, clefs, size, barsPerLine, song.barLabels, focus, page && bar >= page.first && bar < page.first + page.perLine * page.lines ? page.first : bar]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [vf, area, model, times, clefs, size, barsPerLine, whole, song.barLabels, focus, page && bar >= page.first && bar < page.end ? page.first : bar]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // The states of the notes: cheap, so on every step.
     useEffect(() => {
@@ -265,9 +267,10 @@ function draw(
   bar: number,
   size: 'big' | 'strip',
   barsPerLine: number | undefined,
+  whole: boolean,
   barLabels: string[] | undefined,
   focus: { from: number; to: number } | null,
-): { drawn: Drawn; page: { first: number; perLine: number; lines: number } } {
+): { drawn: Drawn; page: { first: number; end: number } } {
   const { Renderer, Stave, StaveNote, Voice, Formatter, Beam, Accidental, Dot, StaveTie, StaveConnector } = vf
   const lineHeight = TOP + 40 + (clefs.length === 2 ? STAFF_GAP + 40 : 0) + BOTTOM
   // A staff space of 7–12 px written out (about a printed page's on a phone), 5–8.5 px as a strip;
@@ -313,48 +316,60 @@ function draw(
     return natural.get(key)!
   }
 
-  // How many bars a line, and how many lines: as many bars as fit at a readable size, up to four a
-  // line, and a second line on a big score when there's height for it. The page holds the bar played.
+  // Lines broken as an engraver breaks them, by width: as many bars as fit (up to four, at least
+  // one), so a bar of quick notes takes more room than a bar of long ones. One size for the whole
+  // song, so the music doesn't grow and shrink from page to page; then as many lines a page as the
+  // height holds (four at most on a big score, one on the strip). The page holds the bar played.
   const at = Math.max(0, Math.min(bar, model.length - 1))
-  const pageOf = (perLine: number, lines: number) => {
-    const first = Math.floor(at / (perLine * lines)) * perLine * lines
-    const rows = Array.from({ length: lines }, (_, l) => Array.from({ length: perLine }, (_, k) => first + l * perLine + k).filter((b) => b < model.length)).filter((r) => r.length)
-    const wide = Math.max(...rows.map((r) => r.reduce((w, b, k) => w + widthOf(b, k === 0), 0))) + margin * 2
-    const scale = Math.min(maxSpace / 10, area.w / wide, area.h / (rows.length * lineHeight))
-    return { first, rows, scale }
+  const most = barsPerLine ?? 4
+  const maxLines = size === 'big' ? 4 : 1
+  const linesAt = (scale: number): number[][] => {
+    const room = area.w / scale - margin * 2
+    const out: number[][] = []
+    let row: number[] = []
+    let used = 0
+    for (let b = 0; b < model.length; b++) {
+      if (row.length) {
+        const w = widthOf(b, false)
+        if (row.length < most && used + w <= room) {
+          row.push(b)
+          used += w
+          continue
+        }
+        out.push(row)
+      }
+      row = [b]
+      used = widthOf(b, true)
+    }
+    if (row.length) out.push(row)
+    return out
   }
-  // Of the layouts at a readable size (up to four bars a line, and on a big score up to four lines),
-  // the one showing the most music, counting each bar by its area on screen: a tall phone gets a
-  // page of two-bar lines, not one line of four in a white field; a wide one, four to a line.
-  let choice: ReturnType<typeof pageOf> | null = null
+  const fits = (scale: number) => lineHeight * scale <= area.h && model.every((_, b) => widthOf(b, true) + margin * 2 <= area.w / scale)
+  const perPage = (scale: number) => Math.max(1, Math.min(maxLines, Math.floor(area.h / (lineHeight * scale))))
+  // The size: of those readable here, the one showing the most music a page, each bar counted by its
+  // size cubed (size first, for a child reading off a phone, then as much music as keeps it).
+  let scale = 0
   let best = 0
-  for (const n of barsPerLine ? [barsPerLine] : [4, 3, 2, 1]) {
-    for (let lines = 1; lines <= (size === 'big' ? 4 : 1); lines++) {
-      const p = pageOf(n, lines)
-      if (p.scale * 10 < minSpace) break
-      const value = p.rows.reduce((k, r) => k + r.length, 0) * p.scale * p.scale
-      if (value > best * 1.02) {
-        best = value
-        choice = p
-      }
+  for (let space = maxSpace; space >= minSpace - 1e-9; space -= 0.25) {
+    const s = space / 10
+    if (!fits(s)) continue
+    const pages = Math.ceil(linesAt(s).length / perPage(s))
+    // Asked to keep the piece whole: the largest size at which it fits one page.
+    const value = whole ? (pages === 1 ? s : 0) : (model.length / pages) * s ** 3
+    if (value > best * 1.02) {
+      best = value
+      scale = s
     }
   }
-  // Too short for the readable size: the height decides the size, and as many bars as fit at it go on one line.
-  if (!choice) {
-    const tall = area.h / lineHeight
-    choice = pageOf(1, 1)
-    for (const n of barsPerLine ? [barsPerLine] : [4, 3, 2]) {
-      const p = pageOf(n, 1)
-      if (p.scale >= Math.min(tall, choice.scale) * 0.98) {
-        choice = p
-        break
-      }
-    }
-  }
-  const { first, rows } = choice
-  const scale = choice.scale
+  // Too small a space for a readable size: as large as the widest bar and one line allow.
+  if (!scale) scale = Math.min(area.h / lineHeight, ...model.map((_, b) => area.w / (widthOf(b, true) + margin * 2)))
+  const lines = linesAt(scale)
+  const per = perPage(scale)
+  const pageAt = Math.floor(Math.max(0, lines.findIndex((r) => r.includes(at))) / per)
+  const rows = lines.slice(pageAt * per, pageAt * per + per)
+  const first = rows[0][0]
+  const end = rows[rows.length - 1][rows[rows.length - 1].length - 1] + 1
   const measures: Measure[][] = rows.map((r) => r.map((b, k) => measureOf(b, k === 0)))
-  const perLine = Math.max(...rows.map((r) => r.length))
   const width = area.w / scale
 
   el.innerHTML = ''
@@ -387,9 +402,13 @@ function draw(
   const notesOf = (line: Measure[]) => line.reduce((w, m) => w + m.minWidth - m.lead, 0)
   const fill = (line: Measure[], most: number) => Math.min(most, (width - margin * 2 - leadOf(line)) / notesOf(line))
   const stretch = Math.min(...measures.map((line) => fill(line, MAX_STRETCH)))
-  // A full line on a page of several is justified to the margins, as printed (a line of plain quarters
-  // takes more pulling than one of eighths); a short last line keeps the common spacing.
-  const stretchOf = (line: Measure[]) => (measures.length > 1 && line.length === perLine ? fill(line, MAX_STRETCH * 2) : stretch)
+  // Every line but the song's last is justified to the margins, as printed (a line of plain quarters
+  // takes more pulling than one of eighths); the last keeps the common spacing.
+  // A line that would have to be pulled to well over twice its width to fill (a pickup alone) isn't.
+  const stretchOf = (line: Measure[]) => {
+    const full = fill(line, Infinity)
+    return line[line.length - 1].bar.index < model.length - 1 && full <= MAX_STRETCH * 1.5 ? full : stretch
+  }
   const longest = Math.max(...measures.map((line) => leadOf(line) + notesOf(line) * stretchOf(line)))
   measures.forEach((line, l) => {
     const lineStretch = stretchOf(line)
@@ -491,5 +510,5 @@ function draw(
   under.appendChild(playhead)
   svg.appendChild(overlay)
   anchors.sort((a, b) => a[0] - b[0])
-  return { drawn: { anchors, byId, where, playhead, overlay, svg, scale }, page: { first, perLine, lines: measures.length } }
+  return { drawn: { anchors, byId, where, playhead, overlay, svg, scale }, page: { first, end } }
 }

@@ -20,6 +20,7 @@ import { Score, type ScoreHandle } from './notation/Score'
 import { ReportView } from './ReportView'
 import type { FactsInput } from './coach'
 import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
+import { countBeatMs } from './countIn'
 import { nextStep, partPassed, PartsRepo, partSteps, phraseSong, phraseStartMs, type PartStep } from './parts'
 import { WARMUP_ID } from '../../engine/starterPack'
 import { tryNext } from './level'
@@ -37,6 +38,8 @@ import styles from './songs.module.css'
 import setup from '../setup.module.css'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone' | 'partDone'
+/** The phases after a run, when nothing is asked of her. */
+const OVER: ReadonlySet<Phase> = new Set<Phase>(['setup', 'report', 'loopBreak', 'loopDone', 'partDone'])
 
 const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
 const TIMING_LABEL: Record<Timing, StringKey> = { relaxed: 'timingRelaxed', normal: 'timingNormal', strict: 'timingStrict' }
@@ -473,8 +476,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       judge.current = j
       accompany(target, j, tempo)
       if (j.mode === 'running') {
-        // Three beats of lead-in: the first notes are already falling.
-        const leadIn = (3 * 60000) / song.bpm / tempo
+        // Three counted beats of lead-in: the first notes are already falling.
+        const leadIn = (3 * countBeatMs(song)) / tempo
         j.start(at + leadIn)
       }
       shownTime.current = READY_TIME
@@ -692,7 +695,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           const next = barAtTime(s)
           return next === b ? b : next
         })
-        setCountIn(s < 0 ? Math.ceil(-s / (60000 / song.bpm)) : null)
+        setCountIn(s < 0 ? Math.ceil(-s / countBeatMs(song)) : null)
         next = notes.filter((n) => n.startMs >= s - 150 && n.startMs <= s + 450 && !results.has(n.id))
       } else {
         const step = j.currentStep
@@ -848,7 +851,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             {(phase === 'playing' || listening) && (
               <span className={styles.progress}>
                 {span && <span className={styles.progressPart}>{`${partName(span)} · `}</span>}
-                {t('progressBar', { bar: barName(song, scoreBar), total: barName(song, barTotal - 1) })}
+                {t('progressBar', { bar: barName(song, Math.max(scoreBar, firstBar)), total: barName(song, barTotal - 1) })}
               </span>
             )}
             <KeyboardStatus status={keyboard} missing="keyboardMissing" compact={musicOn} />
@@ -1160,7 +1163,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           names={settings.keyNames}
           boxes={boxes}
           held={held}
-          targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : written && !stuck ? NO_KEYS : targets}
+          // Nothing is asked for once a part, a bar's loop or the song is over: no key stays lit as if it were.
+          targets={phase === 'ready' ? new Set([MIDDLE_C]) : listening ? listenKeys : (written && !stuck) || OVER.has(phase) ? NO_KEYS : targets}
           wrong={wrong}
           marker={phase === 'ready' ? MIDDLE_C : undefined}
           markerLabel={t('markerMiddleC')}

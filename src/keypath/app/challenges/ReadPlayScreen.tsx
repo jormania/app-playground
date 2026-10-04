@@ -319,7 +319,7 @@ export function ReadPlayScreen() {
 
       <div className={`${songStyles.stage} ${styles.readStage}`}>
         {piece && (phase === 'play' || phase === 'between') && (
-          <Score song={piece.song} notes={notes} practice={piece.practice} bar={bar} now={phase === 'play' ? nowIds : NO_KEYS} results={results} wrong={wrong} size="big" follow="now" beatMs={READ_BEAT_MS} ariaLabel={t('readAria', { n: number })} />
+          <Score song={piece.song} notes={notes} practice={piece.practice} bar={bar} now={phase === 'play' ? nowIds : NO_KEYS} results={results} wrong={wrong} size="big" whole follow="now" beatMs={READ_BEAT_MS} ariaLabel={t('readAria', { n: number })} />
         )}
         <PlayKeyboard
           sound={!kb.connected}
