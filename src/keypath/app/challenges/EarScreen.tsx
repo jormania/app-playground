@@ -68,6 +68,11 @@ export function EarScreen() {
     if (e.velocity >= MIN_VELOCITY) pressRef.current(e.note)
   }, [])
   const kb = useKeyboard(onMidi)
+  // Unplugged, the keyboard's Note Offs never come: let go of every key it was holding.
+  useEffect(() => {
+    if (kb.connected) return
+    setHeld(new Set())
+  }, [kb.connected])
   const output = useOutput(kb)
   const outputRef = useRef(output)
   outputRef.current = output

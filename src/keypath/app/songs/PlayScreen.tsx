@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, octaveShift, summaryForHand, type Hand, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type SongNote, type Timing } from '../../engine'
+import { barName, barSpan, buildReport, cueFor, handPlaces, Judge, MIN_VELOCITY, notesFor, notMiddleC, octaveShift, summaryForHand, type Hand, type JudgeEvent, type JudgeSettings, type NoteResult, type OnWrong, type Practice, type Report, type Song, type SongNote, type Timing } from '../../engine'
 import type { StringKey } from '../i18n'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
@@ -19,7 +19,7 @@ import { PlayKeyboard } from './PlayKeyboard'
 import { Score, type ScoreHandle } from './notation/Score'
 import { ReportView } from './ReportView'
 import type { FactsInput } from './coach'
-import { afterPass, barSong, isClean, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
+import { afterPass, barSong, isClean, nearestPlayable, playableBars, startLoop, tempoOf, type Loop, type LoopStep } from './loop'
 import { countBeatMs } from './countIn'
 import { nextStep, partPassed, PartsRepo, partSteps, phraseSong, phraseStartMs, type PartStep } from './parts'
 import { WARMUP_ID } from '../../engine/starterPack'
@@ -29,6 +29,7 @@ import { useStuck } from './stuck'
 import { Accompanist } from './accompany'
 import { PREFIX } from '../store'
 import { songProgress } from './songProgress'
+import { HeldKeys } from '../connect/heldKeys'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useOutput } from '../studio/output'
@@ -218,6 +219,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const span = part && part.kind !== 'whole' ? part : null
   /** The middle-C check is done once per visit; the next part starts straight away. */
   const shiftKnown = useRef(false)
+  const heldKeys = useRef(new HeldKeys())
+  /** The keyboard's last key at the middle-C check that wasn't a C: the same one twice is a Transpose. */
+  const lastMiss = useRef<number | null>(null)
 
   // The other hand, played for her while she practises one (a song with both hands only).
   const [otherHand, setOtherHand] = useState(true)
@@ -334,7 +338,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       judge.current = j
       accompany(bar, j, tempoOf(l))
       tryRec.current = null
-      if (j.mode === 'running') j.start(performance.now() + (3 * 60000) / song.bpm / tempoOf(l))
+      if (j.mode === 'running') j.start(performance.now() + (3 * countBeatMs(song)) / tempoOf(l))
       shownTime.current = READY_TIME
       setResults(new Map())
       setStreak(0)
@@ -356,6 +360,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
   /** Loop one bar (0-based) until it's clean, from the report or the setup: at the speed chosen. */
   const beginLoop = (bar: number) => {
+    // A bar with no note for these hands has nothing to loop: it would wait for ever, or count as clean unplayed.
+    if (!songNotes.some((n) => n.bar === bar)) return
     const l = startLoop(bar, viewSettings.onWrong === 'wait' ? 'wait' : 'running', tempo)
     setLoopBoth(l)
     setLoopStep(null)
@@ -509,9 +515,12 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       // On-screen keys are exact, so only middle C itself starts from there.
       const found = fromScreen ? (pitch === MIDDLE_C ? 0 : null) : octaveShift(pitch, MIDDLE_C)
       if (found === null) {
-        setHint(t('notAC', { note: label(pitch) }))
+        const transposed = !fromScreen && notMiddleC(pitch, lastMiss.current) === 'transposed'
+        lastMiss.current = fromScreen ? null : pitch
+        setHint(t(transposed ? 'notACTransposed' : 'notAC', { note: label(pitch) }))
         return
       }
+      lastMiss.current = null
       setHint(null)
       shift.current = found
       shiftKnown.current = true
@@ -534,7 +543,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
    */
   const press = useCallback(
     (pitch: number, at: number, fromScreen: boolean) => {
-      const drawn = fromScreen ? pitch : pitch + shift.current
+      const drawn = fromScreen ? pitch : heldKeys.current.down(pitch, pitch + shift.current)
       setHeld((h) => new Set(h).add(drawn))
       if (phaseRef.current === 'playing') tryRec.current?.noteOn(drawn, 80, at)
       if (phaseRef.current === 'ready') begin(pitch, at, fromScreen)
@@ -555,7 +564,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const onMidi = useCallback(
     (e: MidiEvent) => {
       if ((e.type !== 'noteon' && e.type !== 'noteoff') || !isPlayerChannel(e.channel)) return
-      if (e.type === 'noteoff') return release(e.note + shift.current, e.time)
+      if (e.type === 'noteoff') return release(heldKeys.current.up(e.note, e.note + shift.current), e.time)
       if (e.velocity < MIN_VELOCITY) return
       // The other hand's own notes, if the keyboard sends them back, are not hers.
       if (accompanist.current?.isEcho(e.note, e.time)) return
@@ -663,6 +672,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       pause('disconnected')
       // Its Note Offs will never come: let go of every key it was holding.
       setHeld(new Set())
+      heldKeys.current.clear()
     }
     // A keyboard plugged in or out may be set to another octave: ask for middle C again.
     if (wasConnected.current !== keyboard.connected) shiftKnown.current = false
@@ -745,7 +755,9 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     if (loopRef.current) return backToReport()
     accompanist.current?.stop()
     const j = judge.current
-    if (j && profileId && phaseRef.current !== 'report') {
+    // Stopped only counts while a run is under way: Stop after a part is learnt, or from the
+    // middle-C check after an earlier run, leaves nothing unfinished (Progress, the weekly note).
+    if (j && profileId && (phaseRef.current === 'playing' || phaseRef.current === 'paused')) {
       const s = j.summary()
       void log.add(profileId, { type: 'song_abandoned', songId: song.id, practice, hit: s.results.filter((r) => r.outcome === 'hit').length, total: s.total })
     }
@@ -824,7 +836,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   const barTotal = songNotes.length ? Math.max(...songNotes.map((n) => n.bar)) + 1 : 1
   // A pickup (bar 0, as printed) is a note or two: the bars to practise start at the first whole one.
   const firstBar = barTotal > 1 && barName(song, 0) === '0' ? 1 : 0
-  const barAt = Math.max(firstBar, Math.min(barPick, barTotal - 1))
+  // Only bars with something to play in them, for these hands, can be practised on their own.
+  const playable = useMemo(() => playableBars(songNotes, firstBar === 1), [songNotes, firstBar])
+  const barAt = nearestPlayable(playable, barPick) ?? firstBar
+  const barIndex = playable.indexOf(barAt)
   const barLink = (
     <button type="button" className={setup.link} aria-expanded={barOpen} onClick={() => setBarOpen((o) => !o)}>
       🔁 {barOpen ? t('practiseBarHide') : t('practiseOneBar')}
@@ -982,13 +997,13 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               <span className={setup.label}>{t('barPickLabel')}</span>
               <div className={setup.controls}>
                 <div className={styles.keyPick}>
-                  <Button size="sm" variant="outline" disabled={barAt <= firstBar} onClick={() => setBarPick(barAt - 1)} aria-label={t('barPickLower')}>
+                  <Button size="sm" variant="outline" disabled={barIndex <= 0} onClick={() => setBarPick(playable[barIndex - 1])} aria-label={t('barPickLower')}>
                     −
                   </Button>
                   <span className={styles.keyPickValue} aria-live="polite">
                     {barName(song, barAt)}
                   </span>
-                  <Button size="sm" variant="outline" disabled={barAt >= barTotal - 1} onClick={() => setBarPick(barAt + 1)} aria-label={t('barPickHigher')}>
+                  <Button size="sm" variant="outline" disabled={barIndex < 0 || barIndex >= playable.length - 1} onClick={() => setBarPick(playable[barIndex + 1])} aria-label={t('barPickHigher')}>
                     +
                   </Button>
                 </div>

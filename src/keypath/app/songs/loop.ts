@@ -1,4 +1,4 @@
-import type { JudgeSummary, Song } from '../../engine'
+import type { JudgeSummary, Song, SongNote } from '../../engine'
 import { rangeSong } from './parts'
 
 // Practising one bar (KEYPATH_TUTOR.md §10, "Learning curve"): the report's
@@ -45,3 +45,19 @@ export function afterPass(loop: Loop, clean: boolean): { loop: Loop; step: LoopS
 }
 
 export const tempoOf = (loop: Loop) => loop.rungs[loop.rung]
+
+/**
+ * The bars there is something to practise in, for the hands being played:
+ * a bar with no note starting in it (a rest, a note tied over, the other
+ * hand's bar) would loop nothing. A pickup (bar 0, as printed) goes with the
+ * bar after it, so it isn't offered on its own when there's more.
+ */
+export function playableBars(notes: readonly Pick<SongNote, 'bar'>[], pickup = false): number[] {
+  const bars = [...new Set(notes.map((n) => n.bar))].sort((a, b) => a - b)
+  return pickup && bars.length > 1 ? bars.filter((b) => b > 0) : bars
+}
+
+/** The playable bar nearest to `bar`, looking forward first; null when there's none. */
+export function nearestPlayable(playable: readonly number[], bar: number): number | null {
+  return playable.find((b) => b >= bar) ?? playable[playable.length - 1] ?? null
+}

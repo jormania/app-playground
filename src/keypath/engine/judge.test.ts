@@ -128,3 +128,40 @@ describe('Judge — from the MIDI layer', () => {
     expect(types(j.midi(ev({ note: 48, channel: 3 })))).toEqual(['hit', 'done']) // Split voice at Octave −1
   })
 })
+
+describe('Judge — one key for both hands', () => {
+  // Middle C in both hands at once (a unison), then D: one key down plays both Cs.
+  const unison = () => {
+    const s = songOf([[60, 0], [60, 0], [62, 500]])
+    s.notes[1] = { ...s.notes[1], hand: 'left' }
+    return s
+  }
+
+  it('waits for the key once, not twice, in Wait for it', () => {
+    const j = new Judge(unison(), { practice: 'both', settings: wait })
+    expect(types(j.press(60, 10))).toEqual(['hit', 'hit', 'advance'])
+    expect(types(j.press(62, 20))).toEqual(['hit', 'done'])
+    expect(j.summary().wrong).toEqual([])
+  })
+
+  it('counts both as hit on the clock, and misses neither', () => {
+    const j = new Judge(unison(), { practice: 'both', settings: show })
+    j.start(1000)
+    expect(types(j.press(60, 1000))).toEqual(['hit', 'hit'])
+    expect(types(j.press(62, 1500))).toEqual(['hit', 'done'])
+    expect(j.summary().results.every((r) => r.outcome === 'hit')).toBe(true)
+  })
+})
+
+describe('Judge — a key on its way', () => {
+  it('doesn’t give a note up while a key played inside its window may still be arriving', () => {
+    const j = new Judge(songOf([[60, 0], [62, 2000]]), { practice: 'both', settings: show })
+    j.start(1000)
+    // Just past the window (relaxed: 350 ms), the frame's check comes before the key's event…
+    expect(j.tick(1000 + 360)).toEqual([])
+    // …which is stamped inside it, so it counts.
+    expect(types(j.press(60, 1000 + 340))).toEqual(['hit'])
+    // A note nobody played is still missed, a moment later.
+    expect(types(j.tick(3000 + 400))).toEqual(['missed', 'done'])
+  })
+})

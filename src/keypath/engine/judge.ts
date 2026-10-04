@@ -28,6 +28,11 @@ export type JudgeEvent =
   | { type: 'advance'; step: Step }
   | { type: 'done' }
 
+/** Notes of one pitch this close together (song ms) are one key struck by both hands. */
+const UNISON_MS = 30
+/** How long after a note's window its miss waits, for a key whose event is still on its way (ms). */
+export const MISS_GRACE_MS = 40
+
 export interface JudgeOptions {
   practice: Practice
   settings: JudgeSettings
@@ -139,7 +144,9 @@ export class Judge {
     const events: JudgeEvent[] = []
     for (const n of this.notes) {
       if (this.results.has(n.id)) continue
-      if (nowMs > this.expectedAt(n) + this.windowMs) {
+      // A key's event can reach the page a frame after it was played: its time stamp is
+      // what's judged, so a note isn't given up on until that much after its window.
+      if (nowMs > this.expectedAt(n) + this.windowMs + MISS_GRACE_MS) {
         const result: NoteResult = { note: n, outcome: 'missed' }
         this.results.set(n.id, result)
         events.push({ type: 'missed', result })
@@ -168,10 +175,15 @@ export class Judge {
       if (step.notes.some((n) => n.pitch === pitch)) return []
       return [this.wrong(pitch, atMs, step.notes[0].bar)]
     }
-    this.pending.delete(expected.id)
-    const result: NoteResult = { note: expected, outcome: 'hit' }
-    this.results.set(expected.id, result)
-    const events: JudgeEvent[] = [{ type: 'hit', result }]
+    // Both hands on one key at once (a unison) is one key down: it plays every copy of it in the step.
+    const events: JudgeEvent[] = []
+    for (const n of step.notes) {
+      if (n.pitch !== pitch || !this.pending.has(n.id)) continue
+      this.pending.delete(n.id)
+      const result: NoteResult = { note: n, outcome: 'hit' }
+      this.results.set(n.id, result)
+      events.push({ type: 'hit', result })
+    }
     if (this.pending.size === 0) {
       if (this.stepIndex + 1 >= this.steps.length) events.push(...this.finish())
       else {
@@ -196,9 +208,15 @@ export class Judge {
     }
     if (!best) return [this.wrong(pitch, atMs, this.barAt(this.songTime(atMs)))]
     const timing: TimingVerdict = Math.abs(bestDelta) <= this.onTimeMs ? 'onTime' : bestDelta < 0 ? 'early' : 'late'
-    const result: NoteResult = { note: best, outcome: 'hit', deltaMs: Math.round(bestDelta), timing }
-    this.results.set(best.id, result)
-    const events: JudgeEvent[] = [{ type: 'hit', result }]
+    const events: JudgeEvent[] = []
+    // A unison (the same key in both hands at the same moment) is one key down, and plays both.
+    const at = best.startMs
+    for (const n of this.notes) {
+      if (n.pitch !== pitch || this.results.has(n.id) || Math.abs(n.startMs - at) > UNISON_MS) continue
+      const result: NoteResult = { note: n, outcome: 'hit', deltaMs: Math.round(bestDelta), timing }
+      this.results.set(n.id, result)
+      events.push({ type: 'hit', result })
+    }
     if (this.results.size === this.notes.length) events.push(...this.finish())
     return events
   }

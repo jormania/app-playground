@@ -1003,6 +1003,53 @@ level equal to the rating isn't stored, so the rating follows later changes
 (a different fit, say); one that differs is kept as `Song.level`, and
 survives a refit. Built-in songs keep theirs.
 
+### Audit after release 5 (2026-10-04): correctness, data, MIDI
+
+A grounds-up audit against the user's guide, correctness-critical systems first (MIDI and
+calibration, the judge, parts and loops, persistence, import, Studio, Claude, backup, player
+isolation, privacy), with a regression test for each fix:
+
+- *One failed write stopped the engagement log* (`log.ts`): appends were chained, so a single
+  rejected write (storage full) left the chain rejected; every later event was dropped and every
+  read refused: Today, Progress, the coach and deleting a player with them. The queue now goes on
+  past a failed write, which only its own caller hears of.
+- *Restore could leave the phone empty* (`backup.ts`): it deleted everything, then wrote the
+  backup key by key. It now writes the backup first, clears what the backup doesn't hold after,
+  puts back what was there if a write fails, and refuses a backup whose player list or logs are
+  damaged. Settings says which of the three it was.
+- *A unison could not be played* (`judge.ts`): the same key in both hands at once waited for two
+  presses in Wait for it, and one was always missed on the clock. One key down plays every copy
+  of its pitch in that moment. A note's miss now waits 40 ms after its window, for a key played
+  inside it whose event is still arriving; what counts is still the key's own time stamp.
+- *Practising an empty bar* (`loop.ts`, setup): the bar picker offered bars with nothing for the
+  hands chosen (a rest, a tie, the other hand's bar): Wait for it then waited for ever, and on the
+  clock it "climbed" to clean unplayed, logging a bar made clean. Only bars with notes are offered,
+  and a loop never starts on one without. A bar's lead-in counts a beat that can be counted aloud,
+  as a song's does.
+- *Transpose trapped the middle-C check*: with the Yamaha transposed, the marked key arrives as
+  another note every time, and "Middle C is the marked key" repeated for ever. The same wrong key
+  twice running now explains Transpose and how to reset it (Function 001, + and − together), in
+  the song, the Journey and Read and play.
+- *A key could stay drawn held* (`connect/heldKeys.ts`): a key's release was worked out with the
+  octave shift found on that very key. Releases now let go of the key they pressed; unplugging lets
+  go of every key, in the Journey and the games too.
+- *Rhythm echo through the phone* judged taps against when the rhythm was played, not heard: the
+  phone's reported audio delay (`phoneLatencyMs`, capped at 300 ms) is now allowed for. Through the
+  keyboard nothing changes.
+- *Stop* logs a song stopped only while one is under way (it was only reachable then; hardening).
+
+Verified and left as they are: one MIDI listener per port and per screen (tests now pin it,
+including unplug and replug); Note On at velocity 0 as Note Off; accompaniment channels kept out of
+judging and takes; timing from the keys' own time stamps, never from frames; D.C., D.S., Coda and
+Fine; malformed MIDI, MusicXML and zip files (fuzzed: only their own errors); no name in any Claude
+request (tested end to end); the key outside the backup and out of the source and history; players'
+data deleted with them; Today on the phone's own calendar day.
+
+Found and not changed: the Journey doesn't ask for middle C again after the keyboard is replugged
+mid-step (it would restart the exercise); a page left open across midnight keeps yesterday's Today
+until it's opened again; the guide's Home section says Today holds three things, but it holds four
+with the warm-up (the release 3 notes say so).
+
 ### Release 5: the play screen, engraved; a first look at each game; pickups
 
 Two asks on the same day: a short "what is this" the first time a game or the Journey opens,

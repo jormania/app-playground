@@ -9,3 +9,14 @@ export function octaveShift(received: number, expected = 60): number | null {
   const diff = expected - received
   return diff % 12 === 0 ? diff : null
 }
+
+/**
+ * What to say when the key pressed for middle C wasn't a C. The same wrong
+ * pitch twice running is most likely the marked key on a keyboard set to
+ * Transpose (it sends what it sounds, so C comes out as another note every
+ * time): saying "that's not middle C" again would leave her pressing the
+ * right key for ever. Anything else is just another key.
+ */
+export function notMiddleC(received: number, previous: number | null): 'otherKey' | 'transposed' {
+  return previous === received ? 'transposed' : 'otherKey'
+}

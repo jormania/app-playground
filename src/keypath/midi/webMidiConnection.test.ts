@@ -62,6 +62,32 @@ describe('WebMidiConnection', () => {
     expect(late.onmidimessage).toBeTypeOf('function')
   })
 
+  it('hears a key once however often the ports change, and after the cable is pulled and put back', async () => {
+    const yamaha = fakeInput('a', 'Digital Keyboard', 'Yamaha Corporation')
+    const { nav, access } = fakeNavigator([yamaha])
+    const c = new WebMidiConnection({ navigator: nav, isSecureContext: true, now: () => 0 })
+    await c.open()
+    const got: MidiEvent[] = []
+    c.onEvent((e) => got.push(e))
+    // Chrome fires statechange more than once for one plug; the same port stays bound once.
+    access.onstatechange!()
+    access.onstatechange!()
+    yamaha.onmidimessage!({ data: new Uint8Array([0x90, 60, 74]), timeStamp: 1 })
+    expect(got).toHaveLength(1)
+    // Pulled out and put back: Chrome may hand over a new port object for the same keyboard.
+    access.inputs.delete('a')
+    access.onstatechange!()
+    const back = fakeInput('a', 'Digital Keyboard', 'Yamaha Corporation')
+    access.inputs.set('a', back)
+    access.onstatechange!()
+    back.onmidimessage!({ data: new Uint8Array([0x90, 62, 74]), timeStamp: 2 })
+    expect(got.map((e) => (e.type === 'noteon' ? e.note : null))).toEqual([60, 62])
+    // Opened again (a second screen asking): still once.
+    await c.open()
+    back.onmidimessage!({ data: new Uint8Array([0x90, 64, 74]), timeStamp: 3 })
+    expect(got).toHaveLength(3)
+  })
+
   it('falls back to arrival time when the platform timestamp is missing', async () => {
     const input = fakeInput('a', 'x', '')
     const { nav } = fakeNavigator([input])

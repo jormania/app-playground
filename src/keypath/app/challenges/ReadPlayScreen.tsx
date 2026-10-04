@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../../../ds'
-import { handPlaces, Judge, MIN_VELOCITY, notesFor, octaveShift, type JudgeEvent, type NoteResult } from '../../engine'
+import { handPlaces, Judge, MIN_VELOCITY, notesFor, notMiddleC, octaveShift, type JudgeEvent, type NoteResult } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
+import { HeldKeys } from '../connect/heldKeys'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { celebrate } from '../celebrate/celebrate'
@@ -57,6 +58,9 @@ export function ReadPlayScreen() {
   const judge = useRef<Judge | null>(null)
   /** The octave the keyboard is set to, found once a visit from middle C; on-screen keys need none. */
   const shift = useRef(0)
+  const heldKeys = useRef(new HeldKeys())
+  /** The keyboard's last key at the middle-C check that wasn't a C: the same one twice is a Transpose. */
+  const lastMiss = useRef<number | null>(null)
   const shiftKnown = useRef(false)
   const round = useRef<{ level: ReadLevel; number: number; score: number; wrong: number; startedAt: number } | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -183,12 +187,17 @@ export function ReadPlayScreen() {
 
   /** One key down: from the Yamaha (as it sends it) or the screen (as drawn). */
   const press = (pitch: number, at: number, fromScreen: boolean) => {
-    const drawn = fromScreen ? pitch : pitch + shift.current
+    const drawn = fromScreen ? pitch : heldKeys.current.down(pitch, pitch + shift.current)
     setHeld((h) => new Set(h).add(drawn))
     if (phaseRef.current === 'ready') {
       // Middle C first, to know the keyboard's octave; on the screen's keys, only middle C itself.
       const found = fromScreen ? (pitch === MIDDLE_C ? 0 : null) : octaveShift(pitch, MIDDLE_C)
-      if (found === null) return setHint(t('notAC', { note: label(pitch) }))
+      if (found === null) {
+        const transposed = !fromScreen && notMiddleC(pitch, lastMiss.current) === 'transposed'
+        lastMiss.current = fromScreen ? null : pitch
+        return setHint(t(transposed ? 'notACTransposed' : 'notAC', { note: label(pitch) }))
+      }
+      lastMiss.current = null
       setHint(null)
       shift.current = found
       shiftKnown.current = true
@@ -206,12 +215,18 @@ export function ReadPlayScreen() {
   const onMidi = useCallback(
     (e: MidiEvent) => {
       if ((e.type !== 'noteon' && e.type !== 'noteoff') || !isPlayerChannel(e.channel)) return
-      if (e.type === 'noteoff') return release(e.note + shift.current)
+      if (e.type === 'noteoff') return release(heldKeys.current.up(e.note, e.note + shift.current))
       if (e.velocity >= MIN_VELOCITY) pressRef.current(e.note, e.time, false)
     },
     [release],
   )
   const kb = useKeyboard(onMidi)
+  // Unplugged, the keyboard's Note Offs never come: let go of every key it was holding.
+  useEffect(() => {
+    if (kb.connected) return
+    setHeld(new Set())
+    heldKeys.current.clear()
+  }, [kb.connected])
   // A keyboard plugged in or out may be set to another octave: ask for middle C again next time.
   const wasConnected = useRef(kb.connected)
   useEffect(() => {

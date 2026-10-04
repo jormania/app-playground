@@ -74,6 +74,54 @@ describe('EngagementLog', () => {
     expect((await log.read('p')).map((r) => r.type)).toEqual(['session_start', 'door_opened', 'door_opened'])
     expect((await log.read('p'))[1]).toMatchObject({ profileId: 'p', door: 'songs', at: expect.any(String) })
   })
+
+  it('goes on after a write that fails: the next event is kept, and reading and settling still work', async () => {
+    const store = memoryStore()
+    let failNext = true
+    const flaky = { ...store, set: async (k: string, v: unknown) => { if (failNext) { failNext = false; throw new Error('QuotaExceededError') } return store.set(k, v) } }
+    const log = new EngagementLog(flaky)
+    await expect(log.add('p', { type: 'session_start' })).rejects.toThrow('QuotaExceededError')
+    await log.add('p', { type: 'door_opened', door: 'songs' })
+    await expect(log.settled()).resolves.toBeUndefined()
+    expect((await log.read('p')).map((r) => r.type)).toEqual(['door_opened'])
+  })
+})
+
+describe('backup: restore keeps the phone safe', () => {
+  const setup = async () => {
+    const store = memoryStore()
+    const nora = await new ProfileRepo(store).create('Nora', '🐺')
+    await new EngagementLog(store).add(nora.id, { type: 'profile_created' })
+    return { store, nora, before: JSON.stringify(await exportBackup(store, new Date(0))) }
+  }
+
+  it('refuses a backup whose player list is damaged, and changes nothing', async () => {
+    const { store, before } = await setup()
+    const bad = JSON.stringify({ keypathBackup: 1, exportedAt: '', data: { [K.profiles]: { id: 'x' } } })
+    await expect(restoreBackup(store, bad)).rejects.toMatchObject({ reason: 'damaged' })
+    expect(JSON.stringify(await exportBackup(store, new Date(0)))).toBe(before)
+  })
+
+  it('puts back what was there when the phone refuses a write part way, rather than leaving it empty', async () => {
+    const { store, nora, before } = await setup()
+    const other = memoryStore()
+    const vio = await new ProfileRepo(other).create('Vio', '🦊')
+    await new EngagementLog(other).add(vio.id, { type: 'profile_created' })
+    const backup = JSON.stringify(await exportBackup(other))
+    let writes = 0
+    const flaky = { ...store, set: async (k: string, v: unknown) => { if (++writes === 2) throw new Error('QuotaExceededError'); return store.set(k, v) } }
+    await expect(restoreBackup(flaky, backup)).rejects.toMatchObject({ reason: 'write-failed' })
+    expect(JSON.stringify(await exportBackup(store, new Date(0)))).toBe(before)
+    expect((await new ProfileRepo(store).list()).map((p) => p.id)).toEqual([nora.id])
+  })
+
+  it('still replaces: what the backup doesn’t hold is gone after a restore that works', async () => {
+    const { store, nora } = await setup()
+    const backup = JSON.stringify({ keypathBackup: 1, exportedAt: '', data: { [K.profiles]: [] } })
+    expect(await restoreBackup(store, backup)).toBe(1)
+    expect(await store.get(K.log(nora.id))).toBeUndefined()
+    expect(await new ProfileRepo(store).list()).toEqual([])
+  })
 })
 
 describe('backup', () => {

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../../ds'
-import { MIN_VELOCITY, octaveShift, type NoteResult } from '../../engine'
+import { MIN_VELOCITY, notMiddleC, octaveShift, type NoteResult } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
+import { HeldKeys } from '../connect/heldKeys'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { celebrate } from '../celebrate/celebrate'
@@ -67,6 +68,9 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
 
   const exercise = useRef<Exercise | null>(null)
   const shift = useRef(0)
+  const heldKeys = useRef(new HeldKeys())
+  /** The keyboard's last key at the middle-C check that wasn't a C: the same one twice is a Transpose. */
+  const lastMiss = useRef<number | null>(null)
   const phaseRef = useRef<Phase>(phase)
   phaseRef.current = phase
   const startedAt = useRef(0)
@@ -134,7 +138,12 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
       setHeld((h) => new Set(h).add(drawn))
       if (phaseRef.current === 'gate') {
         const found = fromScreen ? (drawn === MIDDLE_C ? 0 : null) : octaveShift(drawn, MIDDLE_C)
-        if (found === null) return setNote(t('notAC', { note: label(drawn) }))
+        if (found === null) {
+          const transposed = !fromScreen && notMiddleC(drawn, lastMiss.current) === 'transposed'
+          lastMiss.current = fromScreen ? null : drawn
+          return setNote(t(transposed ? 'notACTransposed' : 'notAC', { note: label(drawn) }))
+        }
+        lastMiss.current = null
         shift.current = found
         setHeld(new Set())
         exercise.current = null
@@ -160,14 +169,20 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
   const onMidi = useCallback(
     (e: MidiEvent) => {
       if ((e.type !== 'noteon' && e.type !== 'noteoff') || !isPlayerChannel(e.channel)) return
-      if (e.type === 'noteoff') return release(e.note + shift.current)
+      if (e.type === 'noteoff') return release(heldKeys.current.up(e.note, e.note + shift.current))
       if (e.velocity < MIN_VELOCITY) return
       // Before the gate the shift is unknown; the gate itself works it out from this key.
-      press(phaseRef.current === 'gate' ? e.note : e.note + shift.current, e.time, false)
+      press(heldKeys.current.down(e.note, phaseRef.current === 'gate' ? e.note : e.note + shift.current), e.time, false)
     },
     [press, release],
   )
   const keyboard = useKeyboard(onMidi)
+  // Unplugged, the keyboard's Note Offs never come: let go of every key it was holding.
+  useEffect(() => {
+    if (keyboard.connected) return
+    setHeld(new Set())
+    heldKeys.current.clear()
+  }, [keyboard.connected])
 
   // Leaving mid-exercise is logged, so the map shows where attention ran out.
   const modeRef = useRef(mode)

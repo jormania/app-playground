@@ -146,6 +146,11 @@ export function ChordCatchScreen() {
     [press, release],
   )
   const kb = useKeyboard(onMidi)
+  // Unplugged, the keyboard's Note Offs never come: let go of every key it was holding.
+  useEffect(() => {
+    if (kb.connected) return
+    setHeld(new Set())
+  }, [kb.connected])
 
   useEffect(
     () => () => {

@@ -295,6 +295,17 @@ describe('Play screen', () => {
     expect(await screen.findByText('Once more.', { selector: 'span' }, { timeout: 3000 })).toBeTruthy()
   })
 
+  it('tells her about Transpose when the marked key keeps arriving as another note', async () => {
+    await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    // Transpose +2: middle C arrives as D.
+    act(() => yamaha!(midi('noteon', 62)))
+    expect(await screen.findByText('That was D. Middle C is the marked key.')).toBeTruthy()
+    act(() => yamaha!(midi('noteoff', 62)))
+    act(() => yamaha!(midi('noteon', 62)))
+    expect(await screen.findByText(/That was D again\. If you pressed the marked key, the keyboard is transposed/)).toBeTruthy()
+  })
+
   it('reads the Yamaha’s octave from the middle-C check, and ignores the accompaniment', async () => {
     await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
     fireEvent.click(await screen.findByRole('button', { name: /Start/ }))

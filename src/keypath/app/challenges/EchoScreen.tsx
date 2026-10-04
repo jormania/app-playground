@@ -3,6 +3,7 @@ import { Button, SegmentedControl } from '../../../ds'
 import { MIN_VELOCITY } from '../../engine'
 import { isPlayerChannel } from '../../midi/channels'
 import type { MidiEvent } from '../../midi/types'
+import { phoneLatencyMs } from '../../probe/audioContext'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { celebrate } from '../celebrate/celebrate'
@@ -74,10 +75,19 @@ export function EchoScreen() {
   const bpm = ECHO_BPM[level]
   const b = beatMs(bpm)
 
+  /**
+   * Through the phone, she hears the turn a little after it is played (the
+   * phone's audio delay) and plays along with what she hears: her bar is
+   * judged from when it sounds, so her taps aren't all marked late. Through
+   * the keyboard the sound is immediate.
+   */
+  const route = output.route
+  const heardLate = useCallback(() => (route === 'phone' ? phoneLatencyMs() : 0), [route])
+
   /** Her taps count only once her bar is near: anything earlier is the rhythm itself, or an echo of it. */
   function tap(at: number) {
     const tn = turn.current
-    if (!tn || at < tn.downbeat - ECHO_WINDOW_MS[settings.timing] || at > tn.end) return
+    if (!tn || at < tn.downbeat + heardLate() - ECHO_WINDOW_MS[settings.timing] || at > tn.end + heardLate()) return
     tapTimes.current.push(at)
     setTaps([...tapTimes.current])
   }
@@ -116,7 +126,8 @@ export function EchoScreen() {
       const tn = turn.current
       if (!tn) return
       const now = performance.now()
-      const beat = (now - tn.start) / b
+      const late = heardLate()
+      const beat = (now - tn.start - late) / b
       const next: Cue = beat < 8 ? { kind: 'listen' } : beat < 12 ? { kind: 'countIn', count: 4 - Math.floor(beat - 8) } : { kind: 'go' }
       const key = JSON.stringify(next)
       if (key !== last) {
@@ -132,8 +143,8 @@ export function EchoScreen() {
       }
       place(headKeyPath.current, 4)
       place(headYou.current, 12)
-      if (now >= tn.end) {
-        const r = judgeEcho(pattern, bpm, tn.downbeat, tapTimes.current, settings.timing)
+      if (now >= tn.end + late) {
+        const r = judgeEcho(pattern, bpm, tn.downbeat + late, tapTimes.current, settings.timing)
         turn.current = null
         if (r.passed) celebrate('echoPassed')
         morph(() => {
@@ -151,7 +162,7 @@ export function EchoScreen() {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [phase, b, pattern, bpm, index, settings.timing])
+  }, [phase, b, pattern, bpm, index, settings.timing, heardLate])
 
   const startRound = () => {
     setIndex(0)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Judge, DEFAULT_SETTINGS } from '../../engine'
 import { starterSong, STARTER_PACK } from '../../engine/starterPack'
-import { afterPass, barSong, isClean, startLoop, tempoOf } from './loop'
+import { afterPass, barSong, isClean, startLoop, tempoOf, nearestPlayable, playableBars } from './loop'
 
 const ode = starterSong(STARTER_PACK.find((s) => s.id === 'starter:ode')!)
 
@@ -55,5 +55,23 @@ describe('practising one bar', () => {
     }
     expect(isClean(play(false))).toBe(true)
     expect(isClean(play(true))).toBe(false)
+  })
+})
+
+describe('the bars there is something to practise in', () => {
+  it('offers only bars a note starts in, for the hands played, and never the pickup alone', () => {
+    // Bars 0 (a pickup), 1, 3: bar 2 is a rest (or a note tied over).
+    const notes = [{ bar: 0 }, { bar: 1 }, { bar: 1 }, { bar: 3 }]
+    expect(playableBars(notes, true)).toEqual([1, 3])
+    expect(playableBars(notes)).toEqual([0, 1, 3])
+    // A song that is all pickup still has its one bar.
+    expect(playableBars([{ bar: 0 }], true)).toEqual([0])
+  })
+
+  it('moves a bar asked for that has nothing in it to the next one that has', () => {
+    expect(nearestPlayable([1, 3], 2)).toBe(3)
+    expect(nearestPlayable([1, 3], 9)).toBe(3)
+    expect(nearestPlayable([1, 3], 0)).toBe(1)
+    expect(nearestPlayable([], 0)).toBeNull()
   })
 })

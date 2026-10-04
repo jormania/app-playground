@@ -70,15 +70,19 @@ export class EngagementLog {
   constructor(private readonly store: KeyValueStore) {}
 
   add(profileId: string, event: LogEvent, now = new Date()): Promise<void> {
-    this.queue = this.queue.then(async () => {
+    const write = this.queue.then(async () => {
       const records = (await this.store.get<LogRecord[]>(K.log(profileId))) ?? []
       records.push({ ...event, at: now.toISOString(), profileId })
       await this.store.set(K.log(profileId), records)
     })
-    return this.queue
+    // One write that fails (the phone's storage full, say) is that write's: the caller hears
+    // of it, and the queue goes on. Chained on a rejection, every later append would be
+    // skipped and every read refused, Today, Progress and deleting a player with them.
+    this.queue = write.catch(() => {})
+    return write
   }
 
-  /** Resolves once every append so far has been written. */
+  /** Resolves once every append so far has been tried. Never rejects. */
   settled(): Promise<void> {
     return this.queue
   }
