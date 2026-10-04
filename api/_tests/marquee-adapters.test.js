@@ -22,7 +22,7 @@ import { ADAPTERS } from '../_lib/marquee/registry.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
 import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
 import { inferYear, slug, eventKey, parseTime, parseIsoDateTime, decodeEntities, dedupe, makeEvent, proseParagraphs } from '../_lib/marquee/shared.js'
-import { assess, scanVenue, horizonFor, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
+import { assess, scanVenue, horizonFor, failureReason, looksLikeWaitingRoom, isWaitingRoomUrl, probeWaitingRoom, HORIZON_DAYS, MOVIE_HORIZON_DAYS, STATUS } from '../_lib/marquee/scan.js'
 import { summarize } from '../_lib/marquee/diff.js'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../_lib/marquee/__fixtures__')
@@ -1321,6 +1321,96 @@ describe('a request that never answers', () => {
   })
 })
 
+describe('failureReason — Node hides the reason one level down', () => {
+  it('pairs the generic message with the cause that actually says something', () => {
+    // Every transport failure arrives as `TypeError: fetch failed`. Reporting
+    // only that is what made Excelsior's waiting room (§9.93) indistinguishable
+    // from a dead host for a day.
+    const err = new TypeError('fetch failed', { cause: new Error('redirect count exceeded') })
+    expect(failureReason(err)).toBe('fetch failed (redirect count exceeded)')
+  })
+
+  it('does not say the same thing twice', () => {
+    expect(failureReason(new Error('socket hang up', { cause: new Error('socket hang up') })))
+      .toBe('socket hang up')
+  })
+
+  it('falls back when there is nothing to read', () => {
+    expect(failureReason(new TypeError('fetch failed'))).toBe('fetch failed')
+    expect(failureReason({ cause: { message: 'ENOTFOUND' } })).toBe('ENOTFOUND')
+    expect(failureReason(undefined)).toBe('fetch failed')
+  })
+})
+
+describe('isWaitingRoomUrl', () => {
+  it('knows a waiting room by its host, tenant subdomain and all', () => {
+    expect(isWaitingRoomUrl('https://royaltickets.queue-it.net/?c=royaltickets&e=prod000')).toBe(true)
+    expect(isWaitingRoomUrl('https://queue-it.net/')).toBe(true)
+  })
+
+  it('does not match a host that merely contains the name', () => {
+    // The trap a substring test would fall into: a venue could perfectly well
+    // own queue-it.net.teatrul-excelsior.ro, and a lookalike domain registered
+    // by anyone else must not be able to mark a venue as queued.
+    expect(isWaitingRoomUrl('https://queue-it.net.example.com/')).toBe(false)
+    expect(isWaitingRoomUrl('https://notqueue-it.net/')).toBe(false)
+    expect(isWaitingRoomUrl('https://teatrul-excelsior.ro/program/')).toBe(false)
+    expect(isWaitingRoomUrl('not a url')).toBe(false)
+    expect(isWaitingRoomUrl(undefined)).toBe(false)
+  })
+})
+
+describe('probeWaitingRoom — one hop instead of twenty', () => {
+  const redirectTo = (location) => async (url, init) => {
+    // The point of the probe: it must not follow, or it is the loop again.
+    expect(init.redirect).toBe('manual')
+    return { status: 302, headers: { get: (h) => (h === 'location' ? location : null) } }
+  }
+
+  it('names the queue it found, so the Venues tab can say which', async () => {
+    const to = 'https://royaltickets.queue-it.net/?c=royaltickets&t=https%3A%2F%2Fteatrul-excelsior.ro%2F'
+    expect(await probeWaitingRoom('https://teatrul-excelsior.ro/program/', redirectTo(to)))
+      .toBe('royaltickets.queue-it.net')
+  })
+
+  it('resolves a relative location before judging it', async () => {
+    expect(await probeWaitingRoom('https://teatrul-excelsior.ro/program/', redirectTo('/queue/'))).toBe(null)
+  })
+
+  it('an ordinary redirect is not a queue', async () => {
+    expect(await probeWaitingRoom('https://x.ro/a', redirectTo('https://x.ro/a/'))).toBe(null)
+  })
+
+  it('a page that answers without redirecting is not a queue', async () => {
+    const plain = async () => ({ status: 200, headers: { get: () => null } })
+    expect(await probeWaitingRoom('https://x.ro/a', plain)).toBe(null)
+  })
+
+  it('swallows its own failure \u2014 it only ever upgrades a failure we already have', async () => {
+    const dead = async () => { throw new Error('ECONNRESET') }
+    expect(await probeWaitingRoom('https://x.ro/a', dead)).toBe(null)
+  })
+})
+
+describe('looksLikeWaitingRoom', () => {
+  it('trusts the probe when it answered', () => {
+    expect(looksLikeWaitingRoom({ status: 0, error: 'no answer within 3s', waitingRoom: 'royaltickets.queue-it.net' })).toBe(true)
+  })
+
+  it('still reads a redirect loop off the error alone', () => {
+    // The fallback for every path that has no probe to hand.
+    expect(looksLikeWaitingRoom({ status: 0, error: 'fetch failed (redirect count exceeded)' })).toBe(true)
+  })
+
+  it('is not fooled by a page that answered', () => {
+    // Only a thrown fetch carries status 0. A 302 that resolved is a redirect
+    // the runtime followed to somewhere, which is not a loop.
+    expect(looksLikeWaitingRoom({ status: 302, error: 'redirect count exceeded' })).toBe(false)
+    expect(looksLikeWaitingRoom({ status: 0, error: 'no answer within 8s' })).toBe(false)
+    expect(looksLikeWaitingRoom(undefined)).toBe(false)
+  })
+})
+
 describe('horizonFor', () => {
   it('gives a cinema a short horizon and everything else the long one', () => {
     // Cinemas list weeks of showings nobody plans a trip around this far out —
@@ -1352,6 +1442,59 @@ describe('scanVenue', () => {
     expect(r.status).toBe(STATUS.EMPTY)
     expect(r.detail).toMatch(/nothing upcoming/i)
     expect(r.events).toEqual([])
+  })
+
+  it('a ticket queue in front of the site is being held at the door, not a breakage', async () => {
+    // What Excelsior actually did on 2026-10-03 (§9.93): Queue-it on every page,
+    // 302 to royaltickets.queue-it.net, back to the site, round again — twenty
+    // times, until undici gave up. Reported as a breakage this would send
+    // someone to rewrite a reader that is perfectly fine, and would drop the
+    // venue's whole programme as vanished.
+    const loop = async () => {
+      throw new TypeError('fetch failed', { cause: new Error('redirect count exceeded') })
+    }
+    const r = await scanVenue(venue, { now: AUG, fetchImpl: loop })
+    expect(r.status).toBe(STATUS.THROTTLED)
+    expect(r.status).not.toBe(STATUS.PARSER_BROKEN)
+    expect(r.detail).toMatch(/redirect loop/i)
+    expect(r.detail).toMatch(/not a markup change/i)
+    expect(r.events).toEqual([])
+  })
+
+  it('a queue that outlasts the timeout is still a queue, not a dead host', async () => {
+    // The race the probe exists to stop losing. serverScan narrows the
+    // per-request timeout to whatever is left of the cron's budget (§9.89), so
+    // late in a run the abort fires before the twentieth redirect and the error
+    // says "no answer within 3s". Without the probe that is UNREACHABLE, the
+    // venue reads as down, and its whole programme drops out as vanished.
+    let call = 0
+    const queuedThenSlow = async (url, init) => {
+      call += 1
+      if (init?.redirect === 'manual') {
+        return {
+          status: 302,
+          headers: { get: (h) => (h === 'location' ? 'https://royaltickets.queue-it.net/?c=royaltickets' : null) },
+        }
+      }
+      const err = new Error('aborted')
+      err.name = 'AbortError'
+      throw err
+    }
+    const r = await scanVenue(venue, { now: AUG, fetchImpl: queuedThenSlow })
+    expect(call).toBe(2)
+    expect(r.status).toBe(STATUS.THROTTLED)
+    expect(r.detail).toMatch(/ticket queue/i)
+    expect(r.detail).toMatch(/royaltickets\.queue-it\.net/)
+    expect(r.events).toEqual([])
+  })
+
+  it('an ordinary dead host still reads as unreachable, and now says why', async () => {
+    const dead = async () => {
+      throw new TypeError('fetch failed', { cause: new Error('getaddrinfo ENOTFOUND teatrul-excelsior.ro') })
+    }
+    const r = await scanVenue(venue, { now: AUG, fetchImpl: dead })
+    expect(r.status).toBe(STATUS.UNREACHABLE)
+    expect(r.detail).toMatch(/ENOTFOUND/)
   })
 
   describe('the enrichment hop (§9.68)', () => {

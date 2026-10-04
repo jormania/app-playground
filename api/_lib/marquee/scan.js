@@ -72,6 +72,106 @@ export function horizonFor(venue) {
  */
 const BOT_CHECK = /One moment, please|Checking your browser|Just a moment\b|Enable JavaScript and cookies to continue|DDoS-?Guard|cf-browser-verification/i
 
+/**
+ * What a thrown fetch actually said.
+ *
+ * Node's fetch reports every transport failure as `TypeError: fetch failed` and
+ * puts the real reason one level down, in `cause`. Reading only `err.message`
+ * meant DNS gone, connection reset, certificate expired and redirect loop all
+ * read identically in the Venues tab — "Could not reach the page: fetch
+ * failed." — which names no fault and suggests no next step. Teatrul
+ * Excelsior spent a day saying exactly that (§9.93) while the site was
+ * perfectly up.
+ *
+ * The outer message is kept rather than replaced: `cause` alone can be as bare
+ * as `ECONNRESET`, and "fetch failed (ECONNRESET)" is the pair that reads.
+ */
+export function failureReason(err) {
+  const own = err?.message
+  const cause = err?.cause?.message
+  if (!own) return cause || 'fetch failed'
+  if (!cause || cause === own) return own
+  return `${own} (${cause})`
+}
+
+/** A site that bounced us in a circle rather than answering.
+ *
+ *  Excelsior put Queue-it — a ticket-rush waiting room — on every page of
+ *  teatrul-excelsior.ro for the FNT on-sale (§9.93). It 302s to
+ *  `royaltickets.queue-it.net`, sets its pass, and sends the visitor back; with
+ *  no cookie jar the site never sees the pass and sends us round again, until
+ *  undici gives up with `redirect count exceeded`. */
+const REDIRECT_LOOP = /redirect count exceeded|too many redirects/i
+
+/** Waiting rooms, by the host they park you at.
+ *
+ *  Matched on the registrable name so a tenant subdomain
+ *  (`royaltickets.queue-it.net`) and a region (`queue-it.net` vs a future
+ *  `.com`) both land. Queue-it is the one actually seen here; the others are
+ *  the same product from the same shelf, and a venue's ticketing provider is
+ *  exactly the sort of thing that gets swapped between seasons. */
+const WAITING_ROOM_HOSTS = /(^|\.)(queue-it\.net|queue-fair\.net|nkchk\.com)$/i
+
+/** Is this URL a waiting room's front door? */
+export function isWaitingRoomUrl(url) {
+  try {
+    return WAITING_ROOM_HOSTS.test(new URL(String(url)).hostname)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * One cheap question, asked only when a request already failed: *where* were we
+ * being sent?
+ *
+ * Reading the loop off `redirect count exceeded` alone is a race, and the
+ * scheduled check is where it would be lost. Exhausting twenty redirects took
+ * 5–6.5s against a 15s budget when this was written, but `serverScan` narrows
+ * the per-request timeout to whatever is left of the cron's own time (§9.89), so
+ * late in a run the abort fires first and the venue reads `no answer within 3s`
+ * — indistinguishable from a dead host. A queue that slows down under the load
+ * it exists to manage does the same thing.
+ *
+ * So on either failure, ask once with `redirect: 'manual'` and read the
+ * `location` header. One hop, no loop, and the answer is positive evidence —
+ * "this site is sending us to queue-it.net" — rather than an inference from
+ * having given up. Its own failure is not interesting: we already have a
+ * failure, and this only ever upgrades the description of one.
+ *
+ * Kept on a short leash, and never a longer one than the request it is
+ * explaining. A waiting room's 302 is a header and no body — it comes back in
+ * a few hundred milliseconds or it is not what is happening — while the budget
+ * this is spending belongs to every venue after this one in the loop, and on
+ * the scheduled path to Wanderlist's evening email (§9.89).
+ */
+export const PROBE_TIMEOUT_MS = 2000
+
+export async function probeWaitingRoom(url, fetchImpl, timeoutMs = PROBE_TIMEOUT_MS) {
+  const controller = typeof AbortController === 'function' ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
+  try {
+    const res = await fetchImpl(url, {
+      headers: { 'user-agent': USER_AGENT, accept: 'text/html,*/*' },
+      redirect: 'manual',
+      ...(controller ? { signal: controller.signal } : {}),
+    })
+    const location = res?.headers?.get?.('location')
+    if (!location) return null
+    const to = new URL(location, url)
+    return isWaitingRoomUrl(to.href) ? to.hostname : null
+  } catch {
+    return null
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+export function looksLikeWaitingRoom(page) {
+  if (page?.waitingRoom) return true
+  return page?.status === 0 && REDIRECT_LOOP.test(page?.error ?? '')
+}
+
 export function looksLikeBotCheck(pages) {
   return (pages ?? []).some((p) => typeof p.body === 'string' && BOT_CHECK.test(p.body))
 }
@@ -213,12 +313,21 @@ async function fetchOne(request, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
     }
   } catch (err) {
     const timedOut = err?.name === 'AbortError' || err?.name === 'TimeoutError'
+    const error = timedOut ? `no answer within ${Math.round(timeoutMs / 1000)}s` : failureReason(err)
+    // The two failures a waiting room can produce, and the only two worth one
+    // more request to tell apart from a dead site. An `optional` page is never
+    // probed: it cannot change the venue's status, so the answer would be spent
+    // on nothing.
+    const mightBeQueued = !request.optional && (timedOut || REDIRECT_LOOP.test(error))
     return {
       url: request.url,
       tag: request.tag ?? null,
       ok: false,
       status: 0,
-      error: timedOut ? `no answer within ${Math.round(timeoutMs / 1000)}s` : (err?.message || 'fetch failed'),
+      error,
+      waitingRoom: mightBeQueued
+        ? await probeWaitingRoom(request.url, fetchImpl, Math.min(PROBE_TIMEOUT_MS, timeoutMs))
+        : null,
       optional: request.optional === true,
     }
   } finally {
@@ -269,7 +378,13 @@ export async function scanVenue(venue, {
   // a 403 seconds after answering happily; calling that "parser broken" would
   // send someone hunting a markup change that never happened. It is also the one
   // failure never worth parsing through: a rate-limit page is not a programme.
-  const throttled = failed ? (adapter.throttleStatuses ?? [429]).includes(failed.status) : false
+  const rateLimited = failed ? (adapter.throttleStatuses ?? [429]).includes(failed.status) : false
+  // A waiting room is the same kind of answer as a rate limiter — we are being
+  // held at the door, the venue is fine — so it reports as one, which also means
+  // the venue's known events are carried forward instead of reading as a whole
+  // programme that vanished overnight (changes.js, notify.js).
+  const waitingRoom = failed ? looksLikeWaitingRoom(failed) : false
+  const throttled = rateLimited || waitingRoom
   // Everything else that came back with a body still gets read, and stands or
   // falls on the health gate (§9.61 — see fetchOne). A status line is a claim
   // about the request; the gate is a measurement of what arrived.
@@ -283,7 +398,11 @@ export async function scanVenue(venue, {
     return {
       ...base,
       status: throttled ? STATUS.THROTTLED : STATUS.UNREACHABLE,
-      detail: throttled
+      detail: waitingRoom
+        ? (failed.waitingRoom
+          ? `The venue’s site is behind a ticket queue (${failed.waitingRoom}) — nothing is broken, and it lifts when the on-sale rush does.`
+          : 'The site sent us round a redirect loop instead of the page — usually a ticket queue or cookie wall in front of it, not a markup change.')
+        : rateLimited
         ? `The venue’s server is rate-limiting us (${failed.status}). Try again in a few minutes.`
         : failed.status
           ? `The page answered ${failed.status}.`
