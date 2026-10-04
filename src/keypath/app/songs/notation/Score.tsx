@@ -244,6 +244,9 @@ interface Measure {
   lead: number
 }
 
+/** Each song's bars' natural widths (VexFlow units), by bar and whether it starts a line. */
+const naturalWidths = new WeakMap<NotationBar[], Map<string, number>>()
+
 /** The metre the music is written in: its commonest bar, so a pickup (a short first bar) doesn't set it. */
 export function metreOf(bars: readonly Pick<NotationBar, 'quarters'>[]): number {
   const count = new Map<number, number>()
@@ -309,7 +312,9 @@ function draw(
     const width = short ? Math.max(36, notes * 1.05 + 14) : Math.max(70, notes * 1.25 + 28)
     return { bar: nb, staves, lead, minWidth: width + lead }
   }
-  const natural = new Map<string, number>()
+  // A bar's natural width is its own, whatever the screen: worked out once per song, not on every page turn.
+  const natural = naturalWidths.get(model) ?? new Map<string, number>()
+  naturalWidths.set(model, natural)
   const widthOf = (b: number, first: boolean) => {
     const key = `${b}:${first}`
     if (!natural.has(key)) natural.set(key, measureOf(b, first).minWidth)

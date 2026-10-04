@@ -695,7 +695,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
           const next = barAtTime(s)
           return next === b ? b : next
         })
-        setCountIn(s < 0 ? Math.ceil(-s / countBeatMs(song)) : null)
+        setCountIn(s < 0 ? Math.ceil(-s / countBeatMs({ bpm: song.bpm })) : null)
         next = notes.filter((n) => n.startMs >= s - 150 && n.startMs <= s + 450 && !results.has(n.id))
       } else {
         const step = j.currentStep

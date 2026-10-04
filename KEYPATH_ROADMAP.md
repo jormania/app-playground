@@ -77,7 +77,7 @@ following lights, which is where KeyPath was weakest.
 | 25 | ✅ *Done, release 4.* **Read and play**, a fifth game: short tunes made up on the spot, read from the staff with the keys dark, three levels from the Journey's notes. | Sight-reading needs music she hasn't memorised; a generator gives endless new tunes. | M |
 | 26 | **Loop a stretch of bars**, not only one: a from–to in the bar picker, on the speed ladder. | Stumbles are at bar lines and hand shifts; worth it once she plays longer songs of her own. | S |
 | 27 | **Keys lit only when stuck, for falling notes too.** | Little on its own: a falling note already shows its key. Built into the written view, where it matters. | S |
-| 28 | **Pickups in the starter songs.** Happy Birthday, Für Elise, When the Saints and Brahms' Lullaby count bars from their first note, so their bar lines sit a beat or two off the printed music. Needs a pickup in the starter format, and phrase starts in beats (a phrase there begins with its own pickup). | The written view shows bar lines where no score has them; a reader learns the bar from them. | M |
+| 28 | ✅ *Done, release 5.* **Pickups in the starter songs.** Happy Birthday, Für Elise, When the Saints and Brahms' Lullaby count bars from their first note, so their bar lines sit a beat or two off the printed music. Needs a pickup in the starter format, and phrase starts in beats (a phrase there begins with its own pickup). | The written view shows bar lines where no score has them; a reader learns the bar from them. | M |
 
 Left out: hiding the screen's keyboard (on a phone it is the touch fallback and shows the hands'
 places), engraved sheet music (months of work, a heavy library, and MIDI files carry no notation

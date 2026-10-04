@@ -1003,7 +1003,7 @@ level equal to the rating isn't stored, so the rating follows later changes
 (a different fit, say); one that differs is kept as `Song.level`, and
 survives a refit. Built-in songs keep theirs.
 
-### Release 5: the play screen, engraved; a first look at each game
+### Release 5: the play screen, engraved; a first look at each game; pickups
 
 Two asks on the same day: a short "what is this" the first time a game or the Journey opens,
 for a player who won't read the guide; and the play screen drawn properly, the staff above
@@ -1058,9 +1058,56 @@ lines on what it is and how to play, the first time it is opened and each time a
 brings it back. It sits on the page itself, not inside the screen, and lays out beside its
 icon on a phone on its side.
 
+**Pickups (KEYPATH_ROADMAP.md, item 28).** The four starter songs that start on an upbeat
+(Happy Birthday, Für Elise, When the Saints, Brahms' Lullaby) say so: `pickup` in beats. The
+pickup is bar 0, numbered 0 as printed, bar 1 is the first whole bar, and the last bar holds
+what's left of the bar the pickup started. Each phrase may start with its own pickup at the end
+of the bar before (`phraseLeads`, beats; on the song, `phraseLeadMs`), and a part is cut there
+(`parts.ts`'s `phraseSong`): "Happy birthday to you" starts on its "Hap-py" and the part before
+ends without it. A single bar ("Practise bar N") is still just that bar. The setup names a part
+by its whole bars ("Bars 1–2"), the bar picker starts at 1, the header reads "Bar 1" during the
+pickup, and the report counts a slip in the pickup with bar 1 (`buildReport`'s `barOf`), so it
+never asks for two notes to be looped on their own. Barring them properly showed two rhythm
+slips in our arrangements, checked against published notation (abcnotation.com) and fixed:
+the Saints' last line put "saints" on beat 4 (the F before it is held six beats, not five, and
+"march-ing" is two even notes); Brahms' third line rushed "ge-weckt" (F G A even, then G on the
+bar) and its cadence had lost the F (now F E D, then C, fingered 4 3 2 1).
+
+**The score's layout, second pass** (after the pickups made the first bar short). The metre is
+the commonest bar, not the first; a short bar gets only the room its notes need; lines are
+broken by width, as an engraver breaks them (as many bars as fit, up to four, so a bar of
+sixteenths takes more room than one of half notes); one size for the whole song, chosen from
+the readable ones (a staff space of 7–12 px) to show the most music with size weighted first;
+as many lines as the height holds; every line but the last justified to the margins. Upright,
+a phone now gets four lines of two bars instead of one line of three in a white page. Read and
+play keeps its short tune whole on one page (`whole`). Bars' natural widths are worked out once
+per song, not on every page turn.
+
+**Names and fingers, bigger** (from the same screenshot). Names on the falling notes up to
+18 px and finger badges up to 26 px, the names on the keys up to 20 px, all extra-bold, a lone
+letter as large as its key allows and "Sol" no smaller than "Re" (`keyGeometry.ts`'s
+`nameLines`, by estimated width); "C / Do" (both names) is two lines. A note on a black key is
+a shade deeper and drawn over the white keys' notes beside it, its name on a tab of its colour
+that may run past its narrow sides; where one falls beside a white key's note at the same time
+(the E–D♯ trill in Für Elise), the white one's finger and name move clear of it. "Middle C"
+stays on the keyboard when middle C is the first or last key. (Shortening it to "Mid C" was
+considered and left: "middle C" is what the Journey and any teacher call it, and the clipping
+was a placement bug, not a length one.)
+
+**Audit.** Driven at four sizes (an S24 upright and on its side, a desktop, a tablet), every
+starter song in both views, every game and the Journey, in both themes, read screen by screen:
+- *A key stayed lit after a part was learnt*, as if she should still play it. Nothing is lit
+  once a part, a bar's loop or the song is over (`OVER`).
+- *Für Elise had half a second of lead-in* on the clock: its beat is a sixteenth, and the
+  lead-in was three beats. It counts in a beat that can be counted aloud (`countIn.ts`: two,
+  three, four or six beats together where one is quicker than 0.4 s), so Für Elise counts
+  three eighths, 1.5 s.
+- The written view upright left half the page empty; Read and play's tune spilled onto a second
+  page; a pickup alone on a line was pulled across it. All from the layout, fixed above.
+
 Left as they are: every black key is written as a sharp (as before); triplets and swing are
-written to the nearest sixteenth; the starter songs with a pickup are still barred from their
-first note (KEYPATH_ROADMAP.md, item 28), which the engraving now makes plainer.
+written to the nearest sixteenth; a song added from a MIDI file has no pickup to read, so it is
+barred from its first note as before (MusicXML and MuseScore files say theirs).
 
 ### Release 4: reading
 

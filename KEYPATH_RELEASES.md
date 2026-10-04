@@ -7,7 +7,7 @@ shared doc, linked from the top of Home.
 
 ## Release 5 — 2026-10-04
 
-The play screen, drawn properly. Details in `KEYPATH_TUTOR.md` §9, "Release 5".
+The play screen, drawn properly, and the songs barred as printed. Details in `KEYPATH_TUTOR.md` §9, "Release 5".
 
 - **An engraved score** (VexFlow): real clefs, beams, ties and rests, both hands on a grand
   staff, bar numbers matching "Practise bar", the bar being played tinted and the notes to play
@@ -18,6 +18,13 @@ The play screen, drawn properly. Details in `KEYPATH_TUTOR.md` §9, "Release 5".
 - **Bigger falling notes** on a phone held upright, each with its name as well as its finger.
 - **A first look** at the Journey and each game: three lines, "Don't show this again", and
   "How it works" to see it later.
+- **Pickups** (roadmap 28): Happy Birthday, Für Elise, When the Saints and Brahms' Lullaby are
+  barred as printed, each part starts with its own pickup, and two rhythm slips in our
+  arrangements are fixed.
+- **Bigger, bolder names and finger numbers**, on the notes and on the keys; black-key notes
+  drawn over their neighbours; Do-Re-Mi and "both" names that fit.
+- **After an audit the same day**: lines of music broken by width and justified, a page full
+  of music upright, no key left lit after a part, and a count-in Für Elise can follow.
 
 ## Release 4 — 2026-10-03
 
