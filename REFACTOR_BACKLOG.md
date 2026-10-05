@@ -684,7 +684,7 @@ JSON, stored `null` → fallback, `setItem` throwing, unserialisable value,
 `removeItem`/`getItem` throwing, binding undefined, binding null. Mutation-checked:
 swapping the `writeJson` catch for a `finally` turns two tests red.
 
-## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `open`
+## P-001c — Daily Stoic: three inline glyphs in an app that imports lucide in 23 files · `visual` · `done 2026-10-05`
 
 **Impact:** the smallest of the three, and the one most likely to come back
 "leave it". Part of P-001, Group 1.
@@ -695,6 +695,26 @@ assuming it is an icon at all.** `components/Ornament.tsx` stays hand-drawn.
 If the audit on contact says these are deliberate rather than pasted, mark the
 item `dropped` with the reason and move on; that is a correct outcome, not a
 failed run. Being `visual`: screenshots, and never auto-merged.
+
+**Done 2026-10-05.** Two of the three were pasted; one was not.
+
+- **The 64×64 is the app's mark** — the column temple beside the "Daily Stoic"
+  title, drawn at a 3.5 stroke on its own grid. Not an icon, no library has it;
+  it stays hand-drawn, alongside `Ornament.tsx`.
+- **The other two are Feather's `bar-chart-2`** (the Stats & Progress button in
+  the desktop bar, and the same entry in the phone's dashboards menu). lucide
+  0.460 ships it as `ChartNoAxesColumn` — the current name, the one WhereItWent's
+  `Navigation.jsx` already uses — and its three lines match the pasted markup to
+  the coordinate. Imported as `StatsIcon` beside the file's other aliased lucide
+  imports; the bar one takes `size={18}` plus the same `sm:` class as its sibling
+  tab icons, the menu one `size={14} strokeWidth={2.5}` to keep the stroke it had.
+
+So the change is invisible: before/after screenshots, both themes, 390px and
+desktop, came back **byte-identical PNGs**. Left alone on purpose: that menu
+entry's 2.5 stroke is heavier than the 2.0 on every other row of the same menu —
+an existing inconsistency, not one this item names.
+
+`App.tsx` now holds one `<svg>`, the mark. **That closes P-001's Group 1.**
 
 ## R-012 — Audit the stale `claude/*` branches · `refactor` · `done 2026-09-22`
 
@@ -2110,3 +2130,16 @@ only the ones who asked for it. Worth pairing with a test in
 reduced-motion block and assert every `@keyframes` name the file declares is
 switched off somewhere inside it, which would stop the next animation from
 arriving unguarded too.
+
+## P-004 — Daily Stoic's Stats row draws heavier than the menu around it · `visual` · `proposed`
+
+**Impact:** the phone's dashboards menu reads as one set — the bottom row stops
+looking bolder than the six above it.
+
+Noticed doing P-001c, 2026-10-05. In `src/daily-stoic/App.tsx`, the mobile
+dashboards menu renders six rows with `<Icon size={14} />` (lucide's default
+2.0 stroke) and a seventh, Stats & Progress, with
+`<StatsIcon size={14} strokeWidth={2.5} />` — a weight the pasted Feather markup
+carried and P-001c kept on purpose so that slice stayed pixel-identical. The fix
+is deleting `strokeWidth={2.5}`. Small, but it changes a pixel Gabriel sees, so
+it waits here. Screenshots: phone width, both themes, menu open.
