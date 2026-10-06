@@ -963,7 +963,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom and the Anthropic SDK done, four families to go
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK and `@types/node` done, three families to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -1053,8 +1053,21 @@ Two notes for whoever writes the next test against an SDK call:
   leak — walks with the calendar. That is exactly the shape R-013 and R-018
   swept for, and it would have been a fresh instance of it.
 
-Remaining, in the order I would take them: `@types/node` 22 → 26
-(typecheck-only blast radius), `eslint` 9 → 10 with `@eslint/js`,
+**`@types/node` done 2026-10-06 — 22.20.0 → 26.6.4** (range `^22.9.0` → `^26.6.4`).
+`npm run typecheck` clean across all eight paths with no source change, suite and
+eslint green. Blast radius was typecheck-only: it is a types package, nothing in
+`dist/` or any handler changes. It pulls `undici-types` 6.21 → 8.9 along with it
+(the `fetch`/`Response` globals' types), which is also why vite, vitest and
+happy-dom's own `@types/node` peers now resolve to 26. The release-notes ask could
+not be met the usual way: DefinitelyTyped packages ship no changelog, only the
+declarations, so what is verified is the typecheck, not a list of changes.
+
+**One honest caveat:** the runtime is Node 22 (both workflows say `'22'`), so these
+declarations now describe Node 26 APIs that a 22 runtime lacks. Typecheck cannot
+see that — a handler that reached for a Node 23+ API would compile and then fail
+in production. Nothing in the repo does today; worth knowing before one does.
+
+Remaining, in the order I would take them: `eslint` 9 → 10 with `@eslint/js`,
 `lucide-react` 0.460 → **1.47** (a 1.0 major across every icon — expect renames,
 and P-001's remaining slices depend on it), and the React 19 types last, as this
 item already says.
