@@ -963,7 +963,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK and `@types/node` done, three families to go
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node` and eslint done, lucide-react and React 19 to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -1067,8 +1067,17 @@ declarations now describe Node 26 APIs that a 22 runtime lacks. Typecheck cannot
 see that — a handler that reached for a Node 23+ API would compile and then fail
 in production. Nothing in the repo does today; worth knowing before one does.
 
-Remaining, in the order I would take them: `eslint` 9 → 10 with `@eslint/js`,
-`lucide-react` 0.460 → **1.47** (a 1.0 major across every icon — expect renames,
+**`eslint` + `@eslint/js` done 2026-10-07 — 9.39.4 → 10.12.0 / 10.0.1.** `eslint .`
+clean, suite, typecheck green. Only the config changed. ESLint 10's `recommended`
+adds two rules that flag **17 existing lines** (11 `no-useless-assignment`, 6
+`preserve-caught-error`, in Daily Stoic, Lexi5 dictionaries, Silva indexer, Sol
+Odyssey notion/settings, WhereItWent `aiParser.js`); both are set `'off'` in
+`eslint.config.js` with a comment, since fixing them edits runtime code (defensive
+defaults, thrown-error shapes) inside a behaviour-preserving bump. Release notes
+were not reachable from here; what is verified is the lint, suite and typecheck.
+Taking those two rules back on is R-036 below.
+
+Remaining, in the order I would take them: `lucide-react` 0.460 → **1.47** (a 1.0 major across every icon — expect renames,
 and P-001's remaining slices depend on it), and the React 19 types last, as this
 item already says.
 
@@ -2156,3 +2165,16 @@ dashboards menu renders six rows with `<Icon size={14} />` (lucide's default
 carried and P-001c kept on purpose so that slice stayed pixel-identical. The fix
 is deleting `strokeWidth={2.5}`. Small, but it changes a pixel Gabriel sees, so
 it waits here. Screenshots: phone width, both themes, menu open.
+
+## R-036 — Turn ESLint 10's two new recommended rules back on · `refactor` · `open`
+
+**Impact:** none visible. Lint catches two more classes of mistake again.
+
+Left off by R-008's eslint bump (`eslint.config.js`): `no-useless-assignment` (11
+hits) and `preserve-caught-error` (6). Locations: `src/daily-stoic/Journal.tsx`,
+`src/lexi5/lib/dictionaries.js:100`, `src/silva/lib/indexer.ts:76`,
+`src/sol-odyssey/lib/notion.ts:545`, `src/sol-odyssey/lib/settings.ts:104`,
+`src/where-it-went/lib/aiParser.js` and a few more — run `npx eslint .` with the
+two `'off'` lines removed for the full list. Do it one app per run; sol-odyssey has
+its own CLAUDE.md. Attaching a `cause` is behaviour-preserving for callers that read
+`.message`, but check each catch site first.
