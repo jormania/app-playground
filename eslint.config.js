@@ -35,6 +35,13 @@ export default tseslint.config(
       // Sol Odyssey is enforced by `npm run typecheck`, not here.
       '@typescript-eslint/no-explicit-any': 'off',
 
+      // ESLint 10 added two rules to `recommended` that flag 17 existing lines
+      // (R-008). Fixing them edits runtime code in a "bump" — the unused
+      // assignments are mostly defensive defaults, the missing `cause`s change
+      // the thrown errors — so they stay off until a refactor item takes them.
+      'no-useless-assignment': 'off',
+      'preserve-caught-error': 'off',
+
       // react-hooks v7 ships several new, opinionated rules that flag legitimate
       // patterns in the design-locked legacy apps (see LEGACY.md — bugfixes
       // only). Keep the high-value correctness rules on; quiet the stylistic
