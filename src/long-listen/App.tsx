@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { BookOpen, Settings2 } from 'lucide-react'
 import { ServicesProvider, useServices } from './app/services'
 import { href, useRoute, type Route } from './app/router'
@@ -26,6 +27,17 @@ function Shell() {
   const route = useRoute()
   const { week, settings } = useServices()
   const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name
+  const navRef = useRef<HTMLElement>(null)
+  // The nav slides rather than wraps; keep the current section's tab in view.
+  useEffect(() => {
+    // Only sideways: scrollIntoView would also move the page.
+    const nav = navRef.current
+    const tab = nav?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!nav || !tab) return
+    const left = tab.offsetLeft - nav.offsetLeft
+    if (left < nav.scrollLeft) nav.scrollLeft = left
+    else if (left + tab.offsetWidth > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = left + tab.offsetWidth - nav.clientWidth
+  }, [active])
   return (
     <div className={s.page}>
       <header className={s.masthead}>
@@ -39,7 +51,7 @@ function Shell() {
             <a className={`${s.iconLink} ${route.name === 'settings' ? s.iconOn : ''}`} href={href({ name: 'settings' })} aria-label="Settings" title="Settings"><Settings2 size={18} strokeWidth={1.6} /></a>
           </span>
         </div>
-        <nav className={s.nav} aria-label="Sections">
+        <nav ref={navRef} className={s.nav} aria-label="Sections">
           {NAV.map((n) => (
             <a key={n.label} href={href(n.route)} className={`${s.navLink} ${active === n.route.name ? s.navActive : ''}`} aria-current={active === n.route.name ? 'page' : undefined}>
               {n.label}

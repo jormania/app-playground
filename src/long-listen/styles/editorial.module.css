@@ -50,10 +50,39 @@
 
 .nav {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-md);
+  gap: var(--space-md);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
   padding: var(--space-xs) 0;
   border-bottom: 1px solid var(--color-border);
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* One row that slides, never wraps. When it doesn't fit (a larger One UI
+   font), the edge with more to see fades out, so a hidden Notebook is
+   hinted at. A scroll-driven timeline is inactive while nothing overflows,
+   so a nav that fits is never masked. */
+@supports (animation-timeline: scroll()) {
+  .nav {
+    animation: navEdge linear both;
+    animation-timeline: scroll(self inline);
+  }
+
+  @keyframes navEdge {
+    0%,
+    49% {
+      mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    }
+
+    50%,
+    100% {
+      mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+    }
+  }
 }
 
 .navLink {
