@@ -230,7 +230,7 @@ describe('GameEditorModal', () => {
         fireEvent.click(screen.getByText('FETCH HLTB'))
         await screen.findByDisplayValue('11.5')
 
-        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/clickdeck-hltb?term='))
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/steam-search?mode=hltb&term='))
 
         fireEvent.click(screen.getByText('SAVE_DATA'))
         expect(onSave.mock.calls[0][0].lengthHours).toBe(11.5)

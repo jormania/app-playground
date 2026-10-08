@@ -1652,7 +1652,7 @@ probably.
 Sequence it after R-016's lesson is settled, and do **one family per run** —
 same reason R-008 does.
 
-## R-028 — Nine of the twelve serverless functions have no test at all · `modernise` · `open`
+## R-028 — Eight of the twelve serverless functions have no test at all · `modernise` · `open`
 
 **Impact:** none visible. But every one of these is a path whose first failure
 signal today is a user seeing an error, or — for the two cron targets — nobody
@@ -1666,7 +1666,6 @@ Found while doing R-008's Anthropic bump, 2026-09-23. Measured by matching each
 | `marquee-scan.js` | yes |
 | `wanderlist-remind.js` | yes |
 | `generate-law-of-the-day.js` | yes — new, R-008 |
-| `clickdeck-hltb.js` | — |
 | `clickdeck-pricing.js` | — |
 | `clickdeck-studio-search.js` | — |
 | `law-of-the-day-content.js` | — |
@@ -1674,7 +1673,7 @@ Found while doing R-008's Anthropic bump, 2026-09-23. Measured by matching each
 | `notion-upload.js` | — |
 | `notion.js` | — |
 | `places.js` | — |
-| `steam-search.js` | — |
+| `steam-search.js` | `mode=hltb` only (folded in from `clickdeck-hltb.js`, 2026-10) |
 
 **`api/notion.js` is the one to take first.** It is the relay five apps reach
 through `src/shared/notionClient.ts`, so a single handler carries Loom, Journal,

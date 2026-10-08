@@ -12,7 +12,6 @@ import placesHandler from './api/places.js'
 import wanderlistRemindHandler from './api/wanderlist-remind.js'
 import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
-import clickDeckHltbHandler from './api/clickdeck-hltb.js'
 import notionPhotoProxyHandler from './api/notion-photo-proxy.js'
 import marqueeScanHandler from './api/marquee-scan.js'
 
@@ -414,7 +413,6 @@ export default defineConfig({
     devBodyRelay('/api/wanderlist-remind', wanderlistRemindHandler, 'dev-wanderlist-remind-relay'),
     devApiRelay('/api/steam-search', steamSearchHandler, 'dev-steam-search-relay'),
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
-    devApiRelay('/api/clickdeck-hltb', clickDeckHltbHandler, 'dev-clickdeck-hltb-relay'),
     devBodyRelay('/api/marquee-scan', marqueeScanHandler, 'dev-marquee-scan-relay'),
     devApiRelay('/api/notion-photo-proxy', notionPhotoProxyHandler, 'dev-notion-photo-proxy-relay'),
   ],

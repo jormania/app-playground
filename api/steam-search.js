@@ -1,11 +1,16 @@
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 import { fetchReviewSummary } from './_lib/clickdeckReviews.js'
+import { searchHltbItems } from './_lib/clickdeckHltb.js'
 
-// Three modes on one endpoint, kept together deliberately — Vercel's Hobby
+// Four modes on one endpoint, kept together deliberately — Vercel's Hobby
 // plan caps a deployment at 12 serverless functions, and this repo sits
-// right at that limit, so a fourth near-identical Steam-appdetails proxy
-// (api/clickdeck-appdetails.js, merged in here) wasn't worth its own
-// function slot. Distinguished by which query param is present:
+// right at that limit, so a near-identical Steam-appdetails proxy
+// (api/clickdeck-appdetails.js) was merged in here, and later Click Deck's
+// HowLongToBeat proxy (api/clickdeck-hltb.js) too, to give The Long Listen a
+// slot. Distinguished by which query param is present:
+//   ?mode=hltb&term=  HowLongToBeat search (Editor's FETCH HLTB) — see
+//               api/_lib/clickdeckHltb.js. vercel.json rewrites the old
+//               /api/clickdeck-hltb?term= URL onto this mode.
 //   ?term=      Steam storesearch by title (Editor's FETCH STEAM)
 //   ?appId=     single App ID -> cover URL + review summary (Editor's
 //               FETCH STEAM cover leg, and the standalone FETCH RATING
@@ -31,7 +36,20 @@ export default async function handler(req, res) {
     return
   }
 
-  const { term, appId, appids } = req.query || {}
+  const { term, appId, appids, mode } = req.query || {}
+
+  if (mode === 'hltb') {
+    if (!term || typeof term !== 'string') {
+      res.status(400).json({ message: 'Missing search term.' })
+      return
+    }
+    try {
+      res.status(200).json({ items: await searchHltbItems(term) })
+    } catch (err) {
+      res.status(502).json({ message: `Could not reach HowLongToBeat: ${err.message}` })
+    }
+    return
+  }
 
   try {
     if (appids && typeof appids === 'string') {

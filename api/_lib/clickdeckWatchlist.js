@@ -79,7 +79,7 @@ function buildInferredTags(data) {
 //     deliberately NEVER auto-derived here, at
 //     flip or otherwise — HowLongToBeat almost never has real submission
 //     data for a game on its actual release day, and its scrape is already
-//     the most fragile integration in the app (see clickdeck-hltb.js); it
+//     the most fragile integration in the app (see clickdeckHltb.js); it
 //     stays a manual/scripted backfill (Editor's FETCH HLTB, backfill-
 //     hltb.py) once real data has had time to accumulate. Price is likewise
 //     NOT derived here even though the appdetails call already has
