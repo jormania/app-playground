@@ -34,5 +34,5 @@
        so the JS modules alongside them are unaffected. */
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src/sol-odyssey", "src/daily-stoic", "src/ds", "src/shared", "src/fit-check", "src/lexi5/lib", "src/silva", "src/keypath"]
+  "include": ["src/sol-odyssey", "src/daily-stoic", "src/ds", "src/shared", "src/fit-check", "src/lexi5/lib", "src/silva", "src/keypath", "src/long-listen"]
 }

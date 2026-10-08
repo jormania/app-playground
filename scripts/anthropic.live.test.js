@@ -123,6 +123,27 @@ const CASES = {
       body: JSON.stringify(generationRequest('Write a short workplace scenario as JSON.', [{ role: 'user', content: 'Law 1: never outshine the master.' }])),
     })
   },
+  // One case per curator job: each has its own json_schema, and a schema the
+  // API's structured outputs reject is a 400 only the real API can show.
+  ...Object.fromEntries(['themes', 'programme', 'taste', 'continuity', 'explain', 'compare'].map((op) => [
+    `The Long Listen — ${op}`,
+    async (f) => {
+      const { curatorBody, CURATOR_BETAS } = await import('../api/_lib/longListen/curator.js')
+      await f(ENDPOINT, {
+        method: 'POST',
+        headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-beta': CURATOR_BETAS.join(',') },
+        body: JSON.stringify(curatorBody(op, 'Reply with the smallest valid JSON for the schema. Context: {}')),
+      })
+    },
+  ])),
+  'The Long Listen — resources (web search)': async (f) => {
+    const { resourcesBody, CURATOR_BETAS } = await import('../api/_lib/longListen/curator.js')
+    await f(ENDPOINT, {
+      method: 'POST',
+      headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-beta': CURATOR_BETAS.join(',') },
+      body: JSON.stringify(resourcesBody('Find one programme note for Debussy, La mer.')),
+    })
+  },
   'KeyPath — key test': async (f) => {
     const { testAiKey } = await import('../src/keypath/app/ai.ts')
     await testAiKey(KEY, f)
