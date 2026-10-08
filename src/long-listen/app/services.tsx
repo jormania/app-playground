@@ -2,11 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useToastStack, ToastStack } from '../../ds'
 import { Repo, indexedDbStore } from '../store/repo'
 import { Journey } from '../curation/journey'
-import { httpCurator, CuratorUnavailable, type CuratorClient, type StatusResponse } from '../curation/api'
+import { httpCurator, CuratorUnavailable, type CuratorClient, type PingResponse, type StatusResponse } from '../curation/api'
 import { SpotifyClient } from '../spotify/client'
 import { completeSignIn, isCallback, SpotifyAuthError } from '../spotify/auth'
 import { syncRecentPlays } from '../spotify/verify'
-import { syncToNotion } from '../notion/mirror'
+import { checkNotebook, relayCaller, serverCaller, syncToNotion, type NotebookCheck, type NotionCall } from '../notion/mirror'
+import { parseNotionId } from '../../shared/notionId'
 import { demoCurator } from '../dev/demoCurator'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import { applyTheme } from './theme'
@@ -25,6 +26,13 @@ export interface Services {
   bump: () => void
   status: StatusResponse | null
   refreshStatus: () => Promise<void>
+  /** Can the curator be asked anything right now? (Own key, unlocked server key, or demo.) */
+  curatorReady: boolean
+  /** Where the Notion notebook is written, if anywhere. */
+  notion: { call: NotionCall; pageId: string; via: 'own-token' | 'server' } | null
+  testCurator: () => Promise<PingResponse>
+  testNotion: () => Promise<NotebookCheck>
+  testSpotify: () => Promise<{ name: string; devices: { name: string; type: string; active: boolean }[] }>
   notionState: { syncing: boolean; error?: string; lastSync?: string }
   syncNotion: () => Promise<void>
   syncSpotify: () => Promise<number>
@@ -65,7 +73,7 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
 
   const repo = useMemo(() => injectedRepo ?? repoSingleton(), [injectedRepo])
   const curator = useMemo<CuratorClient>(
-    () => injectedCurator ?? (settings.demo ? demoCurator() : httpCurator(() => settingsRef.current.passphrase)),
+    () => injectedCurator ?? (settings.demo ? demoCurator() : httpCurator(() => ({ anthropicKey: settingsRef.current.anthropicKey, passphrase: settingsRef.current.passphrase }))),
     [injectedCurator, settings.demo],
   )
   const journey = useMemo(() => new Journey(repo, curator, { timeZone: settings.timeZone }), [repo, curator, settings.timeZone])
@@ -82,6 +90,7 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   }, [])
 
   useEffect(() => applyTheme(settings.theme), [settings.theme])
+  useEffect(() => { document.documentElement.dataset.textSize = settings.textSize }, [settings.textSize])
   useSystemThemeFollow(settings.theme === 'system', () => applyTheme('system'))
 
   const refreshStatus = useCallback(async () => {
@@ -92,17 +101,36 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
     }
   }, [curator])
 
+  // The listener's own token wins; the server's is the fallback.
+  const ownPage = parseNotionId(settings.notionPage)
+  const notion = useMemo<Services['notion']>(() => {
+    if (settings.notionToken.trim() && ownPage) return { call: relayCaller(settings.notionToken.trim()), pageId: ownPage, via: 'own-token' }
+    if (status?.notion && status.notionPageId) return { call: serverCaller(curator), pageId: status.notionPageId, via: 'server' }
+    return null
+  }, [settings.notionToken, ownPage, status, curator])
+
+  const curatorReady = settings.demo || Boolean(settings.anthropicKey.trim()) || Boolean(status?.curator)
+
+  const testCurator = useCallback(() => curator.call<PingResponse>('ping', {}), [curator])
+  const testNotion = useCallback(async (): Promise<NotebookCheck> => {
+    if (!notion) return { ok: false, message: 'Add your Notion token and the link to your notebook page first.', found: [], missing: [], tastePage: false, missingColumns: [] }
+    return checkNotebook(notion.call, notion.pageId)
+  }, [notion])
+  const testSpotify = useCallback(async () => {
+    const me = await spotify.me()
+    return { name: me.name, devices: await spotify.devices().catch(() => []) }
+  }, [spotify])
+
   const syncNotion = useCallback(async () => {
-    const pageId = status?.notionPageId
-    if (!status?.notion || !pageId) return
+    if (!notion) return
     setNotionState((s) => ({ ...s, syncing: true, error: undefined }))
     try {
-      await syncToNotion(curator, repo, pageId, journey.currentWeek().key)
+      await syncToNotion(notion.call, repo, notion.pageId, journey.currentWeek().key)
       setNotionState({ syncing: false, lastSync: new Date().toISOString() })
     } catch (e) {
       setNotionState({ syncing: false, error: e instanceof CuratorUnavailable ? e.message : 'Notion couldn’t be updated just now.' })
     }
-  }, [status, curator, repo, journey])
+  }, [notion, repo, journey])
 
   const syncSpotify = useCallback(
     () => syncRecentPlays(repo, spotify).then((n) => { if (n) bump(); return n }),
@@ -121,19 +149,20 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
     }
   }, [spotify, say, bump])
 
-  useEffect(() => { void refreshStatus() }, [refreshStatus, settings.passphrase])
+  useEffect(() => { void refreshStatus() }, [refreshStatus, settings.passphrase, settings.anthropicKey])
   useEffect(() => { syncSpotify().catch(() => {}) }, [syncSpotify])
 
   const notionOnce = useRef(false)
   useEffect(() => {
-    if (status?.notion && !notionOnce.current) {
+    if (notion && !notionOnce.current) {
       notionOnce.current = true
       void syncNotion()
     }
-  }, [status, syncNotion])
+  }, [notion, syncNotion])
 
   const value: Services = {
     repo, journey, curator, spotify, settings, updateSettings, version, bump, status, refreshStatus,
+    curatorReady, notion, testCurator, testNotion, testSpotify,
     notionState, syncNotion, syncSpotify, say, week: journey.currentWeek(),
   }
   return (

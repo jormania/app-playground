@@ -101,7 +101,9 @@ export function demoCurator(): CuratorClient {
       await delay(op === 'programme' ? 900 : 400)
       switch (op) {
         case 'status':
-          return { curator: true, notion: false, prompts: { demo: 'demo' } } as T
+          return { serverKey: false, unlocked: false, curator: true, notion: false, prompts: { demo: 'demo' } } as T
+        case 'ping':
+          return { ok: true, model: 'demo' } as T
         case 'themes': {
           const thread = payload?.context?.threads?.[0]
           const res: ThemesResponse = {

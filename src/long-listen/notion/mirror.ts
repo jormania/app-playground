@@ -4,6 +4,8 @@ import { latestFeedback, listeningState, reactionLabel } from '../domain/listeni
 import { weekFromKey } from '../domain/week'
 import type { Repo } from '../store/repo'
 import type { CuratorClient } from '../curation/api'
+import { notionProxy } from '../../shared/notionClient'
+import type { ListenerPreferences } from '../domain/types'
 import { observationsByStance } from '../curation/taste'
 
 /**
@@ -23,11 +25,7 @@ import { observationsByStance } from '../curation/taste'
  * Writes go through /api/long-listen's Notion route, which holds the token and
  * only allows these shapes under the one configured page.
  */
-type Call = { path: string; method: 'GET' | 'POST' | 'PATCH'; body?: unknown }
-
-async function notion<T = Record<string, unknown>>(curator: CuratorClient, call: Call): Promise<T> {
-  return curator.call<T>('notion', call)
-}
+export type Call = { path: string; method: 'GET' | 'POST' | 'PATCH'; body?: unknown }
 
 // ── Notion block helpers ──────────────────────────────────────────────────
 
@@ -62,58 +60,189 @@ export function hash(value: unknown): string {
   return (h >>> 0).toString(36)
 }
 
-// ── setup ─────────────────────────────────────────────────────────────────
+// ── who makes the calls ───────────────────────────────────────────────────
+
+/**
+ * One Notion API call. Two ways to make it: with the listener's own token
+ * through the shared /api/notion relay (the playground's usual way), or with
+ * the server's token through /api/long-listen's fenced `notion` op.
+ */
+export type NotionCall = <T = Record<string, unknown>>(call: Call) => Promise<T>
+
+export function relayCaller(token: string): NotionCall {
+  return async <T,>(c: Call) => (await notionProxy(token, c.path, c.method, c.body)) as T
+}
+
+export function serverCaller(curator: CuratorClient): NotionCall {
+  return <T,>(c: Call) => curator.call<T>('notion', c)
+}
+
+// ── the notebook's shape ──────────────────────────────────────────────────
 
 const STATE_LABEL: Record<string, string> = { 'not-started': 'Not started', listening: 'Listening', heard: 'Heard', skipped: 'Skipped' }
+const REACTION_NAMES = ['Loved it', 'Liked it', 'Interesting', 'Not for me', 'Too difficult']
+
+export type DbRole = 'journal' | 'threads' | 'recordings' | 'composers'
+
+/**
+ * Each database the notebook holds: the title it is found by (any title that
+ * ENDS with this — "Journal", "The Long Listen — Journal" — counts, so a
+ * duplicated Starter Template works as it is) and its columns.
+ */
+export const DATABASES: Record<DbRole, { title: string; properties: Record<string, unknown> }> = {
+  journal: {
+    title: 'Journal',
+    properties: {
+      Name: { title: {} },
+      Week: { rich_text: {} },
+      Theme: { rich_text: {} },
+      Visit: { number: {} },
+      Status: { select: { options: [{ name: 'This week' }, { name: 'Earlier' }, { name: 'Set aside' }] } },
+      Heard: { rich_text: {} },
+      Notes: { rich_text: {} },
+    },
+  },
+  threads: {
+    title: 'Listening threads',
+    properties: {
+      Name: { title: {} },
+      'First explored': { rich_text: {} },
+      Visits: { number: {} },
+      'How it landed': { rich_text: {} },
+      'Open questions': { rich_text: {} },
+      'Where next': { rich_text: {} },
+      Nearby: { rich_text: {} },
+    },
+  },
+  recordings: {
+    title: 'Works & recordings',
+    properties: {
+      Name: { title: {} },
+      Composer: { rich_text: {} },
+      Performers: { rich_text: {} },
+      Spotify: { url: {} },
+      Listening: { select: { options: Object.values(STATE_LABEL).map((name) => ({ name })) } },
+      Reaction: { select: { options: REACTION_NAMES.map((name) => ({ name })) } },
+      Notes: { rich_text: {} },
+      Programme: { rich_text: {} },
+    },
+  },
+  composers: {
+    title: 'Composers',
+    properties: {
+      Name: { title: {} },
+      Works: { rich_text: {} },
+      Recordings: { rich_text: {} },
+      'First met': { rich_text: {} },
+      'How it went': { rich_text: {} },
+    },
+  },
+}
+export const TASTE_PAGE_TITLE = 'Musical taste'
 
 function titleProp(text: string) { return { title: richText(text) } }
 function textProp(text: string) { return { rich_text: richText(text.slice(0, 1900)) } }
 function selectProp(name?: string) { return { select: name ? { name } : null } }
 
-export async function ensureSetup(curator: CuratorClient, repo: Repo, pageId: string): Promise<NotionDatabases> {
+const endsWith = (title: string, wanted: string) => title.trim().toLowerCase().endsWith(wanted.toLowerCase())
+
+export interface Discovered {
+  databases: Partial<Record<DbRole, string>>
+  tastePage?: string
+}
+
+/** Find the notebook's databases and taste page among the page's children, by title. */
+export async function discover(call: NotionCall, pageId: string): Promise<Discovered> {
+  const out: Discovered = { databases: {} }
+  let cursor: string | undefined
+  for (let page = 0; page < 5; page++) {
+    const res = await call<{ results?: Record<string, any>[]; has_more?: boolean; next_cursor?: string }>({
+      path: `blocks/${pageId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`,
+      method: 'GET',
+    })
+    for (const b of res.results ?? []) {
+      if (b.type === 'child_database') {
+        const title = String(b.child_database?.title ?? '')
+        for (const role of Object.keys(DATABASES) as DbRole[]) {
+          if (!out.databases[role] && endsWith(title, DATABASES[role].title)) out.databases[role] = b.id
+        }
+      } else if (b.type === 'child_page' && !out.tastePage && endsWith(String(b.child_page?.title ?? ''), TASTE_PAGE_TITLE)) {
+        out.tastePage = b.id
+      }
+    }
+    if (!res.has_more || !res.next_cursor) break
+    cursor = res.next_cursor
+  }
+  return out
+}
+
+export interface NotebookCheck {
+  ok: boolean
+  message: string
+  found: DbRole[]
+  missing: DbRole[]
+  tastePage: boolean
+  /** Columns a found database lacks: "Journal: Visit". */
+  missingColumns: string[]
+}
+
+const ROLE_LABEL: Record<DbRole, string> = { journal: 'Journal', threads: 'Listening threads', recordings: 'Works & recordings', composers: 'Composers' }
+
+/** Settings → "Test Notion": reads, never writes. */
+export async function checkNotebook(call: NotionCall, pageId: string): Promise<NotebookCheck> {
+  if (!pageId) return { ok: false, message: 'Add the link to your notebook page first.', found: [], missing: [], tastePage: false, missingColumns: [] }
+  try {
+    await call({ path: `pages/${pageId}`, method: 'GET' })
+  } catch (e) {
+    return { ok: false, message: `Notion couldn’t open that page: ${(e as Error).message}. Is it shared with your integration (••• → Connections)?`, found: [], missing: [], tastePage: false, missingColumns: [] }
+  }
+  const d = await discover(call, pageId)
+  const found = (Object.keys(DATABASES) as DbRole[]).filter((r) => d.databases[r])
+  const missing = (Object.keys(DATABASES) as DbRole[]).filter((r) => !d.databases[r])
+  const missingColumns: string[] = []
+  for (const role of found) {
+    try {
+      const db = await call<{ properties?: Record<string, unknown>; title?: unknown }>({ path: `databases/${d.databases[role]}`, method: 'GET' })
+      const have = new Set(Object.keys(db.properties ?? {}))
+      for (const name of Object.keys(DATABASES[role].properties)) {
+        if (name !== 'Name' && !have.has(name)) missingColumns.push(`${ROLE_LABEL[role]}: ${name}`)
+      }
+    } catch {
+      missingColumns.push(`${ROLE_LABEL[role]}: can’t be read`)
+    }
+  }
+  const ok = missingColumns.length === 0
+  const message = !ok
+    ? `Connected, but some columns are missing — ${missingColumns.join(', ')}.`
+    : missing.length === 0
+      ? 'Connected. Your notebook is ready.'
+      : `Connected. ${missing.map((m) => ROLE_LABEL[m]).join(', ')} ${missing.length === 1 ? 'isn’t' : 'aren’t'} there yet — the first update creates ${missing.length === 1 ? 'it' : 'them'}.`
+  return { ok, message, found, missing, tastePage: Boolean(d.tastePage), missingColumns }
+}
+
+/** The notebook's databases on this page — found, or created where missing. */
+export async function ensureSetup(call: NotionCall, repo: Repo, pageId: string): Promise<NotionDatabases & { composers: string }> {
   const mark = await repo.marks.get('notion:setup')
-  const existing = mark?.value as (NotionDatabases & { pageId: string }) | undefined
-  if (existing && existing.pageId === pageId) return existing
+  const cached = mark?.value as (NotionDatabases & { composers: string; pageId: string }) | undefined
+  if (cached && cached.pageId === pageId && cached.composers) return cached
 
   const parent = { type: 'page_id', page_id: pageId }
-  const db = async (title: string, properties: Record<string, unknown>) =>
-    (await notion<{ id: string }>(curator, { path: 'databases', method: 'POST', body: { parent, title: richText(title), properties } })).id
-
-  const journal = await db('The Long Listen — Journal', {
-    Name: { title: {} },
-    Week: { rich_text: {} },
-    Theme: { rich_text: {} },
-    Visit: { number: {} },
-    Status: { select: { options: [{ name: 'This week' }, { name: 'Earlier' }, { name: 'Set aside' }] } },
-    Heard: { rich_text: {} },
-    Notes: { rich_text: {} },
-  })
-  const threads = await db('The Long Listen — Listening threads', {
-    Name: { title: {} },
-    'First explored': { rich_text: {} },
-    Visits: { number: {} },
-    'How it landed': { rich_text: {} },
-    'Open questions': { rich_text: {} },
-    'Where next': { rich_text: {} },
-    Nearby: { rich_text: {} },
-  })
-  const recordings = await db('The Long Listen — Works & recordings', {
-    Name: { title: {} },
-    Composer: { rich_text: {} },
-    Performers: { rich_text: {} },
-    Spotify: { url: {} },
-    Listening: { select: { options: Object.values(STATE_LABEL).map((name) => ({ name })) } },
-    Reaction: { select: { options: ['Loved it', 'Liked it', 'Interesting', 'Not for me', 'Too difficult'].map((name) => ({ name })) } },
-    Notes: { rich_text: {} },
-    Programme: { rich_text: {} },
-  })
-  const tastePage = (await notion<{ id: string }>(curator, {
+  const d = await discover(call, pageId)
+  const ids = {} as Record<DbRole, string>
+  for (const role of Object.keys(DATABASES) as DbRole[]) {
+    ids[role] = d.databases[role] ?? (await call<{ id: string }>({
+      path: 'databases',
+      method: 'POST',
+      body: { parent, title: richText(DATABASES[role].title), properties: DATABASES[role].properties },
+    })).id
+  }
+  const tastePage = d.tastePage ?? (await call<{ id: string }>({
     path: 'pages',
     method: 'POST',
-    body: { parent, properties: { title: { title: richText('The Long Listen — Musical taste') } } },
+    body: { parent, properties: { title: { title: richText(TASTE_PAGE_TITLE) } } },
   })).id
 
-  const dbs = { journal, threads, recordings, tastePage, pageId }
+  const dbs = { ...ids, tastePage, pageId }
   await repo.marks.put({ id: 'notion:setup', at: new Date().toISOString(), value: dbs })
   return dbs
 }
@@ -144,7 +273,25 @@ export function programmeBlocks(p: Programme, resources: { kind: string; title: 
   return blocks
 }
 
-export function tasteBlocks(t: TasteProfile): unknown[] {
+const PREF_WORDS = {
+  timePerWeek: { short: 'about an hour of music a week', standard: 'two or three hours a week', generous: 'four hours or more a week' },
+  adventure: { gentle: 'mostly familiar ground, one step outward', balanced: 'a mix of the familiar and the new', bold: 'far and often' },
+  depth: { concise: 'short notes', standard: 'notes of usual length', deeper: 'a little more context and history' },
+  recordingEra: { any: 'any era of recording', 'historic-welcome': 'great older recordings welcome, mono included', 'modern-sound': 'recordings from about 1980 on', 'period-practice': 'historically informed performances where they exist' },
+} as const
+
+/** What the listener told the curator, in words. */
+export function preferenceLines(p: ListenerPreferences): string[] {
+  return [
+    `Time: ${PREF_WORDS.timePerWeek[p.timePerWeek]}.`,
+    `Distance: ${PREF_WORDS.adventure[p.adventure]}.`,
+    `Writing: ${PREF_WORDS.depth[p.depth]}${p.language === 'ro' ? ', in Romanian' : ''}.`,
+    `Recordings: ${PREF_WORDS.recordingEra[p.recordingEra]}.`,
+    `${p.includeVoices ? 'Works with voices welcome' : 'No works with singers'}; ${p.includeConcertos ? 'concertos welcome' : 'no concertos'}.`,
+  ]
+}
+
+export function tasteBlocks(t: TasteProfile, prefs?: ListenerPreferences): unknown[] {
   const groups = observationsByStance(t)
   const out: unknown[] = [para('What the curator has come to understand about your listening. Written in words on purpose: taste is not a score.', { italic: true })]
   const titles: Record<string, string> = { 'drawn-to': 'Drawn to', 'curious-about': 'Curious about', mixed: 'Mixed feelings', 'wary-of': 'Wary of' }
@@ -157,25 +304,29 @@ export function tasteBlocks(t: TasteProfile): unknown[] {
     out.push(h2('Questions you seem to be asking'))
     for (const q of t.questions) out.push(bullet(q))
   }
+  if (prefs) {
+    out.push(h2('What you’ve told the curator'))
+    for (const line of preferenceLines(prefs)) out.push(bullet(line))
+  }
   if (t.notesToCurator) out.push(h2('Your notes to the curator'), ...paragraphs(t.notesToCurator))
   return out
 }
 
-async function append(curator: CuratorClient, blockId: string, children: unknown[]) {
+async function append(call: NotionCall, blockId: string, children: unknown[]) {
   for (let i = 0; i < children.length; i += 90) {
-    await notion(curator, { path: `blocks/${blockId}/children`, method: 'PATCH', body: { children: children.slice(i, i + 90) } })
+    await call({ path: `blocks/${blockId}/children`, method: 'PATCH', body: { children: children.slice(i, i + 90) } })
   }
 }
 
-async function upsert(curator: CuratorClient, repo: Repo, key: string, databaseId: string, properties: Record<string, unknown>, body?: () => unknown[]): Promise<boolean> {
+async function upsert(call: NotionCall, repo: Repo, key: string, databaseId: string, properties: Record<string, unknown>, body?: () => unknown[]): Promise<boolean> {
   const h = hash(properties)
   const state = await repo.notion.get(key)
   if (state?.hash === h) return false
   if (state) {
-    await notion(curator, { path: `pages/${state.pageId}`, method: 'PATCH', body: { properties } })
+    await call({ path: `pages/${state.pageId}`, method: 'PATCH', body: { properties } })
   } else {
-    const page = await notion<{ id: string }>(curator, { path: 'pages', method: 'POST', body: { parent: { database_id: databaseId }, properties } })
-    if (body) await append(curator, page.id, body())
+    const page = await call<{ id: string }>({ path: 'pages', method: 'POST', body: { parent: { database_id: databaseId }, properties } })
+    if (body) await append(call, page.id, body())
     await repo.notion.put({ key, pageId: page.id, hash: h, syncedAt: new Date().toISOString() })
     return true
   }
@@ -187,36 +338,40 @@ async function upsert(curator: CuratorClient, repo: Repo, key: string, databaseI
 
 export interface SyncReport { written: number }
 
-export async function syncToNotion(curator: CuratorClient, repo: Repo, pageId: string, currentWeek: string): Promise<SyncReport> {
-  const dbs = await ensureSetup(curator, repo, pageId)
-  const [programmes, themes, explorations, recordings, events, feedback, resources, weeks, taste] = await Promise.all([
-    repo.programmes.all(), repo.themes.all(), repo.explorations.all(), repo.recordings.all(), repo.events.all(), repo.feedback.all(), repo.resources.all(), repo.weeks.all(), repo.taste(),
+export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string, currentWeek: string): Promise<SyncReport> {
+  const dbs = await ensureSetup(call, repo, pageId)
+  const [programmes, themes, explorations, recordings, events, feedback, resources, weeks, taste, prefs] = await Promise.all([
+    repo.programmes.all(), repo.themes.all(), repo.explorations.all(), repo.recordings.all(), repo.events.all(), repo.feedback.all(), repo.resources.all(), repo.weeks.all(), repo.taste(), repo.preferences(),
   ])
   const setAside = new Set(weeks.flatMap((w) => w.setAsideProgrammeIds))
   const themeTitle = new Map(themes.map((t) => [t.id, t.title]))
   let written = 0
 
   for (const p of programmes.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-    written += Number(await upsert(curator, repo, `programme:${p.id}`, dbs.journal, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek),
+    written += Number(await upsert(call, repo, `programme:${p.id}`, dbs.journal, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek),
       () => programmeBlocks(p, resources.filter((r) => r.programmeId === p.id))))
   }
   for (const t of themes) {
-    written += Number(await upsert(curator, repo, `theme:${t.id}`, dbs.threads, threadProps(t, explorations)))
+    written += Number(await upsert(call, repo, `theme:${t.id}`, dbs.threads, threadProps(t, explorations)))
   }
   const recById = new Map(recordings.map((r) => [r.id, r]))
   const met = new Map<string, { proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }>()
   for (const p of programmes) for (const i of p.sections.flatMap((s) => s.items)) if (!met.has(i.recordingId)) met.set(i.recordingId, { proposed: i.proposed, programme: p })
   for (const [rid, { proposed, programme }] of met) {
-    written += Number(await upsert(curator, repo, `recording:${rid}`, dbs.recordings, recordingProps(proposed, recById.get(rid), programme, events, feedback)))
+    written += Number(await upsert(call, repo, `recording:${rid}`, dbs.recordings, recordingProps(proposed, recById.get(rid), programme, events, feedback)))
+  }
+  for (const [name, entries] of groupByComposer(met)) {
+    written += Number(await upsert(call, repo, `composer:${name}`, dbs.composers, composerProps(name, entries, events, feedback)))
   }
 
   // The taste page is rewritten whole when it changes.
-  const tasteHash = hash({ o: taste.observations.filter((o) => !o.supersededBy).map((o) => [o.statement, o.stance, o.confidence]), q: taste.questions, n: taste.notesToCurator })
+  const { nextRequest: _n, ...shownPrefs } = prefs
+  const tasteHash = hash({ o: taste.observations.filter((o) => !o.supersededBy).map((o) => [o.statement, o.stance, o.confidence]), q: taste.questions, n: taste.notesToCurator, p: shownPrefs })
   const tasteState = await repo.notion.get('taste')
   if (tasteState?.hash !== tasteHash) {
-    const children = await notion<{ results: { id: string }[] }>(curator, { path: `blocks/${dbs.tastePage}/children?page_size=100`, method: 'GET' })
-    for (const b of children.results ?? []) await notion(curator, { path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } })
-    await append(curator, dbs.tastePage, tasteBlocks(taste))
+    const children = await call<{ results: { id: string }[] }>({ path: `blocks/${dbs.tastePage}/children?page_size=100`, method: 'GET' })
+    for (const b of children.results ?? []) await call({ path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } })
+    await append(call, dbs.tastePage, tasteBlocks(taste, prefs))
     await repo.notion.put({ key: 'taste', pageId: dbs.tastePage, hash: tasteHash, syncedAt: new Date().toISOString() })
     written++
   }
@@ -265,5 +420,32 @@ export function recordingProps(proposed: Programme['sections'][number]['items'][
     Reaction: selectProp(reactionLabel(fb.reaction)),
     Notes: textProp(fb.notes.join(' / ')),
     Programme: textProp(`${programme.title} (${programme.weekKey})`),
+  }
+}
+
+type Met = Map<string, { proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }>
+
+function groupByComposer(met: Met): Map<string, { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[]> {
+  const out = new Map<string, { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[]>()
+  for (const [rid, v] of met) out.set(v.proposed.composer, [...(out.get(v.proposed.composer) ?? []), { rid, ...v }])
+  return out
+}
+
+export function composerProps(name: string, entries: { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[], events: ListeningEvent[], feedback: Feedback[]) {
+  const works = [...new Set(entries.map((e) => e.proposed.work))]
+  const first = [...entries].sort((a, b) => a.programme.weekKey.localeCompare(b.programme.weekKey))[0]
+  const how = entries
+    .map((e) => {
+      const r = reactionLabel(latestFeedback(feedback, e.rid).reaction)
+      const st = listeningState(events, e.rid)
+      return r ? `${e.proposed.work}: ${r.toLowerCase()}` : st === 'heard' ? `${e.proposed.work}: heard` : ''
+    })
+    .filter(Boolean)
+  return {
+    Name: titleProp(name),
+    Works: textProp(works.join('; ')),
+    Recordings: textProp(entries.map((e) => `${e.proposed.work} — ${creditLine(e.proposed)}`).join('; ')),
+    'First met': textProp(first ? `${first.programme.title}, ${weekFromKey(first.programme.weekKey).label}` : ''),
+    'How it went': textProp(how.join('; ')),
   }
 }

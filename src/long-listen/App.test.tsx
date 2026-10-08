@@ -45,6 +45,51 @@ describe('The Long Listen', () => {
     expect(text).not.toMatch(/streak|points|badge|minutes listened|days listened|%|level \d|xp\b/i)
   })
 
+  it('asks for three other directions and keeps the first three open', async () => {
+    const repo = new Repo(memoryStore())
+    render(<App repo={repo} curator={curator()} />)
+    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    await userEvent.click(screen.getByRole('button', { name: 'None of these? Ask for three others' }))
+    await userEvent.type(screen.getByLabelText(/What are you in the mood for/), 'Something quieter')
+    await userEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    await waitFor(async () => expect((await repo.options.all()).filter((o) => o.status === 'open')).toHaveLength(3), { timeout: 4000 })
+  }, 15000)
+
+  it('fills the journal and the library once a week has been listened to', async () => {
+    const repo = new Repo(memoryStore())
+    render(<App repo={repo} curator={curator()} />)
+    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    await userEvent.click(screen.getAllByRole('button', { name: 'Listen this way →' })[0])
+    await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })
+    await userEvent.click(screen.getAllByRole('radio', { name: 'Heard' })[0])
+
+    window.location.hash = '#/journal'
+    expect(await screen.findByText('The weeks so far')).toBeTruthy()
+    expect(await screen.findByRole('link', { name: 'The orchestra becomes colour' })).toBeTruthy()
+    expect(screen.getAllByText(/left open/)).toHaveLength(2)
+
+    window.location.hash = '#/library'
+    expect(await screen.findByText('Everything met so far')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Claude Debussy' })).toBeTruthy()
+    await userEvent.type(screen.getByLabelText('Search the library'), 'monteux')
+    expect(screen.queryByRole('heading', { name: 'Claude Debussy' })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Maurice Ravel' })).toBeTruthy()
+  }, 20000)
+
+  it('settings offers each connection with a test, and preferences', async () => {
+    window.location.hash = '#/settings'
+    localStorage.setItem('long-listen:settings', JSON.stringify({ anthropicKey: 'sk-ant-api03-test' }))
+    render(<App repo={new Repo(memoryStore())} curator={curator()} />)
+    expect(await screen.findByLabelText('Anthropic API key')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Test the key' })).toBeTruthy()
+    expect(screen.getByLabelText('Spotify Client ID')).toBeTruthy()
+    expect(screen.getByLabelText('Notion integration token')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Test Notion' })).toBeTruthy()
+    expect(screen.getByText('How you listen')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Test the key' }))
+    expect(await screen.findByText(/The curator is ready/)).toBeTruthy()
+  })
+
   it('explains, without a stack trace, when the curator is locked', async () => {
     const locked: CuratorClient = { call: () => Promise.reject(new CuratorUnavailable('locked', 'The curator needs your passphrase — add it in Settings.')) }
     render(<App repo={new Repo(memoryStore())} curator={locked} />)

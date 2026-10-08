@@ -57,11 +57,40 @@ beforeEach(() => {
 afterEach(() => { process.env = env })
 
 describe('the gate', () => {
-  it('says it is not set up when there is no passphrase on the server', async () => {
+  it('asks for a key when there is neither one of yours nor a server passphrase', async () => {
     delete process.env.LONG_LISTEN_ACCESS_KEY
-    const res = await call({ op: 'status' })
+    const status = await call({ op: 'status' })
+    expect(status.statusCode).toBe(200)
+    expect(status.body).toMatchObject({ serverKey: false, unlocked: false, curator: false })
+    const res = await call({ op: 'themes', payload: {} })
     expect(res.statusCode).toBe(501)
-    expect(res.body.configured).toBe(false)
+    expect(res.body.message).toMatch(/Anthropic key in Settings/)
+  })
+
+  it('runs on your own key without a passphrase, and never on a malformed one', async () => {
+    delete process.env.LONG_LISTEN_ACCESS_KEY
+    const client = fakeClient([json(threeOptions())])
+    const own = (key) => {
+      const res = makeRes()
+      return handler({ method: 'POST', headers: { 'x-anthropic-key': key }, socket: { remoteAddress: `o-${Math.random()}` }, body: { op: 'themes', payload: { context: {} } } }, res, { client }).then(() => res)
+    }
+    expect((await own('sk-ant-api03-abcdefghijklmnopqrstuvwxyz')).statusCode).toBe(200)
+    const bad = await own('my-password')
+    expect(bad.statusCode).toBe(401)
+    expect(bad.body.code).toBe('bad-key')
+    expect(client.sent).toHaveLength(1)
+  })
+
+  it('tests a key with one tiny call, and says plainly when Anthropic refuses it', async () => {
+    const ok = { messages: { create: async (body) => { expect(body.max_tokens).toBeLessThanOrEqual(16); return { model: body.model } } } }
+    const res = await call({ op: 'ping' }, { deps: { client: ok } })
+    expect(res.statusCode).toBe(200)
+    expect(res.body.ok).toBe(true)
+    const { default: Anthropic } = await import('@anthropic-ai/sdk')
+    const refusing = { messages: { create: async () => { throw new Anthropic.AuthenticationError(401, { error: { message: 'invalid x-api-key' } }, 'invalid x-api-key', new Headers()) } } }
+    const bad = await call({ op: 'ping' }, { deps: { client: refusing } })
+    expect(bad.statusCode).toBe(401)
+    expect(bad.body).toEqual({ code: 'bad-key', message: 'Anthropic didn’t accept that key.' })
   })
 
   it('refuses a wrong or missing passphrase before doing anything', async () => {
@@ -81,7 +110,8 @@ describe('the gate', () => {
   it('reports what is configured, without secrets', async () => {
     const res = await call({ op: 'status' })
     expect(res.statusCode).toBe(200)
-    expect(res.body).toMatchObject({ curator: true, notion: false })
+    expect(res.body).toMatchObject({ serverKey: true, unlocked: true, curator: true, notion: false })
+    expect((await call({ op: 'status' }, { key: 'wrong' })).body).toMatchObject({ serverKey: true, unlocked: false, curator: false })
     expect(JSON.stringify(res.body)).not.toContain('sk-test')
     expect(res.body.prompts.programme).toBe(PROMPTS.programme.version)
   })
@@ -314,6 +344,14 @@ describe('notion pass-through', () => {
     const res = await call({ op: 'notion', payload: { path: 'databases', method: 'POST', body: { parent: { page_id: '01234567-89ab-cdef-0123-456789abcdef' } } } }, { deps: { fetch: fetchMock } })
     expect(res.statusCode).toBe(200)
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer secret_notion')
+  })
+
+  it('keeps the server’s Notion token behind the passphrase, whatever key you bring', async () => {
+    const fetchMock = vi.fn()
+    const res = makeRes()
+    await handler({ method: 'POST', headers: { 'x-anthropic-key': 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz' }, socket: { remoteAddress: 'n1' }, body: { op: 'notion', payload: { path: 'pages', method: 'POST', body: {} } } }, res, { fetch: fetchMock })
+    expect(res.statusCode).toBe(401)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('refuses calls outside the mirror’s fence', async () => {

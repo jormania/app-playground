@@ -2,15 +2,27 @@ import { readJson, writeJson } from '../../shared/storage'
 import { DEFAULT_TIME_ZONE, isValidTimeZone } from '../domain/week'
 
 /**
- * Per-device settings, in localStorage. Deliberately small: nothing here is
- * part of the journey (that lives in IndexedDB), and none of it is a server
- * secret — the passphrase unlocks this listener's curator, the Spotify Client
- * ID is public by design.
+ * Per-device settings, in localStorage. Nothing here is part of the journey
+ * (that lives in IndexedDB). Two of them are the listener's own credentials —
+ * the Anthropic key and the Notion token — kept on this device the way every
+ * app in the playground keeps them (Dev — Building an App, "bring your own
+ * key"), and sent only to this app's own server and the shared Notion relay.
+ * The Spotify Client ID is public by design; Spotify's own sign-in never
+ * passes a password through this app.
  */
 export type ThemeChoice = 'system' | 'light' | 'dark'
 
 export interface Settings {
+  /** The listener's Anthropic key. Kept on this device; sent only to this app's server. */
+  anthropicKey: string
+  /** Optional: unlocks the server's own key instead. */
   passphrase: string
+  /** The listener's Notion integration token, used through the shared /api/notion relay. */
+  notionToken: string
+  /** The Notion page holding the notebook's databases (a link or an id). */
+  notionPage: string
+  /** Reading comfort. */
+  textSize: 'standard' | 'large'
   timeZone: string
   spotifyClientId: string
   theme: ThemeChoice
@@ -26,8 +38,13 @@ const ENV_CLIENT_ID = (import.meta.env?.VITE_LONG_LISTEN_SPOTIFY_CLIENT_ID as st
 export function loadSettings(): Settings {
   const raw = readJson<Partial<Settings>>(SETTINGS_KEY, {})
   const theme = readJson<unknown>(THEME_KEY, 'system')
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
   return {
-    passphrase: typeof raw.passphrase === 'string' ? raw.passphrase : '',
+    anthropicKey: str(raw.anthropicKey),
+    notionToken: str(raw.notionToken),
+    notionPage: str(raw.notionPage),
+    textSize: raw.textSize === 'large' ? 'large' : 'standard',
+    passphrase: str(raw.passphrase),
     timeZone: typeof raw.timeZone === 'string' && isValidTimeZone(raw.timeZone) ? raw.timeZone : DEFAULT_TIME_ZONE,
     spotifyClientId: typeof raw.spotifyClientId === 'string' && raw.spotifyClientId ? raw.spotifyClientId : ENV_CLIENT_ID,
     theme: theme === 'light' || theme === 'dark' ? theme : 'system',

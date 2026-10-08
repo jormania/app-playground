@@ -23,6 +23,7 @@ export interface SpotifyTrackLike {
   album?: { id: string; name: string }
   track_number?: number
   disc_number?: number
+  duration_ms?: number
 }
 
 export type MatchLevel = 'strong' | 'probable' | 'none'
@@ -158,4 +159,10 @@ export function searchQueries(p: ProposedRecording): string[] {
     [composer, work, bandWords].filter(Boolean).join(' '),
   ]
   return [...new Set(qs.filter((q) => q.trim().length > 0))]
+}
+
+/** "La mer, L. 109: II. Jeux de vagues" → "II. Jeux de vagues". A single-track work keeps its name. */
+export function movementTitle(trackName: string): string {
+  const at = trackName.lastIndexOf(':')
+  return at >= 0 && at < trackName.length - 1 ? trackName.slice(at + 1).trim() : trackName.trim()
 }

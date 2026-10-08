@@ -80,6 +80,8 @@ export interface SpotifyRecordingRef {
   /** What the matcher saw, for honesty about a near miss. */
   confidence: 'strong' | 'probable'
   matchedAt: Instant
+  /** Sum of the work's track lengths, from Spotify. Information, never a tally. */
+  durationMs?: number
 }
 
 export type Verification = 'unchecked' | 'verified' | 'not-found'
@@ -182,6 +184,8 @@ export interface WeekRecord {
   programmeId?: string
   /** Earlier programmes of the week, kept when the listener changed direction. */
   setAsideProgrammeIds: string[]
+  /** Options offered earlier this week, before the listener asked for three others. */
+  earlierOptionIds?: string[]
   promptVersion: string
 }
 
@@ -340,6 +344,39 @@ export interface TasteObservation {
   lastSeen: Instant
   /** Set when a later observation replaced this one. Kept for the record. */
   supersededBy?: string
+}
+
+/**
+ * What the listener tells the curator directly, in Settings. Explicit
+ * preferences outrank anything inferred from feedback; the taste profile is
+ * what the curator noticed, these are what the listener said.
+ */
+export interface ListenerPreferences {
+  /** How much listening a week holds: roughly 1, 2–3, or 4+ hours. */
+  timePerWeek: 'short' | 'standard' | 'generous'
+  /** How far from familiar ground the curator may go. */
+  adventure: 'gentle' | 'balanced' | 'bold'
+  /** How much the curator writes around the music. */
+  depth: 'concise' | 'standard' | 'deeper'
+  recordingEra: 'any' | 'historic-welcome' | 'modern-sound' | 'period-practice'
+  /** Works with voices — choral symphonies, orchestral songs. */
+  includeVoices: boolean
+  includeConcertos: boolean
+  /** The language the curator writes in. Work titles keep their usual form. */
+  language: 'en' | 'ro'
+  /** A wish for next week's directions; read once, then cleared. */
+  nextRequest: string
+}
+
+export const DEFAULT_PREFERENCES: ListenerPreferences = {
+  timePerWeek: 'standard',
+  adventure: 'balanced',
+  depth: 'standard',
+  recordingEra: 'any',
+  includeVoices: true,
+  includeConcertos: true,
+  language: 'en',
+  nextRequest: '',
 }
 
 export interface TasteProfile {

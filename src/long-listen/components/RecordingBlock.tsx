@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ProposedRecording, Recording } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { openUrl, searchUrl } from '../spotify/client'
-import { forgetMatch, verifyRecording } from '../spotify/verify'
+import { aboutDuration, forgetMatch, verifyRecording } from '../spotify/verify'
 import { useServices } from '../app/services'
 import { messageOf } from './common'
 import s from '../styles/editorial.module.css'
@@ -16,12 +16,14 @@ import s from '../styles/editorial.module.css'
  * else's performance of the same work.
  */
 export function RecordingBlock({
-  proposed, recording, character, onOpened, label = 'Recommended recording',
+  proposed, recording, character, onOpened, onFindAlternative, label = 'Recommended recording',
 }: {
   proposed: ProposedRecording
   recording?: Recording
   character?: string
   onOpened?: (how: 'opened' | 'play-started') => void
+  /** Offered when Spotify lacks this recording: ask the curator for one it has. */
+  onFindAlternative?: () => void
   label?: string
 }) {
   const { spotify, repo, bump, say } = useServices()
@@ -73,7 +75,7 @@ export function RecordingBlock({
           {sp.imageUrl ? <img className={s.cover} src={sp.imageUrl} alt="" loading="lazy" width={64} height={64} /> : null}
           <div className={s.albumText}>
             <div className={s.albumName}>{sp.albumName}</div>
-            <div>{[year && `released ${year}`, sp.phonographic].filter(Boolean).join(' · ')}</div>
+            <div>{[aboutDuration(sp.durationMs), year && `released ${year}`, sp.phonographic].filter(Boolean).join(' · ')}</div>
           </div>
         </div>
       )}
@@ -102,7 +104,10 @@ export function RecordingBlock({
         </p>
       )}
       {recording?.verification === 'not-found' && (
-        <p className={s.note}>Spotify doesn’t appear to carry this exact recording. The curator’s choice stands; it may be elsewhere.</p>
+        <p className={s.note}>
+          Spotify doesn’t appear to carry this exact recording. The curator’s choice stands; it may be elsewhere.
+          {onFindAlternative && <>{' '}<button className={s.textButton} onClick={onFindAlternative}>Ask for one that’s on Spotify</button></>}
+        </p>
       )}
       {!sp && recording?.verification !== 'not-found' && !spotify.connected && (
         <p className={s.note}>Connect Spotify in Settings to confirm the exact recording.</p>

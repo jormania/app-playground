@@ -136,6 +136,14 @@ const CASES = {
       })
     },
   ])),
+  'The Long Listen — key test': async (f) => {
+    const { pingBody } = await import('../api/_lib/longListen/curator.js')
+    await f(ENDPOINT, {
+      method: 'POST',
+      headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify(pingBody()),
+    })
+  },
   'The Long Listen — resources (web search)': async (f) => {
     const { resourcesBody, CURATOR_BETAS } = await import('../api/_lib/longListen/curator.js')
     await f(ENDPOINT, {

@@ -11,7 +11,13 @@
  *   https://coneofcold.vercel.app/long-listen-react.html
  *   http://127.0.0.1:5173/long-listen-react.html
  */
-export const SCOPES = ['user-read-recently-played', 'user-read-playback-state', 'user-modify-playback-state']
+export const SCOPES = [
+  'user-read-recently-played',
+  'user-read-playback-state',
+  'user-modify-playback-state',
+  'user-read-currently-playing',
+  'playlist-modify-private',
+]
 const AUTHORIZE = 'https://accounts.spotify.com/authorize'
 export const TOKEN_URL = 'https://accounts.spotify.com/api/token'
 

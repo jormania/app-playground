@@ -13,6 +13,8 @@ const ID = '[0-9a-fA-F-]{32,36}'
 const ROUTES = [
   { method: 'POST', re: /^databases$/ },
   { method: 'POST', re: new RegExp(`^databases/${ID}/query$`) },
+  { method: 'GET', re: new RegExp(`^databases/${ID}$`) },
+  { method: 'GET', re: new RegExp(`^pages/${ID}$`) },
   { method: 'POST', re: /^pages$/ },
   { method: 'PATCH', re: new RegExp(`^pages/${ID}$`) },
   { method: 'GET', re: new RegExp(`^blocks/${ID}/children(\\?.*)?$`) },

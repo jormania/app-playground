@@ -8,7 +8,7 @@
 // resource URLs are only kept if they came back from a real web search in the
 // same response.
 import Anthropic from '@anthropic-ai/sdk'
-import { MODEL_SONNET } from '../../../src/shared/models.js'
+import { MODEL_SONNET, noThinking } from '../../../src/shared/models.js'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, validateTaste, validateContinuity,
@@ -74,8 +74,21 @@ export function resourcesBody(userContent, priorTurns = []) {
   }
 }
 
+/**
+ * The smallest real request, for Settings → "Test the key". Exported for the
+ * live check. No thinking: it only has to prove the key and the model answer.
+ */
+export function pingBody() {
+  return {
+    model: MODEL,
+    max_tokens: 16,
+    ...noThinking(MODEL),
+    messages: [{ role: 'user', content: 'Reply with the single word: ready' }],
+  }
+}
+
 export class CuratorError extends Error {
-  /** @param {'unconfigured'|'too-large'|'refused'|'invalid'|'upstream'|'rate-limited'} code */
+  /** @param {'unconfigured'|'bad-key'|'too-large'|'refused'|'invalid'|'upstream'|'rate-limited'} code */
   constructor(code, message) {
     super(message)
     this.code = code
@@ -84,6 +97,11 @@ export class CuratorError extends Error {
 
 function textOf(message) {
   return (message.content ?? []).filter((b) => b.type === 'text').map((b) => b.text).join('')
+}
+
+/** A key the listener pasted in Settings looks like this; anything else is refused before it costs a call. */
+export function looksLikeAnthropicKey(key) {
+  return typeof key === 'string' && /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key.trim())
 }
 
 export function makeClient(apiKey = process.env.ANTHROPIC_API_KEY) {
@@ -96,6 +114,7 @@ async function send(client, body) {
     const stream = client.beta.messages.stream({ ...body, betas: CURATOR_BETAS })
     return await stream.finalMessage()
   } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) throw new CuratorError('bad-key', 'Anthropic didn’t accept that key.')
     if (err instanceof Anthropic.RateLimitError) throw new CuratorError('rate-limited', 'The curator is busy — try again in a minute.')
     if (err instanceof Anthropic.APIError) throw new CuratorError('upstream', `Curator call failed (${err.status ?? 'network'}).`)
     throw new CuratorError('upstream', 'Curator call failed.')
@@ -229,6 +248,18 @@ export async function checkAlive(resources, fetchImpl = fetch) {
     }
   }))
   return resources.filter((_, i) => checks[i])
+}
+
+export async function ping(client) {
+  try {
+    const message = await client.messages.create(pingBody())
+    return { ok: true, model: message.model }
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) throw new CuratorError('bad-key', 'Anthropic didn’t accept that key.')
+    if (err instanceof Anthropic.RateLimitError) throw new CuratorError('rate-limited', 'Anthropic is rate-limiting this key just now.')
+    if (err instanceof Anthropic.APIError) throw new CuratorError('upstream', `Anthropic answered ${err.status ?? 'with an error'}.`)
+    throw new CuratorError('upstream', 'Anthropic could not be reached.')
+  }
 }
 
 export const JOBS = {

@@ -6,8 +6,8 @@ import { listeningState } from '../domain/listening'
 import { sinceWords, weekFromKey } from '../domain/week'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
-import { go } from '../app/router'
-import { verifyRecording } from '../spotify/verify'
+import { go, href } from '../app/router'
+import { aboutDuration, saveProgrammePlaylist, verifyRecording, type PlaylistMark } from '../spotify/verify'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
@@ -28,11 +28,12 @@ interface Bundle {
   resources: Resource[]
   resourcesSearched: boolean
   explanations: Map<string, Explanation>
+  playlist?: PlaylistMark
 }
 
 async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
   const programme = await repo.programmes.require(id)
-  const [theme, exploration, week, events, feedback, allResources, searched] = await Promise.all([
+  const [theme, exploration, week, events, feedback, allResources, searched, playlistMark] = await Promise.all([
     repo.themes.get(programme.themeId),
     repo.explorations.get(programme.explorationId),
     repo.weeks.get(programme.weekKey),
@@ -40,6 +41,7 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
     repo.feedback.all(),
     repo.resources.all(),
     repo.marks.get(`resources:${id}`),
+    repo.marks.get(`playlist:${id}`),
   ])
   const items = programme.sections.flatMap((x) => x.items)
   const onRequest = await repo.comparisons.many(items.map((i) => `cmp:${id}:${i.id}`))
@@ -58,6 +60,7 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
     resources: allResources.filter((r) => r.programmeId === id),
     resourcesSearched: Boolean(searched),
     explanations,
+    playlist: playlistMark?.value as PlaylistMark | undefined,
   }
 }
 
@@ -136,6 +139,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         </div>
       )}
 
+      <ProgrammeTools b={b} />
+
       <hr className={s.rule} />
       <Paragraphs text={p.introduction} className={s.lede} />
 
@@ -208,9 +213,9 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
     try { await journey.explain(pid, item.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setExplaining(false) }
   }
 
-  async function compare() {
+  async function compare(mustBeOnSpotify = false) {
     setComparing(true)
-    try { await journey.compare(pid, item.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setComparing(false) }
+    try { await journey.compare(pid, item.id, { mustBeOnSpotify }); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setComparing(false) }
   }
 
   return (
@@ -226,6 +231,7 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
         proposed={item.proposed}
         recording={recording}
         onOpened={(how) => { void journey.markListening(item, how, pid, 'app').then(bump) }}
+        onFindAlternative={comparison || comparing ? undefined : () => void compare(true)}
       />
       {item.whyThisRecording && <p style={{ margin: 0 }}><span className={s.label}>Why this recording</span><br />{item.whyThisRecording}</p>}
 
@@ -261,7 +267,8 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
 
       <div className={s.actions}>
         {!explanation && <button className={s.textButton} onClick={explain} disabled={explaining}>{explaining ? 'The curator is writing…' : 'A little more context'}</button>}
-        {!comparison && <button className={s.textButton} onClick={compare} disabled={comparing}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</button>}
+        {!comparison && <button className={s.textButton} onClick={() => void compare()} disabled={comparing}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</button>}
+        <a href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>Listen with this open</a>
       </div>
 
       {explanation && (
@@ -271,6 +278,42 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
         </div>
       )}
       {comparison && <ComparisonView c={comparison} b={b} />}
+    </div>
+  )
+}
+
+/** The programme's own tools, quiet under the title: playlist, length, print. */
+function ProgrammeTools({ b }: { b: Bundle }) {
+  const { spotify, repo, bump, say, week } = useServices()
+  const [saving, setSaving] = useState(false)
+  const items = b.programme.sections.flatMap((x) => x.items)
+  const verified = items.filter((i) => b.recordings.get(i.recordingId)?.verification === 'verified')
+  const total = verified.reduce((n, i) => n + (b.recordings.get(i.recordingId)?.spotify?.durationMs ?? 0), 0)
+
+  async function savePlaylist() {
+    setSaving(true)
+    try {
+      const mark = await saveProgrammePlaylist(repo, spotify, b.programme.id, week.label)
+      bump()
+      say(b.playlist ? 'Playlist brought up to date.' : 'Saved to your Spotify as a private playlist.', 'success')
+      if (!b.playlist) window.open(mark.url, '_blank', 'noopener')
+    } catch (e) {
+      say(e instanceof Error && !('reason' in e) ? e.message : messageOf(e), 'danger')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className={s.actions} style={{ marginTop: 'var(--space-md)' }}>
+      {total > 0 && <span className={s.faint}>{verified.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
+      {b.playlist && <a href={b.playlist.url} target="_blank" rel="noopener noreferrer">Open the playlist</a>}
+      {spotify.connected && verified.length > 0 && (
+        <button className={s.textButton} onClick={savePlaylist} disabled={saving}>
+          {saving ? 'Saving…' : b.playlist ? 'Update the playlist' : 'Save as a Spotify playlist'}
+        </button>
+      )}
+      <button className={s.textButton} onClick={() => window.print()}>Print</button>
     </div>
   )
 }

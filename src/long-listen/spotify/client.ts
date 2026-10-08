@@ -31,6 +31,13 @@ export interface RecentPlay {
   track: SpotifyTrackLike
 }
 
+export interface NowPlaying {
+  trackId: string
+  trackName: string
+  isPlaying: boolean
+  progressMs: number
+}
+
 export class SpotifyClient {
   private tokens: SpotifyTokens | null
 
@@ -44,6 +51,11 @@ export class SpotifyClient {
 
   get connected(): boolean {
     return Boolean(this.tokens)
+  }
+
+  /** Was this permission granted at sign-in? Older sign-ins lack the playlist one. */
+  hasScope(scope: string): boolean {
+    return Boolean(this.tokens?.scope.split(' ').includes(scope))
   }
 
   setTokens(t: SpotifyTokens | null) {
@@ -110,6 +122,57 @@ export class SpotifyClient {
   async recentlyPlayed(): Promise<RecentPlay[]> {
     const data = await this.get<{ items: RecentPlay[] }>('me/player/recently-played?limit=50')
     return data.items ?? []
+  }
+
+  /** Settings → "Test Spotify": who is signed in, and which devices could play. */
+  async me(): Promise<{ name: string; id: string }> {
+    const d = await this.get<{ display_name?: string; id: string }>('me')
+    return { name: d.display_name || d.id, id: d.id }
+  }
+
+  async devices(): Promise<{ name: string; type: string; active: boolean }[]> {
+    const d = await this.get<{ devices?: { name: string; type: string; is_active: boolean }[] }>('me/player/devices')
+    return (d.devices ?? []).map((x) => ({ name: x.name, type: x.type, active: x.is_active }))
+  }
+
+  /** What's playing now, or null — for the listening view's "now" marker. */
+  async nowPlaying(): Promise<NowPlaying | null> {
+    const res = await this.request('me/player/currently-playing')
+    if (res.status === 204 || !res.ok) return null
+    const d = await res.json().catch(() => null) as { item?: { id: string; name: string } | null; is_playing?: boolean; progress_ms?: number } | null
+    if (!d?.item) return null
+    return { trackId: d.item.id, trackName: d.item.name, isPlaying: Boolean(d.is_playing), progressMs: d.progress_ms ?? 0 }
+  }
+
+  /** A private playlist of exactly these tracks. Replaces the tracks when `id` is given. */
+  async writePlaylist(name: string, description: string, uris: string[], id?: string): Promise<{ id: string; url: string }> {
+    if (!this.hasScope('playlist-modify-private')) {
+      throw new SpotifyUnavailable('signed-out', 'Reconnect Spotify in Settings to let the app make playlists.')
+    }
+    let playlistId = id
+    let url = id ? `https://open.spotify.com/playlist/${id}` : ''
+    if (!playlistId) {
+      const res = await this.request('me/playlists', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: name.slice(0, 100), description: description.slice(0, 300), public: false }),
+      })
+      if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t make the playlist.')
+      const d = await res.json() as { id: string; external_urls?: { spotify?: string } }
+      playlistId = d.id
+      url = d.external_urls?.spotify ?? `https://open.spotify.com/playlist/${d.id}`
+    }
+    // PUT replaces whatever was there; Spotify takes up to 100 per call.
+    const first = await this.request(`playlists/${playlistId}/items`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ uris: uris.slice(0, 100) }),
+    })
+    if (!first.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t fill the playlist.')
+    for (let i = 100; i < uris.length; i += 100) {
+      await this.request(`playlists/${playlistId}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ uris: uris.slice(i, i + 100) }) })
+    }
+    return { id: playlistId!, url }
   }
 
   /** Start the exact tracks on the listener's active Spotify device (Premium). */

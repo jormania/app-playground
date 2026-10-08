@@ -1,10 +1,18 @@
 // The Long Listen's server side: the curator (Claude) and the Notion mirror.
 //
-// Unlike the BYO-token relays, this holds real secrets — ANTHROPIC_API_KEY and
-// LONG_LISTEN_NOTION_TOKEN — so an allowed origin is not enough to use it: every
-// call carries the listener's passphrase (LONG_LISTEN_ACCESS_KEY) in
-// `x-long-listen-key`, compared in constant time. Without that env var the
-// endpoint answers 501 and the app says the curator isn't set up.
+// Two ways in, as the app's Settings offers them:
+//
+// 1. Bring your own key (the playground's house rule): the listener pastes an
+//    Anthropic key in Settings; it's kept on their device and sent here in
+//    `x-anthropic-key` with each curator call. It goes to Anthropic from this
+//    server, never from the browser, and is neither logged nor stored.
+// 2. The server's own key (ANTHROPIC_API_KEY, LONG_LISTEN_NOTION_TOKEN), which
+//    is a real secret — so an allowed origin isn't enough to use it: the call
+//    must carry the passphrase (LONG_LISTEN_ACCESS_KEY) in `x-long-listen-key`,
+//    compared in constant time.
+//
+// Notion with the listener's own token goes through the shared /api/notion
+// relay like every other app; the `notion` op here is only the server-token path.
 //
 // It is stateless. The listener's journey lives in IndexedDB on their device;
 // each call brings the context the job needs (see src/long-listen/curation/
@@ -15,13 +23,13 @@
 // and this slot was freed by folding Click Deck's HLTB proxy into steam-search.
 import { timingSafeEqual } from 'node:crypto'
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
-import { JOBS, CuratorError, makeClient, checkAlive } from './_lib/longListen/curator.js'
+import { JOBS, CuratorError, makeClient, checkAlive, ping, looksLikeAnthropicKey } from './_lib/longListen/curator.js'
 import { promptVersions } from './_lib/longListen/prompts.js'
 import { notionConfig, refuseNotionCall, forwardNotion } from './_lib/longListen/notion.js'
 
 export const maxDuration = 300
 
-const STATUS = { unconfigured: 501, 'too-large': 413, refused: 422, invalid: 502, upstream: 502, 'rate-limited': 429 }
+const STATUS = { unconfigured: 501, 'bad-key': 401, 'too-large': 413, refused: 422, invalid: 502, upstream: 502, 'rate-limited': 429 }
 
 export function passphraseMatches(given, expected) {
   if (typeof given !== 'string' || !expected) return false
@@ -39,27 +47,37 @@ export default async function handler(req, res, deps = {}) {
   if (!originAllowed(req.headers.origin)) { res.status(403).json({ message: 'Origin not allowed.' }); return }
   if (rateLimited(clientIp(req))) { res.status(429).json({ message: 'Too many requests — try again shortly.' }); return }
 
-  const expected = process.env.LONG_LISTEN_ACCESS_KEY
-  if (!expected) { res.status(501).json({ configured: false, message: 'The Long Listen is not set up on the server yet.' }); return }
-  if (!passphraseMatches(req.headers['x-long-listen-key'], expected)) {
-    res.status(401).json({ message: 'That passphrase was not recognised.' })
-    return
-  }
-
   const { op, payload = {} } = typeof req.body === 'string' ? safeParse(req.body) : (req.body || {})
+  const expected = process.env.LONG_LISTEN_ACCESS_KEY
+  const unlocked = Boolean(expected) && passphraseMatches(req.headers['x-long-listen-key'], expected)
+  const ownKey = req.headers['x-anthropic-key']
 
+  // What the server offers, and whether this caller's passphrase opens it.
+  // Says nothing secret: no key, no token, only yes or no.
   if (op === 'status') {
     const notion = notionConfig()
     res.status(200).json({
-      curator: Boolean(process.env.ANTHROPIC_API_KEY),
-      notion: Boolean(notion),
-      notionPageId: notion?.pageId,
+      serverKey: Boolean(expected && process.env.ANTHROPIC_API_KEY),
+      unlocked,
+      curator: unlocked && Boolean(process.env.ANTHROPIC_API_KEY),
+      notion: unlocked && Boolean(notion),
+      notionPageId: unlocked ? notion?.pageId : undefined,
       prompts: promptVersions(),
     })
     return
   }
 
+  if (ownKey !== undefined && !looksLikeAnthropicKey(ownKey)) {
+    res.status(401).json({ code: 'bad-key', message: 'That doesn’t look like an Anthropic key — it starts with sk-ant-.' })
+    return
+  }
+  if (ownKey === undefined) {
+    if (!expected) { res.status(501).json({ configured: false, code: 'unconfigured', message: 'Add your Anthropic key in Settings.' }); return }
+    if (!unlocked) { res.status(401).json({ code: 'locked', message: 'That passphrase was not recognised.' }); return }
+  }
+
   if (op === 'notion') {
+    if (!unlocked) { res.status(401).json({ code: 'locked', message: 'The server’s Notion connection needs the passphrase.' }); return }
     const config = notionConfig()
     if (!config) { res.status(501).json({ message: 'Notion is not connected on the server.' }); return }
     const refusal = refuseNotionCall(payload, config.pageId)
@@ -75,11 +93,11 @@ export default async function handler(req, res, deps = {}) {
     return
   }
 
-  const job = JOBS[op]
+  const job = op === 'ping' ? ping : JOBS[op]
   if (!job) { res.status(400).json({ message: 'Unknown request.' }); return }
 
   try {
-    const client = deps.client ?? makeClient()
+    const client = deps.client ?? makeClient(ownKey ? ownKey.trim() : undefined)
     const result = await job(client, payload)
     if (op === 'resources') result.resources = await checkAlive(result.resources, deps.fetch)
     res.status(200).json(result)

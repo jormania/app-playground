@@ -1,6 +1,6 @@
 import type { Feedback, ListeningEvent, Programme, ProgrammeItem, Theme, ThemeExploration, WeekKey } from '../domain/types'
 import { creditLine } from '../domain/identity'
-import { latestFeedback, listeningState } from '../domain/listening'
+import { latestFeedback, listeningState, timesHeard } from '../domain/listening'
 import { sinceWords } from '../domain/week'
 import type { Repo } from '../store/repo'
 
@@ -23,6 +23,8 @@ export interface CoveredRecording {
   work: string
   credit: string
   state: string
+  /** Heard more than once means it was come back to — worth knowing, never shown as a count. */
+  heardTimes: number
   reaction?: string
   more?: string
   notes: string[]
@@ -87,6 +89,7 @@ export function digestThread(
         work: item.proposed.work,
         credit: creditLine(item.proposed),
         state,
+        heardTimes: timesHeard(events, item.recordingId),
         reaction,
         more,
         notes: [...fb.notes, ...workFb.notes],

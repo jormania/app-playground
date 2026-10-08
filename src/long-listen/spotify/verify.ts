@@ -1,7 +1,7 @@
 import type { Album, ListeningEvent, ProposedRecording, Recording } from '../domain/types'
 import { newId } from '../domain/identity'
 import type { Repo } from '../store/repo'
-import { bestTrack, searchQueries, workTracks, type SpotifyTrackLike } from './match'
+import { bestTrack, movementTitle, searchQueries, workTracks, type SpotifyTrackLike } from './match'
 import type { RecentPlay, SpotifyAlbum, SpotifyClient } from './client'
 
 /**
@@ -63,7 +63,13 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
       trackUris: work.map((t) => t.uri),
       confidence: found.level,
       matchedAt: now,
+      durationMs: work.reduce((n, t) => n + (t.duration_ms ?? 0), 0) || undefined,
     },
+  }
+  // Movements come from Spotify's own track names, once, if the work has none yet.
+  const work0 = await repo.works.get(recording.workId)
+  if (work0 && !work0.movements?.length && work.length > 1) {
+    await repo.works.put({ ...work0, movements: work.map((t, i) => ({ index: i + 1, title: movementTitle(t.name) })) })
   }
   const existing = await repo.albums.get(albumId)
   const albumRecord: Album = {
@@ -151,4 +157,41 @@ export async function syncRecentPlays(repo: Repo, spotify: SpotifyClient, now = 
   const fresh = playsToEvents(plays, await repo.recordings.all(), await repo.events.all(), now)
   if (fresh.length) await repo.events.putMany(fresh)
   return fresh.length
+}
+
+/** "about 38 minutes", "about 1 hour 10 minutes" — rounded, for planning an evening. */
+export function aboutDuration(ms?: number): string | undefined {
+  if (!ms) return undefined
+  const minutes = Math.max(1, Math.round(ms / 60000))
+  if (minutes < 60) return `about ${minutes} minute${minutes === 1 ? '' : 's'}`
+  const h = Math.floor(minutes / 60)
+  const m = Math.round((minutes % 60) / 5) * 5
+  return `about ${h} hour${h === 1 ? '' : 's'}${m ? ` ${m} minutes` : ''}`
+}
+
+export interface PlaylistMark { id: string; url: string; tracks: number }
+
+/**
+ * The week's programme as a private Spotify playlist: every verified recording
+ * in programme order (comparison perspectives after the items), exactly the
+ * tracks that were matched. Saving again later replaces the tracks — so once
+ * more recordings are verified, the playlist catches up.
+ */
+export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<PlaylistMark> {
+  const p = await repo.programmes.require(programmeId)
+  const comparisons = await repo.comparisons.many(p.comparisonIds)
+  const ids = [
+    ...p.sections.flatMap((s) => s.items).map((i) => i.recordingId),
+    ...comparisons.flatMap((c) => c.perspectives.map((x) => x.recordingId)),
+  ]
+  const recordings = await repo.recordings.many([...new Set(ids)])
+  const byId = new Map(recordings.map((r) => [r.id, r]))
+  const uris = [...new Set(ids)].flatMap((id) => byId.get(id)?.spotify?.trackUris ?? [])
+  if (uris.length === 0) throw new Error('None of this week’s recordings are confirmed on Spotify yet.')
+  const mark = await repo.marks.get(`playlist:${programmeId}`)
+  const prior = mark?.value as PlaylistMark | undefined
+  const saved = await spotify.writePlaylist(`The Long Listen — ${p.title}`, `${weekLabel}. ${p.dek}`, uris, prior?.id)
+  const value: PlaylistMark = { ...saved, tracks: uris.length }
+  await repo.marks.put({ id: `playlist:${programmeId}`, at: new Date().toISOString(), value })
+  return value
 }

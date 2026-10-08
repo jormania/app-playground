@@ -1,5 +1,7 @@
 import { createStore, del, entries, get, keys, set, setMany } from 'idb-keyval'
+import { DEFAULT_PREFERENCES } from '../domain/types'
 import type {
+  ListenerPreferences,
   Album, Artist, Comparison, Explanation, Feedback, ListeningEvent, NotionSyncState, Programme,
   ProgrammeOption, Recording, Resource, TasteProfile, Theme, ThemeExploration, WeekRecord, Work,
 } from '../domain/types'
@@ -93,6 +95,7 @@ export class Collection<T> {
 
 const SINGLETON = {
   taste: `${PREFIX}singleton:taste`,
+  preferences: `${PREFIX}singleton:preferences`,
   meta: `${PREFIX}singleton:meta`,
 }
 
@@ -159,6 +162,14 @@ export class Repo {
 
   saveTaste(profile: TasteProfile): Promise<void> {
     return this.store.set(SINGLETON.taste, profile)
+  }
+
+  async preferences(): Promise<ListenerPreferences> {
+    return { ...DEFAULT_PREFERENCES, ...((await this.store.get<Partial<ListenerPreferences>>(SINGLETON.preferences)) ?? {}) }
+  }
+
+  savePreferences(p: ListenerPreferences): Promise<void> {
+    return this.store.set(SINGLETON.preferences, p)
   }
 
   /** Programmes are snapshots: once written, never overwritten. */

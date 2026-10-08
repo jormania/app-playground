@@ -17,10 +17,9 @@
 
 .brandRow {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  flex-wrap: wrap;
   padding-bottom: var(--space-sm);
   border-bottom: 1px solid var(--color-ink);
 }
@@ -742,4 +741,150 @@
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
+}
+
+.journalWeek {
+  margin-top: var(--space-md);
+  padding: var(--space-md) 0 var(--space-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.journalWeek .weekHead {
+  margin-top: 0;
+}
+
+.quietLink {
+  color: inherit;
+  text-decoration-color: var(--color-border-2);
+}
+
+.quietLink:hover {
+  color: var(--color-accent);
+}
+
+.search {
+  width: 100%;
+  margin: var(--space-lg) 0 var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
+  font: inherit;
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+}
+
+.libraryWork + .libraryWork {
+  margin-top: var(--space-md);
+}
+
+.libraryTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-variation-settings: 'opsz' 36;
+}
+
+/* ── listening view ─────────────────────────────────────────────────────── */
+
+.listenMode .title {
+  font-size: clamp(2.4rem, 9vw, 3.8rem);
+}
+
+.movements {
+  margin: var(--space-lg) 0 0;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: none;
+}
+
+.movements li {
+  padding: var(--space-xs) 0;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  transition: color var(--duration) var(--ease);
+}
+
+.movementNow {
+  color: var(--color-ink) !important;
+  font-style: italic;
+}
+
+.nowWord {
+  color: var(--color-accent);
+  font-style: normal;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+}
+
+.listenForLarge li {
+  font-size: 1.3rem;
+  line-height: 1.5;
+  margin-top: var(--space-sm);
+}
+
+.okLine {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-success);
+}
+
+.settingsGroup details > * + * {
+  margin-top: var(--space-sm);
+}
+
+.brandStack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mastRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  flex: none;
+}
+
+.iconLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--color-muted);
+  border-radius: var(--radius-pill);
+}
+
+.iconLink:hover,
+.iconOn {
+  color: var(--color-accent);
+}
+
+/* ── print: the programme as a concert booklet ──────────────────────────── */
+
+@media print {
+  .masthead,
+  .nav,
+  .actions,
+  .states,
+  .feedback,
+  .textButton,
+  .demo {
+    display: none !important;
+  }
+
+  .main {
+    max-width: none;
+    padding: 0;
+    animation: none;
+  }
+
+  .item {
+    break-inside: avoid;
+  }
+
+  .sectionHead {
+    break-after: avoid;
+  }
 }

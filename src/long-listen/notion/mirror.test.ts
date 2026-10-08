@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { syncToNotion, programmeBlocks, richText, journalProps } from './mirror'
+import { syncToNotion, programmeBlocks, richText, journalProps, checkNotebook, discover, type NotionCall } from './mirror'
 import { Repo, memoryStore } from '../store/repo'
-import type { CuratorClient } from '../curation/api'
 import type { Programme } from '../domain/types'
 
 const programme: Programme = {
@@ -14,16 +13,15 @@ const programme: Programme = {
   comparisonIds: [], createdAt: '2026-10-08T09:00:00Z', promptVersion: 'programme@x', model: 'm',
 }
 
-function fakeNotion() {
+function fakeNotion(children: any[] = [], databases: Record<string, any> = {}) {
   const calls: { path: string; method: string; body?: any }[] = []
   let n = 0
-  const client: CuratorClient = {
-    async call<T>(op: string, payload: any): Promise<T> {
-      expect(op).toBe('notion')
-      calls.push(payload)
-      if (payload.method === 'GET') return { results: [] } as T
-      return { id: `id${++n}` } as T
-    },
+  const client: NotionCall = async <T,>(payload: any): Promise<T> => {
+    calls.push(payload)
+    if (payload.method === 'GET' && payload.path.includes('/children')) return { results: children } as T
+    if (payload.method === 'GET' && payload.path.startsWith('databases/')) return (databases[payload.path.split('/')[1]] ?? { properties: {} }) as T
+    if (payload.method === 'GET') return { id: 'page' } as T
+    return { id: `id${++n}` } as T
   }
   return { client, calls }
 }
@@ -45,7 +43,7 @@ describe('the Notion notebook', () => {
     const n = fakeNotion()
     await syncToNotion(n.client, repo, 'page123', '2026-W41')
     const creates = n.calls.filter((c) => c.path === 'databases')
-    expect(creates.map((c) => c.body.title[0].text.content)).toEqual(['The Long Listen — Journal', 'The Long Listen — Listening threads', 'The Long Listen — Works & recordings'])
+    expect(creates.map((c) => c.body.title[0].text.content)).toEqual(['Journal', 'Listening threads', 'Works & recordings', 'Composers'])
     expect(creates.every((c) => c.body.parent.page_id === 'page123')).toBe(true)
 
     n.calls.length = 0
@@ -57,7 +55,7 @@ describe('the Notion notebook', () => {
     const repo = await seeded()
     const n = fakeNotion()
     const first = await syncToNotion(n.client, repo, 'page123', '2026-W41')
-    expect(first.written).toBe(4) // journal page, thread, recording, taste page
+    expect(first.written).toBe(5) // journal page, thread, recording, composer, taste page
     const rec = n.calls.find((c) => c.path === 'pages' && c.body.properties?.Performers)
     expect(rec?.body.properties).toMatchObject({
       Listening: { select: { name: 'Heard' } },
@@ -80,6 +78,38 @@ describe('the Notion notebook', () => {
     await syncToNotion(n.client, repo, 'page123', '2026-W41')
     const written = JSON.stringify(n.calls.filter((c) => c.path !== 'databases'))
     expect(written).not.toMatch(/prog1|programme@x|"strong"|recordingId|rec:|work:/)
+  })
+
+  it('uses databases already on the page — a duplicated Starter Template works as it is', async () => {
+    const repo = await seeded()
+    const n = fakeNotion([
+      { id: 'j1', type: 'child_database', child_database: { title: 'The Long Listen — Journal' } },
+      { id: 'c1', type: 'child_database', child_database: { title: 'Composers' } },
+      { id: 't1', type: 'child_page', child_page: { title: 'Musical taste' } },
+    ])
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    expect(n.calls.filter((c) => c.path === 'databases').map((c) => c.body.title[0].text.content)).toEqual(['Listening threads', 'Works & recordings'])
+    expect(n.calls.some((c) => c.path === 'pages' && c.body.parent.page_id)).toBe(false) // taste page found, not made
+    expect(n.calls.find((c) => c.path === 'pages' && c.body.properties?.Week)?.body.parent.database_id).toBe('j1')
+    expect(n.calls.find((c) => c.path === 'pages' && c.body.properties?.Works)?.body.properties.Name.title[0].text.content).toBe('Claude Debussy')
+  })
+
+  it('checks a notebook without writing, and names missing columns', async () => {
+    const n = fakeNotion(
+      [{ id: 'j1', type: 'child_database', child_database: { title: 'Journal' } }],
+      { j1: { properties: { Name: {}, Week: {}, Theme: {}, Status: {}, Heard: {}, Notes: {} } } },
+    )
+    const report = await checkNotebook(n.client, 'page123')
+    expect(report).toMatchObject({ ok: false, found: ['journal'], missing: ['threads', 'recordings', 'composers'], missingColumns: ['Journal: Visit'] })
+    expect(n.calls.every((c) => c.method === 'GET')).toBe(true)
+    expect((await discover(n.client, 'page123')).databases).toEqual({ journal: 'j1' })
+  })
+
+  it('says plainly when the page is not shared with the integration', async () => {
+    const failing: NotionCall = async () => { throw new Error('Could not find page') }
+    const report = await checkNotebook(failing, 'page123')
+    expect(report.ok).toBe(false)
+    expect(report.message).toMatch(/Connections/)
   })
 
   it('lays a programme out as a reader would want it', () => {

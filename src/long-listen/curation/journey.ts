@@ -81,13 +81,17 @@ export class Journey {
     })
   }
 
-  private async generateWeek(week: ListeningWeek, requestedNext?: string): Promise<WeekRecord> {
+  private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = []): Promise<WeekRecord> {
     const context = await buildContext(this.repo, week, requestedNext)
     const res = await this.curator.call<ThemesResponse>('themes', {
       today: this.now().toISOString().slice(0, 10),
       week: { key: week.key, label: week.label },
       context,
+      alsoOfferedThisWeek,
     })
+    // A wish for next week is read once. Clear it only after it reached the curator.
+    const prefs = await this.repo.preferences()
+    if (prefs.nextRequest) await this.repo.savePreferences({ ...prefs, nextRequest: '' })
     const options: ProgrammeOption[] = res.options.map((o, i) => ({
       id: newId('opt'),
       weekKey: week.key,
@@ -113,6 +117,25 @@ export class Journey {
     await this.repo.options.putMany(options)
     await this.repo.weeks.put(record)
     return record
+  }
+
+  /**
+   * None of the three appeal: ask for three others, optionally saying what
+   * you're in the mood for. Only before choosing — afterwards it's "change
+   * direction". The three set aside stay as open paths, not rejections.
+   */
+  offerOtherDirections(request?: string): Promise<WeekRecord> {
+    const lw = this.currentWeek()
+    return this.once(`week:${lw.key}:again`, async () => {
+      const week = await this.repo.weeks.require(lw.key)
+      if (week.programmeId) throw new Error('This week already has a programme — change direction instead.')
+      const current = await this.repo.options.many(week.optionIds)
+      await this.repo.options.putMany(current.map((o) => ({ ...o, status: 'open' as const })))
+      const fresh = await this.generateWeek(lw, request, current.map((o) => o.title))
+      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
+      await this.repo.weeks.put(record)
+      return record
+    })
   }
 
   /** Choose one of this week's three directions. */
@@ -168,6 +191,8 @@ export class Journey {
       week: { key: lw.key, label: lw.label },
       option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, continuityNote: option.returning?.note },
       thread: digest ? { ...digest, stage } : null,
+      preferences: context.preferences,
+      alreadyProgrammed: context.alreadyProgrammed,
       taste: context.taste,
       questions: context.questions,
       listenerNotes: context.listenerNotes,
@@ -238,7 +263,9 @@ export class Journey {
     const digest = await threadDigest(this.repo, theme.id, current)
     const events = await this.repo.events.all()
     const feedback = await this.repo.feedback.all()
+    const { language } = await this.repo.preferences()
     const res = await this.curator.call<ContinuityResponse>('continuity', {
+      language,
       thread: digest,
       exploration: { weekKey: ex.weekKey, stage: ex.stage, angle: ex.angle },
       programme: {
@@ -275,7 +302,9 @@ export class Journey {
       if (pending.length === 0) return 0
       const profile = await this.repo.taste()
       const describe = await this.describer()
+      const { language } = await this.repo.preferences()
       const res = await this.curator.call<TasteResponse>('taste', {
+        language,
         profile: {
           observations: profile.observations.filter((o) => !o.supersededBy).map(({ id, facet, subject, statement, stance, confidence }) => ({ id, facet, subject, statement, stance, confidence })),
           questions: profile.questions,
@@ -344,7 +373,9 @@ export class Journey {
       if ((mine.length || searched) && !opts.again) return mine
       const p = await this.repo.programmes.require(programmeId)
       const theme = await this.repo.themes.get(p.themeId)
+      const { language } = await this.repo.preferences()
       const res = await this.curator.call<ResourcesResponse>('resources', {
+        language,
         programme: {
           title: p.title,
           dek: p.dek,
@@ -375,7 +406,9 @@ export class Journey {
       const item = p.sections.flatMap((s) => s.items).find((i) => i.id === itemId)
       if (!item) throw new Error('No such item.')
       const profile = await this.repo.taste()
+      const { nextRequest: _n, ...preferences } = await this.repo.preferences()
       const res = await this.curator.call<ExplainResponse>('explain', {
+        preferences,
         programme: { title: p.title, dek: p.dek },
         item: { composer: item.proposed.composer, workTitle: item.proposed.work, catalogue: item.proposed.catalogue, recording: creditLine(item.proposed) },
         question: q,
@@ -388,7 +421,7 @@ export class Journey {
   }
 
   /** A second interpretation of an item's work, set beside the one in the programme. */
-  compare(programmeId: string, itemId: string): Promise<Comparison> {
+  compare(programmeId: string, itemId: string, opts: { mustBeOnSpotify?: boolean } = {}): Promise<Comparison> {
     const id = `cmp:${programmeId}:${itemId}`
     return this.once(id, async () => {
       const cached = await this.repo.comparisons.get(id)
@@ -405,7 +438,10 @@ export class Journey {
         .map((r) => allProposed.find((x) => x.rid === r.id)?.p)
         .filter((x): x is NonNullable<typeof x> => Boolean(x))
       const profile = await this.repo.taste()
+      const { nextRequest: _n, ...preferences } = await this.repo.preferences()
       const res = await this.curator.call<CompareResponse>('compare', {
+        preferences,
+        mustBeOnSpotify: Boolean(opts.mustBeOnSpotify),
         work: { composer: item.proposed.composer, title: item.proposed.work, catalogue: item.proposed.catalogue },
         current: { ...item.proposed, soloists: item.proposed.soloists },
         alreadyHeard,

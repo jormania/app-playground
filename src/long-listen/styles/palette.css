@@ -55,6 +55,22 @@
   --color-danger:       #e57a6c;
 }
 
+/* Larger text scales everything set in rem — type, space, measure — together. */
+:root[data-text-size="large"] {
+  font-size: 112.5%;
+}
+
+@media print {
+  :root, :root[data-theme="dark"] {
+    --color-bg: #fff;
+    --color-surface: #fff;
+    --color-ink: #000;
+    --color-muted: #333;
+    --color-faint: #555;
+    --color-accent: #6e2418;
+  }
+}
+
 html {
   background: var(--color-bg);
   -webkit-text-size-adjust: 100%;

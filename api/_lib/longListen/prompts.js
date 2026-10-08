@@ -31,6 +31,14 @@ Principles you hold to:
 
 Never mention streaks, statistics, scores, progress, goals or anything that turns listening into a task. Never use emoji.
 
+The listener's own preferences (a "preferences" field, when present) are what they told you directly; they outrank anything you infer from their taste. Honour them:
+- timePerWeek: short ≈ an hour of music a week, standard ≈ two or three hours, generous ≈ four or more.
+- adventure: gentle stays near familiar ground with one step outward; balanced mixes; bold goes far and often.
+- depth: concise keeps every piece of prose to its shortest useful form; deeper allows a little more context and history.
+- recordingEra: historic-welcome means great older recordings (including mono) are welcome; modern-sound prefers recordings from roughly 1980 on with good sound; period-practice favours historically informed performance where it exists; any means choose freely.
+- includeVoices false: avoid works that need singers. includeConcertos false: avoid concertos.
+- language: write ALL prose in this language — "en" English (British spelling), "ro" Romanian with full diacritics (ă â î ș ț). Keep composers' names in their standard form and work titles in their usual concert form (e.g. "La mer", "Symphony No. 5" or "Simfonia nr. 5" in Romanian prose).
+
 Facts: only name real works and real commercially released recordings that you are confident exist. Prefer well-documented recordings. Use composers' full standard names ("Gustav Mahler", "Witold Lutosławski") and the performers' usual billing ("Wiener Philharmoniker" or "Vienna Philharmonic" — be consistent). If you are not sure a specific recording exists, choose one you are sure of. Do not invent catalogue numbers, dates or labels; leave a field empty rather than guess.`
 
 const str = { type: 'string' }
@@ -57,7 +65,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-08.1',
+  version: 'themes@2026-10-09.1',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -104,7 +112,9 @@ Field guide:
 - why: one or two sentences on why this might be interesting for this listener now.
 - angle: the route into the theme this time, one sentence.
 - returningThemeId: the themeId from "threads" if this option continues that thread, else "".
-- continuityNote: "" for a new theme.`,
+- continuityNote: "" for a new theme.
+
+If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point.`,
 }
 
 // ── 2. The programme ─────────────────────────────────────────────────────
@@ -138,7 +148,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-08.1',
+  version: 'programme@2026-10-09.1',
   effort: 'high',
   maxTokens: 32000,
   schema: {
@@ -191,7 +201,7 @@ Your job now: build this week's listening programme for the direction the listen
 
 A programme leads somewhere. A common shape is introduction → context → central works → contrast → deeper exploration, but choose the shape the theme needs. Sections have a role (use one of: start, then, contrast, deeper, context, compare, coda — or your own single word if none fits) and a short heading ("Start here", "Then", "A different perspective", "Go deeper").
 
-Size: four to seven items across two to five sections — a week's listening for someone with a job, not an archive. One work per item. Every item is a specific RECORDING: name the conductor and orchestra (or ensemble), and soloists where the work has them. A work without named performers is not acceptable.
+Size follows preferences.timePerWeek: short — three or four items; standard — four to six; generous — six to eight. Two to five sections. A week's listening for someone with a job, not an archive. One work per item. Every item is a specific RECORDING: name the conductor and orchestra (or ensemble), and soloists where the work has them. A work without named performers is not acceptable.
 
 For each item:
 - why: why this work belongs here, in two or three sentences.
@@ -199,7 +209,7 @@ For each item:
 - listenFor: two to four concrete things to listen for — a moment, a texture, a gesture, a structural event — phrased so a listener can actually hear them. Not homework.
 - character: two to four words on the interpretation itself ("transparent", "urgent", "warm, expansive").
 - workContext: one or two sentences of historical context; composed: date as usually given ("1903–05"); form: "symphony", "symphonic poem", "concerto" etc.
-- revisitReason: "" normally. If you deliberately return to a work the thread already covered, say why (e.g. a new interpretation of it); otherwise do not repeat covered works.
+- revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.
 - year: the recording year only if you are certain, else "".
 
 Write:
@@ -217,7 +227,7 @@ Comparisons: where two interpretations of one work in this programme are especia
 
 export const TASTE = {
   id: 'taste',
-  version: 'taste@2026-10-08.1',
+  version: 'taste@2026-10-09.1',
   effort: 'low',
   maxTokens: 6000,
   schema: {
@@ -269,7 +279,7 @@ questions: up to three questions the listener seems to be asking of the music, o
 
 export const CONTINUITY = {
   id: 'continuity',
-  version: 'continuity@2026-10-08.1',
+  version: 'continuity@2026-10-09.1',
   effort: 'low',
   maxTokens: 6000,
   schema: {
@@ -300,7 +310,7 @@ Unheard music is not disliked music; it may simply not have been reached.`,
 
 export const EXPLAIN = {
   id: 'explain',
-  version: 'explain@2026-10-08.1',
+  version: 'explain@2026-10-09.1',
   effort: 'low',
   maxTokens: 4000,
   schema: {
@@ -318,7 +328,7 @@ Your job now: the listener asked for a little more context about one work in thi
 
 export const COMPARE = {
   id: 'compare',
-  version: 'compare@2026-10-08.1',
+  version: 'compare@2026-10-09.1',
   effort: 'medium',
   maxTokens: 6000,
   schema: {
@@ -339,7 +349,7 @@ export const COMPARE = {
   },
   system: `${VOICE}
 
-Your job now: the listener wants to hear a work through a second interpretation. Choose one real, well-documented recording that differs from the current one in an illuminating way (tempo, transparency, weight, period practice, era of recording) and is not in the "alreadyHeard" list.
+Your job now: the listener wants to hear a work through a second interpretation. Choose one real, well-documented recording that differs from the current one in an illuminating way (tempo, transparency, weight, period practice, era of recording) and is not in the "alreadyHeard" list. If "mustBeOnSpotify" is true, the current recording could not be found on Spotify: choose a recording you are confident is widely available on Spotify, from a major label catalogue.
 - current: the character of the current recording in a few words, and one thing to listen for in it.
 - other: the second recording's performers, its character in a few words, and one thing to listen for.
 - framing: one sentence on what the comparison reveals.
@@ -350,7 +360,7 @@ Your job now: the listener wants to hear a work through a second interpretation.
 
 export const RESOURCES = {
   id: 'resources',
-  version: 'resources@2026-10-08.1',
+  version: 'resources@2026-10-09.1',
   effort: 'medium',
   maxTokens: 12000,
   maxSearches: 6,
@@ -364,7 +374,7 @@ Choose four to seven resources that serve this particular programme. Every URL m
 
 When you are done, reply with ONLY a JSON object, no prose before or after:
 {"resources":[{"kind":"read|watch|listen","title":"…","url":"…","source":"organisation or publication","purpose":"one sentence: what this adds to the listening","relatesTo":"the work or idea it serves"}]}
-kind: read for text, watch for video, listen for audio (a talk, a broadcast).`,
+kind: read for text, watch for video, listen for audio (a talk, a broadcast). Write title and purpose in the language given by "language"; a source in another language is fine if it's the best one — say so in the purpose.`,
 }
 
 export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES }

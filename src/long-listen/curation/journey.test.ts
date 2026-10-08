@@ -300,3 +300,60 @@ describe('the curator context', () => {
     expect(ctx).toMatchObject({ threads: [], openPaths: [], recentWeeks: [], recentListening: [], taste: [] })
   })
 })
+
+describe('what the listener tells the curator', () => {
+  it('sends preferences with every programme and reads a next-week wish once', async () => {
+    await repo.savePreferences({ ...(await repo.preferences()), timePerWeek: 'short', language: 'ro', nextRequest: 'Something for long evenings' })
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('P', FRENCH) })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    expect(c.calls[0].payload.context.requestedNext).toBe('Something for long evenings')
+    expect(c.calls[0].payload.context.preferences).toMatchObject({ timePerWeek: 'short', language: 'ro' })
+    expect(c.calls[0].payload.context.preferences.nextRequest).toBeUndefined()
+    expect((await repo.preferences()).nextRequest).toBe('')
+
+    await j.choose(w.optionIds[0])
+    expect(c.calls[1].payload.preferences).toMatchObject({ timePerWeek: 'short', language: 'ro' })
+  })
+
+  it('keeps a wish when the curator could not be reached', async () => {
+    await repo.savePreferences({ ...(await repo.preferences()), nextRequest: 'Sibelius, please' })
+    const c = fakeCurator({ themes: () => { throw new CuratorUnavailable('offline', 'x') } })
+    await expect(journey(c.client).ensureWeek()).rejects.toThrow()
+    expect((await repo.preferences()).nextRequest).toBe('Sibelius, please')
+  })
+
+  it('tells a new theme what was programmed recently elsewhere', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('P', FRENCH) })
+    let j = journey(c.client)
+    await j.choose((await j.ensureWeek()).optionIds[0])
+    at('2026-10-15T09:00:00Z')
+    j = journey(c.client)
+    await j.ensureWeek()
+    const ctx = c.calls.filter((x) => x.op === 'themes')[1].payload.context
+    expect(ctx.alreadyProgrammed.map((a: any) => a.work)).toContain('La mer')
+    expect(ctx.alreadyProgrammed[0].weeksAgo).toBe(1)
+  })
+})
+
+describe('three other directions', () => {
+  it('keeps the first three as open paths and offers three new ones', async () => {
+    const c = fakeCurator({ themes: (_p, n) => themes(n === 1 ? ['A', 'B', 'C'] : ['D', 'E', 'F']) })
+    const j = journey(c.client)
+    const first = await j.ensureWeek()
+    const again = await j.offerOtherDirections('Something quieter')
+    expect(c.calls[1].payload.alsoOfferedThisWeek).toEqual(['A', 'B', 'C'])
+    expect(c.calls[1].payload.context.requestedNext).toBe('Something quieter')
+    expect((await repo.options.many(again.optionIds)).map((o) => o.title)).toEqual(['D', 'E', 'F'])
+    expect(again.earlierOptionIds).toEqual(first.optionIds)
+    expect((await repo.options.many(first.optionIds)).every((o) => o.status === 'open')).toBe(true)
+    expect(again.createdAt).toBe(first.createdAt)
+  })
+
+  it('is not offered once a programme is chosen', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('P', FRENCH) })
+    const j = journey(c.client)
+    await j.choose((await j.ensureWeek()).optionIds[0])
+    await expect(j.offerOtherDirections()).rejects.toThrow(/change direction/)
+  })
+})

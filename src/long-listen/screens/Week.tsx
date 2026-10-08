@@ -5,6 +5,7 @@ import { useServices } from '../app/services'
 import { go } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
 import { Problem, Waiting } from '../components/common'
+import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
 import s from '../styles/editorial.module.css'
 
@@ -29,6 +30,9 @@ export function WeekScreen() {
   const [error, setError] = useState<unknown>(null)
   const [choosing, setChoosing] = useState<string | null>(null)
   const [chooseError, setChooseError] = useState<unknown>(null)
+  const [askOpen, setAskOpen] = useState(false)
+  const [mood, setMood] = useState('')
+  const [asking, setAsking] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
@@ -64,6 +68,21 @@ export function WeekScreen() {
     }
   }
 
+  async function askAgain() {
+    setAsking(true)
+    setChooseError(null)
+    try {
+      await journey.offerOtherDirections(mood.trim() || undefined)
+      setMood('')
+      setAskOpen(false)
+      bump()
+    } catch (e) {
+      setChooseError(e)
+    } finally {
+      setAsking(false)
+    }
+  }
+
   if (error) {
     const locked = error instanceof CuratorUnavailable && (error.code === 'locked' || error.code === 'not-set-up')
     return (
@@ -71,7 +90,7 @@ export function WeekScreen() {
         <p className={s.eyebrow}>{journey.currentWeek().label}</p>
         <h1 className={s.titleSmall}>{locked ? 'Before the first programme' : 'This week is still being prepared'}</h1>
         <Problem error={error} onRetry={locked ? undefined : () => void load()} />
-        {locked && <p><a href="#/settings">Open Settings</a> to add your passphrase.</p>}
+        {locked && <p><a href="#/settings">Open Settings</a> to add your Anthropic key and test it — it takes a minute. The <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">guide</a> shows where to get one.</p>}
       </div>
     )
   }
@@ -97,6 +116,22 @@ export function WeekScreen() {
           <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={choosing !== null} onChoose={() => choose(o)} />
         ))}
       </ol>
+
+      <div className={s.block}>
+        {!askOpen ? (
+          <button className={s.textButton} onClick={() => setAskOpen(true)} disabled={choosing !== null}>None of these? Ask for three others</button>
+        ) : (
+          <div className={s.feedback}>
+            <label className={s.feedbackQ} htmlFor="mood">What are you in the mood for? <span className={s.faint}>(optional)</span></label>
+            <textarea id="mood" className={s.textarea} value={mood} onChange={(e) => setMood(e.target.value)} placeholder="Something quieter after a long week · Sibelius · a concerto I don’t know" />
+            <div className={s.actions}>
+              <button className={s.textButton} onClick={askAgain} disabled={asking}>{asking ? 'The curator is thinking again…' : 'Ask'}</button>
+              <button className={s.textButton} onClick={() => setAskOpen(false)} disabled={asking}>Not now</button>
+            </div>
+            <p className={s.note}>These three stay open as paths for another week.</p>
+          </div>
+        )}
+      </div>
 
       {view.openPaths.length > 0 && (
         <details className={s.block}>

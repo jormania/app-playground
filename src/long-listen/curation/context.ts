@@ -1,7 +1,9 @@
 import type { Repo } from '../store/repo'
 import type { ListeningWeek } from '../domain/week'
 import { creditLine } from '../domain/identity'
-import { listeningState, latestFeedback } from '../domain/listening'
+import { listeningState, latestFeedback, timesHeard } from '../domain/listening'
+import type { ListenerPreferences } from '../domain/types'
+import { weeksBetween } from '../domain/week'
 import { digestThread, type ThreadDigest } from './continuity'
 
 /**
@@ -15,19 +17,27 @@ import { digestThread, type ThreadDigest } from './continuity'
  * thread is relevant; it is not resent every week.
  */
 export interface CuratorContext {
+  /** Said by the listener in Settings — outranks anything inferred. */
+  preferences: Omit<ListenerPreferences, 'nextRequest'>
   listenerNotes: string
   taste: { facet: string; subject: string; statement: string; stance: string; confidence: string }[]
   questions: string[]
   threads: ThreadDigest[]
   openPaths: { title: string; pitch: string; mood: string; offeredIn: string }[]
   recentWeeks: { week: string; chosen?: string; mood?: string; alsoOffered: string[] }[]
-  recentListening: { composer: string; work: string; recording: string; state: string; reaction?: string; notes: string[] }[]
+  recentListening: { composer: string; work: string; recording: string; state: string; reaction?: string; notes: string[]; heardTimes: number }[]
+  /**
+   * Every work programmed in the last twelve weeks, in any theme — so a new
+   * theme doesn't hand back last month's symphony by accident. A deliberate
+   * return is fine; an unnoticed one is not.
+   */
+  alreadyProgrammed: { composer: string; work: string; weeksAgo: number }[]
   requestedNext?: string
 }
 
 export async function buildContext(repo: Repo, week: ListeningWeek, requestedNext?: string): Promise<CuratorContext> {
-  const [taste, themes, explorations, weeks, options, events, feedback] = await Promise.all([
-    repo.taste(), repo.themes.all(), repo.explorations.all(), repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(),
+  const [taste, prefs, themes, explorations, weeks, options, events, feedback] = await Promise.all([
+    repo.taste(), repo.preferences(), repo.themes.all(), repo.explorations.all(), repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(),
   ])
   const programmes = new Map((await repo.programmes.all()).map((p) => [p.id, p]))
 
@@ -80,10 +90,24 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
       state: listeningState(events, rid),
       reaction: fb.reaction,
       notes: fb.notes.slice(-3),
+      heardTimes: timesHeard(events, rid),
     }]
   })
 
+  const alreadyProgrammed: CuratorContext['alreadyProgrammed'] = []
+  for (const p of [...programmes.values()].sort((a, b) => b.weekKey.localeCompare(a.weekKey))) {
+    const weeksAgo = weeksBetween(p.weekKey, week.key)
+    if (weeksAgo > 12 || weeksAgo < 0) continue
+    for (const i of p.sections.flatMap((x) => x.items)) {
+      if (!alreadyProgrammed.some((a) => a.composer === i.proposed.composer && a.work === i.proposed.work)) {
+        alreadyProgrammed.push({ composer: i.proposed.composer, work: i.proposed.work, weeksAgo })
+      }
+    }
+  }
+  const { nextRequest, ...preferences } = prefs
+
   return {
+    preferences,
     listenerNotes: taste.notesToCurator,
     taste: taste.observations
       .filter((o) => !o.supersededBy)
@@ -93,6 +117,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
     openPaths,
     recentWeeks,
     recentListening,
-    requestedNext: requestedNext || undefined,
+    alreadyProgrammed,
+    requestedNext: (requestedNext ?? nextRequest).trim() || undefined,
   }
 }

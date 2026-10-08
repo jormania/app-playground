@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { beginSignIn, completeSignIn, challengeFor, isCallback, SpotifyAuthError } from './auth'
-import { verifyRecording, playsToEvents, forgetMatch } from './verify'
+import { verifyRecording, playsToEvents, forgetMatch, aboutDuration, saveProgrammePlaylist } from './verify'
 import { SpotifyClient } from './client'
 import { Repo, memoryStore } from '../store/repo'
 import type { Recording, ProposedRecording, ListeningEvent } from '../domain/types'
@@ -62,7 +62,7 @@ describe('PKCE sign-in', () => {
 const proposed: ProposedRecording = { composer: 'Claude Debussy', work: 'La mer', conductor: 'Pierre Boulez', orchestra: 'Cleveland Orchestra', soloists: [] }
 const rec: Recording = { id: 'rec1', workId: 'work:claude-debussy:la-mer', soloistIds: [], character: [], verification: 'unchecked' }
 const t = (id: string, name: string, n: number, artists = ['Claude Debussy', 'The Cleveland Orchestra', 'Pierre Boulez']): SpotifyTrackLike =>
-  ({ id, name, uri: `spotify:track:${id}`, artists: artists.map((a) => ({ name: a })), album: { id: 'alb1', name: 'Debussy: La mer; Nocturnes' }, track_number: n, disc_number: 1 })
+  ({ id, name, uri: `spotify:track:${id}`, artists: artists.map((a) => ({ name: a })), album: { id: 'alb1', name: 'Debussy: La mer; Nocturnes' }, track_number: n, disc_number: 1, duration_ms: 8 * 60_000 })
 
 function fakeSpotify(search: SpotifyTrackLike[]) {
   return {
@@ -88,6 +88,17 @@ describe('verifying a recording', () => {
       imageUrl: 'big', trackIds: ['m1', 'm2', 'm3'], confidence: 'strong',
     })
     expect((await repo.albums.require('alb1')).recordingIds).toEqual(['rec1'])
+    expect(out.recording.spotify?.durationMs).toBe(24 * 60_000)
+  })
+
+  it('learns the work’s movements from Spotify’s track names, once', async () => {
+    const repo = new Repo(memoryStore())
+    await repo.recordings.put(rec)
+    await repo.works.put({ id: rec.workId, composerId: 'composer:claude-debussy', title: 'La mer' })
+    await verifyRecording(repo, fakeSpotify([t('m1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1)]), 'rec1', proposed, 'now')
+    expect((await repo.works.require(rec.workId)).movements?.map((m) => m.title)).toEqual([
+      'I. De l’aube à midi sur la mer', 'II. Jeux de vagues', 'III. Dialogue du vent et de la mer',
+    ])
   })
 
   it('says not found rather than link someone else’s La mer', async () => {
@@ -157,5 +168,47 @@ describe('the client', () => {
     const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, memStorage())
     await expect(c.searchTracks('x')).rejects.toMatchObject({ reason: 'signed-out' })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('the week as a Spotify playlist', () => {
+  async function seeded() {
+    const repo = new Repo(memoryStore())
+    const ref = (ids: string[]) => ({ albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ids, trackUris: ids.map((i) => `spotify:track:${i}`), confidence: 'strong' as const, matchedAt: 'x' })
+    await repo.recordings.putMany([
+      { id: 'r1', workId: 'w1', soloistIds: [], character: [], verification: 'verified', spotify: ref(['a1', 'a2']) },
+      { id: 'r2', workId: 'w2', soloistIds: [], character: [], verification: 'not-found' },
+      { id: 'r3', workId: 'w3', soloistIds: [], character: [], verification: 'verified', spotify: ref(['c1']) },
+    ])
+    const item = (id: string, rid: string) => ({ id, workId: 'w', recordingId: rid, why: '', whyThisRecording: '', listenFor: [], proposed: { composer: 'X', work: 'Y', soloists: [] } })
+    await repo.programmes.put({ id: 'p1', weekKey: '2026-W41', optionId: 'o', themeId: 't', explorationId: 'e', stage: 1, title: 'Colour', dek: 'Dek.', introduction: '', whyNow: '', historicalPlace: '', howTheyRelate: '', sections: [{ id: 's', role: 'start', heading: 'H', items: [item('i1', 'r1'), item('i2', 'r2'), item('i3', 'r3')] }], comparisonIds: [], createdAt: 'x', promptVersion: 'v', model: 'm' })
+    return repo
+  }
+
+  it('holds exactly the confirmed tracks, in programme order, and updates the same playlist later', async () => {
+    const repo = await seeded()
+    const writePlaylist = vi.fn(async (_n: string, _d: string, _u: string[], id?: string) => ({ id: id ?? 'pl1', url: 'https://open.spotify.com/playlist/pl1' }))
+    const spotify = { writePlaylist } as unknown as SpotifyClient
+    const first = await saveProgrammePlaylist(repo, spotify, 'p1', '5–11 October 2026')
+    expect(writePlaylist.mock.calls[0][2]).toEqual(['spotify:track:a1', 'spotify:track:a2', 'spotify:track:c1'])
+    expect(writePlaylist.mock.calls[0][0]).toBe('The Long Listen — Colour')
+    expect(first).toMatchObject({ id: 'pl1', tracks: 3 })
+    await saveProgrammePlaylist(repo, spotify, 'p1', '5–11 October 2026')
+    expect(writePlaylist.mock.calls[1][3]).toBe('pl1')
+  })
+
+  it('asks for a reconnect when the sign-in predates playlist permission', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: 'user-read-recently-played' }))
+    const fetchMock = vi.fn()
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    await expect(c.writePlaylist('n', 'd', ['u'])).rejects.toThrow(/Reconnect Spotify/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('speaks of length in rounded words', () => {
+    expect(aboutDuration(24 * 60_000)).toBe('about 24 minutes')
+    expect(aboutDuration(71 * 60_000)).toBe('about 1 hour 10 minutes')
+    expect(aboutDuration(undefined)).toBeUndefined()
   })
 })

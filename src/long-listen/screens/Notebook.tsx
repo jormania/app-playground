@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { TasteObservation } from '../domain/types'
 import { useLoad, useServices } from '../app/services'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
+import { preferenceLines } from '../notion/mirror'
 import { Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
@@ -18,11 +19,12 @@ const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
  * listener can simply tell the curator something.
  */
 export function NotebookScreen() {
-  const { repo, journey, bump, say, status, notionState, syncNotion } = useServices()
-  const { data, error } = useLoad(async () => ({ taste: await repo.taste(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
+  const { repo, journey, bump, say, notion, notionState, syncNotion } = useServices()
+  const { data, error } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
   const [notes, setNotes] = useState('')
+  const [wish, setWish] = useState('')
   const [reading, setReading] = useState(false)
-  useEffect(() => { if (data) setNotes(data.taste.notesToCurator) }, [data])
+  useEffect(() => { if (data) { setNotes(data.taste.notesToCurator); setWish(data.prefs.nextRequest) } }, [data])
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Opening the notebook…</Waiting>
@@ -36,6 +38,12 @@ export function NotebookScreen() {
     await repo.saveTaste({ ...current, notesToCurator: notes.trim() })
     bump()
     say('The curator will read this from next week.', 'success')
+  }
+
+  async function saveWish() {
+    await repo.savePreferences({ ...(await repo.preferences()), nextRequest: wish.trim() })
+    bump()
+    say(wish.trim() ? 'The curator will read this when next week begins.' : 'Cleared.', 'success')
   }
 
   async function readNow() {
@@ -89,8 +97,24 @@ export function NotebookScreen() {
         </section>
       )}
 
+      <section className={s.block}>
+        <h2 className={s.h2}>What you’ve told the curator</h2>
+        <ul className={s.bullets}>{preferenceLines(data.prefs).map((l) => <li key={l}>{l}</li>)}</ul>
+        <p className={s.faint}><a href="#/settings">Change these in Settings</a></p>
+      </section>
+
       <hr className={s.rule} />
       <section>
+        <h2 className={s.h2}>A wish for next week</h2>
+        <p className={s.quiet}>Read once, when the next week’s three directions are chosen — then cleared.</p>
+        <label className={s.visuallyHidden} htmlFor="wish">A wish for next week</label>
+        <textarea id="wish" className={s.textarea} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
+        <div className={s.actions}>
+          <button className={s.textButton} onClick={saveWish} disabled={wish.trim() === data.prefs.nextRequest}>Keep this wish</button>
+        </div>
+      </section>
+
+      <section className={s.block}>
         <h2 className={s.h2}>A note to the curator</h2>
         <p className={s.quiet}>Anything you’d like it to keep in mind — a composer you’re curious about, how much time you have, a mood you’re in.</p>
         <label className={s.visuallyHidden} htmlFor="notes">Note to the curator</label>
@@ -100,7 +124,7 @@ export function NotebookScreen() {
         </div>
       </section>
 
-      {status?.notion && (
+      {notion && (
         <section className={s.block}>
           <h2 className={s.h2}>In Notion</h2>
           <p className={s.quiet}>
