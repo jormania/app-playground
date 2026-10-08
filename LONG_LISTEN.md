@@ -111,7 +111,7 @@ meaning changes.
 | Job | Effort | When it runs |
 |---|---|---|
 | `themes` | medium | once a week |
-| `programme` | high | once per choice |
+| `programme` | medium | once per choice |
 | `continuity` | low | once per exploration, after its week ends |
 | `taste` | low | after feedback with something in it; at week start |
 | `explain` | low | on request, cached per item |

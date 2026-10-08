@@ -217,7 +217,7 @@ describe('resources', () => {
 describe('the request shape', () => {
   it('uses Sonnet with adaptive thinking and a json_schema output, and nothing a browser call would choke on', () => {
     const body = curatorBody('programme', 'hello')
-    expect(body).toMatchObject({ thinking: { type: 'adaptive' }, output_config: { effort: 'high', format: { type: 'json_schema' } } })
+    expect(body).toMatchObject({ thinking: { type: 'adaptive' }, output_config: { effort: 'medium', format: { type: 'json_schema' } } })
     expect(body.model).toMatch(/^claude-sonnet-/)
     expect(body).not.toHaveProperty('fallbacks')
     expect(resourcesBody('x').output_config.format).toBeUndefined()
