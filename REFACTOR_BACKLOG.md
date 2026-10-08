@@ -1666,6 +1666,7 @@ Found while doing R-008's Anthropic bump, 2026-09-23. Measured by matching each
 | `marquee-scan.js` | yes |
 | `wanderlist-remind.js` | yes |
 | `generate-law-of-the-day.js` | yes — new, R-008 |
+| `long-listen.js` | yes — new with the app, 2026-10 |
 | `clickdeck-pricing.js` | — |
 | `clickdeck-studio-search.js` | — |
 | `law-of-the-day-content.js` | — |

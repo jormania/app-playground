@@ -1,0 +1,98 @@
+/* The Long Listen's palette: a concert programme on good paper by day, the
+   same programme under a reading lamp at night. One accent — an oxblood ink —
+   used sparingly, for links and the occasional rule; no gradients, nothing
+   that glows. Unlayered, so it wins over ds/tokens.css's @layer defaults
+   (see the comment atop tokens.css). Chrome colours are mirrored in
+   app/theme.ts and long-listen-react.html. */
+
+:root {
+  color-scheme: light;
+  --color-bg:        #f5efe3;
+  --color-bg-sunken: #ede5d5;
+  --color-surface:   #fbf7ee;
+  --color-surface-2: #efe7d6;
+  --color-border:    #ddd2bd;
+  --color-border-2:  #b4a68c;
+
+  --color-ink:   #1f1a14;
+  --color-muted: #5c5244;
+  --color-faint: #857868;
+
+  --color-accent:       #8a2f22;
+  --color-accent-hover: #6e2418;
+  --color-on-accent:    #fbf7ee;
+  --color-success:      #4c6a36;
+  --color-warning:      #9a5b16;
+  --color-danger:       #9b2c22;
+
+  --font-display: 'LL Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans:    'LL Alegreya', Georgia, serif;
+  --font-read:    'LL Alegreya', Georgia, serif;
+
+  --measure: 36rem;
+  --text-read: 1.1875rem;
+  --leading-read: 1.62;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg:        #16130f;
+  --color-bg-sunken: #110f0c;
+  --color-surface:   #1d1914;
+  --color-surface-2: #26211a;
+  --color-border:    #3a3228;
+  --color-border-2:  #5c4f3f;
+
+  --color-ink:   #ece4d6;
+  --color-muted: #bcaf9b;
+  --color-faint: #8a7e6c;
+
+  --color-accent:       #e0896c;
+  --color-accent-hover: #eca58c;
+  --color-on-accent:    #16130f;
+  --color-success:      #9cbc7e;
+  --color-warning:      #d9a05a;
+  --color-danger:       #e57a6c;
+}
+
+html {
+  background: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-read);
+  font-size: var(--text-read);
+  line-height: var(--leading-read);
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

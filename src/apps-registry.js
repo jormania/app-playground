@@ -36,6 +36,31 @@ export const STACK_TAGS = new Set(["react", "vite", "notion"]);
 
 export const APPS = [
   {
+    emoji: "🎻",
+    iconBg: "rgba(138,47,34,0.14)",
+    title: "The Long Listen",
+    subtitle: "orchestral curator · weekly",
+    deployed: "Oct 2026",
+    tech: "React + Vite",
+    tags: ["music", "classical", "curation", "notion", "react", "vite"],
+    ds: true,
+    kind: "react-vite",
+    manifest: "/long-listen.webmanifest",
+    description: "A personal curator for orchestral music, classical and contemporary. Each week it offers three directions; you choose one and get a programme to read and hear, with specific recordings, what to listen for, and why each belongs. It remembers what you've heard and what you said, so a theme that returns months later picks up where you left off instead of starting again.",
+    features: [
+      "Three different directions each week (immersive, curious, adventurous). The two you don't choose stay open as paths for later, not rejections",
+      "An editorial programme: an introduction, a sequence with a reason for each step, a named recording for every work, and what to listen for",
+      "Interpretations matter: a recording is never just its work. Same work, two perspectives, side by side, on request or when the curator thinks it's revealing",
+      "Every recording is checked on Spotify against its exact performers. A link to someone else's version is never offered in its place",
+      "Themes are threads: a return continues from what was heard, loved and skipped, with the questions left open last time",
+      "Feedback in a few words and an optional sentence, read by the curator into a taste profile written in prose, never scores",
+      "Further reading and listening found on the web, kept only if the page really turned up in the search",
+      "A human-readable notebook mirrored to Notion: journal, threads, recordings, taste",
+      "No streaks, points, stats or progress bars, ever",
+    ],
+    file: "long-listen-react.html",
+  },
+  {
     emoji: "🎹",
     iconBg: "rgba(31,35,71,0.14)",
     title: "KeyPath",

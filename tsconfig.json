@@ -21,7 +21,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Governs the TypeScript code: the Sol Odyssey, Daily Stoic, Fit Check, Silva and KeyPath apps, the
+    /* Governs the TypeScript code: the Sol Odyssey, Daily Stoic, Fit Check, Silva, KeyPath and Long Listen apps, the
        design system (src/ds), and the cross-app shared logic (src/shared). The other apps are
        plain JS/JSX and are intentionally left out of `include` — they still import
        from src/shared, but only the shared code itself gets typechecked.
