@@ -40,8 +40,8 @@ design serves.
 |---|---|---|
 | Primary database | IndexedDB on the device (`idb-keyval`, its own `long-listen` db), `store/repo.ts` | Chosen with the owner, 2026-10-08: no provisioning, readable offline, server stays stateless. Same approach as KeyPath and Silva. |
 | Backup | Settings → "Save a backup" (one JSON file of every record) | The journey lives on one device; this is how it survives a new phone. |
-| Curator (Claude) | `api/long-listen.js`, which holds `ANTHROPIC_API_KEY` | The brief forbids a browser-held key. **Every other app here is BYO-key in the browser; this one deliberately is not.** |
-| Notion mirror | Written through the same endpoint with `LONG_LISTEN_NOTION_TOKEN` | Human-readable notebook, one way, app → Notion (§7). |
+| Curator (Claude) | `api/long-listen.js` | The listener's own Anthropic key (Settings, kept on the device — the playground's BYO rule) is sent **to this server** in `x-anthropic-key`, never from the browser to Anthropic: the brief forbade browser→Anthropic calls. The server's own `ANTHROPIC_API_KEY`, unlocked by a passphrase, is the fallback. |
+| Notion mirror | The listener's token through the shared `/api/notion` relay; or the server's `LONG_LISTEN_NOTION_TOKEN` through the endpoint's fenced `notion` op | Human-readable notebook, one way, app → Notion (§7). |
 | Spotify | Browser only (PKCE, no secret) | The Client ID is public by design. |
 
 The function slot came from folding Click Deck's HLTB proxy into
@@ -115,6 +115,15 @@ meaning changes.
 | `compare` | medium | on request, cached per item |
 | `resources` | medium + web search | once for this week's programme, then on request |
 
+Every job also receives the listener's **preferences** (Settings → How you
+listen: time per week, adventure, depth, recording era, voices, concertos,
+curator language). They outrank inferred taste; the programme's size follows
+the time setting. A one-off **wish for next week** is read once and cleared
+only after it reached the curator. **Three others** (before choosing) keeps
+the first three as open paths and tells the curator what not to repeat. The
+context also carries every work programmed in the last twelve weeks across all
+themes, and how often each recording was heard again.
+
 Model: `MODEL_SONNET` from `src/shared/models.js`, adaptive thinking,
 `output_config.format` json_schema, and the server-side refusal fallback
 (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`).
@@ -155,7 +164,16 @@ must be HTTPS or `http://127.0.0.1:<port>`, not `localhost`. Register:
 - `http://127.0.0.1:5173/long-listen-react.html`
 
 Scopes: `user-read-recently-played`, `user-read-playback-state`,
-`user-modify-playback-state`. The PKCE callback is validated: state must
+`user-modify-playback-state`, `user-read-currently-playing`,
+`playlist-modify-private`. A sign-in that predates the last two is asked to
+reconnect before a playlist is written.
+
+**Also from Spotify**: each verified recording's length (sum of its tracks),
+the work's movements from the track names (once, if the work has none), the
+week as a private **playlist** of exactly the matched tracks (re-saving
+replaces them), the **listening view**'s "now" marker from currently-playing
+(polled every 10 s while visible, screen kept awake with the shared
+`useWakeLock`), and a **Settings test** (who's signed in, which devices). The PKCE callback is validated: state must
 match, the verifier is single-use, and sign-ins older than 15 minutes are
 refused.
 
@@ -167,26 +185,39 @@ recording forward; the listener's own marks win.
 
 ## 7. Notion
 
-A one-way mirror of what a person would reread. On first sync it creates,
-under `LONG_LISTEN_NOTION_PAGE_ID`: **Journal** (one page per programme,
-written once, as the curator wrote it), **Listening threads**, **Works &
-recordings**, and a **Musical taste** page that is rewritten when taste
-changes. Hash-skipped: an unchanged entity is never rewritten. No ids,
+A one-way mirror of what a person would reread, under one **notebook page**
+(Settings → Notion; or `LONG_LISTEN_NOTION_PAGE_ID` on the server path):
+**Journal** (one page per programme, written once, as the curator wrote it),
+**Listening threads**, **Works & recordings**, **Composers**, and a **Musical
+taste** page rewritten when taste or preferences change. The mirror **finds**
+these by title-ending among the page's children (so "The Long Listen — Journal"
+and a duplicated Starter Template's "Journal" both count) and creates only what
+is missing. **Test Notion** (`checkNotebook`) reads, never writes: it reports
+databases found and missing, and any column a found database lacks.
+
+The live notebook is **Dev → App Databases → The Long Listen**; the empty copy
+is **Dev → Starter Templates → The Long Listen — Starter Template**; spec and
+handover sit in App Specs and App Handovers, per *Dev — Building an App*. Hash-skipped: an unchanged entity is never rewritten. No ids,
 prompt versions or match confidences cross over. The server route only
 allows these call shapes, and only under the configured page
 (`refuseNotionCall`).
 
 ## 8. Setup
 
-Vercel env (Production):
+**Nothing is required on the server.** The listener enters an Anthropic key,
+a Spotify Client ID and a Notion token + notebook page in Settings, each with
+a test — the user's guide (a Claude Docs doc, linked from the masthead and
+Settings: `app/links.ts`) walks through all three.
+
+Optional Vercel env, for the server-key path:
 
 | Variable | |
 |---|---|
-| `LONG_LISTEN_ACCESS_KEY` | the passphrase the app asks for; without it the endpoint answers 501 |
+| `LONG_LISTEN_ACCESS_KEY` | passphrase that unlocks the server's own keys; without it only BYO works |
 | `ANTHROPIC_API_KEY` | already set for Law of the Day |
-| `LONG_LISTEN_NOTION_TOKEN` | optional — a Notion internal integration token |
-| `LONG_LISTEN_NOTION_PAGE_ID` | optional — the page to build the notebook under, shared with that integration |
-| `VITE_LONG_LISTEN_SPOTIFY_CLIENT_ID` | optional default for Settings |
+| `LONG_LISTEN_NOTION_TOKEN` | a Notion internal integration token |
+| `LONG_LISTEN_NOTION_PAGE_ID` | the notebook page, shared with that integration |
+| `VITE_LONG_LISTEN_SPOTIFY_CLIENT_ID` | a default for Settings |
 
 **Development**: `npm run dev`, open
 `http://127.0.0.1:5173/long-listen-react.html`. With no key, turn on Settings →
@@ -212,3 +243,34 @@ Development → *demo curator*. Its canned programmes exist only under
   `curation/taste.test.ts`, `notion/mirror.test.ts`, `App.test.tsx`.
 - `scripts/anthropic.live.test.js` sends each curator job's real request
   once (`npm run test:live`).
+
+## 10. Screens
+
+This week (three directions · three others · open paths) → Programme (tools:
+length, playlist, print · sections · recordings · listen-for · marks ·
+feedback · perspectives · more context · resources · change direction) →
+Listening view. Journal (every week: offered, chosen, heard). Library
+(composers → works → recordings, searchable). Threads. Notebook (taste in
+words, how it moved, preferences, a wish for next week, a note). Settings
+(gear) and the guide (book) sit in the masthead.
+
+## 11. The second-pass audit (2026-10-09)
+
+After the first build, the brief was reread line by line. What was missing or
+thin, and what was done:
+
+| Brief | Gap | Now |
+|---|---|---|
+| §5 profile: length, recording eras, tolerance, contemporary appetite | only ever inferred | Settings → How you listen, sent with every job, outranks inference |
+| §19 navigation: "Explore" | not built | Library |
+| §6 repeat listening, §5 "works already recommended" | within a thread only | `heardTimes` in digests and context; `alreadyProgrammed` across themes |
+| §10 movements | modelled, never filled | from Spotify track names |
+| §17 unavailable recordings | a search link only | "Ask for one that's on Spotify" → a playable second perspective |
+| §5 "current interests/questions" | no way to state one | a wish for next week; a note to the curator |
+| §14 knowledge: composers | missing | Composers database |
+| — none of the three appeal | no way out | three others, on request |
+| Playbook: BYO keys, Starter Template, spec, handover, glance row, guide | server key only; no Notion paperwork | all done |
+
+Added beyond the brief: the weekly Spotify playlist, the listening view, a
+recording's length, print styles, text size, and the curator writing in
+Romanian when asked.

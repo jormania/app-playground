@@ -97,7 +97,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | Fit Check | `src/fit-check/` | **strict TS**, DS — Notion select options are a **closed vocabulary** and its tags are AI-assigned; read [`FIT_CHECK.md`](FIT_CHECK.md) before touching `lib/vocabulary.ts`. Also [`FIT_CHECK_ROADMAP.md`](FIT_CHECK_ROADMAP.md), [`FIT_CHECK_DISCOVERY.md`](FIT_CHECK_DISCOVERY.md) |
 | Silva | `src/silva/` | **strict TS**, DS — commonplace book: today's walk, reading history, photo/share intake, neighbourhoods. Read [`SILVA.md`](SILVA.md) |
 | KeyPath | `src/keypath/` | **strict TS**, DS — **a piano tutor taster, in progress**: the hardware probe passed on the S24 (KEYPATH.md §1; Nora's Poco F3 still to check) and now lives at Settings → Diagnostics; the tutor is designed in [`KEYPATH_TUTOR.md`](KEYPATH_TUTOR.md), built in steps (engine: `engine/`, shell: `app/`, the Songs door: `app/songs/`, the Journey: `app/journey/`, Challenges: `app/challenges/`, Studio: `app/studio/`, the parent's Progress view: `app/progress/`, keyboard connection wizard: `app/connect/`). An installable PWA, listed in the registry (front page and Cabinet) since step 5, still `noindex`. `midi/` and `engine/` must stay free of React. **No music files in the repo, ever** — `content-boundary.test.js` enforces it. Read [`KEYPATH.md`](KEYPATH.md); what comes next, ranked, is [`KEYPATH_ROADMAP.md`](KEYPATH_ROADMAP.md) |
-| The Long Listen | `src/long-listen/` | **strict TS**, DS — orchestral curator. **The one app whose Anthropic key is server-side** (`api/long-listen.js`, passphrase-gated); primary DB is IndexedDB, Notion a one-way mirror. Read [`LONG_LISTEN.md`](LONG_LISTEN.md) — especially "facts vs curation" and the rule that a returning theme expands, never restarts — before touching it |
+| The Long Listen | `src/long-listen/` | **strict TS**, DS — orchestral curator. BYO Anthropic key like every app, **but Claude is called from the server** (`api/long-listen.js` gets the key in a header; the server's own key behind a passphrase is the fallback); primary DB is IndexedDB, Notion a one-way mirror via the shared relay. Guide: a Claude Docs doc, like KeyPath's. Read [`LONG_LISTEN.md`](LONG_LISTEN.md) — especially "facts vs curation" and the rule that a returning theme expands, never restarts — before touching it |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
@@ -188,7 +188,8 @@ it is complete:
   app makes the same way: BYO key straight from the browser, the endpoint and
   API version, `anthropicHeaders()`, `extractAnthropicText()` (reads replies by
   block type). (The Long Listen is the exception: its curator calls Claude from
-  `api/long-listen.js` with the server's key.) Used by Silva and KeyPath (coach's note, weekly note, Studio answers: `keypath/app/ai.ts`).
+  `api/long-listen.js`, with the listener's key sent there rather than to
+  Anthropic.) Used by Silva and KeyPath (coach's note, weekly note, Studio answers: `keypath/app/ai.ts`).
 - [`models.js`](src/shared/models.js) — **the only place a Claude model id may be
   written** (`MODEL_HAIKU`, `MODEL_SONNET`) and `noThinking(model)`, the per-model
   way to keep a model from thinking. Every app that calls Claude imports from it;
