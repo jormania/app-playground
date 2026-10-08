@@ -2,7 +2,7 @@
 // steamMatch.js matches against Steam's storesearch results — a twin, not a
 // shared import, so the two scrapes can drift independently if one site's
 // naming quirks ever need different normalization rules. HLTB candidates
-// carry a bare `name` (see api/clickdeck-hltb.js's response shape) rather
+// carry a bare `name` (see api/_lib/clickdeckHltb.js's response shape) rather
 // than Steam's `.name` on a differently-shaped item, but the scoring logic
 // is otherwise identical.
 // Space/punctuation-bounded Roman numerals I-XX converted to Arabic digits —

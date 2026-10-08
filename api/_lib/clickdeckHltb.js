@@ -1,5 +1,9 @@
-import { originAllowed, rateLimited, clientIp } from './_shared.js'
-
+// The HowLongToBeat search, for Click Deck's FETCH HLTB button. Served by
+// api/steam-search.js's `mode=hltb`; it had its own api/clickdeck-hltb.js until
+// that slot went to The Long Listen (Vercel Hobby's 12-function cap). The old
+// URL still works through a rewrite in vercel.json, so a Click Deck bundle
+// cached before the move keeps fetching lengths.
+//
 // HowLongToBeat has no official API. Their search page does a two-step
 // handshake: GET /api/bleed/init (returns a token + a one-off {hpKey: hpVal}
 // pair bound to this request's IP/UA), then POST /api/bleed with that token
@@ -63,46 +67,23 @@ async function searchHltb(term, init) {
   return Array.isArray(data?.data) ? data.data : []
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    res.status(405).json({ message: 'Use GET to /api/clickdeck-hltb.' })
-    return
-  }
-
-  if (!originAllowed(req.headers.origin)) {
-    res.status(403).json({ message: 'Origin not allowed.' })
-    return
-  }
-
-  if (rateLimited(clientIp(req))) {
-    res.status(429).json({ message: 'Too many requests — try again shortly.' })
-    return
-  }
-
-  const { term } = req.query || {}
-  if (!term || typeof term !== 'string') {
-    res.status(400).json({ message: 'Missing search term.' })
-    return
-  }
-
-  try {
-    const init = await getSearchInit()
-    const results = await searchHltb(term, init)
-    // comp_plus is HLTB's "Main + Extra" stat — the app calls it "Main +
-    // Sides", same underlying number, friendlier label. A less-played or
-    // newer title can have zero submissions for that specific stat while
-    // still having a real "Main Story" (comp_main) number on file — falling
-    // back to that rather than excluding the game outright (confirmed live:
-    // "Midnight Scenes: Among Graves" only has comp_main, comp_plus reads 0).
-    // Only omitted when NEITHER stat has any data at all.
-    const items = results
-      .map(g => {
-        const seconds = g.comp_plus > 0 ? g.comp_plus : g.comp_main
-        return seconds > 0 ? { id: g.game_id, name: g.game_name, hours: Math.round((seconds / 3600) * 10) / 10 } : null
-      })
-      .filter(Boolean)
-    res.status(200).json({ items })
-  } catch (err) {
-    res.status(502).json({ message: `Could not reach HowLongToBeat: ${err.message}` })
-  }
+/**
+ * Search HLTB for `term` and reduce each hit to `{ id, name, hours }`.
+ * comp_plus is HLTB's "Main + Extra" stat — the app calls it "Main + Sides",
+ * same underlying number, friendlier label. A less-played or newer title can
+ * have zero submissions for that specific stat while still having a real "Main
+ * Story" (comp_main) number on file — falling back to that rather than
+ * excluding the game outright (confirmed live: "Midnight Scenes: Among Graves"
+ * only has comp_main, comp_plus reads 0). Only omitted when NEITHER stat has
+ * any data at all.
+ */
+export async function searchHltbItems(term) {
+  const init = await getSearchInit()
+  const results = await searchHltb(term, init)
+  return results
+    .map(g => {
+      const seconds = g.comp_plus > 0 ? g.comp_plus : g.comp_main
+      return seconds > 0 ? { id: g.game_id, name: g.game_name, hours: Math.round((seconds / 3600) * 10) / 10 } : null
+    })
+    .filter(Boolean)
 }

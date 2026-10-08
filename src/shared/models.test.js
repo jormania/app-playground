@@ -73,7 +73,7 @@ describe('the live API check covers every app that calls Claude', () => {
         if (e.isDirectory()) { if (e.name !== 'node_modules') walk(p); continue }
         if (!/\.(js|jsx|ts|tsx|mjs)$/.test(e.name) || /\.test\.|\.live\./.test(e.name)) continue
         const src = readFileSync(p, 'utf8')
-        if (/v1\/messages|requestAnthropic\(|askClaude\(|messages\.create\(/.test(src)) callers.push(p.slice(root.length + 1))
+        if (/v1\/messages|requestAnthropic\(|askClaude\(|messages\.(?:create|stream)\(/.test(src)) callers.push(p.slice(root.length + 1))
       }
     }
     walk(join(root, 'src'))

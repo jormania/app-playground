@@ -123,6 +123,24 @@ const CASES = {
       body: JSON.stringify(generationRequest('Write a short workplace scenario as JSON.', [{ role: 'user', content: 'Law 1: never outshine the master.' }])),
     })
   },
+  // One case per curator job: each has its own json_schema, and a schema the
+  // API's structured outputs reject is a 400 only the real API can show. The
+  // app sends these from the browser through requestAnthropic, as here.
+  ...Object.fromEntries(['themes', 'programme', 'taste', 'continuity', 'explain', 'compare'].map((op) => [
+    `The Long Listen — ${op}`,
+    async (f) => {
+      const { anthropicSender, curatorBody } = await import('../src/long-listen/curator/curator.js')
+      await anthropicSender(KEY, f)(curatorBody(op, 'Reply with the smallest valid JSON for the schema. Context: {}'))
+    },
+  ])),
+  'The Long Listen — key test': async (f) => {
+    const { directCurator } = await import('../src/long-listen/curator/curator.js')
+    await directCurator(() => KEY, { fetchImpl: f }).call('ping', {})
+  },
+  'The Long Listen — resources (web search)': async (f) => {
+    const { anthropicSender, resourcesBody } = await import('../src/long-listen/curator/curator.js')
+    await anthropicSender(KEY, f)(resourcesBody('Find one programme note for Debussy, La mer.'))
+  },
   'KeyPath — key test': async (f) => {
     const { testAiKey } = await import('../src/keypath/app/ai.ts')
     await testAiKey(KEY, f)

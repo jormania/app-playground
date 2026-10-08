@@ -183,7 +183,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
     setIsFetchingCover(false);
   };
 
-  // HowLongToBeat has no official API (see api/clickdeck-hltb.js's header
+  // HowLongToBeat has no official API (see api/_lib/clickdeckHltb.js's header
   // comment for the reverse-engineered scrape and why it's the single most
   // fragile piece of R2) — every failure here degrades to "enter Length
   // (hrs) manually," never blocks the rest of the Editor.
@@ -191,7 +191,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
     if (!formData.title) return
     setIsFetchingLength(true)
     try {
-      const res = await fetch(`/api/clickdeck-hltb?term=${encodeURIComponent(formData.title)}`)
+      const res = await fetch(`/api/steam-search?mode=hltb&term=${encodeURIComponent(formData.title)}`)
       const json = await res.json()
       if (!res.ok) {
         if (onToast) onToast(`⚠ ${json.message || 'Could not reach HowLongToBeat.'}`)

@@ -13,6 +13,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/clickdeck-hltb",
+      "destination": "/api/steam-search?mode=hltb"
+    },
+    {
       "source": "/api/anthropic-proxy/:match*",
       "destination": "https://api.anthropic.com/:match*"
     }

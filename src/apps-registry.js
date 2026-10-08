@@ -36,6 +36,30 @@ export const STACK_TAGS = new Set(["react", "vite", "notion"]);
 
 export const APPS = [
   {
+    emoji: "🎻",
+    iconBg: "rgba(138,47,34,0.14)",
+    title: "The Long Listen",
+    subtitle: "orchestral curator · weekly",
+    deployed: "Oct 2026",
+    tech: "React + Vite",
+    tags: ["music", "classical", "curation", "spotify", "notion", "react", "vite"],
+    ds: true,
+    kind: "react-vite",
+    manifest: "/long-listen.webmanifest",
+    description: "A personal curator for orchestral music, classical and contemporary. Each week it offers three directions. You choose one and get a programme to read and hear, with a named recording for every work and what to listen for. It remembers what you've heard and said, so a theme that comes back months later carries on from where you left it.",
+    features: [
+      "Three directions a week (immersive, curious, adventurous). The two you don't choose stay open for later. None appeal? Ask for three others, and say what you're in the mood for",
+      "An editorial programme: an introduction, a sequence with a reason for each step, a named recording for every work, why that recording, and what to listen for",
+      "Interpretations matter: the same work in two performances, side by side, on request",
+      "Every recording is checked on Spotify against its exact performers, never swapped for someone else's. Save the week as a private playlist of exactly those tracks",
+      "A listening view: one recording in large type, the screen kept awake, the movement playing now marked",
+      "Feedback in a few words and a sentence, read by the curator into a taste profile written in prose. Your own preferences (time, adventure, depth, recording era, language) count for more",
+      "Journal, Library, Threads and a Notebook, plus a readable copy in Notion: journal, threads, recordings, composers, taste",
+      "No streaks, points, stats or progress bars, ever",
+    ],
+    file: "long-listen-react.html",
+  },
+  {
     emoji: "🎹",
     iconBg: "rgba(31,35,71,0.14)",
     title: "KeyPath",

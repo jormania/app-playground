@@ -1,0 +1,17 @@
+{
+  "name": "The Long Listen",
+  "short_name": "Long Listen",
+  "description": "A personal orchestral curator: three directions each week, a programme you choose, and a memory of everything you've heard.",
+  "id": "/long-listen-react.html",
+  "start_url": "/long-listen-react.html",
+  "scope": "/long-listen-react.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5efe3",
+  "theme_color": "#f5efe3",
+  "icons": [
+    { "src": "/long-listen-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/long-listen-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/long-listen-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

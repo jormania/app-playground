@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- The Long Listen: a fermata — "hold this longer than written" — over a long line.
+       Full-bleed so the same art serves as the maskable icon; the mark sits inside the
+       central safe zone. -->
+  <rect width="512" height="512" fill="#1f1a14"/>
+  <path d="M150 300 A106 106 0 0 1 362 300" fill="none" stroke="#f5efe3" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="284" r="20" fill="#f5efe3"/>
+  <path d="M128 352 H384" stroke="#c46a4f" stroke-width="8" stroke-linecap="round"/>
+</svg>
