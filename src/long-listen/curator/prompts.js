@@ -148,8 +148,8 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-09.1',
-  effort: 'high',
+  version: 'programme@2026-10-09.2',
+  effort: 'medium',
   maxTokens: 32000,
   schema: {
     type: 'object',
