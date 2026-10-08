@@ -963,7 +963,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node` and eslint done, lucide-react and React 19 to go
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node`, eslint and lucide-react done, React 19 to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -1077,9 +1077,19 @@ defaults, thrown-error shapes) inside a behaviour-preserving bump. Release notes
 were not reachable from here; what is verified is the lint, suite and typecheck.
 Taking those two rules back on is R-036 below.
 
-Remaining, in the order I would take them: `lucide-react` 0.460 → **1.47** (a 1.0 major across every icon — expect renames,
-and P-001's remaining slices depend on it), and the React 19 types last, as this
-item already says.
+**`lucide-react` done 2026-10-08 — 0.460.0 → 1.52.0** (range `^0.460.0` → `^1.52.0`).
+Suite 5396, typecheck clean across all eight paths, build green, no source change.
+Proof that the 1.0 "expect renames" worry did not land: a script resolved every
+named import of `lucide-react` under `src/` (83 files) against the 1.52 module's
+exports — the only names absent are `LucideIcon`, which is a type and erased at
+build. No deep imports (`lucide-react/...`) or namespace imports exist. The package
+ships no changelog (README only) and GitHub is unreachable from here, so the release
+notes could not be read; what is verified is import resolution, suite, typecheck and
+build. Peer range still allows React 18. **Not checked: pixels** — an icon whose
+path data changed between 0.460 and 1.52 would pass every gate; P-001's remaining
+slices should eyeball icons when they next touch an app.
+
+Remaining: the React 19 family (runtime and types together), last, as this item says.
 
 **The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
 `npm outdated` on the Friday read. Five majors behind that this item never
