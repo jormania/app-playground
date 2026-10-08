@@ -3,7 +3,6 @@ import { creditLine } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { weekFromKey } from '../domain/week'
 import type { Repo } from '../store/repo'
-import type { CuratorClient } from '../curation/api'
 import { notionProxy } from '../../shared/notionClient'
 import type { ListenerPreferences } from '../domain/types'
 import { observationsByStance } from '../curation/taste'
@@ -22,8 +21,7 @@ import { observationsByStance } from '../curation/taste'
  *   Musical taste      one page, rewritten from the taste observations
  *
  * Nothing internal crosses: no ids, prompt versions or match confidences.
- * Writes go through /api/long-listen's Notion route, which holds the token and
- * only allows these shapes under the one configured page.
+ * Writes go through the shared /api/notion relay with the listener's own token.
  */
 export type Call = { path: string; method: 'GET' | 'POST' | 'PATCH'; body?: unknown }
 
@@ -62,19 +60,11 @@ export function hash(value: unknown): string {
 
 // ── who makes the calls ───────────────────────────────────────────────────
 
-/**
- * One Notion API call. Two ways to make it: with the listener's own token
- * through the shared /api/notion relay (the playground's usual way), or with
- * the server's token through /api/long-listen's fenced `notion` op.
- */
+/** One Notion API call, made with the listener's own token through the shared /api/notion relay. */
 export type NotionCall = <T = Record<string, unknown>>(call: Call) => Promise<T>
 
 export function relayCaller(token: string): NotionCall {
   return async <T,>(c: Call) => (await notionProxy(token, c.path, c.method, c.body)) as T
-}
-
-export function serverCaller(curator: CuratorClient): NotionCall {
-  return <T,>(c: Call) => curator.call<T>('notion', c)
 }
 
 // ── the notebook's shape ──────────────────────────────────────────────────

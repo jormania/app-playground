@@ -14,7 +14,6 @@ import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
 import notionPhotoProxyHandler from './api/notion-photo-proxy.js'
 import marqueeScanHandler from './api/marquee-scan.js'
-import longListenHandler from './api/long-listen.js'
 
 // Stamps build provenance into every HTML entry as <meta> tags, so the front
 // page can say which build you are actually looking at without spending a
@@ -415,7 +414,6 @@ export default defineConfig({
     devApiRelay('/api/steam-search', steamSearchHandler, 'dev-steam-search-relay'),
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
     devBodyRelay('/api/marquee-scan', marqueeScanHandler, 'dev-marquee-scan-relay'),
-    devBodyRelay('/api/long-listen', longListenHandler, 'dev-long-listen-relay'),
     devApiRelay('/api/notion-photo-proxy', notionPhotoProxyHandler, 'dev-notion-photo-proxy-relay'),
   ],
   server: {

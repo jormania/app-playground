@@ -16,7 +16,7 @@ afterEach(cleanup)
 // The demo curator's canned answers stand in for Claude; the store is memory.
 const curator = (): CuratorClient => {
   const demo = demoCurator()
-  return { call: (op, payload) => (op === 'status' ? Promise.reject(new CuratorUnavailable('not-set-up', 'x')) : demo.call(op, payload)) }
+  return { call: (op, payload) => demo.call(op, payload) }
 }
 
 describe('The Long Listen', () => {
@@ -91,9 +91,9 @@ describe('The Long Listen', () => {
   })
 
   it('explains, without a stack trace, when the curator is locked', async () => {
-    const locked: CuratorClient = { call: () => Promise.reject(new CuratorUnavailable('locked', 'The curator needs your passphrase — add it in Settings.')) }
+    const locked: CuratorClient = { call: () => Promise.reject(new CuratorUnavailable('locked', 'The curator needs your Anthropic key — add it in Settings, then test it.')) }
     render(<App repo={new Repo(memoryStore())} curator={locked} />)
     expect(await screen.findByText('Before the first programme')).toBeTruthy()
-    expect(screen.getByText('The curator needs your passphrase — add it in Settings.')).toBeTruthy()
+    expect(screen.getByText('The curator needs your Anthropic key — add it in Settings, then test it.')).toBeTruthy()
   })
 })

@@ -6,8 +6,9 @@ an introduction, a sequence of works, a named recording for each, and what to
 listen for. It remembers what was heard and said, so a theme that comes back
 months later continues from where it was left.
 
-`long-listen-react.html` → `src/long-listen/` (strict TS, DS) · server:
-`api/long-listen.js` + `api/_lib/longListen/`.
+`long-listen-react.html` → `src/long-listen/` (strict TS, DS). No server
+function of its own: Claude is called from the browser (`curator/`), Notion
+through the shared `/api/notion` relay.
 
 **Read §2 and §5 before touching anything.** They hold the two rules the whole
 design serves.
@@ -21,7 +22,7 @@ design serves.
 - **A recording is not an attribute of a work.** Every programme item names
   performers. Listening and feedback attach to the recording.
 - **Continuity, not repetition.** A returning theme must expand: new route,
-  new works, new interpretations. Enforced on the server (§5).
+  new works, new interpretations. Enforced in `curator/validate.js` (§5).
 - **Choice without judgement.** The two options not chosen become `open`
   paths. They are fed back to the curator and can be taken later. The UI
   never says "rejected".
@@ -40,13 +41,15 @@ design serves.
 |---|---|---|
 | Primary database | IndexedDB on the device (`idb-keyval`, its own `long-listen` db), `store/repo.ts` | Chosen with the owner, 2026-10-08: no provisioning, readable offline, server stays stateless. Same approach as KeyPath and Silva. |
 | Backup | Settings → "Save a backup" (one JSON file of every record) | The journey lives on one device; this is how it survives a new phone. |
-| Curator (Claude) | `api/long-listen.js` | The listener's own Anthropic key (Settings, kept on the device — the playground's BYO rule) is sent **to this server** in `x-anthropic-key`, never from the browser to Anthropic: the brief forbade browser→Anthropic calls. The server's own `ANTHROPIC_API_KEY`, unlocked by a passphrase, is the fallback. |
-| Notion mirror | The listener's token through the shared `/api/notion` relay; or the server's `LONG_LISTEN_NOTION_TOKEN` through the endpoint's fenced `notion` op | Human-readable notebook, one way, app → Notion (§7). |
+| Curator (Claude) | `curator/curator.js`, in the browser | The listener's own Anthropic key, entered in Settings and kept on the device, sent straight to Anthropic through `src/shared/anthropic.ts` — exactly as Daily Stoic, Silva and KeyPath do (owner's decision, 2026-10-09; an earlier server-side version was dropped). |
+| Notion mirror | The listener's token through the shared `/api/notion` relay | Human-readable notebook, one way, app → Notion (§7). |
 | Spotify | Browser only (PKCE, no secret) | The Client ID is public by design. |
 
-The function slot came from folding Click Deck's HLTB proxy into
-`api/steam-search.js` (`mode=hltb`, old URL rewritten in `vercel.json`). The
-repo is back at **12/12**: the next new function has to fold something too.
+History worth knowing: the first build had a server endpoint
+(`api/long-listen.js`), and to make room for it Click Deck's HLTB proxy was
+folded into `api/steam-search.js` (`mode=hltb`, old URL rewritten in
+`vercel.json`, behaviour pinned by `api/_tests/steam-search-hltb.test.js`).
+The endpoint is gone; the fold stays, so the repo now sits at **11/12**.
 
 ## 3. Knowledge model (`domain/types.ts`)
 
@@ -70,8 +73,8 @@ Resource ── listen | read | watch, with source and purpose
 NotionSyncState ── entity → page id + hash of what was written
 ```
 
-Identity (`domain/identity.js`, plain JS + `.d.ts` because the server imports
-it): "Symphony No. 5 in C-sharp minor" and "Symphony No. 5" are one Work. A
+Identity (`domain/identity.js`, plain JS + `.d.ts` because the plain-JS
+validators import it): "Symphony No. 5 in C-sharp minor" and "Symphony No. 5" are one Work. A
 movement never merges with its symphony, and two Strausses never merge. The
 keys are conservative on purpose: a false merge hides music.
 
@@ -99,7 +102,7 @@ Steps 1 and 2 failing never blocks step 3; they retry next time. Concurrent
 calls share one in-flight promise, so StrictMode and a double tap don't pay
 twice.
 
-## 5. The curator (`api/_lib/longListen/`)
+## 5. The curator (`curator/`)
 
 Seven prompts in `prompts.js`, each **versioned** (`programme@2026-10-08.1`).
 The version is stored in every programme snapshot. Bump it when a prompt's
@@ -124,9 +127,11 @@ the first three as open paths and tells the curator what not to repeat. The
 context also carries every work programmed in the last twelve weeks across all
 themes, and how often each recording was heard again.
 
-Model: `MODEL_SONNET` from `src/shared/models.js`, adaptive thinking,
-`output_config.format` json_schema, and the server-side refusal fallback
-(`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`).
+Model: `MODEL_SONNET` from `src/shared/models.js`, adaptive thinking and
+`output_config.format` json_schema, sent with `requestAnthropic` from
+`src/shared/anthropic.ts`. No beta headers: a plain browser request, like the
+other apps'. `directCurator(getKey)` is the `CuratorClient` the app uses; a
+missing or malformed key is refused before any request.
 
 **Facts vs curation.** Claude is the curatorial layer: choice, order,
 explanation, what to listen for, and a *proposed* recording by name.
@@ -138,8 +143,9 @@ Nothing it says is stored as metadata:
   artists, the work's tracks. A miss is `not-found`, and the UI offers a
   search, never another interpretation.
 - **Resource URLs** survive only if they appeared in a `web_search_result`
-  in the same response (`validateResources`), and only if a HEAD request
-  doesn't return 404 or 410.
+  in the same response (`validateResources`). (The first, server-side
+  version also dropped pages answering 404 to a HEAD request; a browser can't
+  make that check across origins.)
 
 **Validation (`validate.js`)** covers what a schema can't express: exactly
 three options in three distinct moods; a returning id must be one the client
@@ -186,7 +192,7 @@ recording forward; the listener's own marks win.
 ## 7. Notion
 
 A one-way mirror of what a person would reread, under one **notebook page**
-(Settings → Notion; or `LONG_LISTEN_NOTION_PAGE_ID` on the server path):
+(Settings → Notion):
 **Journal** (one page per programme, written once, as the curator wrote it),
 **Listening threads**, **Works & recordings**, **Composers**, and a **Musical
 taste** page rewritten when taste or preferences change. The mirror **finds**
@@ -198,26 +204,15 @@ databases found and missing, and any column a found database lacks.
 The live notebook is **Dev → App Databases → The Long Listen**; the empty copy
 is **Dev → Starter Templates → The Long Listen — Starter Template**; spec and
 handover sit in App Specs and App Handovers, per *Dev — Building an App*. Hash-skipped: an unchanged entity is never rewritten. No ids,
-prompt versions or match confidences cross over. The server route only
-allows these call shapes, and only under the configured page
-(`refuseNotionCall`).
+prompt versions or match confidences cross over.
 
 ## 8. Setup
 
-**Nothing is required on the server.** The listener enters an Anthropic key,
-a Spotify Client ID and a Notion token + notebook page in Settings, each with
-a test — the user's guide (a Claude Docs doc, linked from the masthead and
-Settings: `app/links.ts`) walks through all three.
-
-Optional Vercel env, for the server-key path:
-
-| Variable | |
-|---|---|
-| `LONG_LISTEN_ACCESS_KEY` | passphrase that unlocks the server's own keys; without it only BYO works |
-| `ANTHROPIC_API_KEY` | already set for Law of the Day |
-| `LONG_LISTEN_NOTION_TOKEN` | a Notion internal integration token |
-| `LONG_LISTEN_NOTION_PAGE_ID` | the notebook page, shared with that integration |
-| `VITE_LONG_LISTEN_SPOTIFY_CLIENT_ID` | a default for Settings |
+**Nothing to configure on Vercel.** The listener enters an Anthropic key, a
+Spotify Client ID and a Notion token + notebook page in Settings, each with a
+test — the user's guide (a Claude Docs doc, linked from the masthead and
+Settings: `app/links.ts`) walks through all three. `VITE_LONG_LISTEN_SPOTIFY_CLIENT_ID`,
+if set at build time, pre-fills the Client ID.
 
 **Development**: `npm run dev`, open
 `http://127.0.0.1:5173/long-listen-react.html`. With no key, turn on Settings →
@@ -226,16 +221,16 @@ Development → *demo curator*. Its canned programmes exist only under
 
 ## 9. Tests
 
-`npm test -- src/long-listen api/_tests/long-listen.test.js`
+`npm test -- src/long-listen`
 
 - `curation/journey.test.ts`: the loop. Three options generated once;
   choosing keeps the other two open; rollover closes threads and reads taste
   before new options; **a returning theme reaches stage 2 with its covered
   works and stays one thread**; changing direction keeps the first programme
   byte-for-byte; open paths can be taken later; extras are cached.
-- `api/_tests/long-listen.test.js`: the passphrase gate, the validators, the
-  retry-then-strip rule for repeats, resource URL verification, safe errors,
-  the Notion fence.
+- `curator/curator.test.js`: the key checks, the call to Anthropic (endpoint,
+  key, browser header), the validators, the retry-then-strip rule for repeats,
+  resource URL verification, errors in listener's words.
 - `spotify/*.test.ts`: matching (wrong conductor refused, No. 15 ≠ No. 5),
   PKCE (forged, replayed and stale callbacks refused), recently-played
   sessions.
@@ -269,7 +264,7 @@ thin, and what was done:
 | §5 "current interests/questions" | no way to state one | a wish for next week; a note to the curator |
 | §14 knowledge: composers | missing | Composers database |
 | — none of the three appeal | no way out | three others, on request |
-| Playbook: BYO keys, Starter Template, spec, handover, glance row, guide | server key only; no Notion paperwork | all done |
+| Playbook: BYO keys, Starter Template, spec, handover, glance row, guide | server key; no Notion paperwork | all done — key in Settings, called from the browser like the other apps |
 
 Added beyond the brief: the weekly Spotify playlist, the listening view, a
 recording's length, print styles, text size, and the curator writing in

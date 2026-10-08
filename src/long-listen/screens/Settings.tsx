@@ -24,7 +24,7 @@ function ResultLine({ r }: { r: Result }) {
  */
 export function SettingsScreen() {
   const svc = useServices()
-  const { settings, updateSettings, status, spotify, repo, bump, say } = svc
+  const { settings, updateSettings, prompts, spotify, repo, bump, say } = svc
   return (
     <div>
       <p className={s.eyebrow}>Settings</p>
@@ -64,9 +64,9 @@ export function SettingsScreen() {
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>About</h2>
         <p className={s.quiet}>
-          The curator is Claude (Sonnet). Spotify {spotify.connected ? 'is' : 'isn’t'} connected; Notion {svc.notion ? `is written ${svc.notion.via === 'own-token' ? 'with your token' : 'with the server’s token'}` : 'isn’t connected'}.
+          The curator is Claude (Sonnet). Spotify {spotify.connected ? 'is' : 'isn’t'} connected; Notion {svc.notion ? 'is' : 'isn’t'}.
         </p>
-        {status?.prompts && <p className={s.mono}>{Object.values(status.prompts).join(' · ')}</p>}
+        <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
       </section>
 
       {import.meta.env.DEV && (
@@ -102,7 +102,7 @@ function CommitField(props: { label: string; value: string; onCommit: (v: string
 }
 
 function ClaudeSection() {
-  const { settings, updateSettings, status, testCurator, refreshStatus } = useServices()
+  const { settings, updateSettings, testCurator } = useServices()
   const [result, setResult] = useState<Result>(null)
   const [testing, setTesting] = useState(false)
 
@@ -123,23 +123,15 @@ function ClaudeSection() {
     <section className={s.settingsGroup}>
       <h2 className={s.h2}>Claude, the curator</h2>
       <p className={s.quiet}>
-        Paste an Anthropic API key (console.anthropic.com → API keys). It stays on this device and is sent only to this app’s own server,
-        which asks Claude on your behalf — the browser never calls Anthropic directly. Each week costs a few cents.
+        Paste an Anthropic API key (console.anthropic.com → API keys). It stays on this device, like in the other apps here,
+        and goes only to Anthropic, with each request to Claude. Each week costs a few cents.
       </p>
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.row}>
-        <button className={s.textButton} onClick={test} disabled={testing || (!settings.anthropicKey && !status?.curator && !settings.demo)}>{testing ? 'Testing…' : 'Test the key'}</button>
+        <button className={s.textButton} onClick={test} disabled={testing || (!settings.anthropicKey && !settings.demo)}>{testing ? 'Testing…' : 'Test the key'}</button>
         {settings.anthropicKey && <button className={s.textButton} onClick={() => { updateSettings({ anthropicKey: '' }); setResult(null) }}>Remove</button>}
       </div>
       <ResultLine r={result} />
-      {(status?.serverKey || settings.passphrase) && (
-        <details>
-          <summary className={s.textButton}>Or use the server’s key</summary>
-          <p className={s.quiet}>This app’s server holds a key of its own. A passphrase unlocks it from this device; your own key, if set, is used first.</p>
-          <CommitField label="Passphrase" type="password" value={settings.passphrase} autoComplete="current-password" onCommit={(v) => { updateSettings({ passphrase: v }); setTimeout(() => void refreshStatus(), 0) }} />
-          <p className={s.faint}>{status?.curator ? 'Unlocked.' : settings.passphrase ? 'Not recognised.' : 'Locked.'}</p>
-        </details>
-      )}
     </section>
   )
 }
@@ -199,7 +191,7 @@ function SpotifySection() {
 }
 
 function NotionSection() {
-  const { settings, updateSettings, status, notion, testNotion, syncNotion, notionState } = useServices()
+  const { settings, updateSettings, notion, testNotion, syncNotion, notionState } = useServices()
   const [result, setResult] = useState<Result>(null)
   const [testing, setTesting] = useState(false)
 
@@ -231,7 +223,6 @@ function NotionSection() {
       </div>
       <ResultLine r={result} />
       {notionState.error && <p className={s.note}>{notionState.error}</p>}
-      {!settings.notionToken && status?.notion && <p className={s.faint}>Using the server’s Notion connection.</p>}
     </section>
   )
 }

@@ -1652,7 +1652,7 @@ probably.
 Sequence it after R-016's lesson is settled, and do **one family per run** —
 same reason R-008 does.
 
-## R-028 — Eight of the twelve serverless functions have no test at all · `modernise` · `open`
+## R-028 — Eight of the eleven serverless functions have no test at all · `modernise` · `open`
 
 **Impact:** none visible. But every one of these is a path whose first failure
 signal today is a user seeing an error, or — for the two cron targets — nobody
@@ -1666,7 +1666,6 @@ Found while doing R-008's Anthropic bump, 2026-09-23. Measured by matching each
 | `marquee-scan.js` | yes |
 | `wanderlist-remind.js` | yes |
 | `generate-law-of-the-day.js` | yes — new, R-008 |
-| `long-listen.js` | yes — new with the app, 2026-10 |
 | `clickdeck-pricing.js` | — |
 | `clickdeck-studio-search.js` | — |
 | `law-of-the-day-content.js` | — |

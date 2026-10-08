@@ -1,14 +1,21 @@
-// The curator service: builds each job's request, calls Claude, validates what
-// comes back, asks once more with the problems if needed.
+// The curator: builds each job's request, calls Claude from the browser with
+// the listener's own key — the same way every app in the playground does
+// (src/shared/anthropic.ts: BYO key, `anthropic-dangerous-direct-browser-access`,
+// nothing stored anywhere but this device) — validates what comes back, and
+// asks once more with the problems if needed.
+//
+// Plain JS with curator.d.ts beside it, like domain/identity.js: the prompts
+// and validators were written for a server first and stay framework-free.
 //
 // Facts vs curation (LONG_LISTEN.md §5): what Claude returns here is the
 // CURATORIAL layer — choices, sequencing, explanations, what to listen for, and
-// a proposed recording by name. Nothing here is trusted as metadata. The client
-// verifies each proposed recording against Spotify before it gets a link, and
+// a proposed recording by name. Nothing here is trusted as metadata. Each
+// proposed recording is verified against Spotify before it gets a link, and
 // resource URLs are only kept if they came back from a real web search in the
 // same response.
-import Anthropic from '@anthropic-ai/sdk'
-import { MODEL_SONNET, noThinking } from '../../../src/shared/models.js'
+import { MODEL_SONNET, noThinking } from '../../shared/models.js'
+import { requestAnthropic } from '../../shared/anthropic'
+import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, validateTaste, validateContinuity,
@@ -16,12 +23,6 @@ import {
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
-
-// Server-side refusal fallback: if a safety classifier declines (an orchestral
-// programme is very unlikely to trip one, but a false positive should degrade
-// to another model rather than to an error page), the API re-runs the request
-// on its default fallback inside the same call.
-export const CURATOR_BETAS = ['server-side-fallback-2026-07-01']
 
 const MAX_CONTEXT_CHARS = 150_000
 
@@ -38,7 +39,7 @@ const LEADS = {
 
 export function buildUserContent(op, payload) {
   const json = JSON.stringify(payload)
-  if (json.length > MAX_CONTEXT_CHARS) throw new CuratorError('too-large', 'The listening context is too large to send.')
+  if (json.length > MAX_CONTEXT_CHARS) throw new CuratorUnavailable('failed', 'The listening history is too large to send in one go.')
   return `${LEADS[op](payload)}\n\n<listener_context>\n${json}\n</listener_context>`
 }
 
@@ -55,7 +56,6 @@ export function curatorBody(op, userContent) {
     system: [{ type: 'text', text: prompt.system, cache_control: { type: 'ephemeral' } }],
     output_config: { effort: prompt.effort, format: { type: 'json_schema', schema: prompt.schema } },
     messages: [{ role: 'user', content: userContent }],
-    fallbacks: 'default',
   }
 }
 
@@ -70,7 +70,6 @@ export function resourcesBody(userContent, priorTurns = []) {
     output_config: { effort: prompt.effort },
     tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: prompt.maxSearches }],
     messages: [{ role: 'user', content: userContent }, ...priorTurns],
-    fallbacks: 'default',
   }
 }
 
@@ -87,11 +86,28 @@ export function pingBody() {
   }
 }
 
-export class CuratorError extends Error {
-  /** @param {'unconfigured'|'bad-key'|'too-large'|'refused'|'invalid'|'upstream'|'rate-limited'} code */
-  constructor(code, message) {
-    super(message)
-    this.code = code
+/** Anthropic keys look like this; anything else is refused before it costs a call. */
+export function looksLikeAnthropicKey(key) {
+  return typeof key === 'string' && /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key.trim())
+}
+
+/**
+ * One Messages API call with the listener's key, as a `send(body) → message`.
+ * Every failure becomes a CuratorUnavailable with words a listener can read;
+ * nothing from Anthropic's error body is shown.
+ */
+export function anthropicSender(apiKey, fetchImpl) {
+  return async (body) => {
+    let res
+    try {
+      res = await requestAnthropic(apiKey, body, fetchImpl ? { fetchImpl } : {})
+    } catch {
+      throw new CuratorUnavailable('offline', friendly('offline'))
+    }
+    if (res.status === 401 || res.status === 403) throw new CuratorUnavailable('bad-key', friendly('bad-key'))
+    if (res.status === 429 || res.status === 529) throw new CuratorUnavailable('busy', friendly('busy'))
+    if (!res.ok) throw new CuratorUnavailable('failed', friendly('failed'))
+    return res.json()
   }
 }
 
@@ -99,37 +115,15 @@ function textOf(message) {
   return (message.content ?? []).filter((b) => b.type === 'text').map((b) => b.text).join('')
 }
 
-/** A key the listener pasted in Settings looks like this; anything else is refused before it costs a call. */
-export function looksLikeAnthropicKey(key) {
-  return typeof key === 'string' && /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key.trim())
-}
-
-export function makeClient(apiKey = process.env.ANTHROPIC_API_KEY) {
-  if (!apiKey) throw new CuratorError('unconfigured', 'The curator is not configured.')
-  return new Anthropic({ apiKey, maxRetries: 2 })
-}
-
-async function send(client, body) {
-  try {
-    const stream = client.beta.messages.stream({ ...body, betas: CURATOR_BETAS })
-    return await stream.finalMessage()
-  } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) throw new CuratorError('bad-key', 'Anthropic didn’t accept that key.')
-    if (err instanceof Anthropic.RateLimitError) throw new CuratorError('rate-limited', 'The curator is busy — try again in a minute.')
-    if (err instanceof Anthropic.APIError) throw new CuratorError('upstream', `Curator call failed (${err.status ?? 'network'}).`)
-    throw new CuratorError('upstream', 'Curator call failed.')
-  }
-}
-
-async function structured(client, op, userContent) {
-  const message = await send(client, curatorBody(op, userContent))
-  if (message.stop_reason === 'refusal') throw new CuratorError('refused', 'The curator declined this request.')
-  if (message.stop_reason === 'max_tokens') throw new CuratorError('invalid', 'The curator ran out of room.')
+async function structured(send, op, userContent) {
+  const message = await send(curatorBody(op, userContent))
+  if (message.stop_reason === 'refusal') throw new CuratorUnavailable('declined', friendly('declined'))
+  if (message.stop_reason === 'max_tokens') throw new CuratorUnavailable('failed', 'The curator ran out of room. Try again.')
   const text = textOf(message)
   try {
     return { output: JSON.parse(text), text }
   } catch {
-    throw new CuratorError('invalid', 'The curator returned something unreadable.')
+    throw new CuratorUnavailable('failed', 'The curator returned something unreadable. Try again.')
   }
 }
 
@@ -139,32 +133,32 @@ async function structured(client, op, userContent) {
  * previous answer as data, so no conversation history (or thinking block) is
  * ever replayed or edited.
  */
-async function withRetry(client, op, payload, validate) {
+async function withRetry(send, op, payload, validate) {
   const userContent = buildUserContent(op, payload)
-  const first = await structured(client, op, userContent)
+  const first = await structured(send, op, userContent)
   const checked = validate(first.output)
   if (checked.problems.length === 0) return { ...checked, attempts: 1 }
 
   const correction = `${userContent}\n\n<previous_answer>\n${first.text}\n</previous_answer>\n\nYour previous answer had these problems. Return the full corrected JSON:\n- ${checked.problems.join('\n- ')}`
-  const second = await structured(client, op, correction)
+  const second = await structured(send, op, correction)
   return { ...validate(second.output), attempts: 2 }
 }
 
 // ── the jobs ──────────────────────────────────────────────────────────────
 
-export async function generateThemes(client, payload) {
+export async function generateThemes(send, payload) {
   const threadIds = (payload.context?.threads ?? []).map((t) => t.themeId)
-  const r = await withRetry(client, 'themes', payload, (o) => validateThemes(o, { threadIds }))
+  const r = await withRetry(send, 'themes', payload, (o) => validateThemes(o, { threadIds }))
   if (r.value.options.length !== 3 || r.problems.some((p) => /exactly three|one immersive|title and a pitch/.test(p))) {
-    throw new CuratorError('invalid', 'The curator could not settle on three directions.')
+    throw new CuratorUnavailable('failed', 'The curator could not settle on three directions. Try again.')
   }
   return { options: r.value.options, promptVersion: PROMPTS.themes.version, model: MODEL }
 }
 
-export async function curateProgramme(client, payload) {
+export async function curateProgramme(send, payload) {
   const covered = payload.thread?.covered?.works ?? []
   const returning = Boolean(payload.thread)
-  const r = await withRetry(client, 'programme', payload, (o) => validateProgramme(o, { covered, returning }))
+  const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning }))
   let value = r.value
   let removedRepeats = 0
   if (r.repeats > 0) {
@@ -173,31 +167,31 @@ export async function curateProgramme(client, payload) {
     removedRepeats = before - value.sections.reduce((n, s) => n + s.items.length, 0)
   }
   const count = value.sections.reduce((n, s) => n + s.items.length, 0)
-  if (count < 3 || !value.title) throw new CuratorError('invalid', 'The curator could not assemble a programme.')
+  if (count < 3 || !value.title) throw new CuratorUnavailable('failed', 'The curator could not assemble a programme. Try again.')
   return { programme: value, removedRepeats, promptVersion: PROMPTS.programme.version, model: MODEL }
 }
 
-export async function interpretTaste(client, payload) {
+export async function interpretTaste(send, payload) {
   const feedbackIds = (payload.feedback ?? []).map((f) => f.id)
   const observationIds = (payload.profile?.observations ?? []).map((o) => o.id)
-  const r = await withRetry(client, 'taste', payload, (o) => validateTaste(o, { feedbackIds, observationIds }))
+  const r = await withRetry(send, 'taste', payload, (o) => validateTaste(o, { feedbackIds, observationIds }))
   return { ...r.value, promptVersion: PROMPTS.taste.version }
 }
 
-export async function planContinuity(client, payload) {
-  const r = await withRetry(client, 'continuity', payload, validateContinuity)
+export async function planContinuity(send, payload) {
+  const r = await withRetry(send, 'continuity', payload, validateContinuity)
   return { ...r.value, promptVersion: PROMPTS.continuity.version }
 }
 
-export async function explainWork(client, payload) {
-  const r = await withRetry(client, 'explain', payload, validateExplain)
-  if (!r.value.body) throw new CuratorError('invalid', 'The curator had nothing to add.')
+export async function explainWork(send, payload) {
+  const r = await withRetry(send, 'explain', payload, validateExplain)
+  if (!r.value.body) throw new CuratorUnavailable('failed', 'The curator had nothing to add this time.')
   return { ...r.value, promptVersion: PROMPTS.explain.version }
 }
 
-export async function compareInterpretations(client, payload) {
-  const r = await withRetry(client, 'compare', payload, (o) => validateCompare(o, { current: payload.current, alreadyHeard: payload.alreadyHeard }))
-  if (r.problems.length) throw new CuratorError('invalid', 'The curator could not find a contrasting recording.')
+export async function compareInterpretations(send, payload) {
+  const r = await withRetry(send, 'compare', payload, (o) => validateCompare(o, { current: payload.current, alreadyHeard: payload.alreadyHeard }))
+  if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator could not find a contrasting recording.')
   return { ...r.value, promptVersion: PROMPTS.compare.version }
 }
 
@@ -214,16 +208,21 @@ export function searchResultsOf(messages) {
   return out
 }
 
-export async function findResources(client, payload) {
+/**
+ * Resources, found with Anthropic's own web search. A URL survives only if it
+ * appeared in a search result in these very responses. (A browser can't check
+ * a foreign page for a 404 — CORS — so that check went with the server.)
+ */
+export async function findResources(send, payload) {
   const userContent = buildUserContent('resources', payload)
   const responses = []
   let prior = []
   // A server-tool turn can pause mid-search; continuing means sending its
   // content back as the assistant turn, append-only.
   for (let turn = 0; turn < 3; turn++) {
-    const message = await send(client, resourcesBody(userContent, prior))
+    const message = await send(resourcesBody(userContent, prior))
     responses.push(message)
-    if (message.stop_reason === 'refusal') throw new CuratorError('refused', 'The curator declined this request.')
+    if (message.stop_reason === 'refusal') throw new CuratorUnavailable('declined', friendly('declined'))
     if (message.stop_reason !== 'pause_turn') break
     prior = [...prior, { role: 'assistant', content: message.content }]
   }
@@ -233,36 +232,13 @@ export async function findResources(client, payload) {
   return { ...value, dropped: dropped.length, promptVersion: PROMPTS.resources.version }
 }
 
-/** Drop resources whose page is definitively gone. Anything inconclusive stays. */
-export async function checkAlive(resources, fetchImpl = fetch) {
-  const checks = await Promise.all(resources.map(async (r) => {
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 4000)
-    try {
-      const res = await fetchImpl(r.url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal })
-      return res.status !== 404 && res.status !== 410
-    } catch {
-      return true
-    } finally {
-      clearTimeout(timer)
-    }
-  }))
-  return resources.filter((_, i) => checks[i])
-}
-
-export async function ping(client) {
-  try {
-    const message = await client.messages.create(pingBody())
-    return { ok: true, model: message.model }
-  } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) throw new CuratorError('bad-key', 'Anthropic didn’t accept that key.')
-    if (err instanceof Anthropic.RateLimitError) throw new CuratorError('rate-limited', 'Anthropic is rate-limiting this key just now.')
-    if (err instanceof Anthropic.APIError) throw new CuratorError('upstream', `Anthropic answered ${err.status ?? 'with an error'}.`)
-    throw new CuratorError('upstream', 'Anthropic could not be reached.')
-  }
+export async function ping(send) {
+  const message = await send(pingBody())
+  return { ok: true, model: message.model }
 }
 
 export const JOBS = {
+  ping,
   themes: generateThemes,
   programme: curateProgramme,
   taste: interpretTaste,
@@ -271,3 +247,24 @@ export const JOBS = {
   compare: compareInterpretations,
   resources: findResources,
 }
+
+/**
+ * The curator as the app uses it: `call(op, payload)`, with the key read
+ * fresh from Settings on every call. `send` can be injected for tests.
+ */
+export function directCurator(getKey, { fetchImpl, send } = {}) {
+  return {
+    async call(op, payload) {
+      const job = JOBS[op]
+      if (!job) throw new CuratorUnavailable('failed', friendly('failed'))
+      const key = (getKey() ?? '').trim()
+      if (!send) {
+        if (!key) throw new CuratorUnavailable('locked', friendly('locked'))
+        if (!looksLikeAnthropicKey(key)) throw new CuratorUnavailable('bad-key', 'That doesn’t look like an Anthropic key — it starts with sk-ant-.')
+      }
+      return job(send ?? anthropicSender(key, fetchImpl), payload ?? {})
+    },
+  }
+}
+
+export { promptVersions } from './prompts.js'

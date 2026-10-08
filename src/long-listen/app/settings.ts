@@ -6,17 +6,15 @@ import { DEFAULT_TIME_ZONE, isValidTimeZone } from '../domain/week'
  * (that lives in IndexedDB). Two of them are the listener's own credentials —
  * the Anthropic key and the Notion token — kept on this device the way every
  * app in the playground keeps them (Dev — Building an App, "bring your own
- * key"), and sent only to this app's own server and the shared Notion relay.
+ * key"), and sent only to Anthropic and through the shared Notion relay.
  * The Spotify Client ID is public by design; Spotify's own sign-in never
  * passes a password through this app.
  */
 export type ThemeChoice = 'system' | 'light' | 'dark'
 
 export interface Settings {
-  /** The listener's Anthropic key. Kept on this device; sent only to this app's server. */
+  /** The listener's Anthropic key. Kept on this device; sent only to Anthropic. */
   anthropicKey: string
-  /** Optional: unlocks the server's own key instead. */
-  passphrase: string
   /** The listener's Notion integration token, used through the shared /api/notion relay. */
   notionToken: string
   /** The Notion page holding the notebook's databases (a link or an id). */
@@ -44,7 +42,6 @@ export function loadSettings(): Settings {
     notionToken: str(raw.notionToken),
     notionPage: str(raw.notionPage),
     textSize: raw.textSize === 'large' ? 'large' : 'standard',
-    passphrase: str(raw.passphrase),
     timeZone: typeof raw.timeZone === 'string' && isValidTimeZone(raw.timeZone) ? raw.timeZone : DEFAULT_TIME_ZONE,
     spotifyClientId: typeof raw.spotifyClientId === 'string' && raw.spotifyClientId ? raw.spotifyClientId : ENV_CLIENT_ID,
     theme: theme === 'light' || theme === 'dark' ? theme : 'system',

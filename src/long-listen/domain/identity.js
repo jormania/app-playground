@@ -1,10 +1,9 @@
 /**
  * Identity for music named in prose.
  *
- * Plain JS with identity.d.ts beside it, because the curator endpoint
- * (api/_lib/longListen/) checks a returning theme's programme against what the
- * thread already covered, and serverless functions import only .js from src/ —
- * the same arrangement as src/shared/models.js.
+ * Plain JS with identity.d.ts beside it, because the curator's validators
+ * (curator/validate.js, plain JS) check a returning theme's programme against
+ * what the thread already covered.
  *
  * The curator writes "Symphony No. 5 in C-sharp minor" one month and "Symphony
  * No. 5" the next. Continuity depends on recognising those as one Work, and on

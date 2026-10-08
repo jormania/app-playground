@@ -6,7 +6,7 @@ Every app that calls Claude takes its model from one file,
 | Constant | Today | Used by |
 |---|---|---|
 | `MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Touch Grass, WhereItWent, Fit Check, Sol Odyssey, Silva, KeyPath (coach, weekly note, key test), Lexi5 (default) |
-| `MODEL_SONNET` | `claude-sonnet-5-5` | Daily Stoic mentor, Law of the Day (`api/`), The Long Listen's curator (`api/_lib/longListen/`), KeyPath Studio, Lexi5 (option) |
+| `MODEL_SONNET` | `claude-sonnet-5-5` | Daily Stoic mentor, Law of the Day (`api/`), The Long Listen's curator (`src/long-listen/curator/`), KeyPath Studio, Lexi5 (option) |
 
 No app uses Opus. The daily-refactor workflow picks its own models
 (`scripts/pick-model.mjs`, see DAILY_REFACTOR.md) — that is Claude Code, not the

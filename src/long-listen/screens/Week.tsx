@@ -52,7 +52,7 @@ export function WeekScreen() {
   }, [journey, repo])
 
   // Reload on data changes and when the curator setup changes (passphrase, demo).
-  useEffect(() => { void load() }, [load, version, settings.passphrase])
+  useEffect(() => { void load() }, [load, version, settings.anthropicKey])
 
   async function choose(o: ProgrammeOption, fromEarlier = false) {
     setChoosing(o.id)
@@ -84,7 +84,7 @@ export function WeekScreen() {
   }
 
   if (error) {
-    const locked = error instanceof CuratorUnavailable && (error.code === 'locked' || error.code === 'not-set-up')
+    const locked = error instanceof CuratorUnavailable && (error.code === 'locked' || error.code === 'bad-key')
     return (
       <div>
         <p className={s.eyebrow}>{journey.currentWeek().label}</p>

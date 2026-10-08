@@ -24,8 +24,8 @@ on:
       - src/lexi5/lib/curate.js
       - src/lexi5/components/Settings.jsx
       - api/generate-law-of-the-day.js
-      - api/_lib/longListen/curator.js
-      - api/_lib/longListen/prompts.js
+      - src/long-listen/curator/curator.js
+      - src/long-listen/curator/prompts.js
       - src/keypath/app/ai.ts
       - src/keypath/app/songs/coach.ts
       - src/keypath/app/progress/weekly.ts
@@ -49,8 +49,8 @@ on:
       - src/lexi5/lib/curate.js
       - src/lexi5/components/Settings.jsx
       - api/generate-law-of-the-day.js
-      - api/_lib/longListen/curator.js
-      - api/_lib/longListen/prompts.js
+      - src/long-listen/curator/curator.js
+      - src/long-listen/curator/prompts.js
       - src/keypath/app/ai.ts
       - src/keypath/app/songs/coach.ts
       - src/keypath/app/progress/weekly.ts

@@ -124,33 +124,22 @@ const CASES = {
     })
   },
   // One case per curator job: each has its own json_schema, and a schema the
-  // API's structured outputs reject is a 400 only the real API can show.
+  // API's structured outputs reject is a 400 only the real API can show. The
+  // app sends these from the browser through requestAnthropic, as here.
   ...Object.fromEntries(['themes', 'programme', 'taste', 'continuity', 'explain', 'compare'].map((op) => [
     `The Long Listen — ${op}`,
     async (f) => {
-      const { curatorBody, CURATOR_BETAS } = await import('../api/_lib/longListen/curator.js')
-      await f(ENDPOINT, {
-        method: 'POST',
-        headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-beta': CURATOR_BETAS.join(',') },
-        body: JSON.stringify(curatorBody(op, 'Reply with the smallest valid JSON for the schema. Context: {}')),
-      })
+      const { anthropicSender, curatorBody } = await import('../src/long-listen/curator/curator.js')
+      await anthropicSender(KEY, f)(curatorBody(op, 'Reply with the smallest valid JSON for the schema. Context: {}'))
     },
   ])),
   'The Long Listen — key test': async (f) => {
-    const { pingBody } = await import('../api/_lib/longListen/curator.js')
-    await f(ENDPOINT, {
-      method: 'POST',
-      headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify(pingBody()),
-    })
+    const { directCurator } = await import('../src/long-listen/curator/curator.js')
+    await directCurator(() => KEY, { fetchImpl: f }).call('ping', {})
   },
   'The Long Listen — resources (web search)': async (f) => {
-    const { resourcesBody, CURATOR_BETAS } = await import('../api/_lib/longListen/curator.js')
-    await f(ENDPOINT, {
-      method: 'POST',
-      headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-beta': CURATOR_BETAS.join(',') },
-      body: JSON.stringify(resourcesBody('Find one programme note for Debussy, La mer.')),
-    })
+    const { anthropicSender, resourcesBody } = await import('../src/long-listen/curator/curator.js')
+    await anthropicSender(KEY, f)(resourcesBody('Find one programme note for Debussy, La mer.'))
   },
   'KeyPath — key test': async (f) => {
     const { testAiKey } = await import('../src/keypath/app/ai.ts')

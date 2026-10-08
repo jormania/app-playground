@@ -2,11 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useToastStack, ToastStack } from '../../ds'
 import { Repo, indexedDbStore } from '../store/repo'
 import { Journey } from '../curation/journey'
-import { httpCurator, CuratorUnavailable, type CuratorClient, type PingResponse, type StatusResponse } from '../curation/api'
+import { CuratorUnavailable, type CuratorClient, type PingResponse } from '../curation/api'
+import { directCurator, promptVersions } from '../curator/curator'
 import { SpotifyClient } from '../spotify/client'
 import { completeSignIn, isCallback, SpotifyAuthError } from '../spotify/auth'
 import { syncRecentPlays } from '../spotify/verify'
-import { checkNotebook, relayCaller, serverCaller, syncToNotion, type NotebookCheck, type NotionCall } from '../notion/mirror'
+import { checkNotebook, relayCaller, syncToNotion, type NotebookCheck, type NotionCall } from '../notion/mirror'
 import { parseNotionId } from '../../shared/notionId'
 import { demoCurator } from '../dev/demoCurator'
 import { loadSettings, saveSettings, type Settings } from './settings'
@@ -24,12 +25,12 @@ export interface Services {
   /** Bumped whenever stored data changes, so views reload. */
   version: number
   bump: () => void
-  status: StatusResponse | null
-  refreshStatus: () => Promise<void>
-  /** Can the curator be asked anything right now? (Own key, unlocked server key, or demo.) */
+  /** The versions of the curator's prompts, for Settings → About. */
+  prompts: Record<string, string>
+  /** Can the curator be asked anything right now? (A key, or the demo.) */
   curatorReady: boolean
   /** Where the Notion notebook is written, if anywhere. */
-  notion: { call: NotionCall; pageId: string; via: 'own-token' | 'server' } | null
+  notion: { call: NotionCall; pageId: string } | null
   testCurator: () => Promise<PingResponse>
   testNotion: () => Promise<NotebookCheck>
   testSpotify: () => Promise<{ name: string; devices: { name: string; type: string; active: boolean }[] }>
@@ -65,7 +66,6 @@ function spotifySingleton(): SpotifyClient {
 export function ServicesProvider({ children, repo: injectedRepo, curator: injectedCurator }: { children: ReactNode; repo?: Repo; curator?: CuratorClient }) {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [version, setVersion] = useState(0)
-  const [status, setStatus] = useState<StatusResponse | null>(null)
   const [notionState, setNotionState] = useState<Services['notionState']>({ syncing: false })
   const { toasts, push, dismiss } = useToastStack()
   const settingsRef = useRef(settings)
@@ -73,7 +73,7 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
 
   const repo = useMemo(() => injectedRepo ?? repoSingleton(), [injectedRepo])
   const curator = useMemo<CuratorClient>(
-    () => injectedCurator ?? (settings.demo ? demoCurator() : httpCurator(() => ({ anthropicKey: settingsRef.current.anthropicKey, passphrase: settingsRef.current.passphrase }))),
+    () => injectedCurator ?? (settings.demo ? demoCurator() : directCurator(() => settingsRef.current.anthropicKey)),
     [injectedCurator, settings.demo],
   )
   const journey = useMemo(() => new Journey(repo, curator, { timeZone: settings.timeZone }), [repo, curator, settings.timeZone])
@@ -93,23 +93,14 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   useEffect(() => { document.documentElement.dataset.textSize = settings.textSize }, [settings.textSize])
   useSystemThemeFollow(settings.theme === 'system', () => applyTheme('system'))
 
-  const refreshStatus = useCallback(async () => {
-    try {
-      setStatus(await curator.call<StatusResponse>('status', {}))
-    } catch {
-      setStatus(null)
-    }
-  }, [curator])
-
-  // The listener's own token wins; the server's is the fallback.
+  // The listener's own Notion token, through the shared /api/notion relay.
   const ownPage = parseNotionId(settings.notionPage)
   const notion = useMemo<Services['notion']>(() => {
-    if (settings.notionToken.trim() && ownPage) return { call: relayCaller(settings.notionToken.trim()), pageId: ownPage, via: 'own-token' }
-    if (status?.notion && status.notionPageId) return { call: serverCaller(curator), pageId: status.notionPageId, via: 'server' }
+    if (settings.notionToken.trim() && ownPage) return { call: relayCaller(settings.notionToken.trim()), pageId: ownPage }
     return null
-  }, [settings.notionToken, ownPage, status, curator])
+  }, [settings.notionToken, ownPage])
 
-  const curatorReady = settings.demo || Boolean(settings.anthropicKey.trim()) || Boolean(status?.curator)
+  const curatorReady = settings.demo || Boolean(settings.anthropicKey.trim())
 
   const testCurator = useCallback(() => curator.call<PingResponse>('ping', {}), [curator])
   const testNotion = useCallback(async (): Promise<NotebookCheck> => {
@@ -149,7 +140,6 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
     }
   }, [spotify, say, bump])
 
-  useEffect(() => { void refreshStatus() }, [refreshStatus, settings.passphrase, settings.anthropicKey])
   useEffect(() => { syncSpotify().catch(() => {}) }, [syncSpotify])
 
   const notionOnce = useRef(false)
@@ -161,7 +151,7 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   }, [notion, syncNotion])
 
   const value: Services = {
-    repo, journey, curator, spotify, settings, updateSettings, version, bump, status, refreshStatus,
+    repo, journey, curator, spotify, settings, updateSettings, version, bump, prompts: promptVersions(),
     curatorReady, notion, testCurator, testNotion, testSpotify,
     notionState, syncNotion, syncSpotify, say, week: journey.currentWeek(),
   }

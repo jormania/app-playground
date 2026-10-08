@@ -11,7 +11,7 @@ import type { Repo } from '../store/repo'
  * curator is told exactly which works and recordings the thread has covered,
  * how each one landed, what was never reached, and the open questions and next
  * directions the continuity planner left last time. The server then checks the
- * new programme against `covered.works` (api/_lib/longListen/validate.js).
+ * new programme against `covered.works` (curator/validate.js).
  *
  * "Covered" is deliberately generous for a normal week — everything programmed
  * counts, heard or not, because offering the same work twice reads as a

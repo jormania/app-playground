@@ -4,8 +4,8 @@
 // `problems` are the reasons to ask again. The caller retries once with the
 // problems as a correction, then accepts the cleaned value if it still stands.
 //
-// Pure functions, no I/O — api/_tests/long-listen-validate.test.js pins them.
-import { sameWork, performersKey } from '../../../src/long-listen/domain/identity.js'
+// Pure functions, no I/O — src/long-listen/curator/curator.test.js pins them.
+import { sameWork, performersKey } from '../domain/identity.js'
 
 const MOODS = ['immersive', 'curious', 'adventurous']
 

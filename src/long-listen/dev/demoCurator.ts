@@ -100,8 +100,6 @@ export function demoCurator(): CuratorClient {
     async call<T>(op: string, payload: any): Promise<T> {
       await delay(op === 'programme' ? 900 : 400)
       switch (op) {
-        case 'status':
-          return { serverKey: false, unlocked: false, curator: true, notion: false, prompts: { demo: 'demo' } } as T
         case 'ping':
           return { ok: true, model: 'demo' } as T
         case 'themes': {
@@ -131,7 +129,7 @@ export function demoCurator(): CuratorClient {
         case 'resources':
           return { resources: [], dropped: 0, promptVersion: 'demo' } satisfies ResourcesResponse as T
         default:
-          throw new CuratorUnavailable('not-set-up', 'Notion isn’t available in demo mode.')
+          throw new CuratorUnavailable('failed', 'The demo curator doesn’t know that request.')
       }
     },
   }

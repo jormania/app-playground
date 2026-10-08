@@ -1,14 +1,11 @@
 import type { OptionMood, TasteConfidence, TasteFacet, TasteStance, ResourceKind } from '../domain/types'
 
 /**
- * The browser's side of /api/long-listen. Every curator call goes through the
- * app's own server: with the listener's own Anthropic key (kept on this device,
- * sent only to that server) or, failing that, the server's key unlocked by a
- * passphrase. The browser never talks to Anthropic directly.
+ * The curator's contract: `call(op, payload)` and the shapes it answers with.
+ * The implementation is curator/curator.js — Claude called from the browser
+ * with the listener's own key, the way every app in the playground does it.
  */
-export const ENDPOINT = '/api/long-listen'
-
-export type CuratorErrorCode = 'locked' | 'bad-key' | 'not-set-up' | 'busy' | 'offline' | 'declined' | 'failed'
+export type CuratorErrorCode = 'locked' | 'bad-key' | 'busy' | 'offline' | 'declined' | 'failed'
 
 export class CuratorUnavailable extends Error {
   constructor(readonly code: CuratorErrorCode, message: string) {
@@ -20,7 +17,6 @@ export class CuratorUnavailable extends Error {
 const FRIENDLY: Record<CuratorErrorCode, string> = {
   locked: 'The curator needs your Anthropic key — add it in Settings, then test it.',
   'bad-key': 'Anthropic didn’t accept that key. Check it in Settings.',
-  'not-set-up': 'The curator needs your Anthropic key — add it in Settings, then test it.',
   busy: 'The curator is busy. Try again in a minute.',
   offline: 'You seem to be offline. What’s already here is still yours to read.',
   declined: 'The curator couldn’t help with that one.',
@@ -35,53 +31,7 @@ export interface CuratorClient {
   call<T>(op: string, payload: unknown): Promise<T>
 }
 
-export interface CuratorAuth {
-  /** The listener's own Anthropic key, from Settings. Preferred when present. */
-  anthropicKey: string
-  /** Unlocks the server's key instead, when the server has one. */
-  passphrase: string
-}
-
-export function httpCurator(getAuth: () => CuratorAuth, fetchImpl: typeof fetch = (...a) => fetch(...a)): CuratorClient {
-  return {
-    async call<T>(op: string, payload: unknown): Promise<T> {
-      const { anthropicKey, passphrase } = getAuth()
-      // Status only reports what the server offers; everything else needs a way in.
-      if (op !== 'status' && !anthropicKey.trim() && !passphrase.trim()) throw new CuratorUnavailable('locked', FRIENDLY.locked)
-      const headers: Record<string, string> = { 'content-type': 'application/json' }
-      if (anthropicKey.trim()) headers['x-anthropic-key'] = anthropicKey.trim()
-      if (passphrase.trim()) headers['x-long-listen-key'] = passphrase.trim()
-      let res: Response
-      try {
-        res = await fetchImpl(ENDPOINT, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ op, payload }),
-        })
-      } catch {
-        throw new CuratorUnavailable('offline', FRIENDLY.offline)
-      }
-      let data: unknown = null
-      try { data = await res.json() } catch { /* empty or non-JSON body */ }
-      if (res.ok) return data as T
-      const bodyCode = (data as { code?: unknown })?.code
-      const code: CuratorErrorCode =
-        res.status === 401 ? (bodyCode === 'bad-key' ? 'bad-key' : 'locked')
-          : res.status === 501 ? 'not-set-up'
-            : res.status === 429 ? 'busy'
-              : res.status === 422 ? 'declined'
-                : 'failed'
-      // A Notion error message names the problem (a missing property, a bad id)
-      // and is the one upstream message worth showing; everything else is ours.
-      const message = (op === 'notion' || code === 'bad-key') && typeof (data as { message?: unknown })?.message === 'string'
-        ? (data as { message: string }).message
-        : FRIENDLY[code]
-      throw new CuratorUnavailable(code, message)
-    },
-  }
-}
-
-// ── response shapes (mirroring api/_lib/longListen/validate.js) ───────────
+// ── response shapes (mirroring curator/validate.js) ───────────────────────
 
 export interface CuratedOption {
   mood: OptionMood
@@ -190,17 +140,6 @@ export interface ResourcesResponse {
   resources: { kind: ResourceKind; title: string; url: string; source: string; purpose: string; relatesTo?: string }[]
   dropped: number
   promptVersion: string
-}
-
-export interface StatusResponse {
-  /** The server has its own key, behind a passphrase. */
-  serverKey: boolean
-  /** This caller's passphrase opens it. */
-  unlocked: boolean
-  curator: boolean
-  notion: boolean
-  notionPageId?: string
-  prompts: Record<string, string>
 }
 
 export interface PingResponse {
