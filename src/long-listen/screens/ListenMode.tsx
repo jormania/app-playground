@@ -68,7 +68,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
   return (
     <article className={s.listenMode}>
-      <p className={s.eyebrow}><a href={href({ name: 'programme', id: programme.id })} className={s.quietLink}>← {programme.title}</a></p>
+      <p className={s.eyebrow}><a href={href({ name: 'programme', id: programme.id })} className={`${s.quietLink} ${s.backLink}`}>← {programme.title}</a></p>
       <p className={s.composer}>{item.proposed.composer}</p>
       <h1 className={s.title}>{item.proposed.work}</h1>
       <p className={s.dek}>{creditLine(item.proposed)}{sp?.durationMs ? ` · ${aboutDuration(sp.durationMs)}` : ''}</p>
