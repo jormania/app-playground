@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import type { ProposedRecording, Recording, Work } from '../domain/types'
+import type { Concert, ProposedRecording, Recording, Work } from '../domain/types'
+import { Landmark } from 'lucide-react'
+import { concertDate, concertPerformers } from './Concerts'
 import { creditLine, fold, surname } from '../domain/identity'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
@@ -12,7 +14,7 @@ import s from '../styles/editorial.module.css'
 
 interface Entry {
   composer: string
-  works: { work: Work; recordings: { rec: Recording; proposed: ProposedRecording; programmeId?: string; programmeTitle?: string; role?: string }[] }[]
+  works: { work: Work; recordings: { rec: Recording; proposed: ProposedRecording; programmeId?: string; programmeTitle?: string; role?: string }[]; live: Concert[] }[]
 }
 
 const STATE_WORD: Record<string, string> = { 'not-started': 'not started', listening: 'started', heard: 'heard', skipped: 'skipped' }
@@ -23,12 +25,17 @@ const STATE_WORD: Record<string, string> = { 'not-started': 'not started', liste
  * with where it stands and what you said. Explore, without a feed.
  */
 export function LibraryScreen() {
-  const { repo } = useServices()
+  const { repo, settings } = useServices()
+  const hideSkipped = settings.hideSkipped
   const [q, setQ] = useState('')
   const { data, error } = useLoad(async () => {
-    const [works, recordings, programmes, comparisons, events, feedback] = await Promise.all([
-      repo.works.all(), repo.recordings.all(), repo.programmes.all(), repo.comparisons.all(), repo.events.all(), repo.feedback.all(),
+    const [works, recordings, programmes, comparisons, events, feedback, concerts] = await Promise.all([
+      repo.works.all(), repo.recordings.all(), repo.programmes.all(), repo.comparisons.all(), repo.events.all(), repo.feedback.all(), repo.concerts.all(),
     ])
+    // Heard live: each concert's works, by work.
+    const liveFor = new Map<string, Concert[]>()
+    for (const c of [...concerts].sort((a, b) => b.date.localeCompare(a.date))) for (const w of c.works) liveFor.set(w.workId, [...(liveFor.get(w.workId) ?? []), c])
+    const composerOf = new Map(concerts.flatMap((c) => c.works.map((w) => [w.workId, w.composer] as const)))
     const met = new Map<string, { proposed: ProposedRecording; programmeId?: string; programmeTitle?: string; role?: string }>()
     // The programme a work was first offered in, so a second recording of it can say where it came from too.
     const firstFor = new Map<string, { programmeId: string; programmeTitle: string }>()
@@ -50,17 +57,21 @@ export function LibraryScreen() {
 
     const byComposer = new Map<string, Entry>()
     for (const w of works) {
-      const recs = recordings.filter((r) => r.workId === w.id && met.has(r.id)).map((rec) => ({ rec, ...met.get(rec.id)! }))
-      if (!recs.length) continue
-      const composer = recs[0].proposed.composer
+      const recs = recordings
+        .filter((r) => r.workId === w.id && met.has(r.id))
+        .filter((r) => !hideSkipped || listeningState(events, r.id) !== 'skipped')
+        .map((rec) => ({ rec, ...met.get(rec.id)! }))
+      const live = liveFor.get(w.id) ?? []
+      if (!recs.length && !live.length) continue
+      const composer = recs[0]?.proposed.composer ?? composerOf.get(w.id) ?? ''
       const e = byComposer.get(composer) ?? { composer, works: [] }
-      e.works.push({ work: w, recordings: recs })
+      e.works.push({ work: w, recordings: recs, live })
       byComposer.set(composer, e)
     }
     const entries = [...byComposer.values()].sort((a, b) => surname(a.composer).localeCompare(surname(b.composer)))
     for (const e of entries) e.works.sort((a, b) => a.work.title.localeCompare(b.work.title))
     return { entries, events, feedback }
-  }, [])
+  }, [hideSkipped])
 
   const shown = useMemo(() => {
     if (!data) return []
@@ -97,7 +108,7 @@ export function LibraryScreen() {
         <section key={e.composer} className={s.journalWeek}>
           {newLetter && <p className={s.indexLetter} aria-hidden="true">{letter}</p>}
           <h2 className={s.h2}>{e.composer}</h2>
-          {e.works.map(({ work, recordings }) => (
+          {e.works.map(({ work, recordings, live }) => (
             <div key={work.id} className={s.libraryWork}>
               <p className={s.libraryTitle}>{work.title}</p>
               {whatAndWhen(work.form, work.composed) && <p className={s.workMeta}>{whatAndWhen(work.form, work.composed)}</p>}
@@ -127,6 +138,13 @@ export function LibraryScreen() {
                   )
                 })}
               </ul>
+              {live.map((c) => (
+                <p key={c.id} className={s.libraryLive}>
+                  <span className={`${s.tag} ${s.tagOn}`}><Landmark size={12} strokeWidth={1.8} aria-hidden="true" /> heard live</span>{' '}
+                  <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.venue}, {concertDate(c.date)}</a>
+                  {concertPerformers(c) && <span className={s.faint}> · {concertPerformers(c)}</span>}
+                </p>
+              ))}
             </div>
           ))}
         </section>

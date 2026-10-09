@@ -11,7 +11,7 @@ import s from '../styles/editorial.module.css'
  * the listener writes is read by the curator into their taste.
  */
 export function FeedbackPanel({
-  targets, programmeId, feedback, prompt = 'How did this land?', startOpen = false,
+  targets, programmeId, feedback, prompt = 'How did this land?', startOpen = false, onClose,
 }: {
   /** The first is the default; a second lets the listener say it's about the work, not the recording. */
   targets: { type: FeedbackTargetType; id: string; label: string }[]
@@ -19,6 +19,8 @@ export function FeedbackPanel({
   feedback: Feedback[]
   prompt?: string
   startOpen?: boolean
+  /** Told when the panel closes, saved or not ("Not now" is an answer too). */
+  onClose?: (saved: boolean) => void
 }) {
   const { journey, bump, say } = useServices()
   const [open, setOpen] = useState(startOpen)
@@ -39,6 +41,7 @@ export function FeedbackPanel({
       setMore(undefined)
       setNote('')
       setOpen(false)
+      onClose?.(true)
       bump()
       // Read into taste with whatever else is said in this sitting, in one request
       // a few minutes after the last word; if the page closes first, on the next open.
@@ -92,7 +95,7 @@ export function FeedbackPanel({
           </div>
           <div className={s.actions}>
             <button className={s.primaryButton} onClick={save} disabled={saving || (!reaction && !more && !note.trim())}>{saving ? 'Keeping it…' : 'Keep this'}</button>
-            <button className={s.textButton} onClick={() => setOpen(false)}>Not now</button>
+            <button className={s.textButton} onClick={() => { setOpen(false); onClose?.(false) }}>Not now</button>
           </div>
         </div>
       )}

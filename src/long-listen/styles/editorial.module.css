@@ -113,6 +113,19 @@
   color: var(--color-warning);
 }
 
+/* "How did it land?" — asked once, above the page, about a work Spotify heard. */
+.landed {
+  margin: var(--space-md) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.landedLead {
+  margin: 0 0 var(--space-xs);
+}
+
 /* A new deploy is out: said once, quietly, under the masthead. */
 .updateBar {
   margin: var(--space-xs) 0 0;
@@ -139,9 +152,10 @@
 .eyebrow {
   margin: 0 0 var(--space-xs);
   font-size: var(--text-sm);
+  font-weight: 600;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.1em;
-  color: var(--color-faint);
+  color: var(--color-muted);
 }
 
 .title {
@@ -532,11 +546,13 @@
 
 /* A section's heading above its first work in the running order. */
 .roGroup {
-  margin: var(--space-sm) 0 0 calc(1.75rem + var(--space-xs));
-  font-size: var(--text-sm);
-  font-style: italic;
+  margin: var(--space-md) 0 var(--space-3xs) calc(1.75rem + var(--space-xs));
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 24;
   line-height: 1.3;
-  color: var(--color-faint);
+  color: var(--color-accent);
 }
 
 .roList > li:first-child .roGroup {
@@ -675,6 +691,99 @@
   margin: var(--space-3xs) 0 0;
   font-size: var(--text-sm);
   color: var(--color-faint);
+}
+
+/* Each work opens on a card with an accent edge, so it stands apart from the
+   prose around it: the number and composer on top, the title large. */
+.workHead {
+  padding: var(--space-sm) var(--space-md) var(--space-sm) calc(var(--space-md) - 1px);
+  background: var(--color-surface-2);
+  border-left: 5px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+.workHead .composer {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+  color: var(--color-ink);
+}
+
+.workHead .itemNo {
+  min-width: 0;
+  margin-right: var(--space-3xs);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.workHead .work {
+  margin-top: var(--space-3xs);
+  font-size: clamp(1.75rem, 6vw, 2.2rem);
+  font-weight: 600;
+  line-height: 1.08;
+}
+
+/* The slim line that stays on top while you're inside a work (PinnedWork). */
+.pinnedWork {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + var(--space-2xs)) var(--space-md) var(--space-2xs);
+  background: var(--color-surface);
+  border: 0;
+  border-bottom: 1px solid var(--color-border-2);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+  color: var(--color-ink);
+  font-family: var(--font-read);
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+  animation: pinnedIn 160ms ease-out;
+}
+
+.pinnedInner {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+
+.pinnedNo {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.pinnedText {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pinnedText em {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 600;
+}
+
+@keyframes pinnedIn {
+  from { transform: translateY(-100%); }
+  to { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pinnedWork { animation: none; }
+}
+
+@media print {
+  .pinnedWork { display: none; }
+  .workHead { background: none; padding-left: var(--space-sm); }
 }
 
 .recording {
@@ -844,9 +953,10 @@
 
 .label {
   font-size: var(--text-sm);
+  font-weight: 600;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.09em;
-  color: var(--color-faint);
+  color: var(--color-muted);
 }
 
 /* ── an item's lower half: your listening, then where to go next ─────────── */
@@ -871,10 +981,11 @@
 
 .panelHead {
   margin: 0 0 var(--space-sm);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
+  font-weight: 600;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.09em;
-  color: var(--color-faint);
+  color: var(--color-ink);
 }
 
 /* The four states on one line, drawn like the design system's small
@@ -1703,6 +1814,196 @@
   font-style: normal;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.08em;
+}
+
+/* "This week, differently": four quiet words, one tap each. */
+.weekMood {
+  margin: var(--space-md) 0 var(--space-xs);
+  line-height: 2;
+}
+
+.moodWord {
+  appearance: none;
+  padding: 0 0.1em;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-muted);
+  text-decoration: underline dotted var(--color-border-2);
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+
+.moodWordOn {
+  color: var(--color-accent);
+  text-decoration: underline solid var(--color-accent);
+}
+
+/* "Follow this · next week" after a question in the Notebook. */
+.followLinks {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+/* The listening companion: a note under the movement that's sounding. */
+.movementNote {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-base);
+  font-style: normal;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
+
+.companion {
+  margin-top: var(--space-xl);
+}
+
+.answer {
+  margin: var(--space-sm) 0;
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-border-2);
+}
+
+.answerQ {
+  margin: 0 0 var(--space-2xs);
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+.askRow {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  margin: var(--space-xs) 0;
+}
+
+.askRow .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Live in Bucharest: one quiet line under the programme's tools. */
+.liveLine {
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.liveLead {
+  margin: 0;
+}
+
+/* A concert in the Journal's week: set off by a left rule in the accent, so it reads as live. */
+.journalConcert {
+  margin: var(--space-sm) 0;
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-accent);
+}
+
+/* The Library's "heard live" line under a work's recordings. */
+.libraryLive {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-sm);
+}
+
+/* Concerts: the hall mark, the works heard, and the form. */
+.hallMark {
+  vertical-align: -0.12em;
+  color: var(--color-accent);
+}
+
+.concertWorks {
+  margin: var(--space-lg) 0 0;
+  padding-left: 1.4em;
+}
+
+.concertWorks > li {
+  margin-bottom: var(--space-md);
+}
+
+.concertForm {
+  margin-top: var(--space-lg);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  flex: 1;
+  min-width: 0;
+}
+
+.fieldRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.fieldRow > .input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.workRow {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr) 6.5rem;
+  gap: var(--space-2xs) var(--space-xs);
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.workNo {
+  grid-row: span 2;
+  align-self: start;
+  padding-top: 0.6em;
+  font-family: var(--font-display);
+  color: var(--color-accent);
+}
+
+.workTitleInput {
+  grid-column: 2 / 4;
+}
+
+.workRemove {
+  grid-column: 2 / 4;
+  justify-self: start;
+  font-size: var(--text-sm);
+}
+
+/* The pause between works: what's next, and the way to stay. */
+.handover {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.handoverWork {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.carryOn {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.carryOn input {
+  flex: none;
+  margin-top: 0.3em;
+  accent-color: var(--color-accent);
 }
 
 .listenForLarge li {

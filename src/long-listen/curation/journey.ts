@@ -1,19 +1,33 @@
 import type {
-  Comparison, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
-  ProgrammeOption, Reaction, Resource, Theme, ThemeExploration, WantMore, WeekKey, WeekRecord,
+  Comparison, Concert, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
+  ProgrammeOption, Reaction, Resource, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
 } from '../domain/types'
 import { creditLine, newId } from '../domain/identity'
 import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import type { Repo } from '../store/repo'
 import type {
-  CompareResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
 } from './api'
 import { buildContext } from './context'
 import { threadDigest } from './continuity'
 import { Ingest, comparisonOf, ingestProgramme } from './ingest'
 import { applyTasteUpdate, pendingFeedback } from './taste'
 import type { SpotifyCandidate } from '../spotify/verify'
+
+/** A concert as the form holds it, before it's kept. */
+export interface ConcertDraft {
+  venue: string
+  hall?: string
+  date: string
+  time?: string
+  orchestra?: string
+  conductor?: string
+  soloists: { name: string; instrument?: string }[]
+  works: { composer: string; title: string; catalogue?: string }[]
+  note?: string
+  source: 'screenshot' | 'typed'
+}
 
 export interface JourneyOptions {
   timeZone?: string
@@ -76,8 +90,11 @@ export class Journey {
       const existing = await this.repo.weeks.get(week.key)
       if (existing) return existing
       await this.repo.ensureMeta(this.stamp())
-      await this.closeEndedExplorations().catch(() => {})
-      await this.interpretPendingFeedback().catch(() => {})
+      // Independent of each other, so side by side: the week waits for the slower one, not the sum.
+      await Promise.all([
+        this.closeEndedExplorations().catch(() => {}),
+        this.interpretPendingFeedback().catch(() => {}),
+      ])
       return this.generateWeek(week, requestedNext)
     })
   }
@@ -110,6 +127,7 @@ export class Journey {
       why: o.why,
       angle: o.angle,
       returning: o.returning,
+      form: o.form && o.form !== 'theme' ? o.form : undefined,
       status: 'offered',
     }))
     const record: WeekRecord = {
@@ -122,6 +140,14 @@ export class Journey {
       promptVersion: res.promptVersion,
     }
     await this.repo.options.putMany(options)
+    await this.repo.weeks.put(record)
+    return record
+  }
+
+  /** "This week, differently": set this week's mood. Read by every curator job about the week from now on. */
+  async setWeekMood(mood: WeekMood[]): Promise<WeekRecord> {
+    const week = await this.repo.weeks.require(this.currentWeek().key)
+    const record: WeekRecord = { ...week, mood: mood.length ? mood : undefined }
     await this.repo.weeks.put(record)
     return record
   }
@@ -139,7 +165,7 @@ export class Journey {
       const current = await this.repo.options.many(week.optionIds)
       await this.repo.options.putMany(current.map((o) => ({ ...o, status: 'open' as const })))
       const fresh = await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
-      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
+      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, mood: week.mood, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
       await this.repo.weeks.put(record)
       return record
     })
@@ -191,7 +217,7 @@ export class Journey {
       const res = await this.curator.call<ProgrammeResponse>('programme', {
         today: now.slice(0, 10),
         week: { key: lw.key, label: lw.label },
-        option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why },
+        option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, form: option.form },
         extension: { of: root.title, dek: root.dek, wish: wish?.trim() || undefined },
         thread: { ...digest, stage: exploration.stage },
         preferences: context.preferences,
@@ -201,6 +227,7 @@ export class Journey {
         questions: context.questions,
         listenerNotes: context.listenerNotes,
         recentListening: context.recentListening,
+        thisWeek: context.thisWeek,
       })
       const { programme, comparisons } = await ingestProgramme(this.repo, {
         weekKey: root.weekKey,
@@ -272,7 +299,7 @@ export class Journey {
     const res = await this.curator.call<ProgrammeResponse>('programme', {
       today: now.slice(0, 10),
       week: { key: lw.key, label: lw.label },
-      option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, continuityNote: option.returning?.note },
+      option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, continuityNote: option.returning?.note, form: option.form },
       thread: digest ? { ...digest, stage } : null,
       preferences: context.preferences,
       alreadyProgrammed: context.alreadyProgrammed,
@@ -281,6 +308,8 @@ export class Journey {
       questions: context.questions,
       listenerNotes: context.listenerNotes,
       recentListening: context.recentListening,
+      secondHearings: context.secondHearings.length ? context.secondHearings : undefined,
+      thisWeek: context.thisWeek,
     })
 
     // Nothing is written until the curator has answered: a failed call leaves
@@ -314,6 +343,12 @@ export class Journey {
     await this.repo.comparisons.putMany(comparisons)
     await this.repo.addProgramme(programme)
     await this.repo.explorations.put(exploration)
+    // A second hearing offered in this programme isn't offered again.
+    for (const i of programme.sections.flatMap((s) => s.items)) {
+      if (context.secondHearings.some((h) => h.composer === i.proposed.composer && h.work === i.proposed.work)) {
+        await this.repo.marks.put({ id: `again:${i.workId}`, at: now })
+      }
+    }
     await this.repo.themes.put({ ...theme, explorationIds: [...theme.explorationIds, explorationId], updatedAt: now })
 
     const fromThisWeek = option.weekKey === week.weekKey
@@ -333,12 +368,9 @@ export class Journey {
   async closeEndedExplorations(): Promise<number> {
     const current = this.currentWeek().key
     const open = (await this.repo.explorations.all()).filter((e) => e.weekKey < current && !e.closedAt && !e.setAside)
-    let closed = 0
-    for (const ex of open) {
-      await this.once(`close:${ex.id}`, () => this.closeExploration(ex, current))
-      closed++
-    }
-    return closed
+    // Each thread is closed on its own; one failing doesn't stop the others, and is retried next time.
+    const results = await Promise.allSettled(open.map((ex) => this.once(`close:${ex.id}`, () => this.closeExploration(ex, current))))
+    return results.filter((r) => r.status === 'fulfilled').length
   }
 
   private async closeExploration(ex: ThemeExploration, current: WeekKey): Promise<void> {
@@ -428,8 +460,13 @@ export class Journey {
     const items = programmes.flatMap((p) => p.sections.flatMap((s) => s.items))
     const comparisons = await this.repo.comparisons.all()
     const perspectives = comparisons.flatMap((c) => c.perspectives)
+    const concerts = await this.repo.concerts.all()
     return (type, id) => {
       if (type === 'theme') return `the theme "${themes.get(id) ?? id}"`
+      if (type === 'concert') {
+        const c = concerts.find((x) => x.id === id)
+        return c ? `a concert heard live at ${c.venue} on ${c.date}: ${c.works.map((w) => `${w.composer} — ${w.title}`).join('; ')}` : 'a concert heard live'
+      }
       if (type === 'programme') return `the programme "${programmes.find((p) => p.id === id)?.title ?? id}"`
       if (type === 'work') {
         const i = items.find((x) => x.workId === id)
@@ -477,6 +514,50 @@ export class Journey {
     return f
   }
 
+  // ── concerts ──────────────────────────────────────────────────────────
+
+  /** A hall's programme, read from a screenshot into a draft for the listener to check. */
+  readConcert(image: { mediaType: string; data: string }): Promise<ConcertResponse> {
+    return this.curator.call<ConcertResponse>('concert', { image, year: this.now().getFullYear() })
+  }
+
+  /**
+   * Keep a concert, as checked or typed by the listener. Its works become
+   * Works in the Library (one Work per piece, however it was met); a line on
+   * how it was is kept as feedback on the concert, so it reaches taste with
+   * everything else said.
+   */
+  async saveConcert(draft: ConcertDraft, id?: string): Promise<Concert> {
+    const ingest = await new Ingest(this.repo).load()
+    const works = draft.works
+      .filter((w) => w.composer.trim() && w.title.trim())
+      .map((w) => {
+        const work = ingest.work(w.composer.trim(), w.title.trim(), w.catalogue?.trim() ? { catalogue: w.catalogue.trim() } : {})
+        return { workId: work.id, composer: w.composer.trim(), title: w.title.trim(), ...(w.catalogue?.trim() ? { catalogue: w.catalogue.trim() } : {}) }
+      })
+    if (!draft.venue.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) || !works.length) throw new Error('A concert needs a venue, a date and at least one work.')
+    await ingest.commit()
+    const previous = id ? await this.repo.concerts.get(id) : undefined
+    const concert: Concert = {
+      id: id ?? newId('concert'),
+      venue: draft.venue.trim(),
+      ...(draft.hall?.trim() ? { hall: draft.hall.trim() } : {}),
+      date: draft.date,
+      ...(draft.time?.trim() ? { time: draft.time.trim() } : {}),
+      ...(draft.orchestra?.trim() ? { orchestra: draft.orchestra.trim() } : {}),
+      ...(draft.conductor?.trim() ? { conductor: draft.conductor.trim() } : {}),
+      soloists: draft.soloists.filter((s) => s.name.trim()).map((s) => ({ name: s.name.trim(), ...(s.instrument?.trim() ? { instrument: s.instrument.trim() } : {}) })),
+      works,
+      ...(draft.note?.trim() ? { note: draft.note.trim() } : {}),
+      source: draft.source,
+      createdAt: previous?.createdAt ?? this.stamp(),
+    }
+    await this.repo.concerts.put(concert)
+    // What was said about it, once per change of words: read into taste with the rest.
+    if (concert.note && concert.note !== previous?.note) await this.giveFeedback({ target: { type: 'concert', id: concert.id }, note: concert.note })
+    return concert
+  }
+
   // ── on-request curation, cached ───────────────────────────────────────
 
   resources(programmeId: string, opts: { again?: boolean } = {}): Promise<Resource[]> {
@@ -507,7 +588,14 @@ export class Journey {
     })
   }
 
-  explain(programmeId: string, itemId: string, question?: string): Promise<Explanation> {
+  /**
+   * "A little more context" on an item (cached, once), or an answer to the
+   * listener's own question about it — asked from the listening view, with
+   * the recording and the movement sounding as context. Answers are kept
+   * under the item (`${programmeId}:${itemId}:q_…`) and read back by
+   * `answers()`; each question is asked once.
+   */
+  explain(programmeId: string, itemId: string, question?: string, nowPlaying?: { recording: string; movement?: string }): Promise<Explanation> {
     const q = question?.trim()
     const id = `${programmeId}:${itemId}${q ? `:${newId('q')}` : ''}`
     return this.once(`explain:${programmeId}:${itemId}:${q ?? ''}`, async () => {
@@ -525,11 +613,52 @@ export class Journey {
         programme: { title: p.title, dek: p.dek },
         item: { composer: item.proposed.composer, workTitle: item.proposed.work, catalogue: item.proposed.catalogue, recording: creditLine(item.proposed) },
         question: q,
+        nowPlaying: q && nowPlaying ? nowPlaying : undefined,
         taste: profile.observations.filter((o) => !o.supersededBy).map((o) => o.statement).slice(0, 12),
       })
-      const e: Explanation = { id, heading: res.heading, body: res.body, createdAt: this.stamp(), promptVersion: res.promptVersion }
+      const e: Explanation = {
+        id, heading: res.heading, body: res.body, createdAt: this.stamp(), promptVersion: res.promptVersion,
+        ...(q ? { question: q, ...(nowPlaying?.movement ? { movement: nowPlaying.movement } : {}) } : {}),
+      }
       await this.repo.explanations.put(e)
       return e
+    })
+  }
+
+  /** The listener's questions about an item and their answers, oldest first. */
+  async answers(programmeId: string, itemId: string): Promise<Explanation[]> {
+    const prefix = `${programmeId}:${itemId}:`
+    return (await this.repo.explanations.all()).filter((e) => e.id.startsWith(prefix)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  }
+
+  /**
+   * The listening companion: a note per movement for every confirmed
+   * recording in a programme (stand-ins included) that hasn't one yet — in one
+   * call, on the cheaper model, kept per recording (`companion:<recordingId>`)
+   * so it's written once. Returns how many recordings got notes.
+   */
+  companion(programmeId: string): Promise<number> {
+    return this.once(`companion:${programmeId}`, async () => {
+      const p = await this.repo.programmes.require(programmeId)
+      const items = p.sections.flatMap((s) => s.items)
+      const standIns = (await this.repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
+      const wanted = [
+        ...items.map((i) => ({ rid: i.recordingId, proposed: i.proposed, listenFor: i.listenFor })),
+        ...standIns.flatMap((c) => c.perspectives.slice(1).map((x) => ({ rid: x.recordingId, proposed: x.proposed, listenFor: x.listenFor ? [x.listenFor] : [] }))),
+      ]
+      const recordings = new Map((await this.repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
+      const done = new Set((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => m.id.slice('companion:'.length)))
+      const todo = wanted.filter((w, i) => wanted.findIndex((x) => x.rid === w.rid) === i && !done.has(w.rid) && (recordings.get(w.rid)?.spotify?.trackNames?.length ?? 0) > 0 && recordings.get(w.rid)?.verification === 'verified')
+      if (!todo.length) return 0
+      const { language } = await this.repo.preferences()
+      const res = await this.curator.call<CompanionResponse>('companion', {
+        language,
+        programme: { title: p.title, dek: p.dek },
+        works: todo.map((w) => ({ key: w.rid, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames, listenFor: w.listenFor })),
+      })
+      const now = this.stamp()
+      await this.repo.marks.putMany(res.works.map((w) => ({ id: `companion:${w.key}`, at: now, value: { movements: w.movements, promptVersion: res.promptVersion } })))
+      return res.works.length
     })
   }
 
@@ -555,7 +684,7 @@ export class Journey {
       const res = await this.curator.call<CompareResponse>('compare', {
         preferences,
         mustBeOnSpotify: Boolean(opts.mustBeOnSpotify),
-        spotifyCandidates: opts.spotifyCandidates?.length ? opts.spotifyCandidates : undefined,
+        spotifyCandidates: opts.spotifyCandidates?.length ? opts.spotifyCandidates.map(({ albumId: _id, ...c }) => c) : undefined,
         work: { composer: item.proposed.composer, title: item.proposed.work, catalogue: item.proposed.catalogue },
         current: { ...item.proposed, soloists: item.proposed.soloists },
         alreadyHeard,

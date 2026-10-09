@@ -188,6 +188,8 @@ export interface ProgrammeOption {
   angle: string
   /** When the option returns to an earlier thread. */
   returning?: { themeId: string; note: string }
+  /** The week's shape: the usual theme, or one of the named forms (WEEK_FORMS). */
+  form?: WeekForm
   /**
    * offered → chosen, or offered → open (a path not taken that week — kept,
    * never "rejected") → taken later, if it is.
@@ -210,7 +212,58 @@ export interface WeekRecord {
   /** Options offered earlier this week, before the listener asked for three others. */
   earlierOptionIds?: string[]
   promptVersion: string
+  /** "This week, differently": a mood for this week only, sent with every curator job about the week. */
+  mood?: WeekMood[]
 }
+
+/**
+ * A concert heard live — the Ateneu, Sala Radio, anywhere. Not a programme the
+ * app made: the listener's own record, read from a screenshot of the hall's
+ * programme or typed in. Its works join the Library as "heard live" and count
+ * as known; what the listener said about it reaches taste.
+ */
+export interface Concert {
+  id: string
+  venue: string
+  hall?: string
+  /** YYYY-MM-DD, as printed on the programme. */
+  date: ISODate
+  time?: string
+  orchestra?: string
+  conductor?: string
+  soloists: { name: string; instrument?: string }[]
+  /** In the order they were played. */
+  works: { workId: string; composer: string; title: string; catalogue?: string }[]
+  /** A line on how it was. */
+  note?: string
+  source: 'screenshot' | 'typed'
+  createdAt: Instant
+}
+
+/**
+ * The shape of a week, chosen by the curator with its theme. Each form says
+ * which variety rule it relaxes: a dialogue needs more than two works by each
+ * of its two composers; several ways into one work needs side-by-side pairs.
+ */
+export type WeekForm = 'theme' | 'across-centuries' | 'then-and-now' | 'city-year' | 'performer' | 'dialogue' | 'many-ways'
+export const WEEK_FORMS: Record<WeekForm, string> = {
+  theme: 'A theme',
+  'across-centuries': 'A form across the centuries',
+  'then-and-now': 'Then and now',
+  'city-year': 'One city, one year',
+  performer: 'A performer’s week',
+  dialogue: 'Two composers in dialogue',
+  'many-ways': 'One work, several ways',
+}
+
+/** A week's mood, said in one word each: fewer and shorter works, calmer music, further afield, better known. */
+export type WeekMood = 'shorter' | 'quieter' | 'wider' | 'familiar'
+export const WEEK_MOODS: { value: WeekMood; label: string }[] = [
+  { value: 'shorter', label: 'shorter' },
+  { value: 'quieter', label: 'quieter' },
+  { value: 'wider', label: 'wider' },
+  { value: 'familiar', label: 'more familiar' },
+]
 
 // ── The programme snapshot ────────────────────────────────────────────────
 
@@ -322,7 +375,7 @@ export type ListeningState = 'not-started' | 'listening' | 'heard' | 'skipped'
 export type Reaction = 'loved' | 'liked' | 'interesting' | 'not-for-me' | 'too-difficult'
 export type WantMore = 'yes' | 'maybe' | 'no'
 
-export type FeedbackTargetType = 'theme' | 'programme' | 'work' | 'recording' | 'album' | 'interpretation'
+export type FeedbackTargetType = 'theme' | 'programme' | 'work' | 'recording' | 'album' | 'interpretation' | 'concert'
 
 export interface Feedback {
   id: string
@@ -475,7 +528,12 @@ export interface Resource {
 // ── Cached curator extras ─────────────────────────────────────────────────
 
 export interface Explanation {
-  id: string // `${programmeId}:${itemId}`
+  /** `${programmeId}:${itemId}` for "A little more context"; `${programmeId}:${itemId}:q_…` for an answer to a question. */
+  id: string
+  /** The listener's question, when this is an answer to one. */
+  question?: string
+  /** The movement sounding when it was asked, if any. */
+  movement?: string
   heading: string
   body: string
   createdAt: Instant

@@ -1,5 +1,6 @@
 import type { Album, ListeningEvent, ProposedRecording, Recording } from '../domain/types'
 import { newId } from '../domain/identity'
+import { listeningState } from '../domain/listening'
 import type { Repo } from '../store/repo'
 import { MATCHER_VERSION, bestTrack, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import type { RecentPlay, SpotifyAlbum, SpotifyClient } from './client'
@@ -150,6 +151,8 @@ export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, rec
 /** One recording of a work that Spotify actually has, for the curator to choose from. */
 export interface SpotifyCandidate {
   album: string
+  /** For a link to the album; left out of what the curator is sent. */
+  albumId?: string
   year?: string
   artists: string[]
 }
@@ -169,7 +172,7 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
       const onWork = Math.max(workOverlap(p.work, t.name), workOverlap(p.work, t.album.name))
       if (onWork < 0.75 || !isCredited(p.composer, t.artists)) continue
       const artists = t.artists.map((a) => a.name).filter((n) => !isCredited(p.composer, [{ name: n }]))
-      if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, year: t.album.release_date?.slice(0, 4), artists })
+      if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, albumId: t.album.id, year: t.album.release_date?.slice(0, 4), artists })
     }
     if (byAlbum.size >= max) break
   }
@@ -281,9 +284,11 @@ export interface PlaylistMark {
 }
 
 /** Every confirmed recording's tracks, in programme order (comparison perspectives after the items). */
-async function playlistUris(repo: Repo, programmeId: string): Promise<{ title: string; dek: string; uris: string[] }> {
+async function playlistUris(repo: Repo, programmeId: string, opts: PlaylistOptions = {}): Promise<{ title: string; dek: string; uris: string[] }> {
   const p = await repo.programmes.require(programmeId)
-  const items = p.sections.flatMap((s) => s.items)
+  const events = opts.hideSkipped ? await repo.events.all() : []
+  // "Hide what I skip": a skipped work, and its stand-in, leave the playlist too.
+  const items = p.sections.flatMap((s) => s.items).filter((i) => !opts.hideSkipped || listeningState(events, i.recordingId) !== 'skipped')
   // The programme's own pairs, plus any stand-in for a recording Spotify lacks.
   const standIns = (await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
   const comparisons = [...(await repo.comparisons.many(p.comparisonIds)), ...standIns]
@@ -301,8 +306,10 @@ async function playlistUris(repo: Repo, programmeId: string): Promise<{ title: s
  * The week's programme as a private Spotify playlist: exactly the tracks that
  * were matched. Saving again replaces the tracks in the same playlist.
  */
-export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<PlaylistMark> {
-  const { title, dek, uris } = await playlistUris(repo, programmeId)
+export interface PlaylistOptions { hideSkipped?: boolean }
+
+export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string, opts: PlaylistOptions = {}): Promise<PlaylistMark> {
+  const { title, dek, uris } = await playlistUris(repo, programmeId, opts)
   if (uris.length === 0) throw new Error('None of this week’s recordings are confirmed on Spotify yet.')
   const mark = await repo.marks.get(`playlist:${programmeId}`)
   const prior = mark?.value as PlaylistMark | undefined
@@ -319,12 +326,55 @@ export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, 
  * matches, when there's no playlist yet, or when nothing is confirmed.
  * Returns whether it wrote.
  */
-export async function keepPlaylistCurrent(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<boolean> {
+export async function keepPlaylistCurrent(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string, opts: PlaylistOptions = {}): Promise<boolean> {
   const mark = (await repo.marks.get(`playlist:${programmeId}`))?.value as PlaylistMark | undefined
   if (!mark) return false
-  const { uris } = await playlistUris(repo, programmeId)
+  const { uris } = await playlistUris(repo, programmeId, opts)
   if (uris.length === 0) return false
   if (mark.uris && mark.uris.length === uris.length && mark.uris.every((u, i) => u === uris[i])) return false
-  await saveProgrammePlaylist(repo, spotify, programmeId, weekLabel)
+  await saveProgrammePlaylist(repo, spotify, programmeId, weekLabel, opts)
   return true
+}
+
+/** Recordings being looked up right now, page-wide, so two callers never check the same one twice. */
+const looking = new Set<string>()
+
+/**
+ * Confirm every recording a programme needs on Spotify — three at a time, not
+ * one after another, so a new week's programme fills in quickly. Started as
+ * soon as a direction is chosen, and again whenever the programme is opened;
+ * a recording already confirmed or being looked up is left alone. Stops at the
+ * first sign-in or rate-limit problem: what's left waits for the next open.
+ */
+export async function verifyProgramme(
+  repo: Repo, spotify: SpotifyClient, programmeId: string, onEach?: () => void, concurrency = 3,
+): Promise<number> {
+  if (!spotify.connected) return 0
+  const p = await repo.programmes.require(programmeId)
+  const items = p.sections.flatMap((s) => s.items)
+  const comparisons = await repo.comparisons.many([...p.comparisonIds, ...items.map((i) => `cmp:${programmeId}:${i.id}`)])
+  const wanted = [
+    ...items.map((i) => ({ rid: i.recordingId, proposed: i.proposed })),
+    ...comparisons.flatMap((c) => c.perspectives.map((x) => ({ rid: x.recordingId, proposed: x.proposed }))),
+  ]
+  const byId = new Map((await repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
+  const queue = wanted.filter(({ rid }, i) => wanted.findIndex((w) => w.rid === rid) === i && needsLook(byId.get(rid)) && !looking.has(rid))
+  let done = 0
+  let failed = false
+  const worker = async () => {
+    for (let job = queue.shift(); job && !failed; job = queue.shift()) {
+      looking.add(job.rid)
+      try {
+        await verifyRecording(repo, spotify, job.rid, job.proposed)
+        done++
+        onEach?.()
+      } catch {
+        failed = true // signed out, offline or throttled: the buttons stay, nothing is lost
+      } finally {
+        looking.delete(job.rid)
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker))
+  return done
 }

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ListenerPreferences, ProgrammeOption, Theme, WeekRecord } from '../domain/types'
+import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useServices } from '../app/services'
 import { go } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
+import { verifyProgramme } from '../spotify/verify'
 import { Problem, Waiting } from '../components/common'
 import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
@@ -27,7 +28,7 @@ interface WeekView {
  * once, and never again for the same week.
  */
 export function WeekScreen() {
-  const { journey, repo, version, bump, settings } = useServices()
+  const { journey, repo, version, bump, settings, spotify } = useServices()
   const [view, setView] = useState<WeekView | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [choosing, setChoosing] = useState<string | null>(null)
@@ -61,6 +62,8 @@ export function WeekScreen() {
     setChooseError(null)
     try {
       const p = fromEarlier ? await journey.takeOpenPath(o.id) : await journey.choose(o.id)
+      // Start confirming its recordings now, before the page has even drawn.
+      void verifyProgramme(repo, spotify, p.id, bump).catch(() => {})
       bump()
       go({ name: 'programme', id: p.id })
     } catch (e) {
@@ -77,6 +80,21 @@ export function WeekScreen() {
       await journey.offerOtherDirections(mood.trim() || undefined)
       setMood('')
       setAskOpen(false)
+      bump()
+    } catch (e) {
+      setChooseError(e)
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  /** The mood changed after the directions were made: three new ones that know it. */
+  async function askWithMood() {
+    setAsking(true)
+    setChooseError(null)
+    try {
+      // The mood is already on the week record; the curator reads it from there.
+      await journey.offerOtherDirections()
       bump()
     } catch (e) {
       setChooseError(e)
@@ -109,6 +127,8 @@ export function WeekScreen() {
           ? 'Each week the curator offers three directions. Choose the one you want to follow; the others stay open for another time.'
           : 'Choose the one you want to follow. The others aren’t set aside — they stay open, and may come back.'}
       </p>
+
+      <WeekMoodLine record={view.record} onAsk={() => { void askWithMood() }} busy={asking || choosing !== null} />
 
       <p className={s.faint}>
         Your week: {TIME[view.prefs.timePerWeek].words} · {BREADTH[view.prefs.breadth].label.toLowerCase()} · {FAMILIARITY[view.prefs.familiarity].label.toLowerCase()}
@@ -167,7 +187,7 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
         <h2 className={s.optionTitle}>{o.title}</h2>
       </div>
       <div className={s.optionBody}>
-        <p className={s.mood} style={{ marginTop: 'var(--space-2xs)' }}>{MOOD_WORD[o.mood]}</p>
+        <p className={s.mood} style={{ marginTop: 'var(--space-2xs)' }}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
         <p>{o.pitch}</p>
         <p className={s.character}>{o.character.join(' · ')}</p>
         {o.why && <p className={s.quiet}>{o.why}</p>}
@@ -187,3 +207,40 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
   )
 }
 
+
+/**
+ * "This week, differently": four words to tap, for this week only — a mood,
+ * not a standing preference (Settings holds those). Saved as it's tapped; the
+ * directions already offered were made without it, so it offers three that
+ * know it. The programme, and "more of this theme", read it from the week.
+ */
+function WeekMoodLine({ record, onAsk, busy }: { record: WeekRecord; onAsk: () => void; busy: boolean }) {
+  const { journey, bump } = useServices()
+  const [mood, setMood] = useState<WeekMood[]>(record.mood ?? [])
+  const [changed, setChanged] = useState(false)
+  async function toggle(m: WeekMood) {
+    const next = mood.includes(m) ? mood.filter((x) => x !== m) : [...mood, m]
+    setMood(next)
+    setChanged(true)
+    await journey.setWeekMood(next)
+  }
+  return (
+    <p className={s.weekMood}>
+      <span className={s.faint}>This week, differently:</span>{' '}
+      {WEEK_MOODS.map((m, i) => (
+        <span key={m.value}>
+          {i > 0 && <span className={s.faint}> · </span>}
+          <button type="button" className={`${s.moodWord} ${mood.includes(m.value) ? s.moodWordOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)}>{m.label}</button>
+        </span>
+      ))}
+      {changed && (
+        <>
+          {' '}
+          <button type="button" className={s.textButton} disabled={busy} onClick={() => { setChanged(false); onAsk(); bump() }}>
+            {busy ? 'Asking…' : 'Three directions with this in mind'}
+          </button>
+        </>
+      )}
+    </p>
+  )
+}

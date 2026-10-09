@@ -155,6 +155,13 @@ tests for this endpoint live in `api/_tests/`, and that is why.
 **Consequence, and the core architectural idea:** *one function, N adapters.* A new
 venue never costs a function. Never add a per-venue endpoint; it cannot deploy.
 
+**A second caller (2026-10-10):** The Long Listen's "Live in Bucharest" line POSTs
+the same `{ venues }` body for two venues — Filarmonica George Enescu (`filarmonica`)
+and Sala Radio (`salaradio`) — at most once a day per device, and matches the events
+against its programme (`src/long-listen/live/live.ts`). It sends venue rows of its
+own, not Marquee's Notion list, so a change to either adapter's id or event shape
+reaches it too.
+
 ---
 
 ## 3. The parse ladder

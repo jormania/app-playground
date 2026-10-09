@@ -48,6 +48,7 @@ The listener's own preferences (a "preferences" field, when present) are what th
 - depth: concise keeps every piece of prose to its shortest useful form; deeper allows a little more context and history.
 - recordingEra: historic-welcome means great older recordings (including mono) are welcome; modern-sound prefers recordings from roughly 1980 on with good sound; period-practice favours historically informed performance where it exists; any means choose freely.
 - includeVoices false: avoid works that need singers. includeConcertos false: avoid concertos.
+- thisWeek (when present; in context.thisWeek for directions): the listener's mood for THIS week only, said by them; for this week it outranks the preferences above. "shorter": fewer works than timePerWeek allows, and none of the longest. "quieter": calmer, more inward music — slower music, smaller forces where the theme allows, nothing that shouts. "wider": range further than breadth says — more periods, places and composers. "familiar": lean towards better-known music, a step towards the cornerstones. Honour it in the choices; don't announce it in the prose.
 - language: write ALL prose in this language — "en" English (British spelling), "ro" Romanian with full diacritics (ă â î ș ț). Keep composers' names in their standard form and work titles in their usual concert form (e.g. "La mer", "Symphony No. 5" or "Simfonia nr. 5" in Romanian prose).
 
 Facts: only name real works and real commercially released recordings that you are confident exist. Prefer well-documented recordings. Use composers' full standard names ("Gustav Mahler", "Witold Lutosławski") and the performers' usual billing ("Wiener Philharmoniker" or "Vienna Philharmonic" — be consistent). If you are not sure a specific recording exists, choose one you are sure of. Do not invent catalogue numbers, dates or labels; leave a field empty rather than guess.`
@@ -76,7 +77,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-10.1',
+  version: 'themes@2026-10-10.3',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -95,8 +96,9 @@ export const THEMES = {
             angle: str,
             returningThemeId: str,
             continuityNote: str,
+            form: { type: 'string', enum: ['theme', 'across-centuries', 'then-and-now', 'city-year', 'performer', 'dialogue', 'many-ways'] },
           },
-          required: ['mood', 'title', 'pitch', 'character', 'why', 'angle', 'returningThemeId', 'continuityNote'],
+          required: ['mood', 'title', 'pitch', 'character', 'why', 'angle', 'returningThemeId', 'continuityNote', 'form'],
           additionalProperties: false,
         },
       },
@@ -114,6 +116,16 @@ The three must be genuinely different listening directions and moods:
 - one ADVENTUROUS (somewhere the listener has not been, or a stretch).
 Each is organised around a period, movement, idea, aesthetic, historical moment, technique, relationship or theme — something that makes a coherent programme, never a random list. Follow preferences.breadth for how wide each direction ranges, and preferences.familiarity for how well known its music is. A direction about one composer or one work belongs only at breadth 1; a direction about interpretation (one work, several performers) only when preferences.pairs is true.
 
+Vary the SHAPE of a week, not only its subject. Each option has a form:
+- "theme": a subject followed through several composers — the usual shape.
+- "across-centuries": one form or genre followed across the centuries (the passacaglia from Purcell to Webern; the symphonic poem from Liszt to Sibelius).
+- "then-and-now": an older piece and the newer ones that answer it, paired across time.
+- "city-year": one city in one year, or a few years — what was heard in Paris in 1913.
+- "performer": a performer's week — one conductor, orchestra or soloist across the repertoire they changed.
+- "dialogue": two composers in dialogue — several works by each, set so they answer one another.
+- "many-ways": one work heard in several recordings — only when preferences.pairs is true.
+Not every week needs an unusual shape, but across the three, aim for at least two different forms, and don't repeat the shape of the listener's last week (context.recentWeeks) unless it's the point. A form changes what the variety rules mean: in a dialogue, more than two works by each of its two composers is right; elsewhere the usual rules stand.
+
 Balance across the three: familiarity, discovery, continuity, contrast, depth. Use what you know of the listener. At least one option should open new ground. Where an earlier thread has a natural next step, one option may return to it — never more than two — and a return must name its new route (angle) and say in continuityNote, in one or two sentences, how it continues from before ("We first explored … six weeks ago. This time …"). Paths not taken in earlier weeks may come back if they still fit, reworded or reframed if that helps; do not treat them as rejected.
 
 Field guide:
@@ -124,8 +136,9 @@ Field guide:
 - angle: the route into the theme this time, one sentence.
 - returningThemeId: the themeId from "threads" if this option continues that thread, else "".
 - continuityNote: "" for a new theme.
+- form: the week's shape, as above.
 
-If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
+If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. context.concerts lists concerts the listener heard live in recent weeks (works, performers, what they said): music met in the hall is a natural place to reach out from — the next step from a concert they loved, the other side of one that puzzled them — and its works are known, not discoveries. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
 }
 
 // ── 2. The programme ─────────────────────────────────────────────────────
@@ -159,7 +172,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-10.2',
+  version: 'programme@2026-10-10.4',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -223,6 +236,9 @@ For each item:
 - revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.
 - alreadyKnown lists works the listener knew before the app suggested them. Don't present one of them as a discovery. Use one only where a known work earns its place — an anchor to hear something new against, or a recording that changes how it sounds — and then say so in "why".
 - year: the recording year only if you are certain, else "".
+- why may point to a specific moment in the listener's own listening, when it's true and helps: a work in recentListening they loved, or a note they wrote, said with when ("after the long build you loved in the Sibelius, three weeks ago"). Never a label about who they are ("as a lover of late Romanticism"). One or two items a programme at most; most reasons are about the music.
+
+Second hearings: secondHearings (when present) lists works the listener found interesting or too difficult some weeks ago. If one of them fits this programme, you may offer it again — ONE at most — a different way in: another recording, or the angle this programme gives it. Offer it openly, as a question the listener can decline: its revisitReason begins with the offer ("Try the Lutosławski again? Three weeks ago it felt too difficult; here it comes after …"). "Too difficult" is the listener's word — don't argue with it; give it a new door. Never slip a second hearing in unannounced.
 
 Write:
 - title and dek (one sentence standfirst).
@@ -233,6 +249,8 @@ Write:
 - continuityNote: "" for a first visit. For a return, two or three sentences that name what was explored before and how this week continues — new route, new works, new interpretations. Never restart the theme.
 
 "More of this theme": when an "extension" field is present, the listener has this week's programme ("extension.of") and wants more music on the same theme, this same week — perhaps with a wish ("extension.wish"). Write a companion, not a new week: about half the usual number of works, in one or two sections; a one-paragraph introduction; a title that reads as a continuation ("More …", "Further …"). Every work must be new to the thread (none of thread.covered) — new composers, other periods, the connections the first programme pointed to. continuityNote: one sentence on how it carries on from "extension.of".
+
+The direction's form (option.form) shapes the programme: "dialogue" — the two composers' works answer each other, several by each; "then-and-now" — older and newer pieces set in pairs or in a line, each answer after what it answers; "city-year" — one place and time, said in the introduction; "performer" — the named performer in every item, and say what they changed; "across-centuries" — one form, in order through time; "many-ways" — one work at the centre, heard in up to three recordings (as comparisons), with other works around it.
 
 Comparisons: only when preferences.pairs is true. Then, where two interpretations of one work in this programme are especially revealing, you may add ONE comparison with exactly two perspectives (one of them the recording already in the programme), each with its character and what to listen for, plus framing (one sentence) and whyBoth ("If you want to hear how …, listen to both."). When preferences.pairs is false, comparisons must be [].`,
 }
@@ -324,7 +342,7 @@ Unheard music is not disliked music; it may simply not have been reached.`,
 
 export const EXPLAIN = {
   id: 'explain',
-  version: 'explain@2026-10-09.1',
+  version: 'explain@2026-10-10.1',
   effort: 'low',
   maxTokens: 4000,
   schema: {
@@ -335,7 +353,7 @@ export const EXPLAIN = {
   },
   system: `${VOICE}
 
-Your job now: the listener asked for a little more context about one work in this week's programme. Give it in two to four short paragraphs separated by blank lines: where the work comes from, what is new or strange about it, and one or two things that make the listening richer. Pitch it to what you know of the listener. If they asked a specific question, answer that first. heading: a short title for the note.`,
+Your job now: the listener asked for a little more context about one work in this week's programme. Give it in two to four short paragraphs separated by blank lines: where the work comes from, what is new or strange about it, and one or two things that make the listening richer. Pitch it to what you know of the listener. If they asked a specific question, answer that first. If they asked while listening ("nowPlaying" names the recording and the movement sounding), answer about what they are hearing; a question in the middle of the music wants a short answer — one or two paragraphs. heading: a short title for the note.`,
 }
 
 // ── 6. Two perspectives on one work, on request ──────────────────────────
@@ -393,7 +411,76 @@ When you are done, reply with ONLY a JSON object, no prose before or after:
 kind: read for text, watch for video, listen for audio (a talk, a broadcast). Write title and purpose in the language given by "language"; a source in another language is fine if it's the best one — say so in the purpose.`,
 }
 
-export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES }
+// ── 8. The listening companion: a note per movement ──────────────────────
+
+export const COMPANION = {
+  id: 'companion',
+  version: 'companion@2026-10-10.1',
+  effort: 'low',
+  maxTokens: 12000,
+  schema: {
+    type: 'object',
+    properties: {
+      works: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { key: str, movements: strArr },
+          required: ['key', 'movements'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['works'],
+    additionalProperties: false,
+  },
+  system: `${VOICE}
+
+Your job now: write the listening companion for this week's confirmed recordings — what to listen for in each movement, shown to the listener at the moment Spotify reaches that movement.
+
+For each work (by its "key"), return "movements": exactly one note per track, in the order given in "tracks" (track names are as the album divides the work). Each note is one or two sentences — at most forty words — on something the listener can actually hear in that movement of THIS recording, or in the music itself: a theme's return, an instrument coming forward, a change of pulse, how this performance takes a famous moment. Concrete, never homework, never a timestamp (you cannot know timings). Where a track is a fragment of a movement, write about what that stretch holds. Don't repeat the work's general "listenFor" (given) word for word; go further than it. Write in the "language" given.`,
+}
+
+// ── 9. Reading a concert programme from a screenshot ────────────────────
+
+export const CONCERT = {
+  id: 'concert',
+  version: 'concert@2026-10-10.1',
+  effort: 'low',
+  maxTokens: 4000,
+  schema: {
+    type: 'object',
+    properties: {
+      venue: str,
+      hall: str,
+      date: str,
+      time: str,
+      orchestra: str,
+      conductor: str,
+      soloists,
+      works: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { composer: str, title: str, catalogue: str },
+          required: ['composer', 'title', 'catalogue'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['venue', 'hall', 'date', 'time', 'orchestra', 'conductor', 'soloists', 'works'],
+    additionalProperties: false,
+  },
+  system: `You read concert programmes for a listener's private journal: a screenshot of a hall's web page or printed programme — often in Romanian (Ateneul Român, Sala Radio, Filarmonica George Enescu, Orchestrele și Corurile Radio) — and return what was played, by whom, where and when.
+
+- venue: the presenting institution or hall as usually named ("Filarmonica George Enescu", "Sala Radio"); hall: a named room within it if given ("Sala Mare"), else "".
+- date: YYYY-MM-DD; use "year" from the context when the screenshot has no year. time: HH:MM or "".
+- orchestra, conductor, soloists (name and instrument, in English: "violin", "cello", "piano") as printed, names in their usual form with diacritics.
+- works: in the order played. composer: full standard name ("Johannes Brahms", "George Enescu"). title: the work's usual concert title in English — "Concertul în la minor pentru vioară și violoncel, op. 102" is "Double Concerto in A minor"; "Simfonia nr. 5" is "Symphony No. 5"; keep proper titles as they are ("Tapiola", "Poème de l'extase"). catalogue: "Op. 102", "BWV 1048", or "".
+Only what the image shows. If something isn't there, leave it "" (or [] for lists) — never guess a date, a performer or a work.`,
+}
+
+export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, concert: CONCERT }
 
 /** The version of every prompt, for the client to show in Settings and store with snapshots. */
 export function promptVersions() {

@@ -479,3 +479,76 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
   current on its own), Play/Pause/Resume that follows Spotify and a dusk
   listening view; Journal, Library, Threads, Notebook; the Notion mirror.
   Tested in daily use on the first week, *Northern Light*.
+- **Release two — 9 October 2026.** Every item of the roadmap's release two
+  (see §13), plus: skipped works hidden everywhere (a setting, on by default),
+  brighter small headings, and each work opening on an accent-edged card with
+  a slim line pinned on top while you read inside it.
+
+## 13. Release two
+
+**Smoother.**
+- *Keep listening* (`screens/ListenMode.tsx`, `spotify/continuation.ts`). "I've
+  heard it" asks how it landed in place and offers *Next: …*. With *carry on*
+  (a setting, on by default), the end of a work is read from Spotify's player —
+  stopped at the end of the last movement, rewound to zero just after its end,
+  or moved on to something else straight after it; a pause is never an end — and
+  a soft chime (Tempo's, now `src/shared/sound.js`) sounds in the gap with a
+  buzz, a *Next* card shows, and the next confirmed, unskipped work (a stand-in
+  counts) starts six seconds later. One work at a time, so the chime never falls
+  on the music. Any tap in the view wakes the audio context (`primeAudio`).
+- *Notice listening when you come back*: recent Spotify plays are re-read on
+  returning to the foreground, at most every two minutes (`app/services.tsx`).
+- *How did it land?* (`domain/landed.ts`, `components/LandedPrompt.tsx`): the
+  latest work Spotify marked heard with nothing said about it is asked about
+  once, above the page; marked asked as soon as it shows.
+- *Fewer waits*: recordings are confirmed three at a time from the moment a
+  direction is chosen (`verifyProgramme`); ended threads close in parallel,
+  beside the taste reading.
+- *This week, differently*: *shorter · quieter · wider · more familiar*, on the
+  week record, sent to every job about the week and applied one step to the
+  standing preferences for the checks (`weekAdjusted`).
+
+**Curation.**
+- *The curation check* (`curator/curationCheck.ts`): four profiles — narrow and
+  familiar, broad and obscure, a returning theme, Romanian — through directions
+  and a programme; attempts per job, the programme's shape, and the writing.
+  `ANTHROPIC_API_KEY=… npm run check:curation` writes `long-listen-curation.md`.
+  Never in CI or `npm test`. Run it before and after a prompt change.
+- *Shapes of a week*: each direction has a form (a theme; a form across the
+  centuries; then and now; one city, one year; a performer's week; two composers
+  in dialogue; one work, several ways — pairs only), named on its card. A
+  dialogue lifts the two-per-composer cap; several ways allows three pairs.
+- *Listening companion*: the `companion` job (Haiku) writes one note per track
+  for every confirmed recording, once, after verification (marks
+  `companion:<recordingId>`); the listening view shows the note under the
+  movement Spotify has reached, *Ask about this* (answered with the movement
+  sounding; answers now read back by `Journey.answers`), and *A little more
+  context*. Stand-ins open in the listening view.
+- *Questions as directions*: the Notebook's questions each have *Follow this*
+  and *next week*.
+- *Second hearings*: works called interesting or too difficult three weeks or
+  more ago are offered to the programme curator; one may return, as a question
+  in its revisitReason; once offered, never again (marks `again:<workId>`).
+- *Why this, for you*: recentListening carries `weeksAgo`; a reason may point to
+  a moment in the listener's own listening, never a label.
+
+**Live.**
+- *Live in Bucharest* (`live/live.ts`): the Ateneu and Sala Radio, read through
+  Marquee's endpoint once a day, matched to the programme by work, performer or
+  composer; one quiet line under the programme's tools.
+- *Concerts* (`screens/Concerts.tsx`): venue, hall, date, performers, the works
+  in order and a line on how it was. Shared from the phone's share sheet (the
+  manifest's POST `share_target`; the worker keeps the picture under
+  `/long-listen-shared-image` and opens `#/concerts/new`) or chosen in the form;
+  the `concert` job (Haiku, image in, one attempt) reads it into the form to
+  check. In the Journal in its week with a hall mark; *All concerts* by venue and
+  date; each work in the Library *heard live*; known to the curator, and recent
+  concerts in the directions' context; the line on how it was is feedback on the
+  concert. *Hear it again* lists Spotify's recordings of each work, the same
+  performers' first only when Spotify has them. Notion gets a Concerts database.
+- Notion's Works & recordings now also holds what played *On Spotify instead*
+  and the second recording of a pair.
+
+Prompts at the end of release two: themes@2026-10-10.3, programme@2026-10-10.4,
+explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.1.
+

@@ -100,7 +100,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | Fit Check | `src/fit-check/` | **strict TS**, DS — Notion select options are a **closed vocabulary** and its tags are AI-assigned; read [`FIT_CHECK.md`](FIT_CHECK.md) before touching `lib/vocabulary.ts`. Also [`FIT_CHECK_ROADMAP.md`](FIT_CHECK_ROADMAP.md), [`FIT_CHECK_DISCOVERY.md`](FIT_CHECK_DISCOVERY.md) |
 | Silva | `src/silva/` | **strict TS**, DS — commonplace book: today's walk, reading history, photo/share intake, neighbourhoods. Read [`SILVA.md`](SILVA.md) |
 | KeyPath | `src/keypath/` | **strict TS**, DS — **a piano tutor taster, in progress**: the hardware probe passed on the S24 (KEYPATH.md §1; Nora's Poco F3 still to check) and now lives at Settings → Diagnostics; the tutor is designed in [`KEYPATH_TUTOR.md`](KEYPATH_TUTOR.md), built in steps (engine: `engine/`, shell: `app/`, the Songs door: `app/songs/`, the Journey: `app/journey/`, Challenges: `app/challenges/`, Studio: `app/studio/`, the parent's Progress view: `app/progress/`, keyboard connection wizard: `app/connect/`). An installable PWA, listed in the registry (front page and Cabinet) since step 5, still `noindex`. `midi/` and `engine/` must stay free of React. **No music files in the repo, ever** — `content-boundary.test.js` enforces it. Read [`KEYPATH.md`](KEYPATH.md); what comes next, ranked, is [`KEYPATH_ROADMAP.md`](KEYPATH_ROADMAP.md) |
-| The Long Listen | `src/long-listen/` | **strict TS**, DS — orchestral curator. BYO Anthropic key in Settings, Claude called from the browser like every app (`curator/`, prompts versioned); primary DB is IndexedDB, Notion a one-way mirror via the shared relay. Guide: a Claude Docs doc, like KeyPath's. Read [`LONG_LISTEN.md`](LONG_LISTEN.md) — especially "facts vs curation" and the rule that a returning theme expands, never restarts — before touching it; what comes after release one is [`LONG_LISTEN_ROADMAP.md`](LONG_LISTEN_ROADMAP.md) |
+| The Long Listen | `src/long-listen/` | **strict TS**, DS — orchestral curator. BYO Anthropic key in Settings, Claude called from the browser like every app (`curator/`, prompts versioned); primary DB is IndexedDB, Notion a one-way mirror via the shared relay. Guide: a Claude Docs doc, like KeyPath's. Read [`LONG_LISTEN.md`](LONG_LISTEN.md) — especially "facts vs curation" and the rule that a returning theme expands, never restarts — before touching it; what comes after release one is [`LONG_LISTEN_ROADMAP.md`](LONG_LISTEN_ROADMAP.md). Release two adds concerts (a POST share target in its manifest and worker), "Live in Bucharest" through Marquee's one endpoint (no function of its own), and `npm run check:curation` — four listener profiles through the real prompts, owner's key, **never in CI** |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
@@ -229,8 +229,10 @@ One thing in here is **not** a tidy-up waiting to happen:
   APIs — do not file this as a mechanical re-export like R-004 was.
 
 There was a second: `audio.ts`, which had no importers and shadowed Tempo's
-richer `playChime(volume, variant)`. It was deleted (R-025), so if you are
-looking for a shared chime there isn't one — Tempo's is the only implementation.
+richer `playChime(volume, variant)`. It was deleted (R-025). Tempo's own
+`lib/sound.js` was then promoted to [`sound.js`](src/shared/sound.js) when The
+Long Listen became its second user (a chime between works, with `primeAudio()`
+so a chime with no tap of its own may sound); Tempo's path re-exports it.
 
 ## Service workers & dev
 

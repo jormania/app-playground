@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { TasteObservation } from '../domain/types'
 import { useLoad, useServices } from '../app/services'
+import { go } from '../app/router'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
 import { preferenceLines } from '../notion/mirror'
 import { Empty, Problem, Waiting, messageOf } from '../components/common'
@@ -19,11 +20,12 @@ const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
  * listener can simply tell the curator something.
  */
 export function NotebookScreen() {
-  const { repo, journey, bump, say, notion, notionState, syncNotion } = useServices()
+  const { repo, journey, bump, say, notion, notionState, syncNotion, week } = useServices()
   const { data, error } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
   const [notes, setNotes] = useState('')
   const [wish, setWish] = useState('')
   const [reading, setReading] = useState(false)
+  const [following, setFollowing] = useState<string | null>(null)
   useEffect(() => { if (data) { setNotes(data.taste.notesToCurator); setWish(data.prefs.nextRequest) } }, [data])
 
   if (error) return <Problem error={error} />
@@ -44,6 +46,39 @@ export function NotebookScreen() {
     await repo.savePreferences({ ...(await repo.preferences()), nextRequest: wish.trim() })
     bump()
     say(wish.trim() ? 'The curator will read this when next week begins.' : 'Cleared.', 'success')
+  }
+
+  /**
+   * A question the curator heard, turned into directions in one tap. Now: three
+   * directions from it — before a choice this week they replace the three on
+   * offer (which stay open), after one they wait under "Where next". Next week:
+   * it becomes next week's wish.
+   */
+  async function follow(q: string, when: 'now' | 'next') {
+    if (when === 'next') {
+      await repo.savePreferences({ ...(await repo.preferences()), nextRequest: q })
+      setWish(q)
+      bump()
+      say('Next week begins from this question.', 'success')
+      return
+    }
+    setFollowing(q)
+    try {
+      const thisWeek = await repo.weeks.get(week.key)
+      if (thisWeek?.programmeId) {
+        await journey.moreDirections(q)
+        say('Three directions from your question are waiting under “Where next”, at the end of this week’s programme.', 'success')
+      } else {
+        await journey.ensureWeek()
+        await journey.offerOtherDirections(q)
+      }
+      bump()
+      go({ name: 'week' })
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setFollowing(null)
+    }
   }
 
   async function readNow() {
@@ -81,7 +116,19 @@ export function NotebookScreen() {
       {taste.questions.length > 0 && (
         <section className={s.block}>
           <h2 className={s.h2}>Questions you seem to be asking</h2>
-          <ul className={s.bullets}>{taste.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+          <p className={s.quiet}>Each one can become a week: <em>Follow this</em> asks the curator for three directions from it.</p>
+          <ul className={s.bullets}>
+            {taste.questions.map((q, i) => (
+              <li key={i}>
+                {q}{' '}
+                <span className={s.followLinks}>
+                  <button className={s.textButton} onClick={() => void follow(q, 'now')} disabled={following !== null}>{following === q ? 'Asking…' : 'Follow this'}</button>
+                  <span className={s.faint}> · </span>
+                  <button className={s.textButton} onClick={() => void follow(q, 'next')} disabled={following !== null}>next week</button>
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

@@ -141,7 +141,20 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
     }
   }, [spotify, say, bump])
 
-  useEffect(() => { syncSpotify().catch(() => {}) }, [syncSpotify])
+  // Recent Spotify listening: on load, and again whenever the app comes back to
+  // the foreground — an installed app resumed from the background never reloads,
+  // and Spotify only keeps the last fifty plays. At most once every two minutes.
+  useEffect(() => {
+    let last = 0
+    const look = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 120_000) return
+      last = Date.now()
+      syncSpotify().catch(() => {})
+    }
+    look()
+    document.addEventListener('visibilitychange', look)
+    return () => document.removeEventListener('visibilitychange', look)
+  }, [syncSpotify])
 
   // Feedback left unread when the app last closed (taste is read in batches, see
   // Journey.scheduleTasteReading) is read once now, in one request.

@@ -102,6 +102,99 @@ describe('a week', () => {
   })
 })
 
+describe('this week, differently', () => {
+  it('carries the week’s mood to new directions and to the programme, and keeps it when asking again', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })
+    const j = journey(c.client)
+    await j.ensureWeek()
+    await j.setWeekMood(['shorter', 'quieter'])
+    const again = await j.offerOtherDirections()
+    expect(again.mood).toEqual(['shorter', 'quieter'])
+    expect(c.calls[1].payload.context.thisWeek).toEqual(['shorter', 'quieter'])
+    await j.choose(again.optionIds[0])
+    expect(c.calls.find((x) => x.op === 'programme')!.payload.thisWeek).toEqual(['shorter', 'quieter'])
+  })
+})
+
+describe('second hearings', () => {
+  it('offers a work found too difficult again after three weeks, once', async () => {
+    const c = fakeCurator({ themes: () => themes(['Colour', 'B', 'C']), programme: (_p, n) => programme(n === 1 ? 'Colour' : 'Colour again', n === 1 ? FRENCH : [FRENCH[1], ...FRENCH_AGAIN]) })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const ravel = p.sections.flatMap((s) => s.items)[1]
+    await j.giveFeedback({ target: { type: 'recording', id: ravel.recordingId }, reaction: 'too-difficult', note: 'Lost me in the middle.' })
+
+    at('2026-10-15T09:00:00Z') // a week on: too soon
+    expect((await buildContext(repo, weekOf(clock))).secondHearings).toEqual([])
+
+    at('2026-11-05T09:00:00Z') // four weeks on
+    const ctx = await buildContext(repo, weekOf(clock))
+    expect(ctx.secondHearings).toEqual([expect.objectContaining({ composer: 'Maurice Ravel', work: 'Daphnis et Chloé', reaction: 'too-difficult', note: 'Lost me in the middle.' })])
+
+    // Offered in the next programme: never offered again.
+    const j2 = journey(c.client)
+    await j2.choose((await j2.ensureWeek()).optionIds[0])
+    expect(c.calls.filter((x) => x.op === 'programme')[1].payload.secondHearings).toHaveLength(1)
+    expect((await buildContext(repo, weekOf(clock))).secondHearings).toEqual([])
+  })
+})
+
+describe('the listening companion', () => {
+  it('writes notes once per confirmed recording, and keeps questions under the item', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['A', 'B', 'C']),
+      programme: () => programme('Colour', FRENCH),
+      companion: (payload) => ({ works: payload.works.map((w: { key: string; tracks: string[] }) => ({ key: w.key, movements: w.tracks.map((t) => `note on ${t}`) })), promptVersion: 'companion@test' }),
+      explain: (payload) => ({ heading: 'H', body: `about ${payload.nowPlaying?.movement}`, promptVersion: 'explain@test' }),
+    })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const [first] = p.sections.flatMap((s) => s.items)
+    // Nothing confirmed yet: nothing to write, no call.
+    expect(await j.companion(p.id)).toBe(0)
+    expect(c.count('companion')).toBe(0)
+
+    const r = await repo.recordings.require(first.recordingId)
+    await repo.recordings.put({ ...r, verification: 'verified', spotify: { albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ['t1', 't2'], trackUris: ['spotify:track:t1', 'spotify:track:t2'], trackNames: ['I. De l’aube', 'II. Jeux de vagues'], confidence: 'strong', matchedAt: 'x' } })
+    expect(await j.companion(p.id)).toBe(1)
+    expect(((await repo.marks.get(`companion:${first.recordingId}`))?.value as { movements: string[] }).movements).toEqual(['note on I. De l’aube', 'note on II. Jeux de vagues'])
+    expect(await j.companion(p.id)).toBe(0) // written once
+    expect(c.count('companion')).toBe(1)
+
+    const a = await j.explain(p.id, first.id, 'Why the cor anglais?', { recording: 'Boulez', movement: 'II. Jeux de vagues' })
+    expect(a).toMatchObject({ question: 'Why the cor anglais?', movement: 'II. Jeux de vagues', body: 'about II. Jeux de vagues' })
+    expect((await j.answers(p.id, first.id)).map((x) => x.question)).toEqual(['Why the cor anglais?'])
+  })
+})
+
+describe('concerts', () => {
+  it('reads a screenshot, keeps the concert, and makes its works known and its note heard', async () => {
+    const c = fakeCurator({
+      concert: (payload) => ({ venue: 'Filarmonica George Enescu', date: `${payload.year}-10-16`, soloists: [], works: [{ composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' }], promptVersion: 'concert@test' }),
+      themes: () => themes(['A', 'B', 'C']),
+    })
+    const j = journey(c.client)
+    const draft = await j.readConcert({ mediaType: 'image/jpeg', data: 'AAAA' })
+    expect(c.calls[0].payload).toMatchObject({ image: { mediaType: 'image/jpeg', data: 'AAAA' }, year: 2026 })
+    expect(draft.date).toBe('2026-10-16')
+
+    await expect(j.saveConcert({ ...draft, works: [], source: 'screenshot' })).rejects.toThrow(/at least one work/)
+    const kept = await j.saveConcert({ ...draft, note: 'The cello sang.', source: 'screenshot' })
+    expect(kept.works[0].workId).toBeTruthy()
+    expect((await repo.works.require(kept.works[0].workId)).catalogue).toBe('Op. 102')
+    const fb = await repo.feedback.all()
+    expect(fb).toEqual([expect.objectContaining({ target: { type: 'concert', id: kept.id }, note: 'The cello sang.' })])
+
+    // Edited without changing the note: no second piece of feedback.
+    await j.saveConcert({ ...draft, note: 'The cello sang.', conductor: 'Gabriel Bebeșelea', source: 'screenshot' }, kept.id)
+    expect(await repo.feedback.all()).toHaveLength(1)
+
+    const ctx = await buildContext(repo, weekOf(clock))
+    expect(ctx.alreadyKnown).toContainEqual({ composer: 'Johannes Brahms', work: 'Double Concerto in A minor' })
+    expect(ctx.concerts).toEqual([expect.objectContaining({ venue: 'Filarmonica George Enescu', works: ['Johannes Brahms — Double Concerto in A minor'], note: 'The cello sang.', performers: 'Gabriel Bebeșelea' })])
+  })
+})
+
 describe('works and recordings', () => {
   it('keeps two interpretations of one work as two recordings of one work', async () => {
     const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })
@@ -168,7 +261,11 @@ describe('the long view', () => {
     const j = journey(c.client)
     const w2 = await j.ensureWeek()
     expect(w2.weekKey).toBe('2026-W47')
-    expect(c.calls.map((x) => x.op)).toEqual(['themes', 'programme', 'continuity', 'taste', 'themes'])
+    // Closing the thread and reading feedback run side by side, both before the new directions.
+    const ops = c.calls.map((x) => x.op)
+    expect(ops.slice(0, 2)).toEqual(['themes', 'programme'])
+    expect(ops.slice(2, 4).sort()).toEqual(['continuity', 'taste'])
+    expect(ops[4]).toBe('themes')
 
     // The previous week is preserved exactly.
     expect(await repo.weeks.get('2026-W41')).toBeTruthy()

@@ -8,6 +8,7 @@
 import { sameWork, performersKey, fold, surname, workTitleKey } from '../domain/identity.js'
 
 const MOODS = ['immersive', 'curious', 'adventurous']
+const FORMS = ['theme', 'across-centuries', 'then-and-now', 'city-year', 'performer', 'dialogue', 'many-ways']
 
 const clean = (s) => (typeof s === 'string' ? s.trim() : '')
 const opt = (s) => clean(s) || undefined
@@ -40,7 +41,7 @@ export function hasPerformers(p) {
  * @param {any} out
  * @param {{ threadIds: string[] }} ctx
  */
-export function validateThemes(out, { threadIds }) {
+export function validateThemes(out, { threadIds, pairs = true }) {
   const problems = []
   const known = new Set(threadIds)
   const raw = Array.isArray(out?.options) ? out.options : []
@@ -58,6 +59,7 @@ export function validateThemes(out, { threadIds }) {
       why: clean(o?.why),
       angle: clean(o?.angle),
       returning,
+      form: FORMS.includes(o?.form) ? o.form : 'theme',
     }
   })
 
@@ -75,6 +77,8 @@ export function validateThemes(out, { threadIds }) {
   for (const o of options) {
     if (o.returning && !o.returning.note) problems.push(`Option "${o.title}" returns to a thread but has no continuityNote.`)
   }
+  // "One work, several ways" needs pairs; without them it's a plain theme.
+  if (!pairs) for (const o of options) if (o.form === 'many-ways') o.form = 'theme'
 
   return { value: { options: options.slice(0, 3) }, problems }
 }
@@ -123,8 +127,24 @@ export function baseWorkKey(composer, title) {
 
 /** How many works a week of this length holds — mirrors domain/exploration.ts TIME. */
 const WORKS_FOR = { short: [3, 4], standard: [5, 7], generous: [8, 10], abundant: [11, 14] }
+const TIME_STEPS = ['short', 'standard', 'generous', 'abundant']
 
-export function validateProgramme(out, { covered = [], returning = false, preferences = {} } = {}) {
+/**
+ * "This week, differently", applied to the standing preferences for one week:
+ * shorter is one step less time, wider one step more breadth, more familiar
+ * one step towards the well known. Quieter has no number; the prompt carries it.
+ * Used for the checks, so a shorter week isn't sent back for having too few works.
+ */
+export function weekAdjusted(preferences = {}, thisWeek = []) {
+  const p = { ...preferences }
+  const has = (m) => Array.isArray(thisWeek) && thisWeek.includes(m)
+  if (has('shorter') && p.timePerWeek) p.timePerWeek = TIME_STEPS[Math.max(0, TIME_STEPS.indexOf(p.timePerWeek) - 1)] ?? p.timePerWeek
+  if (has('wider')) p.breadth = Math.min(5, Number(p.breadth ?? 3) + 1)
+  if (has('familiar')) p.familiarity = Math.max(1, Number(p.familiarity ?? 3) - 1)
+  return p
+}
+
+export function validateProgramme(out, { covered = [], returning = false, preferences = {}, form = 'theme' } = {}) {
   const problems = []
   // Problems enforceVariety fixes in code. They are still listed (a retry asked
   // for another reason fixes them too), but they never cost a retry of their own:
@@ -171,9 +191,9 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
   for (const list of versions.values()) {
     if (list.length > 1) mend(`"${list[0].composer} — ${baseTitle(list[0].workTitle)}" appears in ${list.length} versions; a week holds each work once (arrangements and the original are one work).`)
   }
-  // Range: unless the week is about one focus, no composer more than twice.
+  // Range: unless the week is about one focus, or two composers in dialogue, no composer more than twice.
   const breadth = Number(preferences.breadth ?? 3)
-  if (breadth > 1) {
+  if (breadth > 1 && form !== 'dialogue') {
     const byComposer = new Map()
     for (const i of items) byComposer.set(fold(surname(i.composer)), (byComposer.get(fold(surname(i.composer))) ?? 0) + 1)
     for (const [, n] of byComposer) if (n > 2) { mend(`${n} works by one composer; at this breadth, two at most — let the theme travel to other composers and periods.`); break }
@@ -201,8 +221,8 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
       const [a, b] = c.perspectives
       return hasPerformers(a) && hasPerformers(b) && performersKey(a) !== performersKey(b)
     })
-    // Pairs only when the listener asked for them, and then one a week.
-    .slice(0, preferences.pairs ? 1 : 0)
+    // Pairs only when the listener asked for them: one a week, or three in a week about one work heard several ways.
+    .slice(0, preferences.pairs ? (form === 'many-ways' ? 3 : 1) : 0)
 
   const introduction = clean(out?.introduction)
   if (!clean(out?.title) || !introduction) problems.push('The programme needs a title and an introduction.')
@@ -212,7 +232,7 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
   // Mending in code only stands in for a retry when what is left still holds
   // this listener's week; a trim that leaves it thin goes back to the curator.
   if (mendable.length) {
-    const left = enforceVariety({ sections: kept }, preferences).sections.reduce((n, s) => n + s.items.length, 0)
+    const left = enforceVariety({ sections: kept }, preferences, { form }).sections.reduce((n, s) => n + s.items.length, 0)
     if (left < Math.max(3, least - 1)) mendable.length = 0
   }
 
@@ -246,10 +266,11 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
  * than four sections (later ones fold into the fourth); and no more works than
  * the week holds, plus two.
  */
-export function enforceVariety(value, preferences = {}, { maxWorks } = {}) {
+export function enforceVariety(value, preferences = {}, { maxWorks, form } = {}) {
   const seen = new Set()
   const perComposer = new Map()
-  const cap = Number(preferences.breadth ?? 3) > 1 ? 2 : Infinity
+  // Two composers in dialogue: several works by each is the point.
+  const cap = Number(preferences.breadth ?? 3) > 1 && form !== 'dialogue' ? 2 : Infinity
   const sections = value.sections
     .map((s) => ({
       ...s,
@@ -326,6 +347,48 @@ export function validateContinuity(out) {
     closingNote: clean(out?.closingNote),
   }
   const problems = value.nextDirections.length === 0 ? ['Give at least one next direction.'] : []
+  return { value, problems }
+}
+
+/**
+ * The companion's notes, one per track for each work asked about. A work's
+ * notes are padded or cut to its track count, so note i always belongs to
+ * track i; a work the curator skipped, or got the key of wrong, is a problem.
+ * @param {any} out
+ * @param {{ works: { key: string, tracks: string[] }[] }} ctx
+ */
+export function validateCompanion(out, { works }) {
+  const problems = []
+  const given = new Map((Array.isArray(out?.works) ? out.works : []).map((w) => [clean(w?.key), Array.isArray(w?.movements) ? w.movements.map(clean) : []]))
+  const value = { works: [] }
+  for (const w of works) {
+    const notes = given.get(w.key)
+    if (!notes || notes.every((n) => !n)) { problems.push(`No notes for "${w.key}".`); continue }
+    value.works.push({ key: w.key, movements: w.tracks.map((_, i) => notes[i] ?? '') })
+  }
+  return { value, problems }
+}
+
+/**
+ * A concert read from a screenshot: cleaned, never retried — the listener
+ * checks it in a form before anything is kept. A date that isn't a date is
+ * dropped rather than guessed.
+ */
+export function validateConcert(out) {
+  const date = clean(out?.date)
+  const value = {
+    venue: clean(out?.venue),
+    hall: opt(out?.hall),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '',
+    time: /^\d{1,2}:\d{2}$/.test(clean(out?.time)) ? clean(out?.time) : undefined,
+    orchestra: opt(out?.orchestra),
+    conductor: opt(out?.conductor),
+    soloists: cleanSoloists(out?.soloists),
+    works: (Array.isArray(out?.works) ? out.works : [])
+      .map((w) => ({ composer: clean(w?.composer), title: clean(w?.title), catalogue: opt(w?.catalogue) }))
+      .filter((w) => w.composer && w.title),
+  }
+  const problems = value.works.length ? [] : ['No works could be read.']
   return { value, problems }
 }
 

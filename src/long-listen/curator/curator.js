@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateConcert,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -31,7 +31,7 @@ export const MODEL = MODEL_SONNET
  * further reading found by web search) and go to Haiku at a twentieth of the
  * price. Each job's prompt and validator are the same on either model.
  */
-const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU }
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, concert: MODEL_HAIKU }
 export function modelFor(op) {
   return MODEL_FOR[op] ?? MODEL
 }
@@ -47,6 +47,8 @@ const LEADS = {
   explain: (p) => `The listener asked for more context on ${p.item?.composer} — ${p.item?.workTitle}${p.question ? `, with this question: "${p.question}"` : ''}.`,
   compare: (p) => `The listener wants a second perspective on ${p.work?.composer} — ${p.work?.title}.`,
   resources: (p) => `Find resources for this week's programme, "${p.programme?.title}".`,
+  concert: (p) => `Read this concert programme. If it shows no year, it is ${p.year}.`,
+  companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
 }
 
 export function buildUserContent(op, payload) {
@@ -162,7 +164,8 @@ async function withRetry(send, op, payload, validate) {
 
 export async function generateThemes(send, payload) {
   const threadIds = (payload.context?.threads ?? []).map((t) => t.themeId)
-  const r = await withRetry(send, 'themes', payload, (o) => validateThemes(o, { threadIds }))
+  const pairs = payload.context?.preferences?.pairs !== false
+  const r = await withRetry(send, 'themes', payload, (o) => validateThemes(o, { threadIds, pairs }))
   if (r.value.options.length !== 3 || r.problems.some((p) => /exactly three|one immersive|title and a pitch/.test(p))) {
     throw new CuratorUnavailable('failed', 'The curator could not settle on three directions. Try again.')
   }
@@ -172,13 +175,15 @@ export async function generateThemes(send, payload) {
 export async function curateProgramme(send, payload) {
   const covered = payload.thread?.covered?.works ?? []
   const returning = Boolean(payload.thread)
-  const preferences = payload.preferences ?? {}
+  // This week's mood moves the standing preferences a step for this week only.
+  const preferences = weekAdjusted(payload.preferences ?? {}, payload.thisWeek)
   // "More of this theme" is a companion, shorter than a week: size isn't checked against the week's length.
   const sized = payload.extension ? { ...preferences, timePerWeek: undefined } : preferences
-  const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning, preferences: sized }))
+  const form = payload.option?.form ?? 'theme'
+  const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning, preferences: sized, form }))
   // An extension is a companion to the week, not sized by it: the variety rules
   // still hold, the length cap is the widest week's.
-  let value = enforceVariety(r.value, preferences, payload.extension ? { maxWorks: 16 } : undefined)
+  let value = enforceVariety(r.value, preferences, payload.extension ? { maxWorks: 16, form } : { form })
   let removedRepeats = 0
   if (r.repeats > 0) {
     const before = value.sections.reduce((n, s) => n + s.items.length, 0)
@@ -206,6 +211,31 @@ export async function explainWork(send, payload) {
   const r = await withRetry(send, 'explain', payload, validateExplain)
   if (!r.value.body) throw new CuratorUnavailable('failed', 'The curator had nothing to add this time.')
   return { ...r.value, promptVersion: PROMPTS.explain.version }
+}
+
+export async function writeCompanion(send, payload) {
+  const works = (payload.works ?? []).map((w) => ({ key: w.key, tracks: w.tracks ?? [] }))
+  const r = await withRetry(send, 'companion', payload, (o) => validateCompanion(o, { works }))
+  if (!r.value.works.length) throw new CuratorUnavailable('failed', 'The curator had nothing to add this time.')
+  return { ...r.value, promptVersion: PROMPTS.companion.version }
+}
+
+/**
+ * A concert programme, read from a screenshot (the cheaper model, image in —
+ * about a cent). One attempt: the listener checks the result in a form.
+ * payload: { image: { mediaType, data (base64) }, year }
+ */
+export async function readConcert(send, payload) {
+  const { image, ...rest } = payload ?? {}
+  if (!image?.data) throw new CuratorUnavailable('failed', 'There was no picture to read.')
+  const content = [
+    { type: 'image', source: { type: 'base64', media_type: image.mediaType || 'image/jpeg', data: image.data } },
+    { type: 'text', text: LEADS.concert(rest) },
+  ]
+  const { output } = await structured(send, 'concert', content)
+  const { value, problems } = validateConcert(output)
+  if (problems.length) throw new CuratorUnavailable('failed', 'No works could be read from that picture. Try a clearer screenshot, or type it in.')
+  return { ...value, promptVersion: PROMPTS.concert.version }
 }
 
 export async function compareInterpretations(send, payload) {
@@ -265,6 +295,8 @@ export const JOBS = {
   explain: explainWork,
   compare: compareInterpretations,
   resources: findResources,
+  companion: writeCompanion,
+  concert: readConcert,
 }
 
 /**

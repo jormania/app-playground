@@ -2,7 +2,7 @@ import { createStore, del, entries, get, keys, set, setMany } from 'idb-keyval'
 import { normalisePreferences } from '../domain/types'
 import type {
   ListenerPreferences,
-  Album, Artist, Comparison, Explanation, Feedback, ListeningEvent, NotionSyncState, Programme,
+  Album, Artist, Comparison, Concert, Explanation, Feedback, ListeningEvent, NotionSyncState, Programme,
   ProgrammeOption, Recording, Resource, TasteProfile, Theme, ThemeExploration, WeekRecord, Work,
 } from '../domain/types'
 
@@ -135,6 +135,7 @@ export class Repo {
   readonly notion: Collection<NotionSyncState>
   /** Small facts with no entity of their own: "resources searched for prog_x". */
   readonly marks: Collection<Mark>
+  readonly concerts: Collection<Concert>
 
   constructor(readonly store: KeyValueStore) {
     const c = <T,>(name: string, keyOf: (v: T) => string) => new Collection<T>(store, name, keyOf)
@@ -154,6 +155,7 @@ export class Repo {
     this.explanations = c('explanation', (v) => v.id)
     this.notion = c('notion', (v) => v.key)
     this.marks = c('mark', (v) => v.id)
+    this.concerts = c('concert', (v) => v.id)
   }
 
   async taste(): Promise<TasteProfile> {

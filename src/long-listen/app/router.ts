@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
  *   #/library           composers, works and recordings met so far
  *   #/threads           themes as threads, and paths still open
  *   #/notebook          taste, questions, notes to the curator
+ *   #/concerts          concerts heard live; #/concerts/new to add one, #/concerts/<id> one concert
  *   #/settings          (#/listening, the old journal address, still works)
  */
 export type Route =
@@ -20,6 +21,8 @@ export type Route =
   | { name: 'library' }
   | { name: 'threads' }
   | { name: 'notebook' }
+  | { name: 'concerts' }
+  | { name: 'concert'; id: string }
   | { name: 'settings' }
 
 export function parseRoute(hash: string): Route {
@@ -33,6 +36,7 @@ export function parseRoute(hash: string): Route {
     case 'library': return { name: 'library' }
     case 'threads': return { name: 'threads' }
     case 'notebook': return { name: 'notebook' }
+    case 'concerts': return arg ? { name: 'concert', id: decodeURIComponent(arg) } : { name: 'concerts' }
     case 'settings': return { name: 'settings' }
     default: return { name: 'week' }
   }
@@ -40,6 +44,7 @@ export function parseRoute(hash: string): Route {
 
 export function href(r: Route): string {
   if (r.name === 'programme') return `#/p/${encodeURIComponent(r.id)}`
+  if (r.name === 'concert') return `#/concerts/${encodeURIComponent(r.id)}`
   if (r.name === 'listen') return `#/listen/${encodeURIComponent(r.programmeId)}/${encodeURIComponent(r.itemId)}`
   return r.name === 'week' ? '#/' : `#/${r.name}`
 }

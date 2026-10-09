@@ -1,4 +1,4 @@
-import type { OptionMood, TasteConfidence, TasteFacet, TasteStance, ResourceKind } from '../domain/types'
+import type { OptionMood, TasteConfidence, TasteFacet, TasteStance, ResourceKind, WeekForm } from '../domain/types'
 
 /**
  * The curator's contract: `call(op, payload)` and the shapes it answers with.
@@ -41,6 +41,7 @@ export interface CuratedOption {
   why: string
   angle: string
   returning?: { themeId: string; note: string }
+  form?: WeekForm
 }
 
 export interface ThemesResponse {
@@ -139,6 +140,23 @@ export interface CompareResponse {
 export interface ResourcesResponse {
   resources: { kind: ResourceKind; title: string; url: string; source: string; purpose: string; relatesTo?: string }[]
   dropped: number
+  promptVersion: string
+}
+
+export interface CompanionResponse {
+  works: { key: string; movements: string[] }[]
+  promptVersion: string
+}
+
+export interface ConcertResponse {
+  venue: string
+  hall?: string
+  date: string
+  time?: string
+  orchestra?: string
+  conductor?: string
+  soloists: { name: string; instrument?: string }[]
+  works: { composer: string; title: string; catalogue?: string }[]
   promptVersion: string
 }
 

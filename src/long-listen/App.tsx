@@ -4,6 +4,7 @@ import { ServicesProvider, useServices } from './app/services'
 import { href, useRoute, type Route } from './app/router'
 import { GUIDE_URL } from './app/links'
 import { useNewVersion } from './app/freshness'
+import { LandedPrompt } from './components/LandedPrompt'
 import { WeekScreen } from './screens/Week'
 import { ProgrammeScreen } from './screens/Programme'
 import { ListenModeScreen } from './screens/ListenMode'
@@ -12,6 +13,7 @@ import { LibraryScreen } from './screens/Library'
 import { ThreadsScreen } from './screens/Threads'
 import { NotebookScreen } from './screens/Notebook'
 import { SettingsScreen } from './screens/Settings'
+import { ConcertScreen, ConcertsScreen } from './screens/Concerts'
 import type { Repo } from './store/repo'
 import type { CuratorClient } from './curation/api'
 import s from './styles/editorial.module.css'
@@ -27,7 +29,7 @@ const NAV: { route: Route; label: string }[] = [
 function Shell() {
   const route = useRoute()
   const { week, settings } = useServices()
-  const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name
+  const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name === 'concerts' || route.name === 'concert' ? 'journal' : route.name
   const navRef = useRef<HTMLElement>(null)
   const newer = useNewVersion()
   // The nav slides rather than wraps; keep the current section's tab in view.
@@ -69,7 +71,8 @@ function Shell() {
         )}
         {settings.demo && <p className={s.demo}>Demo curator — canned programmes, for development only</p>}
       </header>
-      <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name}>
+      {route.name !== 'listen' && route.name !== 'settings' && <LandedPrompt />}
+      <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name === 'concert' ? route.id : route.name}>
         {route.name === 'week' && <WeekScreen />}
         {route.name === 'programme' && <ProgrammeScreen id={route.id} />}
         {route.name === 'listen' && <ListenModeScreen programmeId={route.programmeId} itemId={route.itemId} />}
@@ -78,6 +81,8 @@ function Shell() {
         {route.name === 'threads' && <ThreadsScreen />}
         {route.name === 'notebook' && <NotebookScreen />}
         {route.name === 'settings' && <SettingsScreen />}
+        {route.name === 'concerts' && <ConcertsScreen />}
+        {route.name === 'concert' && <ConcertScreen id={route.id} />}
       </main>
     </div>
   )
