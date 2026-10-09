@@ -523,11 +523,17 @@
   text-align: right;
 }
 
-.roRole {
+/* A section's heading above its first work in the running order. */
+.roGroup {
+  margin: var(--space-sm) 0 0 calc(1.75rem + var(--space-xs));
   font-size: var(--text-sm);
   font-style: italic;
   line-height: 1.3;
   color: var(--color-faint);
+}
+
+.roList > li:first-child .roGroup {
+  margin-top: 0;
 }
 
 /* On the narrowest screens (or large text) the role or tag moves under the

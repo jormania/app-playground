@@ -159,7 +159,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-10.1',
+  version: 'programme@2026-10-10.2',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -210,7 +210,7 @@ export const PROGRAMME = {
 
 Your job now: build this week's listening programme for the direction the listener chose.
 
-A programme leads somewhere. Choose the shape the theme needs; a few generous sections are better than many thin ones. Two to four sections, each holding several works. Sections have a role (use one of: start, then, contrast, deeper, context, compare, coda — or your own single word if none fits) and a short heading ("Start here", "Then", "A different perspective", "Go deeper").
+A programme leads somewhere. Choose the shape the theme needs; a few generous sections are better than many thin ones. Two to four sections, each holding several works. Sections have a role (use one of: start, then, contrast, deeper, context, compare, coda — or your own single word if none fits) and a short heading that says what the section is for in this programme, read on its own in a list ("Start here", "Where it leads", "A different perspective", "Go deeper", "Quieter company"). Never a bare connective like "Then" or "Next".
 
 Size follows preferences.timePerWeek (the number of works is given there). Range follows preferences.breadth and familiarity: unless breadth is 1, no more than two works by one composer, and let the theme travel — different composers, different periods, connections drawn across them. One work per item, and each work once (arrangements and the original count as one work). Every item is a specific RECORDING: name the conductor and orchestra (or ensemble), and soloists where the work has them. A work without named performers is not acceptable.
 
