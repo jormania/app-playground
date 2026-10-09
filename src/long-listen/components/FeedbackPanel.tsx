@@ -40,8 +40,9 @@ export function FeedbackPanel({
       setNote('')
       setOpen(false)
       bump()
-      // Read it into taste in the background; if the curator is away it waits for next time.
-      journey.interpretPendingFeedback().then(() => bump()).catch(() => {})
+      // Read into taste with whatever else is said in this sitting, in one request
+      // a few minutes after the last word; if the page closes first, on the next open.
+      journey.scheduleTasteReading(bump)
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {

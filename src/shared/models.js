@@ -28,6 +28,20 @@ const NO_THINKING = {
 }
 
 /**
+ * List prices, USD per million tokens, for an app that shows what it has spent
+ * (The Long Listen, Settings → About). From platform.claude.com/docs/en/about-claude/pricing,
+ * 2026-10-09; update with the ids. Cache reads are 0.05x input on Sonnet 5.5 and
+ * 0.1x on Haiku 5.5, 5-minute cache writes 1.25x on both. Haiku 5.5's rates
+ * rise fivefold for a prompt over 100,000 tokens, which no app here sends.
+ * Web search: $10 per 1,000 searches.
+ */
+export const PRICES = {
+  [MODEL_HAIKU]: { input: 0.10, output: 0.50, cacheRead: 0.01, cacheWrite: 0.125 },
+  [MODEL_SONNET]: { input: 2, output: 10, cacheRead: 0.10, cacheWrite: 2.50 },
+}
+export const WEB_SEARCH_PRICE = 0.01
+
+/**
  * Request fields that keep `model` from thinking — spread them into the body.
  * Throws for a model with no entry, so a new id can't go out with a guess;
  * models.test.js fails first if an exported model is missing one.

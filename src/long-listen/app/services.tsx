@@ -11,6 +11,7 @@ import { checkNotebook, relayCaller, syncToNotion, type NotebookCheck, type Noti
 import { parseNotionId } from '../../shared/notionId'
 import { demoCurator } from '../dev/demoCurator'
 import { loadSettings, saveSettings, type Settings } from './settings'
+import { recordUsage } from './usage'
 import { applyTheme } from './theme'
 import { useSystemThemeFollow } from '../../shared/theme'
 import type { ListeningWeek } from '../domain/week'
@@ -73,7 +74,7 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
 
   const repo = useMemo(() => injectedRepo ?? repoSingleton(), [injectedRepo])
   const curator = useMemo<CuratorClient>(
-    () => injectedCurator ?? (settings.demo ? demoCurator() : directCurator(() => settingsRef.current.anthropicKey)),
+    () => injectedCurator ?? (settings.demo ? demoCurator() : directCurator(() => settingsRef.current.anthropicKey, { onUsage: (_op, model, usage) => recordUsage(model, usage) })),
     [injectedCurator, settings.demo],
   )
   const journey = useMemo(() => new Journey(repo, curator, { timeZone: settings.timeZone }), [repo, curator, settings.timeZone])
@@ -141,6 +142,13 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   }, [spotify, say, bump])
 
   useEffect(() => { syncSpotify().catch(() => {}) }, [syncSpotify])
+
+  // Feedback left unread when the app last closed (taste is read in batches, see
+  // Journey.scheduleTasteReading) is read once now, in one request.
+  useEffect(() => {
+    if (!curatorReady) return
+    journey.interpretPendingFeedback().then((n) => { if (n) bump() }).catch(() => {})
+  }, [journey, curatorReady, bump])
 
   // Spotify ends sign-ins after six months; say so once, plainly, and let views re-read.
   useEffect(() => spotify.onSignedOut((message) => { say(message, 'danger'); bump() }), [spotify, say, bump])

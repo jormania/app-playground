@@ -208,7 +208,31 @@ const CASES = {
   },
 }
 
-describe('live API: every app request is accepted', () => {
+// LIVE_SCOPE=models (the weekly run): one tiny request per model id, which is
+// all it takes to see a model retired — two requests instead of every app's.
+// The full set runs when a request changes and by hand.
+const MODELS_ONLY = process.env.LIVE_SCOPE === 'models'
+
+describe.skipIf(!MODELS_ONLY)('live API: every model id still answers', () => {
+  it('each MODEL_* in src/shared/models.js', async () => {
+    const models = await import('../src/shared/models.js')
+    const ids = Object.entries(models).filter(([k]) => k.startsWith('MODEL_')).map(([, v]) => v)
+    expect(ids.length).toBeGreaterThan(0)
+    const calls = await through(async (f) => {
+      for (const model of ids) {
+        await f(ENDPOINT, {
+          method: 'POST',
+          headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+          body: JSON.stringify({ model, max_tokens: 16, ...models.noThinking(model), messages: [{ role: 'user', content: 'Reply with: ok' }] }),
+        })
+      }
+    })
+    expect(calls).toHaveLength(ids.length)
+    expectAccepted(calls)
+  }, 90_000)
+})
+
+describe.skipIf(MODELS_ONLY)('live API: every app request is accepted', () => {
   for (const [name, run] of Object.entries(CASES)) {
     it(name, async () => {
       expectAccepted(await through(run))

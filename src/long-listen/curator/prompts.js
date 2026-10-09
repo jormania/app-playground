@@ -374,10 +374,12 @@ Your job now: the listener wants to hear a work through a second interpretation.
 
 export const RESOURCES = {
   id: 'resources',
-  version: 'resources@2026-10-09.1',
+  version: 'resources@2026-10-09.2',
   effort: 'medium',
   maxTokens: 12000,
-  maxSearches: 6,
+  // Three is enough to find a recording note, an article and a talk; each search
+  // is a cent and its results are read back in as input.
+  maxSearches: 3,
   system: `${VOICE}
 
 Your job now: find a few genuinely useful things on the web to go with this week's programme — programme notes, essays, interviews, lectures, institutional guides, filmed performances or talks.

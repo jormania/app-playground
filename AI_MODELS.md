@@ -5,7 +5,7 @@ Every app that calls Claude takes its model from one file,
 
 | Constant | Today | Used by |
 |---|---|---|
-| `MODEL_HAIKU` | `claude-haiku-5-5` | Touch Grass, WhereItWent, Fit Check, Sol Odyssey, Silva, KeyPath (coach, weekly note, key test), Lexi5 (default) |
+| `MODEL_HAIKU` | `claude-haiku-5-5` | The Long Listen's taste, continuity, explain and resources jobs (`modelFor` in `curator.js`), Touch Grass, WhereItWent, Fit Check, Sol Odyssey, Silva, KeyPath (coach, weekly note, key test), Lexi5 (default) |
 | `MODEL_SONNET` | `claude-sonnet-5-5` | Daily Stoic mentor, Law of the Day (`src/law-of-the-day/lib/generate.js`, your key), The Long Listen's curator (`src/long-listen/curator/`), KeyPath Studio, Lexi5 (option) |
 
 No app uses Opus. The daily-refactor workflow picks its own models
@@ -77,7 +77,9 @@ runs it:
   GitHub's `paths` filter looks at the whole PR, so docs-only pushes used to
   re-run it),
 - not on the merge to `main`, which is the code the PR already checked,
-- every Monday at 06:23 UTC — a retired model fails here before an app finds out,
+- every Monday at 06:23 UTC — a retired model fails here before an app finds out.
+  This run sends only one tiny request per model id (`LIVE_SCOPE=models`, about a
+  tenth of a cent); the full set of app requests runs on request changes and by hand,
 - by hand (Actions → AI models (live) → Run workflow).
 
 It needs the repository secret **`ANTHROPIC_API_KEY`** (Settings → Secrets and

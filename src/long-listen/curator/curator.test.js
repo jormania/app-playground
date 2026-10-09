@@ -192,6 +192,29 @@ describe('programme', () => {
     expect(works.filter((w) => w.startsWith('Pictures'))).toHaveLength(1)
   })
 
+  it('sends the curating to Sonnet and the reading, summing up, context and search to Haiku', async () => {
+    const { modelFor, curatorBody, resourcesBody } = await import('./curator.js')
+    const { MODEL_HAIKU, MODEL_SONNET } = await import('../../shared/models.js')
+    for (const op of ['themes', 'programme', 'compare']) expect(curatorBody(op, 'x').model).toBe(MODEL_SONNET)
+    for (const op of ['taste', 'continuity', 'explain']) expect(curatorBody(op, 'x').model).toBe(MODEL_HAIKU)
+    expect(modelFor('resources')).toBe(MODEL_HAIKU)
+    expect(resourcesBody('x').model).toBe(MODEL_HAIKU)
+    expect(resourcesBody('x').tools[0].max_uses).toBe(3)
+  })
+
+  it('trims a duplicate in code instead of paying for a second programme, when the week still holds', async () => {
+    const works = ['La mer', 'Nocturnes', 'Jeux'].map((w) => item('Claude Debussy', w))
+      .concat(['Daphnis et Chloé', 'Boléro'].map((w) => item('Maurice Ravel', w)))
+      .concat(['The Rite of Spring', 'Petrushka'].map((w) => item('Igor Stravinsky', w)))
+      .concat([item('Lili Boulanger', 'D’un soir triste'), item('Olivier Messiaen', 'Turangalîla')])
+    const { curator, sent } = fakeSend([json(programme(works))])
+    const res = await curator.call('programme', { option: { title: 'x' }, preferences: { breadth: 3, timePerWeek: 'generous' } })
+    expect(sent).toHaveLength(1)
+    const kept = res.programme.sections.flatMap((s) => s.items)
+    expect(kept).toHaveLength(8)
+    expect(kept.filter((i) => i.composer === 'Claude Debussy')).toHaveLength(2)
+  })
+
   it('lets a week travel: at most two works by one composer, unless the week is about one focus', async () => {
     const brahms = ['Symphony No. 1', 'Symphony No. 2', 'Symphony No. 3', 'Symphony No. 4'].map((w) => item('Johannes Brahms', w))
     const wide = await fakeSend([json(programme(brahms)), json(programme(brahms))]).curator.call('programme', { option: { title: 'x' }, preferences: { breadth: 4, timePerWeek: 'short' } }).catch((e) => e)

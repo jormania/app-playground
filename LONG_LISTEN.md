@@ -124,9 +124,14 @@ notebook and the prompts):
 - **One work, one hearing**, whatever the settings: arrangements,
   orchestrations and the original of a piece are one work (`baseWorkKey` —
   Mussorgsky's piano *Pictures* and Ravel's orchestration). A week held three
-  *Pictures* once. The validator flags extra versions and too many works by
-  one composer, the curator gets one retry, then `enforceVariety` keeps the
-  first version and two works per composer.
+  *Pictures* once. The validator flags extra versions, a work twice, too many
+  works by one composer, more than four sections and too many works; these are
+  *mendable* — `enforceVariety` fixes them in code (first version kept, two
+  works per composer, later sections folded into the fourth, the week's size
+  plus two) — so they cost no retry of their own. The curator is asked again
+  only for problems code can't fix (no performers, an unjustified repeat, no
+  title, a missing continuity note), or when the trim would leave the week
+  thin. (Every mendable problem used to buy a whole second programme.)
 
 **Where next.** The end of the week's programme is one labelled section: *More
 of this theme*, *A different direction this week* (the week's other
@@ -172,7 +177,19 @@ the first three as open paths and tells the curator what not to repeat. The
 context also carries every work programmed in the last twelve weeks across all
 themes, and how often each recording was heard again.
 
-Model: `MODEL_SONNET` from `src/shared/models.js`, adaptive thinking and
+**Cost.** Curating — directions, programmes, a second perspective — is on
+`MODEL_SONNET`; the jobs that read and summarise — taste, a thread's week
+(continuity), *A little more context* (explain) and further reading (resources,
+web search capped at three) — are on `MODEL_HAIKU` (`modelFor(op)` in
+`curator.js`), at a twentieth of the price. Feedback is read into taste in
+batches: `Journey.scheduleTasteReading` waits three quiet minutes after the
+last save, and anything left when the page closed is read once on the next open
+(also at a week's start, or at once from the Notebook). Every response's
+`usage` is tallied per month and model on the device (`app/usage.ts`,
+localStorage, list prices in `src/shared/models.js`) and shown in Settings →
+About as an estimate; the Console has the bill.
+
+Model: `MODEL_SONNET` (or `MODEL_HAIKU`, above) from `src/shared/models.js`, adaptive thinking and
 `output_config.format` json_schema, sent with `requestAnthropic` from
 `src/shared/anthropic.ts`. No beta headers: a plain browser request, like the
 other apps'. `directCurator(getKey)` is the `CuratorClient` the app uses; a
