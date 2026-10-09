@@ -135,7 +135,15 @@ skip. An item found to be a bad idea is marked `dropped`, one that cannot be
 finished is marked `blocked`, one that is too big is split — each a visible
 backlog change, never a silent jump to the next header.
 
-**Fridays are discovery runs.** Nothing ships. The session reads the codebase
+**Every other Friday is a discovery run** — since 2026-10-09, counted in whole
+weeks from that date (not ISO week parity, which a 53-week year breaks). The
+workflow's first step decides it from the Bucharest date and hands the agent a
+`Discovery morning: true|false` line, so a run and its backstop always agree;
+`scripts/daily-refactor-chooser.test.js` pins the calendar. The Fridays between
+take an item like any weekday. It halved on 2026-10-09 to spare the weekly
+subscription limit: discovery is the longest open-ended Opus session, and one a
+fortnight keeps the backlog well ahead of one item a day. On a discovery
+morning nothing ships. The session reads the codebase
 against current standards and appends up to five findings, each with a class, an
 `Impact:` line and a concrete file path — then opens a backlog-only PR like any
 other run. Findings that stay on a branch nobody visits are findings that die.
@@ -321,7 +329,7 @@ always proceeds; the gate only applies to scheduled ones.
   run could not open its PR.
 
 **Model and costs:** `refactor` and `modernise` items run on **Sonnet**
-(`claude-sonnet-5-5`); everything else — `visual`, `qol`, Friday discovery, and a
+(`claude-sonnet-5-5`); everything else — `visual`, `qol`, discovery runs, and a
 morning with nothing eligible — runs on **Opus** (`claude-opus-5-5`). The split
 follows the autonomy line: the two Sonnet classes are behaviour-preserving and
 merge only after the workflow re-runs all three gates on a clean clone, so a

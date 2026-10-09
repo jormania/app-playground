@@ -63,14 +63,14 @@ describe('parseHeader', () => {
 
 describe('chooseModel', () => {
   it('puts a modernise item on Sonnet and names it in the note', () => {
-    const { model, note } = chooseModel({ id: 'R-029', cls: 'modernise' }, 'Wednesday');
+    const { model, note } = chooseModel({ id: 'R-029', cls: 'modernise' }, false);
     expect(model).toBe(SONNET);
     expect(note).toContain('R-029');
     expect(note).toMatch(/do not go on to the next item/);
   });
 
   it('puts a refactor item on Sonnet too, naming its class', () => {
-    const { model, note } = chooseModel({ id: 'R-031', cls: 'refactor' }, 'Tuesday');
+    const { model, note } = chooseModel({ id: 'R-031', cls: 'refactor' }, false);
     expect(model).toBe(SONNET);
     expect(note).toContain('`refactor`');
     expect(note).toMatch(/do not go on to the next item/);
@@ -78,18 +78,18 @@ describe('chooseModel', () => {
 
   it('keeps what you see — qol and visual — on Opus', () => {
     for (const cls of ['visual', 'qol']) {
-      expect(chooseModel({ id: 'X', cls }, 'Tuesday')).toEqual({ model: OPUS, note: '' });
+      expect(chooseModel({ id: 'X', cls }, false)).toEqual({ model: OPUS, note: '' });
     }
   });
 
-  it('keeps Friday on Opus even when a Sonnet-class item is on top', () => {
-    // Friday is discovery whatever is queued; reading for what's missing is
+  it('keeps a discovery run on Opus even when a Sonnet-class item is on top', () => {
+    // Discovery reads for what's missing whatever is queued; that is
     // judgement, not a gated change.
-    expect(chooseModel({ id: 'R-029', cls: 'modernise' }, 'Friday').model).toBe(OPUS);
-    expect(chooseModel({ id: 'R-031', cls: 'refactor' }, 'Friday').model).toBe(OPUS);
+    expect(chooseModel({ id: 'R-029', cls: 'modernise' }, true).model).toBe(OPUS);
+    expect(chooseModel({ id: 'R-031', cls: 'refactor' }, true).model).toBe(OPUS);
   });
 
   it('keeps an empty queue on Opus — the agent falls back to discovery', () => {
-    expect(chooseModel(null, 'Monday').model).toBe(OPUS);
+    expect(chooseModel(null, false).model).toBe(OPUS);
   });
 });

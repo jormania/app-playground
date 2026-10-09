@@ -56,8 +56,10 @@ the skill, or the backlog's shape. The essentials:
   however green. They also need before/after screenshots (both themes, phone and
   desktop) on the never-merged `claude/shots` branch, since preview deploys are
   off for `claude/*`.
-- **Fridays are discovery runs** — nothing ships; the session reads the codebase
-  against current standards and adds to the backlog instead.
+- **Every other Friday is a discovery run** (from 2026-10-09; the workflow decides
+  by date and tells the agent) — nothing ships; the session reads the codebase
+  against current standards and adds to the backlog instead. The Fridays between
+  take an item like any weekday.
 - It stops on its own at six open refactor PRs, so an unreviewed pile can't grow
   without bound.
 - **Silence is the failure mode it is built against.** Any run that doesn't finish

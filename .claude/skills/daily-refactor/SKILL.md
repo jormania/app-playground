@@ -119,8 +119,11 @@ slices, each slice becomes its own `## ` header in the order it should be taken 
 otherwise it is invisible to the footer's backlog count, and "topmost eligible"
 stops meaning anything once a slice sits inside a parent already marked `done`.
 
-**Fridays are discovery runs** — Friday by the date you were given, not by the
-runner's clock, which is a day behind when the evening cron fires. Ship nothing. Spend the session reading the
+**Every other Friday is a discovery run.** The workflow decides which, by the
+Bucharest date, and says so in your prompt ("Discovery morning: true/false") —
+go by that line, not by the weekday, and never by the runner's clock, which is a
+day behind when the evening cron fires. A Friday that says `false` is an
+ordinary item run. On a discovery morning, ship nothing. Spend the session reading the
 codebase against current standards — deprecated APIs, dependency generations
 behind, duplicated patterns that want promoting to `src/shared/`, documentation
 that has drifted from the code, apps with no test coverage, places where the
@@ -135,8 +138,8 @@ Friday read"), and say in the body that it touches `REFACTOR_BACKLOG.md` and
 nothing else. It should be the easiest merge of the week. A week that adds five good
 proposals is worth more than a week that ships five shrugs.
 
-If the backlog has no eligible items on a non-Friday, do a discovery run instead
-and say so.
+If the backlog has no eligible items on any other morning, do a discovery run
+instead and say so.
 
 If an item turns out to be a bad idea on contact with the code — mark it
 `dropped` with a one-line reason, commit that, and move to the next item.

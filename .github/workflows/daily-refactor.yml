@@ -105,14 +105,24 @@ jobs:
     steps:
       # The first cron fires the evening before, so the runner's own date is
       # yesterday as far as Bucharest is concerned. Everything the agent names or
-      # decides by date — the branch, and whether this is a Friday discovery run
-      # — has to use the morning it is landing in, not `date` on the runner.
+      # decides by date — the branch, and whether this is a discovery run — has
+      # to use the morning it is landing in, not `date` on the runner.
+      #
+      # Discovery is every OTHER Friday, counted in whole weeks from 2026-10-09
+      # (a discovery Friday) — not by ISO week parity, which a 53-week year
+      # breaks. The off Fridays take an item like any weekday. Decided here, by
+      # date alone, so the run and its backstop always agree.
       - name: Work out which morning this is
         id: when
         run: |
-          echo "date=$(TZ=Europe/Bucharest date +%F)" >> "$GITHUB_OUTPUT"
-          echo "day=$(TZ=Europe/Bucharest date +%A)"  >> "$GITHUB_OUTPUT"
-          echo "This run belongs to $(TZ=Europe/Bucharest date '+%A %F') in Bucharest."
+          today=$(TZ=Europe/Bucharest date +%F)
+          day=$(TZ=Europe/Bucharest date +%A)
+          weeks=$(( ($(date -u -d "$today 12:00" +%s) - $(date -u -d "2026-10-09 12:00" +%s)) / 604800 ))
+          if [ "$day" = Friday ] && [ $(( weeks % 2 )) -eq 0 ]; then discovery=true; else discovery=false; fi
+          echo "date=$today" >> "$GITHUB_OUTPUT"
+          echo "day=$day" >> "$GITHUB_OUTPUT"
+          echo "discovery=$discovery" >> "$GITHUB_OUTPUT"
+          echo "This run belongs to $day $today in Bucharest (discovery: $discovery)."
 
       - uses: actions/checkout@v5
         with:
@@ -179,7 +189,7 @@ jobs:
       - run: npm ci
 
       # `refactor` and `modernise` items run on Sonnet; `qol`, `visual` and
-      # Friday discovery on Opus. --model is
+      # discovery on Opus. --model is
       # fixed at launch, so the workflow reads the topmost eligible item itself —
       # by the skill's own four conditions, in scripts/pick-model.mjs, which is
       # tested. Every uncertain path lands on Opus: a wrong guess that way costs
@@ -200,7 +210,7 @@ jobs:
             # ended the step before the agent started (2026-10-01).
             claimed=$(printf '%s\n' "$bodies" | { grep -oE '^Backlog-Item: *[A-Z]+-[0-9A-Za-z]+' || true; } \
                         | sed 's/^Backlog-Item: *//' | paste -sd, -)
-            out=$(CLAIMED="$claimed" node scripts/pick-model.mjs --day "${{ steps.when.outputs.day }}") \
+            out=$(CLAIMED="$claimed" node scripts/pick-model.mjs --discovery "${{ steps.when.outputs.discovery }}") \
               || out="model=claude-opus-5-5"
           else
             echo "Could not read open PRs, so cannot tell what is claimed — staying on Opus."
@@ -246,7 +256,7 @@ jobs:
             this run lands in.** The runner's own clock may still read
             yesterday, because the schedule fires the evening before. Use the
             date above for the branch name, the backlog's `done` stamp, any
-            screenshot directory, and the Friday question. Never `date +%F`.
+            screenshot directory. Never `date +%F`.
 
             In short: branch off `origin/main` as
             `claude/refactor-${{ steps.when.outputs.date }}`,
@@ -267,8 +277,10 @@ jobs:
             you may only PROPOSE those, under `## Proposed`, and never work one
             until a human has moved it up into the main list.
 
-            If today — ${{ steps.when.outputs.day }} — is FRIDAY, ship nothing:
-            read the codebase against current
+            **Discovery morning: ${{ steps.when.outputs.discovery }}.** The
+            workflow decides this, not you: discovery is every other Friday, and
+            the Fridays in between take an item like any weekday. If it says
+            `true`, ship nothing: read the codebase against current
             standards, append up to five new backlog items each with a class, an
             `Impact:` line and a concrete file path, and open a backlog-only PR.
 
