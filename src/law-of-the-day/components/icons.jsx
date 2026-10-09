@@ -19,6 +19,17 @@ export function IconGuide(props) {
   )
 }
 
+// Settings — a gear: eight short teeth round a ring, hub open.
+export function IconSettings(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M5.78 5.78l1.63 1.63M16.59 16.59l1.63 1.63M5.78 18.22l1.63-1.63M16.59 7.41l1.63-1.63" />
+      <circle cx="12" cy="12" r="6.3" />
+    </svg>
+  )
+}
+
 // Stats — three ascending bars.
 export function IconStats(props) {
   return (

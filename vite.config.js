@@ -6,8 +6,6 @@ import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { execSync } from 'child_process'
 import { cleanCommitSubject, countServerlessFunctions, directorySizeBytes, parseBacklogCounts, withBuildSizeMeta } from './scripts/build-meta.js'
 import notionHandler from './api/notion.js'
-import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
-import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
 import placesHandler from './api/places.js'
 import wanderlistRemindHandler from './api/wanderlist-remind.js'
 import steamSearchHandler from './api/steam-search.js'
@@ -405,8 +403,6 @@ export default defineConfig({
     stampBuildSizePlugin(),
     dropOrtWasmPlugin(),
     devNotionRelay(),
-    devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
-    devApiRelay('/api/law-of-the-day-content', lawOfTheDayContentHandler, 'dev-law-of-the-day-content-relay'),
     devBodyRelay('/api/places', placesHandler, 'dev-places-relay'),
     // Body-draining relay, not devApiRelay: this one endpoint serves both the GET
     // send path and the prefs POST (?mode=prefs).

@@ -54,9 +54,10 @@
 .title {
   margin: 0;
   font-family: var(--font-display);
-  /* Shrinks rather than wrapping to two lines beside the four toolbar
+  /* Shrinks rather than wrapping to two lines beside the five toolbar
      buttons on a narrow phone. */
-  font-size: clamp(1.25rem, 5.5vw, var(--text-xl));
+  font-size: clamp(1.05rem, 4.6vw, var(--text-xl));
+  white-space: nowrap;
   font-weight: var(--weight-bold);
   letter-spacing: -0.01em;
   color: var(--color-ink);
