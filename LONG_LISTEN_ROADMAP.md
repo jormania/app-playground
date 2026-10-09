@@ -8,7 +8,7 @@ of every item against the code, which dropped or reshaped several.
 **Order of work.** Release one is tested in daily use first. Bugs found in that
 test are fixed before anything here starts, and the test may re-rank this list:
 an item that answers something that kept getting in the way goes up, one nobody
-would reach goes down. Release two is the section of that name below.
+would reach goes down. Release two is the section of that name below; release three follows it.
 
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every
@@ -72,14 +72,15 @@ Effort: **S** is a day or less, **M** a few days, **L** a week or more.
 ## Release 2
 
 Ranked: friction first (cheap, felt every week), then the curation check that
-guards every prompt change, then the creative and AI items it guards. Items
-1–11 are the release; 12 goes in if the rest land well.
+guards every prompt change, then the creative and AI items it guards. All
+twelve are the release (the owner's call, 2026-10-09); 12 is the one to drop
+if time runs short.
 
 ### Smoother
 
 | # | Item | Why it matters | Effort |
 |---|------|----------------|--------|
-| 1 | **Keep listening** — in the listening view, "I've heard it" shows the reaction and a note line in place, then *Next: the following work* opens that work's listening view; *Play from here* plays this recording and the confirmed ones after it, in order | Today "I've heard it" drops you at the top of a long programme page, where the feedback panel waits. Listening a programme through should be one gesture per work. Feedback-to-taste calls (one Claude call per save today, `FeedbackPanel.tsx`) are batched to one per session | S–M |
+| 1 | **Keep listening** — in the listening view, "I've heard it" shows the reaction and a note line in place, then *Next: the following work* opens that work's listening view; *Play from here* plays this recording and the confirmed ones after it, in order | Today "I've heard it" drops you at the top of a long programme page, where the feedback panel waits. Listening a programme through should be one gesture per work. Feedback-to-taste calls (one Claude call per save today, `FeedbackPanel.tsx`) are batched to one per session. **The owner wants an audible cue between works** (going straight on is fine, but not unannounced): with *Play from here*, the app starts one work at a time, times the end of its last movement from Spotify's playback position, plays a short soft chime in the gap (with a light vibration on a phone), shows "Next: …" and starts the following work. A chime over the music would be up to 10 s late and cut into it, so it belongs in the gap. Works while the listening view is open (it already keeps the screen awake); if the app isn't open, Spotify simply plays on. Tempo's `playChime` (`src/tempo/lib/sound.js`) is the only chime in the repo — promote it to `src/shared/` rather than copying it | M |
 | 2 | **Notice listening when you come back** — re-check Spotify's recently-played when the app returns to the foreground, not only on a fresh load | An installed app resumed from the background never looks again today (`app/services.tsx`), so the fifty-track window slides past unseen. Most of the value of background sync for a fraction of the cost (see *Decided against*) | S |
 | 3 | **How did it land?** — when Spotify has marked a work heard, the next open asks about that one work, quietly, once; dismissing it is an answer too | Spotify detection marks works heard silently, so the works you play from Spotify — most of them — never get a reaction. The biggest gap in the feedback loop | S |
 | 4 | **Fewer waits** — read this week's feedback into taste in the background as it arrives, close the week's threads in parallel rather than one after another, and verify recordings (and find stand-ins) right after a direction is chosen, not when the programme is first opened | Monday today is a chain of calls (each open thread, then taste, then directions), and the first programme view fills in recording by recording. Directions are still made on the day, so nothing goes stale | S–M |
@@ -101,7 +102,12 @@ Also in release two, too small to rank: write the "On Spotify instead"
 recordings and side-by-side pairs to Notion's Works & recordings (today the
 notebook leaves out what was actually played when the named one was missing).
 
-## Later
+## Release 3
+
+The nice-to-haves, after release two has been lived with. Two exceptions:
+item 21 is a check to make during the release-one test, not a build; and
+item 16 moves up if that test keeps turning up wrong recording years or
+performers.
 
 | # | Item | Why it matters | Effort |
 |---|------|----------------|--------|
