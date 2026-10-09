@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
+import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useServices } from '../app/services'
@@ -187,7 +187,7 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
         <h2 className={s.optionTitle}>{o.title}</h2>
       </div>
       <div className={s.optionBody}>
-        <p className={s.mood} style={{ marginTop: 'var(--space-2xs)' }}>{MOOD_WORD[o.mood]}</p>
+        <p className={s.mood} style={{ marginTop: 'var(--space-2xs)' }}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
         <p>{o.pitch}</p>
         <p className={s.character}>{o.character.join(' · ')}</p>
         {o.why && <p className={s.quiet}>{o.why}</p>}

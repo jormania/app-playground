@@ -113,6 +113,7 @@ export class Journey {
       why: o.why,
       angle: o.angle,
       returning: o.returning,
+      form: o.form && o.form !== 'theme' ? o.form : undefined,
       status: 'offered',
     }))
     const record: WeekRecord = {
@@ -202,7 +203,7 @@ export class Journey {
       const res = await this.curator.call<ProgrammeResponse>('programme', {
         today: now.slice(0, 10),
         week: { key: lw.key, label: lw.label },
-        option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why },
+        option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, form: option.form },
         extension: { of: root.title, dek: root.dek, wish: wish?.trim() || undefined },
         thread: { ...digest, stage: exploration.stage },
         preferences: context.preferences,
@@ -284,7 +285,7 @@ export class Journey {
     const res = await this.curator.call<ProgrammeResponse>('programme', {
       today: now.slice(0, 10),
       week: { key: lw.key, label: lw.label },
-      option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, continuityNote: option.returning?.note },
+      option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, continuityNote: option.returning?.note, form: option.form },
       thread: digest ? { ...digest, stage } : null,
       preferences: context.preferences,
       alreadyProgrammed: context.alreadyProgrammed,
@@ -293,6 +294,7 @@ export class Journey {
       questions: context.questions,
       listenerNotes: context.listenerNotes,
       recentListening: context.recentListening,
+      secondHearings: context.secondHearings.length ? context.secondHearings : undefined,
       thisWeek: context.thisWeek,
     })
 
@@ -327,6 +329,12 @@ export class Journey {
     await this.repo.comparisons.putMany(comparisons)
     await this.repo.addProgramme(programme)
     await this.repo.explorations.put(exploration)
+    // A second hearing offered in this programme isn't offered again.
+    for (const i of programme.sections.flatMap((s) => s.items)) {
+      if (context.secondHearings.some((h) => h.composer === i.proposed.composer && h.work === i.proposed.work)) {
+        await this.repo.marks.put({ id: `again:${i.workId}`, at: now })
+      }
+    }
     await this.repo.themes.put({ ...theme, explorationIds: [...theme.explorationIds, explorationId], updatedAt: now })
 
     const fromThisWeek = option.weekKey === week.weekKey

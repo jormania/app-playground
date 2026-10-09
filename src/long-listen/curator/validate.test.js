@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -13,5 +13,24 @@ describe('weekAdjusted — this week, differently', () => {
   it('stops at the ends of each scale', () => {
     expect(weekAdjusted({ timePerWeek: 'short', breadth: 5, familiarity: 1 }, ['shorter', 'wider', 'familiar'])).toMatchObject({ timePerWeek: 'short', breadth: 5, familiarity: 1 })
     expect(weekAdjusted(prefs, undefined)).toEqual(prefs)
+  })
+})
+
+
+describe('shapes of a week', () => {
+  const option = (mood, form) => ({ mood, title: `${mood} t`, pitch: 'p', character: [], why: '', angle: '', returningThemeId: '', continuityNote: '', form })
+
+  it('keeps each direction’s form, and turns "many ways" into a plain theme without pairs', () => {
+    const out = { options: [option('immersive', 'dialogue'), option('curious', 'many-ways'), option('adventurous', 'nonsense')] }
+    expect(validateThemes(out, { threadIds: [], pairs: true }).value.options.map((o) => o.form)).toEqual(['dialogue', 'many-ways', 'theme'])
+    expect(validateThemes(out, { threadIds: [], pairs: false }).value.options.map((o) => o.form)).toEqual(['dialogue', 'theme', 'theme'])
+  })
+
+  it('lets two composers in dialogue have more than two works each', () => {
+    const it = (composer, workTitle) => ({ composer, workTitle, soloists: [] })
+    const value = { sections: [{ role: 'start', heading: 'H', items: [it('Debussy', 'La mer'), it('Debussy', 'Jeux'), it('Debussy', 'Nocturnes'), it('Ravel', 'Daphnis'), it('Ravel', 'La valse'), it('Ravel', 'Boléro')] }] }
+    const count = (v) => v.sections.reduce((n, s) => n + s.items.length, 0)
+    expect(count(enforceVariety(value, { breadth: 3, timePerWeek: 'generous' }))).toBe(4)
+    expect(count(enforceVariety(value, { breadth: 3, timePerWeek: 'generous' }, { form: 'dialogue' }))).toBe(6)
   })
 })

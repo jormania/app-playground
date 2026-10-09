@@ -188,6 +188,8 @@ export interface ProgrammeOption {
   angle: string
   /** When the option returns to an earlier thread. */
   returning?: { themeId: string; note: string }
+  /** The week's shape: the usual theme, or one of the named forms (WEEK_FORMS). */
+  form?: WeekForm
   /**
    * offered → chosen, or offered → open (a path not taken that week — kept,
    * never "rejected") → taken later, if it is.
@@ -212,6 +214,22 @@ export interface WeekRecord {
   promptVersion: string
   /** "This week, differently": a mood for this week only, sent with every curator job about the week. */
   mood?: WeekMood[]
+}
+
+/**
+ * The shape of a week, chosen by the curator with its theme. Each form says
+ * which variety rule it relaxes: a dialogue needs more than two works by each
+ * of its two composers; several ways into one work needs side-by-side pairs.
+ */
+export type WeekForm = 'theme' | 'across-centuries' | 'then-and-now' | 'city-year' | 'performer' | 'dialogue' | 'many-ways'
+export const WEEK_FORMS: Record<WeekForm, string> = {
+  theme: 'A theme',
+  'across-centuries': 'A form across the centuries',
+  'then-and-now': 'Then and now',
+  'city-year': 'One city, one year',
+  performer: 'A performer’s week',
+  dialogue: 'Two composers in dialogue',
+  'many-ways': 'One work, several ways',
 }
 
 /** A week's mood, said in one word each: fewer and shorter works, calmer music, further afield, better known. */

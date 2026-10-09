@@ -24,8 +24,19 @@ export interface CuratorContext {
   questions: string[]
   threads: ThreadDigest[]
   openPaths: { title: string; pitch: string; mood: string; offeredIn: string }[]
-  recentWeeks: { week: string; chosen?: string; mood?: string; alsoOffered: string[] }[]
-  recentListening: { composer: string; work: string; recording: string; state: string; reaction?: string; notes: string[]; heardTimes: number }[]
+  recentWeeks: { week: string; chosen?: string; mood?: string; form?: string; alsoOffered: string[] }[]
+  /**
+   * The last thirty recordings touched, with when (weeks ago, 0 = this week) —
+   * so a reason can point to a moment in the listener's own listening, never
+   * to a label about them.
+   */
+  recentListening: { composer: string; work: string; recording: string; state: string; reaction?: string; notes: string[]; heardTimes: number; weeksAgo: number }[]
+  /**
+   * Works the listener called interesting or too difficult, three weeks or more
+   * ago, not offered again since: candidates for a second hearing, which the
+   * curator may offer one of, once, as a question.
+   */
+  secondHearings: { composer: string; work: string; recording: string; reaction: string; note?: string; weeksAgo: number }[]
   /**
    * Every work programmed in the last twelve weeks, in any theme — so a new
    * theme doesn't hand back last month's symphony by accident. A deliberate
@@ -65,6 +76,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
         week: w.weekKey,
         chosen: chosen?.title,
         mood: chosen?.mood,
+        form: chosen?.form,
         alsoOffered: w.optionIds.filter((id) => id !== w.chosenOptionId).map((id) => optionById.get(id)?.title ?? '').filter(Boolean),
       }
     })
@@ -78,9 +90,11 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   // The most recent thirty recordings touched, newest first.
   const seen = new Set<string>()
   const recentIds: string[] = []
+  const lastAt = new Map<string, string>()
   for (const e of [...events].sort((a, b) => b.at.localeCompare(a.at))) {
     if (seen.has(e.recordingId)) continue
     seen.add(e.recordingId)
+    lastAt.set(e.recordingId, e.at)
     recentIds.push(e.recordingId)
     if (recentIds.length >= 30) break
   }
@@ -99,8 +113,29 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
       reaction: fb.reaction,
       notes: fb.notes.slice(-3),
       heardTimes: timesHeard(events, rid),
+      weeksAgo: weeksSince(lastAt.get(rid), week.startsOn),
     }]
   })
+
+  // Second hearings: the latest word on a recording or its work was "interesting"
+  // or "too difficult", at least three weeks ago, and it hasn't been offered again.
+  const offeredAgain = new Set((await repo.marks.all()).filter((m) => m.id.startsWith('again:')).map((m) => m.id.slice('again:'.length)))
+  const secondHearings: CuratorContext['secondHearings'] = []
+  for (const item of itemByRecording.values()) {
+    if (offeredAgain.has(item.workId) || secondHearings.some((x) => x.work === item.proposed.work && x.composer === item.proposed.composer)) continue
+    const byRec = latestFeedback(feedback, item.recordingId)
+    const byWork = latestFeedback(feedback, item.workId)
+    const reaction = byRec.reaction ?? byWork.reaction
+    if (reaction !== 'interesting' && reaction !== 'too-difficult') continue
+    const said = feedback.filter((f) => f.target.id === item.recordingId || f.target.id === item.workId).map((f) => f.at).sort().pop()
+    const weeksAgo = weeksSince(said, week.startsOn)
+    if (weeksAgo < 3) continue
+    secondHearings.push({
+      composer: item.proposed.composer, work: item.proposed.work, recording: creditLine(item.proposed),
+      reaction, note: [...byRec.notes, ...byWork.notes].pop(), weeksAgo,
+    })
+  }
+  secondHearings.sort((a, b) => a.weeksAgo - b.weeksAgo)
 
   const alreadyProgrammed: CuratorContext['alreadyProgrammed'] = []
   for (const p of [...programmes.values()].sort((a, b) => b.weekKey.localeCompare(a.weekKey))) {
@@ -134,7 +169,15 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
     recentListening,
     alreadyProgrammed,
     alreadyKnown,
+    secondHearings: secondHearings.slice(0, 3),
     requestedNext: (requestedNext ?? nextRequest).trim() || undefined,
     thisWeek: weeks.find((w) => w.weekKey === week.key)?.mood?.length ? weeks.find((w) => w.weekKey === week.key)!.mood : undefined,
   }
+}
+
+/** Whole weeks from an instant to the start of the week being curated (0 = this week, never negative). */
+function weeksSince(at: string | undefined, startsOn: string): number {
+  if (!at) return 0
+  const days = (Date.parse(`${startsOn}T00:00:00Z`) - Date.parse(at)) / 86_400_000
+  return Math.max(0, Math.ceil(days / 7))
 }

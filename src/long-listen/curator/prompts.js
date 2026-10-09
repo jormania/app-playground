@@ -96,8 +96,9 @@ export const THEMES = {
             angle: str,
             returningThemeId: str,
             continuityNote: str,
+            form: { type: 'string', enum: ['theme', 'across-centuries', 'then-and-now', 'city-year', 'performer', 'dialogue', 'many-ways'] },
           },
-          required: ['mood', 'title', 'pitch', 'character', 'why', 'angle', 'returningThemeId', 'continuityNote'],
+          required: ['mood', 'title', 'pitch', 'character', 'why', 'angle', 'returningThemeId', 'continuityNote', 'form'],
           additionalProperties: false,
         },
       },
@@ -115,6 +116,16 @@ The three must be genuinely different listening directions and moods:
 - one ADVENTUROUS (somewhere the listener has not been, or a stretch).
 Each is organised around a period, movement, idea, aesthetic, historical moment, technique, relationship or theme — something that makes a coherent programme, never a random list. Follow preferences.breadth for how wide each direction ranges, and preferences.familiarity for how well known its music is. A direction about one composer or one work belongs only at breadth 1; a direction about interpretation (one work, several performers) only when preferences.pairs is true.
 
+Vary the SHAPE of a week, not only its subject. Each option has a form:
+- "theme": a subject followed through several composers — the usual shape.
+- "across-centuries": one form or genre followed across the centuries (the passacaglia from Purcell to Webern; the symphonic poem from Liszt to Sibelius).
+- "then-and-now": an older piece and the newer ones that answer it, paired across time.
+- "city-year": one city in one year, or a few years — what was heard in Paris in 1913.
+- "performer": a performer's week — one conductor, orchestra or soloist across the repertoire they changed.
+- "dialogue": two composers in dialogue — several works by each, set so they answer one another.
+- "many-ways": one work heard in several recordings — only when preferences.pairs is true.
+Not every week needs an unusual shape, but across the three, aim for at least two different forms, and don't repeat the shape of the listener's last week (context.recentWeeks) unless it's the point. A form changes what the variety rules mean: in a dialogue, more than two works by each of its two composers is right; elsewhere the usual rules stand.
+
 Balance across the three: familiarity, discovery, continuity, contrast, depth. Use what you know of the listener. At least one option should open new ground. Where an earlier thread has a natural next step, one option may return to it — never more than two — and a return must name its new route (angle) and say in continuityNote, in one or two sentences, how it continues from before ("We first explored … six weeks ago. This time …"). Paths not taken in earlier weeks may come back if they still fit, reworded or reframed if that helps; do not treat them as rejected.
 
 Field guide:
@@ -125,6 +136,7 @@ Field guide:
 - angle: the route into the theme this time, one sentence.
 - returningThemeId: the themeId from "threads" if this option continues that thread, else "".
 - continuityNote: "" for a new theme.
+- form: the week's shape, as above.
 
 If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
 }
@@ -160,7 +172,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-10.3',
+  version: 'programme@2026-10-10.4',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -224,6 +236,9 @@ For each item:
 - revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.
 - alreadyKnown lists works the listener knew before the app suggested them. Don't present one of them as a discovery. Use one only where a known work earns its place — an anchor to hear something new against, or a recording that changes how it sounds — and then say so in "why".
 - year: the recording year only if you are certain, else "".
+- why may point to a specific moment in the listener's own listening, when it's true and helps: a work in recentListening they loved, or a note they wrote, said with when ("after the long build you loved in the Sibelius, three weeks ago"). Never a label about who they are ("as a lover of late Romanticism"). One or two items a programme at most; most reasons are about the music.
+
+Second hearings: secondHearings (when present) lists works the listener found interesting or too difficult some weeks ago. If one of them fits this programme, you may offer it again — ONE at most — a different way in: another recording, or the angle this programme gives it. Offer it openly, as a question the listener can decline: its revisitReason begins with the offer ("Try the Lutosławski again? Three weeks ago it felt too difficult; here it comes after …"). "Too difficult" is the listener's word — don't argue with it; give it a new door. Never slip a second hearing in unannounced.
 
 Write:
 - title and dek (one sentence standfirst).
@@ -234,6 +249,8 @@ Write:
 - continuityNote: "" for a first visit. For a return, two or three sentences that name what was explored before and how this week continues — new route, new works, new interpretations. Never restart the theme.
 
 "More of this theme": when an "extension" field is present, the listener has this week's programme ("extension.of") and wants more music on the same theme, this same week — perhaps with a wish ("extension.wish"). Write a companion, not a new week: about half the usual number of works, in one or two sections; a one-paragraph introduction; a title that reads as a continuation ("More …", "Further …"). Every work must be new to the thread (none of thread.covered) — new composers, other periods, the connections the first programme pointed to. continuityNote: one sentence on how it carries on from "extension.of".
+
+The direction's form (option.form) shapes the programme: "dialogue" — the two composers' works answer each other, several by each; "then-and-now" — older and newer pieces set in pairs or in a line, each answer after what it answers; "city-year" — one place and time, said in the introduction; "performer" — the named performer in every item, and say what they changed; "across-centuries" — one form, in order through time; "many-ways" — one work at the centre, heard in up to three recordings (as comparisons), with other works around it.
 
 Comparisons: only when preferences.pairs is true. Then, where two interpretations of one work in this programme are especially revealing, you may add ONE comparison with exactly two perspectives (one of them the recording already in the programme), each with its character and what to listen for, plus framing (one sentence) and whyBoth ("If you want to hear how …, listen to both."). When preferences.pairs is false, comparisons must be [].`,
 }

@@ -116,6 +116,29 @@ describe('this week, differently', () => {
   })
 })
 
+describe('second hearings', () => {
+  it('offers a work found too difficult again after three weeks, once', async () => {
+    const c = fakeCurator({ themes: () => themes(['Colour', 'B', 'C']), programme: (_p, n) => programme(n === 1 ? 'Colour' : 'Colour again', n === 1 ? FRENCH : [FRENCH[1], ...FRENCH_AGAIN]) })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const ravel = p.sections.flatMap((s) => s.items)[1]
+    await j.giveFeedback({ target: { type: 'recording', id: ravel.recordingId }, reaction: 'too-difficult', note: 'Lost me in the middle.' })
+
+    at('2026-10-15T09:00:00Z') // a week on: too soon
+    expect((await buildContext(repo, weekOf(clock))).secondHearings).toEqual([])
+
+    at('2026-11-05T09:00:00Z') // four weeks on
+    const ctx = await buildContext(repo, weekOf(clock))
+    expect(ctx.secondHearings).toEqual([expect.objectContaining({ composer: 'Maurice Ravel', work: 'Daphnis et Chloé', reaction: 'too-difficult', note: 'Lost me in the middle.' })])
+
+    // Offered in the next programme: never offered again.
+    const j2 = journey(c.client)
+    await j2.choose((await j2.ensureWeek()).optionIds[0])
+    expect(c.calls.filter((x) => x.op === 'programme')[1].payload.secondHearings).toHaveLength(1)
+    expect((await buildContext(repo, weekOf(clock))).secondHearings).toEqual([])
+  })
+})
+
 describe('works and recordings', () => {
   it('keeps two interpretations of one work as two recordings of one work', async () => {
     const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })

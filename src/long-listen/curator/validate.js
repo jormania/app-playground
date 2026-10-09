@@ -8,6 +8,7 @@
 import { sameWork, performersKey, fold, surname, workTitleKey } from '../domain/identity.js'
 
 const MOODS = ['immersive', 'curious', 'adventurous']
+const FORMS = ['theme', 'across-centuries', 'then-and-now', 'city-year', 'performer', 'dialogue', 'many-ways']
 
 const clean = (s) => (typeof s === 'string' ? s.trim() : '')
 const opt = (s) => clean(s) || undefined
@@ -40,7 +41,7 @@ export function hasPerformers(p) {
  * @param {any} out
  * @param {{ threadIds: string[] }} ctx
  */
-export function validateThemes(out, { threadIds }) {
+export function validateThemes(out, { threadIds, pairs = true }) {
   const problems = []
   const known = new Set(threadIds)
   const raw = Array.isArray(out?.options) ? out.options : []
@@ -58,6 +59,7 @@ export function validateThemes(out, { threadIds }) {
       why: clean(o?.why),
       angle: clean(o?.angle),
       returning,
+      form: FORMS.includes(o?.form) ? o.form : 'theme',
     }
   })
 
@@ -75,6 +77,8 @@ export function validateThemes(out, { threadIds }) {
   for (const o of options) {
     if (o.returning && !o.returning.note) problems.push(`Option "${o.title}" returns to a thread but has no continuityNote.`)
   }
+  // "One work, several ways" needs pairs; without them it's a plain theme.
+  if (!pairs) for (const o of options) if (o.form === 'many-ways') o.form = 'theme'
 
   return { value: { options: options.slice(0, 3) }, problems }
 }
@@ -140,7 +144,7 @@ export function weekAdjusted(preferences = {}, thisWeek = []) {
   return p
 }
 
-export function validateProgramme(out, { covered = [], returning = false, preferences = {} } = {}) {
+export function validateProgramme(out, { covered = [], returning = false, preferences = {}, form = 'theme' } = {}) {
   const problems = []
   // Problems enforceVariety fixes in code. They are still listed (a retry asked
   // for another reason fixes them too), but they never cost a retry of their own:
@@ -187,9 +191,9 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
   for (const list of versions.values()) {
     if (list.length > 1) mend(`"${list[0].composer} — ${baseTitle(list[0].workTitle)}" appears in ${list.length} versions; a week holds each work once (arrangements and the original are one work).`)
   }
-  // Range: unless the week is about one focus, no composer more than twice.
+  // Range: unless the week is about one focus, or two composers in dialogue, no composer more than twice.
   const breadth = Number(preferences.breadth ?? 3)
-  if (breadth > 1) {
+  if (breadth > 1 && form !== 'dialogue') {
     const byComposer = new Map()
     for (const i of items) byComposer.set(fold(surname(i.composer)), (byComposer.get(fold(surname(i.composer))) ?? 0) + 1)
     for (const [, n] of byComposer) if (n > 2) { mend(`${n} works by one composer; at this breadth, two at most — let the theme travel to other composers and periods.`); break }
@@ -217,8 +221,8 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
       const [a, b] = c.perspectives
       return hasPerformers(a) && hasPerformers(b) && performersKey(a) !== performersKey(b)
     })
-    // Pairs only when the listener asked for them, and then one a week.
-    .slice(0, preferences.pairs ? 1 : 0)
+    // Pairs only when the listener asked for them: one a week, or three in a week about one work heard several ways.
+    .slice(0, preferences.pairs ? (form === 'many-ways' ? 3 : 1) : 0)
 
   const introduction = clean(out?.introduction)
   if (!clean(out?.title) || !introduction) problems.push('The programme needs a title and an introduction.')
@@ -228,7 +232,7 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
   // Mending in code only stands in for a retry when what is left still holds
   // this listener's week; a trim that leaves it thin goes back to the curator.
   if (mendable.length) {
-    const left = enforceVariety({ sections: kept }, preferences).sections.reduce((n, s) => n + s.items.length, 0)
+    const left = enforceVariety({ sections: kept }, preferences, { form }).sections.reduce((n, s) => n + s.items.length, 0)
     if (left < Math.max(3, least - 1)) mendable.length = 0
   }
 
@@ -262,10 +266,11 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
  * than four sections (later ones fold into the fourth); and no more works than
  * the week holds, plus two.
  */
-export function enforceVariety(value, preferences = {}, { maxWorks } = {}) {
+export function enforceVariety(value, preferences = {}, { maxWorks, form } = {}) {
   const seen = new Set()
   const perComposer = new Map()
-  const cap = Number(preferences.breadth ?? 3) > 1 ? 2 : Infinity
+  // Two composers in dialogue: several works by each is the point.
+  const cap = Number(preferences.breadth ?? 3) > 1 && form !== 'dialogue' ? 2 : Infinity
   const sections = value.sections
     .map((s) => ({
       ...s,

@@ -1,4 +1,4 @@
-import type { OptionMood, TasteConfidence, TasteFacet, TasteStance, ResourceKind } from '../domain/types'
+import type { OptionMood, TasteConfidence, TasteFacet, TasteStance, ResourceKind, WeekForm } from '../domain/types'
 
 /**
  * The curator's contract: `call(op, payload)` and the shapes it answers with.
@@ -41,6 +41,7 @@ export interface CuratedOption {
   why: string
   angle: string
   returning?: { themeId: string; note: string }
+  form?: WeekForm
 }
 
 export interface ThemesResponse {

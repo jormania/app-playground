@@ -1741,6 +1741,12 @@
   text-decoration: underline solid var(--color-accent);
 }
 
+/* "Follow this · next week" after a question in the Notebook. */
+.followLinks {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
 /* The pause between works: what's next, and the way to stay. */
 .handover {
   margin-top: var(--space-md);

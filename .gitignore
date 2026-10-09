@@ -78,3 +78,4 @@ scripts/backfill-hltb.py
 *.mscz
 *.mscx
 *.sib
+long-listen-curation.md
