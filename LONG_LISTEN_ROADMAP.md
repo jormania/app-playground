@@ -8,7 +8,7 @@ of every item against the code, which dropped or reshaped several.
 **Order of work.** Release one is tested in daily use first. Bugs found in that
 test are fixed before anything here starts, and the test may re-rank this list:
 an item that answers something that kept getting in the way goes up, one nobody
-would reach goes down. Release two is the section of that name below.
+would reach goes down. Release two is the section of that name below; release three follows it.
 
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every
@@ -72,8 +72,9 @@ Effort: **S** is a day or less, **M** a few days, **L** a week or more.
 ## Release 2
 
 Ranked: friction first (cheap, felt every week), then the curation check that
-guards every prompt change, then the creative and AI items it guards. Items
-1–11 are the release; 12 goes in if the rest land well.
+guards every prompt change, then the creative and AI items it guards. All
+twelve are the release (the owner's call, 2026-10-09); 12 is the one to drop
+if time runs short.
 
 ### Smoother
 
@@ -101,7 +102,12 @@ Also in release two, too small to rank: write the "On Spotify instead"
 recordings and side-by-side pairs to Notion's Works & recordings (today the
 notebook leaves out what was actually played when the named one was missing).
 
-## Later
+## Release 3
+
+The nice-to-haves, after release two has been lived with. Two exceptions:
+item 21 is a check to make during the release-one test, not a build; and
+item 16 moves up if that test keeps turning up wrong recording years or
+performers.
 
 | # | Item | Why it matters | Effort |
 |---|------|----------------|--------|
