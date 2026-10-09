@@ -517,6 +517,7 @@
 }
 
 .roSide {
+  align-self: center;
   justify-self: end;
   max-width: 9rem;
   text-align: right;
@@ -938,17 +939,33 @@
   margin: var(--space-xs) 0 0;
   padding: 0;
   display: grid;
-  gap: var(--space-2xs);
 }
 
-/* Title left, its tag right — the way the running order sets its works — so
-   a tag never drops onto a line of its own under a long title. */
+/* One row per direction, a hairline between them, and the tag centred on
+   its own title — so a tag beside a two-line title can't be read as
+   belonging to the row above or below. */
 .offeredList > li {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 1.05rem;
   line-height: 1.35;
+}
+
+.offeredList > li:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* When the week's heard works follow, the list's closing rule is their first. */
+.offeredList + .entries {
+  margin-top: 0 !important;
+}
+
+.offeredList + .entries > li:first-child {
+  border-top: 0;
 }
 
 .offeredList .tag {
