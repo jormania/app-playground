@@ -289,7 +289,8 @@ appears after about thirty seconds of play — never how much was heard. On
 each app open (or "Check recent listening"), plays are matched to
 *confirmed* recordings' track ids. A session (plays within 3 h) covering
 ≥60% of a multi-movement work's tracks is `heard`, less is `partial` (shown
-as "Listening"). A **single-track work is never marked heard by Spotify** —
+as "Started"; it read as "Listening" until 2026-10-09, which looked like
+"playing now"). A **single-track work is never marked heard by Spotify** —
 thirty seconds and forty minutes look identical — so "Heard" is the
 listener's word there. A session is recorded once: a later poll that sees
 the same session, even after its first plays have scrolled out of the fifty,
