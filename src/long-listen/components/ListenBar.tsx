@@ -13,13 +13,13 @@ const icon = { size: 15, fill: 'currentColor', strokeWidth: 0, 'aria-hidden': tr
  * and a line beneath says where it's playing. Opening Spotify is the quieter
  * alternative — the main action without a Spotify connection.
  */
-export function ListenBar({ firstTrackId, movements, playback, onStarted, onOpened, style }: {
+export function ListenBar({ firstTrackId, movements, playback, onStarted, onOpened, className }: {
   firstTrackId: string
   movements: number
   playback: Playback
   onStarted?: () => void
   onOpened?: () => void
-  style?: React.CSSProperties
+  className?: string
 }) {
   const { spotify } = useServices()
   const p = playback
@@ -31,7 +31,7 @@ export function ListenBar({ firstTrackId, movements, playback, onStarted, onOpen
 
   return (
     <>
-      <div className={s.listenBar} style={style}>
+      <div className={className ? `${s.listenBar} ${className}` : s.listenBar}>
         {spotify.connected ? (
           <>
             {p.at?.playing ? (

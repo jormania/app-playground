@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react'
 import type { Concert, ProposedRecording, Recording, Work } from '../domain/types'
 import { Landmark } from 'lucide-react'
-import { concertDate, concertPerformers } from './Concerts'
+import { concertDate } from './Concerts'
 import { creditLine, fold, surname } from '../domain/identity'
-import { catalogueLine, whatAndWhen } from '../domain/workFacts'
+import { compactFacts } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { openUrl } from '../spotify/client'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Empty, Problem, Waiting } from '../components/common'
+import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
 interface Entry {
@@ -28,7 +29,7 @@ export function LibraryScreen() {
   const { repo, settings } = useServices()
   const hideSkipped = settings.hideSkipped
   const [q, setQ] = useState('')
-  const { data, error } = useLoad(async () => {
+  const { data, error, retry } = useLoad(async () => {
     const [works, recordings, programmes, comparisons, events, feedback, concerts] = await Promise.all([
       repo.works.all(), repo.recordings.all(), repo.programmes.all(), repo.comparisons.all(), repo.events.all(), repo.feedback.all(), repo.concerts.all(),
     ])
@@ -86,7 +87,7 @@ export function LibraryScreen() {
       .filter((e): e is Entry => Boolean(e))
   }, [data, q])
 
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the library…</Waiting>
 
   return (
@@ -111,39 +112,41 @@ export function LibraryScreen() {
           {e.works.map(({ work, recordings, live }) => (
             <div key={work.id} className={s.libraryWork}>
               <p className={s.libraryTitle}>{work.title}</p>
-              {whatAndWhen(work.form, work.composed) && <p className={s.workMeta}>{whatAndWhen(work.form, work.composed)}</p>}
-              {catalogueLine(work.catalogue, e.composer) && <p className={s.workCatalogue}>{catalogueLine(work.catalogue, e.composer)}</p>}
+              {/* What, which number, when — one line; the fuller words are on the programme. */}
+              {compactFacts(work.form, work.catalogue, work.composed) && <p className={s.workMeta}>{compactFacts(work.form, work.catalogue, work.composed)}</p>}
               <ul className={s.libraryRecs}>
                 {recordings.map(({ rec, proposed, programmeId, programmeTitle, role }) => {
                   const fb = latestFeedback(data.feedback, rec.id)
                   const state = listeningState(data.events, rec.id)
                   return (
                     <li key={rec.id} className={s.libraryRec}>
-                      {/* Who played it; then where you stand with it, as tags; then where it came from. */}
-                      <span>{creditLine(proposed)}</span>
+                      {/* Who played it; then, on one row, where you stand with it, how long, where to hear it and where it came from. */}
+                      <Credits r={proposed} />
                       <span className={s.tagRow}>
                         <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
                         {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)?.toLowerCase()}</span>}
                         {isConfirmed(rec) && rec.spotify.durationMs ? <span>{aboutDuration(rec.spotify.durationMs)}</span> : null}
                         {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
+                        {(programmeId || role) && (
+                          <span>
+                            {role && <>{role}{programmeId ? ', ' : ''}</>}
+                            {programmeId && <>from <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></>}
+                          </span>
+                        )}
                       </span>
-                      {(programmeId || role) && (
-                        <span className={s.tagRow}>
-                          {role && <>{role}{programmeId ? ', ' : ''}</>}
-                          {programmeId && <>from <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></>}
-                        </span>
-                      )}
                       {fb.notes.length > 0 && <div className={s.said}><q>{fb.notes[fb.notes.length - 1]}</q></div>}
                     </li>
                   )
                 })}
               </ul>
               {live.map((c) => (
-                <p key={c.id} className={s.libraryLive}>
-                  <span className={`${s.tag} ${s.tagOn}`}><Landmark size={12} strokeWidth={1.8} aria-hidden="true" /> heard live</span>{' '}
-                  <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.venue}, {concertDate(c.date)}</a>
-                  {concertPerformers(c) && <span className={s.faint}> · {concertPerformers(c)}</span>}
-                </p>
+                <div key={c.id} className={s.libraryLive}>
+                  <p className={s.flush}>
+                    <span className={`${s.tag} ${s.tagOn}`}><Landmark size={12} strokeWidth={1.8} aria-hidden="true" /> heard live</span>{' '}
+                    <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.venue}, {concertDate(c.date)}</a>
+                  </p>
+                  <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
+                </div>
               ))}
             </div>
           ))}

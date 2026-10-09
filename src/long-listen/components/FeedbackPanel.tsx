@@ -85,7 +85,7 @@ export function FeedbackPanel({
           </div>
           <label className={s.feedbackQ} htmlFor={`note-${targets[0].id}`}>What stayed with you?</label>
           <textarea id={`note-${targets[0].id}`} className={s.textarea} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional — a sentence is plenty." />
-          <p className={s.feedbackQ} style={{ marginTop: 'var(--space-md)' }}>Want more of this?</p>
+          <p className={`${s.feedbackQ} ${s.mtMd}`}>Want more of this?</p>
           <div className={s.chips} role="radiogroup" aria-label="Want more of this?">
             {WANT_MORE.map((m) => (
               <button key={m.value} role="radio" aria-checked={more === m.value} className={`${s.chip} ${more === m.value ? s.chipOn : ''}`} onClick={() => setMore(more === m.value ? undefined : m.value)}>

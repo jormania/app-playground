@@ -15,7 +15,7 @@ import s from '../styles/editorial.module.css'
  */
 export function ThreadsScreen() {
   const { repo, journey, bump, say, week, settings } = useServices()
-  const { data, error } = useLoad(async () => {
+  const { data, error, retry } = useLoad(async () => {
     const [themes, explorations, programmes, options, works, recordings, events] = await Promise.all([
       repo.themes.all(), repo.explorations.all(), repo.programmes.all(), repo.options.all(), repo.works.all(), repo.recordings.all(), repo.events.all(),
     ])
@@ -32,7 +32,7 @@ export function ThreadsScreen() {
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<ProgrammeOption | null>(null)
 
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Gathering the threads…</Waiting>
 
   async function take(o: ProgrammeOption, confirmed = false) {
@@ -109,7 +109,12 @@ function ThreadEntry({ t, explorations, programmes, works, recordings, events, n
       {/* When, said once: each visit below carries its own dates. */}
       <p className={s.faint}>First explored {sinceWords(t.firstIntroduced, now)}{visits.length > 1 ? ` · ${visits.length} visits` : ''}</p>
       {t.summary && <p>{t.summary}</p>}
-      {contents && <p className={s.quiet}>{contents}</p>}
+      {/* What the thread holds, one fact to a line on an accent edge — read at a glance, not as another paragraph. */}
+      {contents && (
+        <ul className={s.threadFacts} aria-label="What this thread holds">
+          {contents.split(' · ').map((fact) => <li key={fact}>{fact}</li>)}
+        </ul>
+      )}
       {t.reaction && <p className={s.italic}>{t.reaction}</p>}
       {/* Its visits strung on one line, oldest first: the thread, drawn. */}
       {lineWorthDrawing && <ol className={s.threadLine} aria-label="Visits">

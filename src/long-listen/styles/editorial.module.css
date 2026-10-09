@@ -1916,8 +1916,13 @@
 
 /* The Library's "heard live" line under a work's recordings. */
 .libraryLive {
-  margin: var(--space-2xs) 0 0;
-  font-size: var(--text-sm);
+  margin: var(--space-sm) 0 0;
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+
+.libraryLive > * + * {
+  margin-top: var(--space-xs);
 }
 
 /* Concerts: the hall mark, the works heard, and the form. */
@@ -2405,4 +2410,75 @@
 /* A list straight under a section heading needs no space of its own above it. */
 .sectionHead + .entries {
   margin-top: 0;
+}
+
+/* The heading's own rule already opens the list: no second line under it. */
+.sectionHead + .entries > li:first-child {
+  border-top: 0;
+  padding-top: var(--space-xs);
+}
+
+/* Threads: what a thread holds, on the same accent edge as a work or a concert. */
+.threadFacts {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm);
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-muted);
+}
+
+.threadFacts li + li {
+  margin-top: var(--space-3xs);
+}
+
+.threadFacts li:first-child {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+/* Who plays a recording (components/Credits): each name led by a small role
+   mark, flowing on one line — the space of the old "A · B", the roles plain. */
+.credits {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-sm);
+  color: var(--color-ink);
+}
+
+.creditItem {
+  white-space: normal;
+}
+
+.creditAfter {
+  color: var(--color-muted);
+}
+
+.creditRole {
+  /* Relative, so the mark keeps its proportion in a large subtitle or a small line. */
+  font-size: 0.78em;
+  font-style: normal;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  color: var(--color-faint);
+}
+
+/* ── spacing: the few one-off gaps, named, so no screen sets its own ──────
+   `flush` zeroes an element's margins; a top step then puts back one gap.
+   Doubled, so they win over the element's own class however specific — as the
+   inline styles they replace did. */
+.flush.flush { margin: 0; }
+.mb0.mb0 { margin-bottom: 0; }
+.mbSm.mbSm { margin-bottom: var(--space-sm); }
+.mt3xs.mt3xs { margin-top: var(--space-3xs); }
+.mt2xs.mt2xs { margin-top: var(--space-2xs); }
+.mtXs.mtXs { margin-top: var(--space-xs); }
+.mtSm.mtSm { margin-top: var(--space-sm); }
+.mtMd.mtMd { margin-top: var(--space-md); }
+.mtLg.mtLg { margin-top: var(--space-lg); }
+.mtXl.mtXl { margin-top: var(--space-xl); }
+
+/* A work known only from a concert has no recordings list: no empty rule for it. */
+.libraryRecs:empty {
+  display: none;
 }

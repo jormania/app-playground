@@ -1,12 +1,12 @@
 import type { Concert, ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
-import { creditLine } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { weekFromKey, weekOf, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
-import { concertDate, concertPerformers } from './Concerts'
+import { concertDate } from './Concerts'
 import { href } from '../app/router'
 import { Empty, Problem, Waiting } from '../components/common'
+import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
 const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
@@ -24,7 +24,7 @@ const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
  */
 export function JournalScreen() {
   const { repo, settings, spotify, syncSpotify, say } = useServices()
-  const { data, error } = useLoad(async () => {
+  const { data, error, retry } = useLoad(async () => {
     const [weeks, options, events, feedback, programmes, comparisons, concerts] = await Promise.all([
       repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(),
     ])
@@ -74,7 +74,7 @@ export function JournalScreen() {
     }
   }, [settings.timeZone, settings.hideSkipped])
 
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the journal…</Waiting>
   const STATE_WORD: Record<string, string> = { heard: 'Heard', listening: 'Started', skipped: 'Skipped' }
 
@@ -108,21 +108,21 @@ export function JournalScreen() {
             <div className={s.weekBody}>
             <h2 className={s.weekHead}>{wk.label}</h2>
             {week?.programmeId && (
-              <p className={s.entryTitle} style={{ margin: 0 }}>
+              <p className={`${s.entryTitle} ${s.flush}`}>
                 <a href={href({ name: 'programme', id: week.programmeId })} className={s.quietLink}>{data.programmeTitle.get(week.programmeId)}</a>
               </p>
             )}
             {week?.programmeId && (data.extensionsOf.get(week.programmeId) ?? []).map((id) => (
-              <p key={id} className={s.quiet} style={{ margin: 0 }}>
+              <p key={id} className={`${s.quiet} ${s.flush}`}>
                 and more: <a href={href({ name: 'programme', id })} className={s.quietLink}>{data.programmeTitle.get(id)}</a>
               </p>
             ))}
             {(week?.setAsideProgrammeIds ?? []).map((id) => (
-              <p key={id} className={s.faint} style={{ margin: 0 }}>
+              <p key={id} className={`${s.faint} ${s.flush}`}>
                 set aside: <a href={href({ name: 'programme', id })} className={s.quietLink}>{data.programmeTitle.get(id)}</a>
               </p>
             ))}
-            {offered.some((o) => o.status === 'chosen') && <p className={s.faint} style={{ margin: 'var(--space-3xs) 0 0' }}>Chosen from {offered.length} directions</p>}
+            {offered.some((o) => o.status === 'chosen') && <p className={`${s.faint} ${s.flush} ${s.mt3xs}`}>Chosen from {offered.length} directions</p>}
 
             {/* The week in parts, each under its own small heading: what else was offered, what was heard live, what was listened to. */}
             {offered.some((o) => o.status !== 'chosen') && (
@@ -144,7 +144,8 @@ export function JournalScreen() {
                 {concerts.map((c) => (
                   <div key={c.id} className={s.journalConcert}>
                     <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{c.venue}</a>
-                    <p className={s.faint} style={{ margin: 0 }}>{concertDate(c.date)}{concertPerformers(c) ? ` · ${concertPerformers(c)}` : ''}</p>
+                    <p className={`${s.faint} ${s.flush}`}>{concertDate(c.date)}</p>
+                    <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
                     <ul className={s.concertWorkList}>
                       {c.works.map((w, i) => <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em></li>)}
                     </ul>
@@ -164,8 +165,8 @@ export function JournalScreen() {
                     return (
                       <li key={rid} className={s.entry}>
                         <p className={s.composer}>{info.proposed.composer}</p>
-                        <h4 className={s.h2} style={{ margin: 0 }}>{info.proposed.work}</h4>
-                        <p className={s.quiet}>{creditLine(info.proposed)}</p>
+                        <h4 className={`${s.h2} ${s.flush}`}>{info.proposed.work}</h4>
+                        <Credits r={info.proposed} />
                         <p className={s.tagRow}>
                           <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
                           {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)}</span>}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { catalogueLine, catalogueWords, whatAndWhen } from './workFacts'
+import { catalogueLine, catalogueWords, whatAndWhen, compactFacts } from './workFacts'
 
 describe('catalogueWords', () => {
   it('names whose catalogue a prefix belongs to', () => {
@@ -46,5 +46,13 @@ describe('whatAndWhen', () => {
     expect(whatAndWhen('symphony', undefined, now)).toBe('Symphony')
     expect(whatAndWhen(undefined, 'c. 1720', now)).toBe('written c. 1720, about 305 years ago')
     expect(whatAndWhen(undefined, 'unknown', now)).toBe('written unknown')
+  })
+})
+
+describe('the compact line', () => {
+  it('says what, which number and when, in one short line', () => {
+    expect(compactFacts('symphony', 'Op. 34', '1911–15')).toBe('Symphony · Op. 34 · 1911–15')
+    expect(compactFacts('tone poem', '', '1917')).toBe('Tone poem · 1917')
+    expect(compactFacts(undefined, undefined, undefined)).toBe('')
   })
 })

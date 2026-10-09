@@ -305,15 +305,19 @@ describe('the client', () => {
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('accounts.spotify.com'))).toBe(false)
   })
 
-  it('plays a work from its first movement, with shuffle off', async () => {
+  it('plays a work once, from its first movement, with shuffle and repeat off', async () => {
     const s = memStorage()
     s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
     const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
     await c.play(['spotify:track:1', 'spotify:track:2'])
     const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
-    expect(calls[0][0]).toContain('me/player/shuffle?state=false')
-    expect(JSON.parse(String(calls[1][1].body))).toMatchObject({ uris: ['spotify:track:1', 'spotify:track:2'], offset: { position: 0 } })
+    const urls = calls.map(([u]) => u)
+    expect(urls.slice(0, 2).some((u) => u.includes('me/player/shuffle?state=false'))).toBe(true)
+    // Repeat left on would start the work again after its last movement.
+    expect(urls.slice(0, 2).some((u) => u.includes('me/player/repeat?state=off'))).toBe(true)
+    expect(urls[2]).toContain('me/player/play')
+    expect(JSON.parse(String(calls[2][1].body))).toMatchObject({ uris: ['spotify:track:1', 'spotify:track:2'], offset: { position: 0 } })
   })
 
   it('pauses and resumes without restarting, and shrugs at "already paused"', async () => {
@@ -353,7 +357,7 @@ describe('the client', () => {
     const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
     await c.play(['spotify:track:1', 'spotify:track:2', 'spotify:track:3'], 2)
     const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
-    expect(JSON.parse(String(calls[1][1].body)).offset).toEqual({ position: 2 })
+    expect(JSON.parse(String(calls.find(([u]) => u.endsWith('me/player/play'))![1].body)).offset).toEqual({ position: 2 })
   })
 
   it('names a device as you would say it', () => {

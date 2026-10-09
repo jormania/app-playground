@@ -189,16 +189,16 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
         <h2 className={s.optionTitle}>{o.title}</h2>
       </div>
       <div className={s.optionBody}>
-        <p className={s.mood} style={{ marginTop: 'var(--space-2xs)' }}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
+        <p className={`${s.mood} ${s.mt2xs}`}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
         <p>{o.pitch}</p>
         <p className={s.character}>{o.character.join(' · ')}</p>
         {o.why && <p className={s.quiet}>{o.why}</p>}
         {o.returning && (
-          <div className={s.continuity} style={{ margin: 'var(--space-sm) 0 0' }}>
-            <p className={s.eyebrow} style={{ marginBottom: 0 }}>
+          <div className={`${s.continuity} ${s.flush} ${s.mtSm}`}>
+            <p className={`${s.eyebrow} ${s.mb0}`}>
               Returning{theme ? ` · “${theme.title}”, first explored ${sinceWords(theme.firstIntroduced, weekKey)}` : ''}
             </p>
-            <p style={{ margin: 0 }}>{o.returning.note}</p>
+            <p className={s.flush}>{o.returning.note}</p>
           </div>
         )}
         <div className={s.actions}>

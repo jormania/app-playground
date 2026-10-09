@@ -78,3 +78,14 @@ export function whatAndWhen(form: string | undefined, composed: string | undefin
   }
   return [what, when].filter(Boolean).join(' · ')
 }
+
+/**
+ * One short line for a list where space is tight (the Library): what, its
+ * catalogue number as printed, when — "Symphony · Op. 34 · 1911–15". The
+ * longer "written 1911–15, about 115 years ago" and the catalogue in words
+ * stay on the programme, where there is room to read them.
+ */
+export function compactFacts(form: string | undefined, catalogue: string | undefined, composed: string | undefined): string {
+  const what = form?.trim() ? form.trim().charAt(0).toUpperCase() + form.trim().slice(1) : ''
+  return [what, catalogue?.trim() ?? '', composed?.trim() ?? ''].filter(Boolean).join(' · ')
+}

@@ -244,13 +244,17 @@ export class SpotifyClient {
 
   /**
    * Start the exact tracks on the listener's active Spotify device (Premium),
-   * from the first movement, in order. A device left on shuffle would start a
-   * symphony at a random movement, so shuffle is turned off first — that is
-   * the one setting of theirs this changes, and only when they press Play.
-   * `from` starts at a later movement, for a tap on the movement list.
+   * from the first movement, in order, once. A device left on shuffle would
+   * start a symphony at a random movement, and one left on repeat would begin
+   * the work again after its last movement — so both are turned off first.
+   * Those are the only settings of theirs this changes, and only when they
+   * press Play. `from` starts at a later movement, for a tap on the movement list.
    */
   async play(trackUris: string[], from = 0): Promise<void> {
-    await this.request('me/player/shuffle?state=false', { method: 'PUT' }).catch(() => undefined)
+    await Promise.all([
+      this.request('me/player/shuffle?state=false', { method: 'PUT' }).catch(() => undefined),
+      this.request('me/player/repeat?state=off', { method: 'PUT' }).catch(() => undefined),
+    ])
     const res = await this.request('me/player/play', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },

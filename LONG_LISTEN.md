@@ -555,6 +555,6 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
 - Notion's Works & recordings now also holds what played *On Spotify instead*
   and the second recording of a pair.
 
-Prompts at the end of release two: themes@2026-10-10.3, programme@2026-10-10.4,
+Prompts at the end of release two: themes@2026-10-10.3, programme@2026-10-10.5,
 explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.2.
 
