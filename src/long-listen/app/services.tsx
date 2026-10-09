@@ -188,9 +188,11 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
 }
 
 /** Load something from the store, again whenever data changes. */
-export function useLoad<T>(load: () => Promise<T>, deps: unknown[]): { data: T | undefined; error: unknown; loading: boolean } {
+export function useLoad<T>(load: () => Promise<T>, deps: unknown[]): { data: T | undefined; error: unknown; loading: boolean; retry: () => void } {
   const { version } = useServices()
   const [state, setState] = useState<{ data: T | undefined; error: unknown; loading: boolean }>({ data: undefined, error: undefined, loading: true })
+  // "Try again" on a failed load: the same load, once more.
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     let live = true
     setState((s) => ({ ...s, loading: true }))
@@ -200,6 +202,6 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]): { data: T |
     )
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, ...deps])
-  return state
+  }, [version, attempt, ...deps])
+  return { ...state, retry: () => setAttempt((n) => n + 1) }
 }

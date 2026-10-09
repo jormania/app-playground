@@ -13,6 +13,8 @@ import s from '../styles/editorial.module.css'
 
 /** Where a picture shared to the app waits for this screen (public/long-listen-sw.js puts it there). */
 export const SHARED_IMAGE = '/long-listen-shared-image'
+/** How long a shared picture waits to be read (say, for a key to be added) before it is let go unread. */
+const SHARED_IMAGE_KEEP_MS = 24 * 3600_000
 
 /** "Thu 16 October 2026" */
 export const concertDate = (d: string) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`))
@@ -27,8 +29,8 @@ export const concertPerformers = (c: Pick<Concert, 'orchestra' | 'conductor' | '
  */
 export function ConcertsScreen() {
   const { repo } = useServices()
-  const { data, error } = useLoad(() => repo.concerts.all(), [])
-  if (error) return <Problem error={error} />
+  const { data, error, retry } = useLoad(() => repo.concerts.all(), [])
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the concerts…</Waiting>
   const byVenue = new Map<string, Concert[]>()
   for (const c of [...data].sort((a, b) => b.date.localeCompare(a.date))) byVenue.set(c.venue, [...(byVenue.get(c.venue) ?? []), c])
@@ -49,7 +51,7 @@ export function ConcertsScreen() {
               <li key={c.id} className={s.journalConcert}>
                 {/* The evening as the title, the works one to a line beneath: never one long run-on link. */}
                 <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{concertDate(c.date)}{c.hall ? ` · ${c.hall}` : ''}</a>
-                {concertPerformers(c) && <p className={s.faint} style={{ margin: 0 }}>{concertPerformers(c)}</p>}
+                {concertPerformers(c) && <p className={`${s.faint} ${s.flush}`}>{concertPerformers(c)}</p>}
                 <ul className={s.concertWorkList}>
                   {c.works.map((w, i) => <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em></li>)}
                 </ul>
@@ -67,9 +69,9 @@ export function ConcertsScreen() {
 export function ConcertScreen({ id }: { id: string }) {
   const { repo } = useServices()
   const [editing, setEditing] = useState(false)
-  const { data, error } = useLoad(async () => (id === 'new' ? null : repo.concerts.require(id)), [id])
+  const { data, error, retry } = useLoad(async () => (id === 'new' ? null : repo.concerts.require(id)), [id])
   if (id === 'new') return <ConcertForm />
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the concert…</Waiting>
   if (editing) return <ConcertForm concert={data} onDone={() => setEditing(false)} />
   const c = data
@@ -85,7 +87,7 @@ export function ConcertScreen({ id }: { id: string }) {
         {c.works.map((w, i) => <ConcertWork key={`${i}-${w.workId}`} c={c} w={w} />)}
       </ol>
 
-      <div className={s.actions} style={{ marginTop: 'var(--space-lg)' }}>
+      <div className={`${s.actions} ${s.mtLg}`}>
         <button className={s.outlineButton} onClick={() => setEditing(true)}>Edit</button>
       </div>
     </article>
@@ -190,11 +192,14 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
   useEffect(() => {
     if (concert || !curatorReady || typeof caches === 'undefined') return
     let live = true
-    // Let go of it only once it has been read: a failed read (offline, busy) keeps it for the next try.
+    // Let go of it once it has been read — a failed read (offline, busy) keeps it for the next try — or, unread, once it is
+    // more than a day old: a picture shared weeks ago isn't what the listener means to add now, and reading it costs.
+    const letGo = () => caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('long-listen-')).map((k) => caches.open(k).then((c) => c.delete(SHARED_IMAGE)))))
     void caches.match(SHARED_IMAGE).then(async (res) => {
       if (!res || !live) return
-      if (!(await read(await res.blob()))) return
-      await caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('long-listen-')).map((k) => caches.open(k).then((c) => c.delete(SHARED_IMAGE)))))
+      const at = Number(res.headers.get('x-shared-at'))
+      if (!at || Date.now() - at > SHARED_IMAGE_KEEP_MS) { await letGo(); return }
+      if (await read(await res.blob())) await letGo()
     }).catch(() => {})
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,7 +259,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
         ))}
         <button type="button" className={s.textButton} onClick={() => set({ soloists: [...d.soloists, { name: '' }] })}>Add a soloist</button>
 
-        <p className={s.label} style={{ marginTop: 'var(--space-md)' }}>The works, in order</p>
+        <p className={`${s.label} ${s.mtMd}`}>The works, in order</p>
         {d.works.map((w, i) => (
           // One work, two lines: who and which catalogue number, then its title at full width.
           <div key={i} className={s.workRow}>
@@ -267,7 +272,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
         ))}
         <button type="button" className={s.textButton} onClick={() => set({ works: [...d.works, { composer: '', title: '' }] })}>Add a work</button>
 
-        <label className={s.field} style={{ marginTop: 'var(--space-md)' }}><span>How was it?</span>
+        <label className={`${s.field} ${s.mtMd}`}><span>How was it?</span>
           <textarea className={s.textarea} value={d.note ?? ''} onChange={(e) => set({ note: e.target.value })} placeholder="Optional — a sentence is plenty. The curator reads it." />
         </label>
         <div className={s.actions}>

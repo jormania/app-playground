@@ -28,7 +28,7 @@ export function LibraryScreen() {
   const { repo, settings } = useServices()
   const hideSkipped = settings.hideSkipped
   const [q, setQ] = useState('')
-  const { data, error } = useLoad(async () => {
+  const { data, error, retry } = useLoad(async () => {
     const [works, recordings, programmes, comparisons, events, feedback, concerts] = await Promise.all([
       repo.works.all(), repo.recordings.all(), repo.programmes.all(), repo.comparisons.all(), repo.events.all(), repo.feedback.all(), repo.concerts.all(),
     ])
@@ -86,7 +86,7 @@ export function LibraryScreen() {
       .filter((e): e is Entry => Boolean(e))
   }, [data, q])
 
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the library…</Waiting>
 
   return (

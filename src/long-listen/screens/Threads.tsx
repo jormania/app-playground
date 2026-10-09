@@ -15,7 +15,7 @@ import s from '../styles/editorial.module.css'
  */
 export function ThreadsScreen() {
   const { repo, journey, bump, say, week, settings } = useServices()
-  const { data, error } = useLoad(async () => {
+  const { data, error, retry } = useLoad(async () => {
     const [themes, explorations, programmes, options, works, recordings, events] = await Promise.all([
       repo.themes.all(), repo.explorations.all(), repo.programmes.all(), repo.options.all(), repo.works.all(), repo.recordings.all(), repo.events.all(),
     ])
@@ -32,7 +32,7 @@ export function ThreadsScreen() {
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<ProgrammeOption | null>(null)
 
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Gathering the threads…</Waiting>
 
   async function take(o: ProgrammeOption, confirmed = false) {

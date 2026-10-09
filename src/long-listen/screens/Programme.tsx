@@ -98,8 +98,8 @@ const STATES: { value: ListeningState; label: string; kind: ListeningKind }[] = 
 
 export function ProgrammeScreen({ id }: { id: string }) {
   const { repo } = useServices()
-  const { data, error, loading } = useLoad(() => loadBundle(repo, id), [id])
-  if (error) return <Problem error={error} />
+  const { data, error, loading, retry } = useLoad(() => loadBundle(repo, id), [id])
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return loading ? <Waiting>Opening the programme…</Waiting> : null
   return <ProgrammeView b={data} key={id} />
 }
@@ -169,7 +169,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       {returning && (
         <div className={s.continuity}>
           <p className={s.eyebrow}>A returning thread · {stageWords(p.stage)} visit · first explored {sinceWords(first.weekKey, p.weekKey)}</p>
-          {p.continuityNote && <p style={{ margin: 0 }}>{p.continuityNote}</p>}
+          {p.continuityNote && <p className={s.flush}>{p.continuityNote}</p>}
         </div>
       )}
 
@@ -414,8 +414,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         {catalogue && <p className={s.workCatalogue}>{catalogue}</p>}
       </header>
 
-      <div className={s.prose} style={{ marginTop: 'var(--space-sm)' }}><p>{item.why}</p></div>
-      {item.revisitReason && <p className={s.continuity} style={{ margin: 'var(--space-sm) 0' }}>{item.revisitReason}</p>}
+      <div className={`${s.prose} ${s.mtSm}`}><p>{item.why}</p></div>
+      {item.revisitReason && <p className={`${s.continuity} ${s.flush} ${s.mtSm} ${s.mbSm}`}>{item.revisitReason}</p>}
 
       <RecordingBlock
         proposed={item.proposed}
@@ -426,11 +426,11 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       />
       {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
       {standIn && <StandInView c={standIn} b={b} />}
-      {item.whyThisRecording && <p style={{ margin: 0 }}><span className={s.label}>Why this recording</span><br />{item.whyThisRecording}</p>}
+      {item.whyThisRecording && <p className={s.flush}><span className={s.label}>Why this recording</span><br />{item.whyThisRecording}</p>}
 
       {item.listenFor.length > 0 && (
         <>
-          <p className={s.label} style={{ margin: 'var(--space-md) 0 0' }}>Listen for</p>
+          <p className={`${s.label} ${s.flush} ${s.mtMd}`}>Listen for</p>
           <ul className={s.listenFor}>{item.listenFor.map((l, i) => <li key={i}>{l}</li>)}</ul>
         </>
       )}
@@ -517,8 +517,8 @@ function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
         character={pv.character}
         onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump) }}
       />
-      {c.framing && <p className={s.quiet} style={{ margin: 0 }}>{c.framing}</p>}
-      {pv.listenFor && <p style={{ margin: 'var(--space-xs) 0 0' }}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
+      {c.framing && <p className={`${s.quiet} ${s.flush}`}>{c.framing}</p>}
+      {pv.listenFor && <p className={`${s.flush} ${s.mtXs}`}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
     </div>
   )
 }
@@ -571,7 +571,7 @@ function ProgrammeTools({ b }: { b: Bundle }) {
   }
 
   return (
-    <div className={s.actions} style={{ marginTop: 'var(--space-md)' }}>
+    <div className={`${s.actions} ${s.mtMd}`}>
       {total > 0 && <span className={s.faint}>{verified.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
       {b.playlist && webUrl(b.playlist.url) && (
         <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer" title="Kept in step with the programme as recordings are confirmed">Open the playlist</a>
@@ -630,7 +630,7 @@ function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
   const { journey, bump } = useServices()
   return (
     <div className={s.comparison}>
-      <p className={s.quiet} style={{ margin: 0 }}>{c.framing}</p>
+      <p className={`${s.quiet} ${s.flush}`}>{c.framing}</p>
       <div className={s.perspectives}>
         {c.perspectives.map((pv) => (
           <div key={pv.recordingId} className={s.perspective}>
@@ -641,7 +641,7 @@ function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
               character={pv.character}
               onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump) }}
             />
-            {pv.listenFor && <p style={{ margin: 0 }}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
+            {pv.listenFor && <p className={s.flush}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
             <FeedbackPanel
               prompt="Which way did it speak to you?"
               programmeId={b.programme.id}

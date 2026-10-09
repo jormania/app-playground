@@ -25,7 +25,7 @@ import s from '../styles/editorial.module.css'
  */
 export function ListenModeScreen({ programmeId, itemId }: { programmeId: string; itemId: string }) {
   const { repo, spotify, journey, bump } = useServices()
-  const { data, error } = useLoad(async () => {
+  const { data, error, retry } = useLoad(async () => {
     const programme = await repo.programmes.require(programmeId)
     const items = programme.sections.flatMap((x) => x.items)
     const item = items.find((i) => i.id === itemId)
@@ -80,7 +80,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
   const [heardOpen, setHeardOpen] = useState(false)
 
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the listening view…</Waiting>
   const { programme, item, recording, next, credit, standIn, notes } = data
   const sp = isConfirmed(recording) ? recording.spotify : undefined
@@ -133,7 +133,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {standIn && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
       {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for. */}
-      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={movements.length} playback={playback} onStarted={started} style={{ marginTop: 'var(--space-md)' }} />}
+      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={movements.length} playback={playback} onStarted={started} className={s.mtMd} />}
 
       {movements.length > 1 && (
         <ol className={s.movements}>
@@ -154,7 +154,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
       {item.listenFor.length > 0 && (
         <>
-          <p className={s.label} style={{ marginTop: 'var(--space-xl)' }}>Listen for</p>
+          <p className={`${s.label} ${s.mtXl}`}>Listen for</p>
           <ul className={`${s.listenFor} ${s.listenForLarge}`}>{item.listenFor.map((l, i) => <li key={i}>{l}</li>)}</ul>
         </>
       )}
@@ -187,14 +187,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
       {/* Heard: say how it landed here, then go straight on — no trip back up the programme. */}
       {heardOpen ? (
-        <div className={s.panel} style={{ marginTop: 'var(--space-xl)' }}>
+        <div className={`${s.panel} ${s.mtXl}`}>
           <FeedbackPanel
             targets={[{ type: 'recording', id: played.recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
             programmeId={programme.id}
             feedback={data.feedback}
             startOpen
           />
-          <div className={s.actions} style={{ marginTop: 'var(--space-md)' }}>
+          <div className={`${s.actions} ${s.mtMd}`}>
             {next
               ? <a className={s.primaryButton} href={href({ name: 'listen', programmeId, itemId: next.id })}>Next: {next.proposed.work} →</a>
               : <span className={s.quiet}>That was the last work this week.</span>}
@@ -202,11 +202,11 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           </div>
         </div>
       ) : (
-        <div className={s.actions} style={{ marginTop: 'var(--space-xl)' }}>
+        <div className={`${s.actions} ${s.mtXl}`}>
           <button className={s.outlineButton} onClick={heard}>I’ve heard it</button>
         </div>
       )}
-      <p className={s.settingHint} style={{ marginTop: 'var(--space-lg)' }}>
+      <p className={`${s.settingHint} ${s.mtLg}`}>
         The screen stays awake while this page is open.
         {settings.dusk === 'rotate' && (
           liked

@@ -15,7 +15,7 @@ export function Waiting({ children }: { children: React.ReactNode }) {
 export function Problem({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
     <div className={s.problem} role="alert">
-      <p style={{ margin: 0 }}>{messageOf(error)}</p>
+      <p className={s.flush}>{messageOf(error)}</p>
       {onRetry && <button className={s.textButton} onClick={onRetry}>Try again</button>}
     </div>
   )

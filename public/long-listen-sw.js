@@ -37,7 +37,8 @@ function receiveShare(req) {
     var file = form.get('image');
     if (!file || typeof file === 'string') return null;
     return caches.open(CACHE).then(function (cache) {
-      return cache.put(SHARED_IMAGE, new Response(file, { headers: { 'content-type': file.type || 'image/jpeg' } }));
+      // When it arrived, so the app can let an old one go unread instead of paying to read it weeks later.
+      return cache.put(SHARED_IMAGE, new Response(file, { headers: { 'content-type': file.type || 'image/jpeg', 'x-shared-at': String(Date.now()) } }));
     });
   }).catch(function () { return null; }).then(function () {
     return Response.redirect('/long-listen-react.html#/concerts/new', 303);

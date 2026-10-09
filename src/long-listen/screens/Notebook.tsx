@@ -21,14 +21,14 @@ const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
  */
 export function NotebookScreen() {
   const { repo, journey, bump, say, notion, notionState, syncNotion, week } = useServices()
-  const { data, error } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
+  const { data, error, retry } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
   const [notes, setNotes] = useState('')
   const [wish, setWish] = useState('')
   const [reading, setReading] = useState(false)
   const [following, setFollowing] = useState<string | null>(null)
   useEffect(() => { if (data) { setNotes(data.taste.notesToCurator); setWish(data.prefs.nextRequest) } }, [data])
 
-  if (error) return <Problem error={error} />
+  if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the notebook…</Waiting>
   const { taste } = data
   const groups = observationsByStance(taste)

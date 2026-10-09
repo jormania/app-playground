@@ -2406,3 +2406,18 @@
 .sectionHead + .entries {
   margin-top: 0;
 }
+
+/* ── spacing: the few one-off gaps, named, so no screen sets its own ──────
+   `flush` zeroes an element's margins; a top step then puts back one gap.
+   Doubled, so they win over the element's own class however specific — as the
+   inline styles they replace did. */
+.flush.flush { margin: 0; }
+.mb0.mb0 { margin-bottom: 0; }
+.mbSm.mbSm { margin-bottom: var(--space-sm); }
+.mt3xs.mt3xs { margin-top: var(--space-3xs); }
+.mt2xs.mt2xs { margin-top: var(--space-2xs); }
+.mtXs.mtXs { margin-top: var(--space-xs); }
+.mtSm.mtSm { margin-top: var(--space-sm); }
+.mtMd.mtMd { margin-top: var(--space-md); }
+.mtLg.mtLg { margin-top: var(--space-lg); }
+.mtXl.mtXl { margin-top: var(--space-xl); }
