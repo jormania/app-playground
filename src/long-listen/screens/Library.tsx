@@ -82,21 +82,21 @@ export function LibraryScreen() {
             <div key={work.id} className={s.libraryWork}>
               <p className={s.libraryTitle}>{work.title}</p>
               <p className={s.faint}>{[work.catalogue, work.composed, work.form, undefined].filter(Boolean).join(' · ')}</p>
-              <ul className={s.bullets}>
+              <ul className={s.libraryRecs}>
                 {recordings.map(({ rec, proposed, programmeId, programmeTitle }) => {
                   const fb = latestFeedback(data.feedback, rec.id)
                   const state = listeningState(data.events, rec.id)
                   return (
-                    <li key={rec.id}>
-                      {creditLine(proposed)}
-                      <span className={s.faint}>
-                        {' · '}{STATE_WORD[state]}
-                        {fb.reaction ? ` · ${reactionLabel(fb.reaction)?.toLowerCase()}` : ''}
-                        {isConfirmed(rec) && rec.spotify.durationMs ? ` · ${aboutDuration(rec.spotify.durationMs)}` : ''}
+                    <li key={rec.id} className={s.libraryRec}>
+                      {/* Who played it; then where you stand with it, as tags; then where it came from. */}
+                      <span>{creditLine(proposed)}</span>
+                      <span className={s.tagRow}>
+                        <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
+                        {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)?.toLowerCase()}</span>}
+                        {isConfirmed(rec) && rec.spotify.durationMs ? <span>{aboutDuration(rec.spotify.durationMs)}</span> : null}
+                        {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
                       </span>
-                      {' '}
-                      {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
-                      {programmeId && <> · <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></>}
+                      {programmeId && <span className={s.tagRow}>from <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></span>}
                       {fb.notes.length > 0 && <div className={s.said}><q>{fb.notes[fb.notes.length - 1]}</q></div>}
                     </li>
                   )
