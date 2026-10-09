@@ -13,12 +13,14 @@ through the shared `/api/notion` relay.
 **Read §2 and §5 before touching anything.** They hold the two rules the whole
 design serves.
 
+What comes next, ranked, is [`LONG_LISTEN_ROADMAP.md`](LONG_LISTEN_ROADMAP.md).
+
 ---
 
 ## 1. Product rules (not preferences)
 
-- **Curate, don't dump.** Four to seven recordings a week, in a sequence with
-  a reason for each step.
+- **Curate, don't dump.** However much music the listener asks for (§4: about
+  three to fourteen works), it comes in a sequence with a reason for each step.
 - **A recording is not an attribute of a work.** Every programme item names
   performers. Listening and feedback attach to the recording.
 - **Continuity, not repetition.** A returning theme must expand: new route,
