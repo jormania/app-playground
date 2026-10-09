@@ -2120,6 +2120,140 @@ R-037 finishes, so leave it to R-037's last slice. Re-run the importer check
 before writing, since R-037 slices may have landed first:
 `grep -rnE "shared/<module>" src api` minus `src/shared/` and `.test.`.
 
+**Also, from the Friday read, 2026-10-09:** The Long Listen (#128) has arrived
+since this table was written, and three more clauses miss it.
+`useSystemThemeFollow` is said to be used by "all three apps that follow the OS"
+(Law of the Day, Tempo, Daily Stoic), but `src/long-listen/app/services.tsx:94`
+makes four. Its repaint is `applyTheme('system')`, the Law-of-the-Day shape.
+`notionClient.ts`'s "Loom, Journal, Wanderlist, Marquee and Radar-B all use it"
+leaves out `src/long-listen/notion/mirror.ts:6`. And `storage.ts` gains
+`src/long-listen/app/settings.ts`. Fold these into the same pass.
+
+## R-039 — Turn ESLint 10's two new recommended rules back on · `refactor` · `open`
+
+*Renumbered and moved on the Friday read, 2026-10-09.* R-008's eslint run (#126)
+filed this as **R-036**, an id #120 had already given to the `useWakeLock` test
+item, and appended it after `## Proposed`, where no run would ever take it. A
+`refactor` item belongs in the main list (the skill's step 8), and two items
+sharing an id would let one PR's `Backlog-Item: R-036` line appear to claim
+both. The text below is unchanged.
+
+**Impact:** none visible. Lint catches two more classes of mistake again.
+
+Left off by R-008's eslint bump (`eslint.config.js`): `no-useless-assignment` (11
+hits) and `preserve-caught-error` (6). Locations: `src/daily-stoic/Journal.tsx`,
+`src/lexi5/lib/dictionaries.js:100`, `src/silva/lib/indexer.ts:76`,
+`src/sol-odyssey/lib/notion.ts:545`, `src/sol-odyssey/lib/settings.ts:104`,
+`src/where-it-went/lib/aiParser.js` and a few more — run `npx eslint .` with the
+two `'off'` lines removed for the full list. Do it one app per run; sol-odyssey has
+its own CLAUDE.md. Attaching a `cause` is behaviour-preserving for callers that read
+`.message`, but check each catch site first.
+
+## R-040 — `src/shared/mediaSession.js` has no test, in the two apps that keep running with the screen locked · `modernise` · `open`
+
+**Impact:** none visible. Puts tests under the hook that keeps Tempo's
+lock-screen controls and Yoru's soundscape alive once the phone sleeps. Today a
+regression there shows up only when a night's audio cuts out.
+
+Found on the Friday read, 2026-10-09. R-036 flagged this as "a follow-up run,
+not this one", and nobody had filed it. `useMediaSession` (70 lines) is reached
+from `src/tempo/components/Player.jsx:53` (via the `src/tempo/lib/mediaSession.js`
+re-export) and `src/yoru/components/Session.jsx:127`. `grep -rln mediaSession
+--include='*.test.*' src` is empty: no test mentions it, not even as a mock.
+
+Worth pinning:
+
+- with `active` true, the shared silent `Audio` is created once (`loop = true`)
+  and `play()`ed, and a rejected `play()` (autoplay blocked) is swallowed;
+- each of the five actions is set to the handler given, or to `null` when left
+  out (the comment's "the OS hides that control rather than showing a dead
+  button"), and all five are reset to `null` with the audio paused on cleanup
+  and when `active` flips false;
+- `status` maps to `playbackState`: `running` → `playing`, `paused` → `paused`,
+  anything else → `none`;
+- with no `navigator.mediaSession`, or no `MediaMetadata`, nothing throws.
+
+**One thing to record, not fix.** The header says *"any failure … degrades
+silently"*, but the five `setActionHandler` calls aren't wrapped. Per the spec a
+browser throws a `TypeError` for an action name it doesn't know, and `stop` is
+newer than the other four. A throw inside the effect would take the player down
+with it. That doesn't affect the owner's Chrome on Android. Guarding it would
+change behaviour, so the test run should pin what happens today and leave a
+note. If it's wanted, it is a `qol` proposal of its own.
+
+Write `src/shared/mediaSession.test.js` with a fake `navigator.mediaSession`
+(a `setActionHandler` spy, writable `metadata` / `playbackState`) and a stubbed
+global `Audio`. Reset the module between tests (`vi.resetModules()`), since
+`sharedAudio` is module state. `src/shared/theme.test.ts` is the house style for
+a hook test.
+
+## R-041 — The Long Listen's `app/settings.ts` has no test, and it is what keeps demo mode out of production · `modernise` · `open`
+
+**Impact:** none visible. Gives coverage to the 56 lines that hold the
+listener's Anthropic key and Notion token, and that decide whether the curator
+is real or canned.
+
+Found on the Friday read, 2026-10-09. `loadSettings` / `saveSettings` are
+imported only by `src/long-listen/app/services.tsx` (lines 13, 62, 67, 87), and
+no test imports `app/settings` at all. Every line of `loadSettings` is a
+sanitising decision a refactor could drop without anything going red:
+
+- **`demo: Boolean(import.meta.env?.DEV) && raw.demo === true`.** This is the
+  one that matters. If it regressed, a production build with a leftover
+  `demo: true` in storage would answer from `dev/demoCurator.ts`'s canned
+  programmes instead of Claude, with no error to say so. Vitest runs with
+  `DEV` true, so the production branch needs `vi.stubEnv('DEV', false)`;
+- the theme lives under its own key (`THEME_KEY`) and `saveSettings` splits
+  it out of the settings blob. Anything but `light` / `dark` reads as
+  `system`. The inline pre-paint script in `long-listen-react.html` reads
+  that key too;
+- an invalid stored `timeZone` falls back to `DEFAULT_TIME_ZONE`;
+- an empty stored `spotifyClientId` falls back to the
+  `VITE_LONG_LISTEN_SPOTIFY_CLIENT_ID` build env;
+- `textSize` is `large` or `standard`, nothing else, and non-string
+  credentials read as `''`.
+
+Write `src/long-listen/app/settings.test.ts`, round-tripping through jsdom's
+`localStorage` (via `npm test`, so the webstorage flag is set). Strict TS. No
+production code changes.
+
+## R-042 — An orphaned doc comment in The Long Listen's `curator/validate.js` documents the wrong function · `refactor` · `open`
+
+**Impact:** none visible. A reader of the "a returning theme expands, never
+restarts" rule (LONG_LISTEN.md) finds its enforcement documented where it is
+actually written.
+
+Found on the Friday read, 2026-10-09. In `src/long-listen/curator/validate.js`,
+just above `enforceVariety` (~line 224), there are **two JSDoc blocks back to
+back**. The first, *"Last resort after a retry: drop unjustified repeats if
+what remains is still a programme … a repeat never survives silently"*,
+describes `stripRepeats`, which comes after `enforceVariety` and has no comment
+of its own. Editors and TS's JS inference attach only the second block to
+`enforceVariety`, so the first documents nothing. Move it down onto
+`stripRepeats`. Comment-only. `curator.test.js` covers both functions
+("strips repeats that survive the retry …"), so the suite will stay green
+without changes.
+
+## R-043 — Two process docs say the repo is at the 12-function cap; it has been at 11 since the HLTB fold · `modernise` · `open`
+
+**Impact:** none visible. The rule an agent reads before every run states the
+real headroom.
+
+Found on the Friday read, 2026-10-09. `ls api/*.js | grep -v '^api/_' | wc -l`
+is **11**. `clickdeck-hltb.js` was folded into `steam-search.js` as
+`mode=hltb` (R-028's table records it). Two places still say otherwise:
+
+- `.claude/skills/daily-refactor/SKILL.md:161`: *"The repo sits at the Vercel
+  Hobby cap of 12 functions."*
+- `DAILY_REFACTOR.md:147`: *"(the repo sits at the Vercel Hobby cap of 12)"*.
+
+The rule itself, "never add a new top-level `api/*.js`" in an autonomous run,
+should **stay**. One slot of headroom is a human's to spend, not the agent's.
+Only the stated reason is wrong. Reword both to say the cap is 12 and the
+count is checked by `scripts/build-meta.test.js`, without writing a number that
+will drift again. `CLAUDE.md`'s deploy section already words it that way.
+Docs only.
+
 ---
 
 ## Proposed
@@ -2174,16 +2308,3 @@ dashboards menu renders six rows with `<Icon size={14} />` (lucide's default
 carried and P-001c kept on purpose so that slice stayed pixel-identical. The fix
 is deleting `strokeWidth={2.5}`. Small, but it changes a pixel Gabriel sees, so
 it waits here. Screenshots: phone width, both themes, menu open.
-
-## R-036 — Turn ESLint 10's two new recommended rules back on · `refactor` · `open`
-
-**Impact:** none visible. Lint catches two more classes of mistake again.
-
-Left off by R-008's eslint bump (`eslint.config.js`): `no-useless-assignment` (11
-hits) and `preserve-caught-error` (6). Locations: `src/daily-stoic/Journal.tsx`,
-`src/lexi5/lib/dictionaries.js:100`, `src/silva/lib/indexer.ts:76`,
-`src/sol-odyssey/lib/notion.ts:545`, `src/sol-odyssey/lib/settings.ts:104`,
-`src/where-it-went/lib/aiParser.js` and a few more — run `npx eslint .` with the
-two `'off'` lines removed for the full list. Do it one app per run; sol-odyssey has
-its own CLAUDE.md. Attaching a `cause` is behaviour-preserving for callers that read
-`.message`, but check each catch site first.
