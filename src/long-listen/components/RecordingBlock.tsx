@@ -16,7 +16,7 @@ import s from '../styles/editorial.module.css'
  * else's performance of the same work.
  */
 export function RecordingBlock({
-  proposed, recording, character, onOpened, onFindAlternative, label = 'Recommended recording',
+  proposed, recording, character, onOpened, onFindAlternative, standInBelow = false, label = 'Recommended recording',
 }: {
   proposed: ProposedRecording
   recording?: Recording
@@ -24,6 +24,8 @@ export function RecordingBlock({
   onOpened?: (how: 'opened' | 'play-started') => void
   /** Offered when Spotify lacks this recording: ask the curator for one it has. */
   onFindAlternative?: () => void
+  /** A recording Spotify does have is shown just below in its place. */
+  standInBelow?: boolean
   label?: string
 }) {
   const { spotify, repo, bump, say } = useServices()
@@ -105,8 +107,10 @@ export function RecordingBlock({
       )}
       {recording?.verification === 'not-found' && (
         <p className={s.note}>
-          Spotify doesn’t appear to carry this exact recording. The curator’s choice stands; it may be elsewhere.
-          {onFindAlternative && <>{' '}<button className={s.textButton} onClick={onFindAlternative}>Ask for one that’s on Spotify</button></>}
+          {standInBelow
+            ? 'Spotify doesn’t carry this exact recording, so the curator picked one it does, below.'
+            : 'Spotify doesn’t appear to carry this exact recording. The curator’s choice stands; it may be elsewhere.'}
+          {!standInBelow && onFindAlternative && <>{' '}<button className={s.textButton} onClick={onFindAlternative}>Ask for one that’s on Spotify</button></>}
         </p>
       )}
       {!sp && recording?.verification !== 'not-found' && !spotify.connected && (

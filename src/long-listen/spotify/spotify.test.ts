@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { beginSignIn, completeSignIn, challengeFor, isCallback, SpotifyAuthError } from './auth'
-import { verifyRecording, playsToEvents, forgetMatch, aboutDuration, saveProgrammePlaylist } from './verify'
+import { verifyRecording, playsToEvents, forgetMatch, aboutDuration, saveProgrammePlaylist, needsLook, spotifyCandidates } from './verify'
 import { SpotifyClient } from './client'
 import { Repo, memoryStore } from '../store/repo'
 import type { Recording, ProposedRecording, ListeningEvent } from '../domain/types'
-import type { SpotifyTrackLike } from './match'
+import { MATCHER_VERSION, type SpotifyTrackLike } from './match'
 
 function memStorage(): Storage {
   const m = new Map<string, string>()
@@ -108,6 +108,19 @@ describe('verifying a recording', () => {
     const out = await verifyRecording(repo, fakeSpotify([karajan]), 'rec1', proposed, 'now')
     expect(out.recording.verification).toBe('not-found')
     expect(out.recording.spotify).toBeUndefined()
+  })
+
+  it('looks again for a not-found an older matcher gave up on, and not for one this matcher checked', () => {
+    expect(needsLook({ ...rec, verification: 'not-found' })).toBe(true)
+    expect(needsLook({ ...rec, verification: 'not-found', checkedWith: MATCHER_VERSION })).toBe(false)
+    expect(needsLook({ ...rec, verification: 'unchecked' })).toBe(true)
+  })
+
+  it('lists the recordings of a work Spotify really has, by album, for a stand-in', async () => {
+    const karajan = { ...t('k1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1, ['Claude Debussy', 'Berliner Philharmoniker', 'Herbert von Karajan']), album: { id: 'alb2', name: 'Debussy: La mer', release_date: '1964-01-01' } }
+    const other = { ...t('x1', 'Nocturnes, L. 91: I. Nuages', 1, ['Claude Debussy', 'Someone Else']), album: { id: 'alb3', name: 'Debussy: Nocturnes' } }
+    const out = await spotifyCandidates(fakeSpotify([karajan, karajan, other]), proposed)
+    expect(out).toEqual([{ album: 'Debussy: La mer', year: '1964', artists: ['Berliner Philharmoniker', 'Herbert von Karajan'] }])
   })
 
   it('can forget a match so it is looked for again', async () => {

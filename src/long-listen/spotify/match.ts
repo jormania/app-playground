@@ -20,7 +20,7 @@ export interface SpotifyTrackLike {
   name: string
   uri: string
   artists: { name: string; id?: string }[]
-  album?: { id: string; name: string }
+  album?: { id: string; name: string; release_date?: string }
   track_number?: number
   disc_number?: number
   duration_ms?: number
@@ -67,12 +67,35 @@ function credited(artists: { name: string }[]): string {
 
 const tokens = (s: string) => s.split(' ').filter(Boolean)
 
+/**
+ * Bumped whenever matching gets better, so recordings an older matcher marked
+ * `not-found` are looked for once more.
+ *   2 — bracketed version notes no longer count as title words
+ */
+export const MATCHER_VERSION = 2
+
+/**
+ * The curator often adds a version note in brackets — "(original piano
+ * version)", "[orch. Ravel]" — that Spotify's track names never carry. They
+ * describe the recording, not the work's title, so matching ignores them.
+ * (`workTitleKey` means to drop them too, but folds the brackets away first;
+ * it is left as is because stored work ids are built from it.)
+ */
+function matchTitle(title: string): string {
+  return title.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
+}
+
 /** How much of the work's identifying title appears in a track (or album) name, 0..1. */
 export function workOverlap(workTitle: string, trackName: string): number {
-  const want = tokens(workTitleKey(workTitle))
+  const want = tokens(workTitleKey(matchTitle(workTitle)))
   if (want.length === 0) return 0
   const have = new Set(tokens(workTitleKey(trackName)).concat(tokens(fold(trackName))))
   return want.filter((t) => have.has(t)).length / want.length
+}
+
+/** Is this person credited among these artists (by surname)? */
+export function isCredited(name: string, artists: { name: string }[]): boolean {
+  return personCredited(name, credited(artists))
 }
 
 function personCredited(name: string, credits: string): boolean {
@@ -148,7 +171,7 @@ export function workTracks(albumTracks: SpotifyTrackLike[], matched: SpotifyTrac
 
 /** Search queries, most specific first. Spotify's search caps a page at ten results. */
 export function searchQueries(p: ProposedRecording): string[] {
-  const work = workTitleKey(p.work).split(' ').slice(0, 6).join(' ')
+  const work = workTitleKey(matchTitle(p.work)).split(' ').slice(0, 6).join(' ')
   const composer = surname(p.composer)
   const lead = p.conductor ? surname(p.conductor) : p.soloists[0] ? surname(p.soloists[0].name) : ''
   const band = p.orchestra ?? p.ensemble

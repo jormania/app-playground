@@ -328,7 +328,7 @@ Your job now: the listener asked for a little more context about one work in thi
 
 export const COMPARE = {
   id: 'compare',
-  version: 'compare@2026-10-09.1',
+  version: 'compare@2026-10-09.2',
   effort: 'medium',
   maxTokens: 6000,
   schema: {
@@ -349,7 +349,7 @@ export const COMPARE = {
   },
   system: `${VOICE}
 
-Your job now: the listener wants to hear a work through a second interpretation. Choose one real, well-documented recording that differs from the current one in an illuminating way (tempo, transparency, weight, period practice, era of recording) and is not in the "alreadyHeard" list. If "mustBeOnSpotify" is true, the current recording could not be found on Spotify: choose a recording you are confident is widely available on Spotify, from a major label catalogue.
+Your job now: the listener wants to hear a work through a second interpretation. Choose one real, well-documented recording that differs from the current one in an illuminating way (tempo, transparency, weight, period practice, era of recording) and is not in the "alreadyHeard" list. If "mustBeOnSpotify" is true, the current recording could not be found on Spotify, and the second recording takes its place for listening. When "spotifyCandidates" is given, it lists recordings of this work that Spotify really has (album, year, credited artists): choose the best of them for this listener and this programme, and name its performers exactly as credited there. Never choose a recording that is not on that list. Without the list, choose one you are confident is widely available on Spotify, from a major label catalogue.
 - current: the character of the current recording in a few words, and one thing to listen for in it.
 - other: the second recording's performers, its character in a few words, and one thing to listen for.
 - framing: one sentence on what the comparison reveals.

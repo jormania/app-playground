@@ -7,7 +7,7 @@ import { sinceWords, weekFromKey } from '../domain/week'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
-import { aboutDuration, saveProgrammePlaylist, verifyRecording, type PlaylistMark } from '../spotify/verify'
+import { aboutDuration, needsLook, saveProgrammePlaylist, spotifyCandidates, verifyRecording, type PlaylistMark } from '../spotify/verify'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
@@ -97,7 +97,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       const pending = [
         ...b.programme.sections.flatMap((x) => x.items).map((i) => ({ rid: i.recordingId, proposed: i.proposed })),
         ...b.comparisons.flatMap((c) => c.perspectives.map((x) => ({ rid: x.recordingId, proposed: x.proposed }))),
-      ].filter(({ rid }) => b.recordings.get(rid)?.verification === 'unchecked' && !tried.current.has(rid))
+      ].filter(({ rid }) => needsLook(b.recordings.get(rid)) && !tried.current.has(rid))
       for (const { rid, proposed } of pending) {
         if (stop) return
         tried.current.add(rid)
@@ -193,7 +193,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 }
 
 function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; comparison?: Comparison }) {
-  const { journey, bump, say } = useServices()
+  const { journey, bump, say, spotify, curatorReady } = useServices()
   const pid = b.programme.id
   const state = listeningState(b.events, item.recordingId)
   const recording = b.recordings.get(item.recordingId)
@@ -213,10 +213,34 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
     try { await journey.explain(pid, item.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setExplaining(false) }
   }
 
-  async function compare(mustBeOnSpotify = false) {
+  async function compare(mustBeOnSpotify = false, quiet = false) {
     setComparing(true)
-    try { await journey.compare(pid, item.id, { mustBeOnSpotify }); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setComparing(false) }
+    try {
+      // A stand-in is chosen from what Spotify really has, never from memory alone.
+      const candidates = mustBeOnSpotify && spotify.connected ? await spotifyCandidates(spotify, item.proposed) : undefined
+      if (mustBeOnSpotify && candidates && candidates.length === 0) {
+        if (!quiet) say('Spotify has no recording of this work that the app could find.')
+        return
+      }
+      await journey.compare(pid, item.id, { mustBeOnSpotify, spotifyCandidates: candidates })
+      bump()
+    } catch (e) {
+      if (!quiet) say(messageOf(e), 'danger')
+    } finally {
+      setComparing(false)
+    }
   }
+
+  // When Spotify truly lacks the curator's recording, find one it has, once, by itself.
+  const missing = recording?.verification === 'not-found' && !needsLook(recording)
+  const askedForStandIn = useRef(false)
+  useEffect(() => {
+    if (!missing || comparison || !spotify.connected || !curatorReady || askedForStandIn.current) return
+    askedForStandIn.current = true
+    void compare(true, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missing, comparison, spotify.connected, curatorReady])
+  const standIn = comparison?.standIn ? comparison : undefined
 
   return (
     <div className={s.item}>
@@ -232,7 +256,10 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
         recording={recording}
         onOpened={(how) => { void journey.markListening(item, how, pid, 'app').then(bump) }}
         onFindAlternative={comparison || comparing ? undefined : () => void compare(true)}
+        standInBelow={Boolean(standIn)}
       />
+      {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
+      {standIn && <StandInView c={standIn} b={b} />}
       {item.whyThisRecording && <p style={{ margin: 0 }}><span className={s.label}>Why this recording</span><br />{item.whyThisRecording}</p>}
 
       {item.listenFor.length > 0 && (
@@ -277,7 +304,31 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
           <Paragraphs text={explanation.body} className={s.prose} />
         </div>
       )}
-      {comparison && <ComparisonView c={comparison} b={b} />}
+      {comparison && !standIn && <ComparisonView c={comparison} b={b} />}
+    </div>
+  )
+}
+
+/**
+ * The recording that takes the place of one Spotify doesn't have. The
+ * curator's original choice stays above it, as written; this is the one to
+ * press play on, chosen from Spotify's own list of recordings of the work.
+ */
+function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
+  const { journey, bump } = useServices()
+  const pv = c.perspectives[1]
+  if (!pv) return null
+  return (
+    <div className={s.block}>
+      <RecordingBlock
+        label="On Spotify instead"
+        proposed={pv.proposed}
+        recording={b.recordings.get(pv.recordingId)}
+        character={pv.character}
+        onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump) }}
+      />
+      {c.framing && <p className={s.quiet} style={{ margin: 0 }}>{c.framing}</p>}
+      {pv.listenFor && <p style={{ margin: 'var(--space-xs) 0 0' }}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
     </div>
   )
 }

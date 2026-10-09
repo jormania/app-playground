@@ -1,7 +1,7 @@
 import type { Album, ListeningEvent, ProposedRecording, Recording } from '../domain/types'
 import { newId } from '../domain/identity'
 import type { Repo } from '../store/repo'
-import { bestTrack, movementTitle, searchQueries, workTracks, type SpotifyTrackLike } from './match'
+import { MATCHER_VERSION, bestTrack, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import type { RecentPlay, SpotifyAlbum, SpotifyClient } from './client'
 
 /**
@@ -23,6 +23,12 @@ function phonographic(a: SpotifyAlbum): string | undefined {
   return p?.text.replace(/^\s*(?:℗|\(P\)|©|\(C\))\s*/i, '').trim() || undefined
 }
 
+/** Has this recording never been looked for, or only by an older, weaker matcher? */
+export function needsLook(r: Recording | undefined): boolean {
+  if (!r) return false
+  return r.verification === 'unchecked' || (r.verification === 'not-found' && (r.checkedWith ?? 1) < MATCHER_VERSION)
+}
+
 export async function verifyRecording(repo: Repo, spotify: SpotifyClient, recordingId: string, proposed: ProposedRecording, now = new Date().toISOString()): Promise<VerifyOutcome> {
   const recording = await repo.recordings.require(recordingId)
   if (recording.verification === 'verified') return { recording, album: recording.albumId ? await repo.albums.get(recording.albumId) : undefined }
@@ -35,7 +41,7 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
   }
 
   if (!found || !found.track.album) {
-    const updated: Recording = { ...recording, verification: 'not-found', checkedAt: now }
+    const updated: Recording = { ...recording, verification: 'not-found', checkedAt: now, checkedWith: MATCHER_VERSION }
     await repo.recordings.put(updated)
     return { recording: updated }
   }
@@ -50,6 +56,7 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
     ...recording,
     verification: 'verified',
     checkedAt: now,
+    checkedWith: MATCHER_VERSION,
     albumId,
     spotify: {
       albumId,
@@ -84,6 +91,35 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
   await repo.albums.put(albumRecord)
   await repo.recordings.put(updated)
   return { recording: updated, album: albumRecord }
+}
+
+/** One recording of a work that Spotify actually has, for the curator to choose from. */
+export interface SpotifyCandidate {
+  album: string
+  year?: string
+  artists: string[]
+}
+
+/**
+ * Real recordings of this work on Spotify, grouped by album. When the
+ * curator's choice isn't there, the replacement is picked from this list,
+ * so it is grounded in what exists rather than remembered.
+ */
+export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecording, max = 8): Promise<SpotifyCandidate[]> {
+  const composer = p.composer.split(' ').slice(-1)[0]
+  const queries = [...new Set([`${composer} ${p.work.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')}`.replace(/\s+/g, ' ').trim(), ...searchQueries(p).slice(0, 1)])]
+  const byAlbum = new Map<string, SpotifyCandidate>()
+  for (const q of queries) {
+    for (const t of await spotify.searchTracks(q)) {
+      if (!t.album || byAlbum.has(t.album.id)) continue
+      const onWork = Math.max(workOverlap(p.work, t.name), workOverlap(p.work, t.album.name))
+      if (onWork < 0.75 || !isCredited(p.composer, t.artists)) continue
+      const artists = t.artists.map((a) => a.name).filter((n) => !isCredited(p.composer, [{ name: n }]))
+      if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, year: t.album.release_date?.slice(0, 4), artists })
+    }
+    if (byAlbum.size >= max) break
+  }
+  return [...byAlbum.values()].slice(0, max)
 }
 
 /** Let the listener undo a match they know is wrong; it will be looked for again. */
@@ -179,7 +215,10 @@ export interface PlaylistMark { id: string; url: string; tracks: number }
  */
 export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<PlaylistMark> {
   const p = await repo.programmes.require(programmeId)
-  const comparisons = await repo.comparisons.many(p.comparisonIds)
+  const items = p.sections.flatMap((s) => s.items)
+  // The programme's own pairs, plus any stand-in for a recording Spotify lacks.
+  const standIns = (await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
+  const comparisons = [...(await repo.comparisons.many(p.comparisonIds)), ...standIns]
   const ids = [
     ...p.sections.flatMap((s) => s.items).map((i) => i.recordingId),
     ...comparisons.flatMap((c) => c.perspectives.map((x) => x.recordingId)),
