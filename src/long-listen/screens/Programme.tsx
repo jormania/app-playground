@@ -4,6 +4,7 @@ import type {
 } from '../domain/types'
 import { latestFeedback, listeningState } from '../domain/listening'
 import { sinceWords, weekFromKey } from '../domain/week'
+import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
@@ -288,7 +289,9 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const [comparing, setComparing] = useState(false)
   const explanation = b.explanations.get(item.id)
   const work = b.works.get(item.workId)
-  const metaBits = [work?.catalogue ?? item.proposed.catalogue, work?.composed, work?.form].filter(Boolean)
+  // What it is and when, in words; the catalogue number translated beneath it.
+  const whatWhen = whatAndWhen(work?.form, work?.composed)
+  const catalogue = catalogueLine(work?.catalogue ?? item.proposed.catalogue, item.proposed.composer)
 
   async function mark(kind: ListeningKind) {
     await journey.markListening(item, kind, pid)
@@ -339,7 +342,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
     <div className={s.item} id={workAnchor(item.id)}>
       <p className={s.composer}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</p>
       <h3 className={s.work}>{item.proposed.work}</h3>
-      {metaBits.length > 0 && <p className={s.workMeta}>{metaBits.join(' · ')}</p>}
+      {whatWhen && <p className={s.workMeta}>{whatWhen}</p>}
+      {catalogue && <p className={s.workCatalogue}>{catalogue}</p>}
 
       <div className={s.prose} style={{ marginTop: 'var(--space-sm)' }}><p>{item.why}</p></div>
       {item.revisitReason && <p className={s.continuity} style={{ margin: 'var(--space-sm) 0' }}>{item.revisitReason}</p>}

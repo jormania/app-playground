@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ProposedRecording, Recording, Work } from '../domain/types'
 import { creditLine, fold, surname } from '../domain/identity'
+import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
@@ -86,7 +87,8 @@ export function LibraryScreen() {
           {e.works.map(({ work, recordings }) => (
             <div key={work.id} className={s.libraryWork}>
               <p className={s.libraryTitle}>{work.title}</p>
-              <p className={s.faint}>{[work.catalogue, work.composed, work.form, undefined].filter(Boolean).join(' · ')}</p>
+              {whatAndWhen(work.form, work.composed) && <p className={s.workMeta}>{whatAndWhen(work.form, work.composed)}</p>}
+              {catalogueLine(work.catalogue, e.composer) && <p className={s.workCatalogue}>{catalogueLine(work.catalogue, e.composer)}</p>}
               <ul className={s.libraryRecs}>
                 {recordings.map(({ rec, proposed, programmeId, programmeTitle }) => {
                   const fb = latestFeedback(data.feedback, rec.id)

@@ -653,8 +653,15 @@
 .workMeta {
   margin: var(--space-2xs) 0 0;
   font-size: 1rem;
-  color: var(--color-faint);
+  color: var(--color-muted);
   font-style: italic;
+}
+
+/* The catalogue number in words, under what and when: reference, so quieter. */
+.workCatalogue {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-faint);
 }
 
 .recording {
