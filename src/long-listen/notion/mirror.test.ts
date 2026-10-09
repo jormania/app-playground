@@ -167,6 +167,23 @@ describe('the Notion notebook', () => {
     expect(live).toEqual(['Intro', 'divider', 'Further listening and reading', 'Read — Programme note (LA Phil). Background.', 'My own note'])
   })
 
+  it('finishes a journal page whose text failed to write, instead of making a second page', async () => {
+    const repo = await seeded()
+    const real = pageNotion()
+    let failText = true
+    let made = 0
+    const flaky: NotionCall = async <T,>(c: any): Promise<T> => {
+      if (c.method === 'POST' && c.path === 'pages' && c.body?.properties?.Visit) made++
+      if (failText && c.method === 'PATCH' && /^blocks\/[^/]+\/children/.test(c.path)) { failText = false; throw new Error('429') }
+      return real.client<T>(c)
+    }
+    await syncToNotion(flaky, repo, 'page123', '2026-W41').catch(() => undefined)
+    await syncToNotion(flaky, repo, 'page123', '2026-W41')
+    expect(made).toBe(1)
+    const withText = [...real.pages.values()].filter((blocks) => blocks.some((b) => b.text === 'A standfirst.'))
+    expect(withText).toHaveLength(1)
+  })
+
   it('shows no internal machinery — no ids, versions or confidences', async () => {
     const repo = await seeded()
     const n = fakeNotion()

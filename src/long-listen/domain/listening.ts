@@ -30,8 +30,10 @@ function when(e: ListeningEvent): string {
   return e.source === 'spotify-recent' ? (e.playedUntil ?? e.playedAt ?? e.at) : e.at
 }
 
-export function listeningState(events: ListeningEvent[], recordingId: string): ListeningState {
-  const mine = events.filter((e) => e.recordingId === recordingId).sort((a, b) => when(a).localeCompare(when(b)))
+export function listeningState(events: ListeningEvent[], recordingId: string | string[]): ListeningState {
+  // Several ids are one work's recordings read as one — the curator's and the stand-in that played in its place.
+  const ids = new Set(Array.isArray(recordingId) ? recordingId : [recordingId])
+  const mine = events.filter((e) => ids.has(e.recordingId)).sort((a, b) => when(a).localeCompare(when(b)))
   let state: ListeningState = 'not-started'
   for (const e of mine) {
     const next = stateOfKind(e)

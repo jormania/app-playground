@@ -46,7 +46,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const notes = here?.recording ? (await repo.marks.get(`companion:${here.recording.id}`))?.value as { movements: string[] } | undefined : undefined
     return {
       programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false,
-      next: nextWork(items, item, (i) => Boolean(playable(i)), events), feedback, notes: notes?.movements ?? [], explanation, answers,
+      next: nextWork(items, item, (i) => Boolean(playable(i)), (i) => [i.recordingId, ...(standIns.get(i.id)?.perspectives[1] ? [standIns.get(i.id)!.perspectives[1].recordingId] : [])], events), feedback, notes: notes?.movements ?? [], explanation, answers,
     }
   }, [programmeId, itemId])
   useWakeLock(true)
@@ -81,9 +81,11 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const [heardOpen, setHeardOpen] = useState(false)
 
   if (error) return <Problem error={error} />
-  if (!data) return <Waiting>Opening…</Waiting>
+  if (!data) return <Waiting>Opening the listening view…</Waiting>
   const { programme, item, recording, next, credit, standIn, notes } = data
   const sp = isConfirmed(recording) ? recording.spotify : undefined
+  // What is marked, and reacted to, is the recording that plays — a stand-in's own, where it stands in.
+  const played = { recordingId: recording?.id ?? item.recordingId, workId: item.workId }
   // This recording's own movements, as its album divides them.
   const movements = sp?.trackNames ?? []
 
@@ -109,12 +111,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }
 
   async function heard() {
-    await journey.markListening(item, 'heard', programme.id)
+    await journey.markListening(played, 'heard', programme.id)
     bump()
     setHeardOpen(true)
   }
 
-  const started = () => { void journey.markListening(item, 'play-started', programme.id, 'app').then(bump) }
+  const started = () => { void journey.markListening(played, 'play-started', programme.id, 'app').then(bump) }
   const nowIndex = playback.at?.index ?? null
 
   // A movement can be started from the list: the place in the music, by its name.
@@ -170,7 +172,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           <form className={s.askRow} onSubmit={(e) => { e.preventDefault(); void ask() }}>
             <label className={s.visuallyHidden} htmlFor="ask">Your question</label>
             <input id="ask" className={s.input} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why does the horn come back here?" disabled={asking} />
-            <button className={s.outlineButton} type="submit" disabled={asking || !question.trim()}>{asking ? 'Asking…' : 'Ask'}</button>
+            <button className={`${s.outlineButton} ${s.smallButton}`} type="submit" disabled={asking || !question.trim()}>{asking ? 'Asking…' : 'Ask'}</button>
           </form>
         ) : <p className={s.note}>Add your Anthropic key in Settings to ask the curator.</p>}
         {data.explanation ? (
@@ -187,7 +189,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {heardOpen ? (
         <div className={s.panel} style={{ marginTop: 'var(--space-xl)' }}>
           <FeedbackPanel
-            targets={[{ type: 'recording', id: item.recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
+            targets={[{ type: 'recording', id: played.recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
             programmeId={programme.id}
             feedback={data.feedback}
             startOpen
@@ -217,7 +219,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 }
 
 /** The next work in programme order that can be played (its recording, or a stand-in, confirmed on Spotify) and wasn't skipped. */
-function nextWork(items: ProgrammeItem[], current: ProgrammeItem, canPlay: (i: ProgrammeItem) => boolean, events: Parameters<typeof listeningState>[0]): ProgrammeItem | undefined {
+function nextWork(items: ProgrammeItem[], current: ProgrammeItem, canPlay: (i: ProgrammeItem) => boolean, idsOf: (i: ProgrammeItem) => string[], events: Parameters<typeof listeningState>[0]): ProgrammeItem | undefined {
   const after = items.slice(items.findIndex((i) => i.id === current.id) + 1)
-  return after.find((i) => canPlay(i) && listeningState(events, i.recordingId) !== 'skipped')
+  return after.find((i) => canPlay(i) && listeningState(events, idsOf(i)) !== 'skipped')
 }

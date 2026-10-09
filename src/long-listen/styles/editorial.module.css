@@ -310,10 +310,6 @@
   color: var(--color-accent-hover);
 }
 
-.dangerButton {
-  color: var(--color-danger, #b3261e);
-}
-
 .quietButton {
   color: var(--color-faint);
   font-size: var(--text-sm);
@@ -1043,32 +1039,6 @@
   background: none;
 }
 
-.check {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-xs);
-  min-height: 44px;
-  padding-top: var(--space-2xs);
-  font-size: 1rem;
-  color: var(--color-muted);
-  cursor: pointer;
-}
-
-.check input {
-  flex: none;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin: 0.2rem 0 0;
-  accent-color: var(--color-accent);
-}
-
-.checkHint {
-  display: block;
-  font-size: var(--text-sm);
-  color: var(--color-faint);
-  font-style: italic;
-}
-
 /* Where to go next: full-width rows, each saying what it opens. */
 .further {
   margin-top: var(--space-lg);
@@ -1530,13 +1500,6 @@
 
 /* ── settings ───────────────────────────────────────────────────────────── */
 
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  align-items: center;
-}
-
 .mono {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -1878,24 +1841,16 @@
 /* "This week, differently": four quiet words, one tap each. */
 .weekMood {
   margin: var(--space-md) 0 var(--space-xs);
-  line-height: 2;
 }
 
-.moodWord {
-  appearance: none;
-  padding: 0 0.1em;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: var(--color-muted);
-  text-decoration: underline dotted var(--color-border-2);
-  text-underline-offset: 0.25em;
-  cursor: pointer;
+.weekMood > * + * {
+  margin-top: var(--space-xs);
 }
 
-.moodWordOn {
-  color: var(--color-accent);
-  text-decoration: underline solid var(--color-accent);
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 
 /* "Follow this · next week" after a question in the Notebook. */
@@ -2445,4 +2400,9 @@
 
 .concertList > li + li {
   margin-top: var(--space-lg);
+}
+
+/* A list straight under a section heading needs no space of its own above it. */
+.sectionHead + .entries {
+  margin-top: 0;
 }

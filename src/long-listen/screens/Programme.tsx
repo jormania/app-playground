@@ -3,7 +3,7 @@ import type {
   Comparison, Explanation, Feedback, ListeningEvent, ListeningKind, ListeningState, Programme, ProgrammeItem, ProgrammeOption, Recording, Resource, Theme, ThemeExploration, WeekRecord, Work,
 } from '../domain/types'
 import { latestFeedback, listeningState } from '../domain/listening'
-import { sinceWords, weekFromKey } from '../domain/week'
+import { isoDateIn, sinceWords, weekFromKey } from '../domain/week'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { sectionTitle } from '../domain/sections'
 import { liveEvents, liveMatches, venueShort, whatIsOn, type LiveMatch } from '../live/live'
@@ -129,7 +129,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   const { programme: p } = b
   // With "hide what I skip" on, skipped works step out of the page — shown again, for now, on request.
   const [showSkipped, setShowSkipped] = useState(false)
-  const skippedIds = new Set(p.sections.flatMap((x) => x.items).filter((i) => listeningState(b.events, i.recordingId) === 'skipped').map((i) => i.id))
+  const skippedIds = new Set(p.sections.flatMap((x) => x.items).filter((i) => listeningState(b.events, itemRecordingIds(b, i)) === 'skipped').map((i) => i.id))
   const hiding = settings.hideSkipped && !showSkipped
   const shown = (item: ProgrammeItem) => !hiding || !skippedIds.has(item.id)
   // This week's programme — or "more of this theme" made for it.
@@ -233,6 +233,13 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 
 const workAnchor = (itemId: string) => `work-${itemId}`
 
+/** A work's recordings as listening knows them: the curator's, and the stand-in that plays where Spotify lacks it. */
+function itemRecordingIds(b: Bundle, item: ProgrammeItem): string[] {
+  const standIn = b.comparisons.find((c) => c.standIn && c.id === `cmp:${b.programme.id}:${item.id}`)
+  const other = standIn?.perspectives[1]?.recordingId
+  return other ? [item.recordingId, other] : [item.recordingId]
+}
+
 /**
  * A slim line pinned to the top of the screen while you read inside a work
  * whose header has scrolled away: "6 · Arnold Bax — Tintagel". A long work
@@ -295,7 +302,7 @@ function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) =>
   const player = usePlayerState()
   const rows = b.programme.sections.flatMap((section) => section.items.filter(shown).map((item) => ({ item, section })))
   if (rows.length < 2) return null
-  const heard = rows.filter(({ item }) => listeningState(b.events, item.recordingId) === 'heard').length
+  const heard = rows.filter(({ item }) => listeningState(b.events, itemRecordingIds(b, item)) === 'heard').length
   const jump = (id: string) => document.getElementById(workAnchor(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // The work Spotify is on now, if it's one of these, is marked in the list.
   const onNow = (rid: string) => {
@@ -312,8 +319,8 @@ function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) =>
           needs — where it used to vanish as soon as each work had a state. */}
       <ol className={s.roList}>
         {rows.map(({ item, section }, n) => {
-          const state = listeningState(b.events, item.recordingId)
-          const now = onNow(item.recordingId)
+          const state = listeningState(b.events, itemRecordingIds(b, item))
+          const now = itemRecordingIds(b, item).map(onNow).find(Boolean) ?? null
           const firstOfSection = n === 0 || rows[n - 1].section.id !== section.id
           return (
             <li key={item.id} aria-current={now ? 'true' : undefined}>
@@ -343,7 +350,7 @@ function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) =>
 function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number: number; b: Bundle; comparison?: Comparison }) {
   const { journey, bump, say, spotify, curatorReady } = useServices()
   const pid = b.programme.id
-  const state = listeningState(b.events, item.recordingId)
+  const state = listeningState(b.events, itemRecordingIds(b, item))
   const recording = b.recordings.get(item.recordingId)
   const [explaining, setExplaining] = useState(false)
   const [comparing, setComparing] = useState(false)
@@ -438,13 +445,13 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
             </button>
           ))}
         </div>
-        <label className={s.check}>
-          <input type="checkbox" checked={knewIt} onChange={() => void toggleKnown()} />
-          <span>
-            I knew this one already
-            {knewIt && <span className={s.checkHint}>The curator won’t count it as a discovery.</span>}
-          </span>
-        </label>
+        <div className={s.switchRow}>
+          <div>
+            <label htmlFor={`knew-${item.id}`} className={s.settingLabel}>I knew this one already</label>
+            {knewIt && <p className={s.settingHint}>The curator won’t count it as a discovery.</p>}
+          </div>
+          <input id={`knew-${item.id}`} type="checkbox" role="switch" className={s.switch} checked={knewIt} onChange={() => void toggleKnown()} />
+        </div>
         {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === item.recordingId || f.target.id === item.workId))) && (
           <div className={s.panelPart}>
             <FeedbackPanel
@@ -531,15 +538,22 @@ function ProgrammeTools({ b }: { b: Bundle }) {
   // Each time the programme's data changes (a confirmation, a swap, a stand-in),
   // bring a saved playlist into line. Quiet on success; a failure waits for the next change.
   const syncing = useRef(false)
+  // A change that arrives mid-sync (the last confirmations often do) is kept, and synced once the current run ends.
+  const again = useRef(false)
   const pid = b.programme.id
   const hasPlaylist = Boolean(b.playlist)
   useEffect(() => {
-    if (!hasPlaylist || !spotify.connected || syncing.current) return
-    syncing.current = true
-    keepPlaylistCurrent(repo, spotify, pid, week.label, { hideSkipped: settings.hideSkipped })
-      .then((wrote) => { if (wrote) bump() })
-      .catch(() => {})
-      .finally(() => { syncing.current = false })
+    if (!hasPlaylist || !spotify.connected) return
+    if (syncing.current) { again.current = true; return }
+    const run = (): void => {
+      syncing.current = true
+      again.current = false
+      keepPlaylistCurrent(repo, spotify, pid, week.label, { hideSkipped: settings.hideSkipped })
+        .then((wrote) => { if (wrote) bump() })
+        .catch(() => {})
+        .finally(() => { syncing.current = false; if (again.current) run() })
+    }
+    run()
   }, [b, hasPlaylist, pid, repo, spotify, week.label, bump, settings.hideSkipped])
 
   async function savePlaylist() {
@@ -563,7 +577,7 @@ function ProgrammeTools({ b }: { b: Bundle }) {
         <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer" title="Kept in step with the programme as recordings are confirmed">Open the playlist</a>
       )}
       {!b.playlist && spotify.connected && verified.length > 0 && (
-        <button className={s.textButton} onClick={savePlaylist} disabled={saving}>
+        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={savePlaylist} disabled={saving}>
           {saving ? 'Saving…' : 'Save as a Spotify playlist'}
         </button>
       )}
@@ -578,15 +592,15 @@ function ProgrammeTools({ b }: { b: Bundle }) {
  * match first; the rest behind it.
  */
 function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
-  const { repo } = useServices()
+  const { repo, settings } = useServices()
   const [matches, setMatches] = useState<LiveMatch[]>([])
   useEffect(() => {
     let live = true
     liveEvents(repo.marks)
-      .then((events) => { if (live) setMatches(liveMatches(b.programme, events, new Date().toISOString().slice(0, 10))) })
+      .then((events) => { if (live) setMatches(liveMatches(b.programme, events, isoDateIn(new Date(), settings.timeZone))) })
       .catch(() => {})
     return () => { live = false }
-  }, [repo, b.programme])
+  }, [repo, b.programme, settings.timeZone])
   // A skipped work's concert steps out with it.
   const kept = matches.filter((m) => !skip?.has(m.item.id))
   if (!kept.length) return null
@@ -780,7 +794,7 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
               <li key={o.id} className={s.entry}>
                 <h4 className={s.nextOption}>{o.title}</h4>
                 <p className={s.quiet}>{o.pitch}</p>
-                <button className={s.textButton} onClick={() => void take(o)} disabled={busy !== null}>
+                <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={busy !== null}>
                   {busy === o.id ? 'The curator is building it…' : 'Listen this way instead'}
                 </button>
               </li>

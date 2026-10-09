@@ -98,7 +98,6 @@ export function SettingsScreen() {
   const { settings, updateSettings, prompts, spotify, repo, bump, say } = svc
   return (
     <div>
-      <p className={s.eyebrow}>Settings</p>
       <h1 className={s.titleSmall}>Settings</h1>
       <p className={s.quiet}>
         New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
@@ -237,7 +236,7 @@ function ClaudeSection() {
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.settingsActions}>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing || (!settings.anthropicKey && !settings.demo)}>{testing ? 'Testing…' : 'Test the key'}</button>
-        {settings.anthropicKey && <button className={`${s.textButton} ${s.quietButton}`} onClick={() => { updateSettings({ anthropicKey: '' }); setResult(null) }}>Remove</button>}
+        {settings.anthropicKey && <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => { updateSettings({ anthropicKey: '' }); setResult(null) }}>Remove</button>}
       </div>
       <ResultLine r={result} />
       <Steps>
@@ -286,7 +285,7 @@ function SpotifySection() {
           : <>
               <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing}>{testing ? 'Testing…' : 'Test Spotify'}</button>
               <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => syncSpotify().then((n) => say(n ? 'Picked up recent listening.' : 'Nothing new from Spotify.')).catch((e) => say(messageOf(e), 'danger'))}>Check recent listening</button>
-              <button className={`${s.textButton} ${s.quietButton}`} onClick={() => { spotify.setTokens(null); setResult(null); bump() }}>Disconnect</button>
+              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => { spotify.setTokens(null); setResult(null); bump() }}>Disconnect</button>
             </>}
       </div>
       {spotify.connected && renewalNote(renewBy(spotify.currentTokens))}
@@ -441,7 +440,7 @@ function FreshStartSection() {
       await downloadBackup(repo, 'the-long-listen-archive')
       if (notion) {
         setWorking('Moving your notebook pages to Notion’s trash…')
-        await archiveNotebook(notion.call, repo).catch(() => 0)
+        await archiveNotebook(notion.call, repo)
       }
       setWorking('Clearing…')
       await repo.freshStart()

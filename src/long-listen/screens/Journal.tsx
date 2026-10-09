@@ -1,7 +1,7 @@
 import type { Concert, ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
-import { weekFromKey, weekOf } from '../domain/week'
+import { weekFromKey, weekOf, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
 import { concertDate, concertPerformers } from './Concerts'
@@ -31,7 +31,9 @@ export function JournalScreen() {
     // Concerts stand in the week they happened, with the hall's mark: live, not the week's programme.
     const concertsIn = new Map<string, Concert[]>()
     for (const c of [...concerts].sort((a, b) => a.date.localeCompare(b.date))) {
-      const wk = weekOf(new Date(`${c.date}T12:00:00Z`), settings.timeZone).key
+      // A concert's date is already a calendar date: its week follows from it, whatever the time zone.
+      const [y, m, d] = c.date.split('-').map(Number)
+      const wk = weekOfDate({ year: y, month: m, day: d }).key
       concertsIn.set(wk, [...(concertsIn.get(wk) ?? []), c])
     }
     const proposedOf = new Map<string, { proposed: ProposedRecording; programmeId?: string }>()

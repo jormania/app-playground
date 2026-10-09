@@ -70,7 +70,7 @@ export function ConcertScreen({ id }: { id: string }) {
   const { data, error } = useLoad(async () => (id === 'new' ? null : repo.concerts.require(id)), [id])
   if (id === 'new') return <ConcertForm />
   if (error) return <Problem error={error} />
-  if (!data) return <Waiting>Opening…</Waiting>
+  if (!data) return <Waiting>Opening the concert…</Waiting>
   if (editing) return <ConcertForm concert={data} onDone={() => setEditing(false)} />
   const c = data
   return (
@@ -122,8 +122,8 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
       <p className={s.libraryTitle}>{w.composer} — {w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
       {found === null ? (
         spotify.connected
-          ? <button className={s.textButton} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
-          : <a className={s.textButton} href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+          ? <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
+          : <a className={`${s.outlineButton} ${s.smallButton}`} href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
       ) : found.length === 0 ? (
         <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
       ) : (
@@ -170,13 +170,17 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  async function read(file: Blob) {
+  async function read(file: Blob): Promise<boolean> {
     setReading(true)
     try {
-      const r = await journey.readConcert(await asImage(file))
-      setD((x) => ({ ...x, ...r, note: x.note, source: 'screenshot', works: r.works.length ? r.works : x.works }))
+      const { promptVersion: _v, works, soloists, ...r } = await journey.readConcert(await asImage(file))
+      // What the picture showed fills the form; what it left blank leaves the form as the listener had it.
+      const shown = Object.fromEntries(Object.entries(r).filter(([, v]) => typeof v === 'string' && v.trim())) as Partial<ConcertDraft>
+      setD((x) => ({ ...x, ...shown, soloists: soloists.length ? soloists : x.soloists, works: works.length ? works : x.works, note: x.note, source: 'screenshot' }))
+      return true
     } catch (e) {
       say(messageOf(e), 'danger')
+      return false
     } finally {
       setReading(false)
     }
@@ -186,12 +190,12 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
   useEffect(() => {
     if (concert || !curatorReady || typeof caches === 'undefined') return
     let live = true
+    // Let go of it only once it has been read: a failed read (offline, busy) keeps it for the next try.
     void caches.match(SHARED_IMAGE).then(async (res) => {
       if (!res || !live) return
-      const blob = await res.blob()
+      if (!(await read(await res.blob()))) return
       await caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('long-listen-')).map((k) => caches.open(k).then((c) => c.delete(SHARED_IMAGE)))))
-      void read(blob)
-    })
+    }).catch(() => {})
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concert, curatorReady])

@@ -4,7 +4,7 @@ import type {
 } from '../domain/types'
 import { creditLine, newId } from '../domain/identity'
 import { listeningState, latestFeedback } from '../domain/listening'
-import { DEFAULT_TIME_ZONE, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
+import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import type { Repo } from '../store/repo'
 import type {
   CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
@@ -63,6 +63,11 @@ export class Journey {
     return this.now().toISOString()
   }
 
+  /** Today, in the listener's time zone — what the curator is told, never the UTC date. */
+  today(): string {
+    return isoDateIn(this.now(), this.timeZone)
+  }
+
   currentWeek(): ListeningWeek {
     return weekOf(this.now(), this.timeZone)
   }
@@ -100,6 +105,30 @@ export class Journey {
   }
 
   /**
+   * The week's record without asking the curator for directions — for a path
+   * taken from Threads before this week began, which needs a week to sit in
+   * but no three directions to choose from (each would be paid for, unread).
+   */
+  weekWithoutDirections(): Promise<WeekRecord> {
+    const week = this.currentWeek()
+    return this.once(`week:${week.key}`, async () => {
+      const existing = await this.repo.weeks.get(week.key)
+      if (existing) return existing
+      await this.repo.ensureMeta(this.stamp())
+      await Promise.all([
+        this.closeEndedExplorations().catch(() => {}),
+        this.interpretPendingFeedback().catch(() => {}),
+      ])
+      const record: WeekRecord = {
+        weekKey: week.key, startsOn: week.startsOn, endsOn: week.endsOn, createdAt: this.stamp(),
+        optionIds: [], setAsideProgrammeIds: [], promptVersion: '',
+      }
+      await this.repo.weeks.put(record)
+      return record
+    })
+  }
+
+  /**
    * Three directions. `requestedNext` undefined means "the start of a week":
    * the listener's wish for next week is read, and cleared once it reached
    * the curator. Any string — even '' — is a request made now, and the wish
@@ -108,7 +137,7 @@ export class Journey {
   private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = []): Promise<WeekRecord> {
     const context = await buildContext(this.repo, week, requestedNext)
     const res = await this.curator.call<ThemesResponse>('themes', {
-      today: this.now().toISOString().slice(0, 10),
+      today: this.today(),
       week: { key: week.key, label: week.label },
       context,
       alsoOfferedThisWeek,
@@ -165,7 +194,9 @@ export class Journey {
       const current = await this.repo.options.many(week.optionIds)
       await this.repo.options.putMany(current.map((o) => ({ ...o, status: 'open' as const })))
       const fresh = await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
-      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, mood: week.mood, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
+      // The mood may have changed while the curator thought: keep the latest.
+      const latest = await this.repo.weeks.get(lw.key)
+      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, mood: latest?.mood ?? week.mood, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
       await this.repo.weeks.put(record)
       return record
     })
@@ -215,7 +246,7 @@ export class Journey {
       const context = await buildContext(this.repo, lw)
       const now = this.stamp()
       const res = await this.curator.call<ProgrammeResponse>('programme', {
-        today: now.slice(0, 10),
+        today: this.today(),
         week: { key: lw.key, label: lw.label },
         option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, form: option.form },
         extension: { of: root.title, dek: root.dek, wish: wish?.trim() || undefined },
@@ -297,7 +328,7 @@ export class Journey {
     const context = await buildContext(this.repo, lw)
 
     const res = await this.curator.call<ProgrammeResponse>('programme', {
-      today: now.slice(0, 10),
+      today: this.today(),
       week: { key: lw.key, label: lw.label },
       option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, continuityNote: option.returning?.note, form: option.form },
       thread: digest ? { ...digest, stage } : null,
@@ -358,7 +389,9 @@ export class Journey {
       const o = await this.repo.options.get(id)
       if (o && o.status === 'offered') await this.repo.options.put({ ...o, status: 'open' })
     }
-    await this.repo.weeks.put({ ...week, chosenOptionId: option.id, chosenAt: now, programmeId: programme.id })
+    // Written over the week as it is now, not as it was before the curator's minute: a mood set meanwhile stays.
+    const latest = await this.repo.weeks.get(week.weekKey)
+    await this.repo.weeks.put({ ...week, mood: latest ? latest.mood : week.mood, chosenOptionId: option.id, chosenAt: now, programmeId: programme.id })
     return programme
   }
 
@@ -376,6 +409,8 @@ export class Journey {
   private async closeExploration(ex: ThemeExploration, current: WeekKey): Promise<void> {
     const theme = await this.repo.themes.require(ex.themeId)
     const programme = await this.repo.programmes.require(ex.programmeId)
+    // "More of this theme" belongs to the same week of the thread: its listening counts too.
+    const extras = (await this.repo.programmes.many(ex.extraProgrammeIds ?? [])).filter(Boolean)
     const digest = await threadDigest(this.repo, theme.id, current)
     const events = await this.repo.events.all()
     const feedback = await this.repo.feedback.all()
@@ -386,7 +421,7 @@ export class Journey {
       exploration: { weekKey: ex.weekKey, stage: ex.stage, angle: ex.angle },
       programme: {
         title: programme.title,
-        items: programme.sections.flatMap((s) => s.items).map((i) => ({
+        items: [programme, ...extras].flatMap((x) => x.sections.flatMap((s) => s.items)).map((i) => ({
           composer: i.proposed.composer,
           work: i.proposed.work,
           recording: creditLine(i.proposed),
@@ -518,7 +553,7 @@ export class Journey {
 
   /** A hall's programme, read from a screenshot into a draft for the listener to check. */
   readConcert(image: { mediaType: string; data: string }): Promise<ConcertResponse> {
-    return this.curator.call<ConcertResponse>('concert', { image, year: this.now().getFullYear() })
+    return this.curator.call<ConcertResponse>('concert', { image, year: Number(this.today().slice(0, 4)) })
   }
 
   /**
@@ -647,17 +682,23 @@ export class Journey {
         ...standIns.flatMap((c) => c.perspectives.slice(1).map((x) => ({ rid: x.recordingId, proposed: x.proposed, listenFor: x.listenFor ? [x.listenFor] : [] }))),
       ]
       const recordings = new Map((await this.repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
-      const done = new Set((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => m.id.slice('companion:'.length)))
-      const todo = wanted.filter((w, i) => wanted.findIndex((x) => x.rid === w.rid) === i && !done.has(w.rid) && (recordings.get(w.rid)?.spotify?.trackNames?.length ?? 0) > 0 && recordings.get(w.rid)?.verification === 'verified')
+      // Notes belong to one division of the work into tracks: a recording re-matched to another album is written for afresh.
+      const tracksOf = (rid: string) => (recordings.get(rid)?.spotify?.trackNames ?? []).join('\u241e')
+      const marks = new Map((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => [m.id.slice('companion:'.length), m.value as { tracks?: string }]))
+      const done = (rid: string) => { const m = marks.get(rid); return Boolean(m && (m.tracks === undefined || m.tracks === tracksOf(rid))) }
+      const todo = wanted.filter((w, i) => wanted.findIndex((x) => x.rid === w.rid) === i && !done(w.rid) && (recordings.get(w.rid)?.spotify?.trackNames?.length ?? 0) > 0 && recordings.get(w.rid)?.verification === 'verified')
       if (!todo.length) return 0
       const { language } = await this.repo.preferences()
+      // Short keys: a long recording id echoed back wrong would leave its notes unwritten and paid for again.
       const res = await this.curator.call<CompanionResponse>('companion', {
         language,
         programme: { title: p.title, dek: p.dek },
-        works: todo.map((w) => ({ key: w.rid, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames, listenFor: w.listenFor })),
+        works: todo.map((w, i) => ({ key: `w${i + 1}`, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames, listenFor: w.listenFor })),
       })
       const now = this.stamp()
-      await this.repo.marks.putMany(res.works.map((w) => ({ id: `companion:${w.key}`, at: now, value: { movements: w.movements, promptVersion: res.promptVersion } })))
+      const byKey = new Map(res.works.map((w) => [w.key, w.movements]))
+      // Every recording asked about is marked, notes or not, so none is asked about again until its tracks change.
+      await this.repo.marks.putMany(todo.map((w, i) => ({ id: `companion:${w.rid}`, at: now, value: { movements: byKey.get(`w${i + 1}`) ?? [], tracks: tracksOf(w.rid), promptVersion: res.promptVersion } })))
       return res.works.length
     })
   }

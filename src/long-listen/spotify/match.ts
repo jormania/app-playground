@@ -231,12 +231,37 @@ export function workTracks(albumTracks: SpotifyTrackLike[], matched: SpotifyTrac
   const at = ordered.findIndex((t) => t.id === matched.id)
   if (at < 0) return [matched]
   const fits = (t: SpotifyTrackLike) => workOverlap(workTitle, t.name) >= 0.99
-  if (!fits(ordered[at])) return [matched]
+  if (!fits(ordered[at])) return movementRun(ordered, at) ?? [matched]
   let start = at
   let end = at
   while (start > 0 && fits(ordered[start - 1])) start--
   while (end < ordered.length - 1 && fits(ordered[end + 1])) end++
   return ordered.slice(start, end + 1)
+}
+
+const ROMAN: Record<string, number> = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10, xi: 11, xii: 12 }
+
+/** "III. Allegro" → 3, "2. Andante" → 2; anything else, undefined. */
+function movementNumber(name: string): number | undefined {
+  const m = /^\s*([ivx]+|\d{1,2})[.:)]\s/i.exec(name)
+  if (!m) return undefined
+  return /\d/.test(m[1]) ? Number(m[1]) : ROMAN[m[1].toLowerCase()]
+}
+
+/**
+ * Tracks named only by their movement ("I. Allegro", "II. Andante"), as some
+ * albums name them — the work's title is on the album, not the track. The run
+ * is the matched track and its neighbours numbered one up and one down, so it
+ * stops where the next work's "I." begins.
+ */
+function movementRun(ordered: SpotifyTrackLike[], at: number): SpotifyTrackLike[] | undefined {
+  const n = movementNumber(ordered[at].name)
+  if (n === undefined) return undefined
+  let start = at
+  let end = at
+  while (start > 0 && movementNumber(ordered[start - 1].name) === (movementNumber(ordered[start].name) ?? 0) - 1) start--
+  while (end < ordered.length - 1 && movementNumber(ordered[end + 1].name) === (movementNumber(ordered[end].name) ?? 0) + 1) end++
+  return end > start ? ordered.slice(start, end + 1) : undefined
 }
 
 /** Search queries, most specific first. Spotify's search caps a page at ten results. */

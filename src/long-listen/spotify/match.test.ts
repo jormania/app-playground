@@ -123,3 +123,15 @@ describe('one work, named two ways', () => {
     expect(catalogueAgrees({ ...p, catalogue: '' }, 'Op. 102')).toBe(false)
   })
 })
+
+describe('a work whose tracks are named only by movement', () => {
+  const tr = (id: string, name: string, n: number) => ({ id, name, uri: `spotify:track:${id}`, artists: [], track_number: n, disc_number: 1 })
+  it('takes the run of numbered movements around the match, and stops at the next work', () => {
+    const album = [tr('a', 'I. Allegro', 1), tr('b', 'II. Andante', 2), tr('c', 'III. Finale', 3), tr('d', 'I. Moderato', 4), tr('e', 'II. Presto', 5)]
+    expect(workTracks(album, album[1], 'Symphony No. 4').map((t) => t.id)).toEqual(['a', 'b', 'c'])
+  })
+  it('keeps the matched track alone when nothing is numbered', () => {
+    const album = [tr('a', 'Prelude', 1), tr('b', 'Nocturne', 2)]
+    expect(workTracks(album, album[0], 'Suite').map((t) => t.id)).toEqual(['a'])
+  })
+})

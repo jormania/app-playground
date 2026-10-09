@@ -68,9 +68,11 @@ export function NotebookScreen() {
       if (thisWeek?.programmeId) {
         await journey.moreDirections(q)
         say('Three directions from your question are waiting under “Where next”, at the end of this week’s programme.', 'success')
-      } else {
-        await journey.ensureWeek()
+      } else if (thisWeek) {
         await journey.offerOtherDirections(q)
+      } else {
+        // No week yet: its first three directions start from the question — one call, and next week's wish is left alone.
+        await journey.ensureWeek(q)
       }
       bump()
       go({ name: 'week' })
@@ -104,7 +106,7 @@ export function NotebookScreen() {
 
       {(Object.keys(STANCE_TITLE) as TasteObservation['stance'][]).map((stance) => groups[stance].length > 0 && (
         <section key={stance} className={s.block}>
-          <h2 className={s.h2}>{STANCE_TITLE[stance]}</h2>
+          <h2 className={s.sectionHead}>{STANCE_TITLE[stance]}</h2>
           <ul className={s.bullets}>
             {groups[stance].map((o) => (
               <li key={o.id}>{o.statement} {o.confidence !== 'settled' && <span className={s.faint}>({o.confidence === 'tentative' ? 'a first impression' : 'becoming clearer'})</span>}</li>
@@ -115,7 +117,7 @@ export function NotebookScreen() {
 
       {taste.questions.length > 0 && (
         <section className={s.block}>
-          <h2 className={s.h2}>Questions you seem to be asking</h2>
+          <h2 className={s.sectionHead}>Questions you seem to be asking</h2>
           <p className={s.quiet}>Each one can become a week: <em>Follow this</em> asks the curator for three directions from it.</p>
           <ul className={s.bullets}>
             {taste.questions.map((q, i) => (
@@ -134,7 +136,7 @@ export function NotebookScreen() {
 
       {moved.length > 0 && (
         <section className={s.block}>
-          <h2 className={s.h2}>How it has moved</h2>
+          <h2 className={s.sectionHead}>How it has moved</h2>
           <ul className={s.bullets}>
             {moved.map((o) => {
               const now = o.supersededBy ? byId.get(o.supersededBy) : undefined
@@ -145,7 +147,7 @@ export function NotebookScreen() {
       )}
 
       <section className={s.block}>
-        <h2 className={s.h2}>What you’ve told the curator</h2>
+        <h2 className={s.sectionHead}>What you’ve told the curator</h2>
         {/* A ledger, not a list: what each setting is, then what it says. */}
         <dl className={s.ledger}>
           {preferenceLines(data.prefs).map((l) => {
@@ -160,34 +162,34 @@ export function NotebookScreen() {
 
       <hr className={s.rule} />
       <section>
-        <h2 className={s.h2}>A wish for next week</h2>
+        <h2 className={s.sectionHead}>A wish for next week</h2>
         <p className={s.quiet}>Read once, when the next week’s three directions are chosen — then cleared.</p>
         <label className={s.visuallyHidden} htmlFor="wish">A wish for next week</label>
         <textarea id="wish" className={s.textarea} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
         <div className={s.actions}>
-          <button className={s.outlineButton} onClick={saveWish} disabled={wish.trim() === data.prefs.nextRequest}>Keep this wish</button>
+          <button className={s.primaryButton} onClick={saveWish} disabled={wish.trim() === data.prefs.nextRequest}>Keep this wish</button>
         </div>
       </section>
 
       <section className={s.block}>
-        <h2 className={s.h2}>A note to the curator</h2>
+        <h2 className={s.sectionHead}>A note to the curator</h2>
         <p className={s.quiet}>Anything you’d like it to keep in mind — a composer you’re curious about, music you already know well (so it isn’t offered as new), how much time you have, a mood you’re in.</p>
         <label className={s.visuallyHidden} htmlFor="notes">Note to the curator</label>
         <textarea id="notes" className={s.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} />
         <div className={s.actions}>
-          <button className={s.outlineButton} onClick={saveNotes} disabled={notes.trim() === taste.notesToCurator}>Keep this note</button>
+          <button className={s.primaryButton} onClick={saveNotes} disabled={notes.trim() === taste.notesToCurator}>Keep this note</button>
         </div>
       </section>
 
       {notion && (
         <section className={s.block}>
-          <h2 className={s.h2}>In Notion</h2>
+          <h2 className={s.sectionHead}>In Notion</h2>
           <p className={s.quiet}>
             Your journal, threads, recordings and this notebook are copied to Notion as readable pages.
             {notionState.lastSync && ` Last updated ${new Date(notionState.lastSync).toLocaleString()}.`}
           </p>
-          {notionState.error && <p className={s.note}>{notionState.error}</p>}
-          <button className={s.textButton} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>
+          {notionState.error && <p className={s.settingWarn}>{notionState.error}</p>}
+          <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>
         </section>
       )}
     </div>

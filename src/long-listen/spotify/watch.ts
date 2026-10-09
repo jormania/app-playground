@@ -43,6 +43,8 @@ export class PlayerWatch {
   private listeners = new Set<(s: PlayerState) => void>()
   private timer: ReturnType<typeof setTimeout> | null = null
   private inFlight = false
+  /** Bumped by each command: a reading begun before it is out of date when it lands. */
+  private generation = 0
   private readonly onVisible = () => { if (this.visible()) this.look() }
 
   constructor(
@@ -72,6 +74,7 @@ export class PlayerWatch {
    * Spotify has settled, so the screen never waits a poll to agree with a tap.
    */
   expect(change: (np: NowPlaying | null) => NowPlaying | null): void {
+    this.generation += 1
     this.set({ ...this.state, np: change(this.state.np) })
     this.schedule(SETTLE_MS)
   }
@@ -97,14 +100,17 @@ export class PlayerWatch {
     if (!this.listeners.size || this.inFlight) return
     if (!this.source.connected || !this.visible()) { this.clear(); return }
     this.inFlight = true
+    const asked = this.generation
+    // A reading that began before a command would undo what the command just showed: drop it and look again soon.
+    const stale = () => asked !== this.generation
     this.source.nowPlaying().then(
-      (np) => { this.set({ np, cantFollow: false, known: true }) },
+      (np) => { if (!stale()) this.set({ np, cantFollow: false, known: true }) },
       (e) => {
-        if (e instanceof SpotifyUnavailable && e.reason === 'signed-out') this.set({ ...this.state, cantFollow: true, known: true })
+        if (!stale() && e instanceof SpotifyUnavailable && e.reason === 'signed-out') this.set({ ...this.state, cantFollow: true, known: true })
       },
     ).finally(() => {
       this.inFlight = false
-      this.schedule(nextLookIn(this.state.np))
+      this.schedule(stale() ? SETTLE_MS : nextLookIn(this.state.np))
     })
   }
 }
