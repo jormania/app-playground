@@ -3,7 +3,7 @@ import type { Concert, ProposedRecording, Recording, Work } from '../domain/type
 import { Landmark } from 'lucide-react'
 import { concertDate } from './Concerts'
 import { creditLine, fold, surname } from '../domain/identity'
-import { catalogueLine, whatAndWhen } from '../domain/workFacts'
+import { compactFacts } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
@@ -112,28 +112,28 @@ export function LibraryScreen() {
           {e.works.map(({ work, recordings, live }) => (
             <div key={work.id} className={s.libraryWork}>
               <p className={s.libraryTitle}>{work.title}</p>
-              {whatAndWhen(work.form, work.composed) && <p className={s.workMeta}>{whatAndWhen(work.form, work.composed)}</p>}
-              {catalogueLine(work.catalogue, e.composer) && <p className={s.workCatalogue}>{catalogueLine(work.catalogue, e.composer)}</p>}
+              {/* What, which number, when — one line; the fuller words are on the programme. */}
+              {compactFacts(work.form, work.catalogue, work.composed) && <p className={s.workMeta}>{compactFacts(work.form, work.catalogue, work.composed)}</p>}
               <ul className={s.libraryRecs}>
                 {recordings.map(({ rec, proposed, programmeId, programmeTitle, role }) => {
                   const fb = latestFeedback(data.feedback, rec.id)
                   const state = listeningState(data.events, rec.id)
                   return (
                     <li key={rec.id} className={s.libraryRec}>
-                      {/* Who played it; then where you stand with it, as tags; then where it came from. */}
+                      {/* Who played it; then, on one row, where you stand with it, how long, where to hear it and where it came from. */}
                       <Credits r={proposed} />
                       <span className={s.tagRow}>
                         <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
                         {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)?.toLowerCase()}</span>}
                         {isConfirmed(rec) && rec.spotify.durationMs ? <span>{aboutDuration(rec.spotify.durationMs)}</span> : null}
                         {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
+                        {(programmeId || role) && (
+                          <span>
+                            {role && <>{role}{programmeId ? ', ' : ''}</>}
+                            {programmeId && <>from <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></>}
+                          </span>
+                        )}
                       </span>
-                      {(programmeId || role) && (
-                        <span className={s.tagRow}>
-                          {role && <>{role}{programmeId ? ', ' : ''}</>}
-                          {programmeId && <>from <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></>}
-                        </span>
-                      )}
                       {fb.notes.length > 0 && <div className={s.said}><q>{fb.notes[fb.notes.length - 1]}</q></div>}
                     </li>
                   )
