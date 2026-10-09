@@ -180,7 +180,7 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
           </div>
         )}
         <div className={s.actions}>
-          <button className={s.textButton} onClick={onChoose} disabled={busy}>Listen this way →</button>
+          <button className={s.outlineButton} onClick={onChoose} disabled={busy}>Listen this way →</button>
         </div>
       </div>
     </li>

@@ -26,3 +26,16 @@ export function Paragraphs({ text, className }: { text: string; className?: stri
   const paras = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
   return <div className={className}>{paras.map((p, i) => <p key={i}>{p}</p>)}</div>
 }
+
+/**
+ * A page with nothing in it yet: a small ornament, one sentence on how it
+ * fills, and — where there is one — the way to start. Not an apology.
+ */
+export function Empty({ children, link }: { children: React.ReactNode; link?: { href: string; label: string } }) {
+  return (
+    <div className={s.empty}>
+      <p>{children}</p>
+      {link && <a href={link.href}>{link.label}</a>}
+    </div>
+  )
+}

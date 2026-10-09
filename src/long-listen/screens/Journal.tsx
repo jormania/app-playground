@@ -4,7 +4,7 @@ import { latestFeedback, listeningState, reactionLabel } from '../domain/listeni
 import { weekFromKey, weekOf } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
-import { Problem, Waiting } from '../components/common'
+import { Empty, Problem, Waiting } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
@@ -79,13 +79,20 @@ export function JournalScreen() {
           <button className={s.textButton} onClick={() => syncSpotify().then((n) => say(n ? 'Picked up your recent Spotify listening.' : 'Nothing new from Spotify.')).catch(() => say('Spotify can’t be reached right now.', 'danger'))}>Check now</button>
         </p>
       )}
-      {data.entries.length === 0 && <p className={s.quiet} style={{ marginTop: 'var(--space-xl)' }}>Nothing here yet. Your first week begins on This week.</p>}
+      {data.entries.length === 0 && <Empty link={{ href: '#/', label: 'Go to this week' }}>Nothing here yet. Your first week begins on This week.</Empty>}
 
       {data.entries.map(({ key, week, offered, heard }) => {
         const wk = weekFromKey(key)
         return (
-          <section key={key} className={s.journalWeek}>
-            <h2 className={s.weekHead}>Week {wk.number} · {wk.label}</h2>
+          <section key={key} className={s.journalWeek} aria-label={`Week ${wk.number}`}>
+            {/* The week's number in the margin, a rule running down to the next:
+                the journal reads as a timeline, not a feed. */}
+            <div className={s.weekMark} aria-hidden="true">
+              <span className={s.weekWord}>Week</span>
+              <span className={s.weekNum}>{wk.number}</span>
+            </div>
+            <div className={s.weekBody}>
+            <h2 className={s.weekHead}>{wk.label}</h2>
             {week?.programmeId && (
               <p className={s.entryTitle} style={{ margin: 0 }}>
                 <a href={href({ name: 'programme', id: week.programmeId })} className={s.quietLink}>{data.programmeTitle.get(week.programmeId)}</a>
@@ -132,6 +139,7 @@ export function JournalScreen() {
                 })}
               </ul>
             )}
+            </div>
           </section>
         )
       })}

@@ -51,13 +51,15 @@ function Shell() {
             <a className={`${s.iconLink} ${route.name === 'settings' ? s.iconOn : ''}`} href={href({ name: 'settings' })} aria-label="Settings" title="Settings"><Settings2 size={18} strokeWidth={1.6} /></a>
           </span>
         </div>
-        <nav ref={navRef} className={s.nav} aria-label="Sections">
+        {/* The listening view is one quiet screen: the sections step back, and
+            its own link leads back to the programme. */}
+        {route.name !== 'listen' && <nav ref={navRef} className={s.nav} aria-label="Sections">
           {NAV.map((n) => (
             <a key={n.label} href={href(n.route)} className={`${s.navLink} ${active === n.route.name ? s.navActive : ''}`} aria-current={active === n.route.name ? 'page' : undefined}>
               {n.label}
             </a>
           ))}
-        </nav>
+        </nav>}
         {settings.demo && <p className={s.demo}>Demo curator — canned programmes, for development only</p>}
       </header>
       <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name}>

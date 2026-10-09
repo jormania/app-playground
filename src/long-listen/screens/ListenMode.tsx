@@ -92,9 +92,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       )}
 
       <div className={s.actions} style={{ marginTop: 'var(--space-xl)' }}>
-        {sp && <a href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer">Open in Spotify</a>}
+        <button className={s.primaryButton} onClick={heard}>I’ve heard it</button>
         {sp && spotify.connected && <button className={s.textButton} onClick={play}>Play on your device</button>}
-        <button className={s.textButton} onClick={heard}>I’ve heard it</button>
+        {sp && <a href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer">Open in Spotify</a>}
       </div>
       <p className={s.note}>The screen stays awake while this page is open.</p>
     </article>

@@ -3,7 +3,7 @@ import type { TasteObservation } from '../domain/types'
 import { useLoad, useServices } from '../app/services'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
 import { preferenceLines } from '../notion/mirror'
-import { Problem, Waiting, messageOf } from '../components/common'
+import { Empty, Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
@@ -59,7 +59,7 @@ export function NotebookScreen() {
       <h1 className={s.title}>Your listening, in words</h1>
       <p className={s.dek}>What the curator has noticed. Not a score — a few honest sentences, and how sure it is of each.</p>
 
-      {empty && <p className={s.quiet} style={{ marginTop: 'var(--space-xl)' }}>Nothing yet. A word or two of feedback after a recording is how this begins.</p>}
+      {empty && <Empty>Nothing yet. A word or two of feedback after a recording is how this begins.</Empty>}
       {data.pending > 0 && (
         <p className={s.faint}>
           Some of what you’ve said hasn’t been read yet.{' '}
@@ -99,7 +99,15 @@ export function NotebookScreen() {
 
       <section className={s.block}>
         <h2 className={s.h2}>What you’ve told the curator</h2>
-        <ul className={s.bullets}>{preferenceLines(data.prefs).map((l) => <li key={l}>{l}</li>)}</ul>
+        {/* A ledger, not a list: what each setting is, then what it says. */}
+        <dl className={s.ledger}>
+          {preferenceLines(data.prefs).map((l) => {
+            const at = l.indexOf(': ')
+            return at > 0
+              ? <div key={l}><dt>{l.slice(0, at)}</dt><dd>{l.slice(at + 2)}</dd></div>
+              : <div key={l}><dd className={s.ledgerWide}>{l}</dd></div>
+          })}
+        </dl>
         <p className={s.faint}><a href="#/settings">Change these in Settings</a></p>
       </section>
 
@@ -110,7 +118,7 @@ export function NotebookScreen() {
         <label className={s.visuallyHidden} htmlFor="wish">A wish for next week</label>
         <textarea id="wish" className={s.textarea} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
         <div className={s.actions}>
-          <button className={s.textButton} onClick={saveWish} disabled={wish.trim() === data.prefs.nextRequest}>Keep this wish</button>
+          <button className={s.outlineButton} onClick={saveWish} disabled={wish.trim() === data.prefs.nextRequest}>Keep this wish</button>
         </div>
       </section>
 
@@ -120,7 +128,7 @@ export function NotebookScreen() {
         <label className={s.visuallyHidden} htmlFor="notes">Note to the curator</label>
         <textarea id="notes" className={s.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} />
         <div className={s.actions}>
-          <button className={s.textButton} onClick={saveNotes} disabled={notes.trim() === taste.notesToCurator}>Keep this note</button>
+          <button className={s.outlineButton} onClick={saveNotes} disabled={notes.trim() === taste.notesToCurator}>Keep this note</button>
         </div>
       </section>
 
