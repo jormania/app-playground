@@ -48,7 +48,7 @@ export function ConcertsScreen() {
             {list.map((c) => (
               <li key={c.id} className={s.entry}>
                 <p className={s.mood}>{concertDate(c.date)}{c.hall ? ` · ${c.hall}` : ''}</p>
-                <a className={s.entryTitle} href={href({ name: 'concert', id: c.id })}>{c.works.map((w) => `${w.composer.split(' ').slice(-1)[0]}, ${w.title}`).join(' · ')}</a>
+                <a className={`${s.entryTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{c.works.map((w) => `${w.composer.split(' ').slice(-1)[0]}, ${w.title}`).join(' · ')}</a>
                 {c.note && <p className={s.said}><q>{c.note}</q></p>}
               </li>
             ))}
@@ -246,11 +246,13 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
 
         <p className={s.label} style={{ marginTop: 'var(--space-md)' }}>The works, in order</p>
         {d.works.map((w, i) => (
-          <div key={i} className={s.fieldRow}>
+          // One work, two lines: who and which catalogue number, then its title at full width.
+          <div key={i} className={s.workRow}>
+            <span className={s.workNo}>{i + 1}</span>
             <input className={s.input} aria-label="Composer" value={w.composer} onChange={(e) => setWork(i, { composer: e.target.value })} placeholder="Composer" />
-            <input className={s.input} aria-label="Work" value={w.title} onChange={(e) => setWork(i, { title: e.target.value })} placeholder="Work" />
-            <input className={`${s.input} ${s.inputNarrow}`} aria-label="Catalogue" value={w.catalogue ?? ''} onChange={(e) => setWork(i, { catalogue: e.target.value })} placeholder="Op." />
-            {d.works.length > 1 && <button type="button" className={s.textButton} onClick={() => set({ works: d.works.filter((_, j) => j !== i) })} aria-label="Remove work">Remove</button>}
+            <input className={s.input} aria-label="Catalogue" value={w.catalogue ?? ''} onChange={(e) => setWork(i, { catalogue: e.target.value })} placeholder="Op." />
+            <input className={`${s.input} ${s.workTitleInput}`} aria-label="Work" value={w.title} onChange={(e) => setWork(i, { title: e.target.value })} placeholder="Work" />
+            {d.works.length > 1 && <button type="button" className={`${s.textButton} ${s.workRemove}`} onClick={() => set({ works: d.works.filter((_, j) => j !== i) })} aria-label={`Remove work ${i + 1}`}>Remove</button>}
           </div>
         ))}
         <button type="button" className={s.textButton} onClick={() => set({ works: [...d.works, { composer: '', title: '' }] })}>Add a work</button>

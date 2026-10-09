@@ -1851,8 +1851,30 @@
   min-width: 0;
 }
 
-.inputNarrow {
-  flex: 0 1 6rem !important;
+.workRow {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr) 6.5rem;
+  gap: var(--space-2xs) var(--space-xs);
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.workNo {
+  grid-row: span 2;
+  align-self: start;
+  padding-top: 0.6em;
+  font-family: var(--font-display);
+  color: var(--color-accent);
+}
+
+.workTitleInput {
+  grid-column: 2 / 4;
+}
+
+.workRemove {
+  grid-column: 2 / 4;
+  justify-self: start;
+  font-size: var(--text-sm);
 }
 
 /* The pause between works: what's next, and the way to stay. */
@@ -1871,9 +1893,19 @@
 }
 
 .carryOn {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: var(--space-xs);
   margin-top: var(--space-xs);
   font-size: var(--text-sm);
   color: var(--color-muted);
+}
+
+.carryOn input {
+  flex: none;
+  margin-top: 0.3em;
+  accent-color: var(--color-accent);
 }
 
 .listenForLarge li {

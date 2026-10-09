@@ -133,7 +133,7 @@ export function JournalScreen() {
             {concerts.map((c) => (
               <div key={c.id} className={s.journalConcert}>
                 <p className={s.composer}><Landmark size={15} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Heard live · {c.venue} · {concertDate(c.date)}</p>
-                <a className={s.entryTitle} href={href({ name: 'concert', id: c.id })}>{c.works.map((w) => `${w.composer.split(' ').slice(-1)[0]}, ${w.title}`).join(' · ')}</a>
+                <a className={`${s.entryTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{c.works.map((w) => `${w.composer.split(' ').slice(-1)[0]}, ${w.title}`).join(' · ')}</a>
                 {concertPerformers(c) && <p className={s.quiet} style={{ margin: 0 }}>{concertPerformers(c)}</p>}
                 {c.note && <p className={s.said}><q>{c.note}</q></p>}
               </div>
