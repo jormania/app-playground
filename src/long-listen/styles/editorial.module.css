@@ -547,31 +547,35 @@
   color: var(--color-faint);
 }
 
-/* The four states on one line: a thin segmented pill, the current one filled.
-   Segments size to their words, so all four fit a phone's width; under very
-   large text a label wraps inside its segment rather than the row wrapping. */
+/* The four states on one line, drawn like the design system's small
+   SegmentedControl that Settings uses — a tinted track, the current one filled
+   with the accent — so "selected" looks the same everywhere in the app. Kept
+   local (not the DS component) because a long label must wrap inside its
+   segment at large text, where the DS track would scroll sideways instead. */
 .segmented {
   display: flex;
-  padding: 2px;
+  gap: var(--space-3xs);
+  padding: var(--space-3xs);
   margin-bottom: var(--space-sm);
-  border: 1px solid var(--color-border-2);
-  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
 }
 
 .segment {
   appearance: none;
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 40px;
+  min-height: 36px;
   padding: var(--space-3xs) var(--space-xs);
   background: none;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   font: inherit;
   font-size: var(--text-sm);
   line-height: 1.2;
   color: var(--color-muted);
   cursor: pointer;
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
 }
 
 .segment:hover {
@@ -580,8 +584,8 @@
 
 .segmentOn,
 .segmentOn:hover {
-  background: var(--color-ink);
-  color: var(--color-bg);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 /* Each part after the first gets a hairline, so the box reads as one card. */
@@ -796,10 +800,18 @@
   border-color: var(--color-ink);
 }
 
+/* Settings' design-system SegmentedControls at size "sm", lifted from 32px
+   to the 36px of the programme's states row, so the two read as one control
+   and stay comfortable under a finger (the track adds 4px each side). */
+.compactTrack > button[role='radio'] {
+  height: 36px;
+}
+
+/* Selected: the accent fill every "chosen" control in the app uses. */
 .chipOn {
-  background: var(--color-ink);
-  border-color: var(--color-ink);
-  color: var(--color-bg);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .input {
@@ -826,6 +838,11 @@
   margin: var(--space-lg) 0;
   padding: var(--space-md) 0 var(--space-md) var(--space-md);
   border-left: 2px solid var(--color-accent);
+}
+
+/* A card's closing link is an action like the buttons beside it: same size. */
+.nextCard > a {
+  font-size: var(--text-base);
 }
 
 .nextTitle {
