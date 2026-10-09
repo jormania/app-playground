@@ -57,6 +57,32 @@
   --color-danger:       #e57a6c;
 }
 
+/* Dusk: the listening view only, whatever the theme. The screen stays on
+   while the music plays, so it should be neither the bright page of day nor
+   the dark of night but between them: a deeper, warm parchment (#b5a68c,
+   halfway down from the day paper) under near-black ink. On an OLED phone it
+   lights the panel at about half the day theme's level. Every text colour
+   holds 4.5:1 or better on it (ink 7.5, muted 5.5, faint 4.5, accent 5.3).
+   Set by the listening view (data-listening on <html>) and removed on leaving;
+   listed after the dark block so it wins either way. */
+:root[data-listening] {
+  color-scheme: light;
+  --color-bg:        #b5a68c;
+  --color-bg-sunken: #a99a80;
+  --color-surface:   #bfb197;
+  --color-surface-2: #a99a80;
+  --color-border:    #998a71;
+  --color-border-2:  #7d6f5a;
+
+  --color-ink:   #1c1712;
+  --color-muted: #382f25;
+  --color-faint: #463c30;
+
+  --color-accent:       #5e1d13;
+  --color-accent-hover: #4a160e;
+  --color-on-accent:    #f0e6d4;
+}
+
 /* Larger text scales everything set in rem — type, space, measure — together. */
 :root[data-text-size="large"] {
   font-size: 112.5%;

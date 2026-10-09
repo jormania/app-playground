@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
-import { ExternalLink, Play } from 'lucide-react'
+import { useEffect } from 'react'
 import { creditLine } from '../domain/identity'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
-import { SpotifyUnavailable, openUrl } from '../spotify/client'
+import { enterDusk } from '../app/theme'
+import { usePlayback } from '../app/playback'
+import { ListenBar } from '../components/ListenBar'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
-import { Problem, Waiting, messageOf } from '../components/common'
+import { Problem, Waiting } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -16,7 +17,7 @@ import s from '../styles/editorial.module.css'
  * the music, not a progress bar.
  */
 export function ListenModeScreen({ programmeId, itemId }: { programmeId: string; itemId: string }) {
-  const { repo, spotify, journey, bump, say } = useServices()
+  const { repo, spotify, journey, bump } = useServices()
   const { data, error } = useLoad(async () => {
     const programme = await repo.programmes.require(programmeId)
     const item = programme.sections.flatMap((x) => x.items).find((i) => i.id === itemId)
@@ -26,25 +27,11 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }, [programmeId, itemId])
   useWakeLock(true)
 
-  // Which of this recording's tracks is sounding now, if any. Polled gently, only while visible.
-  const [nowIndex, setNowIndex] = useState<number | null>(null)
-  const [noDevice, setNoDevice] = useState(false)
-  const trackIds = isConfirmed(data?.recording) ? data.recording.spotify.trackIds : undefined
-  useEffect(() => {
-    if (!spotify.connected || !trackIds?.length) return
-    let live = true
-    const look = () => {
-      if (document.visibilityState !== 'visible') return
-      spotify.nowPlaying().then((np) => {
-        if (!live) return
-        const i = np?.isPlaying ? trackIds.indexOf(np.trackId) : -1
-        setNowIndex(i >= 0 ? i : null)
-      }).catch(() => {})
-    }
-    look()
-    const timer = setInterval(look, 10_000)
-    return () => { live = false; clearInterval(timer) }
-  }, [spotify, trackIds])
+  // Dusk while this screen is open: it stays lit, so neither day-bright nor night-dark.
+  useEffect(() => enterDusk(), [])
+  const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
+  // Which movement is sounding, playing or paused — shared with the programme's buttons.
+  const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Opening…</Waiting>
@@ -59,16 +46,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     go({ name: 'programme', id: programme.id })
   }
 
-  async function play() {
-    if (!sp) return
-    setNoDevice(false)
-    try {
-      await spotify.play(sp.trackUris)
-      await journey.markListening(item, 'play-started', programme.id, 'app')
-    } catch (e) {
-      if (e instanceof SpotifyUnavailable && e.reason === 'no-device') setNoDevice(true)
-      else say(messageOf(e), 'danger')
-    }
+  const started = () => { void journey.markListening(item, 'play-started', programme.id, 'app').then(bump) }
+  const nowIndex = playback.at?.index ?? null
+
+  // A movement can be started from the list: the place in the music, by its name.
+  async function playFrom(i: number) {
+    if (await playback.play(i)) started()
   }
 
   return (
@@ -78,31 +61,17 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       <h1 className={s.title}>{item.proposed.work}</h1>
       <p className={s.dek}>{creditLine(item.proposed)}{sp?.durationMs ? ` · ${aboutDuration(sp.durationMs)}` : ''}</p>
 
-      {/* The same listen bar as the programme: Play first, the Spotify app the
-          quiet alternative; placed first, since pressing it is what this screen is for. */}
-      {sp && (
-        <div className={s.listenBar} style={{ marginTop: 'var(--space-md)' }}>
-          {spotify.connected ? (
-            <>
-              <button className={s.playButton} onClick={play}><Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Play</button>
-              <a className={s.listenAlt} href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer">
-                or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
-              </a>
-            </>
-          ) : (
-            <a className={s.playButton} href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer">
-              <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Listen on Spotify
-            </a>
-          )}
-        </div>
-      )}
-      {noDevice && <p className={s.note} role="status">Spotify isn’t open on any device yet. Open it on your phone, speaker or computer, then press Play again.</p>}
+      {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for. */}
+      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={movements.length} playback={playback} onStarted={started} style={{ marginTop: 'var(--space-md)' }} />}
 
       {movements.length > 1 && (
         <ol className={s.movements}>
           {movements.map((m, i) => (
             <li key={`${i}-${m}`} className={nowIndex === i ? s.movementNow : undefined} aria-current={nowIndex === i ? 'true' : undefined}>
-              {m}{nowIndex === i && <span className={s.nowWord}> — now</span>}
+              {spotify.connected
+                ? <button type="button" className={s.movementButton} onClick={() => void playFrom(i)} disabled={playback.busy} title="Play from this movement">{m}</button>
+                : m}
+              {nowIndex === i && <span className={s.nowWord}> — {playback.at?.playing ? 'now' : 'paused'}</span>}
             </li>
           ))}
         </ol>

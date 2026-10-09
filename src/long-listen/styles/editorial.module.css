@@ -768,6 +768,40 @@
   color: var(--color-accent);
 }
 
+.playButton:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+/* Where it's playing, under the listen bar: a still dot, not a pulse —
+   nothing on this line moves between Spotify's readings. */
+.playbackLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.playbackLine:empty {
+  margin: 0;
+}
+
+.playingDot,
+.pausedDot {
+  flex: none;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.pausedDot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--color-muted);
+}
+
 .note {
   font-size: var(--text-sm);
   color: var(--color-faint);
@@ -1621,6 +1655,34 @@
 .movementNow {
   color: var(--color-ink) !important;
   font-style: italic;
+}
+
+.movementButton {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+
+/* The row is the target: a movement name is short, a thumb is not. */
+.movementButton::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-xs)) -100vw calc(-1 * var(--space-xs)) 0;
+}
+
+.movements li {
+  overflow: hidden;
+}
+
+.movementButton:hover {
+  color: var(--color-accent);
 }
 
 .nowWord {
