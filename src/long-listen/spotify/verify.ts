@@ -2,7 +2,7 @@ import type { Album, ListeningEvent, ProposedRecording, Recording } from '../dom
 import { newId } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import type { Repo } from '../store/repo'
-import { MATCHER_VERSION, bestTrack, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
+import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import type { RecentPlay, SpotifyAlbum, SpotifyClient } from './client'
 
 /**
@@ -151,6 +151,8 @@ export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, rec
 /** One recording of a work that Spotify actually has, for the curator to choose from. */
 export interface SpotifyCandidate {
   album: string
+  /** The work as Spotify names it, without the movement: "Cello Concerto No. 1, Op. 29". */
+  title?: string
   /** For a link to the album; left out of what the curator is sent. */
   albumId?: string
   year?: string
@@ -164,15 +166,21 @@ export interface SpotifyCandidate {
  */
 export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecording, max = 8): Promise<SpotifyCandidate[]> {
   const composer = p.composer.split(' ').slice(-1)[0]
-  const queries = [...new Set([`${composer} ${p.work.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')}`.replace(/\s+/g, ' ').trim(), ...searchQueries(p).slice(0, 1)])]
+  const queries = [...new Set([
+    `${composer} ${p.work.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')}`.replace(/\s+/g, ' ').trim(),
+    // The catalogue number finds the recordings that title the work another way.
+    ...(p.catalogue?.trim() ? [`${composer} ${p.catalogue.trim()}`] : []),
+    ...searchQueries(p).slice(0, 1),
+  ])]
   const byAlbum = new Map<string, SpotifyCandidate>()
   for (const q of queries) {
     for (const t of await spotify.searchTracks(q)) {
       if (!t.album || byAlbum.has(t.album.id)) continue
-      const onWork = Math.max(workOverlap(p.work, t.name), workOverlap(p.work, t.album.name))
-      if (onWork < 0.75 || !isCredited(p.composer, t.artists)) continue
+      const onWork = Math.max(workOverlap(p.work, t.name), workOverlap(p.work, t.album.name)) >= 0.75 || catalogueAgrees(p, t.name)
+      if (!onWork || catalogueContradicts(p, t.name) || !isCredited(p.composer, t.artists)) continue
       const artists = t.artists.map((a) => a.name).filter((n) => !isCredited(p.composer, [{ name: n }]))
-      if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, albumId: t.album.id, year: t.album.release_date?.slice(0, 4), artists })
+      const title = t.name.split(':')[0].trim()
+      if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, ...(title ? { title } : {}), albumId: t.album.id, year: t.album.release_date?.slice(0, 4), artists })
     }
     if (byAlbum.size >= max) break
   }

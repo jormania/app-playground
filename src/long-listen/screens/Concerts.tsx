@@ -119,15 +119,17 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
       {found === null ? (
         spotify.connected
           ? <button className={s.textButton} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
-          : <a className={s.textButton} href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}`)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+          : <a className={s.textButton} href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
       ) : found.length === 0 ? (
-        <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}`)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
+        <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
       ) : (
         <ul className={s.bullets}>
           {found.map((x, i) => (
             <li key={x.albumId ?? x.album}>
               <span className={s.label}>{theirs(x) ? 'The same performers' : i === (theirs(found[0]) ? 1 : 0) ? 'A recording to start from' : 'Another way to hear it'}</span>{' '}
               {x.albumId ? <a href={openUrl('album', x.albumId)} target="_blank" rel="noopener noreferrer">{x.artists.join(', ')}</a> : x.artists.join(', ')}
+              {/* Which work Spotify says it is, when that says more than the programme did: "Cello Concerto No. 1, Op. 29". */}
+              {x.title && fold(x.title) !== fold(`${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`) && <span> · {x.title}</span>}
               <span className={s.faint}> · {x.album}{x.year ? `, ${x.year}` : ''}</span>
             </li>
           ))}

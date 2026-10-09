@@ -192,10 +192,10 @@ describe('programme', () => {
     expect(works.filter((w) => w.startsWith('Pictures'))).toHaveLength(1)
   })
 
-  it('sends the curating to Sonnet and the reading, summing up, context and search to Haiku', async () => {
+  it('sends the curating and concert programmes to Sonnet, and the reading, summing up, context and search to Haiku', async () => {
     const { modelFor, curatorBody, resourcesBody } = await import('./curator.js')
     const { MODEL_HAIKU, MODEL_SONNET } = await import('../../shared/models.js')
-    for (const op of ['themes', 'programme', 'compare']) expect(curatorBody(op, 'x').model).toBe(MODEL_SONNET)
+    for (const op of ['themes', 'programme', 'compare', 'concert']) expect(curatorBody(op, 'x').model).toBe(MODEL_SONNET)
     for (const op of ['taste', 'continuity', 'explain']) expect(curatorBody(op, 'x').model).toBe(MODEL_HAIKU)
     expect(modelFor('resources')).toBe(MODEL_HAIKU)
     expect(resourcesBody('x').model).toBe(MODEL_HAIKU)

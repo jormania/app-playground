@@ -82,8 +82,10 @@ const tokens = (s: string) => s.split(' ').filter(Boolean)
  *       held for the listener to confirm instead of being linked. Matches an
  *       older matcher accepted are re-checked (it once passed Beethoven's 7th
  *       for Sibelius's, same conductor, same orchestra).
+ *   4 — "violoncello" is "cello" in a title, so "Concerto for Violoncello"
+ *       is found for a cello concerto.
  */
-export const MATCHER_VERSION = 3
+export const MATCHER_VERSION = 4
 
 /**
  * The curator often adds a version note in brackets — "(original piano
@@ -96,11 +98,18 @@ function matchTitle(title: string): string {
   return title.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
 }
 
+// One instrument, several spellings: "Concerto for Violoncello" is a cello concerto.
+const SAME_WORD: [RegExp, string][] = [
+  [/\bviolon(?:cello|celle|cel)\b/g, 'cello'],
+  [/\bvioloncelo\b/g, 'cello'],
+]
+const sameWords = (s: string) => SAME_WORD.reduce((acc, [re, to]) => acc.replace(re, to), s)
+
 /** How much of the work's identifying title appears in a track (or album) name, 0..1. */
 export function workOverlap(workTitle: string, trackName: string): number {
-  const want = tokens(workTitleKey(matchTitle(workTitle)))
+  const want = tokens(sameWords(workTitleKey(matchTitle(workTitle))))
   if (want.length === 0) return 0
-  const have = new Set(tokens(workTitleKey(trackName)).concat(tokens(fold(trackName))))
+  const have = new Set(tokens(sameWords(workTitleKey(trackName))).concat(tokens(sameWords(fold(trackName)))))
   return want.filter((t) => have.has(t)).length / want.length
 }
 
@@ -139,8 +148,20 @@ function catalogueNumbers(text: string): Set<string> {
   return out
 }
 
+/**
+ * Does the track name the proposal's own catalogue number? "Concerto for
+ * Violin, Cello and Orchestra in A minor, Op. 102" shares one word with
+ * "Double Concerto", and is the same work: the number says so.
+ */
+export function catalogueAgrees(p: ProposedRecording, trackText: string): boolean {
+  const want = catalogueNumbers(`${p.catalogue ?? ''} ${p.work}`)
+  if (!want.size) return false
+  for (const h of catalogueNumbers(trackText)) if (want.has(h)) return true
+  return false
+}
+
 /** Does the track name a catalogue number of the same scheme as the proposal's, but a different one? */
-function catalogueContradicts(p: ProposedRecording, trackText: string): boolean {
+export function catalogueContradicts(p: ProposedRecording, trackText: string): boolean {
   const want = catalogueNumbers(`${p.catalogue ?? ''} ${p.work}`)
   if (!want.size) return false
   const have = catalogueNumbers(trackText)

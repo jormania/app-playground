@@ -121,7 +121,27 @@ describe('verifying a recording', () => {
     const karajan = { ...t('k1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1, ['Claude Debussy', 'Berliner Philharmoniker', 'Herbert von Karajan']), album: { id: 'alb2', name: 'Debussy: La mer', release_date: '1964-01-01' } }
     const other = { ...t('x1', 'Nocturnes, L. 91: I. Nuages', 1, ['Claude Debussy', 'Someone Else']), album: { id: 'alb3', name: 'Debussy: Nocturnes' } }
     const out = await spotifyCandidates(fakeSpotify([karajan, karajan, other]), proposed)
-    expect(out).toEqual([{ album: 'Debussy: La mer', albumId: 'alb2', year: '1964', artists: ['Berliner Philharmoniker', 'Herbert von Karajan'] }])
+    expect(out).toEqual([{ album: 'Debussy: La mer', title: 'La mer, L. 109', albumId: 'alb2', year: '1964', artists: ['Berliner Philharmoniker', 'Herbert von Karajan'] }])
+  })
+
+  it('finds a work Spotify titles another way by its catalogue number, and never one with a different number', async () => {
+    // A concert's "Double Concerto in A minor, Op. 102"; DG calls it a concerto for violin and cello.
+    const p: ProposedRecording = { composer: 'Johannes Brahms', work: 'Double Concerto in A minor', catalogue: 'Op. 102', soloists: [] }
+    const dg = { ...t('d1', 'Concerto for Violin, Cello and Orchestra in A minor, Op. 102: I. Allegro', 1, ['Johannes Brahms', 'Anne-Sophie Mutter', 'Antonio Meneses']), album: { id: 'dg', name: 'Brahms: Violin Concerto' } }
+    const op77 = { ...t('v1', 'Violin Concerto in D major, Op. 77: I. Allegro non troppo', 1, ['Johannes Brahms', 'Someone']), album: { id: 'v', name: 'Brahms: Concertos, Op. 77 & Op. 102' } }
+    const spotify = fakeSpotify([dg, op77])
+    const out = await spotifyCandidates(spotify, p)
+    expect(out.map((c) => c.albumId)).toEqual(['dg'])
+    expect(out[0].title).toBe('Concerto for Violin, Cello and Orchestra in A minor, Op. 102')
+    expect(spotify.searchTracks).toHaveBeenCalledWith('Brahms Op. 102')
+  })
+
+  it('takes a concerto for violoncello for a cello concerto, and says which one Spotify has', async () => {
+    const p: ProposedRecording = { composer: 'Anatol Vieru', work: 'Cello Concerto', soloists: [] }
+    const one = { ...t('c1', 'Concerto for Violoncello and Orchestra No. 1, Op. 29', 1, ['Anatol Vieru', 'Vladimír Orlov', 'Zubin Mehta']), album: { id: 'v2', name: 'Anatol Vieru, Vol. 2' } }
+    const out = await spotifyCandidates(fakeSpotify([one]), p)
+    expect(out).toHaveLength(1)
+    expect(out[0].title).toBe('Concerto for Violoncello and Orchestra No. 1, Op. 29')
   })
 
   it('holds a near miss for the listener instead of linking it, and confirms or refuses it on their word', async () => {

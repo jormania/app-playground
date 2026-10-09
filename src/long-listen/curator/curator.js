@@ -30,8 +30,12 @@ export const MODEL = MODEL_SONNET
  * summarise (taste from feedback, a thread's week, a little more context, and
  * further reading found by web search) and go to Haiku at a twentieth of the
  * price. Each job's prompt and validator are the same on either model.
+ *
+ * Reading a concert programme stays on Sonnet: a screenshot of a Romanian
+ * hall's page, read into works Spotify can find, is a job where knowing the
+ * repertoire is the point, and it comes up a few times a month (a few cents).
  */
-const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, concert: MODEL_HAIKU }
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU }
 export function modelFor(op) {
   return MODEL_FOR[op] ?? MODEL
 }
@@ -221,8 +225,8 @@ export async function writeCompanion(send, payload) {
 }
 
 /**
- * A concert programme, read from a screenshot (the cheaper model, image in —
- * about a cent). One attempt: the listener checks the result in a form.
+ * A concert programme, read from a screenshot (Sonnet, image in — a few
+ * cents). One attempt: the listener checks the result in a form.
  * payload: { image: { mediaType, data (base64) }, year }
  */
 export async function readConcert(send, payload) {
