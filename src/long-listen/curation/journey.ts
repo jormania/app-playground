@@ -7,7 +7,7 @@ import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import type { Repo } from '../store/repo'
 import type {
-  CompareResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, CompareResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
 } from './api'
 import { buildContext } from './context'
 import { threadDigest } from './continuity'
@@ -525,7 +525,14 @@ export class Journey {
     })
   }
 
-  explain(programmeId: string, itemId: string, question?: string): Promise<Explanation> {
+  /**
+   * "A little more context" on an item (cached, once), or an answer to the
+   * listener's own question about it — asked from the listening view, with
+   * the recording and the movement sounding as context. Answers are kept
+   * under the item (`${programmeId}:${itemId}:q_…`) and read back by
+   * `answers()`; each question is asked once.
+   */
+  explain(programmeId: string, itemId: string, question?: string, nowPlaying?: { recording: string; movement?: string }): Promise<Explanation> {
     const q = question?.trim()
     const id = `${programmeId}:${itemId}${q ? `:${newId('q')}` : ''}`
     return this.once(`explain:${programmeId}:${itemId}:${q ?? ''}`, async () => {
@@ -543,11 +550,52 @@ export class Journey {
         programme: { title: p.title, dek: p.dek },
         item: { composer: item.proposed.composer, workTitle: item.proposed.work, catalogue: item.proposed.catalogue, recording: creditLine(item.proposed) },
         question: q,
+        nowPlaying: q && nowPlaying ? nowPlaying : undefined,
         taste: profile.observations.filter((o) => !o.supersededBy).map((o) => o.statement).slice(0, 12),
       })
-      const e: Explanation = { id, heading: res.heading, body: res.body, createdAt: this.stamp(), promptVersion: res.promptVersion }
+      const e: Explanation = {
+        id, heading: res.heading, body: res.body, createdAt: this.stamp(), promptVersion: res.promptVersion,
+        ...(q ? { question: q, ...(nowPlaying?.movement ? { movement: nowPlaying.movement } : {}) } : {}),
+      }
       await this.repo.explanations.put(e)
       return e
+    })
+  }
+
+  /** The listener's questions about an item and their answers, oldest first. */
+  async answers(programmeId: string, itemId: string): Promise<Explanation[]> {
+    const prefix = `${programmeId}:${itemId}:`
+    return (await this.repo.explanations.all()).filter((e) => e.id.startsWith(prefix)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  }
+
+  /**
+   * The listening companion: a note per movement for every confirmed
+   * recording in a programme (stand-ins included) that hasn't one yet — in one
+   * call, on the cheaper model, kept per recording (`companion:<recordingId>`)
+   * so it's written once. Returns how many recordings got notes.
+   */
+  companion(programmeId: string): Promise<number> {
+    return this.once(`companion:${programmeId}`, async () => {
+      const p = await this.repo.programmes.require(programmeId)
+      const items = p.sections.flatMap((s) => s.items)
+      const standIns = (await this.repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
+      const wanted = [
+        ...items.map((i) => ({ rid: i.recordingId, proposed: i.proposed, listenFor: i.listenFor })),
+        ...standIns.flatMap((c) => c.perspectives.slice(1).map((x) => ({ rid: x.recordingId, proposed: x.proposed, listenFor: x.listenFor ? [x.listenFor] : [] }))),
+      ]
+      const recordings = new Map((await this.repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
+      const done = new Set((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => m.id.slice('companion:'.length)))
+      const todo = wanted.filter((w, i) => wanted.findIndex((x) => x.rid === w.rid) === i && !done.has(w.rid) && (recordings.get(w.rid)?.spotify?.trackNames?.length ?? 0) > 0 && recordings.get(w.rid)?.verification === 'verified')
+      if (!todo.length) return 0
+      const { language } = await this.repo.preferences()
+      const res = await this.curator.call<CompanionResponse>('companion', {
+        language,
+        programme: { title: p.title, dek: p.dek },
+        works: todo.map((w) => ({ key: w.rid, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames, listenFor: w.listenFor })),
+      })
+      const now = this.stamp()
+      await this.repo.marks.putMany(res.works.map((w) => ({ id: `companion:${w.key}`, at: now, value: { movements: w.movements, promptVersion: res.promptVersion } })))
+      return res.works.length
     })
   }
 

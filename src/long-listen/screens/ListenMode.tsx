@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ProgrammeItem, Recording } from '../domain/types'
+import type { ProgrammeItem } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
@@ -14,7 +14,7 @@ import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { follow, FOLLOW_START, type Follow } from '../spotify/continuation'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
-import { Problem, Waiting } from '../components/common'
+import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 /** Set by a view that hands over to the next work, read once by the next view: "start playing on arrival". */
@@ -40,9 +40,24 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const items = programme.sections.flatMap((x) => x.items)
     const item = items.find((i) => i.id === itemId)
     if (!item) throw new Error('missing item')
-    const [recordings, events, feedback] = await Promise.all([repo.recordings.many(items.map((i) => i.recordingId)), repo.events.all(), repo.feedback.all()])
+    const standIns = new Map((await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn).map((c) => [c.id.split(':').pop()!, c]))
+    const ids = [...items.map((i) => i.recordingId), ...[...standIns.values()].flatMap((c) => c.perspectives.map((x) => x.recordingId))]
+    const [recordings, events, feedback, explanation, answers] = await Promise.all([
+      repo.recordings.many(ids), repo.events.all(), repo.feedback.all(), repo.explanations.get(`${programmeId}:${itemId}`), journey.answers(programmeId, itemId),
+    ])
     const byId = new Map(recordings.map((r) => [r.id, r]))
-    return { programme, item, recording: byId.get(item.recordingId), next: nextWork(items, item, byId, events), feedback }
+    // What plays: the programme's recording, or — when Spotify lacks it — the stand-in found in its place.
+    const playable = (i: ProgrammeItem) => {
+      if (isConfirmed(byId.get(i.recordingId))) return { recording: byId.get(i.recordingId), proposed: i.proposed, standIn: false }
+      const other = standIns.get(i.id)?.perspectives[1]
+      return other && isConfirmed(byId.get(other.recordingId)) ? { recording: byId.get(other.recordingId), proposed: other.proposed, standIn: true } : undefined
+    }
+    const here = playable(item)
+    const notes = here?.recording ? (await repo.marks.get(`companion:${here.recording.id}`))?.value as { movements: string[] } | undefined : undefined
+    return {
+      programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false,
+      next: nextWork(items, item, (i) => Boolean(playable(i)), events), feedback, notes: notes?.movements ?? [], explanation, answers,
+    }
   }, [programmeId, itemId])
   useWakeLock(true)
 
@@ -52,6 +67,19 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
   const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
   const player = usePlayerState()
+
+  const { curatorReady, say } = useServices()
+  // The companion's notes are written once per programme; if this recording has none yet, ask for them now.
+  const askedNotes = useRef(false)
+  useEffect(() => {
+    if (!data || !sp0 || data.notes.length || !curatorReady || askedNotes.current) return
+    askedNotes.current = true
+    journey.companion(programmeId).then((n) => { if (n) bump() }).catch(() => {})
+  }, [data, sp0, curatorReady, journey, programmeId, bump])
+
+  const [question, setQuestion] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [explaining, setExplaining] = useState(false)
 
   const [heardOpen, setHeardOpen] = useState(false)
   const [upcoming, setUpcoming] = useState<{ item: ProgrammeItem; at: number } | null>(null)
@@ -89,10 +117,31 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Opening…</Waiting>
-  const { programme, item, recording, next } = data
+  const { programme, item, recording, next, credit, standIn, notes } = data
   const sp = isConfirmed(recording) ? recording.spotify : undefined
   // This recording's own movements, as its album divides them.
   const movements = sp?.trackNames ?? []
+
+  async function ask() {
+    const q = question.trim()
+    if (!q) return
+    setAsking(true)
+    try {
+      const movement = nowIndex !== null ? movements[nowIndex] : undefined
+      await journey.explain(programme.id, item.id, q, { recording: creditLine(credit), movement })
+      setQuestion('')
+      bump()
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  async function explain() {
+    setExplaining(true)
+    try { await journey.explain(programme.id, item.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setExplaining(false) }
+  }
 
   async function heard() {
     await journey.markListening(item, 'heard', programme.id)
@@ -115,7 +164,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       <p className={s.eyebrow}><a href={href({ name: 'programme', id: programme.id })} className={`${s.quietLink} ${s.backLink}`}>← {programme.title}</a></p>
       <p className={s.composer}>{item.proposed.composer}</p>
       <h1 className={s.title}>{item.proposed.work}</h1>
-      <p className={s.dek}>{creditLine(item.proposed)}{sp?.durationMs ? ` · ${aboutDuration(sp.durationMs)}` : ''}</p>
+      <p className={s.dek}>{creditLine(credit)}{sp?.durationMs ? ` · ${aboutDuration(sp.durationMs)}` : ''}</p>
+      {standIn && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
       {upcoming && (
         <div className={s.handover} role="status">
@@ -145,10 +195,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                 ? <button type="button" className={s.movementButton} onClick={() => void playFrom(i)} disabled={playback.busy} title="Play from this movement">{m}</button>
                 : m}
               {nowIndex === i && <span className={s.nowWord}> — {playback.at?.playing ? 'now' : 'paused'}</span>}
+              {/* The companion's note, as Spotify reaches the movement — or every note, when Spotify can't say where it is. */}
+              {notes[i] && (nowIndex === i || !spotify.connected) && <p className={s.movementNote}>{notes[i]}</p>}
             </li>
           ))}
         </ol>
       )}
+
+      {movements.length <= 1 && notes[0] && (nowIndex === 0 || !spotify.connected) && <p className={s.movementNote}>{notes[0]}</p>}
 
       {item.listenFor.length > 0 && (
         <>
@@ -156,6 +210,32 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           <ul className={`${s.listenFor} ${s.listenForLarge}`}>{item.listenFor.map((l, i) => <li key={i}>{l}</li>)}</ul>
         </>
       )}
+
+      {/* Ask about this: a question answered with the work, the recording and the movement sounding as context. */}
+      <section className={s.companion} aria-label="Ask about this">
+        <p className={s.label}>Ask about this</p>
+        {data.answers.map((a) => (
+          <div key={a.id} className={s.answer}>
+            <p className={s.answerQ}>{a.question}{a.movement ? <span className={s.faint}> · during {a.movement}</span> : null}</p>
+            <Paragraphs text={a.body} className={s.prose} />
+          </div>
+        ))}
+        {curatorReady ? (
+          <form className={s.askRow} onSubmit={(e) => { e.preventDefault(); void ask() }}>
+            <label className={s.visuallyHidden} htmlFor="ask">Your question</label>
+            <input id="ask" className={s.input} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why does the horn come back here?" disabled={asking} />
+            <button className={s.outlineButton} type="submit" disabled={asking || !question.trim()}>{asking ? 'Asking…' : 'Ask'}</button>
+          </form>
+        ) : <p className={s.note}>Add your Anthropic key in Settings to ask the curator.</p>}
+        {data.explanation ? (
+          <div className={s.answer}>
+            <p className={s.answerQ}>{data.explanation.heading}</p>
+            <Paragraphs text={data.explanation.body} className={s.prose} />
+          </div>
+        ) : curatorReady && (
+          <button className={s.textButton} onClick={() => void explain()} disabled={explaining}>{explaining ? 'The curator is writing…' : 'A little more context'}</button>
+        )}
+      </section>
 
       {/* Heard: say how it landed here, then go straight on — no trip back up the programme. */}
       {heardOpen ? (
@@ -183,8 +263,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   )
 }
 
-/** The next work in programme order that can be played: confirmed on Spotify, and not skipped. */
-function nextWork(items: ProgrammeItem[], current: ProgrammeItem, recordings: Map<string, Recording>, events: Parameters<typeof listeningState>[0]): ProgrammeItem | undefined {
+/** The next work in programme order that can be played (its recording, or a stand-in, confirmed on Spotify) and wasn't skipped. */
+function nextWork(items: ProgrammeItem[], current: ProgrammeItem, canPlay: (i: ProgrammeItem) => boolean, events: Parameters<typeof listeningState>[0]): ProgrammeItem | undefined {
   const after = items.slice(items.findIndex((i) => i.id === current.id) + 1)
-  return after.find((i) => isConfirmed(recordings.get(i.recordingId)) && listeningState(events, i.recordingId) !== 'skipped')
+  return after.find((i) => canPlay(i) && listeningState(events, i.recordingId) !== 'skipped')
 }

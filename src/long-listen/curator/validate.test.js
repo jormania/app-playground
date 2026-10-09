@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -32,5 +32,17 @@ describe('shapes of a week', () => {
     const count = (v) => v.sections.reduce((n, s) => n + s.items.length, 0)
     expect(count(enforceVariety(value, { breadth: 3, timePerWeek: 'generous' }))).toBe(4)
     expect(count(enforceVariety(value, { breadth: 3, timePerWeek: 'generous' }, { form: 'dialogue' }))).toBe(6)
+  })
+})
+
+
+describe('the listening companion', () => {
+  it('keeps one note per track, in track order, and flags a work left out', () => {
+    const works = [{ key: 'r1', tracks: ['I', 'II', 'III'] }, { key: 'r2', tracks: ['Tapiola'] }]
+    const out = { works: [{ key: 'r1', movements: ['one', 'two', 'three', 'four'] }] }
+    const { value, problems } = validateCompanion(out, { works })
+    expect(value.works).toEqual([{ key: 'r1', movements: ['one', 'two', 'three'] }])
+    expect(problems).toEqual(['No notes for "r2".'])
+    expect(validateCompanion({ works: [{ key: 'r2', movements: [] }, { key: 'r1', movements: ['a'] }] }, { works }).value.works).toEqual([{ key: 'r1', movements: ['a', '', ''] }])
   })
 })

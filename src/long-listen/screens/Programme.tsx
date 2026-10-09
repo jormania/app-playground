@@ -124,15 +124,19 @@ function stageWords(stage: number): string {
 }
 
 export function ProgrammeView({ b }: { b: Bundle }) {
-  const { journey, spotify, repo, bump, say, week } = useServices()
+  const { journey, spotify, repo, bump, say, week, curatorReady } = useServices()
   const { programme: p } = b
   // This week's programme — or "more of this theme" made for it.
   const isCurrent = p.weekKey === week.key && (b.week?.programmeId === p.id || (Boolean(p.extends) && b.week?.programmeId === p.extends))
   const setAside = b.week?.setAsideProgrammeIds.includes(p.id)
   // Confirm the programme's recordings on Spotify, quietly, a few at a time.
+  // Then, once, the listening companion's notes for what's confirmed (the cheaper model, one call).
   useEffect(() => {
-    void verifyProgramme(repo, spotify, b.programme.id, bump).catch(() => {})
-  }, [b.programme.id, b.comparisons.length, spotify, repo, bump])
+    void verifyProgramme(repo, spotify, b.programme.id, bump)
+      .then(() => (curatorReady ? journey.companion(b.programme.id) : 0))
+      .then((n) => { if (n) bump() })
+      .catch(() => {})
+  }, [b.programme.id, b.comparisons.length, spotify, repo, bump, curatorReady, journey])
 
   // This week's programme gathers its further reading once, by itself.
   const [searching, setSearching] = useState(false)

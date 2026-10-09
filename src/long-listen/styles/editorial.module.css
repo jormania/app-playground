@@ -1747,6 +1747,43 @@
   font-size: var(--text-sm);
 }
 
+/* The listening companion: a note under the movement that's sounding. */
+.movementNote {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-base);
+  font-style: normal;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
+
+.companion {
+  margin-top: var(--space-xl);
+}
+
+.answer {
+  margin: var(--space-sm) 0;
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-border-2);
+}
+
+.answerQ {
+  margin: 0 0 var(--space-2xs);
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+.askRow {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  margin: var(--space-xs) 0;
+}
+
+.askRow .input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* The pause between works: what's next, and the way to stay. */
 .handover {
   margin-top: var(--space-md);

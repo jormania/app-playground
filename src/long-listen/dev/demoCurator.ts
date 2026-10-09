@@ -1,5 +1,5 @@
 import type {
-  CompareResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, CompareResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
 } from '../curation/api'
 import { CuratorUnavailable } from '../curation/api'
 
@@ -134,6 +134,14 @@ export function demoCurator(): CuratorClient {
           return { framing: 'A conductor who knew the composer, set beside a modern analyst.', whyBoth: 'If you want to hear what tradition adds, listen to both.', current: { character: 'Analytical', listenFor: 'Balance' }, other: { conductor: 'Jean Martinon', orchestra: "Orchestre National de l'ORTF", soloists: [], character: 'Idiomatic, airy', listenFor: 'The woodwind phrasing' }, promptVersion: 'demo' } satisfies CompareResponse as T
         case 'resources':
           return { resources: [], dropped: 0, promptVersion: 'demo' } satisfies ResourcesResponse as T
+        case 'companion':
+          return {
+            works: (payload?.works ?? []).map((w: { key: string; tracks: string[] }) => ({
+              key: w.key,
+              movements: w.tracks.map((name, i) => `Demo note for ${name}: ${i === 0 ? 'listen for how the opening gathers itself before the first theme arrives.' : 'notice what returns from the movement before, and what has changed in it.'}`),
+            })),
+            promptVersion: 'demo',
+          } satisfies CompanionResponse as T
         default:
           throw new CuratorUnavailable('failed', 'The demo curator doesn’t know that request.')
       }

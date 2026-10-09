@@ -143,6 +143,11 @@ export interface ResourcesResponse {
   promptVersion: string
 }
 
+export interface CompanionResponse {
+  works: { key: string; movements: string[] }[]
+  promptVersion: string
+}
+
 export interface PingResponse {
   ok: boolean
   model: string

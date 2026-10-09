@@ -350,6 +350,25 @@ export function validateContinuity(out) {
   return { value, problems }
 }
 
+/**
+ * The companion's notes, one per track for each work asked about. A work's
+ * notes are padded or cut to its track count, so note i always belongs to
+ * track i; a work the curator skipped, or got the key of wrong, is a problem.
+ * @param {any} out
+ * @param {{ works: { key: string, tracks: string[] }[] }} ctx
+ */
+export function validateCompanion(out, { works }) {
+  const problems = []
+  const given = new Map((Array.isArray(out?.works) ? out.works : []).map((w) => [clean(w?.key), Array.isArray(w?.movements) ? w.movements.map(clean) : []]))
+  const value = { works: [] }
+  for (const w of works) {
+    const notes = given.get(w.key)
+    if (!notes || notes.every((n) => !n)) { problems.push(`No notes for "${w.key}".`); continue }
+    value.works.push({ key: w.key, movements: w.tracks.map((_, i) => notes[i] ?? '') })
+  }
+  return { value, problems }
+}
+
 export function validateExplain(out) {
   const value = { heading: clean(out?.heading), body: clean(out?.body) }
   return { value, problems: value.body ? [] : ['The note is empty.'] }

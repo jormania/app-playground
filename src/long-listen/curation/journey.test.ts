@@ -139,6 +139,34 @@ describe('second hearings', () => {
   })
 })
 
+describe('the listening companion', () => {
+  it('writes notes once per confirmed recording, and keeps questions under the item', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['A', 'B', 'C']),
+      programme: () => programme('Colour', FRENCH),
+      companion: (payload) => ({ works: payload.works.map((w: { key: string; tracks: string[] }) => ({ key: w.key, movements: w.tracks.map((t) => `note on ${t}`) })), promptVersion: 'companion@test' }),
+      explain: (payload) => ({ heading: 'H', body: `about ${payload.nowPlaying?.movement}`, promptVersion: 'explain@test' }),
+    })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const [first] = p.sections.flatMap((s) => s.items)
+    // Nothing confirmed yet: nothing to write, no call.
+    expect(await j.companion(p.id)).toBe(0)
+    expect(c.count('companion')).toBe(0)
+
+    const r = await repo.recordings.require(first.recordingId)
+    await repo.recordings.put({ ...r, verification: 'verified', spotify: { albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ['t1', 't2'], trackUris: ['spotify:track:t1', 'spotify:track:t2'], trackNames: ['I. De l’aube', 'II. Jeux de vagues'], confidence: 'strong', matchedAt: 'x' } })
+    expect(await j.companion(p.id)).toBe(1)
+    expect(((await repo.marks.get(`companion:${first.recordingId}`))?.value as { movements: string[] }).movements).toEqual(['note on I. De l’aube', 'note on II. Jeux de vagues'])
+    expect(await j.companion(p.id)).toBe(0) // written once
+    expect(c.count('companion')).toBe(1)
+
+    const a = await j.explain(p.id, first.id, 'Why the cor anglais?', { recording: 'Boulez', movement: 'II. Jeux de vagues' })
+    expect(a).toMatchObject({ question: 'Why the cor anglais?', movement: 'II. Jeux de vagues', body: 'about II. Jeux de vagues' })
+    expect((await j.answers(p.id, first.id)).map((x) => x.question)).toEqual(['Why the cor anglais?'])
+  })
+})
+
 describe('works and recordings', () => {
   it('keeps two interpretations of one work as two recordings of one work', async () => {
     const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })

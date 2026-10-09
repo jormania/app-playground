@@ -342,7 +342,7 @@ Unheard music is not disliked music; it may simply not have been reached.`,
 
 export const EXPLAIN = {
   id: 'explain',
-  version: 'explain@2026-10-09.1',
+  version: 'explain@2026-10-10.1',
   effort: 'low',
   maxTokens: 4000,
   schema: {
@@ -353,7 +353,7 @@ export const EXPLAIN = {
   },
   system: `${VOICE}
 
-Your job now: the listener asked for a little more context about one work in this week's programme. Give it in two to four short paragraphs separated by blank lines: where the work comes from, what is new or strange about it, and one or two things that make the listening richer. Pitch it to what you know of the listener. If they asked a specific question, answer that first. heading: a short title for the note.`,
+Your job now: the listener asked for a little more context about one work in this week's programme. Give it in two to four short paragraphs separated by blank lines: where the work comes from, what is new or strange about it, and one or two things that make the listening richer. Pitch it to what you know of the listener. If they asked a specific question, answer that first. If they asked while listening ("nowPlaying" names the recording and the movement sounding), answer about what they are hearing; a question in the middle of the music wants a short answer — one or two paragraphs. heading: a short title for the note.`,
 }
 
 // ── 6. Two perspectives on one work, on request ──────────────────────────
@@ -411,7 +411,37 @@ When you are done, reply with ONLY a JSON object, no prose before or after:
 kind: read for text, watch for video, listen for audio (a talk, a broadcast). Write title and purpose in the language given by "language"; a source in another language is fine if it's the best one — say so in the purpose.`,
 }
 
-export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES }
+// ── 8. The listening companion: a note per movement ──────────────────────
+
+export const COMPANION = {
+  id: 'companion',
+  version: 'companion@2026-10-10.1',
+  effort: 'low',
+  maxTokens: 12000,
+  schema: {
+    type: 'object',
+    properties: {
+      works: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { key: str, movements: strArr },
+          required: ['key', 'movements'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['works'],
+    additionalProperties: false,
+  },
+  system: `${VOICE}
+
+Your job now: write the listening companion for this week's confirmed recordings — what to listen for in each movement, shown to the listener at the moment Spotify reaches that movement.
+
+For each work (by its "key"), return "movements": exactly one note per track, in the order given in "tracks" (track names are as the album divides the work). Each note is one or two sentences — at most forty words — on something the listener can actually hear in that movement of THIS recording, or in the music itself: a theme's return, an instrument coming forward, a change of pulse, how this performance takes a famous moment. Concrete, never homework, never a timestamp (you cannot know timings). Where a track is a fragment of a movement, write about what that stretch holds. Don't repeat the work's general "listenFor" (given) word for word; go further than it. Write in the "language" given.`,
+}
+
+export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION }
 
 /** The version of every prompt, for the client to show in Settings and store with snapshots. */
 export function promptVersions() {

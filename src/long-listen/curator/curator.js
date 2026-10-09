@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -31,7 +31,7 @@ export const MODEL = MODEL_SONNET
  * further reading found by web search) and go to Haiku at a twentieth of the
  * price. Each job's prompt and validator are the same on either model.
  */
-const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU }
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU }
 export function modelFor(op) {
   return MODEL_FOR[op] ?? MODEL
 }
@@ -47,6 +47,7 @@ const LEADS = {
   explain: (p) => `The listener asked for more context on ${p.item?.composer} — ${p.item?.workTitle}${p.question ? `, with this question: "${p.question}"` : ''}.`,
   compare: (p) => `The listener wants a second perspective on ${p.work?.composer} — ${p.work?.title}.`,
   resources: (p) => `Find resources for this week's programme, "${p.programme?.title}".`,
+  companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
 }
 
 export function buildUserContent(op, payload) {
@@ -211,6 +212,13 @@ export async function explainWork(send, payload) {
   return { ...r.value, promptVersion: PROMPTS.explain.version }
 }
 
+export async function writeCompanion(send, payload) {
+  const works = (payload.works ?? []).map((w) => ({ key: w.key, tracks: w.tracks ?? [] }))
+  const r = await withRetry(send, 'companion', payload, (o) => validateCompanion(o, { works }))
+  if (!r.value.works.length) throw new CuratorUnavailable('failed', 'The curator had nothing to add this time.')
+  return { ...r.value, promptVersion: PROMPTS.companion.version }
+}
+
 export async function compareInterpretations(send, payload) {
   const r = await withRetry(send, 'compare', payload, (o) => validateCompare(o, { current: payload.current, alreadyHeard: payload.alreadyHeard, spotifyCandidates: payload.spotifyCandidates }))
   if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator could not find a contrasting recording.')
@@ -268,6 +276,7 @@ export const JOBS = {
   explain: explainWork,
   compare: compareInterpretations,
   resources: findResources,
+  companion: writeCompanion,
 }
 
 /**

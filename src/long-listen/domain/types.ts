@@ -504,7 +504,12 @@ export interface Resource {
 // ── Cached curator extras ─────────────────────────────────────────────────
 
 export interface Explanation {
-  id: string // `${programmeId}:${itemId}`
+  /** `${programmeId}:${itemId}` for "A little more context"; `${programmeId}:${itemId}:q_…` for an answer to a question. */
+  id: string
+  /** The listener's question, when this is an answer to one. */
+  question?: string
+  /** The movement sounding when it was asked, if any. */
+  movement?: string
   heading: string
   body: string
   createdAt: Instant
