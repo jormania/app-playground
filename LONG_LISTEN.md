@@ -479,9 +479,10 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
   current on its own), Play/Pause/Resume that follows Spotify and a dusk
   listening view; Journal, Library, Threads, Notebook; the Notion mirror.
   Tested in daily use on the first week, *Northern Light*.
-- **Release two — built 10 October 2026, in testing.** Every item of the
-  roadmap's release two; see §13. `app/release.ts` still says release one
-  until it is accepted.
+- **Release two — 9 October 2026.** Every item of the roadmap's release two
+  (see §13), plus: skipped works hidden everywhere (a setting, on by default),
+  brighter small headings, and each work opening on an accent-edged card with
+  a slim line pinned on top while you read inside it.
 
 ## 13. Release two
 

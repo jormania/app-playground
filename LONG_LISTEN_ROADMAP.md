@@ -10,6 +10,8 @@ test are fixed before anything here starts, and the test may re-rank this list:
 an item that answers something that kept getting in the way goes up, one nobody
 would reach goes down. Release two is the section of that name below; release three follows it.
 
+**Status, 9 October 2026:** release two shipped (every item struck below; LONG_LISTEN.md §12–13). Release three is next.
+
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every
 item below serves at least one of those; release two is grouped by which.
