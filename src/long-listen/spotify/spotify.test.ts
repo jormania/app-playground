@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { beginSignIn, completeSignIn, challengeFor, isCallback, SpotifyAuthError } from './auth'
-import { verifyRecording, playsToEvents, forgetMatch, aboutDuration, saveProgrammePlaylist, needsLook, spotifyCandidates } from './verify'
+import { verifyRecording, playsToEvents, rejectMatch, confirmMatch, aboutDuration, saveProgrammePlaylist, needsLook, spotifyCandidates, syncRecentPlays } from './verify'
 import { SpotifyClient } from './client'
 import { Repo, memoryStore } from '../store/repo'
 import type { Recording, ProposedRecording, ListeningEvent } from '../domain/types'
@@ -66,6 +66,7 @@ const t = (id: string, name: string, n: number, artists = ['Claude Debussy', 'Th
 
 function fakeSpotify(search: SpotifyTrackLike[]) {
   return {
+    connected: true,
     searchTracks: vi.fn(async () => search),
     album: vi.fn(async () => ({ id: 'alb1', name: 'Debussy: La mer; Nocturnes', uri: 'spotify:album:alb1', release_date: '1995', images: [{ url: 'small', width: 64 }, { url: 'big', width: 640 }], artists: [{ name: 'Pierre Boulez' }], copyrights: [{ type: 'P', text: '℗ 1995 Deutsche Grammophon GmbH, Berlin' }] })),
     albumTracks: vi.fn(async () => [
@@ -91,14 +92,14 @@ describe('verifying a recording', () => {
     expect(out.recording.spotify?.durationMs).toBe(24 * 60_000)
   })
 
-  it('learns the work’s movements from Spotify’s track names, once', async () => {
+  it('keeps the movements on the recording, as its album divides them — never on the work', async () => {
     const repo = new Repo(memoryStore())
     await repo.recordings.put(rec)
     await repo.works.put({ id: rec.workId, composerId: 'composer:claude-debussy', title: 'La mer' })
-    await verifyRecording(repo, fakeSpotify([t('m1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1)]), 'rec1', proposed, 'now')
-    expect((await repo.works.require(rec.workId)).movements?.map((m) => m.title)).toEqual([
-      'I. De l’aube à midi sur la mer', 'II. Jeux de vagues', 'III. Dialogue du vent et de la mer',
-    ])
+    const out = await verifyRecording(repo, fakeSpotify([t('m1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1)]), 'rec1', proposed, 'now')
+    expect(out.recording.spotify?.trackNames).toEqual(['I. De l’aube à midi sur la mer', 'II. Jeux de vagues', 'III. Dialogue du vent et de la mer'])
+    // A wrong match once renamed a work's movements for every recording of it.
+    expect((await repo.works.require(rec.workId)).movements).toBeUndefined()
   })
 
   it('says not found rather than link someone else’s La mer', async () => {
@@ -123,14 +124,56 @@ describe('verifying a recording', () => {
     expect(out).toEqual([{ album: 'Debussy: La mer', year: '1964', artists: ['Berliner Philharmoniker', 'Herbert von Karajan'] }])
   })
 
-  it('can forget a match so it is looked for again', async () => {
+  it('holds a near miss for the listener instead of linking it, and confirms or refuses it on their word', async () => {
     const repo = new Repo(memoryStore())
     await repo.recordings.put(rec)
-    await verifyRecording(repo, fakeSpotify([t('m1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1)]), 'rec1', proposed, 'now')
-    await forgetMatch(repo, 'rec1')
-    const r = await repo.recordings.require('rec1')
-    expect(r.verification).toBe('unchecked')
+    // Boulez credited, the Cleveland Orchestra not: maybe a different Boulez La mer.
+    const near = t('m1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1, ['Claude Debussy', 'Chicago Symphony Orchestra', 'Pierre Boulez'])
+    const out = await verifyRecording(repo, fakeSpotify([near]), 'rec1', proposed, 'now')
+    expect(out.recording.verification).toBe('unconfirmed')
+    expect(out.recording.spotify?.confidence).toBe('probable')
+    const yes = await confirmMatch(repo, 'rec1', 'later')
+    expect(yes.verification).toBe('verified')
+    expect(yes.spotify?.confirmedByListener).toBe('later')
+    expect(needsLook(yes)).toBe(false) // the listener's word is final, whatever the matcher version
+  })
+
+  it('never offers a refused album again, and looks once more for the right one', async () => {
+    const repo = new Repo(memoryStore())
+    await repo.recordings.put(rec)
+    const spotify = fakeSpotify([t('m1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1)])
+    await verifyRecording(repo, spotify, 'rec1', proposed, 'now')
+    await repo.events.put({ id: 'e1', at: 'x', kind: 'heard', recordingId: 'rec1', workId: rec.workId, source: 'spotify-recent', playedAt: 'x' })
+    await repo.events.put({ id: 'e2', at: 'x', kind: 'skipped', recordingId: 'rec1', workId: rec.workId, source: 'manual' })
+    const r = await rejectMatch(repo, spotify, 'rec1', proposed, 'later')
+    expect(r.rejectedAlbumIds).toEqual(['alb1'])
+    expect(r.verification).toBe('not-found') // the only album Spotify had was the refused one
     expect(r.spotify).toBeUndefined()
+    // Plays Spotify reported against the wrong album go with it; the listener's own mark stays.
+    expect((await repo.events.all()).map((e) => e.id)).toEqual(['e2'])
+  })
+
+  it('looks again at a match an older matcher accepted, and drops what it wrongly inferred', async () => {
+    const repo = new Repo(memoryStore())
+    const wrong: Recording = { ...rec, verification: 'verified', checkedWith: 2, albumId: 'bee', spotify: { albumId: 'bee', albumName: 'Beethoven: Symphonies Nos. 4 & 7', albumUri: 'u', artistNames: [], trackIds: ['b1'], trackUris: [], confidence: 'strong', matchedAt: 'x' } }
+    await repo.recordings.put(wrong)
+    await repo.events.put({ id: 'e1', at: 'x', kind: 'heard', recordingId: 'rec1', workId: rec.workId, source: 'spotify-recent', playedAt: 'x' })
+    expect(needsLook(wrong)).toBe(true)
+    const out = await verifyRecording(repo, fakeSpotify([t('m2', 'La mer, L. 109: II. Jeux de vagues', 2)]), 'rec1', proposed, 'now')
+    expect(out.recording).toMatchObject({ verification: 'verified', checkedWith: MATCHER_VERSION, albumId: 'alb1' })
+    expect(out.recording.spotify?.trackNames).toEqual(['I. De l’aube à midi sur la mer', 'II. Jeux de vagues', 'III. Dialogue du vent et de la mer'])
+    expect(await repo.events.all()).toEqual([])
+  })
+
+  it('keeps the listening when a re-check finds the very same tracks', async () => {
+    const repo = new Repo(memoryStore())
+    await repo.recordings.put(rec)
+    const spotify = fakeSpotify([t('m2', 'La mer, L. 109: II. Jeux de vagues', 2)])
+    await verifyRecording(repo, spotify, 'rec1', proposed, 'now')
+    await repo.recordings.put({ ...(await repo.recordings.require('rec1')), checkedWith: 2 })
+    await repo.events.put({ id: 'e1', at: 'x', kind: 'heard', recordingId: 'rec1', workId: rec.workId, source: 'spotify-recent', playedAt: 'x' })
+    await verifyRecording(repo, spotify, 'rec1', proposed, 'later')
+    expect((await repo.events.all()).map((e) => e.id)).toEqual(['e1'])
   })
 })
 
@@ -152,6 +195,34 @@ describe('recently played', () => {
     const later = playsToEvents([play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:12:00Z')], [verified], first, 'now')
     expect(later.map((e) => e.kind)).toEqual(['heard'])
     expect(playsToEvents([play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:12:00Z')], [verified], [...first, ...later] as ListeningEvent[], 'now')).toEqual([])
+  })
+
+  it('counts nothing against a near miss the listener hasn’t confirmed', () => {
+    const near: Recording = { ...verified, verification: 'unconfirmed', spotify: { ...verified.spotify!, confidence: 'probable' } }
+    expect(playsToEvents([play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:10:00Z')], [near], [], 'now')).toEqual([])
+  })
+
+  it('never calls a single-track work heard: thirty seconds of it looks the same to Spotify', () => {
+    const one: Recording = { ...verified, spotify: { ...verified.spotify!, trackIds: ['s7'] } }
+    expect(playsToEvents([play('s7', '2026-10-08T19:00:00Z')], [one], [], 'now').map((e) => e.kind)).toEqual(['partial'])
+  })
+
+  it('does not count a session twice when its first plays scroll out of the fifty', () => {
+    const first = playsToEvents([play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:10:00Z'), play('m3', '2026-10-08T19:20:00Z')], [verified], [], 'now')
+    expect(first.map((e) => e.kind)).toEqual(['heard'])
+    // Later, only the last two of that session are still in recently-played.
+    expect(playsToEvents([play('m2', '2026-10-08T19:10:00Z'), play('m3', '2026-10-08T19:20:00Z')], [verified], first, 'now')).toEqual([])
+  })
+
+  it('looks at recent plays once at a time, however many callers ask', async () => {
+    const repo = new Repo(memoryStore())
+    await repo.recordings.put(verified)
+    const recentlyPlayed = vi.fn(async () => [play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:10:00Z')])
+    const spotify = { connected: true, recentlyPlayed } as unknown as SpotifyClient
+    const [a, b] = await Promise.all([syncRecentPlays(repo, spotify, 'now'), syncRecentPlays(repo, spotify, 'now')])
+    expect(recentlyPlayed).toHaveBeenCalledTimes(1)
+    expect([a, b]).toEqual([1, 1])
+    expect(await repo.events.all()).toHaveLength(1)
   })
 
   it('treats a return days later as a new hearing', () => {
@@ -176,6 +247,55 @@ describe('the client', () => {
     expect(JSON.parse(s.getItem('long-listen:spotify')!).refreshToken).toBe('r') // kept when not rotated
   })
 
+  it('keeps the sign-in through a passing outage, and only ends it when Spotify says it is over', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'old', refreshToken: 'r', expiresAt: 0, scope: '' }))
+    let tokenStatus = 503
+    const fetchMock = vi.fn(async (url: string) => url.includes('accounts.spotify.com')
+      ? new Response(JSON.stringify({ error: tokenStatus === 400 ? 'invalid_grant' : 'unavailable' }), { status: tokenStatus })
+      : new Response(JSON.stringify({ tracks: { items: [] } })))
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    const told = vi.fn()
+    c.onSignedOut(told)
+    await expect(c.searchTracks('x')).rejects.toMatchObject({ reason: 'offline' })
+    expect(c.connected).toBe(true) // a 503 is not a sign-out
+    tokenStatus = 400 // six months on: invalid_grant
+    await expect(c.searchTracks('x')).rejects.toMatchObject({ reason: 'signed-out' })
+    expect(c.connected).toBe(false)
+    expect(told).toHaveBeenCalledWith(expect.stringMatching(/six months/))
+  })
+
+  it('refreshes once for many callers, and uses a token another tab already refreshed', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'old', refreshToken: 'r', expiresAt: 0, scope: '' }))
+    const fetchMock = vi.fn(async (url: string) => url.includes('accounts.spotify.com')
+      ? new Response(JSON.stringify({ access_token: 'new', refresh_token: 'r2', expires_in: 3600 }))
+      : new Response(JSON.stringify({ tracks: { items: [] } })))
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    await Promise.all([c.searchTracks('a'), c.searchTracks('b'), c.searchTracks('c')])
+    expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('accounts.spotify.com'))).toHaveLength(1)
+
+    // Another tab refreshes and rotates; this one picks up its token rather than spending a stale refresh token.
+    const other = memStorage()
+    other.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'old', refreshToken: 'r', expiresAt: 0, scope: '' }))
+    const c2 = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, other)
+    other.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'fresh', refreshToken: 'r3', expiresAt: Date.now() + 3600_000, scope: '' }))
+    fetchMock.mockClear()
+    await c2.searchTracks('d')
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('accounts.spotify.com'))).toBe(false)
+  })
+
+  it('plays a work from its first movement, with shuffle off', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    await c.play(['spotify:track:1', 'spotify:track:2'])
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
+    expect(calls[0][0]).toContain('me/player/shuffle?state=false')
+    expect(JSON.parse(String(calls[1][1].body))).toMatchObject({ uris: ['spotify:track:1', 'spotify:track:2'], offset: { position: 0 } })
+  })
+
   it('reports signed-out without calling Spotify', async () => {
     const fetchMock = vi.fn()
     const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, memStorage())
@@ -191,10 +311,12 @@ describe('the week as a Spotify playlist', () => {
     await repo.recordings.putMany([
       { id: 'r1', workId: 'w1', soloistIds: [], character: [], verification: 'verified', spotify: ref(['a1', 'a2']) },
       { id: 'r2', workId: 'w2', soloistIds: [], character: [], verification: 'not-found' },
+      // A near miss waiting for the listener stays out of the playlist.
+      { id: 'r4', workId: 'w4', soloistIds: [], character: [], verification: 'unconfirmed', spotify: { ...ref(['d1']), confidence: 'probable' } },
       { id: 'r3', workId: 'w3', soloistIds: [], character: [], verification: 'verified', spotify: ref(['c1']) },
     ])
     const item = (id: string, rid: string) => ({ id, workId: 'w', recordingId: rid, why: '', whyThisRecording: '', listenFor: [], proposed: { composer: 'X', work: 'Y', soloists: [] } })
-    await repo.programmes.put({ id: 'p1', weekKey: '2026-W41', optionId: 'o', themeId: 't', explorationId: 'e', stage: 1, title: 'Colour', dek: 'Dek.', introduction: '', whyNow: '', historicalPlace: '', howTheyRelate: '', sections: [{ id: 's', role: 'start', heading: 'H', items: [item('i1', 'r1'), item('i2', 'r2'), item('i3', 'r3')] }], comparisonIds: [], createdAt: 'x', promptVersion: 'v', model: 'm' })
+    await repo.programmes.put({ id: 'p1', weekKey: '2026-W41', optionId: 'o', themeId: 't', explorationId: 'e', stage: 1, title: 'Colour', dek: 'Dek.', introduction: '', whyNow: '', historicalPlace: '', howTheyRelate: '', sections: [{ id: 's', role: 'start', heading: 'H', items: [item('i1', 'r1'), item('i2', 'r2'), item('i4', 'r4'), item('i3', 'r3')] }], comparisonIds: [], createdAt: 'x', promptVersion: 'v', model: 'm' })
     return repo
   }
 

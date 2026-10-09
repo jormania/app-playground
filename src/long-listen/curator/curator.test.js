@@ -225,6 +225,19 @@ describe('resources', () => {
     expect(sent[0].tools[0]).toMatchObject({ type: 'web_search_20260209', name: 'web_search' })
   })
 
+  it('never keeps a link that is not a web page, even one the search "returned"', async () => {
+    const bad = 'javascript:alert(document.cookie)'
+    const message = {
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'web_search_tool_result', content: [{ type: 'web_search_result', url: bad, title: 'x' }] },
+        { type: 'text', text: JSON.stringify({ resources: [{ kind: 'read', title: 'x', url: bad, source: 's', purpose: 'p', relatesTo: '' }] }) },
+      ],
+    }
+    const { curator } = fakeSend([message])
+    expect((await curator.call('resources', { programme: { title: 'Colour' } })).resources).toEqual([])
+  })
+
   it('continues a paused search turn append-only', async () => {
     const paused = { stop_reason: 'pause_turn', content: [{ type: 'server_tool_use', name: 'web_search', input: {} }] }
     const { curator, sent } = fakeSend([paused, { stop_reason: 'end_turn', content: [{ type: 'text', text: '{"resources":[]}' }] }])

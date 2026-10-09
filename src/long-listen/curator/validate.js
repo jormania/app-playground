@@ -285,6 +285,8 @@ export function validateCompare(out, { current, alreadyHeard = [], spotifyCandid
 export function normaliseUrl(u) {
   try {
     const url = new URL(u)
+    // Web pages only: these become links, and a javascript: or data: link is a script.
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return ''
     url.hash = ''
     url.host = url.host.toLowerCase()
     return url.toString().replace(/\/$/, '')

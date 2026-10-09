@@ -59,6 +59,11 @@ export interface Work {
   form?: string
   /** One or two sentences of historical context. */
   context?: string
+  /**
+   * Legacy: once copied from the first Spotify match, which let a wrong match
+   * rename a work's movements. Movements now live on each recording's Spotify
+   * reference (`trackNames`); this is no longer written or read.
+   */
   movements?: Movement[]
 }
 
@@ -77,14 +82,26 @@ export interface SpotifyRecordingRef {
   /** The tracks that make up this work on this album, in order. */
   trackIds: string[]
   trackUris: string[]
-  /** What the matcher saw, for honesty about a near miss. */
+  /** Spotify's own names for those tracks — this recording's movements, as this album divides them. */
+  trackNames?: string[]
+  /** What the matcher saw: a strong match is accepted, a probable one waits for the listener. */
   confidence: 'strong' | 'probable'
+  /** Set when the listener said "yes, this is the recording" to a probable match. */
+  confirmedByListener?: Instant
   matchedAt: Instant
   /** Sum of the work's track lengths, from Spotify. Information, never a tally. */
   durationMs?: number
 }
 
-export type Verification = 'unchecked' | 'verified' | 'not-found'
+/**
+ * unchecked   — not looked for yet
+ * verified    — Spotify has this recording: linked, played, counted
+ * unconfirmed — Spotify has something close (a probable match); shown with its
+ *               differences for the listener to confirm, never treated as the
+ *               recording until they do
+ * not-found   — Spotify doesn't have it (or the listener said "not this one")
+ */
+export type Verification = 'unchecked' | 'verified' | 'unconfirmed' | 'not-found'
 
 export interface Recording {
   id: string
@@ -98,8 +115,10 @@ export interface Recording {
   /** Curatorial: what this interpretation is like ("architectural, transparent"). */
   character: string[]
   verification: Verification
-  /** The matcher version that last looked (see MATCHER_VERSION); older not-founds are looked for again. */
+  /** The matcher version that last looked (see MATCHER_VERSION); an older decision is looked at again. */
   checkedWith?: number
+  /** Albums the listener said are not this recording; never matched again. */
+  rejectedAlbumIds?: string[]
   spotify?: SpotifyRecordingRef
   albumId?: string
   checkedAt?: Instant
@@ -288,8 +307,9 @@ export interface ListeningEvent {
   /** spotify-recent: how many of the work's tracks were played. */
   tracksPlayed?: number
   tracksTotal?: number
-  /** spotify-recent: the played_at stamp, so a re-poll never double counts. */
+  /** spotify-recent: the session's first and last played_at, so a re-poll never counts it twice. */
   playedAt?: Instant
+  playedUntil?: Instant
 }
 
 /** What a listener sees: memory, not measurement. */
@@ -309,6 +329,12 @@ export interface Feedback {
   reaction?: Reaction
   more?: WantMore
   note?: string
+  /**
+   * On a work: the listener knew it before the app suggested it. Familiarity,
+   * not a verdict — it tells the curator what isn't a discovery. A later
+   * `false` takes it back.
+   */
+  known?: boolean
   /** When the taste interpreter last read this note. */
   interpretedAt?: Instant
 }
@@ -425,8 +451,16 @@ export interface NotionSyncState {
   /** `${entity}:${id}` */
   key: string
   pageId: string
-  /** Hash of what was last written, so an unchanged entity is not rewritten. */
+  /** Hash of the columns last written, so an unchanged row is not rewritten. */
   hash: string
+  /**
+   * Programme pages: the part of the body that can change after the page is
+   * written (further reading) — its hash, the blocks the app wrote for it, and
+   * the block it sits after. Only these blocks are ever replaced.
+   */
+  bodyHash?: string
+  bodyBlockIds?: string[]
+  anchorBlockId?: string
   syncedAt: Instant
 }
 

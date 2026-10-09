@@ -8,9 +8,15 @@ import type { RecentPlay, SpotifyAlbum, SpotifyClient } from './client'
  * The factual layer: look for the curator's proposed recording on Spotify and
  * record what Spotify itself says about it. Only what Spotify returns is stored
  * as metadata (album name, release date, ℗ line, credited artists, the tracks);
- * the curator's proposal stays in the programme snapshot, untouched. A recording
- * that can't be found is marked `not-found` — the UI then offers a Spotify
- * search, and never a link to a different interpretation.
+ * the curator's proposal stays in the programme snapshot, untouched.
+ *
+ * Three outcomes, and only one of them is a fact the app acts on:
+ *   verified    — a strong match, or a near one the listener confirmed. Linked,
+ *                 played, put in playlists, counted when Spotify sees it played.
+ *   unconfirmed — a near miss (the conductor is right, an orchestra or soloist
+ *                 isn't credited). Shown with what differs; nothing else uses it
+ *                 until the listener says "yes, this is it" or "not this one".
+ *   not-found   — the UI offers a search, never a different interpretation.
  */
 export interface VerifyOutcome {
   recording: Recording
@@ -23,25 +29,49 @@ function phonographic(a: SpotifyAlbum): string | undefined {
   return p?.text.replace(/^\s*(?:℗|\(P\)|©|\(C\))\s*/i, '').trim() || undefined
 }
 
-/** Has this recording never been looked for, or only by an older, weaker matcher? */
+/** Is this recording the curator's, as far as Spotify and the listener can tell? Only these are linked, played or counted. */
+export function isConfirmed(r: Recording | undefined): r is Recording & { spotify: NonNullable<Recording['spotify']> } {
+  return Boolean(r && r.verification === 'verified' && r.spotify)
+}
+
+/**
+ * Should the matcher look (again)? Never looked; or decided by an older,
+ * weaker matcher — unless the listener settled it themselves.
+ */
 export function needsLook(r: Recording | undefined): boolean {
   if (!r) return false
-  return r.verification === 'unchecked' || (r.verification === 'not-found' && (r.checkedWith ?? 1) < MATCHER_VERSION)
+  if (r.verification === 'unchecked') return true
+  if (r.spotify?.confirmedByListener) return false
+  return (r.checkedWith ?? 1) < MATCHER_VERSION
+}
+
+/**
+ * Listening Spotify reported against a match that has just been withdrawn was
+ * never about this recording; it goes with the match. What the listener marked
+ * by hand stays.
+ */
+async function forgetSpotifyListening(repo: Repo, recordingId: string): Promise<void> {
+  const stale = (await repo.events.all()).filter((e) => e.recordingId === recordingId && e.source === 'spotify-recent')
+  for (const e of stale) await repo.events.delete(e.id)
 }
 
 export async function verifyRecording(repo: Repo, spotify: SpotifyClient, recordingId: string, proposed: ProposedRecording, now = new Date().toISOString()): Promise<VerifyOutcome> {
   const recording = await repo.recordings.require(recordingId)
-  if (recording.verification === 'verified') return { recording, album: recording.albumId ? await repo.albums.get(recording.albumId) : undefined }
+  if (!needsLook(recording)) return { recording, album: recording.albumId ? await repo.albums.get(recording.albumId) : undefined }
 
+  const rejected = new Set(recording.rejectedAlbumIds ?? [])
   let found: { track: SpotifyTrackLike; level: 'strong' | 'probable' } | null = null
   for (const q of searchQueries(proposed)) {
-    const best = bestTrack(await spotify.searchTracks(q), proposed)
+    const candidates = (await spotify.searchTracks(q)).filter((t) => !t.album || !rejected.has(t.album.id))
+    const best = bestTrack(candidates, proposed)
     if (best && (!found || (best.result.level === 'strong' && found.level !== 'strong'))) found = { track: best.track, level: best.result.level as 'strong' | 'probable' }
     if (found?.level === 'strong') break
   }
 
+  const { spotify: before, albumId: _albumId, ...bare } = recording
   if (!found || !found.track.album) {
-    const updated: Recording = { ...recording, verification: 'not-found', checkedAt: now, checkedWith: MATCHER_VERSION }
+    if (before) await forgetSpotifyListening(repo, recordingId)
+    const updated: Recording = { ...bare, verification: 'not-found', checkedAt: now, checkedWith: MATCHER_VERSION }
     await repo.recordings.put(updated)
     return { recording: updated }
   }
@@ -51,10 +81,13 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
   const work = workTracks(tracks, found.track, proposed.work)
   const credited = [...new Set(work.flatMap((t) => t.artists.map((a) => a.name)))]
   const image = [...(album.images ?? [])].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url
+  const trackIds = work.map((t) => t.id)
+  const sameAsBefore = before?.albumId === albumId && before.trackIds.join() === trackIds.join() && recording.verification === 'verified' && found.level === 'strong'
+  if (before && !sameAsBefore) await forgetSpotifyListening(repo, recordingId)
 
   const updated: Recording = {
-    ...recording,
-    verification: 'verified',
+    ...bare,
+    verification: found.level === 'strong' ? 'verified' : 'unconfirmed',
     checkedAt: now,
     checkedWith: MATCHER_VERSION,
     albumId,
@@ -66,17 +99,13 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
       phonographic: phonographic(album),
       imageUrl: image,
       artistNames: credited,
-      trackIds: work.map((t) => t.id),
+      trackIds,
       trackUris: work.map((t) => t.uri),
+      trackNames: work.map((t) => movementTitle(t.name)),
       confidence: found.level,
       matchedAt: now,
       durationMs: work.reduce((n, t) => n + (t.duration_ms ?? 0), 0) || undefined,
     },
-  }
-  // Movements come from Spotify's own track names, once, if the work has none yet.
-  const work0 = await repo.works.get(recording.workId)
-  if (work0 && !work0.movements?.length && work.length > 1) {
-    await repo.works.put({ ...work0, movements: work.map((t, i) => ({ index: i + 1, title: movementTitle(t.name) })) })
   }
   const existing = await repo.albums.get(albumId)
   const albumRecord: Album = {
@@ -91,6 +120,31 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
   await repo.albums.put(albumRecord)
   await repo.recordings.put(updated)
   return { recording: updated, album: albumRecord }
+}
+
+/** The listener says a near match IS the curator's recording. */
+export async function confirmMatch(repo: Repo, recordingId: string, now = new Date().toISOString()): Promise<Recording> {
+  const r = await repo.recordings.require(recordingId)
+  if (r.verification !== 'unconfirmed' || !r.spotify) return r
+  const updated: Recording = { ...r, verification: 'verified', spotify: { ...r.spotify, confirmedByListener: now } }
+  await repo.recordings.put(updated)
+  return updated
+}
+
+/**
+ * The listener says a match is NOT the curator's recording. That album is
+ * never offered for it again, and Spotify is asked once more — another album
+ * may be the right one; if none is, it is not found, and a stand-in follows.
+ */
+export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, recordingId: string, proposed: ProposedRecording, now = new Date().toISOString()): Promise<Recording> {
+  const r = await repo.recordings.require(recordingId)
+  const { spotify: before, albumId, ...bare } = r
+  if (before) await forgetSpotifyListening(repo, recordingId)
+  const rejectedAlbumIds = [...new Set([...(r.rejectedAlbumIds ?? []), ...(albumId ? [albumId] : [])])]
+  const reset: Recording = { ...bare, rejectedAlbumIds, verification: 'unchecked' }
+  await repo.recordings.put(reset)
+  if (!spotify?.connected) return reset
+  return (await verifyRecording(repo, spotify, recordingId, proposed, now)).recording
 }
 
 /** One recording of a work that Spotify actually has, for the curator to choose from. */
@@ -122,29 +176,27 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
   return [...byAlbum.values()].slice(0, max)
 }
 
-/** Let the listener undo a match they know is wrong; it will be looked for again. */
-export async function forgetMatch(repo: Repo, recordingId: string): Promise<void> {
-  const r = await repo.recordings.require(recordingId)
-  const { spotify: _spotify, albumId: _albumId, ...rest } = r
-  await repo.recordings.put({ ...rest, verification: 'unchecked' })
-}
-
 /**
- * Turn Spotify's recently-played history into listening events for verified
- * recordings. Hearing most of a work's tracks counts as heard; fewer is a
- * partial listen. Each play is recorded once, however often this runs.
+ * Turn Spotify's recently-played history into listening events for confirmed
+ * recordings. What Spotify actually tells us is thin: the last fifty tracks,
+ * each with the time it was played, and a track only appears once it has
+ * played for about thirty seconds — never how much of it was heard. So:
+ *
+ * - plays of one recording's tracks less than three hours apart are one
+ *   session;
+ * - a session that reached most (≥ 60%) of a multi-movement work's tracks is
+ *   `heard`; less is `partial` (shown as "Listening");
+ * - a single-track work can never be told apart from thirty seconds of it, so
+ *   Spotify only ever marks it `partial` — "heard" is the listener's word;
+ * - each session is recorded once: a later poll that sees the same session
+ *   (even with its first plays scrolled out of the fifty) only upgrades a
+ *   partial to heard, never adds a second hearing.
  */
+const SESSION_GAP = 3 * 3600_000
+
 export function playsToEvents(plays: RecentPlay[], recordings: Recording[], known: ListeningEvent[], now: string): ListeningEvent[] {
-  // What each session was last recorded as, so a session first seen half-way
-  // through and finished later is upgraded to heard, once.
-  const seen = new Map<string, ListeningEvent['kind']>()
-  for (const e of known) {
-    if (e.source !== 'spotify-recent') continue
-    const k = `${e.recordingId}@${e.playedAt}`
-    if (seen.get(k) !== 'heard') seen.set(k, e.kind)
-  }
   const byTrack = new Map<string, Recording>()
-  for (const r of recordings) for (const t of r.spotify?.trackIds ?? []) byTrack.set(t, r)
+  for (const r of recordings) if (isConfirmed(r)) for (const t of r.spotify.trackIds) byTrack.set(t, r)
 
   // Group plays per recording into sessions: plays of its tracks within three hours of each other.
   const sessions = new Map<string, { recording: Recording; tracks: Set<string>; last: string; first: string }[]>()
@@ -153,7 +205,7 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
     if (!r) continue
     const list = sessions.get(r.id) ?? []
     const cur = list[list.length - 1]
-    if (cur && Date.parse(play.played_at) - Date.parse(cur.last) < 3 * 3600_000) {
+    if (cur && Date.parse(play.played_at) - Date.parse(cur.last) < SESSION_GAP) {
       cur.tracks.add(play.track.id)
       cur.last = play.played_at
     } else {
@@ -162,14 +214,18 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
     sessions.set(r.id, list)
   }
 
+  const recorded = known.filter((e) => e.source === 'spotify-recent' && e.playedAt)
   const out: ListeningEvent[] = []
   for (const list of sessions.values()) {
     for (const s of list) {
-      const key = `${s.recording.id}@${s.first}`
       const total = s.recording.spotify?.trackIds.length ?? 1
-      const heard = s.tracks.size / total >= 0.6
-      const before = seen.get(key)
-      if (before === 'heard' || (before && !heard)) continue
+      const heard = total > 1 && s.tracks.size / total >= 0.6
+      // The same session, already recorded? Overlapping, or within a session gap of it.
+      const same = recorded.filter((e) => e.recordingId === s.recording.id
+        && Date.parse(s.first) - Date.parse(e.playedUntil ?? e.playedAt!) < SESSION_GAP
+        && Date.parse(e.playedAt!) - Date.parse(s.last) < SESSION_GAP)
+      if (same.some((e) => e.kind === 'heard') || (same.length && !heard)) continue
+      const anchor = same[0]
       out.push({
         id: newId('ev'),
         at: now,
@@ -179,20 +235,31 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
         source: 'spotify-recent',
         tracksPlayed: s.tracks.size,
         tracksTotal: total,
-        playedAt: s.first,
+        // An upgrade keeps the session's original start, so it stays one session.
+        playedAt: anchor?.playedAt && anchor.playedAt < s.first ? anchor.playedAt : s.first,
+        playedUntil: s.last,
       })
     }
   }
   return out
 }
 
-/** Fetch recent plays and store any new listening they show. Returns how many events were added. */
-export async function syncRecentPlays(repo: Repo, spotify: SpotifyClient, now = new Date().toISOString()): Promise<number> {
-  if (!spotify.connected) return 0
-  const plays = await spotify.recentlyPlayed()
-  const fresh = playsToEvents(plays, await repo.recordings.all(), await repo.events.all(), now)
-  if (fresh.length) await repo.events.putMany(fresh)
-  return fresh.length
+let inFlight: Promise<number> | null = null
+
+/** Fetch recent plays and store any new listening they show. Returns how many events were added. One at a time. */
+export function syncRecentPlays(repo: Repo, spotify: SpotifyClient, now = new Date().toISOString()): Promise<number> {
+  if (!spotify.connected) return Promise.resolve(0)
+  inFlight ??= (async () => {
+    try {
+      const plays = await spotify.recentlyPlayed()
+      const fresh = playsToEvents(plays, await repo.recordings.all(), await repo.events.all(), now)
+      if (fresh.length) await repo.events.putMany(fresh)
+      return fresh.length
+    } finally {
+      inFlight = null
+    }
+  })()
+  return inFlight
 }
 
 /** "about 38 minutes", "about 1 hour 10 minutes" — rounded, for planning an evening. */
@@ -208,7 +275,7 @@ export function aboutDuration(ms?: number): string | undefined {
 export interface PlaylistMark { id: string; url: string; tracks: number }
 
 /**
- * The week's programme as a private Spotify playlist: every verified recording
+ * The week's programme as a private Spotify playlist: every confirmed recording
  * in programme order (comparison perspectives after the items), exactly the
  * tracks that were matched. Saving again later replaces the tracks — so once
  * more recordings are verified, the playlist catches up.
@@ -225,7 +292,8 @@ export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, 
   ]
   const recordings = await repo.recordings.many([...new Set(ids)])
   const byId = new Map(recordings.map((r) => [r.id, r]))
-  const uris = [...new Set(ids)].flatMap((id) => byId.get(id)?.spotify?.trackUris ?? [])
+  // Only recordings Spotify confirmed — a near miss waiting for the listener stays out.
+  const uris = [...new Set(ids)].flatMap((id) => { const r = byId.get(id); return isConfirmed(r) ? r.spotify.trackUris : [] })
   if (uris.length === 0) throw new Error('None of this week’s recordings are confirmed on Spotify yet.')
   const mark = await repo.marks.get(`playlist:${programmeId}`)
   const prior = mark?.value as PlaylistMark | undefined

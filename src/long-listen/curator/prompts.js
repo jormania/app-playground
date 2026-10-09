@@ -65,7 +65,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-09.1',
+  version: 'themes@2026-10-09.2',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -114,7 +114,7 @@ Field guide:
 - returningThemeId: the themeId from "threads" if this option continues that thread, else "".
 - continuityNote: "" for a new theme.
 
-If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point.`,
+If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
 }
 
 // ── 2. The programme ─────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-09.2',
+  version: 'programme@2026-10-09.3',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -210,6 +210,7 @@ For each item:
 - character: two to four words on the interpretation itself ("transparent", "urgent", "warm, expansive").
 - workContext: one or two sentences of historical context; composed: date as usually given ("1903–05"); form: "symphony", "symphonic poem", "concerto" etc.
 - revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.
+- alreadyKnown lists works the listener knew before the app suggested them. Don't present one of them as a discovery. Use one only where a known work earns its place — an anchor to hear something new against, or a recording that changes how it sounds — and then say so in "why".
 - year: the recording year only if you are certain, else "".
 
 Write:

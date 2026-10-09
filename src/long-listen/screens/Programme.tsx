@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type {
   Comparison, Explanation, Feedback, ListeningEvent, ListeningKind, ListeningState, Programme, ProgrammeItem, ProgrammeOption, Recording, Resource, Theme, ThemeExploration, WeekRecord, Work,
 } from '../domain/types'
-import { listeningState } from '../domain/listening'
+import { latestFeedback, listeningState } from '../domain/listening'
 import { sinceWords, weekFromKey } from '../domain/week'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
@@ -79,6 +79,22 @@ export function ProgrammeScreen({ id }: { id: string }) {
   return <ProgrammeView b={data} key={id} />
 }
 
+/**
+ * What each kind of section is for, in the week's sequence — the curator
+ * names the role, the heading is its own; this line says where you are.
+ */
+const ROLE_GUIDE: Record<string, string> = {
+  start: 'where the week begins: the piece the rest is heard against.',
+  then: 'the next step on from there.',
+  context: 'background: music that shows where the rest came from.',
+  contrast: 'a change of light, chosen to push against what came before.',
+  compare: 'the same idea from another angle.',
+  deeper: 'further in, for when the first pieces have settled.',
+  coda: 'a close to the week.',
+}
+const PAIR_GUIDE = 'One work in two recordings, side by side. Hear both: the difference between them is the point.'
+const FURTHER_GUIDE = 'Optional: notes, essays, talks and filmed performances found for this programme.'
+
 function stageWords(stage: number): string {
   return ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth'][stage] ?? `${stage}th`
 }
@@ -150,9 +166,12 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         {p.howTheyRelate && <div className={s.aside}><h2 className={s.h3}>How they speak to each other</h2><p>{p.howTheyRelate}</p></div>}
       </div>
 
-      {p.sections.map((section) => (
+      {p.sections.map((section, i) => (
         <section key={section.id} aria-label={section.heading}>
           <h2 className={s.sectionHead}>{section.heading}</h2>
+          <p className={s.sectionGuide}>
+            Part {i + 1} of {p.sections.length}{ROLE_GUIDE[section.role] ? ` — ${ROLE_GUIDE[section.role]}` : ''}
+          </p>
           {section.note && <p className={s.sectionNote}>{section.note}</p>}
           {section.items.map((item) => (
             <ItemView
@@ -168,6 +187,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       {b.comparisons.filter((c) => c.origin === 'programme').map((c) => (
         <section key={c.id} aria-label="Two perspectives">
           <h2 className={s.sectionHead}>Same work, two perspectives</h2>
+          <p className={s.sectionGuide}>{PAIR_GUIDE}</p>
           <ComparisonView c={c} b={b} />
         </section>
       ))}
@@ -205,6 +225,12 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
 
   async function mark(kind: ListeningKind) {
     await journey.markListening(item, kind, pid)
+    bump()
+  }
+
+  const knewIt = Boolean(latestFeedback(b.feedback, item.workId).known)
+  async function toggleKnown() {
+    await journey.markKnown(item.workId, !knewIt, pid)
     bump()
   }
 
@@ -277,7 +303,13 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
         ))}
       </div>
 
-      {(state === 'heard' || state === 'listening' || b.feedback.some((f) => f.target.id === item.recordingId || f.target.id === item.workId)) && (
+      <p className={s.knownLine}>
+        {knewIt
+          ? <>You knew this one before; the curator won’t treat it as a discovery. <button className={`${s.textButton} ${s.quietButton}`} onClick={toggleKnown}>Undo</button></>
+          : <button className={`${s.textButton} ${s.quietButton}`} onClick={toggleKnown}>I knew this already</button>}
+      </p>
+
+      {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === item.recordingId || f.target.id === item.workId))) && (
         <div style={{ marginTop: 'var(--space-sm)' }}>
           <FeedbackPanel
             key={`${item.id}-${state}`}
@@ -358,7 +390,7 @@ function ProgrammeTools({ b }: { b: Bundle }) {
   return (
     <div className={s.actions} style={{ marginTop: 'var(--space-md)' }}>
       {total > 0 && <span className={s.faint}>{verified.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
-      {b.playlist && <a href={b.playlist.url} target="_blank" rel="noopener noreferrer">Open the playlist</a>}
+      {b.playlist && webUrl(b.playlist.url) && <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer">Open the playlist</a>}
       {spotify.connected && verified.length > 0 && (
         <button className={s.textButton} onClick={savePlaylist} disabled={saving}>
           {saving ? 'Saving…' : b.playlist ? 'Update the playlist' : 'Save as a Spotify playlist'}
@@ -399,6 +431,11 @@ function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
   )
 }
 
+/** Only http(s) links are rendered: a restored backup is data, and a javascript: URL in it must not become a link. */
+function webUrl(u: string): string | undefined {
+  try { return ['http:', 'https:'].includes(new URL(u).protocol) ? u : undefined } catch { return undefined }
+}
+
 const KIND_TITLE = { listen: 'Listen', read: 'Read', watch: 'Watch' } as const
 
 function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boolean; onSearch: () => void }) {
@@ -406,6 +443,7 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
   return (
     <section aria-label="Further listening and reading">
       <h2 className={s.sectionHead}>Further listening and reading</h2>
+      <p className={s.sectionGuide}>{FURTHER_GUIDE}</p>
       {groups.length === 0 && searching && <Waiting>Looking for good reading and listening…</Waiting>}
       {groups.length === 0 && !searching && (
         <p className={s.quiet}>
@@ -419,7 +457,7 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
           <ul className={s.resources}>
             {list.map((r) => (
               <li key={r.id} className={s.resource}>
-                <a href={r.url} target="_blank" rel="noopener noreferrer">{r.title}</a>
+                {webUrl(r.url) ? <a href={webUrl(r.url)} target="_blank" rel="noopener noreferrer">{r.title}</a> : r.title}
                 <p>{r.source}{r.purpose ? ` — ${r.purpose}` : ''}</p>
               </li>
             ))}

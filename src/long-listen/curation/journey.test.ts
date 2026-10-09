@@ -5,6 +5,8 @@ import type { CuratorClient, CuratedItem, ProgrammeResponse, ThemesResponse } fr
 import { CuratorUnavailable } from './api'
 import { buildContext } from './context'
 import { weekOf } from '../domain/week'
+import { pendingFeedback } from './taste'
+import { knownWorkIds } from '../domain/listening'
 
 // A curator stand-in: records every call, answers from per-op scripts.
 function fakeCurator(script: Partial<Record<string, (payload: any, n: number) => unknown>>) {
@@ -333,6 +335,23 @@ describe('what the listener tells the curator', () => {
     const ctx = c.calls.filter((x) => x.op === 'themes')[1].payload.context
     expect(ctx.alreadyProgrammed.map((a: any) => a.work)).toContain('La mer')
     expect(ctx.alreadyProgrammed[0].weeksAgo).toBe(1)
+  })
+
+  it('tells the curator what the listener knew before, and forgets it when they take it back', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('P', FRENCH) })
+    let j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const item = p.sections[0].items[0]
+    await j.markKnown(item.workId, true, p.id)
+    // Familiarity is not a reaction: the taste interpreter has nothing to read, the listening state is untouched.
+    expect(pendingFeedback(await repo.feedback.all())).toEqual([])
+    at('2026-10-15T09:00:00Z')
+    j = journey(c.client)
+    await j.ensureWeek()
+    const ctx = c.calls.filter((x) => x.op === 'themes')[1].payload.context
+    expect(ctx.alreadyKnown).toEqual([{ composer: item.proposed.composer, work: item.proposed.work }])
+    await j.markKnown(item.workId, false, p.id)
+    expect(knownWorkIds(await repo.feedback.all()).size).toBe(0)
   })
 })
 

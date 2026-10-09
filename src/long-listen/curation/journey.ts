@@ -194,6 +194,7 @@ export class Journey {
       thread: digest ? { ...digest, stage } : null,
       preferences: context.preferences,
       alreadyProgrammed: context.alreadyProgrammed,
+      alreadyKnown: context.alreadyKnown,
       taste: context.taste,
       questions: context.questions,
       listenerNotes: context.listenerNotes,
@@ -361,6 +362,17 @@ export class Journey {
       ...(input.more ? { more: input.more } : {}),
       ...(note ? { note } : {}),
     }
+    await this.repo.feedback.put(f)
+    return f
+  }
+
+  /**
+   * "I knew this already" on a work — or taking it back. Familiarity, not a
+   * reaction: it doesn't touch the listening state or the taste profile; it
+   * tells the curator what isn't a discovery for this listener.
+   */
+  async markKnown(workId: string, known: boolean, programmeId?: string): Promise<Feedback> {
+    const f: Feedback = { id: newId('fb'), at: this.stamp(), target: { type: 'work', id: workId }, programmeId, known }
     await this.repo.feedback.put(f)
     return f
   }

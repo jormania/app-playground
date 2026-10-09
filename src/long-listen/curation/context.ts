@@ -1,7 +1,7 @@
 import type { Repo } from '../store/repo'
 import type { ListeningWeek } from '../domain/week'
 import { creditLine } from '../domain/identity'
-import { listeningState, latestFeedback, timesHeard } from '../domain/listening'
+import { knownWorkIds, listeningState, latestFeedback, timesHeard } from '../domain/listening'
 import type { ListenerPreferences } from '../domain/types'
 import { weeksBetween } from '../domain/week'
 import { digestThread, type ThreadDigest } from './continuity'
@@ -32,6 +32,12 @@ export interface CuratorContext {
    * return is fine; an unnoticed one is not.
    */
   alreadyProgrammed: { composer: string; work: string; weeksAgo: number }[]
+  /**
+   * Works the listener knew before the app suggested them — the music they
+   * brought with them. Not a verdict on the works; it tells the curator what
+   * is not a discovery for this listener.
+   */
+  alreadyKnown: { composer: string; work: string }[]
   requestedNext?: string
 }
 
@@ -104,6 +110,13 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
       }
     }
   }
+  const known = knownWorkIds(feedback)
+  const alreadyKnown: CuratorContext['alreadyKnown'] = []
+  for (const i of [...programmes.values()].flatMap((p) => p.sections.flatMap((x) => x.items))) {
+    if (known.has(i.workId) && !alreadyKnown.some((a) => a.composer === i.proposed.composer && a.work === i.proposed.work)) {
+      alreadyKnown.push({ composer: i.proposed.composer, work: i.proposed.work })
+    }
+  }
   const { nextRequest, ...preferences } = prefs
 
   return {
@@ -118,6 +131,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
     recentWeeks,
     recentListening,
     alreadyProgrammed,
+    alreadyKnown,
     requestedNext: (requestedNext ?? nextRequest).trim() || undefined,
   }
 }

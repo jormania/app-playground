@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Field, SegmentedControl, SettingsToggle } from '../../ds'
 import { useLoad, useServices } from '../app/services'
-import { beginSignIn, redirectUriFor } from '../spotify/auth'
+import { beginSignIn, redirectUriFor, renewBy } from '../spotify/auth'
 import { isValidTimeZone } from '../domain/week'
 import { DEFAULT_PREFERENCES, type ListenerPreferences } from '../domain/types'
 import type { ThemeChoice } from '../app/settings'
@@ -124,7 +124,9 @@ function ClaudeSection() {
       <h2 className={s.h2}>Claude, the curator</h2>
       <p className={s.quiet}>
         Paste an Anthropic API key (console.anthropic.com → API keys). It stays on this device, like in the other apps here,
-        and goes only to Anthropic, with each request to Claude. Each week costs a few cents.
+        and goes only to Anthropic, with each request to Claude. Each week costs a few cents. Best practice: a key made just for
+        this app, in a workspace with a small monthly spend limit — then a lost phone or a leak costs little, and the key can be
+        deleted in the console without touching anything else.
       </p>
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.row}>
@@ -185,8 +187,21 @@ function SpotifySection() {
               <button className={s.textButton} onClick={() => { spotify.setTokens(null); setResult(null); bump() }}>Disconnect</button>
             </>}
       </div>
+      {spotify.connected && renewalNote(renewBy(spotify.currentTokens))}
       <ResultLine r={result} />
     </section>
+  )
+}
+
+/** Spotify sign-ins last six months; say when this one needs renewing, quietly, and louder near the end. */
+function renewalNote(at: number | undefined) {
+  if (!at) return null
+  const date = new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+  const soon = at - Date.now() < 14 * 24 * 3600_000
+  return (
+    <p className={soon ? s.note : s.faint}>
+      {soon ? `Spotify will ask you to sign in again around ${date} — its sign-ins last six months. Disconnect and connect again any time before then.` : `Spotify sign-ins last six months; this one runs until about ${date}.`}
+    </p>
   )
 }
 

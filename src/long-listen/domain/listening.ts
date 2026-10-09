@@ -21,8 +21,17 @@ function stateOfKind(e: ListeningEvent): ListeningState {
   }
 }
 
+/**
+ * When it happened: a Spotify play is placed at the time it was played, not
+ * the later moment the app heard about it — so a reset made after a play is
+ * not overturned by that play arriving on the next sync.
+ */
+function when(e: ListeningEvent): string {
+  return e.source === 'spotify-recent' ? (e.playedUntil ?? e.playedAt ?? e.at) : e.at
+}
+
 export function listeningState(events: ListeningEvent[], recordingId: string): ListeningState {
-  const mine = events.filter((e) => e.recordingId === recordingId).sort((a, b) => a.at.localeCompare(b.at))
+  const mine = events.filter((e) => e.recordingId === recordingId).sort((a, b) => when(a).localeCompare(when(b)))
   let state: ListeningState = 'not-started'
   for (const e of mine) {
     const next = stateOfKind(e)
@@ -56,13 +65,20 @@ export function reactionLabel(r?: Reaction): string | undefined {
 }
 
 /** The latest feedback on a target, merged: a later reaction replaces an earlier one; notes accumulate. */
-export function latestFeedback(all: Feedback[], targetId: string): { reaction?: Reaction; more?: WantMore; notes: string[] } {
+export function latestFeedback(all: Feedback[], targetId: string): { reaction?: Reaction; more?: WantMore; notes: string[]; known?: boolean } {
   const mine = all.filter((f) => f.target.id === targetId).sort((a, b) => a.at.localeCompare(b.at))
-  const out: { reaction?: Reaction; more?: WantMore; notes: string[] } = { notes: [] }
+  const out: { reaction?: Reaction; more?: WantMore; notes: string[]; known?: boolean } = { notes: [] }
   for (const f of mine) {
     if (f.reaction) out.reaction = f.reaction
     if (f.more) out.more = f.more
     if (f.note) out.notes.push(f.note)
+    if (f.known !== undefined) out.known = f.known
   }
   return out
+}
+
+/** Works the listener said they knew before the app suggested them (latest word wins). */
+export function knownWorkIds(all: Feedback[]): Set<string> {
+  const ids = new Set(all.filter((f) => f.target.type === 'work' && f.known !== undefined).map((f) => f.target.id))
+  return new Set([...ids].filter((id) => latestFeedback(all, id).known))
 }

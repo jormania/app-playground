@@ -57,7 +57,7 @@ The endpoint is gone; the fold stays, so the repo now sits at **11/12**.
 Artist (composer | conductor | orchestra | ensemble | choir | soloist)
 Work ── composer, title, catalogue, composed, form, context, movements
  └─ Recording ── conductor, orchestra, ensemble, soloists, character,
-     │           verification (unchecked | verified | not-found), spotify ref
+     │           verification (unchecked | verified | unconfirmed | not-found), spotify ref
      └─ Album (Spotify) ── holds several recordings
 Theme (a thread) ── explorations, reaction, open questions, adjacent topics, next directions
  └─ ThemeExploration ── week, stage (1st visit, 2nd…), angle, programme, closing note, setAside
@@ -138,17 +138,33 @@ explanation, what to listen for, and a *proposed* recording by name.
 Nothing it says is stored as metadata:
 
 - **Recordings** are matched on Spotify (`spotify/match.ts`) on the work
-  *and* the performers. The right work by the wrong conductor is `none`. Only
-  Spotify's own data is stored: album, release date, ℗ line, credited
-  artists, the work's tracks. A miss is `not-found`, and the curator's
+  *and* the performers. The right work by the wrong conductor is `none`; so
+  is a track whose composer isn't named (as an artist or in the title), one
+  carrying a different catalogue number of the same scheme, and one on an
+  album released before the proposed recording year. A **strong** match
+  (composer, work, every performer) is `verified`. A **probable** one (the
+  conductor right, an orchestra or soloist not credited — maybe the same
+  recording billed differently, maybe the same conductor twenty years
+  earlier) is `unconfirmed`: shown with its album and credits as a question,
+  never linked, played, put in a playlist, counted as listening or mirrored
+  to Notion until the listener says "Yes, this is it". "Not this one" (on
+  either kind) remembers the album in `rejectedAlbumIds`, so it is never
+  offered again, and looks once more. Only Spotify's own data is stored:
+  album, release date, ℗ line, credited artists, the work's tracks and their
+  names. A miss is `not-found`, and the curator's
   choice is never silently swapped for another interpretation. Instead a
   **stand-in** is chosen, by itself, once: `spotifyCandidates` lists the
   recordings of the work Spotify really has, the curator picks from that
   list (`validateCompare` refuses a pick that isn't on it), and the result is
   shown beneath the original as "On Spotify instead" and goes into the
   playlist. Bracketed version notes ("(original piano version)") don't count
-  as title words, and `MATCHER_VERSION` makes every not-found an older
-  matcher left behind get looked for again.
+  as title words. `MATCHER_VERSION` (now 3) is stored with each decision;
+  anything an older matcher decided — not-found *or* matched — is looked at
+  again, unless the listener settled it. Version 2 once passed Karajan's
+  Beethoven 7 for his Sibelius 7 (same conductor, same orchestra, "Symphony
+  No. 7"); when a re-check changes or withdraws a match, the listening
+  Spotify reported against the old tracks is dropped with it (the
+  listener's own marks stay).
 - **Resource URLs** survive only if they appeared in a `web_search_result`
   in the same response (`validateResources`). (The first, server-side
   version also dropped pages answering 404 to a HEAD request; a browser can't
@@ -182,25 +198,54 @@ Scopes: `user-read-recently-played`, `user-read-playback-state`,
 reconnect before a playlist is written.
 
 **Also from Spotify**: each verified recording's length (sum of its tracks),
-the work's movements from the track names (once, if the work has none), the
+its movements from its own track names (on the recording, as its album
+divides them — never copied onto the work, where one wrong match once renamed
+the movements for every recording of it), the
 week as a private **playlist** of exactly the matched tracks (re-saving
 replaces them), the **listening view**'s "now" marker from currently-playing
 (polled every 10 s while visible, screen kept awake with the shared
-`useWakeLock`), and a **Settings test** (who's signed in, which devices). The PKCE callback is validated: state must
-match, the verifier is single-use, and sign-ins older than 15 minutes are
-refused.
+`useWakeLock`), and a **Settings test** (who's signed in, which devices).
+**Play on your device** turns shuffle off and starts at the first movement
+(a device left on shuffle started a symphony at its third).
 
-**Listening detection**: on each app open, recently-played (last 50) is
-matched to verified recordings' track ids. A session (plays within 3 h)
-covering ≥60% of a work's tracks is `heard`, less is `partial`. Each session
-is recorded once and upgraded once if finished later. Spotify can only move a
-recording forward; the listener's own marks win.
+**Sign-in lifecycle.** The PKCE callback is validated: state must match, the
+verifier is single-use, and sign-ins older than 15 minutes are refused. The
+pending state lives in localStorage — from the installed app, Spotify's page
+returns in a browser tab with its own sessionStorage. Since July 2026 a
+Spotify sign-in lasts **six months from authorisation**; refreshing doesn't
+extend it. Only `invalid_grant` (a 400/401 from the token endpoint) ends a
+sign-in; a timeout, 429 or 5xx keeps the tokens for another try. Refreshes
+are single-flight (several callers, one refresh — a rotated refresh token
+can't be spent twice) and read storage first, so a refresh another tab just
+made is used rather than repeated. When Spotify does end the sign-in, the app
+says so once and Settings offers Connect; Settings also shows when the
+current sign-in runs out.
+
+**Listening detection** is an approximation, and says so. Spotify's
+recently-played gives the last 50 tracks, each with a time, and a track
+appears after about thirty seconds of play — never how much was heard. On
+each app open (or "Check recent listening"), plays are matched to
+*confirmed* recordings' track ids. A session (plays within 3 h) covering
+≥60% of a multi-movement work's tracks is `heard`, less is `partial` (shown
+as "Listening"). A **single-track work is never marked heard by Spotify** —
+thirty seconds and forty minutes look identical — so "Heard" is the
+listener's word there. A session is recorded once: a later poll that sees
+the same session, even after its first plays have scrolled out of the fifty,
+only upgrades a partial to heard. Polls are one at a time. Spotify's events
+are placed at the time of the play, so a reset the listener made after it
+holds. More than fifty tracks between opens are simply not seen. Spotify can
+only move a recording forward; the listener's own marks win.
 
 ## 7. Notion
 
 A one-way mirror of what a person would reread, under one **notebook page**
 (Settings → Notion):
-**Journal** (one page per programme, written once, as the curator wrote it),
+**Journal** (one page per programme: the curator's text written once, as it
+was written; below it the further listening and reading, which usually
+arrives after the page exists — its blocks are remembered (`bodyBlockIds`,
+`anchorBlockId` in the sync state) and replaced in place when the list
+changes; anything the listener wrote on the page is left alone; pages from
+before this was tracked are found by their heading once),
 **Listening threads**, **Works & recordings**, **Composers**, and a **Musical
 taste** page rewritten when taste or preferences change. The mirror **finds**
 these by title-ending among the page's children (so "The Long Listen — Journal"
@@ -211,7 +256,8 @@ databases found and missing, and any column a found database lacks.
 The live notebook is **Dev → App Databases → The Long Listen**; the empty copy
 is **Dev → Starter Templates → The Long Listen — Starter Template**; spec and
 handover sit in App Specs and App Handovers, per *Dev — Building an App*. Hash-skipped: an unchanged entity is never rewritten. No ids,
-prompt versions or match confidences cross over.
+prompt versions or match confidences cross over, and only a confirmed
+recording gets a Spotify link.
 
 ## 8. Setup
 
@@ -226,6 +272,41 @@ if set at build time, pre-fills the Client ID.
 Development → *demo curator*. Its canned programmes exist only under
 `import.meta.env.DEV`, and every screen shows a demo ribbon while it is on.
 
+**Credentials, and what they are exposed to.** One listener, their own keys,
+on their own phone. The Anthropic key and Notion token sit in localStorage on
+`coneofcold.vercel.app`, which is **one origin shared by every app in the
+playground**: any script that ever ran there could read them. That — not the
+direct browser call to Anthropic, which sends the key only to
+`api.anthropic.com` over TLS — is the real exposure, and it is accepted for a
+personal app, proportionately:
+
+- the app renders no HTML it didn't write; links from the curator, from web
+  search or from a restored backup become links only if they are `http(s)`
+  (`normaliseUrl`, `webUrl`, the Notion mirror);
+- keys are never in a backup file and never sent anywhere but their owner's
+  API (the Notion token through the stateless `/api/notion` relay, which
+  checks origin, rate-limits, and logs nothing);
+- Settings recommends a key made just for this app, in a workspace with a
+  small monthly spend limit, and a Notion integration shared with the
+  notebook page only — so a leak costs little and is undone in one place;
+- Spotify holds no secret at all (PKCE; the Client ID is public).
+
+A server-held key would remove the key from the shared origin but replace it
+with an endpoint anyone could spend through; for one listener that is the
+worse trade. Revisit if the playground ever renders untrusted HTML, or if
+another person uses this app.
+
+**What the listener already knew.** The curator learns from what it
+suggested and from feedback — so on its own it would offer Beethoven 7 as a
+discovery to someone who has known it for thirty years. Each work in a
+programme has a quiet **"I knew this already"** (a `Feedback` with `known`,
+on the work; "Undo" writes `known: false`). It is familiarity, not a
+reaction: it doesn't touch listening state or the taste profile. The context
+sends `alreadyKnown`; the themes and programme prompts treat those works as
+familiar ground — a starting point to reach out from, never pitched as new.
+Music known before the app and never programmed here goes in the Notebook's
+note to the curator, which says so.
+
 ## 9. Tests
 
 `npm test -- src/long-listen`
@@ -238,11 +319,23 @@ Development → *demo curator*. Its canned programmes exist only under
 - `curator/curator.test.js`: the key checks, the call to Anthropic (endpoint,
   key, browser header), the validators, the retry-then-strip rule for repeats,
   resource URL verification, errors in listener's words.
-- `spotify/*.test.ts`: matching (wrong conductor refused, No. 15 ≠ No. 5),
-  PKCE (forged, replayed and stale callbacks refused), recently-played
-  sessions.
-- `domain/week.test.ts`, `identity.test.ts`, `listening.test.ts`,
-  `curation/taste.test.ts`, `notion/mirror.test.ts`, `App.test.tsx`.
+- `spotify/*.test.ts`: matching (wrong conductor refused, No. 15 ≠ No. 5,
+  another composer's "Symphony No. 7" refused, contradicting catalogue
+  numbers and too-early releases refused); verification (a near miss held as
+  unconfirmed, confirmed or refused by the listener, a refused album never
+  offered again, an older matcher's match re-checked and its inferred
+  listening dropped); PKCE (forged, replayed and stale callbacks refused);
+  the sign-in lifecycle (an outage keeps the sign-in, `invalid_grant` ends
+  it and says so, one refresh for many callers, another tab's refresh
+  used); recently-played (confirmed recordings only, single-track works
+  never "heard", a session counted once as it scrolls out of the fifty);
+  playlists (confirmed tracks only); play (shuffle off, first movement).
+- `notion/mirror.test.ts`: further reading that arrives after a page was
+  written is added after the curator's text, replaced in place when it
+  changes, and the listener's own blocks are left alone; legacy pages are
+  found by heading.
+- `domain/week.test.ts`, `identity.test.ts`, `listening.test.ts` (a reset
+  after a play holds), `curation/taste.test.ts`, `App.test.tsx`.
 - `scripts/anthropic.live.test.js` sends each curator job's real request
   once (`npm run test:live`).
 
