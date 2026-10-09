@@ -1,8 +1,9 @@
 # The Long Listen — roadmap
 
-What comes after release one. First written 2026-10-09; rewritten the same day
-after reading what listeners, programme-note writers and recommender research
-say about the problems this app tries to solve (sources at the end).
+What comes after release one. First written 2026-10-09 and rewritten the same day in
+three passes: what listeners, programme-note writers and recommender research
+say about the problems this app addresses (sources at the end); then a check
+of every item against the code, which dropped or reshaped several.
 
 **Order of work.** Release one is tested in daily use first. Bugs found in that
 test are fixed before anything here starts, and the test may re-rank this list:
@@ -11,7 +12,7 @@ would reach goes down. Release two is the section of that name below.
 
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every
-item below serves at least one of those, and each says which.
+item below serves at least one of those; release two is grouped by which.
 
 The product rules in `LONG_LISTEN.md` §1 hold for every item: no counts, no
 streaks, no scores, taste in prose, choice without judgement. When an item is
@@ -25,37 +26,41 @@ Effort: **S** is a day or less, **M** a few days, **L** a week or more.
   listeners said a song outside their taste broadened it when it was played
   cold; with a short *informative* introduction (context, what inspired it)
   that rose to 56%, with a story-like one to 49%. Dull introductions hurt. The
-  authors suggest LLM-written introductions and warn that an AI *voice*
-  undermined credibility. → The app's written notes are the right instinct;
-  carry them into the listening itself (item 6), keep them written, not spoken.
+  authors suggest LLM-written introductions and found an AI *voice* cost
+  credibility with some listeners. → Carry the written notes into the
+  listening itself (item 8); keep them written, never spoken.
 - **Liking grows with hearing, even for complex music.** Over four weeks of
   repeated listening, liking rose for simple and complex pieces alike, and the
-  strongest predictor of liking was familiarity with *similar* music. → Bring a
-  difficult work back on purpose (item 8), and know what the listener already
-  knows so new music can be reached from it (item 12).
+  strongest predictor of liking was familiarity with *similar* music. → Offer
+  a difficult work again, later, a different way (item 10); know what the
+  listener already knows (item 15).
 - **Listeners want reasons, control, and to be read correctly.** Interviewed
-  streaming users wanted to know *why* something was recommended, felt
-  ownership of "their algorithm", and were put off by wrong guesses about who
-  they are or how they feel right now. → Reasons that point to a specific
-  moment in the listener's own history, never a label (item 9); a way to
-  answer the curator's questions (item 4); this-week tuning for mood (item 5).
+  streaming users wanted to know *why* something was recommended, trained
+  "their algorithm" through likes and replays, and were put off by wrong
+  guesses about who they are or how they feel right now. → Feedback that costs
+  nothing to give (items 1, 3); reasons that point to a moment in the
+  listener's own history, never a label (item 11); a mood for this week
+  without a trip to Settings (item 5).
 - **Conversation helps people find what they want.** A three-week diary study
   of LLM music recommendation found it helped people put implicit wishes into
   words and explore in their own direction. → Ask about the music while it
-  plays (item 7); answer the curator (item 4).
+  plays (item 8); turn your own questions into directions (item 9).
 - **Programming is a creative act.** Programme-note and concert-programming
   guides treat the order of works as an argument — juxtaposition sets up a
   dialogue — and a note's two jobs as history and what to listen for. → Vary
-  the *form* of a week, not only its contents (item 2).
-- **What people dislike in AI music features**: Spotify's AI DJ is criticised
-  for loops of the same songs and for a synthetic voice talking over music;
-  "algorithmic" listening is criticised for narrowing taste. → No spoken host,
-  no endless feed (see *Decided against*).
+  the *form* of a week, not only its contents (item 7).
+- **Too few options hurt more than too many.** A 7,000-person study across six
+  countries found people felt short of options far more often than
+  overwhelmed. → Keep three directions plus "three others" on request; don't
+  add a "let the curator choose" shortcut that narrows it.
+- **What people dislike in AI music features.** Recurring complaints about
+  Spotify's AI DJ: the same songs in loops, and a synthetic voice talking over
+  the music. → No spoken host, no endless feed (see *Decided against*).
 - **Classical metadata is hard and models invent things.** Streaming catalogues
   split works into loose tracks and mix up performers; an offline study of LLM
   recommenders found up to ~15% of suggested tracks were not in the catalogue.
-  → The app's rule that only a confirmed Spotify match counts stays central;
-  better recording facts are in *Later* (item 15).
+  → The rule that only a confirmed Spotify match counts stays central; better
+  recording facts are in *Later*.
 
 ## Before release two: finish release one
 
@@ -66,27 +71,35 @@ Effort: **S** is a day or less, **M** a few days, **L** a week or more.
 
 ## Release 2
 
-Ranked. Items 1–9 are the release; 10–12 go in if the first nine land well.
+Ranked: friction first (cheap, felt every week), then the curation check that
+guards every prompt change, then the creative and AI items it guards. Items
+1–11 are the release; 12 goes in if the rest land well.
 
-| # | Item | Serves | Why it matters | Effort |
-|---|------|--------|----------------|--------|
-| 1 | **A curation check** — a fixed set of listener profiles (narrow and familiar; broad and obscure; a returning theme; Romanian) run against the prompts, with the validator's verdicts and a short read of the writing, before and after any prompt change | AI | Items 2, 4, 8 and 9 all change prompts. Without a check, each change is judged by living with it for a week. Runs on demand with the owner's key, never in CI | S–M |
-| 2 | **Shapes of a week** — the curator chooses a form as well as a theme: a journey through one form across centuries, one work heard three ways, *then and now* (an old piece and the new one that answers it), one city in one year, a performer's week, a dialogue between two composers. The form is named on the direction card | Varied, creative | Today every week has the same shape: two to four sections of works. Varying the form is the cheapest large gain in variety, and the settings (breadth, familiarity, pairs) still bound what goes in | S–M |
-| 3 | **React where you listen** — "I've heard it" in the listening view opens the five reactions and a line for a note, right there; one tap and back | Smooth | Feedback is how the curator learns, and today it means going back to the programme and finding the panel. The less it costs, the more of it there is | S |
-| 4 | **Answer the curator** — the questions the curator holds about your taste (already shown in the Notebook, with no way to reply) offered one at a time at the end of a week, with a one-line answer that goes straight into taste | Smooth, AI | The curator asks good questions and never hears back. One answered question tells it more than a week of inferred reactions | S |
-| 5 | **Ready when you arrive, tuned for this week** — next week's three directions are prepared when the app is opened in the last two days of a week, so Monday opens without a wait; beside them, this week's breadth, familiarity and length can be changed for this week only, and *Let the curator choose* picks one, with a line why | Smooth | Two waits and a trip to Settings stand between opening the app and listening. A wish written after the directions were prepared is offered as "ask again with this wish", never silently dropped | S–M |
-| 6 | **A listening companion** — what to listen for, per movement, shown as Spotify reaches each one (the listening view already knows the movement, polling every 10 s); written once per recording from that recording's own track names | AI, creative | The research's clearest finding: a short informative note at the moment of listening is what turns unfamiliar music into music you like. Per movement, never per second — the model can't know timings, and invented ones would be wrong | M |
-| 7 | **Ask about this** — a question box in the listening view and on each programme item ("why does the horn take over here?"), answered with the work, the recording and the current movement as context; answers kept with the item and in the Journal | AI | Generalises "A little more context" into whatever the listener actually wonders. Small, cheap calls; the conversation research says this is where people find what they're after | M |
-| 8 | **Second hearings** — a work marked *interesting* or *too difficult* comes back weeks later, in another week's context, with a different way in (another recording, a different note), at most one a week and labelled as a return | Varied, creative | Liking grows with hearing, for complex music too. Today such a work is simply left behind; the curator only knows not to repeat it | S–M |
-| 9 | **Why this, for you** — each item's reason may point to a specific moment in your own listening ("the long build you loved in the Sibelius, three weeks ago"), never to a label about you | AI | People trust a reason they can check, and resent being typecast. Mostly prompt work, guarded by item 1 | S |
-| 10 | **Live in Bucharest** — when a programmed work, composer or performer is on at the Filarmonica George Enescu (Ateneu), the Radio hall or another venue Marquee reads, one quiet line on the programme | Creative | The best thing a curator can do is send you to the hall. Marquee already reads these venues (`api/_lib/marquee/`); the Long Listen asks it, doesn't scrape. No new serverless function | M |
-| 11 | **A listening log that doesn't miss things** — check recently-played on a timer while the app is open, and on the installed app's periodic background sync (`src/shared/notify/`) | Smooth | Spotify shows only the last fifty tracks. A week of other music between opens hides the classical listening, so the curator thinks a heard symphony wasn't | M |
-| 12 | **Bring your own repertoire** — from Spotify's saved albums and followed artists, propose works you already know, to confirm in one pass | Smooth, varied | "I knew this already" works one item at a time. The strongest predictor of liking new music is familiarity with similar music: knowing what you know lets the curator build bridges from it | M |
+### Smoother
+
+| # | Item | Why it matters | Effort |
+|---|------|----------------|--------|
+| 1 | **Keep listening** — in the listening view, "I've heard it" shows the reaction and a note line in place, then *Next: the following work* opens that work's listening view; *Play from here* plays this recording and the confirmed ones after it, in order | Today "I've heard it" drops you at the top of a long programme page, where the feedback panel waits. Listening a programme through should be one gesture per work. Feedback-to-taste calls (one Claude call per save today, `FeedbackPanel.tsx`) are batched to one per session | S–M |
+| 2 | **Notice listening when you come back** — re-check Spotify's recently-played when the app returns to the foreground, not only on a fresh load | An installed app resumed from the background never looks again today (`app/services.tsx`), so the fifty-track window slides past unseen. Most of the value of background sync for a fraction of the cost (see *Decided against*) | S |
+| 3 | **How did it land?** — when Spotify has marked a work heard, the next open asks about that one work, quietly, once; dismissing it is an answer too | Spotify detection marks works heard silently, so the works you play from Spotify — most of them — never get a reaction. The biggest gap in the feedback loop | S |
+| 4 | **Fewer waits** — read this week's feedback into taste in the background as it arrives, close the week's threads in parallel rather than one after another, and verify recordings (and find stand-ins) right after a direction is chosen, not when the programme is first opened | Monday today is a chain of calls (each open thread, then taste, then directions), and the first programme view fills in recording by recording. Directions are still made on the day, so nothing goes stale | S–M |
+| 5 | **This week, differently** — one quiet line by the three directions: *shorter · quieter · wider · more familiar*, for this week only, carried through directions, programme and *More of this theme* | Settings are a standing preference; a mood is a week's. One line of words, not three sliders, on the screen that should be the calmest | S |
+
+### Better curation, more variety
+
+| # | Item | Why it matters | Effort |
+|---|------|----------------|--------|
+| 6 | **A curation check** — about four listener profiles (narrow and familiar; broad and obscure; a returning theme; Romanian) run against the prompts on demand, with the validator's verdicts and a short read of the writing, before and after a prompt change | Items 7–11 all change prompts. Without a check, each change is judged by living with it for a week. Runs with the owner's key, never in CI; a run costs a few calls per profile | S–M |
+| 7 | **Shapes of a week** — the curator chooses a form as well as a theme and names it on the direction card: a form followed across centuries; *then and now* (an old piece and the new one that answers it); one city in one year; a performer's week; two composers in dialogue; one work heard several ways (only with *Same work, two perspectives* on) | Every week today has the same shape. Varying the form is the largest gain in variety. Each form states which variety rule it relaxes — two composers in dialogue needs more than two works each, a work heard several ways needs pairs — so the validator and `enforceVariety` check the form, not a blanket cap | M |
+| 8 | **A listening companion** — in the listening view: what to listen for in each movement, shown as Spotify reaches it; *Ask about this* (a question line answered with the work, recording and current movement as context); and the existing *A little more context*, together in one place | The research's clearest finding: a short informative note at the moment of listening is what turns unfamiliar music into music you like. Notes are written once per programme for all confirmed recordings, right after verification (a candidate for the cheaper model). Per movement, never per second — the model can't know timings. The question path exists (`Journey.explain(…, question)`) but has no box, and its answers are stored under ids the programme never loads; fix with it. Stand-ins need a listening route | M |
+| 9 | **Your questions, as directions** — the questions the curator hears you asking of the music (shown in the Notebook, e.g. "What happens to the symphony after Mahler?") each get *Follow this*, which asks for directions from it (this week, or as next week's wish) | They're the best seeds the app has and today they're only read. One tap, no typing | S |
+| 10 | **Second hearings, offered** — a work you found *interesting* or *too difficult* is offered again weeks later, in another week's context and a different way in (another recording, another angle), stated as an offer — "Try the Lutosławski again?" — never slipped in, at most one a week | Liking grows with hearing, complex music included. Today nothing asks for a return, and a work falls out of the curator's view after twelve weeks. "Too difficult" is the listener's word, so it's asked, not overruled | S–M |
+| 11 | **Why this, for you** — an item's reason may point to a specific moment in your own listening ("the long build you loved in the Sibelius, three weeks ago"), never to a label about you | People trust a reason they can check and resent being typecast. Prompt work, guarded by item 6 | S |
+| 12 | **Live in Bucharest** — when a programmed work, composer or performer is on at the Filarmonica George Enescu (Ateneu), the Radio hall or another venue Marquee reads, one quiet line on the programme | The best thing a curator can do is send you to the hall. Marquee already reads these venues (`api/_lib/marquee/`); the Long Listen asks it, doesn't scrape. No new serverless function | M |
 
 Also in release two, too small to rank: write the "On Spotify instead"
 recordings and side-by-side pairs to Notion's Works & recordings (today the
-notebook leaves out what was actually played when the named recording was
-missing).
+notebook leaves out what was actually played when the named one was missing).
 
 ## Later
 
@@ -94,22 +107,29 @@ missing).
 |---|------|----------------|--------|
 | 13 | **A sitting for tonight** — one or two hours, asked for on the day ("quiet, nothing I know"), recorded in the same threads | Some weeks there is one evening, not seven, and a mood is a moment's | M |
 | 14 | **Season in review** — every twelve weeks, a page of prose: threads that grew, where taste moved, paths still open, things worth hearing again | Makes the app's memory something you read. Needs twelve weeks of history, so it can't be judged during release two | M |
-| 15 | **Recording facts from MusicBrainz** — year and performers checked against an open database (free, no key) | Years and performer lists are the facts most often slightly wrong | M |
-| 16 | **Towards the Enescu Festival** — the biennial festival returns in late summer 2027; once its programme is published, a few weeks that prepare for concerts you might attend | Local, and a reason to listen ahead. Depends on item 10 | S–M |
-| 17 | **Romanian throughout** — the interface, not only the curator's writing | Mostly copy, but a lot of it | M |
-| 18 | **A second listener** — a profile for Nora on the same device, with a younger voice in the writing | Every collection gains an owner; only worth it if she would use it | L |
-| 19 | **A map of the threads** — themes and works on a timeline of centuries, with the connections the curator drew | Shows where you've been. Must stay a map, never a scorecard | L |
-| 20 | **Offline programme** — check during the release-one test what already works without signal (the app is cached, the data is in IndexedDB) before building anything | Probably mostly there | S |
+| 15 | **Bring your own repertoire** — from Spotify's saved albums, propose works you already know, to confirm in one pass | Familiarity with similar music predicts liking, so knowing what you know lets the curator build bridges. Large: "already known" today only covers works the app programmed, and resolving albums to works is the classical metadata problem in full | L |
+| 16 | **Recording facts from MusicBrainz** — year and performers checked against an open database (free, no key) | Years and performer lists are the facts most often slightly wrong | M |
+| 17 | **Towards the Enescu Festival** — the biennial festival returns in late summer 2027; once its programme is published, a few weeks that prepare for concerts you might attend | Local, and a reason to listen ahead. Builds on item 12 | S–M |
+| 18 | **Romanian throughout** — the interface, not only the curator's writing | Mostly copy, but a lot of it | M |
+| 19 | **A second listener** — a profile for Nora on the same device, with a younger voice in the writing | Every collection gains an owner; only worth it if she would use it | L |
+| 20 | **A map of the threads** — themes and works on a timeline of centuries, with the connections the curator drew | Shows where you've been. Must stay a map, never a scorecard | L |
+| 21 | **Offline programme** — check during the release-one test what already works without signal (the app is cached, the data is in IndexedDB) before building anything | Probably mostly there | S |
 
 ## Decided against
 
-- **A spoken host.** The synthetic DJ voice is the most criticised part of
-  Spotify's AI DJ, and in the introduction study an AI voice cost credibility.
-  The curator writes; it doesn't talk over the music.
+- **A spoken host.** The synthetic voice is a recurring complaint about
+  Spotify's AI DJ, and in the introduction study an AI voice cost
+  credibility. The curator writes; it doesn't talk over the music.
 - **Mood playlists and an endless feed.** Mood wheels and infinite radio are
-  what streaming services already do well. The app's unit is a programme with
-  an order and a reason; mood enters through this week's tuning (item 5) and a
-  sitting for tonight (item 13).
+  what streaming services already do. The app's unit is a programme with an
+  order and a reason; mood comes in through item 5 and, later, item 13.
+- **Background listening sync from the service worker.** The Spotify sign-in
+  lives in the page's storage, and Spotify rotates refresh tokens: a worker
+  and a page refreshing independently would eventually spend one twice and end
+  the sign-in. Periodic background sync is also infrequent and not
+  guaranteed. Item 2 covers most of the need.
+- **"Let the curator choose."** It saves one tap and removes the moment of
+  choosing, which is part of the pleasure.
 - **Anything counted.** Hours, streaks, a year in numbers. The product rule
   stands; item 14 is prose.
 
@@ -117,18 +137,17 @@ missing).
 
 - **Spotify as the only player.** Verification, playlists and listening
   detection all lean on it. Apple Music's API does have a recently-played list,
-  but without play times (repeats collapse into one entry) and only with a
-  paid Apple developer key; Idagio, the classical specialist, has no public
-  API and went through insolvency in 2025. Recommendation: stay with Spotify,
-  and keep the app fully usable without it (listening marked by hand,
+  but repeats collapse into one entry and it needs a paid Apple developer key;
+  Idagio, the classical specialist, offers no public API and went through
+  insolvency in 2025 (it continues under new owners). Recommendation: stay with
+  Spotify, and keep the app fully usable without it (listening marked by hand,
   recordings as links), which it mostly is.
 - **A small server.** Everything runs in the browser by design: your own key,
-  no function of its own, 11 of 12 Vercel functions used. Items 10 and 11
-  would be easier with a scheduled job. Recommendation: no new function; fold
-  anything server-side into an existing endpoint.
-- **A cheaper model for small jobs.** Further reading, the taste update, item
-  7's answers and item 6's notes could run on Haiku (`src/shared/models.js`).
-  Recommendation: decide with item 1's check, not before.
+  no function of its own, 11 of 12 Vercel functions used. Recommendation: no
+  new function; fold anything server-side into an existing endpoint.
+- **A cheaper model for small jobs.** Item 8's notes, the taste update and
+  further reading could run on Haiku (`src/shared/models.js`). Recommendation:
+  decide with item 6's check, not before.
 - **The week as the unit.** It gives the app its calm. Item 13 adds evenings
   without replacing it. Recommendation: keep the week.
 
@@ -138,12 +157,12 @@ missing).
 - Madison & Schiölde, Repeated listening increases the liking for music regardless of its complexity (2017) — https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5374342/
 - Don't mess with my algorithm: listeners and automated curation (First Monday) — https://firstmonday.org/ojs/index.php/fm/article/download/11783/10589
 - Yun & Lim, User experience with LLM-powered conversational recommendation: music (CHI 2025) — https://arxiv.org/abs/2502.15229
+- Choice deprivation vs overload (Behavioral Scientist) — https://behavioralscientist.org/is-having-too-many-choices-versus-too-few-really-the-greater-problem-for-consumers/
 - Exploring LLM-driven intent-based music recommendations (NLP4MusA 2026) — https://aclanthology.org/2026.nlp4musa-1.7.pdf
 - Leeds Conservatoire, Concert programming — https://www.leedsconservatoire.ac.uk/about-us/progression-portal/musicians-survival-guide-articles/concert-programming/
 - Wayne State, A guide to writing program notes — https://music.wayne.edu/students/guide_to_writing_program_notes.pdf
 - Classical music has lost a generation: blame the metadata, in part (ArtsJournal, 2024) — https://www.artsjournal.com/diacritical/2024/05/classical-music-has-lost-a-generation-blame-the-metadata-in-part.html
 - Apple Music Classical's Listening Guide (The Violin Channel) — https://theviolinchannel.com/apple-music-classical-adds-new-features-including-listening-guide-personalized-recommendations-and-editorial-stations
 - Criticism of Spotify's AI DJ — https://news.ycombinator.com/item?id=47385272 and https://community.spotify.com/t5/Live-Ideas/Remove-the-DJ-AI-or-at-least-give-the-option-to-tu/idi-p/7328994
-- Choice deprivation vs overload (Behavioral Scientist) — https://behavioralscientist.org/is-having-too-many-choices-versus-too-few-really-the-greater-problem-for-consumers/
 - IDAGIO (Wikipedia, insolvency 2025) — https://en.wikipedia.org/wiki/IDAGIO
 - George Enescu Festival 2027 (provisional dates) — https://www.carnifest.com/george-enescu-festival-2027/
