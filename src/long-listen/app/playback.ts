@@ -47,7 +47,14 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
   const state = usePlayerState()
   const [busy, setBusy] = useState(false)
   const [noDevice, setNoDevice] = useState(false)
-  const at = trackIds?.length ? playbackOf(state.np, trackIds) : null
+  const seen = spotify.connected && trackIds?.length ? playbackOf(state.np, trackIds) : null
+  // A work that has played to its end: Spotify stops on the last movement, at
+  // its close or rewound to the start. That is finished, not paused — Play
+  // starts it again from the top, rather than Resume replaying one movement.
+  const np = state.np
+  const finished = Boolean(seen && trackIds && np && !np.isPlaying && seen.index === trackIds.length - 1 &&
+    (np.progressMs === 0 || (np.durationMs > 0 && np.durationMs - np.progressMs < 4000)))
+  const at = finished ? null : seen
 
   async function run(command: () => Promise<void>, expect: Parameters<PlayerWatch['expect']>[0]): Promise<boolean> {
     setNoDevice(false)

@@ -229,10 +229,10 @@ One thing in here is **not** a tidy-up waiting to happen:
   APIs — do not file this as a mechanical re-export like R-004 was.
 
 There was a second: `audio.ts`, which had no importers and shadowed Tempo's
-richer `playChime(volume, variant)`. It was deleted (R-025). Tempo's own
-`lib/sound.js` was then promoted to [`sound.js`](src/shared/sound.js) when The
-Long Listen became its second user (a chime between works, with `primeAudio()`
-so a chime with no tap of its own may sound); Tempo's path re-exports it.
+richer `playChime(volume, variant)`. It was deleted (R-025). Tempo's
+`lib/sound.js` was briefly promoted here for The Long Listen's chime between
+works, and moved back when that feature was removed (2026-10-09): Tempo is its
+only user again.
 
 ## Service workers & dev
 

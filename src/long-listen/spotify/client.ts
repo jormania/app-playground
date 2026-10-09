@@ -195,7 +195,9 @@ export class SpotifyClient {
   async nowPlaying(): Promise<NowPlaying | null> {
     const res = await this.request('me/player')
     if (res.status === 403) throw new SpotifyUnavailable('signed-out', 'Reconnect Spotify in Settings so the app can follow what’s playing.')
-    if (res.status === 204 || !res.ok) return null
+    if (res.status === 204) return null
+    // A server error says nothing about what's playing: keep the last reading rather than show nothing.
+    if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify isn’t answering right now.')
     const d = await res.json().catch(() => null) as {
       item?: { id: string; name: string; duration_ms?: number; linked_from?: { id?: string } } | null
       is_playing?: boolean; progress_ms?: number | null; device?: { name?: string; type?: string } | null
@@ -234,7 +236,8 @@ export class SpotifyClient {
     })
     if (!first.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t fill the playlist.')
     for (let i = 100; i < uris.length; i += 100) {
-      await this.request(`playlists/${playlistId}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ uris: uris.slice(i, i + 100) }) })
+      const more = await this.request(`playlists/${playlistId}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ uris: uris.slice(i, i + 100) }) })
+      if (!more.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t fill the rest of the playlist.')
     }
     return { id: playlistId!, url }
   }

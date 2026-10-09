@@ -297,12 +297,17 @@ async function playlistUris(repo: Repo, programmeId: string, opts: PlaylistOptio
   const events = opts.hideSkipped ? await repo.events.all() : []
   // "Hide what I skip": a skipped work, and its stand-in, leave the playlist too.
   const items = p.sections.flatMap((s) => s.items).filter((i) => !opts.hideSkipped || listeningState(events, i.recordingId) !== 'skipped')
-  // The programme's own pairs, plus any stand-in for a recording Spotify lacks.
-  const standIns = (await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
-  const comparisons = [...(await repo.comparisons.many(p.comparisonIds)), ...standIns]
+  // Item by item, in programme order: each work's recording, and right after
+  // it any stand-in found where Spotify lacks that recording (an unconfirmed
+  // one drops out below, so the stand-in takes its place). The programme's
+  // own pairs follow the items.
+  const standIns = new Map((await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn).map((c) => [c.id, c]))
+  // A pair of a skipped work leaves with it.
+  const keptWorks = new Set(items.map((i) => i.workId))
+  const pairs = (await repo.comparisons.many(p.comparisonIds)).filter((c) => !opts.hideSkipped || !c.workId || keptWorks.has(c.workId))
   const ids = [...new Set([
-    ...items.map((i) => i.recordingId),
-    ...comparisons.flatMap((c) => c.perspectives.map((x) => x.recordingId)),
+    ...items.flatMap((i) => [i.recordingId, ...(standIns.get(`cmp:${programmeId}:${i.id}`)?.perspectives.map((x) => x.recordingId) ?? [])]),
+    ...pairs.flatMap((c) => c.perspectives.map((x) => x.recordingId)),
   ])]
   const byId = new Map((await repo.recordings.many(ids)).map((r) => [r.id, r]))
   // Only recordings Spotify confirmed — a near miss waiting for the listener stays out.

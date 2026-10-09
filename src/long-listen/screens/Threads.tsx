@@ -5,6 +5,7 @@ import { sinceWords, weekFromKey } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { Empty, Problem, Waiting, messageOf } from '../components/common'
+import { ConfirmModal } from '../../ds'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -13,7 +14,7 @@ import s from '../styles/editorial.module.css'
  * built from. Below them, the paths offered and not taken, still open.
  */
 export function ThreadsScreen() {
-  const { repo, journey, bump, say, week } = useServices()
+  const { repo, journey, bump, say, week, settings } = useServices()
   const { data, error } = useLoad(async () => {
     const [themes, explorations, programmes, options, works, recordings, events] = await Promise.all([
       repo.themes.all(), repo.explorations.all(), repo.programmes.all(), repo.options.all(), repo.works.all(), repo.recordings.all(), repo.events.all(),
@@ -29,16 +30,18 @@ export function ThreadsScreen() {
     }
   }, [])
   const [busy, setBusy] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<ProgrammeOption | null>(null)
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Gathering the threads…</Waiting>
 
-  async function take(o: ProgrammeOption) {
+  async function take(o: ProgrammeOption, confirmed = false) {
     const thisWeek = await repo.weeks.get(week.key)
-    if (thisWeek?.programmeId && !window.confirm('This week already has a programme. Take this path instead? The current one stays in your journal.')) return
+    if (thisWeek?.programmeId && !confirmed) { setConfirming(o); return }
+    setConfirming(null)
     setBusy(o.id)
     try {
-      await journey.ensureWeek()
+      await journey.weekWithoutDirections()
       const p = await journey.takeOpenPath(o.id)
       bump()
       go({ name: 'programme', id: p.id })
@@ -56,8 +59,9 @@ export function ThreadsScreen() {
       <p className={s.dek}>A theme isn’t used up in a week. Each one here can return — from where it was left, not from the start.</p>
 
       {data.themes.length === 0 && <Empty link={{ href: '#/', label: 'Choose this week’s direction' }}>Nothing yet. Choose a direction this week and the first thread begins.</Empty>}
+      {data.themes.length > 0 && <h2 className={s.sectionHead}>Your threads</h2>}
       <ul className={s.entries}>
-        {data.themes.map((t) => <ThreadEntry key={t.id} t={t} explorations={data.explorations} programmes={data.programmes} works={data.works} recordings={data.recordings} events={data.events} now={week.key} />)}
+        {data.themes.map((t) => <ThreadEntry key={t.id} t={t} explorations={data.explorations} programmes={data.programmes} works={data.works} recordings={data.recordings} events={data.events} now={week.key} hideSkipped={settings.hideSkipped} />)}
       </ul>
 
       {data.open.length > 0 && (
@@ -76,34 +80,48 @@ export function ThreadsScreen() {
           </ul>
         </section>
       )}
+      <ConfirmModal
+        isOpen={confirming !== null}
+        title="Take this path instead?"
+        message="This week already has a programme. It stays in your journal; the new one becomes this week’s."
+        confirmText="Take this path"
+        onConfirm={() => { if (confirming) void take(confirming, true) }}
+        onCancel={() => setConfirming(null)}
+      />
     </div>
   )
 }
 
-function ThreadEntry({ t, explorations, programmes, works, recordings, events, now }: {
+function ThreadEntry({ t, explorations, programmes, works, recordings, events, now, hideSkipped }: {
   t: Theme; explorations: ThemeExploration[]; programmes: Map<string, Programme>
-  works: Map<string, Work>; recordings: Map<string, Recording>; events: ListeningEvent[]; now: string
+  works: Map<string, Work>; recordings: Map<string, Recording>; events: ListeningEvent[]; now: string; hideSkipped: boolean
 }) {
   const visits = explorations.filter((e) => e.themeId === t.id).sort((a, b) => a.weekKey.localeCompare(b.weekKey))
   // Every programme the thread has had, extras included, for what it holds.
   const held = visits.flatMap((v) => [v.programmeId, ...(v.extraProgrammeIds ?? [])]).map((id) => programmes.get(id)).filter((p): p is Programme => Boolean(p))
-  const contents = threadContents(held, works, recordings, events)
+  const contents = threadContents(held, works, recordings, events, hideSkipped)
+  // The title opens the latest visit; the line of visits is drawn only when there is more than that one to show.
+  const latest = visits[visits.length - 1]
+  const lineWorthDrawing = visits.length > 1 || visits.some((v) => v.extraProgrammeIds?.length || v.closingNote)
   return (
     <li className={s.entry}>
-      <h2 className={s.entryTitle}>{t.title}</h2>
+      <h3 className={s.entryTitle}>{latest ? <a className={s.titleLink} href={href({ name: 'programme', id: latest.programmeId })}>{t.title}</a> : t.title}</h3>
       {/* When, said once: each visit below carries its own dates. */}
       <p className={s.faint}>First explored {sinceWords(t.firstIntroduced, now)}{visits.length > 1 ? ` · ${visits.length} visits` : ''}</p>
       {t.summary && <p>{t.summary}</p>}
       {contents && <p className={s.quiet}>{contents}</p>}
       {t.reaction && <p className={s.italic}>{t.reaction}</p>}
       {/* Its visits strung on one line, oldest first: the thread, drawn. */}
-      <ol className={s.threadLine} aria-label="Visits">
+      {lineWorthDrawing && <ol className={s.threadLine} aria-label="Visits">
         {visits.map((v) => {
           const p = programmes.get(v.programmeId)
+          // A visit named like its thread is named by its week instead, so the title isn't said twice.
+          const sameName = !p || p.title === t.title
           return (
             <li key={v.id}>
-              <a href={href({ name: 'programme', id: v.programmeId })}>{p?.title ?? 'Programme'}</a>
-              <span className={s.faint}> · {weekFromKey(v.weekKey).label}{v.setAside ? ' · set aside' : ''}</span>
+              <a href={href({ name: 'programme', id: v.programmeId })}>{sameName ? weekFromKey(v.weekKey).label : p.title}</a>
+              {!sameName && <span className={s.faint}> · {weekFromKey(v.weekKey).label}</span>}
+              {v.setAside && <span className={s.faint}> · set aside</span>}
               {(v.extraProgrammeIds ?? []).map((id) => (
                 <span key={id} className={s.faint}> · and <a href={href({ name: 'programme', id })}>{programmes.get(id)?.title ?? 'more'}</a></span>
               ))}
@@ -111,7 +129,7 @@ function ThreadEntry({ t, explorations, programmes, works, recordings, events, n
             </li>
           )
         })}
-      </ol>
+      </ol>}
       {(t.openQuestions.length > 0 || t.nextDirections.length > 0) && (
         <div className={s.threadNotes}>
           {t.openQuestions.length > 0 && (

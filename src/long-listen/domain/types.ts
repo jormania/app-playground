@@ -556,6 +556,8 @@ export interface NotionSyncState {
   bodyHash?: string
   bodyBlockIds?: string[]
   anchorBlockId?: string
+  /** The page exists but its curator text has not been written yet (a write failed after the page was made). */
+  textPending?: boolean
   syncedAt: Instant
 }
 

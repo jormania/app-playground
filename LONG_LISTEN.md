@@ -487,15 +487,13 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
 ## 13. Release two
 
 **Smoother.**
-- *Keep listening* (`screens/ListenMode.tsx`, `spotify/continuation.ts`). "I've
-  heard it" asks how it landed in place and offers *Next: …*. With *carry on*
-  (a setting, on by default), the end of a work is read from Spotify's player —
-  stopped at the end of the last movement, rewound to zero just after its end,
-  or moved on to something else straight after it; a pause is never an end — and
-  a soft chime (Tempo's, now `src/shared/sound.js`) sounds in the gap with a
-  buzz, a *Next* card shows, and the next confirmed, unskipped work (a stand-in
-  counts) starts six seconds later. One work at a time, so the chime never falls
-  on the music. Any tap in the view wakes the audio context (`primeAudio`).
+- *Keep listening* (`screens/ListenMode.tsx`). "I've heard it" asks how it
+  landed in place and offers *Next: …* — the next confirmed, unskipped work (a
+  stand-in counts), opened when the listener chooses. Nothing plays on by
+  itself: a *carry on* setting that chimed and started the next work was built
+  in release two and removed on 9 October 2026 at the owner's word — a work is
+  heard whole, then a pause, then the next by choice. Its `continuation.ts`
+  went with it, and Tempo's chime went back to `src/tempo/lib/sound.js`.
 - *Notice listening when you come back*: recent Spotify plays are re-read on
   returning to the foreground, at most every two minutes (`app/services.tsx`).
 - *How did it land?* (`domain/landed.ts`, `components/LandedPrompt.tsx`): the

@@ -24,13 +24,15 @@ export interface Settings {
   timeZone: string
   spotifyClientId: string
   theme: ThemeChoice
-  /** In the listening view: when a work ends, chime and go on to the next one. */
-  carryOn: boolean
   /** Skipped works vanish everywhere in the app — programme, running order, Journal, Library, playlist — until shown again. */
   hideSkipped: boolean
+  /** The listening view's shade: one of four, or a different one at random each visit. */
+  dusk: DuskChoice
   /** Development only: answer from canned demo programmes instead of Claude. */
   demo: boolean
 }
+
+export type DuskChoice = 'rotate' | 'umber' | 'wine' | 'slate' | 'lamp'
 
 export const SETTINGS_KEY = 'long-listen:settings'
 export const THEME_KEY = 'long-listen:theme'
@@ -49,8 +51,8 @@ export function loadSettings(): Settings {
     timeZone: typeof raw.timeZone === 'string' && isValidTimeZone(raw.timeZone) ? raw.timeZone : DEFAULT_TIME_ZONE,
     spotifyClientId: typeof raw.spotifyClientId === 'string' && raw.spotifyClientId ? raw.spotifyClientId : ENV_CLIENT_ID,
     theme: theme === 'light' || theme === 'dark' ? theme : 'system',
-    carryOn: raw.carryOn !== false,
     hideSkipped: raw.hideSkipped !== false,
+    dusk: (['umber', 'wine', 'slate', 'lamp'] as const).find((k) => k === raw.dusk) ?? 'rotate',
     demo: Boolean(import.meta.env?.DEV) && raw.demo === true,
   }
 }

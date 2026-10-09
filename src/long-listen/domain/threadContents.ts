@@ -12,8 +12,10 @@ export function threadContents(
   works: Map<string, Work>,
   recordings: Map<string, Recording>,
   events: ListeningEvent[],
+  hideSkipped = false,
 ): string {
-  const items = programmes.flatMap((p) => p.sections.flatMap((s) => s.items))
+  // With "hide what I skip", a skipped work isn't counted either.
+  const items = programmes.flatMap((p) => p.sections.flatMap((s) => s.items)).filter((i) => !hideSkipped || listeningState(events, i.recordingId) !== 'skipped')
   if (!items.length) return ''
   const workIds = [...new Set(items.map((i) => i.workId))]
   const composers = new Set(items.map((i) => i.proposed.composer.trim().toLowerCase()))

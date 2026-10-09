@@ -30,6 +30,12 @@ export function civilDateIn(instant: Date, timeZone: string): CivilDate {
   return { year: get('year'), month: get('month'), day: get('day') }
 }
 
+/** Today's date in `timeZone`, as YYYY-MM-DD. */
+export function isoDateIn(instant: Date, timeZone: string): ISODate {
+  const { year, month, day } = civilDateIn(instant, timeZone)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` as ISODate
+}
+
 function toUtc({ year, month, day }: CivilDate): number {
   return Date.UTC(year, month - 1, day)
 }

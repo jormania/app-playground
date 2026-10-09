@@ -1,3 +1,4 @@
+import { listeningState } from './listening'
 import type { Feedback, ListeningEvent, Programme, ProgrammeItem } from './types'
 
 /**
@@ -23,6 +24,8 @@ export function nextToAsk(
     if (asked.has(e.recordingId)) continue
     const at = where.get(e.recordingId)
     if (!at) continue
+    // The listener's later word wins: a work since marked skipped (or reset) isn't asked about.
+    if (listeningState(events, e.recordingId) !== 'heard') continue
     const said = feedback.some((f) => (f.target.id === e.recordingId || f.target.id === e.workId) && (f.reaction || f.note || f.more))
     if (said) continue
     return { ...at, heardAt: e.playedUntil ?? e.at }

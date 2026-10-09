@@ -58,29 +58,85 @@
 }
 
 /* Dusk: the listening view only, whatever the theme. The screen stays on
-   while the music plays, so it should be neither the bright page of day nor
-   the dark of night but between them: a deeper, warm parchment (#b5a68c,
-   halfway down from the day paper) under near-black ink. On an OLED phone it
-   lights the panel at about half the day theme's level. Every text colour
-   holds 4.5:1 or better on it (ink 7.5, muted 5.5, faint 4.5, accent 5.3).
-   Set by the listening view (data-listening on <html>) and removed on leaving;
-   listed after the dark block so it wins either way. */
-:root[data-listening] {
-  color-scheme: light;
-  --color-bg:        #b5a68c;
-  --color-bg-sunken: #a99a80;
-  --color-surface:   #bfb197;
-  --color-surface-2: #a99a80;
-  --color-border:    #998a71;
-  --color-border-2:  #7d6f5a;
+   while the music plays, so it is dark, with light text. Four shades, one
+   chosen at random on each visit (app/theme.ts, `data-listening`), until the
+   owner settles on one in Settings → Display. Every text colour holds 5.7:1
+   or better on its shade (faint 5.7–7.9, muted 7.8–11.6, ink 11–17,
+   accent 6.5–9.8). Listed after the dark block so it wins either way. */
+:root[data-listening="umber"] {
+  /* Umber */
+  color-scheme: dark;
+  --color-bg:        #3a2e23;
+  --color-bg-sunken: #33281e;
+  --color-surface:   #433528;
+  --color-surface-2: #4b3d2f;
+  --color-border:    #5a4a3a;
+  --color-border-2:  #7a6650;
 
-  --color-ink:   #1c1712;
-  --color-muted: #382f25;
-  --color-faint: #463c30;
+  --color-ink:   #f3eadb;
+  --color-muted: #d3c5ae;
+  --color-faint: #b8a990;
 
-  --color-accent:       #5e1d13;
-  --color-accent-hover: #4a160e;
-  --color-on-accent:    #f0e6d4;
+  --color-accent:       #eda585;
+  --color-accent-hover: #f4b597;
+  --color-on-accent:    #3a2e23;
+}
+
+:root[data-listening="wine"] {
+  /* Wine dusk */
+  color-scheme: dark;
+  --color-bg:        #2c1b1b;
+  --color-bg-sunken: #261717;
+  --color-surface:   #352222;
+  --color-surface-2: #3e2828;
+  --color-border:    #4f3534;
+  --color-border-2:  #6e4c4a;
+
+  --color-ink:   #f5ebe1;
+  --color-muted: #d6c3b6;
+  --color-faint: #bba699;
+
+  --color-accent:       #ec9c86;
+  --color-accent-hover: #f2ae9b;
+  --color-on-accent:    #2c1b1b;
+}
+
+:root[data-listening="slate"] {
+  /* Slate dusk */
+  color-scheme: dark;
+  --color-bg:        #252a2f;
+  --color-bg-sunken: #20252a;
+  --color-surface:   #2d3338;
+  --color-surface-2: #353c42;
+  --color-border:    #444c53;
+  --color-border-2:  #606a72;
+
+  --color-ink:   #eef0ec;
+  --color-muted: #c8ccc8;
+  --color-faint: #a9aeab;
+
+  --color-accent:       #e6a582;
+  --color-accent-hover: #eeb598;
+  --color-on-accent:    #252a2f;
+}
+
+:root[data-listening="lamp"] {
+  /* Lamplight */
+  color-scheme: dark;
+  --color-bg:        #1c1712;
+  --color-bg-sunken: #17130f;
+  --color-surface:   #251f18;
+  --color-surface-2: #2d261e;
+  --color-border:    #3d3428;
+  --color-border-2:  #5c4e3d;
+
+  --color-ink:   #fffaf0;
+  --color-muted: #dccfba;
+  --color-faint: #b9ab94;
+
+  --color-accent:       #f2b47c;
+  --color-accent-hover: #f6c391;
+  --color-on-accent:    #1c1712;
 }
 
 /* Larger text scales everything set in rem — type, space, measure — together. */

@@ -412,23 +412,35 @@ async function syncProgrammePage(call: NotionCall, repo: Repo, databaseId: strin
 
   if (!state) {
     const page = await call<{ id: string }>({ path: 'pages', method: 'POST', body: { parent: { database_id: databaseId }, properties } })
+    // Remembered at once, so a failure in what follows is finished next time rather than making a second page.
+    const made = { key, pageId: page.id, hash: propsHash, bodyHash: '', bodyBlockIds: [] as string[], textPending: true, syncedAt: at }
+    await repo.notion.put(made)
     const text = await append(call, page.id, programmeTextBlocks(p))
     const bodyBlockIds = further.length ? await append(call, page.id, further) : []
-    await repo.notion.put({ key, pageId: page.id, hash: propsHash, bodyHash, anchorBlockId: text[text.length - 1], bodyBlockIds, syncedAt: at })
+    await repo.notion.put({ ...made, bodyHash, anchorBlockId: text[text.length - 1], bodyBlockIds, textPending: false })
     return true
   }
 
   let written = false
   const next = { ...state }
+  if (state.textPending) {
+    const text = await append(call, state.pageId, programmeTextBlocks(p))
+    next.anchorBlockId = text[text.length - 1]
+    next.textPending = false
+    next.bodyHash = ''
+    next.bodyBlockIds = []
+    await repo.notion.put({ ...next, syncedAt: at })
+    written = true
+  }
   if (state.hash !== propsHash) {
     await call({ path: `pages/${state.pageId}`, method: 'PATCH', body: { properties } })
     next.hash = propsHash
     written = true
   }
-  if (state.bodyHash !== bodyHash) {
-    let anchor = state.anchorBlockId
-    let old = state.bodyBlockIds ?? []
-    if (state.bodyHash === undefined) ({ anchor, old } = await legacyFurther(call, state.pageId))
+  if (next.bodyHash !== bodyHash) {
+    let anchor = next.anchorBlockId
+    let old = next.bodyBlockIds ?? []
+    if (next.bodyHash === undefined) ({ anchor, old } = await legacyFurther(call, state.pageId))
     for (const id of old) {
       // Already gone (the listener deleted it in Notion) is fine.
       await call({ path: `blocks/${id}`, method: 'PATCH', body: { archived: true } }).catch(() => undefined)
@@ -528,13 +540,19 @@ export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string,
  */
 export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<number> {
   let n = 0
+  let failed = 0
   for (const st of await repo.notion.all()) {
     if (st.key === 'taste') continue
     try {
       await call({ path: `pages/${st.pageId}`, method: 'PATCH', body: { archived: true } })
       n++
-    } catch { /* already archived or deleted in Notion */ }
+    } catch (e) {
+      // Already archived, or deleted in Notion, is done. Anything else (offline, rate-limited) is not.
+      if (!/could not find|archived/i.test(e instanceof Error ? e.message : String(e))) failed++
+    }
   }
+  // A fresh start forgets which pages it wrote: one left behind would never be cleaned up, so stop here instead.
+  if (failed) throw new Error(`Notion didn’t take ${failed} page${failed === 1 ? '' : 's'} to its trash, so nothing was cleared. Try again in a minute.`)
   const setup = (await repo.marks.get('notion:setup'))?.value as { tastePage?: string } | undefined
   if (setup?.tastePage) {
     for (const b of await childrenOf(call, setup.tastePage)) {

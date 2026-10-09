@@ -114,6 +114,8 @@ export function WeekScreen() {
       </div>
     )
   }
+  // One thing at a time: choosing a direction and asking for others both rewrite the week.
+  const busy = asking || choosing !== null
   if (!view) return <Waiting>The curator is choosing this week’s directions…</Waiting>
   if (view.record.programmeId) return <ProgrammeScreen id={view.record.programmeId} />
 
@@ -128,7 +130,7 @@ export function WeekScreen() {
           : 'Choose the one you want to follow. The others aren’t set aside — they stay open, and may come back.'}
       </p>
 
-      <WeekMoodLine record={view.record} onAsk={() => { void askWithMood() }} busy={asking || choosing !== null} />
+      <WeekMoodLine record={view.record} onAsk={() => { void askWithMood() }} busy={busy} />
 
       <p className={s.faint}>
         Your week: {TIME[view.prefs.timePerWeek].words} · {BREADTH[view.prefs.breadth].label.toLowerCase()} · {FAMILIARITY[view.prefs.familiarity].label.toLowerCase()}
@@ -140,19 +142,19 @@ export function WeekScreen() {
 
       <ol className={s.options}>
         {view.options.map((o) => (
-          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={choosing !== null} onChoose={() => choose(o)} />
+          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={busy} onChoose={() => choose(o)} />
         ))}
       </ol>
 
       <div className={s.block}>
         {!askOpen ? (
-          <button className={s.textButton} onClick={() => setAskOpen(true)} disabled={choosing !== null}>None of these? Ask for three others</button>
+          <button className={s.textButton} onClick={() => setAskOpen(true)} disabled={busy}>None of these? Ask for three others</button>
         ) : (
           <div className={s.feedback}>
             <label className={s.feedbackQ} htmlFor="mood">What are you in the mood for? <span className={s.faint}>(optional)</span></label>
             <textarea id="mood" className={s.textarea} value={mood} onChange={(e) => setMood(e.target.value)} placeholder="Something quieter after a long week · Sibelius · a concerto I don’t know" />
             <div className={s.actions}>
-              <button className={s.textButton} onClick={askAgain} disabled={asking}>{asking ? 'The curator is thinking again…' : 'Ask'}</button>
+              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={askAgain} disabled={busy}>{asking ? 'The curator is thinking again…' : 'Ask'}</button>
               <button className={s.textButton} onClick={() => setAskOpen(false)} disabled={asking}>Not now</button>
             </div>
             <p className={s.note}>These three stay open as paths for another week.</p>
@@ -169,7 +171,7 @@ export function WeekScreen() {
                 <p className={s.mood}>{MOOD_WORD[o.mood]} · offered {sinceWords(o.weekKey, view.record.weekKey)}</p>
                 <h3 className={s.entryTitle}>{o.title}</h3>
                 <p className={s.quiet}>{o.pitch}</p>
-                <button className={s.textButton} disabled={choosing !== null} onClick={() => choose(o, true)}>Take this path now</button>
+                <button className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => choose(o, true)}>Take this path now</button>
               </li>
             ))}
           </ul>
@@ -225,22 +227,19 @@ function WeekMoodLine({ record, onAsk, busy }: { record: WeekRecord; onAsk: () =
     await journey.setWeekMood(next)
   }
   return (
-    <p className={s.weekMood}>
-      <span className={s.faint}>This week, differently:</span>{' '}
-      {WEEK_MOODS.map((m, i) => (
-        <span key={m.value}>
-          {i > 0 && <span className={s.faint}> · </span>}
-          <button type="button" className={`${s.moodWord} ${mood.includes(m.value) ? s.moodWordOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)}>{m.label}</button>
-        </span>
-      ))}
+    <div className={s.weekMood}>
+      <p className={s.settingLabel}>This week, differently</p>
+      {/* The same chips as every other choice in the app: tap to add, tap again to take away. */}
+      <div className={s.chipRow} role="group" aria-label="This week, differently">
+        {WEEK_MOODS.map((m) => (
+          <button key={m.value} type="button" className={`${s.chip} ${mood.includes(m.value) ? s.chipOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)}>{m.label}</button>
+        ))}
+      </div>
       {changed && (
-        <>
-          {' '}
-          <button type="button" className={s.textButton} disabled={busy} onClick={() => { setChanged(false); onAsk(); bump() }}>
-            {busy ? 'Asking…' : 'Three directions with this in mind'}
-          </button>
-        </>
+        <button type="button" className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => { setChanged(false); onAsk(); bump() }}>
+          {busy ? 'Asking…' : 'Three directions with this in mind'}
+        </button>
       )}
-    </p>
+    </div>
   )
 }
