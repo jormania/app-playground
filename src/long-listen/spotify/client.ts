@@ -198,13 +198,13 @@ export class SpotifyClient {
     if (res.status === 204 || !res.ok) return null
     const d = await res.json().catch(() => null) as {
       item?: { id: string; name: string; duration_ms?: number; linked_from?: { id?: string } } | null
-      is_playing?: boolean; progress_ms?: number | null; device?: { name?: string } | null
+      is_playing?: boolean; progress_ms?: number | null; device?: { name?: string; type?: string } | null
     } | null
     if (!d?.item) return null
     return {
       trackId: d.item.id, linkedFromId: d.item.linked_from?.id, trackName: d.item.name,
       isPlaying: Boolean(d.is_playing), progressMs: d.progress_ms ?? 0, durationMs: d.item.duration_ms ?? 0,
-      deviceName: d.device?.name || undefined,
+      deviceName: shortDevice(d.device?.name, d.device?.type),
     }
   }
 
@@ -291,4 +291,24 @@ export function playbackOf(np: NowPlaying | null, trackIds: string[]): { index: 
   let index = trackIds.indexOf(np.trackId)
   if (index < 0 && np.linkedFromId) index = trackIds.indexOf(np.linkedFromId)
   return index < 0 ? null : { index, playing: np.isPlaying }
+}
+
+const DEVICE_KIND: Record<string, string> = {
+  tv: 'TV', castvideo: 'TV', speaker: 'speaker', castaudio: 'speaker', computer: 'computer',
+  smartphone: 'phone', tablet: 'tablet', automobile: 'car', avr: 'receiver', stb: 'TV box', gameconsole: 'console',
+}
+
+/**
+ * A device as you'd say it: "LG native TV OLED55G42LW" is "LG TV". A short
+ * name is kept as given ("Galaxy S24", "Living Room speaker"); a long one is
+ * cut to its first word — usually the maker, or whose it is — and the kind of
+ * device Spotify says it is.
+ */
+export function shortDevice(name: string | undefined, type?: string): string | undefined {
+  const n = name?.trim()
+  if (!n) return undefined
+  if (n.length <= 20) return n
+  const first = n.split(/\s+/)[0]
+  const kind = type ? DEVICE_KIND[type.toLowerCase()] : undefined
+  return kind && kind.toLowerCase() !== first.toLowerCase() ? `${first} ${kind}` : first
 }

@@ -73,7 +73,7 @@ export function relayCaller(token: string): NotionCall {
 
 // ── the notebook's shape ──────────────────────────────────────────────────
 
-const STATE_LABEL: Record<string, string> = { 'not-started': 'Not started', listening: 'Listening', heard: 'Heard', skipped: 'Skipped' }
+const STATE_LABEL: Record<string, string> = { 'not-started': 'Not started', listening: 'Started', heard: 'Heard', skipped: 'Skipped' }
 const REACTION_NAMES = ['Loved it', 'Liked it', 'Interesting', 'Not for me', 'Too difficult']
 
 export type DbRole = 'journal' | 'threads' | 'recordings' | 'composers'

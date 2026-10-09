@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { beginSignIn, completeSignIn, challengeFor, isCallback, SpotifyAuthError } from './auth'
 import { verifyRecording, playsToEvents, rejectMatch, confirmMatch, aboutDuration, saveProgrammePlaylist, needsLook, spotifyCandidates, syncRecentPlays } from './verify'
-import { SpotifyClient, playbackOf } from './client'
+import { SpotifyClient, playbackOf, shortDevice } from './client'
 import { Repo, memoryStore } from '../store/repo'
 import type { Recording, ProposedRecording, ListeningEvent } from '../domain/types'
 import { MATCHER_VERSION, type SpotifyTrackLike } from './match'
@@ -334,6 +334,14 @@ describe('the client', () => {
     await c.play(['spotify:track:1', 'spotify:track:2', 'spotify:track:3'], 2)
     const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
     expect(JSON.parse(String(calls[1][1].body)).offset).toEqual({ position: 2 })
+  })
+
+  it('names a device as you would say it', () => {
+    expect(shortDevice('LG native TV OLED55G42LW', 'TV')).toBe('LG TV')
+    expect(shortDevice('Galaxy S24', 'Smartphone')).toBe('Galaxy S24')
+    expect(shortDevice('Gabriel’s MacBook Pro M3 Max', 'Computer')).toBe('Gabriel’s computer')
+    expect(shortDevice('Sonos Arc Living Room Soundbar', undefined)).toBe('Sonos')
+    expect(shortDevice('  ', 'TV')).toBeUndefined()
   })
 
   it('knows a relinked track as the one that was asked for', () => {

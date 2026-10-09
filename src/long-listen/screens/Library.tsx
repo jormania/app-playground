@@ -12,10 +12,10 @@ import s from '../styles/editorial.module.css'
 
 interface Entry {
   composer: string
-  works: { work: Work; recordings: { rec: Recording; proposed: ProposedRecording; programmeId?: string; programmeTitle?: string }[] }[]
+  works: { work: Work; recordings: { rec: Recording; proposed: ProposedRecording; programmeId?: string; programmeTitle?: string; role?: string }[] }[]
 }
 
-const STATE_WORD: Record<string, string> = { 'not-started': 'not yet heard', listening: 'started', heard: 'heard', skipped: 'set aside' }
+const STATE_WORD: Record<string, string> = { 'not-started': 'not started', listening: 'started', heard: 'heard', skipped: 'skipped' }
 
 /**
  * Everything met so far, as a library: composers by surname, their works, and
@@ -29,11 +29,24 @@ export function LibraryScreen() {
     const [works, recordings, programmes, comparisons, events, feedback] = await Promise.all([
       repo.works.all(), repo.recordings.all(), repo.programmes.all(), repo.comparisons.all(), repo.events.all(), repo.feedback.all(),
     ])
-    const met = new Map<string, { proposed: ProposedRecording; programmeId?: string; programmeTitle?: string }>()
+    const met = new Map<string, { proposed: ProposedRecording; programmeId?: string; programmeTitle?: string; role?: string }>()
+    // The programme a work was first offered in, so a second recording of it can say where it came from too.
+    const firstFor = new Map<string, { programmeId: string; programmeTitle: string }>()
     for (const p of [...programmes].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-      for (const i of p.sections.flatMap((x) => x.items)) if (!met.has(i.recordingId)) met.set(i.recordingId, { proposed: i.proposed, programmeId: p.id, programmeTitle: p.title })
+      for (const i of p.sections.flatMap((x) => x.items)) {
+        if (!met.has(i.recordingId)) met.set(i.recordingId, { proposed: i.proposed, programmeId: p.id, programmeTitle: p.title })
+        if (!firstFor.has(i.workId)) firstFor.set(i.workId, { programmeId: p.id, programmeTitle: p.title })
+      }
     }
-    for (const c of comparisons) for (const pv of c.perspectives) if (!met.has(pv.recordingId)) met.set(pv.recordingId, { proposed: pv.proposed })
+    // A comparison's recordings: a second hearing of a programme's work, or one
+    // Spotify has standing in for the programme's choice. Said, so a recording
+    // with no programme of its own doesn't look like it came from nowhere.
+    for (const c of comparisons) {
+      for (const pv of c.perspectives) {
+        if (met.has(pv.recordingId)) continue
+        met.set(pv.recordingId, { proposed: pv.proposed, ...firstFor.get(c.workId), role: c.standIn ? 'on Spotify in its place' : 'a second hearing' })
+      }
+    }
 
     const byComposer = new Map<string, Entry>()
     for (const w of works) {
@@ -90,7 +103,7 @@ export function LibraryScreen() {
               {whatAndWhen(work.form, work.composed) && <p className={s.workMeta}>{whatAndWhen(work.form, work.composed)}</p>}
               {catalogueLine(work.catalogue, e.composer) && <p className={s.workCatalogue}>{catalogueLine(work.catalogue, e.composer)}</p>}
               <ul className={s.libraryRecs}>
-                {recordings.map(({ rec, proposed, programmeId, programmeTitle }) => {
+                {recordings.map(({ rec, proposed, programmeId, programmeTitle, role }) => {
                   const fb = latestFeedback(data.feedback, rec.id)
                   const state = listeningState(data.events, rec.id)
                   return (
@@ -103,7 +116,12 @@ export function LibraryScreen() {
                         {isConfirmed(rec) && rec.spotify.durationMs ? <span>{aboutDuration(rec.spotify.durationMs)}</span> : null}
                         {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
                       </span>
-                      {programmeId && <span className={s.tagRow}>from <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></span>}
+                      {(programmeId || role) && (
+                        <span className={s.tagRow}>
+                          {role && <>{role}{programmeId ? ', ' : ''}</>}
+                          {programmeId && <>from <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></>}
+                        </span>
+                      )}
                       {fb.notes.length > 0 && <div className={s.said}><q>{fb.notes[fb.notes.length - 1]}</q></div>}
                     </li>
                   )
