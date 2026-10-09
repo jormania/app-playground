@@ -75,12 +75,22 @@ export function SettingsScreen() {
 
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>About</h2>
-        <p className={s.quiet}>
-          The curator is Claude: Sonnet chooses the directions and writes the programmes; Haiku, at a
-          twentieth of the price, reads your feedback, sums up each thread’s week, adds context and finds
-          further reading. Spotify {spotify.connected ? 'is' : 'isn’t'} connected; Notion {svc.notion ? 'is' : 'isn’t'}.
-        </p>
+
+        <p className={s.label}>The curator is Claude</p>
+        <ul className={`${s.bullets} ${s.quiet}`}>
+          <li><strong>Sonnet</strong> chooses the week’s three directions and writes the programmes and second perspectives.</li>
+          <li><strong>Haiku</strong>, at a twentieth of the price, does the reading around them: your feedback into taste, each thread’s week summed up, <em>A little more context</em>, and further reading.</li>
+        </ul>
+
+        <p className={s.label}>Connections</p>
+        <ul className={`${s.bullets} ${s.quiet}`}>
+          <li>Spotify: {spotify.connected ? 'connected' : 'not connected'}</li>
+          <li>Notion: {svc.notion ? 'connected' : 'not connected'}</li>
+        </ul>
+
+        <p className={s.label}>This month, on this device</p>
         <SpendLine />
+
         <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
       </section>
 
@@ -102,14 +112,19 @@ function SpendLine() {
   const { version } = useServices()
   const [m, setM] = useState(() => usageSummary())
   useEffect(() => setM(usageSummary()), [version])
-  if (m.requests === 0) return <p className={s.quiet}>Nothing spent on Claude from this device this month.</p>
-  const usd = (n: number) => (n < 0.01 ? 'under a cent' : `$${n.toFixed(2)}`)
+  if (m.requests === 0) return <p className={s.quiet}>Nothing spent on Claude yet.</p>
+  const usd = (n: number) => (n < 0.01 ? 'under a cent' : `about $${n.toFixed(2)}`)
+  const name = (model: string) => model.replace('claude-', '').replace(/-(\d+)-(\d+)$/, ' $1.$2').replace(/^./, (c) => c.toUpperCase())
   return (
-    <p className={s.quiet}>
-      This month on this device: about {usd(m.dollars)} on Claude, over {m.requests} request{m.requests === 1 ? '' : 's'}
-      {m.byModel.length > 1 && <> ({m.byModel.map((b) => `${b.model.replace('claude-', '').replace(/-(\d+)-(\d+)$/, ' $1.$2')} ${b.dollars === null ? '' : usd(b.dollars)}`).join(', ')})</>}.
-      An estimate at list prices; the Anthropic Console has the bill.
-    </p>
+    <>
+      <ul className={`${s.bullets} ${s.quiet}`}>
+        <li>Claude: {usd(m.dollars)}, over {m.requests} request{m.requests === 1 ? '' : 's'}</li>
+        {m.byModel.length > 1 && m.byModel.map((b) => (
+          <li key={b.model}>{name(b.model)}: {b.dollars === null ? 'no price on record' : usd(b.dollars)}</li>
+        ))}
+      </ul>
+      <p className={s.quiet}>An estimate at list prices. The Anthropic Console has the bill.</p>
+    </>
   )
 }
 
