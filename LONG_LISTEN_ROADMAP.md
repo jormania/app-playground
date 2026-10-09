@@ -33,7 +33,7 @@ Effort: **S** is a day or less, **M** a few days, **L** a week or more.
   repeated listening, liking rose for simple and complex pieces alike, and the
   strongest predictor of liking was familiarity with *similar* music. → Offer
   a difficult work again, later, a different way (item 10); know what the
-  listener already knows (item 15).
+  listener already knows (item 16).
 - **Listeners want reasons, control, and to be read correctly.** Interviewed
   streaming users wanted to know *why* something was recommended, trained
   "their algorithm" through likes and replays, and were put off by wrong
@@ -73,7 +73,7 @@ Effort: **S** is a day or less, **M** a few days, **L** a week or more.
 
 Ranked: friction first (cheap, felt every week), then the curation check that
 guards every prompt change, then the creative and AI items it guards. All
-twelve are the release (the owner's call, 2026-10-09); 12 is the one to drop
+thirteen are the release (the owner's call, 2026-10-09; item 13 added the same day); 12 is the one to drop
 if time runs short.
 
 ### Smoother
@@ -97,6 +97,7 @@ if time runs short.
 | 10 | **Second hearings, offered** — a work you found *interesting* or *too difficult* is offered again weeks later, in another week's context and a different way in (another recording, another angle), stated as an offer — "Try the Lutosławski again?" — never slipped in, at most one a week | Liking grows with hearing, complex music included. Today nothing asks for a return, and a work falls out of the curator's view after twelve weeks. "Too difficult" is the listener's word, so it's asked, not overruled | S–M |
 | 11 | **Why this, for you** — an item's reason may point to a specific moment in your own listening ("the long build you loved in the Sibelius, three weeks ago"), never to a label about you | People trust a reason they can check and resent being typecast. Prompt work, guarded by item 6 | S |
 | 12 | **Live in Bucharest** — when a programmed work, composer or performer is on at the Filarmonica George Enescu (Ateneu), the Radio hall or another venue Marquee reads, one quiet line on the programme | The best thing a curator can do is send you to the hall. Marquee already reads these venues (`api/_lib/marquee/`); the Long Listen asks it, doesn't scrape. No new serverless function | M |
+| 13 | **Concerts** — a record of what you heard live: venue, date, orchestra, conductor, soloists and the works in order, plus a line on how it was. Lives in the **Journal**, in the week it happened, with a small concert-hall mark so it reads as *live* and not as the week's programme; **All concerts** at the top of the Journal lists them by venue and date. Each work joins the Library marked *heard live* (venue, date, performers), beside its recordings. **Adding one:** share the venue's programme screenshot to the app from the phone's share sheet (the way Silva takes photos); Claude reads it — Romanian programmes included ("Concertul în la minor… op. 102" → Brahms, Double Concerto, Op. 102) — into a form to check and correct; typing it in stays possible. **Hearing it again:** per work, a confirmed Spotify recording to start from, a contrasting one for *live versus recorded* (reusing *another perspective*), and the same performers' recording when Spotify really has one, never claimed otherwise. Works heard live count as known (never offered as discoveries) and what you say about the concert reaches taste and threads; concerts go to Notion with the rest | The owner goes to the Ateneu and the Radio hall and doesn't want to lose track of good music heard there. Today the app only knows what it programmed. Entry must happen in the app: the data lives on the phone, and Notion is a one-way copy, so screenshots sent anywhere else never reach it. Reading a screenshot is about a cent (Haiku, image in). Pairs with item 12, which points *to* concerts; this one remembers them | M–L |
 
 Also in release two, too small to rank: write the "On Spotify instead"
 recordings and side-by-side pairs to Notion's Works & recordings (today the
@@ -105,21 +106,21 @@ notebook leaves out what was actually played when the named one was missing).
 ## Release 3
 
 The nice-to-haves, after release two has been lived with. Two exceptions:
-item 21 is a check to make during the release-one test, not a build; and
-item 16 moves up if that test keeps turning up wrong recording years or
+item 22 is a check to make during the release-one test, not a build; and
+item 17 moves up if that test keeps turning up wrong recording years or
 performers.
 
 | # | Item | Why it matters | Effort |
 |---|------|----------------|--------|
-| 13 | **A sitting for tonight** — one or two hours, asked for on the day ("quiet, nothing I know"), recorded in the same threads | Some weeks there is one evening, not seven, and a mood is a moment's | M |
-| 14 | **Season in review** — every twelve weeks, a page of prose: threads that grew, where taste moved, paths still open, things worth hearing again | Makes the app's memory something you read. Needs twelve weeks of history, so it can't be judged during release two | M |
-| 15 | **Bring your own repertoire** — from Spotify's saved albums, propose works you already know, to confirm in one pass | Familiarity with similar music predicts liking, so knowing what you know lets the curator build bridges. Large: "already known" today only covers works the app programmed, and resolving albums to works is the classical metadata problem in full | L |
-| 16 | **Recording facts from MusicBrainz** — year and performers checked against an open database (free, no key) | Years and performer lists are the facts most often slightly wrong | M |
-| 17 | **Towards the Enescu Festival** — the biennial festival returns in late summer 2027; once its programme is published, a few weeks that prepare for concerts you might attend | Local, and a reason to listen ahead. Builds on item 12 | S–M |
-| 18 | **Romanian throughout** — the interface, not only the curator's writing | Mostly copy, but a lot of it | M |
-| 19 | **A second listener** — a profile for Nora on the same device, with a younger voice in the writing | Every collection gains an owner; only worth it if she would use it | L |
-| 20 | **A map of the threads** — themes and works on a timeline of centuries, with the connections the curator drew | Shows where you've been. Must stay a map, never a scorecard | L |
-| 21 | **Offline programme** — check during the release-one test what already works without signal (the app is cached, the data is in IndexedDB) before building anything | Probably mostly there | S |
+| 14 | **A sitting for tonight** — one or two hours, asked for on the day ("quiet, nothing I know"), recorded in the same threads | Some weeks there is one evening, not seven, and a mood is a moment's | M |
+| 15 | **Season in review** — every twelve weeks, a page of prose: threads that grew, where taste moved, paths still open, things worth hearing again | Makes the app's memory something you read. Needs twelve weeks of history, so it can't be judged during release two | M |
+| 16 | **Bring your own repertoire** — from Spotify's saved albums, propose works you already know, to confirm in one pass | Familiarity with similar music predicts liking, so knowing what you know lets the curator build bridges. Large: "already known" today only covers works the app programmed, and resolving albums to works is the classical metadata problem in full | L |
+| 17 | **Recording facts from MusicBrainz** — year and performers checked against an open database (free, no key) | Years and performer lists are the facts most often slightly wrong | M |
+| 18 | **Towards the Enescu Festival** — the biennial festival returns in late summer 2027; once its programme is published, a few weeks that prepare for concerts you might attend | Local, and a reason to listen ahead. Builds on items 12 and 13 | S–M |
+| 19 | **Romanian throughout** — the interface, not only the curator's writing | Mostly copy, but a lot of it | M |
+| 20 | **A second listener** — a profile for Nora on the same device, with a younger voice in the writing | Every collection gains an owner; only worth it if she would use it | L |
+| 21 | **A map of the threads** — themes and works on a timeline of centuries, with the connections the curator drew | Shows where you've been. Must stay a map, never a scorecard | L |
+| 22 | **Offline programme** — check during the release-one test what already works without signal (the app is cached, the data is in IndexedDB) before building anything | Probably mostly there | S |
 
 ## Decided against
 
@@ -128,7 +129,7 @@ performers.
   credibility. The curator writes; it doesn't talk over the music.
 - **Mood playlists and an endless feed.** Mood wheels and infinite radio are
   what streaming services already do. The app's unit is a programme with an
-  order and a reason; mood comes in through item 5 and, later, item 13.
+  order and a reason; mood comes in through item 5 and, later, item 14.
 - **Background listening sync from the service worker.** The Spotify sign-in
   lives in the page's storage, and Spotify rotates refresh tokens: a worker
   and a page refreshing independently would eventually spend one twice and end
@@ -137,7 +138,7 @@ performers.
 - **"Let the curator choose."** It saves one tap and removes the moment of
   choosing, which is part of the pleasure.
 - **Anything counted.** Hours, streaks, a year in numbers. The product rule
-  stands; item 14 is prose.
+  stands; item 15 is prose.
 
 ## Decisions to make, not items
 
