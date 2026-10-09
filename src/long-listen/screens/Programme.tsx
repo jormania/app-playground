@@ -9,7 +9,7 @@ import { sectionTitle } from '../domain/sections'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
-import { aboutDuration, isConfirmed, needsLook, saveProgrammePlaylist, spotifyCandidates, verifyRecording, type PlaylistMark } from '../spotify/verify'
+import { aboutDuration, isConfirmed, keepPlaylistCurrent, needsLook, saveProgrammePlaylist, spotifyCandidates, verifyRecording, type PlaylistMark } from '../spotify/verify'
 import { playbackOf } from '../spotify/client'
 import { usePlayerState } from '../app/playback'
 import { RecordingBlock } from '../components/RecordingBlock'
@@ -471,7 +471,11 @@ function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
   )
 }
 
-/** The programme's own tools, quiet under the title: playlist, length, print. */
+/**
+ * The programme's own tools, quiet under the title: playlist, length, print.
+ * Saving the playlist is a one-time choice; after that it keeps itself
+ * current — rewritten whenever the confirmed recordings change.
+ */
 function ProgrammeTools({ b }: { b: Bundle }) {
   const { spotify, repo, bump, say, week } = useServices()
   const [saving, setSaving] = useState(false)
@@ -479,13 +483,27 @@ function ProgrammeTools({ b }: { b: Bundle }) {
   const verified = items.filter((i) => b.recordings.get(i.recordingId)?.verification === 'verified')
   const total = verified.reduce((n, i) => n + (b.recordings.get(i.recordingId)?.spotify?.durationMs ?? 0), 0)
 
+  // Each time the programme's data changes (a confirmation, a swap, a stand-in),
+  // bring a saved playlist into line. Quiet on success; a failure waits for the next change.
+  const syncing = useRef(false)
+  const pid = b.programme.id
+  const hasPlaylist = Boolean(b.playlist)
+  useEffect(() => {
+    if (!hasPlaylist || !spotify.connected || syncing.current) return
+    syncing.current = true
+    keepPlaylistCurrent(repo, spotify, pid, week.label)
+      .then((wrote) => { if (wrote) bump() })
+      .catch(() => {})
+      .finally(() => { syncing.current = false })
+  }, [b, hasPlaylist, pid, repo, spotify, week.label, bump])
+
   async function savePlaylist() {
     setSaving(true)
     try {
       const mark = await saveProgrammePlaylist(repo, spotify, b.programme.id, week.label)
       bump()
-      say(b.playlist ? 'Playlist brought up to date.' : 'Saved to your Spotify as a private playlist.', 'success')
-      if (!b.playlist) window.open(mark.url, '_blank', 'noopener')
+      say('Saved to your Spotify as a private playlist. It keeps itself up to date from here.', 'success')
+      window.open(mark.url, '_blank', 'noopener')
     } catch (e) {
       say(e instanceof Error && !('reason' in e) ? e.message : messageOf(e), 'danger')
     } finally {
@@ -496,10 +514,12 @@ function ProgrammeTools({ b }: { b: Bundle }) {
   return (
     <div className={s.actions} style={{ marginTop: 'var(--space-md)' }}>
       {total > 0 && <span className={s.faint}>{verified.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
-      {b.playlist && webUrl(b.playlist.url) && <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer">Open the playlist</a>}
-      {spotify.connected && verified.length > 0 && (
+      {b.playlist && webUrl(b.playlist.url) && (
+        <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer" title="Kept in step with the programme as recordings are confirmed">Open the playlist</a>
+      )}
+      {!b.playlist && spotify.connected && verified.length > 0 && (
         <button className={s.textButton} onClick={savePlaylist} disabled={saving}>
-          {saving ? 'Saving…' : b.playlist ? 'Update the playlist' : 'Save as a Spotify playlist'}
+          {saving ? 'Saving…' : 'Save as a Spotify playlist'}
         </button>
       )}
       <button className={`${s.textButton} ${s.printButton}`} onClick={() => window.print()}>Print</button>

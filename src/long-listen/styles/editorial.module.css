@@ -113,6 +113,13 @@
   color: var(--color-warning);
 }
 
+/* A new deploy is out: said once, quietly, under the masthead. */
+.updateBar {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
 .main {
   max-width: calc(var(--measure) + 2 * var(--space-md));
   margin: 0 auto;

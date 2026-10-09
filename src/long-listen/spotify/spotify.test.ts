@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { beginSignIn, completeSignIn, challengeFor, isCallback, SpotifyAuthError } from './auth'
-import { verifyRecording, playsToEvents, rejectMatch, confirmMatch, aboutDuration, saveProgrammePlaylist, needsLook, spotifyCandidates, syncRecentPlays } from './verify'
+import { verifyRecording, playsToEvents, rejectMatch, confirmMatch, aboutDuration, saveProgrammePlaylist, keepPlaylistCurrent, needsLook, spotifyCandidates, syncRecentPlays } from './verify'
 import { SpotifyClient, playbackOf, shortDevice } from './client'
 import { Repo, memoryStore } from '../store/repo'
 import type { Recording, ProposedRecording, ListeningEvent } from '../domain/types'
@@ -385,6 +385,22 @@ describe('the week as a Spotify playlist', () => {
     expect(writePlaylist.mock.calls[0][0]).toBe('The Long Listen — Colour')
     expect(first).toMatchObject({ id: 'pl1', tracks: 3 })
     await saveProgrammePlaylist(repo, spotify, 'p1', '5–11 October 2026')
+    expect(writePlaylist.mock.calls[1][3]).toBe('pl1')
+  })
+
+  it('keeps a saved playlist in step, and leaves it alone when it matches', async () => {
+    const repo = await seeded()
+    const writePlaylist = vi.fn(async (_n: string, _d: string, _u: string[], id?: string) => ({ id: id ?? 'pl1', url: 'https://open.spotify.com/playlist/pl1' }))
+    const spotify = { writePlaylist } as unknown as SpotifyClient
+    // No playlist saved yet: nothing to keep.
+    expect(await keepPlaylistCurrent(repo, spotify, 'p1', 'w')).toBe(false)
+    await saveProgrammePlaylist(repo, spotify, 'p1', 'w')
+    expect(await keepPlaylistCurrent(repo, spotify, 'p1', 'w')).toBe(false)
+    expect(writePlaylist).toHaveBeenCalledTimes(1)
+    // The near miss is confirmed by the listener: the playlist catches up, in programme order.
+    await confirmMatch(repo, 'r4')
+    expect(await keepPlaylistCurrent(repo, spotify, 'p1', 'w')).toBe(true)
+    expect(writePlaylist.mock.calls[1][2]).toEqual(['spotify:track:a1', 'spotify:track:a2', 'spotify:track:d1', 'spotify:track:c1'])
     expect(writePlaylist.mock.calls[1][3]).toBe('pl1')
   })
 

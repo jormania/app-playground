@@ -272,33 +272,59 @@ export function aboutDuration(ms?: number): string | undefined {
   return `about ${h} hour${h === 1 ? '' : 's'}${m ? ` ${m} minutes` : ''}`
 }
 
-export interface PlaylistMark { id: string; url: string; tracks: number }
+export interface PlaylistMark {
+  id: string
+  url: string
+  tracks: number
+  /** Exactly what was written, so the app can tell when the playlist has fallen behind. Absent on marks saved before this was kept. */
+  uris?: string[]
+}
 
-/**
- * The week's programme as a private Spotify playlist: every confirmed recording
- * in programme order (comparison perspectives after the items), exactly the
- * tracks that were matched. Saving again later replaces the tracks — so once
- * more recordings are verified, the playlist catches up.
- */
-export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<PlaylistMark> {
+/** Every confirmed recording's tracks, in programme order (comparison perspectives after the items). */
+async function playlistUris(repo: Repo, programmeId: string): Promise<{ title: string; dek: string; uris: string[] }> {
   const p = await repo.programmes.require(programmeId)
   const items = p.sections.flatMap((s) => s.items)
   // The programme's own pairs, plus any stand-in for a recording Spotify lacks.
   const standIns = (await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
   const comparisons = [...(await repo.comparisons.many(p.comparisonIds)), ...standIns]
-  const ids = [
-    ...p.sections.flatMap((s) => s.items).map((i) => i.recordingId),
+  const ids = [...new Set([
+    ...items.map((i) => i.recordingId),
     ...comparisons.flatMap((c) => c.perspectives.map((x) => x.recordingId)),
-  ]
-  const recordings = await repo.recordings.many([...new Set(ids)])
-  const byId = new Map(recordings.map((r) => [r.id, r]))
+  ])]
+  const byId = new Map((await repo.recordings.many(ids)).map((r) => [r.id, r]))
   // Only recordings Spotify confirmed — a near miss waiting for the listener stays out.
-  const uris = [...new Set(ids)].flatMap((id) => { const r = byId.get(id); return isConfirmed(r) ? r.spotify.trackUris : [] })
+  const uris = ids.flatMap((id) => { const r = byId.get(id); return isConfirmed(r) ? r.spotify.trackUris : [] })
+  return { title: p.title, dek: p.dek, uris }
+}
+
+/**
+ * The week's programme as a private Spotify playlist: exactly the tracks that
+ * were matched. Saving again replaces the tracks in the same playlist.
+ */
+export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<PlaylistMark> {
+  const { title, dek, uris } = await playlistUris(repo, programmeId)
   if (uris.length === 0) throw new Error('None of this week’s recordings are confirmed on Spotify yet.')
   const mark = await repo.marks.get(`playlist:${programmeId}`)
   const prior = mark?.value as PlaylistMark | undefined
-  const saved = await spotify.writePlaylist(`The Long Listen — ${p.title}`, `${weekLabel}. ${p.dek}`, uris, prior?.id)
-  const value: PlaylistMark = { ...saved, tracks: uris.length }
+  const saved = await spotify.writePlaylist(`The Long Listen — ${title}`, `${weekLabel}. ${dek}`, uris, prior?.id)
+  const value: PlaylistMark = { ...saved, tracks: uris.length, uris }
   await repo.marks.put({ id: `playlist:${programmeId}`, at: new Date().toISOString(), value })
   return value
+}
+
+/**
+ * Once a playlist has been saved, it follows the programme on its own: when a
+ * recording is confirmed later, swapped ("Not this recording?") or given a
+ * stand-in, the playlist is rewritten to match. Does nothing when it already
+ * matches, when there's no playlist yet, or when nothing is confirmed.
+ * Returns whether it wrote.
+ */
+export async function keepPlaylistCurrent(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<boolean> {
+  const mark = (await repo.marks.get(`playlist:${programmeId}`))?.value as PlaylistMark | undefined
+  if (!mark) return false
+  const { uris } = await playlistUris(repo, programmeId)
+  if (uris.length === 0) return false
+  if (mark.uris && mark.uris.length === uris.length && mark.uris.every((u, i) => u === uris[i])) return false
+  await saveProgrammePlaylist(repo, spotify, programmeId, weekLabel)
+  return true
 }

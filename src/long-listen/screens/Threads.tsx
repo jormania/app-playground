@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { Programme, ProgrammeOption, Theme, ThemeExploration } from '../domain/types'
+import type { ListeningEvent, Programme, ProgrammeOption, Recording, Theme, ThemeExploration, Work } from '../domain/types'
+import { threadContents } from '../domain/threadContents'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
@@ -14,8 +15,13 @@ import s from '../styles/editorial.module.css'
 export function ThreadsScreen() {
   const { repo, journey, bump, say, week } = useServices()
   const { data, error } = useLoad(async () => {
-    const [themes, explorations, programmes, options] = await Promise.all([repo.themes.all(), repo.explorations.all(), repo.programmes.all(), repo.options.all()])
+    const [themes, explorations, programmes, options, works, recordings, events] = await Promise.all([
+      repo.themes.all(), repo.explorations.all(), repo.programmes.all(), repo.options.all(), repo.works.all(), repo.recordings.all(), repo.events.all(),
+    ])
     return {
+      works: new Map(works.map((w) => [w.id, w])),
+      recordings: new Map(recordings.map((r) => [r.id, r])),
+      events,
       themes: themes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
       explorations,
       programmes: new Map(programmes.map((p) => [p.id, p])),
@@ -51,7 +57,7 @@ export function ThreadsScreen() {
 
       {data.themes.length === 0 && <Empty link={{ href: '#/', label: 'Choose this week’s direction' }}>Nothing yet. Choose a direction this week and the first thread begins.</Empty>}
       <ul className={s.entries}>
-        {data.themes.map((t) => <ThreadEntry key={t.id} t={t} explorations={data.explorations} programmes={data.programmes} now={week.key} />)}
+        {data.themes.map((t) => <ThreadEntry key={t.id} t={t} explorations={data.explorations} programmes={data.programmes} works={data.works} recordings={data.recordings} events={data.events} now={week.key} />)}
       </ul>
 
       {data.open.length > 0 && (
@@ -74,13 +80,22 @@ export function ThreadsScreen() {
   )
 }
 
-function ThreadEntry({ t, explorations, programmes, now }: { t: Theme; explorations: ThemeExploration[]; programmes: Map<string, Programme>; now: string }) {
+function ThreadEntry({ t, explorations, programmes, works, recordings, events, now }: {
+  t: Theme; explorations: ThemeExploration[]; programmes: Map<string, Programme>
+  works: Map<string, Work>; recordings: Map<string, Recording>; events: ListeningEvent[]; now: string
+}) {
   const visits = explorations.filter((e) => e.themeId === t.id).sort((a, b) => a.weekKey.localeCompare(b.weekKey))
+  // Every programme the thread has had, extras included, for what it holds.
+  const held = visits.flatMap((v) => [v.programmeId, ...(v.extraProgrammeIds ?? [])]).map((id) => programmes.get(id)).filter((p): p is Programme => Boolean(p))
+  const contents = threadContents(held, works, recordings, events)
   return (
     <li className={s.entry}>
       <h2 className={s.entryTitle}>{t.title}</h2>
-      <p className={s.faint}>First explored {sinceWords(t.firstIntroduced, now)} · {weekFromKey(t.firstIntroduced).label}</p>
-      {t.reaction && <p>{t.reaction}</p>}
+      {/* When, said once: each visit below carries its own dates. */}
+      <p className={s.faint}>First explored {sinceWords(t.firstIntroduced, now)}{visits.length > 1 ? ` · ${visits.length} visits` : ''}</p>
+      {t.summary && <p>{t.summary}</p>}
+      {contents && <p className={s.quiet}>{contents}</p>}
+      {t.reaction && <p className={s.italic}>{t.reaction}</p>}
       {/* Its visits strung on one line, oldest first: the thread, drawn. */}
       <ol className={s.threadLine} aria-label="Visits">
         {visits.map((v) => {
