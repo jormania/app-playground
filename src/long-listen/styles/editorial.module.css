@@ -1015,6 +1015,11 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* The programme title above already closes the heading; no rule over the first row. */
+.offeredList > li:first-child {
+  border-top: 0;
+}
+
 /* When the week's heard works follow, the list's closing rule is their first. */
 .offeredList + .entries {
   margin-top: 0 !important;
