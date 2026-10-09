@@ -9,6 +9,7 @@ import { openUrl, searchUrl } from '../spotify/client'
 import { spotifyCandidates, type SpotifyCandidate } from '../spotify/verify'
 import { resizePhoto } from '../../shared/photo'
 import { Empty, Problem, Waiting, messageOf } from '../components/common'
+import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
 /** Where a picture shared to the app waits for this screen (public/long-listen-sw.js puts it there). */
@@ -51,7 +52,7 @@ export function ConcertsScreen() {
               <li key={c.id} className={s.journalConcert}>
                 {/* The evening as the title, the works one to a line beneath: never one long run-on link. */}
                 <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{concertDate(c.date)}{c.hall ? ` · ${c.hall}` : ''}</a>
-                {concertPerformers(c) && <p className={`${s.faint} ${s.flush}`}>{concertPerformers(c)}</p>}
+                <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
                 <ul className={s.concertWorkList}>
                   {c.works.map((w, i) => <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em></li>)}
                 </ul>
@@ -80,7 +81,7 @@ export function ConcertScreen({ id }: { id: string }) {
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
       <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Heard live · {c.venue}{c.hall ? `, ${c.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{concertDate(c.date)}{c.time ? `, ${c.time}` : ''}</h1>
-      {concertPerformers(c) && <p className={s.dek}>{concertPerformers(c)}</p>}
+      <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} className={s.dek} />
       {c.note && <p className={s.said}><q>{c.note}</q></p>}
 
       <ol className={s.concertWorks}>

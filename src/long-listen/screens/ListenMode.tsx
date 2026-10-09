@@ -11,6 +11,7 @@ import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -129,7 +130,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       <p className={s.eyebrow}><a href={href({ name: 'programme', id: programme.id })} className={`${s.quietLink} ${s.backLink}`}>← {programme.title}</a></p>
       <p className={s.composer}>{item.proposed.composer}</p>
       <h1 className={s.title}>{item.proposed.work}</h1>
-      <p className={s.dek}>{creditLine(credit)}{sp?.durationMs ? ` · ${aboutDuration(sp.durationMs)}` : ''}</p>
+      <Credits r={credit} className={s.dek} after={sp?.durationMs ? aboutDuration(sp.durationMs) : undefined} />
       {standIn && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
       {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for. */}

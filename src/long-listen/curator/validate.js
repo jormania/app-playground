@@ -35,6 +35,19 @@ export function hasPerformers(p) {
   return Boolean(p.conductor || p.orchestra || p.ensemble || p.soloists.length)
 }
 
+/**
+ * A work with a soloist, by its title: a concerto (not a "Concerto for
+ * Orchestra" or a concerto grosso, which have none to name), a concertante,
+ * or a work "for violin and orchestra". Its recording must name the soloists.
+ */
+export function needsSoloists(title, form) {
+  const t = String(title ?? '').toLowerCase()
+  if (/concerto for orchestra|concerto grosso|concerti grossi/.test(t)) return false
+  if (/\bconcert(o|i|ante)\b|sinfonia concertante|konzert|concertstück|konzertstück/.test(t)) return true
+  if (/\bfor (solo )?(piano|violin|viola|cello|violoncello|double bass|flute|oboe|clarinet|bassoon|horn|trumpet|trombone|guitar|harp|organ|saxophone)\b[^.]*\borchestra\b/.test(t)) return true
+  return form === 'concerto'
+}
+
 // ── themes ────────────────────────────────────────────────────────────────
 
 /**
@@ -162,6 +175,7 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
     for (const i of s.items) {
       if (!i.composer || !i.workTitle) problems.push('An item has no composer or work title.')
       else if (!hasPerformers(i)) problems.push(`"${i.composer} — ${i.workTitle}" names no performers; every item must be a specific recording.`)
+      else if (needsSoloists(i.workTitle, i.form) && !i.soloists.length) problems.push(`"${i.composer} — ${i.workTitle}" has a soloist's part but names no soloist; name each soloist and their instrument.`)
     }
     s.items = s.items.filter((i) => i.composer && i.workTitle && hasPerformers(i))
   }

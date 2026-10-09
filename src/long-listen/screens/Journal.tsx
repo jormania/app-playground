@@ -1,12 +1,12 @@
 import type { Concert, ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
-import { creditLine } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { weekFromKey, weekOf, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
-import { concertDate, concertPerformers } from './Concerts'
+import { concertDate } from './Concerts'
 import { href } from '../app/router'
 import { Empty, Problem, Waiting } from '../components/common'
+import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
 const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
@@ -144,7 +144,8 @@ export function JournalScreen() {
                 {concerts.map((c) => (
                   <div key={c.id} className={s.journalConcert}>
                     <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{c.venue}</a>
-                    <p className={`${s.faint} ${s.flush}`}>{concertDate(c.date)}{concertPerformers(c) ? ` · ${concertPerformers(c)}` : ''}</p>
+                    <p className={`${s.faint} ${s.flush}`}>{concertDate(c.date)}</p>
+                    <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
                     <ul className={s.concertWorkList}>
                       {c.works.map((w, i) => <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em></li>)}
                     </ul>
@@ -165,7 +166,7 @@ export function JournalScreen() {
                       <li key={rid} className={s.entry}>
                         <p className={s.composer}>{info.proposed.composer}</p>
                         <h4 className={`${s.h2} ${s.flush}`}>{info.proposed.work}</h4>
-                        <p className={s.quiet}>{creditLine(info.proposed)}</p>
+                        <Credits r={info.proposed} />
                         <p className={s.tagRow}>
                           <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
                           {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)}</span>}

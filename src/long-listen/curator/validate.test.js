@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -57,5 +57,21 @@ describe('a concert read from a screenshot', () => {
     expect(value).toMatchObject({ venue: 'Filarmonica George Enescu', date: '', time: '19:00', conductor: undefined, works: [{ composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' }] })
     expect(problems).toEqual([])
     expect(validateConcert({ works: [] }).problems).toEqual(['No works could be read.'])
+  })
+})
+
+describe('works with a soloist', () => {
+  it('knows a concerto, a concertante and a work for soloist and orchestra', () => {
+    expect(needsSoloists('Cello Concerto in E minor')).toBe(true)
+    expect(needsSoloists('Double Concerto in A minor')).toBe(true)
+    expect(needsSoloists('Sinfonia concertante in E-flat')).toBe(true)
+    expect(needsSoloists('Schelomo, Hebraic Rhapsody for cello and orchestra')).toBe(true)
+    expect(needsSoloists('Tzigane', 'concerto')).toBe(true)
+  })
+  it('leaves alone the works that have none to name', () => {
+    expect(needsSoloists('Concerto for Orchestra')).toBe(false)
+    expect(needsSoloists('Concerto grosso in D, Op. 6 No. 4')).toBe(false)
+    expect(needsSoloists('Symphony No. 5')).toBe(false)
+    expect(needsSoloists('Tapiola')).toBe(false)
   })
 })

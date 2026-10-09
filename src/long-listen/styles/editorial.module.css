@@ -2446,12 +2446,18 @@
   color: var(--color-ink);
 }
 
-.credit {
+.creditItem {
   white-space: normal;
 }
 
+.creditAfter {
+  color: var(--color-muted);
+}
+
 .creditRole {
-  font-size: var(--text-xs);
+  /* Relative, so the mark keeps its proportion in a large subtitle or a small line. */
+  font-size: 0.78em;
+  font-style: normal;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.08em;
   color: var(--color-faint);

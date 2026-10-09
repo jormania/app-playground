@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import type { ProposedRecording, Recording } from '../domain/types'
-import { creditLine } from '../domain/identity'
 import { openUrl, searchUrl } from '../spotify/client'
 import { aboutDuration, confirmMatch, isConfirmed, rejectMatch, verifyRecording } from '../spotify/verify'
 import { useServices } from '../app/services'
 import { messageOf } from './common'
 import { ListenBar } from './ListenBar'
 import { usePlayback } from '../app/playback'
+import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -78,7 +78,7 @@ export function RecordingBlock({
   return (
     <div className={s.recording}>
       <div className={s.label}>{label}</div>
-      <p className={s.credit}>{creditLine(proposed) || 'Performers not named'}</p>
+      <Credits r={proposed} className={s.credit} empty="Performers not named" />
       {(character || recording?.character.length) ? (
         <p className={s.creditCharacter}>{character ?? recording?.character.join(', ')}</p>
       ) : null}
