@@ -44,11 +44,15 @@ export function ConcertsScreen() {
       {[...byVenue.entries()].map(([venue, list]) => (
         <section key={venue} className={s.block}>
           <h2 className={s.h2}><Landmark size={18} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {venue}</h2>
-          <ul className={s.entries}>
+          <ul className={s.concertList}>
             {list.map((c) => (
-              <li key={c.id} className={s.entry}>
-                <p className={s.mood}>{concertDate(c.date)}{c.hall ? ` · ${c.hall}` : ''}</p>
-                <a className={`${s.entryTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{c.works.map((w) => `${w.composer.split(' ').slice(-1)[0]}, ${w.title}`).join(' · ')}</a>
+              <li key={c.id} className={s.journalConcert}>
+                {/* The evening as the title, the works one to a line beneath: never one long run-on link. */}
+                <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{concertDate(c.date)}{c.hall ? ` · ${c.hall}` : ''}</a>
+                {concertPerformers(c) && <p className={s.faint} style={{ margin: 0 }}>{concertPerformers(c)}</p>}
+                <ul className={s.concertWorkList}>
+                  {c.works.map((w, i) => <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em></li>)}
+                </ul>
                 {c.note && <p className={s.said}><q>{c.note}</q></p>}
               </li>
             ))}

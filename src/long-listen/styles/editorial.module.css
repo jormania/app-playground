@@ -1568,6 +1568,55 @@
   border-top: 0;
 }
 
+/* A part of a Journal week (also offered, heard live, what you listened to):
+   a small accent heading on a hairline, with room above it. */
+.journalPart {
+  margin-top: var(--space-lg);
+}
+
+.journalPartHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-accent);
+}
+
+.journalPartHead::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
+.journalPart .offeredList > li:first-child {
+  border-top: 0;
+}
+
+.journalPart .entries > li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.journalConcertTitle {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.concertWorkList {
+  margin: var(--space-2xs) 0 0;
+  padding-left: 1.1em;
+}
+
+.concertWorkList em {
+  font-style: normal;
+  color: var(--color-ink);
+}
+
 .journalWeek {
   margin-top: var(--space-md);
   padding: var(--space-md) 0 var(--space-lg);
@@ -1745,15 +1794,33 @@
   }
 }
 
+/* Each work its own card, edged in the accent like a work in the programme,
+   so where one ends and the next begins is never in doubt; its recordings sit
+   below a hairline inside it. */
+.libraryWork {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md) var(--space-xs);
+  background: var(--color-surface);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
 .libraryWork + .libraryWork {
   margin-top: var(--space-md);
+}
+
+.libraryWork .libraryRecs {
+  margin-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
 }
 
 .libraryTitle {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  font-weight: 600;
   font-variation-settings: 'opsz' 36;
+  line-height: 1.2;
 }
 
 /* ── listening view ─────────────────────────────────────────────────────── */
@@ -2155,4 +2222,32 @@
   .sectionHead {
     break-after: avoid;
   }
+}
+
+.journalPart .entries {
+  margin-top: 0;
+}
+
+/* A heading that is itself the way in (a thread's title opens its latest week). */
+.titleLink {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--color-border-2);
+  text-underline-offset: 0.18em;
+}
+
+.titleLink:hover {
+  text-decoration-color: var(--color-accent);
+}
+
+/* All concerts: one evening per accent-edged block, with room between. */
+.concertList {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+}
+
+.concertList > li + li {
+  margin-top: var(--space-lg);
 }

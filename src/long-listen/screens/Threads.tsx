@@ -56,7 +56,8 @@ export function ThreadsScreen() {
       <p className={s.dek}>A theme isn’t used up in a week. Each one here can return — from where it was left, not from the start.</p>
 
       {data.themes.length === 0 && <Empty link={{ href: '#/', label: 'Choose this week’s direction' }}>Nothing yet. Choose a direction this week and the first thread begins.</Empty>}
-      <ul className={s.entries}>
+      {data.themes.length > 0 && <h2 className={s.sectionHead} style={{ marginTop: 'var(--space-xl)' }}>Your threads</h2>}
+      <ul className={s.entries} style={{ marginTop: 0 }}>
         {data.themes.map((t) => <ThreadEntry key={t.id} t={t} explorations={data.explorations} programmes={data.programmes} works={data.works} recordings={data.recordings} events={data.events} now={week.key} />)}
       </ul>
 
@@ -88,22 +89,28 @@ function ThreadEntry({ t, explorations, programmes, works, recordings, events, n
   // Every programme the thread has had, extras included, for what it holds.
   const held = visits.flatMap((v) => [v.programmeId, ...(v.extraProgrammeIds ?? [])]).map((id) => programmes.get(id)).filter((p): p is Programme => Boolean(p))
   const contents = threadContents(held, works, recordings, events)
+  // The title opens the latest visit; the line of visits is drawn only when there is more than that one to show.
+  const latest = visits[visits.length - 1]
+  const lineWorthDrawing = visits.length > 1 || visits.some((v) => v.extraProgrammeIds?.length || v.closingNote)
   return (
     <li className={s.entry}>
-      <h2 className={s.entryTitle}>{t.title}</h2>
+      <h2 className={s.entryTitle}>{latest ? <a className={s.titleLink} href={href({ name: 'programme', id: latest.programmeId })}>{t.title}</a> : t.title}</h2>
       {/* When, said once: each visit below carries its own dates. */}
       <p className={s.faint}>First explored {sinceWords(t.firstIntroduced, now)}{visits.length > 1 ? ` · ${visits.length} visits` : ''}</p>
       {t.summary && <p>{t.summary}</p>}
       {contents && <p className={s.quiet}>{contents}</p>}
       {t.reaction && <p className={s.italic}>{t.reaction}</p>}
       {/* Its visits strung on one line, oldest first: the thread, drawn. */}
-      <ol className={s.threadLine} aria-label="Visits">
+      {lineWorthDrawing && <ol className={s.threadLine} aria-label="Visits">
         {visits.map((v) => {
           const p = programmes.get(v.programmeId)
+          // A visit named like its thread is named by its week instead, so the title isn't said twice.
+          const sameName = !p || p.title === t.title
           return (
             <li key={v.id}>
-              <a href={href({ name: 'programme', id: v.programmeId })}>{p?.title ?? 'Programme'}</a>
-              <span className={s.faint}> · {weekFromKey(v.weekKey).label}{v.setAside ? ' · set aside' : ''}</span>
+              <a href={href({ name: 'programme', id: v.programmeId })}>{sameName ? weekFromKey(v.weekKey).label : p.title}</a>
+              {!sameName && <span className={s.faint}> · {weekFromKey(v.weekKey).label}</span>}
+              {v.setAside && <span className={s.faint}> · set aside</span>}
               {(v.extraProgrammeIds ?? []).map((id) => (
                 <span key={id} className={s.faint}> · and <a href={href({ name: 'programme', id })}>{programmes.get(id)?.title ?? 'more'}</a></span>
               ))}
@@ -111,7 +118,7 @@ function ThreadEntry({ t, explorations, programmes, works, recordings, events, n
             </li>
           )
         })}
-      </ol>
+      </ol>}
       {(t.openQuestions.length > 0 || t.nextDirections.length > 0) && (
         <div className={s.threadNotes}>
           {t.openQuestions.length > 0 && (
