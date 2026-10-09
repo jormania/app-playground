@@ -287,12 +287,6 @@
   color: var(--color-accent-hover);
 }
 
-.knownLine {
-  margin: var(--space-2xs) 0 0;
-  font-size: var(--text-sm);
-  color: var(--color-faint);
-}
-
 .dangerButton {
   color: var(--color-danger, #b3261e);
 }
@@ -525,35 +519,236 @@
   color: var(--color-faint);
 }
 
-/* listening state: four quiet words, one underlined */
-.states {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2xs) var(--space-md);
-  margin-top: var(--space-md);
-  align-items: baseline;
+/* ── an item's lower half: your listening, then where to go next ─────────── */
+
+/* What the listener has done with a work, set apart from what the curator
+   wrote: a tinted box rather than more lines of text and links. */
+.panel {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
-.state {
+/* On the narrowest screens (or a phone at large text) the box gives its
+   padding back, so the one-line states keep room to breathe. */
+@media (max-width: 360px) {
+  .panel {
+    padding: var(--space-sm) var(--space-xs);
+  }
+}
+
+.panelHead {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.09em;
+  color: var(--color-faint);
+}
+
+/* The four states on one line, drawn like the design system's small
+   SegmentedControl that Settings uses — a tinted track, the current one filled
+   with the accent — so "selected" looks the same everywhere in the app. Kept
+   local (not the DS component) because a long label must wrap inside its
+   segment at large text, where the DS track would scroll sideways instead. */
+.segmented {
+  display: flex;
+  gap: var(--space-3xs);
+  padding: var(--space-3xs);
+  margin-bottom: var(--space-sm);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+}
+
+.segment {
   appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: var(--space-3xs) var(--space-xs);
   background: none;
   border: 0;
-  padding: var(--space-2xs) 0;
-  min-height: 32px;
+  border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 1rem;
-  color: var(--color-faint);
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  color: var(--color-muted);
   cursor: pointer;
-  border-bottom: 1px solid transparent;
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
 }
 
-.state:hover {
+.segment:hover {
   color: var(--color-ink);
 }
 
-.stateOn {
-  color: var(--color-ink);
-  border-bottom-color: var(--color-accent);
+.segmentOn,
+.segmentOn:hover {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+/* Each part after the first gets a hairline, so the box reads as one card. */
+.panelPart {
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Inside the box the feedback form needs no second box of its own. */
+.panel .feedback {
+  margin-top: var(--space-xs);
+  padding: 0;
+  background: none;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  min-height: 44px;
+  padding-top: var(--space-2xs);
+  font-size: 1rem;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.check input {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0.2rem 0 0;
+  accent-color: var(--color-accent);
+}
+
+.checkHint {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+  font-style: italic;
+}
+
+/* Where to go next: full-width rows, each saying what it opens. */
+.further {
+  margin-top: var(--space-lg);
+}
+
+.furtherRow {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-sm) 1.75rem var(--space-sm) 0;
+  position: relative;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.furtherRow:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.furtherRow::after {
+  content: '→';
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-accent);
+  transition: transform var(--duration) var(--ease);
+}
+
+.furtherRow:hover::after {
+  transform: translate(0.2rem, -50%);
+}
+
+.furtherRow:disabled {
+  cursor: default;
+}
+
+.furtherRow:disabled::after {
+  content: '';
+}
+
+.furtherTitle {
+  color: var(--color-accent);
+  font-size: 1.05rem;
+}
+
+.furtherRow:hover .furtherTitle {
+  color: var(--color-accent-hover);
+}
+
+.furtherRow:disabled .furtherTitle {
+  color: var(--color-faint);
+}
+
+.furtherHint {
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+}
+
+/* Library: one recording per row, its tags beneath, no bullets. */
+.libraryRecs {
+  list-style: none;
+  margin: var(--space-xs) 0 0;
+  padding: 0;
+}
+
+.libraryRec {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-xs) 0;
+}
+
+.libraryRec + .libraryRec {
+  border-top: 1px dotted var(--color-border);
+}
+
+/* Journal: the three directions offered, one per line, the chosen one marked. */
+.offeredList {
+  list-style: none;
+  margin: var(--space-xs) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+/* A small status word set as a tag, for lists (Library, Journal). */
+.tag {
+  display: inline-block;
+  padding: 0 var(--space-xs);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.tagOn {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-xs);
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-faint);
 }
 
 /* ── feedback ───────────────────────────────────────────────────────────── */
@@ -577,12 +772,16 @@
   margin-bottom: var(--space-md);
 }
 
+/* Compact, to match the one-line states: smaller words, a slimmer pill. The
+   ::after keeps the finger target near 44px without drawing it. */
 .chip {
   appearance: none;
+  position: relative;
   font: inherit;
-  font-size: 1rem;
-  padding: var(--space-2xs) var(--space-sm);
-  min-height: 44px;
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  padding: var(--space-3xs) var(--space-sm);
+  min-height: 34px;
   border: 1px solid var(--color-border-2);
   border-radius: var(--radius-pill);
   background: transparent;
@@ -591,14 +790,28 @@
   transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease);
 }
 
+.chip::after {
+  content: '';
+  position: absolute;
+  inset: -5px -2px;
+}
+
 .chip:hover {
   border-color: var(--color-ink);
 }
 
+/* Settings' design-system SegmentedControls at size "sm", lifted from 32px
+   to the 36px of the programme's states row, so the two read as one control
+   and stay comfortable under a finger (the track adds 4px each side). */
+.compactTrack > button[role='radio'] {
+  height: 36px;
+}
+
+/* Selected: the accent fill every "chosen" control in the app uses. */
 .chipOn {
-  background: var(--color-ink);
-  border-color: var(--color-ink);
-  color: var(--color-bg);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .input {
@@ -625,6 +838,11 @@
   margin: var(--space-lg) 0;
   padding: var(--space-md) 0 var(--space-md) var(--space-md);
   border-left: 2px solid var(--color-accent);
+}
+
+/* A card's closing link is an action like the buttons beside it: same size. */
+.nextCard > a {
+  font-size: var(--text-base);
 }
 
 .nextTitle {
@@ -1046,7 +1264,6 @@
 
 .navLink,
 .textButton,
-.state,
 .backLink,
 .actions > a {
   position: relative;
@@ -1054,7 +1271,6 @@
 
 .navLink::after,
 .textButton::after,
-.state::after,
 .backLink::after,
 .actions > a::after {
   content: '';
@@ -1072,7 +1288,8 @@
   .masthead,
   .nav,
   .actions,
-  .states,
+  .panel,
+  .further,
   .feedback,
   .textButton,
   .demo {

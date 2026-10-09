@@ -309,40 +309,58 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
         </>
       )}
 
-      <div className={s.states} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
-        {STATES.map((st) => (
-          <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.state} ${state === st.value ? s.stateOn : ''}`} onClick={() => mark(st.kind)}>
-            {st.label}
-          </button>
-        ))}
-      </div>
-
-      <p className={s.knownLine}>
-        {knewIt
-          ? <>You knew this one before; the curator won’t treat it as a discovery. <button className={`${s.textButton} ${s.quietButton}`} onClick={toggleKnown}>Undo</button></>
-          : <button className={`${s.textButton} ${s.quietButton}`} onClick={toggleKnown}>I knew this already</button>}
-      </p>
-
-      {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === item.recordingId || f.target.id === item.workId))) && (
-        <div style={{ marginTop: 'var(--space-sm)' }}>
-          <FeedbackPanel
-            key={`${item.id}-${state}`}
-            programmeId={pid}
-            feedback={b.feedback}
-            startOpen={state === 'heard' && !b.feedback.some((f) => f.target.id === item.recordingId)}
-            targets={[
-              { type: 'recording', id: item.recordingId, label: 'This recording' },
-              { type: 'work', id: item.workId, label: 'The work itself' },
-            ]}
-          />
+      {/* What you've done with it — kept together, apart from what the curator wrote. */}
+      <section className={s.panel} aria-label={`Your listening: ${item.proposed.work}`}>
+        <p className={s.panelHead}>Your listening</p>
+        <div className={s.segmented} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
+          {STATES.map((st) => (
+            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? s.segmentOn : ''}`} onClick={() => mark(st.kind)}>
+              {st.label}
+            </button>
+          ))}
         </div>
-      )}
+        <label className={s.check}>
+          <input type="checkbox" checked={knewIt} onChange={() => void toggleKnown()} />
+          <span>
+            I knew this one already
+            {knewIt && <span className={s.checkHint}>The curator won’t count it as a discovery.</span>}
+          </span>
+        </label>
+        {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === item.recordingId || f.target.id === item.workId))) && (
+          <div className={s.panelPart}>
+            <FeedbackPanel
+              key={`${item.id}-${state}`}
+              programmeId={pid}
+              feedback={b.feedback}
+              startOpen={state === 'heard' && !b.feedback.some((f) => f.target.id === item.recordingId)}
+              targets={[
+                { type: 'recording', id: item.recordingId, label: 'This recording' },
+                { type: 'work', id: item.workId, label: 'The work itself' },
+              ]}
+            />
+          </div>
+        )}
+      </section>
 
-      <div className={s.actions}>
-        {!explanation && <button className={s.textButton} onClick={explain} disabled={explaining}>{explaining ? 'The curator is writing…' : 'A little more context'}</button>}
-        {!comparison && b.pairs && <button className={s.textButton} onClick={() => void compare()} disabled={comparing}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</button>}
-        <a href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>Listen with this open</a>
-      </div>
+      <nav className={s.further} aria-label={`Go further with ${item.proposed.work}`}>
+        <p className={s.panelHead}>Go further</p>
+        <a className={s.furtherRow} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>
+          <span className={s.furtherTitle}>Listen with this open</span>
+          <span className={s.furtherHint}>The notes on one quiet screen that stays awake</span>
+        </a>
+        {!explanation && (
+          <button className={s.furtherRow} onClick={explain} disabled={explaining}>
+            <span className={s.furtherTitle}>{explaining ? 'The curator is writing…' : 'A little more context'}</span>
+            <span className={s.furtherHint}>Where the work came from, in a few paragraphs</span>
+          </button>
+        )}
+        {!comparison && b.pairs && (
+          <button className={s.furtherRow} onClick={() => void compare()} disabled={comparing}>
+            <span className={s.furtherTitle}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</span>
+            <span className={s.furtherHint}>A second recording that reads it differently</span>
+          </button>
+        )}
+      </nav>
 
       {explanation && (
         <div className={s.block}>

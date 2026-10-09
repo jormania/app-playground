@@ -57,12 +57,14 @@ export function SettingsScreen() {
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>Reading</h2>
         <SegmentedControl
+          size="sm" className={s.compactTrack}
           label="Theme"
           value={settings.theme}
           onChange={(v) => updateSettings({ theme: v as ThemeChoice })}
           options={[{ value: 'system', label: 'Device' }, { value: 'light', label: 'Day' }, { value: 'dark', label: 'Night' }]}
         />
         <SegmentedControl
+          size="sm" className={s.compactTrack}
           label="Text size"
           value={settings.textSize}
           onChange={(v) => updateSettings({ textSize: v as 'standard' | 'large' })}
@@ -317,7 +319,7 @@ function ExplorationSections() {
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>Your week of listening</h2>
         <p className={s.quiet}>The curator weighs these above anything it has inferred. A change shapes the next directions and programmes, never one already made — so set them before you choose a week, or ask for three others after.</p>
-        <SegmentedControl label="Music each week" value={p.timePerWeek} onChange={(v) => void set('timePerWeek', v as ListenerPreferences['timePerWeek'])} options={PREF_OPTIONS.timePerWeek} />
+        <SegmentedControl size="sm" className={s.compactTrack} label="Music each week" value={p.timePerWeek} onChange={(v) => void set('timePerWeek', v as ListenerPreferences['timePerWeek'])} options={PREF_OPTIONS.timePerWeek} />
         <p className={s.faint} style={{ marginTop: 'var(--space-2xs)' }}>{TIME[p.timePerWeek].words[0].toUpperCase()}{TIME[p.timePerWeek].words.slice(1)}: about {least}–{most} works, in two to four sections.</p>
         <LevelScale
           label="How widely a week ranges"
@@ -347,7 +349,7 @@ function ExplorationSections() {
 
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>What goes in</h2>
-        <SegmentedControl label="Recordings" value={p.recordingEra} onChange={(v) => void set('recordingEra', v as ListenerPreferences['recordingEra'])} options={PREF_OPTIONS.recordingEra} />
+        <SegmentedControl size="sm" className={s.compactTrack} label="Recordings" value={p.recordingEra} onChange={(v) => void set('recordingEra', v as ListenerPreferences['recordingEra'])} options={PREF_OPTIONS.recordingEra} />
         <p className={s.faint} style={{ marginTop: 'var(--space-2xs)' }}>{ERA_HINT[p.recordingEra]}</p>
         <SettingsToggle label="Works with voices" hint="Choral symphonies, orchestral songs" checked={p.includeVoices} onChange={(e) => void set('includeVoices', e.target.checked)} />
         <SettingsToggle label="Concertos" hint="Orchestra with a soloist" checked={p.includeConcertos} onChange={(e) => void set('includeConcertos', e.target.checked)} />
@@ -355,8 +357,8 @@ function ExplorationSections() {
 
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>The curator’s writing</h2>
-        <SegmentedControl label="How much it writes" value={p.depth} onChange={(v) => void set('depth', v as ListenerPreferences['depth'])} options={PREF_OPTIONS.depth} />
-        <SegmentedControl label="Language" value={p.language} onChange={(v) => void set('language', v as ListenerPreferences['language'])} options={PREF_OPTIONS.language} />
+        <SegmentedControl size="sm" className={s.compactTrack} label="How much it writes" value={p.depth} onChange={(v) => void set('depth', v as ListenerPreferences['depth'])} options={PREF_OPTIONS.depth} />
+        <SegmentedControl size="sm" className={s.compactTrack} label="Language" value={p.language} onChange={(v) => void set('language', v as ListenerPreferences['language'])} options={PREF_OPTIONS.language} />
       </section>
     </>
   )

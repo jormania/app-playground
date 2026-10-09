@@ -102,9 +102,14 @@ export function JournalScreen() {
               </p>
             ))}
             {offered.length > 0 && (
-              <p className={s.faint}>
-                {offered.map((o, i) => <span key={o.id}>{i ? ' · ' : ''}{o.title} <span className={s.italic}>({OPTION_WORD[o.status]})</span></span>)}
-              </p>
+              <ul className={s.offeredList} aria-label="Offered this week">
+                {offered.map((o) => (
+                  <li key={o.id}>
+                    <span className={o.status === 'chosen' ? undefined : s.quiet}>{o.title}</span>{' '}
+                    <span className={`${s.tag} ${o.status === 'chosen' ? s.tagOn : ''}`}>{OPTION_WORD[o.status]}</span>
+                  </li>
+                ))}
+              </ul>
             )}
             {heard.length > 0 && (
               <ul className={s.entries} style={{ marginTop: 'var(--space-sm)' }}>
@@ -117,7 +122,10 @@ export function JournalScreen() {
                       <p className={s.composer}>{info.proposed.composer}</p>
                       <h3 className={s.h2} style={{ margin: 0 }}>{info.proposed.work}</h3>
                       <p className={s.quiet}>{creditLine(info.proposed)}</p>
-                      <p className={s.faint}>{STATE_WORD[state]}{fb.reaction ? ` · ${reactionLabel(fb.reaction)}` : ''}</p>
+                      <p className={s.tagRow}>
+                        <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
+                        {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)}</span>}
+                      </p>
                       {fb.notes.map((n, i) => <p key={i} className={s.said}><q>{n}</q></p>)}
                     </li>
                   )
