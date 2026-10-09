@@ -109,7 +109,12 @@ function ThreadEntry({ t, explorations, programmes, works, recordings, events, n
       {/* When, said once: each visit below carries its own dates. */}
       <p className={s.faint}>First explored {sinceWords(t.firstIntroduced, now)}{visits.length > 1 ? ` · ${visits.length} visits` : ''}</p>
       {t.summary && <p>{t.summary}</p>}
-      {contents && <p className={s.quiet}>{contents}</p>}
+      {/* What the thread holds, one fact to a line on an accent edge — read at a glance, not as another paragraph. */}
+      {contents && (
+        <ul className={s.threadFacts} aria-label="What this thread holds">
+          {contents.split(' · ').map((fact) => <li key={fact}>{fact}</li>)}
+        </ul>
+      )}
       {t.reaction && <p className={s.italic}>{t.reaction}</p>}
       {/* Its visits strung on one line, oldest first: the thread, drawn. */}
       {lineWorthDrawing && <ol className={s.threadLine} aria-label="Visits">
