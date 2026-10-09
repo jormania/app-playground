@@ -24,6 +24,8 @@ export interface Settings {
   timeZone: string
   spotifyClientId: string
   theme: ThemeChoice
+  /** In the listening view: when a work ends, chime and go on to the next one. */
+  carryOn: boolean
   /** Development only: answer from canned demo programmes instead of Claude. */
   demo: boolean
 }
@@ -45,6 +47,7 @@ export function loadSettings(): Settings {
     timeZone: typeof raw.timeZone === 'string' && isValidTimeZone(raw.timeZone) ? raw.timeZone : DEFAULT_TIME_ZONE,
     spotifyClientId: typeof raw.spotifyClientId === 'string' && raw.spotifyClientId ? raw.spotifyClientId : ENV_CLIENT_ID,
     theme: theme === 'light' || theme === 'dark' ? theme : 'system',
+    carryOn: raw.carryOn !== false,
     demo: Boolean(import.meta.env?.DEV) && raw.demo === true,
   }
 }

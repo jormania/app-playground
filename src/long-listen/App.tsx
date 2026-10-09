@@ -4,6 +4,7 @@ import { ServicesProvider, useServices } from './app/services'
 import { href, useRoute, type Route } from './app/router'
 import { GUIDE_URL } from './app/links'
 import { useNewVersion } from './app/freshness'
+import { LandedPrompt } from './components/LandedPrompt'
 import { WeekScreen } from './screens/Week'
 import { ProgrammeScreen } from './screens/Programme'
 import { ListenModeScreen } from './screens/ListenMode'
@@ -69,6 +70,7 @@ function Shell() {
         )}
         {settings.demo && <p className={s.demo}>Demo curator — canned programmes, for development only</p>}
       </header>
+      {route.name !== 'listen' && route.name !== 'settings' && <LandedPrompt />}
       <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name}>
         {route.name === 'week' && <WeekScreen />}
         {route.name === 'programme' && <ProgrammeScreen id={route.id} />}
