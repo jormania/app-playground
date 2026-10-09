@@ -468,3 +468,14 @@ thin, and what was done:
 Added beyond the brief: the weekly Spotify playlist, the listening view, a
 recording's length, print styles, text size, and the curator writing in
 Romanian when asked.
+
+## 12. Releases
+
+The app names its release once, in Settings → About (`app/release.ts`), and
+nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
+
+- **Release one — 9 October 2026.** Weekly directions and programmes from a
+  BYO-key curator; Spotify verification, stand-ins, the weekly playlist (kept
+  current on its own), Play/Pause/Resume that follows Spotify and a dusk
+  listening view; Journal, Library, Threads, Notebook; the Notion mirror.
+  Tested in daily use on the first week, *Northern Light*.
