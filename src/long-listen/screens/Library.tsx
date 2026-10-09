@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Concert, ProposedRecording, Recording, Work } from '../domain/types'
 import { Landmark } from 'lucide-react'
-import { concertDate, concertPerformers } from './Concerts'
+import { concertDate } from './Concerts'
 import { creditLine, fold, surname } from '../domain/identity'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
@@ -10,6 +10,7 @@ import { href } from '../app/router'
 import { openUrl } from '../spotify/client'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Empty, Problem, Waiting } from '../components/common'
+import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
 interface Entry {
@@ -120,7 +121,7 @@ export function LibraryScreen() {
                   return (
                     <li key={rec.id} className={s.libraryRec}>
                       {/* Who played it; then where you stand with it, as tags; then where it came from. */}
-                      <span>{creditLine(proposed)}</span>
+                      <Credits r={proposed} />
                       <span className={s.tagRow}>
                         <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
                         {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)?.toLowerCase()}</span>}
@@ -139,11 +140,13 @@ export function LibraryScreen() {
                 })}
               </ul>
               {live.map((c) => (
-                <p key={c.id} className={s.libraryLive}>
-                  <span className={`${s.tag} ${s.tagOn}`}><Landmark size={12} strokeWidth={1.8} aria-hidden="true" /> heard live</span>{' '}
-                  <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.venue}, {concertDate(c.date)}</a>
-                  {concertPerformers(c) && <span className={s.faint}> · {concertPerformers(c)}</span>}
-                </p>
+                <div key={c.id} className={s.libraryLive}>
+                  <p className={s.flush}>
+                    <span className={`${s.tag} ${s.tagOn}`}><Landmark size={12} strokeWidth={1.8} aria-hidden="true" /> heard live</span>{' '}
+                    <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.venue}, {concertDate(c.date)}</a>
+                  </p>
+                  <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
+                </div>
               ))}
             </div>
           ))}

@@ -1916,8 +1916,13 @@
 
 /* The Library's "heard live" line under a work's recordings. */
 .libraryLive {
-  margin: var(--space-2xs) 0 0;
-  font-size: var(--text-sm);
+  margin: var(--space-sm) 0 0;
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+
+.libraryLive > * + * {
+  margin-top: var(--space-xs);
 }
 
 /* Concerts: the hall mark, the works heard, and the form. */
@@ -2429,6 +2434,32 @@
 .threadFacts li:first-child {
   color: var(--color-ink);
   font-weight: 600;
+}
+
+/* Who plays a recording, each named for what they are (components/Credits). */
+.credits {
+  display: grid;
+  /* One label width everywhere, so names line up from card to card. */
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: var(--space-3xs) var(--space-sm);
+  margin: 0;
+}
+
+.credits > div {
+  display: contents;
+}
+
+.credits dt {
+  padding-top: 0.2em;
+  font-size: var(--text-sm);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  color: var(--color-faint);
+}
+
+.credits dd {
+  margin: 0;
+  color: var(--color-ink);
 }
 
 /* ── spacing: the few one-off gaps, named, so no screen sets its own ──────
