@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateConcert,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -31,7 +31,7 @@ export const MODEL = MODEL_SONNET
  * further reading found by web search) and go to Haiku at a twentieth of the
  * price. Each job's prompt and validator are the same on either model.
  */
-const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU }
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, concert: MODEL_HAIKU }
 export function modelFor(op) {
   return MODEL_FOR[op] ?? MODEL
 }
@@ -47,6 +47,7 @@ const LEADS = {
   explain: (p) => `The listener asked for more context on ${p.item?.composer} — ${p.item?.workTitle}${p.question ? `, with this question: "${p.question}"` : ''}.`,
   compare: (p) => `The listener wants a second perspective on ${p.work?.composer} — ${p.work?.title}.`,
   resources: (p) => `Find resources for this week's programme, "${p.programme?.title}".`,
+  concert: (p) => `Read this concert programme. If it shows no year, it is ${p.year}.`,
   companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
 }
 
@@ -219,6 +220,24 @@ export async function writeCompanion(send, payload) {
   return { ...r.value, promptVersion: PROMPTS.companion.version }
 }
 
+/**
+ * A concert programme, read from a screenshot (the cheaper model, image in —
+ * about a cent). One attempt: the listener checks the result in a form.
+ * payload: { image: { mediaType, data (base64) }, year }
+ */
+export async function readConcert(send, payload) {
+  const { image, ...rest } = payload ?? {}
+  if (!image?.data) throw new CuratorUnavailable('failed', 'There was no picture to read.')
+  const content = [
+    { type: 'image', source: { type: 'base64', media_type: image.mediaType || 'image/jpeg', data: image.data } },
+    { type: 'text', text: LEADS.concert(rest) },
+  ]
+  const { output } = await structured(send, 'concert', content)
+  const { value, problems } = validateConcert(output)
+  if (problems.length) throw new CuratorUnavailable('failed', 'No works could be read from that picture. Try a clearer screenshot, or type it in.')
+  return { ...value, promptVersion: PROMPTS.concert.version }
+}
+
 export async function compareInterpretations(send, payload) {
   const r = await withRetry(send, 'compare', payload, (o) => validateCompare(o, { current: payload.current, alreadyHeard: payload.alreadyHeard, spotifyCandidates: payload.spotifyCandidates }))
   if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator could not find a contrasting recording.')
@@ -277,6 +296,7 @@ export const JOBS = {
   compare: compareInterpretations,
   resources: findResources,
   companion: writeCompanion,
+  concert: readConcert,
 }
 
 /**

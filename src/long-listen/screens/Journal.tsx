@@ -1,8 +1,10 @@
-import type { ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
+import type { Concert, ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { weekFromKey, weekOf } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
+import { Landmark } from 'lucide-react'
+import { concertDate, concertPerformers } from './Concerts'
 import { href } from '../app/router'
 import { Empty, Problem, Waiting } from '../components/common'
 import s from '../styles/editorial.module.css'
@@ -23,9 +25,15 @@ const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
 export function JournalScreen() {
   const { repo, settings, spotify, syncSpotify, say } = useServices()
   const { data, error } = useLoad(async () => {
-    const [weeks, options, events, feedback, programmes, comparisons] = await Promise.all([
-      repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(),
+    const [weeks, options, events, feedback, programmes, comparisons, concerts] = await Promise.all([
+      repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(),
     ])
+    // Concerts stand in the week they happened, with the hall's mark: live, not the week's programme.
+    const concertsIn = new Map<string, Concert[]>()
+    for (const c of [...concerts].sort((a, b) => a.date.localeCompare(b.date))) {
+      const wk = weekOf(new Date(`${c.date}T12:00:00Z`), settings.timeZone).key
+      concertsIn.set(wk, [...(concertsIn.get(wk) ?? []), c])
+    }
     const proposedOf = new Map<string, { proposed: ProposedRecording; programmeId?: string }>()
     for (const p of programmes) for (const i of p.sections.flatMap((x) => x.items)) proposedOf.set(i.recordingId, { proposed: i.proposed, programmeId: p.id })
     for (const c of comparisons) for (const pv of c.perspectives) if (!proposedOf.has(pv.recordingId)) proposedOf.set(pv.recordingId, { proposed: pv.proposed })
@@ -46,7 +54,7 @@ export function JournalScreen() {
     }
 
     const optionById = new Map(options.map((o) => [o.id, o]))
-    const keys = [...new Set([...weeks.map((w) => w.weekKey), ...heardIn.keys()])].sort((a, b) => b.localeCompare(a))
+    const keys = [...new Set([...weeks.map((w) => w.weekKey), ...heardIn.keys(), ...concertsIn.keys()])].sort((a, b) => b.localeCompare(a))
     const programmeTitle = new Map(programmes.map((p) => [p.id, p.title]))
     const extensionsOf = new Map<string, string[]>()
     for (const p of [...programmes].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
@@ -58,9 +66,9 @@ export function JournalScreen() {
         const offered = w ? [...(w.earlierOptionIds ?? []), ...w.optionIds].map((id) => optionById.get(id)).filter((o): o is ProgrammeOption => Boolean(o)) : []
         const taken = w?.chosenOptionId ? optionById.get(w.chosenOptionId) : undefined
         if (taken && !offered.includes(taken)) offered.push(taken)
-        return { key, week: w, offered, heard: heardIn.get(key) ?? [] }
+        return { key, week: w, offered, heard: heardIn.get(key) ?? [], concerts: concertsIn.get(key) ?? [] }
       }),
-      proposedOf, feedback, programmeTitle, extensionsOf,
+      proposedOf, feedback, programmeTitle, extensionsOf, concertCount: concerts.length,
     }
   }, [settings.timeZone])
 
@@ -73,6 +81,10 @@ export function JournalScreen() {
       <p className={s.eyebrow}>Journal</p>
       <h1 className={s.title}>The weeks so far</h1>
       <p className={s.dek}>What was offered, which way you went, and what stayed with you.</p>
+      <p className={s.faint}>
+        <Landmark size={15} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} />{' '}
+        <a href={href({ name: 'concerts' })}>All concerts</a>{data.concertCount ? '' : ' — what you hear live, kept here too'} · <a href={href({ name: 'concert', id: 'new' })}>add one</a>
+      </p>
       {spotify.connected && (
         <p className={s.faint}>
           Your recent Spotify listening is picked up each time you open the app.{' '}
@@ -81,7 +93,7 @@ export function JournalScreen() {
       )}
       {data.entries.length === 0 && <Empty link={{ href: '#/', label: 'Go to this week' }}>Nothing here yet. Your first week begins on This week.</Empty>}
 
-      {data.entries.map(({ key, week, offered, heard }) => {
+      {data.entries.map(({ key, week, offered, heard, concerts }) => {
         const wk = weekFromKey(key)
         return (
           <section key={key} className={s.journalWeek} aria-label={`Week ${wk.number}`}>
@@ -118,6 +130,14 @@ export function JournalScreen() {
                 ))}
               </ul>
             )}
+            {concerts.map((c) => (
+              <div key={c.id} className={s.journalConcert}>
+                <p className={s.composer}><Landmark size={15} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Heard live · {c.venue} · {concertDate(c.date)}</p>
+                <a className={s.entryTitle} href={href({ name: 'concert', id: c.id })}>{c.works.map((w) => `${w.composer.split(' ').slice(-1)[0]}, ${w.title}`).join(' · ')}</a>
+                {concertPerformers(c) && <p className={s.quiet} style={{ margin: 0 }}>{concertPerformers(c)}</p>}
+                {c.note && <p className={s.said}><q>{c.note}</q></p>}
+              </div>
+            ))}
             {heard.length > 0 && (
               <ul className={s.entries} style={{ marginTop: 'var(--space-sm)' }}>
                 {heard.map(({ rid, state }) => {

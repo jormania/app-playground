@@ -1,5 +1,5 @@
 import type {
-  CompanionResponse, CompareResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
 } from '../curation/api'
 import { CuratorUnavailable } from '../curation/api'
 
@@ -134,6 +134,18 @@ export function demoCurator(): CuratorClient {
           return { framing: 'A conductor who knew the composer, set beside a modern analyst.', whyBoth: 'If you want to hear what tradition adds, listen to both.', current: { character: 'Analytical', listenFor: 'Balance' }, other: { conductor: 'Jean Martinon', orchestra: "Orchestre National de l'ORTF", soloists: [], character: 'Idiomatic, airy', listenFor: 'The woodwind phrasing' }, promptVersion: 'demo' } satisfies CompareResponse as T
         case 'resources':
           return { resources: [], dropped: 0, promptVersion: 'demo' } satisfies ResourcesResponse as T
+        case 'concert':
+          return {
+            venue: 'Filarmonica George Enescu', hall: 'Sala Mare', date: `${payload?.year ?? 2026}-10-16`, time: '19:00',
+            orchestra: 'Orchestra Filarmonicii George Enescu', conductor: 'Gabriel Bebeșelea',
+            soloists: [{ name: 'Alexandra Conunova', instrument: 'violin' }, { name: 'Andrei Ioniță', instrument: 'cello' }],
+            works: [
+              { composer: 'George Enescu', title: 'Romanian Rhapsody No. 1', catalogue: 'Op. 11' },
+              { composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' },
+              { composer: 'Jean Sibelius', title: 'Symphony No. 2', catalogue: 'Op. 43' },
+            ],
+            promptVersion: 'demo',
+          } satisfies ConcertResponse as T
         case 'companion':
           return {
             works: (payload?.works ?? []).map((w: { key: string; tracks: string[] }) => ({

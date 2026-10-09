@@ -150,6 +150,8 @@ export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, rec
 /** One recording of a work that Spotify actually has, for the curator to choose from. */
 export interface SpotifyCandidate {
   album: string
+  /** For a link to the album; left out of what the curator is sent. */
+  albumId?: string
   year?: string
   artists: string[]
 }
@@ -169,7 +171,7 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
       const onWork = Math.max(workOverlap(p.work, t.name), workOverlap(p.work, t.album.name))
       if (onWork < 0.75 || !isCredited(p.composer, t.artists)) continue
       const artists = t.artists.map((a) => a.name).filter((n) => !isCredited(p.composer, [{ name: n }]))
-      if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, year: t.album.release_date?.slice(0, 4), artists })
+      if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, albumId: t.album.id, year: t.album.release_date?.slice(0, 4), artists })
     }
     if (byAlbum.size >= max) break
   }

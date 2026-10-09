@@ -50,6 +50,8 @@ export interface CuratorContext {
    */
   alreadyKnown: { composer: string; work: string }[]
   requestedNext?: string
+  /** Concerts heard live in the last twelve weeks: what was played, where, and what the listener said. */
+  concerts: { venue: string; date: string; performers: string; works: string[]; note?: string; weeksAgo: number }[]
   /** "This week, differently" — this week only; outranks preferences for the week. */
   thisWeek?: WeekMood[]
 }
@@ -149,6 +151,21 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   }
   const known = knownWorkIds(feedback)
   const alreadyKnown: CuratorContext['alreadyKnown'] = []
+  // Heard live counts as known: never offered back as a discovery.
+  const allConcerts = await repo.concerts.all()
+  for (const c of allConcerts) for (const w of c.works) {
+    if (!alreadyKnown.some((a) => a.composer === w.composer && a.work === w.title)) alreadyKnown.push({ composer: w.composer, work: w.title })
+  }
+  const concerts: CuratorContext['concerts'] = allConcerts
+    .map((c) => ({
+      venue: c.venue, date: c.date,
+      performers: [c.orchestra, c.conductor, ...c.soloists.map((s) => s.name)].filter(Boolean).join(', '),
+      works: c.works.map((w) => `${w.composer} — ${w.title}`),
+      note: c.note,
+      weeksAgo: weeksSince(`${c.date}T20:00:00Z`, week.startsOn),
+    }))
+    .filter((c) => c.weeksAgo <= 12)
+    .sort((a, b) => b.date.localeCompare(a.date))
   for (const i of [...programmes.values()].flatMap((p) => p.sections.flatMap((x) => x.items))) {
     if (known.has(i.workId) && !alreadyKnown.some((a) => a.composer === i.proposed.composer && a.work === i.proposed.work)) {
       alreadyKnown.push({ composer: i.proposed.composer, work: i.proposed.work })
@@ -170,6 +187,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
     alreadyProgrammed,
     alreadyKnown,
     secondHearings: secondHearings.slice(0, 3),
+    concerts,
     requestedNext: (requestedNext ?? nextRequest).trim() || undefined,
     thisWeek: weeks.find((w) => w.weekKey === week.key)?.mood?.length ? weeks.find((w) => w.weekKey === week.key)!.mood : undefined,
   }

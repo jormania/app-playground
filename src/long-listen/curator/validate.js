@@ -369,6 +369,29 @@ export function validateCompanion(out, { works }) {
   return { value, problems }
 }
 
+/**
+ * A concert read from a screenshot: cleaned, never retried — the listener
+ * checks it in a form before anything is kept. A date that isn't a date is
+ * dropped rather than guessed.
+ */
+export function validateConcert(out) {
+  const date = clean(out?.date)
+  const value = {
+    venue: clean(out?.venue),
+    hall: opt(out?.hall),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '',
+    time: /^\d{1,2}:\d{2}$/.test(clean(out?.time)) ? clean(out?.time) : undefined,
+    orchestra: opt(out?.orchestra),
+    conductor: opt(out?.conductor),
+    soloists: cleanSoloists(out?.soloists),
+    works: (Array.isArray(out?.works) ? out.works : [])
+      .map((w) => ({ composer: clean(w?.composer), title: clean(w?.title), catalogue: opt(w?.catalogue) }))
+      .filter((w) => w.composer && w.title),
+  }
+  const problems = value.works.length ? [] : ['No works could be read.']
+  return { value, problems }
+}
+
 export function validateExplain(out) {
   const value = { heading: clean(out?.heading), body: clean(out?.body) }
   return { value, problems: value.body ? [] : ['The note is empty.'] }

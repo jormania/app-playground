@@ -217,6 +217,30 @@ export interface WeekRecord {
 }
 
 /**
+ * A concert heard live — the Ateneu, Sala Radio, anywhere. Not a programme the
+ * app made: the listener's own record, read from a screenshot of the hall's
+ * programme or typed in. Its works join the Library as "heard live" and count
+ * as known; what the listener said about it reaches taste.
+ */
+export interface Concert {
+  id: string
+  venue: string
+  hall?: string
+  /** YYYY-MM-DD, as printed on the programme. */
+  date: ISODate
+  time?: string
+  orchestra?: string
+  conductor?: string
+  soloists: { name: string; instrument?: string }[]
+  /** In the order they were played. */
+  works: { workId: string; composer: string; title: string; catalogue?: string }[]
+  /** A line on how it was. */
+  note?: string
+  source: 'screenshot' | 'typed'
+  createdAt: Instant
+}
+
+/**
  * The shape of a week, chosen by the curator with its theme. Each form says
  * which variety rule it relaxes: a dialogue needs more than two works by each
  * of its two composers; several ways into one work needs side-by-side pairs.
@@ -351,7 +375,7 @@ export type ListeningState = 'not-started' | 'listening' | 'heard' | 'skipped'
 export type Reaction = 'loved' | 'liked' | 'interesting' | 'not-for-me' | 'too-difficult'
 export type WantMore = 'yes' | 'maybe' | 'no'
 
-export type FeedbackTargetType = 'theme' | 'programme' | 'work' | 'recording' | 'album' | 'interpretation'
+export type FeedbackTargetType = 'theme' | 'programme' | 'work' | 'recording' | 'album' | 'interpretation' | 'concert'
 
 export interface Feedback {
   id: string

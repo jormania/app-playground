@@ -132,7 +132,7 @@ const CASES = {
   // One case per curator job: each has its own json_schema, and a schema the
   // API's structured outputs reject is a 400 only the real API can show. The
   // app sends these from the browser through requestAnthropic, as here.
-  ...Object.fromEntries(['themes', 'programme', 'taste', 'continuity', 'explain', 'compare', 'companion'].map((op) => [
+  ...Object.fromEntries(['themes', 'programme', 'taste', 'continuity', 'explain', 'compare', 'companion', 'concert'].map((op) => [
     `The Long Listen — ${op}`,
     async (f) => {
       const { anthropicSender, curatorBody } = await import('../src/long-listen/curator/curator.js')

@@ -1,5 +1,5 @@
 import type {
-  Comparison, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
+  Comparison, Concert, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
   ProgrammeOption, Reaction, Resource, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
 } from '../domain/types'
 import { creditLine, newId } from '../domain/identity'
@@ -7,13 +7,27 @@ import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import type { Repo } from '../store/repo'
 import type {
-  CompanionResponse, CompareResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
 } from './api'
 import { buildContext } from './context'
 import { threadDigest } from './continuity'
 import { Ingest, comparisonOf, ingestProgramme } from './ingest'
 import { applyTasteUpdate, pendingFeedback } from './taste'
 import type { SpotifyCandidate } from '../spotify/verify'
+
+/** A concert as the form holds it, before it's kept. */
+export interface ConcertDraft {
+  venue: string
+  hall?: string
+  date: string
+  time?: string
+  orchestra?: string
+  conductor?: string
+  soloists: { name: string; instrument?: string }[]
+  works: { composer: string; title: string; catalogue?: string }[]
+  note?: string
+  source: 'screenshot' | 'typed'
+}
 
 export interface JourneyOptions {
   timeZone?: string
@@ -446,8 +460,13 @@ export class Journey {
     const items = programmes.flatMap((p) => p.sections.flatMap((s) => s.items))
     const comparisons = await this.repo.comparisons.all()
     const perspectives = comparisons.flatMap((c) => c.perspectives)
+    const concerts = await this.repo.concerts.all()
     return (type, id) => {
       if (type === 'theme') return `the theme "${themes.get(id) ?? id}"`
+      if (type === 'concert') {
+        const c = concerts.find((x) => x.id === id)
+        return c ? `a concert heard live at ${c.venue} on ${c.date}: ${c.works.map((w) => `${w.composer} — ${w.title}`).join('; ')}` : 'a concert heard live'
+      }
       if (type === 'programme') return `the programme "${programmes.find((p) => p.id === id)?.title ?? id}"`
       if (type === 'work') {
         const i = items.find((x) => x.workId === id)
@@ -493,6 +512,50 @@ export class Journey {
     const f: Feedback = { id: newId('fb'), at: this.stamp(), target: { type: 'work', id: workId }, programmeId, known }
     await this.repo.feedback.put(f)
     return f
+  }
+
+  // ── concerts ──────────────────────────────────────────────────────────
+
+  /** A hall's programme, read from a screenshot into a draft for the listener to check. */
+  readConcert(image: { mediaType: string; data: string }): Promise<ConcertResponse> {
+    return this.curator.call<ConcertResponse>('concert', { image, year: this.now().getFullYear() })
+  }
+
+  /**
+   * Keep a concert, as checked or typed by the listener. Its works become
+   * Works in the Library (one Work per piece, however it was met); a line on
+   * how it was is kept as feedback on the concert, so it reaches taste with
+   * everything else said.
+   */
+  async saveConcert(draft: ConcertDraft, id?: string): Promise<Concert> {
+    const ingest = await new Ingest(this.repo).load()
+    const works = draft.works
+      .filter((w) => w.composer.trim() && w.title.trim())
+      .map((w) => {
+        const work = ingest.work(w.composer.trim(), w.title.trim(), w.catalogue?.trim() ? { catalogue: w.catalogue.trim() } : {})
+        return { workId: work.id, composer: w.composer.trim(), title: w.title.trim(), ...(w.catalogue?.trim() ? { catalogue: w.catalogue.trim() } : {}) }
+      })
+    if (!draft.venue.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) || !works.length) throw new Error('A concert needs a venue, a date and at least one work.')
+    await ingest.commit()
+    const previous = id ? await this.repo.concerts.get(id) : undefined
+    const concert: Concert = {
+      id: id ?? newId('concert'),
+      venue: draft.venue.trim(),
+      ...(draft.hall?.trim() ? { hall: draft.hall.trim() } : {}),
+      date: draft.date,
+      ...(draft.time?.trim() ? { time: draft.time.trim() } : {}),
+      ...(draft.orchestra?.trim() ? { orchestra: draft.orchestra.trim() } : {}),
+      ...(draft.conductor?.trim() ? { conductor: draft.conductor.trim() } : {}),
+      soloists: draft.soloists.filter((s) => s.name.trim()).map((s) => ({ name: s.name.trim(), ...(s.instrument?.trim() ? { instrument: s.instrument.trim() } : {}) })),
+      works,
+      ...(draft.note?.trim() ? { note: draft.note.trim() } : {}),
+      source: draft.source,
+      createdAt: previous?.createdAt ?? this.stamp(),
+    }
+    await this.repo.concerts.put(concert)
+    // What was said about it, once per change of words: read into taste with the rest.
+    if (concert.note && concert.note !== previous?.note) await this.giveFeedback({ target: { type: 'concert', id: concert.id }, note: concert.note })
+    return concert
   }
 
   // ── on-request curation, cached ───────────────────────────────────────
@@ -621,7 +684,7 @@ export class Journey {
       const res = await this.curator.call<CompareResponse>('compare', {
         preferences,
         mustBeOnSpotify: Boolean(opts.mustBeOnSpotify),
-        spotifyCandidates: opts.spotifyCandidates?.length ? opts.spotifyCandidates : undefined,
+        spotifyCandidates: opts.spotifyCandidates?.length ? opts.spotifyCandidates.map(({ albumId: _id, ...c }) => c) : undefined,
         work: { composer: item.proposed.composer, title: item.proposed.work, catalogue: item.proposed.catalogue },
         current: { ...item.proposed, soloists: item.proposed.soloists },
         alreadyHeard,

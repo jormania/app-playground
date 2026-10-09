@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -44,5 +44,18 @@ describe('the listening companion', () => {
     expect(value.works).toEqual([{ key: 'r1', movements: ['one', 'two', 'three'] }])
     expect(problems).toEqual(['No notes for "r2".'])
     expect(validateCompanion({ works: [{ key: 'r2', movements: [] }, { key: 'r1', movements: ['a'] }] }, { works }).value.works).toEqual([{ key: 'r1', movements: ['a', '', ''] }])
+  })
+})
+
+describe('a concert read from a screenshot', () => {
+  it('keeps what was read, drops a date that isn’t one, and needs a work', () => {
+    const { value, problems } = validateConcert({
+      venue: ' Filarmonica George Enescu ', hall: '', date: '16 oct', time: '19:00', orchestra: 'Orchestra Filarmonicii', conductor: '',
+      soloists: [{ name: 'Andrei Ioniță', instrument: 'cello' }],
+      works: [{ composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' }, { composer: '', title: 'Encore', catalogue: '' }],
+    })
+    expect(value).toMatchObject({ venue: 'Filarmonica George Enescu', date: '', time: '19:00', conductor: undefined, works: [{ composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' }] })
+    expect(problems).toEqual([])
+    expect(validateConcert({ works: [] }).problems).toEqual(['No works could be read.'])
   })
 })

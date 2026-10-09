@@ -148,6 +148,18 @@ export interface CompanionResponse {
   promptVersion: string
 }
 
+export interface ConcertResponse {
+  venue: string
+  hall?: string
+  date: string
+  time?: string
+  orchestra?: string
+  conductor?: string
+  soloists: { name: string; instrument?: string }[]
+  works: { composer: string; title: string; catalogue?: string }[]
+  promptVersion: string
+}
+
 export interface PingResponse {
   ok: boolean
   model: string

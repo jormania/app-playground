@@ -121,7 +121,7 @@ describe('verifying a recording', () => {
     const karajan = { ...t('k1', 'La mer, L. 109: I. De l’aube à midi sur la mer', 1, ['Claude Debussy', 'Berliner Philharmoniker', 'Herbert von Karajan']), album: { id: 'alb2', name: 'Debussy: La mer', release_date: '1964-01-01' } }
     const other = { ...t('x1', 'Nocturnes, L. 91: I. Nuages', 1, ['Claude Debussy', 'Someone Else']), album: { id: 'alb3', name: 'Debussy: Nocturnes' } }
     const out = await spotifyCandidates(fakeSpotify([karajan, karajan, other]), proposed)
-    expect(out).toEqual([{ album: 'Debussy: La mer', year: '1964', artists: ['Berliner Philharmoniker', 'Herbert von Karajan'] }])
+    expect(out).toEqual([{ album: 'Debussy: La mer', albumId: 'alb2', year: '1964', artists: ['Berliner Philharmoniker', 'Herbert von Karajan'] }])
   })
 
   it('holds a near miss for the listener instead of linking it, and confirms or refuses it on their word', async () => {

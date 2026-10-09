@@ -167,6 +167,34 @@ describe('the listening companion', () => {
   })
 })
 
+describe('concerts', () => {
+  it('reads a screenshot, keeps the concert, and makes its works known and its note heard', async () => {
+    const c = fakeCurator({
+      concert: (payload) => ({ venue: 'Filarmonica George Enescu', date: `${payload.year}-10-16`, soloists: [], works: [{ composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' }], promptVersion: 'concert@test' }),
+      themes: () => themes(['A', 'B', 'C']),
+    })
+    const j = journey(c.client)
+    const draft = await j.readConcert({ mediaType: 'image/jpeg', data: 'AAAA' })
+    expect(c.calls[0].payload).toMatchObject({ image: { mediaType: 'image/jpeg', data: 'AAAA' }, year: 2026 })
+    expect(draft.date).toBe('2026-10-16')
+
+    await expect(j.saveConcert({ ...draft, works: [], source: 'screenshot' })).rejects.toThrow(/at least one work/)
+    const kept = await j.saveConcert({ ...draft, note: 'The cello sang.', source: 'screenshot' })
+    expect(kept.works[0].workId).toBeTruthy()
+    expect((await repo.works.require(kept.works[0].workId)).catalogue).toBe('Op. 102')
+    const fb = await repo.feedback.all()
+    expect(fb).toEqual([expect.objectContaining({ target: { type: 'concert', id: kept.id }, note: 'The cello sang.' })])
+
+    // Edited without changing the note: no second piece of feedback.
+    await j.saveConcert({ ...draft, note: 'The cello sang.', conductor: 'Gabriel Bebeșelea', source: 'screenshot' }, kept.id)
+    expect(await repo.feedback.all()).toHaveLength(1)
+
+    const ctx = await buildContext(repo, weekOf(clock))
+    expect(ctx.alreadyKnown).toContainEqual({ composer: 'Johannes Brahms', work: 'Double Concerto in A minor' })
+    expect(ctx.concerts).toEqual([expect.objectContaining({ venue: 'Filarmonica George Enescu', works: ['Johannes Brahms — Double Concerto in A minor'], note: 'The cello sang.', performers: 'Gabriel Bebeșelea' })])
+  })
+})
+
 describe('works and recordings', () => {
   it('keeps two interpretations of one work as two recordings of one work', async () => {
     const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })

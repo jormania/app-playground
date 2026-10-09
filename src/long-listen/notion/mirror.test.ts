@@ -76,7 +76,7 @@ describe('the Notion notebook', () => {
     const n = fakeNotion()
     await syncToNotion(n.client, repo, 'page123', '2026-W41')
     const creates = n.calls.filter((c) => c.path === 'databases')
-    expect(creates.map((c) => c.body.title[0].text.content)).toEqual(['Journal', 'Listening threads', 'Works & recordings', 'Composers'])
+    expect(creates.map((c) => c.body.title[0].text.content)).toEqual(['Journal', 'Listening threads', 'Works & recordings', 'Composers', 'Concerts'])
     expect(creates.every((c) => c.body.parent.page_id === 'page123')).toBe(true)
 
     n.calls.length = 0
@@ -183,7 +183,7 @@ describe('the Notion notebook', () => {
       { id: 't1', type: 'child_page', child_page: { title: 'Musical taste' } },
     ])
     await syncToNotion(n.client, repo, 'page123', '2026-W41')
-    expect(n.calls.filter((c) => c.path === 'databases').map((c) => c.body.title[0].text.content)).toEqual(['Listening threads', 'Works & recordings'])
+    expect(n.calls.filter((c) => c.path === 'databases').map((c) => c.body.title[0].text.content)).toEqual(['Listening threads', 'Works & recordings', 'Concerts'])
     expect(n.calls.some((c) => c.path === 'pages' && c.body.parent.page_id)).toBe(false) // taste page found, not made
     expect(n.calls.find((c) => c.path === 'pages' && c.body.properties?.Week)?.body.parent.database_id).toBe('j1')
     expect(n.calls.find((c) => c.path === 'pages' && c.body.properties?.Works)?.body.properties.Name.title[0].text.content).toBe('Claude Debussy')
@@ -195,7 +195,7 @@ describe('the Notion notebook', () => {
       { j1: { properties: { Name: {}, Week: {}, Theme: {}, Status: {}, Heard: {}, Notes: {} } } },
     )
     const report = await checkNotebook(n.client, 'page123')
-    expect(report).toMatchObject({ ok: false, found: ['journal'], missing: ['threads', 'recordings', 'composers'], missingColumns: ['Journal: Visit'] })
+    expect(report).toMatchObject({ ok: false, found: ['journal'], missing: ['threads', 'recordings', 'composers', 'concerts'], missingColumns: ['Journal: Visit'] })
     expect(n.calls.every((c) => c.method === 'GET')).toBe(true)
     expect((await discover(n.client, 'page123')).databases).toEqual({ journal: 'j1' })
   })

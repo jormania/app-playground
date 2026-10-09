@@ -26,9 +26,31 @@ self.addEventListener('activate', function (e) {
   );
 });
 
+// A concert programme shared to the app from the phone's share sheet arrives
+// as a POST of the picture (manifest share_target). It's put in this worker's
+// cache under one fixed key, and the app opens on the concert form, which
+// reads it, sends it to the curator to read, and deletes it.
+var SHARED_IMAGE = '/long-listen-shared-image';
+
+function receiveShare(req) {
+  return req.formData().then(function (form) {
+    var file = form.get('image');
+    if (!file || typeof file === 'string') return null;
+    return caches.open(CACHE).then(function (cache) {
+      return cache.put(SHARED_IMAGE, new Response(file, { headers: { 'content-type': file.type || 'image/jpeg' } }));
+    });
+  }).catch(function () { return null; }).then(function () {
+    return Response.redirect('/long-listen-react.html#/concerts/new', 303);
+  });
+}
+
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   var url = new URL(req.url);
+  if (req.method === 'POST' && url.origin === self.location.origin && url.pathname === '/long-listen-react.html' && url.searchParams.get('share-target') === 'concert') {
+    e.respondWith(receiveShare(req));
+    return;
+  }
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.pathname.indexOf('/api/') === 0) return;
 

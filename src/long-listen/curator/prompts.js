@@ -77,7 +77,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-10.2',
+  version: 'themes@2026-10-10.3',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -138,7 +138,7 @@ Field guide:
 - continuityNote: "" for a new theme.
 - form: the week's shape, as above.
 
-If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
+If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. context.concerts lists concerts the listener heard live in recent weeks (works, performers, what they said): music met in the hall is a natural place to reach out from — the next step from a concert they loved, the other side of one that puzzled them — and its works are known, not discoveries. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
 }
 
 // ── 2. The programme ─────────────────────────────────────────────────────
@@ -441,7 +441,46 @@ Your job now: write the listening companion for this week's confirmed recordings
 For each work (by its "key"), return "movements": exactly one note per track, in the order given in "tracks" (track names are as the album divides the work). Each note is one or two sentences — at most forty words — on something the listener can actually hear in that movement of THIS recording, or in the music itself: a theme's return, an instrument coming forward, a change of pulse, how this performance takes a famous moment. Concrete, never homework, never a timestamp (you cannot know timings). Where a track is a fragment of a movement, write about what that stretch holds. Don't repeat the work's general "listenFor" (given) word for word; go further than it. Write in the "language" given.`,
 }
 
-export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION }
+// ── 9. Reading a concert programme from a screenshot ────────────────────
+
+export const CONCERT = {
+  id: 'concert',
+  version: 'concert@2026-10-10.1',
+  effort: 'low',
+  maxTokens: 4000,
+  schema: {
+    type: 'object',
+    properties: {
+      venue: str,
+      hall: str,
+      date: str,
+      time: str,
+      orchestra: str,
+      conductor: str,
+      soloists,
+      works: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { composer: str, title: str, catalogue: str },
+          required: ['composer', 'title', 'catalogue'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['venue', 'hall', 'date', 'time', 'orchestra', 'conductor', 'soloists', 'works'],
+    additionalProperties: false,
+  },
+  system: `You read concert programmes for a listener's private journal: a screenshot of a hall's web page or printed programme — often in Romanian (Ateneul Român, Sala Radio, Filarmonica George Enescu, Orchestrele și Corurile Radio) — and return what was played, by whom, where and when.
+
+- venue: the presenting institution or hall as usually named ("Filarmonica George Enescu", "Sala Radio"); hall: a named room within it if given ("Sala Mare"), else "".
+- date: YYYY-MM-DD; use "year" from the context when the screenshot has no year. time: HH:MM or "".
+- orchestra, conductor, soloists (name and instrument, in English: "violin", "cello", "piano") as printed, names in their usual form with diacritics.
+- works: in the order played. composer: full standard name ("Johannes Brahms", "George Enescu"). title: the work's usual concert title in English — "Concertul în la minor pentru vioară și violoncel, op. 102" is "Double Concerto in A minor"; "Simfonia nr. 5" is "Symphony No. 5"; keep proper titles as they are ("Tapiola", "Poème de l'extase"). catalogue: "Op. 102", "BWV 1048", or "".
+Only what the image shows. If something isn't there, leave it "" (or [] for lists) — never guess a date, a performer or a work.`,
+}
+
+export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, concert: CONCERT }
 
 /** The version of every prompt, for the client to show in Settings and store with snapshots. */
 export function promptVersions() {

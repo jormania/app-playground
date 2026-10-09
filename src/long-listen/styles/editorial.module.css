@@ -1795,6 +1795,66 @@
   margin: 0;
 }
 
+/* A concert in the Journal's week: set off by a left rule in the accent, so it reads as live. */
+.journalConcert {
+  margin: var(--space-sm) 0;
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-accent);
+}
+
+/* The Library's "heard live" line under a work's recordings. */
+.libraryLive {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-sm);
+}
+
+/* Concerts: the hall mark, the works heard, and the form. */
+.hallMark {
+  vertical-align: -0.12em;
+  color: var(--color-accent);
+}
+
+.concertWorks {
+  margin: var(--space-lg) 0 0;
+  padding-left: 1.4em;
+}
+
+.concertWorks > li {
+  margin-bottom: var(--space-md);
+}
+
+.concertForm {
+  margin-top: var(--space-lg);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  flex: 1;
+  min-width: 0;
+}
+
+.fieldRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.fieldRow > .input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.inputNarrow {
+  flex: 0 1 6rem !important;
+}
+
 /* The pause between works: what's next, and the way to stay. */
 .handover {
   margin-top: var(--space-md);
