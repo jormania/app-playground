@@ -378,7 +378,25 @@ export class Journey {
 
   // ── taste ─────────────────────────────────────────────────────────────
 
-  /** Read any feedback not yet read into the taste profile. Cheap; safe to call often. */
+  private tasteTimer: ReturnType<typeof setTimeout> | undefined
+
+  /**
+   * Feedback is read into taste in batches, not per save: each reading resends
+   * the taste profile, so five saves in a sitting were five requests. This waits
+   * until no feedback has been given for `quietMs` (default three minutes), then
+   * reads everything pending in one request. Feedback left when the page closes
+   * is read on the next open (services), at the start of a week (ensureWeek),
+   * or at once from the Notebook.
+   */
+  scheduleTasteReading(onDone?: () => void, quietMs = 180_000): void {
+    clearTimeout(this.tasteTimer)
+    this.tasteTimer = setTimeout(() => {
+      this.tasteTimer = undefined
+      this.interpretPendingFeedback().then((n) => { if (n) onDone?.() }).catch(() => {})
+    }, quietMs)
+  }
+
+  /** Read any feedback not yet read into the taste profile, in one request. */
   interpretPendingFeedback(): Promise<number> {
     return this.once('taste', async () => {
       const all = await this.repo.feedback.all()

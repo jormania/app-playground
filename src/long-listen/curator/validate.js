@@ -126,6 +126,11 @@ const WORKS_FOR = { short: [3, 4], standard: [5, 7], generous: [8, 10], abundant
 
 export function validateProgramme(out, { covered = [], returning = false, preferences = {} } = {}) {
   const problems = []
+  // Problems enforceVariety fixes in code. They are still listed (a retry asked
+  // for another reason fixes them too), but they never cost a retry of their own:
+  // re-writing a whole programme to drop a duplicate is paying twice for a trim.
+  const mendable = []
+  const mend = (p) => { problems.push(p); mendable.push(p) }
   const sections = (Array.isArray(out?.sections) ? out.sections : []).map((s) => ({
     role: clean(s?.role).toLowerCase() || 'then',
     heading: clean(s?.heading),
@@ -153,7 +158,7 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
   const seen = []
   for (const i of items) {
     const w = { composer: i.composer, title: i.workTitle, catalogue: i.catalogue }
-    if (seen.some((s) => sameWork(s, w))) problems.push(`"${i.composer} — ${i.workTitle}" appears twice; use a comparison for two interpretations.`)
+    if (seen.some((s) => sameWork(s, w))) mend(`"${i.composer} — ${i.workTitle}" appears twice; use a comparison for two interpretations.`)
     seen.push(w)
   }
 
@@ -164,19 +169,19 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
     versions.set(k, [...(versions.get(k) ?? []), i])
   }
   for (const list of versions.values()) {
-    if (list.length > 1) problems.push(`"${list[0].composer} — ${baseTitle(list[0].workTitle)}" appears in ${list.length} versions; a week holds each work once (arrangements and the original are one work).`)
+    if (list.length > 1) mend(`"${list[0].composer} — ${baseTitle(list[0].workTitle)}" appears in ${list.length} versions; a week holds each work once (arrangements and the original are one work).`)
   }
   // Range: unless the week is about one focus, no composer more than twice.
   const breadth = Number(preferences.breadth ?? 3)
   if (breadth > 1) {
     const byComposer = new Map()
     for (const i of items) byComposer.set(fold(surname(i.composer)), (byComposer.get(fold(surname(i.composer))) ?? 0) + 1)
-    for (const [, n] of byComposer) if (n > 2) { problems.push(`${n} works by one composer; at this breadth, two at most — let the theme travel to other composers and periods.`); break }
+    for (const [, n] of byComposer) if (n > 2) { mend(`${n} works by one composer; at this breadth, two at most — let the theme travel to other composers and periods.`); break }
   }
-  if (kept.length > 4) problems.push(`${kept.length} sections is too many; use two to four, each holding several works.`)
+  if (kept.length > 4) mend(`${kept.length} sections is too many; use two to four, each holding several works.`)
   const [least, most] = WORKS_FOR[preferences.timePerWeek] ?? [3, 14]
   if (items.length < Math.max(3, least - 1)) problems.push(`Only ${items.length} usable items; this listener's week holds ${least}–${most} works.`)
-  if (items.length > most + 2) problems.push(`${items.length} items is too many; this listener's week holds ${least}–${most} works.`)
+  if (items.length > most + 2) mend(`${items.length} items is too many; this listener's week holds ${least}–${most} works.`)
 
   const comparisons = (Array.isArray(out?.comparisons) ? out.comparisons : [])
     .map((c) => ({
@@ -204,6 +209,13 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
   const continuityNote = opt(out?.continuityNote)
   if (returning && !continuityNote) problems.push('This is a return to an earlier thread: write a continuityNote naming what came before and how this week continues.')
 
+  // Mending in code only stands in for a retry when what is left still holds
+  // this listener's week; a trim that leaves it thin goes back to the curator.
+  if (mendable.length) {
+    const left = enforceVariety({ sections: kept }, preferences).sections.reduce((n, s) => n + s.items.length, 0)
+    if (left < Math.max(3, least - 1)) mendable.length = 0
+  }
+
   return {
     value: {
       title: clean(out?.title),
@@ -217,6 +229,7 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
       comparisons,
     },
     problems,
+    mendable,
     repeats: repeats.length,
   }
 }
@@ -227,11 +240,13 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
  * silently — it is removed, and the caller says so.
  */
 /**
- * After the one retry, what the listener asked for is enforced rather than
- * hoped for: one version of each work (the first kept), and — unless the
- * week is about one focus — at most two works by a composer.
+ * What the listener asked for, enforced rather than hoped for — in code, never
+ * by asking the curator again: one version of each work (the first kept);
+ * unless the week is about one focus, at most two works by a composer; no more
+ * than four sections (later ones fold into the fourth); and no more works than
+ * the week holds, plus two.
  */
-export function enforceVariety(value, preferences = {}) {
+export function enforceVariety(value, preferences = {}, { maxWorks } = {}) {
   const seen = new Set()
   const perComposer = new Map()
   const cap = Number(preferences.breadth ?? 3) > 1 ? 2 : Infinity
@@ -248,7 +263,15 @@ export function enforceVariety(value, preferences = {}) {
       }),
     }))
     .filter((s) => s.items.length > 0)
-  return { ...value, sections }
+  const folded = sections.length > 4
+    ? [...sections.slice(0, 3), { ...sections[3], items: sections.slice(3).flatMap((s) => s.items) }]
+    : sections
+  const cap2 = maxWorks ?? (WORKS_FOR[preferences.timePerWeek]?.[1] ?? 12) + 2
+  let left = cap2
+  const capped = folded
+    .map((s) => { const items = s.items.slice(0, Math.max(0, left)); left -= items.length; return { ...s, items } })
+    .filter((s) => s.items.length > 0)
+  return { ...value, sections: capped }
 }
 
 export function stripRepeats(value, covered) {

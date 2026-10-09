@@ -11,6 +11,7 @@ import { LevelScale } from '../components/LevelScale'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { archiveNotebook } from '../notion/mirror'
 import { go } from '../app/router'
+import { usageSummary } from '../app/usage'
 import s from '../styles/editorial.module.css'
 
 type Result = { ok: boolean; message: string } | null
@@ -75,8 +76,11 @@ export function SettingsScreen() {
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>About</h2>
         <p className={s.quiet}>
-          The curator is Claude (Sonnet). Spotify {spotify.connected ? 'is' : 'isn’t'} connected; Notion {svc.notion ? 'is' : 'isn’t'}.
+          The curator is Claude: Sonnet chooses the directions and writes the programmes; Haiku, at a
+          twentieth of the price, reads your feedback, sums up each thread’s week, adds context and finds
+          further reading. Spotify {spotify.connected ? 'is' : 'isn’t'} connected; Notion {svc.notion ? 'is' : 'isn’t'}.
         </p>
+        <SpendLine />
         <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
       </section>
 
@@ -90,6 +94,22 @@ export function SettingsScreen() {
         </section>
       )}
     </div>
+  )
+}
+
+/** What Claude has cost on this device this month, from Anthropic's own usage figures. */
+function SpendLine() {
+  const { version } = useServices()
+  const [m, setM] = useState(() => usageSummary())
+  useEffect(() => setM(usageSummary()), [version])
+  if (m.requests === 0) return <p className={s.quiet}>Nothing spent on Claude from this device this month.</p>
+  const usd = (n: number) => (n < 0.01 ? 'under a cent' : `$${n.toFixed(2)}`)
+  return (
+    <p className={s.quiet}>
+      This month on this device: about {usd(m.dollars)} on Claude, over {m.requests} request{m.requests === 1 ? '' : 's'}
+      {m.byModel.length > 1 && <> ({m.byModel.map((b) => `${b.model.replace('claude-', '').replace(/-(\d+)-(\d+)$/, ' $1.$2')} ${b.dollars === null ? '' : usd(b.dollars)}`).join(', ')})</>}.
+      An estimate at list prices; the Anthropic Console has the bill.
+    </p>
   )
 }
 

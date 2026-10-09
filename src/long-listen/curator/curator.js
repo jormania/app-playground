@@ -13,7 +13,7 @@
 // proposed recording is verified against Spotify before it gets a link, and
 // resource URLs are only kept if they came back from a real web search in the
 // same response.
-import { MODEL_SONNET, noThinking } from '../../shared/models.js'
+import { MODEL_HAIKU, MODEL_SONNET, noThinking } from '../../shared/models.js'
 import { requestAnthropic } from '../../shared/anthropic'
 import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
@@ -23,6 +23,18 @@ import {
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
+
+/**
+ * The curating itself — directions, programmes, a second perspective — stays on
+ * Sonnet: it is what the listener is paying for. The jobs around it read and
+ * summarise (taste from feedback, a thread's week, a little more context, and
+ * further reading found by web search) and go to Haiku at a twentieth of the
+ * price. Each job's prompt and validator are the same on either model.
+ */
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU }
+export function modelFor(op) {
+  return MODEL_FOR[op] ?? MODEL
+}
 
 const MAX_CONTEXT_CHARS = 150_000
 
@@ -50,7 +62,7 @@ export function buildUserContent(op, payload) {
 export function curatorBody(op, userContent) {
   const prompt = PROMPTS[op]
   return {
-    model: MODEL,
+    model: modelFor(op),
     max_tokens: prompt.maxTokens,
     thinking: { type: 'adaptive' },
     system: [{ type: 'text', text: prompt.system, cache_control: { type: 'ephemeral' } }],
@@ -63,7 +75,7 @@ export function curatorBody(op, userContent) {
 export function resourcesBody(userContent, priorTurns = []) {
   const prompt = PROMPTS.resources
   return {
-    model: MODEL,
+    model: modelFor('resources'),
     max_tokens: prompt.maxTokens,
     thinking: { type: 'adaptive' },
     system: [{ type: 'text', text: prompt.system, cache_control: { type: 'ephemeral' } }],
@@ -137,7 +149,9 @@ async function withRetry(send, op, payload, validate) {
   const userContent = buildUserContent(op, payload)
   const first = await structured(send, op, userContent)
   const checked = validate(first.output)
-  if (checked.problems.length === 0) return { ...checked, attempts: 1 }
+  // Problems the code fixes afterwards (validate's `mendable`) never cost a retry.
+  const mendable = new Set(checked.mendable ?? [])
+  if (checked.problems.every((p) => mendable.has(p))) return { ...checked, attempts: 1 }
 
   const correction = `${userContent}\n\n<previous_answer>\n${first.text}\n</previous_answer>\n\nYour previous answer had these problems. Return the full corrected JSON:\n- ${checked.problems.join('\n- ')}`
   const second = await structured(send, op, correction)
@@ -162,7 +176,9 @@ export async function curateProgramme(send, payload) {
   // "More of this theme" is a companion, shorter than a week: size isn't checked against the week's length.
   const sized = payload.extension ? { ...preferences, timePerWeek: undefined } : preferences
   const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning, preferences: sized }))
-  let value = enforceVariety(r.value, preferences)
+  // An extension is a companion to the week, not sized by it: the variety rules
+  // still hold, the length cap is the widest week's.
+  let value = enforceVariety(r.value, preferences, payload.extension ? { maxWorks: 16 } : undefined)
   let removedRepeats = 0
   if (r.repeats > 0) {
     const before = value.sections.reduce((n, s) => n + s.items.length, 0)
@@ -255,7 +271,7 @@ export const JOBS = {
  * The curator as the app uses it: `call(op, payload)`, with the key read
  * fresh from Settings on every call. `send` can be injected for tests.
  */
-export function directCurator(getKey, { fetchImpl, send } = {}) {
+export function directCurator(getKey, { fetchImpl, send, onUsage } = {}) {
   return {
     async call(op, payload) {
       const job = JOBS[op]
@@ -265,7 +281,16 @@ export function directCurator(getKey, { fetchImpl, send } = {}) {
         if (!key) throw new CuratorUnavailable('locked', friendly('locked'))
         if (!looksLikeAnthropicKey(key)) throw new CuratorUnavailable('bad-key', 'That doesn’t look like an Anthropic key — it starts with sk-ant-.')
       }
-      return job(send ?? anthropicSender(key, fetchImpl), payload ?? {})
+      const base = send ?? anthropicSender(key, fetchImpl)
+      // Every request's usage, as Anthropic reports it, for Settings → Development.
+      const metered = onUsage
+        ? async (body) => {
+            const message = await base(body)
+            try { onUsage(op, message?.model ?? body.model, message?.usage) } catch { /* never let accounting break a job */ }
+            return message
+          }
+        : base
+      return job(metered, payload ?? {})
     },
   }
 }
