@@ -78,7 +78,7 @@ export function SettingsScreen() {
         <p className={s.quiet}>
           The curator is Claude: Sonnet chooses the directions and writes the programmes; Haiku, at a
           twentieth of the price, reads your feedback, sums up each thread’s week, adds context and finds
-          further reading. Spotify {spotify.connected ? 'is' : 'isn’t'} connected; Notion {svc.notion ? 'is' : 'isn’t'}.
+          further reading. {connections(spotify.connected, Boolean(svc.notion))}
         </p>
         <SpendLine />
         <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
@@ -95,6 +95,14 @@ export function SettingsScreen() {
       )}
     </div>
   )
+}
+
+/** Which connections are on, said as a whole sentence ("Notion is." read as cut off). */
+function connections(spotify: boolean, notion: boolean): string {
+  if (spotify && notion) return 'Spotify and Notion are both connected.'
+  if (spotify) return 'Spotify is connected; Notion isn’t.'
+  if (notion) return 'Notion is connected; Spotify isn’t.'
+  return 'Neither Spotify nor Notion is connected.'
 }
 
 /** What Claude has cost on this device this month, from Anthropic's own usage figures. */
