@@ -117,7 +117,9 @@
   max-width: calc(var(--measure) + 2 * var(--space-md));
   margin: 0 auto;
   padding: var(--space-xl) var(--space-md) 0;
-  animation: settle 420ms var(--ease) both;
+  /* backwards, not both: a transform left on <main> after the fade would make
+     it the containing block for the programme's fixed contents rail. */
+  animation: settle 420ms var(--ease) backwards;
 }
 
 @keyframes settle {
@@ -310,6 +312,68 @@
   margin-top: var(--space-sm);
 }
 
+/* The one decision a screen is for — choosing a direction, saying you've
+   heard a work, keeping what you wrote — gets a real button; everything else
+   stays text. Filled for a single action, outlined where several sit on one
+   page (the week's three directions) so none shouts over the others. */
+.primaryButton,
+.outlineButton {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  min-height: 44px;
+  padding: var(--space-2xs) var(--space-md);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+
+.primaryButton {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.primaryButton:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-on-accent);
+}
+
+.outlineButton {
+  background: transparent;
+  color: var(--color-accent);
+}
+
+.outlineButton:hover {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.primaryButton:disabled,
+.outlineButton:disabled {
+  background: transparent;
+  border-color: var(--color-border-2);
+  color: var(--color-faint);
+  cursor: default;
+}
+
+/* Print makes the concert booklet (see the print styles at the end). Nobody
+   prints from a phone, so there it is hidden; the browser's own menu still
+   prints the same booklet. */
+@media (max-width: 640px) {
+  .printButton {
+    display: none;
+  }
+}
+
 /* ── the three options ──────────────────────────────────────────────────── */
 
 .options {
@@ -374,6 +438,161 @@
 }
 
 /* ── the programme ──────────────────────────────────────────────────────── */
+
+/* The running order: the week's music listed like a concert programme's
+   order of performance — an ink rule above, a hairline between works, the
+   number in the accent. Each line is a button that scrolls to its work. */
+.runningOrder {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-ink);
+}
+
+.runningOrder .panelHead {
+  margin-bottom: var(--space-2xs);
+}
+
+.roList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.roRow {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-xs);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-xs) 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* The rule under the list closes it; the last row needs no hairline of its own. */
+.roList > li:last-child .roRow {
+  border-bottom: 0;
+}
+
+.roRow:hover .roWork {
+  color: var(--color-accent);
+}
+
+.roNo {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24;
+  font-size: 1.05rem;
+  color: var(--color-accent);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.roText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.roComposer {
+  font-size: var(--text-sm);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+  line-height: 1.3;
+}
+
+.roWork {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 36;
+  font-size: 1.12rem;
+  line-height: 1.25;
+  color: var(--color-ink);
+  transition: color var(--duration) var(--ease);
+}
+
+.roSide {
+  justify-self: end;
+  max-width: 9rem;
+  text-align: right;
+}
+
+.roRole {
+  font-size: var(--text-sm);
+  font-style: italic;
+  line-height: 1.3;
+  color: var(--color-faint);
+}
+
+/* On the narrowest screens (or large text) the role or tag moves under the
+   title instead of squeezing it into three lines. */
+@media (max-width: 360px) {
+  .roRow {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    row-gap: 0;
+  }
+
+  .roSide {
+    grid-column: 2;
+    justify-self: start;
+    max-width: none;
+    text-align: left;
+  }
+}
+
+/* On a wide screen the reading column leaves a margin either side; the running
+   order moves into the left one and stays there as a contents rail, so the
+   week's music and where you are in it stay in view down a long page. The
+   reading column itself does not move or widen. Screen only: print keeps it
+   in the flow, as the booklet's order of performance. */
+@media screen and (min-width: 1200px) {
+  .runningOrder {
+    position: fixed;
+    top: 9.5rem;
+    left: max(var(--space-md), calc(50% - var(--measure) / 2 - var(--space-md) - 16rem));
+    width: 13.5rem;
+    max-height: calc(100vh - 11rem);
+    overflow-y: auto;
+    margin: 0;
+  }
+
+  .runningOrder .roRow {
+    grid-template-columns: 1.4rem minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .runningOrder .roSide {
+    grid-column: 2;
+    justify-self: start;
+    max-width: none;
+    text-align: left;
+  }
+
+  .runningOrder .roWork {
+    font-size: 1rem;
+  }
+}
+
+/* The same number beside each work's composer, tying it to the list above. */
+.itemNo {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-right: var(--space-2xs);
+  font-family: var(--font-display);
+  font-variant-caps: normal;
+  font-variation-settings: 'opsz' 24;
+  letter-spacing: 0;
+  color: var(--color-accent);
+}
+
+.item {
+  scroll-margin-top: var(--space-lg);
+}
 
 .sectionHead {
   display: flex;
@@ -722,6 +941,20 @@
   gap: var(--space-2xs);
 }
 
+/* Title left, its tag right — the way the running order sets its works — so
+   a tag never drops onto a line of its own under a long title. */
+.offeredList > li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-sm);
+  line-height: 1.35;
+}
+
+.offeredList .tag {
+  flex: none;
+}
+
 /* A small status word set as a tag, for lists (Library, Journal). */
 .tag {
   display: inline-block;
@@ -1018,6 +1251,40 @@
   margin-top: var(--space-3xs);
 }
 
+/* Notebook: what you've told the curator, as a two-column ledger. */
+.ledger {
+  margin: var(--space-sm) 0 var(--space-xs);
+}
+
+.ledger > div {
+  display: grid;
+  grid-template-columns: 5.75rem minmax(0, 1fr);
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.ledger > div:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ledger dt {
+  font-size: var(--text-sm);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  color: var(--color-faint);
+  padding-top: 0.15em;
+}
+
+.ledger dd {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.ledgerWide {
+  grid-column: 1 / -1;
+}
+
 /* ── settings ───────────────────────────────────────────────────────────── */
 
 .settingsGroup {
@@ -1068,6 +1335,86 @@
   margin-top: 0;
 }
 
+/* Journal only (its sections carry .weekMark): a timeline. The week number
+   sits in a narrow margin column; a hairline runs from it down the week. */
+.journalWeek:has(> .weekMark) {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 0 var(--space-sm);
+  border-top: 0;
+  padding-top: 0;
+  margin-top: var(--space-lg);
+}
+
+@media (min-width: 640px) {
+  .journalWeek:has(> .weekMark) {
+    grid-template-columns: 4rem minmax(0, 1fr);
+    gap: 0 var(--space-md);
+  }
+}
+
+.weekMark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.weekMark::after {
+  content: '';
+  flex: 1;
+  width: 1px;
+  margin-top: var(--space-xs);
+  background: var(--color-border);
+}
+
+.weekWord {
+  font-size: var(--text-xs);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
+  color: var(--color-faint);
+  line-height: 1;
+}
+
+.weekNum {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 500;
+  font-variation-settings: 'opsz' 96;
+  font-variant-numeric: lining-nums;
+  line-height: 1.05;
+  color: var(--color-accent);
+}
+
+.weekBody {
+  min-width: 0;
+  padding-top: var(--space-2xs);
+}
+
+/* An empty page: an ornament, a sentence, the way in. */
+.empty {
+  margin: var(--space-xl) 0;
+  padding: var(--space-lg) 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.empty::before {
+  content: '⁂';
+  display: block;
+  margin-bottom: var(--space-xs);
+  letter-spacing: 0.4em;
+  color: var(--color-faint);
+}
+
+.empty p {
+  margin: 0 auto var(--space-xs);
+  max-width: 26rem;
+  font-style: italic;
+  text-wrap: pretty;
+}
+
 .quietLink {
   color: inherit;
   text-decoration-color: var(--color-border-2);
@@ -1087,6 +1434,72 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border-2);
   border-radius: var(--radius-sm);
+}
+
+/* Library: a card catalogue's guide letter where the surnames move on. */
+.indexLetter {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 500;
+  font-variation-settings: 'opsz' 144;
+  line-height: 1;
+  color: var(--color-accent);
+}
+
+/* The letter brings its own rule; the composer section drops its hairline. */
+.journalWeek:has(> .indexLetter) {
+  border-top: 0;
+}
+
+.indexLetter::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Threads: each theme's visits strung on one vertical line, a bead per visit. */
+.threadLine {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0 0 0 var(--space-md);
+  border-left: 1px solid var(--color-border-2);
+}
+
+.threadLine > li {
+  position: relative;
+  padding: var(--space-3xs) 0 var(--space-xs);
+}
+
+.threadLine > li::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--space-md) - 5px);
+  top: 0.62em;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  border: 2px solid var(--color-accent);
+}
+
+.threadLine > li:last-child::before {
+  background: var(--color-accent);
+}
+
+.threadNotes {
+  display: grid;
+  gap: var(--space-sm) var(--space-lg);
+  margin-top: var(--space-sm);
+}
+
+@media (min-width: 640px) {
+  .threadNotes {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .libraryWork + .libraryWork {
@@ -1290,6 +1703,8 @@
   .actions,
   .panel,
   .further,
+  .primaryButton,
+  .outlineButton,
   .feedback,
   .textButton,
   .demo {

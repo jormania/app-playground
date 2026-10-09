@@ -91,7 +91,7 @@ export function FeedbackPanel({
             ))}
           </div>
           <div className={s.actions}>
-            <button className={s.textButton} onClick={save} disabled={saving || (!reaction && !more && !note.trim())}>{saving ? 'Keeping it…' : 'Keep this'}</button>
+            <button className={s.primaryButton} onClick={save} disabled={saving || (!reaction && !more && !note.trim())}>{saving ? 'Keeping it…' : 'Keep this'}</button>
             <button className={s.textButton} onClick={() => setOpen(false)}>Not now</button>
           </div>
         </div>

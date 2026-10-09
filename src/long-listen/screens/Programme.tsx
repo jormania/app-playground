@@ -179,6 +179,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       )}
 
       <ProgrammeTools b={b} />
+      <RunningOrder b={b} />
 
       <hr className={s.rule} />
       <Paragraphs text={p.introduction} className={s.lede} />
@@ -200,6 +201,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
             <ItemView
               key={item.id}
               item={item}
+              number={numberOf(b, item.id)}
               b={b}
               comparison={b.comparisons.find((c) => c.id === `cmp:${p.id}:${item.id}`)}
             />
@@ -226,7 +228,58 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   )
 }
 
-function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; comparison?: Comparison }) {
+/** The work's place in the week's running order, counted across sections. */
+function numberOf(b: Bundle, itemId: string): number {
+  return b.programme.sections.flatMap((x) => x.items).findIndex((i) => i.id === itemId) + 1
+}
+
+const workAnchor = (itemId: string) => `work-${itemId}`
+
+const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard', skipped: 'set aside' }
+
+/**
+ * The week's music at a glance, before the essay: every work in order, with
+ * where you stand with it. On a phone the essay is two screens long, and this
+ * is what makes the music findable without scrolling past it. Each line jumps
+ * to its work (by scrolling — the URL hash belongs to the router).
+ */
+function RunningOrder({ b }: { b: Bundle }) {
+  // (How long it runs is said once, in the tools line above.)
+  const rows = b.programme.sections.flatMap((section) => section.items.map((item) => ({ item, section })))
+  if (rows.length < 2) return null
+  const heard = rows.filter(({ item }) => listeningState(b.events, item.recordingId) === 'heard').length
+  const jump = (id: string) => document.getElementById(workAnchor(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  return (
+    <nav className={s.runningOrder} aria-label="This week’s music">
+      <p className={s.panelHead}>
+        The music · {rows.length} works{heard > 0 ? ` · ${heard} heard` : ''}
+      </p>
+      <ol className={s.roList}>
+        {rows.map(({ item, section }, n) => {
+          const state = listeningState(b.events, item.recordingId)
+          return (
+            <li key={item.id}>
+              <button type="button" className={s.roRow} onClick={() => jump(item.id)}>
+                <span className={s.roNo}>{n + 1}</span>
+                <span className={s.roText}>
+                  <span className={s.roComposer}>{item.proposed.composer}</span>
+                  <span className={s.roWork}>{item.proposed.work}</span>
+                </span>
+                <span className={s.roSide}>
+                  {STATE_TAG[state]
+                    ? <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_TAG[state]}</span>
+                    : <span className={s.roRole}>{section.heading}</span>}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+    </nav>
+  )
+}
+
+function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number: number; b: Bundle; comparison?: Comparison }) {
   const { journey, bump, say, spotify, curatorReady } = useServices()
   const pid = b.programme.id
   const state = listeningState(b.events, item.recordingId)
@@ -283,8 +336,8 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
   const standIn = comparison?.standIn ? comparison : undefined
 
   return (
-    <div className={s.item}>
-      <p className={s.composer}>{item.proposed.composer}</p>
+    <div className={s.item} id={workAnchor(item.id)}>
+      <p className={s.composer}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</p>
       <h3 className={s.work}>{item.proposed.work}</h3>
       {metaBits.length > 0 && <p className={s.workMeta}>{metaBits.join(' · ')}</p>}
 
@@ -428,7 +481,7 @@ function ProgrammeTools({ b }: { b: Bundle }) {
           {saving ? 'Saving…' : b.playlist ? 'Update the playlist' : 'Save as a Spotify playlist'}
         </button>
       )}
-      <button className={s.textButton} onClick={() => window.print()}>Print</button>
+      <button className={`${s.textButton} ${s.printButton}`} onClick={() => window.print()}>Print</button>
     </div>
   )
 }
@@ -589,7 +642,7 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
         )}
         <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
         <input id="more-wish" className={s.input} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} />
-        <button className={s.textButton} onClick={() => void more()} disabled={extending}>{extending ? 'The curator is choosing more…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
+        <button className={s.outlineButton} onClick={() => void more()} disabled={extending}>{extending ? 'The curator is choosing more…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
       </div>
 
       <div className={s.nextCard}>
@@ -610,7 +663,7 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
         )}
         <label className={s.visuallyHidden} htmlFor="direction-wish">What are you in the mood for?</label>
         <input id="direction-wish" className={s.input} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} />
-        <button className={s.textButton} onClick={() => void newDirections()} disabled={asking}>{asking ? 'Finding three…' : 'Ask for three new directions'}</button>
+        <button className={s.outlineButton} onClick={() => void newDirections()} disabled={asking}>{asking ? 'Finding three…' : 'Ask for three new directions'}</button>
       </div>
 
       {b.openPaths > 0 && (

@@ -6,7 +6,7 @@ import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { openUrl } from '../spotify/client'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
-import { Problem, Waiting } from '../components/common'
+import { Empty, Problem, Waiting } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 interface Entry {
@@ -72,11 +72,16 @@ export function LibraryScreen() {
       <label className={s.visuallyHidden} htmlFor="lib-q">Search the library</label>
       <input id="lib-q" className={s.search} type="search" placeholder="A composer, a work, a conductor…" value={q} onChange={(e) => setQ(e.target.value)} />
 
-      {data.entries.length === 0 && <p className={s.quiet} style={{ marginTop: 'var(--space-xl)' }}>Empty for now. It fills as your weeks do.</p>}
+      {data.entries.length === 0 && <Empty link={{ href: '#/', label: 'Go to this week' }}>Empty for now. It fills as your weeks do.</Empty>}
       {data.entries.length > 0 && shown.length === 0 && <p className={s.quiet}>Nothing here matches “{q}”.</p>}
 
-      {shown.map((e) => (
+      {shown.map((e, i) => {
+        // A card catalogue's guide letter wherever the surnames move on to a new one.
+        const letter = initialOf(e.composer)
+        const newLetter = i === 0 || initialOf(shown[i - 1].composer) !== letter
+        return (
         <section key={e.composer} className={s.journalWeek}>
+          {newLetter && <p className={s.indexLetter} aria-hidden="true">{letter}</p>}
           <h2 className={s.h2}>{e.composer}</h2>
           {e.works.map(({ work, recordings }) => (
             <div key={work.id} className={s.libraryWork}>
@@ -105,7 +110,13 @@ export function LibraryScreen() {
             </div>
           ))}
         </section>
-      ))}
+        )
+      })}
     </div>
   )
+}
+
+/** The surname's first letter, without its accent: Dvořák files under D. */
+function initialOf(composer: string): string {
+  return surname(composer).normalize('NFD').charAt(0).toUpperCase()
 }

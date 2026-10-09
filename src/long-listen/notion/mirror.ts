@@ -299,10 +299,10 @@ export function preferenceLines(p: ListenerPreferences): string[] {
     `Time: ${TIME[p.timePerWeek].words}.`,
     `Range: ${BREADTH[p.breadth].words}.`,
     `Music: ${FAMILIARITY[p.familiarity].words}.`,
-    `${p.pairs ? 'Now and then, one work heard in two recordings side by side' : 'Each work once a week, no side-by-side recordings'}.`,
+    `Pairs: ${p.pairs ? 'now and then, one work heard in two recordings side by side' : 'each work once a week, no side-by-side recordings'}.`,
     `Writing: ${PREF_WORDS.depth[p.depth]}${p.language === 'ro' ? ', in Romanian' : ''}.`,
     `Recordings: ${PREF_WORDS.recordingEra[p.recordingEra]}.`,
-    `${p.includeVoices ? 'Works with voices welcome' : 'No works with singers'}; ${p.includeConcertos ? 'concertos welcome' : 'no concertos'}.`,
+    `Repertoire: ${p.includeVoices ? 'works with voices welcome' : 'no works with singers'}; ${p.includeConcertos ? 'concertos welcome' : 'no concertos'}.`,
   ]
 }
 

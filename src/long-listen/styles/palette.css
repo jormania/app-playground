@@ -16,7 +16,9 @@
 
   --color-ink:   #1f1a14;
   --color-muted: #5c5244;
-  --color-faint: #857868;
+  /* Faint is the label and metadata colour, so it carries small text: kept
+     at 4.5:1 or better on the paper (it was 3.75:1). */
+  --color-faint: #6f6354;
 
   --color-accent:       #8a2f22;
   --color-accent-hover: #6e2418;
@@ -45,7 +47,7 @@
 
   --color-ink:   #ece4d6;
   --color-muted: #bcaf9b;
-  --color-faint: #8a7e6c;
+  --color-faint: #958976;
 
   --color-accent:       #e0896c;
   --color-accent-hover: #eca58c;

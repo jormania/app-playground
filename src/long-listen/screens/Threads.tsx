@@ -3,7 +3,7 @@ import type { Programme, ProgrammeOption, Theme, ThemeExploration } from '../dom
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
-import { Problem, Waiting, messageOf } from '../components/common'
+import { Empty, Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -49,7 +49,7 @@ export function ThreadsScreen() {
       <h1 className={s.title}>What we’ve been following</h1>
       <p className={s.dek}>A theme isn’t used up in a week. Each one here can return — from where it was left, not from the start.</p>
 
-      {data.themes.length === 0 && <p className={s.quiet} style={{ marginTop: 'var(--space-xl)' }}>Nothing yet. Choose a direction this week and the first thread begins.</p>}
+      {data.themes.length === 0 && <Empty link={{ href: '#/', label: 'Choose this week’s direction' }}>Nothing yet. Choose a direction this week and the first thread begins.</Empty>}
       <ul className={s.entries}>
         {data.themes.map((t) => <ThreadEntry key={t.id} t={t} explorations={data.explorations} programmes={data.programmes} now={week.key} />)}
       </ul>
@@ -81,7 +81,8 @@ function ThreadEntry({ t, explorations, programmes, now }: { t: Theme; explorati
       <h2 className={s.entryTitle}>{t.title}</h2>
       <p className={s.faint}>First explored {sinceWords(t.firstIntroduced, now)} · {weekFromKey(t.firstIntroduced).label}</p>
       {t.reaction && <p>{t.reaction}</p>}
-      <ul className={s.bullets}>
+      {/* Its visits strung on one line, oldest first: the thread, drawn. */}
+      <ol className={s.threadLine} aria-label="Visits">
         {visits.map((v) => {
           const p = programmes.get(v.programmeId)
           return (
@@ -95,18 +96,22 @@ function ThreadEntry({ t, explorations, programmes, now }: { t: Theme; explorati
             </li>
           )
         })}
-      </ul>
-      {t.openQuestions.length > 0 && (
-        <>
-          <p className={s.h3} style={{ marginTop: 'var(--space-sm)' }}>Still open</p>
-          <ul className={s.bullets}>{t.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
-        </>
-      )}
-      {t.nextDirections.length > 0 && (
-        <>
-          <p className={s.h3} style={{ marginTop: 'var(--space-sm)' }}>Where it could go next</p>
-          <ul className={s.bullets}>{t.nextDirections.map((q, i) => <li key={i}>{q}</li>)}</ul>
-        </>
+      </ol>
+      {(t.openQuestions.length > 0 || t.nextDirections.length > 0) && (
+        <div className={s.threadNotes}>
+          {t.openQuestions.length > 0 && (
+            <div>
+              <p className={s.h3}>Still open</p>
+              <ul className={s.bullets}>{t.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+            </div>
+          )}
+          {t.nextDirections.length > 0 && (
+            <div>
+              <p className={s.h3}>Where it could go next</p>
+              <ul className={s.bullets}>{t.nextDirections.map((q, i) => <li key={i}>{q}</li>)}</ul>
+            </div>
+          )}
+        </div>
       )}
     </li>
   )

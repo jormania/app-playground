@@ -412,6 +412,29 @@ Listening view. Journal (every week: offered, chosen, heard). Library
 words, how it moved, preferences, a wish for next week, a note). Settings
 (gear) and the guide (book) sit in the masthead.
 
+**How the screens are told apart (2026-10-09 visual pass).** One typographic
+system, one accent, no cards — but each section has a shape of its own, drawn
+from what it holds:
+
+- **Programme:** a *running order* right under the title (numbered works, each
+  with its role or where you stand with it), so the music is findable before
+  the essay; the same numbers sit beside each work below. From 1200px it moves
+  into the left margin as a fixed contents rail. Each work ends in a *Your
+  listening* box and a *Go further* list.
+- **Journal:** a timeline — each week's number large in a margin column, a rule
+  running down the week.
+- **Library:** a card catalogue — a guide letter where the surnames move on.
+- **Threads:** each theme's visits strung on one vertical line, a bead a visit.
+- **Notebook:** what you've told the curator as a two-column ledger.
+- **Listening view:** the section nav steps away; one quiet screen.
+
+Buttons: text links by default; a filled `primaryButton` for the single
+decision a screen exists for (I've heard it, keep this feedback) and an
+`outlineButton` where several sit together (the week's three directions, the
+curator requests in Where next). `--color-faint` carries small text, so it is
+held at 4.5:1 or better on the paper. `.main`'s fade fills `backwards` only:
+a transform left on it would capture the fixed rail.
+
 ## 11. The second-pass audit (2026-10-09)
 
 After the first build, the brief was reread line by line. What was missing or
