@@ -150,8 +150,11 @@ performers.
   Spotify, and keep the app fully usable without it (listening marked by hand,
   recordings as links), which it mostly is.
 - **A small server.** Everything runs in the browser by design: your own key,
-  no function of its own, 9 of 12 Vercel functions used since Law of the Day left the server. Recommendation: no
-  new function; fold anything server-side into an existing endpoint.
+  no function of its own. Room exists if an item needs it: 9 of Vercel Hobby's
+  12 functions are used (Law of the Day's two left the server, 2026-10-09), so
+  three are free, and the owner is fine spending them (2026-10-09). Still
+  prefer folding into an existing endpoint when it fits; a new
+  `api/long-listen-*.js` is allowed when it doesn't.
 - **A cheaper model for small jobs.** Decided 2026-10-09 by the owner, before
   item 6: taste, continuity, *A little more context* and further reading run on
   Haiku 5.5. Item 6's check should still cover them, and item 8's notes start
