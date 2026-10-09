@@ -30,7 +30,8 @@ yourself.
 
 ## Daily refactor workflow
 
-An autonomous agent improves this repo one item per weekday morning, opens a PR,
+An autonomous agent improves this repo one item each Monday, Wednesday and
+Friday morning, opens a PR,
 and for two of the four classes merges that PR itself. **Full documentation:
 [`DAILY_REFACTOR.md`](DAILY_REFACTOR.md)** — read it before changing the workflow,
 the skill, or the backlog's shape. The essentials:
@@ -59,7 +60,7 @@ the skill, or the backlog's shape. The essentials:
 - **Every other Friday is a discovery run** (from 2026-10-09; the workflow decides
   by date and tells the agent) — nothing ships; the session reads the codebase
   against current standards and adds to the backlog instead. The Fridays between
-  take an item like any weekday.
+  take an item like Monday and Wednesday.
 - It stops on its own at six open refactor PRs, so an unreviewed pile can't grow
   without bound.
 - **Silence is the failure mode it is built against.** Any run that doesn't finish

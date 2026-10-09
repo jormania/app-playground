@@ -1,6 +1,6 @@
 # Daily refactor — the autonomous upkeep agent
 
-An agent that improves this repository one item per weekday morning, without
+An agent that improves this repository one item each Monday, Wednesday and Friday morning, without
 asking first. It picks its own work from a queue, implements it, proves it
 green, opens a pull request, and — for the two classes that cannot change what
 you see — merges that pull request itself. Review happens afterwards, on the PR.
@@ -35,12 +35,14 @@ and the workflow is auditable without reading prose.
 ## When it runs
 
 ```yaml
-- cron: '41 22 * * 0-4'  # 22:41 UTC — 01:41 Bucharest next day, 00:41 in winter
-- cron: '41 0 * * 1-5'   # 00:41 UTC — 03:41 Bucharest, backstop, usually skipped
+- cron: '41 22 * * 0,2,4'  # 22:41 UTC — 01:41 Bucharest next day, 00:41 in winter
+- cron: '41 0 * * 1,3,5'   # 00:41 UTC — 03:41 Bucharest, backstop, usually skipped
 ```
 
-Monday to Friday mornings in Bucharest, plus a **Run workflow** button for
-testing. Note the first cron fires the *evening before*, on days `0-4`.
+Monday, Wednesday and Friday mornings in Bucharest, plus a **Run workflow**
+button for testing. Note the first cron fires the *evening before*, on days
+`0,2,4` (Sunday, Tuesday, Thursday UTC). It was every weekday until 2026-10-09,
+cut to three to spare the weekly subscription limit (see "Model and costs").
 
 **GitHub's queue fails in two independent ways, and both have happened here.**
 Their docs cover the first: the `schedule` event "can be delayed during periods
@@ -140,7 +142,7 @@ weeks from that date (not ISO week parity, which a 53-week year breaks). The
 workflow's first step decides it from the Bucharest date and hands the agent a
 `Discovery morning: true|false` line, so a run and its backstop always agree;
 `scripts/daily-refactor-chooser.test.js` pins the calendar. The Fridays between
-take an item like any weekday. It halved on 2026-10-09 to spare the weekly
+take an item like Monday and Wednesday. It halved on 2026-10-09 to spare the weekly
 subscription limit: discovery is the longest open-ended Opus session, and one a
 fortnight keeps the backlog well ahead of one item a day. On a discovery
 morning nothing ships. The session reads the codebase
