@@ -5,7 +5,7 @@
 // problems as a correction, then accepts the cleaned value if it still stands.
 //
 // Pure functions, no I/O — src/long-listen/curator/curator.test.js pins them.
-import { sameWork, performersKey, fold, surname } from '../domain/identity.js'
+import { sameWork, performersKey, fold, surname, workTitleKey } from '../domain/identity.js'
 
 const MOODS = ['immersive', 'curious', 'adventurous']
 
@@ -102,7 +102,29 @@ function cleanItem(i) {
  * @param {any} out
  * @param {{ covered: {composer: string, title: string, catalogue?: string}[], returning: boolean }} ctx
  */
-export function validateProgramme(out, { covered = [], returning = false } = {}) {
+const VERSION_WORDS = /\b(orch|orchestrat\w*|arr|arranged|arrangement|transcr\w*|version|original|reduction|edition|ed|after)\b/i
+
+/**
+ * A work's title without the note that says which version it is:
+ * "Pictures at an Exhibition, orch. Ravel" and "Pictures at an Exhibition
+ * (original piano version)" are one work. Only trailing segments are cut,
+ * and only when they speak of a version — "Symphony No. 5, Op. 67" stays.
+ */
+export function baseTitle(title) {
+  const parts = String(title ?? '').replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').split(/\s*[,;:–—]\s+|\s+-\s+/)
+  const at = parts.findIndex((p, i) => i > 0 && VERSION_WORDS.test(p))
+  return (at > 0 ? parts.slice(0, at) : parts).join(' ').replace(/\s+/g, ' ').trim()
+}
+
+/** One key for every version of a piece: composer + base title. */
+export function baseWorkKey(composer, title) {
+  return `${fold(surname(composer ?? ''))}|${workTitleKey(baseTitle(title))}`
+}
+
+/** How many works a week of this length holds — mirrors domain/exploration.ts TIME. */
+const WORKS_FOR = { short: [3, 4], standard: [5, 7], generous: [8, 10], abundant: [11, 14] }
+
+export function validateProgramme(out, { covered = [], returning = false, preferences = {} } = {}) {
   const problems = []
   const sections = (Array.isArray(out?.sections) ? out.sections : []).map((s) => ({
     role: clean(s?.role).toLowerCase() || 'then',
@@ -135,8 +157,26 @@ export function validateProgramme(out, { covered = [], returning = false } = {})
     seen.push(w)
   }
 
-  if (items.length < 3) problems.push(`Only ${items.length} usable items; a programme needs at least three recordings.`)
-  if (items.length > 9) problems.push(`${items.length} items is too many for a week.`)
+  // One version of a piece a week (two only as a pair, when pairs are on).
+  const versions = new Map()
+  for (const i of items) {
+    const k = baseWorkKey(i.composer, i.workTitle)
+    versions.set(k, [...(versions.get(k) ?? []), i])
+  }
+  for (const list of versions.values()) {
+    if (list.length > 1) problems.push(`"${list[0].composer} — ${baseTitle(list[0].workTitle)}" appears in ${list.length} versions; a week holds each work once (arrangements and the original are one work).`)
+  }
+  // Range: unless the week is about one focus, no composer more than twice.
+  const breadth = Number(preferences.breadth ?? 3)
+  if (breadth > 1) {
+    const byComposer = new Map()
+    for (const i of items) byComposer.set(fold(surname(i.composer)), (byComposer.get(fold(surname(i.composer))) ?? 0) + 1)
+    for (const [, n] of byComposer) if (n > 2) { problems.push(`${n} works by one composer; at this breadth, two at most — let the theme travel to other composers and periods.`); break }
+  }
+  if (kept.length > 4) problems.push(`${kept.length} sections is too many; use two to four, each holding several works.`)
+  const [least, most] = WORKS_FOR[preferences.timePerWeek] ?? [3, 14]
+  if (items.length < Math.max(3, least - 1)) problems.push(`Only ${items.length} usable items; this listener's week holds ${least}–${most} works.`)
+  if (items.length > most + 2) problems.push(`${items.length} items is too many; this listener's week holds ${least}–${most} works.`)
 
   const comparisons = (Array.isArray(out?.comparisons) ? out.comparisons : [])
     .map((c) => ({
@@ -156,7 +196,8 @@ export function validateProgramme(out, { covered = [], returning = false } = {})
       const [a, b] = c.perspectives
       return hasPerformers(a) && hasPerformers(b) && performersKey(a) !== performersKey(b)
     })
-    .slice(0, 2)
+    // Pairs only when the listener asked for them, and then one a week.
+    .slice(0, preferences.pairs ? 1 : 0)
 
   const introduction = clean(out?.introduction)
   if (!clean(out?.title) || !introduction) problems.push('The programme needs a title and an introduction.')
@@ -185,6 +226,31 @@ export function validateProgramme(out, { covered = [], returning = false } = {})
  * a programme. Returning to a theme must expand it, so a repeat never survives
  * silently — it is removed, and the caller says so.
  */
+/**
+ * After the one retry, what the listener asked for is enforced rather than
+ * hoped for: one version of each work (the first kept), and — unless the
+ * week is about one focus — at most two works by a composer.
+ */
+export function enforceVariety(value, preferences = {}) {
+  const seen = new Set()
+  const perComposer = new Map()
+  const cap = Number(preferences.breadth ?? 3) > 1 ? 2 : Infinity
+  const sections = value.sections
+    .map((s) => ({
+      ...s,
+      items: s.items.filter((i) => {
+        const k = baseWorkKey(i.composer, i.workTitle)
+        const c = fold(surname(i.composer))
+        if (seen.has(k) || (perComposer.get(c) ?? 0) >= cap) return false
+        seen.add(k)
+        perComposer.set(c, (perComposer.get(c) ?? 0) + 1)
+        return true
+      }),
+    }))
+    .filter((s) => s.items.length > 0)
+  return { ...value, sections }
+}
+
 export function stripRepeats(value, covered) {
   const isRepeat = (i) => !i.revisitReason && covered.some((c) => sameWork({ composer: i.composer, title: i.workTitle, catalogue: i.catalogue }, c))
   const sections = value.sections

@@ -18,7 +18,7 @@ import { requestAnthropic } from '../../shared/anthropic'
 import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
-  validateThemes, validateProgramme, stripRepeats, validateTaste, validateContinuity,
+  validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
   validateExplain, validateCompare, validateResources, extractJsonObject,
 } from './validate.js'
 
@@ -158,8 +158,11 @@ export async function generateThemes(send, payload) {
 export async function curateProgramme(send, payload) {
   const covered = payload.thread?.covered?.works ?? []
   const returning = Boolean(payload.thread)
-  const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning }))
-  let value = r.value
+  const preferences = payload.preferences ?? {}
+  // "More of this theme" is a companion, shorter than a week: size isn't checked against the week's length.
+  const sized = payload.extension ? { ...preferences, timePerWeek: undefined } : preferences
+  const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning, preferences: sized }))
+  let value = enforceVariety(r.value, preferences)
   let removedRepeats = 0
   if (r.repeats > 0) {
     const before = value.sections.reduce((n, s) => n + s.items.length, 0)

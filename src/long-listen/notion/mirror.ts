@@ -6,6 +6,7 @@ import type { Repo } from '../store/repo'
 import { notionProxy } from '../../shared/notionClient'
 import type { ListenerPreferences } from '../domain/types'
 import { observationsByStance } from '../curation/taste'
+import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 
 /**
  * Notion as the listener's notebook: a human-readable mirror of the journey,
@@ -288,8 +289,6 @@ function httpUrl(u: string): string | undefined {
 }
 
 const PREF_WORDS = {
-  timePerWeek: { short: 'about an hour of music a week', standard: 'two or three hours a week', generous: 'four hours or more a week' },
-  adventure: { gentle: 'mostly familiar ground, one step outward', balanced: 'a mix of the familiar and the new', bold: 'far and often' },
   depth: { concise: 'short notes', standard: 'notes of usual length', deeper: 'a little more context and history' },
   recordingEra: { any: 'any era of recording', 'historic-welcome': 'great older recordings welcome, mono included', 'modern-sound': 'recordings from about 1980 on', 'period-practice': 'historically informed performances where they exist' },
 } as const
@@ -297,8 +296,10 @@ const PREF_WORDS = {
 /** What the listener told the curator, in words. */
 export function preferenceLines(p: ListenerPreferences): string[] {
   return [
-    `Time: ${PREF_WORDS.timePerWeek[p.timePerWeek]}.`,
-    `Distance: ${PREF_WORDS.adventure[p.adventure]}.`,
+    `Time: ${TIME[p.timePerWeek].words}.`,
+    `Range: ${BREADTH[p.breadth].words}.`,
+    `Music: ${FAMILIARITY[p.familiarity].words}.`,
+    `${p.pairs ? 'Now and then, one work heard in two recordings side by side' : 'Each work once a week, no side-by-side recordings'}.`,
     `Writing: ${PREF_WORDS.depth[p.depth]}${p.language === 'ro' ? ', in Romanian' : ''}.`,
     `Recordings: ${PREF_WORDS.recordingEra[p.recordingEra]}.`,
     `${p.includeVoices ? 'Works with voices welcome' : 'No works with singers'}; ${p.includeConcertos ? 'concertos welcome' : 'no concertos'}.`,
@@ -493,6 +494,30 @@ export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string,
   }
   await repo.marks.put({ id: 'notion:last-sync', at: new Date().toISOString() })
   return { written }
+}
+
+/**
+ * Before a fresh start: move every page the app wrote into Notion's trash
+ * (recoverable there for 30 days) and empty the taste page, so the notebook
+ * starts as clean as the app. The databases themselves stay, for the next
+ * journey. Best effort: a page already gone is fine.
+ */
+export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<number> {
+  let n = 0
+  for (const st of await repo.notion.all()) {
+    if (st.key === 'taste') continue
+    try {
+      await call({ path: `pages/${st.pageId}`, method: 'PATCH', body: { archived: true } })
+      n++
+    } catch { /* already archived or deleted in Notion */ }
+  }
+  const setup = (await repo.marks.get('notion:setup'))?.value as { tastePage?: string } | undefined
+  if (setup?.tastePage) {
+    for (const b of await childrenOf(call, setup.tastePage)) {
+      await call({ path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } }).catch(() => undefined)
+    }
+  }
+  return n
 }
 
 export function journalProps(p: Programme, theme: string, events: ListeningEvent[], feedback: Feedback[], setAside: boolean, currentWeek: string) {

@@ -102,6 +102,49 @@ Steps 1 and 2 failing never blocks step 3; they retry next time. Concurrent
 calls share one in-flight promise, so StrictMode and a double tap don't pay
 twice.
 
+**How a week feels is the listener's to set** (Settings → Music and
+exploration, `domain/exploration.ts` is the one vocabulary for Settings, the
+notebook and the prompts):
+
+- **Music each week**: 1 h · 2–3 h · 4–5 h · 6 h + → about 3–4, 5–7, 8–10 or
+  11–14 works, always in two to four sections (fewer, fuller sections — a
+  week with eight thin sections was hard to follow). Default 4–5 h.
+- **How widely a week ranges**, 1–5: one focus (a composer, one family of
+  works) … across centuries, early music to today. Above 1, **no more than
+  two works by one composer**, and the curator is asked to draw connections
+  across periods.
+- **How well known the music is**, 1–5: cornerstones … rarities and the
+  avant-garde. (It replaced the three-step "adventure"; stored values are
+  migrated by `normalisePreferences`: gentle→2, balanced→3, bold→4.)
+- **Same work, two perspectives** (off by default): with it, a programme may
+  hold one side-by-side pair and a direction may be about interpretation;
+  without it, no comparisons and no "Hear another perspective" button.
+- **One work, one hearing**, whatever the settings: arrangements,
+  orchestrations and the original of a piece are one work (`baseWorkKey` —
+  Mussorgsky's piano *Pictures* and Ravel's orchestration). A week held three
+  *Pictures* once. The validator flags extra versions and too many works by
+  one composer, the curator gets one retry, then `enforceVariety` keeps the
+  first version and two works per composer.
+
+**Where next.** The end of the week's programme is one labelled section: *More
+of this theme*, *A different direction this week* (the week's other
+directions, or three new ones — `Journey.moreDirections`, which keeps the
+programme until a new direction is taken and never uses up the wish for next
+week), *A path left open* (earlier weeks), *Tell the curator how it went*, and
+*A wish for next week*. **More of this theme** (`Journey.extendProgramme`) is
+its own programme snapshot with `extends` = the week's programme, the same
+exploration (`extraProgrammeIds`), told everything the thread has covered this
+week included, so nothing comes back; it counts towards the thread, appears in
+the Journal and Threads, and gets its further reading by button, not
+automatically (each search costs a little).
+
+**A fresh start** (Settings → The app): saves an archive (a normal backup
+file) to the downloads, moves every page the app wrote in Notion to Notion's
+trash and empties the taste page (`archiveNotebook`), then `Repo.freshStart()`
+clears the journey and everything learned about the listener. Kept: keys and
+connections (localStorage), appearance, the music & exploration settings, and
+the notebook's location so its databases are reused.
+
 ## 5. The curator (`curator/`)
 
 Seven prompts in `prompts.js`, each **versioned** (`programme@2026-10-08.1`).

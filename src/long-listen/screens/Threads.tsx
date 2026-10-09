@@ -88,6 +88,9 @@ function ThreadEntry({ t, explorations, programmes, now }: { t: Theme; explorati
             <li key={v.id}>
               <a href={href({ name: 'programme', id: v.programmeId })}>{p?.title ?? 'Programme'}</a>
               <span className={s.faint}> · {weekFromKey(v.weekKey).label}{v.setAside ? ' · set aside' : ''}</span>
+              {(v.extraProgrammeIds ?? []).map((id) => (
+                <span key={id} className={s.faint}> · and <a href={href({ name: 'programme', id })}>{programmes.get(id)?.title ?? 'more'}</a></span>
+              ))}
               {v.closingNote && <div className={`${s.quiet} ${s.italic}`}>{v.closingNote}</div>}
             </li>
           )

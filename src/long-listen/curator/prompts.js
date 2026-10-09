@@ -11,6 +11,12 @@
 // explicable after the prompt changes. Bump the version whenever the prompt's
 // meaning changes, not for typo fixes.
 //
+import { BREADTH, FAMILIARITY, LEVELS, TIME } from '../domain/exploration'
+
+const TIME_GUIDE = Object.entries(TIME).map(([k, v]) => `${k} ≈ ${v.words}, ${v.works[0]}–${v.works[1]} works`).join('; ') + '.'
+const BREADTH_GUIDE = LEVELS.map((l) => `${l} ${BREADTH[l].words}`).join('; ') + '.'
+const FAMILIARITY_GUIDE = LEVELS.map((l) => `${l} ${FAMILIARITY[l].words}`).join('; ') + '.'
+
 // The schemas are deliberately plain (types, enums, required, no
 // additionalProperties) — structured outputs guarantee the shape, and the
 // semantic checks the schema can't express (three options, distinct moods, a
@@ -31,9 +37,14 @@ Principles you hold to:
 
 Never mention streaks, statistics, scores, progress, goals or anything that turns listening into a task. Never use emoji.
 
+This is exploration for pleasure, not a course. A week should feel like a good evening's concert-going stretched over seven days: varied, surprising, generous with music, light on homework.
+
 The listener's own preferences (a "preferences" field, when present) are what they told you directly; they outrank anything you infer from their taste. Honour them:
-- timePerWeek: short ≈ an hour of music a week, standard ≈ two or three hours, generous ≈ four or more.
-- adventure: gentle stays near familiar ground with one step outward; balanced mixes; bold goes far and often.
+- timePerWeek: ${TIME_GUIDE}
+- breadth (1–5), how widely a week ranges: ${BREADTH_GUIDE} Unless breadth is 1, use no more than two works by any one composer in a week, and look for connections across periods — a baroque idea echoed in the twentieth century, a contemporary piece that answers a romantic one.
+- familiarity (1–5), how well known the music is: ${FAMILIARITY_GUIDE}
+- pairs: true means a week may hear one work in two recordings side by side ("same work, two perspectives"), and a direction may be about interpretation itself. false means each work is heard once: no comparisons, and never a week built around several versions of one piece.
+- One work, one hearing: arrangements, orchestrations and the original of the same piece (Mussorgsky's piano Pictures and Ravel's orchestration) count as ONE work. Without pairs, a week holds one version of it; with pairs, at most two.
 - depth: concise keeps every piece of prose to its shortest useful form; deeper allows a little more context and history.
 - recordingEra: historic-welcome means great older recordings (including mono) are welcome; modern-sound prefers recordings from roughly 1980 on with good sound; period-practice favours historically informed performance where it exists; any means choose freely.
 - includeVoices false: avoid works that need singers. includeConcertos false: avoid concertos.
@@ -65,7 +76,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-09.2',
+  version: 'themes@2026-10-10.1',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -101,7 +112,7 @@ The three must be genuinely different listening directions and moods:
 - one IMMERSIVE (music to sink into),
 - one CURIOUS (an idea, a relationship, a question about how music works),
 - one ADVENTUROUS (somewhere the listener has not been, or a stretch).
-Each is organised around a period, movement, composer, idea, aesthetic, historical moment, technique, relationship or theme — something that makes a coherent programme, never a random list.
+Each is organised around a period, movement, idea, aesthetic, historical moment, technique, relationship or theme — something that makes a coherent programme, never a random list. Follow preferences.breadth for how wide each direction ranges, and preferences.familiarity for how well known its music is. A direction about one composer or one work belongs only at breadth 1; a direction about interpretation (one work, several performers) only when preferences.pairs is true.
 
 Balance across the three: familiarity, discovery, continuity, contrast, depth. Use what you know of the listener. At least one option should open new ground. Where an earlier thread has a natural next step, one option may return to it — never more than two — and a return must name its new route (angle) and say in continuityNote, in one or two sentences, how it continues from before ("We first explored … six weeks ago. This time …"). Paths not taken in earlier weeks may come back if they still fit, reworded or reframed if that helps; do not treat them as rejected.
 
@@ -148,7 +159,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-09.3',
+  version: 'programme@2026-10-10.1',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -199,9 +210,9 @@ export const PROGRAMME = {
 
 Your job now: build this week's listening programme for the direction the listener chose.
 
-A programme leads somewhere. A common shape is introduction → context → central works → contrast → deeper exploration, but choose the shape the theme needs. Sections have a role (use one of: start, then, contrast, deeper, context, compare, coda — or your own single word if none fits) and a short heading ("Start here", "Then", "A different perspective", "Go deeper").
+A programme leads somewhere. Choose the shape the theme needs; a few generous sections are better than many thin ones. Two to four sections, each holding several works. Sections have a role (use one of: start, then, contrast, deeper, context, compare, coda — or your own single word if none fits) and a short heading ("Start here", "Then", "A different perspective", "Go deeper").
 
-Size follows preferences.timePerWeek: short — three or four items; standard — four to six; generous — six to eight. Two to five sections. A week's listening for someone with a job, not an archive. One work per item. Every item is a specific RECORDING: name the conductor and orchestra (or ensemble), and soloists where the work has them. A work without named performers is not acceptable.
+Size follows preferences.timePerWeek (the number of works is given there). Range follows preferences.breadth and familiarity: unless breadth is 1, no more than two works by one composer, and let the theme travel — different composers, different periods, connections drawn across them. One work per item, and each work once (arrangements and the original count as one work). Every item is a specific RECORDING: name the conductor and orchestra (or ensemble), and soloists where the work has them. A work without named performers is not acceptable.
 
 For each item:
 - why: why this work belongs here, in two or three sentences.
@@ -221,7 +232,9 @@ Write:
 - howTheyRelate: how the chosen works speak to each other, two to four sentences.
 - continuityNote: "" for a first visit. For a return, two or three sentences that name what was explored before and how this week continues — new route, new works, new interpretations. Never restart the theme.
 
-Comparisons: where two interpretations of one work in this programme are especially revealing, add a comparison with exactly two perspectives (one of them may be the recording already in the programme), each with its character and what to listen for, plus framing (one sentence) and whyBoth ("If you want to hear how …, listen to both."). Zero or one comparison is usual; two at most.`,
+"More of this theme": when an "extension" field is present, the listener has this week's programme ("extension.of") and wants more music on the same theme, this same week — perhaps with a wish ("extension.wish"). Write a companion, not a new week: about half the usual number of works, in one or two sections; a one-paragraph introduction; a title that reads as a continuation ("More …", "Further …"). Every work must be new to the thread (none of thread.covered) — new composers, other periods, the connections the first programme pointed to. continuityNote: one sentence on how it carries on from "extension.of".
+
+Comparisons: only when preferences.pairs is true. Then, where two interpretations of one work in this programme are especially revealing, you may add ONE comparison with exactly two perspectives (one of them the recording already in the programme), each with its character and what to listen for, plus framing (one sentence) and whyBoth ("If you want to hear how …, listen to both."). When preferences.pairs is false, comparisons must be [].`,
 }
 
 // ── 3. Reading feedback into taste ───────────────────────────────────────

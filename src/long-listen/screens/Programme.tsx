@@ -29,6 +29,14 @@ interface Bundle {
   resourcesSearched: boolean
   explanations: Map<string, Explanation>
   playlist?: PlaylistMark
+  /** The week's main programme when this one is "more of this theme". */
+  root?: Programme
+  /** "More of this theme" programmes made for the week's programme. */
+  extensions: Programme[]
+  /** Paths offered in earlier weeks and still open. */
+  openPaths: number
+  /** Side-by-side pairs are the listener's choice (Settings → Same work, two perspectives). */
+  pairs: boolean
 }
 
 async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
@@ -52,8 +60,13 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
   const explanations = new Map((await repo.explanations.many(items.map((i) => `${id}:${i.id}`))).map((e) => [e.id.split(':').pop()!, e]))
   const explorations = theme ? await repo.explorations.many(theme.explorationIds) : []
   const otherOptions = week
-    ? (await repo.options.many(week.optionIds)).filter((o) => o.id !== week.chosenOptionId && o.status !== 'chosen')
+    ? (await repo.options.many(week.optionIds)).filter((o) => o.id !== week.chosenOptionId && (o.status === 'offered' || o.status === 'open'))
     : []
+  const rootId = programme.extends ?? programme.id
+  const allProgrammes = await repo.programmes.all()
+  const root = programme.extends ? allProgrammes.find((x) => x.id === programme.extends) : undefined
+  const extensions = allProgrammes.filter((x) => x.extends === rootId).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  const openPaths = (await repo.options.all()).filter((o) => o.status === 'open' && o.weekKey < programme.weekKey).length
   return {
     programme, theme, exploration, week, otherOptions, comparisons, recordings, works, events, feedback,
     firstExploration: explorations.sort((a, b) => a.weekKey.localeCompare(b.weekKey))[0],
@@ -61,6 +74,10 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
     resourcesSearched: Boolean(searched),
     explanations,
     playlist: playlistMark?.value as PlaylistMark | undefined,
+    root,
+    extensions,
+    openPaths,
+    pairs: (await repo.preferences()).pairs,
   }
 }
 
@@ -102,7 +119,8 @@ function stageWords(stage: number): string {
 export function ProgrammeView({ b }: { b: Bundle }) {
   const { journey, spotify, repo, bump, say, week } = useServices()
   const { programme: p } = b
-  const isCurrent = p.weekKey === week.key && b.week?.programmeId === p.id
+  // This week's programme — or "more of this theme" made for it.
+  const isCurrent = p.weekKey === week.key && (b.week?.programmeId === p.id || (Boolean(p.extends) && b.week?.programmeId === p.extends))
   const setAside = b.week?.setAsideProgrammeIds.includes(p.id)
   // Confirm each recording on Spotify once, quietly, in order.
   const tried = useRef(new Set<string>())
@@ -131,7 +149,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   // This week's programme gathers its further reading once, by itself.
   const [searching, setSearching] = useState(false)
   useEffect(() => {
-    if (!isCurrent || b.resourcesSearched || searching) return
+    // Only the week's own programme searches by itself; "more of this theme" has a button (each search costs a little).
+    if (!isCurrent || p.extends || b.resourcesSearched || searching) return
     setSearching(true)
     journey.resources(p.id).then(() => bump()).catch(() => {}).finally(() => setSearching(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,8 +162,9 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   return (
     <article>
       <p className={s.eyebrow}>
-        {isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'} · {weekFromKey(p.weekKey).label}
+        {p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'} · {weekFromKey(p.weekKey).label}
       </p>
+      {b.root && <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>}
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
 
@@ -198,16 +218,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       }} />
 
       <hr className={s.ornament} />
-      <section aria-label="The week">
-        <FeedbackPanel
-          prompt="How did this week land?"
-          programmeId={p.id}
-          feedback={b.feedback}
-          targets={[{ type: 'programme', id: p.id, label: 'This programme' }, ...(b.theme ? [{ type: 'theme' as const, id: b.theme.id, label: 'The theme itself' }] : [])]}
-        />
-      </section>
-
-      {isCurrent && b.otherOptions.length > 0 && <ChangeDirection options={b.otherOptions} />}
+      <WhereNext b={b} isCurrent={Boolean(isCurrent)} />
     </article>
   )
 }
@@ -326,7 +337,7 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
 
       <div className={s.actions}>
         {!explanation && <button className={s.textButton} onClick={explain} disabled={explaining}>{explaining ? 'The curator is writing…' : 'A little more context'}</button>}
-        {!comparison && <button className={s.textButton} onClick={() => void compare()} disabled={comparing}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</button>}
+        {!comparison && b.pairs && <button className={s.textButton} onClick={() => void compare()} disabled={comparing}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</button>}
         <a href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>Listen with this open</a>
       </div>
 
@@ -468,17 +479,54 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
   )
 }
 
-function ChangeDirection({ options }: { options: ProgrammeOption[] }) {
+/**
+ * The end of the week's programme: where to go next. Several honest answers,
+ * none required — more on this theme, another direction this week, a path
+ * left open earlier, a word to the curator, a wish for next week. One clearly
+ * labelled section, so the last page of the week always has a way on.
+ */
+function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
   const { journey, bump, say } = useServices()
-  const [open, setOpen] = useState(false)
+  const p = b.programme
+  const rootId = p.extends ?? p.id
+  const [wish, setWish] = useState('')
+  const [extending, setExtending] = useState(false)
+  const [asking, setAsking] = useState(false)
+  const [directionWish, setDirectionWish] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+
+  async function more() {
+    setExtending(true)
+    try {
+      const x = await journey.extendProgramme(rootId, wish)
+      bump()
+      go({ name: 'programme', id: x.id })
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setExtending(false)
+    }
+  }
+
+  async function newDirections() {
+    setAsking(true)
+    try {
+      await journey.moreDirections(directionWish)
+      setDirectionWish('')
+      bump()
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setAsking(false)
+    }
+  }
 
   async function take(o: ProgrammeOption) {
     setBusy(o.id)
     try {
-      const p = await journey.changeDirection(o.id)
+      const x = await journey.changeDirection(o.id)
       bump()
-      go({ name: 'programme', id: p.id })
+      go({ name: 'programme', id: x.id })
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
@@ -486,26 +534,79 @@ function ChangeDirection({ options }: { options: ProgrammeOption[] }) {
     }
   }
 
+  const feedback = (
+    <div className={s.nextCard}>
+      <h3 className={s.nextTitle}>Tell the curator how it went</h3>
+      <p className={s.quiet}>A sentence is worth more than a button: what stayed with you, what didn’t. The next directions are shaped by it.</p>
+      <FeedbackPanel
+        prompt="How did this week land?"
+        programmeId={p.id}
+        feedback={b.feedback}
+        targets={[{ type: 'programme', id: p.id, label: 'This programme' }, ...(b.theme ? [{ type: 'theme' as const, id: b.theme.id, label: 'The theme itself' }] : [])]}
+      />
+    </div>
+  )
+
+  if (!isCurrent) {
+    return <section aria-label="This week" className={s.whereNext}><h2 className={s.sectionHead}>Looking back</h2>{feedback}</section>
+  }
+
   return (
-    <section className={s.block} aria-label="Change direction">
-      {!open ? (
-        <button className={s.textButton} onClick={() => setOpen(true)}>Change direction this week</button>
-      ) : (
-        <>
-          <p className={s.quiet}>This programme stays in your journal as it is. Only what you’ve heard of it will count towards its thread.</p>
+    <section aria-label="Where next" className={s.whereNext}>
+      <h2 className={s.sectionHead}>Where next</h2>
+      <p className={s.sectionGuide}>The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.</p>
+
+      <div className={s.nextCard}>
+        <h3 className={s.nextTitle}>More of this theme</h3>
+        <p className={s.quiet}>Another set of works on the same theme, none of them heard yet this week: other composers, other periods, the connections this one pointed to.</p>
+        {b.extensions.length > 0 && (
+          <ul className={s.bullets}>
+            {b.extensions.map((x) => (
+              <li key={x.id}>{x.id === p.id ? <strong>{x.title}</strong> : <a href={href({ name: 'programme', id: x.id })}>{x.title}</a>}</li>
+            ))}
+          </ul>
+        )}
+        <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
+        <input id="more-wish" className={s.input} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} />
+        <button className={s.textButton} onClick={() => void more()} disabled={extending}>{extending ? 'The curator is choosing more…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
+      </div>
+
+      <div className={s.nextCard}>
+        <h3 className={s.nextTitle}>A different direction this week</h3>
+        <p className={s.quiet}>Take another direction for the rest of the week. This programme stays in your journal as it is; only what you’ve heard of it counts towards its thread.</p>
+        {b.otherOptions.length > 0 && (
           <ul className={s.entries}>
-            {options.map((o) => (
+            {b.otherOptions.map((o) => (
               <li key={o.id} className={s.entry}>
-                <h3 className={s.entryTitle}>{o.title}</h3>
+                <h4 className={s.nextOption}>{o.title}</h4>
                 <p className={s.quiet}>{o.pitch}</p>
-                <button className={s.textButton} onClick={() => take(o)} disabled={busy !== null}>
+                <button className={s.textButton} onClick={() => void take(o)} disabled={busy !== null}>
                   {busy === o.id ? 'The curator is building it…' : 'Listen this way instead'}
                 </button>
               </li>
             ))}
           </ul>
-        </>
+        )}
+        <label className={s.visuallyHidden} htmlFor="direction-wish">What are you in the mood for?</label>
+        <input id="direction-wish" className={s.input} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} />
+        <button className={s.textButton} onClick={() => void newDirections()} disabled={asking}>{asking ? 'Finding three…' : 'Ask for three new directions'}</button>
+      </div>
+
+      {b.openPaths > 0 && (
+        <div className={s.nextCard}>
+          <h3 className={s.nextTitle}>A path left open</h3>
+          <p className={s.quiet}>{b.openPaths === 1 ? 'One direction' : `${b.openPaths} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
+          <a href={href({ name: 'threads' })}>See the open paths</a>
+        </div>
       )}
+
+      {feedback}
+
+      <div className={s.nextCard}>
+        <h3 className={s.nextTitle}>A wish for next week</h3>
+        <p className={s.quiet}>Plant an idea for the next three directions — a composer, a mood, a question.</p>
+        <a href={href({ name: 'notebook' })}>Write a wish in the Notebook</a>
+      </div>
     </section>
   )
 }

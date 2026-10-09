@@ -1,5 +1,5 @@
 import { createStore, del, entries, get, keys, set, setMany } from 'idb-keyval'
-import { DEFAULT_PREFERENCES } from '../domain/types'
+import { normalisePreferences } from '../domain/types'
 import type {
   ListenerPreferences,
   Album, Artist, Comparison, Explanation, Feedback, ListeningEvent, NotionSyncState, Programme,
@@ -165,7 +165,7 @@ export class Repo {
   }
 
   async preferences(): Promise<ListenerPreferences> {
-    return { ...DEFAULT_PREFERENCES, ...((await this.store.get<Partial<ListenerPreferences>>(SINGLETON.preferences)) ?? {}) }
+    return normalisePreferences(await this.store.get<Partial<ListenerPreferences>>(SINGLETON.preferences))
   }
 
   savePreferences(p: ListenerPreferences): Promise<void> {
@@ -195,6 +195,22 @@ export class Repo {
       exportedAt: new Date().toISOString(),
       records: Object.fromEntries(rows.filter(([k]) => k.startsWith(PREFIX))),
     }
+  }
+
+  /**
+   * A fresh start: forget the whole journey — weeks, programmes, threads,
+   * listening, feedback, what the curator learned about the listener — and
+   * keep only what the listener set up: their music & exploration
+   * preferences, and the Notion notebook's location (so its databases are
+   * reused, not duplicated). Credentials and appearance live in this
+   * device's settings, outside the store, and are untouched.
+   */
+  async freshStart(): Promise<void> {
+    const prefs = await this.preferences()
+    const setup = await this.marks.get('notion:setup')
+    for (const k of await this.store.keys()) if (k.startsWith(PREFIX)) await this.store.del(k)
+    await this.savePreferences({ ...prefs, nextRequest: '' })
+    if (setup) await this.marks.put(setup)
   }
 
   /** Restore a backup. Adds and overwrites; never deletes what the backup lacks. */

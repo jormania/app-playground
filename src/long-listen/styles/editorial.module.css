@@ -293,6 +293,10 @@
   color: var(--color-faint);
 }
 
+.dangerButton {
+  color: var(--color-danger, #b3261e);
+}
+
 .quietButton {
   color: var(--color-faint);
   font-size: var(--text-sm);
@@ -595,6 +599,50 @@
   background: var(--color-ink);
   border-color: var(--color-ink);
   color: var(--color-bg);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  margin: var(--space-sm) 0 var(--space-2xs);
+  padding: var(--space-xs) var(--space-sm);
+  min-height: 44px;
+  font: inherit;
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+}
+
+/* ── where next: the end of the week's programme ────────────────────────── */
+
+.whereNext {
+  margin-top: var(--space-xl);
+}
+
+.nextCard {
+  margin: var(--space-lg) 0;
+  padding: var(--space-md) 0 var(--space-md) var(--space-md);
+  border-left: 2px solid var(--color-accent);
+}
+
+.nextTitle {
+  margin: 0 0 var(--space-2xs);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+/* One of the other directions, inside "A different direction this week". */
+.nextOption {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-ink);
 }
 
 .textarea {
@@ -907,6 +955,86 @@
 
 .iconLink:hover,
 .iconOn {
+  color: var(--color-accent);
+}
+
+/* ── a five-step scale (Settings → your week of listening) ──────────────── */
+
+.scale {
+  margin: var(--space-md) 0 var(--space-lg);
+}
+
+.scaleLabel {
+  margin: 0 0 var(--space-xs);
+  font-weight: 600;
+}
+
+.scaleTrack {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 44px;
+  margin: 0 6px;
+}
+
+.scaleTrack::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px solid var(--color-border-2);
+}
+
+.scaleStop {
+  position: relative;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 2px solid var(--color-border-2);
+  border-radius: 50%;
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.scaleStop::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
+
+.scalePast {
+  border-color: var(--color-accent);
+}
+
+.scaleOn {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: scale(1.3);
+}
+
+.scaleEnds {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+}
+
+.scaleNow {
+  margin: var(--space-xs) 0 0;
+  color: var(--color-muted);
+}
+
+.settingsPart {
+  margin: calc(var(--space-2xl) * 1.2) 0 0;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-ink);
+  font-size: var(--text-sm);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
   color: var(--color-accent);
 }
 

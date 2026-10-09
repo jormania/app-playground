@@ -168,6 +168,8 @@ export interface ThemeExploration {
    * record, but only what they actually heard of it counts as covered.
    */
   setAside?: boolean
+  /** "More of this theme": further programmes asked for the same week, same thread. */
+  extraProgrammeIds?: string[]
 }
 
 export type OptionMood = 'immersive' | 'curious' | 'adventurous'
@@ -278,6 +280,8 @@ export interface Programme {
   historicalPlace: string
   howTheyRelate: string
   continuityNote?: string
+  /** Set on "more of this theme": the week's programme this one continues. */
+  extends?: string
   sections: ProgrammeSection[]
   comparisonIds: string[]
   createdAt: Instant
@@ -382,10 +386,23 @@ export interface TasteObservation {
  * what the curator noticed, these are what the listener said.
  */
 export interface ListenerPreferences {
-  /** How much listening a week holds: roughly 1, 2–3, or 4+ hours. */
-  timePerWeek: 'short' | 'standard' | 'generous'
-  /** How far from familiar ground the curator may go. */
-  adventure: 'gentle' | 'balanced' | 'bold'
+  /** How much music a week holds: roughly 1, 2–3, 4–5, or 6+ hours. */
+  timePerWeek: 'short' | 'standard' | 'generous' | 'abundant'
+  /**
+   * How wide a week ranges, 1–5: one composer or one tight idea (1) … a
+   * theme traced across centuries, with unexpected neighbours (5).
+   */
+  breadth: Level
+  /**
+   * How well known the music is, 1–5: the great cornerstones, to know more
+   * deeply (1) … rarities, the avant-garde, music almost nobody plays (5).
+   */
+  familiarity: Level
+  /**
+   * "Same work, two perspectives": one work heard in two recordings, side by
+   * side. Off, a week holds each work once.
+   */
+  pairs: boolean
   /** How much the curator writes around the music. */
   depth: 'concise' | 'standard' | 'deeper'
   recordingEra: 'any' | 'historic-welcome' | 'modern-sound' | 'period-practice'
@@ -398,15 +415,35 @@ export interface ListenerPreferences {
   nextRequest: string
 }
 
+export type Level = 1 | 2 | 3 | 4 | 5
+
 export const DEFAULT_PREFERENCES: ListenerPreferences = {
-  timePerWeek: 'standard',
-  adventure: 'balanced',
+  timePerWeek: 'generous',
+  breadth: 3,
+  familiarity: 3,
+  pairs: false,
   depth: 'standard',
   recordingEra: 'any',
   includeVoices: true,
   includeConcertos: true,
   language: 'en',
   nextRequest: '',
+}
+
+/**
+ * Preferences as stored, brought up to date: the old three-step "adventure"
+ * becomes a familiarity level; anything unknown falls back to the default.
+ */
+export function normalisePreferences(raw: Partial<ListenerPreferences> & { adventure?: string } | undefined): ListenerPreferences {
+  const { adventure, ...rest } = raw ?? {}
+  const p = { ...DEFAULT_PREFERENCES, ...rest }
+  if (raw && raw.familiarity === undefined && adventure) p.familiarity = adventure === 'gentle' ? 2 : adventure === 'bold' ? 4 : 3
+  const level = (v: unknown, d: Level): Level => (typeof v === 'number' && v >= 1 && v <= 5 ? (Math.round(v) as Level) : d)
+  p.breadth = level(p.breadth, DEFAULT_PREFERENCES.breadth)
+  p.familiarity = level(p.familiarity, DEFAULT_PREFERENCES.familiarity)
+  if (!['short', 'standard', 'generous', 'abundant'].includes(p.timePerWeek)) p.timePerWeek = DEFAULT_PREFERENCES.timePerWeek
+  p.pairs = Boolean(p.pairs)
+  return p
 }
 
 export interface TasteProfile {

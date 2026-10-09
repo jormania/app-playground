@@ -2,9 +2,9 @@ import type { ISODate, WeekKey } from './types'
 
 /**
  * The listening week: Monday to Sunday, ISO-numbered, in the listener's own
- * time zone. Never the device's or the server's — the curator runs on Vercel in
- * UTC and the phone may be abroad; a Sunday-night listen in Bucharest belongs to
- * the Bucharest week either way. The zone is a setting, defaulting to Bucharest.
+ * time zone. Never the device's — the phone may be abroad, or set to another
+ * zone; a Sunday-night listen in Bucharest belongs to the Bucharest week
+ * either way. The zone is a setting, defaulting to Bucharest.
  *
  * Everything here works on a civil date (year, month, day) taken out of an
  * instant with Intl, then does plain calendar arithmetic in UTC, where there

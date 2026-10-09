@@ -82,6 +82,12 @@ export class Journey {
     })
   }
 
+  /**
+   * Three directions. `requestedNext` undefined means "the start of a week":
+   * the listener's wish for next week is read, and cleared once it reached
+   * the curator. Any string — even '' — is a request made now, and the wish
+   * for next week is left for next week.
+   */
   private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = []): Promise<WeekRecord> {
     const context = await buildContext(this.repo, week, requestedNext)
     const res = await this.curator.call<ThemesResponse>('themes', {
@@ -90,9 +96,9 @@ export class Journey {
       context,
       alsoOfferedThisWeek,
     })
-    // A wish for next week is read once. Clear it only after it reached the curator.
+    // A wish for next week is read once, at the start of a week. Clear it only after it reached the curator.
     const prefs = await this.repo.preferences()
-    if (prefs.nextRequest) await this.repo.savePreferences({ ...prefs, nextRequest: '' })
+    if (requestedNext === undefined && prefs.nextRequest) await this.repo.savePreferences({ ...prefs, nextRequest: '' })
     const options: ProgrammeOption[] = res.options.map((o, i) => ({
       id: newId('opt'),
       weekKey: week.key,
@@ -132,10 +138,86 @@ export class Journey {
       if (week.programmeId) throw new Error('This week already has a programme — change direction instead.')
       const current = await this.repo.options.many(week.optionIds)
       await this.repo.options.putMany(current.map((o) => ({ ...o, status: 'open' as const })))
-      const fresh = await this.generateWeek(lw, request, current.map((o) => o.title))
+      const fresh = await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
       const record: WeekRecord = { ...fresh, createdAt: week.createdAt, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
       await this.repo.weeks.put(record)
       return record
+    })
+  }
+
+  /**
+   * Three new directions after a week's programme has been chosen — for a
+   * listener who has run out of music and wants to go somewhere else. The
+   * programme they have stays the week's programme until they take one of
+   * the new directions (which sets it aside, as a change of direction does).
+   * Directions offered before stay as open paths.
+   */
+  moreDirections(request?: string): Promise<WeekRecord> {
+    const lw = this.currentWeek()
+    return this.once(`week:${lw.key}:more`, async () => {
+      const week = await this.repo.weeks.require(lw.key)
+      const current = await this.repo.options.many(week.optionIds)
+      await this.repo.options.putMany(current.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: 'open' as const })))
+      const seen = (await this.repo.options.many([...(week.earlierOptionIds ?? []), ...week.optionIds])).map((o) => o.title)
+      const fresh = await this.generateWeek(lw, request ?? '', seen)
+      const record: WeekRecord = {
+        ...week,
+        optionIds: fresh.optionIds,
+        earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds],
+        promptVersion: fresh.promptVersion,
+      }
+      await this.repo.weeks.put(record)
+      return record
+    })
+  }
+
+  /**
+   * "More of this theme": the listener has heard the week's programme and
+   * wants more on the same thread. A companion programme, its own snapshot,
+   * continuing the same exploration — the curator is told everything the
+   * thread has covered, this week included, so nothing comes back. It counts
+   * towards the thread like the week's programme does.
+   */
+  extendProgramme(programmeId: string, wish?: string): Promise<Programme> {
+    return this.once(`extend:${programmeId}`, async () => {
+      const base = await this.repo.programmes.require(programmeId)
+      const root = base.extends ? await this.repo.programmes.require(base.extends) : base
+      const option = await this.repo.options.require(root.optionId)
+      const exploration = await this.repo.explorations.require(root.explorationId)
+      const lw = weekFromKey(root.weekKey)
+      const digest = await threadDigest(this.repo, root.themeId, root.weekKey)
+      const context = await buildContext(this.repo, lw)
+      const now = this.stamp()
+      const res = await this.curator.call<ProgrammeResponse>('programme', {
+        today: now.slice(0, 10),
+        week: { key: lw.key, label: lw.label },
+        option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why },
+        extension: { of: root.title, dek: root.dek, wish: wish?.trim() || undefined },
+        thread: { ...digest, stage: exploration.stage },
+        preferences: context.preferences,
+        alreadyProgrammed: context.alreadyProgrammed,
+        alreadyKnown: context.alreadyKnown,
+        taste: context.taste,
+        questions: context.questions,
+        listenerNotes: context.listenerNotes,
+        recentListening: context.recentListening,
+      })
+      const { programme, comparisons } = await ingestProgramme(this.repo, {
+        weekKey: root.weekKey,
+        optionId: root.optionId,
+        themeId: root.themeId,
+        explorationId: root.explorationId,
+        stage: exploration.stage,
+        extendsId: root.id,
+        curated: res.programme,
+        promptVersion: res.promptVersion,
+        model: res.model,
+        now,
+      })
+      await this.repo.comparisons.putMany(comparisons)
+      await this.repo.addProgramme(programme)
+      await this.repo.explorations.put({ ...exploration, extraProgrammeIds: [...(exploration.extraProgrammeIds ?? []), programme.id] })
+      return programme
     })
   }
 

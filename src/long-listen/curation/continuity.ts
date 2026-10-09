@@ -71,9 +71,8 @@ export function digestThread(
   const response: ThreadDigest['response'] = { drawnTo: [], cooler: [], unheard: [], skipped: [] }
 
   for (const ex of mine) {
-    const p = programmes.get(ex.programmeId)
-    if (!p) continue
-    for (const item of p.sections.flatMap((s) => s.items)) {
+    const ps = [ex.programmeId, ...(ex.extraProgrammeIds ?? [])].map((id) => programmes.get(id)).filter((x): x is Programme => Boolean(x))
+    for (const item of ps.flatMap((p) => p.sections.flatMap((s) => s.items))) {
       const state = listeningState(events, item.recordingId)
       if (ex.setAside && state === 'not-started') continue
       const fb = latestFeedback(feedback, item.recordingId)
@@ -122,6 +121,6 @@ export function digestThread(
 export async function threadDigest(repo: Repo, themeId: string, nowWeek: WeekKey): Promise<ThreadDigest> {
   const theme = await repo.themes.require(themeId)
   const explorations = await repo.explorations.many(theme.explorationIds)
-  const programmes = new Map((await repo.programmes.many(explorations.map((e) => e.programmeId))).map((p) => [p.id, p]))
+  const programmes = new Map((await repo.programmes.many(explorations.flatMap((e) => [e.programmeId, ...(e.extraProgrammeIds ?? [])]))).map((p) => [p.id, p]))
   return digestThread(theme, explorations, programmes, await repo.events.all(), await repo.feedback.all(), nowWeek)
 }
