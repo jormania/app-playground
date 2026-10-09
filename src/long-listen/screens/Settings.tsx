@@ -205,7 +205,7 @@ function SpotifySection() {
       const active = r.devices.find((d) => d.active)
       const devices = r.devices.length
         ? ` Devices: ${r.devices.map((d) => d.name).join(', ')}${active ? ` (playing on ${active.name})` : ''}.`
-        : ' No device is open right now — open Spotify somewhere to use “Play on your device”.'
+        : ' No device is open right now — open Spotify somewhere before pressing Play.'
       setResult({ ok: true, message: `Signed in as ${r.name}.${devices}` })
     } catch (e) {
       setResult({ ok: false, message: messageOf(e) })

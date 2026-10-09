@@ -238,7 +238,7 @@ function numberOf(b: Bundle, itemId: string): number {
 
 const workAnchor = (itemId: string) => `work-${itemId}`
 
-const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard', skipped: 'set aside' }
+const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard', skipped: 'skipped' }
 
 /**
  * The week's music at a glance, before the essay: every work in order, with

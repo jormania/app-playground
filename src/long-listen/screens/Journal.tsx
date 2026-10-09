@@ -66,7 +66,7 @@ export function JournalScreen() {
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Opening the journal…</Waiting>
-  const STATE_WORD: Record<string, string> = { heard: 'Heard', listening: 'Started', skipped: 'Set aside for now' }
+  const STATE_WORD: Record<string, string> = { heard: 'Heard', listening: 'Started', skipped: 'Skipped' }
 
   return (
     <div>
