@@ -5,7 +5,7 @@ import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
-import { enterDusk } from '../app/theme'
+import { applyDusk, chooseDusk, likeDusk, recordDusk } from '../app/theme'
 import { usePlayback } from '../app/playback'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
@@ -51,8 +51,16 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }, [programmeId, itemId])
   useWakeLock(true)
 
-  // Dusk while this screen is open: it stays lit, so neither day-bright nor night-dark.
-  useEffect(() => enterDusk(), [])
+  // Dusk while this screen is open: a dark shade with light text, chosen afresh on each visit while the owner decides.
+  const { settings } = useServices()
+  // Chosen once per visit (a change in Settings shows on the next one), counted once, applied while open.
+  const [shade] = useState(() => chooseDusk(settings.dusk))
+  const [liked, setLiked] = useState(false)
+  const counted = useRef(false)
+  useEffect(() => {
+    if (!counted.current) { counted.current = true; recordDusk(shade) }
+    return applyDusk(shade)
+  }, [shade])
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
   const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
@@ -196,7 +204,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           <button className={s.outlineButton} onClick={heard}>I’ve heard it</button>
         </div>
       )}
-      <p className={s.note}>The screen stays awake while this page is open.</p>
+      <p className={s.settingHint} style={{ marginTop: 'var(--space-lg)' }}>
+        The screen stays awake while this page is open.
+        {settings.dusk === 'rotate' && (
+          liked
+            ? <> · Noted — this shade counts once more in Settings.</>
+            : <> · <button className={`${s.textButton} ${s.quietButton}`} onClick={() => { likeDusk(shade); setLiked(true) }}>I like this shade</button></>
+        )}
+      </p>
     </article>
   )
 }

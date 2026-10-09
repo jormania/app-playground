@@ -26,9 +26,13 @@ export interface Settings {
   theme: ThemeChoice
   /** Skipped works vanish everywhere in the app — programme, running order, Journal, Library, playlist — until shown again. */
   hideSkipped: boolean
+  /** The listening view's shade: one of four, or a different one at random each visit. */
+  dusk: DuskChoice
   /** Development only: answer from canned demo programmes instead of Claude. */
   demo: boolean
 }
+
+export type DuskChoice = 'rotate' | 'umber' | 'wine' | 'slate' | 'lamp'
 
 export const SETTINGS_KEY = 'long-listen:settings'
 export const THEME_KEY = 'long-listen:theme'
@@ -48,6 +52,7 @@ export function loadSettings(): Settings {
     spotifyClientId: typeof raw.spotifyClientId === 'string' && raw.spotifyClientId ? raw.spotifyClientId : ENV_CLIENT_ID,
     theme: theme === 'light' || theme === 'dark' ? theme : 'system',
     hideSkipped: raw.hideSkipped !== false,
+    dusk: (['umber', 'wine', 'slate', 'lamp'] as const).find((k) => k === raw.dusk) ?? 'rotate',
     demo: Boolean(import.meta.env?.DEV) && raw.demo === true,
   }
 }
