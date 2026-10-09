@@ -35,7 +35,7 @@ checked, not automatic.
    `shared/model-migration.md` — for anything else that changed.
 3. `npm test`, `npm run typecheck`.
 4. `ANTHROPIC_API_KEY=… npm run test:live` — sends each app's real request once
-   (max_tokens capped at 1024; a few cents) and fails on any the API refuses,
+   (answers capped at 256 tokens, one web search; about $0.05–0.10) and fails on any the API refuses,
    naming the app, model and the API's error. Pushing the change also runs it in
    CI (below).
 5. Replies are read by block type everywhere (`extractAnthropicText`), so a model
@@ -71,14 +71,23 @@ the API accepts the request; reply quality is not tested. Excluded from
 In GitHub, [`.github/workflows/ai-models.yml`](.github/workflows/ai-models.yml)
 runs it:
 
-- on a push to `main` or a PR that touches `models.js` or any file that builds a
-  request (the paths list is enforced by `models.test.js`),
+- on a PR that touches `models.js` or any file that builds a request (the paths
+  list is enforced by `models.test.js`) — and on a later push to that PR only if
+  the push itself changed one of those files (`scripts/live-check-needed.mjs`;
+  GitHub's `paths` filter looks at the whole PR, so docs-only pushes used to
+  re-run it),
+- not on the merge to `main`, which is the code the PR already checked,
 - every Monday at 06:23 UTC — a retired model fails here before an app finds out,
 - by hand (Actions → AI models (live) → Run workflow).
 
 It needs the repository secret **`ANTHROPIC_API_KEY`** (Settings → Secrets and
 variables → Actions). Without it the run fails on purpose. A failed run is emailed,
 like every other workflow here.
+
+**It spends from the same key as the apps.** On 8–9 October 2026 it ran 19
+times in one working session — every push to two long PRs plus each merge, at
+1,024-token answers and six web searches a run — which was most of that day's
+spend. The gate, the dropped merge run and the caps above are the fix.
 
 Behind a proxy (e.g. a Claude Code cloud session) Node's fetch needs
 `NODE_USE_ENV_PROXY=1` as well.

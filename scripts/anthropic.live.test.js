@@ -6,7 +6,8 @@
 // calls each app's own request function, lets its body go out unchanged apart
 // from a cap on max_tokens, and fails on any response the API refuses.
 //
-// Not part of `npm test`: it needs a key and costs a little (a few cents a run).
+// Not part of `npm test`: it needs a key and costs a little (about $0.05-0.10 a
+// run, with the caps below).
 // Run it with `ANTHROPIC_API_KEY=… npm run test:live`; CI runs it from
 // .github/workflows/ai-models.yml. See AI_MODELS.md.
 //
@@ -24,8 +25,9 @@ vi.mock('../src/shared/photo.ts', async (orig) => ({
 
 const KEY = process.env.ANTHROPIC_API_KEY ?? ''
 const ENDPOINT = 'https://api.anthropic.com/v1/messages'
-/** Enough for a thinking model to answer at all; keeps a run to cents. */
-const MAX_TOKENS_CAP = 1024
+/** Only acceptance is checked, so answers are cut short: a thinking model that
+ *  runs out mid-thought still returns 200. Output is most of a run's cost. */
+const MAX_TOKENS_CAP = 256
 
 // 8×8-ish JPEG, flat green — enough for the vision calls to be well-formed.
 const JPEG_B64 =
@@ -46,6 +48,9 @@ let sent = []
 async function tap(url, init = {}) {
   const body = JSON.parse(init.body)
   body.max_tokens = Math.min(body.max_tokens ?? MAX_TOKENS_CAP, MAX_TOKENS_CAP)
+  // One search proves a web-search request is accepted; each one is $0.01 plus
+  // the results read back in as input.
+  for (const t of body.tools ?? []) if (String(t.type).startsWith('web_search')) t.max_uses = 1
   const headers = new Headers(init.headers)
   headers.set('x-api-key', KEY)
   let res

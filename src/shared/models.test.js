@@ -88,8 +88,8 @@ describe('the live API check covers every app that calls Claude', () => {
       if (EXEMPT.has(file)) continue
       const covered = SENDS_ONLY[file] ?? file
       if (!live.includes(`../${covered}`)) missing.push(`${covered}: not in scripts/anthropic.live.test.js`)
-      // Listed twice: once for push, once for pull_request.
-      if (workflow.split(`- ${file}\n`).length - 1 !== 2) missing.push(`${file}: not in both ai-models.yml paths lists`)
+      // Listed once, under pull_request's paths (scripts/live-check-needed.mjs reads it too).
+      if (workflow.split(`- ${file}\n`).length - 1 !== 1) missing.push(`${file}: not in ai-models.yml paths`)
     }
     expect(callers.length).toBeGreaterThan(10)
     expect(missing).toEqual([])
