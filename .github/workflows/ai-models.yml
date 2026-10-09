@@ -12,7 +12,9 @@ name: AI models (live)
 #     only if THAT push changed one (GitHub's own `paths` filter looks at the
 #     whole PR, so a docs-only push used to re-run all 26; the first step below
 #     checks the push itself);
-#   - weekly, because a retired model shows up here before it shows up in an app;
+#   - weekly, because a retired model shows up here before it shows up in an app
+#     — and for that one tiny request per model is enough (LIVE_SCOPE=models:
+#     two requests, not every app's);
 #   - by hand (Actions -> AI models (live) -> Run workflow).
 # Not on the merge to main: that is the code the pull request already checked.
 # Needs the ANTHROPIC_API_KEY repository secret; without it the run fails on
@@ -83,6 +85,7 @@ jobs:
         if: steps.gate.outputs.needed == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LIVE_SCOPE: ${{ github.event_name == 'schedule' && 'models' || 'all' }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::error::ANTHROPIC_API_KEY secret is not set — see AI_MODELS.md"

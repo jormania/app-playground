@@ -77,7 +77,9 @@ runs it:
   GitHub's `paths` filter looks at the whole PR, so docs-only pushes used to
   re-run it),
 - not on the merge to `main`, which is the code the PR already checked,
-- every Monday at 06:23 UTC — a retired model fails here before an app finds out,
+- every Monday at 06:23 UTC — a retired model fails here before an app finds out.
+  This run sends only one tiny request per model id (`LIVE_SCOPE=models`, about a
+  tenth of a cent); the full set of app requests runs on request changes and by hand,
 - by hand (Actions → AI models (live) → Run workflow).
 
 It needs the repository secret **`ANTHROPIC_API_KEY`** (Settings → Secrets and
