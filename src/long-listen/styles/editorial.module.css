@@ -768,18 +768,28 @@
   margin-bottom: var(--space-md);
 }
 
+/* Compact, to match the one-line states: smaller words, a slimmer pill. The
+   ::after keeps the finger target near 44px without drawing it. */
 .chip {
   appearance: none;
+  position: relative;
   font: inherit;
-  font-size: 1rem;
-  padding: var(--space-2xs) var(--space-sm);
-  min-height: 44px;
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  padding: var(--space-3xs) var(--space-sm);
+  min-height: 34px;
   border: 1px solid var(--color-border-2);
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-ink);
   cursor: pointer;
   transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+
+.chip::after {
+  content: '';
+  position: absolute;
+  inset: -5px -2px;
 }
 
 .chip:hover {
