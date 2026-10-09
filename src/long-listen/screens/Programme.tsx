@@ -5,6 +5,7 @@ import type {
 import { latestFeedback, listeningState } from '../domain/listening'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
+import { sectionTitle } from '../domain/sections'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
@@ -194,8 +195,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       </div>
 
       {p.sections.map((section, i) => (
-        <section key={section.id} aria-label={section.heading}>
-          <h2 className={s.sectionHead}>{section.heading}</h2>
+        <section key={section.id} aria-label={sectionTitle(section)}>
+          <h2 className={s.sectionHead}>{sectionTitle(section)}</h2>
           <p className={s.sectionGuide}>
             Part {i + 1} of {p.sections.length}{ROLE_GUIDE[section.role] ? ` — ${ROLE_GUIDE[section.role]}` : ''}
           </p>
@@ -263,12 +264,17 @@ function RunningOrder({ b }: { b: Bundle }) {
       <p className={s.panelHead}>
         The music · {rows.length} works{heard > 0 ? ` · ${heard} heard` : ''}
       </p>
+      {/* Grouped by section, each under its heading: the part of the week a
+          work belongs to is said once above it, not in the space a state tag
+          needs — where it used to vanish as soon as each work had a state. */}
       <ol className={s.roList}>
         {rows.map(({ item, section }, n) => {
           const state = listeningState(b.events, item.recordingId)
           const now = onNow(item.recordingId)
+          const firstOfSection = n === 0 || rows[n - 1].section.id !== section.id
           return (
             <li key={item.id} aria-current={now ? 'true' : undefined}>
+              {firstOfSection && <p className={s.roGroup}>{sectionTitle(section)}</p>}
               <button type="button" className={s.roRow} onClick={() => jump(item.id)}>
                 <span className={s.roNo}>{n + 1}</span>
                 <span className={s.roText}>
@@ -280,7 +286,7 @@ function RunningOrder({ b }: { b: Bundle }) {
                     ? <span className={`${s.tag} ${s.tagOn}`}>{now.playing ? 'playing' : 'paused'}</span>
                     : STATE_TAG[state]
                     ? <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_TAG[state]}</span>
-                    : <span className={s.roRole}>{section.heading}</span>}
+                    : null}
                 </span>
               </button>
             </li>

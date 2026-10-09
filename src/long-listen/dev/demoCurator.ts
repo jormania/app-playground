@@ -31,7 +31,7 @@ const COLOUR: ProgrammeResponse = {
         whyThisRecording: 'Boulez makes every layer audible. You hear how the effects are built — which is the best way to hear how new they were.',
         listenFor: ['The cellos divided into four parts near the end of the first movement', 'How the second movement never settles on a downbeat', 'The chorale for brass that breaks through at the close'],
       })] },
-      { role: 'then', heading: 'Then', items: [it('Maurice Ravel', 'Daphnis et Chloé', { conductor: 'Pierre Monteux', orchestra: 'London Symphony Orchestra' }, {
+      { role: 'then', heading: 'Where it leads', items: [it('Maurice Ravel', 'Daphnis et Chloé', { conductor: 'Pierre Monteux', orchestra: 'London Symphony Orchestra' }, {
         composed: '1909–12', form: 'ballet', workContext: 'Written for the Ballets Russes; Monteux conducted the premiere in 1912.',
         character: ['warm', 'theatrical'],
         why: 'Ravel’s largest score, and the one where colour becomes narrative. The dawn scene is the most famous sunrise in the repertoire.',
@@ -73,7 +73,7 @@ const AFTER_THE_WAR: ProgrammeResponse = {
         whyThisRecording: 'From Abbado’s Wien Modern album: the Vienna strings make the clusters glow rather than buzz.',
         listenFor: ['The opening cluster of every chromatic note at once', 'The moment the sound seems to drain upwards'],
       })] },
-      { role: 'then', heading: 'Then', items: [it('Witold Lutosławski', 'Concerto for Orchestra', { conductor: 'Edward Gardner', orchestra: 'BBC Symphony Orchestra' }, {
+      { role: 'then', heading: 'Where it leads', items: [it('Witold Lutosławski', 'Concerto for Orchestra', { conductor: 'Edward Gardner', orchestra: 'BBC Symphony Orchestra' }, {
         composed: '1950–54', form: 'concerto for orchestra', character: ['muscular', 'bright'],
         why: 'Folk melodies from Mazovia, transformed into a showpiece that every section of the orchestra has to earn.',
         whyThisRecording: 'Gardner is fleet and precise; the passacaglia builds without bluster.',
