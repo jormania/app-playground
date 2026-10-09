@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { Field, SegmentedControl, SettingsToggle } from '../../ds'
+import { ConfirmModal, Field, SegmentedControl, SettingsToggle } from '../../ds'
 import { useLoad, useServices } from '../app/services'
-import { beginSignIn, redirectUriFor } from '../spotify/auth'
+import { beginSignIn, redirectUriFor, renewBy } from '../spotify/auth'
 import { isValidTimeZone } from '../domain/week'
 import { DEFAULT_PREFERENCES, type ListenerPreferences } from '../domain/types'
 import type { ThemeChoice } from '../app/settings'
 import { GUIDE_URL, STARTER_TEMPLATE_URL } from '../app/links'
 import { messageOf } from '../components/common'
+import { LevelScale } from '../components/LevelScale'
+import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
+import { archiveNotebook } from '../notion/mirror'
+import { go } from '../app/router'
 import s from '../styles/editorial.module.css'
 
 type Result = { ok: boolean; message: string } | null
@@ -17,10 +21,12 @@ function ResultLine({ r }: { r: Result }) {
 }
 
 /**
- * Settings, in the order a new listener needs them: the three connections
- * (each with a test that proves it), then how you listen, then reading comfort
- * and your data. Credentials are kept on this device, as in every app in the
- * playground; each field saves when you leave it.
+ * Settings in three parts. First the music: how a week of listening should
+ * feel — its length, how widely it ranges, how well known the music is,
+ * whether one work is ever heard twice side by side — then what goes into it
+ * and how the curator writes. Then the connections, each with a test. Then
+ * the app itself: the week's time zone, reading comfort, your data (backup,
+ * restore, a fresh start) and what's running.
  */
 export function SettingsScreen() {
   const svc = useServices()
@@ -33,11 +39,15 @@ export function SettingsScreen() {
         New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
       </p>
 
+      <h2 className={s.settingsPart}>Music and exploration</h2>
+      <ExplorationSections />
+
+      <h2 className={s.settingsPart}>Connections</h2>
       <ClaudeSection />
       <SpotifySection />
       <NotionSection />
-      <PreferencesSection />
 
+      <h2 className={s.settingsPart}>The app</h2>
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>Your week</h2>
         <TimeZoneField />
@@ -60,6 +70,7 @@ export function SettingsScreen() {
       </section>
 
       <BackupSection repo={repo} bump={bump} say={say} />
+      <FreshStartSection />
 
       <section className={s.settingsGroup}>
         <h2 className={s.h2}>About</h2>
@@ -124,7 +135,9 @@ function ClaudeSection() {
       <h2 className={s.h2}>Claude, the curator</h2>
       <p className={s.quiet}>
         Paste an Anthropic API key (console.anthropic.com → API keys). It stays on this device, like in the other apps here,
-        and goes only to Anthropic, with each request to Claude. Each week costs a few cents.
+        and goes only to Anthropic, with each request to Claude. Each week costs a few cents. Best practice: a key made just for
+        this app, in a workspace with a small monthly spend limit — then a lost phone or a leak costs little, and the key can be
+        deleted in the console without touching anything else.
       </p>
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.row}>
@@ -185,8 +198,21 @@ function SpotifySection() {
               <button className={s.textButton} onClick={() => { spotify.setTokens(null); setResult(null); bump() }}>Disconnect</button>
             </>}
       </div>
+      {spotify.connected && renewalNote(renewBy(spotify.currentTokens))}
       <ResultLine r={result} />
     </section>
+  )
+}
+
+/** Spotify sign-ins last six months; say when this one needs renewing, quietly, and louder near the end. */
+function renewalNote(at: number | undefined) {
+  if (!at) return null
+  const date = new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+  const soon = at - Date.now() < 14 * 24 * 3600_000
+  return (
+    <p className={soon ? s.note : s.faint}>
+      {soon ? `Spotify will ask you to sign in again around ${date} — its sign-ins last six months. Disconnect and connect again any time before then.` : `Spotify sign-ins last six months; this one runs until about ${date}.`}
+    </p>
   )
 }
 
@@ -228,8 +254,7 @@ function NotionSection() {
 }
 
 const PREF_OPTIONS = {
-  timePerWeek: [{ value: 'short', label: 'About an hour' }, { value: 'standard', label: '2–3 hours' }, { value: 'generous', label: '4 hours +' }],
-  adventure: [{ value: 'gentle', label: 'Gentle' }, { value: 'balanced', label: 'Balanced' }, { value: 'bold', label: 'Bold' }],
+  timePerWeek: (Object.keys(TIME) as ListenerPreferences['timePerWeek'][]).map((value) => ({ value, label: TIME[value].label })),
   depth: [{ value: 'concise', label: 'Concise' }, { value: 'standard', label: 'Standard' }, { value: 'deeper', label: 'Deeper' }],
   recordingEra: [{ value: 'any', label: 'Any' }, { value: 'historic-welcome', label: 'Historic' }, { value: 'modern-sound', label: 'Modern' }, { value: 'period-practice', label: 'Period' }],
   language: [{ value: 'en', label: 'English' }, { value: 'ro', label: 'Română' }],
@@ -242,7 +267,8 @@ const ERA_HINT: Record<ListenerPreferences['recordingEra'], string> = {
   'period-practice': 'Historically informed performances, where they exist.',
 }
 
-function PreferencesSection() {
+/** What a week of listening should be like — told to the curator directly. */
+function ExplorationSections() {
   const { repo, bump } = useServices()
   const { data } = useLoad(() => repo.preferences(), [])
   const p = data ?? DEFAULT_PREFERENCES
@@ -250,18 +276,108 @@ function PreferencesSection() {
     await repo.savePreferences({ ...(await repo.preferences()), [k]: v })
     bump()
   }
+  const [least, most] = TIME[p.timePerWeek].works
+  return (
+    <>
+      <section className={s.settingsGroup}>
+        <h2 className={s.h2}>Your week of listening</h2>
+        <p className={s.quiet}>The curator weighs these above anything it has inferred. A change shapes the next directions and programmes, never one already made — so set them before you choose a week, or ask for three others after.</p>
+        <SegmentedControl label="Music each week" value={p.timePerWeek} onChange={(v) => void set('timePerWeek', v as ListenerPreferences['timePerWeek'])} options={PREF_OPTIONS.timePerWeek} />
+        <p className={s.faint} style={{ marginTop: 'var(--space-2xs)' }}>{TIME[p.timePerWeek].words[0].toUpperCase()}{TIME[p.timePerWeek].words.slice(1)}: about {least}–{most} works, in two to four sections.</p>
+        <LevelScale
+          label="How widely a week ranges"
+          value={p.breadth}
+          onChange={(v) => void set('breadth', v)}
+          low="One focus"
+          high="Across centuries"
+          names={BREADTH}
+          describe={(v) => `${BREADTH[v].words[0].toUpperCase()}${BREADTH[v].words.slice(1)}.`}
+        />
+        <LevelScale
+          label="How well known the music is"
+          value={p.familiarity}
+          onChange={(v) => void set('familiarity', v)}
+          low="Cornerstones"
+          high="Rare & avant-garde"
+          names={FAMILIARITY}
+          describe={(v) => `${FAMILIARITY[v].words[0].toUpperCase()}${FAMILIARITY[v].words.slice(1)}.`}
+        />
+        <SettingsToggle
+          label="Same work, two perspectives"
+          hint="Now and then, one work heard in two recordings side by side. Off: each work once a week."
+          checked={p.pairs}
+          onChange={(e) => void set('pairs', e.target.checked)}
+        />
+      </section>
+
+      <section className={s.settingsGroup}>
+        <h2 className={s.h2}>What goes in</h2>
+        <SegmentedControl label="Recordings" value={p.recordingEra} onChange={(v) => void set('recordingEra', v as ListenerPreferences['recordingEra'])} options={PREF_OPTIONS.recordingEra} />
+        <p className={s.faint} style={{ marginTop: 'var(--space-2xs)' }}>{ERA_HINT[p.recordingEra]}</p>
+        <SettingsToggle label="Works with voices" hint="Choral symphonies, orchestral songs" checked={p.includeVoices} onChange={(e) => void set('includeVoices', e.target.checked)} />
+        <SettingsToggle label="Concertos" hint="Orchestra with a soloist" checked={p.includeConcertos} onChange={(e) => void set('includeConcertos', e.target.checked)} />
+      </section>
+
+      <section className={s.settingsGroup}>
+        <h2 className={s.h2}>The curator’s writing</h2>
+        <SegmentedControl label="How much it writes" value={p.depth} onChange={(v) => void set('depth', v as ListenerPreferences['depth'])} options={PREF_OPTIONS.depth} />
+        <SegmentedControl label="Language" value={p.language} onChange={(v) => void set('language', v as ListenerPreferences['language'])} options={PREF_OPTIONS.language} />
+      </section>
+    </>
+  )
+}
+
+/**
+ * Start the journey again: a backup is saved first (the archive), the pages
+ * the app wrote in Notion go to Notion's trash, and the app forgets
+ * everything it holds about the journey and about you. Your settings,
+ * connections and music preferences stay.
+ */
+function FreshStartSection() {
+  const { repo, notion, bump, say } = useServices()
+  const [asking, setAsking] = useState(false)
+  const [working, setWorking] = useState<string | null>(null)
+
+  async function freshStart() {
+    setAsking(false)
+    try {
+      setWorking('Saving the archive…')
+      await downloadBackup(repo, 'the-long-listen-archive')
+      if (notion) {
+        setWorking('Moving your notebook pages to Notion’s trash…')
+        await archiveNotebook(notion.call, repo).catch(() => 0)
+      }
+      setWorking('Clearing…')
+      await repo.freshStart()
+      bump()
+      say('A fresh start. The archive was saved to your downloads.', 'success')
+      go({ name: 'week' })
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setWorking(null)
+    }
+  }
+
   return (
     <section className={s.settingsGroup}>
-      <h2 className={s.h2}>How you listen</h2>
-      <p className={s.quiet}>Told to the curator directly — it weighs these above anything it has inferred. Changes shape the next programme, never one already made.</p>
-      <SegmentedControl label="Time most weeks" value={p.timePerWeek} onChange={(v) => void set('timePerWeek', v as ListenerPreferences['timePerWeek'])} options={PREF_OPTIONS.timePerWeek} />
-      <SegmentedControl label="How far from familiar ground" value={p.adventure} onChange={(v) => void set('adventure', v as ListenerPreferences['adventure'])} options={PREF_OPTIONS.adventure} />
-      <SegmentedControl label="How much the curator writes" value={p.depth} onChange={(v) => void set('depth', v as ListenerPreferences['depth'])} options={PREF_OPTIONS.depth} />
-      <SegmentedControl label="Recordings" value={p.recordingEra} onChange={(v) => void set('recordingEra', v as ListenerPreferences['recordingEra'])} options={PREF_OPTIONS.recordingEra} />
-      <p className={s.faint} style={{ marginTop: 'var(--space-2xs)' }}>{ERA_HINT[p.recordingEra]}</p>
-      <SettingsToggle label="Works with voices" hint="Choral symphonies, orchestral songs" checked={p.includeVoices} onChange={(e) => void set('includeVoices', e.target.checked)} />
-      <SettingsToggle label="Concertos" hint="Orchestra with a soloist" checked={p.includeConcertos} onChange={(e) => void set('includeConcertos', e.target.checked)} />
-      <SegmentedControl label="The curator writes in" value={p.language} onChange={(v) => void set('language', v as ListenerPreferences['language'])} options={PREF_OPTIONS.language} />
+      <h2 className={s.h2}>A fresh start</h2>
+      <p className={s.quiet}>
+        Clears the whole journey: every week and programme, your listening marks and reactions, the threads, and everything the curator has
+        learned about your taste, including your notes to it. First the app saves an archive file to your downloads (it restores like any backup),
+        and moves the pages it wrote in Notion to Notion’s trash, where they stay recoverable for 30 days.
+        Kept: your keys and connections, your music and exploration settings, the look of the app.
+      </p>
+      <button className={`${s.textButton} ${s.dangerButton}`} onClick={() => setAsking(true)} disabled={Boolean(working)}>{working ?? 'Start again from nothing…'}</button>
+      <ConfirmModal
+        isOpen={asking}
+        title="Start again from nothing?"
+        message="An archive of everything is saved to your downloads first, and it restores like any backup. After that, the app keeps nothing of the journey so far."
+        confirmText="Clear everything"
+        variant="danger"
+        onConfirm={() => void freshStart()}
+        onCancel={() => setAsking(false)}
+      />
     </section>
   )
 }
@@ -278,17 +394,22 @@ function TimeZoneField() {
   )
 }
 
+/** Everything in the store, as one JSON file in the downloads. */
+async function downloadBackup(repo: ReturnType<typeof useServices>['repo'], name: string) {
+  const data = await repo.exportAll()
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${name}-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
 function BackupSection({ repo, bump, say }: Pick<ReturnType<typeof useServices>, 'repo' | 'bump' | 'say'>) {
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function exportBackup() {
-    const data = await repo.exportAll()
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `the-long-listen-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    await downloadBackup(repo, 'the-long-listen')
   }
 
   async function importBackup(file: File) {

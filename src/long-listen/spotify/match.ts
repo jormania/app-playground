@@ -9,11 +9,17 @@ import type { ProposedRecording } from '../domain/types'
  * artist list. A track only counts if it is the right WORK *and* the right
  * PERFORMERS — "Beethoven 5" by anyone is not "Beethoven 5, Kleiber / Vienna".
  *
- *   strong   — work title matches and every named performer is credited
- *   probable — work matches, composer credited, and the conductor (or the first
- *              soloist, when there is no conductor) is credited
- *   none     — anything less; the UI says "not found on Spotify" rather than
- *              linking a different interpretation
+ *   strong   — the composer is named, the work title matches, and every named
+ *              performer is credited. Accepted as the recording.
+ *   probable — composer named, work mostly matches, the conductor (or first
+ *              soloist) is credited but someone else isn't. Might be the same
+ *              recording credited differently, might be another one by the
+ *              same conductor; only the listener can say, so it is held as
+ *              `unconfirmed` and never linked, played or counted until they do.
+ *   none     — anything less, or a track that contradicts the proposal (another
+ *              catalogue number, a release older than the recording). The UI
+ *              says "not found on Spotify" rather than link a different
+ *              interpretation.
  */
 export interface SpotifyTrackLike {
   id: string
@@ -68,11 +74,16 @@ function credited(artists: { name: string }[]): string {
 const tokens = (s: string) => s.split(' ').filter(Boolean)
 
 /**
- * Bumped whenever matching gets better, so recordings an older matcher marked
- * `not-found` are looked for once more.
+ * Bumped whenever matching gets better, so recordings an older matcher
+ * decided about are looked at once more.
  *   2 — bracketed version notes no longer count as title words
+ *   3 — the composer must be named; a contradicting catalogue number or a
+ *       release older than the recording rules a track out; a near miss is
+ *       held for the listener to confirm instead of being linked. Matches an
+ *       older matcher accepted are re-checked (it once passed Beethoven's 7th
+ *       for Sibelius's, same conductor, same orchestra).
  */
-export const MATCHER_VERSION = 2
+export const MATCHER_VERSION = 3
 
 /**
  * The curator often adds a version note in brackets — "(original piano
@@ -115,12 +126,49 @@ export interface MatchResult {
   missing: string[]
 }
 
+// Catalogue schemes common in track titles: "Op. 92", "BWV 1048", "K. 550", "D. 944", "L. 109", "Hob. I:104".
+const CATALOGUE = /\b(op|opus|bwv|k|kv|d|l|hob|s|rv|wwv)\.?\s*([ivx]+:)?\s*(\d+)/gi
+
+/** Catalogue numbers named in a text, as "op 92", "bwv 1048" … */
+function catalogueNumbers(text: string): Set<string> {
+  const out = new Set<string>()
+  for (const m of text.matchAll(CATALOGUE)) {
+    const scheme = m[1].toLowerCase().replace(/^opus$/, 'op').replace(/^kv$/, 'k')
+    out.add(`${scheme} ${(m[2] ?? '').toLowerCase()}${Number(m[3])}`)
+  }
+  return out
+}
+
+/** Does the track name a catalogue number of the same scheme as the proposal's, but a different one? */
+function catalogueContradicts(p: ProposedRecording, trackText: string): boolean {
+  const want = catalogueNumbers(`${p.catalogue ?? ''} ${p.work}`)
+  if (!want.size) return false
+  const have = catalogueNumbers(trackText)
+  for (const h of have) {
+    const scheme = h.split(' ')[0]
+    const same = [...want].filter((w) => w.split(' ')[0] === scheme)
+    if (same.length && !same.includes(h)) return true
+  }
+  return false
+}
+
+/** A release can't come before the recording on it: a proposed 1987 recording isn't on a 1964 album. */
+function releasedTooEarly(p: ProposedRecording, track: SpotifyTrackLike): boolean {
+  const recorded = Number(/\b(1[89]\d\d|20\d\d)\b/.exec(p.year ?? '')?.[1])
+  const released = Number(track.album?.release_date?.slice(0, 4))
+  return Boolean(recorded && released && released < recorded - 1)
+}
+
 export function matchTrack(track: SpotifyTrackLike, p: ProposedRecording): MatchResult {
   const credits = credited(track.artists)
   // Classical tracks often carry the work in the album name and only the
   // movement in the track name ("I. Allegro con brio"); take the better of the two.
   const work = Math.max(workOverlap(p.work, track.name), track.album ? workOverlap(p.work, track.album.name) * 0.95 : 0)
-  const composer = personCredited(p.composer, credits)
+  // The composer is credited as an artist on nearly every classical track; a
+  // few older uploads only name them in the title. Either will do — but one of
+  // them must, or "Symphony No. 7" by the right conductor could be anyone's.
+  const titles = `${track.name} ${track.album?.name ?? ''}`
+  const composer = personCredited(p.composer, credits) || personCredited(p.composer, ` ${fold(titles)} `)
   const missing: string[] = []
   if (p.conductor && !personCredited(p.conductor, credits)) missing.push(p.conductor)
   if (p.orchestra && !orchestraCredited(p.orchestra, credits)) missing.push(p.orchestra)
@@ -131,8 +179,9 @@ export function matchTrack(track: SpotifyTrackLike, p: ProposedRecording): Match
   const leadOk = lead ? !missing.includes(lead) : false
 
   let level: MatchLevel = 'none'
-  if (work >= 0.99 && missing.length === 0) level = 'strong'
-  else if (work >= 0.75 && composer && leadOk) level = 'probable'
+  if (!composer || catalogueContradicts(p, titles) || releasedTooEarly(p, track)) level = 'none'
+  else if (work >= 0.99 && missing.length === 0) level = 'strong'
+  else if (work >= 0.75 && leadOk) level = 'probable'
   return { level, work, composer, missing }
 }
 

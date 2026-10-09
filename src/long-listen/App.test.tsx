@@ -22,6 +22,7 @@ const curator = (): CuratorClient => {
 describe('The Long Listen', () => {
   it('goes from three directions to a programme with named recordings', async () => {
     const repo = new Repo(memoryStore())
+    await repo.savePreferences({ ...(await repo.preferences()), pairs: true }) // side-by-side pairs are opt-in
     render(<App repo={repo} curator={curator()} />)
     expect(await screen.findByText('Three ways into the week', {}, { timeout: 4000 })).toBeTruthy()
     const choose = screen.getAllByRole('button', { name: 'Listen this way →' })
@@ -85,9 +86,31 @@ describe('The Long Listen', () => {
     expect(screen.getByLabelText('Spotify Client ID')).toBeTruthy()
     expect(screen.getByLabelText('Notion integration token')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Test Notion' })).toBeTruthy()
-    expect(screen.getByText('How you listen')).toBeTruthy()
+    expect(screen.getByText('Your week of listening')).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'How widely a week ranges' })).toBeTruthy()
+    expect(screen.getByText('Same work, two perspectives')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Start again from nothing…' })).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Test the key' }))
     expect(await screen.findByText(/The curator is ready/)).toBeTruthy()
+  })
+
+  it('holds no side-by-side pair unless the listener asked for one', async () => {
+    render(<App repo={new Repo(memoryStore())} curator={curator()} />)
+    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    await userEvent.click(screen.getAllByRole('button', { name: 'Listen this way →' })[0])
+    await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })
+    expect(screen.queryByText('Same work, two perspectives')).toBeNull()
+  }, 15000)
+
+  it('starts again from nothing, keeping the listener’s settings', async () => {
+    const repo = new Repo(memoryStore())
+    await repo.savePreferences({ ...(await repo.preferences()), breadth: 5 })
+    await repo.saveTaste({ observations: [], questions: [], notesToCurator: 'I know Brahms well.', updatedAt: 'x' })
+    await repo.themes.put({ id: 't', title: 'T', summary: '', firstIntroduced: '2026-W41', explorationIds: [], openQuestions: [], adjacentTopics: [], nextDirections: [], updatedAt: 'x' })
+    await repo.freshStart()
+    expect(await repo.themes.all()).toEqual([])
+    expect((await repo.taste()).notesToCurator).toBe('')
+    expect((await repo.preferences()).breadth).toBe(5)
   })
 
   it('explains, without a stack trace, when the curator is locked', async () => {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ProposedRecording, Recording } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { openUrl, searchUrl } from '../spotify/client'
-import { aboutDuration, forgetMatch, verifyRecording } from '../spotify/verify'
+import { aboutDuration, confirmMatch, isConfirmed, rejectMatch, verifyRecording } from '../spotify/verify'
 import { useServices } from '../app/services'
 import { messageOf } from './common'
 import s from '../styles/editorial.module.css'
@@ -13,7 +13,9 @@ import s from '../styles/editorial.module.css'
  * apart. The credit line and character are the curator's; the album, release
  * year and ℗ line appear only once Spotify has matched those exact performers,
  * and a recording Spotify can't find gets a search, never a link to someone
- * else's performance of the same work.
+ * else's performance of the same work. A near miss — the conductor right, the
+ * orchestra not credited — is put to the listener as a question, and is not
+ * linked, played or counted until they answer it.
  */
 export function RecordingBlock({
   proposed, recording, character, onOpened, onFindAlternative, standInBelow = false, label = 'Recommended recording',
@@ -31,8 +33,10 @@ export function RecordingBlock({
   const { spotify, repo, bump, say } = useServices()
   const [busy, setBusy] = useState(false)
   const query = [proposed.composer.split(' ').slice(-1)[0], proposed.work, proposed.conductor ?? proposed.soloists[0]?.name ?? proposed.orchestra ?? ''].join(' ')
-  const sp = recording?.verification === 'verified' ? recording.spotify : undefined
-  const year = sp?.releaseDate?.slice(0, 4)
+  const sp = isConfirmed(recording) ? recording.spotify : undefined
+  const near = recording?.verification === 'unconfirmed' ? recording.spotify : undefined
+  const shown = sp ?? near
+  const year = shown?.releaseDate?.slice(0, 4)
 
   async function check() {
     if (!recording) return
@@ -58,10 +62,24 @@ export function RecordingBlock({
     }
   }
 
+  async function yesThis() {
+    if (!recording) return
+    await confirmMatch(repo, recording.id)
+    bump()
+  }
+
   async function notThis() {
     if (!recording) return
-    await forgetMatch(repo, recording.id)
-    bump()
+    setBusy(true)
+    try {
+      const r = await rejectMatch(repo, spotify, recording.id, proposed)
+      bump()
+      if (r.verification === 'not-found') say('Noted. Spotify has nothing else that matches, so it’s marked as not found.')
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -72,12 +90,12 @@ export function RecordingBlock({
         <p className={s.creditCharacter}>{character ?? recording?.character.join(', ')}</p>
       ) : null}
 
-      {sp && (
+      {shown && (
         <div className={s.album}>
-          {sp.imageUrl ? <img className={s.cover} src={sp.imageUrl} alt="" loading="lazy" width={64} height={64} /> : null}
+          {shown.imageUrl ? <img className={s.cover} src={shown.imageUrl} alt="" loading="lazy" width={64} height={64} /> : null}
           <div className={s.albumText}>
-            <div className={s.albumName}>{sp.albumName}</div>
-            <div>{[aboutDuration(sp.durationMs), year && `released ${year}`, sp.phonographic].filter(Boolean).join(' · ')}</div>
+            <div className={s.albumName}>{shown.albumName}</div>
+            <div>{[aboutDuration(shown.durationMs), year && `released ${year}`, shown.phonographic].filter(Boolean).join(' · ')}</div>
           </div>
         </div>
       )}
@@ -89,7 +107,11 @@ export function RecordingBlock({
               Open in Spotify
             </a>
             {spotify.connected && <button className={s.textButton} onClick={play}>Play on your device</button>}
+            {/* Even a strong match can be the same performers in another decade. */}
+            {!sp.confirmedByListener && <button className={`${s.textButton} ${s.quietButton}`} onClick={notThis} disabled={busy}>{busy ? 'Looking again…' : 'Not this recording?'}</button>}
           </>
+        ) : near ? (
+          <a href={openUrl('album', near.albumId)} target="_blank" rel="noopener noreferrer">Look at it in Spotify</a>
         ) : recording?.verification === 'not-found' ? (
           <a href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Search Spotify</a>
         ) : spotify.connected && recording ? (
@@ -99,10 +121,18 @@ export function RecordingBlock({
         )}
       </div>
 
-      {sp?.confidence === 'probable' && (
+      {near && (
         <p className={s.note}>
-          Spotify credits this a little differently from the curator — worth a glance before you settle in.{' '}
-          <button className={s.textButton} onClick={notThis}>Not this one</button>
+          Spotify has something close, credited to {near.artistNames.join(', ') || 'other performers'}. Is it the recording the curator meant?
+          Same conductor can mean a different decade and a different reading, so it isn’t linked or played until you say.{' '}
+          <button className={s.textButton} onClick={yesThis} disabled={busy}>Yes, this is it</button>{' '}
+          <button className={s.textButton} onClick={notThis} disabled={busy}>{busy ? 'Looking again…' : 'Not this one'}</button>
+        </p>
+      )}
+      {sp?.confidence === 'probable' && sp.confirmedByListener && (
+        <p className={s.note}>
+          You confirmed this one; Spotify credits it a little differently from the curator.{' '}
+          <button className={s.textButton} onClick={notThis} disabled={busy}>Not this one after all</button>
         </p>
       )}
       {recording?.verification === 'not-found' && (
@@ -113,7 +143,7 @@ export function RecordingBlock({
           {!standInBelow && onFindAlternative && <>{' '}<button className={s.textButton} onClick={onFindAlternative}>Ask for one that’s on Spotify</button></>}
         </p>
       )}
-      {!sp && recording?.verification !== 'not-found' && !spotify.connected && (
+      {!shown && recording?.verification !== 'not-found' && !spotify.connected && (
         <p className={s.note}>Connect Spotify in Settings to confirm the exact recording.</p>
       )}
     </div>

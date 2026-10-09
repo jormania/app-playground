@@ -28,6 +28,29 @@ describe('matching a proposed recording to Spotify', () => {
     expect(workOverlap('Symphony No. 5', 'Symphony No. 15 in A Major: I. Allegretto')).toBeLessThan(1)
   })
 
+  it('refuses the same performers in another composer’s work of the same name', () => {
+    // A real one: Karajan's Berlin Sibelius 7 was matched to his Beethoven 7.
+    const sibelius: ProposedRecording = { composer: 'Jean Sibelius', work: 'Symphony No. 7 in C major', catalogue: 'Op. 105', conductor: 'Herbert von Karajan', orchestra: 'Berlin Philharmonic', soloists: [] }
+    const t = track('b7', 'Symphony No. 7 in A Major, Op. 92: III. Presto', ['Ludwig van Beethoven', 'Berliner Philharmoniker', 'Herbert von Karajan'], 'Beethoven: Symphonies Nos.4 & 7')
+    expect(matchTrack(t, sibelius).level).toBe('none')
+    const right = track('s7', 'Symphony No. 7 in C Major, Op. 105', ['Jean Sibelius', 'Berliner Philharmoniker', 'Herbert von Karajan'], 'Sibelius: Symphonies Nos. 4 & 7')
+    expect(matchTrack(right, sibelius).level).toBe('strong')
+  })
+
+  it('accepts a composer named only in the title, and refuses a contradicting catalogue number', () => {
+    const t = track('t9', 'Beethoven: Symphony No. 5 in C Minor, Op. 67: I. Allegro con brio', ['Wiener Philharmoniker', 'Carlos Kleiber'])
+    expect(matchTrack(t, kleiber).level).toBe('strong')
+    const wrongOpus = track('t10', 'Symphony No. 5, Op. 68: I. Allegro', ['Ludwig van Beethoven', 'Wiener Philharmoniker', 'Carlos Kleiber'])
+    expect(matchTrack(wrongOpus, kleiber).level).toBe('none')
+  })
+
+  it('refuses an album released before the proposed recording was made', () => {
+    const later: ProposedRecording = { ...kleiber, year: '1982' }
+    const t = { ...track('t11', 'Symphony No. 5 in C Minor, Op. 67: I. Allegro con brio', ['Ludwig van Beethoven', 'Wiener Philharmoniker', 'Carlos Kleiber']), album: { id: 'old', name: 'Beethoven 5', release_date: '1975-03-01' } }
+    expect(matchTrack(t, later).level).toBe('none')
+    expect(matchTrack({ ...t, album: { ...t.album, release_date: '1995' } }, later).level).toBe('strong') // a reissue is fine
+  })
+
   it('ignores a bracketed version note Spotify never prints', () => {
     const richter: ProposedRecording = { composer: 'Modest Mussorgsky', work: 'Pictures at an Exhibition (original piano version)', soloists: [{ name: 'Sviatoslav Richter', instrument: 'piano' }] }
     const t = track('r1', 'Pictures at an Exhibition: Promenade I', ['Modest Mussorgsky', 'Sviatoslav Richter'], 'Mussorgsky: Pictures at an Exhibition (Live in Sofia, 1958)')

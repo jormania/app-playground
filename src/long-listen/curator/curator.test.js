@@ -165,9 +165,47 @@ describe('programme', () => {
         { composer: 'Claude Debussy', workTitle: 'La mer', catalogue: '', framing: 'f', whyBoth: 'w', perspectives: p(['Pierre Boulez', 'Cleveland Orchestra'], ['Herbert von Karajan', 'Berliner Philharmoniker']) },
         { composer: 'Maurice Ravel', workTitle: 'Daphnis', catalogue: '', framing: 'f', whyBoth: 'w', perspectives: p(['Pierre Boulez', 'Cleveland Orchestra'], ['Pierre Boulez', 'Cleveland Orchestra']) },
       ],
-    }))]).curator.call('programme', { option: { title: 'x' } })
+    }))]).curator.call('programme', { option: { title: 'x' }, preferences: { pairs: true } })
     expect(res.programme.comparisons).toHaveLength(1)
     expect(res.programme.comparisons[0].perspectives[1].conductor).toBe('Herbert von Karajan')
+  })
+
+  it('holds no comparison at all unless the listener turned pairs on', async () => {
+    const pair = [{ conductor: 'Pierre Boulez', orchestra: 'Cleveland Orchestra', ensemble: '', soloists: [], year: '', character: 'x', listenFor: '' }, { conductor: 'Herbert von Karajan', orchestra: 'Berliner Philharmoniker', ensemble: '', soloists: [], year: '', character: 'y', listenFor: '' }]
+    const res = await fakeSend([json(programme(fresh, { comparisons: [{ composer: 'Claude Debussy', workTitle: 'La mer', catalogue: '', framing: 'f', whyBoth: 'w', perspectives: pair }] }))]).curator.call('programme', { option: { title: 'x' }, preferences: { pairs: false } })
+    expect(res.programme.comparisons).toEqual([])
+  })
+
+  it('hears each work once: the original and its orchestrations are one work', async () => {
+    // A real week: Pictures at an Exhibition three ways.
+    const pictures = [
+      item('Modest Mussorgsky', 'Pictures at an Exhibition (original piano version)', '', '', { soloists: [{ name: 'Sviatoslav Richter', instrument: 'piano' }] }),
+      item('Modest Mussorgsky', 'Pictures at an Exhibition, orch. Ravel', 'Riccardo Muti', 'Philadelphia Orchestra'),
+      item('Modest Mussorgsky', 'Pictures at an Exhibition – orchestrated by Vladimir Ashkenazy', 'Vladimir Ashkenazy', 'Philharmonia Orchestra'),
+      item('Claude Debussy', 'La mer'),
+      item('Maurice Ravel', 'Daphnis et Chloé'),
+    ]
+    const { curator, sent } = fakeSend([json(programme(pictures)), json(programme(pictures))])
+    const res = await curator.call('programme', { option: { title: 'x' }, preferences: { breadth: 3, timePerWeek: 'standard' } })
+    expect(sent[1].messages[0].content).toMatch(/appears in 3 versions/)
+    const works = res.programme.sections.flatMap((s) => s.items.map((i) => i.workTitle))
+    expect(works.filter((w) => w.startsWith('Pictures'))).toHaveLength(1)
+  })
+
+  it('lets a week travel: at most two works by one composer, unless the week is about one focus', async () => {
+    const brahms = ['Symphony No. 1', 'Symphony No. 2', 'Symphony No. 3', 'Symphony No. 4'].map((w) => item('Johannes Brahms', w))
+    const wide = await fakeSend([json(programme(brahms)), json(programme(brahms))]).curator.call('programme', { option: { title: 'x' }, preferences: { breadth: 4, timePerWeek: 'short' } }).catch((e) => e)
+    // Only two Brahms survive — fewer than three works, so the curator is asked again rather than a thin week shown.
+    expect(wide).toMatchObject({ code: 'failed' })
+    const focused = await fakeSend([json(programme(brahms))]).curator.call('programme', { option: { title: 'x' }, preferences: { breadth: 1, timePerWeek: 'short' } })
+    expect(focused.programme.sections.flatMap((s) => s.items)).toHaveLength(4)
+  })
+
+  it('knows the one-work rule from titles, and keeps catalogue numbers whole', async () => {
+    const { baseTitle, baseWorkKey } = await import('./validate.js')
+    expect(baseTitle('Pictures at an Exhibition, orch. Ravel')).toBe('Pictures at an Exhibition')
+    expect(baseTitle('Symphony No. 5 in C minor, Op. 67')).toBe('Symphony No. 5 in C minor, Op. 67'.replace(',', ''))
+    expect(baseWorkKey('Modest Mussorgsky', 'Pictures at an Exhibition (piano)')).toBe(baseWorkKey('Modest Mussorgsky', 'Pictures at an Exhibition – arr. Stokowski'))
   })
 })
 
@@ -223,6 +261,19 @@ describe('resources', () => {
     expect(res.resources.map((r) => r.url)).toEqual(['https://www.laphil.com/musicdb/pieces/1/la-mer'])
     expect(res.dropped).toBe(1)
     expect(sent[0].tools[0]).toMatchObject({ type: 'web_search_20260209', name: 'web_search' })
+  })
+
+  it('never keeps a link that is not a web page, even one the search "returned"', async () => {
+    const bad = 'javascript:alert(document.cookie)'
+    const message = {
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'web_search_tool_result', content: [{ type: 'web_search_result', url: bad, title: 'x' }] },
+        { type: 'text', text: JSON.stringify({ resources: [{ kind: 'read', title: 'x', url: bad, source: 's', purpose: 'p', relatesTo: '' }] }) },
+      ],
+    }
+    const { curator } = fakeSend([message])
+    expect((await curator.call('resources', { programme: { title: 'Colour' } })).resources).toEqual([])
   })
 
   it('continues a paused search turn append-only', async () => {

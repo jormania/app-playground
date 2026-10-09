@@ -4,7 +4,7 @@ import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { openUrl } from '../spotify/client'
-import { aboutDuration } from '../spotify/verify'
+import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
@@ -20,14 +20,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const programme = await repo.programmes.require(programmeId)
     const item = programme.sections.flatMap((x) => x.items).find((i) => i.id === itemId)
     if (!item) throw new Error('missing item')
-    const [recording, work] = await Promise.all([repo.recordings.get(item.recordingId), repo.works.get(item.workId)])
-    return { programme, item, recording, work }
+    const recording = await repo.recordings.get(item.recordingId)
+    return { programme, item, recording }
   }, [programmeId, itemId])
   useWakeLock(true)
 
   // Which of this recording's tracks is sounding now, if any. Polled gently, only while visible.
   const [nowIndex, setNowIndex] = useState<number | null>(null)
-  const trackIds = data?.recording?.spotify?.trackIds
+  const trackIds = isConfirmed(data?.recording) ? data.recording.spotify.trackIds : undefined
   useEffect(() => {
     if (!spotify.connected || !trackIds?.length) return
     let live = true
@@ -46,9 +46,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Opening…</Waiting>
-  const { programme, item, recording, work } = data
-  const sp = recording?.spotify
-  const movements = work?.movements ?? []
+  const { programme, item, recording } = data
+  const sp = isConfirmed(recording) ? recording.spotify : undefined
+  // This recording's own movements, as its album divides them.
+  const movements = sp?.trackNames ?? []
 
   async function heard() {
     await journey.markListening(item, 'heard', programme.id)
@@ -76,8 +77,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {movements.length > 1 && (
         <ol className={s.movements}>
           {movements.map((m, i) => (
-            <li key={m.index} className={nowIndex === i ? s.movementNow : undefined} aria-current={nowIndex === i ? 'true' : undefined}>
-              {m.title}{nowIndex === i && <span className={s.nowWord}> — now</span>}
+            <li key={`${i}-${m}`} className={nowIndex === i ? s.movementNow : undefined} aria-current={nowIndex === i ? 'true' : undefined}>
+              {m}{nowIndex === i && <span className={s.nowWord}> — now</span>}
             </li>
           ))}
         </ol>

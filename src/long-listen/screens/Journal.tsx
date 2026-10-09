@@ -48,6 +48,10 @@ export function JournalScreen() {
     const optionById = new Map(options.map((o) => [o.id, o]))
     const keys = [...new Set([...weeks.map((w) => w.weekKey), ...heardIn.keys()])].sort((a, b) => b.localeCompare(a))
     const programmeTitle = new Map(programmes.map((p) => [p.id, p.title]))
+    const extensionsOf = new Map<string, string[]>()
+    for (const p of [...programmes].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+      if (p.extends) extensionsOf.set(p.extends, [...(extensionsOf.get(p.extends) ?? []), p.id])
+    }
     return {
       entries: keys.map((key) => {
         const w = weeks.find((x) => x.weekKey === key)
@@ -56,7 +60,7 @@ export function JournalScreen() {
         if (taken && !offered.includes(taken)) offered.push(taken)
         return { key, week: w, offered, heard: heardIn.get(key) ?? [] }
       }),
-      proposedOf, feedback, programmeTitle,
+      proposedOf, feedback, programmeTitle, extensionsOf,
     }
   }, [settings.timeZone])
 
@@ -87,6 +91,16 @@ export function JournalScreen() {
                 <a href={href({ name: 'programme', id: week.programmeId })} className={s.quietLink}>{data.programmeTitle.get(week.programmeId)}</a>
               </p>
             )}
+            {week?.programmeId && (data.extensionsOf.get(week.programmeId) ?? []).map((id) => (
+              <p key={id} className={s.quiet} style={{ margin: 0 }}>
+                and more: <a href={href({ name: 'programme', id })} className={s.quietLink}>{data.programmeTitle.get(id)}</a>
+              </p>
+            ))}
+            {(week?.setAsideProgrammeIds ?? []).map((id) => (
+              <p key={id} className={s.faint} style={{ margin: 0 }}>
+                set aside: <a href={href({ name: 'programme', id })} className={s.quietLink}>{data.programmeTitle.get(id)}</a>
+              </p>
+            ))}
             {offered.length > 0 && (
               <p className={s.faint}>
                 {offered.map((o, i) => <span key={o.id}>{i ? ' · ' : ''}{o.title} <span className={s.italic}>({OPTION_WORD[o.status]})</span></span>)}

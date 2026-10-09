@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ProgrammeOption, Theme, WeekRecord } from '../domain/types'
+import type { ListenerPreferences, ProgrammeOption, Theme, WeekRecord } from '../domain/types'
+import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useServices } from '../app/services'
 import { go } from '../app/router'
@@ -17,6 +18,7 @@ interface WeekView {
   openPaths: ProgrammeOption[]
   themes: Map<string, Theme>
   firstVisit: boolean
+  prefs: ListenerPreferences
 }
 
 /**
@@ -45,13 +47,13 @@ export function WeekScreen() {
         .sort((a, b) => b.weekKey.localeCompare(a.weekKey))
         .slice(0, 9)
       const themes = new Map((await repo.themes.all()).map((t) => [t.id, t]))
-      setView({ record, options, openPaths, themes, firstVisit })
+      setView({ record, options, openPaths, themes, firstVisit, prefs: await repo.preferences() })
     } catch (e) {
       setError(e)
     }
   }, [journey, repo])
 
-  // Reload on data changes and when the curator setup changes (passphrase, demo).
+  // Reload on data changes and when the curator setup changes (the key, demo).
   useEffect(() => { void load() }, [load, version, settings.anthropicKey])
 
   async function choose(o: ProgrammeOption, fromEarlier = false) {
@@ -106,6 +108,11 @@ export function WeekScreen() {
         {view.firstVisit
           ? 'Each week the curator offers three directions. Choose the one you want to follow; the others stay open for another time.'
           : 'Choose the one you want to follow. The others aren’t set aside — they stay open, and may come back.'}
+      </p>
+
+      <p className={s.faint}>
+        Your week: {TIME[view.prefs.timePerWeek].words} · {BREADTH[view.prefs.breadth].label.toLowerCase()} · {FAMILIARITY[view.prefs.familiarity].label.toLowerCase()}
+        {view.prefs.pairs ? ' · with side-by-side pairs' : ''}. <a href="#/settings">Change in Settings</a>, then ask for three others.
       </p>
 
       {chooseError != null && <Problem error={chooseError} />}

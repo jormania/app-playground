@@ -59,6 +59,11 @@ export interface Work {
   form?: string
   /** One or two sentences of historical context. */
   context?: string
+  /**
+   * Legacy: once copied from the first Spotify match, which let a wrong match
+   * rename a work's movements. Movements now live on each recording's Spotify
+   * reference (`trackNames`); this is no longer written or read.
+   */
   movements?: Movement[]
 }
 
@@ -77,14 +82,26 @@ export interface SpotifyRecordingRef {
   /** The tracks that make up this work on this album, in order. */
   trackIds: string[]
   trackUris: string[]
-  /** What the matcher saw, for honesty about a near miss. */
+  /** Spotify's own names for those tracks — this recording's movements, as this album divides them. */
+  trackNames?: string[]
+  /** What the matcher saw: a strong match is accepted, a probable one waits for the listener. */
   confidence: 'strong' | 'probable'
+  /** Set when the listener said "yes, this is the recording" to a probable match. */
+  confirmedByListener?: Instant
   matchedAt: Instant
   /** Sum of the work's track lengths, from Spotify. Information, never a tally. */
   durationMs?: number
 }
 
-export type Verification = 'unchecked' | 'verified' | 'not-found'
+/**
+ * unchecked   — not looked for yet
+ * verified    — Spotify has this recording: linked, played, counted
+ * unconfirmed — Spotify has something close (a probable match); shown with its
+ *               differences for the listener to confirm, never treated as the
+ *               recording until they do
+ * not-found   — Spotify doesn't have it (or the listener said "not this one")
+ */
+export type Verification = 'unchecked' | 'verified' | 'unconfirmed' | 'not-found'
 
 export interface Recording {
   id: string
@@ -98,8 +115,10 @@ export interface Recording {
   /** Curatorial: what this interpretation is like ("architectural, transparent"). */
   character: string[]
   verification: Verification
-  /** The matcher version that last looked (see MATCHER_VERSION); older not-founds are looked for again. */
+  /** The matcher version that last looked (see MATCHER_VERSION); an older decision is looked at again. */
   checkedWith?: number
+  /** Albums the listener said are not this recording; never matched again. */
+  rejectedAlbumIds?: string[]
   spotify?: SpotifyRecordingRef
   albumId?: string
   checkedAt?: Instant
@@ -149,6 +168,8 @@ export interface ThemeExploration {
    * record, but only what they actually heard of it counts as covered.
    */
   setAside?: boolean
+  /** "More of this theme": further programmes asked for the same week, same thread. */
+  extraProgrammeIds?: string[]
 }
 
 export type OptionMood = 'immersive' | 'curious' | 'adventurous'
@@ -259,6 +280,8 @@ export interface Programme {
   historicalPlace: string
   howTheyRelate: string
   continuityNote?: string
+  /** Set on "more of this theme": the week's programme this one continues. */
+  extends?: string
   sections: ProgrammeSection[]
   comparisonIds: string[]
   createdAt: Instant
@@ -288,8 +311,9 @@ export interface ListeningEvent {
   /** spotify-recent: how many of the work's tracks were played. */
   tracksPlayed?: number
   tracksTotal?: number
-  /** spotify-recent: the played_at stamp, so a re-poll never double counts. */
+  /** spotify-recent: the session's first and last played_at, so a re-poll never counts it twice. */
   playedAt?: Instant
+  playedUntil?: Instant
 }
 
 /** What a listener sees: memory, not measurement. */
@@ -309,6 +333,12 @@ export interface Feedback {
   reaction?: Reaction
   more?: WantMore
   note?: string
+  /**
+   * On a work: the listener knew it before the app suggested it. Familiarity,
+   * not a verdict — it tells the curator what isn't a discovery. A later
+   * `false` takes it back.
+   */
+  known?: boolean
   /** When the taste interpreter last read this note. */
   interpretedAt?: Instant
 }
@@ -356,10 +386,23 @@ export interface TasteObservation {
  * what the curator noticed, these are what the listener said.
  */
 export interface ListenerPreferences {
-  /** How much listening a week holds: roughly 1, 2–3, or 4+ hours. */
-  timePerWeek: 'short' | 'standard' | 'generous'
-  /** How far from familiar ground the curator may go. */
-  adventure: 'gentle' | 'balanced' | 'bold'
+  /** How much music a week holds: roughly 1, 2–3, 4–5, or 6+ hours. */
+  timePerWeek: 'short' | 'standard' | 'generous' | 'abundant'
+  /**
+   * How wide a week ranges, 1–5: one composer or one tight idea (1) … a
+   * theme traced across centuries, with unexpected neighbours (5).
+   */
+  breadth: Level
+  /**
+   * How well known the music is, 1–5: the great cornerstones, to know more
+   * deeply (1) … rarities, the avant-garde, music almost nobody plays (5).
+   */
+  familiarity: Level
+  /**
+   * "Same work, two perspectives": one work heard in two recordings, side by
+   * side. Off, a week holds each work once.
+   */
+  pairs: boolean
   /** How much the curator writes around the music. */
   depth: 'concise' | 'standard' | 'deeper'
   recordingEra: 'any' | 'historic-welcome' | 'modern-sound' | 'period-practice'
@@ -372,15 +415,35 @@ export interface ListenerPreferences {
   nextRequest: string
 }
 
+export type Level = 1 | 2 | 3 | 4 | 5
+
 export const DEFAULT_PREFERENCES: ListenerPreferences = {
-  timePerWeek: 'standard',
-  adventure: 'balanced',
+  timePerWeek: 'generous',
+  breadth: 3,
+  familiarity: 3,
+  pairs: false,
   depth: 'standard',
   recordingEra: 'any',
   includeVoices: true,
   includeConcertos: true,
   language: 'en',
   nextRequest: '',
+}
+
+/**
+ * Preferences as stored, brought up to date: the old three-step "adventure"
+ * becomes a familiarity level; anything unknown falls back to the default.
+ */
+export function normalisePreferences(raw: Partial<ListenerPreferences> & { adventure?: string } | undefined): ListenerPreferences {
+  const { adventure, ...rest } = raw ?? {}
+  const p = { ...DEFAULT_PREFERENCES, ...rest }
+  if (raw && raw.familiarity === undefined && adventure) p.familiarity = adventure === 'gentle' ? 2 : adventure === 'bold' ? 4 : 3
+  const level = (v: unknown, d: Level): Level => (typeof v === 'number' && v >= 1 && v <= 5 ? (Math.round(v) as Level) : d)
+  p.breadth = level(p.breadth, DEFAULT_PREFERENCES.breadth)
+  p.familiarity = level(p.familiarity, DEFAULT_PREFERENCES.familiarity)
+  if (!['short', 'standard', 'generous', 'abundant'].includes(p.timePerWeek)) p.timePerWeek = DEFAULT_PREFERENCES.timePerWeek
+  p.pairs = Boolean(p.pairs)
+  return p
 }
 
 export interface TasteProfile {
@@ -425,8 +488,16 @@ export interface NotionSyncState {
   /** `${entity}:${id}` */
   key: string
   pageId: string
-  /** Hash of what was last written, so an unchanged entity is not rewritten. */
+  /** Hash of the columns last written, so an unchanged row is not rewritten. */
   hash: string
+  /**
+   * Programme pages: the part of the body that can change after the page is
+   * written (further reading) — its hash, the blocks the app wrote for it, and
+   * the block it sits after. Only these blocks are ever replaced.
+   */
+  bodyHash?: string
+  bodyBlockIds?: string[]
+  anchorBlockId?: string
   syncedAt: Instant
 }
 

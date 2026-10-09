@@ -26,6 +26,39 @@ function fakeNotion(children: any[] = [], databases: Record<string, any> = {}) {
   return { client, calls }
 }
 
+/** A fuller fake: keeps page bodies, honours `after`, archives blocks. */
+function pageNotion() {
+  const pages = new Map<string, any[]>()
+  let n = 0
+  const textOf = (b: any) => (b[b.type]?.rich_text ?? []).map((t: any) => t.text?.content ?? '').join('') || undefined
+  const client: NotionCall = async <T,>(c: any): Promise<T> => {
+    const m = /^blocks\/([^/?]+)\/children/.exec(c.path)
+    if (m && c.method === 'GET') {
+      const list = (pages.get(m[1]) ?? []).filter((b) => !b.archived)
+      return { results: list.map((b) => ({ id: b.id, type: b.type, [b.type]: { rich_text: [{ plain_text: b.text ?? '' }] } })) } as T
+    }
+    if (m && c.method === 'PATCH') {
+      const list = pages.get(m[1]) ?? []
+      const made = c.body.children.map((b: any) => ({ id: `blk${++n}`, type: b.type, text: textOf(b) }))
+      const at = c.body.after ? list.findIndex((b) => b.id === c.body.after) : -1
+      if (c.body.after && at < 0) throw new Error('no such block')
+      list.splice(at >= 0 ? at + 1 : list.length, 0, ...made)
+      pages.set(m[1], list)
+      return { results: made.map((b: any) => ({ id: b.id })) } as T
+    }
+    const one = /^blocks\/([^/?]+)$/.exec(c.path)
+    if (one && c.body?.archived) {
+      for (const list of pages.values()) for (const b of list) if (b.id === one[1]) b.archived = true
+      return {} as T
+    }
+    if (c.method === 'GET') return { results: [] } as T
+    const id = `id${++n}`
+    if (c.path === 'pages') pages.set(id, [])
+    return { id } as T
+  }
+  return { client, pages }
+}
+
 async function seeded() {
   const repo = new Repo(memoryStore())
   await repo.programmes.put(programme)
@@ -70,6 +103,51 @@ describe('the Notion notebook', () => {
     // A week later the journal page's status changes; only that is patched.
     expect((await syncToNotion(n.client, repo, 'page123', '2026-W42')).written).toBe(1)
     expect(n.calls.map((c) => `${c.method} ${c.path.split('/')[0]}`)).toEqual(['PATCH pages'])
+  })
+
+  it('adds further reading found after the page was written, right after the curator’s text, and keeps it current', async () => {
+    const repo = await seeded()
+    const n = pageNotion()
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const pageId = (await repo.notion.get('programme:prog1'))!.pageId
+    const page = n.pages.get(pageId)!
+    expect(page.some((b) => b.text === 'Further listening and reading')).toBe(false) // nothing found yet
+    const textLen = page.length
+    // The search finishes later.
+    await repo.resources.put({ id: 'res1', programmeId: 'prog1', kind: 'read', title: 'Programme note', url: 'https://laphil.com/note', source: 'LA Phil', purpose: 'Background.', foundAt: 'x' })
+    // Meanwhile the listener wrote their own note at the bottom of the page in Notion.
+    page.push({ id: 'mine', type: 'paragraph', text: 'My own note' })
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const after = n.pages.get(pageId)!
+    expect(after.slice(textLen, textLen + 3).map((b) => b.text ?? b.type)).toEqual(['divider', 'Further listening and reading', 'Read — Programme note (LA Phil). Background.'])
+    expect(after[after.length - 1].id).toBe('mine') // the listener's note stays below, untouched
+    // Unchanged: nothing written.
+    expect((await syncToNotion(n.client, repo, 'page123', '2026-W41')).written).toBe(0)
+    // Changed: exactly the app's resource blocks are replaced, in place.
+    await repo.resources.put({ id: 'res2', programmeId: 'prog1', kind: 'watch', title: 'Talk', url: 'https://youtube.com/x', source: 'YouTube', purpose: 'A talk.', foundAt: 'y' })
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const third = n.pages.get(pageId)!.filter((b) => !b.archived)
+    expect(third.filter((b) => b.text === 'Further listening and reading')).toHaveLength(1)
+    expect(third.filter((b) => b.type === 'bulleted_list_item' && /LA Phil|YouTube/.test(b.text ?? ''))).toHaveLength(2)
+    expect(third[third.length - 1].id).toBe('mine')
+  })
+
+  it('finds the further reading on a page written before the body was tracked, and replaces it in place', async () => {
+    const repo = await seeded()
+    const n = pageNotion()
+    n.pages.set('legacy', [
+      { id: 'b1', type: 'paragraph', text: 'Intro' },
+      { id: 'b2', type: 'divider' },
+      { id: 'b3', type: 'heading_2', text: 'Further listening and reading' },
+      { id: 'b4', type: 'bulleted_list_item', text: 'Old link' },
+      { id: 'b5', type: 'paragraph', text: 'My own note' },
+    ])
+    await repo.marks.put({ id: 'notion:setup', at: 'x', value: { journal: 'j', threads: 't', recordings: 'r', composers: 'c', tastePage: 'tp', pageId: 'page123' } })
+    await repo.notion.put({ key: 'programme:prog1', pageId: 'legacy', hash: 'stale', syncedAt: 'x' })
+    await repo.resources.put({ id: 'res1', programmeId: 'prog1', kind: 'read', title: 'Programme note', url: 'https://laphil.com/note', source: 'LA Phil', purpose: 'Background.', foundAt: 'x' })
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const live = n.pages.get('legacy')!.filter((b) => !b.archived).map((b) => b.text ?? b.type)
+    expect(live).toEqual(['Intro', 'divider', 'Further listening and reading', 'Read — Programme note (LA Phil). Background.', 'My own note'])
   })
 
   it('shows no internal machinery — no ids, versions or confidences', async () => {

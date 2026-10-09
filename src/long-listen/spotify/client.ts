@@ -1,4 +1,4 @@
-import { loadTokens, refresh, saveTokens, SpotifyAuthError, type SpotifyTokens } from './auth'
+import { loadTokens, refresh, saveTokens, SIGNED_OUT_MESSAGE, SpotifyAuthError, type SpotifyTokens } from './auth'
 import type { SpotifyTrackLike } from './match'
 
 /**
@@ -40,6 +40,8 @@ export interface NowPlaying {
 
 export class SpotifyClient {
   private tokens: SpotifyTokens | null
+  private refreshing: Promise<void> | null = null
+  private signedOutListeners = new Set<(message: string) => void>()
 
   constructor(
     private readonly clientId: () => string,
@@ -49,7 +51,12 @@ export class SpotifyClient {
     this.tokens = loadTokens(storage)
   }
 
+  /**
+   * Signed in? A sign-in finished elsewhere (from the installed app, Spotify's
+   * page returns in a browser tab) is picked up from storage.
+   */
   get connected(): boolean {
+    if (!this.tokens) this.tokens = loadTokens(this.storage)
     return Boolean(this.tokens)
   }
 
@@ -58,22 +65,59 @@ export class SpotifyClient {
     return Boolean(this.tokens?.scope.split(' ').includes(scope))
   }
 
+  get currentTokens(): SpotifyTokens | null {
+    return this.tokens
+  }
+
   setTokens(t: SpotifyTokens | null) {
     this.tokens = t
     saveTokens(t, this.storage)
   }
 
-  private async token(): Promise<string> {
-    if (!this.tokens) throw new SpotifyUnavailable('signed-out', 'Connect Spotify in Settings to check recordings.')
-    if (Date.now() >= this.tokens.expiresAt) {
+  /** Told once, when Spotify ends the sign-in (six-monthly expiry, or access withdrawn). */
+  onSignedOut(listener: (message: string) => void): () => void {
+    this.signedOutListeners.add(listener)
+    return () => { this.signedOutListeners.delete(listener) }
+  }
+
+  /**
+   * One refresh at a time. Several calls finding the token expired together
+   * (the verification pass, recent plays, the "now" poll) share it; if Spotify
+   * rotates the refresh token, a second parallel refresh could spend the old
+   * one. Another tab may have refreshed already — storage is read first.
+   */
+  private refreshOnce(): Promise<void> {
+    this.refreshing ??= (async () => {
       try {
-        this.setTokens(await refresh(this.tokens, this.clientId(), this.fetchImpl))
-      } catch (e) {
-        if (e instanceof SpotifyAuthError) this.setTokens(null)
-        throw new SpotifyUnavailable('signed-out', 'Spotify needs you to connect again.')
+        const stored = loadTokens(this.storage)
+        if (stored && stored.expiresAt > Date.now() && stored.accessToken !== this.tokens?.accessToken) {
+          this.tokens = stored
+          return
+        }
+        const base = stored ?? this.tokens!
+        try {
+          this.setTokens(await refresh(base, this.clientId(), this.fetchImpl))
+        } catch (e) {
+          if (!(e instanceof SpotifyAuthError)) throw new SpotifyUnavailable('offline', (e as Error).message)
+          // Spotify says the sign-in is over. Unless another tab has just signed in again, forget it.
+          const now = loadTokens(this.storage)
+          if (now && now.refreshToken !== base.refreshToken) { this.tokens = now; return }
+          this.setTokens(null)
+          for (const l of this.signedOutListeners) l(SIGNED_OUT_MESSAGE)
+          throw new SpotifyUnavailable('signed-out', SIGNED_OUT_MESSAGE)
+        }
+      } finally {
+        this.refreshing = null
       }
-    }
-    return this.tokens!.accessToken
+    })()
+    return this.refreshing
+  }
+
+  private async token(): Promise<string> {
+    if (!this.connected) throw new SpotifyUnavailable('signed-out', 'Connect Spotify in Settings to check recordings.')
+    if (Date.now() >= this.tokens!.expiresAt) await this.refreshOnce()
+    if (!this.tokens) throw new SpotifyUnavailable('signed-out', SIGNED_OUT_MESSAGE)
+    return this.tokens.accessToken
   }
 
   private async request(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
@@ -175,12 +219,18 @@ export class SpotifyClient {
     return { id: playlistId!, url }
   }
 
-  /** Start the exact tracks on the listener's active Spotify device (Premium). */
+  /**
+   * Start the exact tracks on the listener's active Spotify device (Premium),
+   * from the first movement, in order. A device left on shuffle would start a
+   * symphony at a random movement, so shuffle is turned off first — that is
+   * the one setting of theirs this changes, and only when they press Play.
+   */
   async play(trackUris: string[]): Promise<void> {
+    await this.request('me/player/shuffle?state=false', { method: 'PUT' }).catch(() => undefined)
     const res = await this.request('me/player/play', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ uris: trackUris }),
+      body: JSON.stringify({ uris: trackUris, offset: { position: 0 }, position_ms: 0 }),
     })
     if (res.status === 404) throw new SpotifyUnavailable('no-device', 'Open Spotify on a device first, then try again.')
     if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t start playback.')

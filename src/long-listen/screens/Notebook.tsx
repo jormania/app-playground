@@ -116,7 +116,7 @@ export function NotebookScreen() {
 
       <section className={s.block}>
         <h2 className={s.h2}>A note to the curator</h2>
-        <p className={s.quiet}>Anything you’d like it to keep in mind — a composer you’re curious about, how much time you have, a mood you’re in.</p>
+        <p className={s.quiet}>Anything you’d like it to keep in mind — a composer you’re curious about, music you already know well (so it isn’t offered as new), how much time you have, a mood you’re in.</p>
         <label className={s.visuallyHidden} htmlFor="notes">Note to the curator</label>
         <textarea id="notes" className={s.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} />
         <div className={s.actions}>

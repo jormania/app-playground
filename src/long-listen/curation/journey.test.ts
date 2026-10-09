@@ -5,6 +5,8 @@ import type { CuratorClient, CuratedItem, ProgrammeResponse, ThemesResponse } fr
 import { CuratorUnavailable } from './api'
 import { buildContext } from './context'
 import { weekOf } from '../domain/week'
+import { pendingFeedback } from './taste'
+import { knownWorkIds } from '../domain/listening'
 
 // A curator stand-in: records every call, answers from per-op scripts.
 function fakeCurator(script: Partial<Record<string, (payload: any, n: number) => unknown>>) {
@@ -334,6 +336,23 @@ describe('what the listener tells the curator', () => {
     expect(ctx.alreadyProgrammed.map((a: any) => a.work)).toContain('La mer')
     expect(ctx.alreadyProgrammed[0].weeksAgo).toBe(1)
   })
+
+  it('tells the curator what the listener knew before, and forgets it when they take it back', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('P', FRENCH) })
+    let j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const item = p.sections[0].items[0]
+    await j.markKnown(item.workId, true, p.id)
+    // Familiarity is not a reaction: the taste interpreter has nothing to read, the listening state is untouched.
+    expect(pendingFeedback(await repo.feedback.all())).toEqual([])
+    at('2026-10-15T09:00:00Z')
+    j = journey(c.client)
+    await j.ensureWeek()
+    const ctx = c.calls.filter((x) => x.op === 'themes')[1].payload.context
+    expect(ctx.alreadyKnown).toEqual([{ composer: item.proposed.composer, work: item.proposed.work }])
+    await j.markKnown(item.workId, false, p.id)
+    expect(knownWorkIds(await repo.feedback.all()).size).toBe(0)
+  })
 })
 
 describe('three other directions', () => {
@@ -355,5 +374,41 @@ describe('three other directions', () => {
     const j = journey(c.client)
     await j.choose((await j.ensureWeek()).optionIds[0])
     await expect(j.offerOtherDirections()).rejects.toThrow(/change direction/)
+  })
+})
+
+describe('where next, within the week', () => {
+  it('adds more of the same theme as its own programme, told what the week already holds', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: (_p, n) => (n === 1 ? programme('Colour', FRENCH) : programme('More colour', FRENCH_AGAIN, 'Carrying on.')) })
+    const j = journey(c.client)
+    const first = await j.choose((await j.ensureWeek()).optionIds[0])
+    const more = await j.extendProgramme(first.id, 'something later')
+    const call = c.calls.filter((x) => x.op === 'programme')[1].payload
+    expect(call.extension).toMatchObject({ of: 'Colour', wish: 'something later' })
+    expect(call.thread.covered.works.map((w: any) => w.title)).toEqual(expect.arrayContaining(['La mer', 'Daphnis et Chloé']))
+    expect(more).toMatchObject({ extends: first.id, explorationId: first.explorationId, weekKey: first.weekKey })
+    // The week's programme is still the week's programme; the thread now counts both.
+    expect((await repo.weeks.require('2026-W41')).programmeId).toBe(first.id)
+    expect((await repo.explorations.require(first.explorationId)).extraProgrammeIds).toEqual([more.id])
+    // Asking from the companion page continues the week's programme, not the companion.
+    await j.extendProgramme(more.id)
+    expect(c.calls.filter((x) => x.op === 'programme')[2].payload.extension.of).toBe('Colour')
+  })
+
+  it('offers three new directions after a programme was chosen, without dropping it', async () => {
+    const c = fakeCurator({ themes: (_p, n) => (n === 1 ? themes(['A', 'B', 'C']) : themes(['D', 'E', 'F'])), programme: () => programme('Colour', FRENCH) })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    const first = await j.choose(w.optionIds[0])
+    await repo.savePreferences({ ...(await repo.preferences()), nextRequest: 'Sibelius next week' })
+    const after = await j.moreDirections('quieter')
+    // A request made now is not next week's wish: that one waits for next week.
+    expect((await repo.preferences()).nextRequest).toBe('Sibelius next week')
+    expect(c.calls.filter((x) => x.op === 'themes')[1].payload.context.requestedNext).toBe('quieter')
+    expect(after.programmeId).toBe(first.id)
+    expect(after.earlierOptionIds).toEqual(w.optionIds)
+    expect((await repo.options.many(after.optionIds)).map((o) => [o.title, o.status])).toEqual([['D', 'offered'], ['E', 'offered'], ['F', 'offered']])
+    expect((await repo.options.many(w.optionIds)).map((o) => o.status)).toEqual(['chosen', 'open', 'open'])
+    expect(c.calls.filter((x) => x.op === 'themes')[1].payload.alsoOfferedThisWeek).toEqual(['A', 'B', 'C'])
   })
 })

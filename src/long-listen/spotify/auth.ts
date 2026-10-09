@@ -6,6 +6,17 @@
  * validated: the `state` must match the one this tab generated, the verifier
  * must be the one this tab stored, and both are single-use.
  *
+ * The pending sign-in (state + verifier) is kept in localStorage, not
+ * sessionStorage: from the installed app, Spotify's page opens in a separate
+ * browser tab, and the callback lands there — a different session, the same
+ * origin. It is still single-use and dies after fifteen minutes.
+ *
+ * Since July 2026 a Spotify sign-in lasts six months from the moment the
+ * listener authorised the app; refreshing doesn't extend it. After that the
+ * token endpoint answers `invalid_grant` and the only way on is to sign in
+ * again — which is exactly what the app asks for, and nothing else is treated
+ * as a sign-out (a timeout or a 5xx is "try later", not "you're logged out").
+ *
  * Spotify only accepts HTTPS redirect URIs, or a loopback IP (http://127.0.0.1)
  * for development — not `localhost`. Register both in the Spotify dashboard:
  *   https://coneofcold.vercel.app/long-listen-react.html
@@ -29,6 +40,16 @@ export interface SpotifyTokens {
   refreshToken?: string
   expiresAt: number
   scope: string
+  /** When the listener signed in on Spotify's page; the sign-in ends six months later. */
+  authorizedAt?: number
+}
+
+/** Spotify's sign-ins last six months from authorisation (refresh-token expiry, July 2026). */
+export const SIGN_IN_LIFETIME_MS = 182 * 24 * 3600_000
+
+/** When this sign-in will need renewing, if known. */
+export function renewBy(tokens: SpotifyTokens | null): number | undefined {
+  return tokens?.authorizedAt ? tokens.authorizedAt + SIGN_IN_LIFETIME_MS : undefined
 }
 
 interface Pending {
@@ -61,7 +82,7 @@ export function redirectUriFor(loc: Pick<Location, 'origin' | 'pathname'> = wind
 }
 
 /** Build the authorize URL and remember what the callback must prove. */
-export async function beginSignIn(clientId: string, redirectUri: string, storage: Storage = sessionStorage): Promise<string> {
+export async function beginSignIn(clientId: string, redirectUri: string, storage: Storage = localStorage): Promise<string> {
   const state = randomString(24)
   const verifier = randomString(64)
   const pending: Pending = { state, verifier, clientId, redirectUri, createdAt: Date.now() }
@@ -78,7 +99,10 @@ export async function beginSignIn(clientId: string, redirectUri: string, storage
   return `${AUTHORIZE}?${params}`
 }
 
+/** The sign-in itself is over (refused, expired, revoked): connect again. */
 export class SpotifyAuthError extends Error {}
+/** Spotify's token endpoint couldn't be used just now (offline, busy, failing). The sign-in is fine; try later. */
+export class SpotifyRefreshUnavailable extends Error {}
 
 /** Does this URL look like a Spotify callback? */
 export function isCallback(search: string): boolean {
@@ -92,7 +116,7 @@ export function isCallback(search: string): boolean {
  */
 export async function completeSignIn(
   search: string,
-  storage: Storage = sessionStorage,
+  storage: Storage = localStorage,
   fetchImpl: typeof fetch = (...a) => fetch(...a),
   now = Date.now(),
 ): Promise<SpotifyTokens> {
@@ -119,7 +143,7 @@ export async function completeSignIn(
     }),
   })
   if (!res.ok) throw new SpotifyAuthError('Spotify didn’t accept the sign-in. Try connecting again.')
-  return tokensFrom(await res.json(), now)
+  return { ...tokensFrom(await res.json(), now), authorizedAt: now }
 }
 
 function tokensFrom(data: { access_token: string; refresh_token?: string; expires_in: number; scope?: string }, now: number, previous?: SpotifyTokens): SpotifyTokens {
@@ -129,17 +153,32 @@ function tokensFrom(data: { access_token: string; refresh_token?: string; expire
     refreshToken: data.refresh_token ?? previous?.refreshToken,
     expiresAt: now + (data.expires_in - 60) * 1000,
     scope: data.scope ?? previous?.scope ?? '',
+    authorizedAt: previous?.authorizedAt,
   }
 }
 
+export const SIGNED_OUT_MESSAGE = 'Spotify asks you to sign in again (its sign-ins last six months). Reconnect in Settings → Spotify.'
+
+/**
+ * A new access token. Throws SpotifyAuthError only when Spotify says the
+ * sign-in is over (`invalid_grant`, or a 400/401 from the token endpoint);
+ * anything else — offline, 429, 5xx — is SpotifyRefreshUnavailable, and the
+ * tokens are kept for another try.
+ */
 export async function refresh(tokens: SpotifyTokens, clientId: string, fetchImpl: typeof fetch = (...a) => fetch(...a), now = Date.now()): Promise<SpotifyTokens> {
-  if (!tokens.refreshToken) throw new SpotifyAuthError('Spotify needs you to connect again.')
-  const res = await fetchImpl(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: tokens.refreshToken, client_id: clientId }),
-  })
-  if (!res.ok) throw new SpotifyAuthError('Spotify needs you to connect again.')
+  if (!tokens.refreshToken) throw new SpotifyAuthError(SIGNED_OUT_MESSAGE)
+  let res: Response
+  try {
+    res = await fetchImpl(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: tokens.refreshToken, client_id: clientId }),
+    })
+  } catch {
+    throw new SpotifyRefreshUnavailable('Spotify can’t be reached right now.')
+  }
+  if (res.status === 400 || res.status === 401) throw new SpotifyAuthError(SIGNED_OUT_MESSAGE)
+  if (!res.ok) throw new SpotifyRefreshUnavailable('Spotify isn’t answering just now. Try again in a little while.')
   return tokensFrom(await res.json(), now, tokens)
 }
 

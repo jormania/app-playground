@@ -5,7 +5,7 @@ import { latestFeedback, listeningState, reactionLabel } from '../domain/listeni
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { openUrl } from '../spotify/client'
-import { aboutDuration } from '../spotify/verify'
+import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Problem, Waiting } from '../components/common'
 import s from '../styles/editorial.module.css'
 
@@ -81,7 +81,7 @@ export function LibraryScreen() {
           {e.works.map(({ work, recordings }) => (
             <div key={work.id} className={s.libraryWork}>
               <p className={s.libraryTitle}>{work.title}</p>
-              <p className={s.faint}>{[work.catalogue, work.composed, work.form, work.movements?.length ? `${work.movements.length} movements` : undefined].filter(Boolean).join(' · ')}</p>
+              <p className={s.faint}>{[work.catalogue, work.composed, work.form, undefined].filter(Boolean).join(' · ')}</p>
               <ul className={s.bullets}>
                 {recordings.map(({ rec, proposed, programmeId, programmeTitle }) => {
                   const fb = latestFeedback(data.feedback, rec.id)
@@ -92,10 +92,10 @@ export function LibraryScreen() {
                       <span className={s.faint}>
                         {' · '}{STATE_WORD[state]}
                         {fb.reaction ? ` · ${reactionLabel(fb.reaction)?.toLowerCase()}` : ''}
-                        {rec.spotify?.durationMs ? ` · ${aboutDuration(rec.spotify.durationMs)}` : ''}
+                        {isConfirmed(rec) && rec.spotify.durationMs ? ` · ${aboutDuration(rec.spotify.durationMs)}` : ''}
                       </span>
                       {' '}
-                      {rec.spotify && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
+                      {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
                       {programmeId && <> · <a href={href({ name: 'programme', id: programmeId })} className={s.quietLink}>{programmeTitle}</a></>}
                       {fb.notes.length > 0 && <div className={s.said}><q>{fb.notes[fb.notes.length - 1]}</q></div>}
                     </li>

@@ -111,6 +111,8 @@ export interface IngestProgrammeInput {
   themeId: string
   explorationId: string
   stage: number
+  /** "More of this theme": the week's programme this one continues. */
+  extendsId?: string
   curated: CuratedProgramme
   promptVersion: string
   model: string
@@ -174,6 +176,7 @@ export async function ingestProgramme(repo: Repo, input: IngestProgrammeInput): 
     historicalPlace: input.curated.historicalPlace,
     howTheyRelate: input.curated.howTheyRelate,
     continuityNote: input.curated.continuityNote,
+    extends: input.extendsId,
     sections,
     comparisonIds: comparisons.map((c) => c.id),
     createdAt: input.now,

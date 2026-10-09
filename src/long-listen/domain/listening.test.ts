@@ -24,6 +24,13 @@ describe('listening state', () => {
     expect(listeningState([ev('1', 'opened', 'app')], 'r1')).toBe('listening')
   })
 
+  it('places a Spotify play at the time it was played, so a reset made after it holds', () => {
+    const played: ListeningEvent = { id: 'p', at: '2026-10-09T09:00:00Z', kind: 'heard', recordingId: 'r1', workId: 'w', source: 'spotify-recent', playedAt: '2026-10-07T20:00:00Z', playedUntil: '2026-10-07T20:40:00Z' }
+    const reset: ListeningEvent = { id: 'm', at: '2026-10-08T10:00:00Z', kind: 'reset', recordingId: 'r1', workId: 'w', source: 'manual' }
+    // The play arrived on a sync after the reset, but happened before it.
+    expect(listeningState([reset, played], 'r1')).toBe('not-started')
+  })
+
   it('counts separate hearings for the curator, never for display', () => {
     expect(timesHeard([ev('1', 'heard'), ev('2', 'heard', 'spotify-recent')], 'r1')).toBe(2)
   })

@@ -6,14 +6,18 @@ import type { Repo } from '../store/repo'
 import { notionProxy } from '../../shared/notionClient'
 import type { ListenerPreferences } from '../domain/types'
 import { observationsByStance } from '../curation/taste'
+import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 
 /**
  * Notion as the listener's notebook: a human-readable mirror of the journey,
  * one way, app → Notion. The app's own database (IndexedDB) stays the source
  * of truth; Notion holds what a person would want to reread, in words —
  *
- *   Journal            one page per weekly programme, written once, as the
- *                      curator wrote it, plus what was heard and said
+ *   Journal            one page per weekly programme: the curator's text,
+ *                      written once (a programme is a snapshot), and below
+ *                      it the further listening and reading, which arrives
+ *                      later and is kept up to date; plus what was heard and
+ *                      said, in the row's columns
  *   Listening threads  one page per theme: how it landed, open questions,
  *                      where it could go next
  *   Works & recordings one row per recording met: who plays it, a Spotify
@@ -239,7 +243,15 @@ export async function ensureSetup(call: NotionCall, repo: Repo, pageId: string):
 
 // ── page content ──────────────────────────────────────────────────────────
 
-export function programmeBlocks(p: Programme, resources: { kind: string; title: string; url: string; source: string; purpose: string }[]): unknown[] {
+type ResourceLike = { kind: string; title: string; url: string; source: string; purpose: string }
+
+/** A programme's page: the curator's text, then the further reading. */
+export function programmeBlocks(p: Programme, resources: ResourceLike[]): unknown[] {
+  return [...programmeTextBlocks(p), ...furtherBlocks(resources)]
+}
+
+/** The curator's text — fixed once written, like the programme itself. */
+export function programmeTextBlocks(p: Programme): unknown[] {
   const blocks: unknown[] = []
   if (p.dek) blocks.push(quote(p.dek))
   if (p.continuityNote) blocks.push(para(p.continuityNote, { italic: true }))
@@ -256,16 +268,27 @@ export function programmeBlocks(p: Programme, resources: { kind: string; title: 
       for (const l of i.listenFor) blocks.push(bullet(`Listen for: ${l}`))
     }
   }
-  if (resources.length) {
-    blocks.push(divider(), h2('Further listening and reading'))
-    for (const r of resources) blocks.push(bullet(`${r.kind[0].toUpperCase()}${r.kind.slice(1)} — ${r.title} (${r.source}). ${r.purpose}`, r.url))
-  }
   return blocks
 }
 
+export const FURTHER_HEADING = 'Further listening and reading'
+
+/** The part of a programme page that changes after it is first written: resources found later. */
+export function furtherBlocks(resources: ResourceLike[]): unknown[] {
+  if (!resources.length) return []
+  return [
+    divider(),
+    h2(FURTHER_HEADING),
+    ...resources.map((r) => bullet(`${r.kind[0].toUpperCase()}${r.kind.slice(1)} — ${r.title} (${r.source}). ${r.purpose}`, httpUrl(r.url))),
+  ]
+}
+
+/** Only web links go into Notion. */
+function httpUrl(u: string): string | undefined {
+  try { return ['http:', 'https:'].includes(new URL(u).protocol) ? u : undefined } catch { return undefined }
+}
+
 const PREF_WORDS = {
-  timePerWeek: { short: 'about an hour of music a week', standard: 'two or three hours a week', generous: 'four hours or more a week' },
-  adventure: { gentle: 'mostly familiar ground, one step outward', balanced: 'a mix of the familiar and the new', bold: 'far and often' },
   depth: { concise: 'short notes', standard: 'notes of usual length', deeper: 'a little more context and history' },
   recordingEra: { any: 'any era of recording', 'historic-welcome': 'great older recordings welcome, mono included', 'modern-sound': 'recordings from about 1980 on', 'period-practice': 'historically informed performances where they exist' },
 } as const
@@ -273,8 +296,10 @@ const PREF_WORDS = {
 /** What the listener told the curator, in words. */
 export function preferenceLines(p: ListenerPreferences): string[] {
   return [
-    `Time: ${PREF_WORDS.timePerWeek[p.timePerWeek]}.`,
-    `Distance: ${PREF_WORDS.adventure[p.adventure]}.`,
+    `Time: ${TIME[p.timePerWeek].words}.`,
+    `Range: ${BREADTH[p.breadth].words}.`,
+    `Music: ${FAMILIARITY[p.familiarity].words}.`,
+    `${p.pairs ? 'Now and then, one work heard in two recordings side by side' : 'Each work once a week, no side-by-side recordings'}.`,
     `Writing: ${PREF_WORDS.depth[p.depth]}${p.language === 'ro' ? ', in Romanian' : ''}.`,
     `Recordings: ${PREF_WORDS.recordingEra[p.recordingEra]}.`,
     `${p.includeVoices ? 'Works with voices welcome' : 'No works with singers'}; ${p.includeConcertos ? 'concertos welcome' : 'no concertos'}.`,
@@ -302,13 +327,117 @@ export function tasteBlocks(t: TasteProfile, prefs?: ListenerPreferences): unkno
   return out
 }
 
-async function append(call: NotionCall, blockId: string, children: unknown[]) {
+/**
+ * Append blocks (in chunks of 90 — Notion takes 100 at most) and return the
+ * new blocks' ids. With `after`, they go in right after that block, in order,
+ * instead of at the end of the page.
+ */
+async function append(call: NotionCall, blockId: string, children: unknown[], after?: string): Promise<string[]> {
+  const ids: string[] = []
+  let anchor = after
   for (let i = 0; i < children.length; i += 90) {
-    await call({ path: `blocks/${blockId}/children`, method: 'PATCH', body: { children: children.slice(i, i + 90) } })
+    const res = await call<{ results?: { id: string }[] }>({
+      path: `blocks/${blockId}/children`,
+      method: 'PATCH',
+      body: { children: children.slice(i, i + 90), ...(anchor ? { after: anchor } : {}) },
+    })
+    const got = (res.results ?? []).map((b) => b.id).filter(Boolean)
+    ids.push(...got)
+    if (anchor && got.length) anchor = got[got.length - 1]
   }
+  return ids
 }
 
-async function upsert(call: NotionCall, repo: Repo, key: string, databaseId: string, properties: Record<string, unknown>, body?: () => unknown[]): Promise<boolean> {
+/** Every child block of a page, first-level, up to a sane limit. */
+async function childrenOf(call: NotionCall, blockId: string): Promise<Record<string, any>[]> {
+  const out: Record<string, any>[] = []
+  let cursor: string | undefined
+  for (let page = 0; page < 10; page++) {
+    const res = await call<{ results?: Record<string, any>[]; has_more?: boolean; next_cursor?: string }>({
+      path: `blocks/${blockId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`,
+      method: 'GET',
+    })
+    out.push(...(res.results ?? []))
+    if (!res.has_more || !res.next_cursor) break
+    cursor = res.next_cursor
+  }
+  return out
+}
+
+const plainText = (b: Record<string, any>): string => ((b[b.type]?.rich_text ?? []) as { plain_text?: string; text?: { content?: string } }[]).map((t) => t.plain_text ?? t.text?.content ?? '').join('')
+
+/**
+ * Programme pages written before the body was tracked: find the further
+ * reading section the app wrote (its divider, heading and bullets) and the
+ * block just before it, so it can be replaced in place. Without one, the new
+ * section goes at the end.
+ */
+async function legacyFurther(call: NotionCall, pageId: string): Promise<{ anchor?: string; old: string[] }> {
+  const blocks = await childrenOf(call, pageId)
+  const at = blocks.findIndex((b) => b.type === 'heading_2' && plainText(b) === FURTHER_HEADING)
+  if (at < 0) return { anchor: undefined, old: [] }
+  const start = at > 0 && blocks[at - 1].type === 'divider' ? at - 1 : at
+  let end = at + 1
+  while (end < blocks.length && blocks[end].type === 'bulleted_list_item') end++
+  return { anchor: start > 0 ? blocks[start - 1].id : undefined, old: blocks.slice(start, end).map((b) => b.id) }
+}
+
+/**
+ * One programme's journal page. The row's columns are rewritten when they
+ * change. The page body has two parts: the curator's text, written once when
+ * the page is created and never touched again; and the further reading,
+ * which can arrive later — so its blocks are remembered, and when the list
+ * changes exactly those blocks are replaced, in place, after the text.
+ * Anything the listener wrote on the page in Notion is left alone.
+ */
+async function syncProgrammePage(call: NotionCall, repo: Repo, databaseId: string, p: Programme, properties: Record<string, unknown>, resources: ResourceLike[]): Promise<boolean> {
+  const key = `programme:${p.id}`
+  const propsHash = hash(properties)
+  const further = furtherBlocks(resources)
+  const bodyHash = hash(further)
+  const state = await repo.notion.get(key)
+  const at = new Date().toISOString()
+
+  if (!state) {
+    const page = await call<{ id: string }>({ path: 'pages', method: 'POST', body: { parent: { database_id: databaseId }, properties } })
+    const text = await append(call, page.id, programmeTextBlocks(p))
+    const bodyBlockIds = further.length ? await append(call, page.id, further) : []
+    await repo.notion.put({ key, pageId: page.id, hash: propsHash, bodyHash, anchorBlockId: text[text.length - 1], bodyBlockIds, syncedAt: at })
+    return true
+  }
+
+  let written = false
+  const next = { ...state }
+  if (state.hash !== propsHash) {
+    await call({ path: `pages/${state.pageId}`, method: 'PATCH', body: { properties } })
+    next.hash = propsHash
+    written = true
+  }
+  if (state.bodyHash !== bodyHash) {
+    let anchor = state.anchorBlockId
+    let old = state.bodyBlockIds ?? []
+    if (state.bodyHash === undefined) ({ anchor, old } = await legacyFurther(call, state.pageId))
+    for (const id of old) {
+      // Already gone (the listener deleted it in Notion) is fine.
+      await call({ path: `blocks/${id}`, method: 'PATCH', body: { archived: true } }).catch(() => undefined)
+    }
+    let ids: string[] = []
+    if (further.length) {
+      // If the block it went after has been deleted, fall back to the end of the page.
+      ids = await append(call, state.pageId, further, anchor).catch(() => append(call, state.pageId, further))
+    }
+    next.bodyHash = bodyHash
+    next.bodyBlockIds = ids
+    next.anchorBlockId = anchor
+    if (old.length || ids.length) written = true
+    else await repo.notion.put({ ...next, syncedAt: at }) // nothing to write, but remember the page is in step
+  }
+  if (written) await repo.notion.put({ ...next, syncedAt: at })
+  return written
+}
+
+/** A database row with no body: create it, or rewrite its columns when they change. */
+async function upsert(call: NotionCall, repo: Repo, key: string, databaseId: string, properties: Record<string, unknown>): Promise<boolean> {
   const h = hash(properties)
   const state = await repo.notion.get(key)
   if (state?.hash === h) return false
@@ -316,7 +445,6 @@ async function upsert(call: NotionCall, repo: Repo, key: string, databaseId: str
     await call({ path: `pages/${state.pageId}`, method: 'PATCH', body: { properties } })
   } else {
     const page = await call<{ id: string }>({ path: 'pages', method: 'POST', body: { parent: { database_id: databaseId }, properties } })
-    if (body) await append(call, page.id, body())
     await repo.notion.put({ key, pageId: page.id, hash: h, syncedAt: new Date().toISOString() })
     return true
   }
@@ -338,8 +466,8 @@ export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string,
   let written = 0
 
   for (const p of programmes.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-    written += Number(await upsert(call, repo, `programme:${p.id}`, dbs.journal, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek),
-      () => programmeBlocks(p, resources.filter((r) => r.programmeId === p.id))))
+    written += Number(await syncProgrammePage(call, repo, dbs.journal, p, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek),
+      resources.filter((r) => r.programmeId === p.id)))
   }
   for (const t of themes) {
     written += Number(await upsert(call, repo, `theme:${t.id}`, dbs.threads, threadProps(t, explorations)))
@@ -354,19 +482,42 @@ export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string,
     written += Number(await upsert(call, repo, `composer:${name}`, dbs.composers, composerProps(name, entries, events, feedback)))
   }
 
-  // The taste page is rewritten whole when it changes.
+  // The taste page belongs to the app: it is rewritten whole when it changes.
   const { nextRequest: _n, ...shownPrefs } = prefs
   const tasteHash = hash({ o: taste.observations.filter((o) => !o.supersededBy).map((o) => [o.statement, o.stance, o.confidence]), q: taste.questions, n: taste.notesToCurator, p: shownPrefs })
   const tasteState = await repo.notion.get('taste')
   if (tasteState?.hash !== tasteHash) {
-    const children = await call<{ results: { id: string }[] }>({ path: `blocks/${dbs.tastePage}/children?page_size=100`, method: 'GET' })
-    for (const b of children.results ?? []) await call({ path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } })
+    for (const b of await childrenOf(call, dbs.tastePage)) await call({ path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } })
     await append(call, dbs.tastePage, tasteBlocks(taste, prefs))
     await repo.notion.put({ key: 'taste', pageId: dbs.tastePage, hash: tasteHash, syncedAt: new Date().toISOString() })
     written++
   }
   await repo.marks.put({ id: 'notion:last-sync', at: new Date().toISOString() })
   return { written }
+}
+
+/**
+ * Before a fresh start: move every page the app wrote into Notion's trash
+ * (recoverable there for 30 days) and empty the taste page, so the notebook
+ * starts as clean as the app. The databases themselves stay, for the next
+ * journey. Best effort: a page already gone is fine.
+ */
+export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<number> {
+  let n = 0
+  for (const st of await repo.notion.all()) {
+    if (st.key === 'taste') continue
+    try {
+      await call({ path: `pages/${st.pageId}`, method: 'PATCH', body: { archived: true } })
+      n++
+    } catch { /* already archived or deleted in Notion */ }
+  }
+  const setup = (await repo.marks.get('notion:setup'))?.value as { tastePage?: string } | undefined
+  if (setup?.tastePage) {
+    for (const b of await childrenOf(call, setup.tastePage)) {
+      await call({ path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } }).catch(() => undefined)
+    }
+  }
+  return n
 }
 
 export function journalProps(p: Programme, theme: string, events: ListeningEvent[], feedback: Feedback[], setAside: boolean, currentWeek: string) {
@@ -400,7 +551,8 @@ export function threadProps(t: Theme, explorations: ThemeExploration[]) {
 export function recordingProps(proposed: Programme['sections'][number]['items'][number]['proposed'], r: Recording | undefined, programme: Programme, events: ListeningEvent[], feedback: Feedback[]) {
   const rid = r?.id ?? ''
   const fb = latestFeedback(feedback, rid)
-  const link = r?.spotify?.trackIds[0] ? `https://open.spotify.com/track/${r.spotify.trackIds[0]}` : null
+  // Only a confirmed recording gets a link: a near miss waiting for the listener is not a fact yet.
+  const link = r?.verification === 'verified' && r.spotify?.trackIds[0] ? `https://open.spotify.com/track/${r.spotify.trackIds[0]}` : null
   return {
     Name: titleProp(`${proposed.composer} — ${proposed.work}`),
     Composer: textProp(proposed.composer),

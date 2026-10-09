@@ -116,8 +116,14 @@ export function demoCurator(): CuratorClient {
           }
           return res as T
         }
-        case 'programme':
-          return (/war/i.test(payload?.option?.title ?? '') ? AFTER_THE_WAR : COLOUR) as T
+        case 'programme': {
+          // "More of this theme" in the demo: the other canned programme, as a continuation.
+          const base = payload?.extension
+            ? { ...AFTER_THE_WAR, programme: { ...AFTER_THE_WAR.programme, title: `More: ${AFTER_THE_WAR.programme.title}`, continuityNote: 'Carrying on from where the week began.' } }
+            : /war/i.test(payload?.option?.title ?? '') ? AFTER_THE_WAR : COLOUR
+          // Like the real curator: a side-by-side pair only when the listener asked for them.
+          return (payload?.preferences?.pairs ? base : { ...base, programme: { ...base.programme, comparisons: [] } }) as T
+        }
         case 'taste':
           return { observations: payload.feedback.filter((f: any) => f.note).slice(0, 1).map((f: any) => ({ facet: 'orchestral-sound', subject: 'colour', statement: 'Drawn to orchestral colour and texture.', stance: 'drawn-to', confidence: 'tentative', evidence: [f.id] })), questions: [], promptVersion: 'demo' } satisfies TasteResponse as T
         case 'continuity':

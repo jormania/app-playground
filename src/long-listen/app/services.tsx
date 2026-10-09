@@ -142,6 +142,9 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
 
   useEffect(() => { syncSpotify().catch(() => {}) }, [syncSpotify])
 
+  // Spotify ends sign-ins after six months; say so once, plainly, and let views re-read.
+  useEffect(() => spotify.onSignedOut((message) => { say(message, 'danger'); bump() }), [spotify, say, bump])
+
   const notionOnce = useRef(false)
   useEffect(() => {
     if (notion && !notionOnce.current) {
