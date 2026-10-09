@@ -83,7 +83,10 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
 
 const STATES: { value: ListeningState; label: string; kind: ListeningKind }[] = [
   { value: 'not-started', label: 'Not started', kind: 'reset' },
-  { value: 'listening', label: 'Listening', kind: 'listening' },
+  // Shown as "Started": the state means begun and not yet called heard, and
+  // "Listening" read as "playing now" (a single-track work stays here until
+  // the listener says otherwise — Spotify can't tell 30 s from the whole).
+  { value: 'listening', label: 'Started', kind: 'listening' },
   { value: 'heard', label: 'Heard', kind: 'heard' },
   { value: 'skipped', label: 'Skipped', kind: 'skipped' },
 ]

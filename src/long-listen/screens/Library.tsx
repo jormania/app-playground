@@ -14,7 +14,7 @@ interface Entry {
   works: { work: Work; recordings: { rec: Recording; proposed: ProposedRecording; programmeId?: string; programmeTitle?: string }[] }[]
 }
 
-const STATE_WORD: Record<string, string> = { 'not-started': 'not yet heard', listening: 'listening', heard: 'heard', skipped: 'set aside' }
+const STATE_WORD: Record<string, string> = { 'not-started': 'not yet heard', listening: 'started', heard: 'heard', skipped: 'set aside' }
 
 /**
  * Everything met so far, as a library: composers by surname, their works, and

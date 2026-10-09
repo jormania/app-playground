@@ -185,7 +185,7 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
  * - plays of one recording's tracks less than three hours apart are one
  *   session;
  * - a session that reached most (≥ 60%) of a multi-movement work's tracks is
- *   `heard`; less is `partial` (shown as "Listening");
+ *   `heard`; less is `partial` (shown as "Started");
  * - a single-track work can never be told apart from thirty seconds of it, so
  *   Spotify only ever marks it `partial` — "heard" is the listener's word;
  * - each session is recorded once: a later poll that sees the same session
