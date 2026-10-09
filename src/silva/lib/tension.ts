@@ -13,7 +13,7 @@
  * requestAnthropic) is required.
  */
 
-import { requestAnthropic, extractAnthropicText, MODEL_HAIKU } from '../../shared/anthropic'
+import { requestAnthropic, extractAnthropicText, MODEL_HAIKU, noThinking } from '../../shared/anthropic'
 import type { Thing } from './notion'
 
 const PROXY_ENDPOINT = '/api/anthropic-proxy/v1/messages'
@@ -37,6 +37,7 @@ export async function confirmTension(apiKey: string, a: Thing, b: Thing): Promis
       {
         model: MODEL_HAIKU,
         max_tokens: 8,
+        ...noThinking(MODEL_HAIKU),
         messages: [{ role: 'user', content: buildPrompt(a, b) }],
       },
       { endpoint: PROXY_ENDPOINT },

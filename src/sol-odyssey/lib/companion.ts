@@ -10,7 +10,7 @@ import type { OdysseyDetail } from './notion'
 import type { CheckinRecord } from './checkins'
 import type { ReflectionDraft } from './reflections'
 import { CYCLE_DAYS, dayReached, identitySentence } from './charter'
-import { extractAnthropicText, MODEL_HAIKU } from '../../shared/anthropic'
+import { extractAnthropicText, MODEL_HAIKU, noThinking } from '../../shared/anthropic'
 
 export interface CompanionPrompt {
   system: string
@@ -155,7 +155,7 @@ export async function requestCompanionReflection(
     body: JSON.stringify({
       model: COMPANION_MODEL,
       max_tokens: 200,
-      temperature: 0.7,
+      ...noThinking(COMPANION_MODEL),
       system: prompt.system,
       messages: [{ role: 'user', content: prompt.user }],
     }),
@@ -182,6 +182,7 @@ export async function verifyAnthropicKey(apiKey: string, fetchImpl: typeof fetch
     body: JSON.stringify({
       model: COMPANION_MODEL,
       max_tokens: 1,
+      ...noThinking(COMPANION_MODEL),
       messages: [{ role: 'user', content: 'ping' }],
     }),
   })

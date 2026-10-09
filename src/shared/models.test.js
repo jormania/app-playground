@@ -9,8 +9,8 @@ describe('models', () => {
     for (const id of ids) expect(() => noThinking(id)).not.toThrow()
   })
 
-  it('sends nothing to Haiku and between_tools to Sonnet 5.5', () => {
-    expect(noThinking(MODEL_HAIKU)).toEqual({})
+  it('turns thinking off on Haiku 5.5 and sends between_tools to Sonnet 5.5', () => {
+    expect(noThinking(MODEL_HAIKU)).toEqual({ thinking: { type: 'disabled' } })
     expect(noThinking(MODEL_SONNET)).toEqual({ thinking: { type: 'between_tools' } })
   })
 
@@ -23,10 +23,12 @@ describe('models', () => {
     expect(noThinking(MODEL_SONNET)).toEqual({ thinking: { type: 'between_tools' } })
   })
 
-  it('never uses a thinking shape the current models reject', () => {
+  // `disabled` is a 400 on Sonnet 5.5 (and Opus 5.5), but Haiku 5.5 accepts it at
+  // its default effort — which no Haiku caller changes.
+  it('never sends disabled to a model that rejects it', () => {
     for (const id of ids) {
       const t = noThinking(id).thinking
-      if (t) expect(t.type).not.toBe('disabled')
+      if (t && !id.startsWith('claude-haiku-5')) expect(t.type).not.toBe('disabled')
     }
   })
 })

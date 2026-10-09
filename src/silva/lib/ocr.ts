@@ -17,7 +17,7 @@
  * it has to come back empty instead.
  */
 
-import { requestAnthropic, extractAnthropicText, MODEL_HAIKU } from '../../shared/anthropic'
+import { requestAnthropic, extractAnthropicText, MODEL_HAIKU, noThinking } from '../../shared/anthropic'
 
 const PROXY_ENDPOINT = '/api/anthropic-proxy/v1/messages'
 
@@ -49,6 +49,7 @@ export async function ocrPhoto(apiKey: string, blob: Blob, mediaType = 'image/jp
       {
         model: MODEL_HAIKU,
         max_tokens: 1024,
+        ...noThinking(MODEL_HAIKU),
         messages: [
           {
             role: 'user',

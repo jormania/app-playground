@@ -1,4 +1,4 @@
-import { extractAnthropicText, MODEL_HAIKU, requestAnthropic } from '../../shared/anthropic'
+import { extractAnthropicText, MODEL_HAIKU, noThinking, requestAnthropic } from '../../shared/anthropic'
 import { readJson, removeJson, writeJson } from '../../shared/storage'
 
 // Claude in KeyPath (KEYPATH_TUTOR.md §9, "The coach's note", "The weekly
@@ -50,7 +50,7 @@ export type KeyCheck = 'ok' | 'bad-key' | 'no-credit' | 'limited' | 'busy' | 'of
 export async function testAiKey(key: string, fetchImpl?: typeof fetch): Promise<KeyCheck> {
   let res: Response
   try {
-    res = await requestAnthropic(key.trim(), { model: MODEL_HAIKU, max_tokens: 1, messages: [{ role: 'user', content: 'Hi' }] }, { fetchImpl })
+    res = await requestAnthropic(key.trim(), { model: MODEL_HAIKU, max_tokens: 1, ...noThinking(MODEL_HAIKU), messages: [{ role: 'user', content: 'Hi' }] }, { fetchImpl })
   } catch {
     return 'offline'
   }

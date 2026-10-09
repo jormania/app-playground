@@ -763,9 +763,10 @@ itself is unchanged; the note is added (`songs/coach.ts`, `CoachNote.tsx`).
 - **Never in the way**: the report shows at once; "Your coach is writing a
   note…" waits beside it for up to 15 seconds. No key, offline, the report
   set to Off, or any failure: no note, and no message about it.
-- **The model**: Claude Haiku 4.5 through `src/shared/anthropic.ts`, as the
-  repo's other apps call Claude: BYO key, straight from the browser. About a
-  quarter of a cent a note.
+- **The model**: Claude Haiku 5.5 (thinking off) through `src/shared/anthropic.ts`,
+  as the repo's other apps call Claude: BYO key, straight from the browser. A
+  small fraction of a cent a note (Haiku 4.5, used until 2026-10-09, cost ten
+  times as much).
 
 **The key** is the phone's, not a player's: Settings → Claude → *Anthropic
 API key*, with **Test the key** (one request of one token: works, not
@@ -778,7 +779,7 @@ note off (`coach` in their settings).
 ### The weekly note
 
 In Progress, at the top: *This week, in a few words*, a paragraph for the
-parent about a player's last seven days, written by Claude Haiku 4.5 when
+parent about a player's last seven days, written by Claude Haiku 5.5 when
 **Write this week's note** is tapped, never on its own (`progress/weekly.ts`,
 `WeeklyNote.tsx`).
 

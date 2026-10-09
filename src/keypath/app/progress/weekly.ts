@@ -1,4 +1,4 @@
-import { MODEL_HAIKU } from '../../../shared/anthropic'
+import { MODEL_HAIKU, noThinking } from '../../../shared/anthropic'
 import { askClaude } from '../ai'
 import type { LogRecord } from '../log'
 import type { Language } from '../profiles'
@@ -117,7 +117,7 @@ export function checkWeekly(text: string): string | null {
 export const withName = (text: string, name: string) => text.replaceAll('{name}', name)
 
 export async function askWeekly(key: string, facts: WeekFacts, language: Language, options: { signal?: AbortSignal; fetchImpl?: typeof fetch } = {}): Promise<string | null> {
-  const text = await askClaude(key, { model: MODEL_HAIKU, maxTokens: 500, system: `${SYSTEM}\n\n${LANGUAGE_LINE[language]}`, user: `This week's practice log, as JSON:\n${JSON.stringify(facts)}` }, options)
+  const text = await askClaude(key, { model: MODEL_HAIKU, maxTokens: 500, extra: noThinking(MODEL_HAIKU), system: `${SYSTEM}\n\n${LANGUAGE_LINE[language]}`, user: `This week's practice log, as JSON:\n${JSON.stringify(facts)}` }, options)
   return text === null ? null : checkWeekly(text)
 }
 

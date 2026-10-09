@@ -78,7 +78,7 @@ describe('askCoach', () => {
     expect(url).toBe('https://api.anthropic.com/v1/messages')
     expect((init.headers as Record<string, string>)['x-api-key']).toBe('sk-test')
     const body = JSON.parse(init.body as string)
-    expect(body.model).toMatch(/^claude-haiku-4-5/)
+    expect(body.model).toMatch(/^claude-haiku-5-5/)
     expect(body.system).toMatch(/Write in Romanian/)
     expect(body.messages[0].content).toContain('"song":"Little Tune"')
   })

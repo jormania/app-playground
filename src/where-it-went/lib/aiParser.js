@@ -6,7 +6,7 @@ import { CURRENCIES, canConvert, fetchRate, convert, BASE_CURRENCY } from './fx'
 import { pickDefaultAccount } from './accountPicker';
 import { buildVendorMemory, lookupVendor, preferredAccountForTrip } from './vendorMemory';
 import { formatTripDates, isTripOngoing } from '../domain/Trip';
-import { extractAnthropicText, MODEL_HAIKU } from '../../shared/anthropic';
+import { extractAnthropicText, MODEL_HAIKU, noThinking } from '../../shared/anthropic';
 
 const MODEL = MODEL_HAIKU;
 /** Generous, but bounded — without this a hung connection left isParsing true
@@ -18,7 +18,7 @@ const REQUEST_TIMEOUT_MS = 20000;
  * the response-shape guards. `askInsightsAI` used to skip the empty-response
  * guard `parseTextWithAI` had — sharing this closes that gap for both.
  */
-async function callClaude(apiKey, { system, message, maxTokens, temperature }) {
+async function callClaude(apiKey, { system, message, maxTokens }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res;
@@ -34,7 +34,7 @@ async function callClaude(apiKey, { system, message, maxTokens, temperature }) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: maxTokens,
-        temperature,
+        ...noThinking(MODEL),
         system,
         messages: [{ role: 'user', content: message }],
       }),
@@ -506,7 +506,6 @@ Rules:
     system: systemPrompt,
     message: text,
     maxTokens: 1000,
-    temperature: 0.1,
   });
 
   const parsed = extractJsonObject(rawText);
@@ -590,7 +589,6 @@ Rules for your response:
     system: systemPrompt,
     message: question,
     maxTokens: 500,
-    temperature: 0.2,
   });
 
   return rawText.trim();
