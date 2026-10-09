@@ -445,7 +445,7 @@ For each work (by its "key"), return "movements": exactly one note per track, in
 
 export const CONCERT = {
   id: 'concert',
-  version: 'concert@2026-10-10.1',
+  version: 'concert@2026-10-10.2',
   effort: 'low',
   maxTokens: 4000,
   schema: {
@@ -475,9 +475,11 @@ export const CONCERT = {
 
 - venue: the presenting institution or hall as usually named ("Filarmonica George Enescu", "Sala Radio"); hall: a named room within it if given ("Sala Mare"), else "".
 - date: YYYY-MM-DD; use "year" from the context when the screenshot has no year. time: HH:MM or "".
-- orchestra, conductor, soloists (name and instrument, in English: "violin", "cello", "piano") as printed, names in their usual form with diacritics.
-- works: in the order played. composer: full standard name ("Johannes Brahms", "George Enescu"). title: the work's usual concert title in English — "Concertul în la minor pentru vioară și violoncel, op. 102" is "Double Concerto in A minor"; "Simfonia nr. 5" is "Symphony No. 5"; keep proper titles as they are ("Tapiola", "Poème de l'extase"). catalogue: "Op. 102", "BWV 1048", or "".
-Only what the image shows. If something isn't there, leave it "" (or [] for lists) — never guess a date, a performer or a work.`,
+- orchestra, conductor, soloists: names as printed, in their usual form with diacritics.
+- Each soloist's instrument, in English ("violin", "cello", "piano", "soprano"). Pages often list soloists without one; read it from the programme itself when it is plain — a cello concerto with one soloist, a concerto "pentru vioară, violoncel și orchestră" with two (the violinist usually listed first), "la pian" beside a name — or when you are certain who the performer is (Edgar Moreau is a cellist). Otherwise "".
+- works: in the order played. composer: full standard name ("Johannes Brahms", "George Enescu", "Anatol Vieru"). title: the work's usual title in English as recordings name it — "Concertul în la minor pentru vioară, violoncel și orchestră, op. 102" is "Double Concerto in A minor"; "Simfonia nr. 3, în la minor, op. 56, Scoțiana" is "Symphony No. 3 in A minor, "Scottish""; "Concertul pentru violoncel și orchestră" is "Cello Concerto"; keep proper titles as they are ("Tapiola", "Poème de l'extase"). catalogue: "Op. 102", "BWV 1048", or "".
+- A number the page doesn't print: add it only when the composer wrote just one such work (Elgar's "Cello Concerto" is his Op. 85 in E minor). When there are several (Vieru wrote two cello concertos; Shostakovich two), leave the number and catalogue out rather than pick one.
+Only what the image shows, or what follows from it with certainty. Never guess a date, a performer or a work.`,
 }
 
 export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, concert: CONCERT }

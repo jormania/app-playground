@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchTrack, bestTrack, workTracks, searchQueries, orchestraTokens, workOverlap } from './match'
+import { matchTrack, bestTrack, workTracks, searchQueries, orchestraTokens, workOverlap, catalogueAgrees } from './match'
 import type { ProposedRecording } from '../domain/types'
 import type { SpotifyTrackLike } from './match'
 
@@ -107,5 +107,19 @@ describe('search', () => {
     expect(orchestraTokens('London Symphony Orchestra')).toEqual(['london'])
     expect(orchestraTokens('Orchestre de Paris')).toEqual(['paris'])
     expect(orchestraTokens('Wiener Philharmoniker')).toEqual(['vienna'])
+  })
+})
+
+describe('one work, named two ways', () => {
+  it('reads violoncello as cello', () => {
+    expect(workOverlap('Cello Concerto', 'Concerto for Violoncello and Orchestra')).toBe(1)
+    expect(workOverlap('Cello Concerto No. 1', 'Concerto pour violoncelle n° 1')).toBe(1)
+  })
+
+  it('agrees on a catalogue number only when it is the same one', () => {
+    const p = { composer: 'Johannes Brahms', work: 'Double Concerto in A minor', catalogue: 'Op. 102', soloists: [] }
+    expect(catalogueAgrees(p, 'Concerto for Violin, Cello and Orchestra in A minor, Op. 102: I. Allegro')).toBe(true)
+    expect(catalogueAgrees(p, 'Violin Concerto in D major, Op. 77')).toBe(false)
+    expect(catalogueAgrees({ ...p, catalogue: '' }, 'Op. 102')).toBe(false)
   })
 })

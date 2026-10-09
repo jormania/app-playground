@@ -540,15 +540,23 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
   in order and a line on how it was. Shared from the phone's share sheet (the
   manifest's POST `share_target`; the worker keeps the picture under
   `/long-listen-shared-image` and opens `#/concerts/new`) or chosen in the form;
-  the `concert` job (Haiku, image in, one attempt) reads it into the form to
-  check. In the Journal in its week with a hall mark; *All concerts* by venue and
+  the `concert` job (Sonnet since concert@2026-10-10.2 — Haiku left soloists'
+  instruments blank and knew less repertoire; image in, one attempt, a few
+  cents) reads it into the form to check. It may take an instrument from the
+  programme itself (a cello concerto, a concerto "for violin and cello") and
+  add a number the page doesn't print only when the composer wrote one such
+  work (Vieru wrote two cello concertos: it stays "Cello Concerto"). In the Journal in its week with a hall mark; *All concerts* by venue and
   date; each work in the Library *heard live*; known to the curator, and recent
   concerts in the directions' context; the line on how it was is feedback on the
   concert. *Hear it again* lists Spotify's recordings of each work, the same
-  performers' first only when Spotify has them. Notion gets a Concerts database.
+  performers' first only when Spotify has them. A recording counts by its title
+  or by the same catalogue number (DG's "Concerto for Violin, Cello and
+  Orchestra, Op. 102" is the Double Concerto), never by a different one, and
+  "violoncello" is "cello" (matcher 4); each line says which work Spotify has
+  when that says more than the programme did ("Cello Concerto No. 1, Op. 29"). Notion gets a Concerts database.
 - Notion's Works & recordings now also holds what played *On Spotify instead*
   and the second recording of a pair.
 
 Prompts at the end of release two: themes@2026-10-10.3, programme@2026-10-10.4,
-explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.1.
+explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.2.
 
