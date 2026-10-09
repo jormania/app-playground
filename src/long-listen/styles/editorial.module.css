@@ -517,6 +517,7 @@
 }
 
 .roSide {
+  align-self: center;
   justify-self: end;
   max-width: 9rem;
   text-align: right;
@@ -702,6 +703,62 @@
 .albumName {
   color: var(--color-ink);
   overflow-wrap: anywhere;
+}
+
+/* The listen bar: where a work starts. One filled button —
+   the only one in the recording block — with the Spotify alternative beside
+   it, quiet. */
+.listenBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.playButton {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: 40px;
+  padding: var(--space-3xs) var(--space-md) var(--space-3xs) var(--space-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border: 0;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-ink) 18%, transparent);
+  transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.playButton:hover {
+  background: var(--color-accent-hover);
+  color: var(--color-on-accent);
+}
+
+.playButton:active {
+  transform: translateY(1px);
+}
+
+.listenAlt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  font-size: var(--text-base);
+  color: var(--color-muted);
+  text-decoration-color: var(--color-border-2);
+}
+
+.listenAlt:hover {
+  color: var(--color-accent);
 }
 
 .note {
@@ -938,17 +995,33 @@
   margin: var(--space-xs) 0 0;
   padding: 0;
   display: grid;
-  gap: var(--space-2xs);
 }
 
-/* Title left, its tag right — the way the running order sets its works — so
-   a tag never drops onto a line of its own under a long title. */
+/* One row per direction, a hairline between them, and the tag centred on
+   its own title — so a tag beside a two-line title can't be read as
+   belonging to the row above or below. */
 .offeredList > li {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 1.05rem;
   line-height: 1.35;
+}
+
+.offeredList > li:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* When the week's heard works follow, the list's closing rule is their first. */
+.offeredList + .entries {
+  margin-top: 0 !important;
+}
+
+.offeredList + .entries > li:first-child {
+  border-top: 0;
 }
 
 .offeredList .tag {
@@ -1705,6 +1778,7 @@
   .further,
   .primaryButton,
   .outlineButton,
+  .listenBar,
   .feedback,
   .textButton,
   .demo {
