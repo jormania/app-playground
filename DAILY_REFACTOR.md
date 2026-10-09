@@ -320,9 +320,14 @@ always proceeds; the gate only applies to scheduled ones.
   requests** must be **on**. It was off for the second-ever run, which is why that
   run could not open its PR.
 
-**Model and costs:** `modernise` items run on **Sonnet** (`claude-sonnet-5-5`);
-everything else — `refactor`, `visual`, `qol`, Friday discovery, and a morning
-with nothing eligible — runs on **Opus** (`claude-opus-5-5`). `--model` is fixed
+**Model and costs:** `refactor` and `modernise` items run on **Sonnet**
+(`claude-sonnet-5-5`); everything else — `visual`, `qol`, Friday discovery, and a
+morning with nothing eligible — runs on **Opus** (`claude-opus-5-5`). The split
+follows the autonomy line: the two Sonnet classes are behaviour-preserving and
+merge only after the workflow re-runs all three gates on a clean clone, so a
+weaker move is caught by tests; the Opus ones change what you see or call for
+judgement. `refactor` moved to Sonnet on 2026-10-09, to spare the weekly limit
+below. `--model` is fixed
 when the agent starts, so the workflow works out tonight's item first, by the
 skill's own four eligibility conditions, in `scripts/pick-model.mjs` (tested in
 `scripts/pick-model.test.js`). On a Sonnet run the prompt names the item and

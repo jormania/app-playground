@@ -178,7 +178,8 @@ jobs:
 
       - run: npm ci
 
-      # `modernise` items run on Sonnet, everything else on Opus. --model is
+      # `refactor` and `modernise` items run on Sonnet; `qol`, `visual` and
+      # Friday discovery on Opus. --model is
       # fixed at launch, so the workflow reads the topmost eligible item itself —
       # by the skill's own four conditions, in scripts/pick-model.mjs, which is
       # tested. Every uncertain path lands on Opus: a wrong guess that way costs
