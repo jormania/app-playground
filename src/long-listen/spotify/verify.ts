@@ -328,3 +328,46 @@ export async function keepPlaylistCurrent(repo: Repo, spotify: SpotifyClient, pr
   await saveProgrammePlaylist(repo, spotify, programmeId, weekLabel)
   return true
 }
+
+/** Recordings being looked up right now, page-wide, so two callers never check the same one twice. */
+const looking = new Set<string>()
+
+/**
+ * Confirm every recording a programme needs on Spotify — three at a time, not
+ * one after another, so a new week's programme fills in quickly. Started as
+ * soon as a direction is chosen, and again whenever the programme is opened;
+ * a recording already confirmed or being looked up is left alone. Stops at the
+ * first sign-in or rate-limit problem: what's left waits for the next open.
+ */
+export async function verifyProgramme(
+  repo: Repo, spotify: SpotifyClient, programmeId: string, onEach?: () => void, concurrency = 3,
+): Promise<number> {
+  if (!spotify.connected) return 0
+  const p = await repo.programmes.require(programmeId)
+  const items = p.sections.flatMap((s) => s.items)
+  const comparisons = await repo.comparisons.many([...p.comparisonIds, ...items.map((i) => `cmp:${programmeId}:${i.id}`)])
+  const wanted = [
+    ...items.map((i) => ({ rid: i.recordingId, proposed: i.proposed })),
+    ...comparisons.flatMap((c) => c.perspectives.map((x) => ({ rid: x.recordingId, proposed: x.proposed }))),
+  ]
+  const byId = new Map((await repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
+  const queue = wanted.filter(({ rid }, i) => wanted.findIndex((w) => w.rid === rid) === i && needsLook(byId.get(rid)) && !looking.has(rid))
+  let done = 0
+  let failed = false
+  const worker = async () => {
+    for (let job = queue.shift(); job && !failed; job = queue.shift()) {
+      looking.add(job.rid)
+      try {
+        await verifyRecording(repo, spotify, job.rid, job.proposed)
+        done++
+        onEach?.()
+      } catch {
+        failed = true // signed out, offline or throttled: the buttons stay, nothing is lost
+      } finally {
+        looking.delete(job.rid)
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker))
+  return done
+}

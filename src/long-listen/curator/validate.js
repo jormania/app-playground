@@ -123,6 +123,22 @@ export function baseWorkKey(composer, title) {
 
 /** How many works a week of this length holds — mirrors domain/exploration.ts TIME. */
 const WORKS_FOR = { short: [3, 4], standard: [5, 7], generous: [8, 10], abundant: [11, 14] }
+const TIME_STEPS = ['short', 'standard', 'generous', 'abundant']
+
+/**
+ * "This week, differently", applied to the standing preferences for one week:
+ * shorter is one step less time, wider one step more breadth, more familiar
+ * one step towards the well known. Quieter has no number; the prompt carries it.
+ * Used for the checks, so a shorter week isn't sent back for having too few works.
+ */
+export function weekAdjusted(preferences = {}, thisWeek = []) {
+  const p = { ...preferences }
+  const has = (m) => Array.isArray(thisWeek) && thisWeek.includes(m)
+  if (has('shorter') && p.timePerWeek) p.timePerWeek = TIME_STEPS[Math.max(0, TIME_STEPS.indexOf(p.timePerWeek) - 1)] ?? p.timePerWeek
+  if (has('wider')) p.breadth = Math.min(5, Number(p.breadth ?? 3) + 1)
+  if (has('familiar')) p.familiarity = Math.max(1, Number(p.familiarity ?? 3) - 1)
+  return p
+}
 
 export function validateProgramme(out, { covered = [], returning = false, preferences = {} } = {}) {
   const problems = []

@@ -2,7 +2,7 @@ import type { Repo } from '../store/repo'
 import type { ListeningWeek } from '../domain/week'
 import { creditLine } from '../domain/identity'
 import { knownWorkIds, listeningState, latestFeedback, timesHeard } from '../domain/listening'
-import type { ListenerPreferences } from '../domain/types'
+import type { ListenerPreferences, WeekMood } from '../domain/types'
 import { weeksBetween } from '../domain/week'
 import { digestThread, type ThreadDigest } from './continuity'
 
@@ -39,6 +39,8 @@ export interface CuratorContext {
    */
   alreadyKnown: { composer: string; work: string }[]
   requestedNext?: string
+  /** "This week, differently" — this week only; outranks preferences for the week. */
+  thisWeek?: WeekMood[]
 }
 
 export async function buildContext(repo: Repo, week: ListeningWeek, requestedNext?: string): Promise<CuratorContext> {
@@ -133,5 +135,6 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
     alreadyProgrammed,
     alreadyKnown,
     requestedNext: (requestedNext ?? nextRequest).trim() || undefined,
+    thisWeek: weeks.find((w) => w.weekKey === week.key)?.mood?.length ? weeks.find((w) => w.weekKey === week.key)!.mood : undefined,
   }
 }

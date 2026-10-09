@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -172,7 +172,8 @@ export async function generateThemes(send, payload) {
 export async function curateProgramme(send, payload) {
   const covered = payload.thread?.covered?.works ?? []
   const returning = Boolean(payload.thread)
-  const preferences = payload.preferences ?? {}
+  // This week's mood moves the standing preferences a step for this week only.
+  const preferences = weekAdjusted(payload.preferences ?? {}, payload.thisWeek)
   // "More of this theme" is a companion, shorter than a week: size isn't checked against the week's length.
   const sized = payload.extension ? { ...preferences, timePerWeek: undefined } : preferences
   const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning, preferences: sized }))

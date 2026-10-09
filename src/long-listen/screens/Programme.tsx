@@ -9,7 +9,7 @@ import { sectionTitle } from '../domain/sections'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
-import { aboutDuration, isConfirmed, keepPlaylistCurrent, needsLook, saveProgrammePlaylist, spotifyCandidates, verifyRecording, type PlaylistMark } from '../spotify/verify'
+import { aboutDuration, isConfirmed, keepPlaylistCurrent, saveProgrammePlaylist, spotifyCandidates, needsLook, verifyProgramme, type PlaylistMark } from '../spotify/verify'
 import { playbackOf } from '../spotify/client'
 import { usePlayerState } from '../app/playback'
 import { RecordingBlock } from '../components/RecordingBlock'
@@ -129,29 +129,10 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   // This week's programme — or "more of this theme" made for it.
   const isCurrent = p.weekKey === week.key && (b.week?.programmeId === p.id || (Boolean(p.extends) && b.week?.programmeId === p.extends))
   const setAside = b.week?.setAsideProgrammeIds.includes(p.id)
-  // Confirm each recording on Spotify once, quietly, in order.
-  const tried = useRef(new Set<string>())
+  // Confirm the programme's recordings on Spotify, quietly, a few at a time.
   useEffect(() => {
-    if (!spotify.connected) return
-    let stop = false
-    ;(async () => {
-      const pending = [
-        ...b.programme.sections.flatMap((x) => x.items).map((i) => ({ rid: i.recordingId, proposed: i.proposed })),
-        ...b.comparisons.flatMap((c) => c.perspectives.map((x) => ({ rid: x.recordingId, proposed: x.proposed }))),
-      ].filter(({ rid }) => needsLook(b.recordings.get(rid)) && !tried.current.has(rid))
-      for (const { rid, proposed } of pending) {
-        if (stop) return
-        tried.current.add(rid)
-        try {
-          await verifyRecording(repo, spotify, rid, proposed)
-          bump()
-        } catch {
-          return // signed out, offline or throttled: the buttons stay, nothing is lost
-        }
-      }
-    })()
-    return () => { stop = true }
-  }, [b, spotify, repo, bump])
+    void verifyProgramme(repo, spotify, b.programme.id, bump).catch(() => {})
+  }, [b.programme.id, b.comparisons.length, spotify, repo, bump])
 
   // This week's programme gathers its further reading once, by itself.
   const [searching, setSearching] = useState(false)

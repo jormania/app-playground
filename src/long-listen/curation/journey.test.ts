@@ -102,6 +102,20 @@ describe('a week', () => {
   })
 })
 
+describe('this week, differently', () => {
+  it('carries the week’s mood to new directions and to the programme, and keeps it when asking again', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })
+    const j = journey(c.client)
+    await j.ensureWeek()
+    await j.setWeekMood(['shorter', 'quieter'])
+    const again = await j.offerOtherDirections()
+    expect(again.mood).toEqual(['shorter', 'quieter'])
+    expect(c.calls[1].payload.context.thisWeek).toEqual(['shorter', 'quieter'])
+    await j.choose(again.optionIds[0])
+    expect(c.calls.find((x) => x.op === 'programme')!.payload.thisWeek).toEqual(['shorter', 'quieter'])
+  })
+})
+
 describe('works and recordings', () => {
   it('keeps two interpretations of one work as two recordings of one work', async () => {
     const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })
@@ -168,7 +182,11 @@ describe('the long view', () => {
     const j = journey(c.client)
     const w2 = await j.ensureWeek()
     expect(w2.weekKey).toBe('2026-W47')
-    expect(c.calls.map((x) => x.op)).toEqual(['themes', 'programme', 'continuity', 'taste', 'themes'])
+    // Closing the thread and reading feedback run side by side, both before the new directions.
+    const ops = c.calls.map((x) => x.op)
+    expect(ops.slice(0, 2)).toEqual(['themes', 'programme'])
+    expect(ops.slice(2, 4).sort()).toEqual(['continuity', 'taste'])
+    expect(ops[4]).toBe('themes')
 
     // The previous week is preserved exactly.
     expect(await repo.weeks.get('2026-W41')).toBeTruthy()

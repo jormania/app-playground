@@ -48,6 +48,7 @@ The listener's own preferences (a "preferences" field, when present) are what th
 - depth: concise keeps every piece of prose to its shortest useful form; deeper allows a little more context and history.
 - recordingEra: historic-welcome means great older recordings (including mono) are welcome; modern-sound prefers recordings from roughly 1980 on with good sound; period-practice favours historically informed performance where it exists; any means choose freely.
 - includeVoices false: avoid works that need singers. includeConcertos false: avoid concertos.
+- thisWeek (when present; in context.thisWeek for directions): the listener's mood for THIS week only, said by them; for this week it outranks the preferences above. "shorter": fewer works than timePerWeek allows, and none of the longest. "quieter": calmer, more inward music — slower music, smaller forces where the theme allows, nothing that shouts. "wider": range further than breadth says — more periods, places and composers. "familiar": lean towards better-known music, a step towards the cornerstones. Honour it in the choices; don't announce it in the prose.
 - language: write ALL prose in this language — "en" English (British spelling), "ro" Romanian with full diacritics (ă â î ș ț). Keep composers' names in their standard form and work titles in their usual concert form (e.g. "La mer", "Symphony No. 5" or "Simfonia nr. 5" in Romanian prose).
 
 Facts: only name real works and real commercially released recordings that you are confident exist. Prefer well-documented recordings. Use composers' full standard names ("Gustav Mahler", "Witold Lutosławski") and the performers' usual billing ("Wiener Philharmoniker" or "Vienna Philharmonic" — be consistent). If you are not sure a specific recording exists, choose one you are sure of. Do not invent catalogue numbers, dates or labels; leave a field empty rather than guess.`
@@ -76,7 +77,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-10.1',
+  version: 'themes@2026-10-10.2',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -159,7 +160,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-10.2',
+  version: 'programme@2026-10-10.3',
   effort: 'medium',
   maxTokens: 32000,
   schema: {

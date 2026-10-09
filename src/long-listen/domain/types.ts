@@ -210,7 +210,18 @@ export interface WeekRecord {
   /** Options offered earlier this week, before the listener asked for three others. */
   earlierOptionIds?: string[]
   promptVersion: string
+  /** "This week, differently": a mood for this week only, sent with every curator job about the week. */
+  mood?: WeekMood[]
 }
+
+/** A week's mood, said in one word each: fewer and shorter works, calmer music, further afield, better known. */
+export type WeekMood = 'shorter' | 'quieter' | 'wider' | 'familiar'
+export const WEEK_MOODS: { value: WeekMood; label: string }[] = [
+  { value: 'shorter', label: 'shorter' },
+  { value: 'quieter', label: 'quieter' },
+  { value: 'wider', label: 'wider' },
+  { value: 'familiar', label: 'more familiar' },
+]
 
 // ── The programme snapshot ────────────────────────────────────────────────
 

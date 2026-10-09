@@ -1,6 +1,6 @@
 import type {
   Comparison, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
-  ProgrammeOption, Reaction, Resource, Theme, ThemeExploration, WantMore, WeekKey, WeekRecord,
+  ProgrammeOption, Reaction, Resource, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
 } from '../domain/types'
 import { creditLine, newId } from '../domain/identity'
 import { listeningState, latestFeedback } from '../domain/listening'
@@ -76,8 +76,11 @@ export class Journey {
       const existing = await this.repo.weeks.get(week.key)
       if (existing) return existing
       await this.repo.ensureMeta(this.stamp())
-      await this.closeEndedExplorations().catch(() => {})
-      await this.interpretPendingFeedback().catch(() => {})
+      // Independent of each other, so side by side: the week waits for the slower one, not the sum.
+      await Promise.all([
+        this.closeEndedExplorations().catch(() => {}),
+        this.interpretPendingFeedback().catch(() => {}),
+      ])
       return this.generateWeek(week, requestedNext)
     })
   }
@@ -126,6 +129,14 @@ export class Journey {
     return record
   }
 
+  /** "This week, differently": set this week's mood. Read by every curator job about the week from now on. */
+  async setWeekMood(mood: WeekMood[]): Promise<WeekRecord> {
+    const week = await this.repo.weeks.require(this.currentWeek().key)
+    const record: WeekRecord = { ...week, mood: mood.length ? mood : undefined }
+    await this.repo.weeks.put(record)
+    return record
+  }
+
   /**
    * None of the three appeal: ask for three others, optionally saying what
    * you're in the mood for. Only before choosing — afterwards it's "change
@@ -139,7 +150,7 @@ export class Journey {
       const current = await this.repo.options.many(week.optionIds)
       await this.repo.options.putMany(current.map((o) => ({ ...o, status: 'open' as const })))
       const fresh = await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
-      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
+      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, mood: week.mood, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
       await this.repo.weeks.put(record)
       return record
     })
@@ -201,6 +212,7 @@ export class Journey {
         questions: context.questions,
         listenerNotes: context.listenerNotes,
         recentListening: context.recentListening,
+        thisWeek: context.thisWeek,
       })
       const { programme, comparisons } = await ingestProgramme(this.repo, {
         weekKey: root.weekKey,
@@ -281,6 +293,7 @@ export class Journey {
       questions: context.questions,
       listenerNotes: context.listenerNotes,
       recentListening: context.recentListening,
+      thisWeek: context.thisWeek,
     })
 
     // Nothing is written until the curator has answered: a failed call leaves
@@ -333,12 +346,9 @@ export class Journey {
   async closeEndedExplorations(): Promise<number> {
     const current = this.currentWeek().key
     const open = (await this.repo.explorations.all()).filter((e) => e.weekKey < current && !e.closedAt && !e.setAside)
-    let closed = 0
-    for (const ex of open) {
-      await this.once(`close:${ex.id}`, () => this.closeExploration(ex, current))
-      closed++
-    }
-    return closed
+    // Each thread is closed on its own; one failing doesn't stop the others, and is retried next time.
+    const results = await Promise.allSettled(open.map((ex) => this.once(`close:${ex.id}`, () => this.closeExploration(ex, current))))
+    return results.filter((r) => r.status === 'fulfilled').length
   }
 
   private async closeExploration(ex: ThemeExploration, current: WeekKey): Promise<void> {

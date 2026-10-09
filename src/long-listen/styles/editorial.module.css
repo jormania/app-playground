@@ -1718,6 +1718,29 @@
   letter-spacing: 0.08em;
 }
 
+/* "This week, differently": four quiet words, one tap each. */
+.weekMood {
+  margin: var(--space-md) 0 var(--space-xs);
+  line-height: 2;
+}
+
+.moodWord {
+  appearance: none;
+  padding: 0 0.1em;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--color-muted);
+  text-decoration: underline dotted var(--color-border-2);
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+
+.moodWordOn {
+  color: var(--color-accent);
+  text-decoration: underline solid var(--color-accent);
+}
+
 /* The pause between works: what's next, and the way to stay. */
 .handover {
   margin-top: var(--space-md);
