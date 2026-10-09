@@ -312,9 +312,9 @@ function ItemView({ item, b, comparison }: { item: ProgrammeItem; b: Bundle; com
       {/* What you've done with it — kept together, apart from what the curator wrote. */}
       <section className={s.panel} aria-label={`Your listening: ${item.proposed.work}`}>
         <p className={s.panelHead}>Your listening</p>
-        <div className={s.stateGrid} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
+        <div className={s.segmented} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
           {STATES.map((st) => (
-            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.chip} ${state === st.value ? s.chipOn : ''}`} onClick={() => mark(st.kind)}>
+            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? s.segmentOn : ''}`} onClick={() => mark(st.kind)}>
               {st.label}
             </button>
           ))}

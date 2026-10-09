@@ -531,6 +531,14 @@
   border-radius: var(--radius-sm);
 }
 
+/* On the narrowest screens (or a phone at large text) the box gives its
+   padding back, so the one-line states keep room to breathe. */
+@media (max-width: 360px) {
+  .panel {
+    padding: var(--space-sm) var(--space-xs);
+  }
+}
+
 .panelHead {
   margin: 0 0 var(--space-sm);
   font-size: var(--text-sm);
@@ -539,23 +547,41 @@
   color: var(--color-faint);
 }
 
-/* The four states as an even grid — two by two on a phone, one row wider —
-   so they never wrap three-and-one. */
-.stateGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-xs);
+/* The four states on one line: a thin segmented pill, the current one filled.
+   Segments size to their words, so all four fit a phone's width; under very
+   large text a label wraps inside its segment rather than the row wrapping. */
+.segmented {
+  display: flex;
+  padding: 2px;
   margin-bottom: var(--space-sm);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
 }
 
-@media (min-width: 560px) {
-  .stateGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+.segment {
+  appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  padding: var(--space-3xs) var(--space-xs);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  color: var(--color-muted);
+  cursor: pointer;
 }
 
-.stateGrid .chip {
-  text-align: center;
+.segment:hover {
+  color: var(--color-ink);
+}
+
+.segmentOn,
+.segmentOn:hover {
+  background: var(--color-ink);
+  color: var(--color-bg);
 }
 
 /* Each part after the first gets a hairline, so the box reads as one card. */
