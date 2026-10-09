@@ -98,6 +98,8 @@ export interface Recording {
   /** Curatorial: what this interpretation is like ("architectural, transparent"). */
   character: string[]
   verification: Verification
+  /** The matcher version that last looked (see MATCHER_VERSION); older not-founds are looked for again. */
+  checkedWith?: number
   spotify?: SpotifyRecordingRef
   albumId?: string
   checkedAt?: Instant
@@ -238,6 +240,8 @@ export interface Comparison {
   perspectives: ComparisonPerspective[]
   whyBoth: string
   origin: 'programme' | 'on-request'
+  /** Made because the programme's recording isn't on Spotify: the second perspective stands in for it. */
+  standIn?: boolean
   createdAt: Instant
 }
 

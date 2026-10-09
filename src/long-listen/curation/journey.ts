@@ -13,6 +13,7 @@ import { buildContext } from './context'
 import { threadDigest } from './continuity'
 import { Ingest, comparisonOf, ingestProgramme } from './ingest'
 import { applyTasteUpdate, pendingFeedback } from './taste'
+import type { SpotifyCandidate } from '../spotify/verify'
 
 export interface JourneyOptions {
   timeZone?: string
@@ -421,7 +422,7 @@ export class Journey {
   }
 
   /** A second interpretation of an item's work, set beside the one in the programme. */
-  compare(programmeId: string, itemId: string, opts: { mustBeOnSpotify?: boolean } = {}): Promise<Comparison> {
+  compare(programmeId: string, itemId: string, opts: { mustBeOnSpotify?: boolean; spotifyCandidates?: SpotifyCandidate[] } = {}): Promise<Comparison> {
     const id = `cmp:${programmeId}:${itemId}`
     return this.once(id, async () => {
       const cached = await this.repo.comparisons.get(id)
@@ -442,6 +443,7 @@ export class Journey {
       const res = await this.curator.call<CompareResponse>('compare', {
         preferences,
         mustBeOnSpotify: Boolean(opts.mustBeOnSpotify),
+        spotifyCandidates: opts.spotifyCandidates?.length ? opts.spotifyCandidates : undefined,
         work: { composer: item.proposed.composer, title: item.proposed.work, catalogue: item.proposed.catalogue },
         current: { ...item.proposed, soloists: item.proposed.soloists },
         alreadyHeard,
@@ -460,7 +462,7 @@ export class Journey {
         ],
       }, 'on-request', this.stamp())
       await ingest.commit()
-      const stored = { ...cmp, id }
+      const stored: Comparison = { ...cmp, id, ...(opts.mustBeOnSpotify ? { standIn: true } : {}) }
       await this.repo.comparisons.put(stored)
       return stored
     })

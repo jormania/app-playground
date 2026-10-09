@@ -5,7 +5,7 @@
 // problems as a correction, then accepts the cleaned value if it still stands.
 //
 // Pure functions, no I/O — src/long-listen/curator/curator.test.js pins them.
-import { sameWork, performersKey } from '../domain/identity.js'
+import { sameWork, performersKey, fold, surname } from '../domain/identity.js'
 
 const MOODS = ['immersive', 'curious', 'adventurous']
 
@@ -249,10 +249,21 @@ export function validateExplain(out) {
  * @param {any} out
  * @param {{ current: object, alreadyHeard: object[] }} ctx
  */
-export function validateCompare(out, { current, alreadyHeard = [] }) {
+/** Is the recording's lead performer credited on one of these real Spotify albums? */
+export function onCandidateList(p, candidates) {
+  const lead = p.conductor ?? p.soloists[0]?.name ?? p.ensemble ?? p.orchestra
+  if (!lead) return false
+  const last = fold(surname(lead))
+  return candidates.some((c) => (c.artists ?? []).some((a) => new RegExp(`\\b${last}\\b`).test(fold(a))))
+}
+
+export function validateCompare(out, { current, alreadyHeard = [], spotifyCandidates = [] }) {
   const other = { ...cleanPerformers(out?.other), character: clean(out?.other?.character), listenFor: opt(out?.other?.listenFor) }
   const problems = []
   if (!hasPerformers(other)) problems.push('The second recording names no performers.')
+  else if (spotifyCandidates.length && !onCandidateList(other, spotifyCandidates)) {
+    problems.push('The replacement must be one of the recordings in "spotifyCandidates", named with the performers Spotify credits.')
+  }
   const key = performersKey(other)
   if (key === performersKey(cleanPerformers(current)) || alreadyHeard.some((h) => performersKey(cleanPerformers(h)) === key)) {
     problems.push('The second recording must differ from the current one and from those already heard.')

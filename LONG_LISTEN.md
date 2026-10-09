@@ -140,8 +140,15 @@ Nothing it says is stored as metadata:
 - **Recordings** are matched on Spotify (`spotify/match.ts`) on the work
   *and* the performers. The right work by the wrong conductor is `none`. Only
   Spotify's own data is stored: album, release date, ℗ line, credited
-  artists, the work's tracks. A miss is `not-found`, and the UI offers a
-  search, never another interpretation.
+  artists, the work's tracks. A miss is `not-found`, and the curator's
+  choice is never silently swapped for another interpretation. Instead a
+  **stand-in** is chosen, by itself, once: `spotifyCandidates` lists the
+  recordings of the work Spotify really has, the curator picks from that
+  list (`validateCompare` refuses a pick that isn't on it), and the result is
+  shown beneath the original as "On Spotify instead" and goes into the
+  playlist. Bracketed version notes ("(original piano version)") don't count
+  as title words, and `MATCHER_VERSION` makes every not-found an older
+  matcher left behind get looked for again.
 - **Resource URLs** survive only if they appeared in a `web_search_result`
   in the same response (`validateResources`). (The first, server-side
   version also dropped pages answering 404 to a HEAD request; a browser can't

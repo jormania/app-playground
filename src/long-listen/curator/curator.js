@@ -190,7 +190,7 @@ export async function explainWork(send, payload) {
 }
 
 export async function compareInterpretations(send, payload) {
-  const r = await withRetry(send, 'compare', payload, (o) => validateCompare(o, { current: payload.current, alreadyHeard: payload.alreadyHeard }))
+  const r = await withRetry(send, 'compare', payload, (o) => validateCompare(o, { current: payload.current, alreadyHeard: payload.alreadyHeard, spotifyCandidates: payload.spotifyCandidates }))
   if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator could not find a contrasting recording.')
   return { ...r.value, promptVersion: PROMPTS.compare.version }
 }

@@ -28,6 +28,13 @@ describe('matching a proposed recording to Spotify', () => {
     expect(workOverlap('Symphony No. 5', 'Symphony No. 15 in A Major: I. Allegretto')).toBeLessThan(1)
   })
 
+  it('ignores a bracketed version note Spotify never prints', () => {
+    const richter: ProposedRecording = { composer: 'Modest Mussorgsky', work: 'Pictures at an Exhibition (original piano version)', soloists: [{ name: 'Sviatoslav Richter', instrument: 'piano' }] }
+    const t = track('r1', 'Pictures at an Exhibition: Promenade I', ['Modest Mussorgsky', 'Sviatoslav Richter'], 'Mussorgsky: Pictures at an Exhibition (Live in Sofia, 1958)')
+    expect(matchTrack(t, richter).level).toBe('strong')
+    expect(searchQueries(richter)[0]).not.toMatch(/original|version/)
+  })
+
   it('reads the work from the album when the track names only a movement', () => {
     const t = track('t4', 'I. Allegro con brio', ['Ludwig van Beethoven', 'Wiener Philharmoniker', 'Carlos Kleiber'], 'Beethoven: Symphony No. 5')
     expect(matchTrack(t, kleiber).level).not.toBe('none')

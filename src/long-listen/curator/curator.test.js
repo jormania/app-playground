@@ -186,6 +186,25 @@ describe('taste', () => {
   })
 })
 
+describe('a stand-in for a recording Spotify lacks', () => {
+  const current = { conductor: undefined, soloists: [{ name: 'Sviatoslav Richter', instrument: 'piano' }] }
+  const candidates = [{ album: 'Mussorgsky: Pictures at an Exhibition', year: '1990', artists: ['Vladimir Ashkenazy'] }]
+  const answer = (name) => json({ framing: 'f', whyBoth: 'w', current: { character: 'c', listenFor: 'l' }, other: { conductor: '', orchestra: '', ensemble: '', soloists: [{ name, instrument: 'piano' }], year: '', character: 'lucid', listenFor: 'The Great Gate' } })
+
+  it('must be one Spotify really has: a remembered recording off the list is sent back once, then refused', async () => {
+    const { curator, sent } = fakeSend([answer('Evgeny Kissin'), answer('Evgeny Kissin')])
+    await expect(curator.call('compare', { mustBeOnSpotify: true, current, alreadyHeard: [], spotifyCandidates: candidates })).rejects.toMatchObject({ code: 'failed' })
+    expect(sent).toHaveLength(2)
+    expect(sent[1].messages[0].content).toMatch(/spotifyCandidates/)
+  })
+
+  it('accepts a pick from the list', async () => {
+    const { curator } = fakeSend([answer('Kissin'), answer('Vladimir Ashkenazy')])
+    const res = await curator.call('compare', { mustBeOnSpotify: true, current, alreadyHeard: [], spotifyCandidates: candidates })
+    expect(res.other.soloists[0].name).toBe('Vladimir Ashkenazy')
+  })
+})
+
 describe('resources', () => {
   it('keeps only URLs that came back from the web search in that response', async () => {
     const message = {
