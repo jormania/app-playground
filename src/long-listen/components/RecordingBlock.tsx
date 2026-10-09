@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ExternalLink, Play } from 'lucide-react'
 import type { ProposedRecording, Recording } from '../domain/types'
 import { creditLine } from '../domain/identity'
-import { SpotifyUnavailable, openUrl, searchUrl } from '../spotify/client'
+import { openUrl, searchUrl } from '../spotify/client'
 import { aboutDuration, confirmMatch, isConfirmed, rejectMatch, verifyRecording } from '../spotify/verify'
 import { useServices } from '../app/services'
 import { messageOf } from './common'
+import { ListenBar } from './ListenBar'
+import { usePlayback } from '../app/playback'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -33,12 +34,12 @@ export function RecordingBlock({
 }) {
   const { spotify, repo, bump, say } = useServices()
   const [busy, setBusy] = useState(false)
-  const [noDevice, setNoDevice] = useState(false)
   const query = [proposed.composer.split(' ').slice(-1)[0], proposed.work, proposed.conductor ?? proposed.soloists[0]?.name ?? proposed.orchestra ?? ''].join(' ')
   const sp = isConfirmed(recording) ? recording.spotify : undefined
   const near = recording?.verification === 'unconfirmed' ? recording.spotify : undefined
   const shown = sp ?? near
   const year = shown?.releaseDate?.slice(0, 4)
+  const playback = usePlayback(sp?.trackUris, sp?.trackIds)
 
   async function check() {
     if (!recording) return
@@ -51,19 +52,6 @@ export function RecordingBlock({
       say(messageOf(e), 'danger')
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function play() {
-    if (!sp) return
-    setNoDevice(false)
-    try {
-      await spotify.play(sp.trackUris)
-      onOpened?.('play-started')
-    } catch (e) {
-      // Not an error the listener caused: say what to do, right where they are.
-      if (e instanceof SpotifyUnavailable && e.reason === 'no-device') setNoDevice(true)
-      else say(messageOf(e), 'danger')
     }
   }
 
@@ -105,26 +93,14 @@ export function RecordingBlock({
         </div>
       )}
 
-      {/* The listen bar: where listening starts, so it is the one thing in the
-          block that stands out. Play starts exactly this work (every movement,
-          in order) on whichever device Spotify is active on; opening Spotify
-          is the quieter alternative. Without a Spotify connection, opening it
-          becomes the main action. */}
       {sp ? (
-        <div className={s.listenBar}>
-          {spotify.connected ? (
-            <>
-              <button className={s.playButton} onClick={play} title="Every movement of this work, in order, on the device where Spotify is open"><Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Play</button>
-              <a className={s.listenAlt} title="Opens the first track in Spotify; it carries on through the album" href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => onOpened?.('opened')}>
-                or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
-              </a>
-            </>
-          ) : (
-            <a className={s.playButton} href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => onOpened?.('opened')}>
-              <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Listen on Spotify
-            </a>
-          )}
-        </div>
+        <ListenBar
+          firstTrackId={sp.trackIds[0]}
+          movements={sp.trackIds.length}
+          playback={playback}
+          onStarted={() => onOpened?.('play-started')}
+          onOpened={() => onOpened?.('opened')}
+        />
       ) : (
         <div className={s.actions}>
           {near ? (
@@ -137,11 +113,6 @@ export function RecordingBlock({
             <a className={s.outlineButton} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
           )}
         </div>
-      )}
-      {noDevice && (
-        <p className={s.note} role="status">
-          Spotify isn’t open on any device yet. Open it on your phone, speaker or computer, then press Play again.
-        </p>
       )}
       {/* Even a strong match can be the same performers in another decade. */}
       {sp && !sp.confirmedByListener && (

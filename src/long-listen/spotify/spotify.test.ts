@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { beginSignIn, completeSignIn, challengeFor, isCallback, SpotifyAuthError } from './auth'
 import { verifyRecording, playsToEvents, rejectMatch, confirmMatch, aboutDuration, saveProgrammePlaylist, needsLook, spotifyCandidates, syncRecentPlays } from './verify'
-import { SpotifyClient } from './client'
+import { SpotifyClient, playbackOf } from './client'
 import { Repo, memoryStore } from '../store/repo'
 import type { Recording, ProposedRecording, ListeningEvent } from '../domain/types'
 import { MATCHER_VERSION, type SpotifyTrackLike } from './match'
@@ -294,6 +294,54 @@ describe('the client', () => {
     const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
     expect(calls[0][0]).toContain('me/player/shuffle?state=false')
     expect(JSON.parse(String(calls[1][1].body))).toMatchObject({ uris: ['spotify:track:1', 'spotify:track:2'], offset: { position: 0 } })
+  })
+
+  it('pauses and resumes without restarting, and shrugs at "already paused"', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
+    let status = 204
+    const fetchMock = vi.fn(async () => new Response(null, { status }))
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    await c.pause()
+    await c.resume()
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
+    expect(calls.map(([u, i]) => [u.split('v1/')[1], i.method, i.body])).toEqual([['me/player/pause', 'PUT', undefined], ['me/player/play', 'PUT', undefined]])
+    status = 403
+    await expect(c.pause()).resolves.toBeUndefined()
+    status = 404
+    await expect(c.resume()).rejects.toMatchObject({ reason: 'no-device' })
+  })
+
+  it('reads the player: the track, its length, and the device it’s on', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
+    const body = { is_playing: true, progress_ms: 1000, device: { name: 'Galaxy S24' }, item: { id: 't2', name: 'II. Andante', duration_ms: 500_000, linked_from: { id: 'm2' } } }
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(body)))
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    expect(await c.nowPlaying()).toEqual({ trackId: 't2', linkedFromId: 'm2', trackName: 'II. Andante', isPlaying: true, progressMs: 1000, durationMs: 500_000, deviceName: 'Galaxy S24' })
+    expect(String((fetchMock.mock.calls as unknown as [string][])[0][0])).toMatch(/v1\/me\/player$/)
+    fetchMock.mockImplementationOnce(async () => new Response(null, { status: 204 }))
+    expect(await c.nowPlaying()).toBeNull()
+    fetchMock.mockImplementationOnce(async () => new Response(null, { status: 403 }))
+    await expect(c.nowPlaying()).rejects.toMatchObject({ reason: 'signed-out' })
+  })
+
+  it('starts from a later movement when asked', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    await c.play(['spotify:track:1', 'spotify:track:2', 'spotify:track:3'], 2)
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][]
+    expect(JSON.parse(String(calls[1][1].body)).offset).toEqual({ position: 2 })
+  })
+
+  it('knows a relinked track as the one that was asked for', () => {
+    const np = (trackId: string, isPlaying: boolean, linkedFromId?: string) => ({ trackId, linkedFromId, trackName: 'x', isPlaying, progressMs: 0, durationMs: 0 })
+    expect(playbackOf(np('m2', true), ['m1', 'm2'])).toEqual({ index: 1, playing: true })
+    expect(playbackOf(np('other', false, 'm1'), ['m1', 'm2'])).toEqual({ index: 0, playing: false })
+    expect(playbackOf(np('zz', true), ['m1', 'm2'])).toBeNull()
+    expect(playbackOf(null, ['m1'])).toBeNull()
   })
 
   it('reports signed-out without calling Spotify', async () => {

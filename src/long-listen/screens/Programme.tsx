@@ -8,7 +8,9 @@ import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
-import { aboutDuration, needsLook, saveProgrammePlaylist, spotifyCandidates, verifyRecording, type PlaylistMark } from '../spotify/verify'
+import { aboutDuration, isConfirmed, needsLook, saveProgrammePlaylist, spotifyCandidates, verifyRecording, type PlaylistMark } from '../spotify/verify'
+import { playbackOf } from '../spotify/client'
+import { usePlayerState } from '../app/playback'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
@@ -246,10 +248,16 @@ const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard'
  */
 function RunningOrder({ b }: { b: Bundle }) {
   // (How long it runs is said once, in the tools line above.)
+  const player = usePlayerState()
   const rows = b.programme.sections.flatMap((section) => section.items.map((item) => ({ item, section })))
   if (rows.length < 2) return null
   const heard = rows.filter(({ item }) => listeningState(b.events, item.recordingId) === 'heard').length
   const jump = (id: string) => document.getElementById(workAnchor(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // The work Spotify is on now, if it's one of these, is marked in the list.
+  const onNow = (rid: string) => {
+    const r = b.recordings.get(rid)
+    return isConfirmed(r) ? playbackOf(player.np, r.spotify.trackIds) : null
+  }
   return (
     <nav className={s.runningOrder} aria-label="This week’s music">
       <p className={s.panelHead}>
@@ -258,8 +266,9 @@ function RunningOrder({ b }: { b: Bundle }) {
       <ol className={s.roList}>
         {rows.map(({ item, section }, n) => {
           const state = listeningState(b.events, item.recordingId)
+          const now = onNow(item.recordingId)
           return (
-            <li key={item.id}>
+            <li key={item.id} aria-current={now ? 'true' : undefined}>
               <button type="button" className={s.roRow} onClick={() => jump(item.id)}>
                 <span className={s.roNo}>{n + 1}</span>
                 <span className={s.roText}>
@@ -267,7 +276,9 @@ function RunningOrder({ b }: { b: Bundle }) {
                   <span className={s.roWork}>{item.proposed.work}</span>
                 </span>
                 <span className={s.roSide}>
-                  {STATE_TAG[state]
+                  {now
+                    ? <span className={`${s.tag} ${s.tagOn}`}>{now.playing ? 'playing' : 'paused'}</span>
+                    : STATE_TAG[state]
                     ? <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_TAG[state]}</span>
                     : <span className={s.roRole}>{section.heading}</span>}
                 </span>

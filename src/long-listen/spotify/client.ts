@@ -33,9 +33,13 @@ export interface RecentPlay {
 
 export interface NowPlaying {
   trackId: string
+  /** The id that was asked for, when Spotify relinked the track for the market. */
+  linkedFromId?: string
   trackName: string
   isPlaying: boolean
   progressMs: number
+  durationMs: number
+  deviceName?: string
 }
 
 export class SpotifyClient {
@@ -179,13 +183,29 @@ export class SpotifyClient {
     return (d.devices ?? []).map((x) => ({ name: x.name, type: x.type, active: x.is_active }))
   }
 
-  /** What's playing now, or null — for the listening view's "now" marker. */
+  /**
+   * What's playing now, and where, or null — for the "now" marker and the
+   * Pause/Resume buttons. Read from `me/player` rather than currently-playing,
+   * because it also names the device and gives the track's length, which is
+   * what lets the watcher look again just as a movement ends. A track Spotify
+   * relinked for the listener's market comes back under another id;
+   * `linked_from` keeps the one that was asked for. A 403 means this sign-in
+   * can't read playback.
+   */
   async nowPlaying(): Promise<NowPlaying | null> {
-    const res = await this.request('me/player/currently-playing')
+    const res = await this.request('me/player')
+    if (res.status === 403) throw new SpotifyUnavailable('signed-out', 'Reconnect Spotify in Settings so the app can follow what’s playing.')
     if (res.status === 204 || !res.ok) return null
-    const d = await res.json().catch(() => null) as { item?: { id: string; name: string } | null; is_playing?: boolean; progress_ms?: number } | null
+    const d = await res.json().catch(() => null) as {
+      item?: { id: string; name: string; duration_ms?: number; linked_from?: { id?: string } } | null
+      is_playing?: boolean; progress_ms?: number | null; device?: { name?: string } | null
+    } | null
     if (!d?.item) return null
-    return { trackId: d.item.id, trackName: d.item.name, isPlaying: Boolean(d.is_playing), progressMs: d.progress_ms ?? 0 }
+    return {
+      trackId: d.item.id, linkedFromId: d.item.linked_from?.id, trackName: d.item.name,
+      isPlaying: Boolean(d.is_playing), progressMs: d.progress_ms ?? 0, durationMs: d.item.duration_ms ?? 0,
+      deviceName: d.device?.name || undefined,
+    }
   }
 
   /** A private playlist of exactly these tracks. Replaces the tracks when `id` is given. */
@@ -224,16 +244,34 @@ export class SpotifyClient {
    * from the first movement, in order. A device left on shuffle would start a
    * symphony at a random movement, so shuffle is turned off first — that is
    * the one setting of theirs this changes, and only when they press Play.
+   * `from` starts at a later movement, for a tap on the movement list.
    */
-  async play(trackUris: string[]): Promise<void> {
+  async play(trackUris: string[], from = 0): Promise<void> {
     await this.request('me/player/shuffle?state=false', { method: 'PUT' }).catch(() => undefined)
     const res = await this.request('me/player/play', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ uris: trackUris, offset: { position: 0 }, position_ms: 0 }),
+      body: JSON.stringify({ uris: trackUris, offset: { position: from }, position_ms: 0 }),
     })
     if (res.status === 404) throw new SpotifyUnavailable('no-device', 'Open Spotify on a device first, then try again.')
     if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t start playback.')
+  }
+
+  /** Pause whatever is playing on the active device. */
+  async pause(): Promise<void> {
+    await this.control('me/player/pause', 'Spotify couldn’t pause.')
+  }
+
+  /** Carry on from where it was paused — no tracks given, so nothing restarts. */
+  async resume(): Promise<void> {
+    await this.control('me/player/play', 'Spotify couldn’t resume.')
+  }
+
+  private async control(path: string, failed: string): Promise<void> {
+    const res = await this.request(path, { method: 'PUT' })
+    if (res.status === 404) throw new SpotifyUnavailable('no-device', 'Open Spotify on a device first, then try again.')
+    // 403 here is Spotify's "restriction violated": already paused, or already playing. Nothing to do.
+    if (!res.ok && res.status !== 403) throw new SpotifyUnavailable('failed', failed)
   }
 }
 
@@ -245,4 +283,12 @@ export function openUrl(kind: 'track' | 'album', id: string): string {
 /** A Spotify search page for an unverified proposal: a search, never a claim. */
 export function searchUrl(q: string): string {
   return `https://open.spotify.com/search/${encodeURIComponent(q)}`
+}
+
+/** Where this recording stands on Spotify: which movement, and whether it's sounding. Null when something else (or nothing) is on. */
+export function playbackOf(np: NowPlaying | null, trackIds: string[]): { index: number; playing: boolean } | null {
+  if (!np) return null
+  let index = trackIds.indexOf(np.trackId)
+  if (index < 0 && np.linkedFromId) index = trackIds.indexOf(np.linkedFromId)
+  return index < 0 ? null : { index, playing: np.isPlaying }
 }

@@ -264,11 +264,24 @@ its movements from its own track names (on the recording, as its album
 divides them — never copied onto the work, where one wrong match once renamed
 the movements for every recording of it), the
 week as a private **playlist** of exactly the matched tracks (re-saving
-replaces them), the **listening view**'s "now" marker from currently-playing
-(polled every 10 s while visible, screen kept awake with the shared
-`useWakeLock`), and a **Settings test** (who's signed in, which devices).
-**Play on your device** turns shuffle off and starts at the first movement
-(a device left on shuffle started a symphony at its third).
+replaces them), what's **playing now** (below), and a **Settings test**
+(who's signed in, which devices). **Play on your device** turns shuffle off
+and starts at the first movement (a device left on shuffle started a symphony
+at its third).
+
+**Playing now.** One `PlayerWatch` (`spotify/watch.ts`) reads `me/player` for
+the whole app — however many Play buttons are on screen, one request at a
+time — only while something watches and the page is visible, at once when the
+page comes back from the Spotify app, and just after the current track should
+end (else every 15 s), so the next movement is marked within seconds. Every
+listen bar (`components/ListenBar.tsx`, on the programme and the listening
+view) turns Play into **Pause** while its recording plays and **Resume** while
+it's paused, with a line beneath: "Playing on Galaxy S24 · movement 2 of 4".
+The listening view marks the movement (now / paused) and a tap on a movement
+plays from it; the running order tags the work that's on. A track Spotify
+relinked for the market is known by `linked_from`. A 403 says to reconnect.
+The listening view is dusk-toned whatever the theme (`:root[data-listening]`),
+its screen kept awake with the shared `useWakeLock`.
 
 **Sign-in lifecycle.** The PKCE callback is validated: state must match, the
 verifier is single-use, and sign-ins older than 15 minutes are refused. The
