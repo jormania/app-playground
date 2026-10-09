@@ -693,6 +693,99 @@
   color: var(--color-faint);
 }
 
+/* Each work opens on a card with an accent edge, so it stands apart from the
+   prose around it: the number and composer on top, the title large. */
+.workHead {
+  padding: var(--space-sm) var(--space-md) var(--space-sm) calc(var(--space-md) - 1px);
+  background: var(--color-surface-2);
+  border-left: 5px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+.workHead .composer {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+  color: var(--color-ink);
+}
+
+.workHead .itemNo {
+  min-width: 0;
+  margin-right: var(--space-3xs);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.workHead .work {
+  margin-top: var(--space-3xs);
+  font-size: clamp(1.75rem, 6vw, 2.2rem);
+  font-weight: 600;
+  line-height: 1.08;
+}
+
+/* The slim line that stays on top while you're inside a work (PinnedWork). */
+.pinnedWork {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + var(--space-2xs)) var(--space-md) var(--space-2xs);
+  background: var(--color-surface);
+  border: 0;
+  border-bottom: 1px solid var(--color-border-2);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+  color: var(--color-ink);
+  font-family: var(--font-read);
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+  animation: pinnedIn 160ms ease-out;
+}
+
+.pinnedInner {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+
+.pinnedNo {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.pinnedText {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pinnedText em {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 600;
+}
+
+@keyframes pinnedIn {
+  from { transform: translateY(-100%); }
+  to { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pinnedWork { animation: none; }
+}
+
+@media print {
+  .pinnedWork { display: none; }
+  .workHead { background: none; padding-left: var(--space-sm); }
+}
+
 .recording {
   margin: var(--space-md) 0;
   padding: var(--space-sm) 0;

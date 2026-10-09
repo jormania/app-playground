@@ -192,6 +192,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         {p.howTheyRelate && <div className={s.aside}><h2 className={s.h3}>How they speak to each other</h2><p>{p.howTheyRelate}</p></div>}
       </div>
 
+      <PinnedWork items={p.sections.flatMap((x) => x.items).filter(shown)} />
       {p.sections.filter((section) => section.items.some(shown)).map((section, i) => (
         <section key={section.id} aria-label={sectionTitle(section)}>
           <h2 className={s.sectionHead}>{sectionTitle(section)}</h2>
@@ -231,6 +232,55 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 }
 
 const workAnchor = (itemId: string) => `work-${itemId}`
+
+/**
+ * A slim line pinned to the top of the screen while you read inside a work
+ * whose header has scrolled away: "6 · Arnold Bax — Tintagel". A long work
+ * runs to several screens of notes, panels and pairs, and without it the
+ * middle of one looks like the middle of any other. Tapping it goes back to
+ * the work's start. Gone between works and above the first.
+ */
+function PinnedWork({ items }: { items: ProgrammeItem[] }) {
+  const [current, setCurrent] = useState<number>(-1)
+  const ids = items.map((i) => i.id).join('|')
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      frame = 0
+      setCurrent(items.findIndex((item) => {
+        const el = document.getElementById(workAnchor(item.id))
+        const head = el?.querySelector('[data-work-head]')
+        // The header is above the screen and enough of the work is still on it to be "in" it.
+        return Boolean(el && head && head.getBoundingClientRect().bottom < 0 && el.getBoundingClientRect().bottom > 72)
+      }))
+    }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(check) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    check()
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids])
+  const item = items[current]
+  if (!item) return null
+  return (
+    <button
+      type="button"
+      className={s.pinnedWork}
+      onClick={() => document.getElementById(workAnchor(item.id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      aria-label={`Back to the start of ${item.proposed.work}`}
+    >
+      <span className={s.pinnedInner}>
+        <span className={s.pinnedNo}>{current + 1}</span>
+        <span className={s.pinnedText}>{item.proposed.composer} — <em>{item.proposed.work}</em></span>
+      </span>
+    </button>
+  )
+}
 
 const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard', skipped: 'skipped' }
 
@@ -350,10 +400,12 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
 
   return (
     <div className={s.item} id={workAnchor(item.id)}>
-      <p className={s.composer}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</p>
-      <h3 className={s.work}>{item.proposed.work}</h3>
-      {whatWhen && <p className={s.workMeta}>{whatWhen}</p>}
-      {catalogue && <p className={s.workCatalogue}>{catalogue}</p>}
+      <header className={s.workHead} data-work-head="">
+        <p className={s.composer}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</p>
+        <h3 className={s.work}>{item.proposed.work}</h3>
+        {whatWhen && <p className={s.workMeta}>{whatWhen}</p>}
+        {catalogue && <p className={s.workCatalogue}>{catalogue}</p>}
+      </header>
 
       <div className={s.prose} style={{ marginTop: 'var(--space-sm)' }}><p>{item.why}</p></div>
       {item.revisitReason && <p className={s.continuity} style={{ margin: 'var(--space-sm) 0' }}>{item.revisitReason}</p>}
