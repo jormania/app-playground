@@ -5,7 +5,7 @@ Every app that calls Claude takes its model from one file,
 
 | Constant | Today | Used by |
 |---|---|---|
-| `MODEL_HAIKU` | `claude-haiku-4-5-20251001` | Touch Grass, WhereItWent, Fit Check, Sol Odyssey, Silva, KeyPath (coach, weekly note, key test), Lexi5 (default) |
+| `MODEL_HAIKU` | `claude-haiku-5-5` | Touch Grass, WhereItWent, Fit Check, Sol Odyssey, Silva, KeyPath (coach, weekly note, key test), Lexi5 (default) |
 | `MODEL_SONNET` | `claude-sonnet-5-5` | Daily Stoic mentor, Law of the Day (`api/`), The Long Listen's curator (`src/long-listen/curator/`), KeyPath Studio, Lexi5 (option) |
 
 No app uses Opus. The daily-refactor workflow picks its own models
@@ -40,6 +40,25 @@ checked, not automatic.
    CI (below).
 5. Replies are read by block type everywhere (`extractAnthropicText`), so a model
    that opens with a thinking block still parses.
+
+## Haiku 4.5 → 5.5 (2026-10-09)
+
+Done for cost: Haiku 5.5 is $0.10 / $0.50 per million tokens against Haiku 4.5's
+$1 / $5. Two things in it would have broken requests had only the id changed:
+
+- **Haiku 5.5 thinks by default** (4.5 didn't), and thinking counts against
+  `max_tokens`. Every Haiku caller has a small cap sized for the answer (Silva's
+  tension check: 8), so each one now sends `noThinking(MODEL_HAIKU)` —
+  `thinking: { type: 'disabled' }`, which Haiku 5.5 accepts at its default effort
+  (medium) and up to `high`. No Haiku caller sets `effort`; one that sets `xhigh`
+  or `max` with thinking disabled gets a 400.
+- **Sampling parameters**: `temperature` must be `1` or absent. Fit Check (0),
+  Sol Odyssey's companion (0.7) and WhereItWent's parser (0.1, 0.2) sent other
+  values and now send none. Touch Grass's `temperature: 1` is accepted and stays.
+
+Also changed: the same text counts as about 30% more tokens, and a decline comes
+back as `stop_reason: "refusal"` (new on the Haiku line), which every caller
+already treats as no answer.
 
 ## The live check
 

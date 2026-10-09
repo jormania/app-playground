@@ -8,19 +8,22 @@
 // imports it too and the serverless functions import only .js from src/.
 
 /** The fast, cheap tier: parsing, tagging, one-line prose. */
-export const MODEL_HAIKU = 'claude-haiku-4-5-20251001'
+export const MODEL_HAIKU = 'claude-haiku-5-5'
 /** The tier for work that needs judgement or taste. */
 export const MODEL_SONNET = 'claude-sonnet-5-5'
 
 // What to send to keep a model from extended thinking, for a short, bounded
 // reply where thinking would only spend max_tokens before the answer. The
 // right field differs by model and a wrong one is a 400:
-// - Haiku 4.5 doesn't think unless asked, so nothing is sent.
+// - Haiku 5.5 thinks by default (Haiku 4.5 didn't), and every Haiku caller
+//   has a small max_tokens sized for the answer alone, so thinking would
+//   spend it first. `{ type: 'disabled' }` is accepted at its default effort
+//   (medium) and anything up to high.
 // - Sonnet 5.5 thinks by default and rejects `{ type: 'disabled' }`;
 //   `between_tools` is its lowest setting — no extended thinking — and is
 //   valid at the default effort, with no other field inside `thinking`.
 const NO_THINKING = {
-  [MODEL_HAIKU]: {},
+  [MODEL_HAIKU]: { thinking: { type: 'disabled' } },
   [MODEL_SONNET]: { thinking: { type: 'between_tools' } },
 }
 

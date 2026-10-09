@@ -55,7 +55,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
     const count = Number(wordCount)
     if (!Number.isFinite(count) || count <= 0) return ''
     const outputTokens = count * 6
-    const perMillion = model.includes('haiku') ? 5 : 10
+    const perMillion = model.includes('haiku') ? 0.5 : 10
     const cents = (outputTokens / 1_000_000) * perMillion * 100
     return `Curating ${count} words costs roughly ${cents < 1 ? 'under a cent' : `${cents.toFixed(cents < 10 ? 1 : 0)}¢`}.`
   })()

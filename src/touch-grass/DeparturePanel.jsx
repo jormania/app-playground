@@ -3,7 +3,7 @@ import LoadingLine from './LoadingLine.jsx'
 import { useWorld } from './world.jsx'
 import ThresholdFill from './ThresholdFill.jsx'
 import { describeSetting, describeMoments } from './engine.js'
-import { extractAnthropicText, MODEL_HAIKU } from '../shared/anthropic'
+import { extractAnthropicText, MODEL_HAIKU, noThinking } from '../shared/anthropic'
 
 const FALLBACKS = [
   'The world is larger than this screen',
@@ -108,6 +108,7 @@ export async function fetchThreshold(apiKey, ctx, mode) {
     body: JSON.stringify({
       model: MODEL_HAIKU,
       max_tokens: 160,
+      ...noThinking(MODEL_HAIKU),
       temperature: 1,
       system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."${wantReading ? ', "reading": "..."' : ''}}.
 "invite": one to three words (lean short when you can), Title Case — a fresh, compelling call to step outside (e.g. "Slip Away", "Leave the Glow", "Into the Gold"). It is really an invitation to touch grass, said another way. Never exceed three words. Never use the words "touch" or "grass". Vary it; surprise me.

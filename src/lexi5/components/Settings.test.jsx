@@ -324,12 +324,12 @@ describe('Settings component', () => {
     expect(body.thinking).toEqual({ type: 'between_tools' })
   })
 
-  it('sends no thinking field to Haiku', async () => {
+  it('turns thinking off for Haiku, which would otherwise spend max_tokens on it', async () => {
     await curateWith('["alien"]')
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     const body = JSON.parse(global.fetch.mock.calls.at(-1)[1].body)
-    expect(body.model).toBe('claude-haiku-4-5-20251001')
-    expect(body).not.toHaveProperty('thinking')
+    expect(body.model).toBe('claude-haiku-5-5')
+    expect(body.thinking).toEqual({ type: 'disabled' })
   })
 
   it('pulls the array out of a reply that wrapped it in prose', async () => {

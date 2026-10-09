@@ -119,7 +119,7 @@ describe('requestCompanionReflection', () => {
     expect(headers['x-api-key']).toBe('sk-ant-xyz')
     expect(headers['anthropic-dangerous-direct-browser-access']).toBe('true')
     const body = JSON.parse(init.body as string)
-    expect(body.model).toBe('claude-haiku-4-5-20251001')
+    expect(body.model).toBe('claude-haiku-5-5')
     expect(body.system).toBe('sys')
     expect(body.messages[0].content).toBe('usr')
   })

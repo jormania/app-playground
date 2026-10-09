@@ -1,5 +1,5 @@
 import { barName, notesFor, type JudgeSummary, type Practice, type Report, type Song } from '../../engine'
-import { MODEL_HAIKU } from '../../../shared/anthropic'
+import { MODEL_HAIKU, noThinking } from '../../../shared/anthropic'
 import { askClaude } from '../ai'
 import { noteLabel } from '../i18n'
 import type { Language, NoteNames } from '../profiles'
@@ -176,7 +176,7 @@ export const COACH_TIMEOUT_MS = 15_000
 export async function askCoach(key: string, facts: CoachFacts, language: Language, song: Song, signal?: AbortSignal, fetchImpl?: typeof fetch): Promise<string | null> {
   const text = await askClaude(
     key,
-    { model: MODEL_HAIKU, maxTokens: 300, system: `${SYSTEM}\n\n${LANGUAGE_LINE[language]}`, user: `Facts about this attempt, as JSON:\n${JSON.stringify(facts)}` },
+    { model: MODEL_HAIKU, maxTokens: 300, extra: noThinking(MODEL_HAIKU), system: `${SYSTEM}\n\n${LANGUAGE_LINE[language]}`, user: `Facts about this attempt, as JSON:\n${JSON.stringify(facts)}` },
     { signal, fetchImpl },
   )
   return text === null ? null : checkNote(text, song)

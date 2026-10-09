@@ -16,7 +16,7 @@
  * parser is the guarantee.
  */
 import { resizePhoto } from '../../shared/photo.ts'
-import { MODEL_HAIKU } from '../../shared/anthropic.ts'
+import { MODEL_HAIKU, noThinking } from '../../shared/anthropic.ts'
 import {
   CATEGORIES, COLOURS, STYLES, WARMTHS,
   coerceMany, coerceOne, vocabularyForPrompt,
@@ -191,7 +191,7 @@ export async function suggestTags(apiKey: string, photo: Blob): Promise<Suggeste
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 300,
-        temperature: 0,
+        ...noThinking(MODEL),
         system: SYSTEM,
         messages: [{
           role: 'user',
