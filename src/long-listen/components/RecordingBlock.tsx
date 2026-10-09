@@ -114,14 +114,14 @@ export function RecordingBlock({
         <div className={s.listenBar}>
           {spotify.connected ? (
             <>
-              <button className={s.playButton} onClick={play} title="Every movement of this work, in order, on the device where Spotify is open"><Play size={18} fill="currentColor" strokeWidth={0} aria-hidden="true" />Play</button>
+              <button className={s.playButton} onClick={play} title="Every movement of this work, in order, on the device where Spotify is open"><Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Play</button>
               <a className={s.listenAlt} title="Opens the first track in Spotify; it carries on through the album" href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => onOpened?.('opened')}>
                 or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
               </a>
             </>
           ) : (
             <a className={s.playButton} href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => onOpened?.('opened')}>
-              <Play size={18} fill="currentColor" strokeWidth={0} aria-hidden="true" />Listen in Spotify
+              <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Listen on Spotify
             </a>
           )}
         </div>

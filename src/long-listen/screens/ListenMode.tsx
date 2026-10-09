@@ -84,14 +84,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         <div className={s.listenBar} style={{ marginTop: 'var(--space-md)' }}>
           {spotify.connected ? (
             <>
-              <button className={s.playButton} onClick={play}><Play size={18} fill="currentColor" strokeWidth={0} aria-hidden="true" />Play</button>
+              <button className={s.playButton} onClick={play}><Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Play</button>
               <a className={s.listenAlt} href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer">
                 or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
               </a>
             </>
           ) : (
             <a className={s.playButton} href={openUrl('track', sp.trackIds[0])} target="_blank" rel="noopener noreferrer">
-              <Play size={18} fill="currentColor" strokeWidth={0} aria-hidden="true" />Listen in Spotify
+              <Play size={15} fill="currentColor" strokeWidth={0} aria-hidden="true" />Listen on Spotify
             </a>
           )}
         </div>
