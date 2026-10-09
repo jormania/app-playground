@@ -125,8 +125,13 @@ function stageWords(stage: number): string {
 }
 
 export function ProgrammeView({ b }: { b: Bundle }) {
-  const { journey, spotify, repo, bump, say, week, curatorReady } = useServices()
+  const { journey, spotify, repo, bump, say, week, curatorReady, settings } = useServices()
   const { programme: p } = b
+  // With "hide what I skip" on, skipped works step out of the page — shown again, for now, on request.
+  const [showSkipped, setShowSkipped] = useState(false)
+  const skippedIds = new Set(p.sections.flatMap((x) => x.items).filter((i) => listeningState(b.events, i.recordingId) === 'skipped').map((i) => i.id))
+  const hiding = settings.hideSkipped && !showSkipped
+  const shown = (item: ProgrammeItem) => !hiding || !skippedIds.has(item.id)
   // This week's programme — or "more of this theme" made for it.
   const isCurrent = p.weekKey === week.key && (b.week?.programmeId === p.id || (Boolean(p.extends) && b.week?.programmeId === p.extends))
   const setAside = b.week?.setAsideProgrammeIds.includes(p.id)
@@ -169,8 +174,14 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       )}
 
       <ProgrammeTools b={b} />
-      {isCurrent && <LiveLine b={b} />}
-      <RunningOrder b={b} />
+      {isCurrent && <LiveLine b={b} skip={settings.hideSkipped ? skippedIds : undefined} />}
+      <RunningOrder b={b} shown={shown} />
+      {settings.hideSkipped && skippedIds.size > 0 && (
+        <p className={s.faint}>
+          {showSkipped ? `Showing ${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'}. ` : `${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'} hidden. `}
+          <button className={s.textButton} onClick={() => setShowSkipped(!showSkipped)}>{showSkipped ? 'Hide again' : 'Show'}</button>
+        </p>
+      )}
 
       <hr className={s.rule} />
       <Paragraphs text={p.introduction} className={s.lede} />
@@ -181,18 +192,18 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         {p.howTheyRelate && <div className={s.aside}><h2 className={s.h3}>How they speak to each other</h2><p>{p.howTheyRelate}</p></div>}
       </div>
 
-      {p.sections.map((section, i) => (
+      {p.sections.filter((section) => section.items.some(shown)).map((section, i) => (
         <section key={section.id} aria-label={sectionTitle(section)}>
           <h2 className={s.sectionHead}>{sectionTitle(section)}</h2>
           <p className={s.sectionGuide}>
             Part {i + 1} of {p.sections.length}{ROLE_GUIDE[section.role] ? ` — ${ROLE_GUIDE[section.role]}` : ''}
           </p>
           {section.note && <p className={s.sectionNote}>{section.note}</p>}
-          {section.items.map((item) => (
+          {section.items.filter(shown).map((item) => (
             <ItemView
               key={item.id}
               item={item}
-              number={numberOf(b, item.id)}
+              number={p.sections.flatMap((x) => x.items).filter(shown).findIndex((i) => i.id === item.id) + 1}
               b={b}
               comparison={b.comparisons.find((c) => c.id === `cmp:${p.id}:${item.id}`)}
             />
@@ -219,11 +230,6 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   )
 }
 
-/** The work's place in the week's running order, counted across sections. */
-function numberOf(b: Bundle, itemId: string): number {
-  return b.programme.sections.flatMap((x) => x.items).findIndex((i) => i.id === itemId) + 1
-}
-
 const workAnchor = (itemId: string) => `work-${itemId}`
 
 const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard', skipped: 'skipped' }
@@ -234,10 +240,10 @@ const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard'
  * is what makes the music findable without scrolling past it. Each line jumps
  * to its work (by scrolling — the URL hash belongs to the router).
  */
-function RunningOrder({ b }: { b: Bundle }) {
+function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) => boolean }) {
   // (How long it runs is said once, in the tools line above.)
   const player = usePlayerState()
-  const rows = b.programme.sections.flatMap((section) => section.items.map((item) => ({ item, section })))
+  const rows = b.programme.sections.flatMap((section) => section.items.filter(shown).map((item) => ({ item, section })))
   if (rows.length < 2) return null
   const heard = rows.filter(({ item }) => listeningState(b.events, item.recordingId) === 'heard').length
   const jump = (id: string) => document.getElementById(workAnchor(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -464,7 +470,7 @@ function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
  * current — rewritten whenever the confirmed recordings change.
  */
 function ProgrammeTools({ b }: { b: Bundle }) {
-  const { spotify, repo, bump, say, week } = useServices()
+  const { spotify, repo, bump, say, week, settings } = useServices()
   const [saving, setSaving] = useState(false)
   const items = b.programme.sections.flatMap((x) => x.items)
   const verified = items.filter((i) => b.recordings.get(i.recordingId)?.verification === 'verified')
@@ -478,16 +484,16 @@ function ProgrammeTools({ b }: { b: Bundle }) {
   useEffect(() => {
     if (!hasPlaylist || !spotify.connected || syncing.current) return
     syncing.current = true
-    keepPlaylistCurrent(repo, spotify, pid, week.label)
+    keepPlaylistCurrent(repo, spotify, pid, week.label, { hideSkipped: settings.hideSkipped })
       .then((wrote) => { if (wrote) bump() })
       .catch(() => {})
       .finally(() => { syncing.current = false })
-  }, [b, hasPlaylist, pid, repo, spotify, week.label, bump])
+  }, [b, hasPlaylist, pid, repo, spotify, week.label, bump, settings.hideSkipped])
 
   async function savePlaylist() {
     setSaving(true)
     try {
-      const mark = await saveProgrammePlaylist(repo, spotify, b.programme.id, week.label)
+      const mark = await saveProgrammePlaylist(repo, spotify, b.programme.id, week.label, { hideSkipped: settings.hideSkipped })
       bump()
       say('Saved to your Spotify as a private playlist. It keeps itself up to date from here.', 'success')
       window.open(mark.url, '_blank', 'noopener')
@@ -519,7 +525,7 @@ function ProgrammeTools({ b }: { b: Bundle }) {
  * performer or a composer from this programme — one quiet line, the closest
  * match first; the rest behind it.
  */
-function LiveLine({ b }: { b: Bundle }) {
+function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
   const { repo } = useServices()
   const [matches, setMatches] = useState<LiveMatch[]>([])
   useEffect(() => {
@@ -529,14 +535,16 @@ function LiveLine({ b }: { b: Bundle }) {
       .catch(() => {})
     return () => { live = false }
   }, [repo, b.programme])
-  if (!matches.length) return null
+  // A skipped work's concert steps out with it.
+  const kept = matches.filter((m) => !skip?.has(m.item.id))
+  if (!kept.length) return null
   const line = (m: LiveMatch) => (
     <>
       {whatIsOn(m)} at {venueShort(m.event.venue)}, {liveDate(m.event.date)}
       {m.event.link && <> · <a href={m.event.link} target="_blank" rel="noopener noreferrer">{m.event.title}</a></>}
     </>
   )
-  const [first, ...rest] = matches
+  const [first, ...rest] = kept
   return (
     <div className={s.liveLine}>
       <p className={s.liveLead}><span className={s.label}>Live in Bucharest</span> {line(first)}</p>

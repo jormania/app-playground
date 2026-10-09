@@ -1,5 +1,6 @@
 import type { Album, ListeningEvent, ProposedRecording, Recording } from '../domain/types'
 import { newId } from '../domain/identity'
+import { listeningState } from '../domain/listening'
 import type { Repo } from '../store/repo'
 import { MATCHER_VERSION, bestTrack, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import type { RecentPlay, SpotifyAlbum, SpotifyClient } from './client'
@@ -283,9 +284,11 @@ export interface PlaylistMark {
 }
 
 /** Every confirmed recording's tracks, in programme order (comparison perspectives after the items). */
-async function playlistUris(repo: Repo, programmeId: string): Promise<{ title: string; dek: string; uris: string[] }> {
+async function playlistUris(repo: Repo, programmeId: string, opts: PlaylistOptions = {}): Promise<{ title: string; dek: string; uris: string[] }> {
   const p = await repo.programmes.require(programmeId)
-  const items = p.sections.flatMap((s) => s.items)
+  const events = opts.hideSkipped ? await repo.events.all() : []
+  // "Hide what I skip": a skipped work, and its stand-in, leave the playlist too.
+  const items = p.sections.flatMap((s) => s.items).filter((i) => !opts.hideSkipped || listeningState(events, i.recordingId) !== 'skipped')
   // The programme's own pairs, plus any stand-in for a recording Spotify lacks.
   const standIns = (await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
   const comparisons = [...(await repo.comparisons.many(p.comparisonIds)), ...standIns]
@@ -303,8 +306,10 @@ async function playlistUris(repo: Repo, programmeId: string): Promise<{ title: s
  * The week's programme as a private Spotify playlist: exactly the tracks that
  * were matched. Saving again replaces the tracks in the same playlist.
  */
-export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<PlaylistMark> {
-  const { title, dek, uris } = await playlistUris(repo, programmeId)
+export interface PlaylistOptions { hideSkipped?: boolean }
+
+export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string, opts: PlaylistOptions = {}): Promise<PlaylistMark> {
+  const { title, dek, uris } = await playlistUris(repo, programmeId, opts)
   if (uris.length === 0) throw new Error('None of this week’s recordings are confirmed on Spotify yet.')
   const mark = await repo.marks.get(`playlist:${programmeId}`)
   const prior = mark?.value as PlaylistMark | undefined
@@ -321,13 +326,13 @@ export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, 
  * matches, when there's no playlist yet, or when nothing is confirmed.
  * Returns whether it wrote.
  */
-export async function keepPlaylistCurrent(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string): Promise<boolean> {
+export async function keepPlaylistCurrent(repo: Repo, spotify: SpotifyClient, programmeId: string, weekLabel: string, opts: PlaylistOptions = {}): Promise<boolean> {
   const mark = (await repo.marks.get(`playlist:${programmeId}`))?.value as PlaylistMark | undefined
   if (!mark) return false
-  const { uris } = await playlistUris(repo, programmeId)
+  const { uris } = await playlistUris(repo, programmeId, opts)
   if (uris.length === 0) return false
   if (mark.uris && mark.uris.length === uris.length && mark.uris.every((u, i) => u === uris[i])) return false
-  await saveProgrammePlaylist(repo, spotify, programmeId, weekLabel)
+  await saveProgrammePlaylist(repo, spotify, programmeId, weekLabel, opts)
   return true
 }
 

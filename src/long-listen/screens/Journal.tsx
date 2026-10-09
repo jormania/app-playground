@@ -48,7 +48,7 @@ export function JournalScreen() {
     const heardIn = new Map<string, { rid: string; state: string }[]>()
     for (const [rid, e] of lastTouch) {
       const state = listeningState(events, rid)
-      if (state === 'not-started') continue
+      if (state === 'not-started' || (settings.hideSkipped && state === 'skipped')) continue
       const wk = weekOf(new Date(e.playedAt ?? e.at), settings.timeZone).key
       heardIn.set(wk, [...(heardIn.get(wk) ?? []), { rid, state }])
     }
@@ -70,7 +70,7 @@ export function JournalScreen() {
       }),
       proposedOf, feedback, programmeTitle, extensionsOf, concertCount: concerts.length,
     }
-  }, [settings.timeZone])
+  }, [settings.timeZone, settings.hideSkipped])
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Opening the journal…</Waiting>

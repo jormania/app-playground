@@ -73,6 +73,19 @@ export function SettingsScreen() {
         />
       </section>
 
+      <section className={s.settingsGroup}>
+        <h2 className={s.h2}>Listening</h2>
+        <label className={s.row}>
+          <input type="checkbox" checked={settings.hideSkipped} onChange={(e) => updateSettings({ hideSkipped: e.target.checked })} />
+          Hide what I skip, everywhere
+        </label>
+        <p className={s.note}>A skipped work disappears from the programme, the running order, the Journal, the Library and the week’s playlist. It isn’t deleted: the curator still knows you passed on it, and a programme can show its skipped works again for a moment.</p>
+        <label className={s.row} style={{ marginTop: 'var(--space-sm)' }}>
+          <input type="checkbox" checked={settings.carryOn} onChange={(e) => updateSettings({ carryOn: e.target.checked })} />
+          Carry on to the next work, with a soft chime between
+        </label>
+      </section>
+
       <BackupSection repo={repo} bump={bump} say={say} />
       <FreshStartSection />
 

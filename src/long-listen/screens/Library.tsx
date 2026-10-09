@@ -25,7 +25,8 @@ const STATE_WORD: Record<string, string> = { 'not-started': 'not started', liste
  * with where it stands and what you said. Explore, without a feed.
  */
 export function LibraryScreen() {
-  const { repo } = useServices()
+  const { repo, settings } = useServices()
+  const hideSkipped = settings.hideSkipped
   const [q, setQ] = useState('')
   const { data, error } = useLoad(async () => {
     const [works, recordings, programmes, comparisons, events, feedback, concerts] = await Promise.all([
@@ -56,7 +57,10 @@ export function LibraryScreen() {
 
     const byComposer = new Map<string, Entry>()
     for (const w of works) {
-      const recs = recordings.filter((r) => r.workId === w.id && met.has(r.id)).map((rec) => ({ rec, ...met.get(rec.id)! }))
+      const recs = recordings
+        .filter((r) => r.workId === w.id && met.has(r.id))
+        .filter((r) => !hideSkipped || listeningState(events, r.id) !== 'skipped')
+        .map((rec) => ({ rec, ...met.get(rec.id)! }))
       const live = liveFor.get(w.id) ?? []
       if (!recs.length && !live.length) continue
       const composer = recs[0]?.proposed.composer ?? composerOf.get(w.id) ?? ''
@@ -67,7 +71,7 @@ export function LibraryScreen() {
     const entries = [...byComposer.values()].sort((a, b) => surname(a.composer).localeCompare(surname(b.composer)))
     for (const e of entries) e.works.sort((a, b) => a.work.title.localeCompare(b.work.title))
     return { entries, events, feedback }
-  }, [])
+  }, [hideSkipped])
 
   const shown = useMemo(() => {
     if (!data) return []
