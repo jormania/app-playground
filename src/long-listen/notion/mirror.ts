@@ -1,4 +1,4 @@
-import type { Feedback, ListeningEvent, NotionDatabases, Programme, Recording, TasteProfile, Theme, ThemeExploration } from '../domain/types'
+import type { Comparison, Feedback, ListeningEvent, NotionDatabases, Programme, Recording, TasteProfile, Theme, ThemeExploration } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { weekFromKey } from '../domain/week'
@@ -458,8 +458,8 @@ export interface SyncReport { written: number }
 
 export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string, currentWeek: string): Promise<SyncReport> {
   const dbs = await ensureSetup(call, repo, pageId)
-  const [programmes, themes, explorations, recordings, events, feedback, resources, weeks, taste, prefs] = await Promise.all([
-    repo.programmes.all(), repo.themes.all(), repo.explorations.all(), repo.recordings.all(), repo.events.all(), repo.feedback.all(), repo.resources.all(), repo.weeks.all(), repo.taste(), repo.preferences(),
+  const [programmes, themes, explorations, recordings, events, feedback, resources, weeks, taste, prefs, comparisons] = await Promise.all([
+    repo.programmes.all(), repo.themes.all(), repo.explorations.all(), repo.recordings.all(), repo.events.all(), repo.feedback.all(), repo.resources.all(), repo.weeks.all(), repo.taste(), repo.preferences(), repo.comparisons.all(),
   ])
   const setAside = new Set(weeks.flatMap((w) => w.setAsideProgrammeIds))
   const themeTitle = new Map(themes.map((t) => [t.id, t.title]))
@@ -473,10 +473,18 @@ export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string,
     written += Number(await upsert(call, repo, `theme:${t.id}`, dbs.threads, threadProps(t, explorations)))
   }
   const recById = new Map(recordings.map((r) => [r.id, r]))
-  const met = new Map<string, { proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }>()
+  const met: Met = new Map()
   for (const p of programmes) for (const i of p.sections.flatMap((s) => s.items)) if (!met.has(i.recordingId)) met.set(i.recordingId, { proposed: i.proposed, programme: p })
+  // What was actually played when the named recording was missing ("On Spotify instead"), and the
+  // second recording of a side-by-side pair: each belongs to the programme that holds its work.
+  const programmeOf = (c: Comparison) => programmes.find((p) => c.id.startsWith(`cmp:${p.id}:`) || p.comparisonIds.includes(c.id))
+  for (const c of comparisons) {
+    const p = programmeOf(c)
+    if (!p) continue
+    for (const x of c.perspectives) if (!met.has(x.recordingId)) met.set(x.recordingId, { proposed: x.proposed, programme: p, note: c.standIn ? 'On Spotify instead' : 'Side by side' })
+  }
   for (const [rid, { proposed, programme }] of met) {
-    written += Number(await upsert(call, repo, `recording:${rid}`, dbs.recordings, recordingProps(proposed, recById.get(rid), programme, events, feedback)))
+    written += Number(await upsert(call, repo, `recording:${rid}`, dbs.recordings, recordingProps(proposed, recById.get(rid), programme, events, feedback, met.get(rid)?.note)))
   }
   for (const [name, entries] of groupByComposer(met)) {
     written += Number(await upsert(call, repo, `composer:${name}`, dbs.composers, composerProps(name, entries, events, feedback)))
@@ -548,7 +556,7 @@ export function threadProps(t: Theme, explorations: ThemeExploration[]) {
   }
 }
 
-export function recordingProps(proposed: Programme['sections'][number]['items'][number]['proposed'], r: Recording | undefined, programme: Programme, events: ListeningEvent[], feedback: Feedback[]) {
+export function recordingProps(proposed: Programme['sections'][number]['items'][number]['proposed'], r: Recording | undefined, programme: Programme, events: ListeningEvent[], feedback: Feedback[], role?: string) {
   const rid = r?.id ?? ''
   const fb = latestFeedback(feedback, rid)
   // Only a confirmed recording gets a link: a near miss waiting for the listener is not a fact yet.
@@ -561,11 +569,11 @@ export function recordingProps(proposed: Programme['sections'][number]['items'][
     Listening: selectProp(STATE_LABEL[listeningState(events, rid)]),
     Reaction: selectProp(reactionLabel(fb.reaction)),
     Notes: textProp(fb.notes.join(' / ')),
-    Programme: textProp(`${programme.title} (${programme.weekKey})`),
+    Programme: textProp(`${programme.title} (${programme.weekKey})${role ? ` · ${role}` : ''}`),
   }
 }
 
-type Met = Map<string, { proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }>
+type Met = Map<string, { proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme; note?: string }>
 
 function groupByComposer(met: Met): Map<string, { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[]> {
   const out = new Map<string, { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[]>()

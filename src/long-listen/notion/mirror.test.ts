@@ -105,6 +105,23 @@ describe('the Notion notebook', () => {
     expect(n.calls.map((c) => `${c.method} ${c.path.split('/')[0]}`)).toEqual(['PATCH pages'])
   })
 
+  it('writes what played "On Spotify instead" to Works & recordings, marked as such', async () => {
+    const repo = await seeded()
+    await repo.comparisons.put({
+      id: 'cmp:prog1:i1', workId: 'w1', framing: 'f', whyBoth: 'w', origin: 'on-request', standIn: true, createdAt: 'x',
+      perspectives: [
+        { recordingId: 'r1', proposed: programme.sections[0].items[0].proposed, character: 'c' },
+        { recordingId: 'r2', proposed: { composer: 'Claude Debussy', work: 'La mer', conductor: 'Jean Martinon', orchestra: 'Orchestre National de l’ORTF', soloists: [] }, character: 'airy' },
+      ],
+    })
+    const n = fakeNotion()
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const recs = n.calls.filter((c) => c.path === 'pages' && c.body.properties?.Performers).map((c) => c.body.properties)
+    expect(recs).toHaveLength(2)
+    expect(JSON.stringify(recs[1].Programme)).toContain('On Spotify instead')
+    expect(JSON.stringify(recs[1].Performers)).toContain('Martinon')
+  })
+
   it('adds further reading found after the page was written, right after the curator’s text, and keeps it current', async () => {
     const repo = await seeded()
     const n = pageNotion()

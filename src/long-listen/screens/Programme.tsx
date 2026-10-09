@@ -6,6 +6,7 @@ import { latestFeedback, listeningState } from '../domain/listening'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { sectionTitle } from '../domain/sections'
+import { liveEvents, liveMatches, venueShort, whatIsOn, type LiveMatch } from '../live/live'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
@@ -168,6 +169,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       )}
 
       <ProgrammeTools b={b} />
+      {isCurrent && <LiveLine b={b} />}
       <RunningOrder b={b} />
 
       <hr className={s.rule} />
@@ -511,6 +513,44 @@ function ProgrammeTools({ b }: { b: Bundle }) {
     </div>
   )
 }
+
+/**
+ * Live in Bucharest: a concert at the Ateneu or Sala Radio with a work, a
+ * performer or a composer from this programme — one quiet line, the closest
+ * match first; the rest behind it.
+ */
+function LiveLine({ b }: { b: Bundle }) {
+  const { repo } = useServices()
+  const [matches, setMatches] = useState<LiveMatch[]>([])
+  useEffect(() => {
+    let live = true
+    liveEvents(repo.marks)
+      .then((events) => { if (live) setMatches(liveMatches(b.programme, events, new Date().toISOString().slice(0, 10))) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [repo, b.programme])
+  if (!matches.length) return null
+  const line = (m: LiveMatch) => (
+    <>
+      {whatIsOn(m)} at {venueShort(m.event.venue)}, {liveDate(m.event.date)}
+      {m.event.link && <> · <a href={m.event.link} target="_blank" rel="noopener noreferrer">{m.event.title}</a></>}
+    </>
+  )
+  const [first, ...rest] = matches
+  return (
+    <div className={s.liveLine}>
+      <p className={s.liveLead}><span className={s.label}>Live in Bucharest</span> {line(first)}</p>
+      {rest.length > 0 && (
+        <details>
+          <summary className={s.textButton}>and {rest.length} more</summary>
+          <ul className={s.bullets}>{rest.map((m) => <li key={`${m.item.id}-${m.event.date}`}>{line(m)}</li>)}</ul>
+        </details>
+      )}
+    </div>
+  )
+}
+
+const liveDate = (d: string) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`))
 
 function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
   const { journey, bump } = useServices()

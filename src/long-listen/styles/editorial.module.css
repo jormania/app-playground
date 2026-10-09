@@ -1784,6 +1784,17 @@
   min-width: 0;
 }
 
+/* Live in Bucharest: one quiet line under the programme's tools. */
+.liveLine {
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.liveLead {
+  margin: 0;
+}
+
 /* The pause between works: what's next, and the way to stay. */
 .handover {
   margin-top: var(--space-md);
