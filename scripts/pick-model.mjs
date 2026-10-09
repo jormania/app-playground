@@ -1,7 +1,8 @@
 // Which model tonight's daily-refactor run gets.
 //
-// `modernise` items — dependency bumps, missing tests, documentation drift —
-// run on Sonnet; everything else stays on Opus. The workflow has to decide
+// `refactor` and `modernise` items — behaviour-preserving work that only merges
+// once the workflow re-runs all three gates on a clean clone — run on Sonnet;
+// `qol`, `visual` and discovery runs stay on Opus. The workflow has to decide
 // before the agent starts, because `--model` is fixed at launch, so it needs
 // its own reading of "the topmost eligible item". That reading is here, beside
 // the backlog counter in build-meta.js, so it can be tested rather than trusted.
@@ -20,6 +21,11 @@ import { fileURLToPath } from 'node:url';
 
 export const OPUS = 'claude-opus-5-5';
 export const SONNET = 'claude-sonnet-5-5';
+
+// The classes whose PRs merge themselves behind the gates: what you see doesn't
+// change, so a wrong move is caught by tests rather than by taste. Moved
+// `refactor` here on 2026-10-09 to spare the weekly subscription limit.
+const SONNET_CLASSES = new Set(['refactor', 'modernise']);
 
 const CLASSES = new Set(['refactor', 'modernise', 'qol', 'visual', 'idea']);
 
@@ -63,20 +69,21 @@ export function topmostEligible(md, claimed = new Set()) {
 /**
  * The model for a run, and a one-line note for the agent's prompt.
  *
- * Friday is a discovery run whatever sits on top, and reading the codebase for
- * what's missing is not a `modernise` job — it stays on Opus.
+ * A discovery run (every other Friday — the workflow decides, by date) reads
+ * the codebase for what's missing whatever sits on top. That is judgement, not
+ * a gated change, so it stays on Opus.
  */
-export function chooseModel(item, day) {
-  if (day === 'Friday' || !item || item.cls !== 'modernise') {
+export function chooseModel(item, discovery) {
+  if (discovery || !item || !SONNET_CLASSES.has(item.cls)) {
     return { model: OPUS, note: '' };
   }
   return {
     model: SONNET,
     note:
       `This run is on a lighter model because today's item, ${item.id}, is ` +
-      '`modernise`. Work that item only. If you have to mark it `dropped` or ' +
-      '`blocked`, record that in the backlog and stop there — do not go on to ' +
-      'the next item, which may not be `modernise`.',
+      `\`${item.cls}\`. Work that item only. If you have to mark it ` +
+      '`dropped` or `blocked`, record that in the backlog and stop there — do ' +
+      'not go on to the next item, which may be `qol` or `visual`.',
   };
 }
 
@@ -85,11 +92,12 @@ export function chooseModel(item, day) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let out;
   try {
-    const i = process.argv.indexOf('--day');
-    const day = i > -1 ? process.argv[i + 1] : '';
+    // Anything but an explicit `false` counts as discovery — Opus.
+    const i = process.argv.indexOf('--discovery');
+    const discovery = !(i > -1 && process.argv[i + 1] === 'false');
     const claimed = new Set((process.env.CLAIMED || '').split(',').map((s) => s.trim()).filter(Boolean));
     const item = topmostEligible(readFileSync('REFACTOR_BACKLOG.md', 'utf8'), claimed);
-    const { model, note } = chooseModel(item, day);
+    const { model, note } = chooseModel(item, discovery);
     out = { model, item: item?.id ?? '', cls: item?.cls ?? '', note };
   } catch (e) {
     out = { model: OPUS, item: '', cls: '', note: '' };

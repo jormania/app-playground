@@ -1,6 +1,6 @@
 # Daily refactor — the autonomous upkeep agent
 
-An agent that improves this repository one item per weekday morning, without
+An agent that improves this repository one item each Monday, Wednesday and Friday morning, without
 asking first. It picks its own work from a queue, implements it, proves it
 green, opens a pull request, and — for the two classes that cannot change what
 you see — merges that pull request itself. Review happens afterwards, on the PR.
@@ -35,12 +35,14 @@ and the workflow is auditable without reading prose.
 ## When it runs
 
 ```yaml
-- cron: '41 22 * * 0-4'  # 22:41 UTC — 01:41 Bucharest next day, 00:41 in winter
-- cron: '41 0 * * 1-5'   # 00:41 UTC — 03:41 Bucharest, backstop, usually skipped
+- cron: '41 22 * * 0,2,4'  # 22:41 UTC — 01:41 Bucharest next day, 00:41 in winter
+- cron: '41 0 * * 1,3,5'   # 00:41 UTC — 03:41 Bucharest, backstop, usually skipped
 ```
 
-Monday to Friday mornings in Bucharest, plus a **Run workflow** button for
-testing. Note the first cron fires the *evening before*, on days `0-4`.
+Monday, Wednesday and Friday mornings in Bucharest, plus a **Run workflow**
+button for testing. Note the first cron fires the *evening before*, on days
+`0,2,4` (Sunday, Tuesday, Thursday UTC). It was every weekday until 2026-10-09,
+cut to three to spare the weekly subscription limit (see "Model and costs").
 
 **GitHub's queue fails in two independent ways, and both have happened here.**
 Their docs cover the first: the `schedule` event "can be delayed during periods
@@ -135,7 +137,15 @@ skip. An item found to be a bad idea is marked `dropped`, one that cannot be
 finished is marked `blocked`, one that is too big is split — each a visible
 backlog change, never a silent jump to the next header.
 
-**Fridays are discovery runs.** Nothing ships. The session reads the codebase
+**Every other Friday is a discovery run** — since 2026-10-09, counted in whole
+weeks from that date (not ISO week parity, which a 53-week year breaks). The
+workflow's first step decides it from the Bucharest date and hands the agent a
+`Discovery morning: true|false` line, so a run and its backstop always agree;
+`scripts/daily-refactor-chooser.test.js` pins the calendar. The Fridays between
+take an item like Monday and Wednesday. It halved on 2026-10-09 to spare the weekly
+subscription limit: discovery is the longest open-ended Opus session, and one a
+fortnight keeps the backlog well ahead of one item a day. On a discovery
+morning nothing ships. The session reads the codebase
 against current standards and appends up to five findings, each with a class, an
 `Impact:` line and a concrete file path — then opens a backlog-only PR like any
 other run. Findings that stay on a branch nobody visits are findings that die.
@@ -320,9 +330,14 @@ always proceeds; the gate only applies to scheduled ones.
   requests** must be **on**. It was off for the second-ever run, which is why that
   run could not open its PR.
 
-**Model and costs:** `modernise` items run on **Sonnet** (`claude-sonnet-5-5`);
-everything else — `refactor`, `visual`, `qol`, Friday discovery, and a morning
-with nothing eligible — runs on **Opus** (`claude-opus-5-5`). `--model` is fixed
+**Model and costs:** `refactor` and `modernise` items run on **Sonnet**
+(`claude-sonnet-5-5`); everything else — `visual`, `qol`, discovery runs, and a
+morning with nothing eligible — runs on **Opus** (`claude-opus-5-5`). The split
+follows the autonomy line: the two Sonnet classes are behaviour-preserving and
+merge only after the workflow re-runs all three gates on a clean clone, so a
+weaker move is caught by tests; the Opus ones change what you see or call for
+judgement. `refactor` moved to Sonnet on 2026-10-09, to spare the weekly limit
+below. `--model` is fixed
 when the agent starts, so the workflow works out tonight's item first, by the
 skill's own four eligibility conditions, in `scripts/pick-model.mjs` (tested in
 `scripts/pick-model.test.js`). On a Sonnet run the prompt names the item and

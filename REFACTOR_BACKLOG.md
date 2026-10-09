@@ -1,8 +1,9 @@
 # Backlog — refactors, modernisation, and enhancements
 
-The queue the **Daily refactor** Routine burns through — one item per weekday
-morning, each landing as its own PR off fresh `main`. Fridays are discovery runs:
-nothing ships, the agent reads the codebase and adds to this file instead.
+The queue the **Daily refactor** Routine burns through — one item each Monday,
+Wednesday and Friday morning, each landing as its own PR off fresh `main`. Every other Friday is a
+discovery run (2026-10-09, 10-23, …): nothing ships, the agent reads the codebase
+and adds to this file instead. The Fridays between take an item like Monday and Wednesday.
 Process lives in [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md).
 
 Edit by hand freely. Reorder to change priority — the agent always takes the

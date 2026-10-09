@@ -87,7 +87,7 @@ export function withBuildSizeMeta(html, bytes) {
  * Count backlog items by state, from REFACTOR_BACKLOG.md's own headers.
  *
  * Headers look like: `## R-010 — some title · \`refactor\` · \`open\``
- * `open` is what the weekday run draws from; `proposed` is the agent's own
+ * `open` is what the scheduled run draws from; `proposed` is the agent's own
  * ideas, parked until a human moves one up. Anchored to `^## ` so the prose
  * and the class table above the list never count.
  *

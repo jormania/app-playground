@@ -435,7 +435,7 @@ a { color: inherit; text-decoration: none; }
     <div class="footer-inner">
       <img class="logo-mark" src="/cone-of-cold.png" alt="Cone of Cold" width="380" height="380">
     </div>
-    <!-- Upkeep: the cabinet tidies itself each weekday morning. The badge is a
+    <!-- Upkeep: the cabinet tidies itself Monday, Wednesday and Friday mornings. The badge is a
          static image so it says pass/fail even when the API below is
          unreachable; the line next to it adds the part a badge can't — when,
          and whether anything is waiting to be looked at.
@@ -842,7 +842,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
 
 // The workflow stops opening PRs once this many are already waiting, so the
 // count is not just "some review owed" — past five it is about to halt the
-// whole weekday cadence. Kept in step with .github/workflows/daily-refactor.yml.
+// whole Mon/Wed/Fri cadence. Kept in step with .github/workflows/daily-refactor.yml.
 const REFACTOR_PR_CAP = 6;
 // Vercel Hobby's per-deployment function limit. The count itself is stamped by
 // vite.config.js; the ceiling is a platform fact, so it lives here with the
@@ -857,13 +857,13 @@ const FUNCTION_WARN = 10;
 // 40 MB, by which point something has clearly been dragged in by mistake.
 const SIZE_WARN = 20 * 1024 * 1024;
 const SIZE_HOT  = 40 * 1024 * 1024;
-// Below this the weekday run is within a couple of mornings of going hungry.
+// Below this the scheduled run is within a few mornings of going hungry.
 const BACKLOG_LOW = 3;
 
 const upkeepEl = document.getElementById("upkeep-line");
 
 // The half of the line that needs no network: how much work is queued for the
-// weekday run, and whether any of it is waiting on a nod from you. Rendered
+// scheduled run, and whether any of it is waiting on a nod from you. Rendered
 // first so a rate-limited or offline GitHub costs only the run status.
 function backlogParts() {
   const parts = [];
@@ -874,7 +874,7 @@ function backlogParts() {
     const low = open <= BACKLOG_LOW;
     parts.push(
       `<a class="${low ? "gauge hot" : ""}" href="${href}" target="_blank" rel="noopener" ` +
-      `title="${low ? "Running low — the weekday run takes one item each morning" : "Items queued in REFACTOR_BACKLOG.md"}">` +
+      `title="${low ? "Running low — the scheduled run takes one item each Monday, Wednesday and Friday" : "Items queued in REFACTOR_BACKLOG.md"}">` +
       `backlog ${open}</a>`
     );
   }
