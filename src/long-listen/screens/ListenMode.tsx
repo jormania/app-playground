@@ -3,24 +3,15 @@ import type { ProgrammeItem } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
-import { go, href } from '../app/router'
+import { href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
-import { playChime, primeAudio } from '../../shared/sound'
-import { triggerHaptic } from '../../shared/haptics'
-import { readJson, writeJson } from '../../shared/storage'
 import { enterDusk } from '../app/theme'
-import { usePlayback, usePlayerState } from '../app/playback'
+import { usePlayback } from '../app/playback'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
-import { follow, FOLLOW_START, type Follow } from '../spotify/continuation'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
-
-/** Set by a view that hands over to the next work, read once by the next view: "start playing on arrival". */
-const AUTOPLAY = 'long-listen:autoplay'
-/** How long "Next: …" shows after the chime before the next work starts. */
-const HANDOVER_MS = 6000
 
 /**
  * One recording, while it plays: the work, who plays it, and what to listen
@@ -28,13 +19,12 @@ const HANDOVER_MS = 6000
  * playing this recording, the movement that's sounding is marked — a place in
  * the music, not a progress bar.
  *
- * Keep listening: with "carry on" on, when the last movement ends the phone
- * chimes softly (and buzzes), says what comes next, and starts it — one work
- * at a time, so the chime falls in the gap and never over the music. "I've
- * heard it" asks how it landed in place, then offers the next work.
+ * One work at a time, and it stops when the work does: nothing plays on by
+ * itself. "I've heard it" asks how it landed in place, then offers the next
+ * work, for when the listener is ready.
  */
 export function ListenModeScreen({ programmeId, itemId }: { programmeId: string; itemId: string }) {
-  const { repo, spotify, journey, bump, settings, updateSettings } = useServices()
+  const { repo, spotify, journey, bump } = useServices()
   const { data, error } = useLoad(async () => {
     const programme = await repo.programmes.require(programmeId)
     const items = programme.sections.flatMap((x) => x.items)
@@ -66,7 +56,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
   const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
-  const player = usePlayerState()
 
   const { curatorReady, say } = useServices()
   // The companion's notes are written once per programme; if this recording has none yet, ask for them now.
@@ -82,38 +71,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const [explaining, setExplaining] = useState(false)
 
   const [heardOpen, setHeardOpen] = useState(false)
-  const [upcoming, setUpcoming] = useState<{ item: ProgrammeItem; at: number } | null>(null)
-
-  // Handed over from the previous work: start this one as soon as it's known.
-  const autostarted = useRef(false)
-  useEffect(() => {
-    if (!sp0 || autostarted.current) return
-    if (readJson<string>(AUTOPLAY, '') !== itemId) return
-    autostarted.current = true
-    writeJson(AUTOPLAY, '')
-    void playback.play().then((ok) => { if (ok && data) void journey.markListening(data.item, 'play-started', programmeId, 'app') })
-  }, [sp0, itemId, playback, data, journey, programmeId])
-
-  // Watch for this work's end; with carry-on, chime in the gap and say what's next.
-  const followed = useRef<Follow>(FOLLOW_START)
-  useEffect(() => {
-    if (!sp0) return
-    const { next, ended } = follow(followed.current, player.np, sp0.trackIds)
-    followed.current = next
-    if (!ended || !settings.carryOn || !data?.next || upcoming) return
-    playChime('soft', 'sitwalk')
-    triggerHaptic('success')
-    setUpcoming({ item: data.next, at: Date.now() })
-  }, [player.np, sp0, settings.carryOn, data, upcoming])
-
-  useEffect(() => {
-    if (!upcoming) return
-    const t = setTimeout(() => {
-      writeJson(AUTOPLAY, upcoming.item.id)
-      go({ name: 'listen', programmeId, itemId: upcoming.item.id })
-    }, HANDOVER_MS)
-    return () => clearTimeout(t)
-  }, [upcoming, programmeId])
 
   if (error) return <Problem error={error} />
   if (!data) return <Waiting>Opening…</Waiting>
@@ -154,38 +111,19 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
   // A movement can be started from the list: the place in the music, by its name.
   async function playFrom(i: number) {
-    primeAudio()
     if (await playback.play(i)) started()
   }
 
   return (
-    // Any tap here wakes the audio context, so the chime at a work's end — which has no tap of its own — may sound.
-    <article className={s.listenMode} onPointerDown={primeAudio}>
+    <article className={s.listenMode}>
       <p className={s.eyebrow}><a href={href({ name: 'programme', id: programme.id })} className={`${s.quietLink} ${s.backLink}`}>← {programme.title}</a></p>
       <p className={s.composer}>{item.proposed.composer}</p>
       <h1 className={s.title}>{item.proposed.work}</h1>
       <p className={s.dek}>{creditLine(credit)}{sp?.durationMs ? ` · ${aboutDuration(sp.durationMs)}` : ''}</p>
       {standIn && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
-      {upcoming && (
-        <div className={s.handover} role="status">
-          <p className={s.label}>Next</p>
-          <p className={s.handoverWork}>{upcoming.item.proposed.composer} — {upcoming.item.proposed.work}</p>
-          <div className={s.actions}>
-            <button className={s.primaryButton} onClick={() => { writeJson(AUTOPLAY, upcoming.item.id); go({ name: 'listen', programmeId, itemId: upcoming.item.id }) }}>Start it now</button>
-            <button className={s.textButton} onClick={() => setUpcoming(null)}>Stay here</button>
-          </div>
-        </div>
-      )}
-
       {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for. */}
-      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={movements.length} playback={playback} onStarted={() => { primeAudio(); started() }} style={{ marginTop: 'var(--space-md)' }} />}
-      {sp && spotify.connected && next && (
-        <label className={`${s.row} ${s.carryOn}`}>
-          <input type="checkbox" checked={settings.carryOn} onChange={(e) => { primeAudio(); updateSettings({ carryOn: e.target.checked }) }} />
-          Then carry on to {next.proposed.composer.split(' ').slice(-1)[0]}’s {next.proposed.work}, with a soft chime between
-        </label>
-      )}
+      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={movements.length} playback={playback} onStarted={started} style={{ marginTop: 'var(--space-md)' }} />}
 
       {movements.length > 1 && (
         <ol className={s.movements}>
