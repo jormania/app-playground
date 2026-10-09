@@ -91,3 +91,24 @@ export function loadSeasonsCompleted() {
 export function saveSeasonsCompleted(count) {
   write('seasonsCompleted', count)
 }
+
+// ── Anthropic key (Settings) — on this device only, never in a backup or on a
+// server. With one set, today's scenario is written fresh (lib/generate.js). ──
+export function loadAnthropicKey() {
+  return read('anthropicKey', '')
+}
+
+export function saveAnthropicKey(key) {
+  write('anthropicKey', key)
+}
+
+// ── Today's fresh scenario, kept for the day it was written so reopening the
+// app never pays for it twice. One entry: yesterday's is simply replaced. ────
+export function loadFreshContent(dateKey, lawId) {
+  const entry = read('fresh', null)
+  return entry && entry.dateKey === dateKey && entry.lawId === lawId ? entry : null
+}
+
+export function saveFreshContent(dateKey, lawId, content) {
+  write('fresh', { dateKey, lawId, scenarioText: content.scenarioText, explanationText: content.explanationText })
+}

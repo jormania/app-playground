@@ -116,12 +116,13 @@ const CASES = {
     })
   },
   'Law of the Day — scenario generation': async (f) => {
-    const { generationRequest } = await import('../api/generate-law-of-the-day.js')
-    await f(ENDPOINT, {
-      method: 'POST',
-      headers: { 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify(generationRequest('Write a short workplace scenario as JSON.', [{ role: 'user', content: 'Law 1: never outshine the master.' }])),
-    })
+    const { generateFresh } = await import('../src/law-of-the-day/lib/generate.js')
+    const { default: laws } = await import('../src/law-of-the-day/data/laws.json')
+    await generateFresh(KEY, laws[0], laws, { fetchImpl: f })
+  },
+  'Law of the Day — key test': async (f) => {
+    const { testKey } = await import('../src/law-of-the-day/lib/generate.js')
+    await testKey(KEY, { fetchImpl: f })
   },
   // One case per curator job: each has its own json_schema, and a schema the
   // API's structured outputs reject is a 400 only the real API can show. The

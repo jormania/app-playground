@@ -85,7 +85,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | Sol Odyssey | `src/sol-odyssey/` | strict TS — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** in that dir |
 | Daily Stoic | `src/daily-stoic/` | strict TS, DS — [`DAILY_STOIC.md`](DAILY_STOIC.md) |
 | Tempo | `src/tempo/` | JSX, DS |
-| Law of the Day | `src/law-of-the-day/` | JSX, DS |
+| Law of the Day | `src/law-of-the-day/` | JSX, DS — with a BYO Anthropic key (Settings) today's scenario is written fresh by Sonnet in the browser, once per day used (`lib/generate.js`); no server function, no cron |
 | Yoru | `src/yoru/` | JSX, DS — [`YORU.md`](YORU.md) |
 | The Cabinet | `src/cabinet/` | JSX, DS — [`CABINET.md`](CABINET.md) |
 | Loom | `src/loom/` | JSX, DS — [`LOOM.md`](LOOM.md) |

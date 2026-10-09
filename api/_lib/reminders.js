@@ -1,6 +1,5 @@
 // Pure logic for the Wanderlist reminder — no network, no env, no Notion — so the rule
-// that decides "who gets emailed today, and why" is unit-tested in isolation (mirrors
-// api/lib/generatorRotation.js). The cron (api/wanderlist-remind.js) wires this to the
+// that decides "who gets emailed today, and why" is unit-tested in isolation. The cron (api/wanderlist-remind.js) wires this to the
 // real Notion query + Resend send.
 //
 // The rule: an unattended item is due a reminder when, for tomorrow (in the user's

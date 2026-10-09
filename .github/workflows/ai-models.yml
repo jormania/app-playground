@@ -23,7 +23,7 @@ on:
       - src/daily-stoic/lib/mentor.ts
       - src/lexi5/lib/curate.js
       - src/lexi5/components/Settings.jsx
-      - api/generate-law-of-the-day.js
+      - src/law-of-the-day/lib/generate.js
       - src/long-listen/curator/curator.js
       - src/long-listen/curator/prompts.js
       - src/keypath/app/ai.ts
@@ -48,7 +48,7 @@ on:
       - src/daily-stoic/lib/mentor.ts
       - src/lexi5/lib/curate.js
       - src/lexi5/components/Settings.jsx
-      - api/generate-law-of-the-day.js
+      - src/law-of-the-day/lib/generate.js
       - src/long-listen/curator/curator.js
       - src/long-listen/curator/prompts.js
       - src/keypath/app/ai.ts
