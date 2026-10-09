@@ -481,7 +481,7 @@ function ProgrammeTools({ b }: { b: Bundle }) {
           {saving ? 'Saving…' : b.playlist ? 'Update the playlist' : 'Save as a Spotify playlist'}
         </button>
       )}
-      <button className={s.textButton} onClick={() => window.print()}>Print</button>
+      <button className={`${s.textButton} ${s.printButton}`} onClick={() => window.print()}>Print</button>
     </div>
   )
 }

@@ -365,6 +365,15 @@
   cursor: default;
 }
 
+/* Print makes the concert booklet (see the print styles at the end). Nobody
+   prints from a phone, so there it is hidden; the browser's own menu still
+   prints the same booklet. */
+@media (max-width: 640px) {
+  .printButton {
+    display: none;
+  }
+}
+
 /* ── the three options ──────────────────────────────────────────────────── */
 
 .options {
