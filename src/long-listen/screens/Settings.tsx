@@ -12,6 +12,7 @@ import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { archiveNotebook } from '../notion/mirror'
 import { go } from '../app/router'
 import { usageSummary } from '../app/usage'
+import { RELEASE } from '../app/release'
 import s from '../styles/editorial.module.css'
 
 type Result = { ok: boolean; message: string } | null
@@ -93,6 +94,7 @@ export function SettingsScreen() {
         <p className={s.label}>This month, on this device</p>
         <SpendLine />
 
+        <p className={s.faint} style={{ marginTop: 'var(--space-md)' }}>{RELEASE.name} · {RELEASE.date}</p>
         <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
       </section>
 

@@ -66,8 +66,8 @@ Effort: **S** is a day or less, **M** a few days, **L** a week or more.
 
 | # | Item | Why it matters | Effort |
 |---|------|----------------|--------|
-| 0 | Fix what the release-one test turns up | Nothing below is worth more than a programme that works every week | — |
-| 0a | Call it release one | About line, changelog in the Notion spec and handover, the guide | S |
+| 0 | ~~Fix what the release-one test turns up~~ | Done over the first week's listening (PRs #138–#150) | — |
+| 0a | ~~Call it release one~~ | Done 2026-10-09: a line in Settings → About, changelog in `LONG_LISTEN.md` §12. The Notion spec, handover and the guide are outside the repo and still to update | S |
 
 ## Release 2
 

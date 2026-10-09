@@ -3,6 +3,7 @@ import { BookOpen, Settings2 } from 'lucide-react'
 import { ServicesProvider, useServices } from './app/services'
 import { href, useRoute, type Route } from './app/router'
 import { GUIDE_URL } from './app/links'
+import { useNewVersion } from './app/freshness'
 import { WeekScreen } from './screens/Week'
 import { ProgrammeScreen } from './screens/Programme'
 import { ListenModeScreen } from './screens/ListenMode'
@@ -28,6 +29,7 @@ function Shell() {
   const { week, settings } = useServices()
   const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name
   const navRef = useRef<HTMLElement>(null)
+  const newer = useNewVersion()
   // The nav slides rather than wraps; keep the current section's tab in view.
   useEffect(() => {
     // Only sideways: scrollIntoView would also move the page.
@@ -60,6 +62,11 @@ function Shell() {
             </a>
           ))}
         </nav>}
+        {newer && (
+          <p className={s.updateBar} role="status">
+            A newer version of the app is ready. <button className={s.textButton} onClick={() => window.location.reload()}>Reload</button>
+          </p>
+        )}
         {settings.demo && <p className={s.demo}>Demo curator — canned programmes, for development only</p>}
       </header>
       <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name}>
