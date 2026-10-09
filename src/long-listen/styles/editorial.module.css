@@ -2436,30 +2436,25 @@
   font-weight: 600;
 }
 
-/* Who plays a recording, each named for what they are (components/Credits). */
+/* Who plays a recording (components/Credits): each name led by a small role
+   mark, flowing on one line — the space of the old "A · B", the roles plain. */
 .credits {
-  display: grid;
-  /* One label width everywhere, so names line up from card to card. */
-  grid-template-columns: 8rem minmax(0, 1fr);
-  gap: var(--space-3xs) var(--space-sm);
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-sm);
+  color: var(--color-ink);
 }
 
-.credits > div {
-  display: contents;
+.credit {
+  white-space: normal;
 }
 
-.credits dt {
-  padding-top: 0.2em;
-  font-size: var(--text-sm);
+.creditRole {
+  font-size: var(--text-xs);
   font-variant-caps: all-small-caps;
   letter-spacing: 0.08em;
   color: var(--color-faint);
-}
-
-.credits dd {
-  margin: 0;
-  color: var(--color-ink);
 }
 
 /* ── spacing: the few one-off gaps, named, so no screen sets its own ──────
@@ -2476,3 +2471,8 @@
 .mtMd.mtMd { margin-top: var(--space-md); }
 .mtLg.mtLg { margin-top: var(--space-lg); }
 .mtXl.mtXl { margin-top: var(--space-xl); }
+
+/* A work known only from a concert has no recordings list: no empty rule for it. */
+.libraryRecs:empty {
+  display: none;
+}
