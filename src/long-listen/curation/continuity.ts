@@ -1,4 +1,4 @@
-import type { Feedback, ListeningEvent, Programme, ProgrammeItem, Theme, ThemeExploration, WeekKey } from '../domain/types'
+import type { Comparison, Feedback, ListeningEvent, Programme, ProgrammeItem, Theme, ThemeExploration, WeekKey } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { latestFeedback, listeningState, timesHeard } from '../domain/listening'
 import { sinceWords } from '../domain/week'
@@ -51,6 +51,30 @@ export interface ThreadDigest {
   nextDirections: string[]
 }
 
+/**
+ * The recordings an item was heard through. Where Spotify lacked the
+ * curator's recording, a stand-in played in its place (a comparison
+ * `cmp:<programmeId>:<itemId>` marked `standIn`), and the listening and the
+ * reactions were filed under the stand-in — what was actually heard. Every
+ * reader of "how did this item land" asks about both, or a work heard and
+ * loved through a stand-in reads as never started.
+ */
+export function standInsOf(comparisons: Comparison[]): Map<string, string> {
+  return new Map(comparisons.filter((c) => c.standIn && c.perspectives.length > 1).map((c) => [c.id, c.perspectives[1].recordingId]))
+}
+
+export function heardAs(item: ProgrammeItem, programmeId: string, standIns: Map<string, string>): string[] {
+  const standIn = standIns.get(`cmp:${programmeId}:${item.id}`)
+  return standIn && standIn !== item.recordingId ? [item.recordingId, standIn] : [item.recordingId]
+}
+
+/** `latestFeedback` over several targets read as one — the curator's recording and its stand-in. */
+export function feedbackOnAny(all: Feedback[], ids: string[]): ReturnType<typeof latestFeedback> {
+  if (ids.length === 1) return latestFeedback(all, ids[0])
+  const wanted = new Set(ids)
+  return latestFeedback(all.filter((f) => wanted.has(f.target.id)).map((f) => ({ ...f, target: { ...f.target, id: ids[0] } })), ids[0])
+}
+
 const label = (i: ProgrammeItem) => `${i.proposed.composer} — ${i.proposed.work} (${creditLine(i.proposed)})`
 
 export function digestThread(
@@ -60,6 +84,8 @@ export function digestThread(
   events: ListeningEvent[],
   feedback: Feedback[],
   nowWeek: WeekKey,
+  /** The stored comparisons, for items heard through a stand-in; without them only the curator's recording is read. */
+  comparisons: Comparison[] = [],
 ): ThreadDigest {
   const mine = explorations
     .filter((e) => e.themeId === theme.id)
@@ -69,13 +95,14 @@ export function digestThread(
   const composers = new Set<string>()
   const recordings: CoveredRecording[] = []
   const response: ThreadDigest['response'] = { drawnTo: [], cooler: [], unheard: [], skipped: [] }
+  const standIns = standInsOf(comparisons)
 
   for (const ex of mine) {
     const ps = [ex.programmeId, ...(ex.extraProgrammeIds ?? [])].map((id) => programmes.get(id)).filter((x): x is Programme => Boolean(x))
-    for (const item of ps.flatMap((p) => p.sections.flatMap((s) => s.items))) {
-      const state = listeningState(events, item.recordingId)
+    for (const { item, ids } of ps.flatMap((p) => p.sections.flatMap((s) => s.items).map((item) => ({ item, ids: heardAs(item, p.id, standIns) })))) {
+      const state = listeningState(events, ids)
       if (ex.setAside && state === 'not-started') continue
-      const fb = latestFeedback(feedback, item.recordingId)
+      const fb = feedbackOnAny(feedback, ids)
       const workFb = latestFeedback(feedback, item.workId)
       const reaction = fb.reaction ?? workFb.reaction
       const more = fb.more ?? workFb.more
@@ -88,7 +115,7 @@ export function digestThread(
         work: item.proposed.work,
         credit: creditLine(item.proposed),
         state,
-        heardTimes: timesHeard(events, item.recordingId),
+        heardTimes: ids.reduce((n, id) => n + timesHeard(events, id), 0),
         reaction,
         more,
         notes: [...fb.notes, ...workFb.notes],
@@ -122,5 +149,5 @@ export async function threadDigest(repo: Repo, themeId: string, nowWeek: WeekKey
   const theme = await repo.themes.require(themeId)
   const explorations = await repo.explorations.many(theme.explorationIds)
   const programmes = new Map((await repo.programmes.many(explorations.flatMap((e) => [e.programmeId, ...(e.extraProgrammeIds ?? [])]))).map((p) => [p.id, p]))
-  return digestThread(theme, explorations, programmes, await repo.events.all(), await repo.feedback.all(), nowWeek)
+  return digestThread(theme, explorations, programmes, await repo.events.all(), await repo.feedback.all(), nowWeek, await repo.comparisons.all())
 }

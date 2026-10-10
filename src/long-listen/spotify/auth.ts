@@ -161,8 +161,9 @@ export const SIGNED_OUT_MESSAGE = 'Spotify asks you to sign in again (its sign-i
 
 /**
  * A new access token. Throws SpotifyAuthError only when Spotify says the
- * sign-in is over (`invalid_grant`, or a 400/401 from the token endpoint);
- * anything else — offline, 429, 5xx — is SpotifyRefreshUnavailable, and the
+ * sign-in is over (`invalid_grant`, or a 400/401 from the token endpoint that
+ * isn't `invalid_client`); anything else — offline, 429, 5xx, a client ID
+ * Spotify doesn't know — is SpotifyRefreshUnavailable, and the
  * tokens are kept for another try.
  */
 export async function refresh(tokens: SpotifyTokens, clientId: string, fetchImpl: typeof fetch = (...a) => fetch(...a), now = Date.now()): Promise<SpotifyTokens> {
@@ -177,7 +178,14 @@ export async function refresh(tokens: SpotifyTokens, clientId: string, fetchImpl
   } catch {
     throw new SpotifyRefreshUnavailable('Spotify can’t be reached right now.')
   }
-  if (res.status === 400 || res.status === 401) throw new SpotifyAuthError(SIGNED_OUT_MESSAGE)
+  if (res.status === 400 || res.status === 401) {
+    // `invalid_client` is about the app, not the sign-in: a client ID mistyped
+    // or changed in Settings. Ending the sign-in for it would throw away a
+    // refresh token that works again once the ID is put right.
+    const body = await res.json().catch(() => null) as { error?: string } | null
+    if (body?.error === 'invalid_client') throw new SpotifyRefreshUnavailable('Spotify doesn’t recognise this app’s client ID. Check it in Settings → Spotify.')
+    throw new SpotifyAuthError(SIGNED_OUT_MESSAGE)
+  }
   if (!res.ok) throw new SpotifyRefreshUnavailable('Spotify isn’t answering just now. Try again in a little while.')
   return tokensFrom(await res.json(), now, tokens)
 }

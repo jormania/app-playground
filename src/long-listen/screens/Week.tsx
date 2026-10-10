@@ -148,7 +148,8 @@ export function WeekScreen() {
       </ol>
 
       <div className={s.block}>
-        <SittingCard joinsThread={false} />
+        {/* Disabled while a direction is being chosen: two programmes made at once for one week, and one would be set aside unasked. */}
+        <SittingCard joinsThread={false} busy={busy} />
       </div>
 
       <div className={s.block}>

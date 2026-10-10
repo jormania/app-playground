@@ -1,7 +1,8 @@
 import type { Repo } from '../store/repo'
 import type { WeekKey } from '../domain/types'
 import { creditLine } from '../domain/identity'
-import { latestFeedback, listeningState } from '../domain/listening'
+import { listeningState } from '../domain/listening'
+import { feedbackOnAny, heardAs, standInsOf } from './continuity'
 import { weekFromKey } from '../domain/week'
 import type { Season } from '../domain/season'
 
@@ -13,20 +14,25 @@ import type { Season } from '../domain/season'
  */
 export async function seasonContext(repo: Repo, s: Season, now: WeekKey) {
   const inSeason = new Set(s.weekKeys.filter((k) => k <= now))
-  const [weeks, programmes, explorations, themes, options, events, feedback, concerts, taste, prefs] = await Promise.all([
+  const [weeks, programmes, explorations, themes, options, events, feedback, concerts, taste, prefs, comparisons] = await Promise.all([
     repo.weeks.all(), repo.programmes.all(), repo.explorations.all(), repo.themes.all(), repo.options.all(),
-    repo.events.all(), repo.feedback.all(), repo.concerts.all(), repo.taste(), repo.preferences(),
+    repo.events.all(), repo.feedback.all(), repo.concerts.all(), repo.taste(), repo.preferences(), repo.comparisons.all(),
   ])
+  // A work heard through a stand-in was heard: its listening and reactions sit under the stand-in.
+  const standIns = standInsOf(comparisons)
   const progs = programmes.filter((p) => inSeason.has(p.weekKey))
   const items = progs.flatMap((p) => p.sections.flatMap((x) => x.items).map((i) => ({ i, p })))
-  const said = (id: string) => {
-    const f = latestFeedback(feedback, id)
+  const said = (id: string | string[]) => {
+    const f = feedbackOnAny(feedback, Array.isArray(id) ? id : [id])
     return { ...(f.reaction ? { reaction: f.reaction } : {}), ...(f.notes.length ? { said: f.notes } : {}) }
   }
-  const met = items.map(({ i, p }) => ({
-    composer: i.proposed.composer, work: i.proposed.work, recording: creditLine(i.proposed), week: weekFromKey(p.weekKey).label,
-    state: listeningState(events, i.recordingId), ...said(i.recordingId), ...said(i.workId),
-  }))
+  const met = items.map(({ i, p }) => {
+    const ids = heardAs(i, p.id, standIns)
+    return {
+      composer: i.proposed.composer, work: i.proposed.work, recording: creditLine(i.proposed), week: weekFromKey(p.weekKey).label,
+      state: listeningState(events, ids), ...said(ids), ...said(i.workId),
+    }
+  })
   const exs = explorations.filter((e) => inSeason.has(e.weekKey))
   const themeIds = [...new Set(exs.map((e) => e.themeId))]
   const start = s.startsOn
@@ -36,14 +42,18 @@ export async function seasonContext(repo: Repo, s: Season, now: WeekKey) {
     language: prefs.language,
     season: { number: s.number, label: s.label, weeksSoFar: s.weeksSoFar },
     soFar: !s.complete,
-    weeks: weeks.filter((w) => inSeason.has(w.weekKey)).sort((a, b) => a.weekKey.localeCompare(b.weekKey)).map((w) => ({
-      week: weekFromKey(w.weekKey).label,
-      programme: progs.find((p) => p.id === w.programmeId)?.title,
-      alsoThisWeek: progs.filter((p) => p.weekKey === w.weekKey && p.id !== w.programmeId && !w.setAsideProgrammeIds.includes(p.id)).map((p) => (p.sitting ? `a sitting: ${p.title} ("${p.sitting.request}")` : p.title)),
-      setAside: progs.filter((p) => w.setAsideProgrammeIds.includes(p.id)).map((p) => p.title),
-      mood: w.mood,
-      ...said(w.programmeId ?? ''),
-    })),
+    weeks: weeks.filter((w) => inSeason.has(w.weekKey)).sort((a, b) => a.weekKey.localeCompare(b.weekKey)).map((w) => {
+      // "More of this theme" of a programme set aside went with it: it is not still part of the week.
+      const setAside = (p: (typeof progs)[number]) => w.setAsideProgrammeIds.includes(p.id) || Boolean(p.extends && w.setAsideProgrammeIds.includes(p.extends))
+      return {
+        week: weekFromKey(w.weekKey).label,
+        programme: progs.find((p) => p.id === w.programmeId)?.title,
+        alsoThisWeek: progs.filter((p) => p.weekKey === w.weekKey && p.id !== w.programmeId && !setAside(p)).map((p) => (p.sitting ? `a sitting: ${p.title} ("${p.sitting.request}")` : p.title)),
+        setAside: progs.filter((p) => p.weekKey === w.weekKey && setAside(p)).map((p) => p.title),
+        mood: w.mood,
+        ...said(w.programmeId ?? ''),
+      }
+    }),
     threads: themes.filter((t) => themeIds.includes(t.id)).map((t) => ({
       title: t.title, summary: t.summary, reaction: t.reaction, openQuestions: t.openQuestions, nextDirections: t.nextDirections,
       visitsThisSeason: exs.filter((e) => e.themeId === t.id).length, ...said(t.id),

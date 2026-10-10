@@ -1,5 +1,5 @@
-import type { Comparison, Concert, Feedback, ListeningEvent, NotionDatabases, Programme, Recording, TasteProfile, Theme, ThemeExploration } from '../domain/types'
-import { creditLine } from '../domain/identity'
+import type { Comparison, Concert, Feedback, ListeningEvent, NotionDatabases, NotionSyncState, Programme, Recording, TasteProfile, Theme, ThemeExploration } from '../domain/types'
+import { creditLine, displaySurname } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { weekFromKey } from '../domain/week'
 import type { Repo } from '../store/repo'
@@ -70,6 +70,16 @@ export type NotionCall = <T = Record<string, unknown>>(call: Call) => Promise<T>
 
 export function relayCaller(token: string): NotionCall {
   return async <T,>(c: Call) => (await notionProxy(token, c.path, c.method, c.body)) as T
+}
+
+/**
+ * Notion's answer for a page or database that is no longer there to edit: the
+ * listener deleted it (it sits archived in the trash), or it is gone for good.
+ * Not a reason to stop: the row is written afresh.
+ */
+export function isGone(e: unknown): boolean {
+  // Notion's own words, not a bare 404: the relay missing (the dev server) is not a deleted page.
+  return /archived|could not find|object_not_found/i.test(e instanceof Error ? e.message : String(e))
 }
 
 // ── the notebook's shape ──────────────────────────────────────────────────
@@ -405,10 +415,26 @@ async function legacyFurther(call: NotionCall, pageId: string): Promise<{ anchor
  */
 async function syncProgrammePage(call: NotionCall, repo: Repo, databaseId: string, p: Programme, properties: Record<string, unknown>, resources: ResourceLike[]): Promise<boolean> {
   const key = `programme:${p.id}`
+  const state = await repo.notion.get(key)
+  try {
+    return await writeProgrammePage(call, repo, databaseId, p, properties, resources, state)
+  } catch (e) {
+    // The listener deleted the page in Notion: write it afresh, text and all,
+    // as for a new programme, rather than failing every sync after. The old
+    // state is replaced only once the new page exists.
+    if (!state || !isGone(e)) throw e
+    return writeProgrammePage(call, repo, databaseId, p, properties, resources, undefined)
+  }
+}
+
+async function writeProgrammePage(
+  call: NotionCall, repo: Repo, databaseId: string, p: Programme, properties: Record<string, unknown>, resources: ResourceLike[],
+  state: NotionSyncState | undefined,
+): Promise<boolean> {
+  const key = `programme:${p.id}`
   const propsHash = hash(properties)
   const further = furtherBlocks(resources)
   const bodyHash = hash(further)
-  const state = await repo.notion.get(key)
   const at = new Date().toISOString()
 
   if (!state) {
@@ -467,13 +493,18 @@ async function upsert(call: NotionCall, repo: Repo, key: string, databaseId: str
   const state = await repo.notion.get(key)
   if (state?.hash === h) return false
   if (state) {
-    await call({ path: `pages/${state.pageId}`, method: 'PATCH', body: { properties } })
-  } else {
-    const page = await call<{ id: string }>({ path: 'pages', method: 'POST', body: { parent: { database_id: databaseId }, properties } })
-    await repo.notion.put({ key, pageId: page.id, hash: h, syncedAt: new Date().toISOString() })
-    return true
+    try {
+      await call({ path: `pages/${state.pageId}`, method: 'PATCH', body: { properties } })
+      await repo.notion.put({ key, pageId: state.pageId, hash: h, syncedAt: new Date().toISOString() })
+      return true
+    } catch (e) {
+      // The listener deleted this row in Notion. Throwing here would stop every
+      // later row on every sync for good; the app still holds it, so it is made again.
+      if (!isGone(e)) throw e
+    }
   }
-  await repo.notion.put({ key, pageId: state.pageId, hash: h, syncedAt: new Date().toISOString() })
+  const page = await call<{ id: string }>({ path: 'pages', method: 'POST', body: { parent: { database_id: databaseId }, properties } })
+  await repo.notion.put({ key, pageId: page.id, hash: h, syncedAt: new Date().toISOString() })
   return true
 }
 
@@ -482,6 +513,19 @@ async function upsert(call: NotionCall, repo: Repo, key: string, databaseId: str
 export interface SyncReport { written: number }
 
 export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string, currentWeek: string): Promise<SyncReport> {
+  try {
+    return await syncOnce(call, repo, pageId, currentWeek)
+  } catch (e) {
+    // A database or the taste page deleted in Notion leaves the remembered setup
+    // pointing at nothing, and every sync after would fail the same way. Look
+    // for the notebook's pages again (making what is missing) and try once more.
+    if (!isGone(e) || !(await repo.marks.get('notion:setup'))) throw e
+    await repo.marks.delete('notion:setup')
+    return syncOnce(call, repo, pageId, currentWeek)
+  }
+}
+
+async function syncOnce(call: NotionCall, repo: Repo, pageId: string, currentWeek: string): Promise<SyncReport> {
   const dbs = await ensureSetup(call, repo, pageId)
   const [programmes, themes, explorations, recordings, events, feedback, resources, weeks, taste, prefs, comparisons, concerts] = await Promise.all([
     repo.programmes.all(), repo.themes.all(), repo.explorations.all(), repo.recordings.all(), repo.events.all(), repo.feedback.all(), repo.resources.all(), repo.weeks.all(), repo.taste(), repo.preferences(), repo.comparisons.all(), repo.concerts.all(),
@@ -565,7 +609,7 @@ export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<num
 
 export function journalProps(p: Programme, theme: string, events: ListeningEvent[], feedback: Feedback[], setAside: boolean, currentWeek: string) {
   const items = p.sections.flatMap((s) => s.items)
-  const heard = items.filter((i) => listeningState(events, i.recordingId) === 'heard').map((i) => `${i.proposed.composer.split(' ').slice(-1)[0]} — ${i.proposed.work}`)
+  const heard = items.filter((i) => listeningState(events, i.recordingId) === 'heard').map((i) => `${displaySurname(i.proposed.composer)} — ${i.proposed.work}`)
   const notes = [...latestFeedback(feedback, p.id).notes, ...items.flatMap((i) => latestFeedback(feedback, i.recordingId).notes)]
   return {
     Name: titleProp(p.title),

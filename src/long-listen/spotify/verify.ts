@@ -3,7 +3,8 @@ import { newId } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import type { Repo } from '../store/repo'
 import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
-import type { RecentPlay, SpotifyAlbum, SpotifyClient } from './client'
+import { SpotifyAuthError } from './auth'
+import { SpotifyUnavailable, type RecentPlay, type SpotifyAlbum, type SpotifyClient } from './client'
 
 /**
  * The factual layer: look for the curator's proposed recording on Spotify and
@@ -79,7 +80,7 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
 
   const albumId = found.track.album.id
   const [album, tracks] = await Promise.all([spotify.album(albumId), spotify.albumTracks(albumId)])
-  const work = workTracks(tracks, found.track, proposed.work)
+  const work = workTracks(tracks, found.track, proposed.work, proposed)
   const credited = [...new Set(work.flatMap((t) => t.artists.map((a) => a.name)))]
   const image = [...(album.images ?? [])].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url
   const trackIds = work.map((t) => t.id)
@@ -206,23 +207,30 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
 const SESSION_GAP = 3 * 3600_000
 
 export function playsToEvents(plays: RecentPlay[], recordings: Recording[], known: ListeningEvent[], now: string): ListeningEvent[] {
-  const byTrack = new Map<string, Recording>()
-  for (const r of recordings) if (isConfirmed(r)) for (const t of r.spotify.trackIds) byTrack.set(t, r)
+  // One album's tracks can be confirmed for more than one recording id — the
+  // curator naming one performance two ways in two programmes — and a play of
+  // them is a play of each, so a track maps to every recording it confirms.
+  const byTrack = new Map<string, Recording[]>()
+  for (const r of recordings) if (isConfirmed(r)) for (const t of r.spotify.trackIds) byTrack.set(t, [...(byTrack.get(t) ?? []), r])
 
   // Group plays per recording into sessions: plays of its tracks within three hours of each other.
   const sessions = new Map<string, { recording: Recording; tracks: Set<string>; last: string; first: string }[]>()
   for (const play of [...plays].sort((a, b) => a.played_at.localeCompare(b.played_at))) {
-    const r = byTrack.get(play.track.id)
-    if (!r) continue
-    const list = sessions.get(r.id) ?? []
-    const cur = list[list.length - 1]
-    if (cur && Date.parse(play.played_at) - Date.parse(cur.last) < SESSION_GAP) {
-      cur.tracks.add(play.track.id)
-      cur.last = play.played_at
-    } else {
-      list.push({ recording: r, tracks: new Set([play.track.id]), first: play.played_at, last: play.played_at })
+    // A track Spotify relinked for the market plays under another id;
+    // `linked_from` keeps the one that was matched, as for what's playing now.
+    const asked = play.track.linked_from?.id
+    const trackId = byTrack.has(play.track.id) || !asked ? play.track.id : asked
+    for (const r of byTrack.get(trackId) ?? []) {
+      const list = sessions.get(r.id) ?? []
+      const cur = list[list.length - 1]
+      if (cur && Date.parse(play.played_at) - Date.parse(cur.last) < SESSION_GAP) {
+        cur.tracks.add(trackId)
+        cur.last = play.played_at
+      } else {
+        list.push({ recording: r, tracks: new Set([trackId]), first: play.played_at, last: play.played_at })
+      }
+      sessions.set(r.id, list)
     }
-    sessions.set(r.id, list)
   }
 
   const recorded = known.filter((e) => e.source === 'spotify-recent' && e.playedAt)
@@ -295,13 +303,20 @@ export interface PlaylistMark {
 async function playlistUris(repo: Repo, programmeId: string, opts: PlaylistOptions = {}): Promise<{ title: string; dek: string; uris: string[] }> {
   const p = await repo.programmes.require(programmeId)
   const events = opts.hideSkipped ? await repo.events.all() : []
-  // "Hide what I skip": a skipped work, and its stand-in, leave the playlist too.
-  const items = p.sections.flatMap((s) => s.items).filter((i) => !opts.hideSkipped || listeningState(events, i.recordingId) !== 'skipped')
+  const all = p.sections.flatMap((s) => s.items)
   // Item by item, in programme order: each work's recording, and right after
   // it any stand-in found where Spotify lacks that recording (an unconfirmed
   // one drops out below, so the stand-in takes its place). The programme's
   // own pairs follow the items.
-  const standIns = new Map((await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn).map((c) => [c.id, c]))
+  const standIns = new Map((await repo.comparisons.many(all.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn).map((c) => [c.id, c]))
+  // "Hide what I skip": a skipped work, and its stand-in, leave the playlist
+  // too. Where a stand-in plays, the programme page files the skip under the
+  // stand-in's recording, so both ids are read, as the page reads them.
+  const itemIds = (i: (typeof all)[number]) => {
+    const other = standIns.get(`cmp:${programmeId}:${i.id}`)?.perspectives[1]?.recordingId
+    return other ? [i.recordingId, other] : [i.recordingId]
+  }
+  const items = all.filter((i) => !opts.hideSkipped || listeningState(events, itemIds(i)) !== 'skipped')
   // A pair of a skipped work leaves with it.
   const keptWorks = new Set(items.map((i) => i.workId))
   const pairs = (await repo.comparisons.many(p.comparisonIds)).filter((c) => !opts.hideSkipped || !c.workId || keptWorks.has(c.workId))
@@ -326,7 +341,11 @@ export async function saveProgrammePlaylist(repo: Repo, spotify: SpotifyClient, 
   if (uris.length === 0) throw new Error('None of this week’s recordings are confirmed on Spotify yet.')
   const mark = await repo.marks.get(`playlist:${programmeId}`)
   const prior = mark?.value as PlaylistMark | undefined
-  const saved = await spotify.writePlaylist(`The Long Listen — ${title}`, `${weekLabel}. ${dek}`, uris, prior?.id)
+  // A playlist Spotify made is kept the moment it exists, so a failure filling
+  // it (offline, throttled) leaves a mark to fill next time rather than making
+  // a second, duplicate playlist. Without `uris` the mark reads as behind.
+  const onCreated = (created: { id: string; url: string }) => repo.marks.put({ id: `playlist:${programmeId}`, at: new Date().toISOString(), value: { ...created, tracks: 0 } satisfies PlaylistMark })
+  const saved = await spotify.writePlaylist(`The Long Listen — ${title}`, `${weekLabel}. ${dek}`, uris, prior?.id, onCreated)
   const value: PlaylistMark = { ...saved, tracks: uris.length, uris }
   await repo.marks.put({ id: `playlist:${programmeId}`, at: new Date().toISOString(), value })
   return value
@@ -349,6 +368,12 @@ export async function keepPlaylistCurrent(repo: Repo, spotify: SpotifyClient, pr
   return true
 }
 
+/** An error that would meet every other lookup too: the sign-in, the connection, or Spotify's rate limit. */
+function stopsThePass(e: unknown): boolean {
+  if (e instanceof SpotifyAuthError) return true
+  return e instanceof SpotifyUnavailable && (e.reason === 'signed-out' || e.reason === 'busy' || e.reason === 'offline')
+}
+
 /** Recordings being looked up right now, page-wide, so two callers never check the same one twice. */
 const looking = new Set<string>()
 
@@ -357,7 +382,8 @@ const looking = new Set<string>()
  * one after another, so a new week's programme fills in quickly. Started as
  * soon as a direction is chosen, and again whenever the programme is opened;
  * a recording already confirmed or being looked up is left alone. Stops at the
- * first sign-in or rate-limit problem: what's left waits for the next open.
+ * first sign-in, connection or rate-limit problem: what's left waits for the
+ * next open. A lookup that fails on its own is skipped, not a reason to stop.
  */
 export async function verifyProgramme(
   repo: Repo, spotify: SpotifyClient, programmeId: string, onEach?: () => void, concurrency = 3,
@@ -381,8 +407,13 @@ export async function verifyProgramme(
         await verifyRecording(repo, spotify, job.rid, job.proposed)
         done++
         onEach?.()
-      } catch {
-        failed = true // signed out, offline or throttled: the buttons stay, nothing is lost
+      } catch (e) {
+        // Signed out, offline or throttled: every other lookup would fail the
+        // same way, so the pass stops; the buttons stay, nothing is lost.
+        // Anything else — one album Spotify won't return (withdrawn,
+        // region-locked) — is that recording's trouble alone: it stays
+        // unchecked for the next open, and the rest carry on.
+        if (stopsThePass(e)) failed = true
       } finally {
         looking.delete(job.rid)
       }

@@ -137,6 +137,18 @@ export class Repo {
   readonly marks: Collection<Mark>
   readonly concerts: Collection<Concert>
 
+  /**
+   * Which journey this is: bumped by a fresh start. A curator call takes a
+   * minute; anything that read the journey before a fresh start and answers
+   * after it must not write the old journey back into the cleared store, so
+   * Journey compares this before and after each call. Per page, in memory —
+   * a fresh start is made from this page.
+   */
+  private epoch = 0
+  get generation(): number {
+    return this.epoch
+  }
+
   constructor(readonly store: KeyValueStore) {
     const c = <T,>(name: string, keyOf: (v: T) => string) => new Collection<T>(store, name, keyOf)
     this.themes = c('theme', (v) => v.id)
@@ -208,6 +220,8 @@ export class Repo {
    * device's settings, outside the store, and are untouched.
    */
   async freshStart(): Promise<void> {
+    // First, so a curator call already in flight sees it the moment it answers.
+    this.epoch++
     const prefs = await this.preferences()
     const setup = await this.marks.get('notion:setup')
     for (const k of await this.store.keys()) if (k.startsWith(PREFIX)) await this.store.del(k)

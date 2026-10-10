@@ -9,7 +9,7 @@ import s from '../styles/editorial.module.css'
  * what you'd like and how long you have; the curator writes the evening —
  * joining this week's thread if there is one, or beginning one.
  */
-export function SittingCard({ joinsThread }: { joinsThread: boolean }) {
+export function SittingCard({ joinsThread, busy = false }: { joinsThread: boolean; /** Something else on the screen is with the curator (a direction being chosen): wait for it. */ busy?: boolean }) {
   const { journey, bump, say, curatorReady } = useServices()
   const id = useId()
   const [request, setRequest] = useState('')
@@ -37,15 +37,15 @@ export function SittingCard({ joinsThread }: { joinsThread: boolean }) {
         {joinsThread ? 'It joins this week’s thread, with nothing you’ve already been given.' : 'It becomes this week’s programme and begins its thread.'}
       </p>
       <label className={s.visuallyHidden} htmlFor={id}>What would you like tonight?</label>
-      <input id={id} className={s.input} placeholder="quiet, nothing I know" value={request} onChange={(e) => setRequest(e.target.value)} disabled={making} />
+      <input id={id} className={s.input} placeholder="quiet, nothing I know" value={request} onChange={(e) => setRequest(e.target.value)} disabled={making || busy} />
       <div className={s.chipRow} role="radiogroup" aria-label="How long you have">
         {([1, 2] as const).map((h) => (
-          <button key={h} type="button" role="radio" aria-checked={hours === h} className={`${s.chip} ${hours === h ? s.chipOn : ''}`} onClick={() => setHours(h)} disabled={making}>
+          <button key={h} type="button" role="radio" aria-checked={hours === h} className={`${s.chip} ${hours === h ? s.chipOn : ''}`} onClick={() => setHours(h)} disabled={making || busy}>
             {h === 1 ? 'about an hour' : 'about two hours'}
           </button>
         ))}
       </div>
-      <button className={s.outlineButton} onClick={() => void make()} disabled={making || !curatorReady}>
+      <button className={s.outlineButton} onClick={() => void make()} disabled={making || busy || !curatorReady}>
         {making ? 'The curator is shaping your evening…' : 'Make tonight’s sitting'}
       </button>
       {!curatorReady && <p className={s.settingHint}>Add your Anthropic key in Settings to ask the curator.</p>}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Landmark } from 'lucide-react'
 import type { Concert } from '../domain/types'
-import { fold, surname } from '../domain/identity'
+import { displaySurname, fold, surname } from '../domain/identity'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import type { ConcertDraft } from '../curation/journey'
@@ -57,7 +57,7 @@ export function ConcertsScreen() {
                 <ul className={s.concertWorkList}>
                   {c.works.map((w, i) => {
                     const who = whoPlays(c, w)
-                    return <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em>{who.length > 0 && <span className={s.faint}> · {who.map((x) => x.name).join(', ')}</span>}</li>
+                    return <li key={i}>{displaySurname(w.composer)}, <em>{w.title}</em>{who.length > 0 && <span className={s.faint}> · {who.map((x) => x.name).join(', ')}</span>}</li>
                   })}
                 </ul>
                 {c.note && <p className={s.said}><q>{c.note}</q></p>}
@@ -133,9 +133,9 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
       {found === null ? (
         spotify.connected
           ? <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
-          : <a className={`${s.outlineButton} ${s.smallButton}`} href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+          : <a className={`${s.outlineButton} ${s.smallButton}`} href={searchUrl(`${displaySurname(w.composer)} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
       ) : found.length === 0 ? (
-        <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(`${w.composer.split(' ').slice(-1)[0]} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
+        <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(`${displaySurname(w.composer)} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
       ) : (
         <ul className={s.bullets}>
           {found.map((x, i) => (
@@ -295,7 +295,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
               <div className={`${s.chipRow} ${s.workSoloists}`} role="group" aria-label={`Who plays in work ${i + 1}`}>
                 {named.map((x) => {
                   const on = playing(w).includes(x.name)
-                  return <button key={x.name} type="button" aria-pressed={on} className={`${s.chip} ${on ? s.chipOn : ''}`} onClick={() => toggle(i, x.name)}>{x.name.split(' ').slice(-1)[0]}</button>
+                  return <button key={x.name} type="button" aria-pressed={on} className={`${s.chip} ${on ? s.chipOn : ''}`} onClick={() => toggle(i, x.name)}>{displaySurname(x.name)}</button>
                 })}
               </div>
             )}
