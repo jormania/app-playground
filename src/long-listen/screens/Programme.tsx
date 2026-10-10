@@ -11,8 +11,7 @@ import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { aboutDuration, isConfirmed, keepPlaylistCurrent, saveProgrammePlaylist, spotifyCandidates, needsLook, verifyProgramme, type PlaylistMark } from '../spotify/verify'
-import { playbackOf } from '../spotify/client'
-import { usePlayerState } from '../app/playback'
+import { positionOf, usePlayerState } from '../app/playback'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { MAX_ASK, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
@@ -308,7 +307,7 @@ function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) =>
   // The work Spotify is on now, if it's one of these, is marked in the list.
   const onNow = (rid: string) => {
     const r = b.recordings.get(rid)
-    return isConfirmed(r) ? playbackOf(player.np, r.spotify.trackIds) : null
+    return isConfirmed(r) ? positionOf(player.np, r.spotify.trackIds) : null
   }
   return (
     <nav className={s.runningOrder} aria-label="This week’s music">

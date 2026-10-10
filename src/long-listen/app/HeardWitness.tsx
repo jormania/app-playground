@@ -1,7 +1,11 @@
 import { useEffect } from 'react'
 import { useServices } from './services'
-import { onHeardThrough, usePlayerState } from './playback'
+import { onHeardThrough, onPlayerReading, usePlayerState } from './playback'
 import { isConfirmed } from '../spotify/verify'
+import { trackKey } from '../spotify/witness'
+import { listeningState } from '../domain/listening'
+import type { NowPlaying } from '../spotify/client'
+import type { Recording } from '../domain/types'
 import type { Repo } from '../store/repo'
 import type { Journey } from '../curation/journey'
 
@@ -11,6 +15,23 @@ export async function recordHeardThrough(repo: Repo, journey: Pick<Journey, 'mar
   for (const r of heard) await journey.markListening({ recordingId: r.id, workId: r.workId }, 'heard', undefined, 'app')
   return heard.map((r) => r.id)
 }
+
+/**
+ * The confirmed works in movements that just stopped sounding: the last
+ * reading was playing one of their tracks, and this one plays none of them
+ * (paused, stopped, rewound to the start at the end of the list, or on to
+ * something else).
+ */
+export function stoppedWorks(prev: NowPlaying | null, cur: NowPlaying | null, recordings: Recording[]): Recording[] {
+  if (!prev?.isPlaying) return []
+  const was = trackKey(prev)
+  const now = cur?.isPlaying ? trackKey(cur) : undefined
+  return recordings.filter((r) => isConfirmed(r) && r.spotify.trackIds.length > 1
+    && r.spotify.trackIds.includes(was) && !(now && r.spotify.trackIds.includes(now)))
+}
+
+/** After a work in movements stops: read Spotify's history soon, and once more when the last movement has surely reached it. */
+const LOOK_AFTER_MS = [5_000, 60_000]
 
 /**
  * Wherever a single-track work is played — Play in the app, "Open in Spotify",
@@ -25,7 +46,7 @@ export async function recordHeardThrough(repo: Repo, journey: Pick<Journey, 'mar
  * recordings it marked (the listening view opens its "how did it land" panel).
  */
 export function HeardWitness() {
-  const { repo, journey, bump } = useServices()
+  const { repo, journey, bump, syncSpotify } = useServices()
   usePlayerState()
   useEffect(() => onHeardThrough((trackIds) => {
     recordHeardThrough(repo, journey, trackIds).then((ids) => {
@@ -34,6 +55,42 @@ export function HeardWitness() {
       for (const l of recorded) l(ids)
     }).catch(() => {})
   }), [repo, journey, bump])
+
+  // A work in movements is heard by Spotify's history (≥ 60% of its tracks,
+  // spotify/verify.ts), which the app otherwise reads only on load and on
+  // coming back to the foreground — so a work listened to with the app open
+  // stayed "paused at movement 1" until the next visit. When one stops, look.
+  useEffect(() => {
+    let prev: NowPlaying | null = null
+    const timers: number[] = []
+    const off = onPlayerReading((np) => {
+      const was = prev
+      prev = np
+      if (!was?.isPlaying) return
+      repo.recordings.all().then(async (all) => {
+        const stopped = stoppedWorks(was, np, all)
+        if (!stopped.length) return
+        const ids = stopped.map((r) => r.id)
+        const heardNow = async () => {
+          const events = await repo.events.all()
+          return ids.filter((id) => listeningState(events, id) === 'heard')
+        }
+        const before = new Set(await heardNow())
+        while (timers.length) clearTimeout(timers.pop())
+        for (const ms of LOOK_AFTER_MS) {
+          timers.push(window.setTimeout(() => {
+            syncSpotify().then(async (n) => {
+              if (!n) return
+              const fresh = (await heardNow()).filter((id) => !before.has(id))
+              for (const id of fresh) before.add(id)
+              if (fresh.length) for (const l of recorded) l(fresh)
+            }).catch(() => {})
+          }, ms))
+        }
+      }).catch(() => {})
+    })
+    return () => { off(); while (timers.length) clearTimeout(timers.pop()) }
+  }, [repo, syncSpotify])
   return null
 }
 
