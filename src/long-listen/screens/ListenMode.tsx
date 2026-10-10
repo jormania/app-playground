@@ -5,7 +5,7 @@ import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
-import { applyDusk, chooseDusk, likeDusk, recordDusk } from '../app/theme'
+import { applyDusk, chooseDusk, recordDusk } from '../app/theme'
 import { usePlayback } from '../app/playback'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
@@ -59,7 +59,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   // and only once there is a work to show: a dead link is not a visit, and its message reads on the paper.
   const [shade] = useState(() => chooseDusk(settings.dusk))
   const [duskChoice] = useState(settings.dusk)
-  const [liked, setLiked] = useState(false)
   const counted = useRef(false)
   const loaded = Boolean(data)
   useEffect(() => {
@@ -226,14 +225,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           <button className={s.outlineButton} onClick={() => void heard()} disabled={marking}>I’ve heard it</button>
         </div>
       )}
-      <p className={`${s.settingHint} ${s.mtLg}`}>
-        The screen stays awake while this page is open.
-        {settings.dusk === 'rotate' && (
-          liked
-            ? <> · Noted — this shade counts once more in Settings.</>
-            : <> · <button className={`${s.textButton} ${s.quietButton}`} onClick={() => { likeDusk(shade); setLiked(true) }}>I like this shade</button></>
-        )}
-      </p>
     </article>
   )
 }
