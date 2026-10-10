@@ -155,10 +155,17 @@ export class SpotifyClient {
     return this.get<SpotifyAlbum>(`albums/${encodeURIComponent(id)}`)
   }
 
+  /**
+   * All of an album's tracks, fifty a page. A box set runs to hundreds, and
+   * the work's movements are looked for around the matched track in this list
+   * — a match past the last page read would fall back to that one movement
+   * alone. Twenty pages (a thousand tracks) is a bound for a runaway answer,
+   * not a size any real album reaches.
+   */
   async albumTracks(id: string): Promise<SpotifyTrackLike[]> {
     const out: SpotifyTrackLike[] = []
     let offset = 0
-    for (let page = 0; page < 4; page++) {
+    for (let page = 0; page < 20; page++) {
       const data = await this.get<{ items: SpotifyTrackLike[]; next: string | null }>(`albums/${encodeURIComponent(id)}/tracks?limit=50&offset=${offset}`)
       out.push(...data.items)
       if (!data.next) break
@@ -210,8 +217,13 @@ export class SpotifyClient {
     }
   }
 
-  /** A private playlist of exactly these tracks. Replaces the tracks when `id` is given. */
-  async writePlaylist(name: string, description: string, uris: string[], id?: string): Promise<{ id: string; url: string }> {
+  /**
+   * A private playlist of exactly these tracks. Replaces the tracks when `id`
+   * is given. `onCreated` hears of a new playlist before it is filled, so the
+   * caller can keep its id even if filling it fails — else the next save would
+   * make a second one.
+   */
+  async writePlaylist(name: string, description: string, uris: string[], id?: string, onCreated?: (made: { id: string; url: string }) => unknown): Promise<{ id: string; url: string }> {
     if (!this.hasScope('playlist-modify-private')) {
       throw new SpotifyUnavailable('signed-out', 'Reconnect Spotify in Settings to let the app make playlists.')
     }
@@ -227,6 +239,7 @@ export class SpotifyClient {
       const d = await res.json() as { id: string; external_urls?: { spotify?: string } }
       playlistId = d.id
       url = d.external_urls?.spotify ?? `https://open.spotify.com/playlist/${d.id}`
+      await onCreated?.({ id: d.id, url })
     }
     // PUT replaces whatever was there; Spotify takes up to 100 per call.
     const first = await this.request(`playlists/${playlistId}/items`, {

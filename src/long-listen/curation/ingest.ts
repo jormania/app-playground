@@ -1,7 +1,7 @@
 import type {
   Artist, ArtistKind, Comparison, Programme, ProgrammeItem, ProgrammeSection, ProposedRecording, Recording, Work,
 } from '../domain/types'
-import { artistId, newId, recordingId as makeRecordingId, sameWork, workId as makeWorkId } from '../domain/identity'
+import { artistId, fold, newId, recordingId as makeRecordingId, sameWork, surname, workId as makeWorkId } from '../domain/identity'
 import type { Repo } from '../store/repo'
 import type { CuratedComparison, CuratedItem, CuratedPerformers, CuratedProgramme } from './api'
 
@@ -16,6 +16,7 @@ import type { CuratedComparison, CuratedItem, CuratedPerformers, CuratedProgramm
  */
 export class Ingest {
   private works: Work[] = []
+  private composers: Artist[] = []
   private readonly newWorks = new Map<string, Work>()
   private readonly artists = new Map<string, Artist>()
   private readonly recordings = new Map<string, Recording>()
@@ -24,6 +25,7 @@ export class Ingest {
 
   async load(): Promise<this> {
     this.works = await this.repo.works.all()
+    this.composers = (await this.repo.artists.all()).filter((a) => a.kind === 'composer')
     return this
   }
 
@@ -33,8 +35,23 @@ export class Ingest {
     return id
   }
 
+  /**
+   * A composer typed by surname alone ("Debussy", on a concert) is the one
+   * composer already known by that surname, so the work joins the one the
+   * programmes met. Two known with it (the Strausses) or none: left as typed.
+   */
+  private fullName(composer: string): string {
+    if (/\s/.test(composer.trim())) return composer
+    const known = new Map<string, string>()
+    for (const a of [...this.composers, ...this.artists.values()]) {
+      if (a.kind === 'composer' && surname(a.name) === fold(composer) && fold(a.name) !== fold(composer)) known.set(a.id, a.name)
+    }
+    return known.size === 1 ? [...known.values()][0] : composer
+  }
+
   /** Find the work this names, or make it. */
   work(composer: string, title: string, extra: Partial<Work> = {}): Work {
+    composer = this.fullName(composer)
     const composerId = this.artist('composer', composer)
     const pool = [...this.works, ...this.newWorks.values()]
     // Composer ids are derived from the folded name, so one composer is one id.

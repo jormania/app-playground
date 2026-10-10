@@ -19,11 +19,14 @@ export function applyTasteUpdate(profile: TasteProfile, update: TasteResponse, n
 
   for (const u of update.observations) {
     const replaced = u.replaces ? observations.find((o) => o.id === u.replaces && !o.supersededBy) : undefined
-    const same = !replaced
-      ? active().find((o) => o.facet === u.facet && o.subject.toLowerCase() === u.subject.toLowerCase() && o.stance === u.stance)
-      : undefined
+    // Looked for even when the update replaces something: if wary-of turns into
+    // drawn-to and drawn-to is already held, the replaced one is superseded by
+    // that, which grows stronger — two active copies of one taste would read
+    // as two opinions.
+    const same = active().find((o) => o !== replaced && o.facet === u.facet && o.subject.toLowerCase() === u.subject.toLowerCase() && o.stance === u.stance)
 
     if (same) {
+      if (replaced) replaced.supersededBy = same.id
       same.statement = u.statement
       same.confidence = rank(u.confidence) > rank(same.confidence) ? u.confidence : STRONGER[same.confidence]
       same.evidence = [...new Set([...same.evidence, ...u.evidence])]

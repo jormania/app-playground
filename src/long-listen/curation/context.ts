@@ -2,10 +2,10 @@ import type { Repo } from '../store/repo'
 import type { ListeningWeek } from '../domain/week'
 import { creditLine } from '../domain/identity'
 import { knownWorkIds, listeningState, latestFeedback, timesHeard } from '../domain/listening'
-import type { ListenerPreferences, WeekMood } from '../domain/types'
+import type { ListenerPreferences, ProgrammeItem, WeekMood } from '../domain/types'
 import { weeksBetween } from '../domain/week'
 import { whoPlays } from '../domain/concertSoloists'
-import { digestThread, type ThreadDigest } from './continuity'
+import { digestThread, feedbackOnAny, heardAs, standInsOf, type ThreadDigest } from './continuity'
 
 /**
  * What the curator is told about the listener when it proposes a week's three
@@ -62,11 +62,14 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
     repo.taste(), repo.preferences(), repo.themes.all(), repo.explorations.all(), repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(),
   ])
   const programmes = new Map((await repo.programmes.all()).map((p) => [p.id, p]))
+  // Where Spotify lacked the curator's recording, the stand-in is what was heard and reacted to.
+  const comparisons = await repo.comparisons.all()
+  const standIns = standInsOf(comparisons)
 
   const threads = themes
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 12)
-    .map((t) => digestThread(t, explorations, programmes, events, feedback, week.key))
+    .map((t) => digestThread(t, explorations, programmes, events, feedback, week.key, comparisons))
 
   const optionById = new Map(options.map((o) => [o.id, o]))
   const recentWeeks = weeks
@@ -104,14 +107,24 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   const itemByRecording = new Map(
     [...programmes.values()].flatMap((p) => p.sections.flatMap((s) => s.items)).map((i) => [i.recordingId, i]),
   )
+  // A stand-in's recording reads as its item, credited to who actually played.
+  const standInFor = new Map<string, { item: ProgrammeItem; proposed: ProgrammeItem['proposed'] }>()
+  for (const c of comparisons) {
+    if (!c.standIn || c.perspectives.length < 2) continue
+    const [, programmeId, itemId] = c.id.split(':')
+    const item = programmes.get(programmeId)?.sections.flatMap((s) => s.items).find((i) => i.id === itemId)
+    if (item) standInFor.set(c.perspectives[1].recordingId, { item, proposed: { ...item.proposed, ...c.perspectives[1].proposed } })
+  }
   const recentListening = recentIds.flatMap((rid) => {
-    const item = itemByRecording.get(rid)
+    const own = itemByRecording.get(rid)
+    const item = own ?? standInFor.get(rid)?.item
     if (!item) return []
+    const proposed = own ? item.proposed : standInFor.get(rid)!.proposed
     const fb = latestFeedback(feedback, rid)
     return [{
-      composer: item.proposed.composer,
-      work: item.proposed.work,
-      recording: creditLine(item.proposed),
+      composer: proposed.composer,
+      work: proposed.work,
+      recording: creditLine(proposed),
       state: listeningState(events, rid),
       reaction: fb.reaction,
       notes: fb.notes.slice(-3),
@@ -124,13 +137,16 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   // or "too difficult", at least three weeks ago, and it hasn't been offered again.
   const offeredAgain = new Set((await repo.marks.all()).filter((m) => m.id.startsWith('again:')).map((m) => m.id.slice('again:'.length)))
   const secondHearings: CuratorContext['secondHearings'] = []
+  // Each item with its programme (item ids are only unique within one), its stand-in read with it.
+  const programmeOf = new Map([...programmes.values()].flatMap((p) => p.sections.flatMap((s) => s.items).map((i) => [i, p.id] as const)))
   for (const item of itemByRecording.values()) {
     if (offeredAgain.has(item.workId) || secondHearings.some((x) => x.work === item.proposed.work && x.composer === item.proposed.composer)) continue
-    const byRec = latestFeedback(feedback, item.recordingId)
+    const ids = heardAs(item, programmeOf.get(item) ?? '', standIns)
+    const byRec = feedbackOnAny(feedback, ids)
     const byWork = latestFeedback(feedback, item.workId)
     const reaction = byRec.reaction ?? byWork.reaction
     if (reaction !== 'interesting' && reaction !== 'too-difficult') continue
-    const said = feedback.filter((f) => f.target.id === item.recordingId || f.target.id === item.workId).map((f) => f.at).sort().pop()
+    const said = feedback.filter((f) => ids.includes(f.target.id) || f.target.id === item.workId).map((f) => f.at).sort().pop()
     const weeksAgo = weeksSince(said, week.startsOn)
     if (weeksAgo < 3) continue
     secondHearings.push({

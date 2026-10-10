@@ -6,17 +6,28 @@ type Soloist = Concert['soloists'][number]
 type ConcertWork = Pick<Concert['works'][number], 'title' | 'soloists'>
 type Evening = { soloists: Soloist[]; works: ConcertWork[] }
 
+// Plurals count: "Concerto for Two Violins" names the violin as surely as
+// "Violin Concerto" does. A horn is not the English horn, which is its own part.
 const INSTRUMENTS: [RegExp, string][] = [
-  [/\bviolin\b/, 'violin'], [/\bviola\b/, 'viola'], [/\b(cello|violoncello)\b/, 'cello'], [/\bpiano\b/, 'piano'],
-  [/\bflute\b/, 'flute'], [/\boboe\b/, 'oboe'], [/\bclarinet\b/, 'clarinet'], [/\bbassoon\b/, 'bassoon'], [/\bhorn\b/, 'horn'],
-  [/\btrumpet\b/, 'trumpet'], [/\btrombone\b/, 'trombone'], [/\bharp\b/, 'harp'], [/\bguitar\b/, 'guitar'], [/\borgan\b/, 'organ'],
-  [/\bsaxophone\b/, 'saxophone'], [/\bdouble bass\b/, 'double bass'],
+  [/\bviolins?\b/, 'violin'], [/\bviolas?\b/, 'viola'], [/\b(cellos?|violoncellos?)\b/, 'cello'], [/\bpianos?\b/, 'piano'],
+  [/\bflutes?\b/, 'flute'], [/\boboes?\b/, 'oboe'], [/\bclarinets?\b/, 'clarinet'], [/\bbassoons?\b/, 'bassoon'],
+  [/(?<!english )\bhorns?\b/, 'horn'], [/\b(english horns?|cor anglais)\b/, 'english horn'],
+  [/\btrumpets?\b/, 'trumpet'], [/\btrombones?\b/, 'trombone'], [/\bharps?\b/, 'harp'], [/\bguitars?\b/, 'guitar'], [/\borgans?\b/, 'organ'],
+  [/\bsaxophones?\b/, 'saxophone'], [/\bdouble bass(es)?\b/, 'double bass'],
 ]
 
 /** The instruments a work's title gives a solo part to: "Cello Concerto" → cello. */
 function instrumentsIn(title: string): string[] {
   const t = title.toLowerCase()
   return INSTRUMENTS.filter(([re]) => re.test(t)).map(([, name]) => name)
+}
+
+/** Whether a soloist's stated instrument is the one a title names ("English horn" is not "horn"). */
+function plays(instrument: string, named: string): boolean {
+  const own = fold(instrument)
+  const englishHorn = /english horn|cor anglais/.test(own)
+  if (named === 'horn' && englishHorn) return false
+  return named === 'english horn' ? englishHorn : own.includes(named)
 }
 
 /**
@@ -32,11 +43,19 @@ function instrumentsIn(title: string): string[] {
 export function whoPlays(c: Evening, w: ConcertWork): Soloist[] {
   if (w.soloists) return w.soloists.map((name) => c.soloists.find((x) => fold(x.name) === fold(name)) ?? { name })
   if (!c.soloists.length) return []
-  if (!c.works.some((x) => !x.soloists && needsSoloists(x.title))) return c.works.every((x) => !x.soloists) ? c.soloists : []
+  // Judged from every title, kept or not: the form keeps one work's list when
+  // a chip is pressed, and that must not change what the other works are judged
+  // to have. A recital stays a recital after one song is marked.
+  if (!c.works.some((x) => needsSoloists(x.title))) return c.soloists
   if (!needsSoloists(w.title)) return []
   const named = instrumentsIn(w.title)
-  const playing = named.length ? c.soloists.filter((x) => x.instrument && named.some((n) => fold(x.instrument!).includes(n))) : []
-  return playing.length ? playing : c.soloists
+  if (!named.length) return c.soloists
+  const playing = c.soloists.filter((x) => x.instrument && named.some((n) => plays(x.instrument!, n)))
+  if (playing.length) return playing
+  // Nobody listed plays the named instrument: someone whose instrument wasn't
+  // given is likelier the one than the evening's other players.
+  const unknown = c.soloists.filter((x) => !x.instrument)
+  return unknown.length ? unknown : c.soloists
 }
 
 /** The soloists no work claims: shown with the evening, so nobody named on the programme goes missing. */

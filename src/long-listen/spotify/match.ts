@@ -30,6 +30,8 @@ export interface SpotifyTrackLike {
   track_number?: number
   disc_number?: number
   duration_ms?: number
+  /** The id that was asked for, when Spotify relinked the track for the listener's market. */
+  linked_from?: { id?: string }
 }
 
 export type MatchLevel = 'strong' | 'probable' | 'none'
@@ -84,15 +86,20 @@ const tokens = (s: string) => s.split(' ').filter(Boolean)
  *       for Sibelius's, same conductor, same orchestra).
  *   4 — "violoncello" is "cello" in a title, so "Concerto for Violoncello"
  *       is found for a cello concerto.
+ *   5 — a movement number after the colon no longer passes for the work's
+ *       number ("Symphony No. 2: 4. Urlicht" is not the fourth); another
+ *       work's opus on a coupling album no longer rules a track out; "BWV1048"
+ *       and "KV 550" read as "BWV 1048" and "K. 550"; a track naming the
+ *       proposal's catalogue number is the work despite a nickname; albums
+ *       past their 200th track are read to the end.
  */
-export const MATCHER_VERSION = 4
+export const MATCHER_VERSION = 5
 
 /**
  * The curator often adds a version note in brackets — "(original piano
  * version)", "[orch. Ravel]" — that Spotify's track names never carry. They
  * describe the recording, not the work's title, so matching ignores them.
- * (`workTitleKey` means to drop them too, but folds the brackets away first;
- * it is left as is because stored work ids are built from it.)
+ * (`workTitleKey` drops them too now; this stays for the catalogue spelling, which runs first.)
  */
 function matchTitle(title: string): string {
   return title.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
@@ -105,11 +112,38 @@ const SAME_WORD: [RegExp, string][] = [
 ]
 const sameWords = (s: string) => SAME_WORD.reduce((acc, [re, to]) => acc.replace(re, to), s)
 
+/**
+ * Spotify spells catalogue numbers several ways — "BWV1048" for "BWV 1048",
+ * "KV 550" for "K. 550" — and each spelling folds to different words, so the
+ * same number would count as missing from the title. One spelling for both
+ * sides before the words are compared.
+ */
+function catalogueSpelling(title: string): string {
+  return title
+    .replace(/\b(bwv|kv|k|hob|rv|wwv|op|d|l)\.?(?=\d)/gi, '$1 ')
+    .replace(/\bkv\b/gi, 'K')
+}
+
+/**
+ * The part of a track name that names the work. "Symphony No. 2 in C Minor:
+ * 4. Urlicht" is the second symphony's fourth movement, and the "4" must not
+ * pass for "Symphony No. 4" — so a movement after the last colon is left out.
+ * Only a numbered movement: in "Bach: Brandenburg Concerto No. 3" or
+ * "Pictures at an Exhibition: Promenade I" what follows the colon is the work,
+ * or part of its name, and stays.
+ */
+export function workPart(trackName: string): string {
+  const at = trackName.lastIndexOf(':')
+  if (at < 0) return trackName
+  return movementNumber(trackName.slice(at + 1)) === undefined ? trackName : trackName.slice(0, at)
+}
+
 /** How much of the work's identifying title appears in a track (or album) name, 0..1. */
 export function workOverlap(workTitle: string, trackName: string): number {
-  const want = tokens(sameWords(workTitleKey(matchTitle(workTitle))))
+  const want = tokens(sameWords(workTitleKey(catalogueSpelling(matchTitle(workTitle)))))
   if (want.length === 0) return 0
-  const have = new Set(tokens(sameWords(workTitleKey(trackName))).concat(tokens(sameWords(fold(trackName)))))
+  const name = catalogueSpelling(workPart(trackName))
+  const have = new Set(tokens(sameWords(workTitleKey(name))).concat(tokens(sameWords(fold(name)))))
   return want.filter((t) => have.has(t)).length / want.length
 }
 
@@ -160,17 +194,55 @@ export function catalogueAgrees(p: ProposedRecording, trackText: string): boolea
   return false
 }
 
-/** Does the track name a catalogue number of the same scheme as the proposal's, but a different one? */
-export function catalogueContradicts(p: ProposedRecording, trackText: string): boolean {
+const schemeOf = (n: string) => n.split(' ')[0]
+
+/**
+ * Does the track name a catalogue number of the same scheme as the proposal's,
+ * but a different one?
+ *
+ * The album is a weaker witness than the track. A coupling is billed with
+ * both works' numbers — "Symphony No. 5, Op. 67 & Symphony No. 7, Op. 92" —
+ * so another opus on the album says nothing against this track. It is only
+ * heard for a scheme the track's own name doesn't use (a track named "I. Poco
+ * sostenuto" leaves the album to say which work it is), and only when none of
+ * the album's numbers of that scheme is the proposal's.
+ */
+export function catalogueContradicts(p: ProposedRecording, trackText: string, albumText = ''): boolean {
   const want = catalogueNumbers(`${p.catalogue ?? ''} ${p.work}`)
   if (!want.size) return false
+  const wanted = (scheme: string) => [...want].filter((w) => schemeOf(w) === scheme)
   const have = catalogueNumbers(trackText)
   for (const h of have) {
-    const scheme = h.split(' ')[0]
-    const same = [...want].filter((w) => w.split(' ')[0] === scheme)
+    const same = wanted(schemeOf(h))
     if (same.length && !same.includes(h)) return true
   }
+  const named = new Set([...have].map(schemeOf))
+  const onAlbum = [...catalogueNumbers(albumText)].filter((h) => !named.has(schemeOf(h)))
+  for (const scheme of new Set(onAlbum.map(schemeOf))) {
+    const same = wanted(scheme)
+    if (same.length && !onAlbum.some((h) => schemeOf(h) === scheme && same.includes(h))) return true
+  }
   return false
+}
+
+/** The numbers after "No." in a title: "String Quartet No. 7, Op. 59 No. 1" → 7, 1. */
+function numberedAs(text: string): Set<number> {
+  return new Set([...text.matchAll(/\b(?:no|nr|nos)\.?\s*(\d+)/gi)].map((m) => Number(m[1])))
+}
+
+/**
+ * Does the track's own name identify the proposal's work by its catalogue
+ * number? Then a title spelt differently — a nickname the curator added
+ * ("Eroica"), a key left out — doesn't make it a lesser match. Guarded twice:
+ * nothing may contradict it, and a numbered work must not be another of the
+ * same opus (Op. 59 No. 1 and No. 2 are two quartets under one number).
+ */
+function catalogueIdentifies(p: ProposedRecording, trackName: string, albumName = ''): boolean {
+  const name = workPart(trackName)
+  if (!catalogueAgrees(p, name) || catalogueContradicts(p, trackName, albumName)) return false
+  const want = numberedAs(`${p.work} ${p.catalogue ?? ''}`)
+  const have = numberedAs(name)
+  return !want.size || !have.size || [...want].every((n) => have.has(n))
 }
 
 /** A release can't come before the recording on it: a proposed 1987 recording isn't on a 1964 album. */
@@ -184,7 +256,11 @@ export function matchTrack(track: SpotifyTrackLike, p: ProposedRecording): Match
   const credits = credited(track.artists)
   // Classical tracks often carry the work in the album name and only the
   // movement in the track name ("I. Allegro con brio"); take the better of the two.
-  const work = Math.max(workOverlap(p.work, track.name), track.album ? workOverlap(p.work, track.album.name) * 0.95 : 0)
+  // A track whose own name carries the proposal's catalogue number is the work,
+  // however else its title is spelt.
+  const work = catalogueIdentifies(p, track.name, track.album?.name)
+    ? 1
+    : Math.max(workOverlap(p.work, track.name), track.album ? workOverlap(p.work, track.album.name) * 0.95 : 0)
   // The composer is credited as an artist on nearly every classical track; a
   // few older uploads only name them in the title. Either will do — but one of
   // them must, or "Symphony No. 7" by the right conductor could be anyone's.
@@ -200,7 +276,7 @@ export function matchTrack(track: SpotifyTrackLike, p: ProposedRecording): Match
   const leadOk = lead ? !missing.includes(lead) : false
 
   let level: MatchLevel = 'none'
-  if (!composer || catalogueContradicts(p, titles) || releasedTooEarly(p, track)) level = 'none'
+  if (!composer || catalogueContradicts(p, track.name, track.album?.name) || releasedTooEarly(p, track)) level = 'none'
   else if (work >= 0.99 && missing.length === 0) level = 'strong'
   else if (work >= 0.75 && leadOk) level = 'probable'
   return { level, work, composer, missing }
@@ -224,13 +300,15 @@ export function bestTrack(candidates: SpotifyTrackLike[], p: ProposedRecording):
 /**
  * Of an album's tracks, the ones that make up the work: the run of
  * consecutive tracks around the matched one that carry the work's title.
- * Falls back to the matched track alone.
+ * Falls back to the matched track alone. Given the proposal, a track naming
+ * its catalogue number carries the work too, as it does for `matchTrack` —
+ * otherwise a work matched that way would shrink to the one movement found.
  */
-export function workTracks(albumTracks: SpotifyTrackLike[], matched: SpotifyTrackLike, workTitle: string): SpotifyTrackLike[] {
+export function workTracks(albumTracks: SpotifyTrackLike[], matched: SpotifyTrackLike, workTitle: string, p?: ProposedRecording): SpotifyTrackLike[] {
   const ordered = [...albumTracks].sort((a, b) => (a.disc_number ?? 1) - (b.disc_number ?? 1) || (a.track_number ?? 0) - (b.track_number ?? 0))
   const at = ordered.findIndex((t) => t.id === matched.id)
   if (at < 0) return [matched]
-  const fits = (t: SpotifyTrackLike) => workOverlap(workTitle, t.name) >= 0.99
+  const fits = (t: SpotifyTrackLike) => workOverlap(workTitle, t.name) >= 0.99 || Boolean(p && catalogueIdentifies(p, t.name))
   if (!fits(ordered[at])) return movementRun(ordered, at) ?? [matched]
   let start = at
   let end = at

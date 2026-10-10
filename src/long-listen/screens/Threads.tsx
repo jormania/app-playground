@@ -26,9 +26,11 @@ export function ThreadsScreen() {
       themes: themes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
       explorations,
       programmes: new Map(programmes.map((p) => [p.id, p])),
-      open: options.filter((o) => o.status === 'open').sort((a, b) => b.weekKey.localeCompare(a.weekKey)),
+      // Earlier weeks only, as the heading says (and as This week and the programme count them):
+      // this week's own directions left open are still on This week to choose between.
+      open: options.filter((o) => o.status === 'open' && o.weekKey < week.key).sort((a, b) => b.weekKey.localeCompare(a.weekKey)),
     }
-  }, [])
+  }, [week.key])
   const [busy, setBusy] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<ProgrammeOption | null>(null)
 

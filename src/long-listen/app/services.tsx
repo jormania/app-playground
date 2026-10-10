@@ -159,15 +159,19 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   }, [syncSpotify])
 
   // Once per device: reactions filed under a curator's recording that a stand-in played in place of move to the stand-in.
+  // Then feedback left unread when the app last closed (taste is read in batches, see
+  // Journey.scheduleTasteReading) is read once now, in one request. In that order:
+  // the taste reader should be told about the recording that was heard, not the one
+  // the repair is about to move the reaction from. (The repair is once per device,
+  // so running it again when the key arrives costs a single read.)
   useEffect(() => {
-    journey.repairStandInFeedback().then((n) => { if (n) bump() }).catch(() => {})
-  }, [journey, bump])
-
-  // Feedback left unread when the app last closed (taste is read in batches, see
-  // Journey.scheduleTasteReading) is read once now, in one request.
-  useEffect(() => {
-    if (!curatorReady) return
-    journey.interpretPendingFeedback().then((n) => { if (n) bump() }).catch(() => {})
+    void (async () => {
+      const moved = await journey.repairStandInFeedback().catch(() => 0)
+      if (moved) bump()
+      if (!curatorReady) return
+      const read = await journey.interpretPendingFeedback().catch(() => 0)
+      if (read) bump()
+    })()
   }, [journey, curatorReady, bump])
 
   // Spotify ends sign-ins after six months; say so once, plainly, and let views re-read.

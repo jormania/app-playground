@@ -5,6 +5,7 @@ import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
 import { concertDate } from './Concerts'
 import { seasonName } from '../domain/season'
+import { journalWeek } from '../domain/journalWeek'
 import { href } from '../app/router'
 import { Empty, Problem, Waiting } from '../components/common'
 import { Credits } from '../components/Credits'
@@ -66,10 +67,8 @@ export function JournalScreen() {
     return {
       entries: keys.map((key) => {
         const w = weeks.find((x) => x.weekKey === key)
-        const offered = w ? [...(w.earlierOptionIds ?? []), ...w.optionIds].map((id) => optionById.get(id)).filter((o): o is ProgrammeOption => Boolean(o)) : []
-        const taken = w?.chosenOptionId ? optionById.get(w.chosenOptionId) : undefined
-        if (taken && !offered.includes(taken)) offered.push(taken)
-        return { key, week: w, offered, heard: heardIn.get(key) ?? [], concerts: concertsIn.get(key) ?? [] }
+        const { others, choice } = journalWeek(w, optionById)
+        return { key, week: w, others, choice, heard: heardIn.get(key) ?? [], concerts: concertsIn.get(key) ?? [] }
       }),
       proposedOf, feedback, programmeTitle, extensionsOf, concertCount: concerts.length, seasons: await journey.seasons(),
     }
@@ -101,7 +100,7 @@ export function JournalScreen() {
       )}
       {data.entries.length === 0 && <Empty link={{ href: '#/', label: 'Go to this week' }}>Nothing here yet. Your first week begins on This week.</Empty>}
 
-      {data.entries.map(({ key, week, offered, heard, concerts }) => {
+      {data.entries.map(({ key, week, others, choice, heard, concerts }) => {
         const wk = weekFromKey(key)
         return (
           <section key={key} className={s.journalWeek} aria-label={`Week ${wk.number}`}>
@@ -128,14 +127,18 @@ export function JournalScreen() {
                 set aside: <a href={href({ name: 'programme', id })} className={s.quietLink}>{data.programmeTitle.get(id)}</a>
               </p>
             ))}
-            {offered.some((o) => o.status === 'chosen') && <p className={`${s.faint} ${s.flush} ${s.mt3xs}`}>Chosen from {offered.length} directions</p>}
+            {choice && (
+              <p className={`${s.faint} ${s.flush} ${s.mt3xs}`}>
+                {choice.kind === 'chosen' ? `Chosen from ${choice.from} directions` : choice.kind === 'path' ? `Took a path from the week of ${weekFromKey(choice.fromWeek).label}` : 'A sitting for tonight'}
+              </p>
+            )}
 
             {/* The week in parts, each under its own small heading: what else was offered, what was heard live, what was listened to. */}
-            {offered.some((o) => o.status !== 'chosen') && (
+            {others.length > 0 && (
               <div className={s.journalPart}>
                 <h3 className={s.journalPartHead}>Also offered</h3>
                 <ul className={s.offeredList} aria-label="Also offered this week">
-                  {offered.filter((o) => o.status !== 'chosen').map((o) => (
+                  {others.map((o) => (
                     <li key={o.id}>
                       <span className={s.quiet}>{o.title}</span>{' '}
                       <span className={s.tag}>{OPTION_WORD[o.status]}</span>

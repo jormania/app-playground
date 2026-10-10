@@ -25,7 +25,7 @@ describe('the listening view’s shades', () => {
   it('marks the page with the shade, counts it, and clears on leaving', () => {
     const shade = chooseDusk('wine')
     expect(shade).toBe('wine')
-    recordDusk(shade)
+    recordDusk(shade, 'rotate')
     const leave = applyDusk(shade)
     expect(document.documentElement.dataset.listening).toBe('wine')
     likeDusk('wine')
@@ -38,7 +38,7 @@ describe('the listening view’s shades', () => {
   it('chooses without side effects, and the next visit differs from the one recorded', () => {
     const first = chooseDusk('rotate')
     expect(duskTally()[first].shown).toBe(0)
-    recordDusk(first)
+    recordDusk(first, 'rotate')
     for (let i = 0; i < 10; i++) expect(chooseDusk('rotate')).not.toBe(first)
   })
 })

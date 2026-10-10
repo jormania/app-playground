@@ -31,11 +31,40 @@ export function fold(s) {
 const KEY_SIGNATURE = /\bin [a-g](?:[ -]?(?:sharp|flat|dur|moll))?(?: (?:major|minor))?\b/g
 const NUMBER_WORDS = /\b(?:no|nr|number|op|opus)\b/g
 
-/** The parts of a work title that identify it, without its key or numbering noise. */
+/**
+ * A nickname, bracketed or in quotes: `(Scottish)`, `[Eroica]`, `"Unfinished"`,
+ * `„Neterminata”`. Taken off the raw title, before fold() strips the brackets
+ * and quote marks that show where it starts and ends. Single quotes are left
+ * alone: they are as often an apostrophe ("L'apprenti sorcier").
+ */
+const NICKNAME = /\([^)]*\)|\[[^\]]*\]|"[^"]*"|“[^”]*”|„[^“”]*[“”]|«[^»]*»/g
+
+/** A catalogue designation closing a title: ", Op. 82", "BWV 1048", "K. 550", "D. 759", "Hob. I:104". */
+const TRAILING_CATALOGUE = /[\s,;]*\b((?:op(?:us)?|bwv|kv?|d|hob|rv|hwv|woo)\.?\s*(?:[ivxlc]+\s*[:.]\s*)?\d+[a-z]?)\s*$/i
+
+/** "No. 8" / "Nr. 8": a title's own number, which a shared opus does not override. */
+const TITLE_NUMBER = /\b(?:no|nr|number)\.?\s*(\d+)/gi
+
+/** The title without its nicknames, and the catalogue written at its end, if any. */
+function splitTitle(title) {
+  const plain = String(title ?? '').replace(NICKNAME, ' ').replace(/[\s,;:–—-]+$/, '')
+  const m = TRAILING_CATALOGUE.exec(plain)
+  if (!m) return { rest: plain, catalogue: '' }
+  const rest = plain.slice(0, m.index)
+  // Only a catalogue beside a number is noise in the key ("Symphony No. 5, Op. 82").
+  // In "Cantata, BWV 140" it is all that tells one cantata from the next.
+  return /\d/.test(rest) ? { rest, catalogue: m[1] } : { rest: plain, catalogue: m[1] }
+}
+
+/** The catalogue designation a title carries at its end, or '': "Symphony No. 8, D. 759" → "D. 759". */
+export function titleCatalogue(title) {
+  return splitTitle(title).catalogue
+}
+
+/** The parts of a work title that identify it, without its key, nickname, catalogue or numbering noise. */
 export function workTitleKey(title) {
-  return fold(title)
+  return fold(splitTitle(title).rest)
     .replace(KEY_SIGNATURE, ' ')
-    .replace(/\([^)]*\)/g, ' ')
     .replace(NUMBER_WORDS, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -65,8 +94,18 @@ export function workId(composer, title) {
 export function sameWork(a, b) {
   if (fold(a.composer) !== fold(b.composer)) return false
   if (workTitleKey(a.title) === workTitleKey(b.title)) return true
-  const ca = catalogueKey(a.catalogue)
-  return ca !== '' && ca === catalogueKey(b.catalogue)
+  // A catalogue written into the title counts when the field is empty.
+  const ca = catalogueKey(a.catalogue || titleCatalogue(a.title))
+  if (ca === '' || ca !== catalogueKey(b.catalogue || titleCatalogue(b.title))) return false
+  // One opus can hold many pieces (Slavonic Dances, Op. 46): titles numbered
+  // differently are different pieces, whatever catalogue they share.
+  const na = titleNumbers(a.title)
+  const nb = titleNumbers(b.title)
+  return !na.length || !nb.length || na.join(' ') === nb.join(' ')
+}
+
+function titleNumbers(title) {
+  return [...splitTitle(title).rest.matchAll(TITLE_NUMBER)].map((m) => String(Number(m[1])))
 }
 
 /** Who performs it, as one key: conductor | orchestra-or-ensemble | soloists. */
@@ -89,10 +128,26 @@ export function creditLine(r) {
   return parts.join(' · ')
 }
 
-/** Surname, for search queries and matching: "Pierre Boulez" → "boulez". */
+const GENERATION = new Set(['i', 'ii', 'iii', 'iv', 'jr', 'sr', 'junior', 'senior'])
+
+/**
+ * Surname, for search queries and matching: "Pierre Boulez" → "boulez". A
+ * generational suffix is not a surname: "Johann Strauss II" → "strauss", as is
+ * "the Elder" ("Pieter Bruegel the Elder").
+ */
 export function surname(name) {
   const words = fold(name).split(' ').filter(Boolean)
+  if (words.length > 2 && words[words.length - 2] === 'the' && /^(elder|younger)$/.test(words[words.length - 1])) words.splice(-2)
+  while (words.length > 1 && GENERATION.has(words[words.length - 1])) words.pop()
   return words[words.length - 1] ?? ''
+}
+
+/** The surname as written, for a line a person reads: "Johann Strauss II" → "Strauss". */
+export function displaySurname(name) {
+  const key = surname(name)
+  // Searched from the end, whole written words: "Rimsky-Korsakov" stays hyphenated.
+  const written = String(name ?? '').trim().split(/\s+/).reverse().find((w) => fold(w).split(' ').pop() === key)
+  return written ?? (key ? key.charAt(0).toUpperCase() + key.slice(1) : '')
 }
 
 let counter = 0

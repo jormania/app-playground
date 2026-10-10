@@ -1,5 +1,5 @@
 import type { Programme, ProgrammeItem } from '../domain/types'
-import { fold, surname } from '../domain/identity'
+import { displaySurname, fold, surname } from '../domain/identity'
 
 /**
  * Live in Bucharest: when a programmed work, composer or performer is on at
@@ -35,9 +35,15 @@ const STRENGTH = { work: 0, performer: 1, composer: 2 } as const
 /** Words, folded: lower case, no diacritics. */
 const words = (s: string | null | undefined) => fold(String(s ?? '')).replace(/[^a-z0-9]+/g, ' ')
 
-/** The numbers that identify a work in its title — "Symphony No. 5" → ["5"]; "Op. 102" → ["102"]. */
-function numbersOf(title: string): string[] {
-  return [...title.matchAll(/(?:no\.?|nr\.?|op\.?|opus|bwv|k\.?|d\.?)\s*(\d+)/gi)].map((m) => m[1])
+/**
+ * The numbers that name a work, each with what it numbers: "no 5" for "Symphony
+ * No. 5" (or "Simfonia nr. 5"), "op 82", "bwv 1048", "k 550". Read from folded
+ * words, and only straight after a designator — a description's "Joi, 9
+ * octombrie" is a date, not the Ninth.
+ */
+function numbersOf(text: string): string[] {
+  const kind: Record<string, string> = { no: 'no', nr: 'no', n: 'no', number: 'no', op: 'op', opus: 'op', bwv: 'bwv', k: 'k', kv: 'k', d: 'd', hob: 'hob', rv: 'rv', hwv: 'hwv' }
+  return [...words(text).matchAll(/\b(no|nr|n|number|op|opus|bwv|kv?|d|hob|rv|hwv) (?:[ivxlc]+ )?(\d+)\b/g)].map((m) => `${kind[m[1]]} ${Number(m[2])}`)
 }
 
 /** Does one programme item meet one concert, and how closely? */
@@ -47,9 +53,17 @@ export function meet(item: ProgrammeItem, event: LiveEvent): LiveMatch['how'] | 
   const composer = surname(item.proposed.composer)
   const composerOn = has(composer)
   if (composerOn) {
-    const nums = numbersOf(item.proposed.work)
+    // The hall prints the number or the opus, seldom both: either one, found
+    // where the hall numbers something, is the very work.
+    const nums = numbersOf(`${item.proposed.work} ${item.proposed.catalogue ?? ''}`)
+    const onBill = new Set(numbersOf(`${event.title} ${event.description ?? ''}`))
+    const own = nums.filter((n) => n.startsWith('no '))
+    const catalogue = nums.filter((n) => !n.startsWith('no '))
+    // An opus shared by several pieces (Op. 46's dances) is not enough when the bill numbers a different one.
+    const otherNumber = own.length > 0 && [...onBill].some((n) => n.startsWith('no '))
+    const byNumber = (own.length > 0 && own.every((n) => onBill.has(n))) || (!otherNumber && catalogue.some((n) => onBill.has(n)))
     const titleWords = words(item.proposed.work).split(' ').filter((w) => w.length > 4 && !/^(symphony|simfonia|concerto|concertul|overture|uvertura|suite|major|minor|sonata)$/.test(w))
-    if ((nums.length && nums.every((n) => text.includes(` ${n} `))) || (titleWords.length && titleWords.every((w) => text.includes(` ${w} `)))) return 'work'
+    if (byNumber || (titleWords.length && titleWords.every((w) => text.includes(` ${w} `)))) return 'work'
   }
   const performers = [item.proposed.conductor, ...(item.proposed.soloists ?? []).map((x) => x.name)].filter((x): x is string => Boolean(x))
   if (performers.some((p) => has(surname(p)))) return 'performer'
@@ -72,7 +86,7 @@ export function liveMatches(programme: Programme, events: LiveEvent[], today: st
 
 /** "Sibelius’s Symphony No. 5" / "Blomstedt, who conducts this recording" / "Sibelius" — for the line. */
 export function whatIsOn(m: LiveMatch): string {
-  const c = m.item.proposed.composer.trim().split(/\s+/).pop() ?? m.item.proposed.composer
+  const c = displaySurname(m.item.proposed.composer) || m.item.proposed.composer
   if (m.how === 'work') return `${c}’s ${m.item.proposed.work}`
   if (m.how === 'performer') {
     const who = [m.item.proposed.conductor, ...(m.item.proposed.soloists ?? []).map((x) => x.name)].filter(Boolean).find((p) => words(`${m.event.title} ${m.event.description ?? ''}`).includes(words(surname(p!)).trim()))

@@ -23,18 +23,21 @@ export function LandedPrompt() {
   const [ask, setAsk] = useState<ReturnType<typeof nextToAsk>>(null)
   useEffect(() => { if (data?.ask && !ask) setAsk(data.ask) }, [data, ask])
   useEffect(() => {
-    if (ask) void repo.marks.put({ id: askedMark(ask.item.recordingId), at: new Date().toISOString() })
+    // Under the recording that played — a stand-in's own, where one stood in.
+    if (ask) void repo.marks.put({ id: askedMark(ask.recordingId), at: new Date().toISOString() })
   }, [ask, repo])
 
   if (!ask || closed || !data) return null
-  const { item, programme } = ask
+  // A reaction belongs to the recording heard, as on the programme page: the
+  // stand-in's, where Spotify lacked the curator's and it played instead.
+  const { item, programme, recordingId } = ask
   return (
     <aside className={s.landed} aria-label="How did it land?">
       <p className={s.landedLead}>
         Spotify says you heard <a href={href({ name: 'programme', id: programme.id })} className={s.quietLink}>{item.proposed.composer}’s {item.proposed.work}</a>.
       </p>
       <FeedbackPanel
-        targets={[{ type: 'recording', id: item.recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
+        targets={[{ type: 'recording', id: recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
         programmeId={programme.id}
         feedback={data.feedback}
         prompt="How did it land?"
