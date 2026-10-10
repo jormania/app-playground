@@ -121,6 +121,47 @@ describe('the app as witness to a single track', () => {
   })
 })
 
+describe('an assumed start (a tap on Play or "Open in Spotify")', () => {
+  it('hears a track opened in Spotify, when the page came back while it played and saw it out', () => {
+    const w = new Witness()
+    w.assumeStart('tintagel', TINTAGEL, 0)
+    // The page was away in Spotify for nine minutes; back while it still plays.
+    w.observe({ at: 9 * MIN, np: np(9 * MIN - 2_000) })
+    const { at } = play(w, 9 * MIN + 15_000, 9 * MIN + 13_000, TINTAGEL - 8_000)
+    expect(w.observe({ at: at + 9_000, np: np(0, false) })).toEqual(['tintagel'])
+  })
+
+  it('credits nothing for a track opened and never played', () => {
+    const w = new Witness()
+    w.assumeStart('tintagel', TINTAGEL, 0)
+    // Twenty minutes on, Spotify holds it at the start, paused: it was never under way.
+    expect(w.observe({ at: 20 * MIN, np: np(0, false) })).toEqual([])
+    expect(w.observe({ at: 21 * MIN, np: np(0, false) })).toEqual([])
+  })
+
+  it('credits nothing on trust when something else is playing by the time the page is back', () => {
+    const w = new Witness()
+    w.assumeStart('tintagel', TINTAGEL, 0)
+    expect(w.observe({ at: 16 * MIN, np: np(30_000, true, 'next-song', 3 * MIN) })).toEqual([])
+  })
+
+  it('does not stretch an assumed start over a later start: further on than the clock allows is not credited', () => {
+    const w = new Witness()
+    w.assumeStart('tintagel', TINTAGEL, 0)
+    // Two minutes after the tap, the track is twelve minutes in: it was started earlier, or jumped.
+    w.observe({ at: 2 * MIN, np: np(12 * MIN) })
+    const { at } = play(w, 2 * MIN + 15_000, 12 * MIN + 15_000, TINTAGEL - 8_000)
+    expect(w.observe({ at: at + 9_000, np: np(0, false) })).toEqual([])
+  })
+
+  it('an in-app Play then normal readings is heard as before', () => {
+    const w = new Witness()
+    w.assumeStart('tintagel', TINTAGEL, 0)
+    const { at } = play(w, 1_200, 1_000, TINTAGEL - 8_000)
+    expect(w.observe({ at: at + 9_000, np: np(0, false) })).toEqual(['tintagel'])
+  })
+})
+
 describe('covered', () => {
   it('counts overlapping stretches once', () => {
     expect(covered([[0, 10], [5, 20], [30, 40]])).toBe(30)

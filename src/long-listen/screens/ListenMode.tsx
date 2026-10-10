@@ -7,6 +7,7 @@ import { href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { usePlayback } from '../app/playback'
+import { onHeardRecorded } from '../app/HeardWitness'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
@@ -66,14 +67,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }, [shade, loaded])
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
-  // A single-track work the app watched play to its end is heard: recorded as the app's word (the
-  // listener's own marks still win), and the same panel opens as for "I've heard it".
-  const playback = usePlayback(sp0?.trackUris, sp0?.trackIds, () => {
-    if (!data) return
-    // The recording that plays: the programme's own, or a stand-in's (as "I've heard it" marks it).
-    const recordingId = data.recording?.id ?? data.item.recordingId
-    void journey.markListening({ recordingId, workId: data.item.workId }, 'heard', data.programme.id, 'app').then(() => { bump(); setHeardOpen(true) })
-  })
+  const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
 
   const { curatorReady, say } = useServices()
   // The companion's notes are written once per programme; if this recording has none yet, ask for them now.
@@ -89,6 +83,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const [explaining, setExplaining] = useState(false)
 
   const [heardOpen, setHeardOpen] = useState(false)
+  // Watched play to its end (app/HeardWitness.tsx): already marked heard — open the same panel as "I've heard it".
+  const playedId = data ? (data.recording?.id ?? data.item.recordingId) : undefined
+  useEffect(() => (playedId ? onHeardRecorded((ids) => { if (ids.includes(playedId)) setHeardOpen(true) }) : undefined), [playedId])
   const [marking, setMarking] = useState(false)
   // A ref as well as the state: two taps in one frame both see the state as it was before either.
   const markingNow = useRef(false)
@@ -157,7 +154,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {standIn && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
       {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for. */}
-      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={movements.length} playback={playback} onStarted={started} className={s.mtMd} />}
+      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={sp.trackIds.length} durationMs={sp.durationMs} playback={playback} onStarted={started} className={s.mtMd} />}
 
       {movements.length > 1 && (
         <ol className={s.movements}>

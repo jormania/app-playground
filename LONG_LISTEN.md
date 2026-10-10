@@ -308,9 +308,17 @@ each app open (or "Check recent listening"), plays are matched to
 as "Started"; it read as "Listening" until 2026-10-09, which looked like
 "playing now"). A **single-track work is never marked heard by Spotify** —
 thirty seconds and forty minutes look identical. **The app itself can,
-though (2026-10-10, at the owner's request):** while a programme or the
-listening view is open it reads the player every few seconds anyway, and
-`spotify/witness.ts` turns those readings into what it saw sounding. A
+though (2026-10-10, at the owner's request), however the work was started**
+— Play in the app, "Open in Spotify", the week's playlist, or Spotify on its
+own. `app/HeardWitness.tsx`, mounted once at the root, keeps the player read
+every few seconds on every screen while Spotify is connected and the app is
+in front, and `spotify/witness.ts` turns those readings into what it saw
+sounding. A tap on Play or a Spotify link for a single-track work is noted as
+an *assumed* start, so a listening begun in Spotify counts from the top once
+the app is back in front and a reading shows the track itself under way, no
+further on than the clock allows; opened and never played counts for
+nothing. Each heard-through track marks every confirmed single-track
+recording of it. A
 single-track work becomes `heard` (source `app`) when the readings show ≥90%
 of it played at the pace of the music — progress that ran ahead of the clock
 is a jump and isn't credited — *and* its end reached: a reading at the close,
@@ -318,8 +326,11 @@ or, when the page was away for the ending, the track gone from the player no
 sooner than it had left to play (and, unless Spotify still holds it at its
 close or rewound to the start, no more than ten minutes after). Begun partway,
 jumped to the end, or left early never counts; once per session; only real
-readings, never the guess the screen shows when Play is pressed; kept in
-memory, so a reload mid-work forgets. On the listening view it opens the same
+readings, never the guess the screen shows when Play is pressed (an assumed
+start is credited only by what a later reading proves); kept in memory, so a
+reload mid-work forgets. What can't be seen: a work started and finished
+entirely while the app was closed or in the background is left to the
+listener's "I've heard it". On the listening view it opens the same
 panel as "I've heard it". Works in movements are left to Spotify's history,
 so a hearing is never counted twice. A session is recorded once: a later poll that sees
 the same session, even after its first plays have scrolled out of the fifty,

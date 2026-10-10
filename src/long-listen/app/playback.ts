@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useServices } from './services'
 import { SpotifyUnavailable, playbackOf, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
@@ -6,28 +6,31 @@ import { Witness } from '../spotify/witness'
 import { messageOf } from '../components/common'
 
 /**
- * Tracks the app has seen played end to end (spotify/witness.ts), each waiting
- * for the work on screen that holds it to claim it — once. A claim not taken
- * within the hour is dropped rather than credited to a later visit.
+ * The app as witness (spotify/witness.ts): every real reading of the player,
+ * from whichever screen is open, goes to one witness; a track it sees played
+ * end to end goes to whoever records it (app/HeardWitness.tsx, mounted once).
  */
-const CLAIM_MS = 3600_000
 const witness = new Witness()
-const heardThrough = new Map<string, number>()
-const claimants = new Set<() => void>()
+const heardListeners = new Set<(trackIds: string[]) => void>()
 
 function observe(np: NowPlaying | null, at: number) {
   const heard = witness.observe({ np, at })
-  if (!heard.length) return
-  for (const key of heard) heardThrough.set(key, at)
-  for (const c of claimants) c()
+  if (heard.length) for (const l of heardListeners) l(heard)
 }
 
-/** True once for a track heard through within the hour; false after, and for any other track. */
-function claim(trackId: string): boolean {
-  const at = heardThrough.get(trackId)
-  if (at === undefined) return false
-  heardThrough.delete(trackId)
-  return Date.now() - at <= CLAIM_MS
+/** Told the track ids the witness saw played end to end. */
+export function onHeardThrough(listener: (trackIds: string[]) => void): () => void {
+  heardListeners.add(listener)
+  return () => { heardListeners.delete(listener) }
+}
+
+/**
+ * A tap on Play or "Open in Spotify" for a single-track work: an assumed start,
+ * so a listening begun in Spotify counts from the top once the page is back
+ * and a reading bears it out. (A work in movements is Spotify's history's to tell.)
+ */
+export function assumeStart(trackIds: string[] | undefined, durationMs: number | undefined): void {
+  if (trackIds?.length === 1 && durationMs) witness.assumeStart(trackIds[0], durationMs, Date.now())
 }
 
 /** One watch per Spotify client, however many components ask. */
@@ -67,24 +70,10 @@ export interface Playback {
  * movement, Pause and Resume leave it where it is. Each command shows its
  * outcome at once and checks with Spotify a moment later.
  */
-export function usePlayback(trackUris: string[] | undefined, trackIds: string[] | undefined, onHeardThrough?: () => void): Playback {
+export function usePlayback(trackUris: string[] | undefined, trackIds: string[] | undefined): Playback {
   const { spotify, say } = useServices()
   const watch = watchFor(spotify)
   const state = usePlayerState()
-
-  // A single-track work the app watched play end to end: say so, once. Spotify's
-  // own history can't (a track there is thirty seconds or all of it), and a
-  // work in movements is already heard from it.
-  const single = trackIds?.length === 1 ? trackIds[0] : undefined
-  const onHeard = useRef(onHeardThrough)
-  onHeard.current = onHeardThrough
-  useEffect(() => {
-    if (!single) return
-    const check = () => { if (onHeard.current && claim(single)) onHeard.current() }
-    check()
-    claimants.add(check)
-    return () => { claimants.delete(check) }
-  }, [single])
 
   const [busy, setBusy] = useState(false)
   const [noDevice, setNoDevice] = useState(false)

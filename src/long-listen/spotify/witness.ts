@@ -24,7 +24,12 @@ import type { NowPlaying } from './client'
  * top, or after a three-hour gap, is a new session.
  *
  * Only real readings come here — never the optimistic state the screen shows
- * the moment Play is pressed. Kept in memory: a reload mid-work forgets what
+ * the moment Play is pressed. The one exception is deliberate and narrow: a
+ * tap on Play or "Open in Spotify" is noted as an *assumed* start (the page
+ * may be gone to Spotify before any reading). From an assumed start, the only
+ * thing credited is what a real reading later proves — the track itself,
+ * further on by no more than the clock allows — so opening it and never
+ * playing counts for nothing. Kept in memory: a reload mid-work forgets what
  * was seen so far, and the listener's own "I've heard it" is always there.
  */
 
@@ -43,6 +48,8 @@ export interface Reading {
   /** When the reading came back (epoch ms). */
   at: number
   np: NowPlaying | null
+  /** Not read from Spotify: a start the listener asked for, taken on trust until a reading bears it out. */
+  assumed?: boolean
 }
 
 interface Session {
@@ -60,6 +67,14 @@ export class Witness {
   private sessions = new Map<string, Session>()
   private last: Reading | null = null
 
+  /** A tap on Play or "Open in Spotify" for this track: assume it starts now, from the top. */
+  assumeStart(key: string, durationMs: number, at: number): void {
+    if (!(durationMs > 0)) return
+    const np: NowPlaying = { trackId: key, trackName: '', isPlaying: true, progressMs: 0, durationMs }
+    this.session(key, np, at)
+    this.last = { at, np, assumed: true }
+  }
+
   /** Take one reading; returns the keys of tracks it showed heard end to end (each once per session). */
   observe(r: Reading): string[] {
     const heard: string[] = []
@@ -76,7 +91,11 @@ export class Witness {
     const dt = r.at - prev.at
     const sameTrack = Boolean(cur && trackKey(cur) === key)
 
-    if (sameTrack && cur) {
+    if (prev.assumed) {
+      // Only what a reading proves: the track itself, really under way, no further on than the clock allows.
+      const dp = sameTrack && cur ? cur.progressMs : -1
+      if (dp > END_MS && dp <= dt + DRIFT_MS) add(s, 0, dp)
+    } else if (sameTrack && cur) {
       const dp = cur.progressMs - was.progressMs
       if (dp >= 0 && dp <= dt + DRIFT_MS) {
         add(s, was.progressMs, cur.progressMs)

@@ -5,6 +5,7 @@ import { href, useRoute, type Route } from './app/router'
 import { GUIDE_URL } from './app/links'
 import { useNewVersion } from './app/freshness'
 import { LandedPrompt } from './components/LandedPrompt'
+import { HeardWitness } from './app/HeardWitness'
 import { WeekScreen } from './screens/Week'
 import { ProgrammeScreen } from './screens/Programme'
 import { ListenModeScreen } from './screens/ListenMode'
@@ -96,6 +97,7 @@ function Shell() {
 export default function App({ repo, curator }: { repo?: Repo; curator?: CuratorClient }) {
   return (
     <ServicesProvider repo={repo} curator={curator}>
+      <HeardWitness />
       <Shell />
     </ServicesProvider>
   )
