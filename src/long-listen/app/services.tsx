@@ -147,14 +147,21 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   useEffect(() => {
     let last = 0
     const look = () => {
-      if (document.visibilityState !== 'visible' || Date.now() - last < 120_000) return
+      // Offline, nothing is tried (and the two minutes don't start): the connection's return looks instead.
+      if (document.visibilityState !== 'visible' || navigator.onLine === false || Date.now() - last < 120_000) return
       last = Date.now()
       syncSpotify().catch(() => {})
     }
     look()
     document.addEventListener('visibilitychange', look)
-    return () => document.removeEventListener('visibilitychange', look)
+    window.addEventListener('online', look)
+    return () => { document.removeEventListener('visibilitychange', look); window.removeEventListener('online', look) }
   }, [syncSpotify])
+
+  // Once per device: reactions filed under a curator's recording that a stand-in played in place of move to the stand-in.
+  useEffect(() => {
+    journey.repairStandInFeedback().then((n) => { if (n) bump() }).catch(() => {})
+  }, [journey, bump])
 
   // Feedback left unread when the app last closed (taste is read in batches, see
   // Journey.scheduleTasteReading) is read once now, in one request.
@@ -168,10 +175,12 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
 
   const notionOnce = useRef(false)
   useEffect(() => {
-    if (notion && !notionOnce.current) {
-      notionOnce.current = true
-      void syncNotion()
-    }
+    if (!notion || notionOnce.current) return
+    // Offline, it waits for the connection rather than failing: the mirror catches up when it can.
+    const start = () => { notionOnce.current = true; void syncNotion() }
+    if (navigator.onLine !== false) { start(); return }
+    window.addEventListener('online', start, { once: true })
+    return () => window.removeEventListener('online', start)
   }, [notion, syncNotion])
 
   const value: Services = {

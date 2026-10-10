@@ -10,7 +10,7 @@ test are fixed before anything here starts, and the test may re-rank this list:
 an item that answers something that kept getting in the way goes up, one nobody
 would reach goes down. Release two is the section of that name below; release three follows it.
 
-**Status, 9 October 2026:** release two shipped (every item struck below; LONG_LISTEN.md §12–13). Release three is next.
+**Status, 10 October 2026:** release two shipped (LONG_LISTEN.md §12–13); release three shipped items 14, 15 and 22 (struck below; §14). The rest of release three is still open.
 
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every
@@ -116,15 +116,15 @@ performers.
 
 | # | Item | Why it matters | Effort |
 |---|------|----------------|--------|
-| 14 | **A sitting for tonight** — one or two hours, asked for on the day ("quiet, nothing I know"), recorded in the same threads | Some weeks there is one evening, not seven, and a mood is a moment's | M |
-| 15 | **Season in review** — every twelve weeks, a page of prose: threads that grew, where taste moved, paths still open, things worth hearing again | Makes the app's memory something you read. Needs twelve weeks of history, so it can't be judged during release two | M |
+| ~~14~~ | ~~**A sitting for tonight** — one or two hours, asked for on the day ("quiet, nothing I know"), recorded in the same threads~~ | ~~Some weeks there is one evening, not seven, and a mood is a moment's~~ | ~~M~~ |
+| ~~15~~ | ~~**Season in review** — every twelve weeks, a page of prose: threads that grew, where taste moved, paths still open, things worth hearing again~~ | ~~Makes the app's memory something you read. Needs twelve weeks of history, so it can't be judged during release two~~ | ~~M~~ |
 | 16 | **Bring your own repertoire** — from Spotify's saved albums, propose works you already know, to confirm in one pass | Familiarity with similar music predicts liking, so knowing what you know lets the curator build bridges. Large: "already known" today only covers works the app programmed, and resolving albums to works is the classical metadata problem in full | L |
 | 17 | **Recording facts from MusicBrainz** — year and performers checked against an open database (free, no key) | Years and performer lists are the facts most often slightly wrong | M |
 | 18 | **Towards the Enescu Festival** — the biennial festival returns in late summer 2027; once its programme is published, a few weeks that prepare for concerts you might attend | Local, and a reason to listen ahead. Builds on items 12 and 13 | S–M |
 | 19 | **Romanian throughout** — the interface, not only the curator's writing | Mostly copy, but a lot of it | M |
 | 20 | **A second listener** — a profile for Nora on the same device, with a younger voice in the writing | Every collection gains an owner; only worth it if she would use it | L |
 | 21 | **A map of the threads** — themes and works on a timeline of centuries, with the connections the curator drew | Shows where you've been. Must stay a map, never a scorecard | L |
-| 22 | **Offline programme** — check during the release-one test what already works without signal (the app is cached, the data is in IndexedDB) before building anything | Probably mostly there | S |
+| ~~22~~ | ~~**Offline programme** — check during the release-one test what already works without signal (the app is cached, the data is in IndexedDB) before building anything~~ | ~~Probably mostly there~~ | ~~S~~ |
 
 ## Decided against
 

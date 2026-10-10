@@ -9,6 +9,7 @@ import { verifyProgramme } from '../spotify/verify'
 import { Problem, Waiting } from '../components/common'
 import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
+import { SittingCard } from '../components/SittingCard'
 import s from '../styles/editorial.module.css'
 
 const MOOD_WORD = { immersive: 'Immersive', curious: 'Curious', adventurous: 'Adventurous' } as const
@@ -145,6 +146,10 @@ export function WeekScreen() {
           <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={busy} onChoose={() => choose(o)} />
         ))}
       </ol>
+
+      <div className={s.block}>
+        <SittingCard joinsThread={false} />
+      </div>
 
       <div className={s.block}>
         {!askOpen ? (

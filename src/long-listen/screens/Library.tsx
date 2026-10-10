@@ -11,6 +11,7 @@ import { openUrl } from '../spotify/client'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Empty, Problem, Waiting } from '../components/common'
 import { Credits } from '../components/Credits'
+import { whoPlays } from '../domain/concertSoloists'
 import s from '../styles/editorial.module.css'
 
 interface Entry {
@@ -145,7 +146,7 @@ export function LibraryScreen() {
                     <span className={`${s.tag} ${s.tagOn}`}><Landmark size={12} strokeWidth={1.8} aria-hidden="true" /> heard live</span>{' '}
                     <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.venue}, {concertDate(c.date)}</a>
                   </p>
-                  <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
+                  <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: whoPlays(c, c.works.find((x) => x.workId === work.id) ?? { title: work.title, soloists: [] }) }} />
                 </div>
               ))}
             </div>

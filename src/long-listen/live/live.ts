@@ -95,12 +95,19 @@ export async function liveEvents(
 ): Promise<LiveEvent[]> {
   const cached = await marks.get('live:scan')
   if (cached && now.getTime() - Date.parse(cached.at) < DAY) return (cached.value as LiveEvent[]) ?? []
-  const res = await fetchImpl('/api/marquee-scan', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ venues: LIVE_VENUES.map(({ id, name, url, adapter }) => ({ id, name, url, adapter })) }),
-  })
-  if (!res.ok) throw new Error(`marquee-scan ${res.status}`)
+  // Offline or refused, a day-old reading still beats none: the concerts in it haven't moved.
+  const stale = (e: unknown) => { if (cached) return (cached.value as LiveEvent[]) ?? []; throw e }
+  let res: Response
+  try {
+    res = await fetchImpl('/api/marquee-scan', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ venues: LIVE_VENUES.map(({ id, name, url, adapter }) => ({ id, name, url, adapter })) }),
+    })
+  } catch (e) {
+    return stale(e)
+  }
+  if (!res.ok) return stale(new Error(`marquee-scan ${res.status}`))
   const data = await res.json() as { events?: LiveEvent[] }
   const events = (data.events ?? []).map(({ venue, title, date, time, hall, link, description }) => ({ venue, title, date, time, hall, link, description }))
   await marks.put({ id: 'live:scan', at: now.toISOString(), value: events })

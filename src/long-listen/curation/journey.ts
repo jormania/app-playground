@@ -1,19 +1,21 @@
 import type {
   Comparison, Concert, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
-  ProgrammeOption, Reaction, Resource, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
+  ProgrammeOption, Reaction, Resource, Sitting, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
 } from '../domain/types'
 import { creditLine, newId } from '../domain/identity'
 import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import type { Repo } from '../store/repo'
 import type {
-  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
 } from './api'
+import { season as seasonOf, seasonNumberAt, type Season } from '../domain/season'
+import { seasonContext } from './season'
 import { buildContext } from './context'
 import { threadDigest } from './continuity'
 import { Ingest, comparisonOf, ingestProgramme } from './ingest'
 import { applyTasteUpdate, pendingFeedback } from './taste'
-import type { SpotifyCandidate } from '../spotify/verify'
+import { isConfirmed, type SpotifyCandidate } from '../spotify/verify'
 
 /** A concert as the form holds it, before it's kept. */
 export interface ConcertDraft {
@@ -24,7 +26,8 @@ export interface ConcertDraft {
   orchestra?: string
   conductor?: string
   soloists: { name: string; instrument?: string }[]
-  works: { composer: string; title: string; catalogue?: string }[]
+  /** `soloists`: who of the evening's soloists plays in this work, by name; absent when nobody said. */
+  works: { composer: string; title: string; catalogue?: string; soloists?: string[] }[]
   note?: string
   source: 'screenshot' | 'typed'
 }
@@ -236,47 +239,76 @@ export class Journey {
    * towards the thread like the week's programme does.
    */
   extendProgramme(programmeId: string, wish?: string): Promise<Programme> {
-    return this.once(`extend:${programmeId}`, async () => {
-      const base = await this.repo.programmes.require(programmeId)
-      const root = base.extends ? await this.repo.programmes.require(base.extends) : base
-      const option = await this.repo.options.require(root.optionId)
-      const exploration = await this.repo.explorations.require(root.explorationId)
-      const lw = weekFromKey(root.weekKey)
-      const digest = await threadDigest(this.repo, root.themeId, root.weekKey)
-      const context = await buildContext(this.repo, lw)
+    return this.once(`extend:${programmeId}`, () => this.companion_(programmeId, { extension: { wish: wish?.trim() || undefined } }))
+  }
+
+  /**
+   * "A sitting for tonight": one evening's music, asked for on the day in the
+   * listener's words, for an hour or two. With a programme this week it joins
+   * that programme's thread, like "More of this theme" — nothing it covered
+   * comes back. Without one, it becomes the week's programme and begins its
+   * thread. Either way it is recorded where the rest of the listening is.
+   */
+  sitting(request: string, hours: 1 | 2): Promise<Programme> {
+    const lw = this.currentWeek()
+    const sitting = { request: request.trim(), hours }
+    return this.once(`sitting:${lw.key}`, async () => {
+      const week = await this.weekWithoutDirections()
+      if (week.programmeId) return this.companion_(week.programmeId, { sitting })
       const now = this.stamp()
-      const res = await this.curator.call<ProgrammeResponse>('programme', {
-        today: this.today(),
-        week: { key: lw.key, label: lw.label },
-        option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, form: option.form },
-        extension: { of: root.title, dek: root.dek, wish: wish?.trim() || undefined },
-        thread: { ...digest, stage: exploration.stage },
-        preferences: context.preferences,
-        alreadyProgrammed: context.alreadyProgrammed,
-        alreadyKnown: context.alreadyKnown,
-        taste: context.taste,
-        questions: context.questions,
-        listenerNotes: context.listenerNotes,
-        recentListening: context.recentListening,
-        thisWeek: context.thisWeek,
-      })
-      const { programme, comparisons } = await ingestProgramme(this.repo, {
-        weekKey: root.weekKey,
-        optionId: root.optionId,
-        themeId: root.themeId,
-        explorationId: root.explorationId,
-        stage: exploration.stage,
-        extendsId: root.id,
-        curated: res.programme,
-        promptVersion: res.promptVersion,
-        model: res.model,
-        now,
-      })
-      await this.repo.comparisons.putMany(comparisons)
-      await this.repo.addProgramme(programme)
-      await this.repo.explorations.put({ ...exploration, extraProgrammeIds: [...(exploration.extraProgrammeIds ?? []), programme.id] })
-      return programme
+      // The evening's own direction, from the listener's words: the curator's title replaces it once written.
+      const option: ProgrammeOption = {
+        id: newId('opt'), weekKey: lw.key, position: 1, mood: 'immersive', title: 'Tonight', pitch: sitting.request || 'An evening of music',
+        character: [], why: 'Asked for on the day.', angle: 'one evening, as asked', status: 'offered',
+      }
+      await this.repo.options.put(option)
+      return this.startProgramme(week, option, sitting, now)
     })
+  }
+
+  /** A programme beside an existing one, on its thread: "More of this theme", or a sitting for tonight. */
+  private async companion_(programmeId: string, ask: { extension?: { wish?: string }; sitting?: Sitting }): Promise<Programme> {
+    const base = await this.repo.programmes.require(programmeId)
+    const root = base.extends ? await this.repo.programmes.require(base.extends) : base
+    const option = await this.repo.options.require(root.optionId)
+    const exploration = await this.repo.explorations.require(root.explorationId)
+    const lw = weekFromKey(root.weekKey)
+    const digest = await threadDigest(this.repo, root.themeId, root.weekKey)
+    const context = await buildContext(this.repo, lw)
+    const now = this.stamp()
+    const res = await this.curator.call<ProgrammeResponse>('programme', {
+      today: this.today(),
+      week: { key: lw.key, label: lw.label },
+      option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, form: option.form },
+      ...(ask.extension ? { extension: { of: root.title, dek: root.dek, wish: ask.extension.wish } } : {}),
+      ...(ask.sitting ? { sitting: ask.sitting } : {}),
+      thread: { ...digest, stage: exploration.stage },
+      preferences: context.preferences,
+      alreadyProgrammed: context.alreadyProgrammed,
+      alreadyKnown: context.alreadyKnown,
+      taste: context.taste,
+      questions: context.questions,
+      listenerNotes: context.listenerNotes,
+      recentListening: context.recentListening,
+      thisWeek: context.thisWeek,
+    })
+    const ingested = await ingestProgramme(this.repo, {
+      weekKey: root.weekKey,
+      optionId: root.optionId,
+      themeId: root.themeId,
+      explorationId: root.explorationId,
+      stage: exploration.stage,
+      extendsId: root.id,
+      curated: res.programme,
+      promptVersion: res.promptVersion,
+      model: res.model,
+      now,
+    })
+    const programme: Programme = ask.sitting ? { ...ingested.programme, sitting: ask.sitting } : ingested.programme
+    await this.repo.comparisons.putMany(ingested.comparisons)
+    await this.repo.addProgramme(programme)
+    await this.repo.explorations.put({ ...exploration, extraProgrammeIds: [...(exploration.extraProgrammeIds ?? []), programme.id] })
+    return programme
   }
 
   /** Choose one of this week's three directions. */
@@ -307,8 +339,8 @@ export class Journey {
     return this.changeDirection(optionId)
   }
 
-  private async startProgramme(week: WeekRecord, option: ProgrammeOption): Promise<Programme> {
-    const now = this.stamp()
+  private async startProgramme(week: WeekRecord, option: ProgrammeOption, sitting?: Sitting, at?: string): Promise<Programme> {
+    const now = at ?? this.stamp()
     const lw = weekFromKey(week.weekKey)
 
     const returningTheme = option.returning ? await this.repo.themes.get(option.returning.themeId) : undefined
@@ -341,12 +373,13 @@ export class Journey {
       recentListening: context.recentListening,
       secondHearings: context.secondHearings.length ? context.secondHearings : undefined,
       thisWeek: context.thisWeek,
+      ...(sitting ? { sitting } : {}),
     })
 
     // Nothing is written until the curator has answered: a failed call leaves
     // the week exactly as it was.
     const explorationId = newId('exp')
-    const { programme, comparisons } = await ingestProgramme(this.repo, {
+    const ingested = await ingestProgramme(this.repo, {
       weekKey: week.weekKey,
       optionId: option.id,
       themeId: theme.id,
@@ -357,6 +390,10 @@ export class Journey {
       model: res.model,
       now,
     })
+    const { comparisons } = ingested
+    const programme: Programme = sitting ? { ...ingested.programme, sitting } : ingested.programme
+    // A thread begun by a sitting is named by the evening the curator wrote, not by "Tonight".
+    if (sitting && !returningTheme) Object.assign(theme, { title: programme.title, summary: programme.dek || theme.summary })
     const exploration: ThemeExploration = { id: explorationId, themeId: theme.id, weekKey: week.weekKey, stage, angle: option.angle, programmeId: programme.id }
 
     // Set aside the programme being replaced, if any.
@@ -539,6 +576,29 @@ export class Journey {
   }
 
   /**
+   * Reactions and notes left on a curator's recording that Spotify never had,
+   * where a stand-in played in its place: they were about the stand-in, which
+   * is what was heard — so they move to it. (The programme page filed them
+   * under the curator's recording until 2026-10-10.) Once per device; returns
+   * how many moved.
+   */
+  async repairStandInFeedback(): Promise<number> {
+    const done = 'repair:stand-in-feedback'
+    if (await this.repo.marks.get(done)) return 0
+    const standIns = (await this.repo.comparisons.all()).filter((c) => c.standIn && c.perspectives.length > 1)
+    const recordings = new Map((await this.repo.recordings.many(standIns.map((c) => c.perspectives[0].recordingId))).map((r) => [r.id, r]))
+    const moveTo = new Map<string, string>()
+    for (const c of standIns) {
+      const curator = c.perspectives[0].recordingId
+      if (!isConfirmed(recordings.get(curator))) moveTo.set(curator, c.perspectives[1].recordingId)
+    }
+    const wrong = (await this.repo.feedback.all()).filter((f) => f.target.type === 'recording' && moveTo.has(f.target.id))
+    await Promise.all(wrong.map((f) => this.repo.feedback.put({ ...f, target: { ...f.target, id: moveTo.get(f.target.id)! } })))
+    await this.repo.marks.put({ id: done, at: this.stamp(), value: { moved: wrong.length } })
+    return wrong.length
+  }
+
+  /**
    * "I knew this already" on a work — or taking it back. Familiarity, not a
    * reaction: it doesn't touch the listening state or the taste profile; it
    * tells the curator what isn't a discovery for this listener.
@@ -547,6 +607,54 @@ export class Journey {
     const f: Feedback = { id: newId('fb'), at: this.stamp(), target: { type: 'work', id: workId }, programmeId, known }
     await this.repo.feedback.put(f)
     return f
+  }
+
+  // ── seasons ───────────────────────────────────────────────────────────
+
+  /** The first listening week with anything in it: where season one starts. */
+  private async firstWeek(): Promise<WeekKey | undefined> {
+    const keys = (await this.repo.weeks.all()).filter((w) => w.programmeId || w.optionIds.length).map((w) => w.weekKey).sort()
+    return keys[0]
+  }
+
+  /**
+   * The seasons there are to read, newest first: every finished one, and the
+   * one under way once it has two weeks behind it ("so far").
+   */
+  async seasons(): Promise<Season[]> {
+    const first = await this.firstWeek()
+    if (!first) return []
+    const now = this.currentWeek().key
+    const out: Season[] = []
+    for (let n = 1; n <= seasonNumberAt(first, now); n++) {
+      const s = seasonOf(first, n, now)
+      if (s.complete || s.weeksSoFar >= 2) out.push(s)
+    }
+    return out.reverse()
+  }
+
+  /** A season's review if one was written: for a season under way, only this week's. */
+  async seasonReview(n: number): Promise<{ season: Season; review?: SeasonResponse }> {
+    const first = await this.firstWeek()
+    if (!first) throw new Error('No seasons yet.')
+    const s = seasonOf(first, n, this.currentWeek().key)
+    const mark = await this.repo.marks.get(this.seasonKey(s))
+    return { season: s, review: mark?.value as SeasonResponse | undefined }
+  }
+
+  /** Write a season in review — once per finished season, once a week for one under way. */
+  writeSeasonReview(n: number): Promise<SeasonResponse> {
+    return this.once(`season:${n}`, async () => {
+      const { season: s, review } = await this.seasonReview(n)
+      if (review) return review
+      const res = await this.curator.call<SeasonResponse>('season', await seasonContext(this.repo, s, this.currentWeek().key))
+      await this.repo.marks.put({ id: this.seasonKey(s), at: this.stamp(), value: res })
+      return res
+    })
+  }
+
+  private seasonKey(s: Season): string {
+    return s.complete ? `season:${s.number}` : `season:${s.number}:sofar:${this.currentWeek().key}`
   }
 
   // ── concerts ──────────────────────────────────────────────────────────
@@ -564,11 +672,16 @@ export class Journey {
    */
   async saveConcert(draft: ConcertDraft, id?: string): Promise<Concert> {
     const ingest = await new Ingest(this.repo).load()
+    const soloistNames = new Set(draft.soloists.map((s) => s.name.trim()).filter(Boolean))
     const works = draft.works
       .filter((w) => w.composer.trim() && w.title.trim())
       .map((w) => {
         const work = ingest.work(w.composer.trim(), w.title.trim(), w.catalogue?.trim() ? { catalogue: w.catalogue.trim() } : {})
-        return { workId: work.id, composer: w.composer.trim(), title: w.title.trim(), ...(w.catalogue?.trim() ? { catalogue: w.catalogue.trim() } : {}) }
+        return {
+          workId: work.id, composer: w.composer.trim(), title: w.title.trim(), ...(w.catalogue?.trim() ? { catalogue: w.catalogue.trim() } : {}),
+          // Who plays in it, among the soloists still named (a renamed or removed soloist drops out).
+          ...(w.soloists ? { soloists: w.soloists.map((n) => n.trim()).filter((n) => soloistNames.has(n)) } : {}),
+        }
       })
     if (!draft.venue.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) || !works.length) throw new Error('A concert needs a venue, a date and at least one work.')
     await ingest.commit()

@@ -4,6 +4,7 @@ import { weekFromKey, weekOf, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
 import { concertDate } from './Concerts'
+import { seasonName } from '../domain/season'
 import { href } from '../app/router'
 import { Empty, Problem, Waiting } from '../components/common'
 import { Credits } from '../components/Credits'
@@ -23,7 +24,7 @@ const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
  * listened, no streak. This page is memory, not measurement.
  */
 export function JournalScreen() {
-  const { repo, settings, spotify, syncSpotify, say } = useServices()
+  const { repo, journey, settings, spotify, syncSpotify, say } = useServices()
   const { data, error, retry } = useLoad(async () => {
     const [weeks, options, events, feedback, programmes, comparisons, concerts] = await Promise.all([
       repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(),
@@ -70,7 +71,7 @@ export function JournalScreen() {
         if (taken && !offered.includes(taken)) offered.push(taken)
         return { key, week: w, offered, heard: heardIn.get(key) ?? [], concerts: concertsIn.get(key) ?? [] }
       }),
-      proposedOf, feedback, programmeTitle, extensionsOf, concertCount: concerts.length,
+      proposedOf, feedback, programmeTitle, extensionsOf, concertCount: concerts.length, seasons: await journey.seasons(),
     }
   }, [settings.timeZone, settings.hideSkipped])
 
@@ -87,6 +88,11 @@ export function JournalScreen() {
         <Landmark size={15} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} />{' '}
         <a href={href({ name: 'concerts' })}>All concerts</a>{data.concertCount ? '' : ' — what you hear live, kept here too'} · <a href={href({ name: 'concert', id: 'new' })}>add one</a>
       </p>
+      {data.seasons.map((x) => (
+        <p key={x.number} className={s.faint}>
+          <a href={href({ name: 'season', n: x.number })}>{seasonName(x.number)} {x.complete ? 'in review' : 'so far'}</a> · {x.label}
+        </p>
+      ))}
       {spotify.connected && (
         <p className={s.faint}>
           Your recent Spotify listening is picked up each time you open the app.{' '}

@@ -172,7 +172,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-10.5',
+  version: 'programme@2026-10-10.6',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -247,6 +247,8 @@ Write:
 - historicalPlace: where it sits historically, two to four sentences.
 - howTheyRelate: how the chosen works speak to each other, two to four sentences.
 - continuityNote: "" for a first visit. For a return, two or three sentences that name what was explored before and how this week continues — new route, new works, new interpretations. Never restart the theme.
+
+A sitting for tonight: when a "sitting" field is present, the listener has one evening — "sitting.hours" hours, no more — and has said what they want from it in their own words ("sitting.request": "quiet, nothing I know", "something big after a long day"). Their words decide the music; honour them exactly, including "nothing I know" (then none of alreadyKnown, alreadyProgrammed or recentListening). Choose works whose lengths add up to about the time given, no more: an hour holds two to four works, two hours three to six; one large work can be most of it. One or two sections, in the order to hear them tonight, each work leading to the next. A one-paragraph introduction, written for this evening; a title for the evening, not for a week. If "thread" is present, the sitting belongs to that thread: no work it has covered, and continuityNote says in one sentence how tonight sits beside it; if there is no thread, it begins one.
 
 "More of this theme": when an "extension" field is present, the listener has this week's programme ("extension.of") and wants more music on the same theme, this same week — perhaps with a wish ("extension.wish"). Write a companion, not a new week: about half the usual number of works, in one or two sections; a one-paragraph introduction; a title that reads as a continuation ("More …", "Further …"). Every work must be new to the thread (none of thread.covered) — new composers, other periods, the connections the first programme pointed to. continuityNote: one sentence on how it carries on from "extension.of".
 
@@ -445,7 +447,7 @@ For each work (by its "key"), return "movements": exactly one note per track, in
 
 export const CONCERT = {
   id: 'concert',
-  version: 'concert@2026-10-10.2',
+  version: 'concert@2026-10-10.3',
   effort: 'low',
   maxTokens: 4000,
   schema: {
@@ -462,8 +464,8 @@ export const CONCERT = {
         type: 'array',
         items: {
           type: 'object',
-          properties: { composer: str, title: str, catalogue: str },
-          required: ['composer', 'title', 'catalogue'],
+          properties: { composer: str, title: str, catalogue: str, soloists: { type: 'array', items: str } },
+          required: ['composer', 'title', 'catalogue', 'soloists'],
           additionalProperties: false,
         },
       },
@@ -478,11 +480,56 @@ export const CONCERT = {
 - orchestra, conductor, soloists: names as printed, in their usual form with diacritics.
 - Each soloist's instrument, in English ("violin", "cello", "piano", "soprano"). Pages often list soloists without one; read it from the programme itself when it is plain — a cello concerto with one soloist, a concerto "pentru vioară, violoncel și orchestră" with two (the violinist usually listed first), "la pian" beside a name — or when you are certain who the performer is (Edgar Moreau is a cellist). Otherwise "".
 - works: in the order played. composer: full standard name ("Johannes Brahms", "George Enescu", "Anatol Vieru"). title: the work's usual title in English as recordings name it — "Concertul în la minor pentru vioară, violoncel și orchestră, op. 102" is "Double Concerto in A minor"; "Simfonia nr. 3, în la minor, op. 56, Scoțiana" is "Symphony No. 3 in A minor, "Scottish""; "Concertul pentru violoncel și orchestră" is "Cello Concerto"; keep proper titles as they are ("Tapiola", "Poème de l'extase"). catalogue: "Op. 102", "BWV 1048", or "".
+- Each work's "soloists": the names, exactly as in "soloists", of those who play a solo part in THAT work. A programme lists its soloists once, but they rarely play every work: a symphony, an overture or a tone poem has none ([]); a cello concerto has the cellist, not the violinist; a double concerto has both. Never give every soloist to every work because they are named on the page. When the page says plainly who plays what, follow it; otherwise judge from each work's solo part and each soloist's instrument.
 - A number the page doesn't print: add it only when the composer wrote just one such work (Elgar's "Cello Concerto" is his Op. 85 in E minor). When there are several (Vieru wrote two cello concertos; Shostakovich two), leave the number and catalogue out rather than pick one.
 Only what the image shows, or what follows from it with certainty. Never guess a date, a performer or a work.`,
 }
 
-export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, concert: CONCERT }
+// ── 10. The season in review ─────────────────────────────────────────────
+
+export const SEASON = {
+  id: 'season',
+  version: 'season@2026-10-10.1',
+  effort: 'medium',
+  maxTokens: 8000,
+  schema: {
+    type: 'object',
+    properties: {
+      title: str,
+      opening: str,
+      threads: {
+        type: 'array',
+        items: { type: 'object', properties: { title: str, body: str }, required: ['title', 'body'], additionalProperties: false },
+      },
+      taste: str,
+      open: str,
+      again: {
+        type: 'array',
+        items: { type: 'object', properties: { composer: str, work: str, why: str }, required: ['composer', 'work', 'why'], additionalProperties: false },
+      },
+      closing: str,
+    },
+    required: ['title', 'opening', 'threads', 'taste', 'open', 'again', 'closing'],
+    additionalProperties: false,
+  },
+  system: `${VOICE}
+
+Your job now: write the season in review — a page of prose the listener reads once every twelve weeks, looking back over what they listened to. It makes the app's memory something to read, not a dashboard: no scores, no counts as achievements, no streaks, no "you listened to N hours". A number only where it says something ("three Sibelius symphonies in a row").
+
+Everything you say comes from the context given — the weeks, their programmes and sittings, the threads, what was heard and what the listener said, concerts heard live, the curator's notes on their taste and when each was first and last seen. Never invent a work, a reaction or a date. Quote the listener's own words where they say it best.
+
+- title: a title for the season, from its music, not "Season one".
+- opening: one paragraph — the shape of these weeks, in a sentence or two of what happened and one of what it added up to.
+- threads: one entry per thread that grew this season (title as given), each a short paragraph on how it grew — where it began, where it went, how it landed. Leave out threads barely touched.
+- taste: one or two paragraphs on where the listener's taste moved — what drew them, what didn't, what changed since the season began (observations first seen this season are new; superseded ones are changes). Point to specific works and their own words, never a label about them.
+- open: one paragraph on what is still open — paths offered and not taken, questions the listening raised.
+- again: up to four works worth hearing again, chosen from "heard" or "started" in the context only — a work they found interesting, too difficult, or loved — each with "why" in one sentence, as an offer, never an instruction. Composer and work exactly as given.
+- closing: one sentence to end on.
+
+When "soFar" is true the season is still under way: write in the present tense, say plainly that it is not over, keep it shorter, and leave "again" to at most two works. Write all prose in the "language" given.`,
+}
+
+export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, concert: CONCERT, season: SEASON }
 
 /** The version of every prompt, for the client to show in Settings and store with snapshots. */
 export function promptVersions() {

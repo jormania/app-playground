@@ -4,6 +4,7 @@ import { creditLine } from '../domain/identity'
 import { knownWorkIds, listeningState, latestFeedback, timesHeard } from '../domain/listening'
 import type { ListenerPreferences, WeekMood } from '../domain/types'
 import { weeksBetween } from '../domain/week'
+import { whoPlays } from '../domain/concertSoloists'
 import { digestThread, type ThreadDigest } from './continuity'
 
 /**
@@ -159,8 +160,12 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   const concerts: CuratorContext['concerts'] = allConcerts
     .map((c) => ({
       venue: c.venue, date: c.date,
-      performers: [c.orchestra, c.conductor, ...c.soloists.map((s) => s.name)].filter(Boolean).join(', '),
-      works: c.works.map((w) => `${w.composer} — ${w.title}`),
+      performers: [c.orchestra, c.conductor].filter(Boolean).join(', '),
+      // Each work with the soloists who played in it — never the whole evening's list on every work.
+      works: c.works.map((w) => {
+        const who = whoPlays(c, w).map((s) => (s.instrument ? `${s.name}, ${s.instrument}` : s.name))
+        return `${w.composer} — ${w.title}${who.length ? ` (with ${who.join('; ')})` : ''}`
+      }),
       note: c.note,
       weeksAgo: weeksSince(`${c.date}T20:00:00Z`, week.startsOn),
     }))
