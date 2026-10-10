@@ -14,8 +14,10 @@ import { ThreadsScreen } from './screens/Threads'
 import { NotebookScreen } from './screens/Notebook'
 import { SettingsScreen } from './screens/Settings'
 import { ConcertScreen, ConcertsScreen } from './screens/Concerts'
+import { SeasonScreen } from './screens/Season'
 import type { Repo } from './store/repo'
 import type { CuratorClient } from './curation/api'
+import { useOnline } from './app/online'
 import s from './styles/editorial.module.css'
 
 const NAV: { route: Route; label: string }[] = [
@@ -28,8 +30,9 @@ const NAV: { route: Route; label: string }[] = [
 
 function Shell() {
   const route = useRoute()
+  const online = useOnline()
   const { week, settings } = useServices()
-  const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name === 'concerts' || route.name === 'concert' ? 'journal' : route.name
+  const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name === 'concerts' || route.name === 'concert' || route.name === 'season' ? 'journal' : route.name
   const navRef = useRef<HTMLElement>(null)
   const newer = useNewVersion()
   // The nav slides rather than wraps; keep the current section's tab in view.
@@ -69,10 +72,11 @@ function Shell() {
             A newer version of the app is ready. <button className={s.textButton} onClick={() => window.location.reload()}>Reload</button>
           </p>
         )}
+        {!online && <p className={s.offlineBar} role="status">Offline — everything here still reads; the curator, Spotify and Notion wait for a connection.</p>}
         {settings.demo && <p className={s.demo}>Demo curator — canned programmes, for development only</p>}
       </header>
       {route.name !== 'listen' && route.name !== 'settings' && <LandedPrompt />}
-      <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name === 'concert' ? route.id : route.name}>
+      <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name === 'concert' ? route.id : route.name === 'season' ? `season-${route.n}` : route.name}>
         {route.name === 'week' && <WeekScreen />}
         {route.name === 'programme' && <ProgrammeScreen id={route.id} />}
         {route.name === 'listen' && <ListenModeScreen programmeId={route.programmeId} itemId={route.itemId} />}
@@ -83,6 +87,7 @@ function Shell() {
         {route.name === 'settings' && <SettingsScreen />}
         {route.name === 'concerts' && <ConcertsScreen />}
         {route.name === 'concert' && <ConcertScreen id={route.id} />}
+        {route.name === 'season' && <SeasonScreen n={route.n} />}
       </main>
     </div>
   )

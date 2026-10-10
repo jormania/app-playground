@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateConcert,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateConcert, validateSeason,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -52,6 +52,7 @@ const LEADS = {
   compare: (p) => `The listener wants a second perspective on ${p.work?.composer} — ${p.work?.title}.`,
   resources: (p) => `Find resources for this week's programme, "${p.programme?.title}".`,
   concert: (p) => `Read this concert programme. If it shows no year, it is ${p.year}.`,
+  season: (p) => `Write the season in review for ${p.season?.label ?? 'these weeks'}${p.soFar ? ' — the season is still under way' : ''}.`,
   companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
 }
 
@@ -181,13 +182,15 @@ export async function curateProgramme(send, payload) {
   const returning = Boolean(payload.thread)
   // This week's mood moves the standing preferences a step for this week only.
   const preferences = weekAdjusted(payload.preferences ?? {}, payload.thisWeek)
-  // "More of this theme" is a companion, shorter than a week: size isn't checked against the week's length.
-  const sized = payload.extension ? { ...preferences, timePerWeek: undefined } : preferences
+  // "More of this theme" and a sitting for tonight are sized by themselves, not by the week's length.
+  const sized = payload.extension || payload.sitting ? { ...preferences, timePerWeek: undefined } : preferences
   const form = payload.option?.form ?? 'theme'
   const r = await withRetry(send, 'programme', payload, (o) => validateProgramme(o, { covered, returning, preferences: sized, form }))
   // An extension is a companion to the week, not sized by it: the variety rules
   // still hold, the length cap is the widest week's.
-  let value = enforceVariety(r.value, preferences, payload.extension ? { maxWorks: 16, form } : { form })
+  // A sitting is one evening: an hour holds three or four works at most, two hours five or six.
+  const sittingMax = payload.sitting ? (payload.sitting.hours === 1 ? 4 : 6) : undefined
+  let value = enforceVariety(r.value, preferences, sittingMax ? { maxWorks: sittingMax, form } : payload.extension ? { maxWorks: 16, form } : { form })
   let removedRepeats = 0
   if (r.repeats > 0) {
     const before = value.sections.reduce((n, s) => n + s.items.length, 0)
@@ -195,7 +198,8 @@ export async function curateProgramme(send, payload) {
     removedRepeats = before - value.sections.reduce((n, s) => n + s.items.length, 0)
   }
   const count = value.sections.reduce((n, s) => n + s.items.length, 0)
-  if (count < 3 || !value.title) throw new CuratorUnavailable('failed', 'The curator could not assemble a programme. Try again.')
+  // A sitting may be two long works; a week needs at least three.
+  if (count < (payload.sitting ? 2 : 3) || !value.title) throw new CuratorUnavailable('failed', 'The curator could not assemble a programme. Try again.')
   return { programme: value, removedRepeats, promptVersion: PROMPTS.programme.version, model: MODEL }
 }
 
@@ -290,6 +294,18 @@ export async function ping(send) {
   return { ok: true, model: message.model }
 }
 
+/**
+ * The season in review (Sonnet: a page of prose read once every twelve
+ * weeks, so the writing is worth it). One correction at most; the works it
+ * offers again are kept to those the listener met.
+ */
+export async function writeSeason(send, payload) {
+  const met = [...(payload.heard ?? []), ...(payload.started ?? [])].map((h) => ({ composer: h.composer, work: h.work }))
+  const r = await withRetry(send, 'season', payload, (o) => validateSeason(o, { met, soFar: Boolean(payload.soFar) }))
+  if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator could not write the season just now. Try again.')
+  return { ...r.value, promptVersion: PROMPTS.season.version }
+}
+
 export const JOBS = {
   ping,
   themes: generateThemes,
@@ -301,6 +317,7 @@ export const JOBS = {
   resources: findResources,
   companion: writeCompanion,
   concert: readConcert,
+  season: writeSeason,
 }
 
 /**

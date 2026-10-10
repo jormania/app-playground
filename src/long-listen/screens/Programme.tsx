@@ -16,6 +16,7 @@ import { usePlayerState } from '../app/playback'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { SittingCard } from '../components/SittingCard'
 import s from '../styles/editorial.module.css'
 
 interface Bundle {
@@ -160,7 +161,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   return (
     <article>
       <p className={s.eyebrow}>
-        {p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'} · {weekFromKey(p.weekKey).label}
+        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'} · {weekFromKey(p.weekKey).label}
       </p>
       {b.root && <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>}
       <h1 className={s.title}>{p.title}</h1>
@@ -361,7 +362,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const catalogue = catalogueLine(work?.catalogue ?? item.proposed.catalogue, item.proposed.composer)
 
   async function mark(kind: ListeningKind) {
-    await journey.markListening(item, kind, pid)
+    await journey.markListening({ ...item, recordingId: playedId }, kind, pid)
     bump()
   }
 
@@ -404,6 +405,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missing, comparison, spotify.connected, curatorReady])
   const standIn = comparison?.standIn ? comparison : undefined
+  // What is reacted to is the recording that plays: the stand-in's own, where Spotify lacks the curator's.
+  const playedId = standIn && !isConfirmed(recording) && standIn.perspectives[1] ? standIn.perspectives[1].recordingId : item.recordingId
 
   return (
     <div className={s.item} id={workAnchor(item.id)}>
@@ -452,15 +455,15 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
           </div>
           <input id={`knew-${item.id}`} type="checkbox" role="switch" className={s.switch} checked={knewIt} onChange={() => void toggleKnown()} />
         </div>
-        {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === item.recordingId || f.target.id === item.workId))) && (
+        {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === playedId || f.target.id === item.workId))) && (
           <div className={s.panelPart}>
             <FeedbackPanel
               key={`${item.id}-${state}`}
               programmeId={pid}
               feedback={b.feedback}
-              startOpen={state === 'heard' && !b.feedback.some((f) => f.target.id === item.recordingId)}
+              startOpen={state === 'heard' && !b.feedback.some((f) => f.target.id === playedId)}
               targets={[
-                { type: 'recording', id: item.recordingId, label: 'This recording' },
+                { type: 'recording', id: playedId, label: playedId === item.recordingId ? 'This recording' : 'The recording you heard' },
                 { type: 'work', id: item.workId, label: 'The work itself' },
               ]}
             />
@@ -784,6 +787,8 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
         <input id="more-wish" className={s.input} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} />
         <button className={s.outlineButton} onClick={() => void more()} disabled={extending}>{extending ? 'The curator is choosing more…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
       </div>
+
+      <SittingCard joinsThread />
 
       <div className={s.nextCard}>
         <h3 className={s.nextTitle}>A different direction this week</h3>

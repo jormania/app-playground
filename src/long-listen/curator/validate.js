@@ -398,10 +398,16 @@ export function validateConcert(out) {
     orchestra: opt(out?.orchestra),
     conductor: opt(out?.conductor),
     soloists: cleanSoloists(out?.soloists),
-    works: (Array.isArray(out?.works) ? out.works : [])
-      .map((w) => ({ composer: clean(w?.composer), title: clean(w?.title), catalogue: opt(w?.catalogue) }))
-      .filter((w) => w.composer && w.title),
+    works: [],
   }
+  // Who plays in each work: only names on the programme's own list of soloists.
+  const named = (n) => value.soloists.find((s) => fold(s.name) === fold(clean(n)))?.name
+  value.works = (Array.isArray(out?.works) ? out.works : [])
+    .map((w) => ({
+      composer: clean(w?.composer), title: clean(w?.title), catalogue: opt(w?.catalogue),
+      ...(Array.isArray(w?.soloists) && value.soloists.length ? { soloists: [...new Set(w.soloists.map(named).filter(Boolean))] } : {}),
+    }))
+    .filter((w) => w.composer && w.title)
   const problems = value.works.length ? [] : ['No works could be read.']
   return { value, problems }
 }
@@ -502,4 +508,29 @@ export function validateResources(parsed, searchResults) {
     })
   }
   return { value: { resources: resources.slice(0, 7) }, dropped }
+}
+
+/**
+ * The season in review: a title and an opening at the least; "again" only
+ * from works the listener actually met this season (anything else is dropped,
+ * never fixed by a second call).
+ * @param {any} out
+ * @param {{ met: { composer: string, work: string }[], soFar?: boolean }} ctx
+ */
+export function validateSeason(out, { met, soFar = false }) {
+  const problems = []
+  const mendable = []
+  const threads = (Array.isArray(out?.threads) ? out.threads : [])
+    .map((x) => ({ title: clean(x?.title), body: clean(x?.body) }))
+    .filter((x) => x.title && x.body)
+    .slice(0, 8)
+  const known = (a) => met.some((m) => sameWork({ composer: m.composer, title: m.work }, { composer: a.composer, title: a.work }))
+  const again = (Array.isArray(out?.again) ? out.again : [])
+    .map((a) => ({ composer: clean(a?.composer), work: clean(a?.work), why: clean(a?.why) }))
+    .filter((a) => a.composer && a.work && a.why && known(a))
+    .slice(0, soFar ? 2 : 4)
+  const value = { title: clean(out?.title), opening: clean(out?.opening), threads, taste: clean(out?.taste), open: clean(out?.open), again, closing: clean(out?.closing) }
+  if (!value.title) problems.push('The review has no title.')
+  if (!value.opening) problems.push('The review has no opening paragraph.')
+  return { value, problems, mendable }
 }

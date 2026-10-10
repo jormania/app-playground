@@ -148,6 +148,20 @@ export interface CompanionResponse {
   promptVersion: string
 }
 
+export interface SeasonReview {
+  title: string
+  opening: string
+  threads: { title: string; body: string }[]
+  taste: string
+  open: string
+  again: { composer: string; work: string; why: string }[]
+  closing: string
+}
+
+export interface SeasonResponse extends SeasonReview {
+  promptVersion: string
+}
+
 export interface ConcertResponse {
   venue: string
   hall?: string
@@ -156,7 +170,7 @@ export interface ConcertResponse {
   orchestra?: string
   conductor?: string
   soloists: { name: string; instrument?: string }[]
-  works: { composer: string; title: string; catalogue?: string }[]
+  works: { composer: string; title: string; catalogue?: string; soloists?: string[] }[]
   promptVersion: string
 }
 

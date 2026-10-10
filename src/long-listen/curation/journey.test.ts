@@ -509,3 +509,86 @@ describe('where next, within the week', () => {
     expect(c.calls.filter((x) => x.op === 'themes')[1].payload.alsoOfferedThisWeek).toEqual(['A', 'B', 'C'])
   })
 })
+
+describe('a sitting for tonight', () => {
+  it('with no programme this week, becomes the week’s programme and begins a thread named for the evening — with no directions paid for', async () => {
+    const c = fakeCurator({ programme: () => programme('A quiet evening', FRENCH) })
+    const j = journey(c.client)
+    const p = await j.sitting('quiet, nothing I know', 1)
+    expect(c.count('themes')).toBe(0)
+    expect(c.calls[0].payload.sitting).toEqual({ request: 'quiet, nothing I know', hours: 1 })
+    expect(p.sitting).toEqual({ request: 'quiet, nothing I know', hours: 1 })
+    const week = await repo.weeks.require('2026-W41')
+    expect(week.programmeId).toBe(p.id)
+    const theme = await repo.themes.require(p.themeId)
+    expect(theme.title).toBe('A quiet evening')
+  })
+
+  it('with a programme this week, joins its thread and is told what the thread has covered', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['French colour', 'B', 'C']),
+      programme: (_p, n) => (n === 1 ? programme('French colour', FRENCH) : programme('Tonight, further', FRENCH_AGAIN)),
+    })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    const first = await j.choose(w.optionIds[0])
+    const tonight = await j.sitting('something big', 2)
+    const call = c.calls.filter((x) => x.op === 'programme')[1]
+    expect(call.payload.sitting).toEqual({ request: 'something big', hours: 2 })
+    expect(call.payload.thread.covered.works.length).toBeGreaterThan(0)
+    expect(tonight.extends).toBe(first.id)
+    expect(tonight.themeId).toBe(first.themeId)
+    const ex = await repo.explorations.require(first.explorationId)
+    expect(ex.extraProgrammeIds).toContain(tonight.id)
+    // The week's programme is still the one chosen.
+    expect((await repo.weeks.require('2026-W41')).programmeId).toBe(first.id)
+  })
+})
+
+describe('reactions filed under a recording that was never heard', () => {
+  it('move to the stand-in that played in its place, once', async () => {
+    await repo.recordings.put({ id: 'rec-boult', workId: 'w-rvw6', soloistIds: [], character: [], verification: 'not-found' })
+    await repo.recordings.put({ id: 'rec-brabbins', workId: 'w-rvw6', soloistIds: [], character: [], verification: 'verified', spotify: { albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ['t'], trackUris: ['u'], confidence: 'strong', matchedAt: 'x' } })
+    await repo.comparisons.put({
+      id: 'cmp:p1:i1', workId: 'w-rvw6', framing: '', whyBoth: '', origin: 'on-request', standIn: true, createdAt: 'x',
+      perspectives: [
+        { recordingId: 'rec-boult', proposed: { composer: 'Ralph Vaughan Williams', work: 'Symphony No. 6', conductor: 'Sir Adrian Boult', soloists: [] }, character: '' },
+        { recordingId: 'rec-brabbins', proposed: { composer: 'Ralph Vaughan Williams', work: 'Symphony No. 6', conductor: 'Martyn Brabbins', soloists: [] }, character: '' },
+      ],
+    })
+    await repo.feedback.put({ id: 'fb1', at: 'x', target: { type: 'recording', id: 'rec-boult' }, reaction: 'interesting', note: 'It was a good listen.' })
+    await repo.feedback.put({ id: 'fb2', at: 'x', target: { type: 'work', id: 'w-rvw6' }, note: 'The work itself.' })
+    const j = journey(fakeCurator({}).client)
+    expect(await j.repairStandInFeedback()).toBe(1)
+    expect((await repo.feedback.require('fb1')).target).toEqual({ type: 'recording', id: 'rec-brabbins' })
+    expect((await repo.feedback.require('fb2')).target.id).toBe('w-rvw6')
+    expect(await j.repairStandInFeedback()).toBe(0)
+  })
+})
+
+describe('the season in review', () => {
+  const review = { title: 'Colour', opening: 'O', threads: [], taste: '', open: '', again: [], closing: '', promptVersion: 'season@test' }
+  it('offers the season under way once two weeks are behind it, and writes its "so far" once a week', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['French colour', 'B', 'C']),
+      programme: () => programme('French colour', FRENCH),
+      season: () => review,
+    })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    await j.choose(w.optionIds[0])
+    // One week in: nothing to read yet.
+    expect(await j.seasons()).toEqual([])
+    // A week earlier, the journey had already begun.
+    const first = await repo.weeks.require('2026-W41')
+    await repo.weeks.put({ ...first, weekKey: '2026-W40' })
+    const list = await j.seasons()
+    expect(list.map((x) => [x.number, x.complete, x.weeksSoFar])).toEqual([[1, false, 2]])
+    expect((await j.seasonReview(1)).review).toBeUndefined()
+    await j.writeSeasonReview(1)
+    await j.writeSeasonReview(1)
+    expect(c.count('season')).toBe(1)
+    expect(c.calls.find((x) => x.op === 'season')!.payload.soFar).toBe(true)
+    expect((await j.seasonReview(1)).review?.title).toBe('Colour')
+  })
+})

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
  *   #/threads           themes as threads, and paths still open
  *   #/notebook          taste, questions, notes to the curator
  *   #/concerts          concerts heard live; #/concerts/new to add one, #/concerts/<id> one concert
+ *   #/season/<n>        a season in review (twelve weeks)
  *   #/settings          (#/listening, the old journal address, still works)
  */
 export type Route =
@@ -23,6 +24,7 @@ export type Route =
   | { name: 'notebook' }
   | { name: 'concerts' }
   | { name: 'concert'; id: string }
+  | { name: 'season'; n: number }
   | { name: 'settings' }
 
 export function parseRoute(hash: string): Route {
@@ -37,6 +39,7 @@ export function parseRoute(hash: string): Route {
     case 'threads': return { name: 'threads' }
     case 'notebook': return { name: 'notebook' }
     case 'concerts': return arg ? { name: 'concert', id: decodeURIComponent(arg) } : { name: 'concerts' }
+    case 'season': return Number(arg) >= 1 ? { name: 'season', n: Math.floor(Number(arg)) } : { name: 'journal' }
     case 'settings': return { name: 'settings' }
     default: return { name: 'week' }
   }
@@ -45,6 +48,7 @@ export function parseRoute(hash: string): Route {
 export function href(r: Route): string {
   if (r.name === 'programme') return `#/p/${encodeURIComponent(r.id)}`
   if (r.name === 'concert') return `#/concerts/${encodeURIComponent(r.id)}`
+  if (r.name === 'season') return `#/season/${r.n}`
   if (r.name === 'listen') return `#/listen/${encodeURIComponent(r.programmeId)}/${encodeURIComponent(r.itemId)}`
   return r.name === 'week' ? '#/' : `#/${r.name}`
 }

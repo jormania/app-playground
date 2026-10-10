@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, validateSeason } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -73,5 +73,37 @@ describe('works with a soloist', () => {
     expect(needsSoloists('Concerto grosso in D, Op. 6 No. 4')).toBe(false)
     expect(needsSoloists('Symphony No. 5')).toBe(false)
     expect(needsSoloists('Tapiola')).toBe(false)
+  })
+})
+
+describe('validateSeason', () => {
+  const met = [{ composer: 'Claude Debussy', work: 'La mer' }]
+  it('keeps only works actually met among those worth hearing again, two while the season is under way', () => {
+    const again = [
+      { composer: 'Claude Debussy', work: 'La Mer', why: 'a' },
+      { composer: 'Maurice Ravel', work: 'Boléro', why: 'never offered' },
+    ]
+    const r = validateSeason({ title: 'T', opening: 'O', threads: [], again }, { met })
+    expect(r.problems).toEqual([])
+    expect(r.value.again.map((a) => a.work)).toEqual(['La Mer'])
+    const soFar = validateSeason({ title: 'T', opening: 'O', again: [again[0], again[0], again[0]] }, { met, soFar: true })
+    expect(soFar.value.again).toHaveLength(2)
+  })
+  it('needs a title and an opening', () => {
+    expect(validateSeason({}, { met }).problems).toHaveLength(2)
+  })
+})
+
+describe('validateConcert — soloists per work', () => {
+  it('keeps, for each work, only names on the programme’s own list', () => {
+    const r = validateConcert({
+      venue: 'Ateneul Român', date: '2026-10-08', soloists: [{ name: 'Andrei Ioniță', instrument: 'cello' }, { name: 'Alexandra Conunova', instrument: 'violin' }],
+      works: [
+        { composer: 'Johannes Brahms', title: 'Double Concerto', soloists: ['Alexandra Conunova', 'andrei ionita', 'Someone Else'] },
+        { composer: 'Anatol Vieru', title: 'Cello Concerto', soloists: ['Andrei Ioniță'] },
+        { composer: 'Felix Mendelssohn', title: 'Symphony No. 3', soloists: [] },
+      ],
+    })
+    expect(r.value.works.map((w) => w.soloists)).toEqual([['Alexandra Conunova', 'Andrei Ioniță'], ['Andrei Ioniță'], []])
   })
 })

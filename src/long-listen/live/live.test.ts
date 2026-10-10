@@ -41,4 +41,13 @@ describe('live in Bucharest', () => {
     await liveEvents(marks, fetchImpl as unknown as typeof fetch, new Date('2026-10-11T11:00:00Z'))
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
+
+  it('offline, keeps the last reading however old, rather than losing the line', async () => {
+    const store = new Map<string, { id: string; at: string; value?: unknown }>([['live:scan', { id: 'live:scan', at: '2026-10-01T10:00:00Z', value: [{ venue: 'Sala Radio', title: 'T', date: '2026-11-20' }] }]])
+    const marks = { get: async (id: string) => store.get(id), put: async (m: { id: string; at: string; value?: unknown }) => { store.set(m.id, m) } }
+    const offline = vi.fn(async () => { throw new TypeError('Failed to fetch') })
+    expect(await liveEvents(marks, offline as unknown as typeof fetch, new Date('2026-10-10T10:00:00Z'))).toEqual([{ venue: 'Sala Radio', title: 'T', date: '2026-11-20' }])
+    store.clear()
+    await expect(liveEvents(marks, offline as unknown as typeof fetch, new Date('2026-10-10T10:00:00Z'))).rejects.toThrow()
+  })
 })

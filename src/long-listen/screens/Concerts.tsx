@@ -10,6 +10,7 @@ import { spotifyCandidates, type SpotifyCandidate } from '../spotify/verify'
 import { resizePhoto } from '../../shared/photo'
 import { Empty, Problem, Waiting, messageOf } from '../components/common'
 import { Credits } from '../components/Credits'
+import { unplaced, whoPlays } from '../domain/concertSoloists'
 import s from '../styles/editorial.module.css'
 
 /** Where a picture shared to the app waits for this screen (public/long-listen-sw.js puts it there). */
@@ -52,9 +53,12 @@ export function ConcertsScreen() {
               <li key={c.id} className={s.journalConcert}>
                 {/* The evening as the title, the works one to a line beneath: never one long run-on link. */}
                 <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{concertDate(c.date)}{c.hall ? ` · ${c.hall}` : ''}</a>
-                <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
+                <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} />
                 <ul className={s.concertWorkList}>
-                  {c.works.map((w, i) => <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em></li>)}
+                  {c.works.map((w, i) => {
+                    const who = whoPlays(c, w)
+                    return <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em>{who.length > 0 && <span className={s.faint}> · {who.map((x) => x.name).join(', ')}</span>}</li>
+                  })}
                 </ul>
                 {c.note && <p className={s.said}><q>{c.note}</q></p>}
               </li>
@@ -81,7 +85,7 @@ export function ConcertScreen({ id }: { id: string }) {
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
       <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Heard live · {c.venue}{c.hall ? `, ${c.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{concertDate(c.date)}{c.time ? `, ${c.time}` : ''}</h1>
-      <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} className={s.dek} />
+      <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} className={s.dek} />
       {c.note && <p className={s.said}><q>{c.note}</q></p>}
 
       <ol className={s.concertWorks}>
@@ -104,13 +108,15 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
   const { spotify, say } = useServices()
   const [found, setFound] = useState<SpotifyCandidate[] | null>(null)
   const [looking, setLooking] = useState(false)
-  const performers = [c.conductor, c.orchestra, ...c.soloists.map((x) => x.name)].filter((x): x is string => Boolean(x))
+  // Only the soloists who played this work: the evening's cellist is no clue to its symphony's recordings.
+  const soloists = whoPlays(c, w)
+  const performers = [c.conductor, c.orchestra, ...soloists.map((x) => x.name)].filter((x): x is string => Boolean(x))
   const theirs = (cand: SpotifyCandidate) => performers.some((p) => cand.artists.some((a) => fold(a).includes(surname(p))))
 
   async function look() {
     setLooking(true)
     try {
-      const list = await spotifyCandidates(spotify, { composer: w.composer, work: w.title, catalogue: w.catalogue, conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }, 8)
+      const list = await spotifyCandidates(spotify, { composer: w.composer, work: w.title, catalogue: w.catalogue, conductor: c.conductor, orchestra: c.orchestra, soloists }, 8)
       // Their own recording first, then the rest, at most three in all.
       setFound([...list.filter(theirs).slice(0, 1), ...list.filter((x) => !theirs(x))].slice(0, 3))
     } catch (e) {
@@ -123,6 +129,7 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
   return (
     <li>
       <p className={s.libraryTitle}>{w.composer} — {w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
+      <Credits r={{ soloists }} />
       {found === null ? (
         spotify.connected
           ? <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
@@ -168,7 +175,7 @@ async function asImage(file: Blob): Promise<{ mediaType: string; data: string }>
  */
 function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => void }) {
   const { journey, curatorReady, bump, say } = useServices()
-  const [d, setD] = useState<ConcertDraft>(concert ? { ...concert, works: concert.works.map(({ composer, title, catalogue }) => ({ composer, title, catalogue })) } : EMPTY)
+  const [d, setD] = useState<ConcertDraft>(concert ? { ...concert, works: concert.works.map(({ composer, title, catalogue, soloists }) => ({ composer, title, catalogue, soloists })) } : EMPTY)
   const [reading, setReading] = useState(false)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -224,7 +231,22 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
 
   const set = (patch: Partial<ConcertDraft>) => setD((x) => ({ ...x, ...patch }))
   const setWork = (i: number, patch: Partial<ConcertDraft['works'][number]>) => set({ works: d.works.map((w, j) => (j === i ? { ...w, ...patch } : w)) })
-  const setSoloist = (i: number, patch: Partial<ConcertDraft['soloists'][number]>) => set({ soloists: d.soloists.map((x, j) => (j === i ? { ...x, ...patch } : x)) })
+  // A soloist renamed keeps their place in the works they play.
+  const setSoloist = (i: number, patch: Partial<ConcertDraft['soloists'][number]>) => {
+    const was = d.soloists[i]?.name
+    const renamed = patch.name !== undefined && patch.name !== was
+    set({
+      soloists: d.soloists.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+      ...(renamed ? { works: d.works.map((w) => (w.soloists ? { ...w, soloists: w.soloists.map((n) => (n === was ? patch.name! : n)) } : w)) } : {}),
+    })
+  }
+  const named = d.soloists.filter((x) => x.name.trim())
+  // Who plays in a work: as said, or as judged from the titles until the listener says otherwise.
+  const playing = (w: ConcertDraft['works'][number]) => whoPlays({ soloists: named, works: d.works }, w).map((x) => x.name)
+  const toggle = (i: number, name: string) => {
+    const now = playing(d.works[i])
+    setWork(i, { soloists: now.includes(name) ? now.filter((n) => n !== name) : [...now, name] })
+  }
 
   return (
     <div>
@@ -251,6 +273,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
         <label className={s.field}><span>Conductor</span><input className={s.input} value={d.conductor ?? ''} onChange={(e) => set({ conductor: e.target.value })} /></label>
 
         <p className={s.label}>Soloists</p>
+        {named.length > 0 && <p className={`${s.settingHint} ${s.flush}`}>Under each work, mark who plays in it — a soloist rarely plays the whole evening.</p>}
         {d.soloists.map((x, i) => (
           <div key={i} className={s.fieldRow}>
             <input className={s.input} aria-label="Soloist" value={x.name} onChange={(e) => setSoloist(i, { name: e.target.value })} placeholder="Name" />
@@ -268,6 +291,14 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
             <input className={s.input} aria-label="Composer" value={w.composer} onChange={(e) => setWork(i, { composer: e.target.value })} placeholder="Composer" />
             <input className={s.input} aria-label="Catalogue" value={w.catalogue ?? ''} onChange={(e) => setWork(i, { catalogue: e.target.value })} placeholder="Op." />
             <input className={`${s.input} ${s.workTitleInput}`} aria-label="Work" value={w.title} onChange={(e) => setWork(i, { title: e.target.value })} placeholder="Work" />
+            {named.length > 0 && (
+              <div className={`${s.chipRow} ${s.workSoloists}`} role="group" aria-label={`Who plays in work ${i + 1}`}>
+                {named.map((x) => {
+                  const on = playing(w).includes(x.name)
+                  return <button key={x.name} type="button" aria-pressed={on} className={`${s.chip} ${on ? s.chipOn : ''}`} onClick={() => toggle(i, x.name)}>{x.name.split(' ').slice(-1)[0]}</button>
+                })}
+              </div>
+            )}
             {d.works.length > 1 && <button type="button" className={`${s.textButton} ${s.workRemove}`} onClick={() => set({ works: d.works.filter((_, j) => j !== i) })} aria-label={`Remove work ${i + 1}`}>Remove</button>}
           </div>
         ))}

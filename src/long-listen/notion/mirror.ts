@@ -6,6 +6,7 @@ import type { Repo } from '../store/repo'
 import { notionProxy } from '../../shared/notionClient'
 import type { ListenerPreferences } from '../domain/types'
 import { observationsByStance } from '../curation/taste'
+import { whoPlays } from '../domain/concertSoloists'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 
 /**
@@ -613,7 +614,7 @@ export function concertProps(c: Concert) {
     Date: { date: { start: c.date } },
     Venue: textProp([c.venue, c.hall].filter(Boolean).join(', ')),
     Performers: textProp([c.orchestra, c.conductor, ...c.soloists.map((s) => (s.instrument ? `${s.name} (${s.instrument})` : s.name))].filter(Boolean).join('; ')),
-    Works: textProp(c.works.map((w) => `${w.composer} — ${w.title}${w.catalogue ? `, ${w.catalogue}` : ''}`).join('; ')),
+    Works: textProp(c.works.map((w) => { const who = whoPlays(c, w); return `${w.composer} — ${w.title}${w.catalogue ? `, ${w.catalogue}` : ''}${who.length ? ` (with ${who.map((s) => s.name).join(', ')})` : ''}` }).join('; ')),
     Notes: textProp(c.note ?? ''),
   }
 }

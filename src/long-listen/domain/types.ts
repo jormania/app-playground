@@ -233,7 +233,11 @@ export interface Concert {
   conductor?: string
   soloists: { name: string; instrument?: string }[]
   /** In the order they were played. */
-  works: { workId: string; composer: string; title: string; catalogue?: string }[]
+  works: {
+    workId: string; composer: string; title: string; catalogue?: string
+    /** The soloists (by name) who play in this work — [] for one without a solo part. Absent on older concerts: see domain/concertSoloists. */
+    soloists?: string[]
+  }[]
   /** A line on how it was. */
   note?: string
   source: 'screenshot' | 'typed'
@@ -319,6 +323,12 @@ export interface Comparison {
   createdAt: Instant
 }
 
+/** "A sitting for tonight": what the listener asked for, and how long they have. */
+export interface Sitting {
+  request: string
+  hours: 1 | 2
+}
+
 export interface Programme {
   id: string
   weekKey: WeekKey
@@ -335,6 +345,8 @@ export interface Programme {
   continuityNote?: string
   /** Set on "more of this theme": the week's programme this one continues. */
   extends?: string
+  /** A sitting for tonight: one evening's music asked for on the day — the listener's words and the hours they have. */
+  sitting?: Sitting
   sections: ProgrammeSection[]
   comparisonIds: string[]
   createdAt: Instant

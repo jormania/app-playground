@@ -483,6 +483,9 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
   (see §13), plus: skipped works hidden everywhere (a setting, on by default),
   brighter small headings, and each work opening on an accent-edged card with
   a slim line pinned on top while you read inside it.
+- **Release three — 10 October 2026.** Roadmap items 14, 15 and 22 (see §14),
+  plus soloists placed per work at a concert, and reactions moved to the
+  stand-in that actually played.
 
 ## 13. Release two
 
@@ -558,3 +561,46 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
 Prompts at the end of release two: themes@2026-10-10.3, programme@2026-10-10.5,
 explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.2.
 
+## 14. Release three
+
+- **A sitting for tonight** (`components/SittingCard.tsx`, `Journey.sitting`).
+  One or two hours asked for on the day, in words ("quiet, nothing I know").
+  With a programme this week it joins that thread, like "more of this theme",
+  and is told what the thread has covered; with none, it becomes the week's
+  programme and starts a thread named for the evening. It never pays for the
+  week's three directions. Sized by the hours (at most four works for an hour,
+  six for two, never fewer than two). Offered on This week and under "Where
+  next" on the programme.
+- **Season in review** (`domain/season.ts`, `curation/season.ts`,
+  `screens/Season.tsx`, prompt `season`). Twelve listening weeks, counted from
+  the first week with anything in it. When a season ends the curator writes one
+  page: the threads, where taste moved, what is still open, and up to four
+  works worth hearing again — only works actually met, enforced by the
+  validator. Before then, once two weeks are behind it, a provisional "so far"
+  (two works at most), rewritten at most once a week. Asked for by a button,
+  never on its own; cached in `marks` (`season:<n>`, or
+  `season:<n>:sofar:<week>`). Linked from the Journal.
+- **Offline.** Checked against a production build with the network cut: every
+  screen and an already-made programme open and read; curator calls say they're
+  offline; Spotify verification never marks a recording missing for want of a
+  connection, and an offline token refresh doesn't sign you out. Fixed: a line
+  under the sections says when the app is offline; Notion's mirror and the
+  Spotify listening check wait for the connection instead of failing (and run
+  when it returns); the "Live in Bucharest" line keeps its last reading
+  however old rather than vanishing.
+- **Soloists per work at a concert** (`domain/concertSoloists.ts`). A
+  programme lists its soloists once, but they seldom play the whole evening.
+  Each concert work now keeps who played in it: the reader is told never to
+  give every soloist to every work, the form has a chip per soloist under each
+  work, and older concerts are judged from the titles (no solo part → none; a
+  concerto naming an instrument → its players; any other concerto → all). The
+  concert page, the list, the Library's "heard live", the Notion row, the
+  curator's context and the Spotify search all use it — so the cellist is no
+  longer a clue to the symphony's recordings.
+- **Reactions on the recording that played.** Where Spotify lacked the
+  curator's recording and a stand-in played, the programme page now files
+  reactions under the stand-in; a one-time repair
+  (`Journey.repairStandInFeedback`) moved earlier ones.
+
+Prompts at the end of release three: themes@2026-10-10.3, programme@2026-10-10.6,
+explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.3, season@2026-10-10.1.

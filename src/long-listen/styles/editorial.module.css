@@ -2482,3 +2482,24 @@
 .libraryRecs:empty {
   display: none;
 }
+
+/* A season's "worth hearing again": each work on the accent edge, every line alike. */
+.threadFacts .againItem.againItem {
+  color: var(--color-ink);
+  font-weight: 400;
+}
+
+/* The concert form: under a work, who of the evening's soloists plays in it. */
+.workSoloists {
+  grid-column: 2 / 4;
+  margin: 0;
+}
+
+/* Offline: one quiet line under the sections, gone when the connection returns. */
+.offlineBar {
+  margin: var(--space-xs) 0 0;
+  padding-left: var(--space-xs);
+  border-left: 3px solid var(--color-accent);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}

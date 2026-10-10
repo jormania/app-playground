@@ -1,5 +1,5 @@
 import type {
-  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
 } from '../curation/api'
 import { CuratorUnavailable } from '../curation/api'
 
@@ -118,6 +118,8 @@ export function demoCurator(): CuratorClient {
         }
         case 'programme': {
           // "More of this theme" in the demo: the other canned programme, as a continuation.
+          // A sitting for tonight in the demo: the canned colour programme, named for the evening.
+          if (payload?.sitting) return { ...COLOUR, programme: { ...COLOUR.programme, title: 'A quiet evening of colour', dek: `Asked for: ${payload.sitting.request || 'an evening'}.`, comparisons: [] } } as T
           const base = payload?.extension
             ? { ...AFTER_THE_WAR, programme: { ...AFTER_THE_WAR.programme, title: `More: ${AFTER_THE_WAR.programme.title}`, continuityNote: 'Carrying on from where the week began.' } }
             : /war/i.test(payload?.option?.title ?? '') ? AFTER_THE_WAR : COLOUR
@@ -140,9 +142,9 @@ export function demoCurator(): CuratorClient {
             orchestra: 'Orchestra Filarmonicii George Enescu', conductor: 'Gabriel Bebeșelea',
             soloists: [{ name: 'Alexandra Conunova', instrument: 'violin' }, { name: 'Andrei Ioniță', instrument: 'cello' }],
             works: [
-              { composer: 'George Enescu', title: 'Romanian Rhapsody No. 1', catalogue: 'Op. 11' },
-              { composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' },
-              { composer: 'Jean Sibelius', title: 'Symphony No. 2', catalogue: 'Op. 43' },
+              { composer: 'George Enescu', title: 'Romanian Rhapsody No. 1', catalogue: 'Op. 11', soloists: [] },
+              { composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102', soloists: ['Alexandra Conunova', 'Andrei Ioniță'] },
+              { composer: 'Jean Sibelius', title: 'Symphony No. 2', catalogue: 'Op. 43', soloists: [] },
             ],
             promptVersion: 'demo',
           } satisfies ConcertResponse as T
@@ -154,6 +156,17 @@ export function demoCurator(): CuratorClient {
             })),
             promptVersion: 'demo',
           } satisfies CompanionResponse as T
+        case 'season':
+          return {
+            title: payload?.soFar ? 'Colour, so far' : 'A season of colour',
+            opening: 'Demo: these weeks began with the orchestra as a painter’s palette, and kept returning to it — the French first, then the Russians who learned from them.',
+            threads: [{ title: 'Colour as form', body: 'Demo: from Debussy’s La mer to Ravel’s Daphnis, the thread asked whether colour can carry an argument on its own. You leaned towards yes.' }],
+            taste: 'Demo: transparent, analytical recordings held you more than the sumptuous ones.',
+            open: 'Demo: the Russians are waiting — Rimsky-Korsakov taught Stravinsky most of this.',
+            again: (payload?.heard ?? []).slice(0, 2).map((h: { composer: string; work: string }) => ({ composer: h.composer, work: h.work, why: 'Demo: it will sound different after everything since.' })),
+            closing: 'Demo: a season of listening for the surface, and finding it went all the way down.',
+            promptVersion: 'demo',
+          } satisfies SeasonResponse as T
         default:
           throw new CuratorUnavailable('failed', 'The demo curator doesn’t know that request.')
       }
