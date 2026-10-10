@@ -4,8 +4,7 @@ import { useLoad, useServices } from '../app/services'
 import { beginSignIn, redirectUriFor, renewBy } from '../spotify/auth'
 import { isValidTimeZone } from '../domain/week'
 import { DEFAULT_PREFERENCES, type ListenerPreferences } from '../domain/types'
-import type { DuskChoice, ThemeChoice } from '../app/settings'
-import { DUSK_KEYS, DUSK_SHADES, duskTally } from '../app/theme'
+import type { ThemeChoice } from '../app/settings'
 import { GUIDE_URL, STARTER_TEMPLATE_URL } from '../app/links'
 import { messageOf } from '../components/common'
 import { LevelScale } from '../components/LevelScale'
@@ -119,10 +118,6 @@ export function SettingsScreen() {
             <SegmentedControl size="sm" className={s.compactTrack} label="Theme" value={settings.theme} onChange={(v) => updateSettings({ theme: v as ThemeChoice })}
               options={[{ value: 'system', label: 'Device' }, { value: 'light', label: 'Day' }, { value: 'dark', label: 'Night' }]} />
           </Setting>
-          <Setting label="Listening view" hint={<DuskTallyLine />}>
-            <SegmentedControl size="sm" className={s.compactTrack} label="Listening view" value={settings.dusk} onChange={(v) => updateSettings({ dusk: v as DuskChoice })}
-              options={[{ value: 'rotate', label: 'Rotate' }, ...DUSK_KEYS.map((k) => ({ value: k, label: DUSK_SHADES[k].name.split(' ')[0] }))]} />
-          </Setting>
           <Setting label="Text size">
             <SegmentedControl size="sm" className={s.compactTrack} label="Text size" value={settings.textSize} onChange={(v) => updateSettings({ textSize: v as 'standard' | 'large' })}
               options={[{ value: 'standard', label: 'Standard' }, { value: 'large', label: 'Larger' }]} />
@@ -164,14 +159,6 @@ export function SettingsScreen() {
       </Part>
     </div>
   )
-}
-
-/** How the four listening shades have fared so far: shown, and liked. */
-function DuskTallyLine() {
-  const t = duskTally()
-  const any = DUSK_KEYS.some((k) => t[k].shown)
-  if (!any) return <>Rotate shows one of four dark shades at random each time you open a work’s listening view.</>
-  return <>So far — {DUSK_KEYS.map((k) => `${DUSK_SHADES[k].name}: shown ${t[k].shown}, liked ${t[k].liked}`).join(' · ')}.</>
 }
 
 /** What Claude has cost on this device this month, from Anthropic's own usage figures. */

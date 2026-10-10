@@ -5,7 +5,7 @@ import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
-import { applyDusk, chooseDusk, recordDusk } from '../app/theme'
+import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { usePlayback } from '../app/playback'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
@@ -53,19 +53,17 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }, [programmeId, itemId])
   useWakeLock(true)
 
-  // Dusk while this screen is open: a dark shade with light text, chosen afresh on each visit while the owner decides.
-  const { settings } = useServices()
-  // Chosen once per visit (a change in Settings shows on the next one), counted once, applied while open —
-  // and only once there is a work to show: a dead link is not a visit, and its message reads on the paper.
-  const [shade] = useState(() => chooseDusk(settings.dusk))
-  const [duskChoice] = useState(settings.dusk)
-  const counted = useRef(false)
+  // Dusk while this screen is open: one of four dark shades, at random each visit (never last visit's).
+  // Chosen once per visit, remembered once, applied while open — and only once there is a work to show:
+  // a dead link is not a visit, and its message reads on the paper.
+  const [shade] = useState(() => chooseDusk())
+  const remembered = useRef(false)
   const loaded = Boolean(data)
   useEffect(() => {
     if (!loaded) return
-    if (!counted.current) { counted.current = true; recordDusk(shade, duskChoice) }
+    if (!remembered.current) { remembered.current = true; rememberDusk(shade) }
     return applyDusk(shade)
-  }, [shade, duskChoice, loaded])
+  }, [shade, loaded])
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
   // A single-track work the app watched play to its end is heard: recorded as the app's word (the

@@ -280,8 +280,11 @@ it's paused, with a line beneath: "Playing on Galaxy S24 · movement 2 of 4".
 The listening view marks the movement (now / paused) and a tap on a movement
 plays from it; the running order tags the work that's on. A track Spotify
 relinked for the market is known by `linked_from`. A 403 says to reconnect.
-The listening view is dusk-toned whatever the theme (`:root[data-listening]`),
-its screen kept awake with the shared `useWakeLock`.
+The listening view is dusk-toned whatever the theme (`:root[data-listening]`):
+one of four dark shades at random on each visit, never the last one shown.
+There is no setting for it and no count of shades shown or liked (both removed
+2026-10-10 at the owner's request). Its screen is kept awake with the shared
+`useWakeLock`.
 
 **Sign-in lifecycle.** The PKCE callback is validated: state must match, the
 verifier is single-use, and sign-ins older than 15 minutes are refused. The
@@ -648,4 +651,4 @@ are kept in `src/long-listen/__audit__/` as regression tests. What changed:
   page can't be paid for before two weeks; Library search finds concert
   performers and catalogue numbers; the Journal names a sitting and a path taken
   from an earlier week; double taps record once; curator text inputs are capped
-  at 500 characters; the dusk tally counts only while rotating.
+  at 500 characters.
