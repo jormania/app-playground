@@ -1884,16 +1884,20 @@
   color: var(--color-muted);
 }
 
+/* Input and Ask share one edge top and bottom: stretched to the same height
+   (the input grows with large text, the small button would not), and the
+   input's stacked-form margins dropped, which pushed it below the button. */
 .askRow {
   display: flex;
   gap: var(--space-xs);
-  align-items: center;
+  align-items: stretch;
   margin: var(--space-xs) 0;
 }
 
 .askRow .input {
   flex: 1;
   min-width: 0;
+  margin: 0;
 }
 
 /* Live in Bucharest: one quiet line under the programme's tools. */
