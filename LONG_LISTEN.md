@@ -277,6 +277,11 @@ end (else every 15 s), so the next movement is marked within seconds. Every
 listen bar (`components/ListenBar.tsx`, on the programme and the listening
 view) turns Play into **Pause** while its recording plays and **Resume** while
 it's paused, with a line beneath: "Playing on Galaxy S24 · movement 2 of 4".
+A work Spotify has finished is at rest, not paused (`positionOf` in
+`app/playback.ts`): stopped on its last movement at the close or the start,
+or — a list played to its end — back on the first movement at 0:00, paused.
+There it offers Play, and the running order tags nothing (until 2026-10-10 it
+read "Resume · paused, movement 1 of 6" after a whole serenade).
 The listening view marks the movement (now / paused) and a tap on a movement
 plays from it; the running order tags the work that's on. A track Spotify
 relinked for the market is known by `linked_from`. A 403 says to reconnect.
@@ -332,7 +337,12 @@ reload mid-work forgets. What can't be seen: a work started and finished
 entirely while the app was closed or in the background is left to the
 listener's "I've heard it". On the listening view it opens the same
 panel as "I've heard it". Works in movements are left to Spotify's history,
-so a hearing is never counted twice. A session is recorded once: a later poll that sees
+so a hearing is never counted twice — but the history is read the moment one
+stops, not only on the next open: when a reading shows a confirmed work in
+movements no longer sounding (paused, stopped, rewound at the list's end, or
+left for something else), `HeardWitness` reads it 5 s later and again at a
+minute, for the last movement to reach Spotify's list. Before 2026-10-10 a
+work heard with the app open stayed "Started" until the app was next opened. A session is recorded once: a later poll that sees
 the same session, even after its first plays have scrolled out of the fifty,
 only upgrades a partial to heard. Polls are one at a time. Spotify's events
 are placed at the time of the play, so a reset the listener made after it

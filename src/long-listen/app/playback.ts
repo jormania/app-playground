@@ -12,10 +12,36 @@ import { messageOf } from '../components/common'
  */
 const witness = new Witness()
 const heardListeners = new Set<(trackIds: string[]) => void>()
+const readingListeners = new Set<(np: NowPlaying | null) => void>()
 
 function observe(np: NowPlaying | null, at: number) {
   const heard = witness.observe({ np, at })
   if (heard.length) for (const l of heardListeners) l(heard)
+  for (const l of readingListeners) l(np)
+}
+
+/** Told every real reading of the player (never the optimistic state shown the moment a command is sent). */
+export function onPlayerReading(listener: (np: NowPlaying | null) => void): () => void {
+  readingListeners.add(listener)
+  return () => { readingListeners.delete(listener) }
+}
+
+/**
+ * Where a recording stands on Spotify, if anywhere worth resuming from. A work
+ * Spotify has finished is at rest, not paused: it stops on the last movement
+ * (at its close, or rewound to its start), or — having played a list to its
+ * end — goes back to the first and holds it at 0:00. Resume there would only
+ * be Play from the top, so neither counts as a place: Play is offered, and
+ * nothing is marked paused.
+ */
+export function positionOf(np: NowPlaying | null, trackIds: string[]): { index: number; playing: boolean } | null {
+  const seen = playbackOf(np, trackIds)
+  if (!seen || !np || np.isPlaying) return seen
+  const atClose = np.durationMs > 0 && np.durationMs - np.progressMs < 4000
+  const atStart = np.progressMs < 2000
+  if (seen.index === trackIds.length - 1 && (atStart || atClose)) return null
+  if (seen.index === 0 && atStart) return null
+  return seen
 }
 
 /** Told the track ids the witness saw played end to end. */
@@ -77,14 +103,8 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
 
   const [busy, setBusy] = useState(false)
   const [noDevice, setNoDevice] = useState(false)
-  const seen = spotify.connected && trackIds?.length ? playbackOf(state.np, trackIds) : null
-  // A work that has played to its end: Spotify stops on the last movement, at
-  // its close or rewound to the start. That is finished, not paused — Play
-  // starts it again from the top, rather than Resume replaying one movement.
-  const np = state.np
-  const finished = Boolean(seen && trackIds && np && !np.isPlaying && seen.index === trackIds.length - 1 &&
-    (np.progressMs === 0 || (np.durationMs > 0 && np.durationMs - np.progressMs < 4000)))
-  const at = finished ? null : seen
+  // A finished work is at rest, not paused (positionOf): Play starts it again from the top.
+  const at = spotify.connected && trackIds?.length ? positionOf(state.np, trackIds) : null
 
   async function run(command: () => Promise<void>, expect: Parameters<PlayerWatch['expect']>[0]): Promise<boolean> {
     setNoDevice(false)
