@@ -1,6 +1,6 @@
 import { ExternalLink, Pause, Play } from 'lucide-react'
 import { useServices } from '../app/services'
-import { playbackLine, type Playback } from '../app/playback'
+import { assumeStart, playbackLine, type Playback } from '../app/playback'
 import { openUrl } from '../spotify/client'
 import s from '../styles/editorial.module.css'
 
@@ -13,9 +13,11 @@ const icon = { size: 15, fill: 'currentColor', strokeWidth: 0, 'aria-hidden': tr
  * and a line beneath says where it's playing. Opening Spotify is the quieter
  * alternative — the main action without a Spotify connection.
  */
-export function ListenBar({ firstTrackId, movements, playback, onStarted, onOpened, className }: {
+export function ListenBar({ firstTrackId, movements, durationMs, playback, onStarted, onOpened, className }: {
   firstTrackId: string
   movements: number
+  /** The whole work's length: for a single-track work, a tap here is an assumed start (app/playback.ts). */
+  durationMs?: number
   playback: Playback
   onStarted?: () => void
   onOpened?: () => void
@@ -25,8 +27,16 @@ export function ListenBar({ firstTrackId, movements, playback, onStarted, onOpen
   const p = playback
   const line = playbackLine(p, movements)
 
+  // A single-track work started from here is watched from this moment, wherever it then plays.
+  const assume = () => { if (movements === 1) assumeStart([firstTrackId], durationMs) }
+
   async function play() {
-    if (await p.play()) onStarted?.()
+    if (await p.play()) { assume(); onStarted?.() }
+  }
+
+  function opened() {
+    assume()
+    onOpened?.()
   }
 
   return (
@@ -41,12 +51,12 @@ export function ListenBar({ firstTrackId, movements, playback, onStarted, onOpen
             ) : (
               <button className={s.playButton} onClick={() => void play()} disabled={p.busy} title="Every movement of this work, in order, on the device where Spotify is open"><Play {...icon} />Play</button>
             )}
-            <a className={s.listenAlt} title="Opens the first track in Spotify; it carries on through the album" href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={onOpened}>
+            <a className={s.listenAlt} title="Opens the first track in Spotify; it carries on through the album" href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={opened}>
               or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
             </a>
           </>
         ) : (
-          <a className={s.playButton} href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={onOpened}>
+          <a className={s.playButton} href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={opened}>
             <Play {...icon} />Listen on Spotify
           </a>
         )}

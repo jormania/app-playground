@@ -1,6 +1,6 @@
 import { systemPrefersDark } from '../../shared/theme'
-import { readJson, writeJson } from '../../shared/storage'
-import type { DuskChoice, ThemeChoice } from './settings'
+import { readJson, removeJson, writeJson } from '../../shared/storage'
+import type { ThemeChoice } from './settings'
 
 /**
  * Light, dark or follow the device. The palette itself swaps in CSS
@@ -23,10 +23,8 @@ export function applyTheme(choice: ThemeChoice): void {
 }
 
 /**
- * The listening view's shades (palette.css, `data-listening`): four darks the
- * owner is choosing between by living with them. "Rotate" picks one at random
- * on each visit — never the one just shown — and keeps a quiet tally of how
- * often each was shown and liked, read back in Settings.
+ * The listening view's shades (palette.css, `data-listening`): four darks, one
+ * picked at random on each visit — never the one just shown.
  */
 export const DUSK_SHADES = {
   umber: { name: 'Umber', chrome: '#3a2e23' },
@@ -37,45 +35,25 @@ export const DUSK_SHADES = {
 export type DuskShade = keyof typeof DUSK_SHADES
 export const DUSK_KEYS = Object.keys(DUSK_SHADES) as DuskShade[]
 
-const TALLY_KEY = 'long-listen:dusk-tally'
-export type DuskTally = Record<DuskShade, { shown: number; liked: number }>
-
-export function duskTally(): DuskTally {
-  const raw = readJson<Partial<DuskTally>>(TALLY_KEY, {})
-  return Object.fromEntries(DUSK_KEYS.map((k) => [k, { shown: raw[k]?.shown ?? 0, liked: raw[k]?.liked ?? 0 }])) as DuskTally
-}
-
-function count(shade: DuskShade, field: 'shown' | 'liked'): void {
-  const t = duskTally()
-  t[shade][field] += 1
-  writeJson(TALLY_KEY, t)
-}
-
-export const likeDusk = (shade: DuskShade) => count(shade, 'liked')
-
-/** Which shade this visit gets: the chosen one, or — rotating — any other than last time's. */
-export function pickDusk(choice: DuskChoice, last: string | undefined, random: () => number = Math.random): DuskShade {
-  if (choice !== 'rotate') return choice
+/** Any shade but the last one shown. */
+export function pickDusk(last: string | undefined, random: () => number = Math.random): DuskShade {
   const pool = DUSK_KEYS.filter((k) => k !== last)
   return pool[Math.floor(random() * pool.length)] ?? pool[0]
 }
 
 const LAST_KEY = 'long-listen:dusk-last'
+/** Where a tally of shades shown and liked was kept until 2026-10-10; cleared when next met. */
+const OLD_TALLY_KEY = 'long-listen:dusk-tally'
 
 /** The shade for a new visit: chosen once, without side effects (safe to call twice). */
-export function chooseDusk(choice: DuskChoice): DuskShade {
-  return pickDusk(choice, readJson<string>(LAST_KEY, ''))
+export function chooseDusk(): DuskShade {
+  return pickDusk(readJson<string>(LAST_KEY, ''))
 }
 
-/**
- * Count a visit's shade once, and remember it so the next visit differs. Only
- * while rotating: the tally is how the owner compares shades met by chance, and
- * a shade kept on purpose would count every visit towards itself.
- */
-export function recordDusk(shade: DuskShade, choice: DuskChoice): void {
-  if (choice !== 'rotate') return
+/** Remember a visit's shade, so the next visit differs. */
+export function rememberDusk(shade: DuskShade): void {
   writeJson(LAST_KEY, shade)
-  count(shade, 'shown')
+  removeJson(OLD_TALLY_KEY)
 }
 
 /**

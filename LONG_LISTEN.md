@@ -280,8 +280,11 @@ it's paused, with a line beneath: "Playing on Galaxy S24 · movement 2 of 4".
 The listening view marks the movement (now / paused) and a tap on a movement
 plays from it; the running order tags the work that's on. A track Spotify
 relinked for the market is known by `linked_from`. A 403 says to reconnect.
-The listening view is dusk-toned whatever the theme (`:root[data-listening]`),
-its screen kept awake with the shared `useWakeLock`.
+The listening view is dusk-toned whatever the theme (`:root[data-listening]`):
+one of four dark shades at random on each visit, never the last one shown.
+There is no setting for it and no count of shades shown or liked (both removed
+2026-10-10 at the owner's request). Its screen is kept awake with the shared
+`useWakeLock`.
 
 **Sign-in lifecycle.** The PKCE callback is validated: state must match, the
 verifier is single-use, and sign-ins older than 15 minutes are refused. The
@@ -304,8 +307,32 @@ each app open (or "Check recent listening"), plays are matched to
 ≥60% of a multi-movement work's tracks is `heard`, less is `partial` (shown
 as "Started"; it read as "Listening" until 2026-10-09, which looked like
 "playing now"). A **single-track work is never marked heard by Spotify** —
-thirty seconds and forty minutes look identical — so "Heard" is the
-listener's word there. A session is recorded once: a later poll that sees
+thirty seconds and forty minutes look identical. **The app itself can,
+though (2026-10-10, at the owner's request), however the work was started**
+— Play in the app, "Open in Spotify", the week's playlist, or Spotify on its
+own. `app/HeardWitness.tsx`, mounted once at the root, keeps the player read
+every few seconds on every screen while Spotify is connected and the app is
+in front, and `spotify/witness.ts` turns those readings into what it saw
+sounding. A tap on Play or a Spotify link for a single-track work is noted as
+an *assumed* start, so a listening begun in Spotify counts from the top once
+the app is back in front and a reading shows the track itself under way, no
+further on than the clock allows; opened and never played counts for
+nothing. Each heard-through track marks every confirmed single-track
+recording of it. A
+single-track work becomes `heard` (source `app`) when the readings show ≥90%
+of it played at the pace of the music — progress that ran ahead of the clock
+is a jump and isn't credited — *and* its end reached: a reading at the close,
+or, when the page was away for the ending, the track gone from the player no
+sooner than it had left to play (and, unless Spotify still holds it at its
+close or rewound to the start, no more than ten minutes after). Begun partway,
+jumped to the end, or left early never counts; once per session; only real
+readings, never the guess the screen shows when Play is pressed (an assumed
+start is credited only by what a later reading proves); kept in memory, so a
+reload mid-work forgets. What can't be seen: a work started and finished
+entirely while the app was closed or in the background is left to the
+listener's "I've heard it". On the listening view it opens the same
+panel as "I've heard it". Works in movements are left to Spotify's history,
+so a hearing is never counted twice. A session is recorded once: a later poll that sees
 the same session, even after its first plays have scrolled out of the fifty,
 only upgrades a partial to heard. Polls are one at a time. Spotify's events
 are placed at the time of the play, so a reset the listener made after it
@@ -404,7 +431,7 @@ note to the curator, which says so.
   the sign-in lifecycle (an outage keeps the sign-in, `invalid_grant` ends
   it and says so, one refresh for many callers, another tab's refresh
   used); recently-played (confirmed recordings only, single-track works
-  never "heard", a session counted once as it scrolls out of the fifty);
+  never "heard" from it, a session counted once as it scrolls out of the fifty);
   playlists (confirmed tracks only); play (shuffle off, first movement).
 - `notion/mirror.test.ts`: further reading that arrives after a page was
   written is added after the curator's text, replaced in place when it
@@ -635,4 +662,4 @@ are kept in `src/long-listen/__audit__/` as regression tests. What changed:
   page can't be paid for before two weeks; Library search finds concert
   performers and catalogue numbers; the Journal names a sitting and a path taken
   from an earlier week; double taps record once; curator text inputs are capped
-  at 500 characters; the dusk tally counts only while rotating.
+  at 500 characters.

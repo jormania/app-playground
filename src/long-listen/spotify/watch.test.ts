@@ -44,6 +44,20 @@ describe('PlayerWatch', () => {
     expect(nowPlaying).toHaveBeenCalledTimes(2)
   })
 
+  it('tells the witness of real readings only, never the guess a command shows first', async () => {
+    vi.useFakeTimers()
+    const nowPlaying = vi.fn(async () => np({ progressMs: 40_000, durationMs: 600_000 }))
+    const onReading = vi.fn()
+    const w = new PlayerWatch({ connected: true, nowPlaying }, fakeDoc(), onReading)
+    w.subscribe(() => {})
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onReading).toHaveBeenCalledTimes(1)
+    expect(onReading).toHaveBeenLastCalledWith(expect.objectContaining({ progressMs: 40_000 }), expect.any(Number))
+    w.expect(() => np({ trackId: 'm2', progressMs: 0 }))
+    expect(onReading).toHaveBeenCalledTimes(1)
+    expect(w.current.np?.trackId).toBe('m2')
+  })
+
   it('stays quiet while the page is hidden and looks the moment it returns', async () => {
     vi.useFakeTimers()
     const nowPlaying = vi.fn(async () => null)

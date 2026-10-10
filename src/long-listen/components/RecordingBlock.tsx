@@ -97,6 +97,7 @@ export function RecordingBlock({
         <ListenBar
           firstTrackId={sp.trackIds[0]}
           movements={sp.trackIds.length}
+          durationMs={sp.durationMs}
           playback={playback}
           onStarted={() => onOpened?.('play-started')}
           onOpened={() => onOpened?.('opened')}

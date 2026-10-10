@@ -7,6 +7,7 @@ import { compactFacts } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
+import { assumeStart } from '../app/playback'
 import { openUrl } from '../spotify/client'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Empty, Problem, Waiting } from '../components/common'
@@ -117,7 +118,7 @@ export function LibraryScreen() {
                         <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
                         {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)?.toLowerCase()}</span>}
                         {isConfirmed(rec) && rec.spotify.durationMs ? <span>{aboutDuration(rec.spotify.durationMs)}</span> : null}
-                        {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer">Spotify</a>}
+                        {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => assumeStart(rec.spotify.trackIds, rec.spotify.durationMs)}>Spotify</a>}
                         {(programmeId || role) && (
                           <span>
                             {role && <>{role}{programmeId ? ', ' : ''}</>}

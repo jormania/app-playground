@@ -5,8 +5,9 @@ import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
-import { applyDusk, chooseDusk, likeDusk, recordDusk } from '../app/theme'
+import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { usePlayback } from '../app/playback'
+import { onHeardRecorded } from '../app/HeardWitness'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
@@ -53,20 +54,17 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }, [programmeId, itemId])
   useWakeLock(true)
 
-  // Dusk while this screen is open: a dark shade with light text, chosen afresh on each visit while the owner decides.
-  const { settings } = useServices()
-  // Chosen once per visit (a change in Settings shows on the next one), counted once, applied while open —
-  // and only once there is a work to show: a dead link is not a visit, and its message reads on the paper.
-  const [shade] = useState(() => chooseDusk(settings.dusk))
-  const [duskChoice] = useState(settings.dusk)
-  const [liked, setLiked] = useState(false)
-  const counted = useRef(false)
+  // Dusk while this screen is open: one of four dark shades, at random each visit (never last visit's).
+  // Chosen once per visit, remembered once, applied while open — and only once there is a work to show:
+  // a dead link is not a visit, and its message reads on the paper.
+  const [shade] = useState(() => chooseDusk())
+  const remembered = useRef(false)
   const loaded = Boolean(data)
   useEffect(() => {
     if (!loaded) return
-    if (!counted.current) { counted.current = true; recordDusk(shade, duskChoice) }
+    if (!remembered.current) { remembered.current = true; rememberDusk(shade) }
     return applyDusk(shade)
-  }, [shade, duskChoice, loaded])
+  }, [shade, loaded])
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
   const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
@@ -85,6 +83,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const [explaining, setExplaining] = useState(false)
 
   const [heardOpen, setHeardOpen] = useState(false)
+  // Watched play to its end (app/HeardWitness.tsx): already marked heard — open the same panel as "I've heard it".
+  const playedId = data ? (data.recording?.id ?? data.item.recordingId) : undefined
+  useEffect(() => (playedId ? onHeardRecorded((ids) => { if (ids.includes(playedId)) setHeardOpen(true) }) : undefined), [playedId])
   const [marking, setMarking] = useState(false)
   // A ref as well as the state: two taps in one frame both see the state as it was before either.
   const markingNow = useRef(false)
@@ -153,7 +154,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {standIn && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
       {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for. */}
-      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={movements.length} playback={playback} onStarted={started} className={s.mtMd} />}
+      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={sp.trackIds.length} durationMs={sp.durationMs} playback={playback} onStarted={started} className={s.mtMd} />}
 
       {movements.length > 1 && (
         <ol className={s.movements}>
@@ -226,14 +227,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           <button className={s.outlineButton} onClick={() => void heard()} disabled={marking}>I’ve heard it</button>
         </div>
       )}
-      <p className={`${s.settingHint} ${s.mtLg}`}>
-        The screen stays awake while this page is open.
-        {settings.dusk === 'rotate' && (
-          liked
-            ? <> · Noted — this shade counts once more in Settings.</>
-            : <> · <button className={`${s.textButton} ${s.quietButton}`} onClick={() => { likeDusk(shade); setLiked(true) }}>I like this shade</button></>
-        )}
-      </p>
     </article>
   )
 }

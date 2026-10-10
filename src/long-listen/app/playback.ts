@@ -1,14 +1,43 @@
 import { useEffect, useState } from 'react'
 import { useServices } from './services'
-import { SpotifyUnavailable, playbackOf, type SpotifyClient } from '../spotify/client'
+import { SpotifyUnavailable, playbackOf, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
+import { Witness } from '../spotify/witness'
 import { messageOf } from '../components/common'
+
+/**
+ * The app as witness (spotify/witness.ts): every real reading of the player,
+ * from whichever screen is open, goes to one witness; a track it sees played
+ * end to end goes to whoever records it (app/HeardWitness.tsx, mounted once).
+ */
+const witness = new Witness()
+const heardListeners = new Set<(trackIds: string[]) => void>()
+
+function observe(np: NowPlaying | null, at: number) {
+  const heard = witness.observe({ np, at })
+  if (heard.length) for (const l of heardListeners) l(heard)
+}
+
+/** Told the track ids the witness saw played end to end. */
+export function onHeardThrough(listener: (trackIds: string[]) => void): () => void {
+  heardListeners.add(listener)
+  return () => { heardListeners.delete(listener) }
+}
+
+/**
+ * A tap on Play or "Open in Spotify" for a single-track work: an assumed start,
+ * so a listening begun in Spotify counts from the top once the page is back
+ * and a reading bears it out. (A work in movements is Spotify's history's to tell.)
+ */
+export function assumeStart(trackIds: string[] | undefined, durationMs: number | undefined): void {
+  if (trackIds?.length === 1 && durationMs) witness.assumeStart(trackIds[0], durationMs, Date.now())
+}
 
 /** One watch per Spotify client, however many components ask. */
 const watches = new WeakMap<SpotifyClient, PlayerWatch>()
 function watchFor(spotify: SpotifyClient): PlayerWatch {
   let w = watches.get(spotify)
-  if (!w) watches.set(spotify, (w = new PlayerWatch(spotify)))
+  if (!w) watches.set(spotify, (w = new PlayerWatch(spotify, undefined, observe)))
   return w
 }
 
@@ -45,6 +74,7 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
   const { spotify, say } = useServices()
   const watch = watchFor(spotify)
   const state = usePlayerState()
+
   const [busy, setBusy] = useState(false)
   const [noDevice, setNoDevice] = useState(false)
   const seen = spotify.connected && trackIds?.length ? playbackOf(state.np, trackIds) : null

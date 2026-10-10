@@ -49,7 +49,7 @@ describe('addresses that hold nothing', () => {
       expect(await screen.findByText(/no such|nothing at this address/i)).toBeTruthy()
       expect(screen.getAllByRole('link', { name: back }).some((a) => a.closest('main, article, div'))).toBe(true)
       expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
-      // A dead listening link is not a visit: no dusk, nothing counted.
+      // A dead listening link is not a visit: no dusk, nothing remembered.
       expect(document.documentElement.dataset.listening).toBeUndefined()
     })
   }

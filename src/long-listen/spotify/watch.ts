@@ -50,6 +50,8 @@ export class PlayerWatch {
   constructor(
     private readonly source: Source,
     private readonly doc: Page | null = typeof document === 'undefined' ? null : document,
+    /** Told of each real reading, with when it came back — never of the guess a command shows first. */
+    private readonly onReading?: (np: NowPlaying | null, at: number) => void,
   ) {}
 
   get current(): PlayerState { return this.state }
@@ -104,7 +106,11 @@ export class PlayerWatch {
     // A reading that began before a command would undo what the command just showed: drop it and look again soon.
     const stale = () => asked !== this.generation
     this.source.nowPlaying().then(
-      (np) => { if (!stale()) this.set({ np, cantFollow: false, known: true }) },
+      (np) => {
+        if (stale()) return
+        this.onReading?.(np, Date.now())
+        this.set({ np, cantFollow: false, known: true })
+      },
       (e) => {
         if (!stale() && e instanceof SpotifyUnavailable && e.reason === 'signed-out') this.set({ ...this.state, cantFollow: true, known: true })
       },
