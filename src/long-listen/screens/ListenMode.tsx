@@ -68,7 +68,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }, [shade, duskChoice, loaded])
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
-  const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
+  // A single-track work the app watched play to its end is heard: recorded as the app's word (the
+  // listener's own marks still win), and the same panel opens as for "I've heard it".
+  const playback = usePlayback(sp0?.trackUris, sp0?.trackIds, () => {
+    if (!data) return
+    // The recording that plays: the programme's own, or a stand-in's (as "I've heard it" marks it).
+    const recordingId = data.recording?.id ?? data.item.recordingId
+    void journey.markListening({ recordingId, workId: data.item.workId }, 'heard', data.programme.id, 'app').then(() => { bump(); setHeardOpen(true) })
+  })
 
   const { curatorReady, say } = useServices()
   // The companion's notes are written once per programme; if this recording has none yet, ask for them now.

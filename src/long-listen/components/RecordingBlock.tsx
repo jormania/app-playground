@@ -25,7 +25,8 @@ export function RecordingBlock({
   proposed: ProposedRecording
   recording?: Recording
   character?: string
-  onOpened?: (how: 'opened' | 'play-started') => void
+  /** Opened in Spotify, started here, or — a single-track work the app watched play end to end — heard. */
+  onOpened?: (how: 'opened' | 'play-started' | 'heard') => void
   /** Offered when Spotify lacks this recording: ask the curator for one it has. */
   onFindAlternative?: () => void
   /** A recording Spotify does have is shown just below in its place. */
@@ -39,7 +40,7 @@ export function RecordingBlock({
   const near = recording?.verification === 'unconfirmed' ? recording.spotify : undefined
   const shown = sp ?? near
   const year = shown?.releaseDate?.slice(0, 4)
-  const playback = usePlayback(sp?.trackUris, sp?.trackIds)
+  const playback = usePlayback(sp?.trackUris, sp?.trackIds, onOpened && (() => onOpened('heard')))
 
   async function check() {
     if (!recording) return

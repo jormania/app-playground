@@ -304,8 +304,21 @@ each app open (or "Check recent listening"), plays are matched to
 ≥60% of a multi-movement work's tracks is `heard`, less is `partial` (shown
 as "Started"; it read as "Listening" until 2026-10-09, which looked like
 "playing now"). A **single-track work is never marked heard by Spotify** —
-thirty seconds and forty minutes look identical — so "Heard" is the
-listener's word there. A session is recorded once: a later poll that sees
+thirty seconds and forty minutes look identical. **The app itself can,
+though (2026-10-10, at the owner's request):** while a programme or the
+listening view is open it reads the player every few seconds anyway, and
+`spotify/witness.ts` turns those readings into what it saw sounding. A
+single-track work becomes `heard` (source `app`) when the readings show ≥90%
+of it played at the pace of the music — progress that ran ahead of the clock
+is a jump and isn't credited — *and* its end reached: a reading at the close,
+or, when the page was away for the ending, the track gone from the player no
+sooner than it had left to play (and, unless Spotify still holds it at its
+close or rewound to the start, no more than ten minutes after). Begun partway,
+jumped to the end, or left early never counts; once per session; only real
+readings, never the guess the screen shows when Play is pressed; kept in
+memory, so a reload mid-work forgets. On the listening view it opens the same
+panel as "I've heard it". Works in movements are left to Spotify's history,
+so a hearing is never counted twice. A session is recorded once: a later poll that sees
 the same session, even after its first plays have scrolled out of the fifty,
 only upgrades a partial to heard. Polls are one at a time. Spotify's events
 are placed at the time of the play, so a reset the listener made after it
@@ -404,7 +417,7 @@ note to the curator, which says so.
   the sign-in lifecycle (an outage keeps the sign-in, `invalid_grant` ends
   it and says so, one refresh for many callers, another tab's refresh
   used); recently-played (confirmed recordings only, single-track works
-  never "heard", a session counted once as it scrolls out of the fifty);
+  never "heard" from it, a session counted once as it scrolls out of the fifty);
   playlists (confirmed tracks only); play (shuffle off, first movement).
 - `notion/mirror.test.ts`: further reading that arrives after a page was
   written is added after the curator's text, replaced in place when it
