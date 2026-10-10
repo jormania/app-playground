@@ -5,7 +5,7 @@ import type {
 import { creditLine, newId } from '../domain/identity'
 import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
-import type { Repo } from '../store/repo'
+import { NotFound, type Repo } from '../store/repo'
 import type {
   CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
 } from './api'
@@ -56,6 +56,8 @@ export class Journey {
   readonly timeZone: string
   private readonly now: () => Date
   private static readonly inflight = new Map<string, Promise<unknown>>()
+  /** Per store, the tail of each queue of jobs that must not overlap (see `serial`). */
+  private static readonly queues = new WeakMap<Repo, Map<string, Promise<unknown>>>()
 
   constructor(readonly repo: Repo, readonly curator: CuratorClient, opts: JourneyOptions = {}) {
     this.timeZone = opts.timeZone ?? DEFAULT_TIME_ZONE
@@ -82,6 +84,30 @@ export class Journey {
     const p = fn().finally(() => Journey.inflight.delete(key))
     Journey.inflight.set(key, p)
     return p
+  }
+
+  /**
+   * One job at a time per key, in the order asked: each waits for the one before
+   * to finish, failed or not. `once` only shares a call with an identical one;
+   * this is for different jobs on the same record — choosing, a sitting, three
+   * other directions — that each read the week, wait a minute on the curator,
+   * and write it back, so that run together the last to answer undid the others.
+   * Keyed per store, since that is what they share. A job must never wait on
+   * its own queue from inside it.
+   */
+  private serial<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    let queues = Journey.queues.get(this.repo)
+    if (!queues) Journey.queues.set(this.repo, queues = new Map())
+    const run = (queues.get(key) ?? Promise.resolve()).then(fn, fn)
+    const tail = run.then(() => {}, () => {})
+    queues.set(key, tail)
+    void tail.then(() => { if (queues.get(key) === tail) queues.delete(key) })
+    return run
+  }
+
+  /** The queue every job that writes a week's record goes through. */
+  private weekJob<T>(weekKey: WeekKey, fn: () => Promise<T>): Promise<T> {
+    return this.serial(`week:${weekKey}`, fn)
   }
 
   /**
@@ -116,7 +142,12 @@ export class Journey {
         this.closeEndedExplorations().catch(() => {}),
         this.interpretPendingFeedback().catch(() => {}),
       ])
-      return this.generateWeek(week, requestedNext)
+      return this.weekJob(week.key, async () => {
+        // Looked at again in the queue: a sitting may have given the week its programme meanwhile.
+        const now = await this.repo.weeks.get(week.key)
+        if (now && (now.programmeId || now.optionIds.length)) return now
+        return this.generateWeek(week, requestedNext)
+      })
     })
   }
 
@@ -210,18 +241,24 @@ export class Journey {
    */
   offerOtherDirections(request?: string): Promise<WeekRecord> {
     const lw = this.currentWeek()
-    return this.once(`week:${lw.key}:again`, async () => {
+    return this.once(`week:${lw.key}:again`, () => this.weekJob(lw.key, async () => {
       const week = await this.repo.weeks.require(lw.key)
       if (week.programmeId) throw new Error('This week already has a programme — change direction instead.')
       const current = await this.repo.options.many(week.optionIds)
-      await this.repo.options.putMany(current.map((o) => ({ ...o, status: 'open' as const })))
       const fresh = await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
-      // The mood may have changed while the curator thought: keep the latest.
-      const latest = await this.repo.weeks.get(lw.key)
-      const record: WeekRecord = { ...fresh, createdAt: week.createdAt, mood: latest?.mood ?? week.mood, earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds] }
+      // Only now that the curator has answered do the three set aside become open
+      // paths — read again, as they are now, so a failed call leaves them offered.
+      const setAside = await this.repo.options.many(week.optionIds)
+      await this.repo.options.putMany(setAside.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: 'open' as const })))
+      // The week as it is now, not as it was a minute ago: a mood set meanwhile stays.
+      const latest = (await this.repo.weeks.get(lw.key)) ?? fresh
+      const record: WeekRecord = {
+        ...latest, optionIds: fresh.optionIds, promptVersion: fresh.promptVersion, createdAt: week.createdAt,
+        earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds],
+      }
       await this.repo.weeks.put(record)
       return record
-    })
+    }))
   }
 
   /**
@@ -233,21 +270,24 @@ export class Journey {
    */
   moreDirections(request?: string): Promise<WeekRecord> {
     const lw = this.currentWeek()
-    return this.once(`week:${lw.key}:more`, async () => {
+    return this.once(`week:${lw.key}:more`, () => this.weekJob(lw.key, async () => {
       const week = await this.repo.weeks.require(lw.key)
-      const current = await this.repo.options.many(week.optionIds)
-      await this.repo.options.putMany(current.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: 'open' as const })))
       const seen = (await this.repo.options.many([...(week.earlierOptionIds ?? []), ...week.optionIds])).map((o) => o.title)
       const fresh = await this.generateWeek(lw, request ?? '', seen)
+      // Directions still on offer become open paths once the new ones exist, read as they are now.
+      const current = await this.repo.options.many(week.optionIds)
+      await this.repo.options.putMany(current.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: 'open' as const })))
+      // The week as it is now — its programme, mood and set-aside list — gaining only the new directions.
+      const latest = (await this.repo.weeks.get(lw.key)) ?? week
       const record: WeekRecord = {
-        ...week,
+        ...latest,
         optionIds: fresh.optionIds,
         earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds],
         promptVersion: fresh.promptVersion,
       }
       await this.repo.weeks.put(record)
       return record
-    })
+    }))
   }
 
   /**
@@ -275,16 +315,21 @@ export class Journey {
     const sitting = { request: request.trim(), hours }
     // Keyed by what was asked: a double tap shares the call, another evening asked for meanwhile is its own.
     return this.once(`sitting:${lw.key}:${hours}:${sitting.request}`, async () => {
-      const week = await this.weekWithoutDirections()
-      if (week.programmeId) return this.companion_(week.programmeId, { sitting })
-      const now = this.stamp()
-      // The evening's own direction, from the listener's words: the curator's title replaces it once written.
-      // Not stored here: startProgramme stores it with the programme, so a failed call leaves no orphan "Tonight".
-      const option: ProgrammeOption = {
-        id: newId('opt'), weekKey: lw.key, position: 1, mood: 'immersive', title: 'Tonight', pitch: sitting.request || 'An evening of music',
-        character: [], why: 'Asked for on the day.', angle: 'one evening, as asked', status: 'offered',
-      }
-      return this.startProgramme(week, option, sitting, now)
+      // Outside the week's queue: it may be ensureWeek's call, which queues there itself.
+      await this.weekWithoutDirections()
+      return this.weekJob(lw.key, async () => {
+        // Read in the queue: a direction chosen a moment ago is the programme this evening joins.
+        const week = await this.repo.weeks.require(lw.key)
+        if (week.programmeId) return this.companion_(week.programmeId, { sitting })
+        const now = this.stamp()
+        // The evening's own direction, from the listener's words: the curator's title replaces it once written.
+        // Not stored here: startProgramme stores it with the programme, so a failed call leaves no orphan "Tonight".
+        const option: ProgrammeOption = {
+          id: newId('opt'), weekKey: lw.key, position: 1, mood: 'immersive', title: 'Tonight', pitch: sitting.request || 'An evening of music',
+          character: [], why: 'Asked for on the day.', angle: 'one evening, as asked', status: 'offered',
+        }
+        return this.startProgramme(week, option, sitting, now)
+      })
     })
   }
 
@@ -340,12 +385,13 @@ export class Journey {
 
   /** Choose one of this week's three directions. */
   choose(optionId: string): Promise<Programme> {
-    return this.once(`choose:${optionId}`, async () => {
-      const week = await this.repo.weeks.require(this.currentWeek().key)
+    const key = this.currentWeek().key
+    return this.once(`choose:${optionId}`, () => this.weekJob(key, async () => {
+      const week = await this.repo.weeks.require(key)
       if (week.programmeId) throw new Error('This week already has a programme — change direction instead.')
       const option = await this.repo.options.require(optionId)
       return this.startProgramme(week, option)
-    })
+    }))
   }
 
   /**
@@ -354,11 +400,14 @@ export class Journey {
    * of it counts towards its thread.
    */
   changeDirection(optionId: string): Promise<Programme> {
-    return this.once(`choose:${optionId}`, async () => {
-      const week = await this.repo.weeks.require(this.currentWeek().key)
+    const key = this.currentWeek().key
+    return this.once(`choose:${optionId}`, () => this.weekJob(key, async () => {
+      const week = await this.repo.weeks.require(key)
       const option = await this.repo.options.require(optionId)
+      // Taken a moment ago by a job ahead in the queue: nothing to change to.
+      if (week.chosenOptionId === optionId && week.programmeId) return this.repo.programmes.require(week.programmeId)
       return this.startProgramme(week, option)
-    })
+    }))
   }
 
   /** Take a path offered in an earlier week and not chosen then. */
@@ -467,7 +516,9 @@ export class Journey {
       const o = await this.repo.options.get(id)
       if (o && o.status === 'offered') await this.repo.options.put({ ...o, status: 'open' })
     }
-    await this.repo.weeks.put({ ...current, setAsideProgrammeIds, chosenOptionId: option.id, chosenAt: now, programmeId: programme.id })
+    // Read once more for the write itself: a mood set during the writes above stays.
+    const latest = (await this.repo.weeks.get(week.weekKey)) ?? current
+    await this.repo.weeks.put({ ...latest, setAsideProgrammeIds, chosenOptionId: option.id, chosenAt: now, programmeId: programme.id })
     return programme
   }
 
@@ -704,17 +755,22 @@ export class Journey {
   /** A season's review if one was written: for a season under way, only this week's. */
   async seasonReview(n: number): Promise<{ season: Season; review?: SeasonResponse }> {
     const first = await this.firstWeek()
-    if (!first) throw new Error('No seasons yet.')
+    if (!first) throw new NotFound('No seasons yet.')
     const s = seasonOf(first, n, this.currentWeek().key)
     const mark = await this.repo.marks.get(this.seasonKey(s))
     return { season: s, review: mark?.value as SeasonResponse | undefined }
   }
 
-  /** Write a season in review — once per finished season, once a week for one under way. */
+  /**
+   * Write a season in review — once per finished season, once a week for one
+   * under way, and never for one with fewer than two weeks behind it (or none,
+   * a season still to come): there would be nothing to read back, and it costs.
+   */
   writeSeasonReview(n: number): Promise<SeasonResponse> {
     return this.once(`season:${n}`, async () => {
       const { season: s, review } = await this.seasonReview(n)
       if (review) return review
+      if (!s.complete && s.weeksSoFar < 2) throw new Error(s.weeksSoFar === 0 ? 'This season hasn’t begun.' : 'A season is read back once two weeks are behind it.')
       const res = await this.curator.call<SeasonResponse>('season', await seasonContext(this.repo, s, this.currentWeek().key))
       await this.repo.marks.put({ id: this.seasonKey(s), at: this.stamp(), value: res })
       return res

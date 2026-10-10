@@ -11,6 +11,7 @@ import { resizePhoto } from '../../shared/photo'
 import { Empty, Problem, Waiting, messageOf } from '../components/common'
 import { Credits } from '../components/Credits'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
+import { namedSoloists, playingKeys, removeSoloist, soloistKey, toDraft, toForm, toggleSoloist, type ConcertFormState } from '../domain/concertForm'
 import s from '../styles/editorial.module.css'
 
 /** Where a picture shared to the app waits for this screen (public/long-listen-sw.js puts it there). */
@@ -76,7 +77,7 @@ export function ConcertScreen({ id }: { id: string }) {
   const [editing, setEditing] = useState(false)
   const { data, error, retry } = useLoad(async () => (id === 'new' ? null : repo.concerts.require(id)), [id])
   if (id === 'new') return <ConcertForm />
-  if (error) return <Problem error={error} onRetry={retry} />
+  if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'There’s no such concert — perhaps an old link.', link: { href: href({ name: 'concerts' }), label: 'All concerts' } }} />
   if (!data) return <Waiting>Opening the concert…</Waiting>
   if (editing) return <ConcertForm concert={data} onDone={() => setEditing(false)} />
   const c = data
@@ -175,7 +176,7 @@ async function asImage(file: Blob): Promise<{ mediaType: string; data: string }>
  */
 function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => void }) {
   const { journey, curatorReady, bump, say } = useServices()
-  const [d, setD] = useState<ConcertDraft>(concert ? { ...concert, works: concert.works.map(({ composer, title, catalogue, soloists }) => ({ composer, title, catalogue, soloists })) } : EMPTY)
+  const [d, setD] = useState<ConcertFormState>(() => toForm(concert ? { ...concert, works: concert.works.map(({ composer, title, catalogue, soloists }) => ({ composer, title, catalogue, soloists })) } : EMPTY))
   const [reading, setReading] = useState(false)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -186,7 +187,11 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
       const { promptVersion: _v, works, soloists, ...r } = await journey.readConcert(await asImage(file))
       // What the picture showed fills the form; what it left blank leaves the form as the listener had it.
       const shown = Object.fromEntries(Object.entries(r).filter(([, v]) => typeof v === 'string' && v.trim())) as Partial<ConcertDraft>
-      setD((x) => ({ ...x, ...shown, soloists: soloists.length ? soloists : x.soloists, works: works.length ? works : x.works, note: x.note, source: 'screenshot' }))
+      setD((x) => {
+        // Merged by name, then given rows afresh: a work read from the picture names its soloists, not their rows.
+        const was = toDraft(x)
+        return toForm({ ...was, ...shown, soloists: soloists.length ? soloists : was.soloists, works: works.length ? works : was.works, note: was.note, source: 'screenshot' })
+      })
       return true
     } catch (e) {
       say(messageOf(e), 'danger')
@@ -216,7 +221,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
   async function save() {
     setSaving(true)
     try {
-      const c = await journey.saveConcert(d, concert?.id)
+      const c = await journey.saveConcert(toDraft(d), concert?.id)
       bump()
       journey.scheduleTasteReading(bump)
       say('Kept. Its works are in the Library, heard live.', 'success')
@@ -229,24 +234,11 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
     }
   }
 
-  const set = (patch: Partial<ConcertDraft>) => setD((x) => ({ ...x, ...patch }))
-  const setWork = (i: number, patch: Partial<ConcertDraft['works'][number]>) => set({ works: d.works.map((w, j) => (j === i ? { ...w, ...patch } : w)) })
-  // A soloist renamed keeps their place in the works they play.
-  const setSoloist = (i: number, patch: Partial<ConcertDraft['soloists'][number]>) => {
-    const was = d.soloists[i]?.name
-    const renamed = patch.name !== undefined && patch.name !== was
-    set({
-      soloists: d.soloists.map((x, j) => (j === i ? { ...x, ...patch } : x)),
-      ...(renamed ? { works: d.works.map((w) => (w.soloists ? { ...w, soloists: w.soloists.map((n) => (n === was ? patch.name! : n)) } : w)) } : {}),
-    })
-  }
-  const named = d.soloists.filter((x) => x.name.trim())
-  // Who plays in a work: as said, or as judged from the titles until the listener says otherwise.
-  const playing = (w: ConcertDraft['works'][number]) => whoPlays({ soloists: named, works: d.works }, w).map((x) => x.name)
-  const toggle = (i: number, name: string) => {
-    const now = playing(d.works[i])
-    setWork(i, { soloists: now.includes(name) ? now.filter((n) => n !== name) : [...now, name] })
-  }
+  const set = (patch: Partial<ConcertFormState>) => setD((x) => ({ ...x, ...patch }))
+  const setWork = (i: number, patch: Partial<ConcertFormState['works'][number]>) => setD((x) => ({ ...x, works: x.works.map((w, j) => (j === i ? { ...w, ...patch } : w)) }))
+  // A soloist renamed keeps their place in the works they play: the works hold the row's key, not its name.
+  const setSoloist = (key: string, patch: Partial<ConcertFormState['soloists'][number]>) => setD((x) => ({ ...x, soloists: x.soloists.map((y) => (y.key === key ? { ...y, ...patch } : y)) }))
+  const named = namedSoloists(d)
 
   return (
     <div>
@@ -274,14 +266,14 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
 
         <p className={s.label}>Soloists</p>
         {named.length > 0 && <p className={`${s.settingHint} ${s.flush}`}>Under each work, mark who plays in it — a soloist rarely plays the whole evening.</p>}
-        {d.soloists.map((x, i) => (
-          <div key={i} className={s.fieldRow}>
-            <input className={s.input} aria-label="Soloist" value={x.name} onChange={(e) => setSoloist(i, { name: e.target.value })} placeholder="Name" />
-            <input className={s.input} aria-label="Instrument" value={x.instrument ?? ''} onChange={(e) => setSoloist(i, { instrument: e.target.value })} placeholder="Instrument" />
-            <button type="button" className={s.textButton} onClick={() => set({ soloists: d.soloists.filter((_, j) => j !== i) })} aria-label="Remove soloist">Remove</button>
+        {d.soloists.map((x) => (
+          <div key={x.key} className={s.fieldRow}>
+            <input className={s.input} aria-label="Soloist" value={x.name} onChange={(e) => setSoloist(x.key, { name: e.target.value })} placeholder="Name" />
+            <input className={s.input} aria-label="Instrument" value={x.instrument ?? ''} onChange={(e) => setSoloist(x.key, { instrument: e.target.value })} placeholder="Instrument" />
+            <button type="button" className={s.textButton} onClick={() => setD((f) => removeSoloist(f, x.key))} aria-label="Remove soloist">Remove</button>
           </div>
         ))}
-        <button type="button" className={s.textButton} onClick={() => set({ soloists: [...d.soloists, { name: '' }] })}>Add a soloist</button>
+        <button type="button" className={s.textButton} onClick={() => set({ soloists: [...d.soloists, { key: soloistKey(), name: '' }] })}>Add a soloist</button>
 
         <p className={`${s.label} ${s.mtMd}`}>The works, in order</p>
         {d.works.map((w, i) => (
@@ -294,8 +286,8 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
             {named.length > 0 && (
               <div className={`${s.chipRow} ${s.workSoloists}`} role="group" aria-label={`Who plays in work ${i + 1}`}>
                 {named.map((x) => {
-                  const on = playing(w).includes(x.name)
-                  return <button key={x.name} type="button" aria-pressed={on} className={`${s.chip} ${on ? s.chipOn : ''}`} onClick={() => toggle(i, x.name)}>{displaySurname(x.name)}</button>
+                  const on = playingKeys(d, w).includes(x.key)
+                  return <button key={x.key} type="button" aria-pressed={on} className={`${s.chip} ${on ? s.chipOn : ''}`} onClick={() => setD((f) => toggleSoloist(f, i, x.key))}>{displaySurname(x.name)}</button>
                 })}
               </div>
             )}

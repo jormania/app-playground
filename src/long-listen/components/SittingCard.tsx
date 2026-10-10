@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import { useServices } from '../app/services'
 import { go } from '../app/router'
-import { messageOf } from './common'
+import { MAX_ASK, messageOf } from './common'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -9,7 +9,13 @@ import s from '../styles/editorial.module.css'
  * what you'd like and how long you have; the curator writes the evening —
  * joining this week's thread if there is one, or beginning one.
  */
-export function SittingCard({ joinsThread, busy = false }: { joinsThread: boolean; /** Something else on the screen is with the curator (a direction being chosen): wait for it. */ busy?: boolean }) {
+export function SittingCard({ joinsThread, busy = false, onMaking }: {
+  joinsThread: boolean
+  /** Something else on the screen is with the curator (a direction being chosen): wait for it. */
+  busy?: boolean
+  /** Told when this card starts and stops asking, so the screen can hold its other requests meanwhile. */
+  onMaking?: (making: boolean) => void
+}) {
   const { journey, bump, say, curatorReady } = useServices()
   const id = useId()
   const [request, setRequest] = useState('')
@@ -18,6 +24,7 @@ export function SittingCard({ joinsThread, busy = false }: { joinsThread: boolea
 
   async function make() {
     setMaking(true)
+    onMaking?.(true)
     try {
       const p = await journey.sitting(request, hours)
       bump()
@@ -26,6 +33,7 @@ export function SittingCard({ joinsThread, busy = false }: { joinsThread: boolea
       say(messageOf(e), 'danger')
     } finally {
       setMaking(false)
+      onMaking?.(false)
     }
   }
 
@@ -37,7 +45,7 @@ export function SittingCard({ joinsThread, busy = false }: { joinsThread: boolea
         {joinsThread ? 'It joins this week’s thread, with nothing you’ve already been given.' : 'It becomes this week’s programme and begins its thread.'}
       </p>
       <label className={s.visuallyHidden} htmlFor={id}>What would you like tonight?</label>
-      <input id={id} className={s.input} placeholder="quiet, nothing I know" value={request} onChange={(e) => setRequest(e.target.value)} disabled={making || busy} />
+      <input id={id} className={s.input} maxLength={MAX_ASK} placeholder="quiet, nothing I know" value={request} onChange={(e) => setRequest(e.target.value)} disabled={making || busy} />
       <div className={s.chipRow} role="radiogroup" aria-label="How long you have">
         {([1, 2] as const).map((h) => (
           <button key={h} type="button" role="radio" aria-checked={hours === h} className={`${s.chip} ${hours === h ? s.chipOn : ''}`} onClick={() => setHours(h)} disabled={making || busy}>

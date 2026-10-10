@@ -67,8 +67,13 @@ export function chooseDusk(choice: DuskChoice): DuskShade {
   return pickDusk(choice, readJson<string>(LAST_KEY, ''))
 }
 
-/** Count a visit's shade once, and remember it so the next visit differs. */
-export function recordDusk(shade: DuskShade): void {
+/**
+ * Count a visit's shade once, and remember it so the next visit differs. Only
+ * while rotating: the tally is how the owner compares shades met by chance, and
+ * a shade kept on purpose would count every visit towards itself.
+ */
+export function recordDusk(shade: DuskShade, choice: DuskChoice): void {
+  if (choice !== 'rotate') return
   writeJson(LAST_KEY, shade)
   count(shade, 'shown')
 }

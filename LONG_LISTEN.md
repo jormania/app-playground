@@ -604,3 +604,35 @@ explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.2.
 
 Prompts at the end of release three: themes@2026-10-10.3, programme@2026-10-10.6,
 explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.3, season@2026-10-10.1.
+
+## 15. The edge-case audit (10 October 2026)
+
+Four scenario hunts after release three — the week's lifecycle, Spotify, concerts
+and identity, and the screens in a browser — each wrote failing tests first; they
+are kept in `src/long-listen/__audit__/` as regression tests. What changed:
+
+- **One week, one job at a time.** Choosing, changing direction, taking an open
+  path, a sitting, "three others" and more directions run in a per-week queue
+  (`Journey.weekJob`), and every curator result re-reads what it writes over.
+  A fresh start bumps a generation (`repo.generation`) so an in-flight answer
+  never writes the old journey back.
+- **A stand-in is the item.** Continuity, the season, thread digests, the
+  curator's recent listening and second hearings, the playlist's skip filter and
+  "how did it land?" all read the curator's recording and its stand-in as one.
+- **Spotify matching (matcher 5).** Another opus on the album no longer rules out
+  the track; `BWV1048`/`KV` spellings and catalogue-identified works match; a
+  movement number can't pass for a work number; one failed album doesn't stop the
+  pass; a play counts for every recording on its tracks, relinked ones included.
+- **Work identity.** Quoted and bracketed nicknames and a catalogue written at the
+  end of a title no longer split one work into two; a shared opus with different
+  "No." numbers no longer merges two; "Strauss II" files under S
+  (`displaySurname`).
+- **Concerts.** Soloists per work keep their judgement in a recital; plural and
+  "English horn" instruments; the form keys soloists by row, not name.
+- **Notion.** A row, page or database deleted in Notion is recreated rather than
+  stopping every later sync.
+- **Screens.** Not-found links say so with a way back (`NotFound`); the season
+  page can't be paid for before two weeks; Library search finds concert
+  performers and catalogue numbers; the Journal names a sitting and a path taken
+  from an earlier week; double taps record once; curator text inputs are capped
+  at 500 characters; the dusk tally counts only while rotating.

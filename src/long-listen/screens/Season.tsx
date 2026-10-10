@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { seasonName } from '../domain/season'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
-import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { Empty, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -16,9 +16,11 @@ export function SeasonScreen({ n }: { n: number }) {
   const { data, error, retry } = useLoad(() => journey.seasonReview(n), [n])
   const [writing, setWriting] = useState(false)
 
-  if (error) return <Problem error={error} onRetry={retry} />
+  if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'No season to read yet: the first begins with your first week.', link: { href: href({ name: 'journal' }), label: 'Journal' } }} />
   if (!data) return <Waiting>Opening the season…</Waiting>
   const { season, review } = data
+  // Too soon to read back: a season still to come, or one with a single week so far. Nothing to pay for.
+  const tooSoon = !season.complete && season.weeksSoFar < 2
 
   async function write() {
     setWriting(true)
@@ -29,9 +31,11 @@ export function SeasonScreen({ n }: { n: number }) {
     <article>
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'journal' })}>← Journal</a></p>
       <p className={s.composer}>{seasonName(season.number)} · {season.label}</p>
-      {!season.complete && <p className={`${s.faint} ${s.flush}`}>So far: {season.weeksSoFar} of 12 weeks. The full review is written when the season ends.</p>}
+      {!season.complete && season.weeksSoFar > 0 && <p className={`${s.faint} ${s.flush}`}>So far: {season.weeksSoFar} of 12 weeks. The full review is written when the season ends.</p>}
 
-      {review ? (
+      {season.weeksSoFar === 0 ? (
+        <Empty link={{ href: href({ name: 'journal' }), label: 'Journal' }}>This season hasn’t begun.</Empty>
+      ) : review ? (
         <>
           <h1 className={s.title}>{review.title}</h1>
           <Paragraphs text={review.opening} className={`${s.lede} ${s.prose} ${s.mtMd}`} />
@@ -69,7 +73,9 @@ export function SeasonScreen({ n }: { n: number }) {
           <h1 className={s.titleSmall}>{season.complete ? 'The season in review' : 'The season so far'}</h1>
           <p className={s.dek}>Twelve weeks read back as one page: the threads you followed, where your taste moved, what is still open.</p>
           <div className={`${s.actions} ${s.mtLg}`}>
-            {curatorReady
+            {tooSoon
+              ? <p className={s.note}>It can be read back once two weeks of it are behind you.</p>
+              : curatorReady
               ? <button className={s.outlineButton} onClick={() => void write()} disabled={writing}>{writing ? 'The curator is writing…' : 'Ask the curator to write it'}</button>
               : <p className={s.note}>Add your Anthropic key in Settings to have the curator write it.</p>}
           </div>

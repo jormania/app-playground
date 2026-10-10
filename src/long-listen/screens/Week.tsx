@@ -6,7 +6,7 @@ import { useServices } from '../app/services'
 import { go } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
 import { verifyProgramme } from '../spotify/verify'
-import { Problem, Waiting } from '../components/common'
+import { MAX_ASK, Problem, Waiting } from '../components/common'
 import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
 import { SittingCard } from '../components/SittingCard'
@@ -89,16 +89,18 @@ export function WeekScreen() {
     }
   }
 
-  /** The mood changed after the directions were made: three new ones that know it. */
-  async function askWithMood() {
+  /** The mood changed after the directions were made: three new ones that know it. True once they're here. */
+  async function askWithMood(): Promise<boolean> {
     setAsking(true)
     setChooseError(null)
     try {
       // The mood is already on the week record; the curator reads it from there.
       await journey.offerOtherDirections()
       bump()
+      return true
     } catch (e) {
       setChooseError(e)
+      return false
     } finally {
       setAsking(false)
     }
@@ -131,7 +133,7 @@ export function WeekScreen() {
           : 'Choose the one you want to follow. The others aren’t set aside — they stay open, and may come back.'}
       </p>
 
-      <WeekMoodLine record={view.record} onAsk={() => { void askWithMood() }} busy={busy} />
+      <WeekMoodLine record={view.record} onAsk={askWithMood} busy={busy} asking={asking} />
 
       <p className={s.faint}>
         Your week: {TIME[view.prefs.timePerWeek].words} · {BREADTH[view.prefs.breadth].label.toLowerCase()} · {FAMILIARITY[view.prefs.familiarity].label.toLowerCase()}
@@ -158,7 +160,7 @@ export function WeekScreen() {
         ) : (
           <div className={s.feedback}>
             <label className={s.feedbackQ} htmlFor="mood">What are you in the mood for? <span className={s.faint}>(optional)</span></label>
-            <textarea id="mood" className={s.textarea} value={mood} onChange={(e) => setMood(e.target.value)} placeholder="Something quieter after a long week · Sibelius · a concerto I don’t know" />
+            <textarea id="mood" className={s.textarea} maxLength={MAX_ASK} value={mood} onChange={(e) => setMood(e.target.value)} placeholder="Something quieter after a long week · Sibelius · a concerto I don’t know" />
             <div className={s.actions}>
               <button className={`${s.outlineButton} ${s.smallButton}`} onClick={askAgain} disabled={busy}>{asking ? 'The curator is thinking again…' : 'Ask'}</button>
               <button className={s.textButton} onClick={() => setAskOpen(false)} disabled={asking}>Not now</button>
@@ -222,8 +224,8 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
  * directions already offered were made without it, so it offers three that
  * know it. The programme, and "more of this theme", read it from the week.
  */
-function WeekMoodLine({ record, onAsk, busy }: { record: WeekRecord; onAsk: () => void; busy: boolean }) {
-  const { journey, bump } = useServices()
+function WeekMoodLine({ record, onAsk, busy, asking }: { record: WeekRecord; onAsk: () => Promise<boolean>; busy: boolean; asking: boolean }) {
+  const { journey } = useServices()
   const [mood, setMood] = useState<WeekMood[]>(record.mood ?? [])
   const [changed, setChanged] = useState(false)
   async function toggle(m: WeekMood) {
@@ -241,9 +243,10 @@ function WeekMoodLine({ record, onAsk, busy }: { record: WeekRecord; onAsk: () =
           <button key={m.value} type="button" className={`${s.chip} ${mood.includes(m.value) ? s.chipOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)}>{m.label}</button>
         ))}
       </div>
+      {/* The button stays while the curator is asked, saying so; it goes once the three have come (and stays to try again if they didn't). */}
       {changed && (
-        <button type="button" className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => { setChanged(false); onAsk(); bump() }}>
-          {busy ? 'Asking…' : 'Three directions with this in mind'}
+        <button type="button" className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => { void onAsk().then((done) => { if (done) setChanged(false) }) }}>
+          {asking ? 'Asking…' : 'Three directions with this in mind'}
         </button>
       )}
     </div>

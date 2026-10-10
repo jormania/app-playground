@@ -48,6 +48,18 @@ export function memoryStore(initial: Record<string, unknown> = {}): KeyValueStor
 
 export const PREFIX = 'll:v1:'
 
+/**
+ * A record asked for by an address that holds nothing — an old link, a typo,
+ * a programme from a journey started afresh. Told apart from a failure because
+ * trying again can never help: the screen says so and offers a way back.
+ */
+export class NotFound extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'NotFound'
+  }
+}
+
 export class Collection<T> {
   constructor(
     private readonly store: KeyValueStore,
@@ -65,7 +77,7 @@ export class Collection<T> {
 
   async require(id: string): Promise<T> {
     const v = await this.get(id)
-    if (v === undefined) throw new Error(`${this.name} ${id} is missing`)
+    if (v === undefined) throw new NotFound(`${this.name} ${id} is missing`)
     return v
   }
 

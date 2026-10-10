@@ -10,7 +10,8 @@ import { usePlayback } from '../app/playback'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
-import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { MAX_ASK, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { NotFound } from '../store/repo'
 import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
@@ -30,7 +31,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const programme = await repo.programmes.require(programmeId)
     const items = programme.sections.flatMap((x) => x.items)
     const item = items.find((i) => i.id === itemId)
-    if (!item) throw new Error('missing item')
+    if (!item) throw new NotFound(`item ${itemId} is not in programme ${programmeId}`)
     const standIns = new Map((await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn).map((c) => [c.id.split(':').pop()!, c]))
     const ids = [...items.map((i) => i.recordingId), ...[...standIns.values()].flatMap((c) => c.perspectives.map((x) => x.recordingId))]
     const [recordings, events, feedback, explanation, answers] = await Promise.all([
@@ -54,14 +55,18 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
   // Dusk while this screen is open: a dark shade with light text, chosen afresh on each visit while the owner decides.
   const { settings } = useServices()
-  // Chosen once per visit (a change in Settings shows on the next one), counted once, applied while open.
+  // Chosen once per visit (a change in Settings shows on the next one), counted once, applied while open —
+  // and only once there is a work to show: a dead link is not a visit, and its message reads on the paper.
   const [shade] = useState(() => chooseDusk(settings.dusk))
+  const [duskChoice] = useState(settings.dusk)
   const [liked, setLiked] = useState(false)
   const counted = useRef(false)
+  const loaded = Boolean(data)
   useEffect(() => {
-    if (!counted.current) { counted.current = true; recordDusk(shade) }
+    if (!loaded) return
+    if (!counted.current) { counted.current = true; recordDusk(shade, duskChoice) }
     return applyDusk(shade)
-  }, [shade])
+  }, [shade, duskChoice, loaded])
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
   const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
@@ -80,8 +85,11 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const [explaining, setExplaining] = useState(false)
 
   const [heardOpen, setHeardOpen] = useState(false)
+  const [marking, setMarking] = useState(false)
+  // A ref as well as the state: two taps in one frame both see the state as it was before either.
+  const markingNow = useRef(false)
 
-  if (error) return <Problem error={error} onRetry={retry} />
+  if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'There’s no such work to listen to — perhaps an old link.', link: { href: href({ name: 'week' }), label: 'This week' } }} />
   if (!data) return <Waiting>Opening the listening view…</Waiting>
   const { programme, item, recording, next, credit, standIn, notes } = data
   const sp = isConfirmed(recording) ? recording.spotify : undefined
@@ -111,10 +119,21 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     try { await journey.explain(programme.id, item.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setExplaining(false) }
   }
 
+  // Once per tap: a second tap while the first is being kept would record the work heard twice.
   async function heard() {
-    await journey.markListening(played, 'heard', programme.id)
-    bump()
-    setHeardOpen(true)
+    if (markingNow.current) return
+    markingNow.current = true
+    setMarking(true)
+    try {
+      await journey.markListening(played, 'heard', programme.id)
+      bump()
+      setHeardOpen(true)
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      markingNow.current = false
+      setMarking(false)
+    }
   }
 
   const started = () => { void journey.markListening(played, 'play-started', programme.id, 'app').then(bump) }
@@ -172,7 +191,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         {curatorReady ? (
           <form className={s.askRow} onSubmit={(e) => { e.preventDefault(); void ask() }}>
             <label className={s.visuallyHidden} htmlFor="ask">Your question</label>
-            <input id="ask" className={s.input} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why does the horn come back here?" disabled={asking} />
+            <input id="ask" className={s.input} maxLength={MAX_ASK} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why does the horn come back here?" disabled={asking} />
             <button className={`${s.outlineButton} ${s.smallButton}`} type="submit" disabled={asking || !question.trim()}>{asking ? 'Asking…' : 'Ask'}</button>
           </form>
         ) : <p className={s.note}>Add your Anthropic key in Settings to ask the curator.</p>}
@@ -204,7 +223,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         </div>
       ) : (
         <div className={`${s.actions} ${s.mtXl}`}>
-          <button className={s.outlineButton} onClick={heard}>I’ve heard it</button>
+          <button className={s.outlineButton} onClick={() => void heard()} disabled={marking}>I’ve heard it</button>
         </div>
       )}
       <p className={`${s.settingHint} ${s.mtLg}`}>

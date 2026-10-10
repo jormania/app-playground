@@ -15,7 +15,7 @@ import { playbackOf } from '../spotify/client'
 import { usePlayerState } from '../app/playback'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
-import { Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { MAX_ASK, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import { SittingCard } from '../components/SittingCard'
 import s from '../styles/editorial.module.css'
 
@@ -100,7 +100,7 @@ const STATES: { value: ListeningState; label: string; kind: ListeningKind }[] = 
 export function ProgrammeScreen({ id }: { id: string }) {
   const { repo } = useServices()
   const { data, error, loading, retry } = useLoad(() => loadBundle(repo, id), [id])
-  if (error) return <Problem error={error} onRetry={retry} />
+  if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'There’s no such programme — perhaps an old link, or one from a journey started afresh.', link: { href: href({ name: 'week' }), label: 'This week' } }} />
   if (!data) return loading ? <Waiting>Opening the programme…</Waiting> : null
   return <ProgrammeView b={data} key={id} />
 }
@@ -361,7 +361,11 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const whatWhen = whatAndWhen(work?.form, work?.composed)
   const catalogue = catalogueLine(work?.catalogue ?? item.proposed.catalogue, item.proposed.composer)
 
-  async function mark(kind: ListeningKind) {
+  async function mark(to: (typeof STATES)[number]) {
+    // Tapping where you already are says nothing new: recording it again would
+    // add a second "heard" (or a reset) to the listening the curator reads.
+    if (to.value === state) return
+    const kind = to.kind
     await journey.markListening({ ...item, recordingId: playedId }, kind, pid)
     bump()
   }
@@ -443,7 +447,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         <p className={s.panelHead}>Your listening</p>
         <div className={s.segmented} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
           {STATES.map((st) => (
-            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? s.segmentOn : ''}`} onClick={() => mark(st.kind)}>
+            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? s.segmentOn : ''}`} onClick={() => void mark(st)}>
               {st.label}
             </button>
           ))}
@@ -707,13 +711,17 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
   const p = b.programme
   const rootId = p.extends ?? p.id
   const [wish, setWish] = useState('')
-  const [extending, setExtending] = useState(false)
-  const [asking, setAsking] = useState(false)
   const [directionWish, setDirectionWish] = useState('')
+  // One request at a time from here, whichever it is: each of these asks the
+  // curator for this week's music, and two at once would race to rewrite the
+  // week (another direction taken while three new ones are being found).
+  // 'more', 'directions', 'sitting', or the id of the direction being taken.
   const [busy, setBusy] = useState<string | null>(null)
+  const extending = busy === 'more'
+  const asking = busy === 'directions'
 
   async function more() {
-    setExtending(true)
+    setBusy('more')
     try {
       const x = await journey.extendProgramme(rootId, wish)
       bump()
@@ -721,12 +729,12 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
-      setExtending(false)
+      setBusy(null)
     }
   }
 
   async function newDirections() {
-    setAsking(true)
+    setBusy('directions')
     try {
       await journey.moreDirections(directionWish)
       setDirectionWish('')
@@ -734,7 +742,7 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
-      setAsking(false)
+      setBusy(null)
     }
   }
 
@@ -784,11 +792,11 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
           </ul>
         )}
         <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
-        <input id="more-wish" className={s.input} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} />
-        <button className={s.outlineButton} onClick={() => void more()} disabled={extending}>{extending ? 'The curator is choosing more…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
+        <input id="more-wish" className={s.input} maxLength={MAX_ASK} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} />
+        <button className={s.outlineButton} onClick={() => void more()} disabled={busy !== null}>{extending ? 'The curator is choosing more…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
       </div>
 
-      <SittingCard joinsThread />
+      <SittingCard joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} />
 
       <div className={s.nextCard}>
         <h3 className={s.nextTitle}>A different direction this week</h3>
@@ -807,8 +815,8 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
           </ul>
         )}
         <label className={s.visuallyHidden} htmlFor="direction-wish">What are you in the mood for?</label>
-        <input id="direction-wish" className={s.input} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} />
-        <button className={s.outlineButton} onClick={() => void newDirections()} disabled={asking}>{asking ? 'Finding three…' : 'Ask for three new directions'}</button>
+        <input id="direction-wish" className={s.input} maxLength={MAX_ASK} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} />
+        <button className={s.outlineButton} onClick={() => void newDirections()} disabled={busy !== null}>{asking ? 'Finding three…' : 'Ask for three new directions'}</button>
       </div>
 
       {b.openPaths > 0 && (

@@ -1,6 +1,15 @@
 import { CuratorUnavailable } from '../curation/api'
 import { SpotifyUnavailable } from '../spotify/client'
+import { NotFound } from '../store/repo'
+import { href } from '../app/router'
 import s from '../styles/editorial.module.css'
+
+/**
+ * The most a listener may type into anything sent to the curator — a question,
+ * a mood, an evening asked for. Room for a paragraph; a pasted page would only
+ * be paid for, and could crowd out what the curator is there to read.
+ */
+export const MAX_ASK = 500
 
 /** Something a listener can read. Never a stack trace, never an upstream body. */
 export function messageOf(e: unknown): string {
@@ -12,7 +21,16 @@ export function Waiting({ children }: { children: React.ReactNode }) {
   return <p className={s.waiting} role="status">{children}</p>
 }
 
-export function Problem({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+/**
+ * A load that failed. When there was nothing there to load (an old or mistyped
+ * link), it says so and points the way back instead: "Try again" would only
+ * fail the same way.
+ */
+export function Problem({ error, onRetry, notFound }: { error: unknown; onRetry?: () => void; notFound?: { text: string; link: { href: string; label: string } } }) {
+  if (error instanceof NotFound) {
+    const { text, link } = notFound ?? { text: 'There’s nothing at this address — perhaps an old link.', link: { href: href({ name: 'week' }), label: 'This week' } }
+    return <Empty link={link}>{text}</Empty>
+  }
   return (
     <div className={s.problem} role="alert">
       <p className={s.flush}>{messageOf(error)}</p>

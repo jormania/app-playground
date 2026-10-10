@@ -4,7 +4,7 @@ import { useLoad, useServices } from '../app/services'
 import { go } from '../app/router'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
 import { preferenceLines } from '../notion/mirror'
-import { Empty, Problem, Waiting, messageOf } from '../components/common'
+import { Empty, MAX_ASK, Problem, Waiting, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
@@ -165,7 +165,7 @@ export function NotebookScreen() {
         <h2 className={s.sectionHead}>A wish for next week</h2>
         <p className={s.quiet}>Read once, when the next week’s three directions are chosen — then cleared.</p>
         <label className={s.visuallyHidden} htmlFor="wish">A wish for next week</label>
-        <textarea id="wish" className={s.textarea} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
+        <textarea id="wish" className={s.textarea} maxLength={MAX_ASK} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
         <div className={s.actions}>
           <button className={s.primaryButton} onClick={saveWish} disabled={wish.trim() === data.prefs.nextRequest}>Keep this wish</button>
         </div>

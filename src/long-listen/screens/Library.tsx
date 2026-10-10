@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Concert, ProposedRecording, Recording, Work } from '../domain/types'
 import { Landmark } from 'lucide-react'
 import { concertDate } from './Concerts'
-import { creditLine, fold, surname } from '../domain/identity'
+import { surname } from '../domain/identity'
 import { compactFacts } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
@@ -12,6 +12,7 @@ import { aboutDuration, isConfirmed } from '../spotify/verify'
 import { Empty, Problem, Waiting } from '../components/common'
 import { Credits } from '../components/Credits'
 import { whoPlays } from '../domain/concertSoloists'
+import { searchLibrary } from '../domain/librarySearch'
 import s from '../styles/editorial.module.css'
 
 interface Entry {
@@ -75,18 +76,7 @@ export function LibraryScreen() {
     return { entries, events, feedback }
   }, [hideSkipped])
 
-  const shown = useMemo(() => {
-    if (!data) return []
-    const needle = fold(q)
-    if (!needle) return data.entries
-    return data.entries
-      .map((e) => {
-        if (fold(e.composer).includes(needle)) return e
-        const works = e.works.filter((w) => fold(w.work.title).includes(needle) || w.recordings.some((r) => fold(creditLine(r.proposed)).includes(needle)))
-        return works.length ? { ...e, works } : null
-      })
-      .filter((e): e is Entry => Boolean(e))
-  }, [data, q])
+  const shown = useMemo(() => (data ? searchLibrary(data.entries, q) : []), [data, q])
 
   if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the library…</Waiting>

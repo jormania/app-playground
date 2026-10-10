@@ -39,7 +39,8 @@ export function parseRoute(hash: string): Route {
     case 'threads': return { name: 'threads' }
     case 'notebook': return { name: 'notebook' }
     case 'concerts': return arg ? { name: 'concert', id: decodeURIComponent(arg) } : { name: 'concerts' }
-    case 'season': return Number(arg) >= 1 ? { name: 'season', n: Math.floor(Number(arg)) } : { name: 'journal' }
+    // A whole number from one up: "1.5" or "1e1" is no season, and was read as one.
+    case 'season': return arg && /^\d+$/.test(arg) && Number(arg) >= 1 ? { name: 'season', n: Number(arg) } : { name: 'journal' }
     case 'settings': return { name: 'settings' }
     default: return { name: 'week' }
   }
