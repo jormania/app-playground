@@ -964,7 +964,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node`, eslint and lucide-react done, React 19 to go
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node`, eslint, lucide-react and testing-library done, React 19 to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -1089,6 +1089,8 @@ notes could not be read; what is verified is import resolution, suite, typecheck
 build. Peer range still allows React 18. **Not checked: pixels** — an icon whose
 path data changed between 0.460 and 1.52 would pass every gate; P-001's remaining
 slices should eyeball icons when they next touch an app.
+
+**`@testing-library/{dom,react,user-event}` done 2026-10-12 — 10.4.1 → 10.4.2, 16.3.2 → 16.3.3, 14.6.1 → 14.6.7** (floors raised in `package.json` to match). All in-range patch releases; suite 5696 across 460 files, typecheck clean. They are dev-only, so nothing in `dist/` or any handler changes. Release notes not reachable from here; what is verified is the suite and typecheck. `eslint` had no changed source paths to lint.
 
 Remaining: the React 19 family (runtime and types together), last, as this item says.
 
