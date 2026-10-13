@@ -1,6 +1,7 @@
 import { directCurator, type Send } from './curator'
 import { DEFAULT_PREFERENCES, type ListenerPreferences } from '../domain/types'
 import type { ProgrammeResponse, ThemesResponse } from '../curation/api'
+import { DEFAULT_TIME_ZONE, isoDateIn } from '../domain/week'
 
 /**
  * The curation check (roadmap item 6): a handful of listener profiles run
@@ -65,8 +66,12 @@ export interface ProfileResult {
   error?: string
 }
 
-/** Run every profile through the real prompts with `send`. */
-export async function runCurationCheck(send: Send, profiles: Profile[] = PROFILES, today = new Date().toISOString().slice(0, 10)): Promise<ProfileResult[]> {
+/**
+ * Run every profile through the real prompts with `send`. `today` is the
+ * listener's date, as Journey.today() tells the curator — not the UTC one,
+ * which is still yesterday in Bucharest until 03:00.
+ */
+export async function runCurationCheck(send: Send, profiles: Profile[] = PROFILES, today = isoDateIn(new Date(), DEFAULT_TIME_ZONE)): Promise<ProfileResult[]> {
   const out: ProfileResult[] = []
   for (const profile of profiles) {
     const attempts: Record<string, number> = {}

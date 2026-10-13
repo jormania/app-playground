@@ -4,7 +4,7 @@ import { useLoad, useServices } from '../app/services'
 import { go } from '../app/router'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
 import { preferenceLines } from '../notion/mirror'
-import { Empty, MAX_ASK, Problem, Waiting, messageOf } from '../components/common'
+import { CharCount, Empty, MAX_ASK, MAX_NOTE, NeedsKey, Problem, Waiting, dateWords, messageOf } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
@@ -20,7 +20,7 @@ const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
  * listener can simply tell the curator something.
  */
 export function NotebookScreen() {
-  const { repo, journey, bump, say, notion, notionState, syncNotion, week } = useServices()
+  const { repo, journey, bump, say, notion, notionState, syncNotion, week, curatorReady, settings } = useServices()
   const { data, error, retry } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
   const [notes, setNotes] = useState('')
   const [wish, setWish] = useState('')
@@ -36,16 +36,24 @@ export function NotebookScreen() {
   const byId = new Map(taste.observations.map((o) => [o.id, o]))
 
   async function saveNotes() {
-    const current = await repo.taste()
-    await repo.saveTaste({ ...current, notesToCurator: notes.trim() })
-    bump()
-    say('The curator will read this from next week.', 'success')
+    try {
+      const current = await repo.taste()
+      await repo.saveTaste({ ...current, notesToCurator: notes.trim() })
+      bump()
+      say('The curator will read this from next week.', 'success')
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    }
   }
 
   async function saveWish() {
-    await repo.savePreferences({ ...(await repo.preferences()), nextRequest: wish.trim() })
-    bump()
-    say(wish.trim() ? 'The curator will read this when next week begins.' : 'Cleared.', 'success')
+    try {
+      await repo.savePreferences({ ...(await repo.preferences()), nextRequest: wish.trim() })
+      bump()
+      say(wish.trim() ? 'The curator will read this when next week begins.' : 'Cleared.', 'success')
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    }
   }
 
   /**
@@ -56,10 +64,14 @@ export function NotebookScreen() {
    */
   async function follow(q: string, when: 'now' | 'next') {
     if (when === 'next') {
-      await repo.savePreferences({ ...(await repo.preferences()), nextRequest: q })
-      setWish(q)
-      bump()
-      say('Next week begins from this question.', 'success')
+      try {
+        await repo.savePreferences({ ...(await repo.preferences()), nextRequest: q })
+        setWish(q)
+        bump()
+        say('Next week begins from this question.', 'success')
+      } catch (e) {
+        say(messageOf(e), 'danger')
+      }
       return
     }
     setFollowing(q)
@@ -96,13 +108,17 @@ export function NotebookScreen() {
       <h1 className={s.title}>Your listening, in words</h1>
       <p className={s.dek}>What the curator has noticed. Not a score — a few honest sentences, and how sure it is of each.</p>
 
-      {empty && <Empty>Nothing yet. A word or two of feedback after a recording is how this begins.</Empty>}
+      {/* What waits to be read comes first: it is what would fill the page. */}
       {data.pending > 0 && (
-        <p className={s.faint}>
-          Some of what you’ve said hasn’t been read yet.{' '}
-          <button className={s.textButton} onClick={readNow} disabled={reading}>{reading ? 'Reading…' : 'Read it now'}</button>
-        </p>
+        <>
+          <p className={s.faint}>
+            Some of what you’ve said hasn’t been read yet.{' '}
+            {curatorReady && <button className={s.textButton} onClick={() => void readNow()} disabled={reading}>{reading ? 'Reading…' : 'Read it now'}</button>}
+          </p>
+          {!curatorReady && <NeedsKey to="have it read" />}
+        </>
       )}
+      {empty && <Empty>Nothing yet. A word or two of feedback after a recording is how this begins.</Empty>}
 
       {(Object.keys(STANCE_TITLE) as TasteObservation['stance'][]).map((stance) => groups[stance].length > 0 && (
         <section key={stance} className={s.block}>
@@ -118,13 +134,14 @@ export function NotebookScreen() {
       {taste.questions.length > 0 && (
         <section className={s.block}>
           <h2 className={s.sectionHead}>Questions you seem to be asking</h2>
-          <p className={s.quiet}>Each one can become a week: <em>Follow this</em> asks the curator for three directions from it.</p>
+          <p className={s.sectionGuide}>Each one can become a week: <em>Follow this</em> asks the curator for three directions from it.</p>
+          {!curatorReady && <NeedsKey to="follow one now" />}
           <ul className={s.bullets}>
             {taste.questions.map((q, i) => (
               <li key={i}>
                 {q}{' '}
                 <span className={s.followLinks}>
-                  <button className={s.textButton} onClick={() => void follow(q, 'now')} disabled={following !== null}>{following === q ? 'Asking…' : 'Follow this'}</button>
+                  <button className={s.textButton} onClick={() => void follow(q, 'now')} disabled={following !== null || !curatorReady}>{following === q ? 'The curator is finding three…' : 'Follow this'}</button>
                   <span className={s.faint}> · </span>
                   <button className={s.textButton} onClick={() => void follow(q, 'next')} disabled={following !== null}>next week</button>
                 </span>
@@ -160,12 +177,12 @@ export function NotebookScreen() {
         <p className={s.faint}><a href="#/settings">Change these in Settings</a></p>
       </section>
 
-      <hr className={s.rule} />
-      <section>
+      <section className={s.block}>
         <h2 className={s.sectionHead}>A wish for next week</h2>
-        <p className={s.quiet}>Read once, when the next week’s three directions are chosen — then cleared.</p>
+        <p className={s.sectionGuide}>Read once, when the next week’s three directions are chosen — then cleared.</p>
         <label className={s.visuallyHidden} htmlFor="wish">A wish for next week</label>
         <textarea id="wish" className={s.textarea} maxLength={MAX_ASK} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
+        <CharCount value={wish} />
         <div className={s.actions}>
           <button className={s.primaryButton} onClick={saveWish} disabled={wish.trim() === data.prefs.nextRequest}>Keep this wish</button>
         </div>
@@ -173,9 +190,10 @@ export function NotebookScreen() {
 
       <section className={s.block}>
         <h2 className={s.sectionHead}>A note to the curator</h2>
-        <p className={s.quiet}>Anything you’d like it to keep in mind — a composer you’re curious about, music you already know well (so it isn’t offered as new), how much time you have, a mood you’re in.</p>
+        <p className={s.sectionGuide}>Anything you’d like it to keep in mind — a composer you’re curious about, music you already know well (so it isn’t offered as new), how much time you have, a mood you’re in.</p>
         <label className={s.visuallyHidden} htmlFor="notes">Note to the curator</label>
-        <textarea id="notes" className={s.textarea} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <textarea id="notes" className={s.textarea} maxLength={MAX_NOTE} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <CharCount value={notes} max={MAX_NOTE} />
         <div className={s.actions}>
           <button className={s.primaryButton} onClick={saveNotes} disabled={notes.trim() === taste.notesToCurator}>Keep this note</button>
         </div>
@@ -184,9 +202,9 @@ export function NotebookScreen() {
       {notion && (
         <section className={s.block}>
           <h2 className={s.sectionHead}>In Notion</h2>
-          <p className={s.quiet}>
+          <p className={s.sectionGuide}>
             Your journal, threads, recordings and this notebook are copied to Notion as readable pages.
-            {notionState.lastSync && ` Last updated ${new Date(notionState.lastSync).toLocaleString()}.`}
+            {notionState.lastSync && ` Last updated ${dateWords(notionState.lastSync, settings.timeZone, true)}.`}
           </p>
           {notionState.error && <p className={s.settingWarn}>{notionState.error}</p>}
           <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>

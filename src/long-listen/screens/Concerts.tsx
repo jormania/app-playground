@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Landmark } from 'lucide-react'
 import type { Concert } from '../domain/types'
-import { displaySurname, fold, surname } from '../domain/identity'
+import { displaySurname, fold } from '../domain/identity'
+import { isCredited } from '../spotify/match'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import type { ConcertDraft } from '../curation/journey'
 import { openUrl, searchUrl } from '../spotify/client'
 import { spotifyCandidates, type SpotifyCandidate } from '../spotify/verify'
 import { resizePhoto } from '../../shared/photo'
-import { Empty, Problem, Waiting, messageOf } from '../components/common'
+import { CharCount, Empty, MAX_ASK, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
 import { Credits } from '../components/Credits'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { namedSoloists, playingKeys, removeSoloist, soloistKey, toDraft, toForm, toggleSoloist, type ConcertFormState } from '../domain/concertForm'
@@ -21,10 +22,6 @@ const SHARED_IMAGE_KEEP_MS = 24 * 3600_000
 
 /** "Thu 16 October 2026" */
 export const concertDate = (d: string) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`))
-
-/** "Orchestra Filarmonicii George Enescu · Gabriel Bebeșelea · Alexandra Conunova, violin" */
-export const concertPerformers = (c: Pick<Concert, 'orchestra' | 'conductor' | 'soloists'>) =>
-  [c.orchestra, c.conductor, ...c.soloists.map((x) => (x.instrument ? `${x.name}, ${x.instrument}` : x.name))].filter(Boolean).join(' · ')
 
 /**
  * All concerts: every concert heard live, by venue and then date, newest first.
@@ -94,7 +91,7 @@ export function ConcertScreen({ id }: { id: string }) {
       </ol>
 
       <div className={`${s.actions} ${s.mtLg}`}>
-        <button className={s.outlineButton} onClick={() => setEditing(true)}>Edit</button>
+        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => setEditing(true)}>Edit</button>
       </div>
     </article>
   )
@@ -111,8 +108,15 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
   const [looking, setLooking] = useState(false)
   // Only the soloists who played this work: the evening's cellist is no clue to its symphony's recordings.
   const soloists = whoPlays(c, w)
-  const performers = [c.conductor, c.orchestra, ...soloists.map((x) => x.name)].filter((x): x is string => Boolean(x))
-  const theirs = (cand: SpotifyCandidate) => performers.some((p) => cand.artists.some((a) => fold(a).includes(surname(p))))
+  const people = [c.conductor, ...soloists.map((x) => x.name)].filter((x): x is string => Boolean(x))
+  // The same performers: a person credited by surname, as the matcher credits them (spotify/match.ts);
+  // the orchestra by its whole name, either way round — never by a surname taken from it.
+  const orchestraIn = (artists: string[]) => {
+    const o = c.orchestra ? fold(c.orchestra) : ''
+    return o.length > 3 && artists.some((a) => { const f = fold(a); return f.length > 3 && (f === o || f.includes(o) || o.includes(f)) })
+  }
+  const theirs = (cand: SpotifyCandidate) => people.some((p) => isCredited(p, cand.artists.map((name) => ({ name })))) || orchestraIn(cand.artists)
+  const query = `${displaySurname(w.composer)} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`
 
   async function look() {
     setLooking(true)
@@ -132,11 +136,14 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
       <p className={s.libraryTitle}>{w.composer} — {w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
       <Credits r={{ soloists }} />
       {found === null ? (
-        spotify.connected
-          ? <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
-          : <a className={`${s.outlineButton} ${s.smallButton}`} href={searchUrl(`${displaySurname(w.composer)} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+        // The same button, in the same place, as a recording on the programme: one size for "Look for it on Spotify".
+        <div className={s.actions}>
+          {spotify.connected
+            ? <button className={s.outlineButton} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
+            : <a className={s.outlineButton} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>}
+        </div>
       ) : found.length === 0 ? (
-        <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(`${displaySurname(w.composer)} ${w.title}${w.catalogue ? ` ${w.catalogue}` : ''}`)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
+        <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
       ) : (
         <ul className={s.bullets}>
           {found.map((x, i) => (
@@ -245,14 +252,16 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
       <h1 className={s.titleSmall}>{concert ? 'Correct the concert' : 'A concert heard live'}</h1>
 
-      {curatorReady && (
-        <div className={s.panel}>
-          <p className={s.panelHead}>From a screenshot</p>
-          <p className={s.quiet}>The hall’s programme page, or a photo of the printed one. The curator reads it into the form below; check it, then keep it.</p>
-          <input ref={fileRef} type="file" accept="image/*" className={s.visuallyHidden} onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />
-          <button className={s.outlineButton} onClick={() => fileRef.current?.click()} disabled={reading}>{reading ? 'Reading the programme…' : 'Choose a screenshot'}</button>
+      {/* Offered with or without a key — without one, it says what it needs, like every curator request. */}
+      <div className={s.panel}>
+        <p className={s.panelHead}>From a screenshot</p>
+        <p className={s.quiet}>The hall’s programme page, or a photo of the printed one. The curator reads it into the form below; check it, then keep it.</p>
+        <input ref={fileRef} type="file" accept="image/*" className={s.visuallyHidden} onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />
+        <div className={s.actions}>
+          <button className={s.outlineButton} onClick={() => fileRef.current?.click()} disabled={reading || !curatorReady}>{reading ? 'Reading the programme…' : 'Choose a screenshot'}</button>
         </div>
-      )}
+        {!curatorReady && <NeedsKey to="have the curator read it" />}
+      </div>
 
       <form className={s.concertForm} onSubmit={(e) => { e.preventDefault(); void save() }}>
         <label className={s.field}><span>Venue</span><input className={s.input} value={d.venue} onChange={(e) => set({ venue: e.target.value })} placeholder="Filarmonica George Enescu" required /></label>
@@ -270,7 +279,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
           <div key={x.key} className={s.fieldRow}>
             <input className={s.input} aria-label="Soloist" value={x.name} onChange={(e) => setSoloist(x.key, { name: e.target.value })} placeholder="Name" />
             <input className={s.input} aria-label="Instrument" value={x.instrument ?? ''} onChange={(e) => setSoloist(x.key, { instrument: e.target.value })} placeholder="Instrument" />
-            <button type="button" className={s.textButton} onClick={() => setD((f) => removeSoloist(f, x.key))} aria-label="Remove soloist">Remove</button>
+            <button type="button" className={s.textButton} onClick={() => setD((f) => removeSoloist(f, x.key))} aria-label={`Remove ${x.name.trim() || 'this soloist'}`}>Remove</button>
           </div>
         ))}
         <button type="button" className={s.textButton} onClick={() => set({ soloists: [...d.soloists, { key: soloistKey(), name: '' }] })}>Add a soloist</button>
@@ -297,11 +306,12 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
         <button type="button" className={s.textButton} onClick={() => set({ works: [...d.works, { composer: '', title: '' }] })}>Add a work</button>
 
         <label className={`${s.field} ${s.mtMd}`}><span>How was it?</span>
-          <textarea className={s.textarea} value={d.note ?? ''} onChange={(e) => set({ note: e.target.value })} placeholder="Optional — a sentence is plenty. The curator reads it." />
+          <textarea className={s.textarea} maxLength={MAX_ASK} value={d.note ?? ''} onChange={(e) => set({ note: e.target.value })} placeholder="Optional — a sentence is plenty. The curator reads it." />
         </label>
+        <CharCount value={d.note ?? ''} />
         <div className={s.actions}>
           <button className={s.primaryButton} type="submit" disabled={saving || reading}>{saving ? 'Keeping it…' : 'Keep this concert'}</button>
-          {onDone && <button type="button" className={s.textButton} onClick={onDone}>Cancel</button>}
+          <button type="button" className={s.textButton} onClick={() => (onDone ? onDone() : go({ name: 'concerts' }))}>Cancel</button>
         </div>
       </form>
     </div>

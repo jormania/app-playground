@@ -21,7 +21,12 @@ export class Ingest {
   private readonly artists = new Map<string, Artist>()
   private readonly recordings = new Map<string, Recording>()
 
-  constructor(private readonly repo: Repo) {}
+  /** The journey this was read from: a fresh start meanwhile means nothing is written (see `commit`). */
+  private readonly generation: number
+
+  constructor(private readonly repo: Repo) {
+    this.generation = repo.generation
+  }
 
   async load(): Promise<this> {
     this.works = await this.repo.works.all()
@@ -98,6 +103,10 @@ export class Ingest {
 
   /** Write everything gathered. Existing artists are left as they are. */
   async commit(): Promise<void> {
+    // Works and recordings read from a journey that was started afresh since
+    // would bring that journey back in pieces — the same rule as
+    // Journey.stillCurrent, kept here so every caller of commit has it.
+    if (this.repo.generation !== this.generation) throw new Error('The journey was started afresh meanwhile, so that answer was not kept.')
     const existingArtists = new Set((await this.repo.artists.all()).map((a) => a.id))
     await this.repo.artists.putMany([...this.artists.values()].filter((a) => !existingArtists.has(a.id)))
     await this.repo.works.putMany([...this.newWorks.values()])

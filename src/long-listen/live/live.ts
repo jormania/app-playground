@@ -122,8 +122,25 @@ export async function liveEvents(
     return stale(e)
   }
   if (!res.ok) return stale(new Error(`marquee-scan ${res.status}`))
-  const data = await res.json() as { events?: LiveEvent[] }
-  const events = (data.events ?? []).map(({ venue, title, date, time, hall, link, description }) => ({ venue, title, date, time, hall, link, description }))
+  // A body cut off mid-way is a failed request too: the last reading stands.
+  let data: { events?: LiveEvent[]; venues?: { venueId?: string; venue?: string; status?: string }[] }
+  try {
+    data = await res.json() as typeof data
+  } catch (e) {
+    return stale(e)
+  }
+  const fresh = (data.events ?? []).map(({ venue, title, date, time, hall, link, description }) => ({ venue, title, date, time, hall, link, description }))
+  // A request can succeed while one venue inside it failed: Marquee says so per
+  // venue (throttled, unreachable, parser-broken — api/_lib/marquee/scan.js) and
+  // gives that venue no events. That is "couldn't read it", not "nothing on":
+  // its last reading stands, as the whole reading does when the request fails.
+  // Only `ok` and `empty` are believed.
+  const failed = new Set((data.venues ?? [])
+    .filter((v) => v.status && v.status !== 'ok' && v.status !== 'empty')
+    .map((v) => v.venue ?? LIVE_VENUES.find((x) => x.id === v.venueId)?.name)
+    .filter((name): name is string => Boolean(name)))
+  const kept = failed.size ? ((cached?.value as LiveEvent[] | undefined) ?? []).filter((e) => failed.has(e.venue)) : []
+  const events = [...fresh.filter((e) => !failed.has(e.venue)), ...kept]
   await marks.put({ id: 'live:scan', at: now.toISOString(), value: events })
   return events
 }

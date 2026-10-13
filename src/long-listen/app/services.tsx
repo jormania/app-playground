@@ -113,13 +113,17 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
     return { name: me.name, devices: await spotify.devices().catch(() => []) }
   }, [spotify])
 
+  // Set when the last sync failed, so the connection's return tries again (below).
+  const notionFailed = useRef(false)
   const syncNotion = useCallback(async () => {
     if (!notion) return
     setNotionState((s) => ({ ...s, syncing: true, error: undefined }))
     try {
       await syncToNotion(notion.call, repo, notion.pageId, journey.currentWeek().key)
+      notionFailed.current = false
       setNotionState({ syncing: false, lastSync: new Date().toISOString() })
     } catch (e) {
+      notionFailed.current = true
       setNotionState({ syncing: false, error: e instanceof CuratorUnavailable ? e.message : 'Notion couldn’t be updated just now.' })
     }
   }, [notion, repo, journey])
@@ -185,6 +189,17 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
     if (navigator.onLine !== false) { start(); return }
     window.addEventListener('online', start, { once: true })
     return () => window.removeEventListener('online', start)
+  }, [notion, syncNotion])
+
+  // A sync that began online and failed part-way (the connection dropped under
+  // it) is tried again when the connection returns — as the first sync waits
+  // for it above, and as Spotify's listening check retries on 'online'.
+  // Otherwise the mirror stayed behind until the next reload.
+  useEffect(() => {
+    if (!notion) return
+    const retry = () => { if (notionFailed.current) void syncNotion() }
+    window.addEventListener('online', retry)
+    return () => window.removeEventListener('online', retry)
   }, [notion, syncNotion])
 
   const value: Services = {

@@ -1,11 +1,11 @@
 import type { Repo } from '../store/repo'
 import type { ListeningWeek } from '../domain/week'
-import { creditLine } from '../domain/identity'
-import { knownWorkIds, listeningState, latestFeedback, timesHeard } from '../domain/listening'
+import { creditLine, sameWork, type WorkLike } from '../domain/identity'
+import { knownWorkIds, listeningState, timesHeard } from '../domain/listening'
 import type { ListenerPreferences, ProgrammeItem, WeekMood } from '../domain/types'
-import { weeksBetween } from '../domain/week'
+import { DEFAULT_TIME_ZONE, weekOf, weekOfDate, weeksBetween, type CivilDate } from '../domain/week'
 import { whoPlays } from '../domain/concertSoloists'
-import { digestThread, feedbackOnAny, heardAs, standInsOf, type ThreadDigest } from './continuity'
+import { digestThread, heardAs, itemFeedback, playedProposed, standInPlayersOf, standInsOf, type ThreadDigest } from './continuity'
 
 /**
  * What the curator is told about the listener when it proposes a week's three
@@ -37,7 +37,7 @@ export interface CuratorContext {
    * ago, not offered again since: candidates for a second hearing, which the
    * curator may offer one of, once, as a question.
    */
-  secondHearings: { composer: string; work: string; recording: string; reaction: string; note?: string; weeksAgo: number }[]
+  secondHearings: { composer: string; work: string; recording: string; reaction: string; note?: string; weeksAgo: number; workId: string }[]
   /**
    * Every work programmed in the last twelve weeks, in any theme — so a new
    * theme doesn't hand back last month's symphony by accident. A deliberate
@@ -57,7 +57,21 @@ export interface CuratorContext {
   thisWeek?: WeekMood[]
 }
 
-export async function buildContext(repo: Repo, week: ListeningWeek, requestedNext?: string): Promise<CuratorContext> {
+export async function buildContext(
+  repo: Repo, week: ListeningWeek, requestedNext?: string,
+  /** The listener's time zone (Journey passes its own): "how many weeks ago" counts their weeks. */
+  timeZone: string = DEFAULT_TIME_ZONE,
+): Promise<CuratorContext> {
+  // Whole listening weeks from an instant to the week being curated (0 = this
+  // week, never negative), counted in the listener's weeks like everything else
+  // — not in UTC days, which put a Sunday-night play in the wrong week.
+  const weeksSince = (at: string | undefined): number => {
+    const t = at ? new Date(at) : undefined
+    if (!t || Number.isNaN(t.getTime())) return 0
+    return Math.max(0, weeksBetween(weekOf(t, timeZone).key, week.key))
+  }
+  // One work however the curator spelled it this time — the identity the validator uses, not the raw strings.
+  const sameAs = (a: WorkLike) => (b: { composer: string; work: string }) => sameWork(a, { composer: b.composer, title: b.work })
   const [taste, prefs, themes, explorations, weeks, options, events, feedback] = await Promise.all([
     repo.taste(), repo.preferences(), repo.themes.all(), repo.explorations.all(), repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(),
   ])
@@ -65,6 +79,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   // Where Spotify lacked the curator's recording, the stand-in is what was heard and reacted to.
   const comparisons = await repo.comparisons.all()
   const standIns = standInsOf(comparisons)
+  const players = standInPlayersOf(comparisons)
 
   const threads = themes
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -107,20 +122,22 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   const itemByRecording = new Map(
     [...programmes.values()].flatMap((p) => p.sections.flatMap((s) => s.items)).map((i) => [i.recordingId, i]),
   )
-  // A stand-in's recording reads as its item, credited to who actually played.
+  // A stand-in's recording reads as its item, credited to who actually played
+  // (the shared playedProposed, as the thread digest and the season credit it).
   const standInFor = new Map<string, { item: ProgrammeItem; proposed: ProgrammeItem['proposed'] }>()
-  for (const c of comparisons) {
-    if (!c.standIn || c.perspectives.length < 2) continue
-    const [, programmeId, itemId] = c.id.split(':')
-    const item = programmes.get(programmeId)?.sections.flatMap((s) => s.items).find((i) => i.id === itemId)
-    if (item) standInFor.set(c.perspectives[1].recordingId, { item, proposed: { ...item.proposed, ...c.perspectives[1].proposed } })
+  for (const [cmpId, s] of players) {
+    const [, programmeId, itemId] = cmpId.split(':')
+    const item = programmes.get(programmeId)?.sections.flatMap((x) => x.items).find((i) => i.id === itemId)
+    if (item) standInFor.set(s.recordingId, { item, proposed: playedProposed(item, programmeId, players, events, feedback) })
   }
   const recentListening = recentIds.flatMap((rid) => {
     const own = itemByRecording.get(rid)
     const item = own ?? standInFor.get(rid)?.item
     if (!item) return []
     const proposed = own ? item.proposed : standInFor.get(rid)!.proposed
-    const fb = latestFeedback(feedback, rid)
+    // What was said about the work counts too, merged as every reader merges it:
+    // a note left on the work ("the sea as an orchestra") was dropped here.
+    const fb = itemFeedback(feedback, [rid], item.workId)
     return [{
       composer: proposed.composer,
       work: proposed.work,
@@ -129,7 +146,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
       reaction: fb.reaction,
       notes: fb.notes.slice(-3),
       heardTimes: timesHeard(events, rid),
-      weeksAgo: weeksSince(lastAt.get(rid), week.startsOn),
+      weeksAgo: weeksSince(lastAt.get(rid)),
     }]
   })
 
@@ -140,18 +157,21 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   // Each item with its programme (item ids are only unique within one), its stand-in read with it.
   const programmeOf = new Map([...programmes.values()].flatMap((p) => p.sections.flatMap((s) => s.items).map((i) => [i, p.id] as const)))
   for (const item of itemByRecording.values()) {
-    if (offeredAgain.has(item.workId) || secondHearings.some((x) => x.work === item.proposed.work && x.composer === item.proposed.composer)) continue
-    const ids = heardAs(item, programmeOf.get(item) ?? '', standIns)
-    const byRec = feedbackOnAny(feedback, ids)
-    const byWork = latestFeedback(feedback, item.workId)
-    const reaction = byRec.reaction ?? byWork.reaction
+    if (offeredAgain.has(item.workId) || secondHearings.some((x) => x.workId === item.workId || sameAs({ composer: item.proposed.composer, title: item.proposed.work })(x))) continue
+    const programmeId = programmeOf.get(item) ?? ''
+    const ids = heardAs(item, programmeId, standIns)
+    const { reaction, notes } = itemFeedback(feedback, ids, item.workId)
     if (reaction !== 'interesting' && reaction !== 'too-difficult') continue
     const said = feedback.filter((f) => ids.includes(f.target.id) || f.target.id === item.workId).map((f) => f.at).sort().pop()
-    const weeksAgo = weeksSince(said, week.startsOn)
+    const weeksAgo = weeksSince(said)
     if (weeksAgo < 3) continue
     secondHearings.push({
-      composer: item.proposed.composer, work: item.proposed.work, recording: creditLine(item.proposed),
-      reaction, note: [...byRec.notes, ...byWork.notes].pop(), weeksAgo,
+      composer: item.proposed.composer, work: item.proposed.work,
+      // Credited to who played: heard through a stand-in, the stand-in's performers.
+      recording: creditLine(playedProposed(item, programmeId, players, events, feedback)),
+      reaction, note: notes.pop(), weeksAgo,
+      // So the programme that takes it up is matched by the work, not the curator's spelling of it.
+      workId: item.workId,
     })
   }
   secondHearings.sort((a, b) => a.weeksAgo - b.weeksAgo)
@@ -161,7 +181,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
     const weeksAgo = weeksBetween(p.weekKey, week.key)
     if (weeksAgo > 12 || weeksAgo < 0) continue
     for (const i of p.sections.flatMap((x) => x.items)) {
-      if (!alreadyProgrammed.some((a) => a.composer === i.proposed.composer && a.work === i.proposed.work)) {
+      if (!alreadyProgrammed.some(sameAs({ composer: i.proposed.composer, title: i.proposed.work, catalogue: i.proposed.catalogue }))) {
         alreadyProgrammed.push({ composer: i.proposed.composer, work: i.proposed.work, weeksAgo })
       }
     }
@@ -171,7 +191,7 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   // Heard live counts as known: never offered back as a discovery.
   const allConcerts = await repo.concerts.all()
   for (const c of allConcerts) for (const w of c.works) {
-    if (!alreadyKnown.some((a) => a.composer === w.composer && a.work === w.title)) alreadyKnown.push({ composer: w.composer, work: w.title })
+    if (!alreadyKnown.some(sameAs({ composer: w.composer, title: w.title, catalogue: w.catalogue }))) alreadyKnown.push({ composer: w.composer, work: w.title })
   }
   const concerts: CuratorContext['concerts'] = allConcerts
     .map((c) => ({
@@ -183,12 +203,13 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
         return `${w.composer} — ${w.title}${who.length ? ` (with ${who.join('; ')})` : ''}`
       }),
       note: c.note,
-      weeksAgo: weeksSince(`${c.date}T20:00:00Z`, week.startsOn),
+      // The concert's own calendar date, already the listener's: its week, not an invented UTC evening.
+      weeksAgo: Math.max(0, weeksBetween(weekOfDate(civilOf(c.date)).key, week.key)),
     }))
     .filter((c) => c.weeksAgo <= 12)
     .sort((a, b) => b.date.localeCompare(a.date))
   for (const i of [...programmes.values()].flatMap((p) => p.sections.flatMap((x) => x.items))) {
-    if (known.has(i.workId) && !alreadyKnown.some((a) => a.composer === i.proposed.composer && a.work === i.proposed.work)) {
+    if (known.has(i.workId) && !alreadyKnown.some(sameAs({ composer: i.proposed.composer, title: i.proposed.work, catalogue: i.proposed.catalogue }))) {
       alreadyKnown.push({ composer: i.proposed.composer, work: i.proposed.work })
     }
   }
@@ -214,9 +235,8 @@ export async function buildContext(repo: Repo, week: ListeningWeek, requestedNex
   }
 }
 
-/** Whole weeks from an instant to the start of the week being curated (0 = this week, never negative). */
-function weeksSince(at: string | undefined, startsOn: string): number {
-  if (!at) return 0
-  const days = (Date.parse(`${startsOn}T00:00:00Z`) - Date.parse(at)) / 86_400_000
-  return Math.max(0, Math.ceil(days / 7))
+/** "2026-10-20" as a calendar date. */
+function civilOf(d: string): CivilDate {
+  const [year, month, day] = d.split('-').map(Number)
+  return { year, month, day }
 }

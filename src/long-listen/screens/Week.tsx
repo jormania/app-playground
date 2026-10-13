@@ -6,13 +6,12 @@ import { useServices } from '../app/services'
 import { go } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
 import { verifyProgramme } from '../spotify/verify'
-import { MAX_ASK, Problem, Waiting } from '../components/common'
+import { CharCount, MAX_ASK, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
+import { MOOD_WORD, OpenPaths } from '../components/OpenPaths'
 import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
 import { SittingCard } from '../components/SittingCard'
 import s from '../styles/editorial.module.css'
-
-const MOOD_WORD = { immersive: 'Immersive', curious: 'Curious', adventurous: 'Adventurous' } as const
 
 interface WeekView {
   record: WeekRecord
@@ -29,11 +28,11 @@ interface WeekView {
  * once, and never again for the same week.
  */
 export function WeekScreen() {
-  const { journey, repo, version, bump, settings, spotify } = useServices()
+  const { journey, repo, version, bump, settings, spotify, say, curatorReady } = useServices()
   const [view, setView] = useState<WeekView | null>(null)
   const [error, setError] = useState<unknown>(null)
+  // The direction (or open path) the curator is building a programme from.
   const [choosing, setChoosing] = useState<string | null>(null)
-  const [chooseError, setChooseError] = useState<unknown>(null)
   const [askOpen, setAskOpen] = useState(false)
   const [mood, setMood] = useState('')
   const [asking, setAsking] = useState(false)
@@ -58,17 +57,17 @@ export function WeekScreen() {
   // Reload on data changes and when the curator setup changes (the key, demo).
   useEffect(() => { void load() }, [load, version, settings.anthropicKey])
 
-  async function choose(o: ProgrammeOption, fromEarlier = false) {
+  async function choose(o: ProgrammeOption) {
     setChoosing(o.id)
-    setChooseError(null)
     try {
-      const p = fromEarlier ? await journey.takeOpenPath(o.id) : await journey.choose(o.id)
+      const p = await journey.choose(o.id)
       // Start confirming its recordings now, before the page has even drawn.
       void verifyProgramme(repo, spotify, p.id, bump).catch(() => {})
       bump()
       go({ name: 'programme', id: p.id })
     } catch (e) {
-      setChooseError(e)
+      // Said where it was asked, not above the list: the option may be a screen further down.
+      say(messageOf(e), 'danger')
     } finally {
       setChoosing(null)
     }
@@ -76,14 +75,13 @@ export function WeekScreen() {
 
   async function askAgain() {
     setAsking(true)
-    setChooseError(null)
     try {
       await journey.offerOtherDirections(mood.trim() || undefined)
       setMood('')
       setAskOpen(false)
       bump()
     } catch (e) {
-      setChooseError(e)
+      say(messageOf(e), 'danger')
     } finally {
       setAsking(false)
     }
@@ -92,14 +90,13 @@ export function WeekScreen() {
   /** The mood changed after the directions were made: three new ones that know it. True once they're here. */
   async function askWithMood(): Promise<boolean> {
     setAsking(true)
-    setChooseError(null)
     try {
       // The mood is already on the week record; the curator reads it from there.
       await journey.offerOtherDirections()
       bump()
       return true
     } catch (e) {
-      setChooseError(e)
+      say(messageOf(e), 'danger')
       return false
     } finally {
       setAsking(false)
@@ -120,7 +117,7 @@ export function WeekScreen() {
   // One thing at a time: choosing a direction and asking for others both rewrite the week.
   const busy = asking || choosing !== null
   if (!view) return <Waiting>The curator is choosing this week’s directions…</Waiting>
-  if (view.record.programmeId) return <ProgrammeScreen id={view.record.programmeId} />
+  if (view.record.programmeId) return <ProgrammeScreen id={view.record.programmeId} asThisWeek />
 
   const week = weekFromKey(view.record.weekKey)
   return (
@@ -140,58 +137,59 @@ export function WeekScreen() {
         {view.prefs.pairs ? ' · with side-by-side pairs' : ''}. <a href="#/settings">Change in Settings</a>, then ask for three others.
       </p>
 
-      {chooseError != null && <Problem error={chooseError} />}
-      {choosing && <Waiting>The curator is building your programme — choosing works, recordings, and what to listen for…</Waiting>}
-
+      {/* The direction being built stays where it was tapped, saying so; the others wait. */}
       <ol className={s.options}>
         {view.options.map((o) => (
-          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={busy} onChoose={() => choose(o)} />
+          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={busy || !curatorReady} choosing={choosing === o.id} onChoose={() => void choose(o)} />
         ))}
       </ol>
+      {!curatorReady && <NeedsKey to="choose a direction, or ask for anything below" />}
 
-      <div className={s.block}>
+      {/* Below the three: every other way into the week, as one section of matching cards —
+          each says what it does in a line, and opens its fields only when there are any. */}
+      <section aria-label="Other ways into the week" className={s.whereNext}>
+        <h2 className={s.sectionHead}>Or another way in</h2>
+        <p className={s.sectionGuide}>None of the three? Make a single evening of it, ask for three new directions, or take up one left open from an earlier week.</p>
+
         {/* Disabled while a direction is being chosen: two programmes made at once for one week, and one would be set aside unasked. */}
-        <SittingCard joinsThread={false} busy={busy} />
-      </div>
+        <SittingCard joinsThread={false} busy={busy} keyHint={false} />
 
-      <div className={s.block}>
-        {!askOpen ? (
-          <button className={s.textButton} onClick={() => setAskOpen(true)} disabled={busy}>None of these? Ask for three others</button>
-        ) : (
-          <div className={s.feedback}>
-            <label className={s.feedbackQ} htmlFor="mood">What are you in the mood for? <span className={s.faint}>(optional)</span></label>
-            <textarea id="mood" className={s.textarea} maxLength={MAX_ASK} value={mood} onChange={(e) => setMood(e.target.value)} placeholder="Something quieter after a long week · Sibelius · a concerto I don’t know" />
-            <div className={s.actions}>
-              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={askAgain} disabled={busy}>{asking ? 'The curator is thinking again…' : 'Ask'}</button>
-              <button className={s.textButton} onClick={() => setAskOpen(false)} disabled={asking}>Not now</button>
-            </div>
-            <p className={s.note}>These three stay open as paths for another week.</p>
+        <div className={s.nextCard}>
+          <h3 className={s.nextTitle}>Three other directions</h3>
+          <p className={s.quiet}>The curator offers three more. These three stay open as paths for another week.</p>
+          {askOpen ? (
+            <>
+              <label className={s.visuallyHidden} htmlFor="mood">What are you in the mood for?</label>
+              <textarea id="mood" className={s.textarea} maxLength={MAX_ASK} value={mood} onChange={(e) => setMood(e.target.value)} disabled={busy} placeholder="What are you in the mood for? (optional) · something quieter · Sibelius · a concerto I don’t know" />
+              <CharCount value={mood} />
+              <div className={`${s.actions} ${s.flush}`}>
+                <button className={s.outlineButton} onClick={() => void askAgain()} disabled={busy || !curatorReady}>{asking ? 'The curator is finding three…' : 'Ask for three others'}</button>
+                <button className={s.textButton} onClick={() => setAskOpen(false)} disabled={asking}>Not now</button>
+              </div>
+            </>
+          ) : (
+            <button className={s.outlineButton} onClick={() => setAskOpen(true)} disabled={busy || !curatorReady}>Ask for three others</button>
+          )}
+        </div>
+
+        {view.openPaths.length > 0 && (
+          <div className={s.nextCard}>
+            <h3 className={s.nextTitle}>A path left open</h3>
+            <p className={s.quiet}>{view.openPaths.length === 1 ? 'One direction' : `${view.openPaths.length} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
+            <details>
+              <summary className={s.textButton}>{view.openPaths.length === 1 ? 'Show it' : `Show all ${view.openPaths.length}`}</summary>
+              <OpenPaths paths={view.openPaths} nowKey={view.record.weekKey} busy={busy} onTaking={setChoosing} keyHint={false} />
+            </details>
           </div>
         )}
-      </div>
-
-      {view.openPaths.length > 0 && (
-        <details className={s.block}>
-          <summary className={s.textButton}>Or take a path from an earlier week</summary>
-          <ul className={s.entries}>
-            {view.openPaths.map((o) => (
-              <li key={o.id} className={s.entry}>
-                <p className={s.mood}>{MOOD_WORD[o.mood]} · offered {sinceWords(o.weekKey, view.record.weekKey)}</p>
-                <h3 className={s.entryTitle}>{o.title}</h3>
-                <p className={s.quiet}>{o.pitch}</p>
-                <button className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => choose(o, true)}>Take this path now</button>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      </section>
     </div>
   )
 }
 
-function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption; theme?: Theme; weekKey: string; busy: boolean; onChoose: () => void }) {
+function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: ProgrammeOption; theme?: Theme; weekKey: string; busy: boolean; choosing: boolean; onChoose: () => void }) {
   return (
-    <li className={s.option}>
+    <li className={s.option} aria-busy={choosing || undefined}>
       <div className={s.optionHead}>
         <span className={s.optionNumber}>{o.position}</span>
         <h2 className={s.optionTitle}>{o.title}</h2>
@@ -210,7 +208,7 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
           </div>
         )}
         <div className={s.actions}>
-          <button className={s.outlineButton} onClick={onChoose} disabled={busy}>Listen this way →</button>
+          <button className={s.outlineButton} onClick={onChoose} disabled={busy}>{choosing ? 'The curator is building it…' : 'Listen this way →'}</button>
         </div>
       </div>
     </li>
@@ -225,28 +223,34 @@ function OptionEntry({ o, theme, weekKey, busy, onChoose }: { o: ProgrammeOption
  * know it. The programme, and "more of this theme", read it from the week.
  */
 function WeekMoodLine({ record, onAsk, busy, asking }: { record: WeekRecord; onAsk: () => Promise<boolean>; busy: boolean; asking: boolean }) {
-  const { journey } = useServices()
+  const { journey, say, curatorReady } = useServices()
   const [mood, setMood] = useState<WeekMood[]>(record.mood ?? [])
   const [changed, setChanged] = useState(false)
   async function toggle(m: WeekMood) {
+    const was = mood
     const next = mood.includes(m) ? mood.filter((x) => x !== m) : [...mood, m]
     setMood(next)
     setChanged(true)
-    await journey.setWeekMood(next)
+    try {
+      await journey.setWeekMood(next)
+    } catch (e) {
+      setMood(was)
+      say(messageOf(e), 'danger')
+    }
   }
   return (
     <div className={s.weekMood}>
-      <p className={s.settingLabel}>This week, differently</p>
+      <p className={`${s.label} ${s.flush}`}>This week, differently</p>
       {/* The same chips as every other choice in the app: tap to add, tap again to take away. */}
       <div className={s.chipRow} role="group" aria-label="This week, differently">
         {WEEK_MOODS.map((m) => (
-          <button key={m.value} type="button" className={`${s.chip} ${mood.includes(m.value) ? s.chipOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)}>{m.label}</button>
+          <button key={m.value} type="button" className={`${s.chip} ${mood.includes(m.value) ? s.chipOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)} disabled={busy}>{m.label}</button>
         ))}
       </div>
       {/* The button stays while the curator is asked, saying so; it goes once the three have come (and stays to try again if they didn't). */}
       {changed && (
-        <button type="button" className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => { void onAsk().then((done) => { if (done) setChanged(false) }) }}>
-          {asking ? 'Asking…' : 'Three directions with this in mind'}
+        <button type="button" className={`${s.outlineButton} ${s.smallButton}`} disabled={busy || !curatorReady} onClick={() => { void onAsk().then((done) => { if (done) setChanged(false) }) }}>
+          {asking ? 'The curator is finding three…' : 'Three directions with this in mind'}
         </button>
       )}
     </div>

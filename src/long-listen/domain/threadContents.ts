@@ -1,5 +1,7 @@
 import type { ListeningEvent, Programme, Recording, Work } from './types'
 import { listeningState } from './listening'
+import { groupByComposer } from './composerGroups'
+import { heardAs } from './standIns'
 
 /**
  * What a thread holds, in one plain sentence: "9 works by 6 composers,
@@ -13,18 +15,35 @@ export function threadContents(
   recordings: Map<string, Recording>,
   events: ListeningEvent[],
   hideSkipped = false,
+  /**
+   * `standInsOf(comparisons)` (domain/standIns.ts): where Spotify lacked the
+   * curator's recording, the stand-in is what was heard, skipped and timed.
+   * Without it, only the curator's recording is read.
+   */
+  standIns: Map<string, string> = new Map(),
 ): string {
+  // Each item with the recordings it was heard through — the curator's and its stand-in, read as one.
+  const all = programmes.flatMap((p) => p.sections.flatMap((s) => s.items).map((i) => ({ i, ids: heardAs(i, p.id, standIns) })))
   // With "hide what I skip", a skipped work isn't counted either.
-  const items = programmes.flatMap((p) => p.sections.flatMap((s) => s.items)).filter((i) => !hideSkipped || listeningState(events, i.recordingId) !== 'skipped')
+  const items = all.filter(({ ids }) => !hideSkipped || listeningState(events, ids) !== 'skipped')
   if (!items.length) return ''
-  const workIds = [...new Set(items.map((i) => i.workId))]
-  const composers = new Set(items.map((i) => i.proposed.composer.trim().toLowerCase()))
+  const workIds = [...new Set(items.map(({ i }) => i.workId))]
+  // One composer however written — accents, spacing, a bare surname — grouped as
+  // the Notion mirror groups them (domain/composerGroups.ts), not by a bare lower-case.
+  const composers = groupByComposer(items, ({ i }) => i.proposed.composer)
   const years = workIds
     .map((id) => Number(/\b(1[0-9]{3}|20[0-9]{2})\b/.exec(works.get(id)?.composed ?? '')?.[1]))
     .filter((y) => y > 0)
-  const ms = [...new Set(items.map((i) => i.recordingId))]
+  // The length of what plays: the curator's recording, or — where Spotify
+  // lacked it (not confirmed) and a stand-in plays instead — the stand-in's.
+  const played = items.map(({ i, ids }) => {
+    const own = recordings.get(i.recordingId)
+    const confirmed = own?.verification === 'verified' && own.spotify
+    return ids.length > 1 && !confirmed ? ids[1] : i.recordingId
+  })
+  const ms = [...new Set(played)]
     .reduce((n, id) => n + (recordings.get(id)?.spotify?.durationMs ?? 0), 0)
-  const heard = new Set(items.filter((i) => listeningState(events, i.recordingId) === 'heard').map((i) => i.workId)).size
+  const heard = new Set(items.filter(({ ids }) => listeningState(events, ids) === 'heard').map(({ i }) => i.workId)).size
 
   const what = `${workIds.length} work${workIds.length === 1 ? '' : 's'} by ${composers.size} composer${composers.size === 1 ? '' : 's'}`
   const lo = Math.min(...years)

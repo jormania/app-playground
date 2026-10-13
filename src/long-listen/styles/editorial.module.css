@@ -1284,6 +1284,59 @@
   margin: var(--space-lg) 0;
   padding: var(--space-md) 0 var(--space-md) var(--space-md);
   border-left: 2px solid var(--color-accent);
+  /* A card is a short form: title, a line, then its fields and its button, each
+     given room by one gap rather than by whatever margins its parts brought. */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.nextCard > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Fields and lists run the card's full width; buttons and links keep their own. */
+.nextCard > input,
+.nextCard > textarea,
+.nextCard > ul,
+.nextCard > details,
+.nextCard > .feedback {
+  align-self: stretch;
+}
+
+/* A card's single-line request is a form (Enter asks): laid out like the card itself. */
+.cardForm {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.cardForm > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.cardForm > input,
+.cardForm > textarea,
+.cardForm > .charCount {
+  align-self: stretch;
+}
+
+/* A quiet count under a capped field, once fewer than sixty characters remain. */
+.charCount {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nextCard > .charCount {
+  align-self: stretch;
 }
 
 /* A card's closing link is an action like the buttons beside it: same size. */
@@ -1292,7 +1345,7 @@
 }
 
 .nextTitle {
-  margin: 0 0 var(--space-2xs);
+  margin: 0;
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 600;
@@ -1951,7 +2004,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xs);
+  gap: var(--space-2xs);
   margin-bottom: var(--space-sm);
   font-size: var(--text-sm);
   color: var(--color-muted);
@@ -1970,6 +2023,15 @@
 .fieldRow > .input {
   flex: 1 1 8rem;
   min-width: 0;
+}
+
+/* Inside the form's own layouts the gap spaces a field from its label and its
+   neighbours; the input's general margin would push it off its label. */
+.field > .input,
+.field > .textarea,
+.fieldRow > .input,
+.workRow > .input {
+  margin: 0;
 }
 
 .workRow {
@@ -2201,6 +2263,12 @@
   font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--color-faint);
+}
+
+/* "Add your Anthropic key…": a hint, given a little room from the button above it. */
+.needsKey {
+  composes: settingHint;
+  margin-top: var(--space-xs);
 }
 
 .settingWarn {
@@ -2506,4 +2574,14 @@
   border-left: 3px solid var(--color-accent);
   font-size: var(--text-sm);
   color: var(--color-muted);
+}
+
+/* An earlier week's path inside its card: a quiet list, one line of mood above each title. */
+.nextCard .entries {
+  margin-top: 0;
+}
+
+.nextCard summary {
+  cursor: pointer;
+  width: fit-content;
 }

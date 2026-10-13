@@ -1,6 +1,8 @@
 import type { Comparison, Feedback, ListeningEvent, Programme, ProgrammeItem, Theme, ThemeExploration, WeekKey } from '../domain/types'
-import { creditLine } from '../domain/identity'
-import { latestFeedback, listeningState, timesHeard } from '../domain/listening'
+import { creditLine, sameWork } from '../domain/identity'
+import { groupByComposer } from '../domain/composerGroups'
+import { listeningState, timesHeard } from '../domain/listening'
+import { heardAs, itemFeedback, playedProposed, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { sinceWords } from '../domain/week'
 import type { Repo } from '../store/repo'
 
@@ -51,31 +53,11 @@ export interface ThreadDigest {
   nextDirections: string[]
 }
 
-/**
- * The recordings an item was heard through. Where Spotify lacked the
- * curator's recording, a stand-in played in its place (a comparison
- * `cmp:<programmeId>:<itemId>` marked `standIn`), and the listening and the
- * reactions were filed under the stand-in — what was actually heard. Every
- * reader of "how did this item land" asks about both, or a work heard and
- * loved through a stand-in reads as never started.
- */
-export function standInsOf(comparisons: Comparison[]): Map<string, string> {
-  return new Map(comparisons.filter((c) => c.standIn && c.perspectives.length > 1).map((c) => [c.id, c.perspectives[1].recordingId]))
-}
+// The stand-in helpers live in domain/standIns.ts, so domain readers share
+// them; re-exported here, where every curation reader has always found them.
+export { standInsOf, heardAs, feedbackOnAny, itemFeedback, standInPlayersOf, playedProposed } from '../domain/standIns'
 
-export function heardAs(item: ProgrammeItem, programmeId: string, standIns: Map<string, string>): string[] {
-  const standIn = standIns.get(`cmp:${programmeId}:${item.id}`)
-  return standIn && standIn !== item.recordingId ? [item.recordingId, standIn] : [item.recordingId]
-}
-
-/** `latestFeedback` over several targets read as one — the curator's recording and its stand-in. */
-export function feedbackOnAny(all: Feedback[], ids: string[]): ReturnType<typeof latestFeedback> {
-  if (ids.length === 1) return latestFeedback(all, ids[0])
-  const wanted = new Set(ids)
-  return latestFeedback(all.filter((f) => wanted.has(f.target.id)).map((f) => ({ ...f, target: { ...f.target, id: ids[0] } })), ids[0])
-}
-
-const label = (i: ProgrammeItem) => `${i.proposed.composer} — ${i.proposed.work} (${creditLine(i.proposed)})`
+const label = (i: ProgrammeItem, credit: string) => `${i.proposed.composer} — ${i.proposed.work} (${credit})`
 
 export function digestThread(
   theme: Theme,
@@ -92,38 +74,41 @@ export function digestThread(
     .sort((a, b) => a.weekKey.localeCompare(b.weekKey))
 
   const works: ThreadDigest['covered']['works'] = []
-  const composers = new Set<string>()
+  const composers: string[] = []
   const recordings: CoveredRecording[] = []
   const response: ThreadDigest['response'] = { drawnTo: [], cooler: [], unheard: [], skipped: [] }
   const standIns = standInsOf(comparisons)
+  const players = standInPlayersOf(comparisons)
 
   for (const ex of mine) {
     const ps = [ex.programmeId, ...(ex.extraProgrammeIds ?? [])].map((id) => programmes.get(id)).filter((x): x is Programme => Boolean(x))
-    for (const { item, ids } of ps.flatMap((p) => p.sections.flatMap((s) => s.items).map((item) => ({ item, ids: heardAs(item, p.id, standIns) })))) {
+    for (const { item, ids, p } of ps.flatMap((p) => p.sections.flatMap((s) => s.items).map((item) => ({ item, p, ids: heardAs(item, p.id, standIns) })))) {
       const state = listeningState(events, ids)
       if (ex.setAside && state === 'not-started') continue
-      const fb = feedbackOnAny(feedback, ids)
-      const workFb = latestFeedback(feedback, item.workId)
-      const reaction = fb.reaction ?? workFb.reaction
-      const more = fb.more ?? workFb.more
-      if (!works.some((w) => w.composer === item.proposed.composer && w.title === item.proposed.work)) {
+      // The recording's word and the work's, merged once for every reader (domain/standIns.ts).
+      const { reaction, more, notes } = itemFeedback(feedback, ids, item.workId)
+      // Credited to who played: heard through a stand-in, the stand-in's performers.
+      const credit = creditLine(playedProposed(item, p.id, players, events, feedback))
+      // One work however the curator spelled it this time ("Symphony No. 5" and
+      // "Symphony No. 5 in C-sharp minor"): the same identity the validator uses.
+      if (!works.some((w) => sameWork({ composer: w.composer, title: w.title, catalogue: w.catalogue }, { composer: item.proposed.composer, title: item.proposed.work, catalogue: item.proposed.catalogue }))) {
         works.push({ composer: item.proposed.composer, title: item.proposed.work, catalogue: item.proposed.catalogue })
       }
-      composers.add(item.proposed.composer)
+      composers.push(item.proposed.composer)
       recordings.push({
         composer: item.proposed.composer,
         work: item.proposed.work,
-        credit: creditLine(item.proposed),
+        credit,
         state,
         heardTimes: ids.reduce((n, id) => n + timesHeard(events, id), 0),
         reaction,
         more,
-        notes: [...fb.notes, ...workFb.notes],
+        notes,
       })
-      if (reaction === 'loved' || reaction === 'liked' || more === 'yes') response.drawnTo.push(label(item))
-      else if (reaction === 'not-for-me' || reaction === 'too-difficult' || more === 'no') response.cooler.push(label(item))
-      if (state === 'not-started') response.unheard.push(label(item))
-      if (state === 'skipped') response.skipped.push(label(item))
+      if (reaction === 'loved' || reaction === 'liked' || more === 'yes') response.drawnTo.push(label(item, credit))
+      else if (reaction === 'not-for-me' || reaction === 'too-difficult' || more === 'no') response.cooler.push(label(item, credit))
+      if (state === 'not-started') response.unheard.push(label(item, credit))
+      if (state === 'skipped') response.skipped.push(label(item, credit))
     }
   }
 
@@ -135,7 +120,8 @@ export function digestThread(
     since: sinceWords(theme.firstIntroduced, nowWeek),
     nextStage: mine.filter((e) => !e.setAside).length + 1,
     explorations: mine.map((e) => ({ weekKey: e.weekKey, stage: e.stage, angle: e.angle, closingNote: e.closingNote, setAside: e.setAside })),
-    covered: { works, composers: [...composers], recordings },
+    // One composer however written — accents, a bare surname — grouped as every reader groups them (domain/composerGroups.ts).
+    covered: { works, composers: [...groupByComposer(composers, (n) => n).keys()], recordings },
     response,
     reaction: theme.reaction,
     openQuestions: theme.openQuestions,

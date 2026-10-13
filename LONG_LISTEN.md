@@ -673,3 +673,36 @@ are kept in `src/long-listen/__audit__/` as regression tests. What changed:
   performers and catalogue numbers; the Journal names a sitting and a path taken
   from an earlier week; double taps record once; curator text inputs are capped
   at 500 characters.
+
+## 16. The consistency audit (13 October 2026)
+
+Two read-only audits listed every repeated pattern — on screen and in the
+logic — and every place it appears, then flagged the outliers; the fixes were
+applied to every sibling, not only the one first reported. Tests:
+`__audit__/consistency-*.audit.test.ts`.
+
+**Shared now, not hand-rolled.** `domain/standIns.ts` (`standInsOf`, `heardAs`,
+`itemFeedback`, `playedProposed`) is how anything reads a stand-in as its item —
+Notion's Journal rows, Threads' counts, the programme's length and playlist
+button, Library's hide-skipped, "how did it land?", the season and the curator's
+context. `domain/composerGroups.ts` groups a composer however the name is
+written. `components/OpenPaths.tsx` is the one list of paths left open (This
+week, Where next, Threads). `components/common.tsx` holds `NeedsKey`,
+`CharCount`, `MAX_ASK`/`MAX_NOTE`, `SpotifyCheckButton` and `dateWords`.
+`verifyOne` (spotify/verify.ts) is the one way to check a recording, so a
+background pass and a tap never overwrite each other.
+
+**Rules the screens now follow.** Taking a direction is a small outline button
+in `.actions`; a commit is primary ("I've heard it" included); every curator
+request is gated on a key with the same line; busy labels: "Asking…" for an
+inline question, "The curator is finding three…" for directions, "The curator is
+building it…" for a programme; section intros use `.sectionGuide`; dates are
+en-GB in the listener's zone; free text sent to the curator is capped, with a
+count near the cap; single-line curator fields submit on Enter.
+
+**Logic.** Writes after a curator or Spotify call re-read what they overwrite
+(themes, the week via `updateWeek`, the wish for next week, recordings); every
+curator job checks for a fresh start; second hearings match by work, not title
+text; "weeks ago" and the season's dates are counted in the listener's zone; a
+throttled hall keeps its last concerts; a failed Notion sync retries when the
+connection returns.
