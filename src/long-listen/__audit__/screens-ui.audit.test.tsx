@@ -111,6 +111,8 @@ describe('marking what was heard', () => {
 })
 
 describe('asking the curator, and seeing that it is asked', () => {
+  // The busy words follow one rule (UI consistency, 13 October 2026): anything
+  // that makes three directions says "The curator is finding three…".
   it('"Three directions with this in mind" stays, saying it is asking, until they come', async () => {
     const repo = new Repo(memoryStore())
     const c = gatedCurator('themes', 2)
@@ -119,9 +121,9 @@ describe('asking the curator, and seeing that it is asked', () => {
     const group = screen.getByRole('group', { name: 'This week, differently' })
     await userEvent.click(group.querySelector('button')!)
     await userEvent.click(screen.getByRole('button', { name: 'Three directions with this in mind' }))
-    expect(await screen.findByRole('button', { name: 'Asking…' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'The curator is finding three…' })).toBeTruthy()
     c.open()
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Asking…' })).toBeNull(), { timeout: 4000 })
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'The curator is finding three…' })).toBeNull(), { timeout: 4000 })
     expect(screen.queryByRole('button', { name: 'Three directions with this in mind' })).toBeNull()
   }, 15000)
 
@@ -132,7 +134,7 @@ describe('asking the curator, and seeing that it is asked', () => {
     window.location.hash = `#/p/${p.id}`
     render(<App repo={repo} curator={c.client} />)
     await userEvent.click(await screen.findByRole('button', { name: 'Ask for three new directions' }, { timeout: 4000 }))
-    await screen.findByRole('button', { name: 'Finding three…' })
+    await screen.findByRole('button', { name: 'The curator is finding three…' })
     for (const name of ['Ask for more', 'Make tonight’s sitting']) expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
     for (const b of screen.getAllByRole('button', { name: 'Listen this way instead' })) expect((b as HTMLButtonElement).disabled).toBe(true)
     c.open()

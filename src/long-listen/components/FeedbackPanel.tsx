@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Feedback, FeedbackTargetType, Reaction, WantMore } from '../domain/types'
 import { REACTIONS, WANT_MORE, latestFeedback, reactionLabel } from '../domain/listening'
 import { useServices } from '../app/services'
-import { messageOf } from './common'
+import { CharCount, MAX_ASK, messageOf } from './common'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -84,7 +84,8 @@ export function FeedbackPanel({
             ))}
           </div>
           <label className={s.feedbackQ} htmlFor={`note-${targets[0].id}`}>What stayed with you?</label>
-          <textarea id={`note-${targets[0].id}`} className={s.textarea} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional — a sentence is plenty." />
+          <textarea id={`note-${targets[0].id}`} className={s.textarea} maxLength={MAX_ASK} value={note} onChange={(e) => setNote(e.target.value)} disabled={saving} placeholder="Optional — a sentence is plenty." />
+          <CharCount value={note} />
           <p className={`${s.feedbackQ} ${s.mtMd}`}>Want more of this?</p>
           <div className={s.chips} role="radiogroup" aria-label="Want more of this?">
             {WANT_MORE.map((m) => (

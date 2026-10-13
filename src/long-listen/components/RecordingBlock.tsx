@@ -1,13 +1,19 @@
 import { useState } from 'react'
 import type { ProposedRecording, Recording } from '../domain/types'
 import { openUrl, searchUrl } from '../spotify/client'
-import { aboutDuration, confirmMatch, isConfirmed, rejectMatch, verifyRecording } from '../spotify/verify'
+import { aboutDuration, confirmMatch, isConfirmed, rejectMatch, verifyOne } from '../spotify/verify'
 import { useServices } from '../app/services'
 import { messageOf } from './common'
 import { ListenBar } from './ListenBar'
 import { usePlayback } from '../app/playback'
 import { Credits } from '../components/Credits'
+import { displaySurname } from '../domain/identity'
 import s from '../styles/editorial.module.css'
+
+/** What to search Spotify for, by hand: the surname as written ("Strauss", not "II"), the work, and who leads it. */
+export function spotifyQuery(p: ProposedRecording): string {
+  return [displaySurname(p.composer), p.work, p.conductor ?? p.soloists[0]?.name ?? p.orchestra ?? ''].join(' ').trim()
+}
 
 /**
  * One recommended recording: who plays it (as the curator proposed it), what
@@ -34,7 +40,7 @@ export function RecordingBlock({
 }) {
   const { spotify, repo, bump, say } = useServices()
   const [busy, setBusy] = useState(false)
-  const query = [proposed.composer.split(' ').slice(-1)[0], proposed.work, proposed.conductor ?? proposed.soloists[0]?.name ?? proposed.orchestra ?? ''].join(' ')
+  const query = spotifyQuery(proposed)
   const sp = isConfirmed(recording) ? recording.spotify : undefined
   const near = recording?.verification === 'unconfirmed' ? recording.spotify : undefined
   const shown = sp ?? near
@@ -45,7 +51,8 @@ export function RecordingBlock({
     if (!recording) return
     setBusy(true)
     try {
-      const out = await verifyRecording(repo, spotify, recording.id, proposed)
+      // Shares a look already running for it (the programme's background pass, a second tap) — never a second one racing it.
+      const out = await verifyOne(repo, spotify, recording.id, proposed)
       bump()
       if (out.recording.verification === 'not-found') say('Spotify doesn’t seem to have this exact recording.')
     } catch (e) {
@@ -57,8 +64,15 @@ export function RecordingBlock({
 
   async function yesThis() {
     if (!recording) return
-    await confirmMatch(repo, recording.id)
-    bump()
+    setBusy(true)
+    try {
+      await confirmMatch(repo, recording.id)
+      bump()
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function notThis() {

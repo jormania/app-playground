@@ -9,6 +9,9 @@ import { CuratorUnavailable, type CuratorClient } from './curation/api'
 
 beforeEach(() => {
   localStorage.clear()
+  // A key, as a listener would have: every curator request is offered only with one
+  // (the demo curator below answers in Claude's place; the key is never sent).
+  localStorage.setItem('long-listen:settings', JSON.stringify({ anthropicKey: 'sk-ant-api03-test' }))
   window.location.hash = '#/'
 })
 afterEach(cleanup)

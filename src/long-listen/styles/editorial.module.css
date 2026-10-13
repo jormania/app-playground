@@ -1306,6 +1306,39 @@
   align-self: stretch;
 }
 
+/* A card's single-line request is a form (Enter asks): laid out like the card itself. */
+.cardForm {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.cardForm > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.cardForm > input,
+.cardForm > textarea,
+.cardForm > .charCount {
+  align-self: stretch;
+}
+
+/* A quiet count under a capped field, once fewer than sixty characters remain. */
+.charCount {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nextCard > .charCount {
+  align-self: stretch;
+}
+
 /* A card's closing link is an action like the buttons beside it: same size. */
 .nextCard > a {
   font-size: var(--text-base);
@@ -1971,7 +2004,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xs);
+  gap: var(--space-2xs);
   margin-bottom: var(--space-sm);
   font-size: var(--text-sm);
   color: var(--color-muted);
@@ -1990,6 +2023,15 @@
 .fieldRow > .input {
   flex: 1 1 8rem;
   min-width: 0;
+}
+
+/* Inside the form's own layouts the gap spaces a field from its label and its
+   neighbours; the input's general margin would push it off its label. */
+.field > .input,
+.field > .textarea,
+.fieldRow > .input,
+.workRow > .input {
+  margin: 0;
 }
 
 .workRow {
@@ -2221,6 +2263,12 @@
   font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--color-faint);
+}
+
+/* "Add your Anthropic key…": a hint, given a little room from the button above it. */
+.needsKey {
+  composes: settingHint;
+  margin-top: var(--space-xs);
 }
 
 .settingWarn {

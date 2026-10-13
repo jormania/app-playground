@@ -1,12 +1,14 @@
 import type { Comparison, Concert, Feedback, ListeningEvent, NotionDatabases, NotionSyncState, Programme, Recording, TasteProfile, Theme, ThemeExploration } from '../domain/types'
-import { creditLine, displaySurname } from '../domain/identity'
+import { creditLine, displaySurname, sameWork } from '../domain/identity'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { weekFromKey } from '../domain/week'
 import type { Repo } from '../store/repo'
 import { notionProxy } from '../../shared/notionClient'
 import type { ListenerPreferences } from '../domain/types'
 import { observationsByStance } from '../curation/taste'
-import { whoPlays } from '../domain/concertSoloists'
+import { unplaced, whoPlays } from '../domain/concertSoloists'
+import { heardAs, itemFeedback, standInsOf } from '../domain/standIns'
+import { groupByComposer } from '../domain/composerGroups'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 
 /**
@@ -532,10 +534,12 @@ async function syncOnce(call: NotionCall, repo: Repo, pageId: string, currentWee
   ])
   const setAside = new Set(weeks.flatMap((w) => w.setAsideProgrammeIds))
   const themeTitle = new Map(themes.map((t) => [t.id, t.title]))
+  // A work heard through a stand-in was heard: its listening and what was said sit under the stand-in.
+  const standIns = standInsOf(comparisons)
   let written = 0
 
   for (const p of programmes.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-    written += Number(await syncProgrammePage(call, repo, dbs.journal, p, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek),
+    written += Number(await syncProgrammePage(call, repo, dbs.journal, p, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek, standIns),
       resources.filter((r) => r.programmeId === p.id)))
   }
   for (const t of themes) {
@@ -555,7 +559,9 @@ async function syncOnce(call: NotionCall, repo: Repo, pageId: string, currentWee
   for (const [rid, { proposed, programme }] of met) {
     written += Number(await upsert(call, repo, `recording:${rid}`, dbs.recordings, recordingProps(proposed, recById.get(rid), programme, events, feedback, met.get(rid)?.note)))
   }
-  for (const [name, entries] of groupByComposer(met)) {
+  // One row per composer however the curator wrote the name (domain/composerGroups.ts),
+  // keyed by the name as first written so the rows already in Notion are kept.
+  for (const [name, entries] of groupByComposer([...met].map(([rid, v]) => ({ rid, ...v })), (e) => e.proposed.composer)) {
     written += Number(await upsert(call, repo, `composer:${name}`, dbs.composers, composerProps(name, entries, events, feedback)))
   }
 
@@ -607,10 +613,17 @@ export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<num
   return n
 }
 
-export function journalProps(p: Programme, theme: string, events: ListeningEvent[], feedback: Feedback[], setAside: boolean, currentWeek: string) {
+export function journalProps(
+  p: Programme, theme: string, events: ListeningEvent[], feedback: Feedback[], setAside: boolean, currentWeek: string,
+  /** `standInsOf(comparisons)`: an item heard through a stand-in is read through it too. Without it, only the curator's recording. */
+  standIns: Map<string, string> = new Map(),
+) {
   const items = p.sections.flatMap((s) => s.items)
-  const heard = items.filter((i) => listeningState(events, i.recordingId) === 'heard').map((i) => `${displaySurname(i.proposed.composer)} — ${i.proposed.work}`)
-  const notes = [...latestFeedback(feedback, p.id).notes, ...items.flatMap((i) => latestFeedback(feedback, i.recordingId).notes)]
+  // The curator's recording and its stand-in read as one (domain/standIns.ts), and
+  // what was said about the work beside what was said about the recording — the
+  // row once said a work heard and loved through a stand-in was never heard.
+  const heard = items.filter((i) => listeningState(events, heardAs(i, p.id, standIns)) === 'heard').map((i) => `${displaySurname(i.proposed.composer)} — ${i.proposed.work}`)
+  const notes = [...latestFeedback(feedback, p.id).notes, ...items.flatMap((i) => itemFeedback(feedback, heardAs(i, p.id, standIns), i.workId).notes)]
   return {
     Name: titleProp(p.title),
     Week: textProp(`${p.weekKey} · ${weekFromKey(p.weekKey).label}`),
@@ -657,7 +670,9 @@ export function concertProps(c: Concert) {
     Name: titleProp(`${c.venue} — ${c.date}`),
     Date: { date: { start: c.date } },
     Venue: textProp([c.venue, c.hall].filter(Boolean).join(', ')),
-    Performers: textProp([c.orchestra, c.conductor, ...c.soloists.map((s) => (s.instrument ? `${s.name} (${s.instrument})` : s.name))].filter(Boolean).join('; ')),
+    // Soloists are named with the works they play in (below); here only those no
+    // work claims, as the concert page shows them — not every soloist on the evening.
+    Performers: textProp([c.orchestra, c.conductor, ...unplaced(c).map((s) => (s.instrument ? `${s.name} (${s.instrument})` : s.name))].filter(Boolean).join('; ')),
     Works: textProp(c.works.map((w) => { const who = whoPlays(c, w); return `${w.composer} — ${w.title}${w.catalogue ? `, ${w.catalogue}` : ''}${who.length ? ` (with ${who.map((s) => s.name).join(', ')})` : ''}` }).join('; ')),
     Notes: textProp(c.note ?? ''),
   }
@@ -665,14 +680,10 @@ export function concertProps(c: Concert) {
 
 type Met = Map<string, { proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme; note?: string }>
 
-function groupByComposer(met: Met): Map<string, { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[]> {
-  const out = new Map<string, { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[]>()
-  for (const [rid, v] of met) out.set(v.proposed.composer, [...(out.get(v.proposed.composer) ?? []), { rid, ...v }])
-  return out
-}
-
 export function composerProps(name: string, entries: { rid: string; proposed: Programme['sections'][number]['items'][number]['proposed']; programme: Programme }[], events: ListeningEvent[], feedback: Feedback[]) {
-  const works = [...new Set(entries.map((e) => e.proposed.work))]
+  // One work however the curator spelled it from one programme to the next.
+  const works: string[] = []
+  for (const e of entries) if (!works.some((w) => sameWork({ composer: e.proposed.composer, title: w }, { composer: e.proposed.composer, title: e.proposed.work }))) works.push(e.proposed.work)
   const first = [...entries].sort((a, b) => a.programme.weekKey.localeCompare(b.programme.weekKey))[0]
   const how = entries
     .map((e) => {

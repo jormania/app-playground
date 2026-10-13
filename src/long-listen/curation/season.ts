@@ -2,8 +2,8 @@ import type { Repo } from '../store/repo'
 import type { WeekKey } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { listeningState } from '../domain/listening'
-import { feedbackOnAny, heardAs, standInsOf } from './continuity'
-import { weekFromKey } from '../domain/week'
+import { feedbackOnAny, heardAs, itemFeedback, playedProposed, standInPlayersOf, standInsOf } from './continuity'
+import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey } from '../domain/week'
 import type { Season } from '../domain/season'
 
 /**
@@ -12,7 +12,11 @@ import type { Season } from '../domain/season'
  * heard and said, concerts heard live, the taste notes first or last seen in
  * it, and the paths left open. Facts only; the prose is the curator's.
  */
-export async function seasonContext(repo: Repo, s: Season, now: WeekKey) {
+export async function seasonContext(
+  repo: Repo, s: Season, now: WeekKey,
+  /** The listener's time zone (Journey passes its own): a season's first and last days are theirs, not UTC's. */
+  timeZone: string = DEFAULT_TIME_ZONE,
+) {
   const inSeason = new Set(s.weekKeys.filter((k) => k <= now))
   const [weeks, programmes, explorations, themes, options, events, feedback, concerts, taste, prefs, comparisons] = await Promise.all([
     repo.weeks.all(), repo.programmes.all(), repo.explorations.all(), repo.themes.all(), repo.options.all(),
@@ -20,6 +24,7 @@ export async function seasonContext(repo: Repo, s: Season, now: WeekKey) {
   ])
   // A work heard through a stand-in was heard: its listening and reactions sit under the stand-in.
   const standIns = standInsOf(comparisons)
+  const players = standInPlayersOf(comparisons)
   const progs = programmes.filter((p) => inSeason.has(p.weekKey))
   const items = progs.flatMap((p) => p.sections.flatMap((x) => x.items).map((i) => ({ i, p })))
   const said = (id: string | string[]) => {
@@ -28,16 +33,29 @@ export async function seasonContext(repo: Repo, s: Season, now: WeekKey) {
   }
   const met = items.map(({ i, p }) => {
     const ids = heardAs(i, p.id, standIns)
+    // The recording's word and the work's merged as every reader merges them
+    // (domain/standIns.ts itemFeedback): spreading the two `said()` results let
+    // the work's notes replace the recording's, and a work-only reaction-less
+    // note drop "loved".
+    const f = itemFeedback(feedback, ids, i.workId)
     return {
-      composer: i.proposed.composer, work: i.proposed.work, recording: creditLine(i.proposed), week: weekFromKey(p.weekKey).label,
-      state: listeningState(events, ids), ...said(ids), ...said(i.workId),
+      composer: i.proposed.composer, work: i.proposed.work,
+      // Credited to who played: heard through a stand-in, the stand-in's performers.
+      recording: creditLine(playedProposed(i, p.id, players, events, feedback)), week: weekFromKey(p.weekKey).label,
+      state: listeningState(events, ids), ...(f.reaction ? { reaction: f.reaction } : {}), ...(f.notes.length ? { said: f.notes } : {}),
     }
   })
   const exs = explorations.filter((e) => inSeason.has(e.weekKey))
   const themeIds = [...new Set(exs.map((e) => e.themeId))]
   const start = s.startsOn
   const end = s.endsOn
-  const seen = (iso: string) => iso.slice(0, 10) >= start && iso.slice(0, 10) <= end
+  // The day an instant fell on for the listener: 01:30 on the season's first
+  // Monday in Bucharest is still Sunday in UTC, and was read as before the season.
+  const seen = (iso: string) => {
+    const t = new Date(iso)
+    const d = Number.isNaN(t.getTime()) ? iso.slice(0, 10) : isoDateIn(t, timeZone)
+    return d >= start && d <= end
+  }
   return {
     language: prefs.language,
     season: { number: s.number, label: s.label, weeksSoFar: s.weeksSoFar },

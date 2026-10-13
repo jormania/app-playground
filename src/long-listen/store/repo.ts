@@ -248,6 +248,9 @@ export class Repo {
       throw new Error('That file is not a Long Listen backup.')
     }
     const pairs = Object.entries(b.records).filter(([k]) => k.startsWith(PREFIX))
+    // Like a fresh start, a restore replaces the journey a curator call in
+    // flight was asked about: its answer must not be written over the backup.
+    this.epoch++
     await this.store.setMany(pairs)
     return pairs.length
   }

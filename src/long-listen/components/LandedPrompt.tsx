@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLoad, useServices } from '../app/services'
 import { askedMark, nextToAsk } from '../domain/landed'
+import { standInsOf } from '../domain/standIns'
 import { href } from '../app/router'
 import { FeedbackPanel } from './FeedbackPanel'
 import s from '../styles/editorial.module.css'
@@ -16,15 +17,17 @@ export function LandedPrompt() {
   const [closed, setClosed] = useState(false)
   // Read once per mount: the prompt shouldn't swap to another work mid-sitting.
   const { data } = useLoad(async () => {
-    const [events, feedback, programmes, marks] = await Promise.all([repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.marks.all()])
+    const [events, feedback, programmes, marks, comparisons] = await Promise.all([repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.marks.all(), repo.comparisons.all()])
     const asked = new Set(marks.filter((m) => m.id.startsWith('asked:')).map((m) => m.id.slice('asked:'.length)))
-    return { ask: nextToAsk(events, feedback, asked, programmes), feedback }
+    // A stand-in is read as the item it stood in for (domain/standIns.ts).
+    return { ask: nextToAsk(events, feedback, asked, programmes, standInsOf(comparisons)), feedback }
   }, [])
   const [ask, setAsk] = useState<ReturnType<typeof nextToAsk>>(null)
   useEffect(() => { if (data?.ask && !ask) setAsk(data.ask) }, [data, ask])
   useEffect(() => {
     // Under the recording that played — a stand-in's own, where one stood in.
-    if (ask) void repo.marks.put({ id: askedMark(ask.recordingId), at: new Date().toISOString() })
+    // Quietly: a mark that didn't keep only means the question may come once more.
+    if (ask) void repo.marks.put({ id: askedMark(ask.recordingId), at: new Date().toISOString() }).catch(() => {})
   }, [ask, repo])
 
   if (!ask || closed || !data) return null

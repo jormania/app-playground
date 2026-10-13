@@ -2,7 +2,7 @@ import type {
   Comparison, Concert, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
   ProgrammeOption, Reaction, Resource, Sitting, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
 } from '../domain/types'
-import { creditLine, newId } from '../domain/identity'
+import { creditLine, newId, sameWork } from '../domain/identity'
 import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import { NotFound, type Repo } from '../store/repo'
@@ -12,7 +12,7 @@ import type {
 import { season as seasonOf, seasonNumberAt, type Season } from '../domain/season'
 import { seasonContext } from './season'
 import { buildContext } from './context'
-import { feedbackOnAny, heardAs, standInsOf, threadDigest } from './continuity'
+import { feedbackOnAny, heardAs, playedProposed, standInPlayersOf, standInsOf, threadDigest } from './continuity'
 import { Ingest, comparisonOf, ingestProgramme } from './ingest'
 import { applyTasteUpdate, pendingFeedback } from './taste'
 import { isConfirmed, type SpotifyCandidate } from '../spotify/verify'
@@ -183,7 +183,7 @@ export class Journey {
    */
   private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = []): Promise<WeekRecord> {
     const generation = this.repo.generation
-    const context = await buildContext(this.repo, week, requestedNext)
+    const context = await buildContext(this.repo, week, requestedNext, this.timeZone)
     const res = await this.curator.call<ThemesResponse>('themes', {
       today: this.today(),
       week: { key: week.key, label: week.label },
@@ -191,9 +191,13 @@ export class Journey {
       alsoOfferedThisWeek,
     })
     this.stillCurrent(generation)
-    // A wish for next week is read once, at the start of a week. Clear it only after it reached the curator.
+    // A wish for next week is read once, at the start of a week. Clear it only
+    // after it reached the curator — and only the wish that did: one written in
+    // the Notebook while the curator thought was never sent, so it stays.
     const prefs = await this.repo.preferences()
-    if (requestedNext === undefined && prefs.nextRequest) await this.repo.savePreferences({ ...prefs, nextRequest: '' })
+    if (requestedNext === undefined && prefs.nextRequest && prefs.nextRequest.trim() === (context.requestedNext ?? '')) {
+      await this.repo.savePreferences({ ...prefs, nextRequest: '' })
+    }
     const options: ProgrammeOption[] = res.options.map((o, i) => ({
       id: newId('opt'),
       weekKey: week.key,
@@ -211,8 +215,8 @@ export class Journey {
     // A week already stored (one begun without directions, or asked again) keeps
     // what it holds — its mood, its programme, what was set aside — and gains
     // only the new directions; callers that replace more say so themselves.
-    const stored = await this.repo.weeks.get(week.key)
-    const record: WeekRecord = stored ? { ...stored, optionIds: options.map((o) => o.id), promptVersion: res.promptVersion } : {
+    await this.repo.options.putMany(options)
+    return this.updateWeek(week.key, (stored) => (stored ? { ...stored, optionIds: options.map((o) => o.id), promptVersion: res.promptVersion } : {
       weekKey: week.key,
       startsOn: week.startsOn,
       endsOn: week.endsOn,
@@ -220,18 +224,34 @@ export class Journey {
       optionIds: options.map((o) => o.id),
       setAsideProgrammeIds: [],
       promptVersion: res.promptVersion,
-    }
-    await this.repo.options.putMany(options)
-    await this.repo.weeks.put(record)
-    return record
+    }))
   }
 
   /** "This week, differently": set this week's mood. Read by every curator job about the week from now on. */
   async setWeekMood(mood: WeekMood[]): Promise<WeekRecord> {
-    const week = await this.repo.weeks.require(this.currentWeek().key)
-    const record: WeekRecord = { ...week, mood: mood.length ? mood : undefined }
-    await this.repo.weeks.put(record)
-    return record
+    const key = this.currentWeek().key
+    // Read and written as one step against the other writers of the week's
+    // record (see `updateWeek`), so a choice landing at the same moment neither
+    // loses this mood nor has its programme undone by it.
+    return this.updateWeek(key, (week) => {
+      if (!week) throw new NotFound(`week ${key} not found`)
+      return { ...week, mood: mood.length ? mood : undefined }
+    })
+  }
+
+  /**
+   * Read the week's record as it is now and write it back changed, as one step:
+   * every such read-and-write of one week waits for the one before, so two that
+   * land together (a mood chip and a choice finishing) can't each write back a
+   * copy missing the other's change. Short — no curator call is ever made in
+   * here; the minute-long jobs use `weekJob`, and only their final write comes here.
+   */
+  private updateWeek(key: WeekKey, change: (week: WeekRecord | undefined) => WeekRecord): Promise<WeekRecord> {
+    return this.serial(`week-record:${key}`, async () => {
+      const record = change(await this.repo.weeks.get(key))
+      await this.repo.weeks.put(record)
+      return record
+    })
   }
 
   /**
@@ -251,13 +271,10 @@ export class Journey {
       const setAside = await this.repo.options.many(week.optionIds)
       await this.repo.options.putMany(setAside.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: 'open' as const })))
       // The week as it is now, not as it was a minute ago: a mood set meanwhile stays.
-      const latest = (await this.repo.weeks.get(lw.key)) ?? fresh
-      const record: WeekRecord = {
+      return this.updateWeek(lw.key, (latest = fresh) => ({
         ...latest, optionIds: fresh.optionIds, promptVersion: fresh.promptVersion, createdAt: week.createdAt,
         earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds],
-      }
-      await this.repo.weeks.put(record)
-      return record
+      }))
     }))
   }
 
@@ -278,15 +295,12 @@ export class Journey {
       const current = await this.repo.options.many(week.optionIds)
       await this.repo.options.putMany(current.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: 'open' as const })))
       // The week as it is now — its programme, mood and set-aside list — gaining only the new directions.
-      const latest = (await this.repo.weeks.get(lw.key)) ?? week
-      const record: WeekRecord = {
+      return this.updateWeek(lw.key, (latest = week) => ({
         ...latest,
         optionIds: fresh.optionIds,
         earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds],
         promptVersion: fresh.promptVersion,
-      }
-      await this.repo.weeks.put(record)
-      return record
+      }))
     }))
   }
 
@@ -342,7 +356,7 @@ export class Journey {
     const exploration = await this.repo.explorations.require(root.explorationId)
     const lw = weekFromKey(root.weekKey)
     const digest = await threadDigest(this.repo, root.themeId, root.weekKey)
-    const context = await buildContext(this.repo, lw)
+    const context = await buildContext(this.repo, lw, undefined, this.timeZone)
     const now = this.stamp()
     const res = await this.curator.call<ProgrammeResponse>('programme', {
       today: this.today(),
@@ -434,7 +448,7 @@ export class Journey {
     }
     const digest = returningTheme ? await threadDigest(this.repo, returningTheme.id, week.weekKey) : null
     const stage = digest?.nextStage ?? 1
-    const context = await buildContext(this.repo, lw)
+    const context = await buildContext(this.repo, lw, undefined, this.timeZone)
 
     const res = await this.curator.call<ProgrammeResponse>('programme', {
       today: this.today(),
@@ -448,7 +462,8 @@ export class Journey {
       questions: context.questions,
       listenerNotes: context.listenerNotes,
       recentListening: context.recentListening,
-      secondHearings: context.secondHearings.length ? context.secondHearings : undefined,
+      // The work id is for matching the answer (below), not for the curator to read.
+      secondHearings: context.secondHearings.length ? context.secondHearings.map(({ workId: _w, ...h }) => h) : undefined,
       thisWeek: context.thisWeek,
       ...(sitting ? { sitting } : {}),
     })
@@ -495,13 +510,20 @@ export class Journey {
     await this.repo.comparisons.putMany(comparisons)
     await this.repo.addProgramme(programme)
     await this.repo.explorations.put(exploration)
-    // A second hearing offered in this programme isn't offered again.
+    // A second hearing offered in this programme isn't offered again. Matched by
+    // the work, not the curator's spelling: taken up as "Symphony No. 4, Op. 29
+    // “The Inextinguishable”" it is still the "Symphony No. 4" offered, and with
+    // no mark it came back as a second hearing every week.
     for (const i of programme.sections.flatMap((s) => s.items)) {
-      if (context.secondHearings.some((h) => h.composer === i.proposed.composer && h.work === i.proposed.work)) {
-        await this.repo.marks.put({ id: `again:${i.workId}`, at: now })
-      }
+      const offered = context.secondHearings.some((h) => h.workId === i.workId
+        || sameWork({ composer: h.composer, title: h.work }, { composer: i.proposed.composer, title: i.proposed.work, catalogue: i.proposed.catalogue }))
+      if (offered) await this.repo.marks.put({ id: `again:${i.workId}`, at: now })
     }
-    await this.repo.themes.put({ ...theme, explorationIds: [...theme.explorationIds, explorationId], updatedAt: now })
+    // A returning thread as it is now, not as it was before the curator's
+    // minute: a visit closing meanwhile rewrote its open questions and next
+    // directions, and writing the old copy back undid them.
+    const themeNow = returningTheme ? ((await this.repo.themes.get(theme.id)) ?? theme) : theme
+    await this.repo.themes.put({ ...themeNow, explorationIds: [...themeNow.explorationIds, explorationId], updatedAt: now })
 
     const fromThisWeek = option.weekKey === week.weekKey
     await this.repo.options.put({
@@ -517,8 +539,7 @@ export class Journey {
       if (o && o.status === 'offered') await this.repo.options.put({ ...o, status: 'open' })
     }
     // Read once more for the write itself: a mood set during the writes above stays.
-    const latest = (await this.repo.weeks.get(week.weekKey)) ?? current
-    await this.repo.weeks.put({ ...latest, setAsideProgrammeIds, chosenOptionId: option.id, chosenAt: now, programmeId: programme.id })
+    await this.updateWeek(week.weekKey, (latest = current) => ({ ...latest, setAsideProgrammeIds, chosenOptionId: option.id, chosenAt: now, programmeId: programme.id }))
     return programme
   }
 
@@ -559,7 +580,9 @@ export class Journey {
     const events = await this.repo.events.all()
     const feedback = await this.repo.feedback.all()
     // A work heard through a stand-in was heard: its listening and reactions are filed under the stand-in.
-    const standIns = standInsOf(await this.repo.comparisons.all())
+    const comparisons = await this.repo.comparisons.all()
+    const standIns = standInsOf(comparisons)
+    const players = standInPlayersOf(comparisons)
     const { language } = await this.repo.preferences()
     const res = await this.curator.call<ContinuityResponse>('continuity', {
       language,
@@ -567,10 +590,11 @@ export class Journey {
       exploration: { weekKey: ex.weekKey, stage: ex.stage, angle: ex.angle },
       programme: {
         title: programme.title,
-        items: [programme, ...extras].flatMap((x) => x.sections.flatMap((s) => s.items).map((i) => ({ i, ids: heardAs(i, x.id, standIns) }))).map(({ i, ids }) => ({
+        items: [programme, ...extras].flatMap((x) => x.sections.flatMap((s) => s.items).map((i) => ({ i, x, ids: heardAs(i, x.id, standIns) }))).map(({ i, x, ids }) => ({
           composer: i.proposed.composer,
           work: i.proposed.work,
-          recording: creditLine(i.proposed),
+          // Credited to who played: heard through a stand-in, the stand-in's performers.
+          recording: creditLine(playedProposed(i, x.id, players, events, feedback)),
           state: listeningState(events, ids),
           ...feedbackOnAny(feedback, ids),
         })),
@@ -771,7 +795,10 @@ export class Journey {
       const { season: s, review } = await this.seasonReview(n)
       if (review) return review
       if (!s.complete && s.weeksSoFar < 2) throw new Error(s.weeksSoFar === 0 ? 'This season hasn’t begun.' : 'A season is read back once two weeks are behind it.')
-      const res = await this.curator.call<SeasonResponse>('season', await seasonContext(this.repo, s, this.currentWeek().key))
+      const generation = this.repo.generation
+      const res = await this.curator.call<SeasonResponse>('season', await seasonContext(this.repo, s, this.currentWeek().key, this.timeZone))
+      // A season of a journey started afresh meanwhile is not kept for the new one.
+      this.stillCurrent(generation)
       await this.repo.marks.put({ id: this.seasonKey(s), at: this.stamp(), value: res })
       return res
     })
@@ -837,6 +864,7 @@ export class Journey {
       const mine = (await this.repo.resources.all()).filter((r) => r.programmeId === programmeId)
       const searched = await this.repo.marks.get(`resources:${programmeId}`)
       if ((mine.length || searched) && !opts.again) return mine
+      const generation = this.repo.generation
       const p = await this.repo.programmes.require(programmeId)
       const theme = await this.repo.themes.get(p.themeId)
       const { language } = await this.repo.preferences()
@@ -849,6 +877,8 @@ export class Journey {
           works: p.sections.flatMap((s) => s.items).map((i) => ({ composer: i.proposed.composer, title: i.proposed.work })),
         },
       })
+      // Like every curator job that writes: nothing kept for a journey cleared meanwhile.
+      this.stillCurrent(generation)
       const now = this.stamp()
       const known = new Set(mine.map((r) => r.url))
       const fresh: Resource[] = res.resources
@@ -875,6 +905,7 @@ export class Journey {
         const cached = await this.repo.explanations.get(id)
         if (cached) return cached
       }
+      const generation = this.repo.generation
       const p = await this.repo.programmes.require(programmeId)
       const item = p.sections.flatMap((s) => s.items).find((i) => i.id === itemId)
       if (!item) throw new Error('No such item.')
@@ -888,6 +919,7 @@ export class Journey {
         nowPlaying: q && nowPlaying ? nowPlaying : undefined,
         taste: profile.observations.filter((o) => !o.supersededBy).map((o) => o.statement).slice(0, 12),
       })
+      this.stillCurrent(generation)
       const e: Explanation = {
         id, heading: res.heading, body: res.body, createdAt: this.stamp(), promptVersion: res.promptVersion,
         ...(q ? { question: q, ...(nowPlaying?.movement ? { movement: nowPlaying.movement } : {}) } : {}),
@@ -911,12 +943,21 @@ export class Journey {
    */
   companion(programmeId: string): Promise<number> {
     return this.once(`companion:${programmeId}`, async () => {
+      const generation = this.repo.generation
       const p = await this.repo.programmes.require(programmeId)
       const items = p.sections.flatMap((s) => s.items)
-      const standIns = (await this.repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn)
+      // Each item's stand-in, read by the one rule every reader uses (domain/standIns.ts):
+      // a comparison marked standIn with a second perspective.
+      const comparisons = await this.repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))
+      const players = standInPlayersOf(comparisons)
+      const perspectiveOf = new Map(comparisons.map((c) => [c.id, c.perspectives[1]]))
       const wanted = [
         ...items.map((i) => ({ rid: i.recordingId, proposed: i.proposed, listenFor: i.listenFor })),
-        ...standIns.flatMap((c) => c.perspectives.slice(1).map((x) => ({ rid: x.recordingId, proposed: x.proposed, listenFor: x.listenFor ? [x.listenFor] : [] }))),
+        ...items.flatMap((i) => {
+          const s = players.get(`cmp:${programmeId}:${i.id}`)
+          const x = perspectiveOf.get(`cmp:${programmeId}:${i.id}`)
+          return s && x ? [{ rid: s.recordingId, proposed: s.proposed, listenFor: x.listenFor ? [x.listenFor] : [] }] : []
+        }),
       ]
       const recordings = new Map((await this.repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
       // Notes belong to one division of the work into tracks: a recording re-matched to another album is written for afresh.
@@ -932,6 +973,7 @@ export class Journey {
         programme: { title: p.title, dek: p.dek },
         works: todo.map((w, i) => ({ key: `w${i + 1}`, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames, listenFor: w.listenFor })),
       })
+      this.stillCurrent(generation)
       const now = this.stamp()
       const byKey = new Map(res.works.map((w) => [w.key, w.movements]))
       // Every recording asked about is marked, notes or not, so none is asked about again until its tracks change.
@@ -946,6 +988,7 @@ export class Journey {
     return this.once(id, async () => {
       const cached = await this.repo.comparisons.get(id)
       if (cached) return cached
+      const generation = this.repo.generation
       const p = await this.repo.programmes.require(programmeId)
       const item = p.sections.flatMap((s) => s.items).find((i) => i.id === itemId)
       if (!item) throw new Error('No such item.')
@@ -968,6 +1011,8 @@ export class Journey {
         alreadyHeard,
         taste: profile.observations.filter((o) => !o.supersededBy && (o.facet === 'interpretation' || o.facet === 'conductor' || o.facet === 'recording-era')).map((o) => o.statement),
       })
+      // A second perspective on a journey cleared meanwhile would bring its work and recordings back.
+      this.stillCurrent(generation)
       const ingest = await new Ingest(this.repo).load()
       const cmp = await comparisonOf(ingest, {
         composer: item.proposed.composer,

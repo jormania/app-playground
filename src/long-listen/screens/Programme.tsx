@@ -12,10 +12,13 @@ import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { aboutDuration, isConfirmed, keepPlaylistCurrent, saveProgrammePlaylist, spotifyCandidates, needsLook, verifyProgramme, type PlaylistMark } from '../spotify/verify'
 import { positionOf, usePlayerState } from '../app/playback'
+import { useOnline } from '../app/online'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
-import { MAX_ASK, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import { SittingCard } from '../components/SittingCard'
+import { OpenPaths } from '../components/OpenPaths'
+import { heardAs, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
 
 interface Bundle {
@@ -26,6 +29,8 @@ interface Bundle {
   week?: WeekRecord
   otherOptions: ProgrammeOption[]
   comparisons: Comparison[]
+  /** Each item's stand-in, where Spotify lacked the curator's recording (domain/standIns.ts). */
+  standIns: Map<string, string>
   recordings: Map<string, Recording>
   works: Map<string, Work>
   events: ListeningEvent[]
@@ -38,8 +43,8 @@ interface Bundle {
   root?: Programme
   /** "More of this theme" programmes made for the week's programme. */
   extensions: Programme[]
-  /** Paths offered in earlier weeks and still open. */
-  openPaths: number
+  /** Paths offered in earlier weeks and still open, newest first. */
+  openPaths: ProgrammeOption[]
   /** Side-by-side pairs are the listener's choice (Settings → Same work, two perspectives). */
   pairs: boolean
 }
@@ -71,9 +76,12 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
   const allProgrammes = await repo.programmes.all()
   const root = programme.extends ? allProgrammes.find((x) => x.id === programme.extends) : undefined
   const extensions = allProgrammes.filter((x) => x.extends === rootId).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-  const openPaths = (await repo.options.all()).filter((o) => o.status === 'open' && o.weekKey < programme.weekKey).length
+  // The same paths, in the same order, as This week and Threads list them.
+  const openPaths = (await repo.options.all())
+    .filter((o) => o.status === 'open' && o.weekKey < programme.weekKey)
+    .sort((a, b) => b.weekKey.localeCompare(a.weekKey))
   return {
-    programme, theme, exploration, week, otherOptions, comparisons, recordings, works, events, feedback,
+    programme, theme, exploration, week, otherOptions, comparisons, standIns: standInsOf(comparisons), recordings, works, events, feedback,
     firstExploration: explorations.sort((a, b) => a.weekKey.localeCompare(b.weekKey))[0],
     resources: allResources.filter((r) => r.programmeId === id),
     resourcesSearched: Boolean(searched),
@@ -96,10 +104,14 @@ const STATES: { value: ListeningState; label: string; kind: ListeningKind }[] = 
   { value: 'skipped', label: 'Skipped', kind: 'skipped' },
 ]
 
-export function ProgrammeScreen({ id }: { id: string }) {
+export function ProgrammeScreen({ id, asThisWeek = false }: { id: string; asThisWeek?: boolean }) {
   const { repo } = useServices()
   const { data, error, loading, retry } = useLoad(() => loadBundle(repo, id), [id])
-  if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'There’s no such programme — perhaps an old link, or one from a journey started afresh.', link: { href: href({ name: 'week' }), label: 'This week' } }} />
+  // Shown as This week itself, a link to "This week" would only lead back here: point to the Journal instead.
+  const notFound = asThisWeek
+    ? { text: 'This week’s programme can’t be found — perhaps it was cleared. The Journal keeps every week.', link: { href: href({ name: 'journal' }), label: 'Journal' } }
+    : { text: 'There’s no such programme — perhaps an old link, or one from a journey started afresh.', link: { href: href({ name: 'week' }), label: 'This week' } }
+  if (error) return <Problem error={error} onRetry={retry} notFound={notFound} />
   if (!data) return loading ? <Waiting>Opening the programme…</Waiting> : null
   return <ProgrammeView b={data} key={id} />
 }
@@ -234,10 +246,15 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 const workAnchor = (itemId: string) => `work-${itemId}`
 
 /** A work's recordings as listening knows them: the curator's, and the stand-in that plays where Spotify lacks it. */
-function itemRecordingIds(b: Bundle, item: ProgrammeItem): string[] {
-  const standIn = b.comparisons.find((c) => c.standIn && c.id === `cmp:${b.programme.id}:${item.id}`)
-  const other = standIn?.perspectives[1]?.recordingId
-  return other ? [item.recordingId, other] : [item.recordingId]
+const itemRecordingIds = (b: Bundle, item: ProgrammeItem): string[] => heardAs(item, b.programme.id, b.standIns)
+
+/**
+ * The recording that plays for an item: the curator's, once Spotify has
+ * confirmed it; otherwise its stand-in's, if that is confirmed; otherwise none.
+ * The programme's length, its playlist and "the music runs" count this.
+ */
+function playableOf(b: Bundle, item: ProgrammeItem): Recording | undefined {
+  return itemRecordingIds(b, item).map((id) => b.recordings.get(id)).find(isConfirmed)
 }
 
 /**
@@ -360,39 +377,53 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const whatWhen = whatAndWhen(work?.form, work?.composed)
   const catalogue = catalogueLine(work?.catalogue ?? item.proposed.catalogue, item.proposed.composer)
 
-  async function mark(to: (typeof STATES)[number]) {
+  // Once per tap, like "I’ve heard it" in the listening view: a ref, since two
+  // taps in one frame both see the state as it was before either was kept.
+  const writing = useRef(false)
+  async function once(write: () => Promise<unknown>) {
+    if (writing.current) return
+    writing.current = true
+    try {
+      await write()
+      bump()
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      writing.current = false
+    }
+  }
+
+  function mark(to: (typeof STATES)[number]) {
     // Tapping where you already are says nothing new: recording it again would
     // add a second "heard" (or a reset) to the listening the curator reads.
     if (to.value === state) return
-    const kind = to.kind
-    await journey.markListening({ ...item, recordingId: playedId }, kind, pid)
-    bump()
+    return once(() => journey.markListening({ ...item, recordingId: playedId }, to.kind, pid))
   }
 
   const knewIt = Boolean(latestFeedback(b.feedback, item.workId).known)
-  async function toggleKnown() {
-    await journey.markKnown(item.workId, !knewIt, pid)
-    bump()
-  }
+  const toggleKnown = () => once(() => journey.markKnown(item.workId, !knewIt, pid))
 
   async function explain() {
     setExplaining(true)
     try { await journey.explain(pid, item.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setExplaining(false) }
   }
 
-  async function compare(mustBeOnSpotify = false, quiet = false) {
+  /** True once the curator has been asked and answered (or Spotify truly has nothing); false when the asking failed. */
+  async function compare(mustBeOnSpotify = false, quiet = false): Promise<boolean> {
     setComparing(true)
     try {
       // A stand-in is chosen from what Spotify really has, never from memory alone.
       const candidates = mustBeOnSpotify && spotify.connected ? await spotifyCandidates(spotify, item.proposed) : undefined
       if (mustBeOnSpotify && candidates && candidates.length === 0) {
         if (!quiet) say('Spotify has no recording of this work that the app could find.')
-        return
+        return true
       }
       await journey.compare(pid, item.id, { mustBeOnSpotify, spotifyCandidates: candidates })
       bump()
+      return true
     } catch (e) {
       if (!quiet) say(messageOf(e), 'danger')
+      return false
     } finally {
       setComparing(false)
     }
@@ -401,12 +432,14 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   // When Spotify truly lacks the curator's recording, find one it has, once, by itself.
   const missing = recording?.verification === 'not-found' && !needsLook(recording)
   const askedForStandIn = useRef(false)
+  const online = useOnline()
   useEffect(() => {
-    if (!missing || comparison || !spotify.connected || !curatorReady || askedForStandIn.current) return
+    if (!missing || comparison || !spotify.connected || !curatorReady || !online || askedForStandIn.current) return
     askedForStandIn.current = true
-    void compare(true, true)
+    // A request that failed (offline, the curator busy) is asked again when the connection returns.
+    void compare(true, true).then((ok) => { if (!ok) askedForStandIn.current = false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [missing, comparison, spotify.connected, curatorReady])
+  }, [missing, comparison, spotify.connected, curatorReady, online])
   const standIn = comparison?.standIn ? comparison : undefined
   // What is reacted to is the recording that plays: the stand-in's own, where Spotify lacks the curator's.
   const playedId = standIn && !isConfirmed(recording) && standIn.perspectives[1] ? standIn.perspectives[1].recordingId : item.recordingId
@@ -426,7 +459,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       <RecordingBlock
         proposed={item.proposed}
         recording={recording}
-        onOpened={(how) => { void journey.markListening(item, how, pid, 'app').then(bump) }}
+        onOpened={(how) => { void journey.markListening(item, how, pid, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
         onFindAlternative={comparison || comparing ? undefined : () => void compare(true)}
         standInBelow={Boolean(standIn)}
       />
@@ -446,7 +479,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         <p className={s.panelHead}>Your listening</p>
         <div className={s.segmented} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
           {STATES.map((st) => (
-            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? s.segmentOn : ''}`} onClick={() => void mark(st)}>
+            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? s.segmentOn : ''}`} onClick={() => { void mark(st) }}>
               {st.label}
             </button>
           ))}
@@ -480,13 +513,13 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
           <span className={s.furtherTitle}>Listen with this open</span>
           <span className={s.furtherHint}>The notes on one quiet screen that stays awake</span>
         </a>
-        {!explanation && (
-          <button className={s.furtherRow} onClick={explain} disabled={explaining}>
+        {!explanation && curatorReady && (
+          <button className={s.furtherRow} onClick={() => void explain()} disabled={explaining}>
             <span className={s.furtherTitle}>{explaining ? 'The curator is writing…' : 'A little more context'}</span>
             <span className={s.furtherHint}>Where the work came from, in a few paragraphs</span>
           </button>
         )}
-        {!comparison && b.pairs && (
+        {!comparison && b.pairs && curatorReady && (
           <button className={s.furtherRow} onClick={() => void compare()} disabled={comparing}>
             <span className={s.furtherTitle}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</span>
             <span className={s.furtherHint}>A second recording that reads it differently</span>
@@ -511,7 +544,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
  * press play on, chosen from Spotify's own list of recordings of the work.
  */
 function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
-  const { journey, bump } = useServices()
+  const { journey, bump, say } = useServices()
   const pv = c.perspectives[1]
   if (!pv) return null
   return (
@@ -521,7 +554,7 @@ function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
         proposed={pv.proposed}
         recording={b.recordings.get(pv.recordingId)}
         character={pv.character}
-        onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump) }}
+        onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
       />
       {c.framing && <p className={`${s.quiet} ${s.flush}`}>{c.framing}</p>}
       {pv.listenFor && <p className={`${s.flush} ${s.mtXs}`}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
@@ -538,8 +571,9 @@ function ProgrammeTools({ b }: { b: Bundle }) {
   const { spotify, repo, bump, say, week, settings } = useServices()
   const [saving, setSaving] = useState(false)
   const items = b.programme.sections.flatMap((x) => x.items)
-  const verified = items.filter((i) => b.recordings.get(i.recordingId)?.verification === 'verified')
-  const total = verified.reduce((n, i) => n + (b.recordings.get(i.recordingId)?.spotify?.durationMs ?? 0), 0)
+  // Each work as it plays: the curator's recording, or the stand-in where Spotify lacks it.
+  const playable = items.map((i) => playableOf(b, i)).filter((r): r is NonNullable<ReturnType<typeof playableOf>> => Boolean(r))
+  const total = playable.reduce((n, r) => n + (r.spotify?.durationMs ?? 0), 0)
 
   // Each time the programme's data changes (a confirmation, a swap, a stand-in),
   // bring a saved playlist into line. Quiet on success; a failure waits for the next change.
@@ -578,11 +612,11 @@ function ProgrammeTools({ b }: { b: Bundle }) {
 
   return (
     <div className={`${s.actions} ${s.mtMd}`}>
-      {total > 0 && <span className={s.faint}>{verified.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
+      {total > 0 && <span className={s.faint}>{playable.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
       {b.playlist && webUrl(b.playlist.url) && (
         <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer" title="Kept in step with the programme as recordings are confirmed">Open the playlist</a>
       )}
-      {!b.playlist && spotify.connected && verified.length > 0 && (
+      {!b.playlist && spotify.connected && playable.length > 0 && (
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={savePlaylist} disabled={saving}>
           {saving ? 'Saving…' : 'Save as a Spotify playlist'}
         </button>
@@ -633,7 +667,7 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
 const liveDate = (d: string) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`))
 
 function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
-  const { journey, bump } = useServices()
+  const { journey, bump, say } = useServices()
   return (
     <div className={s.comparison}>
       <p className={`${s.quiet} ${s.flush}`}>{c.framing}</p>
@@ -645,7 +679,7 @@ function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
               proposed={pv.proposed}
               recording={b.recordings.get(pv.recordingId)}
               character={pv.character}
-              onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump) }}
+              onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
             />
             {pv.listenFor && <p className={s.flush}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
             <FeedbackPanel
@@ -670,6 +704,7 @@ function webUrl(u: string): string | undefined {
 const KIND_TITLE = { listen: 'Listen', read: 'Read', watch: 'Watch' } as const
 
 function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boolean; onSearch: () => void }) {
+  const { curatorReady } = useServices()
   const groups = (['listen', 'read', 'watch'] as const).map((k) => ({ k, list: b.resources.filter((r) => r.kind === k) })).filter((g) => g.list.length)
   return (
     <section aria-label="Further listening and reading">
@@ -677,10 +712,13 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
       <p className={s.sectionGuide}>{FURTHER_GUIDE}</p>
       {groups.length === 0 && searching && <Waiting>Looking for good reading and listening…</Waiting>}
       {groups.length === 0 && !searching && (
-        <p className={s.quiet}>
-          {b.resourcesSearched ? 'Nothing trustworthy turned up this time.' : 'Programme notes, essays and talks to go with this week.'}{' '}
-          <button className={s.textButton} onClick={onSearch}>{b.resourcesSearched ? 'Look again' : 'Find some'}</button>
-        </p>
+        <>
+          <p className={s.quiet}>{b.resourcesSearched ? 'Nothing trustworthy turned up this time.' : 'Programme notes, essays and talks to go with this week.'}</p>
+          <div className={s.actions}>
+            <button className={`${s.outlineButton} ${s.smallButton}`} onClick={onSearch} disabled={!curatorReady}>{b.resourcesSearched ? 'Look again' : 'Find some'}</button>
+          </div>
+          {!curatorReady && <NeedsKey />}
+        </>
       )}
       {groups.map(({ k, list }) => (
         <div key={k} className={s.resourceGroup}>
@@ -706,7 +744,7 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
  * labelled section, so the last page of the week always has a way on.
  */
 function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
-  const { journey, bump, say } = useServices()
+  const { journey, bump, say, curatorReady, week } = useServices()
   const p = b.programme
   const rootId = p.extends ?? p.id
   const [wish, setWish] = useState('')
@@ -714,10 +752,12 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
   // One request at a time from here, whichever it is: each of these asks the
   // curator for this week's music, and two at once would race to rewrite the
   // week (another direction taken while three new ones are being found).
-  // 'more', 'directions', 'sitting', or the id of the direction being taken.
+  // 'more', 'directions', 'sitting', or the id of the direction (or open path) being taken.
   const [busy, setBusy] = useState<string | null>(null)
   const extending = busy === 'more'
   const asking = busy === 'directions'
+  // Every request here asks the curator: without a key, none can be made (said once, under the heading).
+  const held = busy !== null || !curatorReady
 
   async function more() {
     setBusy('more')
@@ -772,13 +812,20 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
   )
 
   if (!isCurrent) {
-    return <section aria-label="This week" className={s.whereNext}><h2 className={s.sectionHead}>Looking back</h2>{feedback}</section>
+    return (
+      <section aria-label="This week" className={s.whereNext}>
+        <h2 className={s.sectionHead}>Looking back</h2>
+        <p className={s.sectionGuide}>This programme’s week is over or set aside; it stays here as it was. A word on how it went still reaches the curator.</p>
+        {feedback}
+      </section>
+    )
   }
 
   return (
     <section aria-label="Where next" className={s.whereNext}>
       <h2 className={s.sectionHead}>Where next</h2>
       <p className={s.sectionGuide}>The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.</p>
+      {!curatorReady && <NeedsKey to="ask the curator for any of these" />}
 
       <div className={s.nextCard}>
         <h3 className={s.nextTitle}>More of this theme</h3>
@@ -790,12 +837,16 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
             ))}
           </ul>
         )}
-        <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
-        <input id="more-wish" className={s.input} maxLength={MAX_ASK} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} />
-        <button className={s.outlineButton} onClick={() => void more()} disabled={busy !== null}>{extending ? 'The curator is choosing more…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
+        {/* A form, so Enter asks: one line, one request. */}
+        <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!held) void more() }}>
+          <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
+          <input id="more-wish" className={s.input} maxLength={MAX_ASK} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} disabled={busy !== null} />
+          <CharCount value={wish} />
+          <button type="submit" className={s.outlineButton} disabled={held}>{extending ? 'The curator is building it…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
+        </form>
       </div>
 
-      <SittingCard joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} />
+      <SittingCard joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} keyHint={false} />
 
       <div className={s.nextCard}>
         <h3 className={s.nextTitle}>A different direction this week</h3>
@@ -806,23 +857,31 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
               <li key={o.id} className={s.entry}>
                 <h4 className={s.nextOption}>{o.title}</h4>
                 <p className={s.quiet}>{o.pitch}</p>
-                <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={busy !== null}>
-                  {busy === o.id ? 'The curator is building it…' : 'Listen this way instead'}
-                </button>
+                <div className={s.actions}>
+                  <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={held}>
+                    {busy === o.id ? 'The curator is building it…' : 'Listen this way instead'}
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
-        <label className={s.visuallyHidden} htmlFor="direction-wish">What are you in the mood for?</label>
-        <input id="direction-wish" className={s.input} maxLength={MAX_ASK} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} />
-        <button className={s.outlineButton} onClick={() => void newDirections()} disabled={busy !== null}>{asking ? 'Finding three…' : 'Ask for three new directions'}</button>
+        <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!held) void newDirections() }}>
+          <label className={s.visuallyHidden} htmlFor="direction-wish">What are you in the mood for?</label>
+          <input id="direction-wish" className={s.input} maxLength={MAX_ASK} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} disabled={busy !== null} />
+          <CharCount value={directionWish} />
+          <button type="submit" className={s.outlineButton} disabled={held}>{asking ? 'The curator is finding three…' : 'Ask for three new directions'}</button>
+        </form>
       </div>
 
-      {b.openPaths > 0 && (
+      {b.openPaths.length > 0 && (
         <div className={s.nextCard}>
           <h3 className={s.nextTitle}>A path left open</h3>
-          <p className={s.quiet}>{b.openPaths === 1 ? 'One direction' : `${b.openPaths} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
-          <a href={href({ name: 'threads' })}>See the open paths</a>
+          <p className={s.quiet}>{b.openPaths.length === 1 ? 'One direction' : `${b.openPaths.length} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
+          <details>
+            <summary className={s.textButton}>{b.openPaths.length === 1 ? 'Show it' : `Show all ${b.openPaths.length}`}</summary>
+            <OpenPaths paths={b.openPaths} nowKey={week.key} busy={busy !== null && !b.openPaths.some((o) => o.id === busy)} onTaking={setBusy} keyHint={false} />
+          </details>
         </div>
       )}
 

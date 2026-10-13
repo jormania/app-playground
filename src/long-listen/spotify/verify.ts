@@ -1,6 +1,7 @@
 import type { Album, ListeningEvent, ProposedRecording, Recording } from '../domain/types'
-import { newId } from '../domain/identity'
+import { displaySurname, newId } from '../domain/identity'
 import { listeningState } from '../domain/listening'
+import { heardAs, standInsOf } from '../domain/standIns'
 import type { Repo } from '../store/repo'
 import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import { SpotifyAuthError } from './auth'
@@ -70,6 +71,12 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
     if (found?.level === 'strong') break
   }
 
+  // The search took a while; the listener may have answered meanwhile. Their
+  // word wins: "Yes, this is it" or "Not this one" said during the look is
+  // never overwritten by what was decided from the copy read before it.
+  const settled = await settledMeanwhile(repo, recording)
+  if (settled) return settled
+
   const { spotify: before, albumId: _albumId, ...bare } = recording
   if (!found || !found.track.album) {
     if (before) await forgetSpotifyListening(repo, recordingId)
@@ -80,6 +87,9 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
 
   const albumId = found.track.album.id
   const [album, tracks] = await Promise.all([spotify.album(albumId), spotify.albumTracks(albumId)])
+  // And again after the album was read, for the same reason.
+  const settledLater = await settledMeanwhile(repo, recording)
+  if (settledLater) return settledLater
   const work = workTracks(tracks, found.track, proposed.work, proposed)
   const credited = [...new Set(work.flatMap((t) => t.artists.map((a) => a.name)))]
   const image = [...(album.images ?? [])].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url
@@ -124,6 +134,22 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
   return { recording: updated, album: albumRecord }
 }
 
+/**
+ * What makes a recording's verification "the same decision": a check that read
+ * one of these and finds another on re-reading lost the race to the listener
+ * (or to another check) and must not write.
+ */
+const decision = (r: Recording) => JSON.stringify([r.verification, r.albumId, r.spotify?.albumId, r.spotify?.confirmedByListener, r.rejectedAlbumIds ?? [], r.checkedAt])
+
+/** The recording as it is now, if it changed since `read` — then that is the outcome, and nothing is written. */
+async function settledMeanwhile(repo: Repo, read: Recording): Promise<VerifyOutcome | null> {
+  const now = await repo.recordings.get(read.id)
+  // Gone (a fresh start meanwhile): nothing to write back into.
+  if (!now) return { recording: read }
+  if (decision(now) === decision(read)) return null
+  return { recording: now, album: now.albumId ? await repo.albums.get(now.albumId) : undefined }
+}
+
 /** The listener says a near match IS the curator's recording. */
 export async function confirmMatch(repo: Repo, recordingId: string, now = new Date().toISOString()): Promise<Recording> {
   const r = await repo.recordings.require(recordingId)
@@ -146,7 +172,10 @@ export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, rec
   const reset: Recording = { ...bare, rejectedAlbumIds, verification: 'unchecked' }
   await repo.recordings.put(reset)
   if (!spotify?.connected) return reset
-  return (await verifyRecording(repo, spotify, recordingId, proposed, now)).recording
+  // Its own look, never one already running: that one read the album just
+  // refused, and backs off on finding the refusal (verifyRecording re-reads).
+  // Registered page-wide, so a "Check on Spotify" tapped now shares this look.
+  return (await track(recordingId, verifyRecording(repo, spotify, recordingId, proposed, now))).recording
 }
 
 /** One recording of a work that Spotify actually has, for the curator to choose from. */
@@ -166,7 +195,9 @@ export interface SpotifyCandidate {
  * so it is grounded in what exists rather than remembered.
  */
 export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecording, max = 8): Promise<SpotifyCandidate[]> {
-  const composer = p.composer.split(' ').slice(-1)[0]
+  // The surname, as every other Spotify query leads with it (searchQueries): the last
+  // word of "Johann Strauss II" is the generation, not the composer.
+  const composer = displaySurname(p.composer)
   const queries = [...new Set([
     `${composer} ${p.work.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')}`.replace(/\s+/g, ' ').trim(),
     // The catalogue number finds the recordings that title the work another way.
@@ -308,20 +339,17 @@ async function playlistUris(repo: Repo, programmeId: string, opts: PlaylistOptio
   // it any stand-in found where Spotify lacks that recording (an unconfirmed
   // one drops out below, so the stand-in takes its place). The programme's
   // own pairs follow the items.
-  const standIns = new Map((await repo.comparisons.many(all.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn).map((c) => [c.id, c]))
+  // Each item's stand-in, by the one rule every reader uses (domain/standIns.ts).
+  const standIns = standInsOf(await repo.comparisons.many(all.map((i) => `cmp:${programmeId}:${i.id}`)))
   // "Hide what I skip": a skipped work, and its stand-in, leave the playlist
   // too. Where a stand-in plays, the programme page files the skip under the
   // stand-in's recording, so both ids are read, as the page reads them.
-  const itemIds = (i: (typeof all)[number]) => {
-    const other = standIns.get(`cmp:${programmeId}:${i.id}`)?.perspectives[1]?.recordingId
-    return other ? [i.recordingId, other] : [i.recordingId]
-  }
-  const items = all.filter((i) => !opts.hideSkipped || listeningState(events, itemIds(i)) !== 'skipped')
+  const items = all.filter((i) => !opts.hideSkipped || listeningState(events, heardAs(i, programmeId, standIns)) !== 'skipped')
   // A pair of a skipped work leaves with it.
   const keptWorks = new Set(items.map((i) => i.workId))
   const pairs = (await repo.comparisons.many(p.comparisonIds)).filter((c) => !opts.hideSkipped || !c.workId || keptWorks.has(c.workId))
   const ids = [...new Set([
-    ...items.flatMap((i) => [i.recordingId, ...(standIns.get(`cmp:${programmeId}:${i.id}`)?.perspectives.map((x) => x.recordingId) ?? [])]),
+    ...items.flatMap((i) => heardAs(i, programmeId, standIns)),
     ...pairs.flatMap((c) => c.perspectives.map((x) => x.recordingId)),
   ])]
   const byId = new Map((await repo.recordings.many(ids)).map((r) => [r.id, r]))
@@ -374,8 +402,24 @@ function stopsThePass(e: unknown): boolean {
   return e instanceof SpotifyUnavailable && (e.reason === 'signed-out' || e.reason === 'busy' || e.reason === 'offline')
 }
 
-/** Recordings being looked up right now, page-wide, so two callers never check the same one twice. */
-const looking = new Set<string>()
+/** Recordings being looked up right now, page-wide, with the look itself — so two callers never check the same one twice. */
+const looking = new Map<string, Promise<VerifyOutcome>>()
+
+/** Remember a look while it runs, so `verifyOne` and `verifyProgramme` share it. */
+function track(recordingId: string, look: Promise<VerifyOutcome>): Promise<VerifyOutcome> {
+  looking.set(recordingId, look)
+  void look.then(() => {}, () => {}).then(() => { if (looking.get(recordingId) === look) looking.delete(recordingId) })
+  return look
+}
+
+/**
+ * Look one recording up on Spotify — the recording block's "Check on Spotify".
+ * Shares a look already running for it (the programme's background pass, a
+ * second tap) instead of starting a second one that would race it.
+ */
+export function verifyOne(repo: Repo, spotify: SpotifyClient, recordingId: string, proposed: ProposedRecording, now = new Date().toISOString()): Promise<VerifyOutcome> {
+  return looking.get(recordingId) ?? track(recordingId, verifyRecording(repo, spotify, recordingId, proposed, now))
+}
 
 /**
  * Confirm every recording a programme needs on Spotify — three at a time, not
@@ -391,6 +435,8 @@ export async function verifyProgramme(
   if (!spotify.connected) return 0
   const p = await repo.programmes.require(programmeId)
   const items = p.sections.flatMap((s) => s.items)
+  // Every perspective is looked up, not only stand-ins: an on-request second
+  // perspective is shown with its album too. (So this is not a heardAs reader.)
   const comparisons = await repo.comparisons.many([...p.comparisonIds, ...items.map((i) => `cmp:${programmeId}:${i.id}`)])
   const wanted = [
     ...items.map((i) => ({ rid: i.recordingId, proposed: i.proposed })),
@@ -402,9 +448,8 @@ export async function verifyProgramme(
   let failed = false
   const worker = async () => {
     for (let job = queue.shift(); job && !failed; job = queue.shift()) {
-      looking.add(job.rid)
       try {
-        await verifyRecording(repo, spotify, job.rid, job.proposed)
+        await verifyOne(repo, spotify, job.rid, job.proposed)
         done++
         onEach?.()
       } catch (e) {
@@ -414,8 +459,6 @@ export async function verifyProgramme(
         // region-locked) — is that recording's trouble alone: it stays
         // unchecked for the next open, and the rest carry on.
         if (stopsThePass(e)) failed = true
-      } finally {
-        looking.delete(job.rid)
       }
     }
   }

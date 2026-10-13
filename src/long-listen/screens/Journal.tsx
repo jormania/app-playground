@@ -1,5 +1,8 @@
 import type { Concert, ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
-import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
+import { listeningState, reactionLabel, when } from '../domain/listening'
+import { itemFeedback } from '../domain/standIns'
+import { displaySurname } from '../domain/identity'
+import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { weekFromKey, weekOf, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
@@ -7,7 +10,7 @@ import { concertDate } from './Concerts'
 import { seasonName } from '../domain/season'
 import { journalWeek } from '../domain/journalWeek'
 import { href } from '../app/router'
-import { Empty, Problem, Waiting } from '../components/common'
+import { Empty, Problem, SpotifyCheckButton, Waiting } from '../components/common'
 import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
@@ -25,7 +28,7 @@ const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
  * listened, no streak. This page is memory, not measurement.
  */
 export function JournalScreen() {
-  const { repo, journey, settings, spotify, syncSpotify, say } = useServices()
+  const { repo, journey, settings, spotify } = useServices()
   const { data, error, retry } = useLoad(async () => {
     const [weeks, options, events, feedback, programmes, comparisons, concerts] = await Promise.all([
       repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(),
@@ -38,22 +41,23 @@ export function JournalScreen() {
       const wk = weekOfDate({ year: y, month: m, day: d }).key
       concertsIn.set(wk, [...(concertsIn.get(wk) ?? []), c])
     }
-    const proposedOf = new Map<string, { proposed: ProposedRecording; programmeId?: string }>()
-    for (const p of programmes) for (const i of p.sections.flatMap((x) => x.items)) proposedOf.set(i.recordingId, { proposed: i.proposed, programmeId: p.id })
-    for (const c of comparisons) for (const pv of c.perspectives) if (!proposedOf.has(pv.recordingId)) proposedOf.set(pv.recordingId, { proposed: pv.proposed })
+    const proposedOf = new Map<string, { proposed: ProposedRecording; workId: string; programmeId?: string }>()
+    for (const p of programmes) for (const i of p.sections.flatMap((x) => x.items)) proposedOf.set(i.recordingId, { proposed: i.proposed, workId: i.workId, programmeId: p.id })
+    for (const c of comparisons) for (const pv of c.perspectives) if (!proposedOf.has(pv.recordingId)) proposedOf.set(pv.recordingId, { proposed: pv.proposed, workId: c.workId })
 
-    // Each recording appears in the week it was last touched, with where it stands now.
+    // Each recording appears in the week it was last touched, with where it stands now —
+    // "last" and "the week" read from one moment: when it was played, for a play Spotify told of later.
     const lastTouch = new Map<string, ListeningEvent>()
     for (const e of events) {
       if (e.kind === 'opened') continue
       const prev = lastTouch.get(e.recordingId)
-      if (!prev || e.at > prev.at) lastTouch.set(e.recordingId, e)
+      if (!prev || when(e) > when(prev)) lastTouch.set(e.recordingId, e)
     }
     const heardIn = new Map<string, { rid: string; state: string }[]>()
     for (const [rid, e] of lastTouch) {
       const state = listeningState(events, rid)
       if (state === 'not-started' || (settings.hideSkipped && state === 'skipped')) continue
-      const wk = weekOf(new Date(e.playedAt ?? e.at), settings.timeZone).key
+      const wk = weekOf(new Date(when(e)), settings.timeZone).key
       heardIn.set(wk, [...(heardIn.get(wk) ?? []), { rid, state }])
     }
 
@@ -95,10 +99,10 @@ export function JournalScreen() {
       {spotify.connected && (
         <p className={s.faint}>
           Your recent Spotify listening is picked up each time you open the app.{' '}
-          <button className={s.textButton} onClick={() => syncSpotify().then((n) => say(n ? 'Picked up your recent Spotify listening.' : 'Nothing new from Spotify.')).catch(() => say('Spotify can’t be reached right now.', 'danger'))}>Check now</button>
+          <SpotifyCheckButton />
         </p>
       )}
-      {data.entries.length === 0 && <Empty link={{ href: '#/', label: 'Go to this week' }}>Nothing here yet. Your first week begins on This week.</Empty>}
+      {data.entries.length === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing here yet. Your first week begins on This week.</Empty>}
 
       {data.entries.map(({ key, week, others, choice, heard, concerts }) => {
         const wk = weekFromKey(key)
@@ -154,9 +158,13 @@ export function JournalScreen() {
                   <div key={c.id} className={s.journalConcert}>
                     <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{c.venue}</a>
                     <p className={`${s.faint} ${s.flush}`}>{concertDate(c.date)}</p>
-                    <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: c.soloists }} />
+                    {/* As on All concerts: the evening's own soloists above, each work's beside it. */}
+                    <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} />
                     <ul className={s.concertWorkList}>
-                      {c.works.map((w, i) => <li key={i}>{w.composer.split(' ').slice(-1)[0]}, <em>{w.title}</em></li>)}
+                      {c.works.map((w, i) => {
+                        const who = whoPlays(c, w)
+                        return <li key={i}>{displaySurname(w.composer)}, <em>{w.title}</em>{who.length > 0 && <span className={s.faint}> · {who.map((x) => x.name).join(', ')}</span>}</li>
+                      })}
                     </ul>
                     {c.note && <p className={s.said}><q>{c.note}</q></p>}
                   </div>
@@ -170,7 +178,8 @@ export function JournalScreen() {
                   {heard.map(({ rid, state }) => {
                     const info = data.proposedOf.get(rid)
                     if (!info) return null
-                    const fb = latestFeedback(data.feedback, rid)
+                    // What was said of the recording and of the work, read together as everywhere else.
+                    const fb = itemFeedback(data.feedback, [rid], info.workId)
                     return (
                       <li key={rid} className={s.entry}>
                         <p className={s.composer}>{info.proposed.composer}</p>

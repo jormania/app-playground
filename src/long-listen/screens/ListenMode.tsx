@@ -11,7 +11,10 @@ import { onHeardRecorded } from '../app/HeardWitness'
 import { ListenBar } from '../components/ListenBar'
 import { FeedbackPanel } from '../components/FeedbackPanel'
 import { aboutDuration, isConfirmed } from '../spotify/verify'
-import { MAX_ASK, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { spotifyQuery } from '../components/RecordingBlock'
+import { searchUrl } from '../spotify/client'
+import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { NotFound } from '../store/repo'
 import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
@@ -33,8 +36,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const items = programme.sections.flatMap((x) => x.items)
     const item = items.find((i) => i.id === itemId)
     if (!item) throw new NotFound(`item ${itemId} is not in programme ${programmeId}`)
-    const standIns = new Map((await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))).filter((c) => c.standIn).map((c) => [c.id.split(':').pop()!, c]))
-    const ids = [...items.map((i) => i.recordingId), ...[...standIns.values()].flatMap((c) => c.perspectives.map((x) => x.recordingId))]
+    const comparisons = await repo.comparisons.many(items.map((i) => `cmp:${programmeId}:${i.id}`))
+    // Each item's stand-in, where Spotify lacked the curator's recording: read as the item (domain/standIns.ts).
+    const standIns = standInsOf(comparisons)
+    const players = standInPlayersOf(comparisons)
+    const idsOf = (i: ProgrammeItem) => heardAs(i, programmeId, standIns)
+    const ids = items.flatMap(idsOf)
     const [recordings, events, feedback, explanation, answers] = await Promise.all([
       repo.recordings.many(ids), repo.events.all(), repo.feedback.all(), repo.explanations.get(`${programmeId}:${itemId}`), journey.answers(programmeId, itemId),
     ])
@@ -42,14 +49,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     // What plays: the programme's recording, or — when Spotify lacks it — the stand-in found in its place.
     const playable = (i: ProgrammeItem) => {
       if (isConfirmed(byId.get(i.recordingId))) return { recording: byId.get(i.recordingId), proposed: i.proposed, standIn: false }
-      const other = standIns.get(i.id)?.perspectives[1]
+      const other = players.get(`cmp:${programmeId}:${i.id}`)
       return other && isConfirmed(byId.get(other.recordingId)) ? { recording: byId.get(other.recordingId), proposed: other.proposed, standIn: true } : undefined
     }
     const here = playable(item)
     const notes = here?.recording ? (await repo.marks.get(`companion:${here.recording.id}`))?.value as { movements: string[] } | undefined : undefined
     return {
       programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false,
-      next: nextWork(items, item, (i) => Boolean(playable(i)), (i) => [i.recordingId, ...(standIns.get(i.id)?.perspectives[1] ? [standIns.get(i.id)!.perspectives[1].recordingId] : [])], events), feedback, notes: notes?.movements ?? [], explanation, answers,
+      next: nextWork(items, item, (i) => Boolean(playable(i)), idsOf, events), feedback, notes: notes?.movements ?? [], explanation, answers,
     }
   }, [programmeId, itemId])
   useWakeLock(true)
@@ -137,7 +144,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     }
   }
 
-  const started = () => { void journey.markListening(played, 'play-started', programme.id, 'app').then(bump) }
+  const started = () => { void journey.markListening(played, 'play-started', programme.id, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }
   const nowIndex = playback.at?.index ?? null
 
   // A movement can be started from the list: the place in the music, by its name.
@@ -154,7 +161,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {standIn && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
       {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for. */}
-      {sp && <ListenBar firstTrackId={sp.trackIds[0]} movements={sp.trackIds.length} durationMs={sp.durationMs} playback={playback} onStarted={started} className={s.mtMd} />}
+      {sp
+        ? <ListenBar firstTrackId={sp.trackIds[0]} movements={sp.trackIds.length} durationMs={sp.durationMs} playback={playback} onStarted={started} className={s.mtMd} />
+        : (
+          // Not confirmed on Spotify (or Spotify not connected): the same search as the programme offers, so it can still be heard.
+          <div className={`${s.actions} ${s.mtMd}`}>
+            <a className={s.outlineButton} href={searchUrl(spotifyQuery(credit))} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+          </div>
+        )}
 
       {movements.length > 1 && (
         <ol className={s.movements}>
@@ -195,7 +209,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
             <input id="ask" className={s.input} maxLength={MAX_ASK} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Why does the horn come back here?" disabled={asking} />
             <button className={`${s.outlineButton} ${s.smallButton}`} type="submit" disabled={asking || !question.trim()}>{asking ? 'Asking…' : 'Ask'}</button>
           </form>
-        ) : <p className={s.note}>Add your Anthropic key in Settings to ask the curator.</p>}
+        ) : <NeedsKey />}
+        {curatorReady && <CharCount value={question} />}
         {data.explanation ? (
           <div className={s.answer}>
             <p className={s.answerQ}>{data.explanation.heading}</p>
@@ -224,15 +239,20 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         </div>
       ) : (
         <div className={`${s.actions} ${s.mtXl}`}>
-          <button className={s.outlineButton} onClick={() => void heard()} disabled={marking}>I’ve heard it</button>
+          <button className={s.primaryButton} onClick={() => void heard()} disabled={marking}>I’ve heard it</button>
         </div>
       )}
     </article>
   )
 }
 
-/** The next work in programme order that can be played (its recording, or a stand-in, confirmed on Spotify) and wasn't skipped. */
+/**
+ * The next work after this one that wasn't skipped: the next that can be
+ * played (its recording, or a stand-in, confirmed on Spotify) if there is one,
+ * else simply the next in programme order — without Spotify, or before it has
+ * confirmed anything, the week is not over at its first work.
+ */
 function nextWork(items: ProgrammeItem[], current: ProgrammeItem, canPlay: (i: ProgrammeItem) => boolean, idsOf: (i: ProgrammeItem) => string[], events: Parameters<typeof listeningState>[0]): ProgrammeItem | undefined {
-  const after = items.slice(items.findIndex((i) => i.id === current.id) + 1)
-  return after.find((i) => canPlay(i) && listeningState(events, idsOf(i)) !== 'skipped')
+  const after = items.slice(items.findIndex((i) => i.id === current.id) + 1).filter((i) => listeningState(events, idsOf(i)) !== 'skipped')
+  return after.find(canPlay) ?? after[0]
 }

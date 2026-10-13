@@ -3,6 +3,8 @@ import type { Concert, ProposedRecording, Recording, Work } from '../domain/type
 import { Landmark } from 'lucide-react'
 import { concertDate } from './Concerts'
 import { surname } from '../domain/identity'
+import { groupByComposer } from '../domain/composerGroups'
+import { heardAs, standInsOf } from '../domain/standIns'
 import { compactFacts } from '../domain/workFacts'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
@@ -21,7 +23,7 @@ interface Entry {
   works: { work: Work; recordings: { rec: Recording; proposed: ProposedRecording; programmeId?: string; programmeTitle?: string; role?: string }[]; live: Concert[] }[]
 }
 
-const STATE_WORD: Record<string, string> = { 'not-started': 'not started', listening: 'started', heard: 'heard', skipped: 'skipped' }
+const STATE_WORD: Record<string, string> = { listening: 'started', heard: 'heard', skipped: 'skipped' }
 
 /**
  * Everything met so far, as a library: composers by surname, their works, and
@@ -59,20 +61,31 @@ export function LibraryScreen() {
       }
     }
 
-    const byComposer = new Map<string, Entry>()
+    // A recording and the stand-in that played in its place are one item: skipped through
+    // either, both step out (domain/standIns.ts), as on the programme page.
+    const standIns = standInsOf(comparisons)
+    const asOne = new Map<string, string[]>()
+    for (const p of programmes) {
+      for (const i of p.sections.flatMap((x) => x.items)) {
+        const ids = heardAs(i, p.id, standIns)
+        for (const id of ids) asOne.set(id, [...new Set([...(asOne.get(id) ?? []), ...ids])])
+      }
+    }
+    const skipped = (rid: string) => listeningState(events, asOne.get(rid) ?? [rid]) === 'skipped'
+
+    // One composer however the name was written ("Dvořák", "Dvorak", or a concert's bare "Dvořák"): one entry (domain/composerGroups.ts).
+    const metWorks: { composer: string; work: Entry['works'][number] }[] = []
     for (const w of works) {
       const recs = recordings
         .filter((r) => r.workId === w.id && met.has(r.id))
-        .filter((r) => !hideSkipped || listeningState(events, r.id) !== 'skipped')
+        .filter((r) => !hideSkipped || !skipped(r.id))
         .map((rec) => ({ rec, ...met.get(rec.id)! }))
       const live = liveFor.get(w.id) ?? []
       if (!recs.length && !live.length) continue
       const composer = recs[0]?.proposed.composer ?? composerOf.get(w.id) ?? ''
-      const e = byComposer.get(composer) ?? { composer, works: [] }
-      e.works.push({ work: w, recordings: recs, live })
-      byComposer.set(composer, e)
+      metWorks.push({ composer, work: { work: w, recordings: recs, live } })
     }
-    const entries = [...byComposer.values()].sort((a, b) => surname(a.composer).localeCompare(surname(b.composer)))
+    const entries: Entry[] = [...groupByComposer(metWorks, (x) => x.composer)].map(([composer, list]) => ({ composer, works: list.map((x) => x.work) })).sort((a, b) => surname(a.composer).localeCompare(surname(b.composer)))
     for (const e of entries) e.works.sort((a, b) => a.work.title.localeCompare(b.work.title))
     return { entries, events, feedback }
   }, [hideSkipped])
@@ -90,7 +103,7 @@ export function LibraryScreen() {
       <label className={s.visuallyHidden} htmlFor="lib-q">Search the library</label>
       <input id="lib-q" className={s.search} type="search" placeholder="A composer, a work, a conductor…" value={q} onChange={(e) => setQ(e.target.value)} />
 
-      {data.entries.length === 0 && <Empty link={{ href: '#/', label: 'Go to this week' }}>Empty for now. It fills as your weeks do.</Empty>}
+      {data.entries.length === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Empty for now. It fills as your weeks do.</Empty>}
       {data.entries.length > 0 && shown.length === 0 && <p className={s.quiet}>Nothing here matches “{q}”.</p>}
 
       {shown.map((e, i) => {
@@ -115,7 +128,8 @@ export function LibraryScreen() {
                       {/* Who played it; then, on one row, where you stand with it, how long, where to hear it and where it came from. */}
                       <Credits r={proposed} />
                       <span className={s.tagRow}>
-                        <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
+                        {/* Where you stand with it — said only once there is something to say. */}
+                        {state !== 'not-started' && <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>}
                         {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)?.toLowerCase()}</span>}
                         {isConfirmed(rec) && rec.spotify.durationMs ? <span>{aboutDuration(rec.spotify.durationMs)}</span> : null}
                         {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => assumeStart(rec.spotify.trackIds, rec.spotify.durationMs)}>Spotify</a>}

@@ -26,7 +26,8 @@ function stateOfKind(e: ListeningEvent): ListeningState {
  * the later moment the app heard about it — so a reset made after a play is
  * not overturned by that play arriving on the next sync.
  */
-function when(e: ListeningEvent): string {
+/** When a listening event happened: a Spotify play at the time it was played, not when the app heard of it. */
+export function when(e: ListeningEvent): string {
   return e.source === 'spotify-recent' ? (e.playedUntil ?? e.playedAt ?? e.at) : e.at
 }
 

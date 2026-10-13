@@ -6,7 +6,8 @@ import { isValidTimeZone } from '../domain/week'
 import { DEFAULT_PREFERENCES, type ListenerPreferences } from '../domain/types'
 import type { ThemeChoice } from '../app/settings'
 import { GUIDE_URL, STARTER_TEMPLATE_URL } from '../app/links'
-import { messageOf } from '../components/common'
+import { SpotifyCheckButton, dateWords, messageOf } from '../components/common'
+import { isoDateIn } from '../domain/week'
 import { LevelScale } from '../components/LevelScale'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { archiveNotebook } from '../notion/mirror'
@@ -97,9 +98,10 @@ export function SettingsScreen() {
   const { settings, updateSettings, prompts, spotify, repo, bump, say } = svc
   return (
     <div>
-      <h1 className={s.titleSmall}>Settings</h1>
-      <p className={s.quiet}>
-        New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
+      <p className={s.eyebrow}>Settings</p>
+      <h1 className={s.title}>How it works for you</h1>
+      <p className={s.dek}>
+        Your music, your connections, the app and your data. New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
       </p>
 
       <Part title="Your music" intro="The curator weighs these above anything it has inferred. A change shapes the next directions and programmes, never one already made — so set them before you choose a week, or ask for three others after.">
@@ -235,14 +237,18 @@ function ClaudeSection() {
 }
 
 function SpotifySection() {
-  const { settings, updateSettings, spotify, syncSpotify, testSpotify, bump, say } = useServices()
+  const { settings, updateSettings, spotify, testSpotify, bump } = useServices()
   const [result, setResult] = useState<Result>(null)
   const [testing, setTesting] = useState(false)
   const needsReconnect = spotify.connected && !spotify.hasScope('playlist-modify-private')
 
   async function connect() {
     if (!settings.spotifyClientId.trim()) return setResult({ ok: false, message: 'Add your Spotify app’s Client ID first.' })
-    window.location.assign(await beginSignIn(settings.spotifyClientId.trim(), redirectUriFor()))
+    try {
+      window.location.assign(await beginSignIn(settings.spotifyClientId.trim(), redirectUriFor()))
+    } catch (e) {
+      setResult({ ok: false, message: messageOf(e) })
+    }
   }
 
   async function test() {
@@ -271,11 +277,11 @@ function SpotifySection() {
           ? <button className={`${s.outlineButton} ${s.smallButton}`} onClick={connect}>{needsReconnect ? 'Reconnect Spotify (adds playlists)' : 'Connect Spotify'}</button>
           : <>
               <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing}>{testing ? 'Testing…' : 'Test Spotify'}</button>
-              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => syncSpotify().then((n) => say(n ? 'Picked up recent listening.' : 'Nothing new from Spotify.')).catch((e) => say(messageOf(e), 'danger'))}>Check recent listening</button>
+              <SpotifyCheckButton className={`${s.outlineButton} ${s.smallButton}`} label="Check recent listening" />
               <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => { spotify.setTokens(null); setResult(null); bump() }}>Disconnect</button>
             </>}
       </div>
-      {spotify.connected && renewalNote(renewBy(spotify.currentTokens))}
+      {spotify.connected && renewalNote(renewBy(spotify.currentTokens), settings.timeZone)}
       <ResultLine r={result} />
       <Steps>
         <p>It needs a Spotify app of your own: at developer.spotify.com → Dashboard → Create app, add this redirect URI, tick “Web API”, and paste the app’s Client ID above.</p>
@@ -287,9 +293,9 @@ function SpotifySection() {
 }
 
 /** Spotify sign-ins last six months; say when this one needs renewing, quietly, and louder near the end. */
-function renewalNote(at: number | undefined) {
+function renewalNote(at: number | undefined, timeZone: string) {
   if (!at) return null
-  const date = new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+  const date = dateWords(at, timeZone)
   const soon = at - Date.now() < 14 * 24 * 3600_000
   return (
     <p className={soon ? s.settingWarn : s.settingHint}>
@@ -321,8 +327,8 @@ function NotionSection() {
       <CommitField label="Notion integration token" type="password" value={settings.notionToken} placeholder="ntn_…" onCommit={(v) => { updateSettings({ notionToken: v }); setResult(null) }} />
       <CommitField label="Notebook page" value={settings.notionPage} placeholder="https://www.notion.so/…" hint="The page that holds (or will hold) the notebook’s databases." onCommit={(v) => { updateSettings({ notionPage: v }); setResult(null) }} />
       <div className={s.settingsActions}>
-        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing}>{testing ? 'Checking…' : 'Test Notion'}</button>
-        {notion && <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating…' : 'Update Notion now'}</button>}
+        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing}>{testing ? 'Testing…' : 'Test Notion'}</button>
+        {notion && <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>}
       </div>
       <ResultLine r={result} />
       {notionState.error && <p className={s.settingWarn}>{notionState.error}</p>}
@@ -349,12 +355,16 @@ const ERA_HINT: Record<ListenerPreferences['recordingEra'], string> = {
 
 /** What a week of listening should be like — told to the curator directly. */
 function ExplorationSections() {
-  const { repo, bump } = useServices()
+  const { repo, bump, say } = useServices()
   const { data } = useLoad(() => repo.preferences(), [])
   const p = data ?? DEFAULT_PREFERENCES
   async function set<K extends keyof ListenerPreferences>(k: K, v: ListenerPreferences[K]) {
-    await repo.savePreferences({ ...(await repo.preferences()), [k]: v })
-    bump()
+    try {
+      await repo.savePreferences({ ...(await repo.preferences()), [k]: v })
+      bump()
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    }
   }
   const [least, most] = TIME[p.timePerWeek].works
   return (
@@ -416,7 +426,7 @@ function ExplorationSections() {
  * connections and music preferences stay.
  */
 function FreshStartSection() {
-  const { repo, notion, bump, say } = useServices()
+  const { repo, notion, bump, say, settings } = useServices()
   const [asking, setAsking] = useState(false)
   const [working, setWorking] = useState<string | null>(null)
 
@@ -424,7 +434,7 @@ function FreshStartSection() {
     setAsking(false)
     try {
       setWorking('Saving the archive…')
-      await downloadBackup(repo, 'the-long-listen-archive')
+      await downloadBackup(repo, 'the-long-listen-archive', settings.timeZone)
       if (notion) {
         setWorking('Moving your notebook pages to Notion’s trash…')
         await archiveNotebook(notion.call, repo)
@@ -481,30 +491,44 @@ function TimeZoneField() {
 }
 
 /** Everything in the store, as one JSON file in the downloads. */
-async function downloadBackup(repo: ReturnType<typeof useServices>['repo'], name: string) {
+async function downloadBackup(repo: ReturnType<typeof useServices>['repo'], name: string, timeZone: string) {
   const data = await repo.exportAll()
   const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
   const a = document.createElement('a')
   a.href = url
-  a.download = `${name}-${new Date().toISOString().slice(0, 10)}.json`
+  // Today's date where the listener is, as the week reckons it — not UTC's, a day behind after midnight.
+  a.download = `${name}-${isoDateIn(new Date(), timeZone)}.json`
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 function BackupSection({ repo, bump, say }: Pick<ReturnType<typeof useServices>, 'repo' | 'bump' | 'say'>) {
+  const { settings } = useServices()
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function exportBackup() {
-    await downloadBackup(repo, 'the-long-listen')
+    try {
+      await downloadBackup(repo, 'the-long-listen', settings.timeZone)
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    }
   }
 
   async function importBackup(file: File) {
+    let data: unknown
     try {
-      const n = await repo.importAll(JSON.parse(await file.text()))
+      data = JSON.parse(await file.text())
+    } catch {
+      // A parser's message ("Unexpected token…") says nothing a listener can use.
+      say('That file isn’t a backup from this app — it couldn’t be read. Nothing here was changed.', 'danger')
+      return
+    }
+    try {
+      const n = await repo.importAll(data)
       bump()
       say(`Restored ${n} records.`, 'success')
-    } catch (e) {
-      say(e instanceof Error ? e.message : 'That file couldn’t be read.', 'danger')
+    } catch {
+      say('That file isn’t a backup this app can restore.', 'danger')
     }
   }
 
@@ -512,7 +536,7 @@ function BackupSection({ repo, bump, say }: Pick<ReturnType<typeof useServices>,
     <Card title="Your journey, in a file">
       <p className={s.settingText}>Keep a copy now and then — it restores in any browser. Your keys are not in it.</p>
       <div className={s.settingsActions}>
-        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={exportBackup}>Save a backup</button>
+        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void exportBackup()}>Save a backup</button>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => fileRef.current?.click()}>Restore from a backup</button>
         <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importBackup(f); e.target.value = '' }} />
       </div>
