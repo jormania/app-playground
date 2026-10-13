@@ -149,42 +149,52 @@ export function WeekScreen() {
         ))}
       </ol>
 
-      <div className={s.block}>
+      {/* Below the three: every other way into the week, as one section of matching cards —
+          each says what it does in a line, and opens its fields only when there are any. */}
+      <section aria-label="Other ways into the week" className={s.whereNext}>
+        <h2 className={s.sectionHead}>Or another way in</h2>
+        <p className={s.sectionGuide}>None of the three? Make a single evening of it, ask for three new directions, or take up one left open from an earlier week.</p>
+
         {/* Disabled while a direction is being chosen: two programmes made at once for one week, and one would be set aside unasked. */}
         <SittingCard joinsThread={false} busy={busy} />
-      </div>
 
-      <div className={s.block}>
-        {!askOpen ? (
-          <button className={s.textButton} onClick={() => setAskOpen(true)} disabled={busy}>None of these? Ask for three others</button>
-        ) : (
-          <div className={s.feedback}>
-            <label className={s.feedbackQ} htmlFor="mood">What are you in the mood for? <span className={s.faint}>(optional)</span></label>
-            <textarea id="mood" className={s.textarea} maxLength={MAX_ASK} value={mood} onChange={(e) => setMood(e.target.value)} placeholder="Something quieter after a long week · Sibelius · a concerto I don’t know" />
-            <div className={s.actions}>
-              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={askAgain} disabled={busy}>{asking ? 'The curator is thinking again…' : 'Ask'}</button>
-              <button className={s.textButton} onClick={() => setAskOpen(false)} disabled={asking}>Not now</button>
-            </div>
-            <p className={s.note}>These three stay open as paths for another week.</p>
+        <div className={s.nextCard}>
+          <h3 className={s.nextTitle}>Three other directions</h3>
+          <p className={s.quiet}>The curator offers three more. These three stay open as paths for another week.</p>
+          {askOpen ? (
+            <>
+              <label className={s.visuallyHidden} htmlFor="mood">What are you in the mood for?</label>
+              <textarea id="mood" className={s.textarea} maxLength={MAX_ASK} value={mood} onChange={(e) => setMood(e.target.value)} placeholder="What are you in the mood for? (optional) · something quieter · Sibelius · a concerto I don’t know" />
+              <div className={`${s.actions} ${s.flush}`}>
+                <button className={s.outlineButton} onClick={askAgain} disabled={busy}>{asking ? 'The curator is thinking again…' : 'Ask for three others'}</button>
+                <button className={s.textButton} onClick={() => setAskOpen(false)} disabled={asking}>Not now</button>
+              </div>
+            </>
+          ) : (
+            <button className={s.outlineButton} onClick={() => setAskOpen(true)} disabled={busy}>Ask for three others</button>
+          )}
+        </div>
+
+        {view.openPaths.length > 0 && (
+          <div className={s.nextCard}>
+            <h3 className={s.nextTitle}>A path left open</h3>
+            <p className={s.quiet}>{view.openPaths.length === 1 ? 'One direction' : `${view.openPaths.length} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
+            <details>
+              <summary className={s.textButton}>{view.openPaths.length === 1 ? 'Show it' : `Show all ${view.openPaths.length}`}</summary>
+              <ul className={s.entries}>
+                {view.openPaths.map((o) => (
+                  <li key={o.id} className={s.entry}>
+                    <p className={s.mood}>{MOOD_WORD[o.mood]} · offered {sinceWords(o.weekKey, view.record.weekKey)}</p>
+                    <h4 className={s.nextOption}>{o.title}</h4>
+                    <p className={s.quiet}>{o.pitch}</p>
+                    <button className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => choose(o, true)}>Take this path now</button>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
         )}
-      </div>
-
-      {view.openPaths.length > 0 && (
-        <details className={s.block}>
-          <summary className={s.textButton}>Or take a path from an earlier week</summary>
-          <ul className={s.entries}>
-            {view.openPaths.map((o) => (
-              <li key={o.id} className={s.entry}>
-                <p className={s.mood}>{MOOD_WORD[o.mood]} · offered {sinceWords(o.weekKey, view.record.weekKey)}</p>
-                <h3 className={s.entryTitle}>{o.title}</h3>
-                <p className={s.quiet}>{o.pitch}</p>
-                <button className={`${s.outlineButton} ${s.smallButton}`} disabled={busy} onClick={() => choose(o, true)}>Take this path now</button>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      </section>
     </div>
   )
 }

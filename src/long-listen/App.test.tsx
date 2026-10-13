@@ -52,9 +52,10 @@ describe('The Long Listen', () => {
     const repo = new Repo(memoryStore())
     render(<App repo={repo} curator={curator()} />)
     await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
-    await userEvent.click(screen.getByRole('button', { name: 'None of these? Ask for three others' }))
+    // The card opens on its field, then the same button asks.
+    await userEvent.click(screen.getByRole('button', { name: 'Ask for three others' }))
     await userEvent.type(screen.getByLabelText(/What are you in the mood for/), 'Something quieter')
-    await userEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Ask for three others' }))
     await waitFor(async () => expect((await repo.options.all()).filter((o) => o.status === 'open')).toHaveLength(3), { timeout: 4000 })
   }, 15000)
 
