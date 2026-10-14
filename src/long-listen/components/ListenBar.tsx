@@ -36,6 +36,8 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
 
   function opened() {
     assume()
+    // Spotify plays it in its album, which carries on: watched, it is stopped at its last movement.
+    p.arm()
     onOpened?.()
   }
 
@@ -51,7 +53,7 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
             ) : (
               <button className={s.playButton} onClick={() => void play()} disabled={p.busy} title="Every movement of this work, in order, on the device where Spotify is open"><Play {...icon} />Play</button>
             )}
-            <a className={s.listenAlt} title="Opens the first track in Spotify; it carries on through the album" href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={opened}>
+            <a className={s.listenAlt} title="Opens the first track in Spotify; the app stops it at the work’s last movement while it can follow Spotify" href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={opened}>
               or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
             </a>
           </>

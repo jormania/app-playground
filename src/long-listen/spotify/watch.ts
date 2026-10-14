@@ -5,8 +5,10 @@ import { SpotifyUnavailable, type NowPlaying } from './client'
  * what's playing: the listening view, each recording's Play button, the
  * running order. However many are on screen, there is one request at a time.
  *
- * It looks only while something is watching and the page is visible, and
- * again the moment the page comes back (from the Spotify app, say). While a
+ * It looks only while something is watching and the page is visible — or,
+ * hidden, while a work started from the app may still run on past its last
+ * movement (spotify/workGuard.ts), however often the browser then allows —
+ * and again the moment the page comes back (from the Spotify app, say). While a
  * track plays it looks again just after that track should end, so the next
  * movement is marked within a couple of seconds rather than up to a quarter
  * of a minute late; otherwise every 15 seconds.
@@ -52,6 +54,8 @@ export class PlayerWatch {
     private readonly doc: Page | null = typeof document === 'undefined' ? null : document,
     /** Told of each real reading, with when it came back — never of the guess a command shows first. */
     private readonly onReading?: (np: NowPlaying | null, at: number) => void,
+    /** Keep looking while the page is hidden (a work that may run on is playing). */
+    private readonly watchHidden?: () => boolean,
   ) {}
 
   get current(): PlayerState { return this.state }
@@ -100,7 +104,7 @@ export class PlayerWatch {
 
   look(): void {
     if (!this.listeners.size || this.inFlight) return
-    if (!this.source.connected || !this.visible()) { this.clear(); return }
+    if (!this.source.connected || (!this.visible() && !this.watchHidden?.())) { this.clear(); return }
     this.inFlight = true
     const asked = this.generation
     // A reading that began before a command would undo what the command just showed: drop it and look again soon.

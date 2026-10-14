@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useServices } from './services'
-import { onHeardThrough, onPlayerReading, usePlayerState } from './playback'
+import { onHeardThrough, onPlayerReading, onWorkRanOn, usePlayerState } from './playback'
 import { isConfirmed } from '../spotify/verify'
 import { trackKey } from '../spotify/witness'
 import { listeningState } from '../domain/listening'
@@ -46,8 +46,18 @@ const LOOK_AFTER_MS = [5_000, 60_000]
  * recordings it marked (the listening view opens its "how did it land" panel).
  */
 export function HeardWitness() {
-  const { repo, journey, bump, syncSpotify } = useServices()
+  const { repo, journey, bump, syncSpotify, spotify, say } = useServices()
   usePlayerState()
+
+  // A work started from the app ran on past its last movement (its album carrying on, or Spotify's
+  // autoplay): stop it, and say why the music stopped (spotify/workGuard.ts).
+  useEffect(() => onWorkRanOn(() => {
+    // Said only once Spotify agrees it stopped: without Premium a pause is refused, quietly.
+    spotify.pause()
+      .then(() => spotify.nowPlaying())
+      .then((np) => { if (!np?.isPlaying) say('Stopped at the end of the work: Spotify was going on to music that isn’t in the programme.') })
+      .catch(() => {})
+  }), [spotify, say])
   useEffect(() => onHeardThrough((trackIds) => {
     recordHeardThrough(repo, journey, trackIds).then((ids) => {
       if (!ids.length) return
