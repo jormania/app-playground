@@ -33,12 +33,12 @@ export function useLiveProgress(np: NowPlaying | null, trackIds: string[] | unde
 }
 
 /** A movement's place, as a hairline and a clock: "4:12 of 9:30". */
-export function MovementProgress({ progressMs, durationMs }: { progressMs: number; durationMs: number }) {
+export function MovementProgress({ progressMs, durationMs, last = false }: { progressMs: number; durationMs: number; last?: boolean }) {
   const pct = durationMs ? Math.min(100, (progressMs / durationMs) * 100) : 0
   return (
     <span className={s.moveProgress}>
       <span className={s.moveTrack} aria-hidden="true"><span className={s.moveFill} style={{ width: `${pct}%` }} /></span>
-      <span className={s.moveClock}>{clock(progressMs)} of {clock(durationMs)}</span>
+      <span className={s.moveClock}>{clock(progressMs)} of {clock(durationMs)}{last ? ' · last movement' : ''}</span>
     </span>
   )
 }
@@ -112,4 +112,14 @@ export function MiniPlayer({ playback, movement, index, count, progress, onPlaye
 /** A movement's length in the margin, where Spotify has given it. */
 export function movementLength(durations: number[] | undefined, i: number): string | undefined {
   return primeMinutes(durations?.[i])
+}
+
+/**
+ * Focus only: what comes after the movement sounding, in one faint line — the
+ * list that says it is hidden there. On the last movement, how long the work has left.
+ */
+export function ThenLine({ next, nextLength, leftMs }: { next?: Movement; nextLength?: string; leftMs?: number }) {
+  if (next) return <p className={s.thenLine}>then {next.numeral}. {next.title}{nextLength ? ` · ${nextLength}` : ''}</p>
+  if (leftMs === undefined) return null
+  return <p className={s.thenLine}>the work ends in about {Math.max(1, Math.ceil(leftMs / 60000))}′</p>
 }
