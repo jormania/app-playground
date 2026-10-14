@@ -226,7 +226,7 @@ function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: Progr
 
 
 /**
- * "This week, differently": four words to tap, for this week only — a mood,
+ * "Tune this week" (once "This week, differently"): four words to tap, for this week only — a mood,
  * not a standing preference (Settings holds those). Saved as it's tapped; the
  * directions already offered were made without it, so it offers three that
  * know it. The programme, and "more of this theme", read it from the week.
@@ -249,9 +249,9 @@ function WeekMoodLine({ record, onAsk, busy, asking }: { record: WeekRecord; onA
   }
   return (
     // Folded until wanted; it opens by itself while a change is waiting to be asked for.
-    <Twisty label="This week, differently" value={mood.length ? WEEK_MOODS.filter((m) => mood.includes(m.value)).map((m) => m.label).join(', ') : 'as usual'} open={changed}>
+    <Twisty label="Tune this week" value={mood.length ? WEEK_MOODS.filter((m) => mood.includes(m.value)).map((m) => m.label).join(', ') : 'no changes'} open={changed}>
       {/* The same chips as every other choice in the app: tap to add, tap again to take away. */}
-      <div className={s.chipRow} role="group" aria-label="This week, differently">
+      <div className={s.chipRow} role="group" aria-label="Tune this week">
         {WEEK_MOODS.map((m) => (
           <button key={m.value} type="button" className={`${s.chip} ${mood.includes(m.value) ? s.chipOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)} disabled={busy}>{m.label}</button>
         ))}

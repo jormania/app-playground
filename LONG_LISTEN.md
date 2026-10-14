@@ -542,7 +542,7 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
 - *Fewer waits*: recordings are confirmed three at a time from the moment a
   direction is chosen (`verifyProgramme`); ended threads close in parallel,
   beside the taste reading.
-- *This week, differently*: *shorter · quieter · wider · more familiar*, on the
+- *Tune this week* (first called *This week, differently*): *shorter · quieter · wider · more familiar*, on the
   week record, sent to every job about the week and applied one step to the
   standing preferences for the checks (`weekAdjusted`).
 
