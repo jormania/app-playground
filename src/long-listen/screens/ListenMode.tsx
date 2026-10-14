@@ -9,7 +9,7 @@ import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, usePlayback, usePlayerState } from '../app/playback'
 import { MiniPlayer, MovementProgress, MovementSteps, ThenLine, movementLength, useLiveProgress } from '../components/ListenParts'
-import { listenForAt, movementTitles, primeMinutes, roman, romanValue, curly } from '../domain/programmeStyle'
+import { clock, listenForAt, movementTitles, primeMinutes, roman, romanValue, curly } from '../domain/programmeStyle'
 import { creditRows } from '../components/Credits'
 import { workEnded } from '../spotify/workGuard'
 import { readJson, writeJson } from '../../shared/storage'
@@ -80,6 +80,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     return {
       programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false, heardBefore,
       next, nextPlayable: Boolean(next && playable(next)), feedback, notes: notes?.movements ?? [], explanation, answers, work, earlier, earlierCredit,
+      // Spotify's close match waiting for the listener's word (on the programme page), when nothing confirmed plays.
+      pendingMatch: !here && byId.get(item.recordingId)?.verification === 'unconfirmed',
     }
   }, [programmeId, itemId, settings.timeZone])
   useWakeLock(true)
@@ -259,7 +261,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const numerals = titled.map((m) => romanValue(m.numeral))
   const byNumeral = numerals.length > 0 && numerals.every((n) => n > 0)
   const movementCount = byNumeral ? new Set(numerals).size : titled.length
-  const movementNow = nowIndexOf(playback.at?.index ?? null, byNumeral ? numerals : null)
+  // Where the listening was left, once Spotify has let go of it: marked in the list, its note shown, as if paused there.
+  const leftIndex = playback.at ? null : playback.left?.index ?? null
+  const movementNow = nowIndexOf(playback.at?.index ?? leftIndex, byNumeral ? numerals : null)
   const work = data.work
   // One line of facts under the title, and the performers on one line: what it is, at a glance.
   const facts = [work?.form ? work.form.charAt(0).toUpperCase() + work.form.slice(1) : '', work?.composed ?? '', movementCount > 1 ? `${movementCount} movements` : '', primeMinutes(sp?.durationMs) ?? ''].filter(Boolean).join(' · ')
@@ -342,9 +346,19 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
             />
           : (
             // Not confirmed on Spotify (or Spotify not connected): the same search as the programme offers, so it can still be heard.
-            <div className={`${s.actions} ${s.mtMd}`}>
-              <a className={s.outlineButton} href={searchUrl(spotifyQuery(credit))} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
-            </div>
+            <>
+              <div className={`${s.actions} ${s.mtMd}`}>
+                <a className={s.outlineButton} href={searchUrl(spotifyQuery(credit))} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+              </div>
+              {/* Why the movements aren't here: said once, with the way to them. */}
+              <p className={s.note}>
+                {data.pendingMatch
+                  ? <>Spotify has something close, waiting for your word on <a href={href({ name: 'programme', id: programme.id })}>the programme</a>. Confirm it there and its movements and notes follow the music here.</>
+                  : spotify.connected
+                    ? 'Spotify hasn’t confirmed this recording, so the movements can’t follow it here; what to listen for and the questions still work.'
+                    : <>Connect Spotify in <a href={href({ name: 'settings' })}>Settings</a> and the movements and notes follow the music here.</>}
+              </p>
+            </>
           )}
       </div>
 
@@ -363,13 +377,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                       ? <button type="button" className={s.movementButton} onClick={() => void playFrom(i)} disabled={playback.busy} title="Play from this movement">{m.title}</button>
                       : m.title}
                     {now && <span className={s.nowWord}> — {playback.at?.playing ? 'now' : 'paused'}</span>}
+                    {leftIndex === i && playback.left && <span className={s.nowWord}> — left at {clock(playback.left.progressMs)}</span>}
                   </span>
                   {movementLength(sp?.trackDurationsMs, i) && <span className={s.movementLength}>{movementLength(sp?.trackDurationsMs, i)}</span>}
                 </span>
                 {/* Where in the movement it is: a hairline and a clock, carried by the clock between readings. */}
                 {now && live && live.index === i && <MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} last={i === titled.length - 1} />}
                 {/* The companion's note, as Spotify reaches the movement — or every note, when Spotify can't say where it is. */}
-                {notes[i] && (now || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
+                {notes[i] && (now || leftIndex === i || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
                 {/* Focus hides the rest of the list: one faint line says what comes next, or how long is left. */}
                 {focus && now && (
                   <ThenLine
