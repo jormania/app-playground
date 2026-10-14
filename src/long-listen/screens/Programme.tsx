@@ -612,6 +612,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         onOpened={(how) => { void journey.markListening(item, how, pid, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
         onFindAlternative={comparison || comparing ? undefined : () => void compare(true)}
         standInBelow={Boolean(standIn)}
+        durationAbove={Boolean(duration) && Boolean(isConfirmed(recording))}
       />
       {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
       {standIn && <StandInView c={standIn} b={b} />}
@@ -621,7 +622,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         <a className={s.listenAlong} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>
           <Headphones size={16} strokeWidth={1.8} aria-hidden="true" />Listen along<span aria-hidden="true">→</span>
         </a>
-        <span className={s.listenAlongNote}>movements, notes and questions as it plays</span>
+        {/* What it can follow depends on a recording Spotify has confirmed: without one, the notes and questions still work. */}
+        <span className={s.listenAlongNote}>{playableOf(b, item) ? 'movements, notes and questions as it plays' : 'notes and questions; movements once Spotify has the recording'}</span>
       </div>
       {/* Read once: open the first time, then one line that still says who and why. */}
       {item.whyThisRecording && (
