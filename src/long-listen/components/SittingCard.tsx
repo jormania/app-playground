@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { useServices } from '../app/services'
 import { go } from '../app/router'
 import { CharCount, MAX_ASK, NeedsKey, messageOf } from './common'
+import { Twisty } from './Twisty'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -9,8 +10,10 @@ import s from '../styles/editorial.module.css'
  * what you'd like and how long you have; the curator writes the evening —
  * joining this week's thread if there is one, or beginning one.
  */
-export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = true }: {
+export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = true, folded = false }: {
   joinsThread: boolean
+  /** One folded line among Where next's ways on, rather than a card of its own. */
+  folded?: boolean
   /** Something else on the screen is with the curator (a direction being chosen): wait for it. */
   busy?: boolean
   /** Told when this card starts and stops asking, so the screen can hold its other requests meanwhile. */
@@ -39,9 +42,8 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
     }
   }
 
-  return (
-    <div className={s.nextCard}>
-      <h3 className={s.nextTitle}>A sitting for tonight</h3>
+  const body = (
+    <>
       <p className={s.quiet}>
         One evening, not seven? Say what you’d like and how long you have.{' '}
         {joinsThread ? 'It joins this week’s thread, with nothing you’ve already been given.' : 'It becomes this week’s programme and begins its thread.'}
@@ -63,6 +65,13 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
         </button>
       </form>
       {!curatorReady && keyHint && <NeedsKey />}
+    </>
+  )
+  if (folded) return <Twisty label="A sitting for tonight" value="one or two hours, asked for today" open={making}>{body}</Twisty>
+  return (
+    <div className={s.nextCard}>
+      <h3 className={s.nextTitle}>A sitting for tonight</h3>
+      {body}
     </div>
   )
 }

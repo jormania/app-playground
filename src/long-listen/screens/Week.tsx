@@ -11,6 +11,7 @@ import { MOOD_WORD, OpenPaths } from '../components/OpenPaths'
 import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
 import { SittingCard } from '../components/SittingCard'
+import { Twisty } from '../components/Twisty'
 import s from '../styles/editorial.module.css'
 
 interface WeekView {
@@ -135,11 +136,7 @@ export function WeekScreen() {
       {/* What these three were made with, each setting under the name Settings gives it —
           never a bare "several · a mix" the listener has to decode. */}
       {/* Folded by default: the line says what's set; open it only to read what each means. */}
-      <details className={s.twisty}>
-        <summary>
-          <span className={s.twistyLabel}>Made with your settings</span>
-          <span className={s.twistyValue}>{TIME[view.prefs.timePerWeek].label} · {BREADTH[view.prefs.breadth].label} · {FAMILIARITY[view.prefs.familiarity].label}{view.prefs.pairs ? ' · pairs' : ''}</span>
-        </summary>
+      <Twisty label="Made with your settings" value={`${TIME[view.prefs.timePerWeek].label} · ${BREADTH[view.prefs.breadth].label} · ${FAMILIARITY[view.prefs.familiarity].label}${view.prefs.pairs ? ' · pairs' : ''}`}>
         <dl className={s.settingsGlance}>
           <dt>Music each week</dt><dd>{TIME[view.prefs.timePerWeek].label} — {TIME[view.prefs.timePerWeek].words}</dd>
           <dt>How widely it ranges</dt><dd>{BREADTH[view.prefs.breadth].label} — {BREADTH[view.prefs.breadth].words}</dd>
@@ -147,7 +144,7 @@ export function WeekScreen() {
           <dt>Two perspectives</dt><dd>{view.prefs.pairs ? 'On — now and then one work in two recordings' : 'Off — each work once'}</dd>
         </dl>
         <p className={s.settingHint}>Change them in <a href={href({ name: 'settings' })}>Settings → Your week of listening</a>, then ask for three others below.</p>
-      </details>
+      </Twisty>
 
       {/* The direction being built stays where it was tapped, saying so; the others wait. */}
       <ol className={s.options}>
@@ -252,12 +249,7 @@ function WeekMoodLine({ record, onAsk, busy, asking }: { record: WeekRecord; onA
   }
   return (
     // Folded until wanted; it opens by itself while a change is waiting to be asked for.
-    <details className={s.twisty} open={changed || undefined}>
-      <summary>
-        <span className={s.twistyLabel}>This week, differently</span>
-        <span className={s.twistyValue}>{mood.length ? WEEK_MOODS.filter((m) => mood.includes(m.value)).map((m) => m.label).join(', ') : 'as usual'}</span>
-      </summary>
-      <div className={s.twistyBody}>
+    <Twisty label="This week, differently" value={mood.length ? WEEK_MOODS.filter((m) => mood.includes(m.value)).map((m) => m.label).join(', ') : 'as usual'} open={changed}>
       {/* The same chips as every other choice in the app: tap to add, tap again to take away. */}
       <div className={s.chipRow} role="group" aria-label="This week, differently">
         {WEEK_MOODS.map((m) => (
@@ -270,7 +262,6 @@ function WeekMoodLine({ record, onAsk, busy, asking }: { record: WeekRecord; onA
           {asking ? 'The curator is finding three…' : 'Three directions with this in mind'}
         </button>
       )}
-      </div>
-    </details>
+    </Twisty>
   )
 }

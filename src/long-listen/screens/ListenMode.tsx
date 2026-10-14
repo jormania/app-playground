@@ -17,6 +17,7 @@ import { searchUrl } from '../spotify/client'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { NotFound } from '../store/repo'
 import { Credits } from '../components/Credits'
+import { Twisty } from '../components/Twisty'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -197,7 +198,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {/* Ask about this: a question answered with the work, the recording and the movement sounding as context. */}
       <section className={s.companion} aria-label="Ask about this">
         <p className={s.label}>Ask about this</p>
-        {data.answers.map((a) => (
+        {/* Answers already read fold to their questions; the newest stays open, under the field it came from. */}
+        {data.answers.map((a, i) => i < data.answers.length - 1 ? (
+          <Twisty key={a.id} label="Asked" value={`${a.question}${a.movement ? ` · during ${a.movement}` : ''}`}>
+            <Paragraphs text={a.body} className={s.prose} />
+          </Twisty>
+        ) : (
           <div key={a.id} className={s.answer}>
             <p className={s.answerQ}>{a.question}{a.movement ? <span className={s.faint}> · during {a.movement}</span> : null}</p>
             <Paragraphs text={a.body} className={s.prose} />
@@ -211,11 +217,11 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           </form>
         ) : <NeedsKey />}
         {curatorReady && <CharCount value={question} />}
+        {/* The same note as on the programme, read once wherever it is first read. */}
         {data.explanation ? (
-          <div className={s.answer}>
-            <p className={s.answerQ}>{data.explanation.heading}</p>
+          <Twisty label="A little more context" value={data.explanation.heading} readOnce={`context:${programme.id}:${item.id}`}>
             <Paragraphs text={data.explanation.body} className={s.prose} />
-          </div>
+          </Twisty>
         ) : curatorReady && (
           <button className={s.textButton} onClick={() => void explain()} disabled={explaining}>{explaining ? 'The curator is writing…' : 'A little more context'}</button>
         )}

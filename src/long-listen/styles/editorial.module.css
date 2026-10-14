@@ -2644,13 +2644,30 @@
   min-width: 0;
 }
 
-.twistyBody,
-.twisty > dl,
-.twisty > p {
-  margin-bottom: var(--space-sm);
+.twistyBody {
+  padding-bottom: var(--space-sm);
+}
+
+.twistyBody > :first-child {
+  margin-top: 0;
 }
 
 .twistyBody > * + * {
+  margin-top: var(--space-xs);
+}
+
+.twistyBody > :last-child {
+  margin-bottom: 0;
+}
+
+/* A run of twisties (Where next, the Notebook's last rows) closes with a rule
+   of its own, so the last folded line doesn't hang open-ended. */
+.twistyRun > .twisty:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* A form inside a twisty: field, chips and button given room by one gap. */
+.twistyBody .cardForm {
   margin-top: var(--space-xs);
 }
 
@@ -2682,4 +2699,16 @@
   .settingsGlance dd + dt {
     margin-top: var(--space-2xs);
   }
+}
+
+/* A twisty standing alone at the end of a page closes with a rule of its own. */
+.twistyClosed {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Straight after the recording block, which already closes with a rule, the
+   twisty needs no second one of its own. */
+.recording + .twisty {
+  margin-top: 0;
+  border-top: 0;
 }
