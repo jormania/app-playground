@@ -11,7 +11,7 @@ import type { SpotifyTrackLike } from './match'
 const API = 'https://api.spotify.com/v1/'
 
 export class SpotifyUnavailable extends Error {
-  constructor(readonly reason: 'signed-out' | 'busy' | 'offline' | 'failed' | 'no-device', message: string) {
+  constructor(readonly reason: 'signed-out' | 'busy' | 'offline' | 'failed' | 'no-device' | 'premium', message: string) {
     super(message)
   }
 }
@@ -274,6 +274,7 @@ export class SpotifyClient {
       body: JSON.stringify({ uris: trackUris, offset: { position: from }, position_ms: 0 }),
     })
     if (res.status === 404) throw new SpotifyUnavailable('no-device', 'Open Spotify on a device first, then try again.')
+    if (res.status === 403 && await premiumRequired(res)) throw new SpotifyUnavailable('premium', PREMIUM)
     if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t start playback.')
   }
 
@@ -290,9 +291,19 @@ export class SpotifyClient {
   private async control(path: string, failed: string): Promise<void> {
     const res = await this.request(path, { method: 'PUT' })
     if (res.status === 404) throw new SpotifyUnavailable('no-device', 'Open Spotify on a device first, then try again.')
-    // 403 here is Spotify's "restriction violated": already paused, or already playing. Nothing to do.
+    // A 403 is either Premium required (refused — said, so nothing pretends it worked) or Spotify's
+    // "restriction violated": already paused, or already playing. Nothing to do then.
+    if (res.status === 403 && await premiumRequired(res)) throw new SpotifyUnavailable('premium', PREMIUM)
     if (!res.ok && res.status !== 403) throw new SpotifyUnavailable('failed', failed)
   }
+}
+
+const PREMIUM = 'Spotify lets the app play and pause only with Premium. “Open in Spotify” still works.'
+
+/** Spotify's 403 for a player command: Premium required (reason PREMIUM_REQUIRED), or a harmless restriction. */
+async function premiumRequired(res: Response): Promise<boolean> {
+  const body = await res.clone().json().catch(() => null) as { error?: { reason?: string; message?: string } } | null
+  return body?.error?.reason === 'PREMIUM_REQUIRED' || /premium/i.test(body?.error?.message ?? '')
 }
 
 /** The web link for a track or album — opens the app on a phone. Needs no sign-in. */

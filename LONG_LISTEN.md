@@ -869,3 +869,24 @@ say the decisive things in few words.
   Spotify's history catches up.
 - **The next work, ready**: "Play next: … →" opens it and, with Spotify
   connected, starts it — one tap, never by itself.
+
+**The audit after it (14 October 2026).** What the first cut got wrong, and the rule now:
+- *One hearing, one "heard".* Spotify's history no longer adds a second "heard" for a
+  listening the app or the listener already marked within the session (`playsToEvents`);
+  a doubled count told the curator a work was heard twice.
+- *Heard means most of it.* The end of the last movement marks the work heard only when
+  at least 60% of its movements were seen playing on this visit — not for the finale alone.
+- *Never mid-work.* "How did it land?" doesn't open while a movement before the last is on,
+  even if Spotify's history already counts the work heard (two of three movements).
+- *A refusal is said.* Spotify's 403 "Premium required" on Play or Pause is now an error
+  that says so (`reason: 'premium'`), not a silent success that showed "Paused" for a moment.
+- *Asked once.* Asked how it landed in the listening view, the programme page won't ask again.
+- *Play next only when it can.* "Play next" only for a work Spotify can play; the wish is read
+  and cleared on arrival, so it can't start a later visit by itself.
+- *Movements by numeral.* Where an album splits a movement across tracks (I, I, II…), the
+  count, the "listen for" ties and the margin numerals follow the work's numerals, not tracks.
+  A recording without Spotify's track names still lists its tracks, numbered.
+- Smaller: no "Listen for" heading over an empty list in Focus; the progress clock no longer
+  jumps ahead and back at each reading; previous/next record a start like a tap on the list;
+  a no-device failure is said in the pinned player where it was tapped; messages rise above
+  the pinned player; the Focus button keeps one name and shows its state.

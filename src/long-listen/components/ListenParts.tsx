@@ -15,9 +15,11 @@ type Movement = ReturnType<typeof movementTitles>[number]
  */
 export function useLiveProgress(np: NowPlaying | null, trackIds: string[] | undefined): { index: number; progressMs: number; durationMs: number; playing: boolean } | null {
   const [now, setNow] = useState(() => Date.now())
-  const [readAt, setReadAt] = useState(() => Date.now())
-  // A fresh reading: count from it.
-  useEffect(() => { setReadAt(Date.now()); setNow(Date.now()) }, [np])
+  // A fresh reading: count from it — stamped in the same render it arrives in, so the first frame
+  // never adds the time since the reading before (which made the clock jump ahead, then back).
+  const [seen, setSeen] = useState(() => ({ np, at: Date.now() }))
+  if (seen.np !== np) setSeen({ np, at: Date.now() })
+  const readAt = seen.np === np ? seen.at : Date.now()
   const at = trackIds?.length ? playbackOf(np, trackIds) : null
   const playing = Boolean(at?.playing)
   useEffect(() => {
@@ -26,7 +28,7 @@ export function useLiveProgress(np: NowPlaying | null, trackIds: string[] | unde
     return () => window.clearInterval(t)
   }, [playing])
   if (!at || !np || !np.durationMs) return null
-  const progressMs = Math.min(np.durationMs, np.progressMs + (playing ? now - readAt : 0))
+  const progressMs = Math.min(np.durationMs, np.progressMs + (playing ? Math.max(0, now - readAt) : 0))
   return { index: at.index, progressMs, durationMs: np.durationMs, playing }
 }
 
@@ -45,9 +47,10 @@ export function MovementProgress({ progressMs, durationMs }: { progressMs: numbe
  * Previous and next, kept inside the work: back from the first movement starts
  * it again; there is no next after the last — the work ends where it ends.
  */
-export function MovementSteps({ playback, index, count, children }: { playback: Playback; index: number; count: number; children?: React.ReactNode }) {
-  const back = () => void playback.play(Math.max(0, index - 1))
-  const on = () => void playback.play(index + 1)
+export function MovementSteps({ playback, index, count, onPlayed, children }: { playback: Playback; index: number; count: number; onPlayed?: () => void; children?: React.ReactNode }) {
+  // A step is a start like a tap on the movement list: said once it has begun.
+  const back = () => void playback.play(Math.max(0, index - 1)).then((ok) => { if (ok) onPlayed?.() })
+  const on = () => void playback.play(index + 1).then((ok) => { if (ok) onPlayed?.() })
   return (
     <span className={s.moveSteps}>
       <button type="button" className={s.stepButton} onClick={back} disabled={playback.busy} aria-label={index === 0 ? 'Start this movement again' : 'Previous movement'} title={index === 0 ? 'Start this movement again' : 'Previous movement'}>
@@ -67,8 +70,9 @@ export function MovementSteps({ playback, index, count, children }: { playback: 
  * controls — so reading the notes or asking a question never means scrolling
  * back up to pause.
  */
-export function MiniPlayer({ playback, movement, index, count, progress }: {
+export function MiniPlayer({ playback, movement, index, count, progress, onPlayed }: {
   playback: Playback
+  onPlayed?: () => void
   movement?: Movement
   index: number
   count: number
@@ -92,8 +96,10 @@ export function MiniPlayer({ playback, movement, index, count, progress }: {
             {movement ? <><span className={s.movementNumeral}>{movement.numeral}.</span> <em>{movement.title}</em></> : 'This work'}
           </span>
           {progress && <MovementProgress progressMs={progress.progressMs} durationMs={progress.durationMs} />}
+          {/* A command that found no device: said here, where it was tapped, not under a bar scrolled out of sight. */}
+          {playback.noDevice && <span className={s.miniNote} role="status">Open Spotify on a device, then try again.</span>}
         </div>
-        <MovementSteps playback={playback} index={index} count={count}>
+        <MovementSteps playback={playback} index={index} count={count} onPlayed={onPlayed}>
           <button type="button" className={s.miniPlay} onClick={() => void (playing ? playback.pause() : playback.resume())} disabled={playback.busy} aria-label={playing ? 'Pause' : 'Resume'}>
             {playing ? <Pause size={16} fill="currentColor" strokeWidth={0} aria-hidden="true" /> : <Play size={16} fill="currentColor" strokeWidth={0} aria-hidden="true" />}
           </button>

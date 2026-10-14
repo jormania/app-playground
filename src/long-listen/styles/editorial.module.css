@@ -3396,3 +3396,15 @@ summary.textButton::-webkit-details-marker {
 @media print {
   .miniPlayer { display: none; }
 }
+
+.miniNote {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+/* Focus, on: the word in the accent, as a chosen chip is. */
+.focusOn {
+  color: var(--color-accent);
+  text-decoration-color: var(--color-accent);
+}

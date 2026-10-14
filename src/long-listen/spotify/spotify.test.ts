@@ -208,6 +208,16 @@ describe('recently played', () => {
     expect(playsToEvents([play('m3', '2026-10-08T19:00:00Z')], [verified], [], 'now')[0].kind).toBe('partial')
   })
 
+  it('does not add a second "heard" for a listening already marked heard another way', () => {
+    // The listening view saw the last movement end and marked it (source app) at 19:24.
+    const app = { id: 'h1', at: '2026-10-08T19:24:00Z', kind: 'heard' as const, recordingId: verified.id, workId: verified.workId, source: 'app' as const }
+    const plays = [play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:10:00Z'), play('m3', '2026-10-08T19:20:00Z')]
+    expect(playsToEvents(plays, [verified], [app], 'now')).toEqual([])
+    // A hearing on another day is its own.
+    const days = [play('m1', '2026-10-12T19:00:00Z'), play('m2', '2026-10-12T19:10:00Z')]
+    expect(playsToEvents(days, [verified], [app], 'now')).toHaveLength(1)
+  })
+
   it('never records the same session twice, but upgrades a partial that was finished', () => {
     const first = playsToEvents([play('m1', '2026-10-08T19:00:00Z')], [verified], [], 'now')
     expect(first[0].kind).toBe('partial')
@@ -441,5 +451,24 @@ describe('the week as a Spotify playlist', () => {
     expect(aboutDuration(24 * 60_000)).toBe('about 24 minutes')
     expect(aboutDuration(71 * 60_000)).toBe('about 1 hour 10 minutes')
     expect(aboutDuration(undefined)).toBeUndefined()
+  })
+})
+
+describe('player commands without Premium', () => {
+  const signedIn = () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
+    return s
+  }
+  it('says a refused Pause or Play was refused, and why', async () => {
+    const premium = () => new Response(JSON.stringify({ error: { status: 403, message: 'Player command failed: Premium required', reason: 'PREMIUM_REQUIRED' } }), { status: 403 })
+    const c = new SpotifyClient(() => 'client', vi.fn(async () => premium()) as unknown as typeof fetch, signedIn())
+    await expect(c.pause()).rejects.toMatchObject({ reason: 'premium' })
+    await expect(c.play(['spotify:track:x'])).rejects.toMatchObject({ reason: 'premium' })
+  })
+  it('lets a harmless restriction (already paused) pass quietly', async () => {
+    const restricted = () => new Response(JSON.stringify({ error: { status: 403, message: 'Player command failed: Restriction violated', reason: 'UNKNOWN' } }), { status: 403 })
+    const c = new SpotifyClient(() => 'client', vi.fn(async () => restricted()) as unknown as typeof fetch, signedIn())
+    await expect(c.pause()).resolves.toBeUndefined()
   })
 })
