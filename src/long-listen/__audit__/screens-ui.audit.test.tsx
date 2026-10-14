@@ -118,7 +118,7 @@ describe('asking the curator, and seeing that it is asked', () => {
     const c = gatedCurator('themes', 2)
     render(<App repo={repo} curator={c.client} />)
     await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
-    const group = screen.getByRole('group', { name: 'This week, differently' })
+    const group = screen.getByRole('group', { name: 'Tune this week' })
     await userEvent.click(group.querySelector('button')!)
     await userEvent.click(screen.getByRole('button', { name: 'Three directions with this in mind' }))
     expect(await screen.findByRole('button', { name: 'The curator is finding three…' })).toBeTruthy()

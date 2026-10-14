@@ -2712,3 +2712,22 @@
   margin-top: 0;
   border-top: 0;
 }
+
+/* Descriptive words on a labelled row (components/Traits): what they describe,
+   then the words as quiet tags — never a loose italic line. */
+.traits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3xs) var(--space-2xs);
+  margin: var(--space-xs) 0 0;
+}
+
+.traitsLabel {
+  margin-right: var(--space-3xs);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.09em;
+  color: var(--color-muted);
+}

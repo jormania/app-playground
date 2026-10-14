@@ -12,6 +12,7 @@ import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
 import { SittingCard } from '../components/SittingCard'
 import { Twisty } from '../components/Twisty'
+import { Traits } from '../components/Traits'
 import s from '../styles/editorial.module.css'
 
 interface WeekView {
@@ -206,8 +207,9 @@ function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: Progr
       <div className={s.optionBody}>
         <p className={`${s.mood} ${s.mt2xs}`}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
         <p>{o.pitch}</p>
-        <p className={s.character}>{o.character.join(' · ')}</p>
-        {o.why && <p className={s.quiet}>{o.why}</p>}
+        {/* The words describe the direction, so they say so; the curator's reason says it's for you. */}
+        <Traits label="Character" words={o.character} />
+        {o.why && <p className={s.quiet}><span className={s.label}>Why for you</span><br />{o.why}</p>}
         {o.returning && (
           <div className={`${s.continuity} ${s.flush} ${s.mtSm}`}>
             <p className={`${s.eyebrow} ${s.mb0}`}>
@@ -226,7 +228,7 @@ function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: Progr
 
 
 /**
- * "This week, differently": four words to tap, for this week only — a mood,
+ * "Tune this week" (once "This week, differently"): four words to tap, for this week only — a mood,
  * not a standing preference (Settings holds those). Saved as it's tapped; the
  * directions already offered were made without it, so it offers three that
  * know it. The programme, and "more of this theme", read it from the week.
@@ -249,9 +251,9 @@ function WeekMoodLine({ record, onAsk, busy, asking }: { record: WeekRecord; onA
   }
   return (
     // Folded until wanted; it opens by itself while a change is waiting to be asked for.
-    <Twisty label="This week, differently" value={mood.length ? WEEK_MOODS.filter((m) => mood.includes(m.value)).map((m) => m.label).join(', ') : 'as usual'} open={changed}>
+    <Twisty label="Tune this week" value={mood.length ? WEEK_MOODS.filter((m) => mood.includes(m.value)).map((m) => m.label).join(', ') : 'no changes'} open={changed}>
       {/* The same chips as every other choice in the app: tap to add, tap again to take away. */}
-      <div className={s.chipRow} role="group" aria-label="This week, differently">
+      <div className={s.chipRow} role="group" aria-label="Tune this week">
         {WEEK_MOODS.map((m) => (
           <button key={m.value} type="button" className={`${s.chip} ${mood.includes(m.value) ? s.chipOn : ''}`} aria-pressed={mood.includes(m.value)} onClick={() => void toggle(m.value)} disabled={busy}>{m.label}</button>
         ))}
