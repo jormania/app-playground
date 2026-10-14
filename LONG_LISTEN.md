@@ -890,3 +890,9 @@ say the decisive things in few words.
   jumps ahead and back at each reading; previous/next record a start like a tap on the list;
   a no-device failure is said in the pinned player where it was tapped; messages rise above
   the pinned player; the Focus button keeps one name and shows its state.
+
+**What comes next, lightly (14 October 2026).** The full view's movement list already shows the
+next movement, so it gains only "· last movement" after the clock when it applies. Focus, which
+hides the list, gains one faint line under the movement sounding (`ThenLine`): "then III. Dialogue
+du vent et de la mer · c. 8′", or on the last movement "the work ends in about 3′". The pinned
+player gains nothing: it is for controls.

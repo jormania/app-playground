@@ -7,7 +7,7 @@ import { href } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, usePlayback, usePlayerState } from '../app/playback'
-import { MiniPlayer, MovementProgress, MovementSteps, movementLength, useLiveProgress } from '../components/ListenParts'
+import { MiniPlayer, MovementProgress, MovementSteps, ThenLine, movementLength, useLiveProgress } from '../components/ListenParts'
 import { listenForAt, movementTitles, primeMinutes, roman, romanValue } from '../domain/programmeStyle'
 import { creditRows } from '../components/Credits'
 import { workEnded } from '../spotify/workGuard'
@@ -347,9 +347,17 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                   {movementLength(sp?.trackDurationsMs, i) && <span className={s.movementLength}>{movementLength(sp?.trackDurationsMs, i)}</span>}
                 </span>
                 {/* Where in the movement it is: a hairline and a clock, carried by the clock between readings. */}
-                {now && live && live.index === i && <MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} />}
+                {now && live && live.index === i && <MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} last={i === titled.length - 1} />}
                 {/* The companion's note, as Spotify reaches the movement — or every note, when Spotify can't say where it is. */}
                 {notes[i] && (now || !spotify.connected) && <p className={s.movementNote}>{notes[i]}</p>}
+                {/* Focus hides the rest of the list: one faint line says what comes next, or how long is left. */}
+                {focus && now && (
+                  <ThenLine
+                    next={titled[i + 1]}
+                    nextLength={movementLength(sp?.trackDurationsMs, i + 1)}
+                    leftMs={live && live.index === i ? live.durationMs - live.progressMs : undefined}
+                  />
+                )}
               </li>
             )
           })}

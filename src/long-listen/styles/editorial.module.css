@@ -3408,3 +3408,11 @@ summary.textButton::-webkit-details-marker {
   color: var(--color-accent);
   text-decoration-color: var(--color-accent);
 }
+
+/* Focus only: what comes next, faint, under the movement sounding. */
+.thenLine {
+  margin: var(--space-2xs) 0 0 calc(2.6rem + var(--space-xs));
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-faint);
+}
