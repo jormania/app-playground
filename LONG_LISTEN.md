@@ -483,8 +483,10 @@ from what it holds:
   into the left margin as a fixed contents rail. Each line gives the work's
   date and, once a recording is confirmed, its length; the heading gives the
   total. Each work ends on one quiet line — *Your listening* folded to its
-  state word (only "Heard" in the accent), then "Listen with this open →",
-  "More context", "Another perspective" as links — and the music closes on
+  state word (only "Heard" in the accent), then "More context" and "Another
+  perspective" as links. The way into the listening view, *Listen along →*,
+  sits under the Play row as its own outlined pill, Play's shape and height
+  (14 October: it is where most listening happens, so not one link among three) — and the music closes on
   "That's the week: N works, about X." One hairline between works; inside a
   work, space. Without Spotify, "Connect Spotify…" is said once, under the
   running order.
@@ -796,3 +798,36 @@ the next change follows them rather than re-deciding them.
   contents rail sizes itself from the margin it sits in (and keeps its
   section headings on the titles' edge), so neither a wider column nor larger
   text runs it into the page.
+
+## 19. The programme as a printed programme (14 October 2026)
+
+The week's programme and a concert's page borrow the conventions of a hall's
+printed programme — small flourishes at the turning points, nothing more. The
+words for them live in `domain/programmeStyle.ts`; the styles sit together at
+the end of `editorial.module.css`.
+
+- **Parts are numbered like movements.** A Roman numeral before each part's
+  title, in the running order too; its guide line says "The second part, of
+  three". Between parts, one drawn fleuron (a diamond between two fine rules,
+  CSS only, so no font has to carry the glyph) — the page's one pause.
+- **A work's heading reads as a programme entry.** The duration across from the
+  composer, as programmes print it (`c. 24′`, `primeMinutes`); the movements
+  under the title with numerals and italic titles, from the confirmed
+  recording's own track names (`movementTitles` drops the work's title Spotify
+  puts in front of each, and numbers any that lack one). Both appear only once
+  Spotify has confirmed the recording that plays — never guessed.
+- **Performers name-first** (`<Credits programme>`): soloists, then the
+  orchestra or ensemble, then the conductor, each with its role after in
+  italic, one to a line. Only the two programme pages; the Library, Journal and
+  listening view keep the compact role-first line.
+- **The notes open in small capitals** (the first line of each work's notes).
+  The drop cap stays for the introduction alone.
+- **A pulled line**, only in a part of two works or more: one sentence of eight
+  to twenty-four words from the first work's notes (`pullQuote`), set after that
+  work, so it never sits beside its own sentence. `aria-hidden`, since it
+  repeats.
+- **A running head**: the pinned line carries the part ("II · Where it leads")
+  above the work.
+- **A colophon** after the closing ⁂: "Programme notes by the curator" and the
+  week, then the recordings, one to a line — each the recording that plays, a
+  stand-in's where it stands in.

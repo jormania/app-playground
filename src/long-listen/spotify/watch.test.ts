@@ -72,6 +72,20 @@ describe('PlayerWatch', () => {
     expect(nowPlaying).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps looking while hidden when a work may run on past its last movement', async () => {
+    vi.useFakeTimers()
+    const nowPlaying = vi.fn(async () => null)
+    let guarding = true
+    const w = new PlayerWatch({ connected: true, nowPlaying }, fakeDoc('hidden'), undefined, () => guarding)
+    w.subscribe(() => {})
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(IDLE_MS)
+    expect(nowPlaying).toHaveBeenCalledTimes(2)
+    guarding = false
+    await vi.advanceTimersByTimeAsync(IDLE_MS * 3)
+    expect(nowPlaying).toHaveBeenCalledTimes(2)
+  })
+
   it('shows a command’s outcome at once and checks again shortly after', async () => {
     vi.useFakeTimers()
     const nowPlaying = vi.fn(async () => np())

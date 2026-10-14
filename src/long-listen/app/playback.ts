@@ -3,6 +3,7 @@ import { useServices } from './services'
 import { SpotifyUnavailable, playbackOf, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
 import { Witness } from '../spotify/witness'
+import { WorkGuard } from '../spotify/workGuard'
 import { messageOf } from '../components/common'
 
 /**
@@ -13,11 +14,29 @@ import { messageOf } from '../components/common'
 const witness = new Witness()
 const heardListeners = new Set<(trackIds: string[]) => void>()
 const readingListeners = new Set<(np: NowPlaying | null) => void>()
+/** The work started from the app, watched so it stops at its last movement (spotify/workGuard.ts). */
+const guard = new WorkGuard()
+const ranOnListeners = new Set<() => void>()
+let lastReading: NowPlaying | null = null
 
 function observe(np: NowPlaying | null, at: number) {
   const heard = witness.observe({ np, at })
   if (heard.length) for (const l of heardListeners) l(heard)
+  const ran = guard.observe(lastReading, np, at)
+  lastReading = np
+  if (ran) for (const l of ranOnListeners) l()
   for (const l of readingListeners) l(np)
+}
+
+/** A work started from the app (Play, or opened in Spotify): watch it, to stop it at its last movement. */
+export function armWork(trackIds: string[] | undefined): void {
+  if (trackIds?.length) guard.arm(trackIds, Date.now())
+}
+
+/** Told when a work started from the app has just run on past its last movement into something else. */
+export function onWorkRanOn(listener: () => void): () => void {
+  ranOnListeners.add(listener)
+  return () => { ranOnListeners.delete(listener) }
 }
 
 /** Told every real reading of the player (never the optimistic state shown the moment a command is sent). */
@@ -63,7 +82,7 @@ export function assumeStart(trackIds: string[] | undefined, durationMs: number |
 const watches = new WeakMap<SpotifyClient, PlayerWatch>()
 function watchFor(spotify: SpotifyClient): PlayerWatch {
   let w = watches.get(spotify)
-  if (!w) watches.set(spotify, (w = new PlayerWatch(spotify, undefined, observe)))
+  if (!w) watches.set(spotify, (w = new PlayerWatch(spotify, undefined, observe, () => guard.isArmed(Date.now()))))
   return w
 }
 
@@ -87,6 +106,8 @@ export interface Playback {
   busy: boolean
   /** Start this recording from a movement (the first, unless told). */
   play: (from?: number) => Promise<boolean>
+  /** Opened in Spotify from the app: watch it, so it stops at its last movement. */
+  arm: () => void
   pause: () => Promise<void>
   resume: () => Promise<void>
 }
@@ -128,8 +149,9 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
     cantFollow: state.cantFollow && spotify.connected,
     noDevice,
     busy,
+    arm: () => armWork(trackIds),
     play: (from = 0) => run(
-      () => spotify.play(trackUris ?? [], from),
+      async () => { await spotify.play(trackUris ?? [], from); armWork(trackIds) },
       (np) => ({ trackId: trackIds?.[from] ?? '', trackName: '', isPlaying: true, progressMs: 0, durationMs: 0, deviceName: np?.deviceName }),
     ),
     pause: async () => { await run(() => spotify.pause(), (np) => np && { ...np, isPlaying: false }) },

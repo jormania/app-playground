@@ -1107,18 +1107,6 @@
   gap: var(--space-2xs) var(--space-md);
 }
 
-/* The way on that this screen offers first: the work's own quiet screen. */
-.goFurtherMain {
-  position: relative;
-  font-size: var(--text-base);
-}
-
-.goFurtherMain::after {
-  content: '';
-  position: absolute;
-  inset: -8px -6px;
-}
-
 /* The four states on one line, drawn like the design system's small
    SegmentedControl that Settings uses — a tinted track, the current one
    raised. Unlike Settings, the chosen state is not simply filled with the
@@ -2963,4 +2951,249 @@ summary.textButton::-webkit-details-marker {
   font-variant-caps: all-small-caps;
   letter-spacing: 0.09em;
   color: var(--color-muted);
+}
+
+/* ── The programme as a printed programme (LONG_LISTEN.md §19) ─────────────
+   Small flourishes at the turning points only: a numeral for each part, a
+   fleuron between parts, a pulled line, a work's movements and duration as a
+   programme lists them, the performers name-first, a running head, and a
+   colophon to close. Nothing here is a card or a colour of its own. */
+
+/* A part's numeral, before its title — in the running order too. */
+.partNumeral {
+  flex: none;
+  margin-right: 0.5em;
+  font-variant-caps: normal;
+  font-variant-numeric: oldstyle-nums;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  opacity: 0.85;
+}
+
+.partHead .partNumeral {
+  margin-right: 0;
+  font-size: 0.95em;
+}
+
+/* Between parts: the one pause the page asks for — a small diamond between two
+   fine rules, drawn rather than set, so no font has to have the glyph. */
+.fleuron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin: var(--space-xl) 0 calc(-1 * var(--space-md));
+  line-height: 1;
+}
+
+.fleuron::before,
+.fleuron::after {
+  content: '';
+  width: 2.5rem;
+  border-top: 1px solid var(--color-accent);
+  opacity: 0.55;
+}
+
+.fleuron span {
+  width: 6px;
+  height: 6px;
+  background: var(--color-accent);
+  transform: rotate(45deg);
+}
+
+.part .fleuron + .partHead {
+  margin-top: var(--space-lg);
+}
+
+/* One line of the part, set large: hanging quotation marks, no box. */
+.pullQuote {
+  margin: var(--space-md) 0 var(--space-lg);
+  padding: 0 0 0 var(--space-sm);
+  border-left: 2px solid var(--color-accent);
+}
+
+.pullQuote p {
+  margin: 0;
+  font-family: var(--font-read);
+  font-size: 1.3rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
+/* The notes open as a booklet's essays do: their first line in small capitals. */
+.workWhy > p:first-child::first-line {
+  font-variant-caps: small-caps;
+  letter-spacing: 0.03em;
+}
+
+/* A work's movements, listed under its title as a programme lists them. */
+.workMovements {
+  margin: var(--space-xs) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.98rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+.workMovements li {
+  display: grid;
+  grid-template-columns: 2.4em 1fr;
+}
+
+.movementNumeral {
+  font-style: normal;
+  font-variant-numeric: oldstyle-nums;
+  color: var(--color-accent);
+}
+
+/* Performers as a programme prints them: one to a line, the role after in italic. */
+.programmeCredits {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  color: var(--color-ink);
+}
+
+.programmeRole {
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+.concertCredits {
+  margin: var(--space-xs) 0 0;
+  font-size: 1.2rem;
+}
+
+.workCredits {
+  margin: var(--space-3xs) 0 0;
+  font-size: 1rem;
+}
+
+/* The running head: the part above the work, in the pinned line. */
+.pinnedPart {
+  display: block;
+  max-width: var(--measure);
+  margin: 0 auto 1px;
+  font-size: 0.72rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The back page: who wrote the notes, for which week, and the recordings. */
+.colophon {
+  margin: var(--space-lg) auto 0;
+  max-width: 30rem;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+}
+
+.colophonLine {
+  margin: 0;
+  font-style: italic;
+}
+
+.colophonHead {
+  margin: var(--space-sm) 0 var(--space-3xs);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+.colophonList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.5;
+}
+
+.colophonList em {
+  color: var(--color-muted);
+}
+
+@media print {
+  .pullQuote { break-inside: avoid; }
+  .colophon { break-inside: avoid; }
+}
+
+/* A work's first line: the composer, and across from it the duration, as a programme prints it. */
+.workHeadLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.workDuration {
+  flex: none;
+  font-variant-caps: normal;
+  font-variant-numeric: oldstyle-nums;
+  letter-spacing: 0;
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+.workHeadWho {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+}
+
+/* The way into the listening view: Play's shape and height, outlined so Play stays the
+   first thing, with an arrow because it goes to another screen. Under the Play row. */
+.listenAlongRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-sm);
+  margin: var(--space-sm) 0 var(--space-md);
+}
+
+.listenAlong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: 40px;
+  padding: var(--space-3xs) var(--space-md) var(--space-3xs) var(--space-sm);
+  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  color: var(--color-accent);
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: background var(--duration) var(--ease);
+}
+
+.listenAlong span {
+  margin-left: var(--space-3xs);
+}
+
+@media (hover: hover) {
+  .listenAlong:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    color: var(--color-accent);
+  }
+}
+
+.listenAlongNote {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-faint);
+}
+
+@media print {
+  .listenAlongRow { display: none; }
 }

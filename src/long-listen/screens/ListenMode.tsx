@@ -55,8 +55,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     }
     const here = playable(item)
     const notes = here?.recording ? (await repo.marks.get(`companion:${here.recording.id}`))?.value as { movements: string[] } | undefined : undefined
+    // Already heard (by either recording, the stand-in included): the screen opens on how it landed, never on "I've heard it" again.
+    const heardBefore = listeningState(events, idsOf(item)) === 'heard'
     return {
-      programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false,
+      programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false, heardBefore,
       next: nextWork(items, item, (i) => Boolean(playable(i)), idsOf, events), feedback, notes: notes?.movements ?? [], explanation, answers,
     }
   }, [programmeId, itemId])
@@ -145,6 +147,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     }
   }
 
+  // Something already said about this work or the recording that plays: the panel opens folded on a return visit.
+  const saidSomething = Boolean(data && data.feedback.some((f) => (f.reaction || f.note) && (f.target.id === (data.recording?.id ?? data.item.recordingId) || f.target.id === data.item.workId)))
+
   const started = () => { void journey.markListening(played, 'play-started', programme.id, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }
   const nowIndex = playback.at?.index ?? null
 
@@ -228,13 +233,15 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       </section>
 
       {/* Heard: say how it landed here, then go straight on — no trip back up the programme. */}
-      {heardOpen ? (
+      {heardOpen || data.heardBefore ? (
         <div className={`${s.panel} ${s.mtXl}`}>
+          {/* Coming back to a work already heard: said so, and what was said is kept folded; open only if nothing was said yet. */}
+          {!heardOpen && <p className={`${s.label} ${s.flush}`}>Heard</p>}
           <FeedbackPanel
             targets={[{ type: 'recording', id: played.recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
             programmeId={programme.id}
             feedback={data.feedback}
-            startOpen
+            startOpen={heardOpen || !saidSomething}
           />
           <div className={`${s.actions} ${s.mtMd}`}>
             {next

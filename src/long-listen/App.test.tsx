@@ -35,8 +35,9 @@ describe('The Long Listen', () => {
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/p\//), { timeout: 4000 })
     expect(await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })).toBeTruthy()
     // Each performer under their role: never one run-on name.
-    expect(document.body.textContent).toContain('conductor Pierre Boulez')
-    expect(document.body.textContent).toContain('orchestra The Cleveland Orchestra')
+    // Performers as a programme prints them: name first, the role after (none for an orchestra).
+    expect(document.body.textContent).toContain('Pierre Boulez conductor')
+    expect(document.body.textContent).toContain('The Cleveland Orchestra')
     expect(screen.getByText('Same work, two perspectives')).toBeTruthy()
 
     // The other two directions are kept open, not discarded.
