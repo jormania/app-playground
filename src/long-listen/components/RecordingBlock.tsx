@@ -29,7 +29,7 @@ export function spotifyQuery(p: ProposedRecording): string {
  * connected is said once by the page, not under every recording.
  */
 export function RecordingBlock({
-  proposed, recording, character, onOpened, onFindAlternative, standInBelow = false, label = 'Recommended recording',
+  proposed, recording, character, onOpened, onFindAlternative, standInBelow = false, label = 'Recommended recording', durationAbove = false,
 }: {
   proposed: ProposedRecording
   recording?: Recording
@@ -40,6 +40,8 @@ export function RecordingBlock({
   /** A recording Spotify does have is shown just below in its place. */
   standInBelow?: boolean
   label?: string
+  /** The work's heading already prints its length (the programme's item): not said twice. */
+  durationAbove?: boolean
 }) {
   const { spotify, repo, bump, say } = useServices()
   const [busy, setBusy] = useState(false)
@@ -148,7 +150,7 @@ export function RecordingBlock({
           {shown.imageUrl ? <img className={s.cover} src={shown.imageUrl} alt="" loading="lazy" width={64} height={64} /> : null}
           <div className={s.albumText}>
             <div className={s.albumName}>{shown.albumName}</div>
-            <div>{[primeMinutes(shown.durationMs), year && `released ${year}`, shown.phonographic].filter(Boolean).join(' · ')}</div>
+            <div>{[durationAbove ? '' : primeMinutes(shown.durationMs), year && `released ${year}`, shown.phonographic].filter(Boolean).join(' · ')}</div>
           </div>
         </div>
       )}
@@ -162,11 +164,9 @@ export function RecordingBlock({
           onStarted={() => onOpened?.('play-started')}
           onOpened={() => onOpened?.('opened')}
         />
-      ) : (
+      ) : near ? null : (
         <div className={s.actions}>
-          {near ? (
-            <a className={s.outlineButton} href={openUrl('album', near.albumId)} target="_blank" rel="noopener noreferrer">Look at it in Spotify</a>
-          ) : recording?.verification === 'not-found' ? (
+          {recording?.verification === 'not-found' ? (
             <a className={s.outlineButton} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Search Spotify</a>
           ) : spotify.connected && recording ? (
             <button className={s.outlineButton} onClick={check} disabled={busy}>{busy ? 'Looking on Spotify…' : 'Find this recording on Spotify'}</button>
@@ -179,7 +179,8 @@ export function RecordingBlock({
       {near && (
         <p className={s.note}>
           Spotify has something close, credited to {near.artistNames.join(', ') || 'other performers'}. Is it the recording the curator meant?
-          Same conductor can mean a different decade and a different reading, so it isn’t linked or played until you say.
+          Same conductor can mean a different decade and a different reading, so it isn’t linked or played until you say.{' '}
+          <a href={openUrl('album', near.albumId)} target="_blank" rel="noopener noreferrer">Look at it in Spotify</a> first, if you like.
         </p>
       )}
       {near && (
