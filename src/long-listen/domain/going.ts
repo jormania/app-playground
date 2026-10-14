@@ -23,10 +23,12 @@ export const PREPARE_DAYS = 7
 /** How long after the evening the pre-filled entry is still offered. */
 const AFTER_DAYS = 21
 
-/** One concert, one key: its date, venue and title, folded — the same listing read again keeps its key. */
-export function goingKey(e: Pick<LiveEvent, 'date' | 'venue' | 'title'>): string {
+/** One concert, one key: its date and hour, venue and hall, and title, folded — the same listing read again keeps its key. */
+export function goingKey(e: Pick<LiveEvent, 'date' | 'venue' | 'title'> & Partial<Pick<LiveEvent, 'hall' | 'time'>>): string {
   const slug = (s: string) => fold(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  return `${e.date}~${slug(e.venue).slice(0, 32)}~${slug(e.title).slice(0, 48)}`
+  // The hall and the hour too: a matinee and an evening (or Sala Mare and Sala Mică) on one day are two concerts.
+  const where = [slug(e.venue).slice(0, 32), e.hall ? slug(e.hall).slice(0, 16) : ''].filter(Boolean).join('-')
+  return `${e.date}${e.time ? `T${e.time.replace(/\D/g, '').slice(0, 4)}` : ''}~${where}~${slug(e.title).slice(0, 48)}`
 }
 
 const dayNumber = (iso: string) => Math.round(Date.parse(`${iso}T12:00:00Z`) / 86_400_000)

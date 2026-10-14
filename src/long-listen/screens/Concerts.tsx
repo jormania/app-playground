@@ -204,18 +204,29 @@ function ComingUp() {
  * same call, kept, so going back and forth costs nothing.
  */
 function ConcertFromGoing({ goingKey }: { goingKey: string }) {
-  const { repo, journey, curatorReady } = useServices()
+  const { repo, journey, curatorReady, bump } = useServices()
   const { data, error, retry } = useLoad(async () => {
     const going = (await repo.marks.get(`going:${goingKey}`))?.value as Going | undefined
     if (!going) throw new NotFound(`no concert marked ${goingKey}`)
     if (going.concertId) return { kept: going.concertId }
-    const prep = (await journey.preparation(goingKey)) ?? (curatorReady ? await journey.prepare(goingKey).catch(() => undefined) : undefined)
-    return { draft: draftFrom(going, prep) }
-  }, [goingKey, curatorReady])
+    return { going, prep: await journey.preparation(goingKey) }
+  }, [goingKey])
+  // Never read (the page opened before it): read now, once per visit — asked from an effect, not the
+  // loader, which runs again on every refresh and would pay again each time a failed reading is retried.
+  const [reading, setReading] = useState<'idle' | 'reading' | 'done'>('idle')
+  const asked = useRef(false)
+  const needsReading = Boolean(data && !data.kept && !data.prep && curatorReady)
+  useEffect(() => {
+    if (!needsReading || asked.current) return
+    asked.current = true
+    setReading('reading')
+    journey.prepare(goingKey).then(bump, () => {}).finally(() => setReading('done'))
+  }, [needsReading, journey, goingKey, bump])
   if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'That concert isn’t marked as one you went to.', link: { href: href({ name: 'concerts' }), label: 'All concerts' } }} />
-  if (!data) return <Waiting>Filling it in from the hall’s programme…</Waiting>
+  if (!data || (needsReading && reading !== 'done')) return <Waiting>Filling it in from the hall’s programme…</Waiting>
   if (data.kept) return <ConcertScreen id={data.kept} />
-  return <ConcertForm start={data.draft} goingKey={goingKey} />
+  // Keyed by whether the reading came, so the form starts from it (the form reads its start once).
+  return <ConcertForm key={data.prep ? 'read' : 'unread'} start={draftFrom(data.going!, data.prep)} goingKey={goingKey} />
 }
 
 const EMPTY: ConcertDraft = { venue: '', date: '', soloists: [], works: [{ composer: '', title: '' }], source: 'typed' }

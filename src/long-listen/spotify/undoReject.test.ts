@@ -17,8 +17,12 @@ describe('"not this recording", taken back', () => {
     await rejectMatch(repo, null, 'rec_1', { composer: 'Rautavaara', work: 'Cantus arcticus', soloists: [] })
     expect((await repo.recordings.get('rec_1'))?.spotify).toBeUndefined()
     expect(await repo.events.all()).toEqual([])
+    // Left "not found", a stand-in was found meanwhile: the undo takes it away with the reject.
+    await repo.comparisons.put({ id: 'cmp:p:i', workId: 'w', framing: '', perspectives: [], whyBoth: '', origin: 'on-request', standIn: true, createdAt: new Date(Date.parse(was.at) + 1000).toISOString() })
+    await repo.comparisons.put({ id: 'cmp:p:older', workId: 'w', framing: '', perspectives: [], whyBoth: '', origin: 'programme', createdAt: '2026-09-01T00:00:00Z' })
     await undoReject(repo, was)
     expect(await repo.recordings.get('rec_1')).toEqual(rec)
     expect(await repo.events.all()).toEqual([heard])
+    expect((await repo.comparisons.all()).map((c) => c.id)).toEqual(['cmp:p:older'])
   })
 })

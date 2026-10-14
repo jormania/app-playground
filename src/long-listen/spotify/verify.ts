@@ -6,6 +6,7 @@ import type { Repo } from '../store/repo'
 import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import { SpotifyAuthError } from './auth'
 import { SpotifyUnavailable, type RecentPlay, type SpotifyAlbum, type SpotifyClient } from './client'
+import { forgetPlaceBefore } from '../app/place'
 
 /**
  * The factual layer: look for the curator's proposed recording on Spotify and
@@ -168,10 +169,12 @@ export async function confirmMatch(repo: Repo, recordingId: string, now = new Da
 export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, recordingId: string, proposed: ProposedRecording, now = new Date().toISOString()): Promise<Recording> {
   const r = await repo.recordings.require(recordingId)
   const { spotify: before, albumId, ...bare } = r
-  if (before) await forgetSpotifyListening(repo, recordingId)
   const rejectedAlbumIds = [...new Set([...(r.rejectedAlbumIds ?? []), ...(albumId ? [albumId] : [])])]
   const reset: Recording = { ...bare, rejectedAlbumIds, verification: 'unchecked' }
+  // The match goes first, then its listening: a recent-plays sync landing in between reads no
+  // confirmed tracks for it, so it can't bring back the sessions just forgotten.
   await repo.recordings.put(reset)
+  if (before) await forgetSpotifyListening(repo, recordingId)
   if (!spotify?.connected) return reset
   // Its own look, never one already running: that one read the album just
   // refused, and backs off on finding the refusal (verifyRecording re-reads).
@@ -180,19 +183,25 @@ export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, rec
 }
 
 /** A recording as it stood before "not this one": enough to put it back exactly. */
-export interface RejectUndo { recording: Recording; events: ListeningEvent[] }
+export interface RejectUndo { recording: Recording; events: ListeningEvent[]; at: string }
 
 /** Taken just before rejectMatch: the recording and the Spotify listening it would forget. */
-export async function beforeReject(repo: Repo, recordingId: string): Promise<RejectUndo> {
+export async function beforeReject(repo: Repo, recordingId: string, at = new Date().toISOString()): Promise<RejectUndo> {
   const recording = await repo.recordings.require(recordingId)
   const events = (await repo.events.all()).filter((e) => e.recordingId === recordingId && e.source === 'spotify-recent')
-  return { recording, events }
+  return { recording, events, at }
 }
 
-/** "Not this one" taken back: the recording, its match and its Spotify listening, as they were. */
+/**
+ * "Not this one" taken back: the recording, its match and its Spotify listening, as they were.
+ * A stand-in found for its work since (the reject left it "not found") goes too: the curator's
+ * recording plays again, and a stand-in beside it would be played and listed twice.
+ */
 export async function undoReject(repo: Repo, undo: RejectUndo): Promise<void> {
   await repo.recordings.put(undo.recording)
   if (undo.events.length) await repo.events.putMany(undo.events)
+  const since = (await repo.comparisons.all()).filter((c) => c.standIn && c.workId === undo.recording.workId && c.createdAt >= undo.at)
+  for (const c of since) await repo.comparisons.delete(c.id)
 }
 
 /** One recording of a work that Spotify actually has, for the curator to choose from. */
@@ -324,8 +333,14 @@ export function syncRecentPlays(repo: Repo, spotify: SpotifyClient, now = new Da
   inFlight ??= (async () => {
     try {
       const plays = await spotify.recentlyPlayed()
-      const fresh = playsToEvents(plays, await repo.recordings.all(), await repo.events.all(), now)
+      const recordings = await repo.recordings.all()
+      const fresh = playsToEvents(plays, recordings, await repo.events.all(), now)
       if (fresh.length) await repo.events.putMany(fresh)
+      // A work Spotify heard through lets go of a place kept before that hearing ended (app/place.ts).
+      for (const e of fresh.filter((x) => x.kind === 'heard')) {
+        const ids = recordings.find((r) => r.id === e.recordingId)?.spotify?.trackIds
+        if (ids?.length) forgetPlaceBefore(ids, Date.parse(e.playedUntil ?? e.at))
+      }
       return fresh.length
     } finally {
       inFlight = null

@@ -54,6 +54,7 @@ export function RecordingBlock({
 
   async function check() {
     if (!recording) return
+    setUndo(null)
     setBusy(true)
     try {
       // Shares a look already running for it (the programme's background pass, a second tap) — never a second one racing it.
@@ -69,6 +70,8 @@ export function RecordingBlock({
 
   async function yesThis() {
     if (!recording) return
+    // A later answer stands: the undo would put back what came before it.
+    setUndo(null)
     setBusy(true)
     try {
       await confirmMatch(repo, recording.id)
@@ -88,15 +91,19 @@ export function RecordingBlock({
     if (!recording) return
     setAsking(false)
     setBusy(true)
+    let was: RejectUndo | undefined
     try {
-      const was = await beforeReject(repo, recording.id)
+      was = await beforeReject(repo, recording.id)
       const r = await rejectMatch(repo, spotify, recording.id, proposed)
-      setUndo({ was, album: was.recording.spotify?.albumName ?? 'that album' })
-      bump()
-      say(r.verification === 'not-found' ? 'Set aside. Spotify has nothing else that matches, so it’s marked as not found.' : 'Set aside. Spotify was asked for another recording.')
+      say(r.verification === 'not-found' ? 'Set aside. Spotify has nothing else that matches, so it’s marked as not found.'
+        : r.verification === 'unchecked' ? 'Set aside. Connect Spotify and it will look for another recording.'
+        : 'Set aside. Spotify was asked for another recording.')
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
+      // Offered whatever the look for another did: a look that failed (offline, signed out) has still set this one aside.
+      if (was) setUndo({ was, album: was.recording.spotify?.albumName ?? 'that album' })
+      bump()
       setBusy(false)
     }
   }

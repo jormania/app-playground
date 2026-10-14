@@ -23,8 +23,10 @@ export function earlierHearing(args: {
   workId: string
   /** The recordings this listening view plays (the curator's and any stand-in). */
   recordingIds: string[]
-  /** When this programme was made: a hearing since then is this programme's own. */
+  /** When this programme was made: a hearing since then is this programme's own (unless it names another). */
   since: Instant
+  /** This programme: a hearing since it was made, in another programme, is still an earlier one. */
+  programmeId?: string
   /** Today, in the listener's time zone. */
   today: ISODate
   /** An instant as a date in the listener's time zone. */
@@ -34,8 +36,10 @@ export function earlierHearing(args: {
   concerts: Concert[]
 }): EarlierHearing | undefined {
   const { workId, since, today, dateOf } = args
+  // Before this programme was made — or, since, in another programme, which a hearing names when the app saw it.
+  const elsewhere = (e: ListeningEvent) => Boolean(args.programmeId && e.programmeId && e.programmeId !== args.programmeId)
   const heard = args.events
-    .filter((e) => e.kind === 'heard' && e.workId === workId && when(e) < since)
+    .filter((e) => e.kind === 'heard' && e.workId === workId && (when(e) < since || elsewhere(e)))
     .sort((a, b) => when(b).localeCompare(when(a)))[0]
   const live = args.concerts
     .filter((c) => c.date <= today && c.works.some((w) => w.workId === workId))
@@ -48,7 +52,9 @@ export function earlierHearing(args: {
     return { kind: 'concert', on: live.date, concert: live, said: note ? { note } : undefined }
   }
   if (!heard || !heardOn) return undefined
-  const before = args.feedback.filter((f) => f.at < since && (f.target.id === heard.recordingId || (f.target.type === 'work' && f.target.id === workId)))
+  // What was said of that hearing: before this programme was made, or — for a hearing in another programme — in that one.
+  const ofIt = (f: Feedback) => (f.at < since || (elsewhere(heard) && f.programmeId === heard.programmeId))
+  const before = args.feedback.filter((f) => ofIt(f) && (f.target.id === heard.recordingId || (f.target.type === 'work' && f.target.id === workId)))
   const note = latest(before.filter((f) => f.note?.trim()))?.note?.trim()
   const reaction = latest(before.filter((f) => f.reaction))?.reaction
   return {

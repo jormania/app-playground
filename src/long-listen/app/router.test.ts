@@ -13,4 +13,10 @@ describe('routes', () => {
   it('keeps the old journal address working', () => {
     expect(parseRoute('#/listening')).toEqual({ name: 'journal' })
   })
+
+  it('reads a link it cannot decode as no address, never as a crash, and round-trips composer names', () => {
+    expect(parseRoute('#/composer/100%')).toEqual({ name: 'library' })
+    expect(parseRoute(href({ name: 'composer', composer: 'Carl Philipp Emanuel Bach / C.P.E.' }))).toEqual({ name: 'composer', composer: 'Carl Philipp Emanuel Bach / C.P.E.' })
+    expect(parseRoute(href({ name: 'before', key: '2026-10-23T1900~sala-radio~bach' }))).toEqual({ name: 'before', key: '2026-10-23T1900~sala-radio~bach' })
+  })
 })

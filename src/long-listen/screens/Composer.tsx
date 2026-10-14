@@ -10,6 +10,8 @@ import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import { concertDate } from './Concerts'
+import { isoDateIn } from '../domain/week'
+import type { PortraitResponse } from '../curation/api'
 import s from '../styles/editorial.module.css'
 
 const STATE_WORD: Record<string, string> = { listening: 'started', heard: 'heard', skipped: 'skipped' }
@@ -21,7 +23,7 @@ const STATE_WORD: Record<string, string> = { listening: 'started', heard: 'heard
  * Prose and memory, not a tally: nothing here is counted.
  */
 export function ComposerScreen({ composer }: { composer: string }) {
-  const { repo, journey, curatorReady, bump, say } = useServices()
+  const { repo, journey, curatorReady, bump, say, settings } = useServices()
   const { data, error, retry } = useLoad(async () => {
     const [programmes, works, events, feedback, concerts, themes] = await Promise.all([
       repo.programmes.all(), repo.works.all(), repo.events.all(), repo.feedback.all(), repo.concerts.all(), repo.themes.all(),
@@ -41,7 +43,9 @@ export function ComposerScreen({ composer }: { composer: string }) {
       if (!m.recordings.some((r) => r.rid === item.recordingId)) m.recordings.push({ rid: item.recordingId, proposed: item.proposed, programmeId: p.id, programmeTitle: p.title })
       met.set(item.workId, m)
     }
-    const live = concerts.filter((c) => c.works.some((w) => isTheirs(w.composer))).sort((a, b) => b.date.localeCompare(a.date))
+    // Heard live: concerts on or before today, never one still to come.
+    const today = isoDateIn(new Date(), settings.timeZone)
+    const live = concerts.filter((c) => c.date <= today && c.works.some((w) => isTheirs(w.composer))).sort((a, b) => b.date.localeCompare(a.date))
     for (const c of live) for (const w of c.works.filter((x) => isTheirs(x.composer))) {
       const m = met.get(w.workId) ?? { title: w.title, recordings: [], live: [] }
       m.live.push(c)
@@ -53,18 +57,20 @@ export function ComposerScreen({ composer }: { composer: string }) {
     for (const { p, item } of items) if (isTheirs(item.proposed.composer) && themeById.get(p.themeId) && !threads.has(p.themeId)) threads.set(p.themeId, { title: themeById.get(p.themeId)!.title, programmeId: p.id, programmeTitle: p.title })
     return {
       name, works: [...met.entries()].map(([id, m]) => ({ id, work: workById.get(id), ...m })).sort((a, b) => a.title.localeCompare(b.title)),
-      live, threads: [...threads.values()], events, feedback, portrait: await journey.portraitOf(name),
+      live, threads: [...threads.values()], events, feedback, portrait: await firstPortrait(journey, [name, ...spellings]),
     }
   }, [composer])
 
   // The portrait is written the first time the page is opened, then kept.
   const [writing, setWriting] = useState(false)
+  const [failed, setFailed] = useState(false)
   const asked = useRef(false)
   useEffect(() => {
     if (!data || data.portrait || !curatorReady || asked.current || !data.works.length) return
     asked.current = true
     setWriting(true)
-    journey.portrait(data.name, data.works.map((w) => w.title)).then(bump, (e: unknown) => say(messageOf(e), 'danger')).finally(() => setWriting(false))
+    // A failed writing is offered again, by hand — never retried by itself on each refresh.
+    journey.portrait(data.name, data.works.map((w) => w.title)).then(bump, (e: unknown) => { setFailed(true); say(messageOf(e), 'danger') }).finally(() => setWriting(false))
   }, [data, curatorReady, journey, bump, say])
 
   if (error) return <Problem error={error} onRetry={retry} />
@@ -79,6 +85,7 @@ export function ComposerScreen({ composer }: { composer: string }) {
       {portrait
         ? <Paragraphs text={portrait.portrait} className={`${s.prose} ${s.lede}`} glossed />
         : writing ? <p className={s.quiet}>The curator is writing a short portrait…</p>
+          : failed ? <button className={s.textButton} onClick={() => { setFailed(false); asked.current = false; bump() }}>Write the portrait</button>
           : !curatorReady && data.works.length > 0 ? <NeedsKey to="have the curator write a portrait" /> : null}
 
       {data.works.length === 0 && <p className={s.quiet}>Nothing of theirs met yet.</p>}
@@ -129,6 +136,15 @@ export function ComposerScreen({ composer }: { composer: string }) {
       )}
     </article>
   )
+}
+
+/** A portrait kept under any spelling of the name: "Debussy" from a concert, then "Claude Debussy" from a programme, is one composer. */
+async function firstPortrait(journey: { portraitOf(n: string): Promise<PortraitResponse | undefined> }, names: string[]): Promise<PortraitResponse | undefined> {
+  for (const n of new Set(names)) {
+    const p = await journey.portraitOf(n)
+    if (p) return p
+  }
+  return undefined
 }
 
 /** A composer's name as a quiet link to their page. */

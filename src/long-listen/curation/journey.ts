@@ -4,6 +4,7 @@ import type {
 } from '../domain/types'
 import { creditLine, fold, newId, sameWork } from '../domain/identity'
 import { termMark } from '../domain/glossary'
+import { forgetPlaceBefore } from '../app/place'
 import { goingKey, type Going } from '../domain/going'
 import type { LiveEvent } from '../live/live'
 import { listeningState, latestFeedback } from '../domain/listening'
@@ -745,6 +746,11 @@ export class Journey {
   async markListening(item: Pick<ProgrammeItem, 'recordingId' | 'workId'>, kind: ListeningKind, programmeId?: string, source: ListeningEvent['source'] = 'manual'): Promise<ListeningEvent> {
     const e: ListeningEvent = { id: newId('ev'), at: this.stamp(), kind, recordingId: item.recordingId, workId: item.workId, programmeId, source }
     await this.repo.events.put(e)
+    // Heard through: where it was left is no longer a place to resume (app/place.ts).
+    if (kind === 'heard') {
+      const ids = (await this.repo.recordings.get(item.recordingId))?.spotify?.trackIds
+      if (ids?.length) forgetPlaceBefore(ids, Date.parse(e.at))
+    }
     return e
   }
 

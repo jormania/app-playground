@@ -33,20 +33,24 @@ export type Route =
 
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, '')
-  const [head, arg, arg2] = path.split('/')
+  const [head, rawArg, rawArg2] = path.split('/')
+  // A hand-typed or truncated link ("#/composer/100%") must not stop the app: undecodable reads as absent.
+  const decode = (x?: string) => { try { return x === undefined ? undefined : decodeURIComponent(x) } catch { return undefined } }
+  const arg = decode(rawArg)
+  const arg2 = decode(rawArg2)
   switch (head) {
-    case 'p': return arg ? { name: 'programme', id: decodeURIComponent(arg) } : { name: 'week' }
-    case 'listen': return arg && arg2 ? { name: 'listen', programmeId: decodeURIComponent(arg), itemId: decodeURIComponent(arg2) } : { name: 'week' }
+    case 'p': return arg ? { name: 'programme', id: arg } : { name: 'week' }
+    case 'listen': return arg && arg2 ? { name: 'listen', programmeId: arg, itemId: arg2 } : { name: 'week' }
     case 'journal':
     case 'listening': return { name: 'journal' }
     case 'library': return { name: 'library' }
     case 'threads': return { name: 'threads' }
     case 'notebook': return { name: 'notebook' }
-    case 'concerts': return arg ? { name: 'concert', id: decodeURIComponent(arg) } : { name: 'concerts' }
+    case 'concerts': return arg ? { name: 'concert', id: arg } : { name: 'concerts' }
     // A whole number from one up: "1.5" or "1e1" is no season, and was read as one.
     case 'season': return arg && /^\d+$/.test(arg) && Number(arg) >= 1 ? { name: 'season', n: Number(arg) } : { name: 'journal' }
-    case 'before': return arg ? { name: 'before', key: decodeURIComponent(arg) } : { name: 'week' }
-    case 'composer': return arg ? { name: 'composer', composer: decodeURIComponent(arg) } : { name: 'library' }
+    case 'before': return arg ? { name: 'before', key: arg } : { name: 'week' }
+    case 'composer': return arg ? { name: 'composer', composer: arg } : { name: 'library' }
     case 'settings': return { name: 'settings' }
     default: return { name: 'week' }
   }

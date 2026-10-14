@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { readJson, writeJson } from '../../shared/storage'
+import { keepPlace, placeFrom, positionOf, savedPlace, type Place } from './place'
 import { useServices } from './services'
-import { SpotifyUnavailable, playbackOf, type NowPlaying, type SpotifyClient } from '../spotify/client'
+import { SpotifyUnavailable, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
 import { Witness } from '../spotify/witness'
 import { WorkGuard } from '../spotify/workGuard'
@@ -20,9 +20,23 @@ const guard = new WorkGuard()
 const ranOnListeners = new Set<() => void>()
 let lastReading: NowPlaying | null = null
 
+/**
+ * The works whose place is kept (app/place.ts): every work shown with a Play
+ * button this visit, and every work started from the app. Kept from each
+ * reading here, whatever screen is open — not only while that work's page is.
+ */
+const placeWorks = new Map<string, string[]>()
+function knowPlace(trackIds: string[] | undefined): void {
+  if (trackIds?.length) placeWorks.set(trackIds.join(), trackIds)
+}
+
 function observe(np: NowPlaying | null, at: number) {
   const heard = witness.observe({ np, at })
   if (heard.length) for (const l of heardListeners) l(heard)
+  for (const ids of placeWorks.values()) {
+    const place = placeFrom(lastReading, np, ids, at)
+    if (place !== undefined) keepPlace(ids, place)
+  }
   const ran = guard.observe(lastReading, np, at)
   lastReading = np
   if (ran) for (const l of ranOnListeners) l()
@@ -31,6 +45,7 @@ function observe(np: NowPlaying | null, at: number) {
 
 /** A work started from the app (Play, or opened in Spotify): watch it, to stop it at its last movement. */
 export function armWork(trackIds: string[] | undefined): void {
+  knowPlace(trackIds)
   if (trackIds?.length) guard.arm(trackIds, Date.now())
 }
 
@@ -46,23 +61,7 @@ export function onPlayerReading(listener: (np: NowPlaying | null) => void): () =
   return () => { readingListeners.delete(listener) }
 }
 
-/**
- * Where a recording stands on Spotify, if anywhere worth resuming from. A work
- * Spotify has finished is at rest, not paused: it stops on the last movement
- * (at its close, or rewound to its start), or — having played a list to its
- * end — goes back to the first and holds it at 0:00. Resume there would only
- * be Play from the top, so neither counts as a place: Play is offered, and
- * nothing is marked paused.
- */
-export function positionOf(np: NowPlaying | null, trackIds: string[]): { index: number; playing: boolean } | null {
-  const seen = playbackOf(np, trackIds)
-  if (!seen || !np || np.isPlaying) return seen
-  const atClose = np.durationMs > 0 && np.durationMs - np.progressMs < 4000
-  const atStart = np.progressMs < 2000
-  if (seen.index === trackIds.length - 1 && (atStart || atClose)) return null
-  if (seen.index === 0 && atStart) return null
-  return seen
-}
+export { positionOf } from './place'
 
 /** Told the track ids the witness saw played end to end. */
 export function onHeardThrough(listener: (trackIds: string[]) => void): () => void {
@@ -97,42 +96,7 @@ export function usePlayerState(): PlayerState {
   return state
 }
 
-/**
- * Where a listening was left, kept on this device per work (by its first track):
- * Spotify forgets it once its app is closed, or after hours of something else,
- * and then the work could only be started again from the top. Written from
- * every reading of the work in a place worth resuming (positionOf); cleared
- * when the work comes to rest at its end. A month old, it is let go.
- */
-export interface Place { index: number; progressMs: number; at: number }
-const PLACE_KEY = (firstTrackId: string) => `long-listen:place:${firstTrackId}`
-const PLACE_KEEP_MS = 30 * 86_400_000
-
-export function savedPlace(trackIds: string[] | undefined, now = Date.now()): Place | null {
-  if (!trackIds?.length) return null
-  const p = readJson<Place | null>(PLACE_KEY(trackIds[0]), null)
-  if (!p || typeof p.index !== 'number' || p.index < 0 || p.index >= trackIds.length || now - p.at > PLACE_KEEP_MS) return null
-  // The very start is no place to resume from.
-  return p.index === 0 && p.progressMs < 5000 ? null : p
-}
-
-/** Keep (or, with null, let go) where this work was left. */
-export function keepPlace(trackIds: string[], place: Place | null): void {
-  writeJson(PLACE_KEY(trackIds[0]), place)
-}
-
-/**
- * From one reading: the place to keep for this work, null to let it go (the
- * work came to rest at its end), or undefined when the reading says nothing
- * about it (something else is on).
- */
-export function placeFrom(np: NowPlaying | null, trackIds: string[], now: number): Place | null | undefined {
-  const seen = playbackOf(np, trackIds)
-  if (!seen || !np) return undefined
-  const at = positionOf(np, trackIds)
-  if (!at) return seen.index === trackIds.length - 1 ? null : undefined
-  return { index: seen.index, progressMs: np.progressMs, at: now }
-}
+export { savedPlace, keepPlace, placeFrom, type Place } from './place'
 
 export interface Playback {
   /** Where this recording stands on Spotify, or null when something else (or nothing) is on. */
@@ -172,13 +136,10 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
   const [left, setLeft] = useState(() => savedPlace(trackIds))
   useEffect(() => {
     if (!trackIds?.length) return
+    knowPlace(trackIds)
     setLeft(savedPlace(trackIds))
-    return onPlayerReading((np) => {
-      const place = placeFrom(np, trackIds, Date.now())
-      if (place === undefined) return
-      keepPlace(trackIds, place)
-      setLeft(place && savedPlace(trackIds))
-    })
+    // Kept by observe(), before readers are told: read back after each reading.
+    return onPlayerReading(() => setLeft(savedPlace(trackIds)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey])
 

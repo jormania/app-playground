@@ -17,7 +17,7 @@ import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { aboutDuration, isConfirmed, keepPlaylistCurrent, saveProgrammePlaylist, spotifyCandidates, needsLook, verifyProgramme, type PlaylistMark } from '../spotify/verify'
-import { positionOf, usePlayerState } from '../app/playback'
+import { onPlayerReading, positionOf, usePlayerState } from '../app/playback'
 import { playbackOf } from '../spotify/client'
 import { useOnline } from '../app/online'
 import { RecordingBlock } from '../components/RecordingBlock'
@@ -502,17 +502,21 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const duration = primeMinutes(durationOf(b, item))
   const movements = movementTitles(playableOf(b, item)?.spotify?.trackNames)
 
-  // Sounding on Spotify while the page still says "Not started" (resumed, or started in Spotify itself):
-  // what is playing is the truth — recorded once as begun, as a tap on Play would have.
-  const player = usePlayerState()
+  // Sounding on Spotify while nothing at all is recorded of it (resumed, or started in Spotify itself):
+  // what is playing is the truth — recorded once as begun, as a tap on Play would have. Only from a real
+  // reading (never the state shown the moment Play is tapped, which Play itself records), and never over
+  // anything the listener said: a "Not started" they chose stands.
   const sounding = playableOf(b, item)
-  const isSounding = Boolean(sounding?.spotify && playbackOf(player.np, sounding.spotify.trackIds)?.playing)
+  const nothingRecorded = !b.events.some((e) => itemRecordingIds(b, item).includes(e.recordingId))
   const notedStart = useRef(false)
-  useEffect(() => {
-    if (!isSounding || state !== 'not-started' || notedStart.current || !sounding) return
+  const latestStart = useRef({ sounding, nothingRecorded })
+  latestStart.current = { sounding, nothingRecorded }
+  useEffect(() => onPlayerReading((np) => {
+    const { sounding: rec, nothingRecorded: fresh } = latestStart.current
+    if (!rec?.spotify || !fresh || notedStart.current || !playbackOf(np, rec.spotify.trackIds)?.playing) return
     notedStart.current = true
-    void journey.markListening({ recordingId: sounding.id, workId: item.workId }, 'play-started', pid, 'app').then(bump, () => {})
-  }, [isSounding, state, sounding, journey, item.workId, pid, bump])
+    void journey.markListening({ recordingId: rec.id, workId: item.workId }, 'play-started', pid, 'app').then(bump, () => {})
+  }), [journey, item.workId, pid, bump])
 
   // Once per tap, like "I’ve heard it" in the listening view: a ref, since two
   // taps in one frame both see the state as it was before either was kept.
@@ -609,13 +613,13 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       <RecordingBlock
         proposed={item.proposed}
         recording={recording}
-        onOpened={(how) => { void journey.markListening(item, how, pid, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
+        onOpened={(how) => { notedStart.current = true; void journey.markListening(item, how, pid, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
         onFindAlternative={comparison || comparing ? undefined : () => void compare(true)}
         standInBelow={Boolean(standIn)}
         durationAbove={Boolean(duration) && Boolean(isConfirmed(recording))}
       />
       {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
-      {standIn && <StandInView c={standIn} b={b} />}
+      {standIn && !isConfirmed(recording) && <StandInView c={standIn} b={b} />}
       {/* The way most listening happens: the work on a screen of its own, while it plays — set like
           Play (the same shape and height), outlined so Play stays first, and plainly a way to another screen. */}
       <div className={s.listenAlongRow}>

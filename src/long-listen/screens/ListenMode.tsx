@@ -74,7 +74,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     // The work come back: when it was last heard before this programme, where, and what was said then.
     const dateOf = (at: string) => isoDateIn(new Date(at), settings.timeZone)
     const earlier = earlierHearing({
-      workId: item.workId, recordingIds: idsOf(item), since: programme.createdAt, today: dateOf(new Date().toISOString()), dateOf, events, feedback, concerts,
+      workId: item.workId, recordingIds: idsOf(item), since: programme.createdAt, programmeId: programme.id, today: dateOf(new Date().toISOString()), dateOf, events, feedback, concerts,
     })
     const earlierCredit = earlier?.kind === 'recording' && !earlier.sameRecording ? await recordingCredit(repo, earlier.recordingId) : undefined
     return {
@@ -262,7 +262,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const byNumeral = numerals.length > 0 && numerals.every((n) => n > 0)
   const movementCount = byNumeral ? new Set(numerals).size : titled.length
   // Where the listening was left, once Spotify has let go of it: marked in the list, its note shown, as if paused there.
-  const leftIndex = playback.at ? null : playback.left?.index ?? null
+  const leftIndex = spotify.connected && !playback.at ? playback.left?.index ?? null : null
   const movementNow = nowIndexOf(playback.at?.index ?? leftIndex, byNumeral ? numerals : null)
   const work = data.work
   // One line of facts under the title, and the performers on one line: what it is, at a glance.
@@ -408,18 +408,19 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         // the movement sounding's own and the whole work's. Nothing left to show, no heading over an empty list.
         const points = item.listenFor.map((text, i) => {
           const at = forAt[i]
+          const n = i
           const here = at !== null && movementNow !== null && at === movementNow
           const elsewhere = at !== null && movementNow !== null && !here
-          return { text, at, here, elsewhere }
+          return { text, at, here, elsewhere, n }
         }).filter((x) => !(focus && x.elsewhere))
         if (!points.length) return null
         return (
           <>
             <p className={`${s.label} ${s.mtXl}`}>Listen for</p>
             <ul className={`${s.listenFor} ${s.listenForLarge}`}>
-              {points.map(({ text, at, here, elsewhere }, i) => (
+              {points.map(({ text, at, here, elsewhere, n }) => (
                 // Tied to a movement, its numeral takes the note's place in the margin.
-                <li key={i} className={[at !== null ? s.listenForTagged : '', here ? s.listenForNow : elsewhere ? s.listenForLater : ''].filter(Boolean).join(' ') || undefined} data-at={at !== null ? roman(at) : undefined}>
+                <li key={n} className={[at !== null ? s.listenForTagged : '', here ? s.listenForNow : elsewhere ? s.listenForLater : ''].filter(Boolean).join(' ') || undefined} data-at={at !== null ? roman(at) : undefined}>
                   <Gloss text={text} />
                 </li>
               ))}

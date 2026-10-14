@@ -61,4 +61,13 @@ describe('your earlier hearing', () => {
     expect(shortNote(long).length).toBeLessThanOrEqual(141)
     expect(shortNote(long).endsWith('word…')).toBe(true)
   })
+
+  it('counts a hearing in another programme made since this one, with what was said there', () => {
+    const got = earlierHearing({
+      ...base, programmeId: 'prog_b',
+      events: [ev({ at: '2026-10-13T19:00:00Z', programmeId: 'prog_a' }), ev({ at: '2026-10-13T21:00:00Z', programmeId: 'prog_b', recordingId: 'rec_b' })],
+      feedback: [fb({ at: '2026-10-13T19:30:00Z', programmeId: 'prog_a', note: 'Slower than I knew it.' })],
+    })
+    expect(got).toMatchObject({ kind: 'recording', on: '2026-10-13', recordingId: 'rec_a', said: { note: 'Slower than I knew it.' } })
+  })
 })
