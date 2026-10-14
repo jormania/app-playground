@@ -21,7 +21,9 @@ import { spotifyQuery } from '../components/RecordingBlock'
 import { playbackOf, searchUrl } from '../spotify/client'
 import { askedMark } from '../domain/landed'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
-import { NotFound } from '../store/repo'
+import { NotFound, type Repo } from '../store/repo'
+import { earlierHearing, onDay, reactionAsSaid, shortNote, type EarlierHearing } from '../domain/earlierHearing'
+import { isoDateIn } from '../domain/week'
 import { Twisty } from '../components/Twisty'
 import s from '../styles/editorial.module.css'
 
@@ -40,7 +42,7 @@ const FOCUS_KEY = 'long-listen:listen-focus'
 const AUTOPLAY_KEY = 'long-listen:autoplay'
 
 export function ListenModeScreen({ programmeId, itemId }: { programmeId: string; itemId: string }) {
-  const { repo, spotify, journey, bump } = useServices()
+  const { repo, spotify, journey, bump, settings } = useServices()
   const { data, error, retry } = useLoad(async () => {
     const programme = await repo.programmes.require(programmeId)
     const items = programme.sections.flatMap((x) => x.items)
@@ -52,8 +54,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const players = standInPlayersOf(comparisons)
     const idsOf = (i: ProgrammeItem) => heardAs(i, programmeId, standIns)
     const ids = items.flatMap(idsOf)
-    const [recordings, events, feedback, explanation, answers, work] = await Promise.all([
-      repo.recordings.many(ids), repo.events.all(), repo.feedback.all(), repo.explanations.get(`${programmeId}:${itemId}`), journey.answers(programmeId, itemId), repo.works.get(item.workId),
+    const [recordings, events, feedback, explanation, answers, work, concerts] = await Promise.all([
+      repo.recordings.many(ids), repo.events.all(), repo.feedback.all(), repo.explanations.get(`${programmeId}:${itemId}`), journey.answers(programmeId, itemId), repo.works.get(item.workId), repo.concerts.all(),
     ])
     const byId = new Map(recordings.map((r) => [r.id, r]))
     // What plays: the programme's recording, or — when Spotify lacks it — the stand-in found in its place.
@@ -67,11 +69,17 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     // Already heard (by either recording, the stand-in included): the screen opens on how it landed, never on "I've heard it" again.
     const heardBefore = listeningState(events, idsOf(item)) === 'heard'
     const next = nextWork(items, item, (i) => Boolean(playable(i)), idsOf, events)
+    // The work come back: when it was last heard before this programme, where, and what was said then.
+    const dateOf = (at: string) => isoDateIn(new Date(at), settings.timeZone)
+    const earlier = earlierHearing({
+      workId: item.workId, recordingIds: idsOf(item), since: programme.createdAt, today: dateOf(new Date().toISOString()), dateOf, events, feedback, concerts,
+    })
+    const earlierCredit = earlier?.kind === 'recording' && !earlier.sameRecording ? await recordingCredit(repo, earlier.recordingId) : undefined
     return {
       programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false, heardBefore,
-      next, nextPlayable: Boolean(next && playable(next)), feedback, notes: notes?.movements ?? [], explanation, answers, work,
+      next, nextPlayable: Boolean(next && playable(next)), feedback, notes: notes?.movements ?? [], explanation, answers, work, earlier, earlierCredit,
     }
-  }, [programmeId, itemId])
+  }, [programmeId, itemId, settings.timeZone])
   useWakeLock(true)
 
   // Dusk while this screen is open: one of four dark shades, at random each visit (never last visit's).
@@ -319,6 +327,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
       {facts && <p className={s.listenFacts}>{facts}</p>}
       {performers && <p className={s.listenPerformers}>{performers}</p>}
+      {data.earlier && !focus && <EarlierLine earlier={data.earlier} credit={data.earlierCredit} today={isoDateIn(new Date(), settings.timeZone)} />}
       {standIn && !focus && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 
       {/* The same listen bar as the programme; placed first, since pressing it is what this screen is for.
@@ -470,6 +479,44 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       )}
     </article>
   )
+}
+
+/**
+ * "Heard before": one line when a work comes back — when, in which recording or
+ * hall, and what was said then. Memory at the moment it's useful, not a record.
+ */
+function EarlierLine({ earlier, credit, today }: { earlier: EarlierHearing; credit?: string; today: string }) {
+  const said = earlier.said && ('note' in earlier.said
+    ? <> You said <q>{shortNote(earlier.said.note)}</q></>
+    : <> You {reactionAsSaid(earlier.said.reaction)}.</>)
+  if (earlier.kind === 'concert') {
+    const c = earlier.concert
+    return (
+      <p className={s.earlierHearing}>
+        <span className={s.earlierWord}>Heard before</span>{' '}
+        Live, <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.hall ? `${c.venue}, ${c.hall}` : c.venue}</a>, on {onDay(earlier.on, today)}{c.conductor ? `, with ${c.conductor}` : ''}.{said}
+      </p>
+    )
+  }
+  return (
+    <p className={s.earlierHearing}>
+      <span className={s.earlierWord}>Heard before</span>{' '}
+      On {onDay(earlier.on, today)}, {earlier.sameRecording ? 'in this same recording' : credit ? <>in another recording ({credit})</> : 'in another recording'}.{said}
+    </p>
+  )
+}
+
+/** A recording's performers as one line, from the people it names. */
+async function recordingCredit(repo: Repo, recordingId: string): Promise<string | undefined> {
+  const rec = await repo.recordings.get(recordingId)
+  if (!rec) return undefined
+  const ids = [rec.conductorId, rec.orchestraId, rec.ensembleId, ...rec.soloistIds].filter((x): x is string => Boolean(x))
+  const names = new Map((await repo.artists.many(ids)).map((a) => [a.id, a.name]))
+  const name = (id?: string) => (id ? names.get(id) : undefined)
+  return creditLine({
+    conductor: name(rec.conductorId), orchestra: name(rec.orchestraId), ensemble: name(rec.ensembleId),
+    soloists: rec.soloistIds.map((id) => ({ name: name(id) ?? '' })).filter((x) => x.name),
+  }) || undefined
 }
 
 /**

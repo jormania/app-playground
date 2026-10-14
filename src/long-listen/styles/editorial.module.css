@@ -3220,6 +3220,25 @@ summary.textButton::-webkit-details-marker {
   color: var(--color-ink);
 }
 
+/* "Heard before": when a work comes back, one quiet line of memory under who plays it. */
+.earlierHearing {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  max-width: 38rem;
+}
+
+.earlierHearing q {
+  font-style: italic;
+}
+
+.earlierWord {
+  font-weight: 600;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.09em;
+  margin-right: var(--space-3xs);
+}
+
 /* A movement: numeral, name, and its length across in the margin. */
 .movementLine {
   display: grid;
