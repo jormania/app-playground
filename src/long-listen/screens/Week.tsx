@@ -3,7 +3,7 @@ import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption,
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useServices } from '../app/services'
-import { go } from '../app/router'
+import { go, href } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
 import { verifyProgramme } from '../spotify/verify'
 import { CharCount, MAX_ASK, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
@@ -132,10 +132,18 @@ export function WeekScreen() {
 
       <WeekMoodLine record={view.record} onAsk={askWithMood} busy={busy} asking={asking} />
 
-      <p className={s.faint}>
-        Your week: {TIME[view.prefs.timePerWeek].words} · {BREADTH[view.prefs.breadth].label.toLowerCase()} · {FAMILIARITY[view.prefs.familiarity].label.toLowerCase()}
-        {view.prefs.pairs ? ' · with side-by-side pairs' : ''}. <a href="#/settings">Change in Settings</a>, then ask for three others.
-      </p>
+      {/* What these three were made with, each setting under the name Settings gives it —
+          never a bare "several · a mix" the listener has to decode. */}
+      <div className={s.weekSettings}>
+        <p className={s.label}>Made with your settings</p>
+        <dl className={s.settingsGlance}>
+          <dt>Music each week</dt><dd>{TIME[view.prefs.timePerWeek].label} — {TIME[view.prefs.timePerWeek].words}</dd>
+          <dt>How widely it ranges</dt><dd>{BREADTH[view.prefs.breadth].label} — {BREADTH[view.prefs.breadth].words}</dd>
+          <dt>How well known</dt><dd>{FAMILIARITY[view.prefs.familiarity].label} — {FAMILIARITY[view.prefs.familiarity].words}</dd>
+          <dt>Two perspectives</dt><dd>{view.prefs.pairs ? 'On — now and then one work in two recordings' : 'Off — each work once'}</dd>
+        </dl>
+        <p className={s.settingHint}>Change them in <a href={href({ name: 'settings' })}>Settings → Your week of listening</a>, then ask for three others below.</p>
+      </div>
 
       {/* The direction being built stays where it was tapped, saying so; the others wait. */}
       <ol className={s.options}>
