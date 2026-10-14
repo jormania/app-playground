@@ -7,7 +7,7 @@ import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import { NotFound, type Repo } from '../store/repo'
 import type {
-  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, TagsResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
 } from './api'
 import { season as seasonOf, seasonNumberAt, type Season } from '../domain/season'
 import { seasonContext } from './season'
@@ -1021,6 +1021,39 @@ export class Journey {
       // Every recording asked about is marked, notes or not, so none is asked about again until its tracks change.
       await this.repo.marks.putMany(todo.map((w, i) => ({ id: `companion:${w.rid}`, at: now, value: { movements: byKey.get(`w${i + 1}`) ?? [], tracks: tracksOf(w.rid), promptVersion: res.promptVersion } })))
       return res.works.length
+    })
+  }
+
+  /**
+   * "Listen for" tied to its movement, for a programme written before the
+   * curator was asked to (programme@2026-10-14.1): one short call on the
+   * cheaper model, for every work in it not yet tagged, saved into the
+   * programme. Every work asked about keeps an answer, all "" if need be, so it
+   * is never asked twice. Returns how many works were tagged.
+   */
+  tagListenFor(programmeId: string): Promise<number> {
+    return this.once(`tags:${programmeId}`, async () => {
+      const generation = this.repo.generation
+      const p = await this.repo.programmes.require(programmeId)
+      const todo = p.sections.flatMap((s) => s.items).filter((i) => i.listenFor.length > 0 && !i.listenForAt)
+      if (!todo.length) return 0
+      const recordings = new Map((await this.repo.recordings.many(todo.map((i) => i.recordingId))).map((r) => [r.id, r]))
+      const { language } = await this.repo.preferences()
+      const res = await this.curator.call<TagsResponse>('tags', {
+        language,
+        programme: { title: p.title },
+        works: todo.map((i, k) => ({ key: `w${k + 1}`, composer: i.proposed.composer, work: i.proposed.work, tracks: recordings.get(i.recordingId)?.spotify?.trackNames ?? [], listenFor: i.listenFor })),
+      })
+      this.stillCurrent(generation)
+      const byKey = new Map(res.works.map((w) => [w.key, w.movements]))
+      const tags = new Map(todo.map((i, k) => [i.id, i.listenFor.map((_, n) => byKey.get(`w${k + 1}`)?.[n] ?? '')]))
+      // Read again and changed as one step: only the tags are written, onto the programme as it is now.
+      const fresh = await this.repo.programmes.require(programmeId)
+      await this.repo.programmes.put({
+        ...fresh,
+        sections: fresh.sections.map((s) => ({ ...s, items: s.items.map((i) => (tags.has(i.id) && !i.listenForAt ? { ...i, listenForAt: tags.get(i.id) } : i)) })),
+      })
+      return todo.length
     })
   }
 

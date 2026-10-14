@@ -445,6 +445,34 @@ Your job now: write the listening companion for this week's confirmed recordings
 For each work (by its "key"), return "movements": exactly one note per track, in the order given in "tracks" (track names are as the album divides the work). Each note is one or two sentences — at most forty words — on something the listener can actually hear in that movement of THIS recording, or in the music itself: a theme's return, an instrument coming forward, a change of pulse, how this performance takes a famous moment. Concrete, never homework, never a timestamp (you cannot know timings). Where a track is a fragment of a movement, write about what that stretch holds. Don't repeat the work's general "listenFor" (given) word for word; go further than it. Write in the "language" given.`,
 }
 
+// ── 8b. "Listen for", tied to its movement (programmes written before it was asked) ──
+
+export const TAGS = {
+  id: 'tags',
+  version: 'tags@2026-10-14.1',
+  effort: 'low',
+  maxTokens: 3000,
+  schema: {
+    type: 'object',
+    properties: {
+      works: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: { key: str, movements: strArr },
+          required: ['key', 'movements'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['works'],
+    additionalProperties: false,
+  },
+  system: `${VOICE}
+
+Your job now is small and exact: for each work (by its "key"), say in which movement each of its "listenFor" points happens. Return "movements": one entry per listenFor point, in the same order — the movement as the work's own Roman numeral ("I", "II", "III"), or "" when the point belongs to the whole work, the work is in one movement, or you are not sure. "tracks", where given, is how the listener's recording divides the work, for reference. Change nothing else; write nothing else.`,
+}
+
 // ── 9. Reading a concert programme from a screenshot ────────────────────
 
 export const CONCERT = {
@@ -531,7 +559,7 @@ Everything you say comes from the context given — the weeks, their programmes 
 When "soFar" is true the season is still under way: write in the present tense, say plainly that it is not over, keep it shorter, and leave "again" to at most two works. Write all prose in the "language" given.`,
 }
 
-export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, concert: CONCERT, season: SEASON }
+export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, tags: TAGS, concert: CONCERT, season: SEASON }
 
 /** The version of every prompt, for the client to show in Settings and store with snapshots. */
 export function promptVersions() {

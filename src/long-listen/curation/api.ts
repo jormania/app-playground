@@ -150,6 +150,11 @@ export interface CompanionResponse {
   promptVersion: string
 }
 
+export interface TagsResponse {
+  works: { key: string; movements: string[] }[]
+  promptVersion: string
+}
+
 export interface SeasonReview {
   title: string
   opening: string

@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateConcert, validateSeason,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateTags, validateConcert, validateSeason,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -35,7 +35,7 @@ export const MODEL = MODEL_SONNET
  * hall's page, read into works Spotify can find, is a job where knowing the
  * repertoire is the point, and it comes up a few times a month (a few cents).
  */
-const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU }
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, tags: MODEL_HAIKU }
 export function modelFor(op) {
   return MODEL_FOR[op] ?? MODEL
 }
@@ -54,6 +54,7 @@ const LEADS = {
   concert: (p) => `Read this concert programme. If it shows no year, it is ${p.year}.`,
   season: (p) => `Write the season in review for ${p.season?.label ?? 'these weeks'}${p.soFar ? ' — the season is still under way' : ''}.`,
   companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
+  tags: (p) => `Say in which movement each "listen for" point happens, for ${p.works?.length ?? 0} work(s) in "${p.programme?.title}".`,
 }
 
 export function buildUserContent(op, payload) {
@@ -228,6 +229,13 @@ export async function writeCompanion(send, payload) {
   return { ...r.value, promptVersion: PROMPTS.companion.version }
 }
 
+/** "Listen for" tied to movements, for a programme written before the curator was asked to (Haiku, once). */
+export async function tagListenFor(send, payload) {
+  const works = (payload.works ?? []).map((w) => ({ key: w.key, count: (w.listenFor ?? []).length }))
+  const r = await withRetry(send, 'tags', payload, (o) => validateTags(o, { works }))
+  return { ...r.value, promptVersion: PROMPTS.tags.version }
+}
+
 /**
  * A concert programme, read from a screenshot (Sonnet, image in — a few
  * cents). One attempt: the listener checks the result in a form.
@@ -316,6 +324,7 @@ export const JOBS = {
   compare: compareInterpretations,
   resources: findResources,
   companion: writeCompanion,
+  tags: tagListenFor,
   concert: readConcert,
   season: writeSeason,
 }

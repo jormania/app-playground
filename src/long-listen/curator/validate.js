@@ -544,3 +544,15 @@ export function validateSeason(out, { met, soFar = false }) {
   if (!value.opening) problems.push('The review has no opening paragraph.')
   return { value, problems, mendable }
 }
+
+/**
+ * "Listen for" tags for works written before they were asked: one tag per
+ * point, a numeral or "", per work asked about (movementTags' rule). A work
+ * left out reads as untagged — all "" — never as a problem worth a second call.
+ * @param {any} out
+ * @param {{ works: { key: string, count: number }[] }} ctx
+ */
+export function validateTags(out, { works }) {
+  const given = new Map((Array.isArray(out?.works) ? out.works : []).map((w) => [clean(w?.key), w?.movements]))
+  return { value: { works: works.map((w) => ({ key: w.key, movements: movementTags(given.get(w.key), w.count) })) }, problems: [] }
+}
