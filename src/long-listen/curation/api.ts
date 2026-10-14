@@ -181,6 +181,37 @@ export interface ConcertResponse {
   promptVersion: string
 }
 
+export interface DefineResponse {
+  definition: string
+  promptVersion: string
+}
+
+export interface PreparedWork {
+  composer: string
+  title: string
+  catalogue?: string
+  soloists?: string[]
+  about: string
+  listenFor: string
+  recording?: { conductor?: string; orchestra?: string; soloists: { name: string; instrument?: string }[]; year?: string }
+}
+
+export interface PrepareResponse {
+  intro: string
+  inTheHall: string
+  orchestra?: string
+  conductor?: string
+  soloists: { name: string; instrument?: string }[]
+  works: PreparedWork[]
+  promptVersion: string
+}
+
+export interface PortraitResponse {
+  lifespan?: string
+  portrait: string
+  promptVersion: string
+}
+
 export interface PingResponse {
   ok: boolean
   model: string

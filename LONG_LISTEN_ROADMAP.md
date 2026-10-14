@@ -10,7 +10,7 @@ test are fixed before anything here starts, and the test may re-rank this list:
 an item that answers something that kept getting in the way goes up, one nobody
 would reach goes down. Release two is the section of that name below; release three follows it.
 
-**Status, 14 October 2026:** release two shipped (LONG_LISTEN.md §12–13); release three shipped and was stamped on 14 October (items 14, 15 and 22, struck below, plus the audits, folding and brochure polish in §14–17). The remaining release-three items are still open. Release four, chosen the same day, is below them.
+**Status, 14 October 2026:** release two shipped (LONG_LISTEN.md §12–13); release three shipped and was stamped on 14 October (items 14, 15 and 22, struck below, plus the audits, folding and brochure polish in §14–17). The remaining release-three items are still open. Release four, chosen and built the same day, is below them (`LONG_LISTEN.md` §21).
 
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every
@@ -132,15 +132,14 @@ release-three items aside: no gamification, no second listener, no counts. Each
 item goes deeper into the listening rather than wider. Proposed as six; the
 owner kept four (*Decided against* has the other two).
 
-Built in this order: the cheap ones that deepen the listening view first, then
-the one that reaches the hall, then the composer.
+**Built 14 October 2026, all four** — what each became is `LONG_LISTEN.md` §21.
 
 | # | Item | Why it matters | Effort |
 |---|------|----------------|--------|
-| 23 | **Your earlier hearing** — when a work comes back (another recording, a second hearing, after a concert), one line in the listening view: when you heard it, in which recording or hall, and what you said then | Hearing again is the heart of the app and memory makes it richer. The data is all there; it just isn't shown at that moment | S |
-| 24 | **Words on tap** — terms in the notes (passacaglia, scherzo, col legno, sonata form) carry a faint dotted underline; a tap shows a two-line definition, written once per term on the cheaper model and kept | Lets the notes go a step deeper without explaining everything or losing the listener | S–M |
-| 25 | **Before and after a concert** — a concert from *Live in Bucharest* can be marked as one you're going to. A few days ahead: a short preparation (the works, one recording to hear first, what to listen for in the hall that a recording can't give). After: the concert entry comes pre-filled from the announced programme, no screenshot needed | Concerts are the app's anchor to real life; this ties the week's listening to the evening at the Ateneu on both sides | M |
-| 26 | **A composer's page** — tap a composer's name to get a short portrait written once, the works of theirs you've met, the threads they appear in, the recordings and concerts you heard them in | The Library groups by composer but never says who they are. Prose and memory, not a tally | M |
+| ~~23~~ | ~~**Your earlier hearing** — when a work comes back (another recording, a second hearing, after a concert), one line in the listening view: when you heard it, in which recording or hall, and what you said then~~ | Hearing again is the heart of the app and memory makes it richer. The data is all there; it just isn't shown at that moment | S |
+| ~~24~~ | ~~**Words on tap** — terms in the notes (passacaglia, scherzo, col legno, sonata form) carry a faint dotted underline; a tap shows a two-line definition, written once per term on the cheaper model and kept~~ | Lets the notes go a step deeper without explaining everything or losing the listener | S–M |
+| ~~25~~ | ~~**Before and after a concert** — a concert from *Live in Bucharest* can be marked as one you're going to. A few days ahead: a short preparation (the works, one recording to hear first, what to listen for in the hall that a recording can't give). After: the concert entry comes pre-filled from the announced programme, no screenshot needed~~ | Concerts are the app's anchor to real life; this ties the week's listening to the evening at the Ateneu on both sides | M |
+| ~~26~~ | ~~**A composer's page** — tap a composer's name to get a short portrait written once, the works of theirs you've met, the threads they appear in, the recordings and concerts you heard them in~~ | The Library groups by composer but never says who they are. Prose and memory, not a tally | M |
 
 ## Decided against
 

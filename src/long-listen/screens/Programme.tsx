@@ -1,4 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { ComposerLink } from './Composer'
+import { GoingCards, GoingToggle, useGoings } from '../components/Going'
+import { Gloss } from '../components/Gloss'
 import { Headphones } from 'lucide-react'
 import type {
   Comparison, Explanation, Feedback, ListeningEvent, ListeningKind, ListeningState, Programme, ProgrammeItem, ProgrammeOption, Recording, Resource, Theme, ThemeExploration, WeekRecord, Work,
@@ -218,6 +221,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 
       <ProgrammeTools b={b} showLength={!ordered} />
       {isCurrent && <LiveLine b={b} skip={settings.hideSkipped ? skippedIds : undefined} />}
+      {isCurrent && <GoingCards />}
       {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} /> : needsSpotify && <SpotifyNote />}
       {settings.hideSkipped && skippedIds.size > 0 && (
         <p className={s.faint}>
@@ -573,7 +577,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       <header className={s.workHead} data-work-head="">
         {/* The duration where a programme prints it: at the end of the line, across from the composer. */}
         <p className={`${s.composer} ${s.workHeadLine}`}>
-          <span className={s.workHeadWho}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</span>
+          <span className={s.workHeadWho}><span className={s.itemNo}>{number}</span><ComposerLink name={item.proposed.composer} /></span>
           {duration && <span className={s.workDuration}>{duration}</span>}
         </p>
         <h3 className={s.work}>{curly(item.proposed.work)}</h3>
@@ -588,7 +592,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       </header>
 
       {/* The notes open as a booklet's essays do: their first line in small capitals. */}
-      <div className={`${s.prose} ${s.workWhy} ${s.mtSm}`}><p>{item.why}</p></div>
+      <div className={`${s.prose} ${s.workWhy} ${s.mtSm}`}><p><Gloss text={item.why} /></p></div>
       {item.revisitReason && <p className={`${s.continuity} ${s.flush} ${s.mtSm} ${s.mbSm}`}>{item.revisitReason}</p>}
 
       <RecordingBlock
@@ -618,7 +622,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       {item.listenFor.length > 0 && (
         <>
           <p className={`${s.label} ${s.flush} ${s.mtMd}`}>Listen for</p>
-          <ul className={s.listenFor}>{item.listenFor.map((l, i) => <li key={i}>{l}</li>)}</ul>
+          <ul className={s.listenFor}>{item.listenFor.map((l, i) => <li key={i}><Gloss text={l} /></li>)}</ul>
         </>
       )}
 
@@ -679,7 +683,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       {/* Asked for, read once (open the time it arrives), then folded to its heading. */}
       {explanation && (
         <Twisty label="More context" value={explanation.heading} readOnce={`context:${pid}:${item.id}`}>
-          <Paragraphs text={explanation.body} className={s.prose} />
+          <Paragraphs text={explanation.body} className={s.prose} glossed />
         </Twisty>
       )}
       {comparison && !standIn && <ComparisonView c={comparison} b={b} />}
@@ -791,13 +795,16 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
       .catch(() => {})
     return () => { live = false }
   }, [repo, b.programme, settings.timeZone])
+  // Marked as going: a preparation in the week before it, the entry pre-filled after (components/Going).
+  const goings = useGoings()
   // A skipped work's concert steps out with it.
   const kept = matches.filter((m) => !skip?.has(m.item.id))
   if (!kept.length) return null
   const line = (m: LiveMatch) => (
     <>
       {whatIsOn(m)} at {venueShort(m.event.venue)}, {liveDate(m.event.date)}
-      {m.event.link && <> · <a href={m.event.link} target="_blank" rel="noopener noreferrer">{m.event.title}</a></>}
+      {m.event.link && webUrl(m.event.link) && <> · <a href={webUrl(m.event.link)} target="_blank" rel="noopener noreferrer">{m.event.title}</a></>}
+      {' '}<GoingToggle event={m.event} goings={goings} />
     </>
   )
   const [first, ...rest] = kept

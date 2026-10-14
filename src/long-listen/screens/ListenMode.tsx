@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ComposerLink } from './Composer'
 import type { ProgrammeItem } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { listeningState } from '../domain/listening'
@@ -25,6 +26,7 @@ import { NotFound, type Repo } from '../store/repo'
 import { earlierHearing, onDay, reactionAsSaid, shortNote, type EarlierHearing } from '../domain/earlierHearing'
 import { isoDateIn } from '../domain/week'
 import { Twisty } from '../components/Twisty'
+import { Gloss } from '../components/Gloss'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -322,7 +324,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         {/* Focus: only the music, for the phone on the armrest. Remembered on this device. */}
         <button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>
       </div>
-      <p className={s.composer}>{item.proposed.composer}</p>
+      <p className={s.composer}><ComposerLink name={item.proposed.composer} /></p>
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
       {facts && <p className={s.listenFacts}>{facts}</p>}
@@ -367,7 +369,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                 {/* Where in the movement it is: a hairline and a clock, carried by the clock between readings. */}
                 {now && live && live.index === i && <MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} last={i === titled.length - 1} />}
                 {/* The companion's note, as Spotify reaches the movement — or every note, when Spotify can't say where it is. */}
-                {notes[i] && (now || !spotify.connected) && <p className={s.movementNote}>{notes[i]}</p>}
+                {notes[i] && (now || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
                 {/* Focus hides the rest of the list: one faint line says what comes next, or how long is left. */}
                 {focus && now && (
                   <ThenLine
@@ -384,7 +386,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
       {/* A work in one track: its place, under the bar. */}
       {titled.length <= 1 && live && <p className={s.mtSm}><MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} /></p>}
-      {titled.length <= 1 && notes[0] && (nowIndex === 0 || !spotify.connected) && <p className={s.movementNote}>{notes[0]}</p>}
+      {titled.length <= 1 && notes[0] && (nowIndex === 0 || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[0]} /></p>}
 
       {(() => {
         // Each point with where it belongs: the movement sounding stands out, the rest step back; in focus, only
@@ -403,7 +405,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
               {points.map(({ text, at, here, elsewhere }, i) => (
                 // Tied to a movement, its numeral takes the note's place in the margin.
                 <li key={i} className={[at !== null ? s.listenForTagged : '', here ? s.listenForNow : elsewhere ? s.listenForLater : ''].filter(Boolean).join(' ') || undefined} data-at={at !== null ? roman(at) : undefined}>
-                  {text}
+                  <Gloss text={text} />
                 </li>
               ))}
             </ul>
@@ -418,12 +420,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         {/* Answers already read fold to their questions; the newest stays open, under the field it came from. */}
         {data.answers.map((a, i) => i < data.answers.length - 1 ? (
           <Twisty key={a.id} label="Asked" value={`${a.question}${a.movement ? ` · during ${a.movement}` : ''}`}>
-            <Paragraphs text={a.body} className={s.prose} />
+            <Paragraphs text={a.body} className={s.prose} glossed />
           </Twisty>
         ) : (
           <div key={a.id} className={s.answer}>
             <p className={s.answerQ}>{a.question}{a.movement ? <span className={s.faint}> · during {a.movement}</span> : null}</p>
-            <Paragraphs text={a.body} className={s.prose} />
+            <Paragraphs text={a.body} className={s.prose} glossed />
           </div>
         ))}
         {curatorReady ? (
@@ -437,7 +439,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         {/* The same note as on the programme, read once wherever it is first read. */}
         {data.explanation ? (
           <Twisty label="More context" value={data.explanation.heading} readOnce={`context:${programme.id}:${item.id}`}>
-            <Paragraphs text={data.explanation.body} className={s.prose} />
+            <Paragraphs text={data.explanation.body} className={s.prose} glossed />
           </Twisty>
         ) : curatorReady && (
           <button className={s.textButton} onClick={() => void explain()} disabled={explaining}>{explaining ? 'The curator is writing…' : 'More context'}</button>

@@ -13,6 +13,11 @@ import { CharCount, Empty, MAX_ASK, NeedsKey, Problem, Waiting, messageOf } from
 import { Credits } from '../components/Credits'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { namedSoloists, playingKeys, removeSoloist, soloistKey, toDraft, toForm, toggleSoloist, type ConcertFormState } from '../domain/concertForm'
+import { draftFrom, goingStage, type Going } from '../domain/going'
+import { useGoings } from '../components/Going'
+import { isoDateIn } from '../domain/week'
+import { venueShort } from '../live/live'
+import { NotFound } from '../store/repo'
 import s from '../styles/editorial.module.css'
 
 /** Where a picture shared to the app waits for this screen (public/long-listen-sw.js puts it there). */
@@ -42,6 +47,7 @@ export function ConcertsScreen() {
       <div className={s.actions}>
         <a className={s.primaryButton} href={href({ name: 'concert', id: 'new' })}>Add a concert</a>
       </div>
+      <ComingUp />
       {data.length === 0 && <Empty>None yet. Share a screenshot of the hall’s programme to the app, or add one here.</Empty>}
       {[...byVenue.entries()].map(([venue, list]) => (
         <section key={venue} className={s.block}>
@@ -72,8 +78,10 @@ export function ConcertsScreen() {
 export function ConcertScreen({ id }: { id: string }) {
   const { repo } = useServices()
   const [editing, setEditing] = useState(false)
-  const { data, error, retry } = useLoad(async () => (id === 'new' ? null : repo.concerts.require(id)), [id])
+  const fromGoing = id.startsWith('from-') ? id.slice('from-'.length) : undefined
+  const { data, error, retry } = useLoad(async () => (id === 'new' || fromGoing ? null : repo.concerts.require(id)), [id])
   if (id === 'new') return <ConcertForm />
+  if (fromGoing) return <ConcertFromGoing goingKey={fromGoing} />
   if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'There’s no such concert — perhaps an old link.', link: { href: href({ name: 'concerts' }), label: 'All concerts' } }} />
   if (!data) return <Waiting>Opening the concert…</Waiting>
   if (editing) return <ConcertForm concert={data} onDone={() => setEditing(false)} />
@@ -169,6 +177,47 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
   )
 }
 
+/** Concerts marked as going, still ahead: each to its preparation. */
+function ComingUp() {
+  const { settings } = useServices()
+  const today = isoDateIn(new Date(), settings.timeZone)
+  const ahead = useGoings().filter((g) => ['later', 'ahead'].includes(goingStage(g, today)))
+  if (!ahead.length) return null
+  return (
+    <section className={s.block} aria-label="Coming up">
+      <p className={s.label}>Coming up — marked as going</p>
+      <ul className={s.bullets}>
+        {ahead.map((g) => (
+          <li key={g.key}>
+            <a className={s.quietLink} href={href({ name: 'before', key: g.key })}>{g.event.title}</a>
+            <span className={s.faint}> · {venueShort(g.event.venue)}, {concertDate(g.event.date)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/**
+ * After a concert marked as going: the entry, filled in from the hall's
+ * listing and the preparation's reading of it. Read now if it never was — the
+ * same call, kept, so going back and forth costs nothing.
+ */
+function ConcertFromGoing({ goingKey }: { goingKey: string }) {
+  const { repo, journey, curatorReady } = useServices()
+  const { data, error, retry } = useLoad(async () => {
+    const going = (await repo.marks.get(`going:${goingKey}`))?.value as Going | undefined
+    if (!going) throw new NotFound(`no concert marked ${goingKey}`)
+    if (going.concertId) return { kept: going.concertId }
+    const prep = (await journey.preparation(goingKey)) ?? (curatorReady ? await journey.prepare(goingKey).catch(() => undefined) : undefined)
+    return { draft: draftFrom(going, prep) }
+  }, [goingKey, curatorReady])
+  if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'That concert isn’t marked as one you went to.', link: { href: href({ name: 'concerts' }), label: 'All concerts' } }} />
+  if (!data) return <Waiting>Filling it in from the hall’s programme…</Waiting>
+  if (data.kept) return <ConcertScreen id={data.kept} />
+  return <ConcertForm start={data.draft} goingKey={goingKey} />
+}
+
 const EMPTY: ConcertDraft = { venue: '', date: '', soloists: [], works: [{ composer: '', title: '' }], source: 'typed' }
 
 /** A picture as the curator takes it: downscaled (a screenshot needs no more), base64. */
@@ -189,9 +238,9 @@ async function asImage(file: Blob): Promise<{ mediaType: string; data: string }>
  * the curator into the form, Romanian programmes included; everything stays
  * editable, and typing it in is always possible.
  */
-function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => void }) {
+function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; onDone?: () => void; /** A new concert's form, already filled (a concert marked as going). */ start?: ConcertDraft; goingKey?: string }) {
   const { journey, curatorReady, bump, say } = useServices()
-  const [d, setD] = useState<ConcertFormState>(() => toForm(concert ? { ...concert, works: concert.works.map(({ composer, title, catalogue, soloists }) => ({ composer, title, catalogue, soloists })) } : EMPTY))
+  const [d, setD] = useState<ConcertFormState>(() => toForm(concert ? { ...concert, works: concert.works.map(({ composer, title, catalogue, soloists }) => ({ composer, title, catalogue, soloists })) } : start ?? EMPTY))
   const [reading, setReading] = useState(false)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -218,7 +267,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
 
   // A picture shared to the app waits in the cache: read it once, then let it go.
   useEffect(() => {
-    if (concert || !curatorReady || typeof caches === 'undefined') return
+    if (concert || start || !curatorReady || typeof caches === 'undefined') return
     let live = true
     // Let go of it once it has been read — a failed read (offline, busy) keeps it for the next try — or, unread, once it is
     // more than a day old: a picture shared weeks ago isn't what the listener means to add now, and reading it costs.
@@ -237,6 +286,8 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
     setSaving(true)
     try {
       const c = await journey.saveConcert(toDraft(d), concert?.id)
+      // Kept from a concert marked as going: its card on the week has done its work.
+      if (goingKey) await journey.concertKept(goingKey, c.id)
       bump()
       journey.scheduleTasteReading(bump)
       say('Kept. Its works are in the Library, heard live.', 'success')
@@ -262,6 +313,7 @@ function ConcertForm({ concert, onDone }: { concert?: Concert; onDone?: () => vo
 
       {/* Offered with or without a key — without one, it says what it needs, like every curator request. */}
       <div className={s.panel}>
+        {start && <p className={s.quiet}>Filled in from the hall’s announced programme. Check it — programmes change on the night — then keep it.</p>}
         <p className={s.panelHead}>From a screenshot</p>
         <p className={s.quiet}>The hall’s programme page, or a photo of the printed one. The curator reads it into the form below; check it, then keep it.</p>
         <input ref={fileRef} type="file" accept="image/*" className={s.visuallyHidden} onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />

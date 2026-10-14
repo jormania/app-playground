@@ -128,3 +128,23 @@ describe('tags for a programme written before', () => {
     expect(v.problems).toEqual([])
   })
 })
+
+describe('release four validators', () => {
+  it('keeps a definition, a portrait with its years, and a preparation read like a concert', async () => {
+    const { validateDefine, validatePortrait, validatePrepare } = await import('./validate.js')
+    expect(validateDefine({ definition: ' A ground. ' })).toEqual({ value: { definition: 'A ground.' }, problems: [] })
+    expect(validateDefine({}).problems).toHaveLength(1)
+    expect(validatePortrait({ lifespan: 'unknown', portrait: 'P.' }).value).toEqual({ lifespan: undefined, portrait: 'P.' })
+    const { value, problems } = validatePrepare({
+      intro: 'Evening.', inTheHall: '', orchestra: 'ORS', conductor: '', soloists: [{ name: 'Andrei Ioniță', instrument: 'cello' }],
+      works: [
+        { composer: 'Dvořák', title: 'Cello Concerto', catalogue: 'Op. 104', soloists: ['andrei ionita', 'Nobody'], about: 'A.', listenFor: 'B.', recording: { conductor: 'Karajan', orchestra: 'BPO', soloists: [], year: '' } },
+        { composer: '', title: 'nothing', catalogue: '', soloists: [], about: '', listenFor: '', recording: { conductor: '', orchestra: '', soloists: [], year: '' } },
+      ],
+    })
+    expect(problems).toEqual([])
+    expect(value.works).toHaveLength(1)
+    expect(value.works[0]).toMatchObject({ composer: 'Dvořák', soloists: ['Andrei Ioniță'], about: 'A.', recording: { conductor: 'Karajan', orchestra: 'BPO' } })
+    expect(validatePrepare({ works: [] }).problems).toHaveLength(1)
+  })
+})

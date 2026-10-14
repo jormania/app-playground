@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { GoingCards } from '../components/Going'
 import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { directionChanges } from '../domain/directionChanges'
@@ -138,6 +139,7 @@ export function WeekScreen() {
           ? 'Each week the curator offers three directions. Choose the one you want to follow; the others stay open for another time.'
           : 'Choose the one you want to follow. The others aren’t set aside — they stay open, and may come back.'}
       </p>
+      <GoingCards />
 
       <WeekMoodLine record={view.record} prefs={view.prefs} onAsk={askWithMood} busy={busy} asking={asking}
         onMood={(m) => setView((v) => v && { ...v, record: { ...v.record, mood: m.length ? m : undefined } })} />

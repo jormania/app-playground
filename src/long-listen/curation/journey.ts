@@ -2,12 +2,15 @@ import type {
   Comparison, Concert, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
   ProgrammeOption, Reaction, Resource, Sitting, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
 } from '../domain/types'
-import { creditLine, newId, sameWork } from '../domain/identity'
+import { creditLine, fold, newId, sameWork } from '../domain/identity'
+import { termMark } from '../domain/glossary'
+import { goingKey, type Going } from '../domain/going'
+import type { LiveEvent } from '../live/live'
 import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import { NotFound, type Repo } from '../store/repo'
 import type {
-  CompanionResponse, TagsResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, TagsResponse, DefineResponse, PrepareResponse, PortraitResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
 } from './api'
 import { season as seasonOf, seasonNumberAt, type Season } from '../domain/season'
 import { seasonContext } from './season'
@@ -1054,6 +1057,113 @@ export class Journey {
         sections: fresh.sections.map((s) => ({ ...s, items: s.items.map((i) => (tags.has(i.id) && !i.listenForAt ? { ...i, listenForAt: tags.get(i.id) } : i)) })),
       })
       return todo.length
+    })
+  }
+
+  // ── release four: words on tap, before and after a concert, a composer ──
+
+  /**
+   * A term from the notes, defined in two lines (Haiku) — once per term and
+   * language, kept (`term:<lang>:<term>`) and shown wherever it recurs.
+   * `sentence` is where it was tapped, so the sense meant is chosen.
+   */
+  define(term: string, sentence: string): Promise<string> {
+    const t = term.trim().toLowerCase()
+    return this.once(`define:${t}`, async () => {
+      const { language } = await this.repo.preferences()
+      const id = termMark(t, language)
+      const kept = (await this.repo.marks.get(id))?.value as { definition?: string } | undefined
+      if (kept?.definition) return kept.definition
+      const generation = this.repo.generation
+      const res = await this.curator.call<DefineResponse>('define', { language, term: t, sentence })
+      this.stillCurrent(generation)
+      await this.repo.marks.put({ id, at: this.stamp(), value: { definition: res.definition, promptVersion: res.promptVersion } })
+      return res.definition
+    })
+  }
+
+  /** A term's definition if it was ever asked for: shown without a call. */
+  async definition(term: string): Promise<string | undefined> {
+    const { language } = await this.repo.preferences()
+    return ((await this.repo.marks.get(termMark(term, language)))?.value as { definition?: string } | undefined)?.definition
+  }
+
+  /** Mark a concert from Live in Bucharest as one the listener is going to — or take the mark back. */
+  async goingTo(event: LiveEvent, on: boolean): Promise<void> {
+    const key = goingKey(event)
+    if (!on) { await this.repo.marks.delete(`going:${key}`); return }
+    const was = await this.repo.marks.get(`going:${key}`)
+    const going: Going = { key, event, markedAt: (was?.value as Going | undefined)?.markedAt ?? this.stamp() }
+    await this.repo.marks.put({ id: `going:${key}`, at: this.stamp(), value: going })
+  }
+
+  /** Every concert marked as one the listener is going to, soonest first. */
+  async goings(): Promise<Going[]> {
+    return (await this.repo.marks.all())
+      .filter((m) => m.id.startsWith('going:'))
+      .map((m) => m.value as Going)
+      .filter((g) => g?.event?.date)
+      .sort((a, b) => a.event.date.localeCompare(b.event.date))
+  }
+
+  /** The preparation for a marked concert, if it was ever written. */
+  async preparation(key: string): Promise<PrepareResponse | undefined> {
+    return (await this.repo.marks.get(`prepare:${key}`))?.value as PrepareResponse | undefined
+  }
+
+  /**
+   * Before a concert: its programme read from the hall's listing, a few lines
+   * on each work, a recording to hear first, and what to listen for in the
+   * hall (Sonnet, once per concert, kept as `prepare:<key>`). The same reading
+   * fills the concert entry afterwards.
+   */
+  prepare(key: string): Promise<PrepareResponse> {
+    return this.once(`prepare:${key}`, async () => {
+      const kept = await this.preparation(key)
+      if (kept) return kept
+      const going = (await this.repo.marks.get(`going:${key}`))?.value as Going | undefined
+      if (!going) throw new NotFound(`no concert marked ${key}`)
+      const generation = this.repo.generation
+      const [programmes, events, profile, { language }] = await Promise.all([this.repo.programmes.all(), this.repo.events.all(), this.repo.taste(), this.repo.preferences()])
+      const heard = new Set(events.filter((e) => e.kind === 'heard').map((e) => e.workId))
+      const met = new Map<string, { composer: string; work: string }>()
+      for (const i of programmes.flatMap((p) => p.sections.flatMap((x) => x.items))) if (heard.has(i.workId)) met.set(i.workId, { composer: i.proposed.composer, work: i.proposed.work })
+      const { venue, title, date, time, hall, description } = going.event
+      const res = await this.curator.call<PrepareResponse>('prepare', {
+        language,
+        event: { venue, title, date, time, hall, description },
+        heardBefore: [...met.values()].slice(-40),
+        taste: profile.observations.filter((o) => !o.supersededBy).map((o) => o.statement).slice(0, 12),
+      })
+      this.stillCurrent(generation)
+      await this.repo.marks.put({ id: `prepare:${key}`, at: this.stamp(), value: res })
+      return res
+    })
+  }
+
+  /** The concert kept from a marked one: the mark has done its work, and its card goes. */
+  async concertKept(key: string, concertId: string): Promise<void> {
+    const m = await this.repo.marks.get(`going:${key}`)
+    if (m) await this.repo.marks.put({ ...m, value: { ...(m.value as Going), concertId } })
+  }
+
+  /** A composer's portrait, if it was ever written. */
+  async portraitOf(composer: string): Promise<PortraitResponse | undefined> {
+    const { language } = await this.repo.preferences()
+    return (await this.repo.marks.get(`portrait:${language}:${fold(composer)}`))?.value as PortraitResponse | undefined
+  }
+
+  /** A composer's portrait for their page (Haiku), written once per composer and language and kept. */
+  portrait(composer: string, met: string[]): Promise<PortraitResponse> {
+    return this.once(`portrait:${fold(composer)}`, async () => {
+      const kept = await this.portraitOf(composer)
+      if (kept) return kept
+      const { language } = await this.repo.preferences()
+      const generation = this.repo.generation
+      const res = await this.curator.call<PortraitResponse>('portrait', { language, composer, met: met.slice(0, 20) })
+      this.stillCurrent(generation)
+      await this.repo.marks.put({ id: `portrait:${language}:${fold(composer)}`, at: this.stamp(), value: res })
+      return res
     })
   }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Gloss } from './Gloss'
 import { CuratorUnavailable } from '../curation/api'
 import { useServices } from '../app/services'
 import { SpotifyUnavailable } from '../spotify/client'
@@ -94,9 +95,9 @@ export function dateWords(at: string | number | Date, timeZone: string, time = f
 }
 
 /** Paragraphs from the curator's text: blank-line separated. */
-export function Paragraphs({ text, className }: { text: string; className?: string }) {
+export function Paragraphs({ text, className, glossed = false }: { text: string; className?: string; /** Terms tappable for a definition (components/Gloss). */ glossed?: boolean }) {
   const paras = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
-  return <div className={className}>{paras.map((p, i) => <p key={i}>{p}</p>)}</div>
+  return <div className={className}>{paras.map((p, i) => <p key={i}>{glossed ? <Gloss text={p} /> : p}</p>)}</div>
 }
 
 /**

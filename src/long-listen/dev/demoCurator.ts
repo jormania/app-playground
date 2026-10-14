@@ -1,5 +1,5 @@
 import type {
-  CompanionResponse, TagsResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, TagsResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse, DefineResponse, PortraitResponse, PrepareResponse,
 } from '../curation/api'
 import { CuratorUnavailable } from '../curation/api'
 
@@ -173,6 +173,26 @@ export function demoCurator(): CuratorClient {
             closing: 'Demo: a season of listening for the surface, and finding it went all the way down.',
             promptVersion: 'demo',
           } satisfies SeasonResponse as T
+        case 'define':
+          return { definition: `Demo: ${payload?.term ?? 'this term'} — a short, plain definition, and how to hear it in the music.`, promptVersion: 'demo' } satisfies DefineResponse as T
+        case 'portrait':
+          return {
+            lifespan: '1862–1918',
+            portrait: `Demo: a short portrait of ${payload?.composer ?? 'the composer'} — who they were and where they stood in their time.\n\nDemo: what their orchestral music sounds like, and what to listen for in it.`,
+            promptVersion: 'demo',
+          } satisfies PortraitResponse as T
+        case 'prepare':
+          return {
+            intro: 'Demo: three works that each treat the orchestra as a colour box. Hear the Brahms first; leave the Sibelius fresh for the hall.',
+            inTheHall: 'Demo: the Ateneu’s dome rounds the brass — sit far enough back to hear it blend.',
+            orchestra: 'Orchestra Filarmonicii George Enescu', conductor: 'Gabriel Bebeșelea',
+            soloists: [{ name: 'Andrei Ioniță', instrument: 'cello' }],
+            works: [
+              { composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102', soloists: ['Andrei Ioniță'], about: 'Demo: Brahms’s last orchestral work, a peace offering to Joachim.', listenFor: 'Demo: how the two soloists sit side by side on the stage.', recording: { conductor: 'Claudio Abbado', orchestra: 'Berliner Philharmoniker', soloists: [{ name: 'Gil Shaham', instrument: 'violin' }, { name: 'Jian Wang', instrument: 'cello' }], year: '1993' } },
+              { composer: 'Jean Sibelius', title: 'Symphony No. 2', catalogue: 'Op. 43', soloists: [], about: 'Demo: the symphony Finland heard as its own.', listenFor: 'Demo: the finale’s long build, felt in the floor.', recording: { conductor: 'Paavo Berglund', orchestra: 'Chamber Orchestra of Europe', soloists: [], year: '1997' } },
+            ],
+            promptVersion: 'demo',
+          } satisfies PrepareResponse as T
         default:
           throw new CuratorUnavailable('failed', 'The demo curator doesn’t know that request.')
       }

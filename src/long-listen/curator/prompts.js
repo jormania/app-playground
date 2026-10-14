@@ -559,7 +559,90 @@ Everything you say comes from the context given — the weeks, their programmes 
 When "soFar" is true the season is still under way: write in the present tense, say plainly that it is not over, keep it shorter, and leave "again" to at most two works. Write all prose in the "language" given.`,
 }
 
-export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, tags: TAGS, concert: CONCERT, season: SEASON }
+// ── 11. Words on tap: a term in the notes, defined once ──────────────────
+
+export const DEFINE = {
+  id: 'define',
+  version: 'define@2026-10-14.1',
+  effort: 'low',
+  maxTokens: 1500,
+  schema: {
+    type: 'object',
+    properties: { definition: str },
+    required: ['definition'],
+    additionalProperties: false,
+  },
+  system: `${VOICE}
+
+Your job now is small: the listener tapped a musical term in one of your notes. Define it in at most two sentences and forty words — what it is, and what it sounds like or how to hear it, plainly, for an intelligent listener who doesn't read music. "sentence" is where the term appeared, so you can choose the sense meant there, but the definition must stand for the term in general: it is kept and shown wherever the term appears again. No examples that need a score, no etymology unless it helps hearing. Write in the "language" given.`,
+}
+
+// ── 12. Before a concert: a short preparation, and the evening's programme ─
+
+export const PREPARE = {
+  id: 'prepare',
+  version: 'prepare@2026-10-14.1',
+  effort: 'medium',
+  maxTokens: 8000,
+  schema: {
+    type: 'object',
+    properties: {
+      intro: str,
+      inTheHall: str,
+      orchestra: str,
+      conductor: str,
+      soloists,
+      works: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            composer: str, title: str, catalogue: str, soloists: strArr,
+            about: str, listenFor: str,
+            recording: { type: 'object', properties: { conductor: str, orchestra: str, soloists, year: str }, required: ['conductor', 'orchestra', 'soloists', 'year'], additionalProperties: false },
+          },
+          required: ['composer', 'title', 'catalogue', 'soloists', 'about', 'listenFor', 'recording'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['intro', 'inTheHall', 'orchestra', 'conductor', 'soloists', 'works'],
+    additionalProperties: false,
+  },
+  system: `${VOICE}
+
+Your job now: the listener is going to a concert in Bucharest (the hall's listing is in "event" — often in Romanian) and wants to arrive ready for it. First read the evening's programme from the listing, the way you would read a hall's programme page: orchestra, conductor and soloists as printed (diacritics kept, each soloist's instrument in English where certain, else ""); the works in the order announced, each with its composer's full standard name, its usual English title as recordings name it, catalogue ("Op. 102" or ""), and "soloists": the names, exactly as in "soloists", of those with a solo part in that work ([] for a symphony or an overture). Only what the listing shows or what follows from it with certainty; when it names no works, return "works": [] and say so plainly in "intro".
+
+Then, for each work:
+- about: two or three sentences that place it — what it is, where it stands in its composer's life, what makes it worth hearing live.
+- listenFor: one sentence on something to listen for in the hall that a recording can't give: the sound in the room, where it sits on the stage, a passage that depends on seeing the players, a silence.
+- recording: ONE real, well-documented recording to hear beforehand (conductor, orchestra, soloists, year — "" for what you don't know), widely available on Spotify. Prefer a recording that prepares for these performers' approach; never invent one.
+
+- intro: one short paragraph on the evening as a whole — why these works together, and how to spend the days before it (which work to hear first, which to leave fresh).
+- inTheHall: one or two sentences for the evening itself, about the hall and listening live.
+
+"heardBefore" lists works the listener has already met, and "taste" what the curator knows of them: connect to those where it helps, never as homework. Write the prose in the "language" given; keep names as printed.`,
+}
+
+// ── 13. A composer's page: a short portrait, written once ────────────────
+
+export const PORTRAIT = {
+  id: 'portrait',
+  version: 'portrait@2026-10-14.1',
+  effort: 'low',
+  maxTokens: 3000,
+  schema: {
+    type: 'object',
+    properties: { lifespan: str, portrait: str },
+    required: ['lifespan', 'portrait'],
+    additionalProperties: false,
+  },
+  system: `${VOICE}
+
+Your job now: a short portrait of one composer, for their page in the listener's library. "lifespan": the years as "1865–1957" (or "b. 1953" for the living), "" if unsure. "portrait": two short paragraphs, at most 170 words together, separated by a blank line — who they were and where they stood in their time; then what their orchestral music sounds like, what to listen for in it, what makes it theirs. A portrait, not a biography: one telling detail beats a list of posts held. "met" lists the works of theirs the listener has heard here — refer to one or two where it helps; never list them all. Facts must be ones you are sure of. Write in the "language" given.`,
+}
+
+export const PROMPTS = { themes: THEMES, programme: PROGRAMME, taste: TASTE, continuity: CONTINUITY, explain: EXPLAIN, compare: COMPARE, resources: RESOURCES, companion: COMPANION, tags: TAGS, concert: CONCERT, season: SEASON, define: DEFINE, prepare: PREPARE, portrait: PORTRAIT }
 
 /** The version of every prompt, for the client to show in Settings and store with snapshots. */
 export function promptVersions() {

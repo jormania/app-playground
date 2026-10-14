@@ -3427,3 +3427,104 @@ summary.textButton::-webkit-details-marker {
   font-style: italic;
   color: var(--color-faint);
 }
+
+/* Words on tap: a term in the notes, under a faint dotted line; a tap opens two lines just under the passage. */
+.term {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.termOn {
+  text-decoration-color: var(--color-accent);
+}
+
+.term:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.termNote {
+  display: block;
+  margin: var(--space-2xs) 0 var(--space-xs);
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-style: normal;
+  color: var(--color-muted);
+}
+
+.termWord {
+  font-weight: 600;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  color: var(--color-ink);
+}
+
+/* Before and after a concert: "I'm going" beside a Live in Bucharest line, and the week's card for it. */
+.goingChip {
+  font-size: var(--text-xs);
+  min-height: 28px;
+  padding: 0 var(--space-xs);
+  vertical-align: baseline;
+}
+
+.goingCards {
+  display: grid;
+  gap: var(--space-sm);
+  margin: var(--space-md) 0;
+}
+
+.goingCard {
+  padding: var(--space-sm) var(--space-md);
+  border-left: 2px solid var(--color-accent);
+  background: var(--color-surface);
+}
+
+.goingHead {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.goingTitle {
+  margin: var(--space-3xs) 0 var(--space-2xs);
+  font-style: italic;
+}
+
+/* Before a concert: the evening's works, each set like a programme entry. */
+.beforeWorks {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-lg) 0 0;
+}
+
+.beforeWork {
+  padding: var(--space-md) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+/* A composer's name, wherever it heads a work: a link to their page that keeps the line's own look. */
+.composerLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .composerLink:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+}
