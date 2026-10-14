@@ -218,7 +218,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const performers = creditRows(credit).map(([, name]) => name).join(' · ')
   // What to listen for, tied to the movement sounding where the curator said which (programmes from 14 October 2026).
   const forAt = listenForAt(item.listenForAt, item.listenFor.length, titled.length)
-  const tied = forAt.some((x) => x !== null)
 
   async function ask() {
     const q = question.trim()
@@ -333,7 +332,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
       {item.listenFor.length > 0 && (
         <>
-          <p className={`${s.label} ${s.mtXl}`}>Listen for{tied && nowIndex !== null ? <span className={s.faint}> · in this movement first</span> : null}</p>
+          <p className={`${s.label} ${s.mtXl}`}>Listen for</p>
           <ul className={`${s.listenFor} ${s.listenForLarge}`}>
             {item.listenFor.map((l, i) => {
               const at = forAt[i]

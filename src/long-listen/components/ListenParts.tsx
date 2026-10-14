@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import type { NowPlaying } from '../spotify/client'
 import { playbackOf } from '../spotify/client'
@@ -75,8 +75,17 @@ export function MiniPlayer({ playback, movement, index, count, progress }: {
   progress: { progressMs: number; durationMs: number; playing: boolean } | null
 }) {
   const playing = Boolean(playback.at?.playing)
+  // While pinned, messages rise above it rather than cover its controls (the design system's --toast-offset).
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const root = document.documentElement
+    const lift = () => root.style.setProperty('--toast-offset', `${ref.current?.offsetHeight ?? 0}px`)
+    lift()
+    window.addEventListener('resize', lift)
+    return () => { window.removeEventListener('resize', lift); root.style.removeProperty('--toast-offset') }
+  }, [])
   return (
-    <div className={s.miniPlayer} role="region" aria-label="Now playing">
+    <div ref={ref} className={s.miniPlayer} role="region" aria-label="Now playing">
       <div className={s.miniInner}>
         <div className={s.miniText}>
           <span className={s.miniTitle}>
