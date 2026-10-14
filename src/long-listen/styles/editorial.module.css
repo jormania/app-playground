@@ -1107,18 +1107,6 @@
   gap: var(--space-2xs) var(--space-md);
 }
 
-/* The way on that this screen offers first: the work's own quiet screen. */
-.goFurtherMain {
-  position: relative;
-  font-size: var(--text-base);
-}
-
-.goFurtherMain::after {
-  content: '';
-  position: absolute;
-  inset: -8px -6px;
-}
-
 /* The four states on one line, drawn like the design system's small
    SegmentedControl that Settings uses — a tinted track, the current one
    raised. Unlike Settings, the chosen state is not simply filled with the
@@ -3159,4 +3147,53 @@ summary.textButton::-webkit-details-marker {
   display: flex;
   align-items: baseline;
   gap: var(--space-2xs);
+}
+
+/* The way into the listening view: Play's shape and height, outlined so Play stays the
+   first thing, with an arrow because it goes to another screen. Under the Play row. */
+.listenAlongRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-sm);
+  margin: var(--space-sm) 0 var(--space-md);
+}
+
+.listenAlong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: 40px;
+  padding: var(--space-3xs) var(--space-md) var(--space-3xs) var(--space-sm);
+  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  color: var(--color-accent);
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: background var(--duration) var(--ease);
+}
+
+.listenAlong span {
+  margin-left: var(--space-3xs);
+}
+
+@media (hover: hover) {
+  .listenAlong:hover {
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    color: var(--color-accent);
+  }
+}
+
+.listenAlongNote {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-faint);
+}
+
+@media print {
+  .listenAlongRow { display: none; }
 }

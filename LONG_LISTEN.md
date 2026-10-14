@@ -483,8 +483,10 @@ from what it holds:
   into the left margin as a fixed contents rail. Each line gives the work's
   date and, once a recording is confirmed, its length; the heading gives the
   total. Each work ends on one quiet line — *Your listening* folded to its
-  state word (only "Heard" in the accent), then "Listen with this open →",
-  "More context", "Another perspective" as links — and the music closes on
+  state word (only "Heard" in the accent), then "More context" and "Another
+  perspective" as links. The way into the listening view, *Listen along →*,
+  sits under the Play row as its own outlined pill, Play's shape and height
+  (14 October: it is where most listening happens, so not one link among three) — and the music closes on
   "That's the week: N works, about X." One hairline between works; inside a
   work, space. Without Spotify, "Connect Spotify…" is said once, under the
   running order.

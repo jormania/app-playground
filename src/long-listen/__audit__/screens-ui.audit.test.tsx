@@ -97,7 +97,7 @@ describe('marking what was heard', () => {
     await userEvent.click(screen.getAllByRole('radio', { name: 'Heard' })[0])
     await waitFor(() => expect(region.querySelector('summary')?.textContent).toBe('Your listeningHeard'))
     expect(region.querySelector('details')?.open).toBe(true)
-    expect(screen.getAllByRole('link', { name: 'Listen with this open' }).length).toBe(p.sections.flatMap((x) => x.items).length)
+    expect(screen.getAllByRole('link', { name: 'Listen along' }).length).toBe(p.sections.flatMap((x) => x.items).length)
   }, 15000)
 
   it('without Spotify, says once for the page that recordings can’t be confirmed — not under every work', async () => {

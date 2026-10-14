@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { Headphones } from 'lucide-react'
 import type {
   Comparison, Explanation, Feedback, ListeningEvent, ListeningKind, ListeningState, Programme, ProgrammeItem, ProgrammeOption, Recording, Resource, Theme, ThemeExploration, WeekRecord, Work,
 } from '../domain/types'
@@ -599,6 +600,14 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       />
       {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
       {standIn && <StandInView c={standIn} b={b} />}
+      {/* The way most listening happens: the work on a screen of its own, while it plays — set like
+          Play (the same shape and height), outlined so Play stays first, and plainly a way to another screen. */}
+      <div className={s.listenAlongRow}>
+        <a className={s.listenAlong} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>
+          <Headphones size={16} strokeWidth={1.8} aria-hidden="true" />Listen along<span aria-hidden="true">→</span>
+        </a>
+        <span className={s.listenAlongNote}>opens the listening view: movements, notes, questions</span>
+      </div>
       {/* Read once: open the first time, then one line that still says who and why. */}
       {item.whyThisRecording && (
         <Twisty label="Why this recording" value={item.whyThisRecording} preview readOnce={`why-recording:${pid}:${item.id}`}>
@@ -651,8 +660,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
           </Twisty>
         </section>
 
+        {((!explanation && curatorReady) || (!comparison && b.pairs && curatorReady)) && (
         <nav className={s.goFurther} aria-label={`Go further with ${item.proposed.work}`}>
-          <a className={s.goFurtherMain} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>Listen with this open<span aria-hidden="true"> →</span></a>
           {!explanation && curatorReady && (
             <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void explain()} disabled={explaining}>
               {explaining ? 'The curator is writing…' : 'More context'}
@@ -664,6 +673,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
             </button>
           )}
         </nav>
+        )}
       </div>
 
       {/* Asked for, read once (open the time it arrives), then folded to its heading. */}
