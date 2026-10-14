@@ -3528,3 +3528,10 @@ summary.textButton::-webkit-details-marker {
     text-underline-offset: 0.2em;
   }
 }
+
+/* A text button set inside a running line ("start from the beginning"): the line's own size. */
+.inlineButton {
+  font-size: inherit;
+  padding: 0;
+  min-height: 0;
+}

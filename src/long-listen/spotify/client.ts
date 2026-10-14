@@ -261,9 +261,10 @@ export class SpotifyClient {
    * start a symphony at a random movement, and one left on repeat would begin
    * the work again after its last movement — so both are turned off first.
    * Those are the only settings of theirs this changes, and only when they
-   * press Play. `from` starts at a later movement, for a tap on the movement list.
+   * press Play. `from` starts at a later movement, for a tap on the movement list;
+   * `positionMs` a place inside it, to resume where a listening was left.
    */
-  async play(trackUris: string[], from = 0): Promise<void> {
+  async play(trackUris: string[], from = 0, positionMs = 0): Promise<void> {
     await Promise.all([
       this.request('me/player/shuffle?state=false', { method: 'PUT' }).catch(() => undefined),
       this.request('me/player/repeat?state=off', { method: 'PUT' }).catch(() => undefined),
@@ -271,7 +272,7 @@ export class SpotifyClient {
     const res = await this.request('me/player/play', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ uris: trackUris, offset: { position: from }, position_ms: 0 }),
+      body: JSON.stringify({ uris: trackUris, offset: { position: from }, position_ms: Math.max(0, Math.round(positionMs)) }),
     })
     if (res.status === 404) throw new SpotifyUnavailable('no-device', 'Open Spotify on a device first, then try again.')
     if (res.status === 403 && await premiumRequired(res)) throw new SpotifyUnavailable('premium', PREMIUM)

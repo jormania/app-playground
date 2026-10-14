@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { readJson, writeJson } from '../../shared/storage'
 import { useServices } from './services'
 import { SpotifyUnavailable, playbackOf, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
@@ -96,6 +97,43 @@ export function usePlayerState(): PlayerState {
   return state
 }
 
+/**
+ * Where a listening was left, kept on this device per work (by its first track):
+ * Spotify forgets it once its app is closed, or after hours of something else,
+ * and then the work could only be started again from the top. Written from
+ * every reading of the work in a place worth resuming (positionOf); cleared
+ * when the work comes to rest at its end. A month old, it is let go.
+ */
+export interface Place { index: number; progressMs: number; at: number }
+const PLACE_KEY = (firstTrackId: string) => `long-listen:place:${firstTrackId}`
+const PLACE_KEEP_MS = 30 * 86_400_000
+
+export function savedPlace(trackIds: string[] | undefined, now = Date.now()): Place | null {
+  if (!trackIds?.length) return null
+  const p = readJson<Place | null>(PLACE_KEY(trackIds[0]), null)
+  if (!p || typeof p.index !== 'number' || p.index < 0 || p.index >= trackIds.length || now - p.at > PLACE_KEEP_MS) return null
+  // The very start is no place to resume from.
+  return p.index === 0 && p.progressMs < 5000 ? null : p
+}
+
+/** Keep (or, with null, let go) where this work was left. */
+export function keepPlace(trackIds: string[], place: Place | null): void {
+  writeJson(PLACE_KEY(trackIds[0]), place)
+}
+
+/**
+ * From one reading: the place to keep for this work, null to let it go (the
+ * work came to rest at its end), or undefined when the reading says nothing
+ * about it (something else is on).
+ */
+export function placeFrom(np: NowPlaying | null, trackIds: string[], now: number): Place | null | undefined {
+  const seen = playbackOf(np, trackIds)
+  if (!seen || !np) return undefined
+  const at = positionOf(np, trackIds)
+  if (!at) return seen.index === trackIds.length - 1 ? null : undefined
+  return { index: seen.index, progressMs: np.progressMs, at: now }
+}
+
 export interface Playback {
   /** Where this recording stands on Spotify, or null when something else (or nothing) is on. */
   at: { index: number; playing: boolean } | null
@@ -104,8 +142,10 @@ export interface Playback {
   cantFollow: boolean
   noDevice: boolean
   busy: boolean
-  /** Start this recording from a movement (the first, unless told). */
-  play: (from?: number) => Promise<boolean>
+  /** Start this recording from a movement (the first, unless told), at a place inside it if given. */
+  play: (from?: number, positionMs?: number) => Promise<boolean>
+  /** Where it was left, when Spotify no longer holds it: resumable from there. */
+  left: Place | null
   /** Opened in Spotify from the app: watch it, so it stops at its last movement. */
   arm: () => void
   pause: () => Promise<void>
@@ -127,6 +167,21 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
   // A finished work is at rest, not paused (positionOf): Play starts it again from the top.
   const at = spotify.connected && trackIds?.length ? positionOf(state.np, trackIds) : null
 
+  // Where it was left, kept from every reading of it, so Resume outlives Spotify forgetting it.
+  const idsKey = trackIds?.join() ?? ''
+  const [left, setLeft] = useState(() => savedPlace(trackIds))
+  useEffect(() => {
+    if (!trackIds?.length) return
+    setLeft(savedPlace(trackIds))
+    return onPlayerReading((np) => {
+      const place = placeFrom(np, trackIds, Date.now())
+      if (place === undefined) return
+      keepPlace(trackIds, place)
+      setLeft(place && savedPlace(trackIds))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey])
+
   async function run(command: () => Promise<void>, expect: Parameters<PlayerWatch['expect']>[0]): Promise<boolean> {
     setNoDevice(false)
     setBusy(true)
@@ -147,12 +202,14 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
     at,
     device: at ? state.np?.deviceName : undefined,
     cantFollow: state.cantFollow && spotify.connected,
-    noDevice,
+    // A device found since (this work is on now) answers the "no device" said earlier.
+    noDevice: noDevice && !at,
     busy,
+    left: at ? null : left,
     arm: () => armWork(trackIds),
-    play: (from = 0) => run(
-      async () => { await spotify.play(trackUris ?? [], from); armWork(trackIds) },
-      (np) => ({ trackId: trackIds?.[from] ?? '', trackName: '', isPlaying: true, progressMs: 0, durationMs: 0, deviceName: np?.deviceName }),
+    play: (from = 0, positionMs = 0) => run(
+      async () => { await spotify.play(trackUris ?? [], from, positionMs); armWork(trackIds) },
+      (np) => ({ trackId: trackIds?.[from] ?? '', trackName: '', isPlaying: true, progressMs: positionMs, durationMs: 0, deviceName: np?.deviceName }),
     ),
     pause: async () => { await run(() => spotify.pause(), (np) => np && { ...np, isPlaying: false }) },
     resume: async () => { await run(() => spotify.resume(), (np) => np && { ...np, isPlaying: true }) },
