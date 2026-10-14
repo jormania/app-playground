@@ -556,3 +556,32 @@ export function validateTags(out, { works }) {
   const given = new Map((Array.isArray(out?.works) ? out.works : []).map((w) => [clean(w?.key), w?.movements]))
   return { value: { works: works.map((w) => ({ key: w.key, movements: movementTags(given.get(w.key), w.count) })) }, problems: [] }
 }
+
+/** A term defined: one or two sentences, nothing else. */
+export function validateDefine(out) {
+  const value = { definition: clean(out?.definition) }
+  return { value, problems: value.definition ? [] : ['The definition is empty.'] }
+}
+
+/**
+ * Before a concert: the evening's programme, read as a concert is read
+ * (validateConcert's rules), with the preparation's prose on each work.
+ */
+export function validatePrepare(out) {
+  const { value: concert } = validateConcert({ ...out, venue: 'x', date: '2000-01-01', time: '' })
+  const raw = (Array.isArray(out?.works) ? out.works : []).filter((w) => clean(w?.composer) && clean(w?.title))
+  const works = concert.works.map((w, i) => {
+    const r = raw[i]?.recording
+    const recording = { conductor: opt(r?.conductor), orchestra: opt(r?.orchestra), soloists: cleanSoloists(r?.soloists), year: opt(r?.year) }
+    return { ...w, about: clean(raw[i]?.about), listenFor: clean(raw[i]?.listenFor), ...(hasPerformers({ ...recording, ensemble: undefined }) ? { recording } : {}) }
+  })
+  const value = { intro: clean(out?.intro), inTheHall: clean(out?.inTheHall), orchestra: concert.orchestra, conductor: concert.conductor, soloists: concert.soloists, works }
+  return { value, problems: value.intro ? [] : ['The preparation has no introduction.'] }
+}
+
+/** A composer's portrait: prose, and the years when known. */
+export function validatePortrait(out) {
+  const lifespan = clean(out?.lifespan)
+  const value = { lifespan: /\d{4}/.test(lifespan) ? lifespan : undefined, portrait: clean(out?.portrait) }
+  return { value, problems: value.portrait ? [] : ['The portrait is empty.'] }
+}

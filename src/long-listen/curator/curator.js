@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateTags, validateConcert, validateSeason,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateTags, validateConcert, validateSeason, validateDefine, validatePrepare, validatePortrait,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -34,8 +34,11 @@ export const MODEL = MODEL_SONNET
  * Reading a concert programme stays on Sonnet: a screenshot of a Romanian
  * hall's page, read into works Spotify can find, is a job where knowing the
  * repertoire is the point, and it comes up a few times a month (a few cents).
+ * So does preparing for a concert (the same reading, and a recording to hear
+ * first chosen from the repertoire). A term in the notes and a composer's
+ * portrait are written once each and kept: Haiku.
  */
-const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, tags: MODEL_HAIKU }
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, tags: MODEL_HAIKU, define: MODEL_HAIKU, portrait: MODEL_HAIKU }
 export function modelFor(op) {
   return MODEL_FOR[op] ?? MODEL
 }
@@ -55,6 +58,9 @@ const LEADS = {
   season: (p) => `Write the season in review for ${p.season?.label ?? 'these weeks'}${p.soFar ? ' — the season is still under way' : ''}.`,
   companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
   tags: (p) => `Say in which movement each "listen for" point happens, for ${p.works?.length ?? 0} work(s) in "${p.programme?.title}".`,
+  define: (p) => `Define "${p.term}".`,
+  prepare: (p) => `Prepare the listener for this concert on ${p.event?.date} at ${p.event?.venue}: "${p.event?.title}".`,
+  portrait: (p) => `Write the portrait of ${p.composer}.`,
 }
 
 export function buildUserContent(op, payload) {
@@ -314,6 +320,27 @@ export async function writeSeason(send, payload) {
   return { ...r.value, promptVersion: PROMPTS.season.version }
 }
 
+/** A term from the notes, defined once (Haiku). */
+export async function defineTerm(send, payload) {
+  const r = await withRetry(send, 'define', payload, validateDefine)
+  if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator had nothing to add this time.')
+  return { ...r.value, promptVersion: PROMPTS.define.version }
+}
+
+/** Before a concert: its programme read from the hall's listing, and a short preparation (Sonnet, once per concert). */
+export async function prepareConcert(send, payload) {
+  const r = await withRetry(send, 'prepare', payload, validatePrepare)
+  if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator could not prepare this concert just now. Try again.')
+  return { ...r.value, promptVersion: PROMPTS.prepare.version }
+}
+
+/** A composer's portrait, written once (Haiku). */
+export async function writePortrait(send, payload) {
+  const r = await withRetry(send, 'portrait', payload, validatePortrait)
+  if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator had nothing to add this time.')
+  return { ...r.value, promptVersion: PROMPTS.portrait.version }
+}
+
 export const JOBS = {
   ping,
   themes: generateThemes,
@@ -327,6 +354,9 @@ export const JOBS = {
   tags: tagListenFor,
   concert: readConcert,
   season: writeSeason,
+  define: defineTerm,
+  prepare: prepareConcert,
+  portrait: writePortrait,
 }
 
 /**

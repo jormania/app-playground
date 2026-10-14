@@ -15,6 +15,8 @@ import { ThreadsScreen } from './screens/Threads'
 import { NotebookScreen } from './screens/Notebook'
 import { SettingsScreen } from './screens/Settings'
 import { ConcertScreen, ConcertsScreen } from './screens/Concerts'
+import { BeforeScreen } from './screens/Before'
+import { ComposerScreen } from './screens/Composer'
 import { SeasonScreen } from './screens/Season'
 import type { Repo } from './store/repo'
 import type { CuratorClient } from './curation/api'
@@ -33,7 +35,7 @@ function Shell() {
   const route = useRoute()
   const online = useOnline()
   const { week, settings } = useServices()
-  const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name === 'concerts' || route.name === 'concert' || route.name === 'season' ? 'journal' : route.name
+  const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name === 'concerts' || route.name === 'concert' || route.name === 'season' ? 'journal' : route.name === 'before' ? 'week' : route.name === 'composer' ? 'library' : route.name
   const navRef = useRef<HTMLElement>(null)
   const newer = useNewVersion()
   // The nav slides rather than wraps; keep the current section's tab in view.
@@ -77,7 +79,7 @@ function Shell() {
         {settings.demo && <p className={s.demo}>Demo curator — canned programmes, for development only</p>}
       </header>
       {route.name !== 'listen' && route.name !== 'settings' && <LandedPrompt />}
-      <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name === 'concert' ? route.id : route.name === 'season' ? `season-${route.n}` : route.name}>
+      <main className={s.main} key={route.name === 'programme' ? route.id : route.name === 'listen' ? route.itemId : route.name === 'concert' ? route.id : route.name === 'season' ? `season-${route.n}` : route.name === 'before' ? `before-${route.key}` : route.name === 'composer' ? `composer-${route.composer}` : route.name}>
         {route.name === 'week' && <WeekScreen />}
         {route.name === 'programme' && <ProgrammeScreen id={route.id} />}
         {route.name === 'listen' && <ListenModeScreen programmeId={route.programmeId} itemId={route.itemId} />}
@@ -89,6 +91,8 @@ function Shell() {
         {route.name === 'concerts' && <ConcertsScreen />}
         {route.name === 'concert' && <ConcertScreen id={route.id} />}
         {route.name === 'season' && <SeasonScreen n={route.n} />}
+        {route.name === 'before' && <BeforeScreen goingKey={route.key} />}
+        {route.name === 'composer' && <ComposerScreen composer={route.composer} />}
       </main>
     </div>
   )

@@ -1,0 +1,58 @@
+import { Landmark } from 'lucide-react'
+import { useLoad, useServices } from '../app/services'
+import { href } from '../app/router'
+import { isoDateIn } from '../domain/week'
+import { goingKey, goingStage, whenWords, type Going } from '../domain/going'
+import { venueShort, type LiveEvent } from '../live/live'
+import { messageOf } from './common'
+import s from '../styles/editorial.module.css'
+
+/** The concerts marked as going, reloaded with everything else. */
+export function useGoings(): Going[] {
+  const { journey } = useServices()
+  return useLoad(() => journey.goings(), []).data ?? []
+}
+
+/** "I’m going": marks a concert from Live in Bucharest — the preparation and the pre-filled entry follow from it. */
+export function GoingToggle({ event, goings }: { event: LiveEvent; goings: Going[] }) {
+  const { journey, bump, say } = useServices()
+  const on = goings.some((g) => g.key === goingKey(event))
+  const toggle = () => journey.goingTo(event, !on).then(bump, (e: unknown) => say(messageOf(e), 'danger'))
+  return (
+    <button type="button" className={`${s.chip} ${s.goingChip} ${on ? s.chipOn : ''}`} aria-pressed={on} onClick={() => void toggle()}>
+      {on ? 'Going' : 'I’m going'}
+    </button>
+  )
+}
+
+/**
+ * Before and after a concert, on this week's page: in the week before one
+ * marked as going, a card to its preparation; once it has passed, a card to
+ * add it to the concerts, already filled in. Nothing for a concert further off.
+ */
+export function GoingCards() {
+  const { settings } = useServices()
+  const goings = useGoings()
+  const today = isoDateIn(new Date(), settings.timeZone)
+  const shown = goings.filter((g) => ['ahead', 'after'].includes(goingStage(g, today)))
+  if (!shown.length) return null
+  return (
+    <div className={s.goingCards}>
+      {shown.map((g) => {
+        const after = goingStage(g, today) === 'after'
+        return (
+          <div key={g.key} className={s.goingCard}>
+            <p className={s.goingHead}>
+              <Landmark size={14} strokeWidth={1.7} aria-hidden="true" className={s.hallMark} />{' '}
+              {after ? 'After the concert' : `Before the concert ${whenWords(g.event.date, today)}`} · {venueShort(g.event.venue)}
+            </p>
+            <p className={s.goingTitle}>{g.event.title}</p>
+            {after
+              ? <a className={s.textButton} href={href({ name: 'concert', id: `from-${g.key}` })}>How was it? Add it to your concerts →</a>
+              : <a className={s.textButton} href={href({ name: 'before', key: g.key })}>Prepare for it →</a>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}

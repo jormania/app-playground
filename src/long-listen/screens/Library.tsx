@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ComposerLink } from './Composer'
 import { curly } from '../domain/programmeStyle'
 import type { Concert, ProposedRecording, Recording, Work } from '../domain/types'
 import { Landmark } from 'lucide-react'
@@ -119,7 +120,7 @@ export function LibraryScreen() {
         return (
         <section key={e.composer} className={s.journalWeek}>
           {newLetter && <p className={s.indexLetter} aria-hidden="true">{letter}</p>}
-          <h2 className={s.h2}>{e.composer}</h2>
+          <h2 className={s.h2}><ComposerLink name={e.composer} /></h2>
           {e.works.map(({ work, recordings, live }) => (
             <div key={work.id} className={s.libraryWork}>
               <p className={s.libraryTitle}>{curly(work.title)}</p>

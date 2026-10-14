@@ -903,3 +903,45 @@ view opens with a key set, `Journey.tagListenFor` asks the curator once — one 
 `MODEL_HAIKU` (tags@2026-10-14.1), for every untagged work in the programme — and saves the tags
 into the programme. A work the answer leaves out is kept as untagged ("" throughout), so nothing
 is asked twice; nothing else in the programme is rewritten.
+
+## 21. Release four: closer listening, and closer to the hall (14 October 2026)
+
+Four items, chosen from six proposed (`LONG_LISTEN_ROADMAP.md`, items 23–26). The rule they
+share: deeper into the listening, never wider; nothing counted.
+
+**Your earlier hearing (23).** When a work comes back, the listening view says so in one line under
+the performers: when it was last heard, in which recording (or "this same recording") or at which
+concert, and what was said then — the note, or failing one the reaction. `domain/earlierHearing.ts`
+decides. A recording counts only if heard *before this programme was made* (Spotify's history
+carries no programme, so a hearing since then belongs to this one); a concert counts on or before
+today, and wins a tie. What was said is read from feedback given before the programme was made,
+on that recording or the work. Hidden in Focus.
+
+**Words on tap (24).** Terms in the curator's notes — the programme's "why" and "listen for", the
+listening view's movement notes, "listen for", answers and *More context*, the concert preparation
+and the composer's portrait — carry a faint dotted underline (`components/Gloss.tsx`). The list is
+closed and lives in `domain/glossary.ts`: what is underlined must be predictable, and everyday
+words that are also terms (tempo, texture, development, march, grave) are left out. Each term once
+per passage. A tap asks `define` (define@2026-10-14.1, Haiku) with the sentence it sits in, once per
+term and language, kept as the mark `term:<lang>:<term>`; later taps read the mark. Without a key,
+the notes are plain text.
+
+**Before and after a concert (25).** Each *Live in Bucharest* line has an "I'm going" chip, which
+keeps the listing as the mark `going:<key>` (`domain/going.ts`; the key is date, venue and title,
+folded). In the week before the evening, a card on this week's page leads to `#/before/<key>`: on
+its first opening `prepare` (prepare@2026-10-14.1, **Sonnet**, once per concert, kept as
+`prepare:<key>`) reads the evening's programme from the hall's listing — the concert prompt's
+rules — and writes a paragraph on the evening, a few lines per work, what to listen for *in the
+hall*, and one recording to hear first (named, with a Spotify search; not verified, said as a
+suggestion). Once the evening has passed (for three weeks), the card asks how it was and opens the
+concert form already filled from the listing and that reading (`#/concerts/from-<key>`; read then if
+it never was). Keeping it records the concert on the mark, and the card goes. All concerts lists
+the ones still ahead under "Coming up".
+
+**A composer's page (26).** A composer's name heading a work — programme, listening view, Library —
+links to `#/composer/<name>`: a short portrait (portrait@2026-10-14.1, Haiku, written on the first
+opening, kept per composer and language as `portrait:<lang>:<folded name>`), then what of theirs
+has been met — works, recordings with where you stand and what you said, concerts — and the
+threads they came up in. One composer however the name was written, by the Library's grouping.
+
+The three new curator jobs are in the live API check (`scripts/anthropic.live.test.js`).
