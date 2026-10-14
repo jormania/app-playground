@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ProposedRecording, Recording } from '../domain/types'
 import { openUrl, searchUrl } from '../spotify/client'
-import { confirmMatch, isConfirmed, rejectMatch, verifyOne } from '../spotify/verify'
+import { confirmMatch, isConfirmed, rejectMatch, verifyOne, beforeReject, undoReject, type RejectUndo } from '../spotify/verify'
 import { useServices } from '../app/services'
 import { messageOf } from './common'
 import { ListenBar } from './ListenBar'
@@ -78,13 +78,35 @@ export function RecordingBlock({
     }
   }
 
+  // "Not this one" undoes a match, forgets its Spotify listening and looks again: asked first, and undoable after.
+  const [asking, setAsking] = useState(false)
+  const [undo, setUndo] = useState<{ was: RejectUndo; album: string } | null>(null)
+
   async function notThis() {
     if (!recording) return
+    setAsking(false)
     setBusy(true)
     try {
+      const was = await beforeReject(repo, recording.id)
       const r = await rejectMatch(repo, spotify, recording.id, proposed)
+      setUndo({ was, album: was.recording.spotify?.albumName ?? 'that album' })
       bump()
-      if (r.verification === 'not-found') say('Noted. Spotify has nothing else that matches, so it’s marked as not found.')
+      say(r.verification === 'not-found' ? 'Set aside. Spotify has nothing else that matches, so it’s marked as not found.' : 'Set aside. Spotify was asked for another recording.')
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function takeBack() {
+    if (!undo) return
+    setBusy(true)
+    try {
+      await undoReject(repo, undo.was)
+      setUndo(null)
+      bump()
+      say('Put back as it was.', 'success')
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
@@ -96,6 +118,29 @@ export function RecordingBlock({
     <div className={s.recording}>
       <div className={s.label}>{label}</div>
       <Credits r={proposed} className={s.credit} empty="Performers not named" programme />
+      {/* Right under who plays it: the doubt is about this recording, before anything plays it. */}
+      {undo ? (
+        <p className={s.note} role="status">
+          Set aside the recording on <em>{undo.album}</em>.{' '}
+          <button className={`${s.textButton} ${s.inlineButton}`} onClick={() => void takeBack()} disabled={busy}>Undo</button>
+        </p>
+      ) : asking ? (
+        <div className={s.confirmBox} role="alertdialog" aria-label="Set this recording aside?">
+          <p className={s.flush}>
+            Set this recording aside? Spotify is asked for another of the same performers; if it finds one, that takes this one’s place,
+            and what Spotify heard of this one is forgotten. You can undo it straight after.
+          </p>
+          <div className={`${s.actions} ${s.mtSm}`}>
+            <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void notThis()} disabled={busy}>Yes, set it aside</button>
+            <button className={s.textButton} onClick={() => setAsking(false)} disabled={busy}>Keep this one</button>
+          </div>
+        </div>
+      ) : sp && !sp.confirmedByListener ? (
+        // Even a strong match can be the same performers in another decade.
+        <p className={`${s.note} ${s.flush}`}>
+          <button className={`${s.textButton} ${s.quietButton}`} onClick={() => setAsking(true)} disabled={busy}>{busy ? 'Looking again…' : 'Not this recording?'}</button>
+        </p>
+      ) : null}
       <Traits label="The playing" words={character ?? recording?.character} />
 
       {shown && (
@@ -130,12 +175,6 @@ export function RecordingBlock({
           )}
         </div>
       )}
-      {/* Even a strong match can be the same performers in another decade. */}
-      {sp && !sp.confirmedByListener && (
-        <p className={s.note}>
-          <button className={`${s.textButton} ${s.quietButton}`} onClick={notThis} disabled={busy}>{busy ? 'Looking again…' : 'Not this recording?'}</button>
-        </p>
-      )}
 
       {near && (
         <p className={s.note}>
@@ -147,13 +186,13 @@ export function RecordingBlock({
         // Two answers, set apart: one tap on the wrong one links (or drops) a recording.
         <div className={`${s.actions} ${s.mtSm}`}>
           <button className={`${s.outlineButton} ${s.smallButton}`} onClick={yesThis} disabled={busy}>Yes, this is it</button>
-          <button className={s.textButton} onClick={notThis} disabled={busy}>{busy ? 'Looking again…' : 'Not this one'}</button>
+          <button className={s.textButton} onClick={() => void notThis()} disabled={busy}>{busy ? 'Looking again…' : 'Not this one'}</button>
         </div>
       )}
       {sp?.confidence === 'probable' && sp.confirmedByListener && (
         <p className={s.note}>
           You confirmed this one; Spotify credits it a little differently from the curator.{' '}
-          <button className={s.textButton} onClick={notThis} disabled={busy}>Not this one after all</button>
+          <button className={s.textButton} onClick={() => setAsking(true)} disabled={busy}>Not this one after all</button>
         </p>
       )}
       {recording?.verification === 'not-found' && (

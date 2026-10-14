@@ -10,7 +10,7 @@ import { latestFeedback, listeningState } from '../domain/listening'
 import { isoDateIn, sinceWords, weekFromKey } from '../domain/week'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { sectionTitle } from '../domain/sections'
-import { movementTitles, partWords, primeMinutes, pullQuote, roman, curly } from '../domain/programmeStyle'
+import { movementTitles, partWords, primeMinutes, roman, curly } from '../domain/programmeStyle'
 import { programmeCreditRows } from '../components/Credits'
 import { liveEvents, liveMatches, venueShort, whatIsOn, type LiveMatch } from '../live/live'
 import type { Repo } from '../store/repo'
@@ -251,7 +251,6 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         const items = section.items.filter(shown)
         // A pulled line only where a part runs to two works or more: taken from the first work's
         // notes and set after that work, so it echoes from a distance, never beside its own sentence.
-        const quote = items.length >= 2 ? pullQuote([items[0].why]) : undefined
         return (
         <section key={section.id} aria-label={sectionTitle(section)} className={s.part}>
           {/* Between parts, a fleuron: the one place the page asks for a pause. */}
@@ -262,7 +261,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
             {partWords(i + 1, p.sections.length)}{ROLE_GUIDE[section.role] ? ` — ${ROLE_GUIDE[section.role]}` : ''}
           </p>
           {section.note && <p className={s.sectionNote}>{section.note}</p>}
-          {items.map((item, n) => (
+          {items.map((item) => (
             <Fragment key={item.id}>
               <ItemView
                 item={item}
@@ -272,7 +271,6 @@ export function ProgrammeView({ b }: { b: Bundle }) {
               />
               {/* One line of the part set large, as a booklet pulls a quotation: a landing place on a
                   long page. It repeats the notes above, so a screen reader skips it. */}
-              {n === 0 && quote && <blockquote className={s.pullQuote} aria-hidden="true"><p>{quote}</p></blockquote>}
             </Fragment>
           ))}
         </section>
