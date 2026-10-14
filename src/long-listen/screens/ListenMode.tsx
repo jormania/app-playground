@@ -8,7 +8,7 @@ import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, usePlayback, usePlayerState } from '../app/playback'
 import { MiniPlayer, MovementProgress, MovementSteps, ThenLine, movementLength, useLiveProgress } from '../components/ListenParts'
-import { listenForAt, movementTitles, primeMinutes, roman, romanValue } from '../domain/programmeStyle'
+import { listenForAt, movementTitles, primeMinutes, roman, romanValue, curly } from '../domain/programmeStyle'
 import { creditRows } from '../components/Credits'
 import { workEnded } from '../spotify/workGuard'
 import { readJson, writeJson } from '../../shared/storage'
@@ -323,7 +323,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         <button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>
       </div>
       <p className={s.composer}>{item.proposed.composer}</p>
-      <h1 className={s.title}>{item.proposed.work}</h1>
+      <h1 className={s.title}>{curly(item.proposed.work)}</h1>
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
       {facts && <p className={s.listenFacts}>{facts}</p>}
       {performers && <p className={s.listenPerformers}>{performers}</p>}
@@ -462,7 +462,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
             {/* The next work, ready: one tap opens it and — with Spotify connected — starts it. Nothing plays by itself. */}
             {next
               ? <a className={s.primaryButton} href={href({ name: 'listen', programmeId, itemId: next.id })} onClick={() => { if (spotify.connected && data.nextPlayable) { try { sessionStorage.setItem(AUTOPLAY_KEY, next.id) } catch { /* private mode */ } } }}>
-                  {spotify.connected && data.nextPlayable ? 'Play next' : 'Next'}: {next.proposed.work} →
+                  {spotify.connected && data.nextPlayable ? 'Play next' : 'Next'}: {curly(next.proposed.work)} →
                 </a>
               : <span className={s.quiet}>That was the last work this week.</span>}
             <a className={s.textButton} href={href({ name: 'programme', id: programme.id })}>Back to the programme</a>

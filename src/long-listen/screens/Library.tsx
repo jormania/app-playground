@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { curly } from '../domain/programmeStyle'
 import type { Concert, ProposedRecording, Recording, Work } from '../domain/types'
 import { Landmark } from 'lucide-react'
 import { concertDate } from './Concerts'
@@ -121,7 +122,7 @@ export function LibraryScreen() {
           <h2 className={s.h2}>{e.composer}</h2>
           {e.works.map(({ work, recordings, live }) => (
             <div key={work.id} className={s.libraryWork}>
-              <p className={s.libraryTitle}>{work.title}</p>
+              <p className={s.libraryTitle}>{curly(work.title)}</p>
               {/* What, which number, when — one line; the fuller words are on the programme. */}
               {compactFacts(work.form, work.catalogue, work.composed) && <p className={s.workMeta}>{compactFacts(work.form, work.catalogue, work.composed)}</p>}
               <ul className={s.libraryRecs}>

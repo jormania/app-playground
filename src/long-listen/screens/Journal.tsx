@@ -1,4 +1,5 @@
 import type { Concert, ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
+import { curly } from '../domain/programmeStyle'
 import { listeningState, reactionLabel, when } from '../domain/listening'
 import { itemFeedback } from '../domain/standIns'
 import { displaySurname } from '../domain/identity'
@@ -184,7 +185,7 @@ export function JournalScreen() {
                     return (
                       <li key={rid} className={s.entry}>
                         <p className={s.composer}>{info.proposed.composer}</p>
-                        <h4 className={`${s.h2} ${s.flush}`}>{info.proposed.work}</h4>
+                        <h4 className={`${s.h2} ${s.flush}`}>{curly(info.proposed.work)}</h4>
                         <Credits r={info.proposed} />
                         <p className={s.tagRow}>
                           <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>

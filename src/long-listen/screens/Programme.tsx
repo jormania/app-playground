@@ -7,7 +7,7 @@ import { latestFeedback, listeningState } from '../domain/listening'
 import { isoDateIn, sinceWords, weekFromKey } from '../domain/week'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { sectionTitle } from '../domain/sections'
-import { movementTitles, partWords, primeMinutes, pullQuote, roman } from '../domain/programmeStyle'
+import { movementTitles, partWords, primeMinutes, pullQuote, roman, curly } from '../domain/programmeStyle'
 import { programmeCreditRows } from '../components/Credits'
 import { liveEvents, liveMatches, venueShort, whatIsOn, type LiveMatch } from '../live/live'
 import type { Repo } from '../store/repo'
@@ -384,7 +384,7 @@ function PinnedWork({ items, parts }: { items: ProgrammeItem[]; parts: Map<strin
       {parts.get(item.id) && <span className={s.pinnedPart}>{parts.get(item.id)}</span>}
       <span className={s.pinnedInner}>
         <span className={s.pinnedNo}>{current + 1}</span>
-        <span className={s.pinnedText}>{item.proposed.composer} — <em>{item.proposed.work}</em></span>
+        <span className={s.pinnedText}>{item.proposed.composer} — <em>{curly(item.proposed.work)}</em></span>
       </span>
     </button>
   )
@@ -409,7 +409,7 @@ function Colophon({ b, items }: { b: Bundle; items: ProgrammeItem[] }) {
       <p className={s.colophonHead}>The recordings</p>
       <ol className={s.colophonList}>
         {items.map((item) => (
-          <li key={item.id}><em>{item.proposed.work}</em>{performers(item) ? ` — ${performers(item)}` : ''}</li>
+          <li key={item.id}><em>{curly(item.proposed.work)}</em>{performers(item) ? ` — ${performers(item)}` : ''}</li>
         ))}
       </ol>
     </footer>
@@ -464,7 +464,7 @@ function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: Prog
                 <span className={s.roNo}>{n + 1}</span>
                 <span className={s.roText}>
                   <span className={s.roComposer}>{item.proposed.composer}</span>
-                  <span className={s.roWork}>{item.proposed.work}</span>
+                  <span className={s.roWork}>{curly(item.proposed.work)}</span>
                   {meta && <span className={s.roMeta}>{meta}</span>}
                 </span>
                 <span className={s.roSide}>
@@ -576,7 +576,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
           <span className={s.workHeadWho}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</span>
           {duration && <span className={s.workDuration}>{duration}</span>}
         </p>
-        <h3 className={s.work}>{item.proposed.work}</h3>
+        <h3 className={s.work}>{curly(item.proposed.work)}</h3>
         {whatWhen && <p className={s.workMeta}>{whatWhen}</p>}
         {catalogue && <p className={s.workCatalogue}>{catalogue}</p>}
         {/* The movements, as the programme lists them under the title — this recording's own, as its album divides them. */}

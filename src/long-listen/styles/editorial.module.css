@@ -3404,14 +3404,6 @@ summary.textButton::-webkit-details-marker {
 }
 
 /* Focus: only the music, larger. */
-.listenFocus .movements li {
-  font-size: 1.25rem;
-}
-
-.listenFocus .movementNote {
-  font-size: 1.15rem;
-}
-
 @media print {
   .miniPlayer { display: none; }
 }
