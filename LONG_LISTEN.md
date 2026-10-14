@@ -172,8 +172,19 @@ Every job also receives the listener's **preferences** (Settings → How you
 listen: time per week, adventure, depth, recording era, voices, concertos,
 curator language). They outrank inferred taste; the programme's size follows
 the time setting. A one-off **wish for next week** is read once and cleared
-only after it reached the curator. **Three others** (before choosing) keeps
-the first three as open paths and tells the curator what not to repeat. The
+only after it reached the curator. **Three others** (before choosing) means one of two
+things, decided by what moved since the three were offered. If nothing did,
+none of them appeal: the first three stay as open paths and the curator is told
+what not to repeat. If a setting or the week's tuning changed (each week keeps
+`madeWith`, the settings and mood its three were made with;
+`domain/directionChanges.ts` names what moved), the listener is adjusting, not
+leaving: the same three go back as `rework`, with what changed, and come back
+reworked for it — same mood slot, same subject, same thread, scope and
+familiarity reshaped — and the earlier versions are kept in the Journal as
+"reworked for new settings", not as open paths. A request written with it
+still outranks a direction's ground, so "somewhere new" is one sentence away.
+Weeks offered before `madeWith` existed take the settings as they stand at
+their next opening as their own (themes@2026-10-14.1). The
 context also carries every work programmed in the last twelve weeks across all
 themes, and how often each recording was heard again.
 

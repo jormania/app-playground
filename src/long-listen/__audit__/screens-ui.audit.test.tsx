@@ -137,19 +137,39 @@ describe('marking what was heard', () => {
 
 describe('asking the curator, and seeing that it is asked', () => {
   // The busy words follow one rule (UI consistency, 13 October 2026): anything
-  // that makes three directions says "The curator is finding three…".
-  it('"Three directions with this in mind" stays, saying it is asking, until they come', async () => {
+  // that makes three directions says "The curator is finding three…" — or,
+  // reworking the three on offer for a change of tuning (14 October), "The
+  // curator is reworking them…".
+  it('"Rework these three with this in mind" stays, saying it is asking, until they come', async () => {
     const repo = new Repo(memoryStore())
     const c = gatedCurator('themes', 2)
     render(<App repo={repo} curator={c.client} />)
     await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
     const group = screen.getByRole('group', { name: 'Tune this week' })
     await userEvent.click(group.querySelector('button')!)
-    await userEvent.click(screen.getByRole('button', { name: 'Three directions with this in mind' }))
-    expect(await screen.findByRole('button', { name: 'The curator is finding three…' })).toBeTruthy()
+    // The tuning moved, so the other card says the same three will be reworked, not replaced.
+    expect(await screen.findByText('These three, for your new settings')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Rework these three with this in mind' }))
+    expect(await screen.findByRole('button', { name: 'The curator is reworking them…' })).toBeTruthy()
     c.open()
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'The curator is finding three…' })).toBeNull(), { timeout: 4000 })
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'The curator is reworking them…' })).toBeNull(), { timeout: 4000 })
+    expect(screen.queryByRole('button', { name: 'Rework these three with this in mind' })).toBeNull()
+    // Made with the tuning now: nothing has moved since, so asking again means three others.
+    expect(await screen.findByText('Three other directions', {}, { timeout: 4000 })).toBeTruthy()
+  }, 15000)
+
+  it('taking the tuning back to what the three were made with leaves nothing to rework', async () => {
+    const repo = new Repo(memoryStore())
+    const c = gatedCurator('themes', 2)
+    render(<App repo={repo} curator={c.client} />)
+    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    const chip = screen.getByRole('group', { name: 'Tune this week' }).querySelector('button')!
+    await userEvent.click(chip)
+    await screen.findByRole('button', { name: 'Rework these three with this in mind' })
+    await userEvent.click(chip)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Rework these three with this in mind' })).toBeNull())
     expect(screen.queryByRole('button', { name: 'Three directions with this in mind' })).toBeNull()
+    expect(screen.getByText('Three other directions')).toBeTruthy()
   }, 15000)
 
   it('Where next holds its other requests while one is with the curator', async () => {

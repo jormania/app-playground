@@ -2882,6 +2882,21 @@ summary.textButton::-webkit-details-marker {
   }
 }
 
+/* What moved since the week's three were offered: one quiet line each, the new value in ink. */
+.changedSettings {
+  margin: var(--space-3xs) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+.changedSettings strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
 /* A twisty standing alone at the end of a page closes with a rule of its own. */
 .twistyClosed {
   border-bottom: 1px solid var(--color-border);

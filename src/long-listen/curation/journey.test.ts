@@ -466,6 +466,54 @@ describe('three other directions', () => {
     expect(again.createdAt).toBe(first.createdAt)
   })
 
+  it('after a setting changed, brings the same three back reworked for it — not three somewhere else', async () => {
+    const c = fakeCurator({ themes: (_p, n) => themes(n === 1 ? ['A', 'B', 'C'] : ['A, shorter', 'B', 'C']) })
+    const j = journey(c.client)
+    const first = await j.ensureWeek()
+    expect(first.madeWith?.preferences.timePerWeek).toBe('generous')
+    await repo.savePreferences({ ...(await repo.preferences()), timePerWeek: 'standard', familiarity: 2 })
+
+    const again = await j.offerOtherDirections()
+    const sent = c.calls[1].payload
+    // Not "differ clearly from these" — rework these, told what moved.
+    expect(sent.alsoOfferedThisWeek).toEqual([])
+    expect(sent.rework.directions.map((d: { title: string; mood: string }) => [d.mood, d.title])).toEqual([['immersive', 'A'], ['curious', 'B'], ['adventurous', 'C']])
+    expect(sent.rework.changed).toEqual([
+      { setting: 'Music each week', was: '4–5 h', now: '2–3 h' },
+      { setting: 'How well known the music is', was: 'A mix', now: 'Well loved' },
+    ])
+    // The earlier versions are history, not open paths: their reworked selves are on the page.
+    expect((await repo.options.many(first.optionIds)).every((o) => o.status === 'reworked')).toBe(true)
+    expect(again.earlierOptionIds).toEqual(first.optionIds)
+    // And the new three know what they were made with, so asking again now is a plain "three others".
+    expect(again.madeWith?.preferences.timePerWeek).toBe('standard')
+    await j.offerOtherDirections()
+    expect(c.calls[2].payload.rework).toBeUndefined()
+    expect(c.calls[2].payload.alsoOfferedThisWeek).toEqual(['A, shorter', 'B', 'C'])
+  })
+
+  it('after the week was tuned, reworks the three for the tuning too', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']) })
+    const j = journey(c.client)
+    await j.ensureWeek()
+    await j.setWeekMood(['quieter'])
+    await j.offerOtherDirections()
+    expect(c.calls[1].payload.rework.changed).toEqual([{ setting: 'Tune this week', was: 'no changes', now: 'quieter' }])
+  })
+
+  it('a week offered before it kept its settings takes today’s as its own, so a later change is still seen', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']) })
+    const j = journey(c.client)
+    const first = await j.ensureWeek()
+    const { madeWith: _, ...legacy } = first
+    await repo.weeks.put(legacy)
+    const reopened = await journey(c.client).ensureWeek()
+    expect(reopened.madeWith?.preferences.breadth).toBe(3)
+    await repo.savePreferences({ ...(await repo.preferences()), breadth: 5 })
+    await journey(c.client).offerOtherDirections()
+    expect(c.calls[1].payload.rework.changed).toEqual([{ setting: 'How widely a week ranges', was: 'Several', now: 'Centuries' }])
+  })
+
   it('is not offered once a programme is chosen', async () => {
     const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('P', FRENCH) })
     const j = journey(c.client)

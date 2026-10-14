@@ -12,6 +12,7 @@ import type {
 import { season as seasonOf, seasonNumberAt, type Season } from '../domain/season'
 import { seasonContext } from './season'
 import { buildContext } from './context'
+import { directionChanges, type DirectionChange } from '../domain/directionChanges'
 import { feedbackOnAny, heardAs, playedProposed, standInPlayersOf, standInsOf, threadDigest } from './continuity'
 import { Ingest, comparisonOf, ingestProgramme } from './ingest'
 import { applyTasteUpdate, pendingFeedback } from './taste'
@@ -52,6 +53,16 @@ export interface JourneyOptions {
  * - resources, a deeper note, a second interpretation: once each, on request,
  *   cached.
  */
+
+/**
+ * "Three others" after a setting or the week's tuning changed: the three on
+ * offer, sent back to be reworked for what changed rather than replaced.
+ */
+interface Rework {
+  changed: DirectionChange[]
+  directions: { mood: string; title: string; pitch: string; angle: string; form: string; returningThemeId: string }[]
+}
+
 export class Journey {
   readonly timeZone: string
   private readonly now: () => Date
@@ -135,6 +146,7 @@ export class Journey {
       // programme never came — the curator failed — has nothing to choose
       // from and nothing to listen to: it gets its directions now, or it would
       // stay empty for good.
+      if (existing && !existing.programmeId && existing.optionIds.length && !existing.madeWith) return this.noteMadeWithNow(existing)
       if (existing && (existing.programmeId || existing.optionIds.length)) return existing
       await this.repo.ensureMeta(this.stamp())
       // Independent of each other, so side by side: the week waits for the slower one, not the sum.
@@ -149,6 +161,17 @@ export class Journey {
         return this.generateWeek(week, requestedNext)
       })
     })
+  }
+
+  /**
+   * A week offered before its record kept what its three were made with: take
+   * the settings as they are now as that, from here on. A change made before
+   * this can't be seen, but every change after it can — so "three others" on
+   * this week reworks the three for a later change instead of never.
+   */
+  private async noteMadeWithNow(week: WeekRecord): Promise<WeekRecord> {
+    const { nextRequest: _, ...preferences } = await this.repo.preferences()
+    return this.updateWeek(week.weekKey, (latest = week) => (latest.madeWith ? latest : { ...latest, madeWith: { preferences, ...(latest.mood?.length ? { mood: latest.mood } : {}) } }))
   }
 
   /**
@@ -181,7 +204,7 @@ export class Journey {
    * the curator. Any string — even '' — is a request made now, and the wish
    * for next week is left for next week.
    */
-  private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = []): Promise<WeekRecord> {
+  private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = [], rework?: Rework): Promise<WeekRecord> {
     const generation = this.repo.generation
     const context = await buildContext(this.repo, week, requestedNext, this.timeZone)
     const res = await this.curator.call<ThemesResponse>('themes', {
@@ -189,6 +212,7 @@ export class Journey {
       week: { key: week.key, label: week.label },
       context,
       alsoOfferedThisWeek,
+      ...(rework ? { rework } : {}),
     })
     this.stillCurrent(generation)
     // A wish for next week is read once, at the start of a week. Clear it only
@@ -212,11 +236,14 @@ export class Journey {
       form: o.form && o.form !== 'theme' ? o.form : undefined,
       status: 'offered',
     }))
+    // What these three were made with, exactly as the curator was told it — so a
+    // later "three others" can tell a change of settings from a wish to go elsewhere.
+    const madeWith = { preferences: context.preferences, ...(context.thisWeek ? { mood: context.thisWeek } : {}) }
     // A week already stored (one begun without directions, or asked again) keeps
     // what it holds — its mood, its programme, what was set aside — and gains
     // only the new directions; callers that replace more say so themselves.
     await this.repo.options.putMany(options)
-    return this.updateWeek(week.key, (stored) => (stored ? { ...stored, optionIds: options.map((o) => o.id), promptVersion: res.promptVersion } : {
+    return this.updateWeek(week.key, (stored) => (stored ? { ...stored, optionIds: options.map((o) => o.id), promptVersion: res.promptVersion, madeWith } : {
       weekKey: week.key,
       startsOn: week.startsOn,
       endsOn: week.endsOn,
@@ -224,6 +251,7 @@ export class Journey {
       optionIds: options.map((o) => o.id),
       setAsideProgrammeIds: [],
       promptVersion: res.promptVersion,
+      madeWith,
     }))
   }
 
@@ -255,9 +283,16 @@ export class Journey {
   }
 
   /**
-   * None of the three appeal: ask for three others, optionally saying what
-   * you're in the mood for. Only before choosing — afterwards it's "change
-   * direction". The three set aside stay as open paths, not rejections.
+   * Ask for three others, optionally saying what you're in the mood for. Only
+   * before choosing — afterwards it's "change direction".
+   *
+   * What it means depends on what moved since the three were offered. Nothing:
+   * none of them appeal, so three that differ clearly, and the three set aside
+   * stay as open paths, not rejections. A setting, or the week's tuning: the
+   * listener is adjusting, not leaving — the same three come back reworked for
+   * it, each keeping its ground (its theme, its thread, its route in), and the
+   * earlier versions are kept as offered but not as open paths, since their
+   * reworked selves are on the page.
    */
   offerOtherDirections(request?: string): Promise<WeekRecord> {
     const lw = this.currentWeek()
@@ -265,11 +300,18 @@ export class Journey {
       const week = await this.repo.weeks.require(lw.key)
       if (week.programmeId) throw new Error('This week already has a programme — change direction instead.')
       const current = await this.repo.options.many(week.optionIds)
-      const fresh = await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
-      // Only now that the curator has answered do the three set aside become open
-      // paths — read again, as they are now, so a failed call leaves them offered.
-      const setAside = await this.repo.options.many(week.optionIds)
-      await this.repo.options.putMany(setAside.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: 'open' as const })))
+      const changed = directionChanges(week.madeWith, await this.repo.preferences(), week.mood)
+      const rework: Rework | undefined = changed.length && current.length ? {
+        changed,
+        directions: current.map((o) => ({ mood: o.mood, title: o.title, pitch: o.pitch, angle: o.angle, form: o.form ?? 'theme', returningThemeId: o.returning?.themeId ?? '' })),
+      } : undefined
+      const fresh = rework
+        ? await this.generateWeek(lw, request ?? '', [], rework)
+        : await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
+      // Only now that the curator has answered do the three before stop being on
+      // offer — read again, as they are now, so a failed call leaves them offered.
+      const before = await this.repo.options.many(week.optionIds)
+      await this.repo.options.putMany(before.filter((o) => o.status === 'offered').map((o) => ({ ...o, status: rework ? 'reworked' as const : 'open' as const })))
       // The week as it is now, not as it was a minute ago: a mood set meanwhile stays.
       return this.updateWeek(lw.key, (latest = fresh) => ({
         ...latest, optionIds: fresh.optionIds, promptVersion: fresh.promptVersion, createdAt: week.createdAt,

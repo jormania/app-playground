@@ -77,7 +77,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-10.3',
+  version: 'themes@2026-10-14.1',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -138,7 +138,7 @@ Field guide:
 - continuityNote: "" for a new theme.
 - form: the week's shape, as above.
 
-If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. context.concerts lists concerts the listener heard live in recent weeks (works, performers, what they said): music met in the hall is a natural place to reach out from — the next step from a concert they loved, the other side of one that puzzled them — and its works are known, not discoveries. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
+If the listener wrote a request for this week (context.requestedNext), at least one option must answer it directly. If "alsoOfferedThisWeek" lists titles, the listener asked for different directions: offer three that differ clearly from those. If "rework" is present, the listener changed a setting or this week's tuning after these three were offered (rework.changed lists each setting, what it was and what it is now) and asked again: they are adjusting, not leaving. Return the same three directions reworked for the new settings — rework.directions gives each one; keep its mood, its ground (the subject, the thread it returns to, its route in) and, where it still fits, its form, and change what the new settings ask for: scope, breadth, how well known, length, recordings, voices, concertos, the language you write in. Keep the title when it still fits. Give a direction new ground only where the new settings rule it out (a "many-ways" week with pairs now off, a week of songs with voices now excluded), and then the nearest neighbour, not somewhere else. A request written now (context.requestedNext) still outranks keeping a direction's ground. Works in context.alreadyProgrammed were programmed recently in other themes; don't build on them again unless the return is the point. context.concerts lists concerts the listener heard live in recent weeks (works, performers, what they said): music met in the hall is a natural place to reach out from — the next step from a concert they loved, the other side of one that puzzled them — and its works are known, not discoveries. Works in context.alreadyKnown the listener knew before they met them here — familiar ground for this listener, not discoveries; don't pitch a direction as new on the strength of them, though they make good starting points to reach out from.`,
 }
 
 // ── 2. The programme ─────────────────────────────────────────────────────

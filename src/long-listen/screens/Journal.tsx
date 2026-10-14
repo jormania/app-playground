@@ -20,6 +20,7 @@ const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
   open: 'left open',
   'taken-later': 'taken later',
   'set-aside': 'begun, then set aside',
+  reworked: 'reworked for new settings',
 }
 
 /**
