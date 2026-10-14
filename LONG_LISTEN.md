@@ -822,10 +822,9 @@ the end of `editorial.module.css`.
   listening view keep the compact role-first line.
 - **The notes open in small capitals** (the first line of each work's notes).
   The drop cap stays for the introduction alone.
-- **A pulled line**, only in a part of two works or more: one sentence of eight
-  to twenty-four words from the first work's notes (`pullQuote`), set after that
-  work, so it never sits beside its own sentence. `aria-hidden`, since it
-  repeats.
+- ~~**A pulled line**~~ — removed 14 October 2026: on a phone the sentence it
+  repeats is a scroll away, so it read as the same paragraph printed twice, not
+  as a pull quote. `pullQuote` stays in `domain/programmeStyle.ts`, unused.
 - **A running head**: the pinned line carries the part ("II · Where it leads")
   above the work.
 - **A colophon** after the closing ⁂: "Programme notes by the curator" and the

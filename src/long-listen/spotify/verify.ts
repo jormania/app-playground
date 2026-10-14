@@ -179,6 +179,22 @@ export async function rejectMatch(repo: Repo, spotify: SpotifyClient | null, rec
   return (await track(recordingId, verifyRecording(repo, spotify, recordingId, proposed, now))).recording
 }
 
+/** A recording as it stood before "not this one": enough to put it back exactly. */
+export interface RejectUndo { recording: Recording; events: ListeningEvent[] }
+
+/** Taken just before rejectMatch: the recording and the Spotify listening it would forget. */
+export async function beforeReject(repo: Repo, recordingId: string): Promise<RejectUndo> {
+  const recording = await repo.recordings.require(recordingId)
+  const events = (await repo.events.all()).filter((e) => e.recordingId === recordingId && e.source === 'spotify-recent')
+  return { recording, events }
+}
+
+/** "Not this one" taken back: the recording, its match and its Spotify listening, as they were. */
+export async function undoReject(repo: Repo, undo: RejectUndo): Promise<void> {
+  await repo.recordings.put(undo.recording)
+  if (undo.events.length) await repo.events.putMany(undo.events)
+}
+
 /** One recording of a work that Spotify actually has, for the curator to choose from. */
 export interface SpotifyCandidate {
   album: string
