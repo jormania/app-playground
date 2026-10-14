@@ -738,3 +738,50 @@ every visit after (remembered per device under `long-listen:read:*`).
   controls — "Your listening · Not started ›" opens the states, "I knew this
   one already" and how it landed; open by itself while a hearing waits for
   that word.
+
+## 18. The visual rules (14 October 2026)
+
+A stabilisation pass over every screen at 360, 412 and 1280px, day and night
+and the dusk shades. Polish, not a redesign; these are the rules it left, so
+the next change follows them rather than re-deciding them.
+
+- **Space has a scale, and a page ends.** Inside a work: space. Between works:
+  `--space-xl` either side of one hairline. A part of a page (`.sectionHead`,
+  `.settingsPart`) opens `--space-xl + --space-sm` below what came before —
+  more than between works, never a screen's worth. The page ends one
+  `--space-2xl` after its last line (plus the gesture bar). An empty state
+  (`Empty`) sits a `--space-lg` step from the page above it. A row that holds
+  nothing on a phone (the tools line with only Print) takes no space.
+- **The masthead dates the week; the eyebrow names the section.** This week's
+  eyebrow is "This week", like "Journal" or "Library"; a programme's carries a
+  date only when it is from another week.
+- **One end to the music.** The programme's close ("That's the week: …") is
+  centred under the ⁂, in the accent; the back matter after it (further
+  reading, Where next) has no ornament of its own.
+- **Numbers in the accent, set in the display face, in the margin** — a
+  direction on This week (large, like a Journal week), a work in the running
+  order and on its card, a work at a concert. Lists of works in order are
+  numbered this way, never with the browser's `1.`; loose lists keep bullets,
+  coloured in the accent.
+- **An order of performance looks like one.** The running order and a
+  concert's programme share a shape: an ink rule, a small-caps head ("The
+  music", "The programme"), composer in small caps over the title, a hairline
+  between rows, no rule after the last.
+- **One accent edge, one weight.** Secondary blocks that belong together sit
+  on a 2px accent rule — a Library work, a concert in the Journal, a thread's
+  facts, a card in Where next, a returning thread. Only a programme work's
+  head is a filled card (5px edge): it is the one thing the page is for.
+  Don't bring back filled cards for lists.
+- **Every fold opens on the same chevron.** `Twisty` for anything with a
+  label; a text link that opens more in place (`summary.textButton`, Settings'
+  how-tos) gets the same › after its words, turning in place. Never the
+  browser's triangle. A twisty whose value is the first words of its body
+  passes `preview`, so the words aren't read twice once open.
+- **A direction says what kind of week it is legibly.** The mood and shape
+  line (`.mood`) is small caps at `--text-sm` in the muted ink, not a
+  whisper.
+- **Desktop reads wider, not emptier.** From 1024px `--measure` is 40rem and
+  `--text-read` 1.25rem, so a line still holds about seventy characters. The
+  contents rail sizes itself from the margin it sits in (and keeps its
+  section headings on the titles' edge), so neither a wider column nor larger
+  text runs it into the page.

@@ -100,8 +100,13 @@ export function LibraryScreen() {
       <p className={s.eyebrow}>Library</p>
       <h1 className={s.title}>Everything met so far</h1>
       <p className={s.dek}>Composers, their works, and every recording you’ve been offered of each.</p>
-      <label className={s.visuallyHidden} htmlFor="lib-q">Search the library</label>
-      <input id="lib-q" className={s.search} type="search" placeholder="A composer, a work, a conductor…" value={q} onChange={(e) => setQ(e.target.value)} />
+      {/* Nothing to search until something has been met. */}
+      {data.entries.length > 0 && (
+        <>
+          <label className={s.visuallyHidden} htmlFor="lib-q">Search the library</label>
+          <input id="lib-q" className={s.search} type="search" placeholder="A composer, a work, a conductor…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </>
+      )}
 
       {data.entries.length === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Empty for now. It fills as your weeks do.</Empty>}
       {data.entries.length > 0 && shown.length === 0 && <p className={s.quiet}>Nothing here matches “{q}”.</p>}

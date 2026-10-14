@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
-import { sinceWords, weekFromKey } from '../domain/week'
+import { sinceWords } from '../domain/week'
 import { useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
@@ -121,10 +121,10 @@ export function WeekScreen() {
   if (!view) return <Waiting>The curator is choosing this week’s directions…</Waiting>
   if (view.record.programmeId) return <ProgrammeScreen id={view.record.programmeId} asThisWeek />
 
-  const week = weekFromKey(view.record.weekKey)
   return (
     <div>
-      <p className={s.eyebrow}>Week {week.number} · {week.label}</p>
+      {/* The masthead dates the week; the eyebrow names the section, as on every other screen. */}
+      <p className={s.eyebrow}>This week</p>
       <h1 className={s.title}>Three ways into the week</h1>
       <p className={s.dek}>
         {view.firstVisit
