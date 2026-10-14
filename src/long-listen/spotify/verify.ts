@@ -117,6 +117,7 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
       confidence: found.level,
       matchedAt: now,
       durationMs: work.reduce((n, t) => n + (t.duration_ms ?? 0), 0) || undefined,
+      trackDurationsMs: work.every((t) => t.duration_ms) ? work.map((t) => t.duration_ms!) : undefined,
     },
   }
   const existing = await repo.albums.get(albumId)

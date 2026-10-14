@@ -58,3 +58,23 @@ export class WorkGuard {
     return false
   }
 }
+
+/**
+ * The work has just ended: the last movement was playing near its close, and
+ * now Spotify has stopped at its end, gone back to the first movement at rest,
+ * or moved on to something else. A pause partway through the last movement is
+ * not an end.
+ */
+export function workEnded(prev: NowPlaying | null, cur: NowPlaying | null, trackIds: string[]): boolean {
+  if (!prev?.isPlaying || trackIds.length < 1) return false
+  const was = playbackOf(prev, trackIds)
+  if (!was || was.index !== trackIds.length - 1) return false
+  if (!(prev.durationMs > 0 && prev.durationMs - prev.progressMs <= RUN_ON_WINDOW_MS)) return false
+  if (!cur) return true
+  const now = playbackOf(cur, trackIds)
+  if (!now) return true
+  if (cur.isPlaying) return false
+  const atClose = now.index === trackIds.length - 1 && cur.durationMs > 0 && cur.durationMs - cur.progressMs < 4000
+  const backAtStart = now.index === 0 && cur.progressMs < 2000
+  return atClose || backAtStart
+}

@@ -47,3 +47,20 @@ describe('stopping a work at its last movement', () => {
     expect(g.isArmed(4 * 60 * 60_000 + 1)).toBe(false)
   })
 })
+
+import { workEnded } from './workGuard'
+
+describe('the work ending', () => {
+  it('ends when the last movement plays out: stopped at its close, back at the start, or on to something else', () => {
+    expect(workEnded(at('m3', 295_000), at('m3', 299_000, 300_000, false), work)).toBe(true)
+    expect(workEnded(at('m3', 295_000), at('m1', 0, 300_000, false), work)).toBe(true)
+    expect(workEnded(at('m3', 295_000), at('next-work', 1_000), work)).toBe(true)
+    expect(workEnded(at('m3', 295_000), null, work)).toBe(true)
+  })
+
+  it('does not end on a pause partway through, or between movements', () => {
+    expect(workEnded(at('m3', 120_000), at('m3', 121_000, 300_000, false), work)).toBe(false)
+    expect(workEnded(at('m3', 295_000), at('m3', 250_000, 300_000, false), work)).toBe(false)
+    expect(workEnded(at('m2', 299_000), at('m3', 1_000), work)).toBe(false)
+  })
+})

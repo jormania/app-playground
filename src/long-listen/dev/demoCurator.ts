@@ -30,6 +30,7 @@ const COLOUR: ProgrammeResponse = {
         why: 'The founding text of orchestral colour: three movements in which the sea is never described, only felt through changing light and motion.',
         whyThisRecording: 'Boulez makes every layer audible. You hear how the effects are built — which is the best way to hear how new they were.',
         listenFor: ['The cellos divided into four parts near the end of the first movement', 'How the second movement never settles on a downbeat', 'The chorale for brass that breaks through at the close'],
+        listenForMovement: ['I', 'II', 'III'],
       })] },
       { role: 'then', heading: 'Where it leads', items: [it('Maurice Ravel', 'Daphnis et Chloé', { conductor: 'Pierre Monteux', orchestra: 'London Symphony Orchestra' }, {
         composed: '1909–12', form: 'ballet', workContext: 'Written for the Ballets Russes; Monteux conducted the premiere in 1912.',

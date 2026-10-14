@@ -157,9 +157,10 @@ const itemSchema = {
     why: str,
     whyThisRecording: str,
     listenFor: strArr,
+    listenForMovement: strArr,
     revisitReason: str,
   },
-  required: ['composer', 'workTitle', 'catalogue', 'composed', 'form', 'workContext', ...performerKeys, 'character', 'why', 'whyThisRecording', 'listenFor', 'revisitReason'],
+  required: ['composer', 'workTitle', 'catalogue', 'composed', 'form', 'workContext', ...performerKeys, 'character', 'why', 'whyThisRecording', 'listenFor', 'listenForMovement', 'revisitReason'],
   additionalProperties: false,
 }
 
@@ -172,7 +173,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-10.6',
+  version: 'programme@2026-10-14.1',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -231,6 +232,7 @@ For each item:
 - why: why this work belongs here, in two or three sentences.
 - whyThisRecording: why this interpretation in particular, one or two sentences.
 - listenFor: two to four concrete things to listen for — a moment, a texture, a gesture, a structural event — phrased so a listener can actually hear them. Not homework.
+- listenForMovement: one entry per listenFor, in the same order: the movement it happens in, as the work's own Roman numeral ("I", "II", "III"), or "" when it belongs to the whole work or the work is in one movement. Only when you are sure which movement; otherwise "".
 - character: two to four words on the interpretation itself ("transparent", "urgent", "warm, expansive").
 - workContext: one or two sentences of historical context; composed: date as usually given ("1903–05"); form: "symphony", "symphonic poem", "concerto" etc.
 - revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.

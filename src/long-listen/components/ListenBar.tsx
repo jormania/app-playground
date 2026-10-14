@@ -13,7 +13,7 @@ const icon = { size: 15, fill: 'currentColor', strokeWidth: 0, 'aria-hidden': tr
  * and a line beneath says where it's playing. Opening Spotify is the quieter
  * alternative — the main action without a Spotify connection.
  */
-export function ListenBar({ firstTrackId, movements, durationMs, playback, onStarted, onOpened, className }: {
+export function ListenBar({ firstTrackId, movements, durationMs, playback, onStarted, onOpened, className, steps }: {
   firstTrackId: string
   movements: number
   /** The whole work's length: for a single-track work, a tap here is an assumed start (app/playback.ts). */
@@ -22,6 +22,8 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
   onStarted?: () => void
   onOpened?: () => void
   className?: string
+  /** Previous and next movement either side of Pause (the listening view only): given the control, returns the row. */
+  steps?: (control: React.ReactNode) => React.ReactNode
 }) {
   const { spotify } = useServices()
   const p = playback
@@ -46,13 +48,16 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
       <div className={className ? `${s.listenBar} ${className}` : s.listenBar}>
         {spotify.connected ? (
           <>
-            {p.at?.playing ? (
-              <button className={s.playButton} onClick={() => void p.pause()} disabled={p.busy}><Pause {...icon} />Pause</button>
-            ) : p.at ? (
-              <button className={s.playButton} onClick={() => void p.resume()} disabled={p.busy} title="Carry on from where it stopped"><Play {...icon} />Resume</button>
-            ) : (
-              <button className={s.playButton} onClick={() => void play()} disabled={p.busy} title="Every movement of this work, in order, on the device where Spotify is open"><Play {...icon} />Play</button>
-            )}
+            {(() => {
+              const control = p.at?.playing ? (
+                <button className={s.playButton} onClick={() => void p.pause()} disabled={p.busy}><Pause {...icon} />Pause</button>
+              ) : p.at ? (
+                <button className={s.playButton} onClick={() => void p.resume()} disabled={p.busy} title="Carry on from where it stopped"><Play {...icon} />Resume</button>
+              ) : (
+                <button className={s.playButton} onClick={() => void play()} disabled={p.busy} title="Every movement of this work, in order, on the device where Spotify is open"><Play {...icon} />Play</button>
+              )
+              return steps ? steps(control) : control
+            })()}
             <a className={s.listenAlt} title="Opens the first track in Spotify; the app stops it at the work’s last movement while it can follow Spotify" href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={opened}>
               or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
             </a>

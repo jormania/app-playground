@@ -156,6 +156,7 @@ async function itemOf(ingest: Ingest, c: CuratedItem): Promise<ProgrammeItem> {
     why: c.why,
     whyThisRecording: c.whyThisRecording,
     listenFor: c.listenFor,
+    listenForAt: c.listenForMovement?.length ? c.listenForMovement : undefined,
     revisitReason: c.revisitReason,
   }) as ProgrammeItem
 }

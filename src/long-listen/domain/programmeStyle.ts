@@ -75,3 +75,37 @@ export function pullQuote(texts: string[]): string | undefined {
   }
   return best
 }
+
+/** "IV" → 4; 0 for anything that isn't a Roman numeral. */
+export function romanValue(numeral: string): number {
+  const v: Record<string, number> = { I: 1, V: 5, X: 10, L: 50 }
+  const s = numeral.trim().toUpperCase()
+  if (!/^[IVXL]+$/.test(s)) return 0
+  let total = 0
+  for (let i = 0; i < s.length; i++) {
+    const cur = v[s[i]]
+    const next = v[s[i + 1]] ?? 0
+    total += cur < next ? -cur : cur
+  }
+  return total
+}
+
+/** A place in a movement as a clock reads it: 252000 → "4:12". */
+export function clock(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+/**
+ * Which "listen for" points belong to the movement now sounding: each is
+ * tagged with the work's own numeral ("II") or "" for the whole work. Only
+ * trusted when the recording divides the work as the numerals expect — every
+ * numeral within its track count — otherwise none is tied to a movement.
+ */
+export function listenForAt(tags: string[] | undefined, count: number, tracks: number): (number | null)[] {
+  const blank = Array.from({ length: count }, () => null)
+  if (!tags?.length || tracks < 2) return blank
+  const at = Array.from({ length: count }, (_, k) => (tags[k] ? romanValue(tags[k]) || null : null))
+  if (at.every((x) => x === null) || at.some((x) => x !== null && x > tracks)) return blank
+  return at
+}

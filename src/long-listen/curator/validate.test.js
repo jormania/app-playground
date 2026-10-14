@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, validateSeason } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, validateSeason, validateProgramme } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -105,5 +105,18 @@ describe('validateConcert — soloists per work', () => {
       ],
     })
     expect(r.value.works.map((w) => w.soloists)).toEqual([['Alexandra Conunova', 'Andrei Ioniță'], ['Andrei Ioniță'], []])
+  })
+})
+
+describe('listen for, tied to its movement', () => {
+  const item = (listenFor, listenForMovement) => ({ composer: 'Claude Debussy', workTitle: 'La mer', conductor: 'Pierre Boulez', orchestra: 'The Cleveland Orchestra', soloists: [], character: ['clear'], why: 'w', whyThisRecording: 'r', listenFor, listenForMovement })
+  const out = (i) => ({ title: 't', dek: 'd', introduction: 'i', sections: [{ role: 'start', heading: 'Start here', items: [i] }], comparisons: [] })
+  it('keeps one tag per point — a numeral, or "" for the whole work', () => {
+    const v = validateProgramme(out(item(['a', 'b', 'c'], ['i', 'II.', 'the finale']))).value
+    expect(v.sections[0].items[0].listenForMovement).toEqual(['I', 'II', ''])
+  })
+  it('reads a missing or short list as the whole work', () => {
+    const v = validateProgramme(out(item(['a', 'b'], undefined))).value
+    expect(v.sections[0].items[0].listenForMovement).toEqual(['', ''])
   })
 })

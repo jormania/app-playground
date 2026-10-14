@@ -831,3 +831,41 @@ the end of `editorial.module.css`.
 - **A colophon** after the closing ⁂: "Programme notes by the curator" and the
   week, then the recordings, one to a line — each the recording that plays, a
   stand-in's where it stands in.
+
+## 20. The listening view, following the music (14 October 2026)
+
+The screen where most listening happens, made to follow Spotify cleanly and
+say the decisive things in few words.
+
+- **Facts and performers, one line each** under the title: "Symphonic sketches
+  · 1903–05 · 3 movements · c. 24′", then "Pierre Boulez · The Cleveland
+  Orchestra".
+- **Movements as a programme names them** (`movementTitles`): numeral, name,
+  and each movement's length across in the margin. Lengths are kept with each
+  new Spotify match (`trackDurationsMs`); a recording confirmed before that
+  reads its album's tracks once, on first opening, and keeps them.
+- **Where in the movement it is**: under the movement sounding, a hairline and
+  "4:12 of 9:30" — Spotify's reading carried forward by the clock between
+  readings (`useLiveProgress`), so it moves smoothly.
+- **Previous / next** either side of Pause, kept inside the work: back from
+  the first movement starts it again; there is no next after the last.
+- **A compact player pinned to the foot** once the Play row has scrolled away
+  while the work is on: the movement, its progress, previous / pause / next.
+- **The movement sounding comes into view** when a new one begins — unless the
+  page was touched in the last eight seconds.
+- **"Listen for" tied to its movement.** The programme prompt
+  (programme@2026-10-14.1) now tags each point with the work's own numeral, or
+  "" for the whole work (`listenForMovement` → `item.listenForAt`). The numeral
+  takes the note mark's place in the margin; the points for the movement
+  sounding stand in ink, the rest step back. Trusted only when the recording
+  divides the work as the numerals expect (`listenForAt`); programmes curated
+  before 14 October show as before.
+- **Focus** (per device): only the music — the movement sounding, its note, its
+  "listen for" points and the controls, a size larger. "Show everything" brings
+  the rest back.
+- **The work ends, and it says so at once**: when the last movement plays out
+  (`workEnded`), the work is marked heard (source `app`, never against the
+  listener's own word) and "How did it land?" opens — not a minute later when
+  Spotify's history catches up.
+- **The next work, ready**: "Play next: … →" opens it and, with Spotify
+  connected, starts it — one tap, never by itself.

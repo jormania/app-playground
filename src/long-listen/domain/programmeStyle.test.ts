@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { movementTitles, partWords, primeMinutes, pullQuote, roman } from './programmeStyle'
+import { clock, listenForAt, movementTitles, partWords, primeMinutes, pullQuote, roman, romanValue } from './programmeStyle'
 
 describe('the programme’s conventions', () => {
   it('numbers parts in Roman numerals and names them in words', () => {
@@ -37,5 +37,22 @@ describe('the programme’s conventions', () => {
     ])
     expect(quote).toBe('Debussy never called it a symphony, but it moves like one, three panels of the same sea at different hours.')
     expect(pullQuote(['Too short.', 'Also short here.'])).toBeUndefined()
+  })
+})
+
+describe('following along', () => {
+  it('reads numerals and clocks', () => {
+    expect(['I', 'IV', 'IX', 'XII', 'x', ''].map(romanValue)).toEqual([1, 4, 9, 12, 10, 0])
+    expect(clock(252_400)).toBe('4:12')
+    expect(clock(5_000)).toBe('0:05')
+  })
+
+  it('ties "listen for" to movements only when the recording divides the work as the numerals expect', () => {
+    expect(listenForAt(['I', '', 'III'], 3, 3)).toEqual([1, null, 3])
+    // A numeral past the recording's tracks: the album divides the work otherwise — tie none.
+    expect(listenForAt(['I', 'IV'], 2, 3)).toEqual([null, null])
+    // Untagged (older programmes), or a work in one track: none.
+    expect(listenForAt(undefined, 2, 3)).toEqual([null, null])
+    expect(listenForAt(['I', 'II'], 2, 1)).toEqual([null, null])
   })
 })
