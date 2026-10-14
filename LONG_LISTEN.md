@@ -172,8 +172,19 @@ Every job also receives the listener's **preferences** (Settings → How you
 listen: time per week, adventure, depth, recording era, voices, concertos,
 curator language). They outrank inferred taste; the programme's size follows
 the time setting. A one-off **wish for next week** is read once and cleared
-only after it reached the curator. **Three others** (before choosing) keeps
-the first three as open paths and tells the curator what not to repeat. The
+only after it reached the curator. **Three others** (before choosing) means one of two
+things, decided by what moved since the three were offered. If nothing did,
+none of them appeal: the first three stay as open paths and the curator is told
+what not to repeat. If a setting or the week's tuning changed (each week keeps
+`madeWith`, the settings and mood its three were made with;
+`domain/directionChanges.ts` names what moved), the listener is adjusting, not
+leaving: the same three go back as `rework`, with what changed, and come back
+reworked for it — same mood slot, same subject, same thread, scope and
+familiarity reshaped — and the earlier versions are kept in the Journal as
+"reworked for new settings", not as open paths. A request written with it
+still outranks a direction's ground, so "somewhere new" is one sentence away.
+Weeks offered before `madeWith` existed take the settings as they stand at
+their next opening as their own (themes@2026-10-14.1). The
 context also carries every work programmed in the last twelve weeks across all
 themes, and how often each recording was heard again.
 
@@ -738,3 +749,50 @@ every visit after (remembered per device under `long-listen:read:*`).
   controls — "Your listening · Not started ›" opens the states, "I knew this
   one already" and how it landed; open by itself while a hearing waits for
   that word.
+
+## 18. The visual rules (14 October 2026)
+
+A stabilisation pass over every screen at 360, 412 and 1280px, day and night
+and the dusk shades. Polish, not a redesign; these are the rules it left, so
+the next change follows them rather than re-deciding them.
+
+- **Space has a scale, and a page ends.** Inside a work: space. Between works:
+  `--space-xl` either side of one hairline. A part of a page (`.sectionHead`,
+  `.settingsPart`) opens `--space-xl + --space-sm` below what came before —
+  more than between works, never a screen's worth. The page ends one
+  `--space-2xl` after its last line (plus the gesture bar). An empty state
+  (`Empty`) sits a `--space-lg` step from the page above it. A row that holds
+  nothing on a phone (the tools line with only Print) takes no space.
+- **The masthead dates the week; the eyebrow names the section.** This week's
+  eyebrow is "This week", like "Journal" or "Library"; a programme's carries a
+  date only when it is from another week.
+- **One end to the music.** The programme's close ("That's the week: …") is
+  centred under the ⁂, in the accent; the back matter after it (further
+  reading, Where next) has no ornament of its own.
+- **Numbers in the accent, set in the display face, in the margin** — a
+  direction on This week (large, like a Journal week), a work in the running
+  order and on its card, a work at a concert. Lists of works in order are
+  numbered this way, never with the browser's `1.`; loose lists keep bullets,
+  coloured in the accent.
+- **An order of performance looks like one.** The running order and a
+  concert's programme share a shape: an ink rule, a small-caps head ("The
+  music", "The programme"), composer in small caps over the title, a hairline
+  between rows, no rule after the last.
+- **One accent edge, one weight.** Secondary blocks that belong together sit
+  on a 2px accent rule — a Library work, a concert in the Journal, a thread's
+  facts, a card in Where next, a returning thread. Only a programme work's
+  head is a filled card (5px edge): it is the one thing the page is for.
+  Don't bring back filled cards for lists.
+- **Every fold opens on the same chevron.** `Twisty` for anything with a
+  label; a text link that opens more in place (`summary.textButton`, Settings'
+  how-tos) gets the same › after its words, turning in place. Never the
+  browser's triangle. A twisty whose value is the first words of its body
+  passes `preview`, so the words aren't read twice once open.
+- **A direction says what kind of week it is legibly.** The mood and shape
+  line (`.mood`) is small caps at `--text-sm` in the muted ink, not a
+  whisper.
+- **Desktop reads wider, not emptier.** From 1024px `--measure` is 40rem and
+  `--text-read` 1.25rem, so a line still holds about seventy characters. The
+  contents rail sizes itself from the margin it sits in (and keeps its
+  section headings on the titles' edge), so neither a wider column nor larger
+  text runs it into the page.

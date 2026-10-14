@@ -194,8 +194,19 @@ export interface ProgrammeOption {
    * offered → chosen, or offered → open (a path not taken that week — kept,
    * never "rejected") → taken later, if it is.
    */
-  status: 'offered' | 'chosen' | 'open' | 'taken-later' | 'set-aside'
+  status: 'offered' | 'chosen' | 'open' | 'taken-later' | 'set-aside' | 'reworked'
   takenInWeek?: WeekKey
+}
+
+/**
+ * What a week's three directions were made with: the listener's settings and the
+ * week's mood as they stood when the curator was asked. Asked again after either
+ * changed, the curator reworks the same three for the new settings (keeping their
+ * ground) instead of going somewhere new — see `directionChanges`.
+ */
+export interface DirectionsMadeWith {
+  preferences: Omit<ListenerPreferences, 'nextRequest'>
+  mood?: WeekMood[]
 }
 
 export interface WeekRecord {
@@ -214,6 +225,8 @@ export interface WeekRecord {
   promptVersion: string
   /** "This week, differently": a mood for this week only, sent with every curator job about the week. */
   mood?: WeekMood[]
+  /** The settings and mood the current three were made with. Absent on weeks made before it was kept. */
+  madeWith?: DirectionsMadeWith
 }
 
 /**

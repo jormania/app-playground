@@ -195,7 +195,9 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   return (
     <article>
       <p className={s.eyebrow}>
-        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'} · {weekFromKey(p.weekKey).label}
+        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
+        {/* The masthead already dates this week; an earlier week's programme says which it was. */}
+        {p.weekKey !== week.key && ` · ${weekFromKey(p.weekKey).label}`}
       </p>
       {b.root && <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>}
       <h1 className={s.title}>{p.title}</h1>
@@ -261,7 +263,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         </section>
       ))}
 
-      {/* The music ends here: one line to close it, as a printed programme closes on its last work. */}
+      {/* The music ends here: an ornament and one line close it, as a printed programme closes on its
+          last work. What follows — further reading, where next — is the back of the booklet. */}
       {shownItems.length > 0 && (
         <p className={s.musicClose}>
           That’s the {p.sitting ? 'evening' : 'week'}: {shownItems.length} {shownItems.length === 1 ? 'work' : 'works'}{length.all ? `, ${aboutDuration(length.total)}` : ''}.
@@ -273,7 +276,6 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         try { await journey.resources(p.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setSearching(false) }
       }} />
 
-      <hr className={s.ornament} />
       <WhereNext b={b} isCurrent={Boolean(isCurrent)} />
     </article>
   )
@@ -535,7 +537,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       {standIn && <StandInView c={standIn} b={b} />}
       {/* Read once: open the first time, then one line that still says who and why. */}
       {item.whyThisRecording && (
-        <Twisty label="Why this recording" value={item.whyThisRecording} readOnce={`why-recording:${pid}:${item.id}`}>
+        <Twisty label="Why this recording" value={item.whyThisRecording} preview readOnce={`why-recording:${pid}:${item.id}`}>
           <p>{item.whyThisRecording}</p>
         </Twisty>
       )}

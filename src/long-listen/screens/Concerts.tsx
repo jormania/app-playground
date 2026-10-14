@@ -86,9 +86,13 @@ export function ConcertScreen({ id }: { id: string }) {
       <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} className={s.dek} />
       {c.note && <p className={s.said}><q>{c.note}</q></p>}
 
-      <ol className={s.concertWorks}>
-        {c.works.map((w, i) => <ConcertWork key={`${i}-${w.workId}`} c={c} w={w} />)}
-      </ol>
+      {/* The evening's order of performance, set like the programme's running order. */}
+      <section className={s.concertProgramme} aria-label="The programme">
+        <p className={s.panelHead}>The programme</p>
+        <ol className={s.concertWorks}>
+          {c.works.map((w, i) => <ConcertWork key={`${i}-${w.workId}`} c={c} w={w} />)}
+        </ol>
+      </section>
 
       {/* A correction is rare, and the page is for the music: a text link, after it. */}
       <div className={`${s.actions} ${s.mtLg}`}>
@@ -134,7 +138,8 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
 
   return (
     <li>
-      <p className={s.libraryTitle}>{w.composer} — {w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
+      <p className={s.composer}>{w.composer}</p>
+      <p className={s.libraryTitle}>{w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
       <Credits r={{ soloists }} />
       {found === null ? (
         // One quiet link a work: the page is the evening's music and who played it, and a

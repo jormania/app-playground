@@ -44,7 +44,7 @@ const MAX_CONTEXT_CHARS = 150_000
 
 /** The listener-facing framing for each job, ahead of the JSON context. */
 const LEADS = {
-  themes: (p) => `Today is ${p.today}, the listening week ${p.week?.label ?? p.week?.key}. Propose this week's three directions.`,
+  themes: (p) => `Today is ${p.today}, the listening week ${p.week?.label ?? p.week?.key}. ${p.rework ? 'Rework this week\'s three directions for the settings the listener changed (rework): the same three, keeping their ground.' : 'Propose this week\'s three directions.'}`,
   programme: (p) => `Build the programme for this week's chosen direction, "${p.option?.title}". ${p.thread ? `This RETURNS to the thread "${p.thread.title}" (stage ${p.thread.stage}): continue it — new route, new works, new interpretations — never restart it. Works already covered in this thread are listed under thread.covered.` : 'This is a new theme.'}`,
   taste: () => 'Here is the current understanding of the listener\'s taste and their new feedback. Return only new or changed observations.',
   continuity: (p) => `The week ${p.exploration?.weekKey} of the thread "${p.thread?.title}" has ended. Update the thread.`,

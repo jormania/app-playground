@@ -8,7 +8,9 @@
   min-height: 100%;
   /* viewport-fit=cover: on an edge-to-edge Android (One UI 7+) the page runs
      under the gesture bar, and in landscape under the camera cut-out. */
-  padding-bottom: calc(var(--space-2xl) * 2 + env(safe-area-inset-bottom, 0px));
+  /* One generous step after the last line — not two: a page ended on a screen
+     of paper with nothing on it. */
+  padding-bottom: calc(var(--space-2xl) + env(safe-area-inset-bottom, 0px));
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
@@ -38,8 +40,13 @@
   text-decoration: none;
 }
 
-.brand:hover {
-  color: var(--color-ink);
+/* Every hover colour sits under (hover: hover): on a phone a tap leaves :hover
+   stuck on, which read as a selection that means nothing (a work title left
+   red in the running order). */
+@media (hover: hover) {
+  .brand:hover {
+    color: var(--color-ink);
+  }
 }
 
 .weekLine {
@@ -96,8 +103,10 @@
   border-bottom: 1px solid transparent;
 }
 
-.navLink:hover {
-  color: var(--color-ink);
+@media (hover: hover) {
+  .navLink:hover {
+    color: var(--color-ink);
+  }
 }
 
 .navActive {
@@ -233,18 +242,6 @@
   margin: var(--space-xl) 0;
 }
 
-.ornament {
-  border: 0;
-  text-align: center;
-  margin: var(--space-xl) 0;
-  color: var(--color-faint);
-}
-
-.ornament::before {
-  content: '⁂';
-  letter-spacing: 0.4em;
-}
-
 .continuity {
   margin: var(--space-lg) 0;
   padding-left: var(--space-md);
@@ -315,8 +312,10 @@
   min-height: 32px;
 }
 
-.textButton:hover {
-  color: var(--color-accent-hover);
+@media (hover: hover) {
+  .textButton:hover {
+    color: var(--color-accent-hover);
+  }
 }
 
 .quietButton {
@@ -367,10 +366,12 @@
   color: var(--color-on-accent);
 }
 
-.primaryButton:hover {
-  background: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
-  color: var(--color-on-accent);
+@media (hover: hover) {
+  .primaryButton:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    color: var(--color-on-accent);
+  }
 }
 
 .outlineButton {
@@ -378,9 +379,11 @@
   color: var(--color-accent);
 }
 
-.outlineButton:hover {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+@media (hover: hover) {
+  .outlineButton:hover {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
 }
 
 .primaryButton:disabled,
@@ -398,13 +401,18 @@
   .printButton {
     display: none;
   }
+
+  /* A tools row holding only Print is empty on a phone: no gap for it. */
+  .actions:not(:has(> :not(.printButton))) {
+    display: none;
+  }
 }
 
 /* ── the three options ──────────────────────────────────────────────────── */
 
 .options {
   list-style: none;
-  margin: var(--space-xl) 0 0;
+  margin: var(--space-lg) 0 0;
   padding: 0;
 }
 
@@ -423,12 +431,18 @@
   align-items: baseline;
 }
 
+/* The direction's number set large in the margin, as the Journal sets a
+   week's: the three read as three at a glance. */
 .optionNumber {
+  flex: none;
+  min-width: 1.75rem;
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.75rem;
+  font-weight: 500;
+  font-variation-settings: 'opsz' 96;
+  font-variant-numeric: lining-nums;
+  line-height: 1;
   color: var(--color-accent);
-  font-variation-settings: 'opsz' 24;
-  min-width: 1.2em;
 }
 
 .optionTitle {
@@ -442,7 +456,7 @@
 }
 
 .optionBody {
-  padding-left: calc(1.2em + var(--space-sm));
+  padding-left: calc(1.75rem + var(--space-sm));
 }
 
 .optionBody p {
@@ -456,11 +470,14 @@
   font-size: 1rem;
 }
 
+/* A direction's mood and shape ("curious · one work, several ways"): what
+   kind of week it is, read before the pitch — so legible, not a whisper. */
 .mood {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
+  font-weight: 600;
   font-variant-caps: all-small-caps;
-  letter-spacing: 0.12em;
-  color: var(--color-faint);
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
 }
 
 /* ── the programme ──────────────────────────────────────────────────────── */
@@ -514,8 +531,10 @@
   border-bottom: 0;
 }
 
-.roRow:hover .roWork {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .roRow:hover .roWork {
+    color: var(--color-accent);
+  }
 }
 
 .roNo {
@@ -601,11 +620,13 @@
    reading column itself does not move or widen. Screen only: print keeps it
    in the flow, as the booklet's order of performance. */
 @media screen and (min-width: 1200px) {
+  /* Sized from the margin it sits in, so the wider desktop column (and larger
+     text, which widens it again) never runs into it. */
   .runningOrder {
     position: fixed;
     top: 9.5rem;
-    left: max(var(--space-md), calc(50% - var(--measure) / 2 - var(--space-md) - 16rem));
-    width: 13.5rem;
+    left: max(var(--space-md), calc(50% - var(--measure) / 2 - var(--space-md) - 15.5rem));
+    width: min(13.5rem, calc(50% - var(--measure) / 2 - 3rem));
     max-height: calc(100vh - 11rem);
     overflow-y: auto;
     margin: 0;
@@ -614,6 +635,11 @@
   .runningOrder .roRow {
     grid-template-columns: 1.4rem minmax(0, 1fr);
     min-height: 0;
+  }
+
+  /* The section heading keeps to the titles' edge in the narrower rail too. */
+  .runningOrder .roGroup {
+    margin-left: calc(1.4rem + var(--space-xs));
   }
 
   .runningOrder .roSide {
@@ -648,7 +674,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  margin: calc(var(--space-2xl) * 1.1) 0 var(--space-2xs);
+  /* A part of a page opens a clear step down — more than between two works,
+     never a screen's worth. */
+  margin: calc(var(--space-xl) + var(--space-sm)) 0 var(--space-2xs);
   font-family: var(--font-display);
   font-size: 1.35rem;
   font-weight: 600;
@@ -691,11 +719,24 @@
   border-top: 0;
 }
 
-/* After the last work, before what is optional: "That's the week: 3 works, about 1 hour 50 minutes." */
+/* After the last work, before what is optional: "That's the week: 3 works, about 1 hour 50 minutes."
+   Centred under an ornament, it is the one clear end of the music; the back
+   matter after it needs no ornament of its own. */
 .musicClose {
   margin: var(--space-xl) 0 0;
+  text-align: center;
   font-style: italic;
   color: var(--color-muted);
+  text-wrap: balance;
+}
+
+.musicClose::before {
+  content: '⁂';
+  display: block;
+  margin-bottom: var(--space-2xs);
+  font-style: normal;
+  letter-spacing: 0.4em;
+  color: var(--color-accent);
 }
 
 .composer {
@@ -902,9 +943,11 @@
   transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
 }
 
-.playButton:hover {
-  background: var(--color-accent-hover);
-  color: var(--color-on-accent);
+@media (hover: hover) {
+  .playButton:hover {
+    background: var(--color-accent-hover);
+    color: var(--color-on-accent);
+  }
 }
 
 .playButton:active {
@@ -920,8 +963,10 @@
   text-decoration-color: var(--color-border-2);
 }
 
-.listenAlt:hover {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .listenAlt:hover {
+    color: var(--color-accent);
+  }
 }
 
 .playButton:disabled {
@@ -1107,8 +1152,10 @@
   transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
 }
 
-.segment:hover {
-  color: var(--color-ink);
+@media (hover: hover) {
+  .segment:hover {
+    color: var(--color-ink);
+  }
 }
 
 /* Chosen, and neutral: not started, started. */
@@ -1268,8 +1315,10 @@
   inset: -5px -2px;
 }
 
-.chip:hover {
-  border-color: var(--color-ink);
+@media (hover: hover) {
+  .chip:hover {
+    border-color: var(--color-ink);
+  }
 }
 
 /* Settings' design-system SegmentedControls at size "sm", lifted from 32px
@@ -1644,6 +1693,13 @@
 .concertWorkList {
   margin: var(--space-2xs) 0 0;
   padding-left: 1.1em;
+  /* Nested in a list, a ul would fall to hollow circles. */
+  list-style-type: disc;
+}
+
+.concertWorkList > li::marker,
+.bullets > li::marker {
+  color: var(--color-accent);
 }
 
 .concertWorkList em {
@@ -1653,7 +1709,7 @@
 
 .journalWeek {
   margin-top: var(--space-md);
-  padding: var(--space-md) 0 var(--space-lg);
+  padding: var(--space-md) 0 var(--space-xs);
   border-top: 1px solid var(--color-border);
 }
 
@@ -1669,6 +1725,7 @@
   gap: 0 var(--space-sm);
   border-top: 0;
   padding-top: 0;
+  padding-bottom: var(--space-md);
   margin-top: var(--space-lg);
 }
 
@@ -1718,8 +1775,8 @@
 
 /* An empty page: an ornament, a sentence, the way in. */
 .empty {
-  margin: var(--space-xl) 0;
-  padding: var(--space-lg) 0;
+  margin: var(--space-lg) 0;
+  padding: var(--space-md) 0;
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   text-align: center;
@@ -1746,8 +1803,10 @@
   text-decoration-color: var(--color-border-2);
 }
 
-.quietLink:hover {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .quietLink:hover {
+    color: var(--color-accent);
+  }
 }
 
 .search {
@@ -1828,19 +1887,19 @@
   }
 }
 
-/* Each work its own card, edged in the accent like a work in the programme,
-   so where one ends and the next begins is never in doubt. Inside it, as
-   inside a work on the programme, space alone sets the recordings apart. */
+/* Each work on the accent edge every secondary block in the app shares (a
+   concert in the Journal, a thread's facts, a card in Where next), so where
+   one ends and the next begins is never in doubt — a rule, not a filled card:
+   a catalogue of fifty works was a stack of fifty boxes. Inside it, as inside
+   a work on the programme, space alone sets the recordings apart. */
 .libraryWork {
   margin-top: var(--space-sm);
-  padding: var(--space-sm) var(--space-md) var(--space-xs);
-  background: var(--color-surface);
-  border-left: 4px solid var(--color-accent);
-  border-radius: var(--radius-sm);
+  padding: var(--space-3xs) 0 var(--space-3xs) var(--space-md);
+  border-left: 2px solid var(--color-accent);
 }
 
 .libraryWork + .libraryWork {
-  margin-top: var(--space-md);
+  margin-top: var(--space-lg);
 }
 
 .libraryWork .libraryRecs {
@@ -1905,8 +1964,10 @@
   overflow: hidden;
 }
 
-.movementButton:hover {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .movementButton:hover {
+    color: var(--color-accent);
+  }
 }
 
 .nowWord {
@@ -2011,13 +2072,59 @@
   color: var(--color-accent);
 }
 
+/* A concert's works, as its printed programme lists them: an ink rule above,
+   the number in the accent beside each, a hairline between — the running
+   order's look, so an evening heard live reads as a programme too. */
+.concertProgramme {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-ink);
+}
+
+.concertProgramme > .panelHead {
+  margin-bottom: 0;
+}
+
 .concertWorks {
-  margin: var(--space-lg) 0 0;
-  padding-left: 1.4em;
+  list-style: none;
+  counter-reset: concert-work;
+  margin: 0;
+  padding: 0;
 }
 
 .concertWorks > li {
-  margin-bottom: var(--space-lg);
+  position: relative;
+  counter-increment: concert-work;
+  padding: var(--space-sm) 0 var(--space-sm) calc(1.75rem + var(--space-xs));
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* As in the running order, the rule under the list closes it, not the last row. */
+.concertWorks > li:last-child {
+  border-bottom: 0;
+}
+
+.concertWorks > li::before {
+  content: counter(concert-work);
+  position: absolute;
+  left: 0;
+  top: var(--space-sm);
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-accent);
+  font-variant-numeric: lining-nums;
+}
+
+.concertWorks > li > .composer {
+  line-height: 1.6;
+}
+
+.concertWorks > li > .credits {
+  margin-top: var(--space-3xs);
+  font-size: 1rem;
 }
 
 /* A concert work's one way back to its music: a quiet link under its performers. */
@@ -2128,9 +2235,14 @@
   border-radius: var(--radius-pill);
 }
 
-.iconLink:hover,
 .iconOn {
   color: var(--color-accent);
+}
+
+@media (hover: hover) {
+  .iconLink:hover {
+    color: var(--color-accent);
+  }
 }
 
 /* ── a five-step scale (Settings → your week of listening) ──────────────── */
@@ -2208,7 +2320,7 @@
    inside it, related settings share a card; every control is named the same
    way (settingLabel) and explained the same way (settingHint). */
 .settingsPartBlock {
-  margin-top: calc(var(--space-2xl) * 1.1);
+  margin-top: calc(var(--space-xl) + var(--space-sm));
 }
 
 .settingsPart {
@@ -2387,16 +2499,70 @@
   color: var(--color-danger);
 }
 
-.dangerOutline:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+@media (hover: hover) {
+  .dangerOutline:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  }
 }
 
-/* The how-to, folded: a quiet disclosure line, its steps beneath. */
+/* The how-to, folded: a quiet disclosure line, its steps beneath. It opens on
+   the twisty's chevron, like every other fold in the app — never the
+   browser's triangle. */
 .settingsSteps summary {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+  min-height: 32px;
   cursor: pointer;
   font-size: var(--text-sm);
   color: var(--color-accent);
-  list-style-position: inside;
+  list-style: none;
+}
+
+.settingsSteps summary::after {
+  content: '›';
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  font-size: 1.15em;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.settingsSteps[open] summary::after {
+  transform: rotate(90deg);
+}
+
+/* A text link that opens more in place ("and 2 more", "Show all 3"): the same
+   chevron after its words. Its ::after is the chevron here, not the finger
+   target other text buttons draw — the summary's own padding gives the room. */
+summary.textButton {
+  display: inline-block;
+  padding: var(--space-xs) 0;
+  list-style: none;
+}
+
+summary.textButton::after {
+  content: '›';
+  position: static;
+  inset: auto;
+  display: inline-block;
+  /* A square box, so the turn happens in place. */
+  width: 1em;
+  margin-left: var(--space-3xs);
+  text-align: center;
+  font-size: 1.15em;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+details[open] > summary.textButton::after {
+  transform: rotate(90deg);
+}
+
+.settingsSteps summary::-webkit-details-marker,
+summary.textButton::-webkit-details-marker {
+  display: none;
 }
 
 .settingsSteps > div {
@@ -2497,8 +2663,10 @@
   text-underline-offset: 0.18em;
 }
 
-.titleLink:hover {
-  text-decoration-color: var(--color-accent);
+@media (hover: hover) {
+  .titleLink:hover {
+    text-decoration-color: var(--color-accent);
+  }
 }
 
 /* All concerts: one evening per accent-edged block, with room between. */
@@ -2528,7 +2696,7 @@
   list-style: none;
   margin: var(--space-sm) 0 0;
   padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm);
-  border-left: 3px solid var(--color-accent);
+  border-left: 2px solid var(--color-accent);
   color: var(--color-muted);
 }
 
@@ -2553,6 +2721,12 @@
 
 .creditItem {
   white-space: normal;
+}
+
+/* Under a page's title (a concert, the listening view) the performers are its
+   dek: the dek's step from the title, not the bare list's zero. */
+.credits.dek {
+  margin-top: var(--space-sm);
 }
 
 .creditAfter {
@@ -2604,7 +2778,7 @@
 .offlineBar {
   margin: var(--space-xs) 0 0;
   padding-left: var(--space-xs);
-  border-left: 3px solid var(--color-accent);
+  border-left: 2px solid var(--color-accent);
   font-size: var(--text-sm);
   color: var(--color-muted);
 }
@@ -2645,6 +2819,13 @@
   display: none;
 }
 
+@media (hover: hover) {
+  .twisty > summary:hover .twistyLabel,
+  .twisty > summary:hover::after {
+    color: var(--color-accent);
+  }
+}
+
 .twisty > summary::after {
   content: '›';
   margin-left: auto;
@@ -2675,6 +2856,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+/* A value that only previews the body steps aside once the body is open. */
+.twistyPreview[open] > summary .twistyValue {
+  display: none;
 }
 
 .twistyBody {
@@ -2732,6 +2918,21 @@
   .settingsGlance dd + dt {
     margin-top: var(--space-2xs);
   }
+}
+
+/* What moved since the week's three were offered: one quiet line each, the new value in ink. */
+.changedSettings {
+  margin: var(--space-3xs) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+.changedSettings strong {
+  font-weight: 600;
+  color: var(--color-ink);
 }
 
 /* A twisty standing alone at the end of a page closes with a rule of its own. */
