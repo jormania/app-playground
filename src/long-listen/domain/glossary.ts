@@ -15,7 +15,7 @@ const TERMS = [
   // forms and genres
   'sonata form', 'sonata-allegro', 'rondo', 'scherzo', 'minuet', 'trio section', 'passacaglia', 'chaconne', 'fugue', 'fugato', 'canon',
   'theme and variations', 'symphonic poem', 'tone poem', 'concerto grosso', 'sinfonia concertante', 'divertimento', 'serenade',
-  'overture', 'prelude', 'intermezzo', 'nocturne', 'rhapsody', 'cantata', 'oratorio', 'requiem', 'lied', 'song cycle', 'ballade',
+  'overture', 'prelude', 'intermezzo', 'nocturne', 'rhapsody', 'cantata', 'oratorio', 'requiem', 'song cycle', 'ballade',
   'toccata', 'fantasia', 'waltz', 'ländler', 'siciliano', 'barcarolle', 'habanera', 'bolero', 'polonaise', 'mazurka', 'tarantella',
   // structure
   'exposition', 'recapitulation', 'coda', 'codetta', 'cadenza', 'cadence', 'second subject', 'first subject',
@@ -37,7 +37,8 @@ const TERMS = [
 ]
 
 const SORTED = [...new Set(TERMS)].sort((a, b) => b.length - a.length)
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// A space in a term matches any run of spaces, a no-break space included ("idée\u00a0fixe").
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')
 const FINDER = new RegExp(`(?<![\\p{L}\\p{N}-])(${SORTED.map(escape).join('|')})(?![\\p{L}\\p{N}-])`, 'giu')
 
 /** A passage, cut into plain text and terms. */
@@ -45,14 +46,17 @@ export type Piece = string | { term: string; text: string }
 
 /**
  * The passage with its terms marked: each term once per passage (the first
- * time), in the passage's own case. `skip` holds terms already marked earlier
- * on the page, so a term isn't underlined in every paragraph of one note.
+ * time), in the passage's own case. `skip` holds terms already marked, for a
+ * caller that wants one mark across several passages (none does yet: each
+ * paragraph and each "listen for" point is a passage of its own).
  */
-export function glossPieces(text: string, skip: Set<string> = new Set()): Piece[] {
+export function glossPieces(raw: string, skip: Set<string> = new Set()): Piece[] {
+  // Composed accents first: "idée" typed as e + combining accent is the same word.
+  const text = raw.normalize('NFC')
   const out: Piece[] = []
   let at = 0
   for (const m of text.matchAll(FINDER)) {
-    const term = m[1].toLowerCase()
+    const term = m[1].toLowerCase().replace(/\s+/g, ' ')
     if (skip.has(term)) continue
     skip.add(term)
     if (m.index > at) out.push(text.slice(at, m.index))
@@ -65,8 +69,10 @@ export function glossPieces(text: string, skip: Set<string> = new Set()): Piece[
 
 /** The sentence around a term, for the curator to choose the sense meant (a "development" is not always sonata form's). */
 export function sentenceAround(text: string, term: string): string {
-  const sentences = text.split(/(?<=[.!?])\s+/)
-  return (sentences.find((x) => x.toLowerCase().includes(term)) ?? text).slice(0, 400)
+  const sentences = text.normalize('NFC').split(/(?<=[.!?])\s+/)
+  // As a word, as the finder reads it: "lied" is not in "relied".
+  const word = new RegExp(`(?<![\\p{L}\\p{N}-])${escape(term)}(?![\\p{L}\\p{N}-])`, 'iu')
+  return (sentences.find((x) => word.test(x)) ?? text).slice(0, 400)
 }
 
 /** The store's key for a term's definition, per language. */

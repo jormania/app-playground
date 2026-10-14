@@ -23,4 +23,14 @@ describe('words on tap', () => {
     expect(sentenceAround('First things. Then a fugue begins. After.', 'fugue')).toBe('Then a fugue begins.')
     expect(termMark('Col Legno', 'ro')).toBe('term:ro:col legno')
   })
+
+  it('leaves the English verb alone, finds the word in the right sentence, and reads accents and no-break spaces', () => {
+    expect(glossPieces('He lied about his age.')).toEqual(['He lied about his age.'])
+    expect(sentenceAround('He relied on friends. A canon follows.', 'canon')).toBe('A canon follows.')
+    expect(sentenceAround('A canonic answer. Then the canon.', 'canon')).toBe('Then the canon.')
+    const nbsp = glossPieces('An idée\u00a0fixe returns.').filter((p) => typeof p !== 'string')
+    expect(nbsp).toEqual([{ term: 'idée fixe', text: 'idée\u00a0fixe' }])
+    const nfd = glossPieces('An ide\u0301e fixe returns.').filter((p) => typeof p !== 'string')
+    expect(nfd).toEqual([{ term: 'idée fixe', text: 'idée fixe' }])
+  })
 })

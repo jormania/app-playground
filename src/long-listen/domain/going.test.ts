@@ -9,6 +9,10 @@ const g = (date: string, over: Partial<Going> = {}): Going => ({
 describe('before and after a concert', () => {
   it('keys a concert by date, venue and title, folded', () => {
     expect(goingKey({ date: '2026-10-23', venue: 'Filarmonica George Enescu', title: 'Brahms & Sibelius!' })).toBe('2026-10-23~filarmonica-george-enescu~brahms-sibelius')
+    // A matinee and an evening, or two halls, on one day: two concerts.
+    const evening = goingKey({ date: '2026-10-23', venue: 'Sala Radio', hall: 'Studioul', time: '19:00', title: 'Bach' })
+    expect(evening).toBe('2026-10-23T1900~sala-radio-studioul~bach')
+    expect(goingKey({ date: '2026-10-23', venue: 'Sala Radio', hall: 'Studioul', time: '11:00', title: 'Bach' })).not.toBe(evening)
   })
 
   it('offers the preparation in the week before, the entry after, nothing once kept or long past', () => {

@@ -944,3 +944,49 @@ has been met — works, recordings with where you stand and what you said, conce
 threads they came up in. One composer however the name was written, by the Library's grouping.
 
 The three new curator jobs are in the live API check (`scripts/anthropic.live.test.js`).
+
+### Release four's audit, and the release stamped (14 October 2026)
+
+A targeted audit of what release four and the day's playback work added, by risk:
+the remembered place and Resume; "Not this recording?" with its confirm and undo;
+before and after a concert; words on tap, earlier hearing and composer pages.
+Fixed, each with a test where it can have one:
+
+- **A finished work offered Resume.** The place was let go only when a reading
+  showed the last movement at rest; Spotify more often rewinds to the first
+  movement or runs on. `app/place.ts` (`placeFrom`) now reads the reading before
+  it too and lets go when the work ended any of those ways (`workEnded`), and
+  when a work is marked heard — in the app or from Spotify's history — after
+  the place was kept (`forgetPlaceBefore`).
+- **Places kept only while the work's page was open.** They're kept from every
+  reading now, on any screen (`observe` in `app/playback.ts`), for every work
+  shown with Play or started from the app this visit; and a place records the
+  album's division of the work, so a re-matched recording doesn't resume the
+  wrong movement.
+- **"Not started" overruled.** The programme page recorded a playing work as
+  begun even after the listener set it back to "Not started", and on Play wrote
+  it twice. It now notes a start only from a real reading, only when nothing
+  at all is recorded of the work, and never after Play has recorded it.
+- **Undo, completed.** It is offered even when Spotify's look for another
+  recording fails; it also removes a stand-in found while the reject stood; a
+  later "Yes, this is it" retires it; the reject writes its reset before it
+  forgets the listening, so a sync between the two can't bring it back. The
+  message no longer claims Spotify was asked when it isn't connected.
+- **A paid reading repeated.** The pre-filled concert entry asked for the
+  preparation from its loader, which reruns on every refresh: a failed reading
+  was paid for again each time. It's asked once per visit now, from an effect.
+  Concert keys include the hall and the hour (a matinee and an evening).
+- **Words on tap:** "lied" (the verb) left the list; the sentence sent with a
+  term is found by whole word; accents typed decomposed and no-break spaces
+  match; terms are spans acting as buttons, so a drop cap and a small-caps
+  first line reach them; keys stay with their "listen for" point when Focus
+  filters the list.
+- **Composer pages:** a concert still to come isn't "heard live"; a failed
+  portrait offers "Write the portrait" instead of nothing; a portrait kept
+  under one spelling ("Debussy") is found under another ("Claude Debussy").
+- **Earlier hearing:** a hearing in another programme made since this one
+  counts, with what was said there.
+- **Links:** an address that can't be decoded reads as no address, never a
+  blank app.
+
+Settings → About now says *Release four · 14 October 2026*.

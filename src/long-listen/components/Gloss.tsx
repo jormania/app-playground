@@ -32,7 +32,14 @@ export function Gloss({ text }: { text: string }) {
   return (
     <>
       {pieces.map((p, i) => (typeof p === 'string' ? p : (
-        <button key={i} type="button" className={`${s.term} ${open?.term === p.term ? s.termOn : ''}`} aria-expanded={open?.term === p.term} onClick={() => void tap(p.term)}>{p.text}</button>
+        // A span acting as a button, not a <button>: a button is an inline block, which a drop cap
+        // (::first-letter) and a small-caps first line (::first-line) can't reach into.
+        <span
+          key={i} role="button" tabIndex={0}
+          className={`${s.term} ${open?.term === p.term ? s.termOn : ''}`} aria-expanded={open?.term === p.term}
+          onClick={() => void tap(p.term)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void tap(p.term) } }}
+        >{p.text}</span>
       )))}
       {open && (
         <span className={s.termNote} role="note" aria-live="polite">
