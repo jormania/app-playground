@@ -1092,6 +1092,8 @@ slices should eyeball icons when they next touch an app.
 
 **`@testing-library/{dom,react,user-event}` done 2026-10-12 — 10.4.1 → 10.4.2, 16.3.2 → 16.3.3, 14.6.1 → 14.6.7** (floors raised in `package.json` to match). All in-range patch releases; suite 5696 across 460 files, typecheck clean. They are dev-only, so nothing in `dist/` or any handler changes. Release notes not reachable from here; what is verified is the suite and typecheck. `eslint` had no changed source paths to lint.
 
+**`jsdom` + `happy-dom` done 2026-10-14 — 30.1.1 → 30.1.2, 20.10.6 → 20.14.6** (floors raised in `package.json`). The two test DOM environments, in-range. Suite 5718 across 463 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. The lockfile also hoists jsdom's nested `undici` to the top level. Release notes not reachable from here; what is verified is the suite and typecheck. `happy-dom` 21 is a major and left for its own run. `eslint` had no changed source paths to lint.
+
 Remaining: the React 19 family (runtime and types together), last, as this item says.
 
 **The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
