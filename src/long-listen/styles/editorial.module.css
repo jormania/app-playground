@@ -2585,3 +2585,40 @@
   cursor: pointer;
   width: fit-content;
 }
+
+/* This week: the settings the three directions were made with, each under its Settings name. */
+.weekSettings {
+  margin-top: var(--space-lg);
+  padding-left: var(--space-sm);
+  border-left: 2px solid var(--color-border);
+}
+
+.settingsGlance {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-3xs) var(--space-sm);
+  margin: var(--space-2xs) 0 var(--space-xs);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.settingsGlance dt {
+  color: var(--color-muted);
+}
+
+.settingsGlance dd {
+  margin: 0;
+  color: var(--color-ink);
+}
+
+/* On a phone the names sit above their values: two columns would squeeze the values to a word a line. */
+@media (max-width: 480px) {
+  .settingsGlance {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .settingsGlance dd + dt {
+    margin-top: var(--space-2xs);
+  }
+}
