@@ -1160,30 +1160,24 @@
 
 /* Chosen, and neutral: not started, started. */
 .segmentOn,
-@media (hover: hover) {
-  .segmentOn:hover {
-    background: var(--color-surface);
-    color: var(--color-ink);
-    box-shadow: 0 0 0 1px var(--color-border-2);
-  }
+.segmentOn:hover {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px var(--color-border-2);
 }
 
 .segmentHeard,
-@media (hover: hover) {
-  .segmentHeard:hover {
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-    box-shadow: none;
-  }
+.segmentHeard:hover {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
 }
 
 .segmentSkipped,
-@media (hover: hover) {
-  .segmentSkipped:hover {
-    background: var(--color-border);
-    color: var(--color-muted);
-    box-shadow: none;
-  }
+.segmentSkipped:hover {
+  background: var(--color-border);
+  color: var(--color-muted);
+  box-shadow: none;
 }
 
 /* Library: one recording per row, its tags beneath, no bullets. */
