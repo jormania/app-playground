@@ -891,7 +891,7 @@ export class Journey {
   }
 
   /**
-   * "A little more context" on an item (cached, once), or an answer to the
+   * "More context" on an item (cached, once), or an answer to the
    * listener's own question about it — asked from the listening view, with
    * the recording and the movement sounding as context. Answers are kept
    * under the item (`${programmeId}:${itemId}:q_…`) and read back by

@@ -146,7 +146,7 @@ export function SettingsScreen() {
       <Part title="About">
         <Card title="The curator is Claude">
           <p className={s.settingText}><strong>Sonnet</strong> chooses the week’s three directions, writes the programmes and second perspectives, and reads concert programmes.</p>
-          <p className={s.settingText}><strong>Haiku</strong>, at a twentieth of the price, does the reading around them: your feedback into taste, each thread’s week summed up, <em>A little more context</em>, and further reading.</p>
+          <p className={s.settingText}><strong>Haiku</strong>, at a twentieth of the price, does the reading around them: your feedback into taste, each thread’s week summed up, <em>More context</em>, and further reading.</p>
           <Setting label="This month, on this device"><SpendLine /></Setting>
           <p className={s.settingHint}>{RELEASE.name} · {RELEASE.date} · Spotify {spotify.connected ? 'connected' : 'not connected'} · Notion {svc.notion ? 'connected' : 'not connected'}</p>
           <Steps summary="Prompt versions">

@@ -179,7 +179,7 @@ themes, and how often each recording was heard again.
 
 **Cost.** Curating — directions, programmes, a second perspective — is on
 `MODEL_SONNET`; the jobs that read and summarise — taste, a thread's week
-(continuity), *A little more context* (explain) and further reading (resources,
+(continuity), *More context* (explain) and further reading (resources,
 web search capped at three) — are on `MODEL_HAIKU` (`modelFor(op)` in
 `curator.js`), at a twentieth of the price. Feedback is read into taste in
 batches: `Journey.scheduleTasteReading` waits three quiet minutes after the
@@ -469,8 +469,14 @@ from what it holds:
 - **Programme:** a *running order* right under the title (numbered works, each
   with its role or where you stand with it), so the music is findable before
   the essay; the same numbers sit beside each work below. From 1200px it moves
-  into the left margin as a fixed contents rail. Each work ends in a *Your
-  listening* box and a *Go further* list.
+  into the left margin as a fixed contents rail. Each line gives the work's
+  date and, once a recording is confirmed, its length; the heading gives the
+  total. Each work ends on one quiet line — *Your listening* folded to its
+  state word (only "Heard" in the accent), then "Listen with this open →",
+  "More context", "Another perspective" as links — and the music closes on
+  "That's the week: N works, about X." One hairline between works; inside a
+  work, space. Without Spotify, "Connect Spotify…" is said once, under the
+  running order.
 - **Journal:** a timeline — each week's number large in a margin column, a rule
   running down the week.
 - **Library:** a card catalogue — a guide letter where the surnames move on.
@@ -520,9 +526,13 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
   (see §13), plus: skipped works hidden everywhere (a setting, on by default),
   brighter small headings, and each work opening on an accent-edged card with
   a slim line pinned on top while you read inside it.
-- **Release three — 10 October 2026.** Roadmap items 14, 15 and 22 (see §14),
-  plus soloists placed per work at a concert, and reactions moved to the
-  stand-in that actually played.
+- **Release three — 14 October 2026** (first stamped 10 October). Roadmap
+  items 14, 15 and 22 (see §14), plus soloists placed per work at a concert and
+  reactions moved to the stand-in that actually played; then the edge-case audit
+  (§15), the consistency audit (§16), folding what is read once or optional
+  (§17), and the programme set as a brochure: one quiet line under each work, the
+  running order with years and lengths, a closing line, fewer rules, descriptive
+  words as labelled tags, and a quieter Library and concert page.
 
 ## 13. Release two
 
@@ -723,5 +733,8 @@ every visit after (remembered per device under `long-listen:read:*`).
   differently" and "Made with your settings"; the Notebook's "How it has moved"
   and "In Notion" (open by itself on a sync error); earlier answers in the
   listening view's "Ask about this" (the newest stays open).
-- Never folded: the introduction, the running order, each work, "Listen for",
-  the listening controls.
+- Never folded: the introduction, the running order, each work, "Listen for".
+- Folded to a word (14 October, the brochure pass): each work's listening
+  controls — "Your listening · Not started ›" opens the states, "I knew this
+  one already" and how it landed; open by itself while a hearing waits for
+  that word.

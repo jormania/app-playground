@@ -90,8 +90,9 @@ export function ConcertScreen({ id }: { id: string }) {
         {c.works.map((w, i) => <ConcertWork key={`${i}-${w.workId}`} c={c} w={w} />)}
       </ol>
 
+      {/* A correction is rare, and the page is for the music: a text link, after it. */}
       <div className={`${s.actions} ${s.mtLg}`}>
-        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => setEditing(true)}>Edit</button>
+        <button className={`${s.textButton} ${s.quietButton}`} onClick={() => setEditing(true)}>Correct the concert</button>
       </div>
     </article>
   )
@@ -136,12 +137,13 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
       <p className={s.libraryTitle}>{w.composer} — {w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
       <Credits r={{ soloists }} />
       {found === null ? (
-        // The same button, in the same place, as a recording on the programme: one size for "Look for it on Spotify".
-        <div className={s.actions}>
+        // One quiet link a work: the page is the evening's music and who played it, and a
+        // full button under every work made the ways back to Spotify the loudest thing on it.
+        <p className={s.concertLook}>
           {spotify.connected
-            ? <button className={s.outlineButton} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again'}</button>
-            : <a className={s.outlineButton} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>}
-        </div>
+            ? <button className={s.textButton} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again on Spotify'}</button>
+            : <a href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>}
+        </p>
       ) : found.length === 0 ? (
         <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>
       ) : (

@@ -219,11 +219,11 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         {curatorReady && <CharCount value={question} />}
         {/* The same note as on the programme, read once wherever it is first read. */}
         {data.explanation ? (
-          <Twisty label="A little more context" value={data.explanation.heading} readOnce={`context:${programme.id}:${item.id}`}>
+          <Twisty label="More context" value={data.explanation.heading} readOnce={`context:${programme.id}:${item.id}`}>
             <Paragraphs text={data.explanation.body} className={s.prose} />
           </Twisty>
         ) : curatorReady && (
-          <button className={s.textButton} onClick={() => void explain()} disabled={explaining}>{explaining ? 'The curator is writing…' : 'A little more context'}</button>
+          <button className={s.textButton} onClick={() => void explain()} disabled={explaining}>{explaining ? 'The curator is writing…' : 'More context'}</button>
         )}
       </section>
 
