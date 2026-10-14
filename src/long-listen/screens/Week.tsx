@@ -12,6 +12,7 @@ import { GUIDE_URL } from '../app/links'
 import { ProgrammeScreen } from './Programme'
 import { SittingCard } from '../components/SittingCard'
 import { Twisty } from '../components/Twisty'
+import { Traits } from '../components/Traits'
 import s from '../styles/editorial.module.css'
 
 interface WeekView {
@@ -206,8 +207,9 @@ function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: Progr
       <div className={s.optionBody}>
         <p className={`${s.mood} ${s.mt2xs}`}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
         <p>{o.pitch}</p>
-        <p className={s.character}>{o.character.join(' · ')}</p>
-        {o.why && <p className={s.quiet}>{o.why}</p>}
+        {/* The words describe the direction, so they say so; the curator's reason says it's for you. */}
+        <Traits label="Character" words={o.character} />
+        {o.why && <p className={s.quiet}><span className={s.label}>Why for you</span><br />{o.why}</p>}
         {o.returning && (
           <div className={`${s.continuity} ${s.flush} ${s.mtSm}`}>
             <p className={`${s.eyebrow} ${s.mb0}`}>

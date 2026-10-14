@@ -8,6 +8,7 @@ import { ListenBar } from './ListenBar'
 import { usePlayback } from '../app/playback'
 import { Credits } from '../components/Credits'
 import { displaySurname } from '../domain/identity'
+import { Traits } from './Traits'
 import s from '../styles/editorial.module.css'
 
 /** What to search Spotify for, by hand: the surname as written ("Strauss", not "II"), the work, and who leads it. */
@@ -93,9 +94,7 @@ export function RecordingBlock({
     <div className={s.recording}>
       <div className={s.label}>{label}</div>
       <Credits r={proposed} className={s.credit} empty="Performers not named" />
-      {(character || recording?.character.length) ? (
-        <p className={s.creditCharacter}>{character ?? recording?.character.join(', ')}</p>
-      ) : null}
+      <Traits label="The playing" words={character ?? recording?.character} />
 
       {shown && (
         <div className={s.album}>
