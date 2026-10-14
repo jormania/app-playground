@@ -10,7 +10,7 @@ test are fixed before anything here starts, and the test may re-rank this list:
 an item that answers something that kept getting in the way goes up, one nobody
 would reach goes down. Release two is the section of that name below; release three follows it.
 
-**Status, 10 October 2026:** release two shipped (LONG_LISTEN.md §12–13); release three shipped items 14, 15 and 22 (struck below; §14). The rest of release three is still open.
+**Status, 14 October 2026:** release two shipped (LONG_LISTEN.md §12–13); release three shipped and was stamped on 14 October (items 14, 15 and 22, struck below, plus the audits, folding and brochure polish in §14–17). The remaining release-three items are still open.
 
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every

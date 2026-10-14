@@ -24,7 +24,8 @@ export function spotifyQuery(p: ProposedRecording): string {
  * and a recording Spotify can't find gets a search, never a link to someone
  * else's performance of the same work. A near miss — the conductor right, the
  * orchestra not credited — is put to the listener as a question, and is not
- * linked, played or counted until they answer it.
+ * linked, played or counted until they answer it. That Spotify isn't
+ * connected is said once by the page, not under every recording.
  */
 export function RecordingBlock({
   proposed, recording, character, onOpened, onFindAlternative, standInBelow = false, label = 'Recommended recording',
@@ -156,9 +157,6 @@ export function RecordingBlock({
             : 'Spotify doesn’t appear to carry this exact recording. The curator’s choice stands; it may be elsewhere.'}
           {!standInBelow && onFindAlternative && <>{' '}<button className={s.textButton} onClick={onFindAlternative}>Ask for one that’s on Spotify</button></>}
         </p>
-      )}
-      {!shown && recording?.verification !== 'not-found' && !spotify.connected && (
-        <p className={s.note}>Connect Spotify in Settings to confirm the exact recording.</p>
       )}
     </div>
   )

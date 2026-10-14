@@ -105,6 +105,23 @@ const STATES: { value: ListeningState; label: string; kind: ListeningKind }[] = 
   { value: 'skipped', label: 'Skipped', kind: 'skipped' },
 ]
 
+const stateLabel = (state: ListeningState) => STATES.find((st) => st.value === state)?.label ?? ''
+
+/**
+ * Where you stand with a work is coloured by what it says, not by being
+ * chosen: only "Heard" takes the accent; not started and started stay in the
+ * page's ink, and skipped steps back. A work not yet begun is the usual state
+ * of most of a week, and was the loudest thing on the page while it wore the
+ * accent too. The folded word and the open choices follow one rule.
+ */
+const SEGMENT_ON: Record<ListeningState, string> = {
+  'not-started': s.segmentOn,
+  listening: s.segmentOn,
+  heard: `${s.segmentOn} ${s.segmentHeard}`,
+  skipped: `${s.segmentOn} ${s.segmentSkipped}`,
+}
+const STATE_WORD_CLASS: Partial<Record<ListeningState, string>> = { heard: s.stateHeard, skipped: s.stateSkipped }
+
 export function ProgrammeScreen({ id, asThisWeek = false }: { id: string; asThisWeek?: boolean }) {
   const { repo } = useServices()
   const { data, error, loading, retry } = useLoad(() => loadBundle(repo, id), [id])
@@ -169,6 +186,11 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 
   const first = b.firstExploration
   const returning = p.stage > 1 && first
+  const shownItems = p.sections.flatMap((x) => x.items).filter(shown)
+  // With two works or more the running order heads the music and says how long it runs; with one, the tools line does.
+  const ordered = shownItems.length >= 2
+  const length = lengthOf(b, shownItems)
+  const needsSpotify = needsSpotifyNote(b, spotify.connected)
 
   return (
     <article>
@@ -186,9 +208,9 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         </div>
       )}
 
-      <ProgrammeTools b={b} />
+      <ProgrammeTools b={b} showLength={!ordered} />
       {isCurrent && <LiveLine b={b} skip={settings.hideSkipped ? skippedIds : undefined} />}
-      <RunningOrder b={b} shown={shown} />
+      {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} /> : needsSpotify && <SpotifyNote />}
       {settings.hideSkipped && skippedIds.size > 0 && (
         <p className={s.faint}>
           {showSkipped ? `Showing ${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'}. ` : `${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'} hidden. `}
@@ -211,7 +233,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         </Twisty>
       )}
 
-      <PinnedWork items={p.sections.flatMap((x) => x.items).filter(shown)} />
+      <PinnedWork items={shownItems} />
       {p.sections.filter((section) => section.items.some(shown)).map((section, i) => (
         <section key={section.id} aria-label={sectionTitle(section)}>
           <h2 className={s.sectionHead}>{sectionTitle(section)}</h2>
@@ -223,7 +245,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
             <ItemView
               key={item.id}
               item={item}
-              number={p.sections.flatMap((x) => x.items).filter(shown).findIndex((i) => i.id === item.id) + 1}
+              number={shownItems.findIndex((i) => i.id === item.id) + 1}
               b={b}
               comparison={b.comparisons.find((c) => c.id === `cmp:${p.id}:${item.id}`)}
             />
@@ -238,6 +260,13 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           <ComparisonView c={c} b={b} />
         </section>
       ))}
+
+      {/* The music ends here: one line to close it, as a printed programme closes on its last work. */}
+      {shownItems.length > 0 && (
+        <p className={s.musicClose}>
+          That’s the {p.sitting ? 'evening' : 'week'}: {shownItems.length} {shownItems.length === 1 ? 'work' : 'works'}{length.all ? `, ${aboutDuration(length.total)}` : ''}.
+        </p>
+      )}
 
       <ResourcesView b={b} searching={searching} onSearch={async () => {
         setSearching(true)
@@ -262,6 +291,30 @@ const itemRecordingIds = (b: Bundle, item: ProgrammeItem): string[] => heardAs(i
  */
 function playableOf(b: Bundle, item: ProgrammeItem): Recording | undefined {
   return itemRecordingIds(b, item).map((id) => b.recordings.get(id)).find(isConfirmed)
+}
+
+/** How long a work runs, as it plays (playableOf); undefined until Spotify has confirmed a recording of it. */
+const durationOf = (b: Bundle, item: ProgrammeItem): number | undefined => playableOf(b, item)?.spotify?.durationMs || undefined
+
+/** How long these works run together: the total of those known, how many are known, and whether that is all of them. */
+function lengthOf(b: Bundle, items: ProgrammeItem[]): { total: number; known: number; all: boolean } {
+  const known = items.map((i) => durationOf(b, i)).filter((ms): ms is number => Boolean(ms))
+  return { total: known.reduce((n, ms) => n + ms, 0), known: known.length, all: known.length > 0 && known.length === items.length }
+}
+
+/**
+ * Without Spotify, no recording on the page can be confirmed: said once, under
+ * the running order, rather than under every work. Only while some recording
+ * is still waiting for that — one Spotify has a near match for, or lacks, has
+ * its own word in its block.
+ */
+function needsSpotifyNote(b: Bundle, connected: boolean): boolean {
+  if (connected) return false
+  return [...b.recordings.values()].some((r) => !isConfirmed(r) && r.verification !== 'not-found' && !(r.verification === 'unconfirmed' && r.spotify))
+}
+
+function SpotifyNote() {
+  return <p className={s.note}>Connect Spotify in <a href={href({ name: 'settings' })}>Settings</a> to confirm the exact recordings.</p>
 }
 
 /**
@@ -317,16 +370,18 @@ const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard'
 
 /**
  * The week's music at a glance, before the essay: every work in order, with
- * where you stand with it. On a phone the essay is two screens long, and this
+ * when it was written, how long it runs, and where you stand with it. On a phone the essay is two screens long, and this
  * is what makes the music findable without scrolling past it. Each line jumps
  * to its work (by scrolling — the URL hash belongs to the router).
  */
-function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) => boolean }) {
-  // (How long it runs is said once, in the tools line above.)
+function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean }) {
   const player = usePlayerState()
   const rows = b.programme.sections.flatMap((section) => section.items.filter(shown).map((item) => ({ item, section })))
-  if (rows.length < 2) return null
   const heard = rows.filter(({ item }) => listeningState(b.events, itemRecordingIds(b, item)) === 'heard').length
+  // How long it runs is said here, once (the tools line keeps it only when there is no running order).
+  // Partly known, it says how many it counts: a total of two works must not read as the week's.
+  const length = lengthOf(b, rows.map(({ item }) => item))
+  const lengthWords = length.known === 0 ? '' : length.all ? ` · ${aboutDuration(length.total)}` : ` · ${aboutDuration(length.total)} for the ${length.known} confirmed`
   const jump = (id: string) => document.getElementById(workAnchor(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // The work Spotify is on now, if it's one of these, is marked in the list.
   const onNow = (rid: string) => {
@@ -336,8 +391,9 @@ function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) =>
   return (
     <nav className={s.runningOrder} aria-label="This week’s music">
       <p className={s.panelHead}>
-        The music · {rows.length} works{heard > 0 ? ` · ${heard} heard` : ''}
+        {`The music · ${rows.length} works${lengthWords}${heard > 0 ? ` · ${heard} heard` : ''}`}
       </p>
+      {spotifyNote && <SpotifyNote />}
       {/* Grouped by section, each under its heading: the part of the week a
           work belongs to is said once above it, not in the space a state tag
           needs — where it used to vanish as soon as each work had a state. */}
@@ -346,6 +402,8 @@ function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) =>
           const state = listeningState(b.events, itemRecordingIds(b, item))
           const now = itemRecordingIds(b, item).map(onNow).find(Boolean) ?? null
           const firstOfSection = n === 0 || rows[n - 1].section.id !== section.id
+          // When it was written (the curator's date for the work) and how long it runs, where known.
+          const meta = [b.works.get(item.workId)?.composed?.trim(), aboutDuration(durationOf(b, item))].filter(Boolean).join(' · ')
           return (
             <li key={item.id} aria-current={now ? 'true' : undefined}>
               {firstOfSection && <p className={s.roGroup}>{sectionTitle(section)}</p>}
@@ -354,6 +412,7 @@ function RunningOrder({ b, shown }: { b: Bundle; shown: (item: ProgrammeItem) =>
                 <span className={s.roText}>
                   <span className={s.roComposer}>{item.proposed.composer}</span>
                   <span className={s.roWork}>{item.proposed.work}</span>
+                  {meta && <span className={s.roMeta}>{meta}</span>}
                 </span>
                 <span className={s.roSide}>
                   {now
@@ -450,6 +509,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const standIn = comparison?.standIn ? comparison : undefined
   // What is reacted to is the recording that plays: the stand-in's own, where Spotify lacks the curator's.
   const playedId = standIn && !isConfirmed(recording) && standIn.perspectives[1] ? standIn.perspectives[1].recordingId : item.recordingId
+  // Heard, and nothing said yet about the recording that played: the question is put, open.
+  const feedbackPending = state === 'heard' && !b.feedback.some((f) => f.target.id === playedId)
 
   return (
     <div className={s.item} id={workAnchor(item.id)}>
@@ -486,62 +547,62 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         </>
       )}
 
-      {/* What you've done with it — kept together, apart from what the curator wrote. */}
-      <section className={s.panel} aria-label={`Your listening: ${item.proposed.work}`}>
-        <p className={s.panelHead}>Your listening</p>
-        <div className={s.segmented} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
-          {STATES.map((st) => (
-            <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? s.segmentOn : ''}`} onClick={() => { void mark(st) }}>
-              {st.label}
-            </button>
-          ))}
-        </div>
-        <div className={s.switchRow}>
-          <div>
-            <label htmlFor={`knew-${item.id}`} className={s.settingLabel}>I knew this one already</label>
-            {knewIt && <p className={s.settingHint}>The curator won’t count it as a discovery.</p>}
-          </div>
-          <input id={`knew-${item.id}`} type="checkbox" role="switch" className={s.switch} checked={knewIt} onChange={() => void toggleKnown()} />
-        </div>
-        {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === playedId || f.target.id === item.workId))) && (
-          <div className={s.panelPart}>
-            <FeedbackPanel
-              key={`${item.id}-${state}`}
-              programmeId={pid}
-              feedback={b.feedback}
-              startOpen={state === 'heard' && !b.feedback.some((f) => f.target.id === playedId)}
-              targets={[
-                { type: 'recording', id: playedId, label: playedId === item.recordingId ? 'This recording' : 'The recording you heard' },
-                { type: 'work', id: item.workId, label: 'The work itself' },
-              ]}
-            />
-          </div>
-        )}
-      </section>
+      {/* The work closes on one quiet line, as a printed programme would end on
+          the music: where you stand with it, folded to a word, and the ways on as
+          plain links. The choices open in place; while a hearing waits for a word
+          on how it landed, the fold stays open, as the box it replaced did. */}
+      <div className={s.workClose}>
+        <section aria-label={`Your listening: ${item.proposed.work}`}>
+          <Twisty label="Your listening" value={<span className={STATE_WORD_CLASS[state]}>{stateLabel(state)}</span>} open={feedbackPending}>
+            <div className={s.segmented} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
+              {STATES.map((st) => (
+                <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? SEGMENT_ON[st.value] : ''}`} onClick={() => { void mark(st) }}>
+                  {st.label}
+                </button>
+              ))}
+            </div>
+            <div className={s.switchRow}>
+              <div>
+                <label htmlFor={`knew-${item.id}`} className={s.settingLabel}>I knew this one already</label>
+                {knewIt && <p className={s.settingHint}>The curator won’t count it as a discovery.</p>}
+              </div>
+              <input id={`knew-${item.id}`} type="checkbox" role="switch" className={s.switch} checked={knewIt} onChange={() => void toggleKnown()} />
+            </div>
+            {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === playedId || f.target.id === item.workId))) && (
+              <div className={s.workFeedback}>
+                <FeedbackPanel
+                  key={`${item.id}-${state}`}
+                  programmeId={pid}
+                  feedback={b.feedback}
+                  startOpen={feedbackPending}
+                  targets={[
+                    { type: 'recording', id: playedId, label: playedId === item.recordingId ? 'This recording' : 'The recording you heard' },
+                    { type: 'work', id: item.workId, label: 'The work itself' },
+                  ]}
+                />
+              </div>
+            )}
+          </Twisty>
+        </section>
 
-      <nav className={s.further} aria-label={`Go further with ${item.proposed.work}`}>
-        <p className={s.panelHead}>Go further</p>
-        <a className={s.furtherRow} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>
-          <span className={s.furtherTitle}>Listen with this open</span>
-          <span className={s.furtherHint}>The notes on one quiet screen that stays awake</span>
-        </a>
-        {!explanation && curatorReady && (
-          <button className={s.furtherRow} onClick={() => void explain()} disabled={explaining}>
-            <span className={s.furtherTitle}>{explaining ? 'The curator is writing…' : 'A little more context'}</span>
-            <span className={s.furtherHint}>Where the work came from, in a few paragraphs</span>
-          </button>
-        )}
-        {!comparison && b.pairs && curatorReady && (
-          <button className={s.furtherRow} onClick={() => void compare()} disabled={comparing}>
-            <span className={s.furtherTitle}>{comparing ? 'Choosing a second recording…' : 'Hear another perspective'}</span>
-            <span className={s.furtherHint}>A second recording that reads it differently</span>
-          </button>
-        )}
-      </nav>
+        <nav className={s.goFurther} aria-label={`Go further with ${item.proposed.work}`}>
+          <a className={s.goFurtherMain} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>Listen with this open<span aria-hidden="true"> →</span></a>
+          {!explanation && curatorReady && (
+            <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void explain()} disabled={explaining}>
+              {explaining ? 'The curator is writing…' : 'More context'}
+            </button>
+          )}
+          {!comparison && b.pairs && curatorReady && (
+            <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void compare()} disabled={comparing}>
+              {comparing ? 'Choosing a second recording…' : 'Another perspective'}
+            </button>
+          )}
+        </nav>
+      </div>
 
       {/* Asked for, read once (open the time it arrives), then folded to its heading. */}
       {explanation && (
-        <Twisty label="A little more context" value={explanation.heading} readOnce={`context:${pid}:${item.id}`}>
+        <Twisty label="More context" value={explanation.heading} readOnce={`context:${pid}:${item.id}`}>
           <Paragraphs text={explanation.body} className={s.prose} />
         </Twisty>
       )}
@@ -575,11 +636,12 @@ function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
 }
 
 /**
- * The programme's own tools, quiet under the title: playlist, length, print.
+ * The programme's own tools, quiet under the title: playlist, print, and the
+ * length when there is no running order to say it.
  * Saving the playlist is a one-time choice; after that it keeps itself
  * current — rewritten whenever the confirmed recordings change.
  */
-function ProgrammeTools({ b }: { b: Bundle }) {
+function ProgrammeTools({ b, showLength }: { b: Bundle; showLength: boolean }) {
   const { spotify, repo, bump, say, week, settings } = useServices()
   const [saving, setSaving] = useState(false)
   const items = b.programme.sections.flatMap((x) => x.items)
@@ -624,7 +686,7 @@ function ProgrammeTools({ b }: { b: Bundle }) {
 
   return (
     <div className={`${s.actions} ${s.mtMd}`}>
-      {total > 0 && <span className={s.faint}>{playable.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
+      {showLength && total > 0 && <span className={s.faint}>{playable.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
       {b.playlist && webUrl(b.playlist.url) && (
         <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer" title="Kept in step with the programme as recordings are confirmed">Open the playlist</a>
       )}

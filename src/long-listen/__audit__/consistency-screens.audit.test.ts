@@ -71,14 +71,17 @@ describe('double taps record once — everywhere a tap writes, not only "I’ve 
 })
 
 describe('a stand-in is the item — on the screens that still count only the curator’s recording', () => {
-  it('the programme’s length and "the music runs" count the stand-in that plays (Programme.tsx ProgrammeTools)', async () => {
+  it('the programme’s length counts the stand-in that plays (Programme.tsx RunningOrder, and the closing line)', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo)
     const { items } = await withStandIn(repo, p)
     window.location.hash = `#/p/${p.id}`
     app(repo)
     await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })
-    expect(await screen.findByText(`The music runs ${aboutDuration(items.length * 600_000)}`)).toBeTruthy()
+    // Said once at the head of the running order (the tools line keeps it only when there is none), and again closing the music.
+    const total = aboutDuration(items.length * 600_000)
+    expect(await screen.findByText(`The music · ${items.length} works · ${total}`)).toBeTruthy()
+    expect(screen.getByText(`That’s the week: ${items.length} works, ${total}.`)).toBeTruthy()
   }, 15000)
 
   it('a thread with a work heard through a stand-in does not read "none heard yet" (domain/threadContents.ts)', async () => {

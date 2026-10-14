@@ -136,7 +136,9 @@
 .main {
   max-width: calc(var(--measure) + 2 * var(--space-md));
   margin: 0 auto;
-  padding: var(--space-xl) var(--space-md) 0;
+  /* The page starts a short step under the sections, not a screen's worth: the
+     masthead's rule already separates them. */
+  padding: var(--space-md) var(--space-md) 0;
   /* backwards, not both: a transform left on <main> after the fade would make
      it the containing block for the programme's fixed contents rail. */
   animation: settle 420ms var(--ease) backwards;
@@ -187,6 +189,13 @@
   margin: 0 0 var(--space-sm);
   text-wrap: pretty;
   hyphens: auto;
+}
+
+/* The introduction turns between its paragraphs — the curator moves from the
+   music to what to listen for — and a body paragraph's gap read as one block.
+   A fuller pause makes each turn visible without a heading. */
+.lede > p + p {
+  margin-top: var(--space-lg);
 }
 
 .lede > p:first-child::first-letter {
@@ -467,6 +476,13 @@
 
 .runningOrder .panelHead {
   margin-bottom: var(--space-2xs);
+  /* With a length and a heard count it can run to two lines: evenly, never a lone "· 1 heard". */
+  text-wrap: balance;
+}
+
+/* "Connect Spotify…", said once for the page, under the heading and clear of the list. */
+.runningOrder .note {
+  margin: 0 0 var(--space-sm);
 }
 
 .roList {
@@ -531,6 +547,14 @@
   line-height: 1.25;
   color: var(--color-ink);
   transition: color var(--duration) var(--ease);
+}
+
+/* When it was written and how long it runs, as a printed programme gives them under each title. */
+.roMeta {
+  margin-top: var(--space-3xs);
+  font-size: var(--text-sm);
+  line-height: 1.3;
+  color: var(--color-faint);
 }
 
 .roSide {
@@ -653,8 +677,25 @@
   color: var(--color-muted);
 }
 
+/* Works are told apart by one hairline between them; inside a work, space
+   does the separating. Between sections the heading's own rule does it. */
 .item + .item {
-  margin-top: var(--space-2xl);
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+/* A fold inside a work reads as one by its label and chevron: no rule above it. */
+.item .twisty {
+  margin-top: var(--space-xs);
+  border-top: 0;
+}
+
+/* After the last work, before what is optional: "That's the week: 3 works, about 1 hour 50 minutes." */
+.musicClose {
+  margin: var(--space-xl) 0 0;
+  font-style: italic;
+  color: var(--color-muted);
 }
 
 .composer {
@@ -783,10 +824,7 @@
 }
 
 .recording {
-  margin: var(--space-md) 0;
-  padding: var(--space-sm) 0;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  margin: var(--space-lg) 0 var(--space-md);
 }
 
 .credit {
@@ -955,10 +993,8 @@
   color: var(--color-muted);
 }
 
-/* ── an item's lower half: your listening, then where to go next ─────────── */
-
-/* What the listener has done with a work, set apart from what the curator
-   wrote: a tinted box rather than more lines of text and links. */
+/* A tinted box for a part of a screen that is the listener's own doing (the
+   listening view's "how did it land", a concert's screenshot reader). */
 .panel {
   margin-top: var(--space-lg);
   padding: var(--space-md);
@@ -968,7 +1004,7 @@
 }
 
 /* On the narrowest screens (or a phone at large text) the box gives its
-   padding back, so the one-line states keep room to breathe. */
+   padding back, so what is inside keeps room to breathe. */
 @media (max-width: 360px) {
   .panel {
     padding: var(--space-sm) var(--space-xs);
@@ -984,11 +1020,67 @@
   color: var(--color-ink);
 }
 
+/* ── an item's close: where you stand with it, then the ways on ────────── */
+
+/* One quiet line under each work instead of a box: the state folded to a
+   word (a Twisty), the ways on as plain links beneath it. */
+.workClose {
+  margin-top: var(--space-lg);
+}
+
+/* The folded state word takes the colour of what it says: heard in the
+   accent, skipped stepping back, anything else the twisty's quiet value. */
+.stateHeard {
+  color: var(--color-accent);
+}
+
+.stateSkipped {
+  color: var(--color-faint);
+}
+
+/* Open, the fold's parts are set apart by space where the box had hairlines:
+   a pause before "how did it land", and room before the links below. */
+.workClose .twisty[open] > .twistyBody {
+  padding-bottom: var(--space-lg);
+}
+
+.workFeedback.workFeedback {
+  margin-top: var(--space-lg);
+}
+
+/* Inside the fold the feedback form needs no box of its own. */
+.workClose .feedback {
+  margin-top: var(--space-xs);
+  padding: 0;
+  background: none;
+}
+
+.goFurther {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2xs) var(--space-md);
+}
+
+/* The way on that this screen offers first: the work's own quiet screen. */
+.goFurtherMain {
+  position: relative;
+  font-size: var(--text-base);
+}
+
+.goFurtherMain::after {
+  content: '';
+  position: absolute;
+  inset: -8px -6px;
+}
+
 /* The four states on one line, drawn like the design system's small
-   SegmentedControl that Settings uses — a tinted track, the current one filled
-   with the accent — so "selected" looks the same everywhere in the app. Kept
-   local (not the DS component) because a long label must wrap inside its
-   segment at large text, where the DS track would scroll sideways instead. */
+   SegmentedControl that Settings uses — a tinted track, the current one
+   raised. Unlike Settings, the chosen state is not simply filled with the
+   accent: only "Heard" takes it (see Programme.tsx SEGMENT_ON), so a week of
+   works not yet started doesn't shout. Kept local (not the DS component)
+   because a long label must wrap inside its segment at large text, where the
+   DS track would scroll sideways instead. */
 .segmented {
   display: flex;
   gap: var(--space-3xs);
@@ -1019,92 +1111,26 @@
   color: var(--color-ink);
 }
 
+/* Chosen, and neutral: not started, started. */
 .segmentOn,
 .segmentOn:hover {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 1px var(--color-border-2);
+}
+
+.segmentHeard,
+.segmentHeard:hover {
   background: var(--color-accent);
   color: var(--color-on-accent);
+  box-shadow: none;
 }
 
-/* Each part after the first gets a hairline, so the box reads as one card. */
-.panelPart {
-  margin-top: var(--space-md);
-  padding-top: var(--space-sm);
-  border-top: 1px solid var(--color-border);
-}
-
-/* Inside the box the feedback form needs no second box of its own. */
-.panel .feedback {
-  margin-top: var(--space-xs);
-  padding: 0;
-  background: none;
-}
-
-/* Where to go next: full-width rows, each saying what it opens. */
-.further {
-  margin-top: var(--space-lg);
-}
-
-.furtherRow {
-  appearance: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3xs);
-  width: 100%;
-  min-height: 44px;
-  padding: var(--space-sm) 1.75rem var(--space-sm) 0;
-  position: relative;
-  background: none;
-  border: 0;
-  border-top: 1px solid var(--color-border);
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-}
-
-.furtherRow:last-child {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.furtherRow::after {
-  content: '→';
-  position: absolute;
-  right: 0.25rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-accent);
-  transition: transform var(--duration) var(--ease);
-}
-
-.furtherRow:hover::after {
-  transform: translate(0.2rem, -50%);
-}
-
-.furtherRow:disabled {
-  cursor: default;
-}
-
-.furtherRow:disabled::after {
-  content: '';
-}
-
-.furtherTitle {
-  color: var(--color-accent);
-  font-size: 1.05rem;
-}
-
-.furtherRow:hover .furtherTitle {
-  color: var(--color-accent-hover);
-}
-
-.furtherRow:disabled .furtherTitle {
-  color: var(--color-faint);
-}
-
-.furtherHint {
-  font-size: var(--text-sm);
-  color: var(--color-faint);
+.segmentSkipped,
+.segmentSkipped:hover {
+  background: var(--color-border);
+  color: var(--color-muted);
+  box-shadow: none;
 }
 
 /* Library: one recording per row, its tags beneath, no bullets. */
@@ -1121,7 +1147,7 @@
 }
 
 .libraryRec + .libraryRec {
-  border-top: 1px dotted var(--color-border);
+  margin-top: var(--space-xs);
 }
 
 /* Journal: the three directions offered, one per line, the chosen one marked. */
@@ -1803,8 +1829,8 @@
 }
 
 /* Each work its own card, edged in the accent like a work in the programme,
-   so where one ends and the next begins is never in doubt; its recordings sit
-   below a hairline inside it. */
+   so where one ends and the next begins is never in doubt. Inside it, as
+   inside a work on the programme, space alone sets the recordings apart. */
 .libraryWork {
   margin-top: var(--space-sm);
   padding: var(--space-sm) var(--space-md) var(--space-xs);
@@ -1818,8 +1844,7 @@
 }
 
 .libraryWork .libraryRecs {
-  margin-top: var(--space-sm);
-  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-xs);
 }
 
 .libraryTitle {
@@ -1974,8 +1999,6 @@
 /* The Library's "heard live" line under a work's recordings. */
 .libraryLive {
   margin: var(--space-sm) 0 0;
-  padding-top: var(--space-xs);
-  border-top: 1px solid var(--color-border);
 }
 
 .libraryLive > * + * {
@@ -1994,7 +2017,17 @@
 }
 
 .concertWorks > li {
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+/* A concert work's one way back to its music: a quiet link under its performers. */
+.concertLook {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-sm);
+}
+
+.concertLook .textButton {
+  font-size: inherit;
 }
 
 .concertForm {
@@ -2426,7 +2459,7 @@
   .nav,
   .actions,
   .panel,
-  .further,
+  .workClose,
   .primaryButton,
   .outlineButton,
   .listenBar,
@@ -2706,8 +2739,7 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Straight after the recording block, which already closes with a rule, the
-   twisty needs no second one of its own. */
+/* Straight after the recording block, the fold follows on by space alone. */
 .recording + .twisty {
   margin-top: 0;
   border-top: 0;

@@ -84,6 +84,31 @@ describe('addresses that hold nothing', () => {
 })
 
 describe('marking what was heard', () => {
+  it('each work closes on one folded line: its state as a word, the ways on as links', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })
+    const region = screen.getByRole('region', { name: 'Your listening: La mer' })
+    // Folded, and saying where you stand; nothing is open until there's a hearing to say something about.
+    expect(region.querySelector('details')?.open).toBe(false)
+    expect(region.querySelector('summary')?.textContent).toBe('Your listeningNot started')
+    await userEvent.click(screen.getAllByRole('radio', { name: 'Heard' })[0])
+    await waitFor(() => expect(region.querySelector('summary')?.textContent).toBe('Your listeningHeard'))
+    expect(region.querySelector('details')?.open).toBe(true)
+    expect(screen.getAllByRole('link', { name: 'Listen with this open' }).length).toBe(p.sections.flatMap((x) => x.items).length)
+  }, 15000)
+
+  it('without Spotify, says once for the page that recordings can’t be confirmed — not under every work', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })
+    expect(screen.getAllByText(/to confirm the exact recording/)).toHaveLength(1)
+  }, 15000)
+
   it('re-tapping the state a work is already in records nothing', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo, plain())

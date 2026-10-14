@@ -131,7 +131,7 @@ export function demoCurator(): CuratorClient {
         case 'continuity':
           return { reaction: 'A good first visit.', openQuestions: ['Where does colour go after Debussy?'], adjacentTopics: ['Spectral music'], nextDirections: ['Roussel and Dutilleux carry the palette into the mid-century'], closingNote: 'You listened for the light.', promptVersion: 'demo' } satisfies ContinuityResponse as T
         case 'explain':
-          return { heading: 'A little more context', body: 'Demo mode: the curator would write a short note here, pitched to what it knows of you.\n\nConnect the real curator to read one.', promptVersion: 'demo' } satisfies ExplainResponse as T
+          return { heading: 'Where it came from', body: 'Demo mode: the curator would write a short note here, pitched to what it knows of you.\n\nConnect the real curator to read one.', promptVersion: 'demo' } satisfies ExplainResponse as T
         case 'compare':
           return { framing: 'A conductor who knew the composer, set beside a modern analyst.', whyBoth: 'If you want to hear what tradition adds, listen to both.', current: { character: 'Analytical', listenFor: 'Balance' }, other: { conductor: 'Jean Martinon', orchestra: "Orchestre National de l'ORTF", soloists: [], character: 'Idiomatic, airy', listenFor: 'The woodwind phrasing' }, promptVersion: 'demo' } satisfies CompareResponse as T
         case 'resources':
