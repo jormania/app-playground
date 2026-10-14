@@ -133,6 +133,24 @@ describe('marking what was heard', () => {
     await screen.findByText('Back to the programme')
     expect((await repo.events.all()).filter((e) => e.kind === 'heard')).toHaveLength(1)
   }, 15000)
+
+  it('a work already heard opens on how it landed, never on "I’ve heard it" again', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const item = p.sections[0].items[0]
+    window.location.hash = `#/listen/${p.id}/${item.id}`
+    const first = render(<App repo={repo} curator={plain()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'I’ve heard it' }, { timeout: 4000 }))
+    await screen.findByText('Back to the programme')
+    first.unmount()
+
+    // Coming back to it later: no button to mark it heard a second time.
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByText('Back to the programme', {}, { timeout: 4000 })
+    expect(screen.queryByRole('button', { name: 'I’ve heard it' })).toBeNull()
+    expect(screen.getByText('Heard')).toBeTruthy()
+    expect((await repo.events.all()).filter((e) => e.kind === 'heard')).toHaveLength(1)
+  }, 15000)
 })
 
 describe('asking the curator, and seeing that it is asked', () => {
