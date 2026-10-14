@@ -621,7 +621,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         <a className={s.listenAlong} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>
           <Headphones size={16} strokeWidth={1.8} aria-hidden="true" />Listen along<span aria-hidden="true">→</span>
         </a>
-        <span className={s.listenAlongNote}>opens the listening view: movements, notes, questions</span>
+        <span className={s.listenAlongNote}>movements, notes and questions as it plays</span>
       </div>
       {/* Read once: open the first time, then one line that still says who and why. */}
       {item.whyThisRecording && (
