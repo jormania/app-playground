@@ -140,10 +140,15 @@ export function RecordingBlock({
       {near && (
         <p className={s.note}>
           Spotify has something close, credited to {near.artistNames.join(', ') || 'other performers'}. Is it the recording the curator meant?
-          Same conductor can mean a different decade and a different reading, so it isn’t linked or played until you say.{' '}
-          <button className={s.textButton} onClick={yesThis} disabled={busy}>Yes, this is it</button>{' '}
-          <button className={s.textButton} onClick={notThis} disabled={busy}>{busy ? 'Looking again…' : 'Not this one'}</button>
+          Same conductor can mean a different decade and a different reading, so it isn’t linked or played until you say.
         </p>
+      )}
+      {near && (
+        // Two answers, set apart: one tap on the wrong one links (or drops) a recording.
+        <div className={`${s.actions} ${s.mtSm}`}>
+          <button className={`${s.outlineButton} ${s.smallButton}`} onClick={yesThis} disabled={busy}>Yes, this is it</button>
+          <button className={s.textButton} onClick={notThis} disabled={busy}>{busy ? 'Looking again…' : 'Not this one'}</button>
+        </div>
       )}
       {sp?.confidence === 'probable' && sp.confirmedByListener && (
         <p className={s.note}>

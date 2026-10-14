@@ -18,6 +18,7 @@ import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { aboutDuration, isConfirmed, keepPlaylistCurrent, saveProgrammePlaylist, spotifyCandidates, needsLook, verifyProgramme, type PlaylistMark } from '../spotify/verify'
 import { positionOf, usePlayerState } from '../app/playback'
+import { playbackOf } from '../spotify/client'
 import { useOnline } from '../app/online'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
@@ -502,6 +503,18 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   // How long it runs, as a programme prints it, and its movements — both only once Spotify has confirmed the recording that plays.
   const duration = primeMinutes(durationOf(b, item))
   const movements = movementTitles(playableOf(b, item)?.spotify?.trackNames)
+
+  // Sounding on Spotify while the page still says "Not started" (resumed, or started in Spotify itself):
+  // what is playing is the truth — recorded once as begun, as a tap on Play would have.
+  const player = usePlayerState()
+  const sounding = playableOf(b, item)
+  const isSounding = Boolean(sounding?.spotify && playbackOf(player.np, sounding.spotify.trackIds)?.playing)
+  const notedStart = useRef(false)
+  useEffect(() => {
+    if (!isSounding || state !== 'not-started' || notedStart.current || !sounding) return
+    notedStart.current = true
+    void journey.markListening({ recordingId: sounding.id, workId: item.workId }, 'play-started', pid, 'app').then(bump, () => {})
+  }, [isSounding, state, sounding, journey, item.workId, pid, bump])
 
   // Once per tap, like "I’ve heard it" in the listening view: a ref, since two
   // taps in one frame both see the state as it was before either was kept.

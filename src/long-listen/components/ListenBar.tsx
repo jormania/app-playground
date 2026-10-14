@@ -2,6 +2,7 @@ import { ExternalLink, Pause, Play } from 'lucide-react'
 import { useServices } from '../app/services'
 import { assumeStart, playbackLine, type Playback } from '../app/playback'
 import { openUrl } from '../spotify/client'
+import { clock } from '../domain/programmeStyle'
 import s from '../styles/editorial.module.css'
 
 const icon = { size: 15, fill: 'currentColor', strokeWidth: 0, 'aria-hidden': true } as const
@@ -36,6 +37,10 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
     if (await p.play()) { assume(); onStarted?.() }
   }
 
+  async function resumeLeft() {
+    if (p.left && await p.play(p.left.index, p.left.progressMs)) onStarted?.()
+  }
+
   function opened() {
     assume()
     // Spotify plays it in its album, which carries on: watched, it is stopped at its last movement.
@@ -53,6 +58,9 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
                 <button className={s.playButton} onClick={() => void p.pause()} disabled={p.busy}><Pause {...icon} />Pause</button>
               ) : p.at ? (
                 <button className={s.playButton} onClick={() => void p.resume()} disabled={p.busy} title="Carry on from where it stopped"><Play {...icon} />Resume</button>
+              ) : p.left ? (
+                // Spotify has let it go (closed, or hours of something else): resumed from where this device saw it last.
+                <button className={s.playButton} onClick={() => void resumeLeft()} disabled={p.busy} title="Carry on from where you left it"><Play {...icon} />Resume</button>
               ) : (
                 <button className={s.playButton} onClick={() => void play()} disabled={p.busy} title="Every movement of this work, in order, on the device where Spotify is open"><Play {...icon} />Play</button>
               )
@@ -70,6 +78,13 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
       </div>
       <p className={s.playbackLine} role="status" aria-live="polite">
         {line && <><span className={p.at?.playing ? s.playingDot : s.pausedDot} aria-hidden="true" />{line}</>}
+        {!line && p.left && spotify.connected && (
+          <>
+            <span className={s.pausedDot} aria-hidden="true" />
+            Left at {movements > 1 ? `movement ${p.left.index + 1} of ${movements}, ` : ''}{clock(p.left.progressMs)} ·{' '}
+            <button type="button" className={`${s.textButton} ${s.inlineButton}`} onClick={() => void play()} disabled={p.busy}>start from the beginning</button>
+          </>
+        )}
       </p>
       {p.cantFollow && <p className={s.note}>Reconnect Spotify in Settings so the app can follow what’s playing.</p>}
       {p.noDevice && (

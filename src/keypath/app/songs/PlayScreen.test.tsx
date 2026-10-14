@@ -604,7 +604,8 @@ describe('Play screen: the written view', () => {
     // A wrong key: red on the staff, and now the key to play lights up.
     act(() => tap(document.querySelector<HTMLElement>('[data-pitch="65"]')!))
     await waitFor(() => expect(document.querySelector('[data-wrong="65"]')).toBeTruthy())
-    expect(target()?.getAttribute('data-pitch')).toBe('60')
+    // The key lights in its own render, which can land a frame after the red mark (slow CI runners).
+    await waitFor(() => expect(target()?.getAttribute('data-pitch')).toBe('60'))
     for (const p of [60, 62, 64]) {
       await waitFor(() => expect(document.querySelector('svg[data-big]')).toBeTruthy())
       act(() => tap(document.querySelector<HTMLElement>(`[data-pitch="${p}"]`)!))
