@@ -40,8 +40,13 @@
   text-decoration: none;
 }
 
-.brand:hover {
-  color: var(--color-ink);
+/* Every hover colour sits under (hover: hover): on a phone a tap leaves :hover
+   stuck on, which read as a selection that means nothing (a work title left
+   red in the running order). */
+@media (hover: hover) {
+  .brand:hover {
+    color: var(--color-ink);
+  }
 }
 
 .weekLine {
@@ -98,8 +103,10 @@
   border-bottom: 1px solid transparent;
 }
 
-.navLink:hover {
-  color: var(--color-ink);
+@media (hover: hover) {
+  .navLink:hover {
+    color: var(--color-ink);
+  }
 }
 
 .navActive {
@@ -305,8 +312,10 @@
   min-height: 32px;
 }
 
-.textButton:hover {
-  color: var(--color-accent-hover);
+@media (hover: hover) {
+  .textButton:hover {
+    color: var(--color-accent-hover);
+  }
 }
 
 .quietButton {
@@ -357,10 +366,12 @@
   color: var(--color-on-accent);
 }
 
-.primaryButton:hover {
-  background: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
-  color: var(--color-on-accent);
+@media (hover: hover) {
+  .primaryButton:hover {
+    background: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+    color: var(--color-on-accent);
+  }
 }
 
 .outlineButton {
@@ -368,9 +379,11 @@
   color: var(--color-accent);
 }
 
-.outlineButton:hover {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+@media (hover: hover) {
+  .outlineButton:hover {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
 }
 
 .primaryButton:disabled,
@@ -518,8 +531,10 @@
   border-bottom: 0;
 }
 
-.roRow:hover .roWork {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .roRow:hover .roWork {
+    color: var(--color-accent);
+  }
 }
 
 .roNo {
@@ -928,9 +943,11 @@
   transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
 }
 
-.playButton:hover {
-  background: var(--color-accent-hover);
-  color: var(--color-on-accent);
+@media (hover: hover) {
+  .playButton:hover {
+    background: var(--color-accent-hover);
+    color: var(--color-on-accent);
+  }
 }
 
 .playButton:active {
@@ -946,8 +963,10 @@
   text-decoration-color: var(--color-border-2);
 }
 
-.listenAlt:hover {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .listenAlt:hover {
+    color: var(--color-accent);
+  }
 }
 
 .playButton:disabled {
@@ -1133,30 +1152,38 @@
   transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
 }
 
-.segment:hover {
-  color: var(--color-ink);
+@media (hover: hover) {
+  .segment:hover {
+    color: var(--color-ink);
+  }
 }
 
 /* Chosen, and neutral: not started, started. */
 .segmentOn,
-.segmentOn:hover {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  box-shadow: 0 0 0 1px var(--color-border-2);
+@media (hover: hover) {
+  .segmentOn:hover {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 0 0 1px var(--color-border-2);
+  }
 }
 
 .segmentHeard,
-.segmentHeard:hover {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  box-shadow: none;
+@media (hover: hover) {
+  .segmentHeard:hover {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    box-shadow: none;
+  }
 }
 
 .segmentSkipped,
-.segmentSkipped:hover {
-  background: var(--color-border);
-  color: var(--color-muted);
-  box-shadow: none;
+@media (hover: hover) {
+  .segmentSkipped:hover {
+    background: var(--color-border);
+    color: var(--color-muted);
+    box-shadow: none;
+  }
 }
 
 /* Library: one recording per row, its tags beneath, no bullets. */
@@ -1294,8 +1321,10 @@
   inset: -5px -2px;
 }
 
-.chip:hover {
-  border-color: var(--color-ink);
+@media (hover: hover) {
+  .chip:hover {
+    border-color: var(--color-ink);
+  }
 }
 
 /* Settings' design-system SegmentedControls at size "sm", lifted from 32px
@@ -1780,8 +1809,10 @@
   text-decoration-color: var(--color-border-2);
 }
 
-.quietLink:hover {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .quietLink:hover {
+    color: var(--color-accent);
+  }
 }
 
 .search {
@@ -1939,8 +1970,10 @@
   overflow: hidden;
 }
 
-.movementButton:hover {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .movementButton:hover {
+    color: var(--color-accent);
+  }
 }
 
 .nowWord {
@@ -2208,9 +2241,14 @@
   border-radius: var(--radius-pill);
 }
 
-.iconLink:hover,
 .iconOn {
   color: var(--color-accent);
+}
+
+@media (hover: hover) {
+  .iconLink:hover {
+    color: var(--color-accent);
+  }
 }
 
 /* ── a five-step scale (Settings → your week of listening) ──────────────── */
@@ -2467,8 +2505,10 @@
   color: var(--color-danger);
 }
 
-.dangerOutline:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+@media (hover: hover) {
+  .dangerOutline:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  }
 }
 
 /* The how-to, folded: a quiet disclosure line, its steps beneath. It opens on
@@ -2629,8 +2669,10 @@ summary.textButton::-webkit-details-marker {
   text-underline-offset: 0.18em;
 }
 
-.titleLink:hover {
-  text-decoration-color: var(--color-accent);
+@media (hover: hover) {
+  .titleLink:hover {
+    text-decoration-color: var(--color-accent);
+  }
 }
 
 /* All concerts: one evening per accent-edged block, with room between. */
@@ -2783,9 +2825,11 @@ summary.textButton::-webkit-details-marker {
   display: none;
 }
 
-.twisty > summary:hover .twistyLabel,
-.twisty > summary:hover::after {
-  color: var(--color-accent);
+@media (hover: hover) {
+  .twisty > summary:hover .twistyLabel,
+  .twisty > summary:hover::after {
+    color: var(--color-accent);
+  }
 }
 
 .twisty > summary::after {
