@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { curly } from '../domain/programmeStyle'
 import { seasonName } from '../domain/season'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
@@ -66,7 +67,7 @@ export function SeasonScreen({ n }: { n: number }) {
               <h2 className={s.sectionHead}>Worth hearing again</h2>
               <ul className={s.threadFacts}>
                 {review.again.map((a, i) => (
-                  <li key={i} className={s.againItem}><strong>{displaySurname(a.composer)}, {a.work}</strong> — {a.why}</li>
+                  <li key={i} className={s.againItem}><strong>{displaySurname(a.composer)}, {curly(a.work)}</strong> — {a.why}</li>
                 ))}
               </ul>
             </>

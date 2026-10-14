@@ -109,3 +109,15 @@ export function listenForAt(tags: string[] | undefined, count: number, tracks: n
   if (at.every((x) => x === null) || at.some((x) => x !== null && x > tracks)) return blank
   return at
 }
+
+/**
+ * Straight quotes as a printer sets them: "Angel of Light" → “Angel of Light”,
+ * Beethoven's → Beethoven’s. For display only — stored titles stay as written.
+ */
+export function curly(text: string): string {
+  return text
+    .replace(/(^|[\s([{\u2014\u2013-])"/g, '$1\u201c')
+    .replace(/"/g, '\u201d')
+    .replace(/(^|[\s([{\u2014\u2013-])'/g, '$1\u2018')
+    .replace(/'/g, '\u2019')
+}

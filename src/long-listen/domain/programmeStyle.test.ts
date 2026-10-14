@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clock, listenForAt, movementTitles, partWords, primeMinutes, pullQuote, roman, romanValue } from './programmeStyle'
+import { clock, curly, listenForAt, movementTitles, partWords, primeMinutes, pullQuote, roman, romanValue } from './programmeStyle'
 
 describe('the programme’s conventions', () => {
   it('numbers parts in Roman numerals and names them in words', () => {
@@ -54,5 +54,13 @@ describe('following along', () => {
     // Untagged (older programmes), or a work in one track: none.
     expect(listenForAt(undefined, 2, 3)).toEqual([null, null])
     expect(listenForAt(['I', 'II'], 2, 1)).toEqual([null, null])
+  })
+})
+
+describe('typesetting', () => {
+  it('turns straight quotes into a printer’s', () => {
+    expect(curly('Symphony No. 7, "Angel of Light"')).toBe('Symphony No. 7, “Angel of Light”')
+    expect(curly("Beethoven's 'Eroica'")).toBe('Beethoven’s ‘Eroica’')
+    expect(curly('"Titan" (Hamburg version)')).toBe('“Titan” (Hamburg version)')
   })
 })

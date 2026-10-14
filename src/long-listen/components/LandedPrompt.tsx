@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { curly } from '../domain/programmeStyle'
 import { useLoad, useServices } from '../app/services'
 import { askedMark, nextToAsk } from '../domain/landed'
 import { standInsOf } from '../domain/standIns'
@@ -48,7 +49,7 @@ export function LandedPrompt() {
   return (
     <aside className={s.landed} aria-label="How did it land?">
       <p className={s.landedLead}>
-        Spotify says you heard <a href={href({ name: 'programme', id: programme.id })} className={s.quietLink}>{item.proposed.composer}’s {item.proposed.work}</a>.
+        Spotify says you heard <a href={href({ name: 'programme', id: programme.id })} className={s.quietLink}>{item.proposed.composer}’s {curly(item.proposed.work)}</a>.
       </p>
       <FeedbackPanel
         targets={[{ type: 'recording', id: recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}

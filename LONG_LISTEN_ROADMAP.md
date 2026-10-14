@@ -10,7 +10,7 @@ test are fixed before anything here starts, and the test may re-rank this list:
 an item that answers something that kept getting in the way goes up, one nobody
 would reach goes down. Release two is the section of that name below; release three follows it.
 
-**Status, 14 October 2026:** release two shipped (LONG_LISTEN.md §12–13); release three shipped and was stamped on 14 October (items 14, 15 and 22, struck below, plus the audits, folding and brochure polish in §14–17). The remaining release-three items are still open.
+**Status, 14 October 2026:** release two shipped (LONG_LISTEN.md §12–13); release three shipped and was stamped on 14 October (items 14, 15 and 22, struck below, plus the audits, folding and brochure polish in §14–17). The remaining release-three items are still open. Release four, chosen the same day, is below them.
 
 **What release two is for**, in the owner's words: smooth out the experience,
 never be cumbersome, be more varied and creative, and make good use of AI. Every
@@ -122,9 +122,25 @@ performers.
 | 17 | **Recording facts from MusicBrainz** — year and performers checked against an open database (free, no key) | Years and performer lists are the facts most often slightly wrong | M |
 | 18 | **Towards the Enescu Festival** — the biennial festival returns in late summer 2027; once its programme is published, a few weeks that prepare for concerts you might attend | Local, and a reason to listen ahead. Builds on items 12 and 13 | S–M |
 | 19 | **Romanian throughout** — the interface, not only the curator's writing | Mostly copy, but a lot of it | M |
-| 20 | **A second listener** — a profile for Nora on the same device, with a younger voice in the writing | Every collection gains an owner; only worth it if she would use it | L |
 | 21 | **A map of the threads** — themes and works on a timeline of centuries, with the connections the curator drew | Shows where you've been. Must stay a map, never a scorecard | L |
 | ~~22~~ | ~~**Offline programme** — check during the release-one test what already works without signal (the app is cached, the data is in IndexedDB) before building anything~~ | ~~Probably mostly there~~ | ~~S~~ |
+
+## Release 4
+
+Written 14 October 2026 from a fresh look at the whole app, setting the open
+release-three items aside: no gamification, no second listener, no counts. Each
+item goes deeper into the listening rather than wider. Proposed as six; the
+owner kept four (*Decided against* has the other two).
+
+Built in this order: the cheap ones that deepen the listening view first, then
+the one that reaches the hall, then the composer.
+
+| # | Item | Why it matters | Effort |
+|---|------|----------------|--------|
+| 23 | **Your earlier hearing** — when a work comes back (another recording, a second hearing, after a concert), one line in the listening view: when you heard it, in which recording or hall, and what you said then | Hearing again is the heart of the app and memory makes it richer. The data is all there; it just isn't shown at that moment | S |
+| 24 | **Words on tap** — terms in the notes (passacaglia, scherzo, col legno, sonata form) carry a faint dotted underline; a tap shows a two-line definition, written once per term on the cheaper model and kept | Lets the notes go a step deeper without explaining everything or losing the listener | S–M |
+| 25 | **Before and after a concert** — a concert from *Live in Bucharest* can be marked as one you're going to. A few days ahead: a short preparation (the works, one recording to hear first, what to listen for in the hall that a recording can't give). After: the concert entry comes pre-filled from the announced programme, no screenshot needed | Concerts are the app's anchor to real life; this ties the week's listening to the evening at the Ateneu on both sides | M |
+| 26 | **A composer's page** — tap a composer's name to get a short portrait written once, the works of theirs you've met, the threads they appear in, the recordings and concerts you heard them in | The Library groups by composer but never says who they are. Prose and memory, not a tally | M |
 
 ## Decided against
 
@@ -141,6 +157,12 @@ performers.
   guaranteed. Item 2 covers most of the need.
 - **"Let the curator choose."** It saves one tap and removes the moment of
   choosing, which is part of the pleasure.
+- **A second listener** (was release three's item 20, a profile for Nora). The
+  owner's call, 14 October 2026: the app stays one person's.
+- **Moments** — marking a point in a movement ("II. · 4:12, the horns") to see
+  again next time. Proposed for release four; the owner didn't take to it.
+- **The score** — an IMSLP link for public-domain works. Proposed for release
+  four; not wanted.
 - **Anything counted.** Hours, streaks, a year in numbers. The product rule
   stands; item 15 is prose.
 
