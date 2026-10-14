@@ -91,6 +91,8 @@ export interface SpotifyRecordingRef {
   matchedAt: Instant
   /** Sum of the work's track lengths, from Spotify. Information, never a tally. */
   durationMs?: number
+  /** Each track's length, in order with trackIds — a movement's length in the listening view. */
+  trackDurationsMs?: number[]
 }
 
 /**
@@ -304,6 +306,12 @@ export interface ProgrammeItem {
   why: string
   whyThisRecording: string
   listenFor: string[]
+  /**
+   * The movement each "listen for" belongs to, as the work's own numbering
+   * ("I", "II"…), or "" for the whole work — in order with listenFor. Absent on
+   * programmes curated before it was asked for (14 October 2026).
+   */
+  listenForAt?: string[]
   /** Set when this item comes back to a work heard before, on purpose. */
   revisitReason?: string
 }

@@ -88,12 +88,12 @@ function ThreadEntry({ t, explorations, programmes, works, recordings, events, s
       {lineWorthDrawing && <ol className={s.threadLine} aria-label="Visits">
         {visits.map((v) => {
           const p = programmes.get(v.programmeId)
-          // A visit named like its thread is named by its week instead, so the title isn't said twice.
-          const sameName = !p || p.title === t.title
+          // Every visit by its programme's name, then its week — the first included, even when the
+          // thread took its name from it: a visit known only by its dates reads as missing its name.
           return (
             <li key={v.id}>
-              <a href={href({ name: 'programme', id: v.programmeId })}>{sameName ? weekFromKey(v.weekKey).label : p.title}</a>
-              {!sameName && <span className={s.faint}> · {weekFromKey(v.weekKey).label}</span>}
+              <a href={href({ name: 'programme', id: v.programmeId })}>{p?.title ?? weekFromKey(v.weekKey).label}</a>
+              {p && <span className={s.faint}> · {weekFromKey(v.weekKey).label}</span>}
               {v.setAside && <span className={s.faint}> · set aside</span>}
               {(v.extraProgrammeIds ?? []).map((id) => (
                 <span key={id} className={s.faint}> · and <a href={href({ name: 'programme', id })}>{programmes.get(id)?.title ?? 'more'}</a></span>

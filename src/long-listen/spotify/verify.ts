@@ -117,6 +117,7 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
       confidence: found.level,
       matchedAt: now,
       durationMs: work.reduce((n, t) => n + (t.duration_ms ?? 0), 0) || undefined,
+      trackDurationsMs: work.every((t) => t.duration_ms) ? work.map((t) => t.duration_ms!) : undefined,
     },
   }
   const existing = await repo.albums.get(albumId)
@@ -275,6 +276,11 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
         && Date.parse(s.first) - Date.parse(e.playedUntil ?? e.playedAt!) < SESSION_GAP
         && Date.parse(e.playedAt!) - Date.parse(s.last) < SESSION_GAP)
       if (same.some((e) => e.kind === 'heard') || (same.length && !heard)) continue
+      // The same listening already marked heard another way — "I've heard it", or the listening
+      // view seeing the last movement end — within the session: one hearing, not two. A heard
+      // counted twice told the curator a work was heard again that was heard once.
+      if (heard && known.some((e) => e.recordingId === s.recording.id && e.kind === 'heard' && e.source !== 'spotify-recent'
+        && Date.parse(e.at) >= Date.parse(s.first) - SESSION_GAP && Date.parse(e.at) <= Date.parse(s.last) + SESSION_GAP)) continue
       const anchor = same[0]
       out.push({
         id: newId('ev'),

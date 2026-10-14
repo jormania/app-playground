@@ -1,7 +1,8 @@
 .stack {
   position: fixed;
   left: 50%;
-  bottom: var(--space-lg, 24px);
+  /* --toast-offset: an app's own bar pinned to the foot (none by default) lifts the stack above it. */
+  bottom: calc(var(--space-lg, 24px) + var(--toast-offset, 0px));
   transform: translateX(-50%);
   z-index: 1000;
   display: flex;

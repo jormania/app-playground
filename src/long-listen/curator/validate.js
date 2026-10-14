@@ -111,8 +111,18 @@ function cleanItem(i) {
     why: clean(i?.why),
     whyThisRecording: clean(i?.whyThisRecording),
     listenFor: list(i?.listenFor, 5),
+    listenForMovement: movementTags(i?.listenForMovement, list(i?.listenFor, 5).length),
     revisitReason: opt(i?.revisitReason),
   }
+}
+
+/** One tag per listenFor: a Roman numeral ("IV"), or "" — anything else, or a short list, reads as "the whole work". */
+function movementTags(tags, n) {
+  const raw = Array.isArray(tags) ? tags : []
+  return Array.from({ length: n }, (_, k) => {
+    const t = typeof raw[k] === 'string' ? raw[k].trim().toUpperCase().replace(/\.$/, '') : ''
+    return /^[IVXL]{1,6}$/.test(t) ? t : ''
+  })
 }
 
 /**

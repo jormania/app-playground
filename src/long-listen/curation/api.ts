@@ -69,6 +69,8 @@ export interface CuratedItem extends CuratedPerformers {
   why: string
   whyThisRecording: string
   listenFor: string[]
+  /** In order with listenFor: the movement's Roman numeral, or "" for the whole work. */
+  listenForMovement?: string[]
   revisitReason?: string
 }
 
