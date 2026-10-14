@@ -83,7 +83,8 @@ export function ConcertScreen({ id }: { id: string }) {
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
       <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Heard live · {c.venue}{c.hall ? `, ${c.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{concertDate(c.date)}{c.time ? `, ${c.time}` : ''}</h1>
-      <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} className={s.dek} />
+      {/* Who played, as the hall's own programme prints it: name first, the role after in italic. */}
+      <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} className={s.concertCredits} programme />
       {c.note && <p className={s.said}><q>{c.note}</q></p>}
 
       {/* The evening's order of performance, set like the programme's running order. */}
@@ -140,7 +141,7 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
     <li>
       <p className={s.composer}>{w.composer}</p>
       <p className={s.libraryTitle}>{w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
-      <Credits r={{ soloists }} />
+      <Credits r={{ soloists }} className={s.workCredits} programme />
       {found === null ? (
         // One quiet link a work: the page is the evening's music and who played it, and a
         // full button under every work made the ways back to Spotify the loudest thing on it.

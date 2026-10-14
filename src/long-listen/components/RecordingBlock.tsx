@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import type { ProposedRecording, Recording } from '../domain/types'
 import { openUrl, searchUrl } from '../spotify/client'
-import { aboutDuration, confirmMatch, isConfirmed, rejectMatch, verifyOne } from '../spotify/verify'
+import { confirmMatch, isConfirmed, rejectMatch, verifyOne } from '../spotify/verify'
 import { useServices } from '../app/services'
 import { messageOf } from './common'
 import { ListenBar } from './ListenBar'
 import { usePlayback } from '../app/playback'
 import { Credits } from '../components/Credits'
 import { displaySurname } from '../domain/identity'
+import { primeMinutes } from '../domain/programmeStyle'
 import { Traits } from './Traits'
 import s from '../styles/editorial.module.css'
 
@@ -94,7 +95,7 @@ export function RecordingBlock({
   return (
     <div className={s.recording}>
       <div className={s.label}>{label}</div>
-      <Credits r={proposed} className={s.credit} empty="Performers not named" />
+      <Credits r={proposed} className={s.credit} empty="Performers not named" programme />
       <Traits label="The playing" words={character ?? recording?.character} />
 
       {shown && (
@@ -102,7 +103,7 @@ export function RecordingBlock({
           {shown.imageUrl ? <img className={s.cover} src={shown.imageUrl} alt="" loading="lazy" width={64} height={64} /> : null}
           <div className={s.albumText}>
             <div className={s.albumName}>{shown.albumName}</div>
-            <div>{[aboutDuration(shown.durationMs), year && `released ${year}`, shown.phonographic].filter(Boolean).join(' · ')}</div>
+            <div>{[primeMinutes(shown.durationMs), year && `released ${year}`, shown.phonographic].filter(Boolean).join(' · ')}</div>
           </div>
         </div>
       )}

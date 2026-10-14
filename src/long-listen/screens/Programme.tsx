@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type {
   Comparison, Explanation, Feedback, ListeningEvent, ListeningKind, ListeningState, Programme, ProgrammeItem, ProgrammeOption, Recording, Resource, Theme, ThemeExploration, WeekRecord, Work,
 } from '../domain/types'
@@ -6,6 +6,8 @@ import { latestFeedback, listeningState } from '../domain/listening'
 import { isoDateIn, sinceWords, weekFromKey } from '../domain/week'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { sectionTitle } from '../domain/sections'
+import { movementTitles, partWords, primeMinutes, pullQuote, roman } from '../domain/programmeStyle'
+import { programmeCreditRows } from '../components/Credits'
 import { liveEvents, liveMatches, venueShort, whatIsOn, type LiveMatch } from '../live/live'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
@@ -19,7 +21,7 @@ import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf }
 import { SittingCard } from '../components/SittingCard'
 import { OpenPaths } from '../components/OpenPaths'
 import { Twisty } from '../components/Twisty'
-import { heardAs, standInsOf } from '../domain/standIns'
+import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
 
 interface Bundle {
@@ -191,6 +193,9 @@ export function ProgrammeView({ b }: { b: Bundle }) {
   const ordered = shownItems.length >= 2
   const length = lengthOf(b, shownItems)
   const needsSpotify = needsSpotifyNote(b, spotify.connected)
+  // Which part each shown work sits in, for the running head: "II · Where it leads".
+  const partOf = new Map(p.sections.filter((section) => section.items.some(shown)).flatMap((section, i) =>
+    section.items.map((item) => [item.id, `${roman(i + 1)} · ${sectionTitle(section)}`] as [string, string])))
 
   return (
     <article>
@@ -235,25 +240,38 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         </Twisty>
       )}
 
-      <PinnedWork items={shownItems} />
-      {p.sections.filter((section) => section.items.some(shown)).map((section, i) => (
-        <section key={section.id} aria-label={sectionTitle(section)}>
-          <h2 className={s.sectionHead}>{sectionTitle(section)}</h2>
+      <PinnedWork items={shownItems} parts={partOf} />
+      {p.sections.filter((section) => section.items.some(shown)).map((section, i) => {
+        const items = section.items.filter(shown)
+        // A pulled line only where a part runs to two works or more: taken from the first work's
+        // notes and set after that work, so it echoes from a distance, never beside its own sentence.
+        const quote = items.length >= 2 ? pullQuote([items[0].why]) : undefined
+        return (
+        <section key={section.id} aria-label={sectionTitle(section)} className={s.part}>
+          {/* Between parts, a fleuron: the one place the page asks for a pause. */}
+          {i > 0 && <p className={s.fleuron} aria-hidden="true"><span /></p>}
+          {/* Each part is named as a programme names its movements: a numeral, then the title. */}
+          <h2 className={`${s.sectionHead} ${s.partHead}`}><span className={s.partNumeral}>{roman(i + 1)}</span>{sectionTitle(section)}</h2>
           <p className={s.sectionGuide}>
-            Part {i + 1} of {p.sections.length}{ROLE_GUIDE[section.role] ? ` — ${ROLE_GUIDE[section.role]}` : ''}
+            {partWords(i + 1, p.sections.length)}{ROLE_GUIDE[section.role] ? ` — ${ROLE_GUIDE[section.role]}` : ''}
           </p>
           {section.note && <p className={s.sectionNote}>{section.note}</p>}
-          {section.items.filter(shown).map((item) => (
-            <ItemView
-              key={item.id}
-              item={item}
-              number={shownItems.findIndex((i) => i.id === item.id) + 1}
-              b={b}
-              comparison={b.comparisons.find((c) => c.id === `cmp:${p.id}:${item.id}`)}
-            />
+          {items.map((item, n) => (
+            <Fragment key={item.id}>
+              <ItemView
+                item={item}
+                number={shownItems.findIndex((i) => i.id === item.id) + 1}
+                b={b}
+                comparison={b.comparisons.find((c) => c.id === `cmp:${p.id}:${item.id}`)}
+              />
+              {/* One line of the part set large, as a booklet pulls a quotation: a landing place on a
+                  long page. It repeats the notes above, so a screen reader skips it. */}
+              {n === 0 && quote && <blockquote className={s.pullQuote} aria-hidden="true"><p>{quote}</p></blockquote>}
+            </Fragment>
           ))}
         </section>
-      ))}
+        )
+      })}
 
       {b.comparisons.filter((c) => c.origin === 'programme').map((c) => (
         <section key={c.id} aria-label="Two perspectives">
@@ -270,6 +288,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           That’s the {p.sitting ? 'evening' : 'week'}: {shownItems.length} {shownItems.length === 1 ? 'work' : 'works'}{length.all ? `, ${aboutDuration(length.total)}` : ''}.
         </p>
       )}
+      {shownItems.length > 0 && <Colophon b={b} items={shownItems} />}
 
       <ResourcesView b={b} searching={searching} onSearch={async () => {
         setSearching(true)
@@ -326,7 +345,7 @@ function SpotifyNote() {
  * middle of one looks like the middle of any other. Tapping it goes back to
  * the work's start. Gone between works and above the first.
  */
-function PinnedWork({ items }: { items: ProgrammeItem[] }) {
+function PinnedWork({ items, parts }: { items: ProgrammeItem[]; parts: Map<string, string> }) {
   const [current, setCurrent] = useState<number>(-1)
   const ids = items.map((i) => i.id).join('|')
   useEffect(() => {
@@ -360,11 +379,39 @@ function PinnedWork({ items }: { items: ProgrammeItem[] }) {
       onClick={() => document.getElementById(workAnchor(item.id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
       aria-label={`Back to the start of ${item.proposed.work}`}
     >
+      {/* A running head, as a booklet's page carries one: the part above, the work beneath. */}
+      {parts.get(item.id) && <span className={s.pinnedPart}>{parts.get(item.id)}</span>}
       <span className={s.pinnedInner}>
         <span className={s.pinnedNo}>{current + 1}</span>
         <span className={s.pinnedText}>{item.proposed.composer} — <em>{item.proposed.work}</em></span>
       </span>
     </button>
+  )
+}
+
+/**
+ * The back page: who wrote the notes and for which week, then the recordings,
+ * one to a line, as a printed programme closes on its credits. Each is the
+ * recording that plays — a stand-in's, where Spotify lacked the curator's.
+ */
+function Colophon({ b, items }: { b: Bundle; items: ProgrammeItem[] }) {
+  const p = b.programme
+  const players = standInPlayersOf(b.comparisons)
+  const performers = (item: ProgrammeItem) => {
+    const playing = playableOf(b, item)
+    const proposed = playing && playing.id !== item.recordingId ? players.get(`cmp:${p.id}:${item.id}`)?.proposed ?? item.proposed : item.proposed
+    return programmeCreditRows(proposed).map(([name]) => name).join(', ')
+  }
+  return (
+    <footer className={s.colophon} aria-label="Colophon">
+      <p className={s.colophonLine}>Programme notes by the curator · {p.sitting ? 'a sitting for tonight, ' : ''}{weekFromKey(p.weekKey).label}</p>
+      <p className={s.colophonHead}>The recordings</p>
+      <ol className={s.colophonList}>
+        {items.map((item) => (
+          <li key={item.id}><em>{item.proposed.work}</em>{performers(item) ? ` — ${performers(item)}` : ''}</li>
+        ))}
+      </ol>
+    </footer>
   )
 }
 
@@ -379,6 +426,9 @@ const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard'
 function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean }) {
   const player = usePlayerState()
   const rows = b.programme.sections.flatMap((section) => section.items.filter(shown).map((item) => ({ item, section })))
+  // The part's numeral, counted as the page counts its parts: only those with a work shown.
+  const parts = b.programme.sections.filter((section) => section.items.some(shown)).map((section) => section.id)
+  const partNo = (id: string) => parts.indexOf(id) + 1
   const heard = rows.filter(({ item }) => listeningState(b.events, itemRecordingIds(b, item)) === 'heard').length
   // How long it runs is said here, once (the tools line keeps it only when there is no running order).
   // Partly known, it says how many it counts: a total of two works must not read as the week's.
@@ -405,10 +455,10 @@ function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: Prog
           const now = itemRecordingIds(b, item).map(onNow).find(Boolean) ?? null
           const firstOfSection = n === 0 || rows[n - 1].section.id !== section.id
           // When it was written (the curator's date for the work) and how long it runs, where known.
-          const meta = [b.works.get(item.workId)?.composed?.trim(), aboutDuration(durationOf(b, item))].filter(Boolean).join(' · ')
+          const meta = [b.works.get(item.workId)?.composed?.trim(), primeMinutes(durationOf(b, item))].filter(Boolean).join(' · ')
           return (
             <li key={item.id} aria-current={now ? 'true' : undefined}>
-              {firstOfSection && <p className={s.roGroup}>{sectionTitle(section)}</p>}
+              {firstOfSection && <p className={s.roGroup}><span className={s.partNumeral}>{roman(partNo(section.id))}</span>{sectionTitle(section)}</p>}
               <button type="button" className={s.roRow} onClick={() => jump(item.id)}>
                 <span className={s.roNo}>{n + 1}</span>
                 <span className={s.roText}>
@@ -444,6 +494,9 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   // What it is and when, in words; the catalogue number translated beneath it.
   const whatWhen = whatAndWhen(work?.form, work?.composed)
   const catalogue = catalogueLine(work?.catalogue ?? item.proposed.catalogue, item.proposed.composer)
+  // How long it runs, as a programme prints it, and its movements — both only once Spotify has confirmed the recording that plays.
+  const duration = primeMinutes(durationOf(b, item))
+  const movements = movementTitles(playableOf(b, item)?.spotify?.trackNames)
 
   // Once per tap, like "I’ve heard it" in the listening view: a ref, since two
   // taps in one frame both see the state as it was before either was kept.
@@ -517,13 +570,24 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   return (
     <div className={s.item} id={workAnchor(item.id)}>
       <header className={s.workHead} data-work-head="">
-        <p className={s.composer}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</p>
+        {/* The duration where a programme prints it: at the end of the line, across from the composer. */}
+        <p className={`${s.composer} ${s.workHeadLine}`}>
+          <span className={s.workHeadWho}><span className={s.itemNo}>{number}</span>{item.proposed.composer}</span>
+          {duration && <span className={s.workDuration}>{duration}</span>}
+        </p>
         <h3 className={s.work}>{item.proposed.work}</h3>
         {whatWhen && <p className={s.workMeta}>{whatWhen}</p>}
         {catalogue && <p className={s.workCatalogue}>{catalogue}</p>}
+        {/* The movements, as the programme lists them under the title — this recording's own, as its album divides them. */}
+        {movements.length > 0 && (
+          <ol className={s.workMovements} aria-label="Movements">
+            {movements.map((m, i) => <li key={i}><span className={s.movementNumeral}>{m.numeral}.</span> <em>{m.title}</em></li>)}
+          </ol>
+        )}
       </header>
 
-      <div className={`${s.prose} ${s.mtSm}`}><p>{item.why}</p></div>
+      {/* The notes open as a booklet's essays do: their first line in small capitals. */}
+      <div className={`${s.prose} ${s.workWhy} ${s.mtSm}`}><p>{item.why}</p></div>
       {item.revisitReason && <p className={`${s.continuity} ${s.flush} ${s.mtSm} ${s.mbSm}`}>{item.revisitReason}</p>}
 
       <RecordingBlock
