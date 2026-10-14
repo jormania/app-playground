@@ -208,6 +208,15 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, sp0])
 
+  // A programme written before "listen for" was tied to movements: the curator ties it now, once,
+  // for the whole programme (journey.tagListenFor), and the page reads the tags when they come.
+  const tagging = useRef(false)
+  useEffect(() => {
+    if (!data || !curatorReady || tagging.current || !data.item.listenFor.length || data.item.listenForAt) return
+    tagging.current = true
+    journey.tagListenFor(data.programme.id).then((n) => { if (n) bump() }).catch(() => {})
+  }, [data, curatorReady, journey, bump])
+
   // Each movement's length: kept with new matches; for a recording confirmed before that, read from its album once.
   const filling = useRef(false)
   useEffect(() => {

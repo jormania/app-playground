@@ -640,3 +640,26 @@ describe('the season in review', () => {
     expect((await j.seasonReview(1)).review?.title).toBe('Colour')
   })
 })
+
+describe('"listen for" tied to its movement, for a programme written before', () => {
+  it('asks once, saves the tags into the programme, and never asks again', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['A', 'B', 'C']),
+      programme: () => programme('Colour', FRENCH),
+      // Tags for the first work only; the others left out read as untagged.
+      tags: (p: { works: { key: string }[] }) => ({ works: [{ key: p.works[0].key, movements: ['III', '', 'iv.'] }], promptVersion: 'tags@test' }),
+    })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    expect(p.sections.flatMap((s) => s.items).every((i) => !i.listenForAt)).toBe(true)
+
+    expect(await j.tagListenFor(p.id)).toBe(3)
+    const items = (await repo.programmes.require(p.id)).sections.flatMap((s) => s.items)
+    // The answer is kept as given (validated upstream); a work left out is "the whole work" throughout.
+    expect(items[0].listenForAt).toEqual(['III', '', 'iv.'].slice(0, items[0].listenFor.length))
+    expect(items[1].listenForAt).toEqual(items[1].listenFor.map(() => ''))
+
+    expect(await j.tagListenFor(p.id)).toBe(0)
+    expect(c.count('tags')).toBe(1)
+  })
+})

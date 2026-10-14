@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, validateSeason, validateProgramme } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, validateSeason, validateProgramme, validateTags } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -118,5 +118,13 @@ describe('listen for, tied to its movement', () => {
   it('reads a missing or short list as the whole work', () => {
     const v = validateProgramme(out(item(['a', 'b'], undefined))).value
     expect(v.sections[0].items[0].listenForMovement).toEqual(['', ''])
+  })
+})
+
+describe('tags for a programme written before', () => {
+  it('keeps one clean tag per point, and reads a work left out as untagged', () => {
+    const v = validateTags({ works: [{ key: 'w1', movements: ['ii', 'the finale'] }] }, { works: [{ key: 'w1', count: 3 }, { key: 'w2', count: 2 }] })
+    expect(v.value.works).toEqual([{ key: 'w1', movements: ['II', '', ''] }, { key: 'w2', movements: ['', ''] }])
+    expect(v.problems).toEqual([])
   })
 })

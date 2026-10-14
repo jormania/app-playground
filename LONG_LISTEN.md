@@ -896,3 +896,10 @@ next movement, so it gains only "· last movement" after the clock when it appli
 hides the list, gains one faint line under the movement sounding (`ThenLine`): "then III. Dialogue
 du vent et de la mer · c. 8′", or on the last movement "the work ends in about 3′". The pinned
 player gains nothing: it is for controls.
+
+**Tagging programmes written before (14 October 2026).** A programme curated before
+programme@2026-10-14.1 has "listen for" points with no movement. The first time its listening
+view opens with a key set, `Journey.tagListenFor` asks the curator once — one short call on
+`MODEL_HAIKU` (tags@2026-10-14.1), for every untagged work in the programme — and saves the tags
+into the programme. A work the answer leaves out is kept as untagged ("" throughout), so nothing
+is asked twice; nothing else in the programme is rewritten.

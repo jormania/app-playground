@@ -1,5 +1,5 @@
 import type {
-  CompanionResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, TagsResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
 } from '../curation/api'
 import { CuratorUnavailable } from '../curation/api'
 
@@ -157,6 +157,11 @@ export function demoCurator(): CuratorClient {
             })),
             promptVersion: 'demo',
           } satisfies CompanionResponse as T
+        case 'tags':
+          return {
+            works: (payload?.works ?? []).map((w: { key: string; listenFor: string[] }) => ({ key: w.key, movements: w.listenFor.map((_, i) => ['I', 'II', 'III'][i] ?? '') })),
+            promptVersion: 'demo',
+          } satisfies TagsResponse as T
         case 'season':
           return {
             title: payload?.soFar ? 'Colour, so far' : 'A season of colour',
