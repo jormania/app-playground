@@ -2586,11 +2586,89 @@
   width: fit-content;
 }
 
-/* This week: the settings the three directions were made with, each under its Settings name. */
-.weekSettings {
-  margin-top: var(--space-lg);
-  padding-left: var(--space-sm);
-  border-left: 2px solid var(--color-border);
+/* A twisty: a folded block whose one line says what's inside ("This week,
+   differently · quieter"), opened only when wanted. A chevron, not a triangle. */
+.twisty {
+  margin-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.twisty + .twisty {
+  margin-top: 0;
+}
+
+.twisty > summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  padding: var(--space-xs) 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  cursor: pointer;
+  list-style: none;
+}
+
+.twisty > summary::-webkit-details-marker {
+  display: none;
+}
+
+.twisty > summary::after {
+  content: '›';
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.twisty[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+.twistyLabel {
+  /* The app's small-caps label, in ink: it is the thing to tap. */
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.09em;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.twistyValue {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.twistyBody {
+  padding-bottom: var(--space-sm);
+}
+
+.twistyBody > :first-child {
+  margin-top: 0;
+}
+
+.twistyBody > * + * {
+  margin-top: var(--space-xs);
+}
+
+.twistyBody > :last-child {
+  margin-bottom: 0;
+}
+
+/* A run of twisties (Where next, the Notebook's last rows) closes with a rule
+   of its own, so the last folded line doesn't hang open-ended. */
+.twistyRun > .twisty:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* A form inside a twisty: field, chips and button given room by one gap. */
+.twistyBody .cardForm {
+  margin-top: var(--space-xs);
 }
 
 .settingsGlance {
@@ -2621,4 +2699,16 @@
   .settingsGlance dd + dt {
     margin-top: var(--space-2xs);
   }
+}
+
+/* A twisty standing alone at the end of a page closes with a rule of its own. */
+.twistyClosed {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Straight after the recording block, which already closes with a rule, the
+   twisty needs no second one of its own. */
+.recording + .twisty {
+  margin-top: 0;
+  border-top: 0;
 }

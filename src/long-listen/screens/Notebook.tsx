@@ -5,6 +5,7 @@ import { go } from '../app/router'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
 import { preferenceLines } from '../notion/mirror'
 import { CharCount, Empty, MAX_ASK, MAX_NOTE, NeedsKey, Problem, Waiting, dateWords, messageOf } from '../components/common'
+import { Twisty } from '../components/Twisty'
 import s from '../styles/editorial.module.css'
 
 const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
@@ -151,16 +152,16 @@ export function NotebookScreen() {
         </section>
       )}
 
+      {/* History, kept but folded: one line says how much. */}
       {moved.length > 0 && (
-        <section className={s.block}>
-          <h2 className={s.sectionHead}>How it has moved</h2>
+        <Twisty className={s.mtXl} label="How it has moved" value={`${moved.length} ${moved.length === 1 ? 'change' : 'changes'}`}>
           <ul className={s.bullets}>
             {moved.map((o) => {
               const now = o.supersededBy ? byId.get(o.supersededBy) : undefined
               return <li key={o.id}><span className={s.quiet}>Once: {o.statement}</span>{now && <> Now: {now.statement}</>}</li>
             })}
           </ul>
-        </section>
+        </Twisty>
       )}
 
       <section className={s.block}>
@@ -199,16 +200,18 @@ export function NotebookScreen() {
         </div>
       </section>
 
+      {/* A status, folded to what it says; open by itself when something went wrong. */}
       {notion && (
-        <section className={s.block}>
-          <h2 className={s.sectionHead}>In Notion</h2>
-          <p className={s.sectionGuide}>
-            Your journal, threads, recordings and this notebook are copied to Notion as readable pages.
-            {notionState.lastSync && ` Last updated ${dateWords(notionState.lastSync, settings.timeZone, true)}.`}
-          </p>
+        <Twisty
+          className={`${s.mtXl} ${s.twistyClosed}`}
+          label="In Notion"
+          value={notionState.error ? 'not updated — open to see why' : notionState.syncing ? 'updating…' : notionState.lastSync ? `updated ${dateWords(notionState.lastSync, settings.timeZone, true)}` : 'not yet updated'}
+          open={Boolean(notionState.error)}
+        >
+          <p className={s.sectionGuide}>Your journal, threads, recordings and this notebook are copied to Notion as readable pages.</p>
           {notionState.error && <p className={s.settingWarn}>{notionState.error}</p>}
           <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>
-        </section>
+        </Twisty>
       )}
     </div>
   )

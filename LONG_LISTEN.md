@@ -706,3 +706,22 @@ curator job checks for a fresh start; second hearings match by work, not title
 text; "weeks ago" and the season's dates are counted in the listener's zone; a
 throttled hall keeps its last concerts; a failed Notion sync retries when the
 connection returns.
+
+## 17. Folding (14 October 2026)
+
+The programme reads as a brochure, so little folds — only what is redundant
+after a first read, and what is highly optional. One component does it
+(`components/Twisty.tsx`): a line that says what is inside, a chevron, opened
+when wanted. `readOnce` opens a piece the first time it is shown and folds it on
+every visit after (remembered per device under `long-listen:read:*`).
+
+- Read once: a programme's background (why now, where it sits, how they
+  connect), each work's "Why this recording", a requested "A little more
+  context" (on the programme and in the listening view alike), and the links
+  under "Further listening and reading" (open again when new ones are found).
+- Optional: every way on in Where next (one line each); This week's "This week,
+  differently" and "Made with your settings"; the Notebook's "How it has moved"
+  and "In Notion" (open by itself on a sync error); earlier answers in the
+  listening view's "Ask about this" (the newest stays open).
+- Never folded: the introduction, the running order, each work, "Listen for",
+  the listening controls.

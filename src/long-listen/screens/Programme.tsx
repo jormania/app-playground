@@ -18,6 +18,7 @@ import { FeedbackPanel } from '../components/FeedbackPanel'
 import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import { SittingCard } from '../components/SittingCard'
 import { OpenPaths } from '../components/OpenPaths'
+import { Twisty } from '../components/Twisty'
 import { heardAs, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
 
@@ -198,11 +199,17 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       <hr className={s.rule} />
       <Paragraphs text={p.introduction} className={s.lede} />
 
-      <div className={s.asides}>
-        {p.whyNow && <div className={s.aside}><h2 className={s.h3}>Why this, now</h2><p>{p.whyNow}</p></div>}
-        {p.historicalPlace && <div className={s.aside}><h2 className={s.h3}>Where it sits</h2><p>{p.historicalPlace}</p></div>}
-        {p.howTheyRelate && <div className={s.aside}><h2 className={s.h3}>How they speak to each other</h2><p>{p.howTheyRelate}</p></div>}
-      </div>
+      {/* Read once: open the first time this programme is opened, folded on every visit after,
+          so the running order isn't pushed down by what's already been read. */}
+      {(p.whyNow || p.historicalPlace || p.howTheyRelate) && (
+        <Twisty label="The background" value="why now · where it sits · how they connect" readOnce={`background:${p.id}`}>
+          <div className={s.asides}>
+            {p.whyNow && <div className={s.aside}><h2 className={s.h3}>Why this, now</h2><p>{p.whyNow}</p></div>}
+            {p.historicalPlace && <div className={s.aside}><h2 className={s.h3}>Where it sits</h2><p>{p.historicalPlace}</p></div>}
+            {p.howTheyRelate && <div className={s.aside}><h2 className={s.h3}>How they speak to each other</h2><p>{p.howTheyRelate}</p></div>}
+          </div>
+        </Twisty>
+      )}
 
       <PinnedWork items={p.sections.flatMap((x) => x.items).filter(shown)} />
       {p.sections.filter((section) => section.items.some(shown)).map((section, i) => (
@@ -465,7 +472,12 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       />
       {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
       {standIn && <StandInView c={standIn} b={b} />}
-      {item.whyThisRecording && <p className={s.flush}><span className={s.label}>Why this recording</span><br />{item.whyThisRecording}</p>}
+      {/* Read once: open the first time, then one line that still says who and why. */}
+      {item.whyThisRecording && (
+        <Twisty label="Why this recording" value={item.whyThisRecording} readOnce={`why-recording:${pid}:${item.id}`}>
+          <p>{item.whyThisRecording}</p>
+        </Twisty>
+      )}
 
       {item.listenFor.length > 0 && (
         <>
@@ -527,11 +539,11 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         )}
       </nav>
 
+      {/* Asked for, read once (open the time it arrives), then folded to its heading. */}
       {explanation && (
-        <div className={s.block}>
-          <h4 className={s.h3}>{explanation.heading}</h4>
+        <Twisty label="A little more context" value={explanation.heading} readOnce={`context:${pid}:${item.id}`}>
           <Paragraphs text={explanation.body} className={s.prose} />
-        </div>
+        </Twisty>
       )}
       {comparison && !standIn && <ComparisonView c={comparison} b={b} />}
     </div>
@@ -720,19 +732,28 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
           {!curatorReady && <NeedsKey />}
         </>
       )}
-      {groups.map(({ k, list }) => (
-        <div key={k} className={s.resourceGroup}>
-          <h3 className={s.h3}>{KIND_TITLE[k]}</h3>
-          <ul className={s.resources}>
-            {list.map((r) => (
-              <li key={r.id} className={s.resource}>
-                {webUrl(r.url) ? <a href={webUrl(r.url)} target="_blank" rel="noopener noreferrer">{r.title}</a> : r.title}
-                <p>{r.source}{r.purpose ? ` — ${r.purpose}` : ''}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {/* The links are optional and outside the app: open the time they're found, folded after. */}
+      {groups.length > 0 && (
+        <Twisty
+          label="The links"
+          value={groups.map(({ k, list }) => `${list.length} to ${k}`).join(' · ')}
+          readOnce={`further:${b.programme.id}:${b.resources.length}`}
+        >
+          {groups.map(({ k, list }) => (
+            <div key={k} className={s.resourceGroup}>
+              <h3 className={s.h3}>{KIND_TITLE[k]}</h3>
+              <ul className={s.resources}>
+                {list.map((r) => (
+                  <li key={r.id} className={s.resource}>
+                    {webUrl(r.url) ? <a href={webUrl(r.url)} target="_blank" rel="noopener noreferrer">{r.title}</a> : r.title}
+                    <p>{r.source}{r.purpose ? ` — ${r.purpose}` : ''}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </Twisty>
+      )}
     </section>
   )
 }
@@ -798,9 +819,8 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
     }
   }
 
-  const feedback = (
-    <div className={s.nextCard}>
-      <h3 className={s.nextTitle}>Tell the curator how it went</h3>
+  const feedbackBody = (
+    <>
       <p className={s.quiet}>A sentence is worth more than a button: what stayed with you, what didn’t. The next directions are shaped by it.</p>
       <FeedbackPanel
         prompt="How did this week land?"
@@ -808,7 +828,7 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
         feedback={b.feedback}
         targets={[{ type: 'programme', id: p.id, label: 'This programme' }, ...(b.theme ? [{ type: 'theme' as const, id: b.theme.id, label: 'The theme itself' }] : [])]}
       />
-    </div>
+    </>
   )
 
   if (!isCurrent) {
@@ -816,81 +836,85 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
       <section aria-label="This week" className={s.whereNext}>
         <h2 className={s.sectionHead}>Looking back</h2>
         <p className={s.sectionGuide}>This programme’s week is over or set aside; it stays here as it was. A word on how it went still reaches the curator.</p>
-        {feedback}
+        <div className={s.nextCard}>
+          <h3 className={s.nextTitle}>Tell the curator how it went</h3>
+          {feedbackBody}
+        </div>
       </section>
     )
   }
 
+  // The programme ends where the music does: every way on is one folded line
+  // saying what it offers, opened only when wanted. None of them is required.
   return (
     <section aria-label="Where next" className={s.whereNext}>
       <h2 className={s.sectionHead}>Where next</h2>
       <p className={s.sectionGuide}>The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.</p>
       {!curatorReady && <NeedsKey to="ask the curator for any of these" />}
 
-      <div className={s.nextCard}>
-        <h3 className={s.nextTitle}>More of this theme</h3>
-        <p className={s.quiet}>Another set of works on the same theme, none of them heard yet this week: other composers, other periods, the connections this one pointed to.</p>
-        {b.extensions.length > 0 && (
-          <ul className={s.bullets}>
-            {b.extensions.map((x) => (
-              <li key={x.id}>{x.id === p.id ? <strong>{x.title}</strong> : <a href={href({ name: 'programme', id: x.id })}>{x.title}</a>}</li>
-            ))}
-          </ul>
-        )}
-        {/* A form, so Enter asks: one line, one request. */}
-        <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!held) void more() }}>
-          <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
-          <input id="more-wish" className={s.input} maxLength={MAX_ASK} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} disabled={busy !== null} />
-          <CharCount value={wish} />
-          <button type="submit" className={s.outlineButton} disabled={held}>{extending ? 'The curator is building it…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
-        </form>
-      </div>
+      <div className={s.twistyRun}>
+        <Twisty label="More of this theme" value={b.extensions.length ? `${b.extensions.length} so far` : 'another set, on the same theme'} open={extending}>
+          <p className={s.quiet}>Another set of works on the same theme, none of them heard yet this week: other composers, other periods, the connections this one pointed to.</p>
+          {b.extensions.length > 0 && (
+            <ul className={s.bullets}>
+              {b.extensions.map((x) => (
+                <li key={x.id}>{x.id === p.id ? <strong>{x.title}</strong> : <a href={href({ name: 'programme', id: x.id })}>{x.title}</a>}</li>
+              ))}
+            </ul>
+          )}
+          {/* A form, so Enter asks: one line, one request. */}
+          <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!held) void more() }}>
+            <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
+            <input id="more-wish" className={s.input} maxLength={MAX_ASK} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} disabled={busy !== null} />
+            <CharCount value={wish} />
+            <button type="submit" className={s.outlineButton} disabled={held}>{extending ? 'The curator is building it…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
+          </form>
+        </Twisty>
 
-      <SittingCard joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} keyHint={false} />
+        <SittingCard folded joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} keyHint={false} />
 
-      <div className={s.nextCard}>
-        <h3 className={s.nextTitle}>A different direction this week</h3>
-        <p className={s.quiet}>Take another direction for the rest of the week. This programme stays in your journal as it is; only what you’ve heard of it counts towards its thread.</p>
-        {b.otherOptions.length > 0 && (
-          <ul className={s.entries}>
-            {b.otherOptions.map((o) => (
-              <li key={o.id} className={s.entry}>
-                <h4 className={s.nextOption}>{o.title}</h4>
-                <p className={s.quiet}>{o.pitch}</p>
-                <div className={s.actions}>
-                  <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={held}>
-                    {busy === o.id ? 'The curator is building it…' : 'Listen this way instead'}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!held) void newDirections() }}>
-          <label className={s.visuallyHidden} htmlFor="direction-wish">What are you in the mood for?</label>
-          <input id="direction-wish" className={s.input} maxLength={MAX_ASK} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} disabled={busy !== null} />
-          <CharCount value={directionWish} />
-          <button type="submit" className={s.outlineButton} disabled={held}>{asking ? 'The curator is finding three…' : 'Ask for three new directions'}</button>
-        </form>
-      </div>
+        <Twisty
+          label="A different direction"
+          value={b.otherOptions.length ? `${b.otherOptions.length} ${b.otherOptions.length === 1 ? 'other' : 'others'} this week, or three new` : 'three new, for the rest of the week'}
+          open={asking || b.otherOptions.some((o) => o.id === busy)}
+        >
+          <p className={s.quiet}>Take another direction for the rest of the week. This programme stays in your journal as it is; only what you’ve heard of it counts towards its thread.</p>
+          {b.otherOptions.length > 0 && (
+            <ul className={s.entries}>
+              {b.otherOptions.map((o) => (
+                <li key={o.id} className={s.entry}>
+                  <h4 className={s.nextOption}>{o.title}</h4>
+                  <p className={s.quiet}>{o.pitch}</p>
+                  <div className={s.actions}>
+                    <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={held}>
+                      {busy === o.id ? 'The curator is building it…' : 'Listen this way instead'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!held) void newDirections() }}>
+            <label className={s.visuallyHidden} htmlFor="direction-wish">What are you in the mood for?</label>
+            <input id="direction-wish" className={s.input} maxLength={MAX_ASK} placeholder="What are you in the mood for? (optional)" value={directionWish} onChange={(e) => setDirectionWish(e.target.value)} disabled={busy !== null} />
+            <CharCount value={directionWish} />
+            <button type="submit" className={s.outlineButton} disabled={held}>{asking ? 'The curator is finding three…' : 'Ask for three new directions'}</button>
+          </form>
+        </Twisty>
 
-      {b.openPaths.length > 0 && (
-        <div className={s.nextCard}>
-          <h3 className={s.nextTitle}>A path left open</h3>
-          <p className={s.quiet}>{b.openPaths.length === 1 ? 'One direction' : `${b.openPaths.length} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
-          <details>
-            <summary className={s.textButton}>{b.openPaths.length === 1 ? 'Show it' : `Show all ${b.openPaths.length}`}</summary>
+        {b.openPaths.length > 0 && (
+          <Twisty label="A path left open" value={`${b.openPaths.length} from earlier weeks`} open={b.openPaths.some((o) => o.id === busy)}>
+            <p className={s.quiet}>Directions from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
             <OpenPaths paths={b.openPaths} nowKey={week.key} busy={busy !== null && !b.openPaths.some((o) => o.id === busy)} onTaking={setBusy} keyHint={false} />
-          </details>
-        </div>
-      )}
+          </Twisty>
+        )}
 
-      {feedback}
+        <Twisty label="Tell the curator how it went" value="a sentence shapes the next directions">{feedbackBody}</Twisty>
 
-      <div className={s.nextCard}>
-        <h3 className={s.nextTitle}>A wish for next week</h3>
-        <p className={s.quiet}>Plant an idea for the next three directions — a composer, a mood, a question.</p>
-        <a href={href({ name: 'notebook' })}>Write a wish in the Notebook</a>
+        <Twisty label="A wish for next week" value="a composer, a mood, a question">
+          <p className={s.quiet}>Plant an idea for the next three directions — a composer, a mood, a question.</p>
+          <a href={href({ name: 'notebook' })}>Write a wish in the Notebook</a>
+        </Twisty>
       </div>
     </section>
   )
