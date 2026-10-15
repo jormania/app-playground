@@ -13,6 +13,7 @@ import { demoCurator } from '../dev/demoCurator'
 import type { CuratorClient } from '../curation/api'
 import type { Programme } from '../domain/types'
 import { aboutDuration } from '../spotify/verify'
+import { addWeeks } from '../domain/season'
 
 beforeEach(() => {
   localStorage.clear()
@@ -111,10 +112,17 @@ describe('surnames as written: "Johann Strauss II" is Strauss, not "II"', () => 
     const repo = new Repo(memoryStore())
     await chosenWeek(repo)
     const j = new Journey(repo, plain())
-    await repo.marks.put({ id: `season:1:sofar:${j.currentWeek().key}`, at: 'x', value: { title: 'So far', opening: 'o', threads: [], taste: '', open: '', again: [{ composer: 'Johann Strauss II', work: 'Kaiser-Walzer', why: 'w' }], closing: '', promptVersion: 'v' } })
+    // The week moved back a season and a week, so season one is over and can have its review.
+    const w = await repo.weeks.require(j.currentWeek().key)
+    await repo.weeks.delete(w.weekKey)
+    await repo.weeks.put({ ...w, weekKey: addWeeks(w.weekKey, -13) })
+    await repo.marks.put({ id: 'season:1', at: 'x', value: { title: 'In review', opening: 'o', threads: [], taste: '', open: '', again: [{ composer: 'Johann Strauss II', work: 'Kaiser-Walzer', why: 'w' }], closing: '', promptVersion: 'v' } })
     window.location.hash = '#/season/1'
     app(repo)
-    expect(await screen.findByText('Strauss, Kaiser-Walzer', { selector: 'strong' })).toBeTruthy()
+    // The surname opens the composer's page under the name as written.
+    const link = await screen.findByRole('link', { name: 'Strauss' })
+    expect(link.getAttribute('href')).toBe('#/composer/Johann%20Strauss%20II')
+    expect(link.closest('strong')!.textContent).toBe('Strauss, Kaiser-Walzer')
   }, 15000)
 })
 

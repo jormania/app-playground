@@ -184,6 +184,26 @@ describe('the Notion notebook', () => {
     expect(withText).toHaveLength(1)
   })
 
+  it('takes a removed concert’s row to Notion’s trash, and counts one already gone there as done', async () => {
+    const repo = await seeded()
+    const concert = { id: 'c1', venue: 'Sala Radio', date: '2026-10-06', soloists: [], works: [{ workId: 'w1', composer: 'Claude Debussy', title: 'La mer' }], source: 'typed' as const, createdAt: 'x' }
+    await repo.concerts.put(concert)
+    await repo.concerts.put({ ...concert, id: 'c2', date: '2026-10-07' })
+    const n = fakeNotion()
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const rowOf = async (id: string) => (await repo.notion.get(`concert:${id}`))!.pageId
+    const [one, two] = [await rowOf('c1'), await rowOf('c2')]
+    await repo.concerts.delete('c1')
+    await repo.concerts.delete('c2')
+    n.calls.length = 0
+    // The second row was deleted in Notion by hand: its archive fails as gone, which is done too.
+    const gone: NotionCall = async (c: any) => (c.path === `pages/${two}` ? Promise.reject(new Error('Could not find page')) : n.client(c))
+    expect((await syncToNotion(gone, repo, 'page123', '2026-W41')).written).toBe(2)
+    expect(n.calls.filter((c) => c.body?.archived).map((c) => c.path)).toEqual([`pages/${one}`])
+    expect(await repo.notion.get('concert:c1')).toBeUndefined()
+    expect(await repo.notion.get('concert:c2')).toBeUndefined()
+  })
+
   it('shows no internal machinery — no ids, versions or confidences', async () => {
     const repo = await seeded()
     const n = fakeNotion()

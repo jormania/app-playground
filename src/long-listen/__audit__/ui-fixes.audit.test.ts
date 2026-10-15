@@ -50,7 +50,7 @@ describe('the Journal: how a week’s music was come by', () => {
     expect(w42.others).toEqual([])
     // It stays listed where it was offered, as taken later.
     const earlier = journalWeek(await repo.weeks.require('2026-W41'), byId)
-    expect(earlier.choice).toEqual({ kind: 'chosen', from: 3 })
+    expect(earlier.choice).toEqual({ kind: 'chosen' })
     expect(earlier.others.find((o) => o.id === w41.optionIds[1])?.status).toBe('taken-later')
   })
 })
@@ -119,13 +119,13 @@ describe('the Library’s search', () => {
 })
 
 describe('the season in review, asked for too soon', () => {
-  it('a season not yet begun, or a single week in, is not written (nothing paid for)', async () => {
+  it('a season not yet begun, or one under way, is not written (nothing paid for)', async () => {
     const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']) })
     const j = journey(c.client)
     await j.ensureWeek()
-    expect((await j.seasonReview(99)).season.weeksSoFar).toBe(0)
+    expect((await j.seasonReview(99)).season.begun).toBe(false)
     await expect(j.writeSeasonReview(99)).rejects.toThrow(/hasn’t begun/)
-    await expect(j.writeSeasonReview(1)).rejects.toThrow(/two weeks/)
+    await expect(j.writeSeasonReview(1)).rejects.toThrow(/once it is over/)
     expect(c.count('season')).toBe(0)
   })
 

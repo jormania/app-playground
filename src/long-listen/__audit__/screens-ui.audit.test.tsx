@@ -73,12 +73,13 @@ describe('addresses that hold nothing', () => {
     expect(screen.queryByRole('button', { name: /Ask the curator to write it/ })).toBeNull()
   })
 
-  it('a season one week in has no button either', async () => {
+  it('a season under way has no button either, and says when it ends — no count of weeks', async () => {
     const repo = new Repo(memoryStore())
     await chosenWeek(repo, plain())
     window.location.hash = '#/season/1'
     render(<App repo={repo} curator={plain()} />)
-    expect(await screen.findByText(/once two weeks of it are behind you/)).toBeTruthy()
+    expect(await screen.findByText(/^Under way — it ends on \d+ \w+ \d{4}\. Its review is written then\.$/)).toBeTruthy()
+    expect(screen.queryByText(/of 12 weeks/)).toBeNull()
     expect(screen.queryByRole('button', { name: /Ask the curator to write it/ })).toBeNull()
   })
 })
