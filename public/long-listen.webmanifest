@@ -2,7 +2,7 @@
   "name": "The Long Listen",
   "short_name": "Long Listen",
   "description": "A personal orchestral curator: three directions each week, a programme you choose, and a memory of everything you've heard.",
-  "id": "/long-listen-react.html",
+  "id": "/long-listen",
   "start_url": "/long-listen-react.html",
   "scope": "/long-listen-react.html",
   "display": "standalone",

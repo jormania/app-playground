@@ -151,6 +151,19 @@ and every Cabinet launch flashed the KeyPath logo instead. KeyPath has since
 shipped as a proper PWA (#98) with a manifest scoped to its own page. The front
 page and the guides still have none.
 
+That KeyPath WebAPK outlived the fix: `chrome://webapks` on 2026-10-15 still
+showed it with scope `https://coneofcold.vercel.app/`, an empty manifest URL and
+`minimal-ui`, and it swallowed every attempt to install The Long Listen. After
+uninstalling it (Settings → Apps) and restarting the phone, Chrome still said
+The Long Listen was "already installed", and "open the app instead" answered
+"Could not open app". No Long Listen app existed in Settings or in
+`chrome://webapks`, so Chrome was holding a record from one of the hijacked
+attempts that pointed at nothing. Long Listen's manifest `id` was changed from
+`/long-listen-react.html` to `/long-listen` so that Chrome treats it as a new app.
+The id is only an identity: it needn't resolve to a page. Scope, start URL, the
+worker and the storage it reads are unchanged. **Don't change it back**; the
+old id is the one with the stale record.
+
 `scripts/pwa-scope.test.js` fails the suite on any manifest without an id or
 with a root scope, and on any unscoped service-worker registration. It cannot
 catch this failure — the manifest was fine — but it keeps the repo from
