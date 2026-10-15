@@ -1999,18 +1999,6 @@
   margin-top: var(--space-xl);
 }
 
-.answer {
-  margin: var(--space-sm) 0;
-  padding-left: var(--space-sm);
-  border-left: 2px solid var(--color-border-2);
-}
-
-.answerQ {
-  margin: 0 0 var(--space-2xs);
-  font-style: italic;
-  color: var(--color-muted);
-}
-
 /* Input and Ask share one edge top and bottom: stretched to the same height
    (the input grows with large text, the small button would not), and the
    input's stacked-form margins dropped, which pushed it below the button. */

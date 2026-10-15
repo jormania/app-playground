@@ -16,8 +16,12 @@ import type { NowPlaying } from './client'
  *   skipped stretch is not credited;
  * - **its end was reached**: a reading at its close, or — when the page was
  *   away for the ending — the track gone from the player no sooner than it
- *   had left to play, and (unless Spotify still holds it at its close or
- *   rewound to the start) no later than ten minutes after that.
+ *   had left to play, and no later than ten minutes after that unless the
+ *   player itself shows the end: Spotify holding it at its close or rewound
+ *   to its start, stopped on the album's first track or with nothing on, or
+ *   the next track begun just as this one's time ran out. (Alfvén's Fourth,
+ *   48 minutes in one track, heard through with the phone asleep, stayed
+ *   "Started" when the page came back twenty minutes after its end.)
  *
  * Starting it partway through, jumping to the end, or stopping early never
  * counts. A track is credited once per session; playing it again from the
@@ -41,6 +45,8 @@ export const END_MS = 5_000
 export const HEARD_SHARE = 0.9
 /** How long after its end the page may have been away and still credit the close, when the player has moved on. */
 export const LATE_MS = 10 * 60_000
+/** How near the track's end the next one must have begun to be what followed it, not a later choice. */
+export const ENDED_NEAR_MS = 20_000
 /** A track not seen for this long starts a new session. */
 export const SESSION_GAP_MS = 3 * 3600_000
 
@@ -104,8 +110,13 @@ export class Witness {
         this.creditClose(s, was, dt, true)
       }
     } else if (was.isPlaying) {
-      // It left the player (another track, or nothing): the rest played out, if the clock allows it.
-      this.creditClose(s, was, dt, false)
+      // It left the player (another track, or nothing): the rest played out, if the clock allows it. However
+      // late the page comes back, an end is still read as one when the player itself shows it: Spotify at the
+      // end of the album, back on its first track and stopped there, or nothing left on at all — or another
+      // track that began just when this one's time ran out.
+      const stopped = !cur || (!cur.isPlaying && cur.progressMs <= END_MS)
+      const beganAtItsEnd = Boolean(cur?.isPlaying && Math.abs((r.at - cur.progressMs) - (prev.at + (was.durationMs - was.progressMs))) <= ENDED_NEAR_MS)
+      this.creditClose(s, was, dt, stopped || beganAtItsEnd)
     }
 
     if (!s.credited && isHeard(s)) {

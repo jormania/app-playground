@@ -458,16 +458,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {/* Ask about this: a question answered with the work, the recording and the movement sounding as context. */}
       <section className={s.companion} aria-label="Ask about this">
         <p className={s.label}>Ask about this</p>
-        {/* Answers already read fold to their questions; the newest stays open, under the field it came from. */}
-        {data.answers.map((a, i) => i < data.answers.length - 1 ? (
-          <Twisty key={a.id} label="Asked" value={`${a.question}${a.movement ? ` · during ${a.movement}` : ''}`}>
+        {/* Every answer folds to its question, oldest first. A new one opens the first time it is shown, and
+            can be folded at once; on later visits each stays folded until opened, however many there are. */}
+        {data.answers.map((a) => (
+          <Twisty key={a.id} label="Asked" value={`${a.question}${a.movement ? ` · during ${a.movement}` : ''}`} readOnce={`answer:${a.id}`}>
             <Paragraphs text={a.body} className={s.prose} glossed />
           </Twisty>
-        ) : (
-          <div key={a.id} className={s.answer}>
-            <p className={s.answerQ}>{a.question}{a.movement ? <span className={s.faint}> · during {a.movement}</span> : null}</p>
-            <Paragraphs text={a.body} className={s.prose} glossed />
-          </div>
         ))}
         {curatorReady ? (
           <form className={s.askRow} onSubmit={(e) => { e.preventDefault(); void ask() }}>
