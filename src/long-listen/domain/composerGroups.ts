@@ -27,3 +27,16 @@ export function groupByComposer<T>(entries: T[], nameOf: (e: T) => string): Map<
   }
   return new Map([...byKey.values()].map((g) => [g.name, g.items]))
 }
+
+/**
+ * The entry a composer's page asks for, however the name was written: any
+ * spelling it was filed under, or — a bare surname, as a concert types it —
+ * the one entry with that surname (two with it, or none: no entry).
+ */
+export function composerEntry<E extends { composer: string; spellings: string[] }>(entries: E[], name: string): E | undefined {
+  const want = fold(name)
+  const filed = entries.find((e) => [e.composer, ...e.spellings].some((x) => fold(x) === want))
+  if (filed || want.includes(' ')) return filed
+  const bySurname = entries.filter((e) => surname(e.composer) === want)
+  return bySurname.length === 1 ? bySurname[0] : undefined
+}

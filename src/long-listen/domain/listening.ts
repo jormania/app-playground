@@ -63,6 +63,9 @@ export const WANT_MORE: { value: WantMore; label: string }[] = [
   { value: 'no', label: 'Less like this' },
 ]
 
+/** Where a recording stands, in one word each — the same words on every screen that says it. */
+export const STATE_WORDS: Record<ListeningState, string> = { 'not-started': 'Not started', listening: 'Started', heard: 'Heard', skipped: 'Skipped' }
+
 export function reactionLabel(r?: Reaction): string | undefined {
   return REACTIONS.find((x) => x.value === r)?.label
 }

@@ -1,5 +1,5 @@
 import { readJson, writeJson } from '../../shared/storage'
-import { DEFAULT_TIME_ZONE, isValidTimeZone } from '../domain/week'
+import { DEFAULT_TIME_ZONE, canonicalTimeZone } from '../domain/week'
 
 /**
  * Per-device settings, in localStorage. Nothing here is part of the journey
@@ -44,7 +44,8 @@ export function loadSettings(): Settings {
     notionToken: str(raw.notionToken),
     notionPage: str(raw.notionPage),
     textSize: raw.textSize === 'large' ? 'large' : 'standard',
-    timeZone: typeof raw.timeZone === 'string' && isValidTimeZone(raw.timeZone) ? raw.timeZone : DEFAULT_TIME_ZONE,
+    // Canonical, so a zone saved untrimmed before ("Europe/London ") can't blank every page that reads a date.
+    timeZone: (typeof raw.timeZone === 'string' && canonicalTimeZone(raw.timeZone)) || DEFAULT_TIME_ZONE,
     spotifyClientId: typeof raw.spotifyClientId === 'string' && raw.spotifyClientId ? raw.spotifyClientId : ENV_CLIENT_ID,
     theme: theme === 'light' || theme === 'dark' ? theme : 'system',
     hideSkipped: raw.hideSkipped !== false,

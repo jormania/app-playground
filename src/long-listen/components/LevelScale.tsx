@@ -5,15 +5,15 @@ import s from '../styles/editorial.module.css'
 
 /**
  * A five-step scale: five stops on a line, tapped rather than dragged (a drag
- * control in a scrolling page fights the scroll on a phone). The ends are
- * named, and the chosen level is spelled out below in words.
+ * control in a scrolling page fights the scroll on a phone). The ends carry
+ * the names of the first and last levels, and the chosen level is spelled out
+ * below in a sentence. Its name stays on the stop, for a screen reader: said
+ * before the sentence too, it read "One focus. One focus — …".
  */
-export function LevelScale({ label, value, onChange, low, high, names, describe }: {
+export function LevelScale({ label, value, onChange, names, describe }: {
   label: string
   value: Level
   onChange: (v: Level) => void
-  low: string
-  high: string
   names: Record<Level, { label: string }>
   describe: (v: Level) => string
 }) {
@@ -34,8 +34,8 @@ export function LevelScale({ label, value, onChange, low, high, names, describe 
           />
         ))}
       </div>
-      <div className={s.scaleEnds}><span>{low}</span><span>{high}</span></div>
-      <p className={s.scaleNow}><strong>{names[value].label}.</strong> {describe(value)}</p>
+      <div className={s.scaleEnds}><span>{names[1].label}</span><span>{names[5].label}</span></div>
+      <p className={s.scaleNow}>{describe(value)}</p>
     </div>
   )
 }

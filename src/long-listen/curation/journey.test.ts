@@ -7,6 +7,7 @@ import { buildContext } from './context'
 import { weekOf } from '../domain/week'
 import { pendingFeedback } from './taste'
 import { knownWorkIds } from '../domain/listening'
+import { AlreadyKept } from '../domain/going'
 
 // A curator stand-in: records every call, answers from per-op scripts.
 function fakeCurator(script: Partial<Record<string, (payload: any, n: number) => unknown>>) {
@@ -220,9 +221,41 @@ describe('concerts', () => {
     const ctx = await buildContext(repo, weekOf(clock))
     expect(ctx.alreadyKnown).toContainEqual({ composer: 'Johannes Brahms', work: 'Double Concerto in A minor' })
     expect(ctx.concerts).toEqual([expect.objectContaining({ venue: 'Filarmonica George Enescu', works: ['Johannes Brahms — Double Concerto in A minor'], note: 'The cello sang.', performers: 'Gabriel Bebeșelea' })])
-    // A concert still to come (a date typed ahead) isn't told to the curator as heard.
-    await j.saveConcert({ ...draft, date: '2026-12-20', note: '', source: 'typed' })
+    // A concert still to come isn't kept as heard: the form refuses it, and one already in the store
+    // (kept before the refusal) isn't told to the curator as heard.
+    await expect(j.saveConcert({ ...draft, date: '2026-12-20', note: '', source: 'typed' })).rejects.toThrow(/once you’ve heard it/)
+    await repo.concerts.put({ ...kept, id: 'concert_ahead', date: '2026-12-20' })
     expect((await buildContext(repo, weekOf(clock), undefined, undefined, '2026-10-08')).concerts).toHaveLength(1)
+  })
+
+  it('refuses the same evening twice, however the venue was written, and closes a going for it', async () => {
+    const j = journey(fakeCurator({}).client)
+    const evening = { venue: 'Filarmonica George Enescu', hall: 'Sala Mare', date: '2026-10-06', time: '19:00', soloists: [], works: [{ composer: 'Claude Debussy', title: 'La mer' }], source: 'typed' as const }
+    await j.goingTo({ venue: 'Filarmonica George Enescu', hall: 'Sala Mare', title: 'Debussy', date: '2026-10-06', time: '19:00' }, true)
+    const kept = await j.saveConcert(evening)
+    // The going for that evening is kept by it, so its "How was it?" card goes.
+    expect((await j.goings())[0].concertId).toBe(kept.id)
+    const twice = await j.saveConcert({ ...evening, venue: 'the Ateneu', hall: 'sala mare' }).catch((e: unknown) => e)
+    expect(twice).toBeInstanceOf(AlreadyKept)
+    expect((twice as AlreadyKept).concertId).toBe(kept.id)
+    // Correcting the one kept is no duplicate; a matinee, another hall or another day is another concert.
+    await j.saveConcert({ ...evening, conductor: 'Gabriel Bebeșelea' }, kept.id)
+    await j.saveConcert({ ...evening, time: '11:00' })
+    await j.saveConcert({ ...evening, hall: 'Sala Mică' })
+    await j.saveConcert({ ...evening, date: '2026-10-05' })
+    expect(await repo.concerts.all()).toHaveLength(4)
+  })
+
+  it('removes a concert with what was said of it, and opens its going again', async () => {
+    const j = journey(fakeCurator({}).client)
+    await j.goingTo({ venue: 'Sala Radio', title: 'Mahler 5', date: '2026-10-06' }, true)
+    const kept = await j.saveConcert({ venue: 'Sala Radio', date: '2026-10-06', soloists: [], works: [{ composer: 'Gustav Mahler', title: 'Symphony No. 5' }], note: 'Overwhelming.', source: 'typed' })
+    await repo.feedback.put({ id: 'other', at: 'x', target: { type: 'recording', id: 'r' }, note: 'Kept.' })
+    expect((await j.goings())[0].concertId).toBe(kept.id)
+    await j.deleteConcert(kept.id)
+    expect(await repo.concerts.all()).toEqual([])
+    expect((await repo.feedback.all()).map((f) => f.id)).toEqual(['other'])
+    expect((await j.goings())[0].concertId).toBeUndefined()
   })
 })
 
@@ -647,7 +680,7 @@ describe('reactions filed under a recording that was never heard', () => {
 
 describe('the season in review', () => {
   const review = { title: 'Colour', opening: 'O', threads: [], taste: '', open: '', again: [], closing: '', promptVersion: 'season@test' }
-  it('offers the season under way once two weeks are behind it, and writes its "so far" once a week', async () => {
+  it('offers a season only once it is over, writes it once, and never a season of empty weeks', async () => {
     const c = fakeCurator({
       themes: () => themes(['French colour', 'B', 'C']),
       programme: () => programme('French colour', FRENCH),
@@ -656,19 +689,27 @@ describe('the season in review', () => {
     const j = journey(c.client)
     const w = await j.ensureWeek()
     await j.choose(w.optionIds[0])
-    // One week in: nothing to read yet.
+    // Under way: nothing to read, nothing to pay for.
+    at('2026-12-23T09:00:00Z') // W52, the season's last week
     expect(await j.seasons()).toEqual([])
-    // A week earlier, the journey had already begun.
-    const first = await repo.weeks.require('2026-W41')
-    await repo.weeks.put({ ...first, weekKey: '2026-W40' })
+    expect((await j.seasonReview(1)).season.begun).toBe(true)
+    await expect(j.writeSeasonReview(1)).rejects.toThrow(/once it is over/)
+    // Over: offered, and written once.
+    at('2027-01-05T09:00:00Z') // W1 of 2027, season two
     const list = await j.seasons()
-    expect(list.map((x) => [x.number, x.complete, x.weeksSoFar])).toEqual([[1, false, 2]])
+    expect(list.map((x) => [x.number, x.complete])).toEqual([[1, true]])
     expect((await j.seasonReview(1)).review).toBeUndefined()
     await j.writeSeasonReview(1)
     await j.writeSeasonReview(1)
     expect(c.count('season')).toBe(1)
-    expect(c.calls.find((x) => x.op === 'season')!.payload.soFar).toBe(true)
+    expect(c.calls.find((x) => x.op === 'season')!.payload).not.toHaveProperty('soFar')
     expect((await j.seasonReview(1)).review?.title).toBe('Colour')
+    // Twelve weeks with no programme in them: not listed, not written, though over.
+    at('2027-03-24T09:00:00Z') // W12 of 2027, after season two
+    expect((await j.seasons()).map((x) => x.number)).toEqual([1])
+    expect((await j.seasonReview(2)).listened).toBe(false)
+    await expect(j.writeSeasonReview(2)).rejects.toThrow(/Nothing was listened to/)
+    expect(c.count('season')).toBe(1)
   })
 })
 

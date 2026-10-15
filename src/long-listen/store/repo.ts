@@ -1,4 +1,4 @@
-import { createStore, del, entries, get, keys, set, setMany } from 'idb-keyval'
+import { createStore, del, entries, get, keys, promisifyRequest, set, setMany } from 'idb-keyval'
 import { normalisePreferences } from '../domain/types'
 import type {
   ListenerPreferences,
@@ -20,6 +20,8 @@ export interface KeyValueStore {
   del(key: string): Promise<void>
   keys(): Promise<string[]>
   entries(): Promise<[string, unknown][]>
+  /** Delete these keys and write these pairs as one change: all of it lands, or none of it. */
+  replace(deleteKeys: string[], pairs: [string, unknown][]): Promise<void>
 }
 
 export function indexedDbStore(): KeyValueStore {
@@ -31,6 +33,12 @@ export function indexedDbStore(): KeyValueStore {
     del: (key) => del(key, db),
     keys: async () => (await keys(db)).map(String),
     entries: async () => (await entries(db)).map(([k, v]) => [String(k), v] as [string, unknown]),
+    // One readwrite transaction: a page closed or a write refused halfway rolls the whole of it back.
+    replace: (deleteKeys, pairs) => db('readwrite', (store) => {
+      for (const k of deleteKeys) store.delete(k)
+      for (const [k, v] of pairs) store.put(v, k)
+      return promisifyRequest(store.transaction)
+    }),
   }
 }
 
@@ -43,6 +51,12 @@ export function memoryStore(initial: Record<string, unknown> = {}): KeyValueStor
     del: async (key) => void m.delete(key),
     keys: async () => [...m.keys()],
     entries: async () => [...m.entries()].map(([k, v]) => [k, structuredClone(v)] as [string, unknown]),
+    replace: async (deleteKeys, pairs) => {
+      // Cloned before anything changes, so a value that can't be stored leaves the map as it was.
+      const copies = pairs.map(([k, v]): [string, unknown] => [k, structuredClone(v)])
+      for (const k of deleteKeys) m.delete(k)
+      for (const [k, v] of copies) m.set(k, v)
+    },
   }
 }
 
@@ -237,13 +251,11 @@ export class Repo {
     // First, so a curator call already in flight sees it the moment it answers.
     this.epoch++
     const prefs = await this.preferences()
-    const setup = await this.marks.get('notion:setup')
-    // What is kept is never deleted, only rewritten after: a page closed halfway through
-    // leaves the listener's settings and the notebook's place, not an empty store.
+    // What is kept is never deleted, only rewritten, and all of it in one change: a page
+    // closed halfway leaves the journey whole or gone, never half of it.
     const keep = new Set([SINGLETON.preferences, `${PREFIX}mark:notion:setup`])
-    for (const k of await this.store.keys()) if (k.startsWith(PREFIX) && !keep.has(k)) await this.store.del(k)
-    await this.savePreferences({ ...prefs, nextRequest: '' })
-    if (setup) await this.marks.put(setup)
+    const clear = (await this.store.keys()).filter((k) => k.startsWith(PREFIX) && !keep.has(k))
+    await this.store.replace(clear, [[SINGLETON.preferences, { ...prefs, nextRequest: '' }]])
   }
 
   /**
@@ -256,24 +268,39 @@ export class Repo {
    * rewritten. Where the backup has no notebook, this device's is kept.
    */
   async importAll(backup: unknown): Promise<number> {
-    const b = backup as { app?: string; version?: unknown; records?: unknown }
-    if (b?.app !== 'the-long-listen' || !b.records || typeof b.records !== 'object' || Array.isArray(b.records)) {
-      throw new Error('That file is not a Long Listen backup.')
-    }
-    if (b.version !== 1) throw new Error('That backup was made by a newer version of the app.')
-    const pairs = Object.entries(b.records as Record<string, unknown>)
-      .filter(([k, v]) => k.startsWith(PREFIX) && v && typeof v === 'object')
+    const refused = checkBackup(backup)
+    if (refused) throw new Error(refused)
+    const pairs = backupPairs((backup as { records: Record<string, unknown> }).records)
       .filter(([k]) => k !== `${PREFIX}notion:taste`)
       .map(([k, v]): [string, unknown] => (k.startsWith(`${PREFIX}notion:`) ? [k, { ...(v as NotionSyncState), hash: '' }] : [k, v]))
-    if (!pairs.length) throw new Error('That backup holds nothing to restore.')
-    const setup = await this.marks.get('notion:setup')
     // Like a fresh start, a restore replaces the journey a curator call in
     // flight was asked about: its answer must not be written over the backup.
     this.epoch++
     const incoming = new Set(pairs.map(([k]) => k))
-    for (const k of await this.store.keys()) if (k.startsWith(PREFIX) && !incoming.has(k)) await this.store.del(k)
-    await this.store.setMany(pairs)
-    if (setup && !incoming.has(`${PREFIX}mark:notion:setup`)) await this.marks.put(setup)
+    // This device's notebook stays unless the backup brings one; everything else not in the backup goes.
+    const setup = `${PREFIX}mark:notion:setup`
+    const gone = (await this.store.keys()).filter((k) => k.startsWith(PREFIX) && !incoming.has(k) && k !== setup)
+    // One change: a restore that fails halfway leaves the journey that was here, not a mixture.
+    await this.store.replace(gone, pairs)
     return pairs.length
   }
+}
+
+/** A backup's records the store would take: ours, and each one a record. */
+function backupPairs(records: Record<string, unknown>): [string, unknown][] {
+  return Object.entries(records).filter(([k, v]) => k.startsWith(PREFIX) && v && typeof v === 'object')
+}
+
+/**
+ * Why a file can't be restored, in the listener's words — or null when it
+ * can. Asked before the confirmation, so a file that would be refused never
+ * gets as far as "Replace this journey?", and asked again by `importAll`.
+ */
+export function checkBackup(backup: unknown): string | null {
+  const b = backup as { app?: unknown; version?: unknown; records?: unknown } | null
+  if (!b || typeof b !== 'object' || b.app !== 'the-long-listen') return 'That file isn’t a backup from this app. Nothing here was changed.'
+  if (b.version !== 1) return 'That backup was made by a newer version of the app. Nothing here was changed.'
+  if (!b.records || typeof b.records !== 'object' || Array.isArray(b.records)) return 'That backup can’t be read. Nothing here was changed.'
+  if (!backupPairs(b.records as Record<string, unknown>).length) return 'That backup holds nothing to restore. Nothing here was changed.'
+  return null
 }

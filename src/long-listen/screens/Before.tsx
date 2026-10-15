@@ -5,7 +5,7 @@ import { go, href } from '../app/router'
 import { creditLine } from '../domain/identity'
 import { curly } from '../domain/programmeStyle'
 import { isoDateIn } from '../domain/week'
-import { goingStage, whenWords, type Going } from '../domain/going'
+import { daysUntil, goingStage, whenWords, type Going } from '../domain/going'
 import { venueShort } from '../live/live'
 import { searchUrl } from '../spotify/client'
 import { spotifyQuery } from '../components/RecordingBlock'
@@ -13,14 +13,15 @@ import { Credits } from '../components/Credits'
 import { Gloss } from '../components/Gloss'
 import { NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
 import { NotFound } from '../store/repo'
-import { concertDate } from './Concerts'
+import { concertDate } from '../components/ConcertEntry'
+import { ComposerLink } from './Composer'
 import s from '../styles/editorial.module.css'
 
 /**
  * Before a concert marked as going: the evening's works, read from the hall's
  * listing, each with a few lines, one recording to hear first, and what to
  * listen for in the hall that a recording can't give. Written once, on the
- * first visit (Sonnet, a few cents), and kept.
+ * first visit in the week before it (Sonnet, a few cents), and kept.
  */
 export function BeforeScreen({ goingKey }: { goingKey: string }) {
   const { repo, journey, curatorReady, bump, say, settings } = useServices()
@@ -31,21 +32,25 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
   }, [goingKey])
   const [writing, setWriting] = useState(false)
   const asked = useRef(false)
-  // The page is the asking: opened, it is written — once.
+  const today = isoDateIn(new Date(), settings.timeZone)
+  const stage = data ? goingStage(data.going, today) : undefined
+  // The page is the asking: opened in the week before the concert, it is written — once. Not
+  // further off (a paid reading of a listing that may yet change), nor once it has passed.
   useEffect(() => {
-    if (!data || data.prep || !curatorReady || asked.current) return
+    if (!data || data.prep || stage !== 'ahead' || !curatorReady || asked.current) return
     asked.current = true
     setWriting(true)
     journey.prepare(goingKey).then(bump, (e: unknown) => say(messageOf(e), 'danger')).finally(() => setWriting(false))
-  }, [data, curatorReady, journey, goingKey, bump, say])
+  }, [data, stage, curatorReady, journey, goingKey, bump, say])
 
   if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'That concert isn’t marked as one you’re going to any more.', link: { href: href({ name: 'week' }), label: 'This week' } }} />
   if (!data) return <Waiting>Opening the concert…</Waiting>
   const { going, prep } = data
   const e = going.event
-  const today = isoDateIn(new Date(), settings.timeZone)
-  const passed = goingStage(going, today) === 'after'
+  const d = daysUntil(e.date, today)
+  const passed = d < 0
 
+  // Not going after all, or (once it has passed) didn't go: the mark goes, and its card with it.
   async function notGoing() {
     try { await journey.goingTo(e, false); bump(); go({ name: 'week' }) } catch (x) { say(messageOf(x), 'danger') }
   }
@@ -53,11 +58,13 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
   return (
     <article>
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'week' })}>← This week</a></p>
-      <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Before the concert · {venueShort(e.venue)}{e.hall ? `, ${e.hall}` : ''}</p>
+      <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {passed ? 'After the concert' : 'Before the concert'} · {venueShort(e.venue)}{e.hall ? `, ${e.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{e.title}</h1>
-      <p className={s.dek}>{concertDate(e.date)}{e.time ? `, ${e.time}` : ''} — {passed ? 'it has passed' : whenWords(e.date, today, e.time)}.</p>
+      {/* The date once: "today", "tonight" or "tomorrow" only add to it. */}
+      <p className={s.dek}>{concertDate(e.date)}{e.time ? `, ${e.time}` : ''}{d >= 0 && d <= 1 ? ` — ${whenWords(e.date, today, e.time)}.` : ''}</p>
 
-      {!prep && (writing
+      {!prep && stage === 'later' && <p className={s.quiet}>Its preparation is written in the week before the concert.</p>}
+      {!prep && stage === 'ahead' && (writing
         ? <Waiting>The curator is reading the programme and preparing the evening…</Waiting>
         : curatorReady
           ? <button className={s.outlineButton} onClick={() => { asked.current = false; retry() }}>Prepare it</button>
@@ -73,7 +80,7 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
                 const rec = w.recording && { composer: w.composer, work: w.title, catalogue: w.catalogue, conductor: w.recording.conductor, orchestra: w.recording.orchestra, soloists: w.recording.soloists, year: w.recording.year }
                 return (
                   <li key={`${i}-${w.title}`} className={s.beforeWork}>
-                    <p className={s.composer}>{w.composer}</p>
+                    <p className={s.composer}><ComposerLink name={w.composer} /></p>
                     <h2 className={s.work}>{curly(w.title)}{w.catalogue ? <span className={s.faint}>, {w.catalogue}</span> : null}</h2>
                     {w.about && <p className={s.prose}><Gloss text={w.about} /></p>}
                     {w.listenFor && <p><span className={s.label}>In the hall</span><br /><Gloss text={w.listenFor} /></p>}
@@ -92,11 +99,17 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
         </>
       )}
 
-      <div className={`${s.actions} ${s.mtLg}`}>
-        {passed && <a className={s.primaryButton} href={href({ name: 'concert', id: `from-${goingKey}` })}>How was it? Add it to your concerts</a>}
-        {e.link && /^https?:\/\//.test(e.link) && <a className={s.textButton} href={e.link} target="_blank" rel="noopener noreferrer">The hall’s page</a>}
-        {!passed && <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void notGoing()}>Not going after all</button>}
-      </div>
+      {going.concertId
+        // Kept already: the entry is where this evening lives now.
+        ? <p className={s.mtLg}><a className={s.textButton} href={href({ name: 'concert', id: going.concertId })}>Your entry for this concert →</a></p>
+        : (
+          <div className={`${s.actions} ${s.mtLg}`}>
+            {/* From the evening itself: back from the hall, the entry is what's wanted, not the preparation. */}
+            {d <= 0 && <a className={s.primaryButton} href={href({ name: 'concert', id: `from-${goingKey}` })}>How was it? Add it to your concerts</a>}
+            {e.link && /^https?:\/\//.test(e.link) && <a className={s.textButton} href={e.link} target="_blank" rel="noopener noreferrer">The hall’s page</a>}
+            <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void notGoing()}>{passed ? 'I didn’t go' : 'Not going after all'}</button>
+          </div>
+        )}
     </article>
   )
 }

@@ -1,27 +1,43 @@
-import type { Concert, ListeningEvent, ProgrammeOption, ProposedRecording } from '../domain/types'
+import { Fragment } from 'react'
+import type { Concert, Feedback, ListeningState, Programme, ProgrammeItem, ProgrammeOption, ProposedRecording } from '../domain/types'
 import { curly } from '../domain/programmeStyle'
-import { listeningState, reactionLabel, when } from '../domain/listening'
-import { itemFeedback } from '../domain/standIns'
+import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
+import { heardAs, itemFeedback, playedProposed, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { displaySurname } from '../domain/identity'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
-import { weekFromKey, weekOf, weekOfDate } from '../domain/week'
+import { isoDateIn, weekFromKey, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
 import { concertDate } from './Concerts'
 import { seasonName } from '../domain/season'
 import { journalWeek } from '../domain/journalWeek'
 import { href } from '../app/router'
-import { Empty, Problem, SpotifyCheckButton, Waiting } from '../components/common'
+import { Empty, Problem, Waiting } from '../components/common'
 import { Credits } from '../components/Credits'
 import s from '../styles/editorial.module.css'
 
+// 'offered' says nothing the heading doesn't: a direction still on offer gets no tag.
 const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
-  offered: 'offered',
+  offered: '',
   chosen: 'chosen',
   open: 'left open',
   'taken-later': 'taken later',
   'set-aside': 'begun, then set aside',
   reworked: 'reworked for new settings',
+}
+
+const STATE_WORD: Record<ListeningState, string> = { 'not-started': '', heard: 'Heard', listening: 'Started', skipped: 'Skipped' }
+
+/** Who played, as one line: "Martha Argerich, Claudio Abbado, Berliner Philharmoniker". */
+const performers = (r: ProposedRecording) => [...r.soloists.map((x) => x.name), r.conductor, r.orchestra ?? r.ensemble].filter(Boolean).join(', ')
+
+/** A work as the Journal lists it: where it stands, who played, what was said. */
+interface Listened {
+  key: string
+  item: ProgrammeItem
+  state: ListeningState
+  played: ProposedRecording
+  said: ReturnType<typeof itemFeedback>
 }
 
 /**
@@ -30,59 +46,73 @@ const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
  * listened, no streak. This page is memory, not measurement.
  */
 export function JournalScreen() {
-  const { repo, journey, settings, spotify } = useServices()
+  const { repo, journey, settings } = useServices()
   const { data, error, retry } = useLoad(async () => {
     const [weeks, options, events, feedback, programmes, comparisons, concerts] = await Promise.all([
       repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(),
     ])
     // Concerts stand in the week they happened, with the hall's mark: live, not the week's programme.
+    // One still to come wasn't heard: it waits on Live in Bucharest, not here.
+    const today = isoDateIn(new Date(), settings.timeZone)
     const concertsIn = new Map<string, Concert[]>()
-    for (const c of [...concerts].sort((a, b) => a.date.localeCompare(b.date))) {
+    for (const c of [...concerts].filter((x) => x.date <= today).sort((a, b) => a.date.localeCompare(b.date))) {
       // A concert's date is already a calendar date: its week follows from it, whatever the time zone.
       const [y, m, d] = c.date.split('-').map(Number)
       const wk = weekOfDate({ year: y, month: m, day: d }).key
       concertsIn.set(wk, [...(concertsIn.get(wk) ?? []), c])
     }
-    const proposedOf = new Map<string, { proposed: ProposedRecording; workId: string; programmeId?: string }>()
-    for (const p of programmes) for (const i of p.sections.flatMap((x) => x.items)) proposedOf.set(i.recordingId, { proposed: i.proposed, workId: i.workId, programmeId: p.id })
-    for (const c of comparisons) for (const pv of c.perspectives) if (!proposedOf.has(pv.recordingId)) proposedOf.set(pv.recordingId, { proposed: pv.proposed, workId: c.workId })
 
-    // Each recording appears in the week it was last touched, with where it stands now —
-    // "last" and "the week" read from one moment: when it was played, for a play Spotify told of later.
-    const lastTouch = new Map<string, ListeningEvent>()
-    for (const e of events) {
-      if (e.kind === 'opened') continue
-      const prev = lastTouch.get(e.recordingId)
-      if (!prev || when(e) > when(prev)) lastTouch.set(e.recordingId, e)
-    }
-    const heardIn = new Map<string, { rid: string; state: string }[]>()
-    for (const [rid, e] of lastTouch) {
-      const state = listeningState(events, rid)
-      if (state === 'not-started' || (settings.hideSkipped && state === 'skipped')) continue
-      const wk = weekOf(new Date(when(e)), settings.timeZone).key
-      heardIn.set(wk, [...(heardIn.get(wk) ?? []), { rid, state }])
-    }
+    // A work stays in the week of the programme that offered it, however long
+    // after it was played or spoken of: the week is when it was met. In running
+    // order, where it stands now, a stand-in read as its item (domain/standIns.ts).
+    const standIns = standInsOf(comparisons)
+    const players = standInPlayersOf(comparisons)
+    const listened = (p: Programme): Listened[] => p.sections.flatMap((x) => x.items).flatMap((item) => {
+      const ids = heardAs(item, p.id, standIns)
+      const state = listeningState(events, ids)
+      if (state === 'not-started' || (settings.hideSkipped && state === 'skipped')) return []
+      return [{ key: `${p.id}:${item.id}`, item, state, played: playedProposed(item, p.id, players, events, feedback), said: itemFeedback(feedback, ids, item.workId) }]
+    })
 
-    const optionById = new Map(options.map((o) => [o.id, o]))
-    const keys = [...new Set([...weeks.map((w) => w.weekKey), ...heardIn.keys(), ...concertsIn.keys()])].sort((a, b) => b.localeCompare(a))
-    const programmeTitle = new Map(programmes.map((p) => [p.id, p.title]))
-    const extensionsOf = new Map<string, string[]>()
+    const programmeById = new Map(programmes.map((p) => [p.id, p]))
+    // "More of this theme" and a sitting joined to the week, after the programme they continue.
+    const companionsOf = new Map<string, Programme[]>()
     for (const p of [...programmes].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-      if (p.extends) extensionsOf.set(p.extends, [...(extensionsOf.get(p.extends) ?? []), p.id])
+      if (p.extends) companionsOf.set(p.extends, [...(companionsOf.get(p.extends) ?? []), p])
     }
+    const withCompanions = (p: Programme) => [p, ...(companionsOf.get(p.id) ?? [])]
+    const optionById = new Map(options.map((o) => [o.id, o]))
+    const keys = [...new Set([...weeks.map((w) => w.weekKey), ...concertsIn.keys()])].sort((a, b) => b.localeCompare(a))
     return {
       entries: keys.map((key) => {
         const w = weeks.find((x) => x.weekKey === key)
-        const { others, choice } = journalWeek(w, optionById)
-        return { key, week: w, others, choice, heard: heardIn.get(key) ?? [], concerts: concertsIn.get(key) ?? [] }
-      }),
-      proposedOf, feedback, programmeTitle, extensionsOf, concertCount: concerts.length, seasons: await journey.seasons(),
+        const { others, choice } = journalWeek(w, optionById, programmes)
+        const main = w?.programmeId ? programmeById.get(w.programmeId) : undefined
+        const setAside = (w?.setAsideProgrammeIds ?? []).map((id) => programmeById.get(id)).filter((p): p is Programme => Boolean(p))
+        const all = [...(main ? withCompanions(main) : []), ...setAside.flatMap(withCompanions)]
+        return { key, main, setAside, others, choice, listened: all.flatMap(listened), concerts: concertsIn.get(key) ?? [] }
+      }).filter((e) => e.main || e.setAside.length || e.others.length || e.concerts.length),
+      feedback, companionsOf, concertCount: concerts.length, seasons: await journey.seasons(),
     }
   }, [settings.timeZone, settings.hideSkipped])
 
   if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the journal…</Waiting>
-  const STATE_WORD: Record<string, string> = { heard: 'Heard', listening: 'Started', skipped: 'Skipped' }
+
+  /** A programme of the week as a link, with the listener's last word on it as a whole. */
+  const programmeLine = (p: Programme, lead: string, className: string) => {
+    const said = lastWord(data.feedback, p.id)
+    return (
+      <Fragment key={p.id}>
+        <p className={`${className} ${s.flush}`}>
+          {lead}<a href={href({ name: 'programme', id: p.id })} className={s.quietLink}>{p.title}</a>
+        </p>
+        {said && <p className={`${s.said} ${s.flush}`}><q>{said}</q></p>}
+      </Fragment>
+    )
+  }
+  const companions = (p: Programme, className: string) =>
+    (data.companionsOf.get(p.id) ?? []).map((x) => programmeLine(x, x.sitting ? 'A sitting for tonight: ' : 'More of this theme: ', className))
 
   return (
     <div>
@@ -95,21 +125,15 @@ export function JournalScreen() {
       </p>
       {data.seasons.map((x) => (
         <p key={x.number} className={s.faint}>
-          <a href={href({ name: 'season', n: x.number })}>{seasonName(x.number)} {x.complete ? 'in review' : 'so far'}</a> · {x.label}
+          <a href={href({ name: 'season', n: x.number })}>{seasonName(x.number)} in review</a> · {x.label}
         </p>
       ))}
-      {spotify.connected && (
-        <p className={s.faint}>
-          Your recent Spotify listening is picked up each time you open the app.{' '}
-          <SpotifyCheckButton />
-        </p>
-      )}
       {data.entries.length === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing here yet. Your first week begins on This week.</Empty>}
 
-      {data.entries.map(({ key, week, others, choice, heard, concerts }) => {
+      {data.entries.map(({ key, main, setAside, others, choice, listened, concerts }) => {
         const wk = weekFromKey(key)
         return (
-          <section key={key} className={s.journalWeek} aria-label={`Week ${wk.number}`}>
+          <section key={key} className={s.journalWeek} aria-label={`Week ${wk.number}, ${wk.isoYear}`}>
             {/* The week's number in the margin, a rule running down to the next:
                 the journal reads as a timeline, not a feed. */}
             <div className={s.weekMark} aria-hidden="true">
@@ -118,36 +142,29 @@ export function JournalScreen() {
             </div>
             <div className={s.weekBody}>
             <h2 className={s.weekHead}>{wk.label}</h2>
-            {week?.programmeId && (
-              <p className={`${s.entryTitle} ${s.flush}`}>
-                <a href={href({ name: 'programme', id: week.programmeId })} className={s.quietLink}>{data.programmeTitle.get(week.programmeId)}</a>
-              </p>
-            )}
-            {week?.programmeId && (data.extensionsOf.get(week.programmeId) ?? []).map((id) => (
-              <p key={id} className={`${s.quiet} ${s.flush}`}>
-                and more: <a href={href({ name: 'programme', id })} className={s.quietLink}>{data.programmeTitle.get(id)}</a>
-              </p>
+            {main && programmeLine(main, '', s.entryTitle)}
+            {main && companions(main, s.quiet)}
+            {setAside.map((p) => (
+              <Fragment key={p.id}>
+                {programmeLine(p, 'set aside: ', s.faint)}
+                {companions(p, s.faint)}
+              </Fragment>
             ))}
-            {(week?.setAsideProgrammeIds ?? []).map((id) => (
-              <p key={id} className={`${s.faint} ${s.flush}`}>
-                set aside: <a href={href({ name: 'programme', id })} className={s.quietLink}>{data.programmeTitle.get(id)}</a>
-              </p>
-            ))}
-            {choice && (
+            {choice && choice.kind !== 'chosen' && (
               <p className={`${s.faint} ${s.flush} ${s.mt3xs}`}>
-                {choice.kind === 'chosen' ? `Chosen from ${choice.from} directions` : choice.kind === 'path' ? `Took a path from the week of ${weekFromKey(choice.fromWeek).label}` : 'A sitting for tonight'}
+                {choice.kind === 'path' ? `Took a path from the week of ${weekFromKey(choice.fromWeek).label}` : 'A sitting for tonight'}
               </p>
             )}
 
             {/* The week in parts, each under its own small heading: what else was offered, what was heard live, what was listened to. */}
             {others.length > 0 && (
               <div className={s.journalPart}>
-                <h3 className={s.journalPartHead}>Also offered</h3>
-                <ul className={s.offeredList} aria-label="Also offered this week">
+                <h3 className={s.journalPartHead}>{choice?.kind === 'chosen' ? 'Also offered' : 'Offered'}</h3>
+                <ul className={s.offeredList} aria-label={choice?.kind === 'chosen' ? 'Also offered this week' : 'Offered this week'}>
                   {others.map((o) => (
                     <li key={o.id}>
                       <span className={s.quiet}>{o.title}</span>{' '}
-                      <span className={s.tag}>{OPTION_WORD[o.status]}</span>
+                      {OPTION_WORD[o.status] && <span className={s.tag}>{OPTION_WORD[o.status]}</span>}
                     </li>
                   ))}
                 </ul>
@@ -173,25 +190,20 @@ export function JournalScreen() {
                 ))}
               </div>
             )}
-            {heard.some(({ rid }) => data.proposedOf.get(rid)) && (
+            {listened.length > 0 && (
               <div className={s.journalPart}>
                 <h3 className={s.journalPartHead}>What you listened to</h3>
-                <ul className={s.entries}>
-                  {heard.map(({ rid, state }) => {
-                    const info = data.proposedOf.get(rid)
-                    if (!info) return null
-                    // What was said of the recording and of the work, read together as everywhere else.
-                    const fb = itemFeedback(data.feedback, [rid], info.workId)
+                {/* One line a work, like a concert's: who wrote it, what, who played; then where it stands and what was said. */}
+                <ul className={`${s.concertWorkList} ${s.listenedList}`}>
+                  {listened.map(({ key, item, state, played, said }) => {
+                    const who = performers(played)
                     return (
-                      <li key={rid} className={s.entry}>
-                        <p className={s.composer}>{info.proposed.composer}</p>
-                        <h4 className={`${s.h2} ${s.flush}`}>{curly(info.proposed.work)}</h4>
-                        <Credits r={info.proposed} />
-                        <p className={s.tagRow}>
-                          <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
-                          {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)}</span>}
-                        </p>
-                        {fb.notes.map((n, i) => <p key={i} className={s.said}><q>{n}</q></p>)}
+                      <li key={key}>
+                        <a href={href({ name: 'composer', composer: item.proposed.composer })} className={s.composerLink}>{displaySurname(item.proposed.composer)}</a>, <em>{curly(item.proposed.work)}</em>
+                        {who && <span className={s.faint}> · {who}</span>}{' '}
+                        <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
+                        {said.reaction && <>{' '}<span className={s.tag}>{reactionLabel(said.reaction)}</span></>}
+                        {said.notes.map((n, i) => <p key={i} className={s.said}><q>{n}</q></p>)}
                       </li>
                     )
                   })}
@@ -204,4 +216,10 @@ export function JournalScreen() {
       })}
     </div>
   )
+}
+
+/** The listener's latest note on a programme as a whole (feedback on the programme itself). */
+function lastWord(all: Feedback[], programmeId: string): string | undefined {
+  const notes = latestFeedback(all.filter((f) => f.target.type === 'programme'), programmeId).notes
+  return notes[notes.length - 1]
 }

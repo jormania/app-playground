@@ -16,6 +16,8 @@ export async function seasonContext(
   repo: Repo, s: Season, now: WeekKey,
   /** The listener's time zone (Journey passes its own): a season's first and last days are theirs, not UTC's. */
   timeZone: string = DEFAULT_TIME_ZONE,
+  /** Today, in that zone: a concert still to come was not heard. */
+  today: string = isoDateIn(new Date(), timeZone),
 ) {
   const inSeason = new Set(s.weekKeys.filter((k) => k <= now))
   const [weeks, programmes, explorations, themes, options, events, feedback, concerts, taste, prefs, comparisons] = await Promise.all([
@@ -58,8 +60,7 @@ export async function seasonContext(
   }
   return {
     language: prefs.language,
-    season: { number: s.number, label: s.label, weeksSoFar: s.weeksSoFar },
-    soFar: !s.complete,
+    season: { number: s.number, label: s.label },
     weeks: weeks.filter((w) => inSeason.has(w.weekKey)).sort((a, b) => a.weekKey.localeCompare(b.weekKey)).map((w) => {
       // "More of this theme" of a programme set aside went with it: it is not still part of the week.
       const setAside = (p: (typeof progs)[number]) => w.setAsideProgrammeIds.includes(p.id) || Boolean(p.extends && w.setAsideProgrammeIds.includes(p.extends))
@@ -79,7 +80,7 @@ export async function seasonContext(
     heard: met.filter((m) => m.state === 'heard'),
     started: met.filter((m) => m.state === 'listening'),
     skipped: met.filter((m) => m.state === 'skipped').map((m) => ({ composer: m.composer, work: m.work })),
-    concerts: concerts.filter((c) => c.date >= start && c.date <= end).map((c) => ({ venue: c.venue, date: c.date, works: c.works.map((w) => `${w.composer}, ${w.title}`), said: c.note })),
+    concerts: concerts.filter((c) => c.date >= start && c.date <= end && c.date <= today).map((c) => ({ venue: c.venue, date: c.date, works: c.works.map((w) => `${w.composer}, ${w.title}`), said: c.note })),
     taste: {
       newThisSeason: taste.observations.filter((o) => !o.supersededBy && seen(o.firstSeen)).map((o) => ({ statement: o.statement, stance: o.stance, confidence: o.confidence })),
       heldBefore: taste.observations.filter((o) => !o.supersededBy && !seen(o.firstSeen)).map((o) => ({ statement: o.statement, stance: o.stance, confidence: o.confidence, stillSeenThisSeason: seen(o.lastSeen) })),

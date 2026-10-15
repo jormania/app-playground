@@ -155,3 +155,13 @@ export function isValidTimeZone(zone: string): boolean {
     return false
   }
 }
+
+/**
+ * The runtime's own name for a zone that passes `isValidTimeZone`, or null.
+ * What is stored is this, never what was typed: "Europe/London " passes the
+ * check trimmed, and kept untrimmed it would throw in every date on every page.
+ */
+export function canonicalTimeZone(zone: string): string | null {
+  if (!isValidTimeZone(zone)) return null
+  return new Intl.DateTimeFormat('en', { timeZone: zone.trim() }).resolvedOptions().timeZone
+}

@@ -584,6 +584,14 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
   for (const c of concerts) {
     written += Number(await upsert(call, repo, `concert:${c.id}`, dbs.concerts, concertProps(c)))
   }
+  // A concert removed in the app: its row goes to Notion's trash. One already gone there is done too.
+  const keptConcerts = new Set(concerts.map((c) => `concert:${c.id}`))
+  for (const st of await repo.notion.all()) {
+    if (!st.key.startsWith('concert:') || keptConcerts.has(st.key)) continue
+    await call({ path: `pages/${st.pageId}`, method: 'PATCH', body: { archived: true } }).catch((e: unknown) => { if (!isGone(e)) throw e })
+    await repo.notion.delete(st.key)
+    written++
+  }
 
   // The taste page belongs to the app: it is rewritten whole when it changes.
   const { nextRequest: _n, ...shownPrefs } = prefs
@@ -606,27 +614,32 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
  * journey. Best effort: a page already gone is fine.
  */
 export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<number> {
-  let n = 0
+  const trashed: NotionSyncState[] = []
   let failed = 0
   for (const st of await repo.notion.all()) {
     if (st.key === 'taste') continue
     try {
       await call({ path: `pages/${st.pageId}`, method: 'PATCH', body: { archived: true } })
-      n++
+      trashed.push(st)
     } catch (e) {
       // Already archived, or deleted in Notion, is done. Anything else (offline, rate-limited) is not.
       if (!/could not find|archived/i.test(e instanceof Error ? e.message : String(e))) failed++
     }
   }
-  // A fresh start forgets which pages it wrote: one left behind would never be cleaned up, so stop here instead.
-  if (failed) throw new Error(`Notion didn’t take ${failed} page${failed === 1 ? '' : 's'} to its trash, so nothing was cleared. Try again in a minute.`)
+  if (failed) {
+    // A fresh start forgets which pages it wrote: one left behind would never be cleaned up, so stop here instead.
+    // The journey stays, so the pages already in the trash must come back: unmatched, the next sync writes them afresh.
+    for (const st of trashed) await repo.notion.put({ ...st, hash: '' })
+    throw new Error('Notion didn’t take some pages to its trash, so nothing was cleared. Try again in a minute.')
+  }
+  // Best effort: the next sync rewrites the taste page anyway, from a taste that is now empty.
   const setup = (await repo.marks.get('notion:setup'))?.value as { tastePage?: string } | undefined
   if (setup?.tastePage) {
-    for (const b of await childrenOf(call, setup.tastePage)) {
+    for (const b of await childrenOf(call, setup.tastePage).catch(() => [])) {
       await call({ path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } }).catch(() => undefined)
     }
   }
-  return n
+  return trashed.length
 }
 
 export function journalProps(

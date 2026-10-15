@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Landmark } from 'lucide-react'
+import { ConfirmModal } from '../../ds'
 import type { Concert } from '../domain/types'
 import { displaySurname, fold } from '../domain/identity'
 import { isCredited } from '../spotify/match'
@@ -11,9 +12,10 @@ import { spotifyCandidates, type SpotifyCandidate } from '../spotify/verify'
 import { resizePhoto } from '../../shared/photo'
 import { CharCount, Empty, MAX_ASK, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
 import { Credits } from '../components/Credits'
+import { ConcertEntry, concertDate } from '../components/ConcertEntry'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { namedSoloists, playingKeys, removeSoloist, soloistKey, toDraft, toForm, toggleSoloist, type ConcertFormState } from '../domain/concertForm'
-import { draftFrom, goingStage, type Going } from '../domain/going'
+import { AlreadyKept, draftFrom, goingStage, whenWords, type Going } from '../domain/going'
 import { useGoings } from '../components/Going'
 import { isoDateIn } from '../domain/week'
 import { venueShort } from '../live/live'
@@ -25,20 +27,18 @@ export const SHARED_IMAGE = '/long-listen-shared-image'
 /** How long a shared picture waits to be read (say, for a key to be added) before it is let go unread. */
 const SHARED_IMAGE_KEEP_MS = 24 * 3600_000
 
-/** "Thu 16 October 2026" */
-export const concertDate = (d: string) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`))
+export { concertDate }
 
 /**
- * All concerts: every concert heard live, by venue and then date, newest first.
- * Each one also stands in the Journal, in the week it happened.
+ * All concerts: every concert heard live, newest first — one list, not one per
+ * venue (a hall written two ways split in two). Each one also stands in the
+ * Journal, in the week it happened.
  */
 export function ConcertsScreen() {
   const { repo } = useServices()
   const { data, error, retry } = useLoad(() => repo.concerts.all(), [])
   if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the concerts…</Waiting>
-  const byVenue = new Map<string, Concert[]>()
-  for (const c of [...data].sort((a, b) => b.date.localeCompare(a.date))) byVenue.set(c.venue, [...(byVenue.get(c.venue) ?? []), c])
   return (
     <div>
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'journal' })}>← Journal</a></p>
@@ -47,37 +47,23 @@ export function ConcertsScreen() {
       <div className={s.actions}>
         <a className={s.primaryButton} href={href({ name: 'concert', id: 'new' })}>Add a concert</a>
       </div>
-      <ComingUp />
-      {data.length === 0 && <Empty>None yet. Share a screenshot of the hall’s programme to the app, or add one here.</Empty>}
-      {[...byVenue.entries()].map(([venue, list]) => (
-        <section key={venue} className={s.block}>
-          <h2 className={s.h2}><Landmark size={18} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {venue}</h2>
-          <ul className={s.concertList}>
-            {list.map((c) => (
-              <li key={c.id} className={s.journalConcert}>
-                {/* The evening as the title, the works one to a line beneath: never one long run-on link. */}
-                <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{concertDate(c.date)}{c.hall ? ` · ${c.hall}` : ''}</a>
-                <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} />
-                <ul className={s.concertWorkList}>
-                  {c.works.map((w, i) => {
-                    const who = whoPlays(c, w)
-                    return <li key={i}>{displaySurname(w.composer)}, <em>{w.title}</em>{who.length > 0 && <span className={s.faint}> · {who.map((x) => x.name).join(', ')}</span>}</li>
-                  })}
-                </ul>
-                {c.note && <p className={s.said}><q>{c.note}</q></p>}
-              </li>
-            ))}
+      <YoureGoing />
+      {data.length === 0
+        ? <Empty>None yet. Share a screenshot of the hall’s programme to the app, or add one here.</Empty>
+        : (
+          <ul className={`${s.concertList} ${s.block}`} aria-label="Concerts heard live">
+            {[...data].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).map((c) => <li key={c.id}><ConcertEntry concert={c} /></li>)}
           </ul>
-        </section>
-      ))}
+        )}
     </div>
   )
 }
 
 /** One concert: what was played, by whom, and ways to hear each work again. Or, for "new", the form. */
 export function ConcertScreen({ id }: { id: string }) {
-  const { repo } = useServices()
+  const { repo, journey, bump, say } = useServices()
   const [editing, setEditing] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const fromGoing = id.startsWith('from-') ? id.slice('from-'.length) : undefined
   const { data, error, retry } = useLoad(async () => (id === 'new' || fromGoing ? null : repo.concerts.require(id)), [id])
   if (id === 'new') return <ConcertForm />
@@ -86,6 +72,18 @@ export function ConcertScreen({ id }: { id: string }) {
   if (!data) return <Waiting>Opening the concert…</Waiting>
   if (editing) return <ConcertForm concert={data} onDone={() => setEditing(false)} />
   const c = data
+
+  async function remove() {
+    setRemoving(false)
+    try {
+      await journey.deleteConcert(c.id)
+      bump()
+      say('Removed from your concerts.', 'success')
+      go({ name: 'concerts' })
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    }
+  }
   return (
     <article>
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
@@ -106,7 +104,17 @@ export function ConcertScreen({ id }: { id: string }) {
       {/* A correction is rare, and the page is for the music: a text link, after it. */}
       <div className={`${s.actions} ${s.mtLg}`}>
         <button className={`${s.textButton} ${s.quietButton}`} onClick={() => setEditing(true)}>Correct the concert</button>
+        <button className={`${s.textButton} ${s.quietButton}`} onClick={() => setRemoving(true)}>Remove this concert</button>
       </div>
+      <ConfirmModal
+        isOpen={removing}
+        title="Remove this concert?"
+        message="It leaves your concerts, the Journal and the Library’s “heard live”, with what you said of it. The curator won’t know of it any more."
+        confirmText="Remove it"
+        variant="danger"
+        onConfirm={() => void remove()}
+        onCancel={() => setRemoving(false)}
+      />
     </article>
   )
 }
@@ -147,7 +155,7 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
 
   return (
     <li>
-      <p className={s.composer}>{w.composer}</p>
+      <p className={s.composer}><a href={href({ name: 'composer', composer: w.composer })} className={s.composerLink}>{w.composer}</a></p>
       <p className={s.libraryTitle}>{w.title}{w.catalogue ? `, ${w.catalogue}` : ''}</p>
       <Credits r={{ soloists }} className={s.workCredits} programme />
       {found === null ? (
@@ -177,20 +185,20 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
   )
 }
 
-/** Concerts marked as going, still ahead: each to its preparation. */
-function ComingUp() {
+/** Concerts marked as going, still ahead — to the preparation once it is written, in the week before. */
+function YoureGoing() {
   const { settings } = useServices()
   const today = isoDateIn(new Date(), settings.timeZone)
   const ahead = useGoings().filter((g) => ['later', 'ahead'].includes(goingStage(g, today)))
   if (!ahead.length) return null
   return (
-    <section className={s.block} aria-label="Coming up">
-      <p className={s.label}>Coming up — marked as going</p>
+    <section className={s.block} aria-label="You’re going">
+      <p className={s.label}>You’re going</p>
       <ul className={s.bullets}>
         {ahead.map((g) => (
           <li key={g.key}>
-            <a className={s.quietLink} href={href({ name: 'before', key: g.key })}>{g.event.title}</a>
-            <span className={s.faint}> · {venueShort(g.event.venue)}, {concertDate(g.event.date)}</span>
+            {goingStage(g, today) === 'ahead' ? <a className={s.quietLink} href={href({ name: 'before', key: g.key })}>{g.event.title}</a> : g.event.title}
+            <span className={s.faint}> · at {venueShort(g.event.venue)} {whenWords(g.event.date, today, g.event.time)}</span>
           </li>
         ))}
       </ul>
@@ -305,7 +313,12 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
       if (onDone) onDone()
       else go({ name: 'concert', id: c.id })
     } catch (e) {
-      say(messageOf(e), 'danger')
+      if (!(e instanceof AlreadyKept)) { say(messageOf(e), 'danger'); return }
+      // That evening is already kept (shared twice, or entered before): open it rather than keep it twice.
+      if (goingKey) await journey.concertKept(goingKey, e.concertId).catch(() => {})
+      bump()
+      say(e.message)
+      go({ name: 'concert', id: e.concertId })
     } finally {
       setSaving(false)
     }
@@ -317,28 +330,43 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
   const setSoloist = (key: string, patch: Partial<ConcertFormState['soloists'][number]>) => setD((x) => ({ ...x, soloists: x.soloists.map((y) => (y.key === key ? { ...y, ...patch } : y)) }))
   const named = namedSoloists(d)
 
+  const chooser = <input ref={fileRef} type="file" accept="image/*" className={s.visuallyHidden} onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />
+  const howWasIt = (
+    <>
+      <label className={`${s.field} ${start ? '' : s.mtMd}`}><span>How was it?</span>
+        <textarea className={s.textarea} maxLength={MAX_ASK} value={d.note ?? ''} onChange={(e) => set({ note: e.target.value })} placeholder="Optional — a sentence is plenty. The curator reads it." />
+      </label>
+      <CharCount value={d.note ?? ''} />
+    </>
+  )
+
   return (
     <div>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
+      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: start ? 'week' : 'concerts' })}>{start ? '← This week' : '← All concerts'}</a></p>
       <h1 className={s.titleSmall}>{concert ? 'Correct the concert' : 'A concert heard live'}</h1>
 
-      {/* Offered with or without a key — without one, it says what it needs, like every curator request. */}
-      <div className={s.panel}>
-        {start && <p className={s.quiet}>Filled in from the hall’s announced programme. Check it — programmes change on the night — then keep it.</p>}
-        <p className={s.panelHead}>From a screenshot</p>
-        <p className={s.quiet}>The hall’s programme page, or a photo of the printed one. The curator reads it into the form below; check it, then keep it.</p>
-        <input ref={fileRef} type="file" accept="image/*" className={s.visuallyHidden} onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />
-        <div className={s.actions}>
-          <button className={s.outlineButton} onClick={() => fileRef.current?.click()} disabled={reading || !curatorReady}>{reading ? 'Reading the programme…' : 'Choose a screenshot'}</button>
-        </div>
-        {!curatorReady && <NeedsKey to="have the curator read it" />}
-      </div>
+      {start
+        // Filled from the listing: one line on what to check, and the screenshot only as a way out, under the works.
+        ? <p className={s.quiet}>{start.works.some((w) => w.composer.trim() && w.title.trim())
+          ? 'Filled in from the hall’s programme — check it, then keep it.'
+          : 'Only the date and place could be filled in — add the works, or read a screenshot.'}</p>
+        // Offered with or without a key — without one, it says what it needs, like every curator request.
+        : <div className={s.panel}>
+          <p className={s.panelHead}>From a screenshot</p>
+          <p className={s.quiet}>The hall’s programme page, or a photo of the printed one. The curator reads it into the form below; check it, then keep it.</p>
+          {chooser}
+          <div className={s.actions}>
+            <button className={s.outlineButton} onClick={() => fileRef.current?.click()} disabled={reading || !curatorReady}>{reading ? 'Reading the programme…' : 'Choose a screenshot'}</button>
+          </div>
+          {!curatorReady && <NeedsKey to="have the curator read it" />}
+        </div>}
 
       <form className={s.concertForm} onSubmit={(e) => { e.preventDefault(); void save() }}>
+        {start && howWasIt}
         <label className={s.field}><span>Venue</span><input className={s.input} value={d.venue} onChange={(e) => set({ venue: e.target.value })} placeholder="Filarmonica George Enescu" required /></label>
         <label className={s.field}><span>Hall</span><input className={s.input} value={d.hall ?? ''} onChange={(e) => set({ hall: e.target.value })} placeholder="Sala Mare (optional)" /></label>
         <div className={s.fieldRow}>
-          <label className={s.field}><span>Date</span><input className={s.input} type="date" value={d.date} onChange={(e) => set({ date: e.target.value })} required /></label>
+          <label className={s.field}><span>Date</span><input className={s.input} type="date" value={d.date} max={journey.today()} onChange={(e) => set({ date: e.target.value })} required /></label>
           <label className={s.field}><span>Time</span><input className={s.input} type="time" value={d.time ?? ''} onChange={(e) => set({ time: e.target.value })} /></label>
         </div>
         <label className={s.field}><span>Orchestra</span><input className={s.input} value={d.orchestra ?? ''} onChange={(e) => set({ orchestra: e.target.value })} /></label>
@@ -360,9 +388,9 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
           // One work, two lines: who and which catalogue number, then its title at full width.
           <div key={i} className={s.workRow}>
             <span className={s.workNo}>{i + 1}</span>
-            <input className={s.input} aria-label="Composer" value={w.composer} onChange={(e) => setWork(i, { composer: e.target.value })} placeholder="Composer" />
-            <input className={s.input} aria-label="Catalogue" value={w.catalogue ?? ''} onChange={(e) => setWork(i, { catalogue: e.target.value })} placeholder="Op." />
-            <input className={`${s.input} ${s.workTitleInput}`} aria-label="Work" value={w.title} onChange={(e) => setWork(i, { title: e.target.value })} placeholder="Work" />
+            <input className={s.input} aria-label={`Composer, work ${i + 1}`} value={w.composer} onChange={(e) => setWork(i, { composer: e.target.value })} placeholder="Composer" />
+            <input className={s.input} aria-label={`Catalogue, work ${i + 1}`} value={w.catalogue ?? ''} onChange={(e) => setWork(i, { catalogue: e.target.value })} placeholder="Op." />
+            <input className={`${s.input} ${s.workTitleInput}`} aria-label={`Title, work ${i + 1}`} value={w.title} onChange={(e) => setWork(i, { title: e.target.value })} placeholder="Work" />
             {named.length > 0 && (
               <div className={`${s.chipRow} ${s.workSoloists}`} role="group" aria-label={`Who plays in work ${i + 1}`}>
                 {named.map((x) => {
@@ -375,14 +403,21 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
           </div>
         ))}
         <button type="button" className={s.textButton} onClick={() => set({ works: [...d.works, { composer: '', title: '' }] })}>Add a work</button>
+        {start && (
+          <>
+            <p className={`${s.quiet} ${s.mtMd}`}>
+              {chooser}
+              Programme changed on the night?{' '}
+              <button type="button" className={`${s.textButton} ${s.inlineButton}`} onClick={() => fileRef.current?.click()} disabled={reading || !curatorReady}>{reading ? 'Reading the programme…' : 'Read a screenshot instead.'}</button>
+            </p>
+            {!curatorReady && <NeedsKey to="have the curator read it" />}
+          </>
+        )}
 
-        <label className={`${s.field} ${s.mtMd}`}><span>How was it?</span>
-          <textarea className={s.textarea} maxLength={MAX_ASK} value={d.note ?? ''} onChange={(e) => set({ note: e.target.value })} placeholder="Optional — a sentence is plenty. The curator reads it." />
-        </label>
-        <CharCount value={d.note ?? ''} />
+        {!start && howWasIt}
         <div className={s.actions}>
           <button className={s.primaryButton} type="submit" disabled={saving || reading}>{saving ? 'Keeping it…' : 'Keep this concert'}</button>
-          <button type="button" className={s.textButton} onClick={() => (onDone ? onDone() : go({ name: 'concerts' }))}>Cancel</button>
+          <button type="button" className={s.textButton} onClick={() => (onDone ? onDone() : go({ name: start ? 'week' : 'concerts' }))}>Cancel</button>
         </div>
       </form>
     </div>

@@ -12,7 +12,7 @@ import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { sectionTitle } from '../domain/sections'
 import { movementTitles, partWords, primeMinutes, roman, curly } from '../domain/programmeStyle'
 import { programmeCreditRows } from '../components/Credits'
-import { liveEvents, liveMatches, venueShort, whatIsOn, type LiveMatch } from '../live/live'
+import { liveEvents, liveMatches, venueShort, whatIsOnAt, type LiveConcert } from '../live/live'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
@@ -84,7 +84,7 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
   const allProgrammes = await repo.programmes.all()
   const root = programme.extends ? allProgrammes.find((x) => x.id === programme.extends) : undefined
   const extensions = allProgrammes.filter((x) => x.extends === rootId).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-  // The same paths, in the same order, as This week and Threads list them.
+  // The same paths, in the same order, as This week lists them.
   const openPaths = (await repo.options.all())
     .filter((o) => o.status === 'open' && o.weekKey < programme.weekKey)
     .sort((a, b) => b.weekKey.localeCompare(a.weekKey))
@@ -222,7 +222,6 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 
       <ProgrammeTools b={b} showLength={!ordered} />
       {isCurrent && <LiveLine b={b} skip={settings.hideSkipped ? skippedIds : undefined} />}
-      {isCurrent && <GoingCards />}
       {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} /> : needsSpotify && <SpotifyNote />}
       {settings.hideSkipped && skippedIds.size > 0 && (
         <p className={s.faint}>
@@ -799,42 +798,51 @@ function ProgrammeTools({ b, showLength }: { b: Bundle; showLength: boolean }) {
 
 /**
  * Live in Bucharest: a concert at the Ateneu or Sala Radio with a work, a
- * performer or a composer from this programme — one quiet line, the closest
- * match first; the rest behind it.
+ * performer or a composer from this programme — one quiet line a concert, the
+ * closest match first; the rest behind it. Then the cards for concerts marked
+ * as going, leaving out those a line here already leads to.
  */
 function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
   const { repo, settings } = useServices()
-  const [matches, setMatches] = useState<LiveMatch[]>([])
+  const [concerts, setConcerts] = useState<LiveConcert[]>([])
   useEffect(() => {
     let live = true
     liveEvents(repo.marks)
-      .then((events) => { if (live) setMatches(liveMatches(b.programme, events, isoDateIn(new Date(), settings.timeZone))) })
+      .then((events) => { if (live) setConcerts(liveMatches(b.programme, events, isoDateIn(new Date(), settings.timeZone))) })
       .catch(() => {})
     return () => { live = false }
   }, [repo, b.programme, settings.timeZone])
   // Marked as going: a preparation in the week before it, the entry pre-filled after (components/Going).
   const goings = useGoings()
-  // A skipped work's concert steps out with it.
-  const kept = matches.filter((m) => !skip?.has(m.item.id))
-  if (!kept.length) return null
-  const line = (m: LiveMatch) => (
+  // A skipped work steps out of its concert's line, and a concert left with nothing of the programme steps out too.
+  // One marked as going comes first, so its way to the preparation isn't folded away.
+  const kept = concerts
+    .map((c) => ({ ...c, matches: c.matches.filter((m) => !skip?.has(m.item.id)) }))
+    .filter((c) => c.matches.length)
+    .sort((x, y) => Number(goings.some((g) => g.key === y.key)) - Number(goings.some((g) => g.key === x.key)))
+  const cards = <GoingCards skip={new Set(kept.map((c) => c.key))} />
+  if (!kept.length) return cards
+  const line = (c: LiveConcert) => (
     <>
-      {whatIsOn(m)} at {venueShort(m.event.venue)}, {liveDate(m.event.date)}
-      {m.event.link && webUrl(m.event.link) && <> · <a href={webUrl(m.event.link)} target="_blank" rel="noopener noreferrer">{m.event.title}</a></>}
-      {' '}<GoingToggle event={m.event} goings={goings} />
+      {whatIsOnAt(c)} at {venueShort(c.event.venue)}, {liveDate(c.event.date)}
+      {c.event.link && webUrl(c.event.link) && <> · <a href={webUrl(c.event.link)} target="_blank" rel="noopener noreferrer">{c.event.title}</a></>}
+      {' '}<GoingToggle event={c.event} goings={goings} />
     </>
   )
   const [first, ...rest] = kept
   return (
-    <div className={s.liveLine}>
-      <p className={s.liveLead}><span className={s.label}>Live in Bucharest</span> {line(first)}</p>
-      {rest.length > 0 && (
-        <details>
-          <summary className={s.textButton}>and {rest.length} more</summary>
-          <ul className={s.bullets}>{rest.map((m) => <li key={`${m.item.id}-${m.event.date}`}>{line(m)}</li>)}</ul>
-        </details>
-      )}
-    </div>
+    <>
+      <div className={s.liveLine}>
+        <p className={s.liveLead}><span className={s.label}>Live in Bucharest</span> {line(first)}</p>
+        {rest.length > 0 && (
+          <details>
+            <summary className={s.textButton}>and {rest.length} more</summary>
+            <ul className={s.bullets}>{rest.map((c) => <li key={c.key}>{line(c)}</li>)}</ul>
+          </details>
+        )}
+      </div>
+      {cards}
+    </>
   )
 }
 

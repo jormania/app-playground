@@ -5,8 +5,8 @@ import type {
 import { creditLine, fold, newId, sameWork } from '../domain/identity'
 import { termMark } from '../domain/glossary'
 import { forgetPlaceBefore } from '../app/place'
-import { goingKey, type Going } from '../domain/going'
-import type { LiveEvent } from '../live/live'
+import { AlreadyKept, goingKey, type Going } from '../domain/going'
+import { sameEvening, type LiveEvent } from '../live/live'
 import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
 import { NotFound, type Repo } from '../store/repo'
@@ -823,10 +823,13 @@ export class Journey {
     return keys[0]
   }
 
-  /**
-   * The seasons there are to read, newest first: every finished one, and the
-   * one under way once it has two weeks behind it ("so far").
-   */
+  /** Whether any week of a season had a programme: twelve weeks of nothing have nothing to read back. */
+  private async listenedIn(s: Season): Promise<boolean> {
+    const keys = new Set(s.weekKeys)
+    return (await this.repo.weeks.all()).some((w) => w.programmeId && keys.has(w.weekKey))
+  }
+
+  /** The seasons there are to read, newest first: every finished one that had music in it. */
   async seasons(): Promise<Season[]> {
     const first = await this.firstWeek()
     if (!first) return []
@@ -834,41 +837,37 @@ export class Journey {
     const out: Season[] = []
     for (let n = 1; n <= seasonNumberAt(first, now); n++) {
       const s = seasonOf(first, n, now)
-      if (s.complete || s.weeksSoFar >= 2) out.push(s)
+      if (s.complete && await this.listenedIn(s)) out.push(s)
     }
     return out.reverse()
   }
 
-  /** A season's review if one was written: for a season under way, only this week's. */
-  async seasonReview(n: number): Promise<{ season: Season; review?: SeasonResponse }> {
+  /** A season, whether it had music in it, and its review if one was written. */
+  async seasonReview(n: number): Promise<{ season: Season; listened: boolean; review?: SeasonResponse }> {
     const first = await this.firstWeek()
     if (!first) throw new NotFound('No seasons yet.')
     const s = seasonOf(first, n, this.currentWeek().key)
-    const mark = await this.repo.marks.get(this.seasonKey(s))
-    return { season: s, review: mark?.value as SeasonResponse | undefined }
+    const mark = await this.repo.marks.get(`season:${s.number}`)
+    return { season: s, listened: await this.listenedIn(s), review: mark?.value as SeasonResponse | undefined }
   }
 
   /**
-   * Write a season in review — once per finished season, once a week for one
-   * under way, and never for one with fewer than two weeks behind it (or none,
-   * a season still to come): there would be nothing to read back, and it costs.
+   * Write a season in review — once, when it is over, and only if it had
+   * music in it: before then there is nothing whole to read back, and it costs.
    */
   writeSeasonReview(n: number): Promise<SeasonResponse> {
     return this.once(`season:${n}`, async () => {
-      const { season: s, review } = await this.seasonReview(n)
+      const { season: s, listened, review } = await this.seasonReview(n)
       if (review) return review
-      if (!s.complete && s.weeksSoFar < 2) throw new Error(s.weeksSoFar === 0 ? 'This season hasn’t begun.' : 'A season is read back once two weeks are behind it.')
+      if (!s.complete) throw new Error(s.begun ? 'A season is read back once it is over.' : 'This season hasn’t begun.')
+      if (!listened) throw new Error('Nothing was listened to in this season.')
       const generation = this.repo.generation
-      const res = await this.curator.call<SeasonResponse>('season', await seasonContext(this.repo, s, this.currentWeek().key, this.timeZone))
+      const res = await this.curator.call<SeasonResponse>('season', await seasonContext(this.repo, s, this.currentWeek().key, this.timeZone, this.today()))
       // A season of a journey started afresh meanwhile is not kept for the new one.
       this.stillCurrent(generation)
-      await this.repo.marks.put({ id: this.seasonKey(s), at: this.stamp(), value: res })
+      await this.repo.marks.put({ id: `season:${s.number}`, at: this.stamp(), value: res })
       return res
     })
-  }
-
-  private seasonKey(s: Season): string {
-    return s.complete ? `season:${s.number}` : `season:${s.number}:sofar:${this.currentWeek().key}`
   }
 
   // ── concerts ──────────────────────────────────────────────────────────
@@ -883,7 +882,8 @@ export class Journey {
    * Keep a concert, as checked or typed by the listener. Its works become
    * Works in the Library (one Work per piece, however it was met); a line on
    * how it was is kept as feedback on the concert, so it reaches taste with
-   * everything else said.
+   * everything else said. A new one is refused when that evening is already
+   * kept (AlreadyKept, with its id), or when it hasn't happened yet.
    */
   async saveConcert(draft: ConcertDraft, id?: string): Promise<Concert> {
     const ingest = await new Ingest(this.repo).load()
@@ -899,6 +899,11 @@ export class Journey {
         }
       })
     if (!draft.venue.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) || !works.length) throw new Error('A concert needs a venue, a date and at least one work.')
+    if (draft.date > this.today()) throw new Error('A concert is kept once you’ve heard it. For one still to come, use “I’m going” on Live in Bucharest.')
+    if (!id) {
+      const kept = (await this.repo.concerts.all()).find((c) => sameEvening(c, draft))
+      if (kept) throw new AlreadyKept(kept.id)
+    }
     await ingest.commit()
     const previous = id ? await this.repo.concerts.get(id) : undefined
     const concert: Concert = {
@@ -918,7 +923,24 @@ export class Journey {
     await this.repo.concerts.put(concert)
     // What was said about it, once per change of words: read into taste with the rest.
     if (concert.note && concert.note !== previous?.note) await this.giveFeedback({ target: { type: 'concert', id: concert.id }, note: concert.note })
+    // Marked as going, that evening: kept now, however it was entered, so its "How was it?" card goes.
+    if (!id) for (const g of await this.goings()) if (!g.concertId && sameEvening(g.event, concert)) await this.concertKept(g.key, concert.id)
     return concert
+  }
+
+  /**
+   * A concert taken back: gone from the Library's "heard live" and the
+   * curator's context, with what was said of it. A concert marked as going
+   * that it closed is open again.
+   */
+  async deleteConcert(id: string): Promise<void> {
+    await this.repo.concerts.delete(id)
+    for (const g of await this.goings()) {
+      if (g.concertId !== id) continue
+      const { concertId: _gone, ...open } = g
+      await this.repo.marks.put({ id: `going:${g.key}`, at: this.stamp(), value: open })
+    }
+    for (const f of await this.repo.feedback.all()) if (f.target.type === 'concert' && f.target.id === id) await this.repo.feedback.delete(f.id)
   }
 
   // ── on-request curation, cached ───────────────────────────────────────

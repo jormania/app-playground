@@ -519,7 +519,7 @@ Only what the image shows, or what follows from it with certainty. Never guess a
 
 export const SEASON = {
   id: 'season',
-  version: 'season@2026-10-10.1',
+  version: 'season@2026-10-15.1',
   effort: 'medium',
   maxTokens: 8000,
   schema: {
@@ -556,7 +556,7 @@ Everything you say comes from the context given — the weeks, their programmes 
 - again: up to four works worth hearing again, chosen from "heard" or "started" in the context only — a work they found interesting, too difficult, or loved — each with "why" in one sentence, as an offer, never an instruction. Composer and work exactly as given.
 - closing: one sentence to end on.
 
-When "soFar" is true the season is still under way: write in the present tense, say plainly that it is not over, keep it shorter, and leave "again" to at most two works. Write all prose in the "language" given.`,
+The season is over: every week of it is behind the listener. Write all prose in the "language" given.`,
 }
 
 // ── 11. Words on tap: a term in the notes, defined once ──────────────────

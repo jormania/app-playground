@@ -18,6 +18,14 @@ export interface Going {
   concertId?: string
 }
 
+/** A concert kept a second time: refused, with the one already kept, so the form can open it instead. */
+export class AlreadyKept extends Error {
+  constructor(readonly concertId: string) {
+    super('You’ve already kept this concert.')
+    this.name = 'AlreadyKept'
+  }
+}
+
 /** How many days ahead the preparation is offered. */
 export const PREPARE_DAYS = 7
 /** How long after the evening the pre-filled entry is still offered. */

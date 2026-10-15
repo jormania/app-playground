@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { liveEvents, liveMatches, meet, whatIsOn } from './live'
+import { liveEvents, liveMatches, meet, sameEvening, whatIsOn, whatIsOnAt } from './live'
 import type { Programme, ProgrammeItem } from '../domain/types'
 
 const item = (composer: string, work: string, conductor?: string, soloists: string[] = []): ProgrammeItem => ({
@@ -18,7 +18,7 @@ describe('live in Bucharest', () => {
     expect(meet(item('Jean Sibelius', 'Tapiola'), ev('Mozart, Requiem'))).toBeNull()
   })
 
-  it('keeps one concert per work, from today on, closest matches first', () => {
+  it('keeps each work’s closest concert, from today on, closest matches first', () => {
     const p = programme([item('Jean Sibelius', 'Tapiola'), item('Jean Sibelius', 'Symphony No. 5')])
     const events = [
       { venue: 'Sala Radio', title: 'Sibelius: Simfonia nr. 5', date: '2026-11-20' },
@@ -26,8 +26,40 @@ describe('live in Bucharest', () => {
       { venue: 'Filarmonica George Enescu', title: 'Sibelius: Simfonia nr. 5', date: '2026-10-01' }, // past
     ]
     const m = liveMatches(p, events, '2026-10-10')
-    expect(m.map((x) => [x.item.proposed.work, x.how, x.event.date])).toEqual([['Symphony No. 5', 'work', '2026-11-20'], ['Tapiola', 'composer', '2026-11-01']])
-    expect(whatIsOn(m[0])).toBe('Sibelius’s Symphony No. 5')
+    // Sala Radio's Fifth also has Sibelius for Tapiola, but the Fifth names him already.
+    expect(m.map((c) => [c.event.date, c.matches.map((x) => [x.item.proposed.work, x.how])])).toEqual([
+      ['2026-11-20', [['Symphony No. 5', 'work'], ['Tapiola', 'composer']]],
+      ['2026-11-01', [['Tapiola', 'composer'], ['Symphony No. 5', 'composer']]],
+    ])
+    expect(whatIsOn(m[0].matches[0])).toBe('Sibelius’s Symphony No. 5')
+    expect(whatIsOnAt(m[0])).toBe('Sibelius’s Symphony No. 5')
+    expect(whatIsOnAt(m[1])).toBe('music by Sibelius')
+  })
+
+  it('names one concert once, with every work of the programme it holds', () => {
+    const p = programme([item('Claude Debussy', 'La mer'), item('Maurice Ravel', 'Daphnis et Chloé'), item('Maurice Ravel', 'Boléro')])
+    const concert = { venue: 'Filarmonica George Enescu', title: 'Debussy – La mer; Ravel – Daphnis et Chloé, suita nr. 2', date: '2026-10-18', time: '19:00', hall: 'Sala Mare' }
+    // The same listing read twice (both halls' pages carry it) is still one concert.
+    const m = liveMatches(p, [concert, { ...concert }], '2026-10-15')
+    expect(m).toHaveLength(1)
+    expect(m[0].matches).toHaveLength(3)
+    expect(whatIsOnAt(m[0])).toBe('Debussy’s La mer and Ravel’s Daphnis et Chloé')
+  })
+
+  it('knows a short title as the very work ("La mer" has no long word to look for)', () => {
+    const ev = (title: string) => ({ venue: 'Sala Radio', title, date: '2026-11-14' })
+    expect(meet(item('Claude Debussy', 'La mer'), ev('Debussy: La Mer, trei schițe simfonice'))).toBe('work')
+    expect(meet(item('Claude Debussy', 'La mer'), ev('Debussy: Nocturnes'))).toBe('composer')
+  })
+
+  it('knows one evening however its place was written', () => {
+    const at = { venue: 'Filarmonica George Enescu', date: '2026-10-18', hall: 'Sala Mare', time: '19:00' }
+    expect(sameEvening(at, { venue: 'The Ateneu', date: '2026-10-18' })).toBe(true)
+    expect(sameEvening(at, { venue: 'filarmonica george enescu', date: '2026-10-18', hall: 'sala mare', time: '19:00' })).toBe(true)
+    expect(sameEvening(at, { ...at, hall: 'Sala Mică' })).toBe(false)
+    expect(sameEvening(at, { ...at, time: '11:00' })).toBe(false)
+    expect(sameEvening(at, { ...at, venue: 'Sala Radio' })).toBe(false)
+    expect(sameEvening(at, { ...at, date: '2026-10-19' })).toBe(false)
   })
 
   it('asks Marquee’s endpoint at most once a day', async () => {
