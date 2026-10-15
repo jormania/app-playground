@@ -13,6 +13,11 @@ export function creditRows(r: Performers): [role: string, name: string][] {
   ]
 }
 
+/** Who played, as one line of names in reading order ("Pierre Monteux · London Symphony Orchestra"): `sep` where the line sits among other dots. */
+export function performerLine(r: Performers, sep = ' · '): string {
+  return creditRows(r).map(([, name]) => name).join(sep)
+}
+
 /**
  * Who plays, each name led by a small role mark — conductor, the soloist and
  * their instrument, orchestra — flowing on one line and wrapping only when it

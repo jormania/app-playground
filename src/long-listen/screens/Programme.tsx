@@ -15,7 +15,7 @@ import { programmeCreditRows } from '../components/Credits'
 import { liveEvents, liveMatches, venueShort, whatIsOnAt, type LiveConcert } from '../live/live'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
-import { go, href } from '../app/router'
+import { go, href, workAnchor } from '../app/router'
 import { aboutDuration, isConfirmed, keepPlaylistCurrent, saveProgrammePlaylist, spotifyCandidates, needsLook, verifyProgramme, type PlaylistMark } from '../spotify/verify'
 import { onPlayerReading, positionOf, usePlayerState } from '../app/playback'
 import { playbackOf } from '../spotify/client'
@@ -29,6 +29,8 @@ import { Twisty } from '../components/Twisty'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
+import { useTitle } from '../app/title'
+import { whenWords } from '../domain/going'
 
 interface Bundle {
   programme: Programme
@@ -106,6 +108,7 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
 export function ProgrammeScreen({ id, asThisWeek = false }: { id: string; asThisWeek?: boolean }) {
   const { repo } = useServices()
   const { data, error, loading, retry } = useLoad(() => loadBundle(repo, id), [id])
+  useTitle(asThisWeek ? 'This week' : data?.programme.title)
   // Shown as This week itself, a link to "This week" would only lead back here: point to the Journal instead.
   const notFound = asThisWeek
     ? { text: 'This week’s programme can’t be found — perhaps it was cleared. The Journal keeps every week.', link: { href: href({ name: 'journal' }), label: 'Journal' } }
@@ -177,7 +180,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     section.items.map((item) => [item.id, `${roman(i + 1)} · ${sectionTitle(section)}`] as [string, string])))
 
   return (
-    <article>
+    // One page however it was reached ("#/" as This week, "#/p/<id>" from the Journal): the folds opened on it are kept under this name.
+    <article data-page={`programme:${p.id}`}>
       <p className={s.eyebrow}>
         {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
         {/* The masthead already dates this week; an earlier week's programme says which it was. */}
@@ -276,8 +280,6 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     </article>
   )
 }
-
-const workAnchor = (itemId: string) => `work-${itemId}`
 
 /** A work's recordings as listening knows them: the curator's, and the stand-in that plays where Spotify lacks it. */
 const itemRecordingIds = (b: Bundle, item: ProgrammeItem): string[] => heardAs(item, b.programme.id, b.standIns)
@@ -605,7 +607,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         standInBelow={Boolean(standIn)}
         durationAbove={Boolean(duration) && Boolean(isConfirmed(recording))}
       />
-      {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
+      {comparing && missing && !comparison && <Waiting inline>Finding a recording of this work that Spotify has…</Waiting>}
       {standInShown && standIn && <StandInView c={standIn} b={b}>{listenAlong}</StandInView>}
       {!standInShown && listenAlong}
       {/* Read once: open the first time, then one line that still says who and why. */}
@@ -775,6 +777,7 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
   }, [repo, b.programme, settings.timeZone])
   // Marked as going: a preparation in the week before it, the entry pre-filled after (components/Going).
   const goings = useGoings()
+  const today = isoDateIn(new Date(), settings.timeZone)
   // A skipped work steps out of its concert's line, and a concert left with nothing of the programme steps out too.
   // One marked as going comes first, so its way to the preparation isn't folded away.
   const kept = concerts
@@ -785,7 +788,8 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
   if (!kept.length) return cards
   const line = (c: LiveConcert) => (
     <>
-      {whatIsOnAt(c)} at {venueShort(c.event.venue)}, {liveDate(c.event.date)}
+      {/* Said as every upcoming concert is said (the Concerts page, the cards): "at the Ateneu on Thursday". */}
+      {whatIsOnAt(c)} at {venueShort(c.event.venue)} {whenWords(c.event.date, today, c.event.time)}
       {c.event.link && webUrl(c.event.link) && <> · <a href={webUrl(c.event.link)} target="_blank" rel="noopener noreferrer">{c.event.title}</a></>}
       {' '}<GoingToggle event={c.event} goings={goings} />
     </>
@@ -796,18 +800,15 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
       <div className={s.liveLine}>
         <p className={s.liveLead}><span className={s.label}>Live in Bucharest</span> {line(first)}</p>
         {rest.length > 0 && (
-          <details>
-            <summary className={s.textButton}>and {rest.length} more</summary>
+          <Twisty label="Also live" value={`${rest.length} more ${rest.length === 1 ? 'concert' : 'concerts'}`}>
             <ul className={s.bullets}>{rest.map((c) => <li key={c.key}>{line(c)}</li>)}</ul>
-          </details>
+          </Twisty>
         )}
       </div>
       {cards}
     </>
   )
 }
-
-const liveDate = (d: string) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`))
 
 function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
   const { journey, bump, say } = useServices()

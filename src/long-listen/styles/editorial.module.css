@@ -1248,6 +1248,12 @@
   color: var(--color-accent);
 }
 
+/* Skipped steps back, as the folded state word does. */
+.tagSkipped {
+  border-style: dashed;
+  color: var(--color-faint);
+}
+
 .tagRow {
   display: flex;
   flex-wrap: wrap;
@@ -1512,6 +1518,10 @@
   margin: var(--space-2xl) 0;
   font-style: italic;
   color: var(--color-muted);
+}
+
+.waitingInline {
+  margin: var(--space-sm) 0;
 }
 
 .waiting::after {
@@ -2481,67 +2491,8 @@
   }
 }
 
-/* The how-to, folded: a quiet disclosure line, its steps beneath. It opens on
-   the twisty's chevron, like every other fold in the app — never the
-   browser's triangle. */
-.settingsSteps summary {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-2xs);
-  min-height: 32px;
-  cursor: pointer;
-  font-size: var(--text-sm);
-  color: var(--color-accent);
-  list-style: none;
-}
-
-.settingsSteps summary::after {
-  content: '›';
-  display: inline-block;
-  width: 1em;
-  text-align: center;
-  font-size: 1.15em;
-  line-height: 1;
-  transition: transform 0.15s ease;
-}
-
-.settingsSteps[open] summary::after {
-  transform: rotate(90deg);
-}
-
-/* A text link that opens more in place ("and 2 more", "Show all 3"): the same
-   chevron after its words. Its ::after is the chevron here, not the finger
-   target other text buttons draw — the summary's own padding gives the room. */
-summary.textButton {
-  display: inline-block;
-  padding: var(--space-xs) 0;
-  list-style: none;
-}
-
-summary.textButton::after {
-  content: '›';
-  position: static;
-  inset: auto;
-  display: inline-block;
-  /* A square box, so the turn happens in place. */
-  width: 1em;
-  margin-left: var(--space-3xs);
-  text-align: center;
-  font-size: 1.15em;
-  line-height: 1;
-  transition: transform 0.15s ease;
-}
-
-details[open] > summary.textButton::after {
-  transform: rotate(90deg);
-}
-
-.settingsSteps summary::-webkit-details-marker,
-summary.textButton::-webkit-details-marker {
-  display: none;
-}
-
-.settingsSteps > div {
+/* The how-to's steps, inside its fold: set off by a rule at the left, a size down. */
+.stepsBody {
   margin-top: var(--space-xs);
   padding-left: var(--space-sm);
   border-left: 2px solid var(--color-border);
@@ -2549,11 +2500,11 @@ summary.textButton::-webkit-details-marker {
   color: var(--color-muted);
 }
 
-.settingsSteps > div > * {
+.stepsBody > * {
   margin: 0;
 }
 
-.settingsSteps > div > * + * {
+.stepsBody > * + * {
   margin-top: var(--space-xs);
 }
 
@@ -3193,14 +3144,6 @@ summary.textButton::-webkit-details-marker {
 
 /* ── The listening view: following the music (LONG_LISTEN.md §20) ───────── */
 
-.listenTop {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-sm);
-}
-
 /* What it is, then who plays it: one line each, under the title. */
 .listenFacts {
   margin: var(--space-2xs) 0 0;
@@ -3525,14 +3468,6 @@ summary.textButton::-webkit-details-marker {
   min-height: 0;
 }
 
-/* A question asked before something that can't be taken back by a tap: set apart, in the accent's rule. */
-.confirmBox {
-  margin: var(--space-sm) 0;
-  padding: var(--space-sm) var(--space-md);
-  border-left: 2px solid var(--color-accent);
-  background: var(--color-surface);
-  font-size: var(--text-sm);
-}
 
 /* "Listen for" under its own movement, beside the companion's note: the same size, marked with the note sign. */
 .movementListen {
@@ -3607,4 +3542,57 @@ summary.textButton::-webkit-details-marker {
   outline: none;
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-ring, color-mix(in srgb, var(--color-accent) 35%, transparent));
+}
+
+/* ── the way back ─────────────────────────────────────────────────────────
+   "← where you were", small, and the fleuron drawn out into a rule between it
+   and the page: the part-break's diamond, then a fine accent line that fades
+   to the right. Above the page it sits under the link; at the foot, over it. */
+.backBar {
+  margin: 0 0 var(--space-md);
+}
+
+.backBarFoot {
+  flex-basis: 100%;
+  margin: var(--space-md) 0 0;
+}
+
+.backRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.backRule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin-top: var(--space-xs);
+}
+
+.backBarFoot .backRule {
+  margin: 0 0 var(--space-xs);
+}
+
+.backRule::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  background: var(--color-accent);
+  transform: rotate(45deg);
+}
+
+.backRule::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--color-accent);
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to right, #000 30%, transparent);
+  mask-image: linear-gradient(to right, #000 30%, transparent);
+}
+
+@media print {
+  .backBar { display: none; }
 }

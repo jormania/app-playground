@@ -1,11 +1,38 @@
 import { ExternalLink, Pause, Play } from 'lucide-react'
 import { useServices } from '../app/services'
-import { assumeStart, playbackLine, type Playback } from '../app/playback'
+import { armWork, assumeStart, playbackLine, type Playback } from '../app/playback'
 import { openUrl } from '../spotify/client'
 import { clock } from '../domain/programmeStyle'
 import s from '../styles/editorial.module.css'
 
 const icon = { size: 15, fill: 'currentColor', strokeWidth: 0, 'aria-hidden': true } as const
+
+/**
+ * Opening a confirmed recording in Spotify itself, wherever it is offered (the
+ * player's quieter alternative, a recording in the Library): the first track,
+ * and the same watching either way — a single-track work is assumed started
+ * from this moment, and the work is armed so it is stopped at its last
+ * movement rather than running on into the rest of the album.
+ */
+export function OpenInSpotify({ trackIds, durationMs, durationsMs, onOpened, className, children }: {
+  trackIds: string[]
+  durationMs?: number
+  durationsMs?: number[]
+  onOpened?: () => void
+  className?: string
+  children?: React.ReactNode
+}) {
+  function opened() {
+    if (trackIds.length === 1) assumeStart(trackIds, durationMs)
+    armWork(trackIds, durationsMs)
+    onOpened?.()
+  }
+  return (
+    <a className={className ?? s.listenAlt} title="Opens the first track in Spotify; the app stops it at the work’s last movement while it can follow Spotify" href={openUrl('track', trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={opened}>
+      {children ?? <>open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" /></>}
+    </a>
+  )
+}
 
 /**
  * Where listening starts, wherever a confirmed recording is shown. Play starts
@@ -14,9 +41,10 @@ const icon = { size: 15, fill: 'currentColor', strokeWidth: 0, 'aria-hidden': tr
  * and a line beneath says where it's playing. Opening Spotify is the quieter
  * alternative — the main action without a Spotify connection.
  */
-export function ListenBar({ firstTrackId, movements, durationMs, playback, onStarted, onOpened, className, steps }: {
-  firstTrackId: string
-  movements: number
+export function ListenBar({ trackIds, durationsMs, durationMs, playback, onStarted, onOpened, className, steps }: {
+  /** The work's tracks, one per movement. */
+  trackIds: string[]
+  durationsMs?: number[]
   /** The whole work's length: for a single-track work, a tap here is an assumed start (app/playback.ts). */
   durationMs?: number
   playback: Playback
@@ -28,10 +56,11 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
 }) {
   const { spotify } = useServices()
   const p = playback
+  const movements = trackIds.length
   const line = playbackLine(p, movements)
 
   // A single-track work started from here is watched from this moment, wherever it then plays.
-  const assume = () => { if (movements === 1) assumeStart([firstTrackId], durationMs) }
+  const assume = () => { if (movements === 1) assumeStart(trackIds, durationMs) }
 
   async function play() {
     if (await p.play()) { assume(); onStarted?.() }
@@ -39,13 +68,6 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
 
   async function resumeLeft() {
     if (p.left && await p.play(p.left.index, p.left.progressMs)) onStarted?.()
-  }
-
-  function opened() {
-    assume()
-    // Spotify plays it in its album, which carries on: watched, it is stopped at its last movement.
-    p.arm()
-    onOpened?.()
   }
 
   return (
@@ -66,14 +88,14 @@ export function ListenBar({ firstTrackId, movements, durationMs, playback, onSta
               )
               return steps ? steps(control) : control
             })()}
-            <a className={s.listenAlt} title="Opens the first track in Spotify; the app stops it at the work’s last movement while it can follow Spotify" href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={opened}>
+            <OpenInSpotify trackIds={trackIds} durationMs={durationMs} durationsMs={durationsMs} onOpened={onOpened}>
               or open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
-            </a>
+            </OpenInSpotify>
           </>
         ) : (
-          <a className={s.playButton} href={openUrl('track', firstTrackId)} target="_blank" rel="noopener noreferrer" onClick={opened}>
+          <OpenInSpotify className={s.playButton} trackIds={trackIds} durationMs={durationMs} durationsMs={durationsMs} onOpened={onOpened}>
             <Play {...icon} />Listen on Spotify
-          </a>
+          </OpenInSpotify>
         )}
       </div>
       <p className={s.playbackLine} role="status" aria-live="polite">

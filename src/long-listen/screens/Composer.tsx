@@ -6,6 +6,8 @@ import { Empty, NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../com
 import { LibraryWorks, loadLibrary } from '../components/LibraryEntries'
 import type { PortraitResponse } from '../curation/api'
 import s from '../styles/editorial.module.css'
+import { useTitle } from '../app/title'
+import { BackLink } from '../components/BackLink'
 
 /**
  * A composer's page: who they were, in a short portrait written once (Haiku,
@@ -22,6 +24,7 @@ export function ComposerScreen({ composer }: { composer: string }) {
     const name = entry?.composer ?? composer
     return { name, works: entry?.works ?? [], portrait: await firstPortrait(journey, [name, ...(entry?.spellings ?? [])]) }
   }, [composer, settings.hideSkipped, settings.timeZone])
+  useTitle(data?.name ?? composer)
 
   // The portrait is written the first time the page is opened, then kept.
   const [writing, setWriting] = useState(false)
@@ -41,20 +44,20 @@ export function ComposerScreen({ composer }: { composer: string }) {
 
   return (
     <article>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'library' })}>← Library</a></p>
+      <BackLink back to={href({ name: 'library' })} label="Library" />
       <h1 className={s.title}>{name}</h1>
       {portrait?.lifespan && <p className={s.listenFacts}>{portrait.lifespan}</p>}
       {/* No drop cap: that is the programme's introduction's alone (§19). */}
       {portrait
         ? <Paragraphs text={portrait.portrait} className={s.prose} glossed />
-        : writing ? <p className={s.quiet}>The curator is writing a short portrait…</p>
+        : writing ? <Waiting inline>The curator is writing a short portrait…</Waiting>
           : failed ? <button className={s.textButton} onClick={() => { setFailed(false); asked.current = false; bump() }}>Write the portrait</button>
           : !curatorReady && data.works.length > 0 ? <NeedsKey to="have the curator write a portrait" /> : null}
 
       {data.works.length === 0 && <Empty>Nothing of theirs met yet.</Empty>}
       {data.works.length > 0 && (
         <section className={s.block} aria-label="What you have met">
-          <h2 className={s.h2}>What you’ve met</h2>
+          <h2 className={s.sectionHead}>What you’ve met</h2>
           <LibraryWorks works={data.works} />
         </section>
       )}

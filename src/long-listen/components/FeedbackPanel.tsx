@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useKept } from '../app/kept'
 import type { Feedback, FeedbackTargetType, Reaction, WantMore } from '../domain/types'
 import { REACTIONS, WANT_MORE, latestFeedback, reactionLabel } from '../domain/listening'
 import { useServices } from '../app/services'
@@ -11,13 +12,15 @@ import s from '../styles/editorial.module.css'
  * the listener writes is read by the curator into their taste.
  */
 export function FeedbackPanel({
-  targets, programmeId, feedback, prompt = 'How did this land?', startOpen = false, onClose,
+  targets, programmeId, feedback, prompt = 'How did this land?', startOpen = false, onClose, place = 'work',
 }: {
   /** The first is the default; a second lets the listener say it's about the work, not the recording. */
   targets: { type: FeedbackTargetType; id: string; label: string }[]
   programmeId?: string
   feedback: Feedback[]
   prompt?: string
+  /** Where the panel stands, when the same work can be asked about in two places at once (`'landed'`: the prompt above the page). */
+  place?: string
   startOpen?: boolean
   /** Told when the panel closes, saved or not ("Not now" is an answer too). */
   onClose?: (saved: boolean) => void
@@ -27,7 +30,10 @@ export function FeedbackPanel({
   const [target, setTarget] = useState(0)
   const [reaction, setReaction] = useState<Reaction | undefined>()
   const [more, setMore] = useState<WantMore | undefined>()
-  const [note, setNote] = useState('')
+  // What stayed with you, half-written, is kept until it is kept properly (or emptied).
+  // Its own draft per panel: what it asks about (every target, by kind), the question, and where it stands
+  // (`place`), so two panels open at once on the same work never share — or twice save — one sentence.
+  const [note, setNote, clearNote] = useKept(`note:${programmeId}:${place}:${prompt}:${targets.map((x) => `${x.type}=${x.id}`).join(',')}`, 'device')
   const [saving, setSaving] = useState(false)
 
   const said = targets.map((t) => ({ t, f: latestFeedback(feedback, t.id) })).filter(({ f }) => f.reaction || f.notes.length)
@@ -39,7 +45,7 @@ export function FeedbackPanel({
       await journey.giveFeedback({ target: { type: targets[target].type, id: targets[target].id }, programmeId, reaction, more, note })
       setReaction(undefined)
       setMore(undefined)
-      setNote('')
+      clearNote()
       setOpen(false)
       onClose?.(true)
       bump()

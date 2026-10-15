@@ -1,18 +1,18 @@
 import { Landmark } from 'lucide-react'
 import type { Repo } from '../store/repo'
 import { libraryEntries, catalogueNotInTitle, type LibraryComposer, type LibraryWorkEntry } from '../domain/library'
-import { STATE_WORDS, reactionLabel } from '../domain/listening'
+import { reactionLabel } from '../domain/listening'
 import { compactFacts } from '../domain/workFacts'
 import { curly } from '../domain/programmeStyle'
 import { whoPlays } from '../domain/concertSoloists'
 import { isoDateIn } from '../domain/week'
 import { href } from '../app/router'
-import { armWork, assumeStart } from '../app/playback'
-import { openUrl } from '../spotify/client'
 import { isConfirmed } from '../spotify/verify'
 import { concertDate } from '../screens/Concerts'
 import { Credits } from './Credits'
 import s from '../styles/editorial.module.css'
+import { StateTag } from './WorkRows'
+import { OpenInSpotify } from './ListenBar'
 
 /** Everything met so far, read the one way the Library and a composer's page both show it (domain/library.ts). */
 export async function loadLibrary(repo: Repo, opts: { hideSkipped: boolean; timeZone: string }): Promise<LibraryComposer[]> {
@@ -45,9 +45,9 @@ export function LibraryWorks({ works }: { works: LibraryWorkEntry[] }) {
               <Credits r={proposed} />
               <span className={s.tagRow}>
                 {/* Where you stand with it — said only once there is something to say. */}
-                {state !== 'not-started' && <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORDS[state]}</span>}
+                <StateTag state={state} />
                 {said.reaction && <span className={s.tag}>{reactionLabel(said.reaction)}</span>}
-                {rec && isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => { assumeStart(rec.spotify.trackIds, rec.spotify.durationMs); armWork(rec.spotify.trackIds, rec.spotify.trackDurationsMs) }}>Open in Spotify</a>}
+                {rec && isConfirmed(rec) && <OpenInSpotify trackIds={rec.spotify.trackIds} durationMs={rec.spotify.durationMs} durationsMs={rec.spotify.trackDurationsMs} />}
                 {(programmeId || note) && (
                   <span>
                     {note && <>{note}{programmeId ? ', ' : ''}</>}

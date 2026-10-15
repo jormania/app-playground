@@ -21,6 +21,8 @@ import { isoDateIn } from '../domain/week'
 import { venueShort } from '../live/live'
 import { NotFound } from '../store/repo'
 import s from '../styles/editorial.module.css'
+import { useTitle } from '../app/title'
+import { BackLink } from '../components/BackLink'
 
 /** Where a picture shared to the app waits for this screen (public/long-listen-sw.js puts it there). */
 export const SHARED_IMAGE = '/long-listen-shared-image'
@@ -45,7 +47,7 @@ export function ConcertsScreen() {
   const early = data.filter((c) => c.date > today)
   return (
     <div>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'journal' })}>← Journal</a></p>
+      <BackLink back to={href({ name: 'journal' })} label="Journal" />
       <h1 className={s.title}>Concerts</h1>
       <p className={s.dek}>What you heard live. Each work joins the Library, marked heard live, and the curator knows you’ve met it.</p>
       <div className={s.actions}>
@@ -79,6 +81,7 @@ export function ConcertScreen({ id }: { id: string }) {
   const [removing, setRemoving] = useState(false)
   const fromGoing = id.startsWith('from-') ? id.slice('from-'.length) : undefined
   const { data, error, retry } = useLoad(async () => (id === 'new' || fromGoing ? null : repo.concerts.require(id)), [id])
+  useTitle(id === 'new' || fromGoing ? 'A concert heard' : data ? `${data.venue}, ${data.date}` : undefined)
   if (id === 'new') return <ConcertForm />
   if (fromGoing) return <ConcertFromGoing goingKey={fromGoing} />
   if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'There’s no such concert — perhaps an old link.', link: { href: href({ name: 'concerts' }), label: 'All concerts' } }} />
@@ -99,7 +102,7 @@ export function ConcertScreen({ id }: { id: string }) {
   }
   return (
     <article>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
+      <BackLink back to={href({ name: 'concerts' })} label="All concerts" />
       <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {c.date > isoDateIn(new Date(), settings.timeZone) ? 'Not yet heard' : 'Heard live'} · {c.venue}{c.hall ? `, ${c.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{concertDate(c.date)}{c.time ? `, ${c.time}` : ''}</h1>
       {/* Who played, as the hall's own programme prints it: name first, the role after in italic. */}
@@ -355,7 +358,7 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
 
   return (
     <div>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: start ? 'week' : 'concerts' })}>{start ? '← This week' : '← All concerts'}</a></p>
+      <BackLink back to={href({ name: start ? 'week' : 'concerts' })} label={start ? 'This week' : 'All concerts'} />
       <h1 className={s.titleSmall}>{concert ? 'Correct the concert' : 'A concert heard live'}</h1>
 
       {start

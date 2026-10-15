@@ -12,6 +12,8 @@ import { deferred } from './journey-audit-helpers'
 // The screens as the Playwright audit met them, on the demo curator's canned answers and a memory store.
 beforeEach(() => {
   localStorage.clear()
+  // The trail, the open folds and kept searches live for the tab: one test's must not reach the next.
+  sessionStorage.clear()
   // A key, so the curator's buttons (a sitting, three others) are offered; the curator itself is the demo's.
   localStorage.setItem('long-listen:settings', JSON.stringify({ anthropicKey: 'sk-ant-api03-test' }))
   window.location.hash = '#/'
@@ -156,7 +158,7 @@ describe('marking what was heard', () => {
     const button = await screen.findByRole('radio', { name: 'Heard' }, { timeout: 4000 })
     fireEvent.click(button)
     fireEvent.click(button)
-    await screen.findByText('Back to the programme')
+    await screen.findByRole('link', { name: /^(Play next|Next):/ })
     expect((await repo.events.all()).filter((e) => e.kind === 'heard')).toHaveLength(1)
   }, 15000)
 
@@ -167,12 +169,17 @@ describe('marking what was heard', () => {
     window.location.hash = `#/listen/${p.id}/${item.id}`
     const first = render(<App repo={repo} curator={plain()} />)
     fireEvent.click(await screen.findByRole('radio', { name: 'Heard' }, { timeout: 4000 }))
-    await screen.findByText('Back to the programme')
+    await screen.findByRole('link', { name: /^(Play next|Next):/ })
+    // The way back under "Play next" is the same link as at the top of the screen.
+    const back = screen.getAllByRole('link', { name: `← ${p.title}` })
+    expect(back).toHaveLength(2)
+    expect(back[0].getAttribute('href')).toBe(back[1].getAttribute('href'))
+    expect(screen.queryByText('Back to the programme')).toBeNull()
     first.unmount()
 
     // Coming back to it later: the row says Heard, and tapping Heard again is a no-op.
     render(<App repo={repo} curator={plain()} />)
-    await screen.findByText('Back to the programme', {}, { timeout: 4000 })
+    await screen.findByRole('link', { name: /^(Play next|Next):/ }, { timeout: 4000 })
     const row = screen.getByRole('region', { name: /^Your listening/ })
     expect(row.querySelector('summary')?.textContent).toBe('Your listeningHeard')
     fireEvent.click(screen.getByRole('radio', { name: 'Heard' }))
@@ -193,6 +200,8 @@ describe('the rows a work closes on', () => {
     const context = [...document.querySelectorAll('summary')].find((x) => x.textContent?.startsWith('More context'))
     expect(context).toBeTruthy()
     const details = context!.parentElement as HTMLDetailsElement
+    // A tap on its label, then the toggle the browser fires: only a tap asks the curator.
+    fireEvent.click(context!)
     details.open = true
     details.dispatchEvent(new Event('toggle'))
     await waitFor(async () => expect(await repo.explanations.get(`${p.id}:${item.id}`)).toBeTruthy(), { timeout: 4000 })

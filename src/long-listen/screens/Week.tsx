@@ -221,10 +221,9 @@ export function WeekScreen() {
           <div className={s.nextCard}>
             <h3 className={s.nextTitle}>A path left open</h3>
             <p className={s.quiet}>{view.openPaths.length === 1 ? 'One direction' : `${view.openPaths.length} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
-            <details>
-              <summary className={s.textButton}>{view.openPaths.length === 1 ? 'Show it' : `Show all ${view.openPaths.length}`}</summary>
+            <Twisty label={view.openPaths.length === 1 ? 'The path' : 'The paths'} value={view.openPaths.length === 1 ? 'one direction' : `${view.openPaths.length} directions`}>
               <OpenPaths paths={view.openPaths} nowKey={view.record.weekKey} busy={busy} onTaking={setChoosing} keyHint={false} />
-            </details>
+            </Twisty>
           </div>
         )}
       </section>

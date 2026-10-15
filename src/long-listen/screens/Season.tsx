@@ -6,6 +6,7 @@ import { href } from '../app/router'
 import { Empty, NeedsKey, Paragraphs, Problem, Waiting, dateWords, messageOf } from '../components/common'
 import { displaySurname } from '../domain/identity'
 import s from '../styles/editorial.module.css'
+import { BackLink } from '../components/BackLink'
 
 /**
  * A season in review: twelve weeks, read back as one page of prose — the
@@ -29,7 +30,7 @@ export function SeasonScreen({ n }: { n: number }) {
 
   return (
     <article>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'journal' })}>← Journal</a></p>
+      <BackLink back to={href({ name: 'journal' })} label="Journal" />
       <p className={s.composer}>{seasonName(season.number)} · {season.label}</p>
 
       {!season.begun ? (

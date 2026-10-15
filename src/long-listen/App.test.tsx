@@ -9,6 +9,8 @@ import { CuratorUnavailable, type CuratorClient } from './curation/api'
 
 beforeEach(() => {
   localStorage.clear()
+  // The trail, the open folds and kept searches live for the tab: one test's must not reach the next.
+  sessionStorage.clear()
   // A key, as a listener would have: every curator request is offered only with one
   // (the demo curator below answers in Claude's place; the key is never sent).
   localStorage.setItem('long-listen:settings', JSON.stringify({ anthropicKey: 'sk-ant-api03-test' }))

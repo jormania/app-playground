@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { ComposerLink } from './Composer'
 import { filingLetter } from '../domain/library'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
+import { useKept } from '../app/kept'
 import { Empty, Problem, Waiting } from '../components/common'
 import { LibraryWorks, loadLibrary } from '../components/LibraryEntries'
 import { searchLibrary } from '../domain/librarySearch'
@@ -15,7 +16,8 @@ import s from '../styles/editorial.module.css'
  */
 export function LibraryScreen() {
   const { repo, settings } = useServices()
-  const [q, setQ] = useState('')
+  // The search stays as it was left: back from a composer's page, the same list, the same place in it.
+  const [q, setQ] = useKept('library-search', 'tab')
   const { data, error, retry } = useLoad(() => loadLibrary(repo, settings), [settings.hideSkipped, settings.timeZone])
 
   const shown = useMemo(() => (data ? searchLibrary(data, q) : []), [data, q])

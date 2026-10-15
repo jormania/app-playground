@@ -67,8 +67,13 @@ export function messageOf(e: unknown): string {
   return 'Something didn’t work just now. Nothing you had was lost.'
 }
 
-export function Waiting({ children }: { children: React.ReactNode }) {
-  return <p className={s.waiting} role="status">{children}</p>
+/**
+ * Something being fetched or written, said one way everywhere. A whole screen
+ * opening stands apart with room around it; `inline`, inside a part of a page
+ * (a portrait being written, a fold), it keeps the page's own spacing.
+ */
+export function Waiting({ inline = false, children }: { inline?: boolean; children: React.ReactNode }) {
+  return <p className={inline ? `${s.waiting} ${s.waitingInline}` : s.waiting} role="status">{children}</p>
 }
 
 /**
