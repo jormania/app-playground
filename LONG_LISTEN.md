@@ -1158,3 +1158,10 @@ and on return).
   curator's recording and a stand-in plays instead, the row moves straight under
   the stand-in's Play, ahead of its framing and *Listen for* — it had sat below
   them, so on those works it read as missing.
+- **Back lands where you were** (`app/router.ts`, `stepTrail`). Every route
+  change used to scroll to the top. The app now keeps a short trail of the
+  pages just left, each with its scroll position (sessionStorage, for the tab's
+  life). Going back to one of them, by its link ("← the programme") or by the
+  phone's Back, restores the place once the screen has drawn enough to reach
+  it, and gives up the moment the listener scrolls or taps. A page opened
+  afresh starts at the top; going back drops the pages visited after it.

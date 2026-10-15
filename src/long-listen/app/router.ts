@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { readSessionJson, writeSessionJson } from '../../shared/storage'
 
 /**
  * Hash routes, so a deep link survives a reload and the service worker only
@@ -70,12 +71,67 @@ export function go(r: Route): void {
   window.location.hash = href(r)
 }
 
+/**
+ * Where you were: the pages just left, each with how far down it was read.
+ * Going back to one of them — by its own link ("← the programme") or by the
+ * phone's Back — lands where you were on it; a page opened afresh starts at
+ * the top. Going back to a page drops everything visited after it, so the
+ * trail stays the way you came. Kept for the tab's life (sessionStorage),
+ * so a reload on the listening view still finds the programme's place.
+ */
+export type Trail = { hash: string; y: number }[]
+const TRAIL_KEY = 'long-listen:trail'
+const TRAIL_MAX = 20
+
+/** The trail after leaving `from` (read down to `y`) for `to`, and where `to` should open. */
+export function stepTrail(trail: Trail, from: string, y: number, to: string): { trail: Trail; y: number } {
+  const key = (h: string) => h.replace(/^#\/?/, '') || '/'
+  const left = [...trail.filter((p) => key(p.hash) !== key(from)), { hash: from, y: Math.max(0, Math.round(y)) }]
+  const at = left.findIndex((p) => key(p.hash) === key(to))
+  if (at < 0) return { trail: left.slice(-TRAIL_MAX), y: 0 }
+  return { trail: left.slice(0, at), y: left[at].y }
+}
+
+/**
+ * Scroll to `y` once the page is long enough to get there: a screen draws from
+ * the store a moment after the route changes, so the place is tried each frame
+ * for a few seconds — and given up the moment the listener scrolls or taps.
+ */
+function restoreScroll(y: number): void {
+  if (y <= 0) { window.scrollTo({ top: 0 }); return }
+  const until = Date.now() + 3000
+  let stopped = false
+  const stop = () => { stopped = true }
+  const events = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const
+  for (const e of events) window.addEventListener(e, stop, { passive: true, once: true })
+  const done = () => { for (const e of events) window.removeEventListener(e, stop) }
+  const tick = () => {
+    if (stopped) { done(); return }
+    const reach = document.documentElement.scrollHeight - window.innerHeight
+    window.scrollTo({ top: Math.min(y, Math.max(0, reach)) })
+    if (reach >= y || Date.now() > until) { done(); return }
+    requestAnimationFrame(tick)
+  }
+  window.scrollTo({ top: 0 })
+  requestAnimationFrame(tick)
+}
+
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash))
   useEffect(() => {
+    // The app keeps the places itself: the browser's own restoring would fight it on Back.
+    try { history.scrollRestoration = 'manual' } catch { /* not supported */ }
+    // The position is read as the page is left, before the next screen draws.
+    let here = window.location.hash
     const on = () => {
-      setRoute(parseRoute(window.location.hash))
-      window.scrollTo({ top: 0 })
+      const to = window.location.hash
+      const kept = readSessionJson<unknown>(TRAIL_KEY, [])
+      const trail = Array.isArray(kept) ? kept.filter((p): p is Trail[number] => typeof p?.hash === 'string' && typeof p?.y === 'number') : []
+      const next = stepTrail(trail, here, window.scrollY, to)
+      writeSessionJson(TRAIL_KEY, next.trail)
+      here = to
+      setRoute(parseRoute(to))
+      restoreScroll(next.y)
     }
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
