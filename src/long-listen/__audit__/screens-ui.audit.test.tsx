@@ -156,7 +156,7 @@ describe('marking what was heard', () => {
     const button = await screen.findByRole('radio', { name: 'Heard' }, { timeout: 4000 })
     fireEvent.click(button)
     fireEvent.click(button)
-    await screen.findByText('Back to the programme')
+    await screen.findByRole('link', { name: /^(Play next|Next):/ })
     expect((await repo.events.all()).filter((e) => e.kind === 'heard')).toHaveLength(1)
   }, 15000)
 
@@ -167,12 +167,17 @@ describe('marking what was heard', () => {
     window.location.hash = `#/listen/${p.id}/${item.id}`
     const first = render(<App repo={repo} curator={plain()} />)
     fireEvent.click(await screen.findByRole('radio', { name: 'Heard' }, { timeout: 4000 }))
-    await screen.findByText('Back to the programme')
+    await screen.findByRole('link', { name: /^(Play next|Next):/ })
+    // The way back under "Play next" is the same link as at the top of the screen.
+    const back = screen.getAllByRole('link', { name: `← ${p.title}` })
+    expect(back).toHaveLength(2)
+    expect(back[0].getAttribute('href')).toBe(back[1].getAttribute('href'))
+    expect(screen.queryByText('Back to the programme')).toBeNull()
     first.unmount()
 
     // Coming back to it later: the row says Heard, and tapping Heard again is a no-op.
     render(<App repo={repo} curator={plain()} />)
-    await screen.findByText('Back to the programme', {}, { timeout: 4000 })
+    await screen.findByRole('link', { name: /^(Play next|Next):/ }, { timeout: 4000 })
     const row = screen.getByRole('region', { name: /^Your listening/ })
     expect(row.querySelector('summary')?.textContent).toBe('Your listeningHeard')
     fireEvent.click(screen.getByRole('radio', { name: 'Heard' }))

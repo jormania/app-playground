@@ -83,13 +83,36 @@ export type Trail = { hash: string; y: number }[]
 const TRAIL_KEY = 'long-listen:trail'
 const TRAIL_MAX = 20
 
+const key = (h: string) => h.replace(/^#\/?/, '') || '/'
+
 /** The trail after leaving `from` (read down to `y`) for `to`, and where `to` should open. */
 export function stepTrail(trail: Trail, from: string, y: number, to: string): { trail: Trail; y: number } {
-  const key = (h: string) => h.replace(/^#\/?/, '') || '/'
   const left = [...trail.filter((p) => key(p.hash) !== key(from)), { hash: from, y: Math.max(0, Math.round(y)) }]
   const at = left.findIndex((p) => key(p.hash) === key(to))
   if (at < 0) return { trail: left.slice(-TRAIL_MAX), y: 0 }
   return { trail: left.slice(0, at), y: left[at].y }
+}
+
+/**
+ * Of the addresses that show the same page, the one last left in `trail`:
+ * this week's programme is at "#/" when opened from This week and at
+ * "#/p/<id>" from anywhere else, and only the one you came from holds your place.
+ */
+export function cameFrom(trail: Trail, candidates: string[]): string | undefined {
+  const wanted = new Set(candidates.map(key))
+  for (let i = trail.length - 1; i >= 0; i--) if (wanted.has(key(trail[i].hash))) return trail[i].hash
+  return undefined
+}
+
+function readTrail(): Trail {
+  const kept = readSessionJson<unknown>(TRAIL_KEY, [])
+  return Array.isArray(kept) ? kept.filter((p): p is Trail[number] => typeof p?.hash === 'string' && typeof p?.y === 'number') : []
+}
+
+/** The way back to a programme: by the address it was last read at, so the place there holds. */
+export function programmeBackHref(id: string): string {
+  const own = href({ name: 'programme', id })
+  return cameFrom(readTrail(), ['#/', own]) ?? own
 }
 
 /**
@@ -125,9 +148,7 @@ export function useRoute(): Route {
     let here = window.location.hash
     const on = () => {
       const to = window.location.hash
-      const kept = readSessionJson<unknown>(TRAIL_KEY, [])
-      const trail = Array.isArray(kept) ? kept.filter((p): p is Trail[number] => typeof p?.hash === 'string' && typeof p?.y === 'number') : []
-      const next = stepTrail(trail, here, window.scrollY, to)
+      const next = stepTrail(readTrail(), here, window.scrollY, to)
       writeSessionJson(TRAIL_KEY, next.trail)
       here = to
       setRoute(parseRoute(to))

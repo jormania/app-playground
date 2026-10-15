@@ -4,7 +4,7 @@ import type { ProgrammeItem } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
-import { href } from '../app/router'
+import { href, programmeBackHref } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, usePlayback, usePlayerState } from '../app/playback'
@@ -335,7 +335,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   return (
     <article className={focus ? `${s.listenMode} ${s.listenFocus}` : s.listenMode}>
       <div className={s.listenTop}>
-        <p className={`${s.eyebrow} ${s.mb0}`}><a href={href({ name: 'programme', id: programme.id })} className={`${s.quietLink} ${s.backLink}`}>← {programme.title}</a></p>
+        <p className={`${s.eyebrow} ${s.mb0}`}><BackToProgramme id={programme.id} title={programme.title} /></p>
         {/* Focus: only the music, for the phone on the armrest. Remembered on this device. */}
         <button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>
       </div>
@@ -509,7 +509,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                 {spotify.connected && data.nextPlayable ? 'Play next' : 'Next'}: {curly(next.proposed.work)} →
               </a>
             : <span className={s.quiet}>That was the last work this week.</span>}
-          <a className={s.textButton} href={href({ name: 'programme', id: programme.id })}>Back to the programme</a>
+          {/* The same way back as at the top of the screen. */}
+          <p className={`${s.eyebrow} ${s.mb0}`}><BackToProgramme id={programme.id} title={programme.title} /></p>
         </div>
       )}
       {/* The Play row out of sight while this work is on: the player pinned to the foot. */}
@@ -518,6 +519,11 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       )}
     </article>
   )
+}
+
+/** "← <the programme>": back to where it was read, at the top of the screen and again under the way on. */
+function BackToProgramme({ id, title }: { id: string; title: string }) {
+  return <a href={programmeBackHref(id)} className={`${s.quietLink} ${s.backLink}`}>← {title}</a>
 }
 
 /**

@@ -1165,3 +1165,10 @@ and on return).
   phone's Back, restores the place once the screen has drawn enough to reach
   it, and gives up the moment the listener scrolls or taps. A page opened
   afresh starts at the top; going back drops the pages visited after it.
+- **One way back from the listening view.** Under *Play next*, the old "Back to
+  the programme" link is now the same "← <programme>" link as at the top of the
+  screen (`BackToProgramme`). Both go to the address the programme was last
+  read at (`programmeBackHref`): "#/" when it was opened from This week,
+  "#/p/<id>" otherwise. Before this, the link always pointed to "#/p/<id>", so
+  coming from This week it landed at the top of the page.
+

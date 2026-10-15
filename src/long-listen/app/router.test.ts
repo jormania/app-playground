@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRoute, href, stepTrail, type Route } from './router'
+import { parseRoute, href, stepTrail, cameFrom, type Route } from './router'
 
 describe('routes', () => {
   it('round-trips every route', () => {
@@ -47,5 +47,17 @@ describe('where you were', () => {
     t = stepTrail(back.trail, '#/', 700, '#/library').trail
     t = stepTrail(t, '#/library', 20, '#/notebook').trail
     expect(t.map((p) => [p.hash, p.y])).toEqual([['#/', 700], ['#/library', 20]])
+  })
+})
+
+describe('the way back to a programme', () => {
+  it('goes to the address it was read at: "#/" from This week, "#/p/<id>" from elsewhere', () => {
+    const fromWeek = stepTrail([], '#/', 2927, '#/listen/w1/i3').trail
+    expect(cameFrom(fromWeek, ['#/', '#/p/w1'])).toBe('#/')
+    expect(stepTrail(fromWeek, '#/listen/w1/i3', 0, '#/').y).toBe(2927)
+    let fromJournal = stepTrail([], '#/', 100, '#/p/w1').trail
+    fromJournal = stepTrail(fromJournal, '#/p/w1', 800, '#/listen/w1/i3').trail
+    expect(cameFrom(fromJournal, ['#/', '#/p/w1'])).toBe('#/p/w1')
+    expect(cameFrom([], ['#/', '#/p/w1'])).toBeUndefined()
   })
 })
