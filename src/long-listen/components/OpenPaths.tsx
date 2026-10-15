@@ -12,7 +12,7 @@ export const MOOD_WORD = { immersive: 'Immersive', curious: 'Curious', adventuro
 
 /**
  * Directions offered in earlier weeks and not taken then — the same list
- * wherever it appears (This week, the programme's "Where next", Threads):
+ * wherever it appears (This week, the programme's "Where next"):
  * each with its mood and when it was offered, its pitch, and "Take this path
  * now". Taking one asks first only when this week already has a programme,
  * which then stays in the journal. While the curator builds it, the button

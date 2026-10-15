@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
  *   #/listen/<id>/<item> one recording, full screen, while it plays
  *   #/journal           every week so far: what was offered, chosen, heard
  *   #/library           composers, works and recordings met so far
- *   #/threads           themes as threads, and paths still open
+ *   #/threads           themes as threads
  *   #/notebook          taste, questions, notes to the curator
  *   #/concerts          concerts heard live; #/concerts/new to add one, #/concerts/<id> one concert
  *   #/season/<n>        a season in review (twelve weeks)
