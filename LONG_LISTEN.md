@@ -636,10 +636,10 @@ explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.2.
   the first week with anything in it. When a season ends the curator writes one
   page: the threads, where taste moved, what is still open, and up to four
   works worth hearing again — only works actually met, enforced by the
-  validator. Before then, once two weeks are behind it, a provisional "so far"
-  (two works at most), rewritten at most once a week. Asked for by a button,
-  never on its own; cached in `marks` (`season:<n>`, or
-  `season:<n>:sofar:<week>`). Linked from the Journal.
+  validator. Only a finished season with music in it is written (the
+  provisional "so far" review was removed on 15 October 2026, §23). Asked for
+  by a button, never on its own; cached in `marks` (`season:<n>`). Linked from
+  the Journal.
 - **Offline.** Checked against a production build with the network cut: every
   screen and an already-made programme open and read; curator calls say they're
   offline; Spotify verification never marks a recording missing for want of a
@@ -710,7 +710,7 @@ Notion's Journal rows, Threads' counts, the programme's length and playlist
 button, Library's hide-skipped, "how did it land?", the season and the curator's
 context. `domain/composerGroups.ts` groups a composer however the name is
 written. `components/OpenPaths.tsx` is the one list of paths left open (This
-week, Where next, Threads). `components/common.tsx` holds `NeedsKey`,
+week and Where next). `components/common.tsx` holds `NeedsKey`,
 `CharCount`, `MAX_ASK`/`MAX_NOTE`, `SpotifyCheckButton` and `dateWords`.
 `verifyOne` (spotify/verify.ts) is the one way to check a recording, so a
 background pass and a tap never overwrite each other.
@@ -1073,3 +1073,72 @@ listening on the phone joined it. Fixed, each with a test where it can have one:
   movement without one (and could slide the others). A short answer is asked
   for again once, and notes kept short before this are written again once
   (`companion@2026-10-15.1`).
+
+## 23. Every other screen, audited for structure and bugs (15 October 2026)
+
+Six independent audits — Journal (with the season review), Library (with
+composer pages), Threads, Notebook, Concerts (with Live in Bucharest, "I'm
+going" and Before the concert) and Settings — each read the screen against the
+app's purpose: a straightforward recommendation engine with all the history,
+no dilemmas. Each finding was checked against the code before it was fixed.
+
+**Journal.** A work is listed under its own programme's week, in running order —
+it used to move to the week it was last touched, so playing an old work again
+took it out of its week. One line per work (composer surname linked, title,
+performers, state, what was said); the listener's word on the week under the
+programme. "Offered" for an unchosen week, no "offered" tag on every row,
+reworked and set-aside duplicates gone, no "Chosen from N directions", no
+Spotify upkeep line. Companions read "More of this theme:" or "A sitting for
+tonight:", also under a set-aside programme. A concert still to come is never
+"heard live". The season review: finished seasons only, and only those with
+music in them (`season@2026-10-15.1`).
+
+**Library and composer pages.** One shared loader and row (`domain/library.ts`,
+`components/LibraryEntries.tsx`): the composer page is the Library's entry for
+that composer, so it shows the recording actually heard (a stand-in), what was
+said about the work itself, and respects hide-skipped. One row per programme
+item — a stand-in that played shows "on Spotify instead of …"; "another
+perspective" for a second recording; a perspective credited to its own
+programme; the curator's recording first; Rimsky-Korsakov under R; no
+durations; "Open in Spotify"; never-heard items of a set-aside programme left
+out; no "In your threads" (its links landed at the top of Threads).
+
+**Threads.** A direction switched away from is no thread of its own; a set-aside
+visit counts only what was heard of it and says "set aside"; no visit or
+minute counts; the title opens the last visit kept; threads ordered by when
+they were listened to; "Questions it left", "How it landed" labelled. Paths
+still open live on This week and in Where next only.
+
+**Notebook.** Saving one field no longer throws away what is being typed in the
+other (the page reloads on every save); a followed question leaves the list
+and says what it did; the "next week" shortcut that overwrote the wish is
+gone; history follows an impression through every change to where it ended;
+no contradictory empty state; the settings ledger and the Notion fold — both
+repeats of Settings — are gone; a profile missing a part reads as empty.
+
+**Concerts.** The same evening can't be kept twice (it opens the one kept); a
+concert can be removed (its Notion row archived on the next sync); a date
+after today is refused, and one kept before this check sits apart under
+"Kept before the evening", "Not yet heard" on its page. On the programme page
+a concert is one line however many works it plays ("Debussy's La mer and
+Ravel's Daphnis et Chloé at the Ateneu"), "Prepare for it →" on that line,
+no repeated card; short titles ("La mer") count as the very work. After the
+evening: "I didn't go"; "How was it?" on the day itself; a kept concert links
+to its entry; the date said once; a preparation is written (and paid for) only
+in the week before. All concerts is one newest-first list
+(`components/ConcertEntry.tsx`, shared with the Journal); the pre-filled entry
+asks "How was it?" first.
+
+**Settings.** A time zone with a trailing space blanked the whole app for good;
+zones are now chosen from a list and stored by their canonical name, and a bad
+stored one is repaired on load. A restore is checked before it is confirmed,
+downloads a before-restore archive only when there is a journey to keep, and
+both restore and fresh start write in one transaction (`KeyValueStore.replace`)
+— all or nothing. A failed fresh start says what Notion refused, and the pages
+it already trashed are written again. Notion reads "Not updated" when it is
+failing; Spotify keeps Disconnect while asking to reconnect, and its Client ID
+can't be changed while connected. One Claude card (the real month's spend, one
+sentence on the two models), one card for the app's look and week, "Backup",
+explained depth and language, no "Check recent listening" (sync runs on load
+and on return).
+

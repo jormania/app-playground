@@ -78,7 +78,7 @@ describe('works with a soloist', () => {
 
 describe('validateSeason', () => {
   const met = [{ composer: 'Claude Debussy', work: 'La mer' }]
-  it('keeps only works actually met among those worth hearing again, two while the season is under way', () => {
+  it('keeps only works actually met among those worth hearing again', () => {
     const again = [
       { composer: 'Claude Debussy', work: 'La Mer', why: 'a' },
       { composer: 'Maurice Ravel', work: 'Boléro', why: 'never offered' },
@@ -86,8 +86,6 @@ describe('validateSeason', () => {
     const r = validateSeason({ title: 'T', opening: 'O', threads: [], again }, { met })
     expect(r.problems).toEqual([])
     expect(r.value.again.map((a) => a.work)).toEqual(['La Mer'])
-    const soFar = validateSeason({ title: 'T', opening: 'O', again: [again[0], again[0], again[0]] }, { met, soFar: true })
-    expect(soFar.value.again).toHaveLength(2)
   })
   it('needs a title and an opening', () => {
     expect(validateSeason({}, { met }).problems).toHaveLength(2)

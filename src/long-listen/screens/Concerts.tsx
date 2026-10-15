@@ -35,10 +35,14 @@ export { concertDate }
  * Journal, in the week it happened.
  */
 export function ConcertsScreen() {
-  const { repo } = useServices()
+  const { repo, settings } = useServices()
   const { data, error, retry } = useLoad(() => repo.concerts.all(), [])
   if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the concerts…</Waiting>
+  // A concert kept before its date (possible before dates were checked) isn't heard yet: apart, to correct or remove.
+  const today = isoDateIn(new Date(), settings.timeZone)
+  const heard = data.filter((c) => c.date <= today)
+  const early = data.filter((c) => c.date > today)
   return (
     <div>
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'journal' })}>← Journal</a></p>
@@ -48,20 +52,29 @@ export function ConcertsScreen() {
         <a className={s.primaryButton} href={href({ name: 'concert', id: 'new' })}>Add a concert</a>
       </div>
       <YoureGoing />
-      {data.length === 0
+      {heard.length === 0
         ? <Empty>None yet. Share a screenshot of the hall’s programme to the app, or add one here.</Empty>
         : (
           <ul className={`${s.concertList} ${s.block}`} aria-label="Concerts heard live">
-            {[...data].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).map((c) => <li key={c.id}><ConcertEntry concert={c} /></li>)}
+            {[...heard].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).map((c) => <li key={c.id}><ConcertEntry concert={c} /></li>)}
           </ul>
         )}
+      {early.length > 0 && (
+        <section className={s.block} aria-label="Kept before the evening">
+          <p className={s.label}>Kept before the evening</p>
+          <p className={s.quiet}>Not counted as heard until its date. Open one to correct the date or remove it.</p>
+          <ul className={s.concertList}>
+            {early.map((c) => <li key={c.id}><ConcertEntry concert={c} /></li>)}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }
 
 /** One concert: what was played, by whom, and ways to hear each work again. Or, for "new", the form. */
 export function ConcertScreen({ id }: { id: string }) {
-  const { repo, journey, bump, say } = useServices()
+  const { repo, journey, bump, say, settings } = useServices()
   const [editing, setEditing] = useState(false)
   const [removing, setRemoving] = useState(false)
   const fromGoing = id.startsWith('from-') ? id.slice('from-'.length) : undefined
@@ -87,7 +100,7 @@ export function ConcertScreen({ id }: { id: string }) {
   return (
     <article>
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'concerts' })}>← All concerts</a></p>
-      <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Heard live · {c.venue}{c.hall ? `, ${c.hall}` : ''}</p>
+      <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {c.date > isoDateIn(new Date(), settings.timeZone) ? 'Not yet heard' : 'Heard live'} · {c.venue}{c.hall ? `, ${c.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{concertDate(c.date)}{c.time ? `, ${c.time}` : ''}</h1>
       {/* Who played, as the hall's own programme prints it: name first, the role after in italic. */}
       <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} className={s.concertCredits} programme />

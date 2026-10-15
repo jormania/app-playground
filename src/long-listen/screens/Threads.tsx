@@ -82,7 +82,7 @@ function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, 
               {v.setAside && <span className={s.faint}> · set aside</span>}
               {/* Its companions, each on a line of its own, in the Journal's and the season's words. */}
               {(v.extraProgrammeIds ?? []).map((id) => programmes.get(id)).filter((x): x is Programme => Boolean(x)).map((x) => (
-                <div key={x.id} className={s.faint}>{x.sitting ? 'a sitting' : 'and more'}: <a href={href({ name: 'programme', id: x.id })}>{x.title}</a></div>
+                <div key={x.id} className={s.faint}>{x.sitting ? 'A sitting for tonight' : 'More of this theme'}: <a href={href({ name: 'programme', id: x.id })}>{x.title}</a></div>
               ))}
               {v.closingNote && <div className={`${s.quiet} ${s.italic}`}>{v.closingNote}</div>}
             </li>

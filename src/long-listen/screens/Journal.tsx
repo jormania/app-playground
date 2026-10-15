@@ -4,16 +4,14 @@ import { curly } from '../domain/programmeStyle'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { heardAs, itemFeedback, playedProposed, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { displaySurname } from '../domain/identity'
-import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { isoDateIn, weekFromKey, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
-import { concertDate } from './Concerts'
 import { seasonName } from '../domain/season'
 import { journalWeek } from '../domain/journalWeek'
 import { href } from '../app/router'
 import { Empty, Problem, Waiting } from '../components/common'
-import { Credits } from '../components/Credits'
+import { ConcertEntry } from '../components/ConcertEntry'
 import s from '../styles/editorial.module.css'
 
 // 'offered' says nothing the heading doesn't: a direction still on offer gets no tag.
@@ -176,21 +174,7 @@ export function JournalScreen() {
             {concerts.length > 0 && (
               <div className={s.journalPart}>
                 <h3 className={s.journalPartHead}><Landmark size={15} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Heard live</h3>
-                {concerts.map((c) => (
-                  <div key={c.id} className={s.journalConcert}>
-                    <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{c.venue}</a>
-                    <p className={`${s.faint} ${s.flush}`}>{concertDate(c.date)}</p>
-                    {/* As on All concerts: the evening's own soloists above, each work's beside it. */}
-                    <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} />
-                    <ul className={s.concertWorkList}>
-                      {c.works.map((w, i) => {
-                        const who = whoPlays(c, w)
-                        return <li key={i}>{displaySurname(w.composer)}, <em>{w.title}</em>{who.length > 0 && <span className={s.faint}> · {who.map((x) => x.name).join(', ')}</span>}</li>
-                      })}
-                    </ul>
-                    {c.note && <p className={s.said}><q>{c.note}</q></p>}
-                  </div>
-                ))}
+                {concerts.map((c) => <ConcertEntry key={c.id} concert={c} />)}
               </div>
             )}
             {listened.length > 0 && (

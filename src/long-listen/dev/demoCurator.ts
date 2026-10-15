@@ -164,7 +164,7 @@ export function demoCurator(): CuratorClient {
           } satisfies TagsResponse as T
         case 'season':
           return {
-            title: payload?.soFar ? 'Colour, so far' : 'A season of colour',
+            title: 'A season of colour',
             opening: 'Demo: these weeks began with the orchestra as a painter’s palette, and kept returning to it — the French first, then the Russians who learned from them.',
             threads: [{ title: 'Colour as form', body: 'Demo: from Debussy’s La mer to Ravel’s Daphnis, the thread asked whether colour can carry an argument on its own. You leaned towards yes.' }],
             taste: 'Demo: transparent, analytical recordings held you more than the sumptuous ones.',

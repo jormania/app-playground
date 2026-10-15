@@ -57,7 +57,7 @@ const LEADS = {
   concert: (p) => (p.today
     ? `Read this concert programme. Today is ${p.today}. If it shows no year, give the date the year that puts it nearest to today.`
     : `Read this concert programme. If it shows no year, it is ${p.year}.`),
-  season: (p) => `Write the season in review for ${p.season?.label ?? 'these weeks'}${p.soFar ? ' — the season is still under way' : ''}.`,
+  season: (p) => `Write the season in review for ${p.season?.label ?? 'these weeks'}.`,
   companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
   tags: (p) => `Say in which movement each "listen for" point happens, for ${p.works?.length ?? 0} work(s) in "${p.programme?.title}".`,
   define: (p) => `Define "${p.term}".`,
@@ -317,7 +317,7 @@ export async function ping(send) {
  */
 export async function writeSeason(send, payload) {
   const met = [...(payload.heard ?? []), ...(payload.started ?? [])].map((h) => ({ composer: h.composer, work: h.work }))
-  const r = await withRetry(send, 'season', payload, (o) => validateSeason(o, { met, soFar: Boolean(payload.soFar) }))
+  const r = await withRetry(send, 'season', payload, (o) => validateSeason(o, { met }))
   if (r.problems.length) throw new CuratorUnavailable('failed', 'The curator could not write the season just now. Try again.')
   return { ...r.value, promptVersion: PROMPTS.season.version }
 }
