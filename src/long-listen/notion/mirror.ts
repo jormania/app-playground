@@ -10,6 +10,7 @@ import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { heardAs, itemFeedback, standInsOf } from '../domain/standIns'
 import { groupByComposer } from '../domain/composerGroups'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
+import { setAsideProgrammes } from '../domain/library'
 
 /**
  * Notion as the listener's notebook: a human-readable mirror of the journey,
@@ -244,6 +245,12 @@ export async function ensureSetup(call: NotionCall, repo: Repo, pageId: string):
   const cached = mark?.value as (NotionDatabases & { composers: string; concerts: string; pageId: string }) | undefined
   // A setup from before a database was added (Composers, then Concerts) is looked at again, and the new one made.
   if (cached && cached.pageId === pageId && cached.composers && cached.concerts) return cached
+  // Another notebook than the one written to: every row's state points into the old one, and with its hash
+  // unchanged nothing would be written here — the new notebook would stay empty while edits went to the old.
+  // Forgotten, every row (and the taste page) is written afresh into this one.
+  if (cached && cached.pageId !== pageId) {
+    for (const st of await repo.notion.all()) await repo.notion.delete(st.key)
+  }
 
   const parent = { type: 'page_id', page_id: pageId }
   const d = await discover(call, pageId)
@@ -548,7 +555,8 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
   const [programmes, themes, explorations, recordings, events, feedback, resources, weeks, taste, prefs, comparisons, concerts] = await Promise.all([
     repo.programmes.all(), repo.themes.all(), repo.explorations.all(), repo.recordings.all(), repo.events.all(), repo.feedback.all(), repo.resources.all(), repo.weeks.all(), repo.taste(), repo.preferences(), repo.comparisons.all(), repo.concerts.all(),
   ])
-  const setAside = new Set(weeks.flatMap((w) => w.setAsideProgrammeIds))
+  // Set aside as the Library reads it: a sitting or "More of this theme" joined to a replaced programme goes with it.
+  const setAside = setAsideProgrammes(weeks, explorations, programmes)
   const themeTitle = new Map(themes.map((t) => [t.id, t.title]))
   // A work heard through a stand-in was heard: its listening and what was said sit under the stand-in.
   const standIns = standInsOf(comparisons)
@@ -613,10 +621,11 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
  * starts as clean as the app. The databases themselves stay, for the next
  * journey. Best effort: a page already gone is fine.
  */
-export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<number> {
+export async function archiveNotebook(call: NotionCall, repo: Repo, only?: NotionSyncState[]): Promise<number> {
   const trashed: NotionSyncState[] = []
   let failed = 0
-  for (const st of await repo.notion.all()) {
+  // `only`: a restore's leavers (repo.notionLeaving) — the rest of the notebook stays, and so does the taste page.
+  for (const st of only ?? await repo.notion.all()) {
     if (st.key === 'taste') continue
     try {
       await call({ path: `pages/${st.pageId}`, method: 'PATCH', body: { archived: true } })
@@ -630,8 +639,9 @@ export async function archiveNotebook(call: NotionCall, repo: Repo): Promise<num
     // A fresh start forgets which pages it wrote: one left behind would never be cleaned up, so stop here instead.
     // The journey stays, so the pages already in the trash must come back: unmatched, the next sync writes them afresh.
     for (const st of trashed) await repo.notion.put({ ...st, hash: '' })
-    throw new Error('Notion didn’t take some pages to its trash, so nothing was cleared. Try again in a minute.')
+    throw new Error(only ? 'Notion didn’t take some pages to its trash, so nothing was restored. Try again in a minute.' : 'Notion didn’t take some pages to its trash, so nothing was cleared. Try again in a minute.')
   }
+  if (only) return trashed.length
   // Best effort: the next sync rewrites the taste page anyway, from a taste that is now empty.
   const setup = (await repo.marks.get('notion:setup'))?.value as { tastePage?: string } | undefined
   if (setup?.tastePage) {

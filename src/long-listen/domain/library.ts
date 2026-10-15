@@ -62,12 +62,7 @@ export function libraryEntries(input: LibraryInput, opts: { hideSkipped: boolean
   const begun = (ids: string[], from?: { workId: string; programmeId: string }) => listeningState(events, ids) !== 'not-started'
     || feedback.some((f) => (f.reaction || f.more || f.note) && (ids.includes(f.target.id) || (from && f.target.id === from.workId && f.programmeId === from.programmeId)))
 
-  const setAside = new Set([
-    ...input.weeks.flatMap((w) => w.setAsideProgrammeIds),
-    ...input.explorations.filter((e) => e.setAside).flatMap((e) => [e.programmeId, ...(e.extraProgrammeIds ?? [])]),
-  ])
-  // "More of this theme" continues the programme it extends, set aside with it.
-  for (const p of programmes) if (p.extends && setAside.has(p.extends)) setAside.add(p.id)
+  const setAside = setAsideProgrammes(input.weeks, input.explorations, programmes)
 
   type Row = Omit<LibraryRecording, 'state' | 'said'> & { workId: string; composer: string; fromItem: boolean }
   const rows: Row[] = []
@@ -166,4 +161,23 @@ export function catalogueNotInTitle(title: string, catalogue: string | undefined
 /** Whose recording it is, by the name it goes by: the soloist's, else the conductor's, else the ensemble's or orchestra's. */
 function leadOf(r: ProposedRecording): string | undefined {
   return r.soloists[0]?.name ?? r.conductor ?? r.ensemble ?? r.orchestra
+}
+
+/**
+ * The programmes set aside — the one a changed direction replaced, and with it every programme that
+ * joined it (a sitting, "More of this theme"): one rule for every reader of the journey (the Library,
+ * the Notion Journal), so they never disagree about what still counts.
+ */
+export function setAsideProgrammes(
+  weeks: { setAsideProgrammeIds: string[] }[],
+  explorations: { setAside?: boolean; programmeId: string; extraProgrammeIds?: string[] }[],
+  programmes: { id: string; extends?: string }[],
+): Set<string> {
+  const setAside = new Set([
+    ...weeks.flatMap((w) => w.setAsideProgrammeIds),
+    ...explorations.filter((e) => e.setAside).flatMap((e) => [e.programmeId, ...(e.extraProgrammeIds ?? [])]),
+  ])
+  // "More of this theme" continues the programme it extends, set aside with it.
+  for (const p of programmes) if (p.extends && setAside.has(p.extends)) setAside.add(p.id)
+  return setAside
 }

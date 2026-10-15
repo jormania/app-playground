@@ -9,8 +9,8 @@
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#f5efe3" />
   <script>
-    // Paint the saved palette before React loads, so a dark phone never
-    // flashes paper. Keep in step with src/long-listen/app/theme.ts.
+    // Paint the saved palette (and text size) before React loads, so a dark phone never
+    // flashes paper. Keep in step with src/long-listen/app/theme.ts and app/settings.ts.
     try {
       var raw = localStorage.getItem('long-listen:theme');
       var choice = raw ? JSON.parse(raw) : 'system';
@@ -18,6 +18,9 @@
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
       var m = document.querySelector('meta[name="theme-color"]');
       if (m) m.setAttribute('content', dark ? '#16130f' : '#f5efe3');
+      // The text size too, so "Larger" is the size of the first paint, not a jump once the app has loaded.
+      var saved = JSON.parse(localStorage.getItem('long-listen:settings') || '{}');
+      document.documentElement.setAttribute('data-text-size', saved && saved.textSize === 'large' ? 'large' : 'standard');
     } catch (e) {}
   </script>
   <link rel="icon" type="image/svg+xml" href="/long-listen-logo.svg" />

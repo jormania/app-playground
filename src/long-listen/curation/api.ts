@@ -13,6 +13,14 @@ export class CuratorUnavailable extends Error {
   }
 }
 
+/**
+ * A failure that a later try may get past by itself (no connection, the
+ * curator busy): worth asking again when things change. Anything else — a
+ * reply that wouldn't validate, a refusal — would fail, and be paid for,
+ * the same way again, so it waits for the listener's own tap.
+ */
+export const passing = (e: unknown): boolean => e instanceof CuratorUnavailable && (e.code === 'offline' || e.code === 'busy')
+
 /** What the listener reads when the curator can't answer. Never an internal error. */
 const FRIENDLY: Record<CuratorErrorCode, string> = {
   locked: 'The curator needs your Anthropic key — add it in Settings, then test it.',

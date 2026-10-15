@@ -23,6 +23,7 @@ import { NotFound } from '../store/repo'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
 import { BackLink } from '../components/BackLink'
+import { passing } from '../curation/api'
 
 /** Where a picture shared to the app waits for this screen (public/long-listen-sw.js puts it there). */
 export const SHARED_IMAGE = '/long-listen-shared-image'
@@ -294,7 +295,9 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
       return true
     } catch (e) {
       say(messageOf(e), 'danger')
-      return false
+      // Done with the picture unless the failure was in passing (offline, busy): one that can't be read
+      // would be sent, and paid for, again on every opening of this form.
+      return !passing(e)
     } finally {
       setReading(false)
     }

@@ -1204,3 +1204,38 @@ and on return).
   use `Waiting inline`. The composer page's heading is a section head. The
   "who played" line is `performerLine`.
 
+
+## 25. Stabilisation pass (15 October 2026)
+
+After a week of heavy change, six independent audits (listening and Spotify; the journey and its data;
+every screen in a real browser; time and concerts; the curator, offline and the PWA shell; every option in
+Settings) each reported only defects they had reproduced or traced exactly. What was confirmed, and fixed:
+
+- **Listening.** One reading that still showed the previous track right after a tap on Play no longer
+  cancels the assumed start (`ASSUME_GRACE_MS`), so a one-track work heard through with the phone asleep
+  counts. A run-on the work guard saw (page asleep through the end) clears the Resume place and ends the
+  work in the listening view as the readings around the close would have. A work that ended at rest
+  disarms the guard instead of polling for hours. A tap on *Heard* while a one-track work plays, then
+  letting it finish, is one hearing, not two.
+- **Journey and Notion.** A restore takes the replaced journey's notebook pages to Notion's trash first
+  (`repo.notionLeaving`, `archiveNotebook(…, only)`); changing the Notion page writes every row afresh
+  into the new one; the Notion Journal and the Library read *set aside* by one rule
+  (`setAsideProgrammes`); a stand-in is still found for a recording Spotify lacks after an "Another
+  perspective" was asked for.
+- **Curator and cost.** A companion reply a note short is no longer padded (every later note sat one
+  movement early, and the re-ask could never fire); a failed automatic stand-in search, week, or
+  shared-screenshot reading is retried only for failures in passing (`passing`: offline, busy), not
+  re-paid on every visit; *Look again* really looks again, and a search cut off is a failure, not
+  "nothing found"; the worker no longer answers the new-version check from its cache.
+- **Concerts.** The same evening is recognised however the hall is written ("Ateneul Român · Sala Mare"
+  against "Sala Mare"); a screenshot with no year is dated on or before today.
+- **Settings.** *Works with voices* and *Concertos* off are checked in the programme validator, not only
+  asked for in the prompt (`needsVoices`, `needsSoloists`). A changed *Language* writes "More context" and
+  the listening notes afresh (they carry the language they were written in). Settings changed in one tab
+  are no longer overwritten from another, and the key is never written back blank. Text size paints with
+  the theme, before the app loads. Every preference is one of its own values or its default
+  (`normalisePreferences`). The hint says "usually in two to four sections": nothing forces two.
+
+Known and left: concert dates are Bucharest dates but "today" is judged in the Settings zone (harmless
+while the zone is Bucharest); two tabs share no in-flight guard across a fresh start; a concert marked as
+going whose start time changes is a new mark.

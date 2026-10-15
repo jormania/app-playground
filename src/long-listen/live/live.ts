@@ -130,11 +130,14 @@ export function whatIsOnAt(c: LiveConcert): string {
  * Ateneu"), and the same hall and hour when both name one.
  */
 export function sameEvening(a: Pick<LiveEvent, 'date' | 'venue' | 'hall' | 'time'>, b: Pick<LiveEvent, 'date' | 'venue' | 'hall' | 'time'>): boolean {
-  const place = (v: string) => [fold(v), fold(venueShort(v))].map((x) => x.replace(/^the /, ''))
+  // The Ateneu by any of its names: the Philharmonic's, the building's ("Ateneul Român"), the everyday one.
+  const place = (v: string) => [fold(v), fold(venueShort(v))].map((x) => x.replace(/^the /, '')).map((x) => (/\bateneu/.test(x) ? 'ateneu' : x))
+  // The room alone, however it was written: the feed says "Ateneul Român · Sala Mare", a programme "Sala Mare".
+  const room = (h: string) => fold(h.split('·').pop() ?? h).trim()
   const hour = (t?: string | null) => (t ?? '').replace(/\D/g, '').slice(0, 4)
   return a.date === b.date
     && place(a.venue).some((x) => place(b.venue).includes(x))
-    && (!a.hall || !b.hall || fold(a.hall) === fold(b.hall))
+    && (!a.hall || !b.hall || room(a.hall) === room(b.hall))
     && (!hour(a.time) || !hour(b.time) || hour(a.time) === hour(b.time))
 }
 

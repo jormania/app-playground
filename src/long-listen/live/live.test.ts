@@ -60,6 +60,10 @@ describe('live in Bucharest', () => {
     expect(sameEvening(at, { ...at, time: '11:00' })).toBe(false)
     expect(sameEvening(at, { ...at, venue: 'Sala Radio' })).toBe(false)
     expect(sameEvening(at, { ...at, date: '2026-10-19' })).toBe(false)
+    // As the Philharmonic's feed writes the hall, and as a screenshot or the building's own name has it (a stabilisation finding).
+    expect(sameEvening({ ...at, hall: 'Ateneul Român · Sala Mare' }, at)).toBe(true)
+    expect(sameEvening({ ...at, hall: 'Ateneul Român · Sala Mare' }, { ...at, venue: 'Ateneul Român' })).toBe(true)
+    expect(sameEvening({ ...at, hall: 'Ateneul Român · Sala Mare' }, { ...at, hall: 'Sala Mică' })).toBe(false)
   })
 
   it('asks Marquee’s endpoint at most once a day', async () => {

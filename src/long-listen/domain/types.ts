@@ -530,6 +530,15 @@ export function normalisePreferences(raw: Partial<ListenerPreferences> & { adven
   p.breadth = level(p.breadth, DEFAULT_PREFERENCES.breadth)
   p.familiarity = level(p.familiarity, DEFAULT_PREFERENCES.familiarity)
   if (!['short', 'standard', 'generous', 'abundant'].includes(p.timePerWeek)) p.timePerWeek = DEFAULT_PREFERENCES.timePerWeek
+  // Every option is one of its own values, or its default: a hand-edited file or an old backup can't put
+  // `undefined` into the prompts, or a label the Settings screen has no word for.
+  const oneOf = <T extends string>(v: unknown, all: readonly T[], d: T): T => (all.includes(v as T) ? (v as T) : d)
+  p.depth = oneOf(p.depth, ['concise', 'standard', 'deeper'], DEFAULT_PREFERENCES.depth)
+  p.recordingEra = oneOf(p.recordingEra, ['any', 'historic-welcome', 'modern-sound', 'period-practice'], DEFAULT_PREFERENCES.recordingEra)
+  p.language = oneOf(p.language, ['en', 'ro'], DEFAULT_PREFERENCES.language)
+  p.includeVoices = typeof p.includeVoices === 'boolean' ? p.includeVoices : DEFAULT_PREFERENCES.includeVoices
+  p.includeConcertos = typeof p.includeConcertos === 'boolean' ? p.includeConcertos : DEFAULT_PREFERENCES.includeConcertos
+  p.nextRequest = typeof p.nextRequest === 'string' ? p.nextRequest : ''
   p.pairs = Boolean(p.pairs)
   return p
 }
@@ -571,6 +580,8 @@ export interface Explanation {
   movement?: string
   heading: string
   body: string
+  /** The curator's language when it was written (an older one, without it, was English). */
+  language?: string
   createdAt: Instant
   promptVersion: string
 }
@@ -602,3 +613,6 @@ export interface NotionDatabases {
   recordings: string
   tastePage: string
 }
+
+/** Written in the language the curator writes in now: one written in another reads as not yet written. */
+export const inLanguage = (x: { language?: string } | undefined, language: string): boolean => Boolean(x) && (x?.language ?? 'en') === language

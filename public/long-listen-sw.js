@@ -54,6 +54,9 @@ self.addEventListener('fetch', function (e) {
   }
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.pathname.indexOf('/api/') === 0) return;
+  // Asked for fresh on purpose (the check for a newer version): straight to the network, never the cache —
+  // answered from the cache it would only ever find the build already running.
+  if (req.cache === 'no-store') return;
 
   if (req.mode === 'navigate') {
     // The Spotify callback arrives as a navigation with ?code=…&state=…; it

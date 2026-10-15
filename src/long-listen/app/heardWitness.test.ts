@@ -34,6 +34,21 @@ describe('recording a work the app watched play end to end', () => {
     expect(listeningState(events, 'tintagel')).toBe('heard')
   })
 
+  it('says it once per hearing: a tap on Heard while it played is this hearing, a heard yesterday is another', async () => {
+    const repo = new Repo(memoryStore())
+    const r = rec('tintagel', ['t1'])
+    await repo.recordings.put({ ...r, spotify: { ...r.spotify!, durationMs: 15 * 60_000 } })
+    const now = Date.parse('2026-10-15T20:00:00Z')
+    const marked: string[] = []
+    const journey = { markListening: async (item: { recordingId: string }) => { marked.push(item.recordingId); return {} as ListeningEvent } }
+    // Tapped Heard during the last minute; then the witness sees it end.
+    await repo.events.put({ id: 'tap', at: '2026-10-15T19:59:00Z', kind: 'heard', recordingId: 'tintagel', workId: 'w-tintagel', source: 'manual' })
+    expect(await recordHeardThrough(repo, journey, ['t1'], now)).toEqual([])
+    // Heard yesterday too: today's hearing still counts.
+    await repo.events.put({ id: 'tap', at: '2026-10-14T19:59:00Z', kind: 'heard', recordingId: 'tintagel', workId: 'w-tintagel', source: 'manual' })
+    expect(await recordHeardThrough(repo, journey, ['t1'], now)).toEqual(['tintagel'])
+  })
+
   it('never overrules the listener: a later manual mark still wins', () => {
     const events: ListeningEvent[] = [
       { id: 'a', at: '2026-10-10T08:20:00Z', kind: 'heard', recordingId: 'r', workId: 'w', source: 'app' },

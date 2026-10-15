@@ -99,6 +99,11 @@ export class WorkGuard {
     this.keep()
   }
 
+  /** The tracks of the work being watched, if any: whose place and whose end a run-on concerns. */
+  armedTrackIds(): string[] | undefined {
+    return this.armed?.trackIds
+  }
+
   /** A work is being watched and may still run on. */
   isArmed(now: number): boolean {
     if (this.armed && now > this.armed.until) { this.armed = null; this.keep() }
@@ -114,6 +119,16 @@ export class WorkGuard {
   observe(_prev: NowPlaying | null, cur: NowPlaying | null, now: number): boolean {
     if (!this.isArmed(now) || !this.armed) return false
     const a = this.armed
+    // Ended at rest: Spotify finished the list and holds the work at its first movement, paused at the top —
+    // a reading of the work's own track, so the check below would keep it armed (and a hidden page polling)
+    // for hours. Seen last in its final movement, or seen ending: nothing is left to stop.
+    const atRest = Boolean(cur && !cur.isPlaying && playbackOf(cur, a.trackIds)?.index === 0 && cur.progressMs <= 5_000)
+    // Only once the player is quiet: music still sounding after the end is a run-on, for the check below to stop.
+    if (a.started && a.last && !cur?.isPlaying && (workEnded(a.last.np, cur, a.trackIds) || (atRest && playbackOf(a.last.np, a.trackIds)?.index === a.trackIds.length - 1))) {
+      this.armed = null
+      this.keep()
+      return false
+    }
     if (cur && playbackOf(cur, a.trackIds)) {
       a.started = true
       a.last = { np: cur, at: now }

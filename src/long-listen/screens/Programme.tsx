@@ -31,6 +31,8 @@ import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
 import { whenWords } from '../domain/going'
+import { passing } from '../curation/api'
+import { inLanguage } from '../domain/types'
 
 interface Bundle {
   programme: Programme
@@ -78,7 +80,9 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
   const recIds = [...items.map((i) => i.recordingId), ...comparisons.flatMap((c) => c.perspectives.map((p) => p.recordingId))]
   const recordings = new Map((await repo.recordings.many(recIds)).map((r) => [r.id, r]))
   const works = new Map((await repo.works.many([...new Set(items.map((i) => i.workId))])).map((w) => [w.id, w]))
-  const explanations = new Map((await repo.explanations.many(items.map((i) => `${id}:${i.id}`))).map((e) => [e.id.split(':').pop()!, e]))
+  // Written in another language than the curator writes in now: left out, so "More context" offers it afresh.
+  const { language } = await repo.preferences()
+  const explanations = new Map((await repo.explanations.many(items.map((i) => `${id}:${i.id}`))).filter((e) => inLanguage(e, language)).map((e) => [e.id.split(':').pop()!, e]))
   const explorations = theme ? await repo.explorations.many(theme.explorationIds) : []
   const otherOptions = week
     ? (await repo.options.many(week.optionIds)).filter((o) => o.id !== week.chosenOptionId && (o.status === 'offered' || o.status === 'open'))
@@ -273,7 +277,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 
       <ResourcesView b={b} searching={searching} onSearch={async () => {
         setSearching(true)
-        try { await journey.resources(p.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setSearching(false) }
+        try { await journey.resources(p.id, { again: b.resourcesSearched }); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setSearching(false) }
       }} />
 
       <WhereNext b={b} isCurrent={Boolean(isCurrent)} />
@@ -524,7 +528,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
     try { await journey.explain(pid, item.id); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setExplaining(false) }
   }
 
-  /** True once the curator has been asked and answered (or Spotify truly has nothing); false when the asking failed. */
+  /** True once the curator has been asked and answered (or Spotify truly has nothing, or asking again would fail the same way); false when a later try may succeed. */
   async function compare(mustBeOnSpotify = false, quiet = false): Promise<boolean> {
     setComparing(true)
     try {
@@ -539,7 +543,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       return true
     } catch (e) {
       if (!quiet) say(messageOf(e), 'danger')
-      return false
+      return !passing(e)
     } finally {
       setComparing(false)
     }
@@ -550,9 +554,10 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const askedForStandIn = useRef(false)
   const online = useOnline()
   useEffect(() => {
-    if (!missing || comparison || !spotify.connected || !curatorReady || !online || askedForStandIn.current) return
+    if (!missing || comparison?.standIn || !spotify.connected || !curatorReady || !online || askedForStandIn.current) return
     askedForStandIn.current = true
-    // A request that failed (offline, the curator busy) is asked again when the connection returns.
+    // A request that failed in passing (offline, the curator busy) is asked again when things change; one that
+    // failed on its merits (no answer that would validate) is not re-paid on every visit — the listener can tap.
     void compare(true, true).then((ok) => { if (!ok) askedForStandIn.current = false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missing, comparison, spotify.connected, curatorReady, online])
@@ -603,7 +608,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         proposed={item.proposed}
         recording={recording}
         onOpened={(how) => { notedStart.current = true; void journey.markListening(item, how, pid, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
-        onFindAlternative={comparison || comparing ? undefined : () => void compare(true)}
+        onFindAlternative={comparison?.standIn || comparing ? undefined : () => void compare(true)}
         standInBelow={Boolean(standIn)}
         durationAbove={Boolean(duration) && Boolean(isConfirmed(recording))}
       />

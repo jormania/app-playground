@@ -17,6 +17,16 @@ describe('stopping a work at its last movement', () => {
     expect(ranOn(at('m1', 299_000), at('other', 1_000), work)).toBe(false)
   })
 
+  it('lets go of a work that ended at rest — Spotify holding its first movement, paused — instead of watching for hours', () => {
+    const g = new WorkGuard()
+    g.arm(work, 0)
+    g.observe(null, at('m1', 1_000), 1)
+    g.observe(at('m1', 1_000), at('m3', 200_000), 2)
+    // The page slept through the end; back to Spotify at rest on movement I.
+    expect(g.observe(at('m3', 200_000), at('m1', 0, 300_000, false), 3)).toBe(false)
+    expect(g.isArmed(4)).toBe(false)
+  })
+
   it('stops only an armed work, once, and forgets it when the listener moves on', () => {
     const g = new WorkGuard()
     // Not armed (the week's playlist, Spotify on its own): never stopped.

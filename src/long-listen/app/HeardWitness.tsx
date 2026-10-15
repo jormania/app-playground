@@ -10,10 +10,18 @@ import type { Repo } from '../store/repo'
 import type { Journey } from '../curation/journey'
 
 /** Mark heard (source `app`) every confirmed single-track recording of these tracks; returns their ids. */
-export async function recordHeardThrough(repo: Repo, journey: Pick<Journey, 'markListening'>, trackIds: string[]): Promise<string[]> {
+export async function recordHeardThrough(repo: Repo, journey: Pick<Journey, 'markListening'>, trackIds: string[], now = Date.now()): Promise<string[]> {
   const heard = (await repo.recordings.all()).filter((r) => isConfirmed(r) && r.spotify.trackIds.length === 1 && trackIds.includes(r.spotify.trackIds[0]))
-  for (const r of heard) await journey.markListening({ recordingId: r.id, workId: r.workId }, 'heard', undefined, 'app')
-  return heard.map((r) => r.id)
+  const events = await repo.events.all()
+  // One hearing, one "heard": a tap on Heard while it played (this same hearing) already said so. Within the
+  // track's own length (and a margin) of now is this hearing; an earlier one is another, and counts again.
+  const saidAlready = (r: Recording) => {
+    const since = now - (r.spotify?.durationMs ?? 0) - 10 * 60_000
+    return events.some((e) => e.recordingId === r.id && e.kind === 'heard' && Date.parse(e.at) >= since)
+  }
+  const fresh = heard.filter((r) => !saidAlready(r))
+  for (const r of fresh) await journey.markListening({ recordingId: r.id, workId: r.workId }, 'heard', undefined, 'app')
+  return fresh.map((r) => r.id)
 }
 
 /**

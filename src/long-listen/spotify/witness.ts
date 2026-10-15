@@ -49,6 +49,11 @@ export const LATE_MS = 10 * 60_000
 export const ENDED_NEAR_MS = 20_000
 /** A track not seen for this long starts a new session. */
 export const SESSION_GAP_MS = 3 * 3600_000
+/**
+ * Right after a tap, Spotify may not have switched yet: a reading or two still shows what played before.
+ * For this long the assumed start waits for the track instead of being given up at the first such reading.
+ */
+export const ASSUME_GRACE_MS = 30_000
 
 export interface Reading {
   /** When the reading came back (epoch ms). */
@@ -85,9 +90,11 @@ export class Witness {
   observe(r: Reading): string[] {
     const heard: string[] = []
     const prev = this.last
-    this.last = r
     const cur = r.np
     if (cur && cur.durationMs > 0) this.session(trackKey(cur), cur, r.at)
+    // Just tapped, and Spotify still shows what was on before: the assumed start stands, for the next reading.
+    if (prev?.assumed && prev.np && (!cur || trackKey(cur) !== trackKey(prev.np)) && r.at - prev.at <= ASSUME_GRACE_MS) return heard
+    this.last = r
 
     const was = prev?.np
     if (!prev || !was || !(was.durationMs > 0)) return heard

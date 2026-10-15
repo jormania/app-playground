@@ -259,6 +259,18 @@ export class Repo {
   }
 
   /**
+   * The notebook pages a restore of `backup` would leave behind: rows written
+   * for this device's journey that the backup doesn't know. Their states go
+   * with the journey they mirror, so unless they are taken to Notion's trash
+   * first, nothing would ever update or remove them. (The taste page is not
+   * one: it is rewritten from the restored taste.)
+   */
+  async notionLeaving(backup: unknown): Promise<NotionSyncState[]> {
+    const records = (backup as { records?: Record<string, unknown> })?.records ?? {}
+    return (await this.notion.all()).filter((st) => st.key !== 'taste' && !(`${PREFIX}notion:${st.key}` in records))
+  }
+
+  /**
    * Restore a backup: it replaces the journey on this device — two journeys
    * merged into one would be neither (weeks from one, threads from the other,
    * the taste of the last). The settings screen saves the journey it replaces
