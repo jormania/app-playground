@@ -183,7 +183,9 @@ export class Repo {
   }
 
   async taste(): Promise<TasteProfile> {
-    return (await this.store.get<TasteProfile>(SINGLETON.taste)) ?? structuredClone(EMPTY_TASTE)
+    // Filled out, so a profile from a backup missing a part (no questions yet) reads as empty there, not as a crash.
+    const t = await this.store.get<Partial<TasteProfile>>(SINGLETON.taste)
+    return { ...structuredClone(EMPTY_TASTE), ...t, observations: t?.observations ?? [], questions: t?.questions ?? [], notesToCurator: t?.notesToCurator ?? '' }
   }
 
   saveTaste(profile: TasteProfile): Promise<void> {
