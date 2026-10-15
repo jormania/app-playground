@@ -1,10 +1,10 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ComposerLink } from './Composer'
 import { GoingCards, GoingToggle, useGoings } from '../components/Going'
 import { Gloss } from '../components/Gloss'
 import { Headphones } from 'lucide-react'
 import type {
-  Comparison, Explanation, Feedback, ListeningEvent, ListeningKind, ListeningState, Programme, ProgrammeItem, ProgrammeOption, Recording, Resource, Theme, ThemeExploration, WeekRecord, Work,
+  Comparison, Explanation, Feedback, ListeningEvent, Programme, ProgrammeItem, ProgrammeOption, Recording, Resource, Theme, ThemeExploration, WeekRecord, Work,
 } from '../domain/types'
 import { latestFeedback, listeningState } from '../domain/listening'
 import { isoDateIn, sinceWords, weekFromKey } from '../domain/week'
@@ -26,6 +26,7 @@ import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf }
 import { SittingCard } from '../components/SittingCard'
 import { OpenPaths } from '../components/OpenPaths'
 import { Twisty } from '../components/Twisty'
+import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
 
@@ -101,33 +102,6 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
     pairs: (await repo.preferences()).pairs,
   }
 }
-
-const STATES: { value: ListeningState; label: string; kind: ListeningKind }[] = [
-  { value: 'not-started', label: 'Not started', kind: 'reset' },
-  // Shown as "Started": the state means begun and not yet called heard, and
-  // "Listening" read as "playing now" (a single-track work stays here until
-  // the listener says otherwise — Spotify can't tell 30 s from the whole).
-  { value: 'listening', label: 'Started', kind: 'listening' },
-  { value: 'heard', label: 'Heard', kind: 'heard' },
-  { value: 'skipped', label: 'Skipped', kind: 'skipped' },
-]
-
-const stateLabel = (state: ListeningState) => STATES.find((st) => st.value === state)?.label ?? ''
-
-/**
- * Where you stand with a work is coloured by what it says, not by being
- * chosen: only "Heard" takes the accent; not started and started stay in the
- * page's ink, and skipped steps back. A work not yet begun is the usual state
- * of most of a week, and was the loudest thing on the page while it wore the
- * accent too. The folded word and the open choices follow one rule.
- */
-const SEGMENT_ON: Record<ListeningState, string> = {
-  'not-started': s.segmentOn,
-  listening: s.segmentOn,
-  heard: `${s.segmentOn} ${s.segmentHeard}`,
-  skipped: `${s.segmentOn} ${s.segmentSkipped}`,
-}
-const STATE_WORD_CLASS: Partial<Record<ListeningState, string>> = { heard: s.stateHeard, skipped: s.stateSkipped }
 
 export function ProgrammeScreen({ id, asThisWeek = false }: { id: string; asThisWeek?: boolean }) {
   const { repo } = useServices()
@@ -533,7 +507,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
     }
   }
 
-  function mark(to: (typeof STATES)[number]) {
+  function mark(to: StateChoice) {
     // Tapping where you already are says nothing new: recording it again would
     // add a second "heard" (or a reset) to the listening the curator reads.
     if (to.value === state) return
@@ -586,6 +560,20 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   // Heard, and nothing said yet about the recording that played: the question is put, open.
   const feedbackPending = state === 'heard' && !b.feedback.some((f) => f.target.id === playedId)
 
+  const standInShown = Boolean(standIn) && !isConfirmed(recording)
+  // The way most listening happens: the work on a screen of its own, while it plays — set like
+  // Play (the same shape and height), outlined so Play stays first, and plainly a way to another screen.
+  // It sits straight under the Play that plays: the stand-in's, where there is one.
+  const listenAlong = (
+    <div className={s.listenAlongRow}>
+      <a className={s.listenAlong} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>
+        <Headphones size={16} strokeWidth={1.8} aria-hidden="true" />Listen along<span aria-hidden="true">→</span>
+      </a>
+      {/* What it can follow depends on a recording Spotify has confirmed: without one, the notes and questions still work. */}
+      <span className={s.listenAlongNote}>{playableOf(b, item) ? 'movements, notes and questions as it plays' : 'notes and questions; movements once Spotify has the recording'}</span>
+    </div>
+  )
+
   return (
     <div className={s.item} id={workAnchor(item.id)}>
       <header className={s.workHead} data-work-head="">
@@ -618,16 +606,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         durationAbove={Boolean(duration) && Boolean(isConfirmed(recording))}
       />
       {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
-      {standIn && !isConfirmed(recording) && <StandInView c={standIn} b={b} />}
-      {/* The way most listening happens: the work on a screen of its own, while it plays — set like
-          Play (the same shape and height), outlined so Play stays first, and plainly a way to another screen. */}
-      <div className={s.listenAlongRow}>
-        <a className={s.listenAlong} href={href({ name: 'listen', programmeId: pid, itemId: item.id })}>
-          <Headphones size={16} strokeWidth={1.8} aria-hidden="true" />Listen along<span aria-hidden="true">→</span>
-        </a>
-        {/* What it can follow depends on a recording Spotify has confirmed: without one, the notes and questions still work. */}
-        <span className={s.listenAlongNote}>{playableOf(b, item) ? 'movements, notes and questions as it plays' : 'notes and questions; movements once Spotify has the recording'}</span>
-      </div>
+      {standInShown && standIn && <StandInView c={standIn} b={b}>{listenAlong}</StandInView>}
+      {!standInShown && listenAlong}
       {/* Read once: open the first time, then one line that still says who and why. */}
       {item.whyThisRecording && (
         <Twisty label="Why this recording" value={item.whyThisRecording} preview readOnce={`why-recording:${pid}:${item.id}`}>
@@ -647,61 +627,41 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
           plain links. The choices open in place; while a hearing waits for a word
           on how it landed, the fold stays open, as the box it replaced did. */}
       <div className={s.workClose}>
-        <section aria-label={`Your listening: ${item.proposed.work}`}>
-          <Twisty label="Your listening" value={<span className={STATE_WORD_CLASS[state]}>{stateLabel(state)}</span>} open={feedbackPending}>
-            <div className={s.segmented} role="radiogroup" aria-label={`Where you are with ${item.proposed.work}`}>
-              {STATES.map((st) => (
-                <button key={st.value} role="radio" aria-checked={state === st.value} className={`${s.segment} ${state === st.value ? SEGMENT_ON[st.value] : ''}`} onClick={() => { void mark(st) }}>
-                  {st.label}
-                </button>
-              ))}
+        <ListeningRow work={item.proposed.work} state={state} open={feedbackPending} onPick={(to) => { void mark(to) }}>
+          <div className={s.switchRow}>
+            <div>
+              <label htmlFor={`knew-${item.id}`} className={s.settingLabel}>I knew this one already</label>
+              {knewIt && <p className={s.settingHint}>The curator won’t count it as a discovery.</p>}
             </div>
-            <div className={s.switchRow}>
-              <div>
-                <label htmlFor={`knew-${item.id}`} className={s.settingLabel}>I knew this one already</label>
-                {knewIt && <p className={s.settingHint}>The curator won’t count it as a discovery.</p>}
-              </div>
-              <input id={`knew-${item.id}`} type="checkbox" role="switch" className={s.switch} checked={knewIt} onChange={() => void toggleKnown()} />
+            <input id={`knew-${item.id}`} type="checkbox" role="switch" className={s.switch} checked={knewIt} onChange={() => void toggleKnown()} />
+          </div>
+          {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === playedId || f.target.id === item.workId))) && (
+            <div className={s.workFeedback}>
+              <FeedbackPanel
+                key={`${item.id}-${state}`}
+                programmeId={pid}
+                feedback={b.feedback}
+                startOpen={feedbackPending}
+                targets={[
+                  { type: 'recording', id: playedId, label: playedId === item.recordingId ? 'This recording' : 'The recording you heard' },
+                  { type: 'work', id: item.workId, label: 'The work itself' },
+                ]}
+              />
             </div>
-            {(state === 'heard' || state === 'listening' || b.feedback.some((f) => (f.reaction || f.note) && (f.target.id === playedId || f.target.id === item.workId))) && (
-              <div className={s.workFeedback}>
-                <FeedbackPanel
-                  key={`${item.id}-${state}`}
-                  programmeId={pid}
-                  feedback={b.feedback}
-                  startOpen={feedbackPending}
-                  targets={[
-                    { type: 'recording', id: playedId, label: playedId === item.recordingId ? 'This recording' : 'The recording you heard' },
-                    { type: 'work', id: item.workId, label: 'The work itself' },
-                  ]}
-                />
-              </div>
-            )}
-          </Twisty>
-        </section>
+          )}
+        </ListeningRow>
 
-        {((!explanation && curatorReady) || (!comparison && b.pairs && curatorReady)) && (
+        {/* Asked for, read once (open the time it arrives), then folded to its heading — a row like the one above. */}
+        <MoreContextRow explanation={explanation} readKey={`context:${pid}:${item.id}`} writing={explaining} canAsk={curatorReady} onAsk={() => void explain()} />
+        {!comparison && b.pairs && curatorReady && (
         <nav className={s.goFurther} aria-label={`Go further with ${item.proposed.work}`}>
-          {!explanation && curatorReady && (
-            <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void explain()} disabled={explaining}>
-              {explaining ? 'The curator is writing…' : 'More context'}
-            </button>
-          )}
-          {!comparison && b.pairs && curatorReady && (
-            <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void compare()} disabled={comparing}>
-              {comparing ? 'Choosing a second recording…' : 'Another perspective'}
-            </button>
-          )}
+          <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void compare()} disabled={comparing}>
+            {comparing ? 'Choosing a second recording…' : 'Another perspective'}
+          </button>
         </nav>
         )}
       </div>
 
-      {/* Asked for, read once (open the time it arrives), then folded to its heading. */}
-      {explanation && (
-        <Twisty label="More context" value={explanation.heading} readOnce={`context:${pid}:${item.id}`}>
-          <Paragraphs text={explanation.body} className={s.prose} glossed />
-        </Twisty>
-      )}
       {comparison && !standIn && <ComparisonView c={comparison} b={b} />}
     </div>
   )
@@ -712,10 +672,10 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
  * curator's original choice stays above it, as written; this is the one to
  * press play on, chosen from Spotify's own list of recordings of the work.
  */
-function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
+function StandInView({ c, b, children }: { c: Comparison; b: Bundle; children?: ReactNode }) {
   const { journey, bump, say } = useServices()
   const pv = c.perspectives[1]
-  if (!pv) return null
+  if (!pv) return <>{children}</>
   return (
     <div className={s.block}>
       <RecordingBlock
@@ -725,6 +685,7 @@ function StandInView({ c, b }: { c: Comparison; b: Bundle }) {
         character={pv.character}
         onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
       />
+      {children}
       {c.framing && <p className={`${s.quiet} ${s.flush}`}>{c.framing}</p>}
       {pv.listenFor && <p className={`${s.flush} ${s.mtXs}`}><span className={s.label}>Listen for</span><br />{pv.listenFor}</p>}
     </div>

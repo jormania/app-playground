@@ -26,6 +26,7 @@ import { NotFound, type Repo } from '../store/repo'
 import { earlierHearing, onDay, reactionAsSaid, shortNote, type EarlierHearing } from '../domain/earlierHearing'
 import { isoDateIn } from '../domain/week'
 import { Twisty } from '../components/Twisty'
+import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { Gloss } from '../components/Gloss'
 import s from '../styles/editorial.module.css'
 
@@ -69,7 +70,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const here = playable(item)
     const notes = here?.recording ? (await repo.marks.get(`companion:${here.recording.id}`))?.value as { movements: string[] } | undefined : undefined
     // Already heard (by either recording, the stand-in included): the screen opens on how it landed, never on "I've heard it" again.
-    const heardBefore = listeningState(events, idsOf(item)) === 'heard'
+    const state = listeningState(events, idsOf(item))
+    const heardBefore = state === 'heard'
     const next = nextWork(items, item, (i) => Boolean(playable(i)), idsOf, events)
     // The work come back: when it was last heard before this programme, where, and what was said then.
     const dateOf = (at: string) => isoDateIn(new Date(at), settings.timeZone)
@@ -78,7 +80,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     })
     const earlierCredit = earlier?.kind === 'recording' && !earlier.sameRecording ? await recordingCredit(repo, earlier.recordingId) : undefined
     return {
-      programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false, heardBefore,
+      programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false, state, heardBefore,
       next, nextPlayable: Boolean(next && playable(next)), feedback, notes: notes?.movements ?? [], explanation, answers, work, earlier, earlierCredit,
       // Spotify's close match waiting for the listener's word (on the programme page), when nothing confirmed plays.
       pendingMatch: !here && byId.get(item.recordingId)?.verification === 'unconfirmed',
@@ -127,7 +129,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     if (heardOpen && playedId) void repo.marks.put({ id: askedMark(playedId), at: new Date().toISOString() }).catch(() => {})
   }, [heardOpen, playedId, repo])
   useEffect(() => (playedId ? onHeardRecorded((ids) => { if (ids.includes(playedId) && !midWork.current) setHeardOpen(true) }) : undefined), [playedId])
-  const [marking, setMarking] = useState(false)
   // A ref as well as the state: two taps in one frame both see the state as it was before either.
   const markingNow = useRef(false)
 
@@ -303,19 +304,20 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }
 
   // Once per tap: a second tap while the first is being kept would record the work heard twice.
-  async function heard() {
-    if (markingNow.current) return
+  async function mark(to: StateChoice) {
+    // Tapping where you already are says nothing new (a second "heard" would count twice).
+    if (markingNow.current || to.value === data?.state) return
     markingNow.current = true
-    setMarking(true)
     try {
-      await journey.markListening(played, 'heard', programme.id)
+      await journey.markListening(played, to.kind, programme.id)
       bump()
-      setHeardOpen(true)
+      // Heard: how it landed is asked in place, and the next work offered.
+      if (to.value === 'heard') setHeardOpen(true)
+      else setHeardOpen(false)
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
       markingNow.current = false
-      setMarking(false)
     }
   }
 
@@ -473,43 +475,41 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           </form>
         ) : <NeedsKey />}
         {curatorReady && <CharCount value={question} />}
-        {/* The same note as on the programme, read once wherever it is first read. */}
-        {data.explanation ? (
-          <Twisty label="More context" value={data.explanation.heading} readOnce={`context:${programme.id}:${item.id}`}>
-            <Paragraphs text={data.explanation.body} className={s.prose} glossed />
-          </Twisty>
-        ) : curatorReady && (
-          <button className={s.textButton} onClick={() => void explain()} disabled={explaining}>{explaining ? 'The curator is writing…' : 'More context'}</button>
-        )}
       </section>
       </>)}
 
-      {/* Heard: say how it landed here, then go straight on — no trip back up the programme. */}
-      {heardOpen || data.heardBefore ? (
-        <div className={`${s.panel} ${s.mtXl}`}>
-          {/* Coming back to a work already heard: said so, and what was said is kept folded; open only if nothing was said yet. */}
-          {!heardOpen && <p className={`${s.label} ${s.flush}`}>Heard</p>}
-          <FeedbackPanel
-            // Reads startOpen once: a hearing that ends while it's folded opens it afresh.
-            key={heardOpen ? 'open' : 'folded'}
-            targets={[{ type: 'recording', id: played.recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
-            programmeId={programme.id}
-            feedback={data.feedback}
-            startOpen={heardOpen || !saidSomething}
-          />
-          <div className={`${s.actions} ${s.mtMd}`}>
-            {/* The next work, ready: one tap opens it and — with Spotify connected — starts it. Nothing plays by itself. */}
-            {next
-              ? <a className={s.primaryButton} href={href({ name: 'listen', programmeId, itemId: next.id })} onClick={() => { if (spotify.connected && data.nextPlayable) { try { sessionStorage.setItem(AUTOPLAY_KEY, next.id) } catch { /* private mode */ } } }}>
-                  {spotify.connected && data.nextPlayable ? 'Play next' : 'Next'}: {curly(next.proposed.work)} →
-                </a>
-              : <span className={s.quiet}>That was the last work this week.</span>}
-            <a className={s.textButton} href={href({ name: 'programme', id: programme.id })}>Back to the programme</a>
-          </div>
-        </div>
-      ) : (
-        <div className={`${s.actions} ${s.mtXl}`}>
-          <button className={s.primaryButton} onClick={() => void heard()} disabled={marking}>I’ve heard it</button>
+      {/* The work closes on the programme's own two rows, alike in shape and weight: where you stand
+          with it (how it landed, once heard) and the curator's note. */}
+      <div className={`${s.workClose} ${s.mtXl}`}>
+        <ListeningRow work={item.proposed.work} state={data.state} open={heardOpen} onPick={(to) => { void mark(to) }}>
+          {/* Heard: say how it landed here. Coming back to it, what was said stays folded; open only if nothing was said yet. */}
+          {(heardOpen || data.heardBefore) && (
+            <div className={s.workFeedback}>
+              <FeedbackPanel
+                // Reads startOpen once: a hearing that ends while it's folded opens it afresh.
+                key={heardOpen ? 'open' : 'folded'}
+                targets={[{ type: 'recording', id: played.recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
+                programmeId={programme.id}
+                feedback={data.feedback}
+                startOpen={heardOpen || !saidSomething}
+              />
+            </div>
+          )}
+        </ListeningRow>
+        {/* The same note as on the programme, read once wherever it is first read. */}
+        <MoreContextRow explanation={data.explanation} readKey={`context:${programme.id}:${item.id}`} writing={explaining} canAsk={curatorReady} onAsk={() => void explain()} />
+      </div>
+
+      {/* Heard: go straight on — no trip back up the programme. */}
+      {(heardOpen || data.heardBefore) && (
+        <div className={`${s.actions} ${s.mtLg}`}>
+          {/* The next work, ready: one tap opens it and — with Spotify connected — starts it. Nothing plays by itself. */}
+          {next
+            ? <a className={s.primaryButton} href={href({ name: 'listen', programmeId, itemId: next.id })} onClick={() => { if (spotify.connected && data.nextPlayable) { try { sessionStorage.setItem(AUTOPLAY_KEY, next.id) } catch { /* private mode */ } } }}>
+                {spotify.connected && data.nextPlayable ? 'Play next' : 'Next'}: {curly(next.proposed.work)} →
+              </a>
+            : <span className={s.quiet}>That was the last work this week.</span>}
+          <a className={s.textButton} href={href({ name: 'programme', id: programme.id })}>Back to the programme</a>
         </div>
       )}
       {/* The Play row out of sight while this work is on: the player pinned to the foot. */}

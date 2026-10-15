@@ -346,8 +346,8 @@ readings, never the guess the screen shows when Play is pressed (an assumed
 start is credited only by what a later reading proves); kept in memory, so a
 reload mid-work forgets. What can't be seen: a work started and finished
 entirely while the app was closed or in the background is left to the
-listener's "I've heard it". On the listening view it opens the same
-panel as "I've heard it". Works in movements are left to Spotify's history,
+listener's "Heard". On the listening view it opens the same
+panel as tapping "Heard" there. Works in movements are left to Spotify's history,
 so a hearing is never counted twice — but the history is read the moment one
 stops, not only on the next open: when a reading shows a confirmed work in
 movements no longer sounding (paused, stopped, rewound at the list's end, or
@@ -550,7 +550,7 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
 ## 13. Release two
 
 **Smoother.**
-- *Keep listening* (`screens/ListenMode.tsx`). "I've heard it" asks how it
+- *Keep listening* (`screens/ListenMode.tsx`). "Heard" (under *Your listening*, §24) asks how it
   landed in place and offers *Next: …* — the next confirmed, unskipped work (a
   stand-in counts), opened when the listener chooses. Nothing plays on by
   itself: a *carry on* setting that chimed and started the next work was built
@@ -1142,3 +1142,26 @@ sentence on the two models), one card for the app's look and week, "Backup",
 explained depth and language, no "Check recent listening" (sync runs on load
 and on return).
 
+## 24. One close for a work, on both screens (15 October 2026)
+
+- **The rows a work closes on are shared** (`components/WorkRows.tsx`). The
+  programme and the listening view both end a work on *Your listening · <state>*
+  and *More context · <heading>*: the same twisty, the same weight. The
+  listening view's old "I've heard it" button and its "More context" link are
+  gone; "Heard" is one of the four states, as on the programme, and still opens
+  how it landed and *Play next*. Tapping the state it is already in records
+  nothing.
+- **More context, not yet written, is a row too.** Opening it is the asking
+  ("written when you open it"); a failed ask leaves it open with *Ask again*.
+  The programme's *Go further* line keeps only *Another perspective*.
+- **Listen along sits under the Play that plays.** Where Spotify lacks the
+  curator's recording and a stand-in plays instead, the row moves straight under
+  the stand-in's Play, ahead of its framing and *Listen for* — it had sat below
+  them, so on those works it read as missing.
+- **Back lands where you were** (`app/router.ts`, `stepTrail`). Every route
+  change used to scroll to the top. The app now keeps a short trail of the
+  pages just left, each with its scroll position (sessionStorage, for the tab's
+  life). Going back to one of them, by its link ("← the programme") or by the
+  phone's Back, restores the place once the screen has drawn enough to reach
+  it, and gives up the moment the listener scrolls or taps. A page opened
+  afresh starts at the top; going back drops the pages visited after it.

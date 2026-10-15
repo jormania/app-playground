@@ -16,7 +16,7 @@ const READ_PREFIX = 'long-listen:read:'
  * recording · Boulez makes every layer…"): shown while folded, gone once open,
  * so the same words are never read twice in a row.
  */
-export function Twisty({ label, value, open, readOnce, preview, className, children }: {
+export function Twisty({ label, value, open, readOnce, preview, className, onOpen, children }: {
   label: ReactNode
   /** What's inside, in a few words: shown beside the label while folded and open. */
   value?: ReactNode
@@ -26,6 +26,8 @@ export function Twisty({ label, value, open, readOnce, preview, className, child
   /** The value is the first words of the body: hidden while open. */
   preview?: boolean
   className?: string
+  /** Called each time the listener opens it. */
+  onOpen?: () => void
   children: ReactNode
 }) {
   // Read once: open now if never shown before, and remember it was.
@@ -34,7 +36,7 @@ export function Twisty({ label, value, open, readOnce, preview, className, child
     if (readOnce && firstTime) writeJson(READ_PREFIX + readOnce, true)
   }, [readOnce, firstTime])
   return (
-    <details className={[s.twisty, preview ? s.twistyPreview : '', className ?? ''].filter(Boolean).join(' ')} open={open || firstTime || undefined}>
+    <details className={[s.twisty, preview ? s.twistyPreview : '', className ?? ''].filter(Boolean).join(' ')} open={open || firstTime || undefined} onToggle={onOpen ? (e) => { if (e.currentTarget.open) onOpen() } : undefined}>
       <summary>
         <span className={s.twistyLabel}>{label}</span>
         {value != null && value !== '' && <span className={s.twistyValue}>{value}</span>}
