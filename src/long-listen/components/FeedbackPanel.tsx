@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useKept } from '../app/kept'
 import type { Feedback, FeedbackTargetType, Reaction, WantMore } from '../domain/types'
 import { REACTIONS, WANT_MORE, latestFeedback, reactionLabel } from '../domain/listening'
 import { useServices } from '../app/services'
@@ -27,7 +28,8 @@ export function FeedbackPanel({
   const [target, setTarget] = useState(0)
   const [reaction, setReaction] = useState<Reaction | undefined>()
   const [more, setMore] = useState<WantMore | undefined>()
-  const [note, setNote] = useState('')
+  // What stayed with you, half-written, is kept until it is kept properly (or emptied).
+  const [note, setNote, clearNote] = useKept(`note:${programmeId}:${targets[0].id}`, 'device')
   const [saving, setSaving] = useState(false)
 
   const said = targets.map((t) => ({ t, f: latestFeedback(feedback, t.id) })).filter(({ f }) => f.reaction || f.notes.length)
@@ -39,7 +41,7 @@ export function FeedbackPanel({
       await journey.giveFeedback({ target: { type: targets[target].type, id: targets[target].id }, programmeId, reaction, more, note })
       setReaction(undefined)
       setMore(undefined)
-      setNote('')
+      clearNote()
       setOpen(false)
       onClose?.(true)
       bump()

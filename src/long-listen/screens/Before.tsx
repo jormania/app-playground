@@ -16,6 +16,8 @@ import { NotFound } from '../store/repo'
 import { concertDate } from '../components/ConcertEntry'
 import { ComposerLink } from './Composer'
 import s from '../styles/editorial.module.css'
+import { useTitle } from '../app/title'
+import { BackLink } from '../components/BackLink'
 
 /**
  * Before a concert marked as going: the evening's works, read from the hall's
@@ -30,6 +32,7 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
     if (!going) throw new NotFound(`no concert marked ${goingKey}`)
     return { going, prep: await journey.preparation(goingKey) }
   }, [goingKey])
+  useTitle(data ? `Before ${data.going.event.title}` : undefined)
   const [writing, setWriting] = useState(false)
   const asked = useRef(false)
   const today = isoDateIn(new Date(), settings.timeZone)
@@ -57,7 +60,7 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
 
   return (
     <article>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'week' })}>← This week</a></p>
+      <BackLink back to={href({ name: 'week' })} label="This week" />
       <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {passed ? 'After the concert' : 'Before the concert'} · {venueShort(e.venue)}{e.hall ? `, ${e.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{e.title}</h1>
       {/* The date once: "today", "tonight" or "tomorrow" only add to it. */}

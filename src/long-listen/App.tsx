@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { BookOpen, Settings2 } from 'lucide-react'
 import { ServicesProvider, useServices } from './app/services'
-import { href, useRoute, type Route } from './app/router'
+import { href, toTopIfHere, useRoute, type Route } from './app/router'
 import { GUIDE_URL } from './app/links'
 import { useNewVersion } from './app/freshness'
 import { LandedPrompt } from './components/LandedPrompt'
@@ -22,6 +22,11 @@ import type { Repo } from './store/repo'
 import type { CuratorClient } from './curation/api'
 import { useOnline } from './app/online'
 import s from './styles/editorial.module.css'
+import { setTitle } from './app/title'
+
+const STATIC_TITLES: Partial<Record<Route['name'], string>> = {
+  week: 'This week', journal: 'Journal', library: 'Library', threads: 'Threads', notebook: 'Notebook', concerts: 'Concerts', settings: 'Settings',
+}
 
 const NAV: { route: Route; label: string }[] = [
   { route: { name: 'week' }, label: 'This week' },
@@ -37,6 +42,12 @@ function Shell() {
   const { week, settings } = useServices()
   const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name === 'concerts' || route.name === 'concert' || route.name === 'season' ? 'journal' : route.name === 'before' ? 'week' : route.name === 'composer' ? 'library' : route.name
   const navRef = useRef<HTMLElement>(null)
+  // The screens that are always the same thing are named here; one showing a work, a programme or a
+  // concert names itself (app/title.ts) once it knows what it shows.
+  useEffect(() => {
+    const fixed = route.name === 'season' ? `Season ${route.n}` : STATIC_TITLES[route.name]
+    if (fixed) setTitle(fixed)
+  }, [route])
   const newer = useNewVersion()
   // The nav slides rather than wraps; keep the current section's tab in view.
   useEffect(() => {
@@ -53,7 +64,7 @@ function Shell() {
       <header className={s.masthead}>
         <div className={s.brandRow}>
           <span className={s.brandStack}>
-            <a className={s.brand} href="#/">The Long Listen</a>
+            <a className={s.brand} href="#/" onClick={(e) => toTopIfHere(e, '#/')}>The Long Listen</a>
             <span className={s.weekLine}>Week {week.number} · {week.label}</span>
           </span>
           <span className={s.mastRight}>
@@ -65,7 +76,7 @@ function Shell() {
             its own link leads back to the programme. */}
         {route.name !== 'listen' && <nav ref={navRef} className={s.nav} aria-label="Sections">
           {NAV.map((n) => (
-            <a key={n.label} href={href(n.route)} className={`${s.navLink} ${active === n.route.name ? s.navActive : ''}`} aria-current={active === n.route.name ? 'page' : undefined}>
+            <a key={n.label} href={href(n.route)} onClick={(e) => toTopIfHere(e, href(n.route))} className={`${s.navLink} ${active === n.route.name ? s.navActive : ''}`} aria-current={active === n.route.name ? 'page' : undefined}>
               {n.label}
             </a>
           ))}

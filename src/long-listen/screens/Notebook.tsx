@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { TasteObservation } from '../domain/types'
 import { useLoad, useServices } from '../app/services'
 import { go, href } from '../app/router'
+import { useKept } from '../app/kept'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
 import { CharCount, Empty, MAX_ASK, MAX_NOTE, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
 import { Twisty } from '../components/Twisty'
@@ -22,8 +23,9 @@ const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
 export function NotebookScreen() {
   const { repo, journey, bump, say, week, curatorReady } = useServices()
   const { data, error, retry } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
-  const [notes, setNotes] = useState('')
-  const [wish, setWish] = useState('')
+  // Typed and not yet kept: a draft that outlives leaving the page, and wins over the saved text when it comes back.
+  const [notes, setNotes, , showNotes] = useKept('notebook-notes', 'device')
+  const [wish, setWish, , showWish] = useKept('notebook-wish', 'device')
   const [reading, setReading] = useState(false)
   const [following, setFollowing] = useState<string | null>(null)
   // Each field filled from what is kept once, on opening: the page reloads whenever anything is saved (the
@@ -32,8 +34,10 @@ export function NotebookScreen() {
   useEffect(() => {
     if (!data || filled.current) return
     filled.current = true
-    setNotes(data.taste.notesToCurator)
-    setWish(data.prefs.nextRequest)
+    if (!notes) showNotes(data.taste.notesToCurator)
+    if (!wish) showWish(data.prefs.nextRequest)
+    // Once, on opening: what is typed afterwards is the listener's, never overwritten by a reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
   if (error) return <Problem error={error} onRetry={retry} />
@@ -54,6 +58,7 @@ export function NotebookScreen() {
     try {
       const current = await repo.taste()
       await repo.saveTaste({ ...current, notesToCurator: notes.trim() })
+      showNotes(notes.trim())
       bump()
       say('Kept. The curator reads it with everything it writes from now on.', 'success')
     } catch (e) {
@@ -64,6 +69,7 @@ export function NotebookScreen() {
   async function saveWish() {
     try {
       await repo.savePreferences({ ...(await repo.preferences()), nextRequest: wish.trim() })
+      showWish(wish.trim())
       bump()
       say(wish.trim() ? 'The curator will read this when next week begins.' : 'Cleared.', 'success')
     } catch (e) {

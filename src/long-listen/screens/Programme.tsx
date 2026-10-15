@@ -15,7 +15,7 @@ import { programmeCreditRows } from '../components/Credits'
 import { liveEvents, liveMatches, venueShort, whatIsOnAt, type LiveConcert } from '../live/live'
 import type { Repo } from '../store/repo'
 import { useLoad, useServices } from '../app/services'
-import { go, href } from '../app/router'
+import { go, href, workAnchor } from '../app/router'
 import { aboutDuration, isConfirmed, keepPlaylistCurrent, saveProgrammePlaylist, spotifyCandidates, needsLook, verifyProgramme, type PlaylistMark } from '../spotify/verify'
 import { onPlayerReading, positionOf, usePlayerState } from '../app/playback'
 import { playbackOf } from '../spotify/client'
@@ -29,6 +29,7 @@ import { Twisty } from '../components/Twisty'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
+import { useTitle } from '../app/title'
 
 interface Bundle {
   programme: Programme
@@ -106,6 +107,7 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
 export function ProgrammeScreen({ id, asThisWeek = false }: { id: string; asThisWeek?: boolean }) {
   const { repo } = useServices()
   const { data, error, loading, retry } = useLoad(() => loadBundle(repo, id), [id])
+  useTitle(asThisWeek ? 'This week' : data?.programme.title)
   // Shown as This week itself, a link to "This week" would only lead back here: point to the Journal instead.
   const notFound = asThisWeek
     ? { text: 'This week’s programme can’t be found — perhaps it was cleared. The Journal keeps every week.', link: { href: href({ name: 'journal' }), label: 'Journal' } }
@@ -177,7 +179,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     section.items.map((item) => [item.id, `${roman(i + 1)} · ${sectionTitle(section)}`] as [string, string])))
 
   return (
-    <article>
+    // One page however it was reached ("#/" as This week, "#/p/<id>" from the Journal): the folds opened on it are kept under this name.
+    <article data-page={`programme:${p.id}`}>
       <p className={s.eyebrow}>
         {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
         {/* The masthead already dates this week; an earlier week's programme says which it was. */}
@@ -276,8 +279,6 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     </article>
   )
 }
-
-const workAnchor = (itemId: string) => `work-${itemId}`
 
 /** A work's recordings as listening knows them: the curator's, and the stand-in that plays where Spotify lacks it. */
 const itemRecordingIds = (b: Bundle, item: ProgrammeItem): string[] => heardAs(item, b.programme.id, b.standIns)

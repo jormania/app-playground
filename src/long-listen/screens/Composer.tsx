@@ -6,6 +6,8 @@ import { Empty, NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../com
 import { LibraryWorks, loadLibrary } from '../components/LibraryEntries'
 import type { PortraitResponse } from '../curation/api'
 import s from '../styles/editorial.module.css'
+import { useTitle } from '../app/title'
+import { BackLink } from '../components/BackLink'
 
 /**
  * A composer's page: who they were, in a short portrait written once (Haiku,
@@ -22,6 +24,7 @@ export function ComposerScreen({ composer }: { composer: string }) {
     const name = entry?.composer ?? composer
     return { name, works: entry?.works ?? [], portrait: await firstPortrait(journey, [name, ...(entry?.spellings ?? [])]) }
   }, [composer, settings.hideSkipped, settings.timeZone])
+  useTitle(data?.name ?? composer)
 
   // The portrait is written the first time the page is opened, then kept.
   const [writing, setWriting] = useState(false)
@@ -41,7 +44,7 @@ export function ComposerScreen({ composer }: { composer: string }) {
 
   return (
     <article>
-      <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'library' })}>← Library</a></p>
+      <BackLink back to={href({ name: 'library' })} label="Library" />
       <h1 className={s.title}>{name}</h1>
       {portrait?.lifespan && <p className={s.listenFacts}>{portrait.lifespan}</p>}
       {/* No drop cap: that is the programme's introduction's alone (§19). */}

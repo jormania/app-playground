@@ -26,9 +26,12 @@ import { NotFound, type Repo } from '../store/repo'
 import { earlierHearing, onDay, reactionAsSaid, shortNote, type EarlierHearing } from '../domain/earlierHearing'
 import { isoDateIn } from '../domain/week'
 import { Twisty } from '../components/Twisty'
+import { useKept } from '../app/kept'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { Gloss } from '../components/Gloss'
 import s from '../styles/editorial.module.css'
+import { useTitle } from '../app/title'
+import { BackLink } from '../components/BackLink'
 
 /**
  * One recording, while it plays: the work, who plays it, and what to listen
@@ -86,6 +89,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       pendingMatch: !here && byId.get(item.recordingId)?.verification === 'unconfirmed',
     }
   }, [programmeId, itemId, settings.timeZone])
+  useTitle(data ? curly(data.item.proposed.work) : undefined)
   useWakeLock(true)
 
   // Dusk while this screen is open: one of four dark shades, at random each visit (never last visit's).
@@ -113,7 +117,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     journey.companion(programmeId).then((n) => { if (n) bump() }).catch(() => {})
   }, [data, sp0, curatorReady, journey, programmeId, bump])
 
-  const [question, setQuestion] = useState('')
+  // A question half-typed is kept for this work until it is asked: a tap on a composer or a closed tab doesn't lose it.
+  const [question, setQuestion, clearQuestion] = useKept(`ask:${programmeId}:${itemId}`, 'device')
   const [asking, setAsking] = useState(false)
   const [explaining, setExplaining] = useState(false)
 
@@ -289,7 +294,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       // The movement as the list names it ("II. Jeux de vagues"), not Spotify's whole track title.
       const movement = nowIndex !== null && titled[nowIndex] ? `${titled[nowIndex].numeral}. ${titled[nowIndex].title}` : undefined
       await journey.explain(programme.id, item.id, q, { recording: creditLine(credit), movement })
-      setQuestion('')
+      clearQuestion()
       bump()
     } catch (e) {
       say(messageOf(e), 'danger')
@@ -334,11 +339,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
   return (
     <article className={focus ? `${s.listenMode} ${s.listenFocus}` : s.listenMode}>
-      <div className={s.listenTop}>
-        <p className={`${s.eyebrow} ${s.mb0}`}><BackToProgramme id={programme.id} title={programme.title} /></p>
-        {/* Focus: only the music, for the phone on the armrest. Remembered on this device. */}
-        <button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>
-      </div>
+      <BackLink
+        to={programmeBackHref(programme.id)}
+        label={programme.title}
+        // Focus: only the music, for the phone on the armrest. Remembered on this device.
+        aside={<button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>}
+      />
       <p className={s.composer}><ComposerLink name={item.proposed.composer} /></p>
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
@@ -509,8 +515,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                 {spotify.connected && data.nextPlayable ? 'Play next' : 'Next'}: {curly(next.proposed.work)} →
               </a>
             : <span className={s.quiet}>That was the last work this week.</span>}
-          {/* The same way back as at the top of the screen. */}
-          <p className={`${s.eyebrow} ${s.mb0}`}><BackToProgramme id={programme.id} title={programme.title} /></p>
+          {/* The same way back as at the top of the screen, its rule now above it. */}
+          <BackLink to={programmeBackHref(programme.id)} label={programme.title} at="foot" />
         </div>
       )}
       {/* The Play row out of sight while this work is on: the player pinned to the foot. */}
@@ -519,11 +525,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       )}
     </article>
   )
-}
-
-/** "← <the programme>": back to where it was read, at the top of the screen and again under the way on. */
-function BackToProgramme({ id, title }: { id: string; title: string }) {
-  return <a href={programmeBackHref(id)} className={`${s.quietLink} ${s.backLink}`}>← {title}</a>
 }
 
 /**
