@@ -16,6 +16,8 @@ import { go } from '../app/router'
 import { usageSummary } from '../app/usage'
 import { RELEASE } from '../app/release'
 import s from '../styles/editorial.module.css'
+import { Twisty } from '../components/Twisty'
+import { forgetPlaces } from '../app/kept'
 
 type Result = { ok: boolean; message: string } | null
 
@@ -77,13 +79,12 @@ function Switch({ label, hint, checked, onChange }: { label: string; hint?: stri
   )
 }
 
-/** The longer how-to, folded away until wanted. */
+/** The longer how-to, folded away until wanted — folded the way the app folds everything. */
 function Steps({ summary = 'How to set it up', children }: { summary?: string; children: React.ReactNode }) {
   return (
-    <details className={s.settingsSteps}>
-      <summary>{summary}</summary>
-      <div>{children}</div>
-    </details>
+    <Twisty label={summary}>
+      <div className={s.stepsBody}>{children}</div>
+    </Twisty>
   )
 }
 
@@ -529,6 +530,7 @@ function BackupSection({ busy, setBusy }: Busy) {
       const replaced = await holdsJourney(repo)
       if (replaced) await downloadBackup(repo, 'the-long-listen-before-restore', settings.timeZone)
       await repo.importAll(data)
+      forgetPlaces()
       bump()
       say(replaced ? 'The backup is restored. The journey it replaced is in your downloads.' : 'The backup is restored.', 'success')
       // Every page is to be checked again: now, rather than at the next reload.
@@ -591,6 +593,7 @@ function FreshStartSection({ busy, setBusy }: Busy) {
       }
       setWorking('Clearing…')
       await repo.freshStart()
+      forgetPlaces()
       bump()
       say('A fresh start. The archive was saved to your downloads.', 'success')
       go({ name: 'week' })

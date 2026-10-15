@@ -11,6 +11,7 @@ import { displaySurname } from '../domain/identity'
 import { primeMinutes } from '../domain/programmeStyle'
 import { Traits } from './Traits'
 import s from '../styles/editorial.module.css'
+import { ConfirmModal } from '../../ds'
 
 /** What to search Spotify for, by hand: the surname as written ("Strauss", not "II"), the work, and who leads it. */
 export function spotifyQuery(p: ProposedRecording): string {
@@ -127,23 +128,22 @@ export function RecordingBlock({
     <div className={s.recording}>
       <div className={s.label}>{label}</div>
       <Credits r={proposed} className={s.credit} empty="Performers not named" programme />
+      {/* Asked as every doubt in the app is asked (a path taken over this week's, a concert removed). */}
+      <ConfirmModal
+        isOpen={asking}
+        title="Set this recording aside?"
+        message="Spotify is asked for another of the same performers; if it finds one, that takes this one’s place, and what Spotify heard of this one is forgotten. You can undo it straight after."
+        confirmText="Set it aside"
+        cancelText="Keep this one"
+        onConfirm={() => void notThis()}
+        onCancel={() => setAsking(false)}
+      />
       {/* Right under who plays it: the doubt is about this recording, before anything plays it. */}
       {undo ? (
         <p className={s.note} role="status">
           Set aside the recording on <em>{undo.album}</em>.{' '}
           <button className={`${s.textButton} ${s.inlineButton}`} onClick={() => void takeBack()} disabled={busy}>Undo</button>
         </p>
-      ) : asking ? (
-        <div className={s.confirmBox} role="alertdialog" aria-label="Set this recording aside?">
-          <p className={s.flush}>
-            Set this recording aside? Spotify is asked for another of the same performers; if it finds one, that takes this one’s place,
-            and what Spotify heard of this one is forgotten. You can undo it straight after.
-          </p>
-          <div className={`${s.actions} ${s.mtSm}`}>
-            <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void notThis()} disabled={busy}>Yes, set it aside</button>
-            <button className={s.textButton} onClick={() => setAsking(false)} disabled={busy}>Keep this one</button>
-          </div>
-        </div>
       ) : sp && !sp.confirmedByListener ? (
         // Even a strong match can be the same performers in another decade.
         <p className={`${s.note} ${s.flush}`}>
@@ -164,8 +164,8 @@ export function RecordingBlock({
 
       {sp ? (
         <ListenBar
-          firstTrackId={sp.trackIds[0]}
-          movements={sp.trackIds.length}
+          trackIds={sp.trackIds}
+          durationsMs={sp.trackDurationsMs}
           durationMs={sp.durationMs}
           playback={playback}
           onStarted={() => onOpened?.('play-started')}

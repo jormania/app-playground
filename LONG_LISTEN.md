@@ -1171,4 +1171,36 @@ and on return).
   read at (`programmeBackHref`): "#/" when it was opened from This week,
   "#/p/<id>" otherwise. Before this, the link always pointed to "#/p/<id>", so
   coming from This week it landed at the top of the page.
+- **Remembering where you were, the rest of it** (`app/router.ts`, `app/kept.ts`, `components/Twisty.tsx`):
+  - Back from the listening view lands on the card of the work last listened
+    to, after *Play next*, a reload, or a link from elsewhere too
+    (`landingAnchor`, `landingY`).
+  - Folds opened by a tap are kept per page for the tab's life, keyed by the
+    page (`data-page`, so "#/" and "#/p/<id>" are one), the card, the label and
+    the place. A fold the page opens itself is never recorded, and a fold
+    reopened from memory never acts as tapped. That matters for *More context*,
+    which is written when opened: the not-yet-written row is not remembered.
+  - The Library search is kept for the tab. Unsent text (Ask, *What stayed with
+    you*, the Notebook's notes and wish) is kept on the device until sent or
+    emptied. Each feedback panel keeps its own draft (`place`). Fresh start
+    and Restore forget all of it (`forgetPlaces`).
+  - Tapping the tab already shown scrolls to the top. Every screen names
+    itself in the browser title (`app/title.ts`).
+  - The trail stores one spelling per page: the bare address an installed app
+    opens at is "#/", so a link back to it is a hash change, never a reload. A
+    newer route change cancels a restore still under way.
+- **One way back, everywhere** (`components/BackLink.tsx`). Every "← …" link
+  is the same component, with the part-break's fleuron drawn out into a rule
+  between it and the page: under it at the top, over it at the foot. Screens
+  reached from many places (a composer, a concert, a season, a preparation) go
+  back to the page you came from, by its name.
+- **Consistency pass.** The listening-state word has one source
+  (`STATE_WORDS`), and lists show it with `StateTag`, where skipped steps back
+  as on the programme. *Open in Spotify* is one component (`OpenInSpotify`).
+  The Library's copy had armed single-track timing on every work. Upcoming
+  concerts say their date one way (`whenWords`). The last raw folds (paths
+  left open, *Also live*, Settings' how-tos) are twisties. Setting a recording
+  aside asks through `ConfirmModal`, like every other doubt. In-page busy lines
+  use `Waiting inline`. The composer page's heading is a section head. The
+  "who played" line is `performerLine`.
 

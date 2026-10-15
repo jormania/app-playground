@@ -30,6 +30,7 @@ import { ListeningRow, MoreContextRow, type StateChoice } from '../components/Wo
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
+import { whenWords } from '../domain/going'
 
 interface Bundle {
   programme: Programme
@@ -606,7 +607,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         standInBelow={Boolean(standIn)}
         durationAbove={Boolean(duration) && Boolean(isConfirmed(recording))}
       />
-      {comparing && missing && !comparison && <p className={s.note}>Finding a recording of this work that Spotify has…</p>}
+      {comparing && missing && !comparison && <Waiting inline>Finding a recording of this work that Spotify has…</Waiting>}
       {standInShown && standIn && <StandInView c={standIn} b={b}>{listenAlong}</StandInView>}
       {!standInShown && listenAlong}
       {/* Read once: open the first time, then one line that still says who and why. */}
@@ -776,6 +777,7 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
   }, [repo, b.programme, settings.timeZone])
   // Marked as going: a preparation in the week before it, the entry pre-filled after (components/Going).
   const goings = useGoings()
+  const today = isoDateIn(new Date(), settings.timeZone)
   // A skipped work steps out of its concert's line, and a concert left with nothing of the programme steps out too.
   // One marked as going comes first, so its way to the preparation isn't folded away.
   const kept = concerts
@@ -786,7 +788,8 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
   if (!kept.length) return cards
   const line = (c: LiveConcert) => (
     <>
-      {whatIsOnAt(c)} at {venueShort(c.event.venue)}, {liveDate(c.event.date)}
+      {/* Said as every upcoming concert is said (the Concerts page, the cards): "at the Ateneu on Thursday". */}
+      {whatIsOnAt(c)} at {venueShort(c.event.venue)} {whenWords(c.event.date, today, c.event.time)}
       {c.event.link && webUrl(c.event.link) && <> · <a href={webUrl(c.event.link)} target="_blank" rel="noopener noreferrer">{c.event.title}</a></>}
       {' '}<GoingToggle event={c.event} goings={goings} />
     </>
@@ -797,18 +800,15 @@ function LiveLine({ b, skip }: { b: Bundle; skip?: Set<string> }) {
       <div className={s.liveLine}>
         <p className={s.liveLead}><span className={s.label}>Live in Bucharest</span> {line(first)}</p>
         {rest.length > 0 && (
-          <details>
-            <summary className={s.textButton}>and {rest.length} more</summary>
+          <Twisty label="Also live" value={`${rest.length} more ${rest.length === 1 ? 'concert' : 'concerts'}`}>
             <ul className={s.bullets}>{rest.map((c) => <li key={c.key}>{line(c)}</li>)}</ul>
-          </details>
+          </Twisty>
         )}
       </div>
       {cards}
     </>
   )
 }
-
-const liveDate = (d: string) => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`))
 
 function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
   const { journey, bump, say } = useServices()

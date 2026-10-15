@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRoute, href, stepTrail, cameFrom, type Route } from './router'
+import { parseRoute, href, stepTrail, cameFrom, backTo, landingY, type Route } from './router'
 
 describe('routes', () => {
   it('round-trips every route', () => {
@@ -59,5 +59,27 @@ describe('the way back to a programme', () => {
     fromJournal = stepTrail(fromJournal, '#/p/w1', 800, '#/listen/w1/i3').trail
     expect(cameFrom(fromJournal, ['#/', '#/p/w1'])).toBe('#/p/w1')
     expect(cameFrom([], ['#/', '#/p/w1'])).toBeUndefined()
+  })
+})
+
+describe('the audit of the trail (15 October 2026)', () => {
+  it('the bare address an installed app opens at is "#/": a link back to it is a hash change, never a reload', () => {
+    const t = stepTrail([], '', 2661, '#/listen/w1/i3', 'This week').trail
+    expect(t[0].hash).toBe('#/')
+    expect(cameFrom(t, ['#/', '#/p/w1'])).toBe('#/')
+    expect(backTo(t, { to: '#/library', label: 'Library' })).toEqual({ to: '#/', label: 'This week' })
+  })
+
+  it('a page left before it was named is still the way back, said plainly — not the screen’s usual parent', () => {
+    const t = stepTrail([], '#/listen/w1/i3', 0, '#/composer/Sibelius').trail
+    expect(backTo(t, { to: '#/library', label: 'Library' })).toEqual({ to: '#/listen/w1/i3', label: 'Back' })
+    expect(backTo([], { to: '#/library', label: 'Library' })).toEqual({ to: '#/library', label: 'Library' })
+  })
+
+  it('back to a work’s card: kept where the place shows the card, the card’s top where it doesn’t, and waiting while it isn’t drawn', () => {
+    expect(landingY(2900, { top: 2800, bottom: 3600 }, 800)).toBe(2900)
+    expect(landingY(1000, { top: 4488, bottom: 5200 }, 800)).toBe(4488)
+    expect(landingY(0, { top: 4488, bottom: 5200 }, 800)).toBe(4488)
+    expect(landingY(1000, null, 800)).toBeNull()
   })
 })

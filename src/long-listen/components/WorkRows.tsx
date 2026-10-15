@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ListeningKind, ListeningState } from '../domain/types'
+import { STATE_WORDS } from '../domain/listening'
 import { Twisty } from './Twisty'
 import { Paragraphs, Waiting } from './common'
 import s from '../styles/editorial.module.css'
@@ -10,19 +11,19 @@ import s from '../styles/editorial.module.css'
  * shape, one weight, each folded to a word until it is wanted.
  */
 
+// The words are the domain's (STATE_WORDS), so every screen that says where you stand says it alike.
+// "Started": the state means begun and not yet called heard, and "Listening" read as "playing now" (a
+// single-track work stays here until the listener says otherwise — Spotify can't tell 30 s from the whole).
 export const STATES: { value: ListeningState; label: string; kind: ListeningKind }[] = [
-  { value: 'not-started', label: 'Not started', kind: 'reset' },
-  // Shown as "Started": the state means begun and not yet called heard, and
-  // "Listening" read as "playing now" (a single-track work stays here until
-  // the listener says otherwise — Spotify can't tell 30 s from the whole).
-  { value: 'listening', label: 'Started', kind: 'listening' },
-  { value: 'heard', label: 'Heard', kind: 'heard' },
-  { value: 'skipped', label: 'Skipped', kind: 'skipped' },
+  { value: 'not-started', label: STATE_WORDS['not-started'], kind: 'reset' },
+  { value: 'listening', label: STATE_WORDS.listening, kind: 'listening' },
+  { value: 'heard', label: STATE_WORDS.heard, kind: 'heard' },
+  { value: 'skipped', label: STATE_WORDS.skipped, kind: 'skipped' },
 ]
 
 export type StateChoice = (typeof STATES)[number]
 
-const stateLabel = (state: ListeningState) => STATES.find((st) => st.value === state)?.label ?? ''
+const stateLabel = (state: ListeningState) => STATE_WORDS[state]
 
 /**
  * Where you stand with a work is coloured by what it says, not by being
@@ -38,6 +39,18 @@ const SEGMENT_ON: Record<ListeningState, string> = {
   skipped: `${s.segmentOn} ${s.segmentSkipped}`,
 }
 const STATE_WORD_CLASS: Partial<Record<ListeningState, string>> = { heard: s.stateHeard, skipped: s.stateSkipped }
+
+const TAG_FOR: Partial<Record<ListeningState, string>> = { heard: s.tagOn, skipped: s.tagSkipped }
+
+/**
+ * Where you stand with a recording, as a tag in a list (the Library, the
+ * Journal): by the same rule as the folded word — heard in the accent, skipped
+ * stepping back — and nothing at all while it is not yet begun.
+ */
+export function StateTag({ state }: { state: ListeningState }) {
+  if (state === 'not-started') return null
+  return <span className={`${s.tag} ${TAG_FOR[state] ?? ''}`}>{STATE_WORDS[state]}</span>
+}
 
 /** "Your listening": the state folded to a word; open, the four choices and whatever follows them. */
 export function ListeningRow({ work, state, open, onPick, children }: {
@@ -86,10 +99,10 @@ export function MoreContextRow({ explanation, readKey, writing, canAsk, onAsk }:
   }
   if (!canAsk) return null
   return (
-    <Twisty label="More context" value={writing ? 'being written…' : 'written when you open it'} open={writing} onOpen={() => { if (!writing) onAsk() }}>
+    <Twisty label="More context" value={writing ? 'being written…' : 'written when you open it'} open={writing} remember={false} onOpen={() => { if (!writing) onAsk() }}>
       {/* Open and not writing: the asking failed (offline, the curator busy) — one tap asks again. */}
       {writing
-        ? <Waiting>The curator is writing…</Waiting>
+        ? <Waiting inline>The curator is writing…</Waiting>
         : <button className={`${s.textButton} ${s.quietButton}`} onClick={onAsk}>Ask again</button>}
     </Twisty>
   )

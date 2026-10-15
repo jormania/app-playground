@@ -50,14 +50,14 @@ export function ComposerScreen({ composer }: { composer: string }) {
       {/* No drop cap: that is the programme's introduction's alone (§19). */}
       {portrait
         ? <Paragraphs text={portrait.portrait} className={s.prose} glossed />
-        : writing ? <p className={s.quiet}>The curator is writing a short portrait…</p>
+        : writing ? <Waiting inline>The curator is writing a short portrait…</Waiting>
           : failed ? <button className={s.textButton} onClick={() => { setFailed(false); asked.current = false; bump() }}>Write the portrait</button>
           : !curatorReady && data.works.length > 0 ? <NeedsKey to="have the curator write a portrait" /> : null}
 
       {data.works.length === 0 && <Empty>Nothing of theirs met yet.</Empty>}
       {data.works.length > 0 && (
         <section className={s.block} aria-label="What you have met">
-          <h2 className={s.h2}>What you’ve met</h2>
+          <h2 className={s.sectionHead}>What you’ve met</h2>
           <LibraryWorks works={data.works} />
         </section>
       )}

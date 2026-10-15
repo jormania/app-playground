@@ -13,6 +13,8 @@ import { href } from '../app/router'
 import { Empty, Problem, Waiting } from '../components/common'
 import { ConcertEntry } from '../components/ConcertEntry'
 import s from '../styles/editorial.module.css'
+import { StateTag } from '../components/WorkRows'
+import { performerLine } from '../components/Credits'
 
 // 'offered' says nothing the heading doesn't: a direction still on offer gets no tag.
 const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
@@ -23,11 +25,6 @@ const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
   'set-aside': 'begun, then set aside',
   reworked: 'reworked for new settings',
 }
-
-const STATE_WORD: Record<ListeningState, string> = { 'not-started': '', heard: 'Heard', listening: 'Started', skipped: 'Skipped' }
-
-/** Who played, as one line: "Martha Argerich, Claudio Abbado, Berliner Philharmoniker". */
-const performers = (r: ProposedRecording) => [...r.soloists.map((x) => x.name), r.conductor, r.orchestra ?? r.ensemble].filter(Boolean).join(', ')
 
 /** A work as the Journal lists it: where it stands, who played, what was said. */
 interface Listened {
@@ -183,12 +180,13 @@ export function JournalScreen() {
                 {/* One line a work, like a concert's: who wrote it, what, who played; then where it stands and what was said. */}
                 <ul className={`${s.concertWorkList} ${s.listenedList}`}>
                   {listened.map(({ key, item, state, played, said }) => {
-                    const who = performers(played)
+                    // Commas inside the line: it already sits after a " · ".
+                    const who = performerLine(played, ', ')
                     return (
                       <li key={key}>
                         <a href={href({ name: 'composer', composer: item.proposed.composer })} className={s.composerLink}>{displaySurname(item.proposed.composer)}</a>, <em>{curly(item.proposed.work)}</em>
                         {who && <span className={s.faint}> · {who}</span>}{' '}
-                        <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>
+                        <StateTag state={state} />
                         {said.reaction && <>{' '}<span className={s.tag}>{reactionLabel(said.reaction)}</span></>}
                         {said.notes.map((n, i) => <p key={i} className={s.said}><q>{n}</q></p>)}
                       </li>

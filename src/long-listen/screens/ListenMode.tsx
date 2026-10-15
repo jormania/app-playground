@@ -10,7 +10,7 @@ import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, usePlayback, usePlayerState } from '../app/playback'
 import { MiniPlayer, MovementProgress, MovementSteps, ThenLine, movementLength, useLiveProgress } from '../components/ListenParts'
 import { clock, listenForAt, movementTitles, primeMinutes, roman, romanValue, curly } from '../domain/programmeStyle'
-import { creditRows } from '../components/Credits'
+import { performerLine } from '../components/Credits'
 import { workEnded } from '../spotify/workGuard'
 import { readJson, writeJson } from '../../shared/storage'
 import { onHeardRecorded } from '../app/HeardWitness'
@@ -274,7 +274,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const work = data.work
   // One line of facts under the title, and the performers on one line: what it is, at a glance.
   const facts = [work?.form ? work.form.charAt(0).toUpperCase() + work.form.slice(1) : '', work?.composed ?? '', movementCount > 1 ? `${movementCount} movements` : '', primeMinutes(sp?.durationMs) ?? ''].filter(Boolean).join(' · ')
-  const performers = creditRows(credit).map(([, name]) => name).join(' · ')
+  const performers = performerLine(credit)
   // What to listen for, tied to the movement sounding where the curator said which (programmes from 14 October 2026).
   const forAt = listenForAt(item.listenForAt, item.listenFor.length, movementCount, item.listenFor)
   // Each movement's first track: where its points go in the list.
@@ -358,7 +358,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       <div ref={barRef}>
         {sp
           ? <ListenBar
-              firstTrackId={sp.trackIds[0]} movements={sp.trackIds.length} durationMs={sp.durationMs} playback={playback} onStarted={started} className={s.mtMd}
+              trackIds={sp.trackIds} durationsMs={sp.trackDurationsMs} durationMs={sp.durationMs} playback={playback} onStarted={started} className={s.mtMd}
               steps={playback.at && sp.trackIds.length > 1 ? (control) => <MovementSteps playback={playback} index={playback.at!.index} count={sp.trackIds.length} onPlayed={started}>{control}</MovementSteps> : undefined}
             />
           : (

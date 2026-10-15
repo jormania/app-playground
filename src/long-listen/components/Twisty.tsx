@@ -40,7 +40,7 @@ function rememberFold(k: string, open: boolean): void {
  * recording · Boulez makes every layer…"): shown while folded, gone once open,
  * so the same words are never read twice in a row.
  */
-export function Twisty({ label, value, open, readOnce, preview, className, onOpen, children }: {
+export function Twisty({ label, value, open, readOnce, preview, className, onOpen, remember = true, children }: {
   label: ReactNode
   /** What's inside, in a few words: shown beside the label while folded and open. */
   value?: ReactNode
@@ -50,8 +50,10 @@ export function Twisty({ label, value, open, readOnce, preview, className, onOpe
   /** The value is the first words of the body: hidden while open. */
   preview?: boolean
   className?: string
-  /** Called each time the listener opens it. */
+  /** Called each time the listener opens it — by a tap, never as the page reopens it from memory. */
   onOpen?: () => void
+  /** False for a fold that stands in for another (a note not yet written): its opening is not kept. */
+  remember?: boolean
   children: ReactNode
 }) {
   // Read once: open now if never shown before, and remember it was.
@@ -64,7 +66,8 @@ export function Twisty({ label, value, open, readOnce, preview, className, onOpe
   // Opened before, on this page: open again as it is drawn, before the place on the page is restored.
   useLayoutEffect(() => {
     const el = ref.current
-    if (el && !el.open && openFolds().includes(foldKey(el))) el.open = true
+    if (remember && el && !el.open && openFolds().includes(foldKey(el))) el.open = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return (
     <details
@@ -76,9 +79,10 @@ export function Twisty({ label, value, open, readOnce, preview, className, onOpe
         const el = e.currentTarget
         // Only what the listener did — a tap or a key on the label. A fold the page opens itself
         // (read once, the first time; held open while something waits) is not their choice.
-        if (tapped.current) rememberFold(foldKey(el), el.open)
+        const byTap = tapped.current
         tapped.current = false
-        if (el.open) onOpen?.()
+        if (byTap && remember) rememberFold(foldKey(el), el.open)
+        if (byTap && el.open) onOpen?.()
       }}
     >
       <summary onClick={() => { tapped.current = true }}>

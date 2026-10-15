@@ -17,6 +17,8 @@ import type { Concert } from '../domain/types'
 
 beforeEach(() => {
   localStorage.clear()
+  // The trail, the open folds and kept searches live for the tab: one test's must not reach the next.
+  sessionStorage.clear()
   localStorage.setItem('long-listen:settings', JSON.stringify({ anthropicKey: 'sk-ant-api03-test' }))
   window.location.hash = '#/journal'
 })

@@ -37,3 +37,24 @@ function forget(full: string, where: 'tab' | 'device'): void {
   if (where === 'tab') removeSessionJson(full)
   else removeJson(full)
 }
+
+/**
+ * A journey replaced (a fresh start, a backup restored): what was typed and
+ * not sent, and the places kept on pages of the old journey, belong to it —
+ * a draft left would otherwise stand in front of the restored text, and be
+ * saved into the new journey with the next tap.
+ */
+export function forgetPlaces(): void {
+  for (const store of [safe(() => localStorage), safe(() => sessionStorage)]) {
+    if (!store) continue
+    try {
+      const keys: string[] = []
+      for (let i = 0; i < store.length; i++) { const k = store.key(i); if (k && (k.startsWith(PREFIX) || k === 'long-listen:trail' || k === 'long-listen:open-folds')) keys.push(k) }
+      for (const k of keys) store.removeItem(k)
+    } catch { /* storage unavailable: nothing kept */ }
+  }
+}
+
+function safe(get: () => Storage): Storage | undefined {
+  try { return get() } catch { return undefined }
+}

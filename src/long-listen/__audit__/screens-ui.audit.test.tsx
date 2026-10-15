@@ -12,6 +12,8 @@ import { deferred } from './journey-audit-helpers'
 // The screens as the Playwright audit met them, on the demo curator's canned answers and a memory store.
 beforeEach(() => {
   localStorage.clear()
+  // The trail, the open folds and kept searches live for the tab: one test's must not reach the next.
+  sessionStorage.clear()
   // A key, so the curator's buttons (a sitting, three others) are offered; the curator itself is the demo's.
   localStorage.setItem('long-listen:settings', JSON.stringify({ anthropicKey: 'sk-ant-api03-test' }))
   window.location.hash = '#/'
@@ -198,6 +200,8 @@ describe('the rows a work closes on', () => {
     const context = [...document.querySelectorAll('summary')].find((x) => x.textContent?.startsWith('More context'))
     expect(context).toBeTruthy()
     const details = context!.parentElement as HTMLDetailsElement
+    // A tap on its label, then the toggle the browser fires: only a tap asks the curator.
+    fireEvent.click(context!)
     details.open = true
     details.dispatchEvent(new Event('toggle'))
     await waitFor(async () => expect(await repo.explanations.get(`${p.id}:${item.id}`)).toBeTruthy(), { timeout: 4000 })

@@ -52,6 +52,7 @@ export function LandedPrompt() {
         Spotify says you heard <a href={href({ name: 'programme', id: programme.id })} className={s.quietLink}>{item.proposed.composer}’s {curly(item.proposed.work)}</a>.
       </p>
       <FeedbackPanel
+        place="landed"
         targets={[{ type: 'recording', id: recordingId, label: 'This recording' }, { type: 'work', id: item.workId, label: 'The work itself' }]}
         programmeId={programme.id}
         feedback={data.feedback}
