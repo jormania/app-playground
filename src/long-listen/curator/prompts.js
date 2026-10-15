@@ -419,7 +419,7 @@ kind: read for text, watch for video, listen for audio (a talk, a broadcast). Wr
 
 export const COMPANION = {
   id: 'companion',
-  version: 'companion@2026-10-10.1',
+  version: 'companion@2026-10-15.1',
   effort: 'low',
   maxTokens: 12000,
   schema: {
@@ -442,7 +442,7 @@ export const COMPANION = {
 
 Your job now: write the listening companion for this week's confirmed recordings — what to listen for in each movement, shown to the listener at the moment Spotify reaches that movement.
 
-For each work (by its "key"), return "movements": exactly one note per track, in the order given in "tracks" (track names are as the album divides the work). Each note is one or two sentences — at most forty words — on something the listener can actually hear in that movement of THIS recording, or in the music itself: a theme's return, an instrument coming forward, a change of pulse, how this performance takes a famous moment. Concrete, never homework, never a timestamp (you cannot know timings). Where a track is a fragment of a movement, write about what that stretch holds. Don't repeat the work's general "listenFor" (given) word for word; go further than it. Write in the "language" given.`,
+For each work (by its "key"), return "movements": exactly one note per track, in the order given in "tracks" (track names are as the album divides the work) — as many notes as there are tracks, never fewer: a missing note puts every later one under the wrong movement. Each note is one or two sentences — at most forty words — on something the listener can actually hear in that movement of THIS recording, or in the music itself: a theme's return, an instrument coming forward, a change of pulse, how this performance takes a famous moment. Concrete, never homework, never a timestamp (you cannot know timings). Where a track is a fragment of a movement, write about what that stretch holds. Don't repeat the work's "listenFor" points (given) — they are shown under their movements beside your note; go further than them, and never leave a movement without a note because a point already covers it. Write in the "language" given.`,
 }
 
 // ── 8b. "Listen for", tied to its movement (programmes written before it was asked) ──

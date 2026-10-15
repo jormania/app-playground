@@ -54,7 +54,9 @@ const LEADS = {
   explain: (p) => `The listener asked for more context on ${p.item?.composer} — ${p.item?.workTitle}${p.question ? `, with this question: "${p.question}"` : ''}.`,
   compare: (p) => `The listener wants a second perspective on ${p.work?.composer} — ${p.work?.title}.`,
   resources: (p) => `Find resources for this week's programme, "${p.programme?.title}".`,
-  concert: (p) => `Read this concert programme. If it shows no year, it is ${p.year}.`,
+  concert: (p) => (p.today
+    ? `Read this concert programme. Today is ${p.today}. If it shows no year, give the date the year that puts it nearest to today.`
+    : `Read this concert programme. If it shows no year, it is ${p.year}.`),
   season: (p) => `Write the season in review for ${p.season?.label ?? 'these weeks'}${p.soFar ? ' — the season is still under way' : ''}.`,
   companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
   tags: (p) => `Say in which movement each "listen for" point happens, for ${p.works?.length ?? 0} work(s) in "${p.programme?.title}".`,

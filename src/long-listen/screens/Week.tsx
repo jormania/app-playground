@@ -60,6 +60,15 @@ export function WeekScreen() {
 
   // Reload on data changes and when the curator setup changes (the key, demo).
   useEffect(() => { void load() }, [load, version, settings.anthropicKey])
+  // A page left open (an installed app resumed) across Monday midnight: the new week, not last week's three.
+  const shownWeek = view?.record.weekKey
+  useEffect(() => {
+    const check = () => { if (document.visibilityState === 'visible' && shownWeek && journey.currentWeek().key !== shownWeek) void load() }
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    const t = window.setInterval(check, 60_000)
+    return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check); window.clearInterval(t) }
+  }, [shownWeek, journey, load])
 
   async function choose(o: ProgrammeOption) {
     setChoosing(o.id)

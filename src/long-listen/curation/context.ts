@@ -61,6 +61,8 @@ export async function buildContext(
   repo: Repo, week: ListeningWeek, requestedNext?: string,
   /** The listener's time zone (Journey passes its own): "how many weeks ago" counts their weeks. */
   timeZone: string = DEFAULT_TIME_ZONE,
+  /** Today, in the listener's zone: a concert after it hasn't been heard. Without it, the week's last day. */
+  today?: string,
 ): Promise<CuratorContext> {
   // Whole listening weeks from an instant to the week being curated (0 = this
   // week, never negative), counted in the listener's weeks like everything else
@@ -206,7 +208,8 @@ export async function buildContext(
       // The concert's own calendar date, already the listener's: its week, not an invented UTC evening.
       weeksAgo: Math.max(0, weeksBetween(weekOfDate(civilOf(c.date)).key, week.key)),
     }))
-    .filter((c) => c.weeksAgo <= 12)
+    // Heard live: never a concert still to come (a date typed ahead, or a year read wrongly).
+    .filter((c) => c.weeksAgo <= 12 && c.date <= (today ?? week.endsOn))
     .sort((a, b) => b.date.localeCompare(a.date))
   for (const i of [...programmes.values()].flatMap((p) => p.sections.flatMap((x) => x.items))) {
     if (known.has(i.workId) && !alreadyKnown.some(sameAs({ composer: i.proposed.composer, title: i.proposed.work, catalogue: i.proposed.catalogue }))) {

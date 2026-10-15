@@ -50,7 +50,7 @@ export function RecordingBlock({
   const near = recording?.verification === 'unconfirmed' ? recording.spotify : undefined
   const shown = sp ?? near
   const year = shown?.releaseDate?.slice(0, 4)
-  const playback = usePlayback(sp?.trackUris, sp?.trackIds)
+  const playback = usePlayback(sp?.trackUris, sp?.trackIds, sp?.trackDurationsMs)
 
   async function check() {
     if (!recording) return

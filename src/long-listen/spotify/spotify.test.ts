@@ -227,6 +227,20 @@ describe('recently played', () => {
     expect(playsToEvents([play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:12:00Z')], [verified], [...first, ...later] as ListeningEvent[], 'now')).toEqual([])
   })
 
+  it('remembers the tracks an earlier sync saw, so a long work whose first movements scrolled out still counts', () => {
+    const long: Recording = { ...verified, spotify: { ...verified.spotify!, trackIds: ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'] } }
+    const first = playsToEvents([play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:10:00Z')], [long], [], 'now')
+    expect(first).toMatchObject([{ kind: 'partial', tracksSeen: ['m1', 'm2'] }])
+    // m1 and m2 have left the fifty; m3 arrives. The partial grows in place, same id.
+    const grown = playsToEvents([play('m3', '2026-10-08T19:20:00Z')], [long], first, 'now')
+    expect(grown).toMatchObject([{ id: first[0].id, kind: 'partial', tracksPlayed: 3, playedUntil: '2026-10-08T19:20:00Z' }])
+    // Only m4 is left to see: with the three remembered, four of six — heard.
+    const done = playsToEvents([play('m4', '2026-10-08T19:30:00Z')], [long], grown, 'now')
+    expect(done).toMatchObject([{ kind: 'heard', tracksPlayed: 4, playedAt: '2026-10-08T19:00:00Z' }])
+    // Nothing new seen: nothing written.
+    expect(playsToEvents([play('m3', '2026-10-08T19:20:00Z')], [long], grown, 'now')).toEqual([])
+  })
+
   it('counts nothing against a near miss the listener hasn’t confirmed', () => {
     const near: Recording = { ...verified, verification: 'unconfirmed', spotify: { ...verified.spotify!, confidence: 'probable' } }
     expect(playsToEvents([play('m1', '2026-10-08T19:00:00Z'), play('m2', '2026-10-08T19:10:00Z')], [near], [], 'now')).toEqual([])

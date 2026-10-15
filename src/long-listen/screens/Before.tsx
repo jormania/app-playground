@@ -55,7 +55,7 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
       <p className={s.eyebrow}><a className={`${s.quietLink} ${s.backLink}`} href={href({ name: 'week' })}>← This week</a></p>
       <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> Before the concert · {venueShort(e.venue)}{e.hall ? `, ${e.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{e.title}</h1>
-      <p className={s.dek}>{concertDate(e.date)}{e.time ? `, ${e.time}` : ''} — {passed ? 'it has passed' : whenWords(e.date, today)}.</p>
+      <p className={s.dek}>{concertDate(e.date)}{e.time ? `, ${e.time}` : ''} — {passed ? 'it has passed' : whenWords(e.date, today, e.time)}.</p>
 
       {!prep && (writing
         ? <Waiting>The curator is reading the programme and preparing the evening…</Waiting>

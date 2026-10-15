@@ -426,7 +426,7 @@ function ExplorationSections() {
  * connections and music preferences stay.
  */
 function FreshStartSection() {
-  const { repo, notion, bump, say, settings } = useServices()
+  const { repo, notion, bump, say, settings, notionState } = useServices()
   const [asking, setAsking] = useState(false)
   const [working, setWorking] = useState<string | null>(null)
 
@@ -455,7 +455,7 @@ function FreshStartSection() {
     <Card title="A fresh start" tone="danger">
       <p className={s.settingText}>Clears the whole journey and begins again. An archive is saved to your downloads first, and it restores like any backup.</p>
       <div className={s.settingsActions}>
-        <button className={`${s.outlineButton} ${s.smallButton} ${s.dangerOutline}`} onClick={() => setAsking(true)} disabled={Boolean(working)}>{working ?? 'Start again from nothing…'}</button>
+        <button className={`${s.outlineButton} ${s.smallButton} ${s.dangerOutline}`} onClick={() => setAsking(true)} disabled={Boolean(working) || notionState.syncing}>{working ?? 'Start again from nothing…'}</button>
       </div>
       <Steps summary="What it clears, and what it keeps">
         <p>Cleared: every week and programme, your listening marks and reactions, the threads, and everything the curator has learned about your taste, including your notes to it. The pages the app wrote in Notion move to Notion’s trash, where they stay recoverable for 30 days.</p>
@@ -503,8 +503,11 @@ async function downloadBackup(repo: ReturnType<typeof useServices>['repo'], name
 }
 
 function BackupSection({ repo, bump, say }: Pick<ReturnType<typeof useServices>, 'repo' | 'bump' | 'say'>) {
-  const { settings } = useServices()
+  const { settings, notionState } = useServices()
   const fileRef = useRef<HTMLInputElement>(null)
+  // A backup read and waiting for the listener's word: a restore replaces the journey here.
+  const [waiting, setWaiting] = useState<unknown>(null)
+  const [restoring, setRestoring] = useState(false)
 
   async function exportBackup() {
     try {
@@ -514,32 +517,53 @@ function BackupSection({ repo, bump, say }: Pick<ReturnType<typeof useServices>,
     }
   }
 
-  async function importBackup(file: File) {
-    let data: unknown
+  async function readBackup(file: File) {
     try {
-      data = JSON.parse(await file.text())
+      const data = JSON.parse(await file.text()) as { app?: string }
+      if (data?.app !== 'the-long-listen') throw new Error('not ours')
+      setWaiting(data)
     } catch {
       // A parser's message ("Unexpected token…") says nothing a listener can use.
       say('That file isn’t a backup from this app — it couldn’t be read. Nothing here was changed.', 'danger')
-      return
     }
+  }
+
+  async function restore() {
+    const data = waiting
+    setWaiting(null)
+    setRestoring(true)
     try {
+      // The journey it replaces goes to the downloads first, as before a fresh start.
+      if ((await repo.store.keys()).some((k) => k.startsWith('ll:v1:') && !k.includes('singleton:'))) {
+        await downloadBackup(repo, 'the-long-listen-before-restore', settings.timeZone)
+      }
       const n = await repo.importAll(data)
       bump()
-      say(`Restored ${n} records.`, 'success')
-    } catch {
-      say('That file isn’t a backup this app can restore.', 'danger')
+      say(`Restored ${n} records. The journey it replaced was saved to your downloads.`, 'success')
+    } catch (e) {
+      say(e instanceof Error && /newer version|nothing to restore/.test(e.message) ? e.message : 'That file isn’t a backup this app can restore. Nothing here was changed.', 'danger')
+    } finally {
+      setRestoring(false)
     }
   }
 
   return (
     <Card title="Your journey, in a file">
-      <p className={s.settingText}>Keep a copy now and then — it restores in any browser. Your keys are not in it.</p>
+      <p className={s.settingText}>Keep a copy now and then — it restores in any browser, in place of the journey there. Your keys are not in it.</p>
       <div className={s.settingsActions}>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void exportBackup()}>Save a backup</button>
-        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => fileRef.current?.click()}>Restore from a backup</button>
-        <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importBackup(f); e.target.value = '' }} />
+        {/* Not while Notion is being written: the sync would carry on writing the journey being replaced. */}
+        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => fileRef.current?.click()} disabled={restoring || notionState.syncing}>{restoring ? 'Restoring…' : 'Restore from a backup'}</button>
+        <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void readBackup(f); e.target.value = '' }} />
       </div>
+      <ConfirmModal
+        isOpen={waiting !== null}
+        title="Replace this journey with the backup?"
+        message="The backup takes the place of everything here. The journey on this device is saved to your downloads first, so it can be restored in turn."
+        confirmText="Restore the backup"
+        onConfirm={() => void restore()}
+        onCancel={() => setWaiting(null)}
+      />
     </Card>
   )
 }

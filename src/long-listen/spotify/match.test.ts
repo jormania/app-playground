@@ -135,3 +135,20 @@ describe('a work whose tracks are named only by movement', () => {
     expect(workTracks(album, album[0], 'Suite').map((t) => t.id)).toEqual(['a'])
   })
 })
+
+describe('a coupling of two works with one title', () => {
+  it('ends the work where the neighbour of the same title has another opus', () => {
+    const t = (id: string, name: string, n: number) => ({ id, name, uri: `spotify:track:${id}`, track_number: n, disc_number: 1, artists: [{ name: 'Leif Ove Andsnes' }] })
+    const album = [
+      t('g1', 'Piano Concerto in A Minor, Op. 16: I. Allegro molto moderato', 1),
+      t('g2', 'Piano Concerto in A Minor, Op. 16: II. Adagio', 2),
+      t('g3', 'Piano Concerto in A Minor, Op. 16: III. Allegro moderato molto e marcato', 3),
+      t('s1', 'Piano Concerto in A Minor, Op. 54: I. Allegro affettuoso', 4),
+      t('s2', 'Piano Concerto in A Minor, Op. 54: II. Intermezzo', 5),
+    ]
+    const p = { composer: 'Edvard Grieg', work: 'Piano Concerto in A minor', catalogue: 'Op. 16', soloists: [{ name: 'Leif Ove Andsnes' }] }
+    expect(workTracks(album, album[0], p.work, p).map((x) => x.id)).toEqual(['g1', 'g2', 'g3'])
+    // Matched on Schumann's first movement, without a catalogue in the proposal: Schumann's alone.
+    expect(workTracks(album, album[3], p.work).map((x) => x.id)).toEqual(['s1', 's2'])
+  })
+})

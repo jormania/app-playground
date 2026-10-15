@@ -990,3 +990,86 @@ Fixed, each with a test where it can have one:
   blank app.
 
 Settings → About now says *Release four · 14 October 2026*.
+
+## 22. The older features, audited by risk (15 October 2026)
+
+An audit of what came before release four, chosen by where bugs were most
+likely: anything that reads a clock or a week (summer time ends on 25 October),
+the Spotify pipeline (polling, matching, history), and anything that writes or
+replaces stored data (backup, fresh start, the Notion mirror). Two reports from
+listening on the phone joined it. Fixed, each with a test where it can have one:
+
+**Time and the week**
+
+- A page left open over Sunday midnight kept last week's directions: choosing
+  one wrote into a week that had ended. The week page now notices the new week
+  (on coming back to the page, on focus, and every minute) and reloads; a
+  choice made from a stale page says so instead of failing.
+- "Since" named a week by its Monday, so 2026-W01 (Monday 29 December) read as
+  "December 2025". It now takes the month of the week's Thursday, as ISO weeks do.
+- A time zone typed as an offset (`+02:00`, `Etc/GMT-2`, `EET`) was accepted and
+  would have ignored summer time. Only a named zone (`Europe/Bucharest`) or UTC is taken.
+- "Tonight" for a matinee: on the day itself a concert before 17:00 is "today".
+- A concert still to come was told to the curator as one heard; a programme
+  read without a year took the current year even in December for a January
+  date — it now takes the year nearest today.
+
+**Spotify**
+
+- **A work ran on past its last movement.** The guard that pauses Spotify when
+  a work started from the app runs on (`spotify/workGuard.ts`) needed the page
+  awake at the moment the finale ended. On a phone the page is usually behind
+  the Spotify app, and Chrome puts such a tab to sleep, so Cantus arcticus ran
+  on into the Hymnus of *A Requiem in Our Time*. The guard now works out when
+  the work should end from its last reading and the lengths of the movements
+  still to come, and on waking stops what began at that moment — and only
+  that: music that began later, or a skip made earlier, is the listener's. The
+  armed work and its last reading are kept in localStorage, so a tab the
+  browser discarded still knows. What no page can do: stop it while the phone
+  keeps the page asleep. It stops the moment the page is looked at again.
+- Polling Spotify after a failure (offline, a 429) went on every few seconds;
+  it now backs off to five minutes and honours `Retry-After`. A token refreshed
+  by one request is no longer thrown away by another that failed with the old one.
+- The matcher could take a neighbouring work's tracks into a coupling (Grieg
+  and Schumann concertos on one disc, Op. 16 and Op. 54): a track with another
+  catalogue number is never part of the work (`MATCHER_VERSION` 6).
+- A long work whose first movements scrolled out of Spotify's last fifty plays
+  before its last were played never counted as heard. Each partial hearing now
+  keeps the tracks it saw (`tracksSeen`) and grows in place as later syncs see more.
+
+**Stored data**
+
+- **A restore merged two journeys.** It added the backup's records to what was
+  here, keeping weeks from one, threads from the other and the taste of the
+  last. It now replaces the journey, after a confirmation, and saves the one it
+  replaces to the downloads first. Every Notion page is checked again on the
+  next sync (a page trashed by a fresh start is written afresh), the taste page
+  is rewritten, a backup from a newer app or with nothing in it is refused, and
+  this device's notebook is kept when the backup has none.
+- A fresh start deleted the settings with everything else and wrote them back
+  after: a page closed halfway left none. What it keeps is never deleted now.
+- A note to the curator saved in the Notebook while the taste reading ran was
+  overwritten by it; the reading now applies to the profile as it is then.
+- A programme's ingest wrote back recordings it had only read, undoing a
+  Spotify match that landed meanwhile; it writes only what it made.
+- A Notion sync running during a fresh start or a restore went on writing the
+  journey just cleared; it now stops at its next write. Both buttons wait while
+  Notion is being updated. A programme page whose further reading failed to
+  write had its text written twice on the next sync. A link with a space in it
+  (Notion refuses it, and the whole sync with it) is written escaped.
+
+**The listening view (from listening)**
+
+- "Listen for" appeared twice — inline and again in a list below — and a point
+  tied to the last movement showed only in that list. For a work in movements
+  each point now sits under its own movement, beside the companion's note,
+  always visible; the whole work's points stand above the movements ("Listen
+  for, throughout"); the list below is gone. In Focus, once the music plays,
+  only the movement sounding and its own points.
+- A point that names its movement ("the third movement's swans", "the finale")
+  goes there whatever the curator's tag said: Cantus arcticus had the swans
+  under the first movement.
+- The companion sometimes wrote fewer notes than tracks, which left the last
+  movement without one (and could slide the others). A short answer is asked
+  for again once, and notes kept short before this are written again once
+  (`companion@2026-10-15.1`).

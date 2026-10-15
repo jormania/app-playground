@@ -20,6 +20,8 @@ export class Ingest {
   private readonly newWorks = new Map<string, Work>()
   private readonly artists = new Map<string, Artist>()
   private readonly recordings = new Map<string, Recording>()
+  /** The recordings made by this ingest, as against those read back from the store. */
+  private readonly created = new Set<string>()
 
   /** The journey this was read from: a fresh start meanwhile means nothing is written (see `commit`). */
   private readonly generation: number
@@ -98,6 +100,7 @@ export class Ingest {
       verification: 'unchecked',
     }
     this.recordings.set(id, r)
+    this.created.add(id)
     return r
   }
 
@@ -110,7 +113,9 @@ export class Ingest {
     const existingArtists = new Set((await this.repo.artists.all()).map((a) => a.id))
     await this.repo.artists.putMany([...this.artists.values()].filter((a) => !existingArtists.has(a.id)))
     await this.repo.works.putMany([...this.newWorks.values()])
-    await this.repo.recordings.putMany([...this.recordings.values()])
+    // Only recordings made here: one already kept was read a moment ago, and writing that copy back
+    // would undo whatever changed it since — a Spotify match landing while the curator answered.
+    await this.repo.recordings.putMany([...this.recordings.values()].filter((r) => this.created.has(r.id)))
   }
 }
 

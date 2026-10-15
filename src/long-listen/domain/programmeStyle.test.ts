@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clock, curly, listenForAt, movementTitles, partWords, primeMinutes, pullQuote, roman, romanValue } from './programmeStyle'
+import { clock, curly, listenForAt, movementNamedIn, movementTitles, partWords, primeMinutes, pullQuote, roman, romanValue } from './programmeStyle'
 
 describe('the programme’s conventions', () => {
   it('numbers parts in Roman numerals and names them in words', () => {
@@ -62,5 +62,20 @@ describe('typesetting', () => {
     expect(curly('Symphony No. 7, "Angel of Light"')).toBe('Symphony No. 7, “Angel of Light”')
     expect(curly("Beethoven's 'Eroica'")).toBe('Beethoven’s ‘Eroica’')
     expect(curly('"Titan" (Hamburg version)')).toBe('“Titan” (Hamburg version)')
+  })
+})
+
+describe('a point that names its movement', () => {
+  it('reads the movement from the words, over the tag', () => {
+    expect(movementNamedIn('the third movement\'s swans, where brass rise over a held string haze', 3)).toBe(3)
+    expect(movementNamedIn('the calm, held-breath arrival of the finale', 4)).toBe(4)
+    expect(movementNamedIn('the lone shorebird of the first movement', 3)).toBe(1)
+    expect(movementNamedIn('how the first movement\'s theme comes back in the finale', 4)).toBeNull()
+    expect(movementNamedIn('brass chorales that arrive like light', 4)).toBeNull()
+    expect(movementNamedIn('the fifth movement', 4)).toBeNull()
+    // Cantus arcticus, as it was tagged: the swans of the third movement under the first.
+    expect(listenForAt(['I', 'I', 'III'], 3, 3, ['the lone shorebird of the first movement', 'the third movement\'s swans', 'the way the tape sets the tempo'])).toEqual([1, 3, 3])
+    // Untagged, a point that names its movement is still placed.
+    expect(listenForAt(undefined, 2, 4, ['brass chorales', 'the arrival of the finale'])).toEqual([null, 4])
   })
 })

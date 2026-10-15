@@ -11,7 +11,7 @@ import type { SpotifyTrackLike } from './match'
 const API = 'https://api.spotify.com/v1/'
 
 export class SpotifyUnavailable extends Error {
-  constructor(readonly reason: 'signed-out' | 'busy' | 'offline' | 'failed' | 'no-device' | 'premium', message: string) {
+  constructor(readonly reason: 'signed-out' | 'busy' | 'offline' | 'failed' | 'no-device' | 'premium', message: string, readonly retryAfterMs?: number) {
     super(message)
   }
 }
@@ -126,17 +126,24 @@ export class SpotifyClient {
 
   private async request(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
     let res: Response
+    let sent: string | undefined
     try {
-      res = await this.fetchImpl(API + path, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${await this.token()}` } })
+      sent = await this.token()
+      res = await this.fetchImpl(API + path, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${sent}` } })
     } catch (e) {
       if (e instanceof SpotifyUnavailable) throw e
       throw new SpotifyUnavailable('offline', 'Spotify can’t be reached right now.')
     }
     if (res.status === 401 && !retried && this.tokens) {
-      this.tokens = { ...this.tokens, expiresAt: 0 }
+      // Expired only if it is still the token that was refused: a 401 arriving after another request
+      // already refreshed would otherwise force a second refresh, spending the new refresh token.
+      if (this.tokens.accessToken === sent) this.tokens = { ...this.tokens, expiresAt: 0 }
       return this.request(path, init, true)
     }
-    if (res.status === 429) throw new SpotifyUnavailable('busy', 'Spotify asked us to slow down. Try again in a little while.')
+    if (res.status === 429) {
+      const after = Number(res.headers?.get?.('Retry-After'))
+      throw new SpotifyUnavailable('busy', 'Spotify asked us to slow down. Try again in a little while.', Number.isFinite(after) && after > 0 ? after * 1000 : undefined)
+    }
     return res
   }
 
@@ -148,7 +155,8 @@ export class SpotifyClient {
 
   async searchTracks(q: string): Promise<SpotifyTrackLike[]> {
     const data = await this.get<{ tracks?: { items: SpotifyTrackLike[] } }>(`search?${new URLSearchParams({ q, type: 'track', limit: '10' })}`)
-    return data.tracks?.items ?? []
+    // An item can come back null (a track withdrawn in this market): skipped, never read.
+    return (data.tracks?.items ?? []).filter(Boolean)
   }
 
   album(id: string): Promise<SpotifyAlbum> {

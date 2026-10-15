@@ -167,16 +167,44 @@ describe('the listening companion', () => {
   })
 })
 
+describe('the listening companion, a note short', () => {
+  it('asks once more for a work answered with fewer notes than tracks, and repairs notes kept short before', async () => {
+    let n = 0
+    const c = fakeCurator({
+      themes: () => themes(['A', 'B', 'C']),
+      programme: () => programme('Colour', FRENCH),
+      // The first answer leaves the last movement out; the second is whole.
+      companion: (payload) => ({ works: payload.works.map((w: { key: string; tracks: string[] }) => ({ key: w.key, movements: w.tracks.slice(0, n++ === 0 ? -1 : undefined).map((t) => `note on ${t}`) })), promptVersion: 'companion@test' }),
+    })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const [first] = p.sections.flatMap((s) => s.items)
+    const r = await repo.recordings.require(first.recordingId)
+    const names = ['I. De l’aube', 'II. Jeux de vagues', 'III. Dialogue']
+    await repo.recordings.put({ ...r, verification: 'verified', spotify: { albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ['t1', 't2', 't3'], trackUris: ['spotify:track:t1', 'spotify:track:t2', 'spotify:track:t3'], trackNames: names, confidence: 'strong', matchedAt: 'x' } })
+    await j.companion(p.id)
+    expect(c.count('companion')).toBe(2)
+    expect(((await repo.marks.get(`companion:${first.recordingId}`))?.value as { movements: string[] }).movements).toHaveLength(3)
+
+    // Notes kept short by an earlier version, unchecked: written again, once.
+    await repo.marks.put({ id: `companion:${first.recordingId}`, at: 'x', value: { movements: ['a', 'b'], tracks: names.join('\u241e') } })
+    const j2 = journey(c.client)
+    await j2.companion(p.id)
+    expect(c.count('companion')).toBe(3)
+    expect(((await repo.marks.get(`companion:${first.recordingId}`))?.value as { movements: string[] }).movements).toHaveLength(3)
+  })
+})
+
 describe('concerts', () => {
   it('reads a screenshot, keeps the concert, and makes its works known and its note heard', async () => {
     const c = fakeCurator({
-      concert: (payload) => ({ venue: 'Filarmonica George Enescu', date: `${payload.year}-10-16`, soloists: [], works: [{ composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' }], promptVersion: 'concert@test' }),
+      concert: (payload) => ({ venue: 'Filarmonica George Enescu', date: `${payload.year}-10-06`, soloists: [], works: [{ composer: 'Johannes Brahms', title: 'Double Concerto in A minor', catalogue: 'Op. 102' }], promptVersion: 'concert@test' }),
       themes: () => themes(['A', 'B', 'C']),
     })
     const j = journey(c.client)
     const draft = await j.readConcert({ mediaType: 'image/jpeg', data: 'AAAA' })
     expect(c.calls[0].payload).toMatchObject({ image: { mediaType: 'image/jpeg', data: 'AAAA' }, year: 2026 })
-    expect(draft.date).toBe('2026-10-16')
+    expect(draft.date).toBe('2026-10-06')
 
     await expect(j.saveConcert({ ...draft, works: [], source: 'screenshot' })).rejects.toThrow(/at least one work/)
     const kept = await j.saveConcert({ ...draft, note: 'The cello sang.', source: 'screenshot' })
@@ -192,6 +220,9 @@ describe('concerts', () => {
     const ctx = await buildContext(repo, weekOf(clock))
     expect(ctx.alreadyKnown).toContainEqual({ composer: 'Johannes Brahms', work: 'Double Concerto in A minor' })
     expect(ctx.concerts).toEqual([expect.objectContaining({ venue: 'Filarmonica George Enescu', works: ['Johannes Brahms — Double Concerto in A minor'], note: 'The cello sang.', performers: 'Gabriel Bebeșelea' })])
+    // A concert still to come (a date typed ahead) isn't told to the curator as heard.
+    await j.saveConcert({ ...draft, date: '2026-12-20', note: '', source: 'typed' })
+    expect((await buildContext(repo, weekOf(clock), undefined, undefined, '2026-10-08')).concerts).toHaveLength(1)
   })
 })
 
