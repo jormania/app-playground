@@ -295,12 +295,24 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
   for (const list of sessions.values()) {
     for (const s of list) {
       const total = s.recording.spotify?.trackIds.length ?? 1
-      const heard = total > 1 && s.tracks.size / total >= 0.6
       // The same session, already recorded? Overlapping, or within a session gap of it.
       const same = recorded.filter((e) => e.recordingId === s.recording.id
         && Date.parse(s.first) - Date.parse(e.playedUntil ?? e.playedAt!) < SESSION_GAP
         && Date.parse(e.playedAt!) - Date.parse(s.last) < SESSION_GAP)
-      if (same.some((e) => e.kind === 'heard') || (same.length && !heard)) continue
+      // Recently-played holds fifty plays: a long work's first movements scroll out before its last
+      // are played. The tracks an earlier sync saw of the same session count with today's.
+      for (const e of same) for (const t of e.tracksSeen ?? []) s.tracks.add(t)
+      const heard = total > 1 && s.tracks.size / total >= 0.6
+      if (same.some((e) => e.kind === 'heard')) continue
+      if (same.length && !heard) {
+        // Still partial, but more of it seen than was kept: the record grows in place, so the
+        // tracks this sync saw aren't lost when they too scroll out before the last are played.
+        const kept = same[same.length - 1]
+        if (s.tracks.size > (kept.tracksSeen?.length ?? 0)) {
+          out.push({ ...kept, tracksPlayed: s.tracks.size, tracksSeen: [...s.tracks], playedUntil: [kept.playedUntil ?? '', s.last].sort()[1] })
+        }
+        continue
+      }
       // The same listening already marked heard another way — "I've heard it", or the listening
       // view seeing the last movement end — within the session: one hearing, not two. A heard
       // counted twice told the curator a work was heard again that was heard once.
@@ -316,6 +328,7 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
         source: 'spotify-recent',
         tracksPlayed: s.tracks.size,
         tracksTotal: total,
+        tracksSeen: [...s.tracks],
         // An upgrade keeps the session's original start, so it stays one session.
         playedAt: anchor?.playedAt && anchor.playedAt < s.first ? anchor.playedAt : s.first,
         playedUntil: s.last,

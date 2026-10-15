@@ -4,7 +4,8 @@ import { useServices } from './services'
 import { SpotifyUnavailable, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
 import { Witness } from '../spotify/witness'
-import { WorkGuard } from '../spotify/workGuard'
+import { WorkGuard, type Armed } from '../spotify/workGuard'
+import { readJson, removeJson, writeJson } from '../../shared/storage'
 import { messageOf } from '../components/common'
 
 /**
@@ -16,7 +17,11 @@ const witness = new Witness()
 const heardListeners = new Set<(trackIds: string[]) => void>()
 const readingListeners = new Set<(np: NowPlaying | null) => void>()
 /** The work started from the app, watched so it stops at its last movement (spotify/workGuard.ts). */
-const guard = new WorkGuard()
+const GUARD_KEY = 'long-listen:work-guard'
+const guard = new WorkGuard({
+  load: () => { const a = readJson<Armed | null>(GUARD_KEY, null); return a && Array.isArray(a.trackIds) && typeof a.until === 'number' ? a : null },
+  save: (a) => { if (a) writeJson(GUARD_KEY, a); else removeJson(GUARD_KEY) },
+})
 const ranOnListeners = new Set<() => void>()
 let lastReading: NowPlaying | null = null
 
@@ -44,9 +49,9 @@ function observe(np: NowPlaying | null, at: number) {
 }
 
 /** A work started from the app (Play, or opened in Spotify): watch it, to stop it at its last movement. */
-export function armWork(trackIds: string[] | undefined): void {
+export function armWork(trackIds: string[] | undefined, durationsMs?: number[]): void {
   knowPlace(trackIds)
-  if (trackIds?.length) guard.arm(trackIds, Date.now())
+  if (trackIds?.length) guard.arm(trackIds, Date.now(), durationsMs)
 }
 
 /** Told when a work started from the app has just run on past its last movement into something else. */
@@ -121,7 +126,7 @@ export interface Playback {
  * movement, Pause and Resume leave it where it is. Each command shows its
  * outcome at once and checks with Spotify a moment later.
  */
-export function usePlayback(trackUris: string[] | undefined, trackIds: string[] | undefined): Playback {
+export function usePlayback(trackUris: string[] | undefined, trackIds: string[] | undefined, durationsMs?: number[]): Playback {
   const { spotify, say } = useServices()
   const watch = watchFor(spotify)
   const state = usePlayerState()
@@ -167,9 +172,9 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
     noDevice: noDevice && !at,
     busy,
     left: at ? null : left,
-    arm: () => armWork(trackIds),
+    arm: () => armWork(trackIds, durationsMs),
     play: (from = 0, positionMs = 0) => run(
-      async () => { await spotify.play(trackUris ?? [], from, positionMs); armWork(trackIds) },
+      async () => { await spotify.play(trackUris ?? [], from, positionMs); armWork(trackIds, durationsMs) },
       (np) => ({ trackId: trackIds?.[from] ?? '', trackName: '', isPlaying: true, progressMs: positionMs, durationMs: 0, deviceName: np?.deviceName }),
     ),
     pause: async () => { await run(() => spotify.pause(), (np) => np && { ...np, isPlaying: false }) },

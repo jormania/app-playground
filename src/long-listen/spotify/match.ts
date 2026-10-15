@@ -92,8 +92,10 @@ const tokens = (s: string) => s.split(' ').filter(Boolean)
  *       and "KV 550" read as "BWV 1048" and "K. 550"; a track naming the
  *       proposal's catalogue number is the work despite a nickname; albums
  *       past their 200th track are read to the end.
+ *   6 — a work no longer runs on into a neighbour of the same title with
+ *       another catalogue number (Grieg's Op. 16 beside Schumann's Op. 54).
  */
-export const MATCHER_VERSION = 5
+export const MATCHER_VERSION = 6
 
 /**
  * The curator often adds a version note in brackets — "(original piano
@@ -310,10 +312,23 @@ export function workTracks(albumTracks: SpotifyTrackLike[], matched: SpotifyTrac
   if (at < 0) return [matched]
   const fits = (t: SpotifyTrackLike) => workOverlap(workTitle, t.name) >= 0.99 || Boolean(p && catalogueIdentifies(p, t.name))
   if (!fits(ordered[at])) return movementRun(ordered, at) ?? [matched]
+  // A neighbour with the same title can still be another work: Grieg's and Schumann's piano
+  // concertos are both "in A minor" on one album, Brahms's and Tchaikovsky's violin concertos
+  // both "in D". A different number of the matched track's own scheme (Op. 54 beside Op. 16),
+  // or one the proposal rules out, ends the run.
+  const own = catalogueNumbers(ordered[at].name)
+  const sameWork = (t: SpotifyTrackLike) => {
+    for (const h of catalogueNumbers(t.name)) {
+      const mine = [...own].filter((o) => schemeOf(o) === schemeOf(h))
+      if (mine.length && !mine.includes(h)) return false
+    }
+    return !(p && catalogueContradicts(p, t.name))
+  }
+  const joins = (t: SpotifyTrackLike) => fits(t) && sameWork(t)
   let start = at
   let end = at
-  while (start > 0 && fits(ordered[start - 1])) start--
-  while (end < ordered.length - 1 && fits(ordered[end + 1])) end++
+  while (start > 0 && joins(ordered[start - 1])) start--
+  while (end < ordered.length - 1 && joins(ordered[end + 1])) end++
   return ordered.slice(start, end + 1)
 }
 

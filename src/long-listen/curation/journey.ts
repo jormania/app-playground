@@ -210,7 +210,7 @@ export class Journey {
    */
   private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = [], rework?: Rework): Promise<WeekRecord> {
     const generation = this.repo.generation
-    const context = await buildContext(this.repo, week, requestedNext, this.timeZone)
+    const context = await buildContext(this.repo, week, requestedNext, this.timeZone, this.today())
     const res = await this.curator.call<ThemesResponse>('themes', {
       today: this.today(),
       week: { key: week.key, label: week.label },
@@ -402,7 +402,7 @@ export class Journey {
     const exploration = await this.repo.explorations.require(root.explorationId)
     const lw = weekFromKey(root.weekKey)
     const digest = await threadDigest(this.repo, root.themeId, root.weekKey)
-    const context = await buildContext(this.repo, lw, undefined, this.timeZone)
+    const context = await buildContext(this.repo, lw, undefined, this.timeZone, this.today())
     const now = this.stamp()
     const res = await this.curator.call<ProgrammeResponse>('programme', {
       today: this.today(),
@@ -443,11 +443,22 @@ export class Journey {
     return programme
   }
 
+  /**
+   * This week's record, for a choice made on it. A page left open across
+   * Monday midnight still shows last week's three: said in words, not as a
+   * missing record, and the page loads the new week.
+   */
+  private async weekNow(key: WeekKey): Promise<WeekRecord> {
+    const week = await this.repo.weeks.get(key)
+    if (!week) throw new Error('A new week has begun since this page opened — here are its directions.')
+    return week
+  }
+
   /** Choose one of this week's three directions. */
   choose(optionId: string): Promise<Programme> {
     const key = this.currentWeek().key
     return this.once(`choose:${optionId}`, () => this.weekJob(key, async () => {
-      const week = await this.repo.weeks.require(key)
+      const week = await this.weekNow(key)
       if (week.programmeId) throw new Error('This week already has a programme — change direction instead.')
       const option = await this.repo.options.require(optionId)
       return this.startProgramme(week, option)
@@ -462,7 +473,7 @@ export class Journey {
   changeDirection(optionId: string): Promise<Programme> {
     const key = this.currentWeek().key
     return this.once(`choose:${optionId}`, () => this.weekJob(key, async () => {
-      const week = await this.repo.weeks.require(key)
+      const week = await this.weekNow(key)
       const option = await this.repo.options.require(optionId)
       // Taken a moment ago by a job ahead in the queue: nothing to change to.
       if (week.chosenOptionId === optionId && week.programmeId) return this.repo.programmes.require(week.programmeId)
@@ -494,7 +505,7 @@ export class Journey {
     }
     const digest = returningTheme ? await threadDigest(this.repo, returningTheme.id, week.weekKey) : null
     const stage = digest?.nextStage ?? 1
-    const context = await buildContext(this.repo, lw, undefined, this.timeZone)
+    const context = await buildContext(this.repo, lw, undefined, this.timeZone, this.today())
 
     const res = await this.curator.call<ProgrammeResponse>('programme', {
       today: this.today(),
@@ -704,7 +715,8 @@ export class Journey {
       })
       this.stillCurrent(generation)
       const now = this.stamp()
-      await this.repo.saveTaste(applyTasteUpdate(profile, res, now))
+      // The profile as it is now: a note to the curator saved in the Notebook while it answered stays.
+      await this.repo.saveTaste(applyTasteUpdate(await this.repo.taste(), res, now))
       // Each record as it is now, marked read and nothing else: the copies read
       // before the call are stale (the stand-in repair may have moved one
       // meanwhile), and writing them back would undo that.
@@ -863,7 +875,8 @@ export class Journey {
 
   /** A hall's programme, read from a screenshot into a draft for the listener to check. */
   readConcert(image: { mediaType: string; data: string }): Promise<ConcertResponse> {
-    return this.curator.call<ConcertResponse>('concert', { image, year: Number(this.today().slice(0, 4)) })
+    // Today, not only its year: a programme without a year, read across New Year, belongs to the nearer one.
+    return this.curator.call<ConcertResponse>('concert', { image, year: Number(this.today().slice(0, 4)), today: this.today() })
   }
 
   /**
@@ -1013,22 +1026,36 @@ export class Journey {
       const recordings = new Map((await this.repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
       // Notes belong to one division of the work into tracks: a recording re-matched to another album is written for afresh.
       const tracksOf = (rid: string) => (recordings.get(rid)?.spotify?.trackNames ?? []).join('\u241e')
-      const marks = new Map((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => [m.id.slice('companion:'.length), m.value as { tracks?: string }]))
-      const done = (rid: string) => { const m = marks.get(rid); return Boolean(m && (m.tracks === undefined || m.tracks === tracksOf(rid))) }
+      const marks = new Map((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => [m.id.slice('companion:'.length), m.value as { tracks?: string; movements?: string[]; counted?: boolean }]))
+      // Done: written for these tracks — and one note per track, or already asked again for the missing ones
+      // (`counted`). Notes kept before that check, a note short, are written once more.
+      const done = (rid: string) => {
+        const m = marks.get(rid)
+        if (!m || (m.tracks !== undefined && m.tracks !== tracksOf(rid))) return false
+        return m.counted || (m.movements?.length ?? 0) === (recordings.get(rid)?.spotify?.trackNames?.length ?? 0)
+      }
       const todo = wanted.filter((w, i) => wanted.findIndex((x) => x.rid === w.rid) === i && !done(w.rid) && (recordings.get(w.rid)?.spotify?.trackNames?.length ?? 0) > 0 && recordings.get(w.rid)?.verification === 'verified')
       if (!todo.length) return 0
       const { language } = await this.repo.preferences()
       // Short keys: a long recording id echoed back wrong would leave its notes unwritten and paid for again.
-      const res = await this.curator.call<CompanionResponse>('companion', {
-        language,
-        programme: { title: p.title, dek: p.dek },
-        works: todo.map((w, i) => ({ key: `w${i + 1}`, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames, listenFor: w.listenFor })),
-      })
+      const asked = todo.map((w, i) => ({ key: `w${i + 1}`, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames!, listenFor: w.listenFor }))
+      const res = await this.curator.call<CompanionResponse>('companion', { language, programme: { title: p.title, dek: p.dek }, works: asked })
       this.stillCurrent(generation)
-      const now = this.stamp()
       const byKey = new Map(res.works.map((w) => [w.key, w.movements]))
+      // One note per track, or the notes slide: a note left out in the middle puts every later one under
+      // the wrong movement, and the last goes without. Such a work is asked about once more, on its own.
+      const short = asked.filter((w) => byKey.get(w.key)?.length !== w.tracks.length)
+      if (short.length) {
+        const again = await this.curator.call<CompanionResponse>('companion', { language, programme: { title: p.title, dek: p.dek }, works: short }).catch(() => null)
+        this.stillCurrent(generation)
+        for (const w of again?.works ?? []) {
+          const want = short.find((x) => x.key === w.key)
+          if (want && w.movements.length === want.tracks.length) byKey.set(w.key, w.movements)
+        }
+      }
+      const now = this.stamp()
       // Every recording asked about is marked, notes or not, so none is asked about again until its tracks change.
-      await this.repo.marks.putMany(todo.map((w, i) => ({ id: `companion:${w.rid}`, at: now, value: { movements: byKey.get(`w${i + 1}`) ?? [], tracks: tracksOf(w.rid), promptVersion: res.promptVersion } })))
+      await this.repo.marks.putMany(todo.map((w, i) => ({ id: `companion:${w.rid}`, at: now, value: { movements: byKey.get(`w${i + 1}`) ?? [], tracks: tracksOf(w.rid), counted: true, promptVersion: res.promptVersion } })))
       return res.works.length
     })
   }

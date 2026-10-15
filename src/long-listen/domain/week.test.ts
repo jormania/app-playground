@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekOf, weekFromKey, weeksBetween, sinceWords, civilDateIn } from './week'
+import { weekOf, weekFromKey, weeksBetween, sinceWords, civilDateIn, isValidTimeZone } from './week'
 
 describe('the listening week', () => {
   it('turns over at Monday midnight in Bucharest, not in UTC', () => {
@@ -50,5 +50,17 @@ describe('the listening week', () => {
 
   it('reads the civil date in the given zone', () => {
     expect(civilDateIn(new Date('2026-10-11T21:30:00Z'), 'Europe/Bucharest')).toEqual({ year: 2026, month: 10, day: 12 })
+  })
+
+  it('names a week by the month its Thursday falls in, as ISO weeks do', () => {
+    // 2026-W01 starts on Monday 29 December 2025; its Thursday is 1 January.
+    expect(sinceWords('2026-W01', '2026-W20')).toBe('in January')
+    // 2025-W44 starts on Monday 27 October; its Thursday is 30 October.
+    expect(sinceWords('2025-W44', '2026-W41')).toBe('in October 2025')
+  })
+
+  it('takes a named zone only, never a fixed offset that would ignore summer time', () => {
+    for (const z of ['Europe/Bucharest', 'America/Argentina/Buenos_Aires', 'UTC']) expect(isValidTimeZone(z)).toBe(true)
+    for (const z of ['+02:00', 'Etc/GMT-2', 'EET', '', 'Not/AZone']) expect(isValidTimeZone(z)).toBe(false)
   })
 })

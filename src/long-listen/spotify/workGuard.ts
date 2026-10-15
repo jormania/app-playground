@@ -7,54 +7,123 @@ import { playbackOf, type NowPlaying } from './client'
  * disc — music the programme never offered. (Play from the app sends only the
  * work's own tracks, but Spotify's autoplay can still carry on after them.)
  *
- * So a work started from the app is "armed": when a reading shows its last
- * movement has just run into a track that isn't one of its own, the app pauses
- * Spotify. Only that run-on stops it — the last movement near its end in one
- * reading, something else playing in the next. A listener who chose other
- * music, or skipped on themselves mid-movement, is left alone, and the week's
- * playlist (whose works follow one another on purpose) is never armed.
+ * So a work started from the app is "armed": when a reading shows a track
+ * that isn't one of its own, begun just when the work should have ended, the
+ * app pauses Spotify. When it should have ended is read from the last reading
+ * of the work and the lengths of the movements still to come — so it holds
+ * even when the phone put the page to sleep for the whole of the work, as
+ * Chrome does to a tab behind the Spotify app, and the page wakes only to
+ * find the Hymnus from the next work on the disc playing. The armed work and
+ * that last reading are kept in localStorage, so a tab the browser discarded
+ * and reloaded still knows. A listener who chose other music, or skipped on
+ * themselves mid-movement, is left alone, and the week's playlist (whose works
+ * follow one another on purpose) is never armed.
  */
 
-/** How near its end the last movement must have been for the next track to be a run-on, not a choice. */
+/** Without the time between two readings: how near its end the last movement must have been for the next track to be a run-on. */
 export const RUN_ON_WINDOW_MS = 75_000
 /** An armed work forgets itself after this, played or not. */
 const ARMED_FOR_MS = 4 * 60 * 60_000
 
-/** The last movement was near its end, and now something that isn't this work is playing. */
-export function ranOn(prev: NowPlaying | null, cur: NowPlaying | null, trackIds: string[]): boolean {
-  if (!prev?.isPlaying || !cur?.isPlaying || !trackIds.length) return false
-  const was = playbackOf(prev, trackIds)
-  if (!was || was.index !== trackIds.length - 1) return false
-  if (playbackOf(cur, trackIds)) return false
-  return prev.durationMs > 0 && prev.durationMs - prev.progressMs <= RUN_ON_WINDOW_MS
+/** How much later a reading may come than the clock alone would say (polling, a slow network). */
+const DRIFT_MS = 10_000
+/**
+ * How near the work's end the next track must have begun to be its run-on.
+ * Earlier is a skip, unless a crossfade (up to 12 s) began it a little early;
+ * later is a choice made since, unless a short pause put the end back a little.
+ */
+const BEGAN_EARLY_MS = 15_000
+const BEGAN_LATE_MS = 20_000
+
+/** One reading of the player, and when it came back. */
+export interface Reading { np: NowPlaying; at: number }
+
+/**
+ * When the work should end, read from one reading of it playing: what is left
+ * of this movement and of every movement after it. Unknown when a later
+ * movement's length is.
+ */
+export function endOfWork(last: Reading, trackIds: string[], durationsMs?: number[]): number | undefined {
+  const was = playbackOf(last.np, trackIds)
+  if (!was || !last.np.isPlaying || !(last.np.durationMs > 0)) return undefined
+  let left = last.np.durationMs - last.np.progressMs
+  for (let i = was.index + 1; i < trackIds.length; i++) {
+    const d = durationsMs?.[i]
+    if (!d) return undefined
+    left += d
+  }
+  return last.at + left
 }
 
-export class WorkGuard {
-  private armed: { trackIds: string[]; until: number; started: boolean } | null = null
+/**
+ * Something that isn't this work is playing, and it began when the work
+ * should have ended: Spotify carried on, the listener didn't choose it. Read
+ * from the last reading of the work, however long ago — a phone puts a page
+ * in the background to sleep, and it may wake only after the work has ended.
+ * With 60 s of the finale left and another album 15 s later, the listener
+ * chose it: the finale can't have ended in between.
+ *
+ * Without the time between the two readings, only the reading just before
+ * can tell: the last movement near its end, something else now.
+ */
+export function ranOn(prev: NowPlaying | null, cur: NowPlaying | null, trackIds: string[], elapsedMs?: number, durationsMs?: number[]): boolean {
+  if (!prev?.isPlaying || !cur?.isPlaying || !trackIds.length) return false
+  const was = playbackOf(prev, trackIds)
+  if (!was || playbackOf(cur, trackIds)) return false
+  if (elapsedMs === undefined) {
+    const left = prev.durationMs - prev.progressMs
+    return was.index === trackIds.length - 1 && prev.durationMs > 0 && left <= RUN_ON_WINDOW_MS
+  }
+  const end = endOfWork({ np: prev, at: 0 }, trackIds, durationsMs)
+  if (end === undefined) return false
+  const began = elapsedMs - cur.progressMs
+  return began >= end - BEGAN_EARLY_MS && began <= end + BEGAN_LATE_MS && elapsedMs + DRIFT_MS >= end
+}
 
-  /** Watch this work from now: its tracks, in order. One work at a time — the latest started. */
-  arm(trackIds: string[], now: number): void {
-    this.armed = trackIds.length ? { trackIds, until: now + ARMED_FOR_MS, started: false } : null
+/** What the guard keeps across a page the browser discarded and reloaded. */
+export interface Armed { trackIds: string[]; durationsMs?: number[]; until: number; started: boolean; last?: Reading }
+export interface GuardStore { load(): Armed | null; save(a: Armed | null): void }
+
+export class WorkGuard {
+  private armed: Armed | null
+
+  constructor(private readonly store?: GuardStore) {
+    this.armed = store?.load() ?? null
+  }
+
+  private keep() { this.store?.save(this.armed) }
+
+  /** Watch this work from now: its tracks, in order, and their lengths if known. One work at a time — the latest started. */
+  arm(trackIds: string[], now: number, durationsMs?: number[]): void {
+    this.armed = trackIds.length ? { trackIds, durationsMs: durationsMs?.length === trackIds.length ? durationsMs : undefined, until: now + ARMED_FOR_MS, started: false } : null
+    this.keep()
   }
 
   /** A work is being watched and may still run on. */
   isArmed(now: number): boolean {
-    if (this.armed && now > this.armed.until) this.armed = null
+    if (this.armed && now > this.armed.until) { this.armed = null; this.keep() }
     return Boolean(this.armed)
   }
 
   /**
-   * One reading after another: true when the armed work has just run on into
-   * something else, which should be stopped. Disarms then, and when the
-   * listener has moved on to other music of their own.
+   * Each reading: true when the armed work has just run on into something
+   * else, which should be stopped. Disarms then, and when the listener has
+   * moved on to other music of their own. (`prev`, the reading before, is no
+   * longer needed: the guard keeps the last reading of the work itself.)
    */
-  observe(prev: NowPlaying | null, cur: NowPlaying | null, now: number): boolean {
+  observe(_prev: NowPlaying | null, cur: NowPlaying | null, now: number): boolean {
     if (!this.isArmed(now) || !this.armed) return false
-    const { trackIds } = this.armed
-    if (playbackOf(cur, trackIds)) { this.armed.started = true; return false }
-    if (ranOn(prev, cur, trackIds)) { this.armed = null; return true }
+    const a = this.armed
+    if (cur && playbackOf(cur, a.trackIds)) {
+      a.started = true
+      a.last = { np: cur, at: now }
+      this.keep()
+      return false
+    }
+    if (a.last && ranOn(a.last.np, cur, a.trackIds, now - a.last.at, a.durationsMs)) { this.armed = null; this.keep(); return true }
     // Something else playing once the work had begun: the listener's own choice. Before it began, the reading is just late.
-    if (this.armed.started && cur?.isPlaying) this.armed = null
+    // Nothing on Spotify at all once it had begun (closed, or no device): done too — no reason to keep a hidden page polling.
+    if (a.started && (cur?.isPlaying || !cur)) { this.armed = null; this.keep() }
     return false
   }
 }

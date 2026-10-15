@@ -99,13 +99,14 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   }, [shade, loaded])
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
-  const playback = usePlayback(sp0?.trackUris, sp0?.trackIds)
+  const playback = usePlayback(sp0?.trackUris, sp0?.trackIds, sp0?.trackDurationsMs)
 
   const { curatorReady, say } = useServices()
   // The companion's notes are written once per programme; if this recording has none yet, ask for them now.
   const askedNotes = useRef(false)
   useEffect(() => {
-    if (!data || !sp0 || data.notes.length || !curatorReady || askedNotes.current) return
+    // …or a note short of its tracks, kept before that was checked (journey.companion asks once more).
+    if (!data || !sp0 || data.notes.length === (sp0.trackNames?.length ?? sp0.trackIds.length) || !curatorReady || askedNotes.current) return
     askedNotes.current = true
     journey.companion(programmeId).then((n) => { if (n) bump() }).catch(() => {})
   }, [data, sp0, curatorReady, journey, programmeId, bump])
@@ -269,7 +270,15 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const facts = [work?.form ? work.form.charAt(0).toUpperCase() + work.form.slice(1) : '', work?.composed ?? '', movementCount > 1 ? `${movementCount} movements` : '', primeMinutes(sp?.durationMs) ?? ''].filter(Boolean).join(' · ')
   const performers = creditRows(credit).map(([, name]) => name).join(' · ')
   // What to listen for, tied to the movement sounding where the curator said which (programmes from 14 October 2026).
-  const forAt = listenForAt(item.listenForAt, item.listenFor.length, movementCount)
+  const forAt = listenForAt(item.listenForAt, item.listenFor.length, movementCount, item.listenFor)
+  // Each movement's first track: where its points go in the list.
+  const firstTrackOf = new Map<number, number>()
+  titled.forEach((_, i) => { const m = byNumeral ? numerals[i] : i + 1; if (!firstTrackOf.has(m)) firstTrackOf.set(m, i) })
+  // A work in movements, its points tied to them: each point sits under its movement, with the
+  // companion's note, and only the whole work's stand above the list — never a second list below.
+  const inLine = titled.length > 1 && forAt.some((at) => at !== null && firstTrackOf.has(at))
+  const pointsAt = (track: number) => item.listenFor.filter((_, k) => forAt[k] !== null && firstTrackOf.get(forAt[k]!) === track)
+  const throughout = inLine ? item.listenFor.filter((_, k) => forAt[k] === null || !firstTrackOf.has(forAt[k]!)) : []
 
   async function ask() {
     const q = question.trim()
@@ -362,6 +371,16 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           )}
       </div>
 
+      {/* The whole work's points, before its movements; in focus, once the music has begun, only the movement sounding. */}
+      {throughout.length > 0 && !(focus && nowIndex !== null) && (
+        <>
+          <p className={`${s.label} ${s.mtLg}`}>Listen for, throughout</p>
+          <ul className={`${s.listenFor} ${s.listenForThroughout}`}>
+            {throughout.map((text, n) => <li key={n}><Gloss text={text} /></li>)}
+          </ul>
+        </>
+      )}
+
       {titled.length > 1 && (
         <ol className={s.movements}>
           {titled.map((m, i) => {
@@ -385,6 +404,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                 {now && live && live.index === i && <MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} last={i === titled.length - 1} />}
                 {/* The companion's note, as Spotify reaches the movement — or every note, when Spotify can't say where it is. */}
                 {notes[i] && (now || leftIndex === i || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
+                {/* What to listen for in this movement: always there, so nothing waits for Spotify to reach it; the movement sounding's stands out. */}
+                {inLine && pointsAt(i).length > 0 && (
+                  <ul className={`${s.listenFor} ${s.movementListen} ${nowIndex !== null && !now ? s.listenForLater : ''}`}>
+                    {pointsAt(i).map((text, n) => <li key={n}><Gloss text={text} /></li>)}
+                  </ul>
+                )}
                 {/* Focus hides the rest of the list: one faint line says what comes next, or how long is left. */}
                 {focus && now && (
                   <ThenLine
@@ -403,7 +428,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       {titled.length <= 1 && live && <p className={s.mtSm}><MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} /></p>}
       {titled.length <= 1 && notes[0] && (nowIndex === 0 || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[0]} /></p>}
 
-      {(() => {
+      {!inLine && (() => {
         // Each point with where it belongs: the movement sounding stands out, the rest step back; in focus, only
         // the movement sounding's own and the whole work's. Nothing left to show, no heading over an empty list.
         const points = item.listenFor.map((text, i) => {

@@ -131,16 +131,25 @@ export function sinceWords(then: WeekKey, now: WeekKey): string {
   if (n <= 0) return 'this week'
   if (n === 1) return 'last week'
   if (n < 9) return `${['', '', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'][n]} weeks ago`
-  const start = weekFromKey(then).startsOn
-  const [y, mo] = start.split('-').map(Number)
-  const nowYear = Number(weekFromKey(now).startsOn.slice(0, 4))
+  // A week belongs to the month and year of its Thursday (ISO's own rule): week 1 can start in December.
+  const thursday = (key: WeekKey) => { const [y, m, d] = weekFromKey(key).startsOn.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + 3)) }
+  const t = thursday(then)
+  const y = t.getUTCFullYear()
+  const mo = t.getUTCMonth() + 1
+  const nowYear = thursday(now).getUTCFullYear()
   return y === nowYear ? `in ${MONTHS[mo - 1]}` : `in ${MONTHS[mo - 1]} ${y}`
 }
 
-/** Is `zone` an IANA zone this runtime understands? */
+/**
+ * Is `zone` a place's time zone this runtime understands — "Europe/Bucharest",
+ * or UTC? A fixed offset ("+02:00", "Etc/GMT-2", "EET") is refused: it knows
+ * nothing of summer time, and half the year every day would turn an hour late.
+ */
 export function isValidTimeZone(zone: string): boolean {
+  const z = zone.trim()
+  if (!/^utc$/i.test(z) && (!/^[A-Za-z]+\/[A-Za-z0-9_+\-/]+$/.test(z) || /^Etc\//i.test(z))) return false
   try {
-    new Intl.DateTimeFormat('en', { timeZone: zone })
+    new Intl.DateTimeFormat('en', { timeZone: z })
     return true
   } catch {
     return false

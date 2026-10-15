@@ -310,7 +310,13 @@ export function furtherBlocks(resources: ResourceLike[]): unknown[] {
 
 /** Only web links go into Notion. */
 function httpUrl(u: string): string | undefined {
-  try { return ['http:', 'https:'].includes(new URL(u).protocol) ? u : undefined } catch { return undefined }
+  // Notion refuses a link with a space in it, and one over 2000 characters — refusing the whole sync with it.
+  // Such a link is written as the URL parser escapes it; any other as it was, so its block isn't rewritten.
+  try {
+    const url = new URL(u)
+    const out = /\s/.test(u) ? url.href : u
+    return ['http:', 'https:'].includes(url.protocol) && out.length <= 2000 ? out : undefined
+  } catch { return undefined }
 }
 
 const PREF_WORDS = {
@@ -445,8 +451,11 @@ async function writeProgrammePage(
     const made = { key, pageId: page.id, hash: propsHash, bodyHash: '', bodyBlockIds: [] as string[], textPending: true, syncedAt: at }
     await repo.notion.put(made)
     const text = await append(call, page.id, programmeTextBlocks(p))
+    // The text is in: said at once, so a failure with the further reading doesn't write the text twice next time.
+    const written = { ...made, anchorBlockId: text[text.length - 1], textPending: false }
+    await repo.notion.put(written)
     const bodyBlockIds = further.length ? await append(call, page.id, further) : []
-    await repo.notion.put({ ...made, bodyHash, anchorBlockId: text[text.length - 1], bodyBlockIds, textPending: false })
+    await repo.notion.put({ ...written, bodyHash, bodyBlockIds })
     return true
   }
 
@@ -527,7 +536,14 @@ export async function syncToNotion(call: NotionCall, repo: Repo, pageId: string,
   }
 }
 
-async function syncOnce(call: NotionCall, repo: Repo, pageId: string, currentWeek: string): Promise<SyncReport> {
+async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, currentWeek: string): Promise<SyncReport> {
+  // A fresh start or a restore while this runs (it can take minutes): stop before the next write,
+  // rather than write the journey just cleared away back into Notion.
+  const generation = repo.generation
+  const call: NotionCall = (req) => {
+    if (repo.generation !== generation) return Promise.reject(new Error('The journey changed while Notion was being updated; it will be brought up to date next time.'))
+    return unguarded(req)
+  }
   const dbs = await ensureSetup(call, repo, pageId)
   const [programmes, themes, explorations, recordings, events, feedback, resources, weeks, taste, prefs, comparisons, concerts] = await Promise.all([
     repo.programmes.all(), repo.themes.all(), repo.explorations.all(), repo.recordings.all(), repo.events.all(), repo.feedback.all(), repo.resources.all(), repo.weeks.all(), repo.taste(), repo.preferences(), repo.comparisons.all(), repo.concerts.all(),

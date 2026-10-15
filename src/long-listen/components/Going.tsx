@@ -44,7 +44,7 @@ export function GoingCards() {
           <div key={g.key} className={s.goingCard}>
             <p className={s.goingHead}>
               <Landmark size={14} strokeWidth={1.7} aria-hidden="true" className={s.hallMark} />{' '}
-              {after ? 'After the concert' : `Before the concert ${whenWords(g.event.date, today)}`} · {venueShort(g.event.venue)}
+              {after ? 'After the concert' : `Before the concert ${whenWords(g.event.date, today, g.event.time)}`} · {venueShort(g.event.venue)}
             </p>
             <p className={s.goingTitle}>{g.event.title}</p>
             {after

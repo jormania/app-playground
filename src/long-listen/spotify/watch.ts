@@ -45,6 +45,9 @@ export class PlayerWatch {
   private listeners = new Set<(s: PlayerState) => void>()
   private timer: ReturnType<typeof setTimeout> | null = null
   private inFlight = false
+  /** Readings that failed in a row: each waits longer, so an outage or a 429 isn't polled every few seconds. */
+  private failures = 0
+  private retryAfter = 0
   /** Bumped by each command: a reading begun before it is out of date when it lands. */
   private generation = 0
   private readonly onVisible = () => { if (this.visible()) this.look() }
@@ -111,16 +114,22 @@ export class PlayerWatch {
     const stale = () => asked !== this.generation
     this.source.nowPlaying().then(
       (np) => {
+        this.failures = 0
+        this.retryAfter = 0
         if (stale()) return
         this.onReading?.(np, Date.now())
         this.set({ np, cantFollow: false, known: true })
       },
       (e) => {
+        this.failures++
+        this.retryAfter = e instanceof SpotifyUnavailable ? e.retryAfterMs ?? 0 : 0
         if (!stale() && e instanceof SpotifyUnavailable && e.reason === 'signed-out') this.set({ ...this.state, cantFollow: true, known: true })
       },
     ).finally(() => {
       this.inFlight = false
-      this.schedule(stale() ? SETTLE_MS : nextLookIn(this.state.np))
+      // After a failure: never sooner than Spotify asked, and longer each time (15 s, 30 s, 1 min … up to 5).
+      const backoff = this.failures ? Math.max(this.retryAfter, Math.min(IDLE_MS * 2 ** (this.failures - 1), 300_000)) : 0
+      this.schedule(backoff || (stale() ? SETTLE_MS : nextLookIn(this.state.np)))
     })
   }
 }

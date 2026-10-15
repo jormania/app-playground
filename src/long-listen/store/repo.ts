@@ -236,22 +236,42 @@ export class Repo {
     this.epoch++
     const prefs = await this.preferences()
     const setup = await this.marks.get('notion:setup')
-    for (const k of await this.store.keys()) if (k.startsWith(PREFIX)) await this.store.del(k)
+    // What is kept is never deleted, only rewritten after: a page closed halfway through
+    // leaves the listener's settings and the notebook's place, not an empty store.
+    const keep = new Set([SINGLETON.preferences, `${PREFIX}mark:notion:setup`])
+    for (const k of await this.store.keys()) if (k.startsWith(PREFIX) && !keep.has(k)) await this.store.del(k)
     await this.savePreferences({ ...prefs, nextRequest: '' })
     if (setup) await this.marks.put(setup)
   }
 
-  /** Restore a backup. Adds and overwrites; never deletes what the backup lacks. */
+  /**
+   * Restore a backup: it replaces the journey on this device — two journeys
+   * merged into one would be neither (weeks from one, threads from the other,
+   * the taste of the last). The settings screen saves the journey it replaces
+   * to the downloads first. Notion: every page is checked again on the next
+   * sync — a page the backup knows may since have gone to the trash (a fresh
+   * start does that) and is then written afresh — and the taste page is
+   * rewritten. Where the backup has no notebook, this device's is kept.
+   */
   async importAll(backup: unknown): Promise<number> {
-    const b = backup as { app?: string; records?: Record<string, unknown> }
-    if (b?.app !== 'the-long-listen' || !b.records || typeof b.records !== 'object') {
+    const b = backup as { app?: string; version?: unknown; records?: unknown }
+    if (b?.app !== 'the-long-listen' || !b.records || typeof b.records !== 'object' || Array.isArray(b.records)) {
       throw new Error('That file is not a Long Listen backup.')
     }
-    const pairs = Object.entries(b.records).filter(([k]) => k.startsWith(PREFIX))
+    if (b.version !== 1) throw new Error('That backup was made by a newer version of the app.')
+    const pairs = Object.entries(b.records as Record<string, unknown>)
+      .filter(([k, v]) => k.startsWith(PREFIX) && v && typeof v === 'object')
+      .filter(([k]) => k !== `${PREFIX}notion:taste`)
+      .map(([k, v]): [string, unknown] => (k.startsWith(`${PREFIX}notion:`) ? [k, { ...(v as NotionSyncState), hash: '' }] : [k, v]))
+    if (!pairs.length) throw new Error('That backup holds nothing to restore.')
+    const setup = await this.marks.get('notion:setup')
     // Like a fresh start, a restore replaces the journey a curator call in
     // flight was asked about: its answer must not be written over the backup.
     this.epoch++
+    const incoming = new Set(pairs.map(([k]) => k))
+    for (const k of await this.store.keys()) if (k.startsWith(PREFIX) && !incoming.has(k)) await this.store.del(k)
     await this.store.setMany(pairs)
+    if (setup && !incoming.has(`${PREFIX}mark:notion:setup`)) await this.marks.put(setup)
     return pairs.length
   }
 }

@@ -397,6 +397,8 @@ export interface ListeningEvent {
   /** spotify-recent: how many of the work's tracks were played. */
   tracksPlayed?: number
   tracksTotal?: number
+  /** spotify-recent: which of the work's tracks were played, so a session seen across two syncs adds up. */
+  tracksSeen?: string[]
   /** spotify-recent: the session's first and last played_at, so a re-poll never counts it twice. */
   playedAt?: Instant
   playedUntil?: Instant

@@ -48,10 +48,10 @@ export function goingStage(g: Going, today: string): 'later' | 'ahead' | 'after'
   return d >= -AFTER_DAYS ? 'after' : 'done'
 }
 
-/** "tonight", "tomorrow", "on Thursday", "on 23 October". */
-export function whenWords(date: string, today: string): string {
+/** "tonight" (or "today", for a concert before five), "tomorrow", "on Thursday", "on 23 October". */
+export function whenWords(date: string, today: string, time?: string | null): string {
   const d = daysUntil(date, today)
-  if (d === 0) return 'tonight'
+  if (d === 0) return time && /^\d{1,2}:/.test(time) && Number(time.split(':')[0]) < 17 ? 'today' : 'tonight'
   if (d === 1) return 'tomorrow'
   const at = new Date(`${date}T12:00:00Z`)
   const opts: Intl.DateTimeFormatOptions = d > 1 && d < 7 ? { weekday: 'long', timeZone: 'UTC' } : { day: 'numeric', month: 'long', timeZone: 'UTC' }

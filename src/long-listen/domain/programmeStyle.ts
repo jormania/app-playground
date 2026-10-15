@@ -97,17 +97,35 @@ export function clock(ms: number): string {
 }
 
 /**
- * Which "listen for" points belong to the movement now sounding: each is
- * tagged with the work's own numeral ("II") or "" for the whole work. Only
+ * Which "listen for" points belong to which movement: each is tagged with the
+ * work's own numeral ("II") or "" for the whole work. The tags are only
  * trusted when the recording divides the work as the numerals expect — every
- * numeral within its track count — otherwise none is tied to a movement.
+ * numeral within its track count — otherwise none is tied by its tag.
+ *
+ * A point that names its movement in so many words ("the third movement's
+ * swans", "the finale") goes there whatever its tag says: a tag is the
+ * curator's guess afterwards, the words are what the listener reads, and a
+ * point about the swans of the third movement once sat under the first.
  */
-export function listenForAt(tags: string[] | undefined, count: number, tracks: number): (number | null)[] {
-  const blank = Array.from({ length: count }, () => null)
-  if (!tags?.length || tracks < 2) return blank
-  const at = Array.from({ length: count }, (_, k) => (tags[k] ? romanValue(tags[k]) || null : null))
-  if (at.every((x) => x === null) || at.some((x) => x !== null && x > tracks)) return blank
-  return at
+export function listenForAt(tags: string[] | undefined, count: number, tracks: number, texts?: string[]): (number | null)[] {
+  if (tracks < 2) return Array.from({ length: count }, () => null)
+  const tagged = Array.from({ length: count }, (_, k) => (tags?.[k] ? romanValue(tags[k]) || null : null))
+  const trusted = !tagged.some((x) => x !== null && x > tracks)
+  return tagged.map((x, k) => movementNamedIn(texts?.[k] ?? '', tracks) ?? (trusted ? x : null))
+}
+
+const MOVEMENT_ORDINAL: Record<string, number> = { first: 1, opening: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9 }
+
+/** The one movement a sentence names ("the second movement", "the finale"), of a work in `movements`; null when none, or more than one. */
+export function movementNamedIn(text: string, movements: number): number | null {
+  const named = new Set<number>()
+  for (const m of text.matchAll(/\b(first|opening|second|third|fourth|fifth|sixth|seventh|eighth|ninth|last|final|closing)\s+movement/gi)) {
+    const w = m[1].toLowerCase()
+    named.add(MOVEMENT_ORDINAL[w] ?? movements)
+  }
+  if (/\bfinale\b/i.test(text)) named.add(movements)
+  const [only] = [...named]
+  return named.size === 1 && only >= 1 && only <= movements ? only : null
 }
 
 /**

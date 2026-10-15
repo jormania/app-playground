@@ -139,7 +139,7 @@ export function LibraryScreen() {
                         {state !== 'not-started' && <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_WORD[state]}</span>}
                         {fb.reaction && <span className={s.tag}>{reactionLabel(fb.reaction)?.toLowerCase()}</span>}
                         {isConfirmed(rec) && rec.spotify.durationMs ? <span>{aboutDuration(rec.spotify.durationMs)}</span> : null}
-                        {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => { assumeStart(rec.spotify.trackIds, rec.spotify.durationMs); armWork(rec.spotify.trackIds) }}>Spotify</a>}
+                        {isConfirmed(rec) && <a href={openUrl('track', rec.spotify.trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={() => { assumeStart(rec.spotify.trackIds, rec.spotify.durationMs); armWork(rec.spotify.trackIds, rec.spotify.trackDurationsMs) }}>Spotify</a>}
                         {(programmeId || role) && (
                           <span>
                             {role && <>{role}{programmeId ? ', ' : ''}</>}
