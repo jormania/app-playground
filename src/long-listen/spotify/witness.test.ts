@@ -94,6 +94,24 @@ describe('the app as witness to a single track', () => {
     expect(w.observe({ at: late, np: np(30_000, true, 'next-song', 3 * MIN) })).toEqual([])
   })
 
+  it('hears it when the page came back long after the end, to Spotify stopped on the album’s first track', () => {
+    // Alfvén's Fourth: seen to 38 of 48 minutes, the phone asleep; back twenty minutes after the end.
+    const w = new Witness()
+    const ALFVEN = 48 * MIN
+    const alfven = (p: number) => np(p, true, 'alfven4', ALFVEN)
+    let at = 0
+    for (let p = 0; p <= 38 * MIN; p += 2 * MIN, at += 2 * MIN) w.observe({ at, np: alfven(p) })
+    const back = at - 2 * MIN + 10 * MIN + 20 * MIN
+    expect(w.observe({ at: back, np: np(0, false, 'skargardssagen', 16 * MIN) })).toEqual(['alfven4'])
+  })
+
+  it('hears it when the next track began just as its time ran out, however late the page came back', () => {
+    const w = new Witness()
+    w.observe({ at: 0, np: np(1_200) })
+    // It ended about fifteen minutes on; the next work began then and has played fifteen when the page returns.
+    expect(w.observe({ at: 30 * MIN, np: np(15 * MIN + 1_200, true, 'next-work', 40 * MIN) })).toEqual(['tintagel'])
+  })
+
   it('does not hear it from a pause at the close that came too soon to be real', () => {
     const w = new Witness()
     w.observe({ at: 0, np: np(1_200) })
