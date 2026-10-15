@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekOf, weekFromKey, weeksBetween, sinceWords, civilDateIn, isValidTimeZone } from './week'
+import { weekOf, weekFromKey, weeksBetween, sinceWords, civilDateIn, isValidTimeZone, canonicalTimeZone } from './week'
 
 describe('the listening week', () => {
   it('turns over at Monday midnight in Bucharest, not in UTC', () => {
@@ -62,5 +62,14 @@ describe('the listening week', () => {
   it('takes a named zone only, never a fixed offset that would ignore summer time', () => {
     for (const z of ['Europe/Bucharest', 'America/Argentina/Buenos_Aires', 'UTC']) expect(isValidTimeZone(z)).toBe(true)
     for (const z of ['+02:00', 'Etc/GMT-2', 'EET', '', 'Not/AZone']) expect(isValidTimeZone(z)).toBe(false)
+  })
+
+  it('stores a zone by its own name, never as typed', () => {
+    // Kept untrimmed, "Europe/London " threw in every date and left the whole app blank.
+    expect(canonicalTimeZone('Europe/London ')).toBe('Europe/London')
+    expect(canonicalTimeZone(' europe/bucharest')).toBe('Europe/Bucharest')
+    expect(canonicalTimeZone('utc')).toBe('UTC')
+    expect(canonicalTimeZone('+02:00')).toBeNull()
+    expect(canonicalTimeZone('Not/AZone')).toBeNull()
   })
 })
