@@ -73,12 +73,13 @@ describe('addresses that hold nothing', () => {
     expect(screen.queryByRole('button', { name: /Ask the curator to write it/ })).toBeNull()
   })
 
-  it('a season one week in has no button either', async () => {
+  it('a season under way has no button either, and says when it ends — no count of weeks', async () => {
     const repo = new Repo(memoryStore())
     await chosenWeek(repo, plain())
     window.location.hash = '#/season/1'
     render(<App repo={repo} curator={plain()} />)
-    expect(await screen.findByText(/once two weeks of it are behind you/)).toBeTruthy()
+    expect(await screen.findByText(/^Under way — it ends on \d+ \w+ \d{4}\. Its review is written then\.$/)).toBeTruthy()
+    expect(screen.queryByText(/of 12 weeks/)).toBeNull()
     expect(screen.queryByRole('button', { name: /Ask the curator to write it/ })).toBeNull()
   })
 })
@@ -205,15 +206,15 @@ describe('asking the curator, and seeing that it is asked', () => {
   }, 15000)
 })
 
-describe('Threads', () => {
-  it('lists under "Paths still open" only directions from earlier weeks', async () => {
+// Paths left open are listed on This week (and in Where next), not on Threads.
+describe('This week', () => {
+  it('offers as "A path left open" only directions from earlier weeks', async () => {
     const repo = new Repo(memoryStore())
     const j = new Journey(repo, plain())
     await j.ensureWeek()
     await j.offerOtherDirections() // this week's first three are now open — but this week's
-    window.location.hash = '#/threads'
     render(<App repo={repo} curator={plain()} />)
-    await screen.findByText('What we’ve been following')
-    expect(screen.queryByText('Paths still open')).toBeNull()
-  })
+    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    expect(screen.queryByText('A path left open')).toBeNull()
+  }, 15000)
 })

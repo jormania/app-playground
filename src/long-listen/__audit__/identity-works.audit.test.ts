@@ -52,7 +52,7 @@ describe('audit: a concert work and a programme work are one Work', () => {
     await j.choose(w.optionIds[0])
     const p = (await repo.programmes.all())[0]
     const laMer = p.sections.flatMap((s) => s.items).find((i) => i.proposed.work === 'La mer')!
-    const kept = await j.saveConcert({ venue: 'Ateneul Român', date: '2026-10-09', soloists: [], works: [{ composer: 'Debussy', title: 'La mer' }], source: 'typed' })
+    const kept = await j.saveConcert({ venue: 'Ateneul Român', date: '2026-10-08', soloists: [], works: [{ composer: 'Debussy', title: 'La mer' }], source: 'typed' })
     expect(kept.works[0].workId).toBe(laMer.workId)
   })
 })

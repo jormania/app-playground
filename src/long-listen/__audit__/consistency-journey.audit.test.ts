@@ -176,7 +176,7 @@ describe('a fresh start while the curator thinks: every job that writes checks t
   it('the season in review (journey.writeSeasonReview) is not kept for a journey that no longer exists', async () => {
     const gate = deferred()
     const { c } = await chosen({ season: async () => { await gate.promise; return { title: 't', opening: 'o', threads: [], taste: '', open: '', again: [], closing: '', promptVersion: 'v' } } })
-    at('2026-10-15T09:00:00Z') // W42: two weeks of season one
+    at('2027-01-05T09:00:00Z') // season one is over
     const asked = journey(c.client).writeSeasonReview(1).catch(() => undefined)
     await until(() => c.count('season') > 0)
     await repo.freshStart()

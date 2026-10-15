@@ -3,8 +3,8 @@ import { weekFromKey, weekOfDate, weeksBetween } from './week'
 
 /**
  * Seasons: twelve listening weeks each, counted from the listener's first
- * week. Every twelve weeks the curator writes the season in review; before a
- * season ends, a provisional "so far" can be read.
+ * week. When a season's twelve weeks are over the curator can write it in
+ * review; not before, so a review is never a guess at what is still to come.
  */
 export const SEASON_WEEKS = 12
 
@@ -17,8 +17,8 @@ export interface Season {
   label: string
   /** Every one of its weeks is over. */
   complete: boolean
-  /** Weeks of it so far, up to and including this one. */
-  weeksSoFar: number
+  /** Its first week has come. */
+  begun: boolean
 }
 
 /** The week `n` weeks after `key` (n may be negative). */
@@ -45,7 +45,7 @@ export function season(firstWeek: WeekKey, n: number, now: WeekKey): Season {
     endsOn,
     label: `${dayMonth(startsOn)}${sameYear ? '' : ` ${startsOn.slice(0, 4)}`} – ${dayMonth(endsOn)} ${endsOn.slice(0, 4)}`,
     complete: weeksBetween(weekKeys[SEASON_WEEKS - 1], now) > 0,
-    weeksSoFar: Math.max(0, Math.min(SEASON_WEEKS, weeksBetween(weekKeys[0], now) + 1)),
+    begun: weeksBetween(weekKeys[0], now) >= 0,
   }
 }
 

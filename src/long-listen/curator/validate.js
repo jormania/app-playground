@@ -525,9 +525,9 @@ export function validateResources(parsed, searchResults) {
  * from works the listener actually met this season (anything else is dropped,
  * never fixed by a second call).
  * @param {any} out
- * @param {{ met: { composer: string, work: string }[], soFar?: boolean }} ctx
+ * @param {{ met: { composer: string, work: string }[] }} ctx
  */
-export function validateSeason(out, { met, soFar = false }) {
+export function validateSeason(out, { met }) {
   const problems = []
   const mendable = []
   const threads = (Array.isArray(out?.threads) ? out.threads : [])
@@ -538,7 +538,7 @@ export function validateSeason(out, { met, soFar = false }) {
   const again = (Array.isArray(out?.again) ? out.again : [])
     .map((a) => ({ composer: clean(a?.composer), work: clean(a?.work), why: clean(a?.why) }))
     .filter((a) => a.composer && a.work && a.why && known(a))
-    .slice(0, soFar ? 2 : 4)
+    .slice(0, 4)
   const value = { title: clean(out?.title), opening: clean(out?.opening), threads, taste: clean(out?.taste), open: clean(out?.open), again, closing: clean(out?.closing) }
   if (!value.title) problems.push('The review has no title.')
   if (!value.opening) problems.push('The review has no opening paragraph.')

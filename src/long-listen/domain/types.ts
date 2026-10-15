@@ -538,7 +538,7 @@ export interface TasteProfile {
   observations: TasteObservation[]
   /** Questions the listener seems to be asking. */
   questions: string[]
-  /** Free text the listener wrote to the curator in Settings. */
+  /** Free text the listener wrote to the curator, in the Notebook. */
   notesToCurator: string
   updatedAt: Instant
 }

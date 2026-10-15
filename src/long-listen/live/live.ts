@@ -1,5 +1,6 @@
 import type { Programme, ProgrammeItem } from '../domain/types'
 import { displaySurname, fold, surname } from '../domain/identity'
+import { goingKey } from '../domain/going'
 
 /**
  * Live in Bucharest: when a programmed work, composer or performer is on at
@@ -28,6 +29,14 @@ export interface LiveMatch {
   event: LiveEvent
   /** What matched: the very work, one of its performers, or only its composer. */
   how: 'work' | 'performer' | 'composer'
+}
+
+/** One concert that meets the programme, and everything of the programme it holds — closest first. */
+export interface LiveConcert {
+  event: LiveEvent
+  /** goingKey(event): the same listing read twice is one concert. */
+  key: string
+  matches: LiveMatch[]
 }
 
 const STRENGTH = { work: 0, performer: 1, composer: 2 } as const
@@ -63,25 +72,38 @@ export function meet(item: ProgrammeItem, event: LiveEvent): LiveMatch['how'] | 
     const otherNumber = own.length > 0 && [...onBill].some((n) => n.startsWith('no '))
     const byNumber = (own.length > 0 && own.every((n) => onBill.has(n))) || (!otherNumber && catalogue.some((n) => onBill.has(n)))
     const titleWords = words(item.proposed.work).split(' ').filter((w) => w.length > 4 && !/^(symphony|simfonia|concerto|concertul|overture|uvertura|suite|major|minor|sonata)$/.test(w))
-    if (byNumber || (titleWords.length && titleWords.every((w) => text.includes(` ${w} `)))) return 'work'
+    // A short title ("La mer") leaves no long words: then the whole title, as a phrase.
+    if (byNumber || (titleWords.length ? titleWords.every((w) => text.includes(` ${w} `)) : has(item.proposed.work))) return 'work'
   }
   const performers = [item.proposed.conductor, ...(item.proposed.soloists ?? []).map((x) => x.name)].filter((x): x is string => Boolean(x))
   if (performers.some((p) => has(surname(p)))) return 'performer'
   return composerOn ? 'composer' : null
 }
 
-/** The concerts, from today on, that meet the programme — closest matches first, one per item. */
-export function liveMatches(programme: Programme, events: LiveEvent[], today: string): LiveMatch[] {
-  const out: LiveMatch[] = []
-  for (const item of programme.sections.flatMap((s) => s.items)) {
-    const found = events
-      .filter((e) => e.date >= today)
-      .map((event) => ({ item, event, how: meet(item, event) }))
-      .filter((m): m is LiveMatch => m.how !== null)
-      .sort((a, b) => STRENGTH[a.how] - STRENGTH[b.how] || a.event.date.localeCompare(b.event.date))
-    if (found[0]) out.push(found[0])
+const closest = (a: LiveMatch, b: LiveMatch) => STRENGTH[a.how] - STRENGTH[b.how] || a.event.date.localeCompare(b.event.date)
+
+/**
+ * The concerts, from today on, that meet the programme — closest matches first.
+ * Each work's closest concert is shown, once however many works it holds: a
+ * concert with two of the week's works is one line naming both.
+ */
+export function liveMatches(programme: Programme, events: LiveEvent[], today: string): LiveConcert[] {
+  const items = programme.sections.flatMap((s) => s.items)
+  const all = items
+    .flatMap((item) => events.filter((e) => e.date >= today).map((event) => ({ item, event, how: meet(item, event) })))
+    .filter((m): m is LiveMatch => m.how !== null)
+    .sort(closest)
+  const shown = new Set(items.map((item) => all.find((m) => m.item === item)).filter((m): m is LiveMatch => Boolean(m)).map((m) => goingKey(m.event)))
+  const byKey = new Map<string, LiveConcert>()
+  for (const m of all) {
+    const key = goingKey(m.event)
+    if (!shown.has(key)) continue
+    const c = byKey.get(key) ?? { event: m.event, key, matches: [] }
+    // The same listing read twice (or a work met two ways) is named once.
+    if (!c.matches.some((x) => x.item.id === m.item.id)) c.matches.push(m)
+    byKey.set(key, c)
   }
-  return out.sort((a, b) => STRENGTH[a.how] - STRENGTH[b.how] || a.event.date.localeCompare(b.event.date))
+  return [...byKey.values()]
 }
 
 /** "Sibelius’s Symphony No. 5" / "Blomstedt, who conducts this recording" / "Sibelius" — for the line. */
@@ -93,6 +115,27 @@ export function whatIsOn(m: LiveMatch): string {
     return `${who ?? 'a performer from this week'}, from the ${c} recording`
   }
   return `music by ${c}`
+}
+
+/** "Debussy’s La mer and Ravel’s Daphnis et Chloé": everything of the programme at one concert, a composer named once. */
+export function whatIsOnAt(c: LiveConcert): string {
+  const byWork = new Set(c.matches.filter((m) => m.how === 'work').map((m) => surname(m.item.proposed.composer)))
+  const parts = [...new Set(c.matches.filter((m) => m.how !== 'composer' || !byWork.has(surname(m.item.proposed.composer))).map(whatIsOn))]
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0] ?? ''
+}
+
+/**
+ * One evening at one place, however it was written down: the same date, the
+ * venue by its full or its everyday name ("Filarmonica George Enescu", "the
+ * Ateneu"), and the same hall and hour when both name one.
+ */
+export function sameEvening(a: Pick<LiveEvent, 'date' | 'venue' | 'hall' | 'time'>, b: Pick<LiveEvent, 'date' | 'venue' | 'hall' | 'time'>): boolean {
+  const place = (v: string) => [fold(v), fold(venueShort(v))].map((x) => x.replace(/^the /, ''))
+  const hour = (t?: string | null) => (t ?? '').replace(/\D/g, '').slice(0, 4)
+  return a.date === b.date
+    && place(a.venue).some((x) => place(b.venue).includes(x))
+    && (!a.hall || !b.hall || fold(a.hall) === fold(b.hall))
+    && (!hour(a.time) || !hour(b.time) || hour(a.time) === hour(b.time))
 }
 
 const DAY = 24 * 60 * 60 * 1000

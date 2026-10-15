@@ -27,7 +27,7 @@ describe('a path taken from Threads that the curator could not make', () => {
     const w1 = await j.ensureWeek()
     await j.choose(w1.optionIds[0])
 
-    // Monday of the next week, straight to Threads → "Take this path now" (Threads.tsx: weekWithoutDirections, then takeOpenPath).
+    // Monday of the next week, straight to This week → "Take this path now" (Week.tsx: weekWithoutDirections, then takeOpenPath).
     at('2026-10-12T07:00:00Z')
     const j2 = journey(c.client)
     await j2.weekWithoutDirections()

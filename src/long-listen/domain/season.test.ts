@@ -8,9 +8,11 @@ describe('seasons of twelve weeks', () => {
     expect(s.weekKeys[11]).toBe('2026-W52')
     expect(s.label).toBe('5 October – 27 December 2026')
     expect(s.complete).toBe(false)
-    expect(s.weeksSoFar).toBe(3)
+    expect(s.begun).toBe(true)
     const two = season('2026-W41', 2, '2027-W03')
     expect(two.weekKeys[0]).toBe('2026-W53')
+    expect(two.begun).toBe(true)
+    expect(season('2026-W41', 2, '2026-W52').begun).toBe(false)
     expect(two.label).toBe('28 December 2026 – 21 March 2027')
   })
 

@@ -3568,3 +3568,55 @@ summary.textButton::-webkit-details-marker {
   font-size: var(--text-base);
   line-height: 1.5;
 }
+
+/* Threads: how a theme landed, labelled, between its visits and the questions it left. */
+.threadLanded {
+  margin-top: var(--space-sm);
+}
+
+/* A thread's labels are headings; they keep the place the paragraphs they were had. */
+.threadLanded .h3,
+.threadNotes .h3 {
+  margin: var(--space-2xs) 0 0;
+}
+
+/* A set-aside last visit ends the line on a hollow bead: the thread wasn't left there. */
+.threadLine > li.setAsideVisit:last-child::before {
+  background: var(--color-bg);
+}
+
+/* Journal: what was listened to, one line a work like a concert's works, with
+   its state and reaction tags following on and any words quoted beneath. */
+.listenedList > li + li {
+  margin-top: var(--space-xs);
+}
+
+.listenedList .tag {
+  vertical-align: 0.1em;
+}
+
+.listenedList .said {
+  margin-top: var(--space-3xs);
+}
+
+/* Settings → the week's time zone: a list, drawn like the text fields beside it. */
+.zoneSelect {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2, var(--color-border));
+  border-radius: var(--radius-md, 10px);
+}
+
+.zoneSelect:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-ring, color-mix(in srgb, var(--color-accent) 35%, transparent));
+}

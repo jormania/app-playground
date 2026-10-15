@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Repo, memoryStore } from './repo'
+import { Repo, checkBackup, memoryStore } from './repo'
 
 const P = 'll:v1:'
 
@@ -29,6 +29,32 @@ describe('restoring a backup', () => {
     await expect(repo.importAll({ app: 'the-long-listen', version: 2, records: { [`${P}theme:x`]: { id: 'x' } } })).rejects.toThrow(/newer version/)
     await expect(repo.importAll({ app: 'the-long-listen', version: 1, records: { 'other:key': 1 } })).rejects.toThrow(/nothing to restore/)
     expect((await repo.themes.all()).map((t) => t.id)).toEqual(['here'])
+  })
+
+  it('says why a file is refused before anything is asked, and passes a backup it can restore', () => {
+    expect(checkBackup(null)).toMatch(/isn’t a backup from this app/)
+    expect(checkBackup({ app: 'other', version: 1, records: {} })).toMatch(/isn’t a backup from this app/)
+    expect(checkBackup({ app: 'the-long-listen', version: 2, records: {} })).toMatch(/newer version/)
+    expect(checkBackup({ app: 'the-long-listen', version: 1, records: [] })).toMatch(/can’t be read/)
+    expect(checkBackup({ app: 'the-long-listen', version: 1, records: { 'other:key': {}, [`${P}theme:x`]: 'not a record' } })).toMatch(/nothing to restore/)
+    expect(checkBackup({ app: 'the-long-listen', version: 1, records: { [`${P}theme:x`]: { id: 'x' } } })).toBeNull()
+  })
+
+  it('is all or nothing: a record that can’t be stored leaves the journey here as it was', async () => {
+    const repo = new Repo(memoryStore({ [`${P}theme:here`]: { id: 'here' } }))
+    // A function can't be cloned into the store, as IndexedDB would refuse it.
+    await expect(repo.importAll({ app: 'the-long-listen', version: 1, records: { [`${P}theme:there`]: { id: 'there', bad: () => 1 } } })).rejects.toThrow()
+    expect((await repo.themes.all()).map((t) => t.id)).toEqual(['here'])
+  })
+})
+
+describe('the store', () => {
+  it('replaces in one change: deletes and writes land together, or not at all', async () => {
+    const store = memoryStore({ a: 1, b: 2 })
+    await store.replace(['a'], [['c', 3], ['b', 4]])
+    expect(Object.fromEntries(await store.entries())).toEqual({ b: 4, c: 3 })
+    await expect(store.replace(['b', 'c'], [['d', () => 0]])).rejects.toThrow()
+    expect(Object.fromEntries(await store.entries())).toEqual({ b: 4, c: 3 })
   })
 })
 

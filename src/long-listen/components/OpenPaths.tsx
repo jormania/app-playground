@@ -12,17 +12,15 @@ export const MOOD_WORD = { immersive: 'Immersive', curious: 'Curious', adventuro
 
 /**
  * Directions offered in earlier weeks and not taken then — the same list
- * wherever it appears (This week, the programme's "Where next", Threads):
+ * wherever it appears (This week, the programme's "Where next"):
  * each with its mood and when it was offered, its pitch, and "Take this path
  * now". Taking one asks first only when this week already has a programme,
  * which then stays in the journal. While the curator builds it, the button
  * says so in place.
  */
-export function OpenPaths({ paths, nowKey, level = 4, busy = false, onTaking, keyHint = true }: {
+export function OpenPaths({ paths, nowKey, busy = false, onTaking, keyHint = true }: {
   paths: ProgrammeOption[]
   nowKey: WeekKey
-  /** The heading level of each path's title, under the heading it sits beneath. */
-  level?: 3 | 4
   /** Something else on the screen is with the curator: wait for it. */
   busy?: boolean
   /** Told when a path starts and stops being taken, so the screen can hold its other requests. */
@@ -33,7 +31,6 @@ export function OpenPaths({ paths, nowKey, level = 4, busy = false, onTaking, ke
   const { journey, repo, spotify, bump, say, curatorReady } = useServices()
   const [taking, setTaking] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<ProgrammeOption | null>(null)
-  const Title = level === 3 ? 'h3' : 'h4'
 
   function hold(id: string | null) {
     setTaking(id)
@@ -70,7 +67,7 @@ export function OpenPaths({ paths, nowKey, level = 4, busy = false, onTaking, ke
         {paths.map((o) => (
           <li key={o.id} className={s.entry}>
             <p className={s.mood}>{MOOD_WORD[o.mood]} · offered {sinceWords(o.weekKey, nowKey)}</p>
-            <Title className={s.nextOption}>{o.title}</Title>
+            <h4 className={s.nextOption}>{o.title}</h4>
             <p className={s.quiet}>{o.pitch}</p>
             <div className={s.actions}>
               <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={busy || taking !== null || !curatorReady}>

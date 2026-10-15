@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { TasteObservation } from '../domain/types'
 import { useLoad, useServices } from '../app/services'
-import { go } from '../app/router'
+import { go, href } from '../app/router'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
-import { preferenceLines } from '../notion/mirror'
-import { CharCount, Empty, MAX_ASK, MAX_NOTE, NeedsKey, Problem, Waiting, dateWords, messageOf } from '../components/common'
+import { CharCount, Empty, MAX_ASK, MAX_NOTE, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
 import { Twisty } from '../components/Twisty'
 import s from '../styles/editorial.module.css'
 
@@ -21,13 +20,21 @@ const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
  * listener can simply tell the curator something.
  */
 export function NotebookScreen() {
-  const { repo, journey, bump, say, notion, notionState, syncNotion, week, curatorReady, settings } = useServices()
+  const { repo, journey, bump, say, week, curatorReady } = useServices()
   const { data, error, retry } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
   const [notes, setNotes] = useState('')
   const [wish, setWish] = useState('')
   const [reading, setReading] = useState(false)
   const [following, setFollowing] = useState<string | null>(null)
-  useEffect(() => { if (data) { setNotes(data.taste.notesToCurator); setWish(data.prefs.nextRequest) } }, [data])
+  // Each field filled from what is kept once, on opening: the page reloads whenever anything is saved (the
+  // other field, a taste reading, a Spotify sync), and a refill then threw away what was being typed.
+  const filled = useRef(false)
+  useEffect(() => {
+    if (!data || filled.current) return
+    filled.current = true
+    setNotes(data.taste.notesToCurator)
+    setWish(data.prefs.nextRequest)
+  }, [data])
 
   if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the notebook…</Waiting>
@@ -35,13 +42,20 @@ export function NotebookScreen() {
   const groups = observationsByStance(taste)
   const moved = taste.observations.filter((o) => o.supersededBy)
   const byId = new Map(taste.observations.map((o) => [o.id, o]))
+  // What an impression became in the end: followed through every later one, not just the next (which may itself be past).
+  const nowOf = (o: TasteObservation) => {
+    let cur = o
+    const seen = new Set<string>()
+    while (cur.supersededBy && !seen.has(cur.id)) { seen.add(cur.id); const next = byId.get(cur.supersededBy); if (!next) break; cur = next }
+    return cur === o ? undefined : cur
+  }
 
   async function saveNotes() {
     try {
       const current = await repo.taste()
       await repo.saveTaste({ ...current, notesToCurator: notes.trim() })
       bump()
-      say('The curator will read this from next week.', 'success')
+      say('Kept. The curator reads it with everything it writes from now on.', 'success')
     } catch (e) {
       say(messageOf(e), 'danger')
     }
@@ -58,36 +72,30 @@ export function NotebookScreen() {
   }
 
   /**
-   * A question the curator heard, turned into directions in one tap. Now: three
-   * directions from it — before a choice this week they replace the three on
-   * offer (which stay open), after one they wait under "Where next". Next week:
-   * it becomes next week's wish.
+   * A question the curator heard, turned into directions in one tap: before a
+   * choice this week they replace the three on offer (which stay open), after
+   * one they wait under "Where next". Followed, it leaves the list.
    */
-  async function follow(q: string, when: 'now' | 'next') {
-    if (when === 'next') {
-      try {
-        await repo.savePreferences({ ...(await repo.preferences()), nextRequest: q })
-        setWish(q)
-        bump()
-        say('Next week begins from this question.', 'success')
-      } catch (e) {
-        say(messageOf(e), 'danger')
-      }
-      return
-    }
+  async function follow(q: string) {
     setFollowing(q)
     try {
       const thisWeek = await repo.weeks.get(week.key)
+      let said: string | undefined
       if (thisWeek?.programmeId) {
         await journey.moreDirections(q)
-        say('Three directions from your question are waiting under “Where next”, at the end of this week’s programme.', 'success')
+        said = 'Three directions from your question are waiting under “Where next”, at the end of this week’s programme.'
       } else if (thisWeek) {
         await journey.offerOtherDirections(q)
+        said = 'Three directions from your question are on This week. The three before stay open.'
       } else {
         // No week yet: its first three directions start from the question — one call, and next week's wish is left alone.
         await journey.ensureWeek(q)
       }
+      // Followed: not offered again, where a second tap would pay for the same three directions twice.
+      const current = await repo.taste()
+      await repo.saveTaste({ ...current, questions: current.questions.filter((x) => x !== q) })
       bump()
+      if (said) say(said, 'success')
       go({ name: 'week' })
     } catch (e) {
       say(messageOf(e), 'danger')
@@ -98,7 +106,7 @@ export function NotebookScreen() {
 
   async function readNow() {
     setReading(true)
-    try { await journey.interpretPendingFeedback(); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setReading(false) }
+    try { if (await journey.interpretPendingFeedback()) say('Read.', 'success'); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setReading(false) }
   }
 
   const empty = Object.values(groups).every((g) => g.length === 0)
@@ -119,7 +127,7 @@ export function NotebookScreen() {
           {!curatorReady && <NeedsKey to="have it read" />}
         </>
       )}
-      {empty && <Empty>Nothing yet. A word or two of feedback after a recording is how this begins.</Empty>}
+      {empty && data.pending === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing yet. A word after a recording — how it landed, what stayed with you — is how this begins.</Empty>}
 
       {(Object.keys(STANCE_TITLE) as TasteObservation['stance'][]).map((stance) => groups[stance].length > 0 && (
         <section key={stance} className={s.block}>
@@ -135,16 +143,14 @@ export function NotebookScreen() {
       {taste.questions.length > 0 && (
         <section className={s.block}>
           <h2 className={s.sectionHead}>Questions you seem to be asking</h2>
-          <p className={s.sectionGuide}>Each one can become a week: <em>Follow this</em> asks the curator for three directions from it.</p>
+          <p className={s.sectionGuide}>Each can become a week. <em>Follow this</em> asks the curator for three directions from it: before you’ve chosen this week, they replace the three on offer (those stay open); after, they wait under Where next.</p>
           {!curatorReady && <NeedsKey to="follow one now" />}
           <ul className={s.bullets}>
             {taste.questions.map((q, i) => (
               <li key={i}>
                 {q}{' '}
                 <span className={s.followLinks}>
-                  <button className={s.textButton} onClick={() => void follow(q, 'now')} disabled={following !== null || !curatorReady}>{following === q ? 'The curator is finding three…' : 'Follow this'}</button>
-                  <span className={s.faint}> · </span>
-                  <button className={s.textButton} onClick={() => void follow(q, 'next')} disabled={following !== null}>next week</button>
+                  <button className={s.textButton} onClick={() => void follow(q)} disabled={following !== null || !curatorReady}>{following === q ? 'The curator is finding three…' : 'Follow this'}</button>
                 </span>
               </li>
             ))}
@@ -152,12 +158,12 @@ export function NotebookScreen() {
         </section>
       )}
 
-      {/* History, kept but folded: one line says how much. */}
+      {/* History, kept but folded. */}
       {moved.length > 0 && (
-        <Twisty className={s.mtXl} label="How it has moved" value={`${moved.length} ${moved.length === 1 ? 'change' : 'changes'}`}>
+        <Twisty className={s.mtXl} label="How it has moved" value="earlier impressions, kept">
           <ul className={s.bullets}>
             {moved.map((o) => {
-              const now = o.supersededBy ? byId.get(o.supersededBy) : undefined
+              const now = nowOf(o)
               return <li key={o.id}><span className={s.quiet}>Once: {o.statement}</span>{now && <> Now: {now.statement}</>}</li>
             })}
           </ul>
@@ -165,22 +171,8 @@ export function NotebookScreen() {
       )}
 
       <section className={s.block}>
-        <h2 className={s.sectionHead}>What you’ve told the curator</h2>
-        {/* A ledger, not a list: what each setting is, then what it says. */}
-        <dl className={s.ledger}>
-          {preferenceLines(data.prefs).map((l) => {
-            const at = l.indexOf(': ')
-            return at > 0
-              ? <div key={l}><dt>{l.slice(0, at)}</dt><dd>{l.slice(at + 2)}</dd></div>
-              : <div key={l}><dd className={s.ledgerWide}>{l}</dd></div>
-          })}
-        </dl>
-        <p className={s.faint}><a href="#/settings">Change these in Settings</a></p>
-      </section>
-
-      <section className={s.block}>
         <h2 className={s.sectionHead}>A wish for next week</h2>
-        <p className={s.sectionGuide}>Read once, when the next week’s three directions are chosen — then cleared.</p>
+        <p className={s.sectionGuide}>Read once, when next week’s three directions are written, then cleared.</p>
         <label className={s.visuallyHidden} htmlFor="wish">A wish for next week</label>
         <textarea id="wish" className={s.textarea} maxLength={MAX_ASK} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
         <CharCount value={wish} />
@@ -191,7 +183,7 @@ export function NotebookScreen() {
 
       <section className={s.block}>
         <h2 className={s.sectionHead}>A note to the curator</h2>
-        <p className={s.sectionGuide}>Anything you’d like it to keep in mind — a composer you’re curious about, music you already know well (so it isn’t offered as new), how much time you have, a mood you’re in.</p>
+        <p className={s.sectionGuide}>Anything you’d like it to keep in mind: a composer you’re curious about, music you already know well (so it isn’t offered as new), a mood you’re in. If something above is wrong, say so here. How much music, how widely it ranges, recordings and language are set in <a href={href({ name: 'settings' })}>Settings</a>.</p>
         <label className={s.visuallyHidden} htmlFor="notes">Note to the curator</label>
         <textarea id="notes" className={s.textarea} maxLength={MAX_NOTE} value={notes} onChange={(e) => setNotes(e.target.value)} />
         <CharCount value={notes} max={MAX_NOTE} />
@@ -200,19 +192,6 @@ export function NotebookScreen() {
         </div>
       </section>
 
-      {/* A status, folded to what it says; open by itself when something went wrong. */}
-      {notion && (
-        <Twisty
-          className={`${s.mtXl} ${s.twistyClosed}`}
-          label="In Notion"
-          value={notionState.error ? 'not updated — open to see why' : notionState.syncing ? 'updating…' : notionState.lastSync ? `updated ${dateWords(notionState.lastSync, settings.timeZone, true)}` : 'not yet updated'}
-          open={Boolean(notionState.error)}
-        >
-          <p className={s.sectionGuide}>Your journal, threads, recordings and this notebook are copied to Notion as readable pages.</p>
-          {notionState.error && <p className={s.settingWarn}>{notionState.error}</p>}
-          <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>
-        </Twisty>
-      )}
     </div>
   )
 }

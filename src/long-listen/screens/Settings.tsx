@@ -2,15 +2,16 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { ConfirmModal, Field, SegmentedControl } from '../../ds'
 import { useLoad, useServices } from '../app/services'
 import { beginSignIn, redirectUriFor, renewBy } from '../spotify/auth'
-import { isValidTimeZone } from '../domain/week'
+import { canonicalTimeZone, isValidTimeZone, isoDateIn } from '../domain/week'
 import { DEFAULT_PREFERENCES, type ListenerPreferences } from '../domain/types'
 import type { ThemeChoice } from '../app/settings'
 import { GUIDE_URL, STARTER_TEMPLATE_URL } from '../app/links'
-import { SpotifyCheckButton, dateWords, messageOf } from '../components/common'
-import { isoDateIn } from '../domain/week'
+import { dateWords, messageOf } from '../components/common'
 import { LevelScale } from '../components/LevelScale'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { archiveNotebook } from '../notion/mirror'
+import { CuratorUnavailable } from '../curation/api'
+import { PREFIX, checkBackup, type Repo } from '../store/repo'
 import { go } from '../app/router'
 import { usageSummary } from '../app/usage'
 import { RELEASE } from '../app/release'
@@ -36,14 +37,16 @@ function Part({ title, intro, children }: { title: string; intro?: React.ReactNo
   )
 }
 
-/** One card of related settings, with an optional status on the right of its title. */
-function Card({ title, status, tone, children }: { title: string; status?: { on: boolean; text: string }; tone?: 'danger'; children: React.ReactNode }) {
+/** One card of related settings, with an optional status on the right of its title. A part's only card needs no title of its own. */
+function Card({ title, status, tone, children }: { title?: string; status?: { on: boolean; text: string }; tone?: 'danger'; children: React.ReactNode }) {
   return (
     <div className={`${s.settingsCard} ${tone === 'danger' ? s.settingsCardDanger : ''}`}>
-      <div className={s.settingsCardHead}>
-        <h3 className={s.settingsCardTitle}>{title}</h3>
-        {status && <span className={`${s.tag} ${status.on ? s.tagOn : ''}`}>{status.text}</span>}
-      </div>
+      {title && (
+        <div className={s.settingsCardHead}>
+          <h3 className={s.settingsCardTitle}>{title}</h3>
+          {status && <span className={`${s.tag} ${status.on ? s.tagOn : ''}`}>{status.text}</span>}
+        </div>
+      )}
       {children}
     </div>
   )
@@ -85,26 +88,26 @@ function Steps({ summary = 'How to set it up', children }: { summary?: string; c
 }
 
 /**
- * Settings, in five parts. Your music: how a week of listening should feel,
- * what goes into it and how the curator writes. Connections: Claude, Spotify
- * and Notion, each a card with its state, its fields, its actions, and the
- * how-to folded beneath. The app: display, listening, the week's time zone.
- * Your data: a backup, and a fresh start. About: what's running and its cost.
- * Every setting is labelled the same way, every action is a button of one
- * kind, every hint is one style.
+ * Settings, in parts. Your music: how a week of listening should feel, what
+ * goes into it and how the curator writes. Connections: Claude (with what it
+ * has cost this month), Spotify and Notion, each a card with its state, its
+ * fields, its actions, and the how-to folded beneath. The app: one card — how
+ * it looks, what you skip, the week's time zone. Your data: a backup, and a
+ * fresh start. About: the release, and the prompts' versions. Every setting is
+ * labelled the same way, every action is a button of one kind, every hint is
+ * one style.
  */
 export function SettingsScreen() {
-  const svc = useServices()
-  const { settings, updateSettings, prompts, spotify, repo, bump, say } = svc
+  const { settings, updateSettings, prompts } = useServices()
   return (
     <div>
       <p className={s.eyebrow}>Settings</p>
       <h1 className={s.title}>How it works for you</h1>
       <p className={s.dek}>
-        Your music, your connections, the app and your data. New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
+        New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
       </p>
 
-      <Part title="Your music" intro="The curator weighs these above anything it has inferred. A change shapes the next directions and programmes, never one already made — so set them before you choose a week, or ask for three others after.">
+      <Part title="Your music" intro="The curator follows these above anything it has inferred. A change applies to the next directions; This week offers to rework the current three.">
         <ExplorationSections />
       </Part>
 
@@ -115,7 +118,7 @@ export function SettingsScreen() {
       </Part>
 
       <Part title="The app">
-        <Card title="Display">
+        <Card>
           <Setting label="Theme">
             <SegmentedControl size="sm" className={s.compactTrack} label="Theme" value={settings.theme} onChange={(v) => updateSettings({ theme: v as ThemeChoice })}
               options={[{ value: 'system', label: 'Device' }, { value: 'light', label: 'Day' }, { value: 'dark', label: 'Night' }]} />
@@ -124,41 +127,36 @@ export function SettingsScreen() {
             <SegmentedControl size="sm" className={s.compactTrack} label="Text size" value={settings.textSize} onChange={(v) => updateSettings({ textSize: v as 'standard' | 'large' })}
               options={[{ value: 'standard', label: 'Standard' }, { value: 'large', label: 'Larger' }]} />
           </Setting>
-        </Card>
-        <Card title="Listening">
           <Switch
             label="Hide what I skip, everywhere"
             hint="Gone from the programme, the running order, the Journal, the Library and the playlist. Not deleted: the curator still knows, and a programme can show them again for a moment."
             checked={settings.hideSkipped}
             onChange={(v) => updateSettings({ hideSkipped: v })}
           />
-        </Card>
-        <Card title="Your week">
           <TimeZoneField />
         </Card>
       </Part>
 
       <Part title="Your data" intro="Everything lives on this device.">
-        <BackupSection repo={repo} bump={bump} say={say} />
-        <FreshStartSection />
+        <DataSections />
       </Part>
 
       <Part title="About">
-        <Card title="The curator is Claude">
-          <p className={s.settingText}><strong>Sonnet</strong> chooses the week’s three directions, writes the programmes and second perspectives, and reads concert programmes.</p>
-          <p className={s.settingText}><strong>Haiku</strong>, at a twentieth of the price, does the reading around them: your feedback into taste, each thread’s week summed up, <em>More context</em>, and further reading.</p>
-          <Setting label="This month, on this device"><SpendLine /></Setting>
-          <p className={s.settingHint}>{RELEASE.name} · {RELEASE.date} · Spotify {spotify.connected ? 'connected' : 'not connected'} · Notion {svc.notion ? 'connected' : 'not connected'}</p>
+        <Card>
+          <p className={s.settingText}>{RELEASE.name} · {RELEASE.date}</p>
           <Steps summary="Prompt versions">
             <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
           </Steps>
         </Card>
-        {import.meta.env.DEV && (
-          <Card title="Development">
+      </Part>
+
+      {import.meta.env.DEV && (
+        <Part title="Development">
+          <Card>
             <Switch label="Use the demo curator" hint="Canned programmes, no Anthropic key." checked={settings.demo} onChange={(v) => updateSettings({ demo: v })} />
           </Card>
-        )}
-      </Part>
+        </Part>
+      )}
     </div>
   )
 }
@@ -168,17 +166,11 @@ function SpendLine() {
   const { version } = useServices()
   const [m, setM] = useState(() => usageSummary())
   useEffect(() => setM(usageSummary()), [version])
-  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude yet.</p>
-  const usd = (n: number) => (n < 0.01 ? 'under a cent' : `about $${n.toFixed(2)}`)
-  const name = (model: string) => model.replace('claude-', '').replace(/-(\d+)-(\d+)$/, ' $1.$2').replace(/^./, (c) => c.toUpperCase())
+  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude this month.</p>
   return (
-    <>
-      <p className={s.settingText}>
-        {usd(m.dollars)}, over {m.requests} request{m.requests === 1 ? '' : 's'}
-        {m.byModel.length > 1 && <> ({m.byModel.map((b) => `${name(b.model)} ${b.dollars === null ? 'no price on record' : usd(b.dollars)}`).join(' · ')})</>}
-      </p>
-      <p className={s.settingHint}>An estimate at list prices. The Anthropic Console has the bill.</p>
-    </>
+    <p className={s.settingText}>
+      This month: {m.dollars < 0.01 ? 'under a cent' : `about $${m.dollars.toFixed(2)}`} — an estimate at list prices; the Anthropic Console has the bill.
+    </p>
   )
 }
 
@@ -202,7 +194,7 @@ function CommitField(props: { label: string; value: string; onCommit: (v: string
 }
 
 function ClaudeSection() {
-  const { settings, updateSettings, testCurator } = useServices()
+  const { settings, updateSettings, testCurator, bump } = useServices()
   const [result, setResult] = useState<Result>(null)
   const [testing, setTesting] = useState(false)
 
@@ -216,12 +208,14 @@ function ClaudeSection() {
       setResult({ ok: false, message: messageOf(e) })
     } finally {
       setTesting(false)
+      bump() // the test is a request too: the month's spend moves with it
     }
   }
 
   return (
     <Card title="Claude, the curator" status={{ on: Boolean(settings.anthropicKey) || settings.demo, text: settings.anthropicKey ? 'Key added' : settings.demo ? 'Demo' : 'Not set up' }}>
-      <p className={s.settingText}>Writes every direction and programme. Each week costs a few cents.</p>
+      <p className={s.settingText}>Sonnet writes what needs judgement — the directions, programmes and concert readings; Haiku, at a twentieth of the price, does the short reading and writing around them.</p>
+      <SpendLine />
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.settingsActions}>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing || (!settings.anthropicKey && !settings.demo)}>{testing ? 'Testing…' : 'Test the key'}</button>
@@ -236,11 +230,17 @@ function ClaudeSection() {
   )
 }
 
+/** Spotify ends a sign-in after six months: within two weeks of that, the date it will ask again; otherwise nothing. */
+function renewalDue(at: number | undefined): at is number {
+  return at !== undefined && at - Date.now() < 14 * 24 * 3600_000
+}
+
 function SpotifySection() {
   const { settings, updateSettings, spotify, testSpotify, bump } = useServices()
   const [result, setResult] = useState<Result>(null)
   const [testing, setTesting] = useState(false)
   const needsReconnect = spotify.connected && !spotify.hasScope('playlist-modify-private')
+  const renewAt = spotify.connected ? renewBy(spotify.currentTokens) : undefined
 
   async function connect() {
     if (!settings.spotifyClientId.trim()) return setResult({ ok: false, message: 'Add your Spotify app’s Client ID first.' })
@@ -268,20 +268,26 @@ function SpotifySection() {
     }
   }
 
+  const button = `${s.outlineButton} ${s.smallButton}`
   return (
     <Card title="Spotify" status={{ on: spotify.connected && !needsReconnect, text: spotify.connected ? (needsReconnect ? 'Reconnect' : 'Connected') : 'Not connected' }}>
       <p className={s.settingText}>Confirms each recording exactly, notices what you’ve played, keeps each week as a private playlist, and plays on your devices (Premium).</p>
-      <CommitField label="Spotify Client ID" value={settings.spotifyClientId} onCommit={(v) => updateSettings({ spotifyClientId: v })} />
+      {/* Only before connecting: changed under a live sign-in, it would break the next token refresh. */}
+      {!spotify.connected && <CommitField label="Spotify Client ID" value={settings.spotifyClientId} onCommit={(v) => updateSettings({ spotifyClientId: v })} />}
+      {renewalDue(renewAt) && <p className={s.settingWarn}>Spotify will ask you to sign in again around {dateWords(renewAt, settings.timeZone)}.</p>}
       <div className={s.settingsActions}>
-        {!spotify.connected || needsReconnect
-          ? <button className={`${s.outlineButton} ${s.smallButton}`} onClick={connect}>{needsReconnect ? 'Reconnect Spotify (adds playlists)' : 'Connect Spotify'}</button>
+        {!spotify.connected
+          ? <button className={button} onClick={connect}>Connect Spotify</button>
           : <>
-              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing}>{testing ? 'Testing…' : 'Test Spotify'}</button>
-              <SpotifyCheckButton className={`${s.outlineButton} ${s.smallButton}`} label="Check recent listening" />
-              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => { spotify.setTokens(null); setResult(null); bump() }}>Disconnect</button>
+              {needsReconnect
+                ? <button className={button} onClick={connect}>Reconnect Spotify (adds playlists)</button>
+                : <>
+                    {renewalDue(renewAt) && <button className={button} onClick={connect}>Sign in again</button>}
+                    <button className={button} onClick={test} disabled={testing}>{testing ? 'Testing…' : 'Test Spotify'}</button>
+                  </>}
+              <button className={button} onClick={() => { spotify.setTokens(null); setResult(null); bump() }}>Disconnect</button>
             </>}
       </div>
-      {spotify.connected && renewalNote(renewBy(spotify.currentTokens), settings.timeZone)}
       <ResultLine r={result} />
       <Steps>
         <p>It needs a Spotify app of your own: at developer.spotify.com → Dashboard → Create app, add this redirect URI, tick “Web API”, and paste the app’s Client ID above.</p>
@@ -292,22 +298,11 @@ function SpotifySection() {
   )
 }
 
-/** Spotify sign-ins last six months; say when this one needs renewing, quietly, and louder near the end. */
-function renewalNote(at: number | undefined, timeZone: string) {
-  if (!at) return null
-  const date = dateWords(at, timeZone)
-  const soon = at - Date.now() < 14 * 24 * 3600_000
-  return (
-    <p className={soon ? s.settingWarn : s.settingHint}>
-      {soon ? `Spotify will ask you to sign in again around ${date} — its sign-ins last six months. Disconnect and connect again any time before then.` : `Spotify sign-ins last six months; this one runs until about ${date}.`}
-    </p>
-  )
-}
-
 function NotionSection() {
   const { settings, updateSettings, notion, testNotion, syncNotion, notionState } = useServices()
   const [result, setResult] = useState<Result>(null)
   const [testing, setTesting] = useState(false)
+  const failing = Boolean(notion && notionState.error)
 
   async function test() {
     setTesting(true)
@@ -322,16 +317,17 @@ function NotionSection() {
   }
 
   return (
-    <Card title="Notion" status={{ on: Boolean(notion), text: notion ? 'Connected' : 'Not connected' }}>
-      <p className={s.settingText}>A notebook mirrored from the app: programmes, threads, works and recordings, composers, concerts, and your taste in words.</p>
+    <Card title="Notion" status={{ on: Boolean(notion) && !failing, text: notion ? (failing ? 'Not updated' : 'Connected') : 'Not connected' }}>
+      <p className={s.settingText}>Your journal and taste, mirrored to Notion as readable pages.</p>
       <CommitField label="Notion integration token" type="password" value={settings.notionToken} placeholder="ntn_…" onCommit={(v) => { updateSettings({ notionToken: v }); setResult(null) }} />
-      <CommitField label="Notebook page" value={settings.notionPage} placeholder="https://www.notion.so/…" hint="The page that holds (or will hold) the notebook’s databases." onCommit={(v) => { updateSettings({ notionPage: v }); setResult(null) }} />
+      <CommitField label="Notion page" value={settings.notionPage} placeholder="https://www.notion.so/…" hint="The page that holds (or will hold) the app’s databases." onCommit={(v) => { updateSettings({ notionPage: v }); setResult(null) }} />
       <div className={s.settingsActions}>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing}>{testing ? 'Testing…' : 'Test Notion'}</button>
         {notion && <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>}
       </div>
       <ResultLine r={result} />
-      {notionState.error && <p className={s.settingWarn}>{notionState.error}</p>}
+      {/* One warning at a time: a failed test already says what is wrong. */}
+      {failing && result?.ok !== false && <p className={s.settingWarn}>{notionState.error}</p>}
       <Steps>
         <p>Duplicate the <a href={STARTER_TEMPLATE_URL} target="_blank" rel="noopener noreferrer">Starter Template</a> (or use any empty page), connect it to your integration (••• → Connections), then paste the integration token and the page’s link above.</p>
       </Steps>
@@ -351,6 +347,12 @@ const ERA_HINT: Record<ListenerPreferences['recordingEra'], string> = {
   'historic-welcome': 'Great older recordings welcome, mono included.',
   'modern-sound': 'Mostly recordings from about 1980 on, with modern sound.',
   'period-practice': 'Historically informed performances, where they exist.',
+}
+
+const DEPTH_HINT: Record<ListenerPreferences['depth'], string> = {
+  concise: 'Short notes.',
+  standard: 'Notes of the usual length.',
+  deeper: 'A little more context and history.',
 }
 
 /** What a week of listening should be like — told to the curator directly. */
@@ -377,8 +379,6 @@ function ExplorationSections() {
           label="How widely a week ranges"
           value={p.breadth}
           onChange={(v) => void set('breadth', v)}
-          low="One focus"
-          high="Across centuries"
           names={BREADTH}
           describe={(v) => `${BREADTH[v].words[0].toUpperCase()}${BREADTH[v].words.slice(1)}.`}
         />
@@ -386,8 +386,6 @@ function ExplorationSections() {
           label="How well known the music is"
           value={p.familiarity}
           onChange={(v) => void set('familiarity', v)}
-          low="Cornerstones"
-          high="Rare & avant-garde"
           names={FAMILIARITY}
           describe={(v) => `${FAMILIARITY[v].words[0].toUpperCase()}${FAMILIARITY[v].words.slice(1)}.`}
         />
@@ -408,10 +406,10 @@ function ExplorationSections() {
       </Card>
 
       <Card title="The curator’s writing">
-        <Setting label="How much it writes">
+        <Setting label="How much it writes" hint={DEPTH_HINT[p.depth]}>
           <SegmentedControl size="sm" className={s.compactTrack} label="How much it writes" value={p.depth} onChange={(v) => void set('depth', v as ListenerPreferences['depth'])} options={PREF_OPTIONS.depth} />
         </Setting>
-        <Setting label="Language">
+        <Setting label="Language" hint="The curator’s writing. The app itself stays in English.">
           <SegmentedControl size="sm" className={s.compactTrack} label="Language" value={p.language} onChange={(v) => void set('language', v as ListenerPreferences['language'])} options={PREF_OPTIONS.language} />
         </Setting>
       </Card>
@@ -419,79 +417,53 @@ function ExplorationSections() {
   )
 }
 
-/**
- * Start the journey again: a backup is saved first (the archive), the pages
- * the app wrote in Notion go to Notion's trash, and the app forgets
- * everything it holds about the journey and about you. Your settings,
- * connections and music preferences stay.
- */
-function FreshStartSection() {
-  const { repo, notion, bump, say, settings, notionState } = useServices()
-  const [asking, setAsking] = useState(false)
-  const [working, setWorking] = useState<string | null>(null)
-
-  async function freshStart() {
-    setAsking(false)
-    try {
-      setWorking('Saving the archive…')
-      await downloadBackup(repo, 'the-long-listen-archive', settings.timeZone)
-      if (notion) {
-        setWorking('Moving your notebook pages to Notion’s trash…')
-        await archiveNotebook(notion.call, repo)
-      }
-      setWorking('Clearing…')
-      await repo.freshStart()
-      bump()
-      say('A fresh start. The archive was saved to your downloads.', 'success')
-      go({ name: 'week' })
-    } catch (e) {
-      say(messageOf(e), 'danger')
-    } finally {
-      setWorking(null)
-    }
-  }
-
-  return (
-    <Card title="A fresh start" tone="danger">
-      <p className={s.settingText}>Clears the whole journey and begins again. An archive is saved to your downloads first, and it restores like any backup.</p>
-      <div className={s.settingsActions}>
-        <button className={`${s.outlineButton} ${s.smallButton} ${s.dangerOutline}`} onClick={() => setAsking(true)} disabled={Boolean(working) || notionState.syncing}>{working ?? 'Start again from nothing…'}</button>
-      </div>
-      <Steps summary="What it clears, and what it keeps">
-        <p>Cleared: every week and programme, your listening marks and reactions, the threads, and everything the curator has learned about your taste, including your notes to it. The pages the app wrote in Notion move to Notion’s trash, where they stay recoverable for 30 days.</p>
-        <p>Kept: your keys and connections, your music settings, the look of the app.</p>
-      </Steps>
-      <ConfirmModal
-        isOpen={asking}
-        title="Start again from nothing?"
-        message="An archive of everything is saved to your downloads first, and it restores like any backup. After that, the app keeps nothing of the journey so far."
-        confirmText="Clear everything"
-        variant="danger"
-        onConfirm={() => void freshStart()}
-        onCancel={() => setAsking(false)}
-      />
-    </Card>
-  )
+/** Every place's zone this browser knows, and UTC — or null where it can't list them. */
+function placeZones(): string[] | null {
+  if (typeof Intl.supportedValuesOf !== 'function') return null
+  const zones = Intl.supportedValuesOf('timeZone').filter(isValidTimeZone)
+  return zones.includes('UTC') ? zones : ['UTC', ...zones]
 }
 
+const WEEK_BEGINS = 'A new week begins at midnight on Monday in this time zone.'
+
+/**
+ * The week's time zone, chosen from a list, so only a place's zone can be
+ * chosen and it is stored by its own name. Where the browser can't list its
+ * zones, a field to type in, saved by the canonical name.
+ */
 function TimeZoneField() {
   const { settings, updateSettings } = useServices()
-  const [zone, setZone] = useState(settings.timeZone)
+  const id = useId()
+  const [zones] = useState(placeZones)
+  const [typed, setTyped] = useState(settings.timeZone)
+  if (zones) {
+    const options = zones.includes(settings.timeZone) ? zones : [settings.timeZone, ...zones]
+    return (
+      <div className={s.setting}>
+        <label htmlFor={id} className={s.settingLabel}>Time zone</label>
+        <select id={id} className={s.zoneSelect} value={settings.timeZone} onChange={(e) => updateSettings({ timeZone: canonicalTimeZone(e.target.value) ?? settings.timeZone })}>
+          {options.map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+        </select>
+        <p className={s.settingHint}>{WEEK_BEGINS}</p>
+      </div>
+    )
+  }
+  const zone = canonicalTimeZone(typed)
   return (
-    <>
-      <p className={s.settingText}>A new week begins on Monday at midnight in this time zone, wherever you or the server happen to be.</p>
-      <Field label="Time zone" value={zone} onChange={(e) => setZone(e.target.value)} error={zone && !isValidTimeZone(zone) ? 'Not a time zone this browser knows.' : undefined} hint="For example Europe/Bucharest" />
-      {zone !== settings.timeZone && (
+    <div className={s.setting}>
+      <Field label="Time zone" value={typed} onChange={(e) => setTyped(e.target.value)} spellCheck={false}
+        error={typed.trim() && !zone ? 'Use a place, like Europe/Bucharest — a fixed offset ignores summer time.' : undefined} hint={WEEK_BEGINS} />
+      {zone && zone !== settings.timeZone && (
         <div className={s.settingsActions}>
-          <button className={`${s.outlineButton} ${s.smallButton}`} disabled={!isValidTimeZone(zone)} onClick={() => updateSettings({ timeZone: zone })}>Use this time zone</button>
+          <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => { updateSettings({ timeZone: zone }); setTyped(zone) }}>Use this time zone</button>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
 /** Everything in the store, as one JSON file in the downloads. */
-async function downloadBackup(repo: ReturnType<typeof useServices>['repo'], name: string, timeZone: string) {
+async function downloadBackup(repo: Repo, name: string, timeZone: string) {
   const data = await repo.exportAll()
   const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
   const a = document.createElement('a')
@@ -502,12 +474,29 @@ async function downloadBackup(repo: ReturnType<typeof useServices>['repo'], name
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
-function BackupSection({ repo, bump, say }: Pick<ReturnType<typeof useServices>, 'repo' | 'bump' | 'say'>) {
-  const { settings, notionState } = useServices()
+/** Is there a journey here to lose? Any week at all; a new device has only its settings. */
+async function holdsJourney(repo: Repo): Promise<boolean> {
+  return (await repo.store.keys()).some((k) => k.startsWith(`${PREFIX}week:`))
+}
+
+type Busy = { busy: 'restore' | 'fresh' | null; setBusy: (b: 'restore' | 'fresh' | null) => void }
+
+/** The backup and the fresh start, never both at once: each replaces the journey the other is working on. */
+function DataSections() {
+  const [busy, setBusy] = useState<Busy['busy']>(null)
+  return (
+    <>
+      <BackupSection busy={busy} setBusy={setBusy} />
+      <FreshStartSection busy={busy} setBusy={setBusy} />
+    </>
+  )
+}
+
+function BackupSection({ busy, setBusy }: Busy) {
+  const { repo, bump, say, settings, notion, notionState, syncNotion } = useServices()
   const fileRef = useRef<HTMLInputElement>(null)
-  // A backup read and waiting for the listener's word: a restore replaces the journey here.
-  const [waiting, setWaiting] = useState<unknown>(null)
-  const [restoring, setRestoring] = useState(false)
+  // A backup read, checked, and waiting for the listener's word: a restore replaces the journey here.
+  const [waiting, setWaiting] = useState<{ data: unknown; replaces: boolean } | null>(null)
 
   async function exportBackup() {
     try {
@@ -518,51 +507,119 @@ function BackupSection({ repo, bump, say }: Pick<ReturnType<typeof useServices>,
   }
 
   async function readBackup(file: File) {
+    let data: unknown
     try {
-      const data = JSON.parse(await file.text()) as { app?: string }
-      if (data?.app !== 'the-long-listen') throw new Error('not ours')
-      setWaiting(data)
+      data = JSON.parse(await file.text())
     } catch {
       // A parser's message ("Unexpected token…") says nothing a listener can use.
-      say('That file isn’t a backup from this app — it couldn’t be read. Nothing here was changed.', 'danger')
+      return say('That file isn’t a backup from this app — it couldn’t be read. Nothing here was changed.', 'danger')
     }
+    // Checked before the question, so a file that would be refused never gets as far as "Replace this journey?".
+    const refused = checkBackup(data)
+    if (refused) return say(refused, 'danger')
+    setWaiting({ data, replaces: await holdsJourney(repo).catch(() => true) })
   }
 
   async function restore() {
-    const data = waiting
+    const data = waiting?.data
     setWaiting(null)
-    setRestoring(true)
+    setBusy('restore')
     try {
-      // The journey it replaces goes to the downloads first, as before a fresh start.
-      if ((await repo.store.keys()).some((k) => k.startsWith('ll:v1:') && !k.includes('singleton:'))) {
-        await downloadBackup(repo, 'the-long-listen-before-restore', settings.timeZone)
-      }
-      const n = await repo.importAll(data)
+      // The journey it replaces goes to the downloads first, as before a fresh start — when there is one.
+      const replaced = await holdsJourney(repo)
+      if (replaced) await downloadBackup(repo, 'the-long-listen-before-restore', settings.timeZone)
+      await repo.importAll(data)
       bump()
-      say(`Restored ${n} records. The journey it replaced was saved to your downloads.`, 'success')
-    } catch (e) {
-      say(e instanceof Error && /newer version|nothing to restore/.test(e.message) ? e.message : 'That file isn’t a backup this app can restore. Nothing here was changed.', 'danger')
+      say(replaced ? 'The backup is restored. The journey it replaced is in your downloads.' : 'The backup is restored.', 'success')
+      // Every page is to be checked again: now, rather than at the next reload.
+      if (notion) void syncNotion()
+    } catch {
+      // The restore is one change: whatever failed, the journey here is as it was.
+      say(checkBackup(data) ?? 'The backup couldn’t be restored just now. Nothing here was changed.', 'danger')
     } finally {
-      setRestoring(false)
+      setBusy(null)
     }
   }
 
   return (
-    <Card title="Your journey, in a file">
-      <p className={s.settingText}>Keep a copy now and then — it restores in any browser, in place of the journey there. Your keys are not in it.</p>
+    <Card title="Backup">
+      <p className={s.settingText}>Save a copy now and then. Restoring one replaces the journey on this device. Your keys are not in it.</p>
       <div className={s.settingsActions}>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void exportBackup()}>Save a backup</button>
         {/* Not while Notion is being written: the sync would carry on writing the journey being replaced. */}
-        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => fileRef.current?.click()} disabled={restoring || notionState.syncing}>{restoring ? 'Restoring…' : 'Restore from a backup'}</button>
-        <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void readBackup(f); e.target.value = '' }} />
+        <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => fileRef.current?.click()} disabled={busy !== null || notionState.syncing}>{busy === 'restore' ? 'Restoring…' : 'Restore from a backup'}</button>
+        <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void readBackup(f); e.target.value = '' }} />
       </div>
       <ConfirmModal
         isOpen={waiting !== null}
-        title="Replace this journey with the backup?"
-        message="The backup takes the place of everything here. The journey on this device is saved to your downloads first, so it can be restored in turn."
+        title={waiting?.replaces ? 'Replace this journey with the backup?' : 'Restore this backup?'}
+        message={waiting?.replaces
+          ? 'The backup takes the place of everything here. The journey on this device is saved to your downloads first, so it can be restored in turn.'
+          : 'Its journey and music settings come to this device.'}
         confirmText="Restore the backup"
+        variant="danger"
         onConfirm={() => void restore()}
         onCancel={() => setWaiting(null)}
+      />
+    </Card>
+  )
+}
+
+/**
+ * Start the journey again: a backup is saved first (the archive), the pages
+ * the app wrote in Notion go to Notion's trash, and the app forgets
+ * everything it holds about the journey and about you. Your settings,
+ * connections and music preferences stay.
+ */
+function FreshStartSection({ busy, setBusy }: Busy) {
+  const { repo, notion, bump, say, settings, notionState } = useServices()
+  const [asking, setAsking] = useState(false)
+  const [working, setWorking] = useState<string | null>(null)
+
+  async function freshStart() {
+    setAsking(false)
+    setBusy('fresh')
+    try {
+      setWorking('Saving the archive…')
+      await downloadBackup(repo, 'the-long-listen-archive', settings.timeZone)
+      if (notion) {
+        setWorking('Moving your notebook pages to Notion’s trash…')
+        await archiveNotebook(notion.call, repo).catch((e: unknown) => {
+          // Its own failure says what Notion did and that nothing was cleared: more use than "something didn't work".
+          throw new CuratorUnavailable('failed', e instanceof Error && e.message.startsWith('Notion') ? e.message : 'Notion couldn’t be reached, so nothing was cleared. Try again in a minute.')
+        })
+      }
+      setWorking('Clearing…')
+      await repo.freshStart()
+      bump()
+      say('A fresh start. The archive was saved to your downloads.', 'success')
+      go({ name: 'week' })
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setWorking(null)
+      setBusy(null)
+    }
+  }
+
+  return (
+    <Card title="A fresh start" tone="danger">
+      <p className={s.settingText}>Clears the whole journey and begins again. An archive is saved to your downloads first, and it restores like any backup.</p>
+      <div className={s.settingsActions}>
+        <button className={`${s.outlineButton} ${s.smallButton} ${s.dangerOutline}`} onClick={() => setAsking(true)} disabled={busy !== null || notionState.syncing}>{working ?? 'Start again from nothing…'}</button>
+      </div>
+      <Steps summary="What it clears, and what it keeps">
+        <p>Cleared: every week and programme, your listening marks and reactions, the threads, the concerts you kept and your “I’m going” marks, the wish for next week, the composer portraits and word definitions, and everything the curator has learned about your taste, including your notes to it. The pages the app wrote in Notion move to Notion’s trash, where they stay recoverable for 30 days.</p>
+        <p>Kept: your keys and connections, your music settings, the look of the app.</p>
+      </Steps>
+      <ConfirmModal
+        isOpen={asking}
+        title="Start again from nothing?"
+        message="An archive of everything is saved to your downloads first, and it restores like any backup. After that, the app keeps nothing of the journey so far."
+        confirmText="Clear everything"
+        variant="danger"
+        onConfirm={() => void freshStart()}
+        onCancel={() => setAsking(false)}
       />
     </Card>
   )
