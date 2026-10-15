@@ -101,6 +101,31 @@ describe('marking what was heard', () => {
     expect(screen.getAllByRole('link', { name: 'Listen along' }).length).toBe(p.sections.flatMap((x) => x.items).length)
   }, 15000)
 
+  it('where Spotify lacks the recording, Listen along sits straight under the stand-in’s Play, before its notes', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const first = p.sections[0].items[0]
+    const r = await repo.recordings.require(first.recordingId)
+    await repo.recordings.put({ ...r, verification: 'not-found', checkedWith: 99 })
+    await repo.recordings.put({ id: 'rec-standin', workId: first.workId, soloistIds: [], character: [], verification: 'verified', checkedWith: 99, spotify: { albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ['t'], trackUris: ['spotify:track:t'], confidence: 'strong', matchedAt: 'x', durationMs: 600_000 } })
+    await repo.comparisons.put({
+      id: `cmp:${p.id}:${first.id}`, workId: first.workId, framing: 'Set side by side.', whyBoth: '', origin: 'on-request', standIn: true, createdAt: 'x',
+      perspectives: [
+        { recordingId: first.recordingId, proposed: first.proposed, character: '' },
+        { recordingId: 'rec-standin', proposed: { ...first.proposed, conductor: 'Neeme Järvi' }, character: '', listenFor: 'The glints on the water.' },
+      ],
+    })
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    const notes = await screen.findByText('The glints on the water.', undefined, { timeout: 4000 })
+    const work = notes.closest('[id]') as HTMLElement
+    const along = [...work.querySelectorAll('a')].filter((a) => a.textContent?.includes('Listen along'))
+    expect(along).toHaveLength(1)
+    const framing = screen.getByText('Set side by side.')
+    expect(along[0].compareDocumentPosition(framing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(along[0].compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }, 15000)
+
   it('without Spotify, says once for the page that recordings can’t be confirmed — not under every work', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo, plain())
@@ -123,34 +148,54 @@ describe('marking what was heard', () => {
     expect((await repo.events.all()).map((e) => e.kind)).toEqual(['heard'])
   }, 15000)
 
-  it('"I’ve heard it" tapped twice at once is kept once', async () => {
+  it('"Heard" in the listening view, tapped twice at once, is kept once', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo, plain())
     window.location.hash = `#/listen/${p.id}/${p.sections[0].items[0].id}`
     render(<App repo={repo} curator={plain()} />)
-    const button = await screen.findByRole('button', { name: 'I’ve heard it' }, { timeout: 4000 })
+    const button = await screen.findByRole('radio', { name: 'Heard' }, { timeout: 4000 })
     fireEvent.click(button)
     fireEvent.click(button)
     await screen.findByText('Back to the programme')
     expect((await repo.events.all()).filter((e) => e.kind === 'heard')).toHaveLength(1)
   }, 15000)
 
-  it('a work already heard opens on how it landed, never on "I’ve heard it" again', async () => {
+  it('a work already heard opens on "Your listening · Heard" and the way on, and a second tap on Heard records nothing', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo, plain())
     const item = p.sections[0].items[0]
     window.location.hash = `#/listen/${p.id}/${item.id}`
     const first = render(<App repo={repo} curator={plain()} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'I’ve heard it' }, { timeout: 4000 }))
+    fireEvent.click(await screen.findByRole('radio', { name: 'Heard' }, { timeout: 4000 }))
     await screen.findByText('Back to the programme')
     first.unmount()
 
-    // Coming back to it later: no button to mark it heard a second time.
+    // Coming back to it later: the row says Heard, and tapping Heard again is a no-op.
     render(<App repo={repo} curator={plain()} />)
     await screen.findByText('Back to the programme', {}, { timeout: 4000 })
-    expect(screen.queryByRole('button', { name: 'I’ve heard it' })).toBeNull()
-    expect(screen.getByText('Heard')).toBeTruthy()
+    const row = screen.getByRole('region', { name: /^Your listening/ })
+    expect(row.querySelector('summary')?.textContent).toBe('Your listeningHeard')
+    fireEvent.click(screen.getByRole('radio', { name: 'Heard' }))
     expect((await repo.events.all()).filter((e) => e.kind === 'heard')).toHaveLength(1)
+  }, 15000)
+})
+
+describe('the rows a work closes on', () => {
+  it('the listening view closes on the programme’s two rows, and opening "More context" is the asking', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const item = p.sections[0].items[0]
+    window.location.hash = `#/listen/${p.id}/${item.id}`
+    render(<App repo={repo} curator={plain()} />)
+    const row = await screen.findByRole('region', { name: /^Your listening/ }, { timeout: 4000 })
+    expect(row.querySelector('summary')?.textContent).toBe('Your listeningNot started')
+    expect(screen.queryByRole('button', { name: 'I’ve heard it' })).toBeNull()
+    const context = [...document.querySelectorAll('summary')].find((x) => x.textContent?.startsWith('More context'))
+    expect(context).toBeTruthy()
+    const details = context!.parentElement as HTMLDetailsElement
+    details.open = true
+    details.dispatchEvent(new Event('toggle'))
+    await waitFor(async () => expect(await repo.explanations.get(`${p.id}:${item.id}`)).toBeTruthy(), { timeout: 4000 })
   }, 15000)
 })
 
