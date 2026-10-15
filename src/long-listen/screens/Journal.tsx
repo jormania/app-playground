@@ -90,7 +90,10 @@ export function JournalScreen() {
         const main = w?.programmeId ? programmeById.get(w.programmeId) : undefined
         const setAside = (w?.setAsideProgrammeIds ?? []).map((id) => programmeById.get(id)).filter((p): p is Programme => Boolean(p))
         const all = [...(main ? withCompanions(main) : []), ...setAside.flatMap(withCompanions)]
-        return { key, main, setAside, others, choice, listened: all.flatMap(listened), concerts: concertsIn.get(key) ?? [] }
+        // One line a work: a work in both a programme set aside and the one that replaced it is listed once.
+        const works = new Set<string>()
+        const heard = all.flatMap(listened).filter(({ item }) => !works.has(item.workId) && Boolean(works.add(item.workId)))
+        return { key, main, setAside, others, choice, listened: heard, concerts: concertsIn.get(key) ?? [] }
       }).filter((e) => e.main || e.setAside.length || e.others.length || e.concerts.length),
       feedback, companionsOf, concertCount: concerts.length, seasons: await journey.seasons(),
     }

@@ -5,7 +5,7 @@ import type {
 import { creditLine, fold, newId, sameWork } from '../domain/identity'
 import { termMark } from '../domain/glossary'
 import { forgetPlaceBefore } from '../app/place'
-import { AlreadyKept, goingKey, type Going } from '../domain/going'
+import { AlreadyKept, ConcertRefused, goingKey, type Going } from '../domain/going'
 import { sameEvening, type LiveEvent } from '../live/live'
 import { listeningState, latestFeedback } from '../domain/listening'
 import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
@@ -898,8 +898,8 @@ export class Journey {
           ...(w.soloists ? { soloists: w.soloists.map((n) => n.trim()).filter((n) => soloistNames.has(n)) } : {}),
         }
       })
-    if (!draft.venue.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) || !works.length) throw new Error('A concert needs a venue, a date and at least one work.')
-    if (draft.date > this.today()) throw new Error('A concert is kept once you’ve heard it. For one still to come, use “I’m going” on Live in Bucharest.')
+    if (!draft.venue.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) || !works.length) throw new ConcertRefused('A concert needs a venue, a date and at least one work.')
+    if (draft.date > this.today()) throw new ConcertRefused('A concert is kept once you’ve heard it. For one still to come, use “I’m going” on Live in Bucharest.')
     if (!id) {
       const kept = (await this.repo.concerts.all()).find((c) => sameEvening(c, draft))
       if (kept) throw new AlreadyKept(kept.id)

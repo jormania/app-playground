@@ -18,11 +18,16 @@ export interface Going {
   concertId?: string
 }
 
+/** A concert the journey won't keep as it stands, with the reason in words the form can show as they are. */
+export class ConcertRefused extends Error {
+  name = 'ConcertRefused'
+}
+
 /** A concert kept a second time: refused, with the one already kept, so the form can open it instead. */
-export class AlreadyKept extends Error {
+export class AlreadyKept extends ConcertRefused {
+  name = 'AlreadyKept'
   constructor(readonly concertId: string) {
     super('You’ve already kept this concert.')
-    this.name = 'AlreadyKept'
   }
 }
 

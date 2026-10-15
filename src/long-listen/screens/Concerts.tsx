@@ -15,7 +15,7 @@ import { Credits } from '../components/Credits'
 import { ConcertEntry, concertDate } from '../components/ConcertEntry'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { namedSoloists, playingKeys, removeSoloist, soloistKey, toDraft, toForm, toggleSoloist, type ConcertFormState } from '../domain/concertForm'
-import { AlreadyKept, draftFrom, goingStage, whenWords, type Going } from '../domain/going'
+import { AlreadyKept, ConcertRefused, draftFrom, goingStage, whenWords, type Going } from '../domain/going'
 import { useGoings } from '../components/Going'
 import { isoDateIn } from '../domain/week'
 import { venueShort } from '../live/live'
@@ -313,7 +313,7 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
       if (onDone) onDone()
       else go({ name: 'concert', id: c.id })
     } catch (e) {
-      if (!(e instanceof AlreadyKept)) { say(messageOf(e), 'danger'); return }
+      if (!(e instanceof AlreadyKept)) { say(e instanceof ConcertRefused ? e.message : messageOf(e), 'danger'); return }
       // That evening is already kept (shared twice, or entered before): open it rather than keep it twice.
       if (goingKey) await journey.concertKept(goingKey, e.concertId).catch(() => {})
       bump()
