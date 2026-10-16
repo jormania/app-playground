@@ -133,6 +133,24 @@ describe('the listener’s switches for voices and concertos (a stabilisation fi
   })
 })
 
+describe('the listener’s choice of recording era (Settings → Recordings)', () => {
+  const item = (work, year) => ({ composer: 'Claude Debussy', workTitle: work, conductor: 'A Conductor', orchestra: 'An Orchestra', soloists: [], year, character: ['clear'], why: 'w', whyThisRecording: 'r', listenFor: [] })
+  const prog = (...items) => ({ title: 't', dek: 'd', introduction: 'i', sections: [{ role: 'start', heading: 'Start here', items }], comparisons: [] })
+  const era = (p, recordingEra) => validateProgramme(p, { preferences: { recordingEra } }).problems.filter((x) => /before 1970/.test(x))
+
+  it('sends back a Modern week whose stated years are mostly old, and says why', () => {
+    const old = prog(item('La mer', '1957'), item('Nocturnes', '1963'), item('Images', '1994'))
+    expect(era(old, 'modern-sound').join(' ')).toMatch(/2 of 3 with a known year.*from about 1980 on/)
+  })
+
+  it('lets a Modern week keep the odd historic one, ignores years it isn’t told, and asks nothing of the other eras', () => {
+    expect(era(prog(item('La mer', '1957'), item('Nocturnes', '1994'), item('Images', '2008')), 'modern-sound')).toEqual([])
+    expect(era(prog(item('La mer', ''), item('Nocturnes', undefined)), 'modern-sound')).toEqual([])
+    const old = prog(item('La mer', '1957'), item('Nocturnes', '1963'))
+    for (const e of ['any', 'historic-welcome', 'period-practice']) expect(era(old, e), e).toEqual([])
+  })
+})
+
 describe('listen for, tied to its movement', () => {
   const item = (listenFor, listenForMovement) => ({ composer: 'Claude Debussy', workTitle: 'La mer', conductor: 'Pierre Boulez', orchestra: 'The Cleveland Orchestra', soloists: [], character: ['clear'], why: 'w', whyThisRecording: 'r', listenFor, listenForMovement })
   const out = (i) => ({ title: 't', dek: 'd', introduction: 'i', sections: [{ role: 'start', heading: 'Start here', items: [i] }], comparisons: [] })

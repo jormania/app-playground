@@ -205,6 +205,14 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
   const kept = sections.filter((s) => s.items.length > 0)
   const items = kept.flatMap((s) => s.items)
 
+  // "Modern" means mostly recordings from about 1980 on. The curator states a recording's year only when it is
+  // sure, so a stated year can be held against the choice: a week whose stated years are mostly before 1970
+  // isn't what was asked for. Only the plain case — "mostly" leaves room for the odd historic one.
+  if (preferences.recordingEra === 'modern-sound') {
+    const years = items.map((i) => Number.parseInt(String(i.year ?? ''), 10)).filter((y) => y >= 1850 && y <= 2100)
+    if (years.length >= 2 && years.filter((y) => y < 1970).length / years.length > 0.5) problems.push(`Most of the recordings are from before 1970 (${years.filter((y) => y < 1970).length} of ${years.length} with a known year); this listener asked for recordings from about 1980 on. Choose more recent recordings.`)
+  }
+
   const repeats = items.filter(
     (i) => !i.revisitReason && covered.some((c) => sameWork({ composer: i.composer, title: i.workTitle, catalogue: i.catalogue }, c)),
   )
