@@ -1236,6 +1236,11 @@ Settings) each reported only defects they had reproduced or traced exactly. What
   the theme, before the app loads. Every preference is one of its own values or its default
   (`normalisePreferences`). The hint says "usually in two to four sections": nothing forces two.
 
+- **Screens (browser walk at 390 and 1280 px, light and dark).** A double tap on *Keep* no longer keeps a
+  concert twice, and two directions chosen in one tick write one programme (a ref guard, as *Heard* has).
+  A concert just kept goes back to *All concerts*, not to the empty form it was kept from; a page that
+  wasn't there ("There's no such…") is never offered as a way back (`GONE`, `data-not-found`).
+
 Known and left: concert dates are Bucharest dates but "today" is judged in the Settings zone (harmless
 while the zone is Bucharest); two tabs share no in-flight guard across a fresh start; a concert marked as
 going whose start time changes is a new mark.

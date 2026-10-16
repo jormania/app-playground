@@ -320,7 +320,11 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concert, curatorReady])
 
+  // A ref as well as the state: two taps (or a tap and Enter) in one frame both see the state as it was.
+  const savingNow = useRef(false)
   async function save() {
+    if (savingNow.current) return
+    savingNow.current = true
     setSaving(true)
     try {
       const c = await journey.saveConcert(toDraft(d), concert?.id)
@@ -339,6 +343,7 @@ function ConcertForm({ concert, onDone, start, goingKey }: { concert?: Concert; 
       say(e.message)
       go({ name: 'concert', id: e.concertId })
     } finally {
+      savingNow.current = false
       setSaving(false)
     }
   }

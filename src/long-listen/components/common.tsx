@@ -84,7 +84,8 @@ export function Waiting({ inline = false, children }: { inline?: boolean; childr
 export function Problem({ error, onRetry, notFound }: { error: unknown; onRetry?: () => void; notFound?: { text: string; link: { href: string; label: string } } }) {
   if (error instanceof NotFound) {
     const { text, link } = notFound ?? { text: 'There’s nothing at this address — perhaps an old link.', link: { href: href({ name: 'week' }), label: 'This week' } }
-    return <Empty link={link}>{text}</Empty>
+    // data-not-found: the router doesn't offer a way back to a page like this (app/router.ts).
+    return <div data-not-found=""><Empty link={link}>{text}</Empty></div>
   }
   return (
     <div className={s.problem} role="alert">

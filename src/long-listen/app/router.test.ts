@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRoute, href, stepTrail, cameFrom, backTo, landingY, type Route } from './router'
+import { parseRoute, href, stepTrail, cameFrom, backTo, landingY, GONE, type Route } from './router'
 
 describe('routes', () => {
   it('round-trips every route', () => {
@@ -81,5 +81,24 @@ describe('the audit of the trail (15 October 2026)', () => {
     expect(landingY(1000, { top: 4488, bottom: 5200 }, 800)).toBe(4488)
     expect(landingY(0, { top: 4488, bottom: 5200 }, 800)).toBe(4488)
     expect(landingY(1000, null, 800)).toBeNull()
+  })
+})
+
+describe('the browser audit of the screens (15 October 2026)', () => {
+  const fallback = { to: '#/concerts', label: 'All concerts' }
+
+  it('a concert just kept goes back to all concerts — not to the empty form it was kept from, nor the redirect that lands on it again', () => {
+    for (const from of ['#/concerts/new', '#/concerts/from-going-1']) {
+      const t = stepTrail([], from, 0, '#/concerts/c1', 'A concert heard').trail
+      expect(backTo(t, fallback)).toEqual(fallback)
+    }
+    // Any other page is still the way back.
+    const t = stepTrail([], '#/journal', 0, '#/concerts/c1', 'Journal').trail
+    expect(backTo(t, fallback)).toEqual({ to: '#/journal', label: 'Journal' })
+  })
+
+  it('a page that wasn’t there is never the way back: its parent is', () => {
+    const t = stepTrail([], '#/listen/nope/nope', 0, '#/composer/Nobody', GONE).trail
+    expect(backTo(t, { to: '#/library', label: 'Library' })).toEqual({ to: '#/library', label: 'Library' })
   })
 })

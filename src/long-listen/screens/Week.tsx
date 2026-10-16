@@ -82,7 +82,11 @@ export function WeekScreen() {
     return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check); window.clearInterval(t) }
   }, [shownWeek, journey, load])
 
+  // One choice at a time: a second direction tapped before the first resolves would write a second programme.
+  const choosingNow = useRef(false)
   async function choose(o: ProgrammeOption) {
+    if (choosingNow.current) return
+    choosingNow.current = true
     setChoosing(o.id)
     try {
       const p = await journey.choose(o.id)
@@ -94,6 +98,7 @@ export function WeekScreen() {
       // Said where it was asked, not above the list: the option may be a screen further down.
       say(messageOf(e), 'danger')
     } finally {
+      choosingNow.current = false
       setChoosing(null)
     }
   }
