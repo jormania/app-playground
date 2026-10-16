@@ -217,6 +217,28 @@ describe('the listening companion, still a note short', () => {
   })
 })
 
+describe('the two five-step scales in Settings reach the curator', () => {
+  it('sends breadth and familiarity as chosen, with the directions and with the programme', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })
+    await repo.savePreferences({ ...(await repo.preferences()), breadth: 5, familiarity: 1 })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const asked = (op: string) => c.calls.find((x) => x.op === op)!.payload
+    const prefs = (op: string) => asked(op).preferences ?? asked(op).context?.preferences
+    expect(prefs('themes')).toMatchObject({ breadth: 5, familiarity: 1 })
+    expect(prefs('programme')).toMatchObject({ breadth: 5, familiarity: 1 })
+    expect(p.id).toBeTruthy()
+  })
+
+  it('sends the middle step of each scale when nothing was chosen', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH) })
+    const j = journey(c.client)
+    await j.ensureWeek()
+    const first = c.calls.find((x) => x.op === 'themes')!.payload
+    expect((first.preferences ?? first.context?.preferences)).toMatchObject({ breadth: 3, familiarity: 3 })
+  })
+})
+
 describe('concerts', () => {
   it('reads a screenshot, keeps the concert, and makes its works known and its note heard', async () => {
     const c = fakeCurator({
