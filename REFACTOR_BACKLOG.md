@@ -1094,6 +1094,8 @@ slices should eyeball icons when they next touch an app.
 
 **`jsdom` + `happy-dom` done 2026-10-14 — 30.1.1 → 30.1.2, 20.10.6 → 20.14.6** (floors raised in `package.json`). The two test DOM environments, in-range. Suite 5718 across 463 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. The lockfile also hoists jsdom's nested `undici` to the top level. Release notes not reachable from here; what is verified is the suite and typecheck. `happy-dom` 21 is a major and left for its own run. `eslint` had no changed source paths to lint.
 
+**`@fontsource*` done 2026-10-16 — all seven packages to 5.3** (alegreya, fraunces, inter, jetbrains-mono, cinzel 5.2 → 5.3.0; zen-kaku-gothic-new, zen-old-mincho → 5.3.1; floors raised in `package.json`). Suite 5854 across 479 files, typecheck clean, build green; `dist/` is 11860 KB before and after, so no subset or legacy `.woff` came in with the bump. Import lines untouched (the bare-name imports are still R-027's). Release notes not reachable from here; **not checked: glyph shapes** — a redrawn font would pass every gate. `eslint` had no changed source paths to lint.
+
 Remaining: the React 19 family (runtime and types together), last, as this item says.
 
 **The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
