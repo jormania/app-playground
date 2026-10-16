@@ -149,6 +149,17 @@ describe('an assumed start (a tap on Play or "Open in Spotify")', () => {
     expect(w.observe({ at: at + 9_000, np: np(0, false) })).toEqual(['tintagel'])
   })
 
+  it('keeps the assumed start through a reading or two that still show the previous track, as Spotify switches', () => {
+    const w = new Witness()
+    w.assumeStart('tintagel', TINTAGEL, 0)
+    // The settle look, 1.2 s after the tap: Spotify hasn't switched yet.
+    expect(w.observe({ at: 1_200, np: np(200_000, true, 'before', 5 * MIN) })).toEqual([])
+    // The phone sleeps; back three minutes in, then the track plays out.
+    w.observe({ at: 3 * MIN, np: np(3 * MIN - 2_000) })
+    const { at } = play(w, 3 * MIN + 15_000, 3 * MIN + 13_000, TINTAGEL - 8_000)
+    expect(w.observe({ at: at + 9_000, np: np(0, false) })).toEqual(['tintagel'])
+  })
+
   it('credits nothing for a track opened and never played', () => {
     const w = new Witness()
     w.assumeStart('tintagel', TINTAGEL, 0)

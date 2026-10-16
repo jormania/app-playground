@@ -7,7 +7,7 @@ import { useLoad, useServices } from '../app/services'
 import { href, programmeBackHref } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
-import { onPlayerReading, usePlayback, usePlayerState } from '../app/playback'
+import { onPlayerReading, onWorkRanOn, usePlayback, usePlayerState } from '../app/playback'
 import { MiniPlayer, MovementProgress, MovementSteps, ThenLine, movementLength, useLiveProgress } from '../components/ListenParts'
 import { clock, listenForAt, movementTitles, primeMinutes, roman, romanValue, curly } from '../domain/programmeStyle'
 import { performerLine } from '../components/Credits'
@@ -32,6 +32,7 @@ import { Gloss } from '../components/Gloss'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
 import { BackLink } from '../components/BackLink'
+import { inLanguage } from '../domain/types'
 
 /**
  * One recording, while it plays: the work, who plays it, and what to listen
@@ -84,7 +85,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     const earlierCredit = earlier?.kind === 'recording' && !earlier.sameRecording ? await recordingCredit(repo, earlier.recordingId) : undefined
     return {
       programme, item, recording: here?.recording, credit: here?.proposed ?? item.proposed, standIn: here?.standIn ?? false, state, heardBefore,
-      next, nextPlayable: Boolean(next && playable(next)), feedback, notes: notes?.movements ?? [], explanation, answers, work, earlier, earlierCredit,
+      next, nextPlayable: Boolean(next && playable(next)), feedback, notes: notes?.movements ?? [],
+      // In another language than the curator writes in now: not shown, so the row offers it written afresh.
+      explanation: inLanguage(explanation, (await repo.preferences()).language) ? explanation : undefined, answers, work, earlier, earlierCredit,
       // Spotify's close match waiting for the listener's word (on the programme page), when nothing confirmed plays.
       pendingMatch: !here && byId.get(item.recordingId)?.verification === 'unconfirmed',
     }
@@ -193,20 +196,26 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     // The movements seen playing on this visit: the work counts as heard only when most of it was —
     // the rule Spotify's history is read by (60%) — not when only the finale was played.
     const seen = new Set<number>()
-    return onPlayerReading((np) => {
-      const was = prev
-      prev = np
-      const at = playbackOf(np, ids)
-      if (at?.playing) seen.add(at.index)
-      if (ended.current || !workEnded(was, np, ids)) return
-      if (seen.size / ids.length < 0.6) return
+    const endedHere = () => {
+      if (ended.current || seen.size / ids.length < 0.6) return
       ended.current = true
       const { data: d, heardOpen: open } = latest.current
       if (!d || open) return
       const played = { recordingId: d.recording?.id ?? d.item.recordingId, workId: d.item.workId }
       const mark = d.heardBefore ? Promise.resolve() : journey.markListening(played, 'heard', d.programme.id, 'app').then(() => bump())
       mark.then(() => setHeardOpen(true), () => {})
+    }
+    const stopReading = onPlayerReading((np) => {
+      const was = prev
+      prev = np
+      const at = playbackOf(np, ids)
+      if (at?.playing) seen.add(at.index)
+      if (workEnded(was, np, ids)) endedHere()
     })
+    // The guard saw this work run on past its close — even with the page asleep through the end, which
+    // the readings around the close can't show: an end all the same.
+    const stopRanOn = onWorkRanOn((ranIds) => { if (ranIds.join() === ids.join()) endedHere() })
+    return () => { stopReading(); stopRanOn() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackKey, loaded])
 

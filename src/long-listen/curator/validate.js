@@ -48,6 +48,17 @@ export function needsSoloists(title, form) {
   return form === 'concerto'
 }
 
+/**
+ * A work that needs singers, by its title: choral and vocal works the listener may have switched off
+ * ("Works with voices"). Sure cases only — a false alarm costs a retry, a miss only leaves one work in.
+ */
+export function needsVoices(title) {
+  const t = String(title ?? '').toLowerCase()
+  return /\b(choral|chorus|cantata|oratorio|requiem|magnificat|stabat mater|te deum|messiah|passion|lieder|liederkreis|song cycle|songs?|mass(es)?|opera|resurrection|symphony of a thousand|das lied von der erde|carmina burana)\b/.test(t)
+    || /\bfor (solo )?(voice|soprano|mezzo|contralto|alto|tenor|baritone|bass)\b/.test(t)
+    || /\bmass in\b|\bmesse\b|\bmissa\b/.test(t)
+}
+
 // ── themes ────────────────────────────────────────────────────────────────
 
 /**
@@ -185,7 +196,9 @@ export function validateProgramme(out, { covered = [], returning = false, prefer
     for (const i of s.items) {
       if (!i.composer || !i.workTitle) problems.push('An item has no composer or work title.')
       else if (!hasPerformers(i)) problems.push(`"${i.composer} — ${i.workTitle}" names no performers; every item must be a specific recording.`)
-      else if (needsSoloists(i.workTitle, i.form) && !i.soloists.length) problems.push(`"${i.composer} — ${i.workTitle}" has a soloist's part but names no soloist; name each soloist and their instrument.`)
+      else if (needsSoloists(i.workTitle, i.form) && !i.soloists.length) problems.push(`"${i.composer} — ${i.workTitle}" has a soloist's part but names no soloist; name each soloist and their instrument.`)      // The listener's switches are the listener's: a work they turned off is not a suggestion to follow loosely.
+      if (preferences.includeConcertos === false && needsSoloists(i.workTitle, i.form)) problems.push(`"${i.composer} — ${i.workTitle}" is a concerto, and this listener has concertos switched off; choose something else.`)
+      if (preferences.includeVoices === false && needsVoices(i.workTitle)) problems.push(`"${i.composer} — ${i.workTitle}" needs singers, and this listener has works with voices switched off; choose something else.`)
     }
     s.items = s.items.filter((i) => i.composer && i.workTitle && hasPerformers(i))
   }
@@ -388,7 +401,10 @@ export function validateCompanion(out, { works }) {
   for (const w of works) {
     const notes = given.get(w.key)
     if (!notes || notes.every((n) => !n)) { problems.push(`No notes for "${w.key}".`); continue }
-    value.works.push({ key: w.key, movements: w.tracks.map((_, i) => notes[i] ?? '') })
+    // As many notes as came, never padded: a note left out in the middle can't be told from one left off the
+    // end, and padding would hide the gap from the journey's own re-ask (journey.companion) — every later note
+    // would sit one movement early. A reply with more notes than tracks keeps the first ones.
+    value.works.push({ key: w.key, movements: notes.slice(0, w.tracks.length) })
   }
   return { value, problems }
 }

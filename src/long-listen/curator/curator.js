@@ -55,7 +55,7 @@ const LEADS = {
   compare: (p) => `The listener wants a second perspective on ${p.work?.composer} — ${p.work?.title}.`,
   resources: (p) => `Find resources for this week's programme, "${p.programme?.title}".`,
   concert: (p) => (p.today
-    ? `Read this concert programme. Today is ${p.today}. If it shows no year, give the date the year that puts it nearest to today.`
+    ? `Read this concert programme. Today is ${p.today}. If it shows no year, give the date the latest year that puts it on or before today: a concert is kept once it has been heard.`
     : `Read this concert programme. If it shows no year, it is ${p.year}.`),
   season: (p) => `Write the season in review for ${p.season?.label ?? 'these weeks'}.`,
   companion: (p) => `Write the listening companion for ${p.works?.length ?? 0} recording(s) in "${p.programme?.title}": one note per track.`,
@@ -299,8 +299,12 @@ export async function findResources(send, payload) {
     if (message.stop_reason !== 'pause_turn') break
     prior = [...prior, { role: 'assistant', content: message.content }]
   }
+  // Cut off (out of room, or still searching after three turns) is not "nothing trustworthy turned up":
+  // said as a failure, the programme isn't marked as searched and the listener can ask again.
+  const last = responses[responses.length - 1]
+  if (last.stop_reason === 'max_tokens' || last.stop_reason === 'pause_turn') throw new CuratorUnavailable('failed', friendly('failed'))
   const results = searchResultsOf(responses)
-  const parsed = extractJsonObject(textOf(responses[responses.length - 1]))
+  const parsed = extractJsonObject(textOf(last))
   const { value, dropped } = validateResources(parsed, results)
   return { ...value, dropped: dropped.length, promptVersion: PROMPTS.resources.version }
 }

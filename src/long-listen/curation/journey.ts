@@ -2,6 +2,7 @@ import type {
   Comparison, Concert, Explanation, Feedback, FeedbackTargetType, ListeningEvent, ListeningKind, Programme, ProgrammeItem,
   ProgrammeOption, Reaction, Resource, Sitting, Theme, ThemeExploration, WantMore, WeekKey, WeekMood, WeekRecord,
 } from '../domain/types'
+import { inLanguage } from '../domain/types'
 import { creditLine, fold, newId, sameWork } from '../domain/identity'
 import { termMark } from '../domain/glossary'
 import { forgetPlaceBefore } from '../app/place'
@@ -874,7 +875,8 @@ export class Journey {
 
   /** A hall's programme, read from a screenshot into a draft for the listener to check. */
   readConcert(image: { mediaType: string; data: string }): Promise<ConcertResponse> {
-    // Today, not only its year: a programme without a year, read across New Year, belongs to the nearer one.
+    // Today, not only its year: a programme without a year is dated on or before today (a concert is kept once
+    // heard) — read in March, "12 martie" is this March, not next.
     return this.curator.call<ConcertResponse>('concert', { image, year: Number(this.today().slice(0, 4)), today: this.today() })
   }
 
@@ -987,16 +989,17 @@ export class Journey {
     const q = question?.trim()
     const id = `${programmeId}:${itemId}${q ? `:${newId('q')}` : ''}`
     return this.once(`explain:${programmeId}:${itemId}:${q ?? ''}`, async () => {
+      const { nextRequest: _n, ...preferences } = await this.repo.preferences()
+      // Kept, unless written in another language than the curator writes in now: then written afresh, in its place.
       if (!q) {
         const cached = await this.repo.explanations.get(id)
-        if (cached) return cached
+        if (cached && inLanguage(cached, preferences.language)) return cached
       }
       const generation = this.repo.generation
       const p = await this.repo.programmes.require(programmeId)
       const item = p.sections.flatMap((s) => s.items).find((i) => i.id === itemId)
       if (!item) throw new Error('No such item.')
       const profile = await this.repo.taste()
-      const { nextRequest: _n, ...preferences } = await this.repo.preferences()
       const res = await this.curator.call<ExplainResponse>('explain', {
         preferences,
         programme: { title: p.title, dek: p.dek },
@@ -1007,7 +1010,7 @@ export class Journey {
       })
       this.stillCurrent(generation)
       const e: Explanation = {
-        id, heading: res.heading, body: res.body, createdAt: this.stamp(), promptVersion: res.promptVersion,
+        id, heading: res.heading, body: res.body, language: preferences.language, createdAt: this.stamp(), promptVersion: res.promptVersion,
         ...(q ? { question: q, ...(nowPlaying?.movement ? { movement: nowPlaying.movement } : {}) } : {}),
       }
       await this.repo.explanations.put(e)
@@ -1048,17 +1051,18 @@ export class Journey {
       const recordings = new Map((await this.repo.recordings.many(wanted.map((w) => w.rid))).map((r) => [r.id, r]))
       // Notes belong to one division of the work into tracks: a recording re-matched to another album is written for afresh.
       const tracksOf = (rid: string) => (recordings.get(rid)?.spotify?.trackNames ?? []).join('\u241e')
-      const marks = new Map((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => [m.id.slice('companion:'.length), m.value as { tracks?: string; movements?: string[]; counted?: boolean }]))
+      const marks = new Map((await this.repo.marks.many(wanted.map((w) => `companion:${w.rid}`))).map((m) => [m.id.slice('companion:'.length), m.value as { tracks?: string; movements?: string[]; counted?: boolean; language?: string }]))
+      const { language } = await this.repo.preferences()
       // Done: written for these tracks — and one note per track, or already asked again for the missing ones
       // (`counted`). Notes kept before that check, a note short, are written once more.
       const done = (rid: string) => {
         const m = marks.get(rid)
-        if (!m || (m.tracks !== undefined && m.tracks !== tracksOf(rid))) return false
+        // Written for other tracks, or in another language than the curator writes in now: written afresh.
+        if (!m || (m.tracks !== undefined && m.tracks !== tracksOf(rid)) || !inLanguage(m, language)) return false
         return m.counted || (m.movements?.length ?? 0) === (recordings.get(rid)?.spotify?.trackNames?.length ?? 0)
       }
       const todo = wanted.filter((w, i) => wanted.findIndex((x) => x.rid === w.rid) === i && !done(w.rid) && (recordings.get(w.rid)?.spotify?.trackNames?.length ?? 0) > 0 && recordings.get(w.rid)?.verification === 'verified')
       if (!todo.length) return 0
-      const { language } = await this.repo.preferences()
       // Short keys: a long recording id echoed back wrong would leave its notes unwritten and paid for again.
       const asked = todo.map((w, i) => ({ key: `w${i + 1}`, composer: w.proposed.composer, work: w.proposed.work, recording: creditLine(w.proposed), tracks: recordings.get(w.rid)!.spotify!.trackNames!, listenFor: w.listenFor }))
       const res = await this.curator.call<CompanionResponse>('companion', { language, programme: { title: p.title, dek: p.dek }, works: asked })
@@ -1074,10 +1078,12 @@ export class Journey {
           const want = short.find((x) => x.key === w.key)
           if (want && w.movements.length === want.tracks.length) byKey.set(w.key, w.movements)
         }
+        // Still a note short after asking again: no notes rather than every one under the wrong movement.
+        for (const w of short) if (byKey.get(w.key)?.length !== w.tracks.length) byKey.set(w.key, [])
       }
       const now = this.stamp()
       // Every recording asked about is marked, notes or not, so none is asked about again until its tracks change.
-      await this.repo.marks.putMany(todo.map((w, i) => ({ id: `companion:${w.rid}`, at: now, value: { movements: byKey.get(`w${i + 1}`) ?? [], tracks: tracksOf(w.rid), counted: true, promptVersion: res.promptVersion } })))
+      await this.repo.marks.putMany(todo.map((w, i) => ({ id: `companion:${w.rid}`, at: now, value: { movements: byKey.get(`w${i + 1}`) ?? [], tracks: tracksOf(w.rid), counted: true, language, promptVersion: res.promptVersion } })))
       return res.works.length
     })
   }
@@ -1227,7 +1233,9 @@ export class Journey {
     const id = `cmp:${programmeId}:${itemId}`
     return this.once(id, async () => {
       const cached = await this.repo.comparisons.get(id)
-      if (cached) return cached
+      // A perspective asked for earlier doesn't answer a recording Spotify turned out not to have: a stand-in
+      // is still found, from what Spotify has, and takes the pair's place (the item must stay playable).
+      if (cached && (!opts.mustBeOnSpotify || cached.standIn)) return cached
       const generation = this.repo.generation
       const p = await this.repo.programmes.require(programmeId)
       const item = p.sections.flatMap((s) => s.items).find((i) => i.id === itemId)

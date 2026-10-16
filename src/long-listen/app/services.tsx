@@ -10,7 +10,7 @@ import { syncRecentPlays } from '../spotify/verify'
 import { checkNotebook, relayCaller, syncToNotion, type NotebookCheck, type NotionCall } from '../notion/mirror'
 import { parseNotionId } from '../../shared/notionId'
 import { demoCurator } from '../dev/demoCurator'
-import { loadSettings, saveSettings, type Settings } from './settings'
+import { SETTINGS_KEY, THEME_KEY, loadSettings, saveSettings, type Settings } from './settings'
 import { recordUsage } from './usage'
 import { applyTheme } from './theme'
 import { useSystemThemeFollow } from '../../shared/theme'
@@ -82,12 +82,18 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   const bump = useCallback(() => setVersion((v) => v + 1), [])
   const say = useCallback((message: string, tone: 'neutral' | 'success' | 'danger' = 'neutral') => { push({ message, tone }) }, [push])
 
+  // Merged into what is saved now, not this tab's copy: another tab (or the installed app beside a browser
+  // tab) may have changed something since — a key added there must not be written back as blank from here.
   const updateSettings = useCallback((patch: Partial<Settings>) => {
-    setSettings((s) => {
-      const next = { ...s, ...patch }
-      saveSettings(next)
-      return next
-    })
+    const next = { ...loadSettings(), ...patch }
+    saveSettings(next)
+    setSettings(next)
+  }, [])
+  // And a change made in another tab shows here at once.
+  useEffect(() => {
+    const on = (e: StorageEvent) => { if (e.key === SETTINGS_KEY || e.key === THEME_KEY || e.key === null) setSettings(loadSettings()) }
+    window.addEventListener('storage', on)
+    return () => window.removeEventListener('storage', on)
   }, [])
 
   useEffect(() => applyTheme(settings.theme), [settings.theme])

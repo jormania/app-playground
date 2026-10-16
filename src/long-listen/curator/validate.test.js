@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, validateSeason, validateProgramme, validateTags } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -43,7 +43,10 @@ describe('the listening companion', () => {
     const { value, problems } = validateCompanion(out, { works })
     expect(value.works).toEqual([{ key: 'r1', movements: ['one', 'two', 'three'] }])
     expect(problems).toEqual(['No notes for "r2".'])
-    expect(validateCompanion({ works: [{ key: 'r2', movements: [] }, { key: 'r1', movements: ['a'] }] }, { works }).value.works).toEqual([{ key: 'r1', movements: ['a', '', ''] }])
+    // A reply a note short stays short, never padded: padded, a note left out in the middle would put every
+    // later one under the wrong movement and hide the gap from the journey's re-ask (a stabilisation finding).
+    expect(validateCompanion({ works: [{ key: 'r2', movements: [] }, { key: 'r1', movements: ['a'] }] }, { works }).value.works).toEqual([{ key: 'r1', movements: ['a'] }])
+    expect(validateCompanion({ works: [{ key: 'r1', movements: ['on I', 'on III'] }, { key: 'r2', movements: ['x'] }] }, { works }).value.works[0].movements).toHaveLength(2)
   })
 })
 
@@ -103,6 +106,30 @@ describe('validateConcert — soloists per work', () => {
       ],
     })
     expect(r.value.works.map((w) => w.soloists)).toEqual([['Alexandra Conunova', 'Andrei Ioniță'], ['Andrei Ioniță'], []])
+  })
+})
+
+describe('the listener’s switches for voices and concertos (a stabilisation finding)', () => {
+  const item = (composer, workTitle) => ({ composer, workTitle, conductor: 'A Conductor', orchestra: 'An Orchestra', soloists: [{ name: 'A Soloist', instrument: 'violin' }], character: ['clear'], why: 'w', whyThisRecording: 'r', listenFor: [] })
+  const prog = (...items) => ({ title: 't', dek: 'd', introduction: 'i', sections: [{ role: 'start', heading: 'Start here', items }], comparisons: [] })
+  const concerto = item('Max Bruch', 'Violin Concerto No. 1')
+  const choral = item('Ludwig van Beethoven', 'Symphony No. 9 "Choral"')
+  const plain = item('Claude Debussy', 'La mer')
+
+  it('sends a programme back for a concerto when concertos are off, and for a choral work when voices are off', () => {
+    expect(validateProgramme(prog(plain, concerto), { preferences: { includeConcertos: false } }).problems.join(' ')).toMatch(/Violin Concerto No\. 1.*concertos switched off/)
+    expect(validateProgramme(prog(plain, choral), { preferences: { includeVoices: false } }).problems.join(' ')).toMatch(/Choral.*voices switched off/)
+  })
+
+  it('says nothing when the switches are on (the default), or when the work is neither', () => {
+    const on = { includeConcertos: true, includeVoices: true }
+    expect(validateProgramme(prog(plain, concerto, choral), { preferences: on }).problems.filter((x) => /switched off/.test(x))).toEqual([])
+    expect(validateProgramme(prog(plain), { preferences: { includeConcertos: false, includeVoices: false } }).problems.filter((x) => /switched off/.test(x))).toEqual([])
+  })
+
+  it('knows voices by the title: sure cases only', () => {
+    for (const t of ['Requiem', 'Mass in B minor', 'Symphony No. 2 "Resurrection"', 'Four Last Songs', 'Das Lied von der Erde', 'Carmina Burana', 'Stabat Mater']) expect(needsVoices(t), t).toBe(true)
+    for (const t of ['La mer', 'Symphony No. 5', 'Concerto for Orchestra', 'The Planets', 'Piano Sonata No. 14 "Moonlight"']) expect(needsVoices(t), t).toBe(false)
   })
 })
 

@@ -81,6 +81,8 @@ export function go(r: Route): void {
  * so a reload on the listening view still finds the programme's place.
  */
 export type Trail = { hash: string; y: number; title?: string }[]
+/** The title a page left with when it wasn't there (an old or mistyped link): never offered as a way back. */
+export const GONE = '\u0000gone'
 const TRAIL_KEY = 'long-listen:trail'
 const TRAIL_MAX = 20
 
@@ -118,9 +120,12 @@ function readTrail(): Trail {
  * else `fallback`, the screen's usual parent.
  */
 export function backTo(trail: Trail, fallback: { to: string; label: string }): { to: string; label: string } {
-  // A page left before it had loaded has no name: still the way back, said plainly.
   const last = trail[trail.length - 1]
-  return last ? { to: norm(last.hash), label: last.title || 'Back' } : fallback
+  // Not a way back: a page that wasn't there ("There's no such…"), or the form that has just kept its concert
+  // (back to an empty form, or to the redirect that lands here again) — the screen's own parent instead.
+  if (!last || last.title === GONE || /^#\/concerts\/(new|from-)/.test(norm(last.hash))) return fallback
+  // A page left before it had loaded has no name: still the way back, said plainly.
+  return { to: norm(last.hash), label: last.title || 'Back' }
 }
 
 export function backHref(fallback: { to: string; label: string }): { to: string; label: string } {
@@ -220,7 +225,8 @@ export function useRoute(): Route {
     let here = norm(window.location.hash)
     const on = () => {
       const to = norm(window.location.hash)
-      const next = stepTrail(readTrail(), here, window.scrollY, to, titleNow())
+      // The screen on show is still the one being left: a not-found page says so (components/common.tsx Problem).
+      const next = stepTrail(readTrail(), here, window.scrollY, to, document.querySelector('[data-not-found]') ? GONE : titleNow())
       writeSessionJson(TRAIL_KEY, next.trail)
       const prevHere = here
       here = to

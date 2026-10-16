@@ -373,7 +373,7 @@ function ExplorationSections() {
   return (
     <>
       <Card title="Your week of listening">
-        <Setting label="Music each week" hint={`${TIME[p.timePerWeek].words[0].toUpperCase()}${TIME[p.timePerWeek].words.slice(1)}: about ${least}–${most} works, in two to four sections.`}>
+        <Setting label="Music each week" hint={`${TIME[p.timePerWeek].words[0].toUpperCase()}${TIME[p.timePerWeek].words.slice(1)}: about ${least}–${most} works, usually in two to four sections.`}>
           <SegmentedControl size="sm" className={s.compactTrack} label="Music each week" value={p.timePerWeek} onChange={(v) => void set('timePerWeek', v as ListenerPreferences['timePerWeek'])} options={PREF_OPTIONS.timePerWeek} />
         </Setting>
         <LevelScale
@@ -529,15 +529,25 @@ function BackupSection({ busy, setBusy }: Busy) {
       // The journey it replaces goes to the downloads first, as before a fresh start — when there is one.
       const replaced = await holdsJourney(repo)
       if (replaced) await downloadBackup(repo, 'the-long-listen-before-restore', settings.timeZone)
+      // The notebook rows of the journey being replaced go to Notion's trash first, as a fresh start's do:
+      // their states leave with it, and nothing would update or remove those pages again.
+      if (notion) {
+        const leaving = await repo.notionLeaving(data)
+        if (leaving.length) {
+          await archiveNotebook(notion.call, repo, leaving).catch((e: unknown) => {
+            throw new CuratorUnavailable('failed', e instanceof Error && e.message.startsWith('Notion') ? e.message : 'Notion couldn’t be reached, so nothing was restored. Try again in a minute.')
+          })
+        }
+      }
       await repo.importAll(data)
       forgetPlaces()
       bump()
       say(replaced ? 'The backup is restored. The journey it replaced is in your downloads.' : 'The backup is restored.', 'success')
       // Every page is to be checked again: now, rather than at the next reload.
       if (notion) void syncNotion()
-    } catch {
+    } catch (e) {
       // The restore is one change: whatever failed, the journey here is as it was.
-      say(checkBackup(data) ?? 'The backup couldn’t be restored just now. Nothing here was changed.', 'danger')
+      say(checkBackup(data) ?? (e instanceof CuratorUnavailable ? e.message : 'The backup couldn’t be restored just now. Nothing here was changed.'), 'danger')
     } finally {
       setBusy(null)
     }

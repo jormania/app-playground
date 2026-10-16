@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { keepPlace, placeFrom, positionOf, savedPlace, type Place } from './place'
 import { useServices } from './services'
-import { SpotifyUnavailable, type NowPlaying, type SpotifyClient } from '../spotify/client'
+import { SpotifyUnavailable, playbackOf, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
 import { Witness } from '../spotify/witness'
 import { WorkGuard, type Armed } from '../spotify/workGuard'
@@ -22,7 +22,7 @@ const guard = new WorkGuard({
   load: () => { const a = readJson<Armed | null>(GUARD_KEY, null); return a && Array.isArray(a.trackIds) && typeof a.until === 'number' ? a : null },
   save: (a) => { if (a) writeJson(GUARD_KEY, a); else removeJson(GUARD_KEY) },
 })
-const ranOnListeners = new Set<() => void>()
+const ranOnListeners = new Set<(trackIds: string[]) => void>()
 let lastReading: NowPlaying | null = null
 
 /**
@@ -42,9 +42,15 @@ function observe(np: NowPlaying | null, at: number) {
     const place = placeFrom(lastReading, np, ids, at)
     if (place !== undefined) keepPlace(ids, place)
   }
+  const armedIds = guard.armedTrackIds()
   const ran = guard.observe(lastReading, np, at)
+  // The guard saw the work end — run on past its close, or held at rest at its top once it was over — even
+  // with the page asleep through the end, which the readings around the close can't show: its place is let go
+  // (no "Resume" offered for a work heard through).
+  const endedAtRest = Boolean(armedIds && !ran && !guard.armedTrackIds() && np && !np.isPlaying && playbackOf(np, armedIds)?.index === 0)
+  if (armedIds && (ran || endedAtRest)) keepPlace(armedIds, null)
   lastReading = np
-  if (ran) for (const l of ranOnListeners) l()
+  if (ran && armedIds) for (const l of ranOnListeners) l(armedIds)
   for (const l of readingListeners) l(np)
 }
 
@@ -55,7 +61,7 @@ export function armWork(trackIds: string[] | undefined, durationsMs?: number[]):
 }
 
 /** Told when a work started from the app has just run on past its last movement into something else. */
-export function onWorkRanOn(listener: () => void): () => void {
+export function onWorkRanOn(listener: (trackIds: string[]) => void): () => void {
   ranOnListeners.add(listener)
   return () => { ranOnListeners.delete(listener) }
 }

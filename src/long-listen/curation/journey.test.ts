@@ -196,6 +196,27 @@ describe('the listening companion, a note short', () => {
   })
 })
 
+describe('the listening companion, still a note short', () => {
+  it('keeps no notes rather than notes under the wrong movements, and doesn’t ask a third time', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['A', 'B', 'C']),
+      programme: () => programme('Colour', FRENCH),
+      // Always the middle movement left out: "on I", "on III" — the second note would sit under II.
+      companion: (payload) => ({ works: payload.works.map((w: { key: string; tracks: string[] }) => ({ key: w.key, movements: w.tracks.filter((_, i) => i !== 1).map((t) => `note on ${t}`) })), promptVersion: 'companion@test' }),
+    })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const [first] = p.sections.flatMap((s) => s.items)
+    const r = await repo.recordings.require(first.recordingId)
+    await repo.recordings.put({ ...r, verification: 'verified', spotify: { albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ['t1', 't2', 't3'], trackUris: ['spotify:track:t1', 'spotify:track:t2', 'spotify:track:t3'], trackNames: ['I', 'II', 'III'], confidence: 'strong', matchedAt: 'x' } })
+    await j.companion(p.id)
+    expect(c.count('companion')).toBe(2)
+    expect((await repo.marks.get(`companion:${first.recordingId}`))?.value).toMatchObject({ movements: [], counted: true })
+    await journey(c.client).companion(p.id)
+    expect(c.count('companion')).toBe(2)
+  })
+})
+
 describe('concerts', () => {
   it('reads a screenshot, keeps the concert, and makes its works known and its note heard', async () => {
     const c = fakeCurator({
@@ -428,6 +449,27 @@ describe('on-request extras are cached', () => {
     await j.explain(p.id, itemId)
     expect(c.count('resources')).toBe(1)
     expect(c.count('explain')).toBe(1)
+  })
+
+  it('writes "More context" afresh when the curator’s language changes, and keeps it while it doesn’t', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['A', 'B', 'C']),
+      programme: () => programme('Colour', FRENCH),
+      explain: (payload) => ({ heading: 'H', body: `in ${payload.preferences.language}`, promptVersion: 'e' }),
+    })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const itemId = p.sections[0].items[0].id
+    expect((await j.explain(p.id, itemId)).body).toBe('in en')
+    await j.explain(p.id, itemId)
+    expect(c.count('explain')).toBe(1)
+    await repo.savePreferences({ ...(await repo.preferences()), language: 'ro' })
+    const again = await j.explain(p.id, itemId)
+    expect(again).toMatchObject({ body: 'in ro', language: 'ro' })
+    expect(c.count('explain')).toBe(2)
+    // The note kept is the new one: asked again in Romanian, it is returned as it is.
+    await j.explain(p.id, itemId)
+    expect(c.count('explain')).toBe(2)
   })
 
   it('remembers an empty resource search too', async () => {

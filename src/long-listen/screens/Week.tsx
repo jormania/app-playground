@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { GoingCards } from '../components/Going'
 import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
@@ -16,6 +16,7 @@ import { SittingCard } from '../components/SittingCard'
 import { Twisty } from '../components/Twisty'
 import { Traits } from '../components/Traits'
 import s from '../styles/editorial.module.css'
+import { passing } from '../curation/api'
 
 interface WeekView {
   record: WeekRecord
@@ -41,6 +42,7 @@ export function WeekScreen() {
   const [mood, setMood] = useState('')
   const [asking, setAsking] = useState(false)
 
+  const failedOnMerits = useRef(false)
   const load = useCallback(async () => {
     setError(null)
     try {
@@ -53,13 +55,23 @@ export function WeekScreen() {
         .slice(0, 9)
       const themes = new Map((await repo.themes.all()).map((t) => [t.id, t]))
       setView({ record, options, openPaths, themes, firstVisit, prefs: await repo.preferences() })
+      failedOnMerits.current = false
     } catch (e) {
+      failedOnMerits.current = !passing(e)
       setError(e)
     }
   }, [journey, repo])
 
-  // Reload on data changes and when the curator setup changes (the key, demo).
-  useEffect(() => { void load() }, [load, version, settings.anthropicKey])
+  // Reload on data changes — but not into a week the curator just failed to write on its merits (no three
+  // directions that would validate): each reload would ask, and pay, again with no tap. "Try again" does.
+  // A new key (or demo) is worth asking with, whatever failed before.
+  const lastSetup = useRef<string | null>(null)
+  useEffect(() => {
+    const setup = `${settings.anthropicKey}|${settings.demo}`
+    const changed = setup !== lastSetup.current
+    lastSetup.current = setup
+    if (changed || !failedOnMerits.current) void load()
+  }, [load, version, settings.anthropicKey, settings.demo])
   // A page left open (an installed app resumed) across Monday midnight: the new week, not last week's three.
   const shownWeek = view?.record.weekKey
   useEffect(() => {
@@ -70,7 +82,11 @@ export function WeekScreen() {
     return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check); window.clearInterval(t) }
   }, [shownWeek, journey, load])
 
+  // One choice at a time: a second direction tapped before the first resolves would write a second programme.
+  const choosingNow = useRef(false)
   async function choose(o: ProgrammeOption) {
+    if (choosingNow.current) return
+    choosingNow.current = true
     setChoosing(o.id)
     try {
       const p = await journey.choose(o.id)
@@ -82,6 +98,7 @@ export function WeekScreen() {
       // Said where it was asked, not above the list: the option may be a screen further down.
       say(messageOf(e), 'danger')
     } finally {
+      choosingNow.current = false
       setChoosing(null)
     }
   }
