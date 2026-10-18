@@ -1,138 +1,38 @@
 // Quantic — https://www.iabilet.ro/bilete-quantic-venue-1705/
 //
-// Rung 1 (jsonld) for everything a listing publishes, plus ONE hop per event
-// for the one thing it doesn't: the start time.
+// An iabilet.ro venue page, read by `iabilet.js` like Cinema Europa's. This
+// file is now a name, a label and a floor.
 //
-// This began as a bare alias of the generic reader — `{ ...jsonld, id: 'quantic' }`
-// in registry.js — and outgrew it the same way odeon.js did, for a reason worth
-// recording precisely, because the surface looks identical to a venue that works.
+// It did not start that way, and the history is worth keeping because it is the
+// shape of this whole host's drift. Quantic began as a bare alias of the
+// generic JSON-LD reader, outgrew it when iabilet turned out to publish
+// `startDate` as a bare date (§9.87) and grew its own hop for the hour. Cinema
+// Europa then needed the same hop for the same reason (§9.91), so `startTimeOf`
+// moved into iabilet.js and the two files sat side by side doing nearly the
+// same thing for nearly the same reason.
 //
-// **iabilet.ro publishes `startDate` as a bare date.** All 24 events on the
-// venue page carried `"startDate":"2026-09-20"` with no time component — not
-// one exception, checked rather than sampled. jsonld.js already anticipates
-// this: its `NEARBY_TIME` reads "ora 22:00" out of the visible card a short way
-// after each JSON-LD block, which is what makes Expirat (an iabilet WHITELABEL,
-// riding a different template) come out timed. iabilet.ro's own venue-page
-// template does not carry it: two `ora HH:MM` strings on the whole page for 24
-// events, both inside JSON descriptions rather than in a card. So the fallback
-// finds nothing here and every Quantic night read as a date with no hour.
+// What finally merged them was iabilet dropping its listing JSON-LD entirely
+// (§9.94). Both readers had to be rebuilt on the row markup, and rebuilt they
+// were the same reader: read the rows, follow a multi-day row for its tariffs
+// and an hourless single-day row for its hour. The difference between these two
+// venues is now a count — Quantic lists concerts, Europa lists weekends — and a
+// count is a config, not a module.
 //
-// The time exists only on each event's own page, in a single flat `<div
-// class="date">` block — and it comes in two flavours that must not be confused:
-//
-//   "duminică, 20 septembrie, ora 19:00"                    -- start only
-//   "marți, 22 septembrie, ora 20:00 acces de la 19:00"     -- start AND doors
-//   "sâmbătă, 19 septembrie acces de la 22:00"              -- doors only
-//
-// **`ora` is the show; `acces de la` is the doors, and it is EARLIER.** Reading
-// the last clock on the line would print a 19:00 start for a concert that
-// begins at 20:00 — an hour early, every time, on exactly the rows that publish
-// both. So `ora` wins wherever it appears, and `acces de la` is read only when
-// there is no `ora` at all. Five of the eight rows sampled publish doors alone
-// (Quantic is a club as much as a concert hall), so falling back to doors is
-// what keeps this from being a fix that times three nights out of eight; the
-// door time is also, for those rows, the only hour the venue itself prints.
-//
-// **Cached** (§9.88). This adapter is half the reason `detailCache.js`'s first
-// condition stopped asking whether a hop is per-production and started asking
-// whether what it reads is static: a club night's start time is set weeks ahead
-// and never touched, yet under the old wording this re-read twenty-four iabilet
-// pages on every single scan to learn an hour that had not changed since
-// August. Its memory is deliberately SHORTER than the default week — see
-// `detailTtlMs` below.
+// **Still its own entry rather than a registry alias** because `minItems` is a
+// per-venue judgement: six is the floor below which a 24-row club programme has
+// plainly failed to read, and it is the number that would catch the next
+// template change here the way the gate caught this one.
 
-import jsonld from './jsonld.js'
-import { startTimeOf } from './iabilet.js'
-import { makeEvent } from './shared.js'
+import iabilet, { startTimeOf } from './iabilet.js'
 
-const HOST = 'https://www.iabilet.ro/'
-
-// 24 events on the venue page as inspected 2026-09-19. Capped above that so a
-// busier season still gets every hour, while a template change that starts
-// matching the wrong links cannot turn one venue into a hundred requests —
-// MARQUEE.md §9.75's lesson, learned on TNB at 61.
-const MAX_DETAIL_PAGES = 30
-
-/** Re-exported from iabilet.js, where it now lives: it reads an iabilet.ro
- *  event page, and Cinema Europa needs the same parser (§9.91). The move left
- *  this path working so these tests keep proving it behaves identically. */
+/** Re-exported from iabilet.js, where it lives: it reads an iabilet.ro event
+ *  page, and more than one venue on this host needs it. The path is kept so the
+ *  tests written against it keep proving the move was behaviour-preserving. */
 export { startTimeOf }
 
 export default {
-  ...jsonld,
+  ...iabilet,
   id: 'quantic',
   label: 'Quantic / iabilet.ro venue page',
   minItems: 6,
-
-  /** One hop per event, for its hour.
-   *
-   *  Driven off the parsed events rather than off the page's anchors, which
-   *  buys two things for free: the links are the JSON-LD's own canonical URLs
-   *  (no `?ica_source=VenuePage` tracking query to strip), and a festival's
-   *  umbrella listing has already been dropped by `dropUmbrellaListings`, so
-   *  QFest costs seven requests for its seven nights instead of nine. */
-  follow(pages, { venue } = {}) {
-    const urls = new Set()
-    for (const event of jsonld.parse([pages[0]], { venue })) {
-      if (event.link && event.link.startsWith(HOST) && event.link !== venue?.url) urls.add(event.link)
-    }
-    return [...urls].slice(0, MAX_DETAIL_PAGES).map((url) => ({ url }))
-  },
-
-  /** The one thing an event's own page is fetched for.
-   *
-   *  Declaring this opts Quantic into the detail cache. Nothing volatile is
-   *  stored: the price, the sold-out state and the programme itself all come
-   *  off the listing's JSON-LD, read fresh on every scan. Only the hour is
-   *  remembered, and only for three days. */
-  extractDetail(page) {
-    return { time: startTimeOf(page.body ?? '') }
-  },
-
-  /** Three days, not the default seven.
-   *
-   *  A poster or a synopsis is stable for a season and TNB's are trusted for a
-   *  week. An hour is different in kind: it is the thing you act on, and the
-   *  two ways of being wrong are not symmetric — an hour that moved later costs
-   *  you a wait, one that moved earlier costs you the show. Three days still
-   *  removes the great majority of the requests (a warm cache re-reads about a
-   *  third of the venue per day instead of all of it per scan) while bounding
-   *  how long a rescheduled hour on an unchanged date can go unnoticed. */
-  detailTtlMs: 3 * 24 * 60 * 60 * 1000,
-
-  parse(pages, ctx = {}) {
-    // Only the listing carries the programme. Handing the detail pages to the
-    // generic reader as well would have it parse each event's own JSON-LD a
-    // second time — every night duplicated, left for `dedupe` to clean up after.
-    const events = jsonld.parse(pages.slice(0, 1), ctx)
-
-    // Remembered records first, pages read in THIS scan second, so a page that
-    // was actually fetched always beats a cached account of it. With no cache
-    // in play — every direct `parse` call in the tests, and any scan where KV
-    // isn't configured — `details` is absent and this reads off the pages
-    // alone, exactly as it did before the cache existed.
-    const times = new Map()
-    for (const [url, record] of Object.entries(ctx.details ?? {})) {
-      if (record?.time) times.set(url, record.time)
-    }
-    for (const page of pages.slice(1)) {
-      const time = page.url ? startTimeOf(page.body ?? '') : null
-      if (time) times.set(page.url, time)
-    }
-    if (times.size === 0) return events
-
-    return events.map((event) => {
-      // A time the listing somehow did carry is left alone: it came from the
-      // venue's own card, and a detail page cannot improve on that.
-      if (event.time || !event.link) return event
-      const time = times.get(event.link)
-      if (!time) return event
-      // Rebuilt rather than patched. `key` is derived from venue+date+title+TIME
-      // (shared.js's `eventKey`), and it is what change detection and the
-      // ignore list are keyed on — so setting `.time` on a finished event would
-      // leave a key describing an event that no longer exists, and every newly
-      // timed night would read as "gone from the programme" exactly once.
-      return makeEvent({ ...event, time }) ?? event
-    })
-  },
 }

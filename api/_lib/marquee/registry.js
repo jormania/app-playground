@@ -1,23 +1,29 @@
 // The server half of the adapter registry. These ids are the contract with
 // src/marquee/adapters.js — change one, change both.
 //
-// `expirat` and `quantic` are not their own modules: each site's venue page
-// already emits complete schema.org Event objects, so each IS the generic
-// reader, aliased under its own id so the venue row and the UI can name what
-// is reading it. `odeon` STARTED that way and outgrew it — its JSON-LD has no
-// offers and no location, and the hall and prices it does publish live in the
-// surrounding HTML, so it needs a real module to join the two (see odeon.js).
+// **Three ids, one reader, as of §9.94.** `iabilet`, `quantic` and `expirat`
+// are all `iabilet.js`: Cinema Europa and Quantic on iabilet.ro's own venue
+// pages, Expirat Halele Carol on an iabilet whitelabel under its own domain.
+// They are kept as separate ids rather than collapsed into one, because the id
+// is what the venue row and the Venues tab name — "the iabilet reader" is a
+// fact about our code, and "Expirat" is what the person reading the tab is
+// looking for — and because each carries its own `minItems`, which is the
+// per-venue judgement that catches the next template change.
 //
-// `quantic` is the one worth a second look, because its URL would fool the
-// client's own host-based auto-detection (adapters.js) into suggesting
-// `iabilet` — same domain, same `-venue-<id>` URL shape as Cinema Europa. But
-// Cinema Europa's venue page carries only ONE Event block per weekly themed
-// BUNDLE, with the real showings living on a child page's tariff accordion —
-// that's what `iabilet.js`'s two-hop reader exists for. Quantic's own venue
-// page already carries one real, complete Event per show, offers and all,
-// directly — no bundle, no second hop, nothing for that reader to do. Two
-// venues, same host, same URL shape, genuinely different page structure —
-// confirmed by reading the real markup, not assumed from the domain.
+// They were three different things until recently, and the history is the
+// reason the ids exist at all: `expirat` was the generic JSON-LD reader,
+// `quantic` was that reader plus a hop for the hour iabilet would not publish,
+// and `iabilet` was a two-hop bundle reader for Cinema Europa's themed
+// weekends. iabilet.ro then removed the schema.org markup from every listing
+// page it serves, all three broke in the same check, and rebuilding them on the
+// row markup produced one reader three times. `odeon` is the counter-example
+// that stayed separate: its JSON-LD has no offers and no location, and the hall
+// and prices it does publish live in the surrounding HTML, so it needs a real
+// module to join the two.
+//
+// The client's host-based auto-detection (adapters.js) suggests `iabilet` for
+// any `-venue-<id>` URL on this host, which is now simply right — it used to be
+// a trap, because Quantic's page and Europa's needed different readers.
 
 import excelsior from './excelsior.js'
 import eventbook from './eventbook.js'
@@ -33,8 +39,7 @@ import metropolis from './metropolis.js'
 import cndb from './cndb.js'
 import salaradio from './salaradio.js'
 import quantic from './quantic.js'
-
-const expirat = { ...jsonld, id: 'expirat', label: 'Expirat / iabilet whitelabel', minItems: 3 }
+import expirat from './expirat.js'
 
 export const ADAPTERS = {
   excelsior,

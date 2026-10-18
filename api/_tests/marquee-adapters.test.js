@@ -18,6 +18,8 @@ import mystage from '../_lib/marquee/mystage.js'
 import cndb, { isCourse } from '../_lib/marquee/cndb.js'
 import salaradio, { parseMeridiemTime } from '../_lib/marquee/salaradio.js'
 import quantic, { startTimeOf } from '../_lib/marquee/quantic.js'
+import expirat from '../_lib/marquee/expirat.js'
+import { listingBlocks } from '../_lib/marquee/iabiletRows.js'
 import { ADAPTERS } from '../_lib/marquee/registry.js'
 import odeon, { parseLocationLine } from '../_lib/marquee/odeon.js'
 import { dropUmbrellaListings } from '../_lib/marquee/jsonld.js'
@@ -736,27 +738,53 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
     url: 'https://www.iabilet.ro/bilete-cinema-europa-venue-5877/',
     config: '5877',
   }
-  const venuePage = { body: fixture('iabilet-venue.html') }
   const bundlePage = { body: fixture('iabilet-bundle.html') }
-  // 2026-09-30: the same venue page, after iabilet started mixing one-off
-  // screenings in with the weekend bundles (§9.90).
-  const mixedVenue = { url: venue.url, body: fixture('iabilet-venue-mixed.html') }
+  // **The venue page as iabilet serves it since 2026-10-18** (§9.94): no
+  // schema.org markup anywhere on it, the programme in `event-list-item` rows.
+  // Three single-day screenings and three multi-day weekend bundles, which is
+  // the same mix the JSON-LD carried — the markup changed, the structure did
+  // not. `iabilet-venue.html` and `iabilet-venue-mixed.html` were the two
+  // earlier shapes of this page and are gone with the reader that read them.
+  const venuePage = { url: venue.url, body: fixture('iabilet-rows-europa.html') }
+  const mixedVenue = venuePage
   const pipeBundle = {
     url: 'https://www.iabilet.ro/bilete-keanu-reeves-weekend-131369/',
     body: fixture('iabilet-bundle-pipe.html'),
   }
   const screeningPage = {
-    url: 'https://www.iabilet.ro/bilete-best-of-the-office-131764/',
+    url: 'https://www.iabilet.ro/bilete-jesus-del-cerro-lansare-de-carte-proiectie-hawaii-133141/',
     body: fixture('iabilet-screening.html'),
   }
 
-  it('finds the child bundle links on the venue page — the venue page itself lists nothing', () => {
-    // The venue page is a JS shell to a server fetch: it names five weekend
-    // bundles and not one individual showing.
-    expect(iabilet.parse([venuePage], { venue })).toEqual([])
-    const bundles = iabilet.follow([venuePage], { venue })
-    expect(bundles.length).toBe(5)
-    expect(bundles[0].url).toBe('https://www.iabilet.ro/bilete-asian-spotlight-vol-2-130105/')
+  it('finds the child bundle links on the venue page', () => {
+    // A multi-day row is a themed weekend whose showings live on its own page;
+    // the venue page names it and nothing more. The test that used to live here
+    // also asserted the venue page listed NO individual showings, which stopped
+    // being true in 2026-09 (§9.90) and is asserted properly below.
+    const bundles = iabilet.follow([venuePage], { venue, now: AUG })
+      .filter((r) => /weekend/i.test(r.url))
+    expect(bundles.length).toBe(3)
+    expect(bundles[0].url).toBe('https://www.iabilet.ro/bilete-sold-out-weekend-132938/')
+  })
+
+  it('reads the rows iabilet left behind when it dropped its listing JSON-LD', () => {
+    // The outage this reader was written for: not one `application/ld+json`
+    // block survives on the page, and every fact the old reader took from them
+    // is still there in the row markup.
+    expect(fixture('iabilet-rows-europa.html')).not.toContain('application/ld+json')
+    const events = iabilet.parse([venuePage], { venue, now: AUG })
+    expect(events.length).toBeGreaterThan(0)
+    expect(events.every((e) => e.date && e.title && e.link)).toBe(true)
+  })
+
+  it('infers the year the rows no longer carry, forward from the scan date', () => {
+    // A row says "21 oct" and nothing else. Read in August that is this
+    // October; read in December it would be next year's. The old JSON-LD
+    // carried a full ISO timestamp and never needed this.
+    const events = iabilet.parse([venuePage], { venue, now: AUG })
+    expect(events.every((e) => e.date.startsWith('2026-1'))).toBe(true)
+    const nextYear = iabilet.parse([venuePage], { venue, now: new Date('2026-12-20T09:00:00Z') })
+    expect(nextYear.every((e) => e.date.startsWith('2027-'))).toBe(true)
   })
 
   it('reads iabilet’s own low-stock line off a tariff row', () => {
@@ -892,17 +920,41 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
     })
 
     it('reads a single-day screening straight off the venue page', () => {
-      // A single-day block is already a complete Event — name, date, poster,
-      // synopsis and price — so it needs no hop at all.
-      const events = iabilet.parse([mixedVenue], { venue })
+      // A single-day row is already most of an Event — name, date, poster,
+      // synopsis, price — so the only thing its own page is worth is the hour.
+      const events = iabilet.parse([mixedVenue], { venue, now: AUG })
       expect(events).toHaveLength(3)
-      expect(events.every((e) => e.image && e.price === 20 && e.ticketState === 'open')).toBe(true)
-      expect(events.map((e) => e.title)).toContain('Best of The Office')
+      expect(events.every((e) => e.image && e.date && e.title)).toBe(true)
+      expect(events.map((e) => e.title)).toContain('Proiecție „Fjord”')
+    })
+
+    it('reads the ticket state off the row\u2019s own class, which is all that is left of it', () => {
+      // The `offers` block is gone with the rest of the JSON-LD. What remains
+      // is `event-without-stock` on the row, and a price when there is one to
+      // print — so a priced row is buyable, a marked row is sold out, and a row
+      // with neither says nothing either way rather than being guessed at.
+      const events = iabilet.parse([mixedVenue], { venue, now: AUG })
+      const soldOut = events.find((e) => e.title === 'Proiecție „Fjord”')
+      expect(soldOut.ticketState).toBe('sold-out')
+      expect(soldOut.ticketsUrl).toBeNull()
+      const open = events.find((e) => /Jesús/.test(e.title))
+      expect(open).toMatchObject({ ticketState: 'open', price: 30 })
+    })
+
+    it('strips the campaign tracking iabilet hangs off every link', () => {
+      // `?ica_source=VenuePage&ica_medium=site&…` is on every anchor in the
+      // row. `link` is the event's identity here — the detail hop fetches it
+      // and the cache is keyed on it — so a URL carrying which page you arrived
+      // from would key one event two ways the day the campaign name changes.
+      const events = iabilet.parse([mixedVenue], { venue, now: AUG })
+      expect(events.every((e) => !e.link.includes('ica_source'))).toBe(true)
+      expect(events.every((e) => e.link.startsWith('https://www.iabilet.ro/bilete-'))).toBe(true)
     })
 
     it('leaves a screening without an hour rather than inventing one', () => {
-      // Its startDate is a bare date, the same gap quantic.js found on this host.
-      const events = iabilet.parse([mixedVenue], { venue })
+      // A venue-page row carries a date and no clock, the same gap quantic.js
+      // found on this host when the JSON-LD was still there.
+      const events = iabilet.parse([mixedVenue], { venue, now: AUG })
       expect(events.every((e) => e.time === null)).toBe(true)
       expect(events.every((e) => e.date)).toBe(true)
     })
@@ -913,46 +965,49 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
       // §9.91 put the screenings back, because there WAS one thing: the hour.
       // The difference is that those hops are now cached and the bundles are
       // not — see the caching tests below.
-      const followed = iabilet.follow([mixedVenue], { venue })
-      expect(followed).toHaveLength(5)
-      expect(followed.filter((r) => /weekend/i.test(r.url))).toHaveLength(2)
+      const followed = iabilet.follow([mixedVenue], { venue, now: AUG })
+      expect(followed).toHaveLength(6)
+      expect(followed.filter((r) => /weekend/i.test(r.url))).toHaveLength(3)
     })
 
     it('never emits a showing twice across the two passes', () => {
-      const events = iabilet.parse([mixedVenue, pipeBundle], { venue })
+      const events = iabilet.parse([mixedVenue, pipeBundle], { venue, now: AUG })
       expect(new Set(events.map((e) => e.key)).size).toBe(events.length)
       expect(events.filter((e) => e.time === null)).toHaveLength(3)
       expect(events.filter((e) => e.time !== null).length).toBeGreaterThan(0)
     })
 
-    it('a venue page of bundles alone still yields nothing without its children', () => {
-      // The 2026-08 fixture has no single-day blocks at all, so the original
-      // behaviour is unchanged where the premise still holds.
-      expect(iabilet.parse([venuePage], { venue })).toEqual([])
+    it('a bundle row contributes nothing until its own page is read', () => {
+      // A multi-day row names a weekend and lists none of its films. The three
+      // events the venue page yields are its three single-day rows; the
+      // weekends arrive only with their children's tariff rows.
+      const events = iabilet.parse([venuePage], { venue, now: AUG })
+      expect(events).toHaveLength(3)
+      expect(events.every((e) => !/weekend/i.test(e.title))).toBe(true)
     })
   })
 
 
   describe('the hour a screening keeps on its own page (§9.91)', () => {
     it('gives a one-off screening its start time', () => {
-      const events = iabilet.parse([mixedVenue, screeningPage], { venue })
-      const office = events.find((e) => e.title === 'Best of The Office')
-      expect(office.time).toBe('19:00')
-      expect(office.key).toContain('19:00')
+      const events = iabilet.parse([mixedVenue, screeningPage], { venue, now: AUG })
+      const screening = events.find((e) => /Jesús/.test(e.title))
+      expect(screening.time).toBe('19:00')
+      expect(screening.key).toContain('19:00')
     })
 
     it('leaves a screening whose page was not fetched without an hour', () => {
       // A skipped or failed hop costs that screening its time and nothing else
       // — never a guessed one.
-      const events = iabilet.parse([mixedVenue, screeningPage], { venue })
+      const events = iabilet.parse([mixedVenue, screeningPage], { venue, now: AUG })
       expect(events.filter((e) => e.time === null).length).toBe(2)
       expect(events.every((e) => e.date && e.title)).toBe(true)
     })
 
     it('reads a remembered hour exactly as it reads a fetched one', () => {
       const record = iabilet.extractDetail(screeningPage)
-      const cached = iabilet.parse([mixedVenue], { venue, details: { [screeningPage.url]: record } })
-      const fetched = iabilet.parse([mixedVenue, screeningPage], { venue })
+      const cached = iabilet.parse([mixedVenue], { venue, now: AUG, details: { [screeningPage.url]: record } })
+      const fetched = iabilet.parse([mixedVenue, screeningPage], { venue, now: AUG })
       expect(cached).toEqual(fetched)
     })
 
@@ -960,10 +1015,10 @@ describe('iabilet (a venue page that fans out into weekly bundles — Cinema Eur
       // A starved screening costs an hour; a starved bundle costs its showings.
       // §9.78's budget is handed out in request order on a cold cache, so the
       // cheap loss has to come last.
-      const followed = iabilet.follow([mixedVenue], { venue }).map((r) => r.url)
-      expect(followed).toHaveLength(5)
-      expect(followed.slice(0, 2).every((u) => /weekend/i.test(u))).toBe(true)
-      expect(followed.slice(2).every((u) => !/weekend/i.test(u))).toBe(true)
+      const followed = iabilet.follow([mixedVenue], { venue, now: AUG }).map((r) => r.url)
+      expect(followed).toHaveLength(6)
+      expect(followed.slice(0, 3).every((u) => /weekend/i.test(u))).toBe(true)
+      expect(followed.slice(3).every((u) => !/weekend/i.test(u))).toBe(true)
     })
 
     it('REFUSES to cache a bundle page, because that page is the programme', () => {
@@ -2005,44 +2060,226 @@ describe('salaradio (Sala Radio)', () => {
   });
 });
 
+
+describe('iabiletRows — the reader that replaced iabilet.ro\u2019s JSON-LD (\u00a79.94)', () => {
+  const AT = new Date('2026-08-26T09:00:00Z')
+  const venuePage = fixture('iabilet-rows-quantic.html')
+  const whitelabel = fixture('iabilet-rows-expirat.html')
+
+  it('the outage, in one assertion', () => {
+    // On 2026-10-18 iabilet.ro stopped emitting schema.org markup on every
+    // listing page it serves. Three venues went to zero events in the same
+    // check — Quantic, Cinema Europa, Expirat Halele Carol — and the health
+    // gate reported markup change on all three. It had changed.
+    for (const f of ['iabilet-rows-quantic.html', 'iabilet-rows-europa.html', 'iabilet-rows-expirat.html']) {
+      expect(fixture(f)).not.toContain('application/ld+json')
+      expect(listingBlocks(fixture(f), { now: AT }).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('hands back the shape the JSON-LD used to, so the adapters kept their vocabulary', () => {
+    const [first] = listingBlocks(venuePage, { now: AT })
+    expect(first).toMatchObject({
+      name: expect.any(String),
+      url: expect.stringContaining('https://www.iabilet.ro/bilete-'),
+      startDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}/),
+    })
+    expect(first.image).toContain('imgcdn')
+  })
+
+  it('reads a multi-day row as a run, which is what tells a weekend from a night', () => {
+    // `isBundle` is unchanged — it still asks whether the run ends after it
+    // starts. Only where the two dates come from moved, from schema.org's
+    // startDate/endDate to the row's own `date-start` and `date-end`.
+    const blocks = listingBlocks(fixture('iabilet-rows-europa.html'), { now: AT })
+    const runs = blocks.filter((b) => b.endDate)
+    expect(runs.length).toBe(3)
+    expect(runs.every((b) => b.endDate > b.startDate)).toBe(true)
+    expect(blocks.filter((b) => !b.endDate).length).toBe(3)
+  })
+
+  it('a single-day row carries no endDate at all, rather than one equal to its start', () => {
+    // A block whose end equals its start would read as a run of zero days; the
+    // absence is what `isBundle` expects for a single night.
+    const singles = listingBlocks(venuePage, { now: AT }).filter((b) => !/Funk Rock/.test(b.name))
+    expect(singles.every((b) => b.endDate === undefined)).toBe(true)
+  })
+
+  it('infers the year the rows do not carry, and rolls a past month forward', () => {
+    // The single most likely thing here to be quietly wrong for two weeks a
+    // year. A row says "18 oct" and nothing more.
+    expect(listingBlocks(venuePage, { now: AT })[0].startDate).toBe('2026-10-18')
+    expect(listingBlocks(venuePage, { now: new Date('2026-12-20T09:00:00Z') })[0].startDate)
+      .toBe('2027-10-18')
+  })
+
+  it('anchors a run\u2019s end on its own start, not on today', () => {
+    // A weekend that opens on 30 December and closes on 1 January must close in
+    // the NEXT year. Anchored on "today" instead of on its own first night, its
+    // January would roll backwards and the run would end eleven months before
+    // it began. Hand-built rather than cut from a fixture, because no live page
+    // happened to span a New Year on the day this was written.
+    const row = (startDay, startMonth, endDay, endMonth) => `
+      <div data-event-list="item" class="row event-list-item event-is-future event-multi-day">
+        <a href="/bilete-new-year-weekend-1/"><img src="https://imgcdn3.iabilet.ro/x.jpg" /></a>
+        <div class="col-xs-2 col-event-date"><div class="date">
+          <div class="date-start"><span class="date-day">${startDay}</span><span class="date-month">${startMonth}</span></div>
+          <div class="date-end"><span class="date-day">${endDay}</span><span class="date-month">${endMonth}</span></div>
+        </div></div>
+        <div class="col-xs-6 main-info"><div class="title"><a href="/bilete-new-year-weekend-1/"><span>New Year Weekend</span></a></div></div>
+      </div>`
+    const [run] = listingBlocks(row(30, 'dec', 1, 'ian'), { now: AT })
+    expect(run.startDate).toBe('2026-12-30')
+    expect(run.endDate).toBe('2027-01-01')
+
+    // and the ordinary case is unmoved
+    const [plain] = listingBlocks(row(16, 'oct', 18, 'oct'), { now: AT })
+    expect(plain).toMatchObject({ startDate: '2026-10-16', endDate: '2026-10-18' })
+  })
+
+  it('takes the hour off a whitelabel card, and takes the SHOW\u2019s hour', () => {
+    // "marți, 20 octombrie, ora 21:00 acces de la 20:00" — `ora` is the gig and
+    // `acces de la` is the doors, and the doors are EARLIER. Reading the last
+    // clock on the line would send you an hour early to every row that
+    // publishes both, which at Expirat is most of them (\u00a79.87, applied to a
+    // second template).
+    const blocks = listingBlocks(whitelabel, { now: AT })
+    expect(blocks.every((b) => b.startDate.includes('T'))).toBe(true)
+    expect(blocks.map((b) => b.startDate)).toContain('2026-10-20T21:00')
+    expect(blocks.map((b) => b.startDate)).not.toContain('2026-10-20T20:00')
+  })
+
+  it('leaves a venue-page row hourless, because the template prints no hour', () => {
+    expect(listingBlocks(venuePage, { now: AT }).every((b) => !b.startDate.includes('T'))).toBe(true)
+  })
+
+  it('strips the campaign query off every link', () => {
+    for (const html of [venuePage, whitelabel]) {
+      expect(html).toContain('ica_source') // it really is on the anchors
+      expect(listingBlocks(html, { now: AT }).every((b) => !b.url.includes('ica_source'))).toBe(true)
+    }
+  })
+
+  it('reads the sold-out marker, which is the only ticket signal a row still carries', () => {
+    const blocks = listingBlocks(venuePage, { now: AT })
+    expect(blocks.filter((b) => b.soldOut).length).toBe(1)
+    expect(blocks.find((b) => b.soldOut).price).toBeNull()
+  })
+
+  it('reads "de la 30 lei" as a floor, and nothing at all where there is none', () => {
+    const europa = listingBlocks(fixture('iabilet-rows-europa.html'), { now: AT })
+    expect(europa.find((b) => /Jesús/.test(b.name)).price).toBe(30)
+    // The whitelabel template prints no price anywhere. Null, not zero.
+    expect(listingBlocks(whitelabel, { now: AT }).every((b) => b.price === null)).toBe(true)
+  })
+
+  it('finds nothing in a page with no rows, rather than inventing structure', () => {
+    // What makes the health gate able to report the NEXT change honestly.
+    expect(listingBlocks('<html><body><p>nothing here</p></body></html>', { now: AT })).toEqual([])
+    expect(listingBlocks('', { now: AT })).toEqual([])
+    expect(listingBlocks(null, { now: AT })).toEqual([])
+  })
+})
+
+describe('expirat (an iabilet whitelabel on the venue\u2019s own domain)', () => {
+  const venue = { name: 'Expirat Halele Carol', adapter: 'expirat', url: 'https://tickets.expirat.org/' }
+  const listing = { url: venue.url, body: fixture('iabilet-rows-expirat.html') }
+
+  it('is the iabilet reader too, with its own floor', () => {
+    expect(expirat.parse).toBe(iabilet.parse)
+    expect(expirat.id).toBe('expirat')
+    // 3, not Quantic's 6: a club with quiet weeks, and 22 rows in October says
+    // nothing about February.
+    expect(expirat.minItems).toBe(3)
+    expect(ADAPTERS.expirat).toBe(expirat)
+  })
+
+  it('reads every row off the one page, timed', () => {
+    const events = expirat.parse([listing], { venue, now: AUG })
+    expect(events.length).toBe(5)
+    expect(events.every((e) => e.venue === 'Expirat Halele Carol')).toBe(true)
+    expect(events.filter((e) => e.time).length).toBe(5)
+    expect(events.find((e) => /Killa Fonic/.test(e.title))).toMatchObject({
+      date: '2026-10-20',
+      time: '21:00',
+    })
+  })
+
+  it('costs exactly one request, because the cards already state their hour', () => {
+    // The rule is a test on the data, not a flag per venue: a row whose date
+    // already carries a clock is not followed. Quantic's rows carry none and
+    // are all followed; these carry theirs and none are.
+    expect(expirat.follow([listing], { venue, now: AUG })).toEqual([])
+  })
+
+  it('comes out priceless, which is upstream\u2019s loss and not a parsing failure', () => {
+    // The `offers` block went with the rest of the JSON-LD and the whitelabel
+    // card prints no price to replace it. Recovering it would mean a hop per
+    // event — twenty-odd requests a scan for a number that is on the ticket
+    // page the card already links to.
+    const events = expirat.parse([listing], { venue, now: AUG })
+    expect(events.every((e) => e.price === null)).toBe(true)
+    expect(events.every((e) => e.link)).toBe(true)
+  })
+
+  it('still reads the sold-out card', () => {
+    const events = expirat.parse([listing], { venue, now: AUG })
+    expect(events.filter((e) => e.ticketState === 'sold-out').length).toBe(1)
+  })
+})
+
 describe('quantic (iabilet.ro venue page)', () => {
   const venue = { name: 'Quantic', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/', adapter: 'quantic' };
-  const listing = { url: venue.url, body: fixture('quantic-venue.html') };
-  const detailUrl = 'https://www.iabilet.ro/bilete-funking-with-the-90s-130366/';
+  // The venue page as iabilet serves it since 2026-10-18 (§9.94): rows, no
+  // schema.org markup. `quantic-venue.html` was the JSON-LD shape and is gone
+  // with the reader that read it.
+  const listing = { url: venue.url, body: fixture('iabilet-rows-quantic.html') };
+  const detailUrl = 'https://www.iabilet.ro/bilete-concert-vlad-dobrescu-guests-131445/';
   const detail = { url: detailUrl, body: fixture('quantic-event.html') };
 
-  it('reads the listing through the generic reader, umbrella-dropping included', () => {
-    const events = quantic.parse([listing], { venue });
-    // Five blocks in the fixture; QFest's whole-festival summary and its season
-    // pass both span the days and drop out (jsonld.js's dropUmbrellaListings).
-    expect(events.map((e) => e.title)).not.toContain('QFest');
-    expect(events.length).toBeGreaterThanOrEqual(3);
-    expect(events.every((e) => e.venue === 'Quantic')).toBe(true);
+  it('is the iabilet reader under its own name', () => {
+    // Three ids, one reader (registry.js). Quantic keeps an id because that is
+    // what the Venues tab prints, and its own `minItems` because that floor is
+    // the per-venue judgement that catches the next template change — six, for
+    // a page that carried 24 rows.
+    expect(quantic.parse).toBe(iabilet.parse);
+    expect(quantic.id).toBe('quantic');
+    expect(quantic.minItems).toBe(6);
   });
 
-  it('every startDate on the page is a bare date — the reason this adapter exists', () => {
-    // Not a sample: all 24 live blocks carried a date with no time component,
-    // which is why jsonld.js's NEARBY_TIME fallback (written for Expirat's
-    // whitelabel, a different template) finds nothing here.
-    const events = quantic.parse([listing], { venue });
+  it('reads the listing rows, whole', () => {
+    const events = quantic.parse([listing], { venue, now: AUG });
+    expect(events.length).toBeGreaterThanOrEqual(3);
+    expect(events.every((e) => e.venue === 'Quantic')).toBe(true);
+    expect(events.map((e) => e.title)).toContain('Concert Swallow The Sun');
+    // The multi-day festival row is a bundle, not a concert: it names a run and
+    // its nights live on its own page, so it contributes nothing here.
+    expect(events.map((e) => e.title)).not.toContain('Funk Rock Hotel 2026 - Festival Urban');
+  });
+
+  it('every row on the page is a bare date — the reason this venue is followed at all', () => {
+    // Not a sample: iabilet's venue-page template prints a day and a month and
+    // no clock anywhere, which it also did when the JSON-LD was there (§9.87).
+    const events = quantic.parse([listing], { venue, now: AUG });
     expect(events.every((e) => e.time === null)).toBe(true);
   });
 
-  it('follows the JSON-LD canonical URLs, not the tracking-tagged anchors', () => {
-    const urls = quantic.follow([listing], { venue });
+  it('follows every row, the festival first and the tracking query stripped', () => {
+    const urls = quantic.follow([listing], { venue, now: AUG });
     expect(urls.length).toBeGreaterThan(0);
-    expect(urls.every((r) => r.url.startsWith('https://www.iabilet.ro/'))).toBe(true);
+    expect(urls.every((r) => r.url.startsWith('https://www.iabilet.ro/bilete-'))).toBe(true);
     expect(urls.every((r) => !r.url.includes('ica_source'))).toBe(true);
     expect(urls.map((r) => r.url)).not.toContain(venue.url);
-    // The umbrella is dropped before following, so a festival costs one request
-    // per night rather than one per night plus two for the summary and pass.
     expect(new Set(urls.map((r) => r.url)).size).toBe(urls.length);
+    // The bundle leads, because the per-scan budget is spent in this order and
+    // a starved bundle costs its nights while a starved concert costs an hour.
+    expect(urls[0].url).toContain('funk-rock-hotel');
   });
 
   it('puts the hour on the event it belongs to', () => {
-    const events = quantic.parse([listing, detail], { venue });
+    const events = quantic.parse([listing, detail], { venue, now: AUG });
     const funking = events.find((e) => e.link === detailUrl);
-    expect(funking.time).toBe('22:00');
+    expect(funking.time).toBe('21:30');
     // Everything else is untouched — one detail page times one night.
     expect(events.filter((e) => e.time).length).toBe(1);
   });
@@ -2052,10 +2289,10 @@ describe('quantic (iabilet.ro venue page)', () => {
     // detection and the ignore list run on. A patched `.time` would leave a key
     // describing an event that no longer exists, and every newly timed night
     // would read as "gone from the programme" exactly once.
-    const before = quantic.parse([listing], { venue }).find((e) => e.link === detailUrl);
-    const after = quantic.parse([listing, detail], { venue }).find((e) => e.link === detailUrl);
+    const before = quantic.parse([listing], { venue, now: AUG }).find((e) => e.link === detailUrl);
+    const after = quantic.parse([listing, detail], { venue, now: AUG }).find((e) => e.link === detailUrl);
     expect(before.key).not.toBe(after.key);
-    expect(after.key).toContain('22:00');
+    expect(after.key).toContain('21:30');
     // and nothing else about the event moved
     expect(after.price).toBe(before.price);
     expect(after.ticketState).toBe(before.ticketState);
@@ -2069,7 +2306,7 @@ describe('quantic (iabilet.ro venue page)', () => {
     // JSON-LD and stay ephemeral. The record holds exactly one key.
     expect(typeof quantic.extractDetail).toBe('function');
     expect(quantic.detailTtlMs).toBe(3 * 24 * 60 * 60 * 1000);
-    expect(quantic.extractDetail(detail)).toEqual({ time: '22:00' });
+    expect(quantic.extractDetail(detail)).toEqual({ time: '21:30' });
   });
 
   it('reads a remembered hour exactly as it reads a fetched one, key included', () => {
@@ -2077,15 +2314,15 @@ describe('quantic (iabilet.ro venue page)', () => {
     // cached path too — otherwise a warm scan and a cold one would disagree
     // about an event's identity and every cache expiry would look like a change.
     const record = quantic.extractDetail(detail);
-    const fromCache = quantic.parse([listing], { venue, details: { [detailUrl]: record } });
-    const fromFetch = quantic.parse([listing, detail], { venue });
+    const fromCache = quantic.parse([listing], { venue, now: AUG, details: { [detailUrl]: record } });
+    const fromFetch = quantic.parse([listing, detail], { venue, now: AUG });
     expect(fromCache).toEqual(fromFetch);
-    expect(fromCache.find((e) => e.link === detailUrl).key).toContain('22:00');
+    expect(fromCache.find((e) => e.link === detailUrl).key).toContain('21:30');
   });
 
   it('lets a page read THIS scan beat a remembered account of it', () => {
-    const events = quantic.parse([listing, detail], { venue, details: { [detailUrl]: { time: '05:00' } } });
-    expect(events.find((e) => e.link === detailUrl).time).toBe('22:00');
+    const events = quantic.parse([listing, detail], { venue, now: AUG, details: { [detailUrl]: { time: '05:00' } } });
+    expect(events.find((e) => e.link === detailUrl).time).toBe('21:30');
   });
 
   describe('startTimeOf — the show, never the doors', () => {

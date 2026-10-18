@@ -348,7 +348,12 @@ describe('the cache boundary — which venues may remember, and which may not', 
   // src/ds/boundary.test.js: a new adapter that opts into caching has to come
   // past this list, and a venue that must stay ephemeral cannot drift into it
   // by someone copying `extractDetail` from the venue above.
-  const MAY_CACHE = ['tnb', 'metropolis', 'arcub', 'quantic', 'salaradio', 'iabilet']
+  // `expirat` and `quantic` ARE `iabilet` since §9.94 — one reader under three
+  // ids — so all three declare it. Expirat never actually stores anything,
+  // because its whitelabel cards state their own hour and it follows nothing;
+  // the capability is inherited and would come straight back into use the day
+  // that template drops its clock.
+  const MAY_CACHE = ['tnb', 'metropolis', 'arcub', 'quantic', 'expirat', 'salaradio', 'iabilet']
 
   const MUST_NOT_CACHE = {
     // Their extra hops ARE the programme — caching those caches the answer
@@ -397,6 +402,11 @@ describe('the cache boundary — which venues may remember, and which may not', 
     // screening, never a bundle. The sample is therefore a screening; the
     // bundle's refusal is asserted on its own, below.
     iabilet: { url: 'https://www.iabilet.ro/bilete-x-1/', body: fixture('iabilet-screening.html') },
+    // Expirat is the same reader, so it inherits the same record shape. It
+    // never actually reaches this code on a real scan — its whitelabel cards
+    // state their own hour, so it follows nothing — but the capability is
+    // there, and it is covered here so it cannot drift away from the rules.
+    expirat: { url: 'https://tickets.expirat.org/bilete-x-1/', body: fixture('iabilet-screening.html') },
   }
 
   it('no cached record carries an AVAILABILITY fact', () => {
@@ -618,16 +628,26 @@ describe('the cold-start trap (§9.78) — the cache has to be able to warm up',
     // tariff rows ARE the programme. `extractDetail` returns null for a bundle,
     // so a bundle is never stored — and therefore never fresh, never skipped,
     // and re-read on every single scan.
-    const ld = (o) => `<script type="application/ld+json">/*<![CDATA[*/${JSON.stringify({ '@type': 'Event', ...o })}/*]]>*/</script>`
+    const ld = (o) => `<script type="application/ld+json">${JSON.stringify({ '@type': 'Event', ...o })}</script>`
+    // The venue page is rows now, not JSON-LD (§9.94) — a `date-end` is what
+    // makes a row a bundle.
+    const row = (name, href, day, endDay) => `
+      <div data-event-list="item" class="row event-list-item event-is-future event-${endDay ? 'multi' : 'single'}-day">
+        <div class="col-xs-2 col-event-date"><div class="date">
+          <div class="date-start"><span class="date-day">${day}</span><span class="date-month">oct</span></div>
+          ${endDay ? `<div class="date-end"><span class="date-day">${endDay}</span><span class="date-month">oct</span></div>` : ''}
+        </div></div>
+        <div class="col-xs-6 main-info"><div class="title"><a href="${href}"><span>${name}</span></a></div></div>
+        <div class="details"><div class="price">de la 20 lei</div></div>
+      </div>`
     // Two bundles and fifteen screenings: seventeen children against a budget
     // of twelve, so the cap genuinely bites.
     const venuePage = '<html>'
-      + ld({ name: 'W1', url: 'https://www.iabilet.ro/b1/', startDate: '2026-10-02', endDate: '2026-10-04' })
-      + ld({ name: 'W2', url: 'https://www.iabilet.ro/b2/', startDate: '2026-10-09', endDate: '2026-10-11' })
-      + Array.from({ length: 15 }, (_, i) =>
-        ld({ name: `S${i}`, url: `https://www.iabilet.ro/s${i}/`, startDate: '2026-10-0' + (1 + (i % 7)), endDate: '2026-10-0' + (1 + (i % 7)), offers: { '@type': 'Offer', price: '20' } })).join('')
+      + row('W1', '/bilete-b1/', 2, 4)
+      + row('W2', '/bilete-b2/', 9, 11)
+      + Array.from({ length: 15 }, (_, i) => row(`S${i}`, `/bilete-s${i}/`, 1 + (i % 7))).join('')
       + '</html>'
-    const bundleBody = ld({ name: 'W1', url: 'https://www.iabilet.ro/b1/', startDate: '2026-10-02', endDate: '2026-10-04' })
+    const bundleBody = ld({ name: 'W1', url: 'https://www.iabilet.ro/bilete-b1/', startDate: '2026-10-02', endDate: '2026-10-04' })
       + '<div data-is-tariff="1" data-tariff-name="Vineri, 2 octombrie - 18:00 | Speed - Bilet pret intreg" data-tariff-sell-price="20"></div>'
     const screeningBody = (u) => ld({ name: 'S', url: u, startDate: '2026-10-02', endDate: '2026-10-02' })
       + '<div class="date">vineri, 2 octombrie, ora 19:00</div>'
@@ -639,25 +659,25 @@ describe('the cold-start trap (§9.78) — the cache has to be able to warm up',
       fetched.push(url)
       return {
         ok: true, status: 200, headers: new Headers(),
-        text: async () => (url === venue.url ? venuePage : /\/b\d\//.test(url) ? bundleBody : screeningBody(url)),
+        text: async () => (url === venue.url ? venuePage : /\/bilete-b\d\//.test(url) ? bundleBody : screeningBody(url)),
       }
     }
 
     await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
     // Both bundles reached on the cold scan, despite the budget.
-    expect(fetched).toContain('https://www.iabilet.ro/b1/')
-    expect(fetched).toContain('https://www.iabilet.ro/b2/')
+    expect(fetched).toContain('https://www.iabilet.ro/bilete-b1/')
+    expect(fetched).toContain('https://www.iabilet.ro/bilete-b2/')
     // Nothing stored under a bundle's URL.
     const saved = store.data['marquee:details:v1:iabilet'] ?? {}
-    expect(Object.keys(saved).some((u) => /\/b\d\//.test(u))).toBe(false)
+    expect(Object.keys(saved).some((u) => /\/bilete-b\d\//.test(u))).toBe(false)
     expect(Object.keys(saved).length).toBeGreaterThan(0)
 
     // And on a warm scan the bundles are STILL fetched — they can never go stale
     // silently, because they were never remembered.
     fetched.length = 0
     await scanVenue(venue, { now: NOW, fetchImpl: impl, detailStore: store })
-    expect(fetched).toContain('https://www.iabilet.ro/b1/')
-    expect(fetched).toContain('https://www.iabilet.ro/b2/')
+    expect(fetched).toContain('https://www.iabilet.ro/bilete-b1/')
+    expect(fetched).toContain('https://www.iabilet.ro/bilete-b2/')
   })
 })
 
@@ -955,24 +975,33 @@ describe('the cache never holds anything that can go stale under you (§9.80)', 
     // the listing, which is never cached and never skipped.
     const venue = { name: 'Quantic', url: 'https://www.iabilet.ro/bilete-quantic-venue-1705/', adapter: 'quantic' }
     const evUrl = 'https://www.iabilet.ro/bilete-x-1/'
-    const listing = (availability) => '<html>' + Array.from({ length: 8 }, (_, i) =>
-      `<script type="application/ld+json">/*<![CDATA[*/${JSON.stringify({
-        '@context': 'http://www.schema.org',
-        '@type': 'Event',
-        name: `Night ${i}`,
-        url: i === 0 ? evUrl : `https://www.iabilet.ro/bilete-x-${i + 1}/`,
-        startDate: `2026-09-2${i}`,
-        offers: { '@type': 'Offer', url: 'https://www.iabilet.ro/buy', price: '30', priceCurrency: 'RON', availability },
-      })}/*]]>*/</script>`).join('') + '</html>'
-    const detailBody = '<div class="date">sâmbătă, 20 septembrie acces de la 22:00</div>'
+    // Rows, since §9.94 — and the sold-out signal with them: a listing row says
+    // so in its own class, where it used to say so in an `offers.availability`.
+    const listing = (soldOut) => '<html>' + Array.from({ length: 8 }, (_, i) => `
+      <div data-event-list="item" class="row event-list-item event-is-future${soldOut ? ' event-without-stock' : ''} event-single-day">
+        <div class="col-xs-2 col-event-date"><div class="date">
+          <div class="date-start"><span class="date-day">2${i}</span><span class="date-month">sep</span></div>
+        </div></div>
+        <div class="col-xs-6 main-info"><div class="title">
+          <a href="${i === 0 ? '/bilete-x-1/' : `/bilete-x-${i + 1}/`}"><span>Night ${i}</span></a>
+        </div></div>
+        ${soldOut ? '' : '<div class="details"><div class="price">de la 30 lei</div></div>'}
+      </div>`).join('') + '</html>'
+    // An event page still carries its own JSON-LD — only the LISTINGS lost it
+    // (§9.94) — and that block is how `extractDetail` tells a screening from a
+    // bundle. Without it the hour is still read, but nothing is stored, so the
+    // hop would repeat every scan.
+    const detailBody = '<script type="application/ld+json">'
+      + JSON.stringify({ '@type': 'Event', name: 'Night 0', url: evUrl, startDate: '2026-09-20' })
+      + '</script><div class="date">sâmbătă, 20 septembrie acces de la 22:00</div>'
 
     const store = memoryStore()
-    const serve = (availability) => async (url) => ({
+    const serve = (soldOut) => async (url) => ({
       ok: true, status: 200, headers: new Headers(),
-      text: async () => (url === venue.url ? listing(availability) : detailBody),
+      text: async () => (url === venue.url ? listing(soldOut) : detailBody),
     })
 
-    const open = await scanVenue(venue, { now: NOW, fetchImpl: serve('InStock'), detailStore: store })
+    const open = await scanVenue(venue, { now: NOW, fetchImpl: serve(false), detailStore: store })
     const openFirst = open.events.find((e) => e.link === evUrl)
     expect(openFirst.ticketState).toBe('open')
     expect(openFirst.time).toBe('22:00')
@@ -982,7 +1011,7 @@ describe('the cache never holds anything that can go stale under you (§9.80)', 
       now: new Date(NOW.getTime() + 3600000),
       fetchImpl: async (url) => {
         if (url !== venue.url) detailCalls++
-        return serve('SoldOut')(url)
+        return serve(true)(url)
       },
       detailStore: store,
     })

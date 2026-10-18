@@ -252,11 +252,11 @@ covers all 7 halls of one site under a single venue row too.
 | Venue | Site | Rung | What the reader gets |
 |---|---|---|---|
 | **Filarmonica George Enescu** | filarmonicaenescu.ro | **2 · feed** | A public Strapi API: `fgestrapi.filarmonicaenescu.ro/api/events`. 87 upcoming events with `startDateAndTime`, `venue`, `room`, `ticketUrl`, `categories`, and — the gift — `buyLabel` (`Cumpără bilete` / `Sold Out`) plus `disableBuy`. |
-| **Expirat Halele Carol** | tickets.expirat.org | **1 · JSON-LD** | 16 complete schema.org `Event` objects: name, `startDate`, image, `offers` with price in RON. An iabilet.ro whitelabel, so the same reader should serve any other iabilet venue. |
+| **Expirat Halele Carol** | tickets.expirat.org | **3 · selector** | An iabilet.ro whitelabel. Was rung 1 until iabilet removed its listing JSON-LD on 2026-10-18 (§9.94); now read off the same `event-list-item` rows as the rest of the host. Its cards state their own hour, so it costs one request a scan — and carry no price, so its events have none. |
 | **Cinema Union**, **Elvira Popescu**, **Muzeul Țăranului**, **Club Control** | eventbook.ro | **3 · selector** | Server-rendered, one `id="performance"` block per showing, date *with* year, title in `.event-title`. Ticket state = presence of the `add_in_cart` button. |
 | **Teatrul Excelsior** | teatrul-excelsior.ro | **3 · selector** | See below. |
 | **Filarmonica**, again | oveit.com | **2 · feed** | `membership-api.oveit.com/v1/vendor/<id>/events` — the platform it actually sells through. Same concerts, plus prices, from a host that does not refuse us. **This is the source the app uses**; the Strapi one is kept documented because it is richer if it ever becomes reachable. |
-| **Cinema Europa** | iabilet.ro | **3 · selector, two-hop** | The venue page is a JS shell with no showings in it — only one schema.org Event per weekly themed bundle, each pointing at its own child page. That child page's HTML holds the actual showings, as an accordion of tariff rows. Added 2026-08-26; see §9.8. |
+| **Cinema Europa** | iabilet.ro | **3 · selector, two-hop** | The venue page lists single screenings directly and names each weekly themed bundle, whose own child page holds that weekend's showings as an accordion of tariff rows. Added 2026-08-26 (§9.8); rebuilt on row markup 2026-10-18 (§9.94). |
 | **Teatrul Național București** | tnb.ro | **3 · selector, two-hop** | One page, 7 halls sharing this one venue row — the hall comes off each row, not off the venue. ~108 showings across ~35 days as inspected; no pagination, so this IS the whole forward calendar. A second hop per distinct production (61 of them) for its poster, same rule as Excelsior. Added 2026-08-26; see §9.20. |
 | **Teatrul Unteatru** | mystage.ro | **new · embedded-json** | Every mystage.ro venue page is server-rendered Next.js embedding its full event model — title, date, hall, ticket state, poster — as JSON in `<script id="__NEXT_DATA__">`. No HTML parsing, no follow() hop. Added 2026-08-26; see §9.20. |
 
@@ -4573,3 +4573,127 @@ cndb.ro, modernism.ro, and here, where it is demonstrably Queue-it. It is a
 widely copied template, so **the behaviour in those sections is measured and the
 vendor attribution is not**. The retries both shipped are unaffected; the
 sentences naming a cause are weaker than they read.
+
+## 9.94 iabilet.ro removed its listing JSON-LD, and took three venues down at once (2026-10-18)
+
+Quantic, Cinema Europa and Expirat Halele Carol all reported *"The page loaded
+but no events could be read from it — its markup has probably changed"* in the
+same check. It had. One upstream change, three venues, because all three are
+iabilet: two on its own venue pages, Expirat on an iabilet **whitelabel** under
+the venue's own domain.
+
+### What changed
+
+Nothing was down and nothing was blocked. The pages serve full-size, fast, no
+bot check:
+
+```
+iabilet.ro/bilete-quantic-venue-1705/        200  222 KB
+iabilet.ro/bilete-cinema-europa-venue-5877/  200  180 KB
+tickets.expirat.org/                         200   97 KB
+```
+
+What vanished is the structured data:
+
+| | `application/ld+json` | `"@type":"Event"` | rows in the HTML |
+|---|---|---|---|
+| Quantic | **0** | **0** | 24 |
+| Cinema Europa | **0** | **0** | 19 |
+| Expirat | **0** | **0** | 22 |
+
+The programme never left. It is served plainly, in rows the site has presumably
+been rendering all along:
+
+```html
+<div data-event-list="item" class="row event-list-item event-is-future event-single-day"
+     data-likable-item="event/131445">
+  <div class="col-xs-2 col-event-date"><div class="date"><div class="date-start">
+    <span class="date-day">18</span><span class="date-month">oct</span>
+  </div></div></div>
+  <div class="title"><a href="/bilete-concert-vlad-dobrescu-guests-131445/?ica_source=VenuePage…">
+    <span>Concert <strong>Vlad Dobrescu &amp; Guests</strong></span></a></div>
+  …<div class="price">de la 30 lei</div>
+</div>
+```
+
+**Only the listings lost it.** An event's own page still carries its Event
+block, and a bundle page still carries its `data-is-tariff` rows — both checked
+against the live site. So everything downstream of the listing was fine, and the
+repair had one job.
+
+### `iabiletRows.js` returns the blocks the JSON-LD used to
+
+The design decision worth recording: the new reader hands back objects with
+`name`, `url`, `startDate`, `endDate`, `image`, `description` and `price` — the
+subset of schema.org that these adapters actually read. `isBundle`, `follow` and
+the screening loop all keep working against a vocabulary they already know.
+Teaching three readers a second vocabulary would have spread one site's change
+across every file that touches this host.
+
+Two templates, one row marker (`data-event-list="item"`), differing in the one
+way that matters to the caller:
+
+- **venue page** — `<span class="date-day">18</span><span class="date-month">oct</span>`,
+  a date and no clock, which is why Quantic and Europa still pay for a hop;
+- **whitelabel** — `duminică, 18 octombrie, ora 19:00 acces de la 20:00`, date
+  and hour in one sentence, so Expirat's cards arrive complete.
+
+Three things the rows force that the JSON-LD did not:
+
+- **No year, anywhere.** "18 oct" goes through `inferYear`, which is why `now`
+  is a required argument rather than a convenience: a listing read in December
+  must roll January forward, and a reader defaulting to `new Date()` would be
+  right in testing and wrong for two weeks a year. A multi-day run's end is
+  anchored on **its own start**, not on today, or a weekend opening 30 December
+  would close eleven months before it opened.
+- **`ora` beats `acces de la` on the whitelabel card too.** The §9.87 rule,
+  applied to a second template: the doors are earlier, and reading the last
+  clock on the line would send you an hour early to every row that publishes
+  both — which at Expirat is most of them.
+- **The campaign query is stripped.** `?ica_source=VenuePage&…` is on every
+  anchor. `link` is an event's identity here — the detail hop fetches it, the
+  cache is keyed on it — so a URL carrying which page you arrived from would key
+  one event two ways the day iabilet renames a campaign.
+
+### Three ids, one reader
+
+`iabilet`, `quantic` and `expirat` are now all `iabilet.js`. They were three
+different things — `expirat` was the generic JSON-LD reader, `quantic` was that
+plus a hop for the hour (§9.87), `iabilet` was the two-hop bundle reader
+(§9.7) — and rebuilding all three on row markup produced the same reader three
+times. The ids stay because the id is what the Venues tab prints, and because
+each carries its own `minItems`, which is the per-venue floor that catches the
+next template change the way the gate caught this one.
+
+**Whether to hop is now a test on the data, not a flag per venue**: a row whose
+date already carries a clock is never followed. Expirat therefore costs exactly
+one request per scan; Quantic costs one per concert.
+
+### The quieter half: the CDATA wrapper went too
+
+iabilet used to wrap every `ld+json` body in `/*<![CDATA[*/ … /*]]>*/` and
+`EVENT_LD` **required** it. The pages that kept their JSON-LD now emit it bare.
+
+That one would not have shown up as a red venue. `extractDetail` reads a
+followed page's own block to tell a screening from a bundle; with no block it
+returns null, stores nothing, and re-fetches the same pages forever. A venue
+that still works, slowly, is exactly the fault nobody reports. The tag is now
+matched loosely and the wrapper stripped if present, so both shapes read.
+
+### What was lost, and what it would cost to get back
+
+**Expirat's prices.** The whitelabel card prints no price at all, and the
+`offers` block that carried it is gone. Recovering it means a hop per event —
+about twenty-two requests a scan, to a host already being asked for Quantic's —
+for a number that is on the ticket page the card already links to. Left out.
+
+Live, after the repair:
+
+```
+Quantic                | ok |  23 events | 21 timed | 21 priced
+Cinema Europa          | ok |  12 events | 12 timed | 11 priced
+Expirat Halele Carol   | ok |  22 events | 21 timed |  0 priced
+```
+
+The two untimed Quantic nights are untimed at the venue: their own pages print
+neither `ora` nor `acces de la`. Null, not guessed.

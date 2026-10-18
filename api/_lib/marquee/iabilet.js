@@ -56,8 +56,23 @@
 // "more than iabilet bothers to warn about", never a number.
 
 import { TICKET, makeEvent, monthNumber, inferYear, parseTime, textOf, parseIsoDateTime } from './shared.js'
+import { listingBlocks } from './iabiletRows.js'
 
-const EVENT_LD = /<script type="application\/ld\+json">\s*\/\*<!\[CDATA\[\*\/([\s\S]*?)\/\*\]\]>\*\/\s*<\/script>/g
+// **The CDATA wrapper went the same day the listing JSON-LD did** (§9.94).
+// iabilet used to emit `/*<![CDATA[*/ … /*]]>*/` inside every ld+json tag and
+// this regex required it; event and bundle pages now emit the JSON bare. So the
+// tag is matched loosely and the wrapper stripped afterwards if it is there,
+// which reads both and will keep reading both if it comes back.
+//
+// Requiring it was the quieter half of this outage: the listing failure was
+// loud (zero events, a red venue), while this one would only have stopped the
+// detail CACHE from ever storing a record — `extractDetail` reads a followed
+// page's own block to tell a screening from a bundle, and with no block it
+// stores nothing and re-fetches forever. A venue that still works, slowly, is
+// exactly the kind of fault nobody reports.
+const EVENT_LD = /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g
+const CDATA_OPEN = /^\s*\/\*<!\[CDATA\[\*\//
+const CDATA_CLOSE = /\/\*\]\]>\*\/\s*$/
 // Bounded past the largest real gap observed between two tariff rows (~6KB,
 // mostly an inline "why the fee?" popover baked into each row's own markup) so
 // the lazy scan for this row's own sold-out marker can't run past it into the
@@ -68,7 +83,12 @@ const MAX_BUNDLES = 12
 // One hop per one-off screening, for its hour. Eleven children on the day this
 // was written; capped so a programme that grows cannot outrun the per-scan
 // detail budget and start starving the bundles (see `follow`).
-const MAX_SCREENINGS = 20
+// Quantic's venue page carried 24 rows on 2026-10-18 and almost none of them
+// are bundles, so this is the cap that decides whether that venue comes out
+// fully timed. Capped all the same: a template change that starts matching the
+// wrong links must not turn one venue into a hundred requests (§9.75, learned
+// on TNB at 61).
+const MAX_SCREENINGS = 30
 
 // One screening's own page, in a single flat block:
 //   <div class="date"> miercuri, 30 septembrie, ora 19:00 <meta …></div>
@@ -158,7 +178,8 @@ function parseLdBlocks(html) {
   let m
   EVENT_LD.lastIndex = 0
   while ((m = EVENT_LD.exec(html)) !== null) {
-    try { out.push(JSON.parse(m[1].trim())) } catch { /* one bad block, skip it */ }
+    const raw = m[1].replace(CDATA_OPEN, '').replace(CDATA_CLOSE, '').trim()
+    try { out.push(JSON.parse(raw)) } catch { /* one bad block, skip it */ }
   }
   return out
 }
@@ -205,11 +226,19 @@ export default {
    *  **Only the bundles.** A single-day block is a complete Event already, so
    *  fetching its page would buy nothing but a start time and cost a request
    *  per screening — eleven hops instead of two, on the day this was measured. */
-  follow(pages) {
-    const blocks = parseLdBlocks(pages[0]?.body ?? '')
+  follow(pages, { venue, now } = {}) {
+    const blocks = listingBlocks(pages[0]?.body ?? '', { now, base: venue?.url })
     const bundles = [...new Set(blocks.filter(isBundle).map((b) => b?.url).filter(Boolean))]
       .slice(0, MAX_BUNDLES)
-    const screenings = [...new Set(blocks.filter((b) => !isBundle(b)).map((b) => b?.url).filter(Boolean))]
+    // **A row that already states its hour is not followed.** The whitelabel
+    // template prints "duminică, 18 octombrie, ora 19:00" on the card itself,
+    // so Expirat's twenty-two rows arrive complete and this hop would spend
+    // twenty-two requests confirming what the listing said. The main site's
+    // venue pages print a date and no hour, so Quantic and Cinema Europa still
+    // pay for theirs. One test on the data rather than a flag per venue.
+    const screenings = [...new Set(blocks
+      .filter((b) => !isBundle(b) && !String(b?.startDate ?? '').includes('T'))
+      .map((b) => b?.url).filter(Boolean))]
       .slice(0, MAX_SCREENINGS)
       .filter((url) => !bundles.includes(url))
     // **Bundles first, and the order is load-bearing.** A scan refreshes a
@@ -242,7 +271,7 @@ export default {
 
   detailTtlMs: 3 * 24 * 60 * 60 * 1000,
 
-  parse(pages, { venue, details } = {}) {
+  parse(pages, { venue, now, details } = {}) {
     const events = []
 
     // An hour per screening, by the URL its venue-page block already links to.
@@ -268,33 +297,30 @@ export default {
     // passes are over disjoint blocks and cannot produce the same showing
     // twice — a bundle's own dates live on its child page's tariff rows, and a
     // single-day block is never followed.
-    for (const block of parseLdBlocks(pages[0]?.body ?? '')) {
+    for (const block of listingBlocks(pages[0]?.body ?? '', { now, base: venue?.url })) {
       if (isBundle(block)) continue
       const { date, time } = parseIsoDateTime(String(block?.startDate ?? ''))
       if (!date) continue
-      const offer = block.offers && typeof block.offers === 'object'
-        ? (Array.isArray(block.offers) ? block.offers[0] : block.offers)
-        : null
-      const raw = offer?.price
-      const price = typeof raw === 'number' || (typeof raw === 'string' && String(raw).trim() !== '')
-        ? Number(raw)
-        : NaN
       events.push(makeEvent({
         venue: venue.name,
-        title: typeof block.name === 'string' ? block.name : textOf(block.name),
+        title: block.name,
         date,
-        // The block itself carries a bare date, so the hour comes from the
-        // screening's own page (cached). Still null when that hop was skipped
-        // or failed — never guessed.
+        // A venue-page row carries a bare date, so the hour comes from the
+        // screening's own page (cached). A whitelabel row carries it inline and
+        // `time` is already set, which is why that template is never followed.
+        // Null when the hop was skipped or failed — never guessed.
         time: time ?? times.get(block.url) ?? null,
         link: block.url ?? null,
-        ticketState: /SoldOut/i.test(String(offer?.availability ?? '')) ? TICKET.SOLD_OUT
-          : (offer?.url || Number.isFinite(price)) ? TICKET.OPEN
+        // The listing's only remaining ticket signal is the row's own class.
+        // A price with no sold-out marker is a row you can buy from; a row with
+        // neither says nothing either way, which is `NONE` rather than a guess.
+        ticketState: block.soldOut ? TICKET.SOLD_OUT
+          : block.price != null ? TICKET.OPEN
           : TICKET.NONE,
-        ticketsUrl: offer?.url ?? null,
-        image: typeof block.image === 'string' ? block.image : null,
-        price: Number.isFinite(price) ? price : null,
-        description: typeof block.description === 'string' ? block.description : null,
+        ticketsUrl: block.soldOut ? null : block.url ?? null,
+        image: block.image,
+        price: block.price,
+        description: block.description,
       }))
     }
     // Page 0 is the venue page and carries no tariffs at all — the loop below
