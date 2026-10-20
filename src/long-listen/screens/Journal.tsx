@@ -10,7 +10,7 @@ import { Landmark } from 'lucide-react'
 import { seasonName } from '../domain/season'
 import { journalWeek } from '../domain/journalWeek'
 import { href } from '../app/router'
-import { Empty, Problem, Waiting } from '../components/common'
+import { Empty, Problem, Waiting, madeWords } from '../components/common'
 import { ConcertEntry } from '../components/ConcertEntry'
 import s from '../styles/editorial.module.css'
 import { StateTag } from '../components/WorkRows'
@@ -110,7 +110,7 @@ export function JournalScreen() {
     )
   }
   const companions = (p: Programme, className: string) =>
-    (data.companionsOf.get(p.id) ?? []).map((x) => programmeLine(x, x.sitting ? 'A sitting for tonight: ' : 'More of this theme: ', className))
+    (data.companionsOf.get(p.id) ?? []).map((x) => programmeLine(x, x.sitting ? `A sitting for tonight, ${madeWords(x.createdAt, settings.timeZone)}: ` : 'More of this theme: ', className))
 
   return (
     <div>

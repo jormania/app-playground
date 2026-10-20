@@ -1247,6 +1247,10 @@ Settings) each reported only defects they had reproduced or traced exactly. What
   sitting's own page, "Also from this programme"). The request and hours typed into *A sitting for tonight*
   are kept on the device (`useKept`, `sitting-request`/`sitting-hours`) until the sitting is made, so a
   closed app mid-build doesn't lose them; the folded line then says "not made yet".
+  A sitting needn't belong to the week's theme: with a thread this week the card offers *on its own* (the
+  default — the curator gets neither the week's direction nor its thread, `Sitting.own`) or *beside this
+  week's theme*. Every sitting says when it was made (`madeWords`, in the Settings zone) on its page, in
+  "Also this week", the Journal and Threads, and "Also this week" lists them oldest first.
 
 Known and left: concert dates are Bucharest dates but "today" is judged in the Settings zone (harmless
 while the zone is Bucharest); two tabs share no in-flight guard across a fresh start; a concert marked as

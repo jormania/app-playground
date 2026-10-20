@@ -22,7 +22,7 @@ import { playbackOf } from '../spotify/client'
 import { useOnline } from '../app/online'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
-import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf } from '../components/common'
+import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf, madeWords } from '../components/common'
 import { SittingCard } from '../components/SittingCard'
 import { OpenPaths } from '../components/OpenPaths'
 import { Twisty } from '../components/Twisty'
@@ -187,14 +187,14 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     // One page however it was reached ("#/" as This week, "#/p/<id>" from the Journal): the folds opened on it are kept under this name.
     <article data-page={`programme:${p.id}`}>
       <p className={s.eyebrow}>
-        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
+        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · made ${madeWords(p.createdAt, settings.timeZone)}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
         {/* The masthead already dates this week; an earlier week's programme says which it was. */}
         {p.weekKey !== week.key && ` · ${weekFromKey(p.weekKey).label}`}
       </p>
       {b.root && <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>}
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
-      <AlsoThisWeek extensions={b.extensions} current={p.id} isCurrent={isCurrent} />
+      <AlsoThisWeek extensions={b.extensions} current={p.id} isCurrent={isCurrent} timeZone={settings.timeZone} />
 
       {returning && (
         <div className={s.continuity}>
@@ -680,10 +680,10 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
  * theme. They are programmes of their own, joined to this one's thread, and used
  * to be found only in a fold at the very foot of the page ("More of this theme ·
  * 1 so far") — so an evening asked for in the morning was gone by the evening.
- * Said at the top instead, newest first, each with what it is.
+ * Said at the top instead, in the order they were made, each with what it is and when.
  */
-function AlsoThisWeek({ extensions, current, isCurrent }: { extensions: Programme[]; current: string; isCurrent: boolean }) {
-  const others = extensions.filter((x) => x.id !== current).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+function AlsoThisWeek({ extensions, current, isCurrent, timeZone }: { extensions: Programme[]; current: string; isCurrent: boolean; timeZone: string }) {
+  const others = extensions.filter((x) => x.id !== current).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   if (!others.length) return null
   return (
     <nav className={s.alsoThisWeek} aria-label={isCurrent ? 'Also this week' : 'Also from this programme'}>
@@ -695,8 +695,8 @@ function AlsoThisWeek({ extensions, current, isCurrent }: { extensions: Programm
             <span className={s.faint}>
               {' · '}
               {x.sitting
-                ? `a sitting for tonight, ${x.sitting.hours === 1 ? 'about an hour' : 'about two hours'}${x.sitting.request ? ` — “${x.sitting.request}”` : ''}`
-                : 'more of this theme'}
+                ? `${madeWords(x.createdAt, timeZone)} · a sitting for tonight, ${x.sitting.hours === 1 ? 'about an hour' : 'about two hours'}${x.sitting.request ? ` — “${x.sitting.request}”` : ''}`
+                : `${madeWords(x.createdAt, timeZone)} · more of this theme`}
             </span>
           </li>
         ))}

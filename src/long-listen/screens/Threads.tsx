@@ -4,7 +4,7 @@ import { standInsOf } from '../curation/continuity'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
-import { Empty, Problem, Waiting } from '../components/common'
+import { Empty, Problem, Waiting, madeWords } from '../components/common'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -43,16 +43,16 @@ export function ThreadsScreen() {
         ? <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing yet. Choose a direction this week and the first thread begins.</Empty>
         : (
           <ul className={s.entries}>
-            {data.threads.map((t) => <ThreadEntry key={t.theme.id} thread={t} programmes={data.programmes} works={data.works} events={data.events} standIns={data.standIns} now={week.key} hideSkipped={settings.hideSkipped} />)}
+            {data.threads.map((t) => <ThreadEntry key={t.theme.id} thread={t} programmes={data.programmes} works={data.works} events={data.events} standIns={data.standIns} now={week.key} hideSkipped={settings.hideSkipped} timeZone={settings.timeZone} />)}
           </ul>
         )}
     </div>
   )
 }
 
-function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, events, standIns, now, hideSkipped }: {
+function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, events, standIns, now, hideSkipped, timeZone }: {
   thread: ShownThread; programmes: Map<string, Programme>
-  works: Map<string, Work>; events: ListeningEvent[]; standIns: Map<string, string>; now: string; hideSkipped: boolean
+  works: Map<string, Work>; events: ListeningEvent[]; standIns: Map<string, string>; now: string; hideSkipped: boolean; timeZone: string
 }) {
   const contents = threadContents(heldBy(visits, programmes), works, events, hideSkipped, standIns)
   // The line of visits is drawn when there is more than the title's one to show — and always when one was set aside, which only it says.
@@ -82,7 +82,7 @@ function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, 
               {v.setAside && <span className={s.faint}> · set aside</span>}
               {/* Its companions, each on a line of its own, in the Journal's and the season's words. */}
               {(v.extraProgrammeIds ?? []).map((id) => programmes.get(id)).filter((x): x is Programme => Boolean(x)).map((x) => (
-                <div key={x.id} className={s.faint}>{x.sitting ? 'A sitting for tonight' : 'More of this theme'}: <a href={href({ name: 'programme', id: x.id })}>{x.title}</a></div>
+                <div key={x.id} className={s.faint}>{x.sitting ? `A sitting for tonight, ${madeWords(x.createdAt, timeZone)}` : 'More of this theme'}: <a href={href({ name: 'programme', id: x.id })}>{x.title}</a></div>
               ))}
               {v.closingNote && <div className={`${s.quiet} ${s.italic}`}>{v.closingNote}</div>}
             </li>

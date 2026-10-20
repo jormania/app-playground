@@ -348,6 +348,8 @@ export interface Comparison {
 export interface Sitting {
   request: string
   hours: 1 | 2
+  /** Asked for on its own terms: the week's theme and thread were not given to the curator. */
+  own?: boolean
 }
 
 export interface Programme {

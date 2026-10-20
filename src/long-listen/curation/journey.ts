@@ -371,11 +371,11 @@ export class Journey {
    * comes back. Without one, it becomes the week's programme and begins its
    * thread. Either way it is recorded where the rest of the listening is.
    */
-  sitting(request: string, hours: 1 | 2): Promise<Programme> {
+  sitting(request: string, hours: 1 | 2, own = false): Promise<Programme> {
     const lw = this.currentWeek()
-    const sitting = { request: request.trim(), hours }
+    const sitting: Sitting = { request: request.trim(), hours, ...(own ? { own: true } : {}) }
     // Keyed by what was asked: a double tap shares the call, another evening asked for meanwhile is its own.
-    return this.once(`sitting:${lw.key}:${hours}:${sitting.request}`, async () => {
+    return this.once(`sitting:${lw.key}:${hours}:${own ? 'own' : 'thread'}:${sitting.request}`, async () => {
       // Outside the week's queue: it may be ensureWeek's call, which queues there itself.
       await this.weekWithoutDirections()
       return this.weekJob(lw.key, async () => {
@@ -402,16 +402,20 @@ export class Journey {
     const option = await this.repo.options.require(root.optionId)
     const exploration = await this.repo.explorations.require(root.explorationId)
     const lw = weekFromKey(root.weekKey)
-    const digest = await threadDigest(this.repo, root.themeId, root.weekKey)
+    // A sitting asked for on its own terms is given neither the week's direction nor its thread: the listener's words decide.
+    const own = Boolean(ask.sitting?.own)
+    const digest = own ? undefined : await threadDigest(this.repo, root.themeId, root.weekKey)
     const context = await buildContext(this.repo, lw, undefined, this.timeZone, this.today())
     const now = this.stamp()
     const res = await this.curator.call<ProgrammeResponse>('programme', {
       today: this.today(),
       week: { key: lw.key, label: lw.label },
-      option: { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, form: option.form },
+      option: own && ask.sitting
+        ? { title: 'Tonight', pitch: ask.sitting.request || 'An evening of music', angle: 'one evening, as asked', mood: 'immersive', character: [], why: 'Asked for on the day.' }
+        : { title: option.title, pitch: option.pitch, angle: option.angle, mood: option.mood, character: option.character, why: option.why, form: option.form },
       ...(ask.extension ? { extension: { of: root.title, dek: root.dek, wish: ask.extension.wish } } : {}),
       ...(ask.sitting ? { sitting: ask.sitting } : {}),
-      thread: { ...digest, stage: exploration.stage },
+      ...(digest ? { thread: { ...digest, stage: exploration.stage } } : {}),
       preferences: context.preferences,
       alreadyProgrammed: context.alreadyProgrammed,
       alreadyKnown: context.alreadyKnown,

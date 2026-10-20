@@ -30,13 +30,15 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
   const [hoursKept, setHoursKept, clearHours] = useKept('sitting-hours', 'device')
   const hours: 1 | 2 = hoursKept === '2' ? 2 : 1
   const setHours = (h: 1 | 2) => setHoursKept(String(h))
+  // With a thread this week the evening may sit beside its theme, or stand on its own: what you ask for decides, so own is the default.
+  const [beside, setBeside] = useState(false)
   const [making, setMaking] = useState(false)
 
   async function make() {
     setMaking(true)
     onMaking?.(true)
     try {
-      const p = await journey.sitting(request, hours)
+      const p = await journey.sitting(request, hours, joinsThread && !beside)
       clearRequest()
       clearHours()
       bump()
@@ -53,13 +55,24 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
     <>
       <p className={s.quiet}>
         One evening, not seven? Say what you’d like and how long you have.{' '}
-        {joinsThread ? 'It joins this week’s thread, with nothing you’ve already been given.' : 'It becomes this week’s programme and begins its thread.'}
+        {joinsThread
+          ? (beside ? 'It joins this week’s thread, with nothing you’ve already been given.' : 'Your words decide the music; this week’s theme stays out of it.')
+          : 'It becomes this week’s programme and begins its thread.'}
       </p>
       {/* A form, so Enter asks for the evening: one line, one request. */}
       <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!making && !busy && curatorReady) void make() }}>
         <label className={s.visuallyHidden} htmlFor={id}>What would you like tonight?</label>
         <input id={id} className={s.input} maxLength={MAX_ASK} placeholder="quiet, nothing I know" value={request} onChange={(e) => setRequest(e.target.value)} disabled={making || busy} />
         <CharCount value={request} />
+        {joinsThread && (
+          <div className={s.chipRow} role="radiogroup" aria-label="How it relates to this week">
+            {([false, true] as const).map((b) => (
+              <button key={String(b)} type="button" role="radio" aria-checked={beside === b} className={`${s.chip} ${beside === b ? s.chipOn : ''}`} onClick={() => setBeside(b)} disabled={making || busy}>
+                {b ? 'beside this week’s theme' : 'on its own'}
+              </button>
+            ))}
+          </div>
+        )}
         <div className={s.chipRow} role="radiogroup" aria-label="How long you have">
           {([1, 2] as const).map((h) => (
             <button key={h} type="button" role="radio" aria-checked={hours === h} className={`${s.chip} ${hours === h ? s.chipOn : ''}`} onClick={() => setHours(h)} disabled={making || busy}>
