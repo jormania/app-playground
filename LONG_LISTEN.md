@@ -1249,7 +1249,7 @@ Settings) each reported only defects they had reproduced or traced exactly. What
   closed app mid-build doesn't lose them; the folded line then says "not made yet".
   A sitting needn't belong to the week's theme: with a thread this week the card offers *on its own* (the
   default — the curator gets neither the week's direction nor its thread, `Sitting.own`) or *beside this
-  week's theme*. Every sitting says when it was made (`madeWords`, in the Settings zone) on its page, in
+  week's theme*. Every sitting says the day it was made (`madeWords`, a weekday in the Settings zone, nothing finer) on its page, in
   "Also this week", the Journal and Threads, and "Also this week" lists them oldest first.
 
 Known and left: concert dates are Bucharest dates but "today" is judged in the Settings zone (harmless

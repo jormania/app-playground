@@ -199,7 +199,7 @@ describe('what was made beside this week’s programme', () => {
     expect(link?.getAttribute('href')).toBe(`#/p/${sitting.id}`)
     expect(block.textContent).toMatch(/a sitting for tonight, about an hour — “minimalist music tonight”/)
     // Each says when it was made, in the listener's zone.
-    expect(block.textContent).toMatch(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} \w{3}, \d{2}:\d{2} · a sitting for tonight/)
+    expect(block.textContent).toMatch(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) · a sitting for tonight/)
     // On the sitting's own page it isn't listed against itself.
     cleanup()
     window.location.hash = `#/p/${sitting.id}`
@@ -210,7 +210,7 @@ describe('what was made beside this week’s programme', () => {
 })
 
 describe('several sittings in one week', () => {
-  it('are listed in the order they were made, each with when, and the page of one says when it was made', async () => {
+  it('are listed in the order they were made, each with its day, and the page of one says the day it was made', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo, plain())
     const j = new Journey(repo, plain())
@@ -229,7 +229,7 @@ describe('several sittings in one week', () => {
     window.location.hash = `#/p/${first.id}`
     render(<App repo={repo} curator={plain()} />)
     await screen.findByRole('heading', { name: first.title }, { timeout: 4000 })
-    expect(document.body.textContent).toMatch(/A sitting for tonight · about an hour · made \w{3} \d{1,2} \w{3}, \d{2}:\d{2}/)
+    expect(document.body.textContent).toMatch(/A sitting for tonight · about an hour · (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/)
   }, 20000)
 })
 

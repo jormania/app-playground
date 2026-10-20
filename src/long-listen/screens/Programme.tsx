@@ -187,7 +187,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     // One page however it was reached ("#/" as This week, "#/p/<id>" from the Journal): the folds opened on it are kept under this name.
     <article data-page={`programme:${p.id}`}>
       <p className={s.eyebrow}>
-        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · made ${madeWords(p.createdAt, settings.timeZone)}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
+        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · ${madeWords(p.createdAt, settings.timeZone)}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
         {/* The masthead already dates this week; an earlier week's programme says which it was. */}
         {p.weekKey !== week.key && ` · ${weekFromKey(p.weekKey).label}`}
       </p>
