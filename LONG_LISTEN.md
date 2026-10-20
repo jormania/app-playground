@@ -1241,6 +1241,13 @@ Settings) each reported only defects they had reproduced or traced exactly. What
   A concert just kept goes back to *All concerts*, not to the empty form it was kept from; a page that
   wasn't there ("There's no such…") is never offered as a way back (`GONE`, `data-not-found`).
 
+- **A sitting is found again (20 October 2026).** A made sitting was stored and listed in the Journal, but on
+  the week's programme it sat only in the folded *More of this theme* row at the foot. This week now names
+  what was made beside it right under the dek ("Also this week", `AlsoThisWeek` in `Programme.tsx`; on a
+  sitting's own page, "Also from this programme"). The request and hours typed into *A sitting for tonight*
+  are kept on the device (`useKept`, `sitting-request`/`sitting-hours`) until the sitting is made, so a
+  closed app mid-build doesn't lose them; the folded line then says "not made yet".
+
 Known and left: concert dates are Bucharest dates but "today" is judged in the Settings zone (harmless
 while the zone is Bucharest); two tabs share no in-flight guard across a fresh start; a concert marked as
 going whose start time changes is a new mark.

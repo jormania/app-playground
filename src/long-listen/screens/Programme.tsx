@@ -194,6 +194,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       {b.root && <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>}
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
+      <AlsoThisWeek extensions={b.extensions} current={p.id} isCurrent={isCurrent} />
 
       {returning && (
         <div className={s.continuity}>
@@ -671,6 +672,36 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
 
       {comparison && !standIn && <ComparisonView c={comparison} b={b} />}
     </div>
+  )
+}
+
+/**
+ * What was made beside this programme: a sitting for tonight, or more of its
+ * theme. They are programmes of their own, joined to this one's thread, and used
+ * to be found only in a fold at the very foot of the page ("More of this theme ·
+ * 1 so far") — so an evening asked for in the morning was gone by the evening.
+ * Said at the top instead, newest first, each with what it is.
+ */
+function AlsoThisWeek({ extensions, current, isCurrent }: { extensions: Programme[]; current: string; isCurrent: boolean }) {
+  const others = extensions.filter((x) => x.id !== current).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  if (!others.length) return null
+  return (
+    <nav className={s.alsoThisWeek} aria-label={isCurrent ? 'Also this week' : 'Also from this programme'}>
+      <p className={`${s.eyebrow} ${s.flush}`}>{isCurrent ? 'Also this week' : 'Also from this programme'}</p>
+      <ul>
+        {others.map((x) => (
+          <li key={x.id}>
+            <a href={href({ name: 'programme', id: x.id })}>{x.title}</a>
+            <span className={s.faint}>
+              {' · '}
+              {x.sitting
+                ? `a sitting for tonight, ${x.sitting.hours === 1 ? 'about an hour' : 'about two hours'}${x.sitting.request ? ` — “${x.sitting.request}”` : ''}`
+                : 'more of this theme'}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </nav>
   )
 }
 

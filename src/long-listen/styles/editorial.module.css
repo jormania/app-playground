@@ -3596,3 +3596,24 @@
 @media print {
   .backBar { display: none; }
 }
+
+/* What was made beside the programme (a sitting, more of its theme): quiet, but at the top where it is found. */
+.alsoThisWeek {
+  margin: var(--space-md) 0;
+  padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm);
+  border-left: 2px solid var(--color-accent);
+}
+
+.alsoThisWeek ul {
+  margin: var(--space-2xs) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alsoThisWeek li + li {
+  margin-top: var(--space-2xs);
+}
+
+@media print {
+  .alsoThisWeek { display: none; }
+}

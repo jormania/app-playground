@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { useServices } from '../app/services'
+import { useKept } from '../app/kept'
 import { go } from '../app/router'
 import { CharCount, MAX_ASK, NeedsKey, messageOf } from './common'
 import { Twisty } from './Twisty'
@@ -23,8 +24,12 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
 }) {
   const { journey, bump, say, curatorReady } = useServices()
   const id = useId()
-  const [request, setRequest] = useState('')
-  const [hours, setHours] = useState<1 | 2>(1)
+  // What was asked for stays until the evening is made: the app closed (or the phone put down) before tapping
+  // "Make", or while the curator was still building it, leaves the request here, not lost with the page.
+  const [request, setRequest, clearRequest] = useKept('sitting-request', 'device')
+  const [hoursKept, setHoursKept, clearHours] = useKept('sitting-hours', 'device')
+  const hours: 1 | 2 = hoursKept === '2' ? 2 : 1
+  const setHours = (h: 1 | 2) => setHoursKept(String(h))
   const [making, setMaking] = useState(false)
 
   async function make() {
@@ -32,6 +37,8 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
     onMaking?.(true)
     try {
       const p = await journey.sitting(request, hours)
+      clearRequest()
+      clearHours()
       bump()
       go({ name: 'programme', id: p.id })
     } catch (e) {
@@ -67,7 +74,8 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
       {!curatorReady && keyHint && <NeedsKey />}
     </>
   )
-  if (folded) return <Twisty label="A sitting for tonight" value="one or two hours, asked for today" open={making}>{body}</Twisty>
+  // A request not yet made is said on the folded line, so it is found again: the evening is not made until asked for.
+  if (folded) return <Twisty label="A sitting for tonight" value={request.trim() ? `“${request.trim()}” — not made yet` : 'one or two hours, asked for today'} open={making}>{body}</Twisty>
   return (
     <div className={s.nextCard}>
       <h3 className={s.nextTitle}>A sitting for tonight</h3>
