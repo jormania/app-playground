@@ -95,9 +95,9 @@ export function Problem({ error, onRetry, notFound }: { error: unknown; onRetry?
   )
 }
 
-/** "Sat 24 Oct, 19:42": when something was made, in the listener's time zone — for telling one evening's sitting from another. */
+/** "Saturday": the day something was made, in the listener's time zone — enough to tell one evening's sitting from another. */
 export function madeWords(at: string | number | Date, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone }).format(new Date(at))
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone }).format(new Date(at))
 }
 
 /** "13 October 2026", or with `time` "13 October 2026, 14:05" — in the listener's time zone, in words like every other date in the app. */
