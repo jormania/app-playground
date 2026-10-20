@@ -187,6 +187,74 @@ describe('marking what was heard', () => {
   }, 15000)
 })
 
+describe('what was made beside this week’s programme', () => {
+  it('a sitting for tonight is at the top of the programme, not only in the fold at its foot', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const sitting = await new Journey(repo, plain()).sitting('minimalist music tonight', 1)
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    const block = await screen.findByRole('navigation', { name: 'Also this week' }, { timeout: 4000 })
+    const link = [...block.querySelectorAll('a')].find((a) => a.textContent === sitting.title)
+    expect(link?.getAttribute('href')).toBe(`#/p/${sitting.id}`)
+    expect(block.textContent).toMatch(/a sitting for tonight, about an hour — “minimalist music tonight”/)
+    // Each says when it was made, in the listener's zone.
+    expect(block.textContent).toMatch(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} \w{3}, \d{2}:\d{2} · a sitting for tonight/)
+    // On the sitting's own page it isn't listed against itself.
+    cleanup()
+    window.location.hash = `#/p/${sitting.id}`
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: sitting.title }, { timeout: 4000 })
+    expect(screen.queryByRole('navigation', { name: 'Also this week' })).toBeNull()
+  }, 15000)
+})
+
+describe('several sittings in one week', () => {
+  it('are listed in the order they were made, each with when, and the page of one says when it was made', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const j = new Journey(repo, plain())
+    const first = await j.sitting('first evening', 1)
+    const second = await j.sitting('second evening', 2, true)
+    // The second is made later, whatever the clock resolution.
+    await repo.programmes.put({ ...second, createdAt: new Date(Date.parse(first.createdAt) + 60_000).toISOString() })
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    const block = await screen.findByRole('navigation', { name: 'Also this week' }, { timeout: 4000 })
+    const rows = [...block.querySelectorAll('li')].map((li) => li.textContent ?? '')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toContain('first evening')
+    expect(rows[1]).toContain('second evening')
+    cleanup()
+    window.location.hash = `#/p/${first.id}`
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: first.title }, { timeout: 4000 })
+    expect(document.body.textContent).toMatch(/A sitting for tonight · about an hour · made \w{3} \d{1,2} \w{3}, \d{2}:\d{2}/)
+  }, 20000)
+})
+
+describe('a sitting asked for and not yet made', () => {
+  it('keeps what was typed when the app is closed, says so on the folded line, and lets go once the evening is made', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    window.location.hash = `#/p/${p.id}`
+    const first = render(<App repo={repo} curator={plain()} />)
+    fireEvent.change(await screen.findByLabelText('What would you like tonight?', undefined, { timeout: 4000 }), { target: { value: 'minimalist music tonight' } })
+    first.unmount()
+
+    // The app opened again: the request is still there, and the folded line says it isn't made yet.
+    render(<App repo={repo} curator={plain()} />)
+    const input = await screen.findByLabelText('What would you like tonight?', undefined, { timeout: 4000 })
+    expect((input as HTMLInputElement).value).toBe('minimalist music tonight')
+    expect(document.body.textContent).toContain('“minimalist music tonight” — not made yet')
+
+    // Made: the request is let go, not left to be asked again next week.
+    fireEvent.click(screen.getByRole('button', { name: 'Make tonight’s sitting' }))
+    await waitFor(() => expect(window.location.hash).not.toBe(`#/p/${p.id}`), { timeout: 8000 })
+    expect(localStorage.getItem('long-listen:kept:sitting-request')).toBeNull()
+  }, 20000)
+})
+
 describe('the rows a work closes on', () => {
   it('the listening view closes on the programme’s two rows, and opening "More context" is the asking', async () => {
     const repo = new Repo(memoryStore())

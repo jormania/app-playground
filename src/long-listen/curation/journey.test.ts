@@ -700,6 +700,25 @@ describe('a sitting for tonight', () => {
     expect(theme.title).toBe('A quiet evening')
   })
 
+  it('asked for on its own terms, is given neither the week’s direction nor its thread', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['French colour', 'B', 'C']),
+      programme: (_p, n) => (n === 1 ? programme('French colour', FRENCH) : programme('Something else entirely', FRENCH_AGAIN)),
+    })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    await j.choose(w.optionIds[0])
+    const tonight = await j.sitting('minimalist music', 1, true)
+    const call = c.calls.filter((x) => x.op === 'programme')[1]
+    expect(call.payload.sitting).toEqual({ request: 'minimalist music', hours: 1, own: true })
+    expect(call.payload.thread).toBeUndefined()
+    expect(call.payload.option.title).toBe('Tonight')
+    expect(call.payload.option.pitch).toBe('minimalist music')
+    expect(tonight.sitting?.own).toBe(true)
+    // Still recorded beside the week's programme, so it is found with the rest.
+    expect((await repo.explorations.require(tonight.explorationId)).extraProgrammeIds).toContain(tonight.id)
+  })
+
   it('with a programme this week, joins its thread and is told what the thread has covered', async () => {
     const c = fakeCurator({
       themes: () => themes(['French colour', 'B', 'C']),
