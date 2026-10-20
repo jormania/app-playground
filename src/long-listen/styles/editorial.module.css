@@ -27,7 +27,6 @@
   justify-content: space-between;
   gap: var(--space-sm);
   padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--color-ink);
 }
 
 .brand {
@@ -145,9 +144,8 @@
 .main {
   max-width: calc(var(--measure) + 2 * var(--space-md));
   margin: 0 auto;
-  /* The page starts a short step under the sections, not a screen's worth: the
-     masthead's rule already separates them. */
-  padding: var(--space-md) var(--space-md) 0;
+  /* The page starts a short step under the masthead, which has no rule of its own now: a little more air does the separating. */
+  padding: var(--space-lg) var(--space-md) 0;
   /* backwards, not both: a transform left on <main> after the fade would make
      it the containing block for the programme's fixed contents rail. */
   animation: settle 420ms var(--ease) backwards;
