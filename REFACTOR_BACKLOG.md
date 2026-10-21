@@ -1096,6 +1096,8 @@ slices should eyeball icons when they next touch an app.
 
 **`@fontsource*` done 2026-10-16 — all seven packages to 5.3** (alegreya, fraunces, inter, jetbrains-mono, cinzel 5.2 → 5.3.0; zen-kaku-gothic-new, zen-old-mincho → 5.3.1; floors raised in `package.json`). Suite 5854 across 479 files, typecheck clean, build green; `dist/` is 11860 KB before and after, so no subset or legacy `.woff` came in with the bump. Import lines untouched (the bare-name imports are still R-027's). Release notes not reachable from here; **not checked: glyph shapes** — a redrawn font would pass every gate. `eslint` had no changed source paths to lint.
 
+**`autoprefixer` + `postcss` done 2026-10-21 — 10.5.2 → 10.6.1, 8.5.15 → 8.5.31** (floors raised in `package.json`, were `^10.4.20` / `^8.4.49`). The CSS toolchain, in-range; it also refreshed the `browserslist` / `caniuse-lite` data underneath, which is what could in principle change emitted prefixes. Suite 5884 across 479 files, typecheck clean, build green; `dist/` is 11860 KB before and after. Dev-only. Release notes not reachable from here; **not checked: the emitted CSS byte for byte** — a prefix added or dropped by the newer data would pass every gate. `eslint` had no changed source paths to lint.
+
 Remaining: the React 19 family (runtime and types together), last, as this item says.
 
 **The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
