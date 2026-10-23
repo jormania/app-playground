@@ -24,6 +24,8 @@ export interface Profile {
   preferences: Partial<ListenerPreferences>
   /** Extra context the directions see: a thread to return to, taste, a wish. */
   context?: Record<string, unknown>
+  /** Extra context the programme sees: recent listening with what was said, to tempt it to talk about the listener. */
+  programmeContext?: Record<string, unknown>
 }
 
 export const PROFILES: Profile[] = [
@@ -49,6 +51,15 @@ export const PROFILES: Profile[] = [
         openQuestions: ['What did the next generation of Nordic composers do with Sibelius’s long lines?'],
         nextDirections: ['Nordic symphonists after Sibelius — Rautavaara, Nørgård, Aho'],
       }],
+    },
+    // Loved works with the listener's own words: the programme may point back to them in two items at most,
+    // and must not hand the words back (programme@2026-10-23.1).
+    programmeContext: {
+      recentListening: [
+        { composer: 'Jean Sibelius', work: 'Tapiola', recording: 'Herbert von Karajan · Berliner Philharmoniker', state: 'heard', reaction: 'loved', notes: ['The storm, the last four minutes, powerful and sweeping, then nature recovering.'], heardTimes: 1, weeksAgo: 2 },
+        { composer: 'Jean Sibelius', work: 'Symphony No. 5', recording: 'Simon Rattle · Philharmonia Orchestra', state: 'heard', reaction: 'loved', notes: ['The horns, the build-up of energy, the space around it.'], heardTimes: 1, weeksAgo: 2 },
+        { composer: 'John Luther Adams', work: 'Become Ocean', recording: 'Ludovic Morlot · Seattle Symphony', state: 'heard', reaction: 'loved', notes: ['It grows and ebbs, hard to pinpoint, rhythm and texture.'], heardTimes: 1, weeksAgo: 1 },
+      ],
     },
   },
   {
@@ -101,6 +112,7 @@ export async function runCurationCheck(send: Send, profiles: Profile[] = PROFILE
         thread: thread ?? null,
         preferences: prefs,
         alreadyProgrammed: [], alreadyKnown: [], taste: [], questions: [], listenerNotes: '', recentListening: [],
+        ...profile.programmeContext,
       })
     } catch (e) {
       result.error = e instanceof Error ? e.message : String(e)
@@ -113,6 +125,11 @@ export async function runCurationCheck(send: Send, profiles: Profile[] = PROFILE
 const centuryOf = (composed?: string) => {
   const y = Number(/\b(1[0-9]{3}|20[0-9]{2})\b/.exec(composed ?? '')?.[1])
   return y ? Math.floor(y / 100) + 1 : undefined
+}
+
+/** How many items address the listener in their reasons — "you", "your" — which the programme prompt allows twice. */
+export function speaksToListener(items: { why: string; whyThisRecording: string }[]): number {
+  return items.filter((i) => /\byou(r|rs)?\b/i.test(`${i.why} ${i.whyThisRecording}`)).length
 }
 
 /** The report, as Markdown: verdicts first, then the writing to read. */
@@ -135,6 +152,7 @@ export function curationReport(results: ProfileResult[], versions: Record<string
       lines.push(
         `- Programme: ${items.length} works in ${p.sections.length} sections (${p.sections.map((s) => s.heading).join(' · ')}); ${byComposer.size} composers, at most ${Math.max(...byComposer.values())} by one; centuries ${centuries.join(', ') || 'unknown'}; ${p.comparisons.length} pair(s)`,
         `- Every item names its performers: ${unperformed ? `no — ${unperformed} without` : 'yes'}${r.programme!.removedRepeats ? `; ${r.programme!.removedRepeats} unjustified repeat(s) removed` : ''}`,
+        `- Items that speak to the listener: ${speaksToListener(items)} (the rule: two at most)`,
         '',
         '### The writing',
         '',

@@ -440,3 +440,21 @@ describe('batch three: finding your place, and the hall (23 October 2026)', () =
     expect(block.textContent).toMatch(/Ateneu/)
   }, 15000)
 })
+
+describe('stabilisation: a taste profile grown long (23 October 2026)', () => {
+  it('sets the surer lines first, folds first impressions beneath them, and offers to gather it', async () => {
+    const repo = new Repo(memoryStore())
+    const line = (i: number, confidence: 'tentative' | 'emerging' | 'settled') => ({ id: `obs-${i}`, facet: 'other' as const, subject: `s${i}`, statement: `Line ${i}.`, stance: 'drawn-to' as const, confidence, evidence: ['f'], firstSeen: '2026-10-01T10:00:00Z', lastSeen: '2026-10-01T10:00:00Z' })
+    await repo.saveTaste({ observations: [line(0, 'settled'), line(1, 'emerging'), ...Array.from({ length: 28 }, (_, i) => line(i + 2, 'tentative'))], questions: [], notesToCurator: '', updatedAt: 'x' })
+    window.location.hash = '#/notebook'
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByText('What the curator has noticed', {}, { timeout: 4000 })
+    // The firmer two in the open; the twenty-eight single remarks behind one fold, without a "(a first impression)" each.
+    const fold = screen.getByText('First impressions').closest('details')!
+    expect(fold.open).toBe(false)
+    expect(fold.textContent).toContain('Line 2.')
+    expect(fold.textContent).not.toContain('a first impression')
+    expect(screen.getByText(/Line 0\./).closest('details')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Gather it into fewer lines' })).toBeTruthy()
+  }, 15000)
+})

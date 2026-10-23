@@ -137,7 +137,7 @@ notebook and the prompts):
 of this theme*, *A different direction this week* (the week's other
 directions, or three new ones — `Journey.moreDirections`, which keeps the
 programme until a new direction is taken and never uses up the wish for next
-week), *A path left open* (earlier weeks), *Tell the curator how it went*, and
+week), *Left open* (earlier weeks), *How it landed*, and
 *A wish for next week*. **More of this theme** (`Journey.extendProgramme`) is
 its own programme snapshot with `extends` = the week's programme, the same
 exploration (`extraProgrammeIds`), told everything the thread has covered this
@@ -1374,3 +1374,54 @@ hour — proves nothing and stays "Started"; "Heard" by hand still works as befo
   "That was the last work" says *this evening* for a sitting and *of this programme* for more of a theme.
   Choosing a device after Resume found none carries on from where it was paused, not from the top. §20's
   account of Focus corrected.
+
+## 31. Stabilisation: the curator speaks of the music, one word for each thing (23 October 2026)
+
+An audit of three real weeks (W41–W43), a sitting, the taste page and every screen, in three tiers. The
+report lives with the session; what it changed:
+
+**Tier 1 — what was wrong or growing worse.**
+- **Prompts.** Every prompt carrying the voice moves to `@2026-10-23` (taste `.2`, resources `.2`; concert,
+  which has no voice, stays). The voice: the listener's words are for understanding them, never handed back
+  ("the growing and ebbing quality you enjoyed") — except in the taste reading and the season in review,
+  whose subject is the listener. The programme: at most **two** items refer to the listener's listening
+  (`why` and `whyThisRecording` together), no earlier work named in more than one, *Why this recording* about
+  the performance; the continuity note is the only look back (the introduction opens on this week's music).
+  `npm run check:curation` now reports *Items that speak to the listener* against that limit
+  (`speaksToListener`), and its returning-theme profile carries loved works with notes to tempt it.
+- **Taste stays a portrait.** Observed: 54 lines after three weeks, most one recording each. Now a reaction to
+  one recording strengthens the observation it belongs to; `absorbs` (a new TASTE field, required in the
+  schema) lets one observation retire others — their evidence and the surest confidence come with it; a
+  correction (`replaces`) still takes the model's word. Past `TASTE_TIDY_ABOVE` (24) active lines a reading
+  also merges down to about twenty (`tidy`); the Notebook offers *Gather it into fewer lines* when it is long
+  and nothing waits to be read. The Notebook and the Notion taste page set the firmer lines first and fold
+  first impressions beneath (*First impressions*); the page is rewritten once for the new layout (`v: 2`).
+- **Notion.** Once a week (`notion:settled:<week>`) the Journal is asked for rows still saying *This week*
+  that aren't this week's tracked pages, and those become *Earlier* — a row the app no longer tracks (week 41's
+  was found so) would otherwise say *This week* for ever. An unchanged notebook still costs no calls.
+- This week's *Returning* box names the thread once; the Notebook's note points at *Not quite*.
+
+**Tier 2 — one word for each thing.**
+- The weekly choice is a **direction** everywhere: *Three directions for the week*, *Take this direction*,
+  *Left open from earlier weeks*, *Take it this week* (the Journal's row keeps its tag and action together on
+  the right). *Path* and *way* are gone from the screens.
+- *How it landed* names saying how something went; the Notebook is *What the curator has noticed*, so *Your
+  listening* means only a work's state; Threads read *not started / started / all heard*.
+- This week's two settings rows are one fold, *Made with your settings*, whose line reads on its own (`glance`
+  words in `domain/exploration.ts`, wrapping, never cut off) with *Tune this week* inside it.
+- A part's guide line no longer says "the second part, of three" (`partWords` removed); *How they connect*
+  on screen and in Notion; *For you*; catalogue numbers read "L 109, in Debussy's catalogue".
+- `creditLine` lists conductor, soloists, orchestra — the order of every list (`creditRows`). Notion's
+  Performers columns are rewritten once by it; programme pages already written keep their order.
+- Without Spotify, *Look for it on Spotify* is a small link and *Listen along* the way in. *More context*:
+  "the curator writes it when you open it". The listening view's *Focus* is *Just the music*.
+
+**Tier 3 — length and what was really heard.**
+- The programme's closing list of recordings is print-only; the sign-off line stays on screen.
+- Further reading spreads across the works (two at most on one) and is told each work's recording, so a
+  review of another performance says so.
+- A Notion programme page says what Spotify played instead (*Heard on Spotify instead*), in the part of the
+  page rewritten as it changes.
+- Settings: a connection that works folds its fields, buttons and how-to under *Manage*; warnings stay out.
+  *Modern* recordings (and its hint) mean 1980 on, an older one only where no good modern one exists, and said.
+
