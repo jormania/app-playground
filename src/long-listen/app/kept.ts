@@ -60,7 +60,7 @@ export function forgetPlaces(): void {
     if (!store) continue
     try {
       const keys: string[] = []
-      for (let i = 0; i < store.length; i++) { const k = store.key(i); if (k && (k.startsWith(PREFIX) || k === 'long-listen:trail' || k === 'long-listen:open-folds')) keys.push(k) }
+      for (let i = 0; i < store.length; i++) { const k = store.key(i); if (k && (k.startsWith(PREFIX) || k === 'long-listen:trail' || k === 'long-listen:open-folds' || k === 'long-listen:last-listen')) keys.push(k) }
       for (const k of keys) store.removeItem(k)
     } catch { /* storage unavailable: nothing kept */ }
   }

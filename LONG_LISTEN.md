@@ -1308,3 +1308,19 @@ What it changed:
   and keeps it as feedback on the observation (`FeedbackTarget` type `observation`); with a key it is read
   at once — the taste prompt (`taste@2026-10-23.1`) replaces that observation with what the words support —
   and until then the page says it will be reconsidered. Not yet run against the real model (`npm run check:curation`).
+
+## 28. Back to the listening, from the masthead (23 October 2026)
+
+A mark of the app's own (`ListeningMark`: a point sounding, three arcs going out) sits in the masthead beside
+the guide and Settings, and leads to the listening view of the work that is sounding — from any screen,
+whichever device it plays on and however it was started (Play, the week's playlist, Spotify itself), a
+stand-in included (`listenTargetFor`, `domain/nowListening.ts`: this week's programmes first). Its states:
+
+- **playing** — in the accent, its arcs breathing in turn (still under `prefers-reduced-motion`);
+- **paused** — muted, same destination;
+- **left part-way** — nothing of the app's sounding, but the listening view last opened (`app/lastListen.ts`,
+  kept eighteen hours) holds a place to resume: muted, "Back to …, where you left it";
+- **not shown** — nothing to go back to, music no programme holds, or already on that work's listening view.
+
+It reads the shared player watch, so a screen with no Play button now looks at Spotify too (every 15 s while
+idle and visible). A fresh start or a restore forgets the last listening view.

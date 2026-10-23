@@ -27,6 +27,7 @@ import { earlierHearing, onDay, reactionAsSaid, shortNote, type EarlierHearing }
 import { isoDateIn } from '../domain/week'
 import { Twisty } from '../components/Twisty'
 import { useKept } from '../app/kept'
+import { rememberListen } from '../app/lastListen'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { Gloss } from '../components/Gloss'
 import s from '../styles/editorial.module.css'
@@ -93,6 +94,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     }
   }, [programmeId, itemId, settings.timeZone])
   useTitle(data ? curly(data.item.proposed.work) : undefined)
+  // The listening view last opened: the masthead leads back to it when the work was left part-way.
+  useEffect(() => {
+    if (data) rememberListen({ programmeId, itemId, work: data.item.proposed.work, composer: data.item.proposed.composer, trackIds: isConfirmed(data.recording) ? data.recording.spotify.trackIds : undefined })
+  }, [data, programmeId, itemId])
   useWakeLock(true)
 
   // Dusk while this screen is open: one of four dark shades, at random each visit (never last visit's).
