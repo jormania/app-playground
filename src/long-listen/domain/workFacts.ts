@@ -35,7 +35,7 @@ const CATALOGUES: { re: RegExp; whose: string }[] = [
   { re: /^TH\b/i, whose: 'Tchaikovsky’s' },
 ]
 
-/** One catalogue reference, e.g. "FS 76" → "No. 76 in Nielsen's catalogue (FS)". */
+/** One catalogue reference, e.g. "FS 76" → "FS 76, in Nielsen's catalogue": the code as it is printed, then whose it is. */
 export function catalogueWords(raw: string, composer = ''): string {
   const ref = raw.trim()
   if (!ref) return ''
@@ -44,7 +44,7 @@ export function catalogueWords(raw: string, composer = ''): string {
   if (op) return op[2] ? `Opus ${op[1]}, no. ${op[2]}` : `Opus ${op[1]}`
   if (/^WoO\b/i.test(ref)) {
     const n = /(\d+)/.exec(ref)?.[1]
-    return n ? `No. ${n} among the works without an opus number (WoO)` : ref
+    return n ? `WoO ${n}, among the works without an opus number` : ref
   }
   for (const c of CATALOGUES) {
     const m = c.re.exec(ref)
@@ -54,7 +54,7 @@ export function catalogueWords(raw: string, composer = ''): string {
     if (!/\d/.test(num)) return ref
     let whose = c.whose
     if (!whose) whose = /^Kk/i.test(code) || /scarlatti/i.test(composer) ? 'Domenico Scarlatti’s' : 'Mozart’s'
-    return `No. ${num} in ${whose} catalogue (${code})`
+    return `${code} ${num}, in ${whose} catalogue`
   }
   return ref
 }

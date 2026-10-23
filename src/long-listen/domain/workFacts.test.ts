@@ -3,17 +3,17 @@ import { catalogueLine, catalogueWords, whatAndWhen, compactFacts } from './work
 
 describe('catalogueWords', () => {
   it('names whose catalogue a prefix belongs to', () => {
-    expect(catalogueWords('FS 76')).toBe('No. 76 in Nielsen’s catalogue (FS)')
-    expect(catalogueWords('BWV 1048')).toBe('No. 1048 in Bach’s catalogue (BWV)')
-    expect(catalogueWords('L. 109')).toBe('No. 109 in Debussy’s catalogue (L)')
-    expect(catalogueWords('D 944')).toBe('No. 944 in Schubert’s catalogue (D)')
-    expect(catalogueWords('Hob. I:104')).toBe('No. I:104 in Haydn’s catalogue (Hob)')
+    expect(catalogueWords('FS 76')).toBe('FS 76, in Nielsen’s catalogue')
+    expect(catalogueWords('BWV 1048')).toBe('BWV 1048, in Bach’s catalogue')
+    expect(catalogueWords('L. 109')).toBe('L 109, in Debussy’s catalogue')
+    expect(catalogueWords('D 944')).toBe('D 944, in Schubert’s catalogue')
+    expect(catalogueWords('Hob. I:104')).toBe('Hob I:104, in Haydn’s catalogue')
   })
 
   it('tells Mozart’s K. from Scarlatti’s Kk.', () => {
-    expect(catalogueWords('K. 550')).toBe('No. 550 in Mozart’s catalogue (K)')
-    expect(catalogueWords('Kk. 380')).toBe('No. 380 in Domenico Scarlatti’s catalogue (Kk)')
-    expect(catalogueWords('K. 380', 'Domenico Scarlatti')).toBe('No. 380 in Domenico Scarlatti’s catalogue (K)')
+    expect(catalogueWords('K. 550')).toBe('K 550, in Mozart’s catalogue')
+    expect(catalogueWords('Kk. 380')).toBe('Kk 380, in Domenico Scarlatti’s catalogue')
+    expect(catalogueWords('K. 380', 'Domenico Scarlatti')).toBe('K 380, in Domenico Scarlatti’s catalogue')
   })
 
   it('says opus plainly, with a number within it', () => {
@@ -28,7 +28,7 @@ describe('catalogueWords', () => {
 
 describe('catalogueLine', () => {
   it('translates each reference in a list', () => {
-    expect(catalogueLine('Op. 29, FS 76')).toBe('Opus 29 · No. 76 in Nielsen’s catalogue (FS)')
+    expect(catalogueLine('Op. 29, FS 76')).toBe('Opus 29 · FS 76, in Nielsen’s catalogue')
     expect(catalogueLine(undefined)).toBe('')
   })
 })

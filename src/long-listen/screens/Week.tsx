@@ -3,7 +3,6 @@ import { GoingCards } from '../components/Going'
 import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { directionChanges } from '../domain/directionChanges'
-import { sinceWords } from '../domain/week'
 import { useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
@@ -42,6 +41,7 @@ export function WeekScreen() {
   const [askOpen, setAskOpen] = useState(false)
   const [mood, setMood] = useState('')
   const [asking, setAsking] = useState(false)
+  const [tuning, setTuning] = useState(false)
 
   const failedOnMerits = useRef(false)
   const firstSeen = useRef(false)
@@ -183,7 +183,7 @@ export function WeekScreen() {
     <div>
       {/* The masthead dates the week; the eyebrow names the section, as on every other screen. */}
       <p className={s.eyebrow}>This week</p>
-      <h1 className={s.title}>Three ways into the week</h1>
+      <h1 className={s.title}>Three directions for the week</h1>
       <p className={s.dek}>
         {view.firstVisit
           ? 'Each week the curator offers three directions. Choose the one you want to follow; the others stay open for another time.'
@@ -192,15 +192,12 @@ export function WeekScreen() {
       <GoingCards />
       <BackupNudge />
 
-      <WeekMoodLine record={view.record} prefs={view.prefs} onAsk={askWithMood} busy={busy} asking={asking}
-        onMood={(m) => setView((v) => v && { ...v, record: { ...v.record, mood: m.length ? m : undefined } })} />
-
-      {/* What these three were made with, each setting under the name Settings gives it —
-          never a bare "several · a mix" the listener has to decode. */}
-      {/* Folded by default: the line says what's set; open it only to read what each means. */}
-      <Twisty label="Made with your settings" value={rework
+      {/* What these three were made with, and this week's tuning, in one fold: its line reads on its own
+          ("four or five hours, several composers, known and new"), never a bare "Several · A mix" to decode.
+          It opens by itself while a tuning waits to be asked for. */}
+      <Twisty label="Made with your settings" className={s.twistyWrap} open={tuning} value={rework
         ? 'changed since'
-        : `${TIME[made.timePerWeek].label} · ${BREADTH[made.breadth].label} · ${FAMILIARITY[made.familiarity].label}${made.pairs ? ' · pairs' : ''}`}>
+        : [TIME[made.timePerWeek].words.replace(/ (of music )?a week$/, ''), BREADTH[made.breadth].glance, FAMILIARITY[made.familiarity].glance, ...(made.pairs ? ['pairs'] : []), ...moodWords(view.record.mood)].join(', ')}>
         <dl className={s.settingsGlance}>
           <dt>Music each week</dt><dd>{TIME[made.timePerWeek].label} — {TIME[made.timePerWeek].words}</dd>
           <dt>How widely it ranges</dt><dd>{BREADTH[made.breadth].label} — {BREADTH[made.breadth].words}</dd>
@@ -218,20 +215,22 @@ export function WeekScreen() {
         ) : (
           <p className={s.settingHint}>Change them in <a href={href({ name: 'settings' })}>Settings → Your week of listening</a>, then ask again below: the curator reworks these same three for the change, keeping their ground.</p>
         )}
+        <WeekMoodLine record={view.record} prefs={view.prefs} onAsk={askWithMood} busy={busy} asking={asking} onTuning={setTuning}
+          onMood={(m) => setView((v) => v && { ...v, record: { ...v.record, mood: m.length ? m : undefined } })} />
       </Twisty>
 
       {/* The direction being built stays where it was tapped, saying so; the others wait. */}
       <ol className={s.options}>
         {view.options.map((o) => (
-          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={busy || !curatorReady} choosing={choosing === o.id} onChoose={() => void choose(o)} />
+          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} busy={busy || !curatorReady} choosing={choosing === o.id} onChoose={() => void choose(o)} />
         ))}
       </ol>
       {!curatorReady && <NeedsKey to="choose a direction, or ask for anything below" />}
 
       {/* Below the three: every other way into the week, as one section of matching cards —
           each says what it does in a line, and opens its fields only when there are any. */}
-      <section aria-label="Other ways into the week" className={s.whereNext}>
-        <h2 className={s.sectionHead}>Or another way in</h2>
+      <section aria-label="Something else this week" className={s.whereNext}>
+        <h2 className={s.sectionHead}>Or something else</h2>
         <p className={s.sectionGuide}>{rework
           ? 'Make a single evening of it, have these three reworked for your new settings, or take up one left open from an earlier week.'
           : 'None of the three? Make a single evening of it, ask for three new directions, or take up one left open from an earlier week.'}</p>
@@ -243,7 +242,7 @@ export function WeekScreen() {
           <h3 className={s.nextTitle}>{rework ? 'These three, for your new settings' : 'Three other directions'}</h3>
           <p className={s.quiet}>{rework
             ? `Your ${changes.length === 1 ? 'setting' : 'settings'} changed since these three were offered (${changes.map((c) => c.setting.toLowerCase()).join(', ')}). The curator keeps each direction’s ground — its subject, its thread — and reworks it to fit. Say below if you’d rather go somewhere new.`
-            : 'The curator offers three more. These three stay open as paths for another week.'}</p>
+            : 'The curator offers three more. These three stay open for another week.'}</p>
           {askOpen ? (
             <>
               <label className={s.visuallyHidden} htmlFor="mood">What are you in the mood for?</label>
@@ -261,9 +260,9 @@ export function WeekScreen() {
 
         {view.openPaths.length > 0 && (
           <div className={s.nextCard}>
-            <h3 className={s.nextTitle}>A path left open</h3>
+            <h3 className={s.nextTitle}>Left open from earlier weeks</h3>
             <p className={s.quiet}>{view.openPaths.length === 1 ? 'One direction' : `${view.openPaths.length} directions`} from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
-            <Twisty label={view.openPaths.length === 1 ? 'The path' : 'The paths'} value={view.openPaths.length === 1 ? 'one direction' : `${view.openPaths.length} directions`}>
+            <Twisty label={view.openPaths.length === 1 ? 'The direction' : 'The directions'} value={view.openPaths.length === 1 ? 'one, offered and not taken' : `${NUMBER_WORDS[view.openPaths.length] ?? view.openPaths.length}, offered and not taken`}>
               <OpenPaths paths={view.openPaths} nowKey={view.record.weekKey} busy={busy} onTaking={setChoosing} keyHint={false} />
             </Twisty>
           </div>
@@ -273,7 +272,7 @@ export function WeekScreen() {
   )
 }
 
-function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: ProgrammeOption; theme?: Theme; weekKey: string; busy: boolean; choosing: boolean; onChoose: () => void }) {
+function OptionEntry({ o, theme, busy, choosing, onChoose }: { o: ProgrammeOption; theme?: Theme; busy: boolean; choosing: boolean; onChoose: () => void }) {
   return (
     <li className={s.option} aria-busy={choosing || undefined}>
       <div className={s.optionHead}>
@@ -285,17 +284,18 @@ function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: Progr
         <p>{o.pitch}</p>
         {/* The words describe the direction, so they say so; the curator's reason says it's for you. */}
         <Traits label="Character" words={o.character} />
-        {o.why && <p className={s.quiet}><span className={s.label}>Why for you</span><br />{o.why}</p>}
+        {o.why && <p className={s.quiet}><span className={s.label}>For you</span><br />{o.why}</p>}
         {o.returning && (
           <div className={`${s.continuity} ${s.flush} ${s.mtSm}`}>
             <p className={`${s.eyebrow} ${s.mb0}`}>
-              Returning{theme ? ` · “${theme.title}”, first explored ${sinceWords(theme.firstIntroduced, weekKey)}` : ''}
+              {/* The thread by name only: the curator's note below says when and how, and saying it twice read as an echo. */}
+              Returning{theme ? ` · “${theme.title}”` : ''}
             </p>
             <p className={s.flush}>{o.returning.note}</p>
           </div>
         )}
         <div className={s.actions}>
-          <button className={s.outlineButton} onClick={onChoose} disabled={busy}>{choosing ? 'The curator is building it…' : 'Listen this way →'}</button>
+          <button className={s.outlineButton} onClick={onChoose} disabled={busy}>{choosing ? 'The curator is building it…' : 'Take this direction →'}</button>
         </div>
       </div>
     </li>
@@ -303,16 +303,27 @@ function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: Progr
 }
 
 
+/** A small count in words, as the rest of the page writes them. */
+const NUMBER_WORDS = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+
+/** This week's tuning as the end of the settings line: "quieter and wider this week". */
+function moodWords(mood?: WeekMood[]): string[] {
+  const words = WEEK_MOODS.filter((m) => mood?.includes(m.value)).map((m) => m.label.toLowerCase())
+  return words.length ? [`${words.join(' and ')} this week`] : []
+}
+
 /**
  * "Tune this week" (once "This week, differently"): four words to tap, for this week only — a mood,
  * not a standing preference (Settings holds those). Saved as it's tapped; the
  * directions already offered were made without it, so it offers three that
  * know it. The programme, and "more of this theme", read it from the week.
  */
-function WeekMoodLine({ record, prefs, onAsk, onMood, busy, asking }: { record: WeekRecord; prefs: ListenerPreferences; onAsk: () => Promise<boolean>; onMood: (mood: WeekMood[]) => void; busy: boolean; asking: boolean }) {
+function WeekMoodLine({ record, prefs, onAsk, onMood, onTuning, busy, asking }: { record: WeekRecord; prefs: ListenerPreferences; onAsk: () => Promise<boolean>; onMood: (mood: WeekMood[]) => void; onTuning: (waiting: boolean) => void; busy: boolean; asking: boolean }) {
   const { journey, say, curatorReady } = useServices()
   const [mood, setMood] = useState<WeekMood[]>(record.mood ?? [])
-  const [changed, setChanged] = useState(false)
+  const [changed, setChangedState] = useState(false)
+  // The fold around it stays open while a tuning waits to be asked for.
+  const setChanged = (v: boolean) => { setChangedState(v); onTuning(v) }
   // Tuned away from what the three were made with (or a setting moved): asking reworks the same three.
   const reworks = directionChanges(record.madeWith, prefs, mood).length > 0
   async function toggle(m: WeekMood) {
@@ -329,8 +340,8 @@ function WeekMoodLine({ record, prefs, onAsk, onMood, busy, asking }: { record: 
     }
   }
   return (
-    // Folded until wanted; it opens by itself while a change is waiting to be asked for.
-    <Twisty label="Tune this week" value={mood.length ? WEEK_MOODS.filter((m) => mood.includes(m.value)).map((m) => m.label).join(', ') : 'no changes'} open={changed}>
+    <>
+      <p className={`${s.label} ${s.mtSm}`}>Tune this week</p>
       {/* The same chips as every other choice in the app: tap to add, tap again to take away. */}
       <div className={s.chipRow} role="group" aria-label="Tune this week">
         {WEEK_MOODS.map((m) => (
@@ -345,6 +356,6 @@ function WeekMoodLine({ record, prefs, onAsk, onMood, busy, asking }: { record: 
             : (asking ? 'The curator is finding three…' : 'Three directions with this in mind')}
         </button>
       )}
-    </Twisty>
+    </>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags, validateTaste } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -189,5 +189,21 @@ describe('release four validators', () => {
     expect(value.works).toHaveLength(1)
     expect(value.works[0]).toMatchObject({ composer: 'Dvořák', soloists: ['Andrei Ioniță'], about: 'A.', recording: { conductor: 'Karajan', orchestra: 'BPO' } })
     expect(validatePrepare({ works: [] }).problems).toHaveLength(1)
+  })
+})
+
+describe('validateTaste', () => {
+  const ctx = { feedbackIds: ['fb1'], observationIds: ['o1', 'o2', 'o3'] }
+  const o = (extra) => ({ facet: 'composer', subject: 's', statement: 'A line.', stance: 'drawn-to', confidence: 'tentative', evidence: [], replaces: '', absorbs: [], ...extra })
+
+  it('keeps a merge that cites no new feedback, and drops a new line that cites none', () => {
+    const { value } = validateTaste({ observations: [o({ absorbs: ['o1', 'o2'] }), o({ statement: 'Unfounded.' })], questions: [] }, ctx)
+    expect(value.observations.map((x) => x.statement)).toEqual(['A line.'])
+    expect(value.observations[0].absorbs).toEqual(['o1', 'o2'])
+  })
+
+  it('absorbs only observations that exist, and never the one it replaces', () => {
+    const { value } = validateTaste({ observations: [o({ evidence: ['fb1'], replaces: 'o1', absorbs: ['o1', 'o3', 'nope'] })], questions: [] }, ctx)
+    expect(value.observations[0]).toMatchObject({ replaces: 'o1', absorbs: ['o3'] })
   })
 })

@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { clock, curly, listenForAt, movementNamedIn, movementTitles, partWords, primeMinutes, pullQuote, roman, romanValue } from './programmeStyle'
+import { clock, curly, listenForAt, movementNamedIn, movementTitles, primeMinutes, pullQuote, roman, romanValue } from './programmeStyle'
 
 describe('the programme’s conventions', () => {
-  it('numbers parts in Roman numerals and names them in words', () => {
+  it('numbers parts in Roman numerals', () => {
     expect([1, 2, 3, 4, 5, 9, 12].map(roman)).toEqual(['I', 'II', 'III', 'IV', 'V', 'IX', 'XII'])
-    expect(partWords(2, 3)).toBe('The second part, of three')
-    expect(partWords(1, 1)).toBe('The only part')
   })
 
   it('prints a duration as programmes do, and nothing when it isn’t known', () => {

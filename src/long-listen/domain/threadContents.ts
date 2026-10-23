@@ -105,7 +105,8 @@ export function threadContents(
   const lo = Math.min(...years)
   const hi = Math.max(...years)
   const when = years.length ? (lo === hi ? `, written in ${lo}` : `, written between ${lo} and ${hi}`) : ''
-  const where = heard === 0 ? 'not yet heard' : heard === workIds.length ? 'heard through' : 'partly heard'
+  // The words a work's own state uses (Not started · Started · Heard), said of the thread's works together.
+  const where = heard === 0 ? 'not started' : heard === workIds.length ? 'all heard' : 'started'
   return [who + when, where].join(' · ')
 }
 

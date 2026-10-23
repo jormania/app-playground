@@ -20,7 +20,7 @@ import { buildContext } from './context'
 import { directionChanges, type DirectionChange } from '../domain/directionChanges'
 import { feedbackOnAny, heardAs, playedProposed, standInPlayersOf, standInsOf, threadDigest } from './continuity'
 import { Ingest, comparisonOf, ingestProgramme } from './ingest'
-import { applyTasteUpdate, pendingFeedback } from './taste'
+import { TASTE_TIDY_ABOVE, applyTasteUpdate, pendingFeedback } from './taste'
 import { isConfirmed, type SpotifyCandidate } from '../spotify/verify'
 
 /** A concert as the form holds it, before it's kept. */
@@ -699,14 +699,19 @@ export class Journey {
     }, quietMs)
   }
 
-  /** Read any feedback not yet read into the taste profile, in one request. */
-  interpretPendingFeedback(): Promise<number> {
+  /**
+   * Read any feedback not yet read into the taste profile, in one request.
+   * A profile grown past TASTE_TIDY_ABOVE is also merged down in the same
+   * request ("tidy"); `tidy` asks for that alone, with nothing new to read.
+   */
+  interpretPendingFeedback({ tidy = false }: { tidy?: boolean } = {}): Promise<number> {
     return this.once('taste', async () => {
       const generation = this.repo.generation
       const all = await this.repo.feedback.all()
       const pending = pendingFeedback(all)
-      if (pending.length === 0) return 0
       const profile = await this.repo.taste()
+      const long = profile.observations.filter((o) => !o.supersededBy).length > TASTE_TIDY_ABOVE
+      if (pending.length === 0 && !(tidy && long)) return 0
       const describe = await this.describer()
       const { language } = await this.repo.preferences()
       const res = await this.curator.call<TasteResponse>('taste', {
@@ -716,6 +721,7 @@ export class Journey {
           questions: profile.questions,
         },
         listenerNotes: profile.notesToCurator,
+        tidy: long,
         feedback: pending.map((f) => ({ id: f.id, at: f.at, about: describe(f.target.type, f.target.id), reaction: f.reaction, more: f.more, note: f.note })),
       })
       this.stillCurrent(generation)
@@ -968,7 +974,8 @@ export class Journey {
           title: p.title,
           dek: p.dek,
           theme: theme?.title,
-          works: p.sections.flatMap((s) => s.items).map((i) => ({ composer: i.proposed.composer, title: i.proposed.work })),
+          // With its recording, so a review or note of a performance is matched to the one programmed, or said to differ.
+          works: p.sections.flatMap((s) => s.items).map((i) => ({ composer: i.proposed.composer, title: i.proposed.work, recording: creditLine(i.proposed) })),
         },
       })
       // Like every curator job that writes: nothing kept for a journey cleared meanwhile.

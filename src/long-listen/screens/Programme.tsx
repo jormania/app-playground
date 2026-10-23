@@ -10,7 +10,7 @@ import { latestFeedback, listeningState } from '../domain/listening'
 import { isoDateIn, sinceWords, weekFromKey } from '../domain/week'
 import { catalogueLine, whatAndWhen } from '../domain/workFacts'
 import { sectionTitle } from '../domain/sections'
-import { movementTitles, partWords, primeMinutes, roman, curly } from '../domain/programmeStyle'
+import { movementTitles, primeMinutes, roman, curly } from '../domain/programmeStyle'
 import { programmeCreditRows } from '../components/Credits'
 import { liveEvents, liveMatches, venueShort, whatIsOnAt, type LiveConcert } from '../live/live'
 import type { Repo } from '../store/repo'
@@ -229,7 +229,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           <div className={s.asides}>
             {p.whyNow && <div className={s.aside}><h2 className={s.h3}>Why this, now</h2><p>{p.whyNow}</p></div>}
             {p.historicalPlace && <div className={s.aside}><h2 className={s.h3}>Where it sits</h2><p>{p.historicalPlace}</p></div>}
-            {p.howTheyRelate && <div className={s.aside}><h2 className={s.h3}>How they speak to each other</h2><p>{p.howTheyRelate}</p></div>}
+            {p.howTheyRelate && <div className={s.aside}><h2 className={s.h3}>How they connect</h2><p>{p.howTheyRelate}</p></div>}
           </div>
         </Twisty>
       )}
@@ -245,9 +245,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           {i > 0 && <p className={s.fleuron} aria-hidden="true"><span /></p>}
           {/* Each part is named as a programme names its movements: a numeral, then the title. */}
           <h2 className={`${s.sectionHead} ${s.partHead}`}><span className={s.partNumeral}>{roman(i + 1)}</span>{sectionTitle(section)}</h2>
-          <p className={s.sectionGuide}>
-            {partWords(i + 1, p.sections.length)}{ROLE_GUIDE[section.role] ? ` — ${ROLE_GUIDE[section.role]}` : ''}
-          </p>
+          {/* What the part is for; its place ("the second of three") is the numeral's job, and the running order's. */}
+          {ROLE_GUIDE[section.role] && <p className={s.sectionGuide}>{ROLE_GUIDE[section.role].charAt(0).toUpperCase() + ROLE_GUIDE[section.role].slice(1)}</p>}
           {section.note && <p className={s.sectionNote}>{section.note}</p>}
           {items.map((item) => (
             <Fragment key={item.id}>
@@ -612,7 +611,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
         <Headphones size={16} strokeWidth={1.8} aria-hidden="true" />Listen along<span aria-hidden="true">→</span>
       </a>
       {/* What it can follow depends on a recording Spotify has confirmed: without one, the notes and questions still work. */}
-      <span className={s.listenAlongNote}>{playableOf(b, item) ? 'movements, notes and questions as it plays' : 'notes and questions; movements once Spotify has the recording'}</span>
+      <span className={s.listenAlongNote}>{playableOf(b, item) ? 'the movements, notes and questions as it plays' : 'notes and questions to read alongside'}</span>
     </div>
   )
 
@@ -1032,9 +1031,9 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
     return (
       <section aria-label="This week" className={s.whereNext}>
         <h2 className={s.sectionHead}>Looking back</h2>
-        <p className={s.sectionGuide}>This programme’s week is over or set aside; it stays here as it was. A word on how it went still reaches the curator.</p>
+        <p className={s.sectionGuide}>This programme’s week is over or set aside; it stays here as it was. A word on how it landed still reaches the curator.</p>
         <div className={s.nextCard}>
-          <h3 className={s.nextTitle}>Tell the curator how it went</h3>
+          <h3 className={s.nextTitle}>How it landed</h3>
           {feedbackBody}
         </div>
       </section>
@@ -1084,7 +1083,7 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
                   <p className={s.quiet}>{o.pitch}</p>
                   <div className={s.actions}>
                     <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={held}>
-                      {busy === o.id ? 'The curator is building it…' : 'Listen this way instead'}
+                      {busy === o.id ? 'The curator is building it…' : 'Take this direction instead'}
                     </button>
                   </div>
                 </li>
@@ -1100,13 +1099,13 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
         </Twisty>
 
         {b.openPaths.length > 0 && (
-          <Twisty label="A path left open" value={`${b.openPaths.length} from earlier weeks`} open={b.openPaths.some((o) => o.id === busy)}>
+          <Twisty label="Left open" value="from earlier weeks, not taken" open={b.openPaths.some((o) => o.id === busy)}>
             <p className={s.quiet}>Directions from earlier weeks, offered and not taken. Any of them can be this week’s instead.</p>
             <OpenPaths paths={b.openPaths} nowKey={week.key} busy={busy !== null && !b.openPaths.some((o) => o.id === busy)} onTaking={setBusy} keyHint={false} />
           </Twisty>
         )}
 
-        <Twisty label="Tell the curator how it went" value="a sentence shapes the next directions">{feedbackBody}</Twisty>
+        <Twisty label="How it landed" value="a sentence to the curator">{feedbackBody}</Twisty>
 
         <Twisty label="A wish for next week" value="a composer, a mood, a question">
           <p className={s.quiet}>Plant an idea for the next three directions — a composer, a mood, a question.</p>

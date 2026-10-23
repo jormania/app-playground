@@ -178,7 +178,8 @@ export function RecordingBlock({
           ) : spotify.connected && recording ? (
             <button className={s.outlineButton} onClick={check} disabled={busy}>{busy ? 'Looking on Spotify…' : 'Find this recording on Spotify'}</button>
           ) : (
-            <a className={s.outlineButton} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+            // Without Spotify connected, a quiet link: Listen along below is the way in, and it shouldn't sit second to a search.
+            <a className={s.searchLink} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify ↗</a>
           )}
         </div>
       )}

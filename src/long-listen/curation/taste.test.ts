@@ -35,6 +35,30 @@ describe('the taste profile', () => {
     expect(observationsByStance(later)['wary-of']).toHaveLength(0)
   })
 
+  it('gathers lines it makes redundant into one: they retire, their evidence and certainty come with it', () => {
+    const start = applyTasteUpdate(empty, { observations: [
+      obs({ subject: 'Clyne, Prince of Clouds', statement: 'Loved Prince of Clouds.', evidence: ['fb1'], confidence: 'emerging' }),
+      obs({ subject: 'Anna Clyne', statement: 'Clyne draws them in.', evidence: ['fb2'] }),
+      obs({ facet: 'composer', subject: 'Brahms', statement: 'Warm to Brahms.', evidence: ['fb3'] }),
+    ], questions: [], promptVersion: 'v' }, 't1')
+    const [a, b, brahms] = start.observations
+    const merged = applyTasteUpdate(start, { observations: [
+      obs({ facet: 'composer', subject: 'recent concertos', statement: 'Recent concertos with a luminous orchestra, Clyne above all.', evidence: [], absorbs: [a.id, b.id] }),
+    ], questions: [], promptVersion: 'v' }, 't2')
+    const active = merged.observations.filter((o) => !o.supersededBy)
+    expect(active.map((o) => o.statement)).toEqual(['Warm to Brahms.', 'Recent concertos with a luminous orchestra, Clyne above all.'])
+    const fresh = active[1]
+    expect(fresh).toMatchObject({ evidence: ['fb1', 'fb2'], confidence: 'emerging', firstSeen: 't1' })
+    expect(merged.observations.find((o) => o.id === a.id)?.supersededBy).toBe(fresh.id)
+    expect(merged.observations.find((o) => o.id === brahms.id)?.supersededBy).toBeUndefined()
+  })
+
+  it('a correction (replaces) takes the model\'s word on certainty, not the old line\'s', () => {
+    const start = applyTasteUpdate(empty, { observations: [obs({ confidence: 'settled', statement: 'Loves all colour.' })], questions: [], promptVersion: 'v' }, 't1')
+    const later = applyTasteUpdate(start, { observations: [obs({ subject: 'French colour', confidence: 'tentative', statement: 'Colour, but only the French kind.', evidence: ['fb9'], replaces: start.observations[0].id })], questions: [], promptVersion: 'v' }, 't2')
+    expect(later.observations.filter((o) => !o.supersededBy)).toEqual([expect.objectContaining({ confidence: 'tentative', evidence: ['fb9'] })])
+  })
+
   it('keeps the old questions when no new ones come', () => {
     const p = applyTasteUpdate({ ...empty, questions: ['Q'] }, { observations: [], questions: [], promptVersion: 'v' }, 't')
     expect(p.questions).toEqual(['Q'])

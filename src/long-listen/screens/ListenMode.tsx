@@ -364,7 +364,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         to={programmeBackHref(programme.id)}
         label={programme.title}
         // Focus: only the music, for the phone on the armrest. Remembered on this device.
-        aside={<button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>}
+        aside={<button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus} title="Only the music: the movement playing, its note and what to listen for">Just the music</button>}
       />
       <p id={LISTEN_ANCHOR} className={`${s.composer} ${s.listenTop}`}><ComposerLink name={item.proposed.composer} /></p>
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>

@@ -6,7 +6,7 @@ import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { useKept } from '../app/kept'
 import { useFollow } from '../app/follow'
-import { observationsByStance, pendingFeedback } from '../curation/taste'
+import { TASTE_TIDY_ABOVE, observationsByStance, pendingFeedback } from '../curation/taste'
 import { CharCount, Empty, MAX_ASK, MAX_NOTE, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
 import { Twisty } from '../components/Twisty'
 import s from '../styles/editorial.module.css'
@@ -142,18 +142,47 @@ export function NotebookScreen() {
     }
   }
 
+  async function tidyNow() {
+    setReading(true)
+    try { await journey.interpretPendingFeedback({ tidy: true }); say('Gathered.', 'success'); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setReading(false) }
+  }
+
   async function readNow() {
     setReading(true)
     try { if (await journey.interpretPendingFeedback()) say('Read.', 'success'); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setReading(false) }
   }
 
+  const observation = (o: TasteObservation, folded = false) => (
+    <li key={o.id}>
+      {o.statement} {o.confidence !== 'settled' && !folded && <span className={s.faint}>({o.confidence === 'tentative' ? 'a first impression' : 'becoming clearer'})</span>}
+      {/* What it rests on, in the listener's own terms: a reason they can check, not a label. */}
+      {evidenceWords(o, data.said) && <span className={s.observationWhy}>{evidenceWords(o, data.said)}</span>}
+      {data.feedback.some((f) => f.target.type === 'observation' && f.target.id === o.id && !f.interpretedAt)
+        ? <span className={s.observationWhy}>You said this isn’t quite right; the curator will reconsider it.</span>
+        : correcting === o.id ? (
+          <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!sending) void notQuite(o) }}>
+            <label className={s.visuallyHidden} htmlFor={`nq-${o.id}`}>What would be closer?</label>
+            <input id={`nq-${o.id}`} className={s.input} maxLength={MAX_ASK} placeholder="What would be closer? (optional)" value={correction} onChange={(e) => setCorrection(e.target.value)} disabled={sending} autoFocus />
+            <div className={s.actions}>
+              <button type="submit" className={`${s.outlineButton} ${s.smallButton}`} disabled={sending}>{sending ? 'Telling the curator…' : 'Tell the curator'}</button>
+              <button type="button" className={s.textButton} onClick={() => { setCorrecting(null); setCorrection('') }}>Never mind</button>
+            </div>
+          </form>
+        ) : (
+          <>{' '}<button className={`${s.textButton} ${s.quietButton}`} onClick={() => { setCorrecting(o.id); setCorrection('') }}>Not quite</button></>
+        )}
+    </li>
+  )
+
   const empty = Object.values(groups).every((g) => g.length === 0)
+  const active = Object.values(groups).reduce((n, g) => n + g.length, 0)
 
   return (
     <div>
       <p className={s.eyebrow}>Notebook</p>
-      <h1 className={s.title}>Your listening, in words</h1>
-      <p className={s.dek}>What the curator has noticed. Not a score — a few honest sentences, and how sure it is of each.</p>
+      {/* Not "Your listening": on a programme that names a work's heard state. */}
+      <h1 className={s.title}>What the curator has noticed</h1>
+      <p className={s.dek}>Not a score: sentences about your listening, the surer ones first.</p>
 
       {/* What waits to be read comes first: it is what would fill the page. */}
       {data.pending > 0 && (
@@ -165,36 +194,38 @@ export function NotebookScreen() {
           {!curatorReady && <NeedsKey to="have it read" />}
         </>
       )}
+      {/* Grown long, it can be gathered into fewer lines; it also happens by itself with the next reading. */}
+      {active > TASTE_TIDY_ABOVE && data.pending === 0 && curatorReady && (
+        <p className={s.faint}>
+          This has grown long.{' '}
+          <button className={s.textButton} onClick={() => void tidyNow()} disabled={reading}>{reading ? 'Gathering…' : 'Gather it into fewer lines'}</button>
+        </p>
+      )}
       {empty && data.pending === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing yet. A word after a recording — how it landed, what stayed with you — is how this begins.</Empty>}
 
-      {(Object.keys(STANCE_TITLE) as TasteObservation['stance'][]).map((stance) => groups[stance].length > 0 && (
-        <section key={stance} className={s.block}>
-          <h2 className={s.sectionHead}>{STANCE_TITLE[stance]}</h2>
-          <ul className={s.bullets}>
-            {groups[stance].map((o) => (
-              <li key={o.id}>
-                {o.statement} {o.confidence !== 'settled' && <span className={s.faint}>({o.confidence === 'tentative' ? 'a first impression' : 'becoming clearer'})</span>}
-                {/* What it rests on, in the listener's own terms: a reason they can check, not a label. */}
-                {evidenceWords(o, data.said) && <span className={s.observationWhy}>{evidenceWords(o, data.said)}</span>}
-                {data.feedback.some((f) => f.target.type === 'observation' && f.target.id === o.id && !f.interpretedAt)
-                  ? <span className={s.observationWhy}>You said this isn’t quite right; the curator will reconsider it.</span>
-                  : correcting === o.id ? (
-                    <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!sending) void notQuite(o) }}>
-                      <label className={s.visuallyHidden} htmlFor={`nq-${o.id}`}>What would be closer?</label>
-                      <input id={`nq-${o.id}`} className={s.input} maxLength={MAX_ASK} placeholder="What would be closer? (optional)" value={correction} onChange={(e) => setCorrection(e.target.value)} disabled={sending} autoFocus />
-                      <div className={s.actions}>
-                        <button type="submit" className={`${s.outlineButton} ${s.smallButton}`} disabled={sending}>{sending ? 'Telling the curator…' : 'Tell the curator'}</button>
-                        <button type="button" className={s.textButton} onClick={() => { setCorrecting(null); setCorrection('') }}>Never mind</button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>{' '}<button className={`${s.textButton} ${s.quietButton}`} onClick={() => { setCorrecting(o.id); setCorrection('') }}>Not quite</button></>
+      {(Object.keys(STANCE_TITLE) as TasteObservation['stance'][]).map((stance) => {
+        // What the curator is fairly sure of first; single remarks fold beneath it, so the page stays a portrait.
+        const firm = groups[stance].filter((o) => o.confidence !== 'tentative')
+        const first = groups[stance].filter((o) => o.confidence === 'tentative')
+        if (!firm.length && !first.length) return null
+        return (
+          <section key={stance} className={s.block}>
+            <h2 className={s.sectionHead}>{STANCE_TITLE[stance]}</h2>
+            {firm.length > 0
+              ? (
+                <>
+                  <ul className={s.bullets}>{firm.map((o) => observation(o))}</ul>
+                  {first.length > 0 && (
+                    <Twisty label="First impressions" value="from a single remark, not yet sure" open={first.some((o) => o.id === correcting)}>
+                      <ul className={s.bullets}>{first.map((o) => observation(o, true))}</ul>
+                    </Twisty>
                   )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+                </>
+              )
+              : <ul className={s.bullets}>{first.map((o) => observation(o))}</ul>}
+          </section>
+        )
+      })}
 
       {taste.questions.length > 0 && (
         <section className={s.block}>
@@ -239,7 +270,7 @@ export function NotebookScreen() {
 
       <section className={s.block}>
         <h2 className={s.sectionHead}>A note to the curator</h2>
-        <p className={s.sectionGuide}>Anything you’d like it to keep in mind: a composer you’re curious about, music you already know well (so it isn’t offered as new), a mood you’re in. If something above is wrong, say so here. How much music, how widely it ranges, recordings and language are set in <a href={href({ name: 'settings' })}>Settings</a>.</p>
+        <p className={s.sectionGuide}>Anything you’d like it to keep in mind: a composer you’re curious about, music you already know well (so it isn’t offered as new), a mood you’re in. If a line above isn’t right, <em>Not quite</em> beside it says so to that line alone. How much music, how widely it ranges, recordings and language are set in <a href={href({ name: 'settings' })}>Settings</a>.</p>
         <label className={s.visuallyHidden} htmlFor="notes">Note to the curator</label>
         <textarea id="notes" className={s.textarea} maxLength={MAX_NOTE} value={notes} onChange={(e) => setNotes(e.target.value)} />
         <CharCount value={notes} max={MAX_NOTE} />

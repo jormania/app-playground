@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PROFILES, curationReport, runCurationCheck } from './curationCheck'
+import { PROFILES, curationReport, runCurationCheck, speaksToListener } from './curationCheck'
 
 // A stand-in for the API: answers each job with a small valid reply, and the
 // programme once with a broken one first, so a retry shows in the report.
@@ -43,5 +43,15 @@ describe('the curation check', () => {
 
   it('has the four profiles the roadmap names', () => {
     expect(PROFILES.map((p) => p.name)).toEqual(['Narrow and familiar', 'Broad and obscure', 'A returning theme', 'Romanian'])
+  })
+})
+
+describe('speaksToListener', () => {
+  it('counts the items whose reasons address the listener', () => {
+    expect(speaksToListener([
+      { why: 'After the storm you loved in Tapiola.', whyThisRecording: 'Clear.' },
+      { why: 'The founding text of colour.', whyThisRecording: 'Karajan, whose Tapiola you loved.' },
+      { why: 'Young composers.', whyThisRecording: 'Youthful energy.' },
+    ])).toBe(2)
   })
 })

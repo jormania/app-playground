@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { syncToNotion, programmeBlocks, richText, journalProps, checkNotebook, discover, type NotionCall } from './mirror'
+import { syncToNotion, programmeBlocks, richText, journalProps, checkNotebook, discover, furtherBlocks, standInLines, type NotionCall } from './mirror'
 import { Repo, memoryStore } from '../store/repo'
 import type { Programme } from '../domain/types'
 
@@ -100,9 +100,33 @@ describe('the Notion notebook', () => {
     expect((await syncToNotion(n.client, repo, 'page123', '2026-W41')).written).toBe(0)
     expect(n.calls).toHaveLength(0)
 
-    // A week later the journal page's status changes; only that is patched.
+    // A week later the journal page's status changes; only that is patched, and the
+    // week's one look for rows still saying "This week" (none here) is made.
     expect((await syncToNotion(n.client, repo, 'page123', '2026-W42')).written).toBe(1)
-    expect(n.calls.map((c) => `${c.method} ${c.path.split('/')[0]}`)).toEqual(['PATCH pages'])
+    expect(n.calls.map((c) => `${c.method} ${c.path.split('/')[0]}`)).toEqual(['PATCH pages', 'POST databases'])
+    n.calls.length = 0
+    expect((await syncToNotion(n.client, repo, 'page123', '2026-W42')).written).toBe(0)
+    expect(n.calls).toHaveLength(0)
+  })
+
+  it('sets a row still saying "This week" from an earlier week to "Earlier", once a week, and leaves this week\'s alone', async () => {
+    const repo = await seeded()
+    const n = fakeNotion()
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const ours = (await repo.notion.get('programme:prog1'))!.pageId
+    // Notion holds this week's row (tracked) and an orphan from an earlier week that nothing tracks any more.
+    const client: NotionCall = async <T,>(c: any): Promise<T> => {
+      if (c.method === 'POST' && /^databases\/[^/]+\/query$/.test(c.path)) return { results: [{ id: ours.toUpperCase() }, { id: 'old-row' }] } as T
+      return n.client(c)
+    }
+    await repo.marks.delete('notion:settled:2026-W41')
+    n.calls.length = 0
+    expect((await syncToNotion(client, repo, 'page123', '2026-W41')).written).toBe(1)
+    const patched = n.calls.filter((c) => c.method === 'PATCH')
+    expect(patched).toEqual([{ path: 'pages/old-row', method: 'PATCH', body: { properties: { Status: { select: { name: 'Earlier' } } } } }])
+    n.calls.length = 0
+    expect((await syncToNotion(client, repo, 'page123', '2026-W41')).written).toBe(0)
+    expect(n.calls).toHaveLength(0)
   })
 
   it('writes what played "On Spotify instead" to Works & recordings, marked as such', async () => {
@@ -259,5 +283,23 @@ describe('the Notion notebook', () => {
 
   it('marks a set-aside programme as such', () => {
     expect(journalProps(programme, 'T', [], [], true, '2026-W41').Status).toEqual({ select: { name: 'Set aside' } })
+  })
+})
+
+describe('what Spotify played instead, on the programme page', () => {
+  it('is said under its own heading, before the further reading, and only when something played instead', () => {
+    const p = { ...programme, id: 'p9', sections: [{ ...programme.sections[0], items: programme.sections[0].items.map((i) => ({ ...i, id: 'i1' })) }] } as typeof programme
+    const lines = standInLines(p, [{
+      id: 'cmp:p9:i1', workId: 'w1', framing: '', whyBoth: '', origin: 'on-request', standIn: true, createdAt: 'x',
+      perspectives: [
+        { recordingId: 'r1', proposed: p.sections[0].items[0].proposed, character: '' },
+        { recordingId: 'r2', proposed: { composer: 'Claude Debussy', work: 'La mer', conductor: 'Jean Martinon', orchestra: 'Orchestre National de l’ORTF', soloists: [] }, character: '' },
+      ],
+    }])
+    expect(lines).toEqual([`${p.sections[0].items[0].proposed.composer} — ${p.sections[0].items[0].proposed.work}: Jean Martinon · Orchestre National de l’ORTF`])
+    const text = (b: any) => b[b.type]?.rich_text?.map((t: any) => t.text.content).join('') ?? b.type
+    expect(furtherBlocks([], lines).map(text)).toEqual(['divider', 'Heard on Spotify instead', lines[0]])
+    expect(furtherBlocks([], [])).toEqual([])
+    expect(standInLines(p, [])).toEqual([])
   })
 })

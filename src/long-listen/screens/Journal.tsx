@@ -163,9 +163,14 @@ export function JournalScreen() {
                   {others.map((o) => (
                     <li key={o.id}>
                       <span className={s.quiet}>{o.title}</span>{' '}
-                      {OPTION_WORD[o.status] && <span className={s.tag}>{OPTION_WORD[o.status]}</span>}
-                      {/* Left open is an offer still standing: taken from here as from This week. */}
-                      {o.status === 'open' && <>{' '}<OpenPaths paths={[o]} nowKey={week.key} single /></>}
+                      {/* The tag and, for an offer still standing, its action: one group on the right, the action under the tag. */}
+                      {OPTION_WORD[o.status] && (
+                        <span className={s.offeredSide}>
+                          <span className={s.tag}>{OPTION_WORD[o.status]}</span>
+                          {/* Left open is an offer still standing: taken from here as from This week. */}
+                          {o.status === 'open' && <OpenPaths paths={[o]} nowKey={week.key} single />}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>

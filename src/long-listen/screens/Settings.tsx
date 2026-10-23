@@ -80,6 +80,14 @@ function Switch({ label, hint, checked, onChange }: { label: string; hint?: stri
   )
 }
 
+/**
+ * A connection's fields, buttons and how-to: in the open until it works, then folded under one
+ * line, so a page of connections set up months ago reads as three short cards.
+ */
+function Manage({ settled, value, children }: { settled: boolean; value: string; children: React.ReactNode }) {
+  return settled ? <Twisty label="Manage" value={value}>{children}</Twisty> : <>{children}</>
+}
+
 /** The longer how-to, folded away until wanted — folded the way the app folds everything. */
 function Steps({ summary = 'How to set it up', children }: { summary?: string; children: React.ReactNode }) {
   return (
@@ -109,7 +117,7 @@ export function SettingsScreen() {
         New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
       </p>
 
-      <Part title="Your music" intro="The curator follows these above anything it has inferred. A change applies to the next directions; This week offers to rework the current three.">
+      <Part title="Your music" intro="The curator follows these above anything it has inferred. A change applies to the next directions, and the week’s page offers to rework the current three for it.">
         <ExplorationSections />
       </Part>
 
@@ -218,6 +226,7 @@ function ClaudeSection() {
     <Card title="Claude, the curator" status={{ on: Boolean(settings.anthropicKey) || settings.demo, text: settings.anthropicKey ? 'Key added' : settings.demo ? 'Demo' : 'Not set up' }}>
       <p className={s.settingText}>Sonnet writes what needs judgement — the directions, programmes and concert readings; Haiku, at a twentieth of the price, does the short reading and writing around them.</p>
       <SpendLine />
+      <Manage settled={Boolean(settings.anthropicKey) && result?.ok !== false} value="the key, a test, how it was set up">
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.settingsActions}>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={test} disabled={testing || (!settings.anthropicKey && !settings.demo)}>{testing ? 'Testing…' : 'Test the key'}</button>
@@ -228,6 +237,7 @@ function ClaudeSection() {
         <p>At console.anthropic.com → API keys, make a key and paste it above. It stays on this device, like in the other apps here, and goes only to Anthropic, with each request to Claude.</p>
         <p>Best practice: a key made just for this app, in a workspace with a small monthly spend limit — then a lost phone or a leak costs little, and the key can be deleted in the console without touching anything else.</p>
       </Steps>
+      </Manage>
     </Card>
   )
 }
@@ -277,6 +287,7 @@ function SpotifySection() {
       {/* Only before connecting: changed under a live sign-in, it would break the next token refresh. */}
       {!spotify.connected && <CommitField label="Spotify Client ID" value={settings.spotifyClientId} onCommit={(v) => updateSettings({ spotifyClientId: v })} />}
       {renewalDue(renewAt) && <p className={s.settingWarn}>Spotify will ask you to sign in again around {dateWords(renewAt, settings.timeZone)}.</p>}
+      <Manage settled={spotify.connected && !needsReconnect && !renewalDue(renewAt) && result?.ok !== false} value="a test, disconnect, how it was set up">
       <div className={s.settingsActions}>
         {!spotify.connected
           ? <button className={button} onClick={connect}>Connect Spotify</button>
@@ -296,6 +307,7 @@ function SpotifySection() {
         <p className={s.codeBox}>{redirectUriFor()}</p>
         <p>You sign in on Spotify’s own page; this app never sees your password.</p>
       </Steps>
+      </Manage>
     </Card>
   )
 }
@@ -321,6 +333,9 @@ function NotionSection() {
   return (
     <Card title="Notion" status={{ on: Boolean(notion) && !failing, text: notion ? (failing ? 'Not updated' : 'Connected') : 'Not connected' }}>
       <p className={s.settingText}>Your journal and taste, mirrored to Notion as readable pages.</p>
+      {/* One warning at a time: a failed test already says what is wrong. Outside the fold, so it is never folded away. */}
+      {failing && result?.ok !== false && <p className={s.settingWarn}>{notionState.error}</p>}
+      <Manage settled={Boolean(notion) && !failing && result?.ok !== false} value="the token, the page, a test, Update now">
       <CommitField label="Notion integration token" type="password" value={settings.notionToken} placeholder="ntn_…" onCommit={(v) => { updateSettings({ notionToken: v }); setResult(null) }} />
       <CommitField label="Notion page" value={settings.notionPage} placeholder="https://www.notion.so/…" hint="The page that holds (or will hold) the app’s databases." onCommit={(v) => { updateSettings({ notionPage: v }); setResult(null) }} />
       <div className={s.settingsActions}>
@@ -328,11 +343,10 @@ function NotionSection() {
         {notion && <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void syncNotion()} disabled={notionState.syncing}>{notionState.syncing ? 'Updating Notion…' : 'Update Notion now'}</button>}
       </div>
       <ResultLine r={result} />
-      {/* One warning at a time: a failed test already says what is wrong. */}
-      {failing && result?.ok !== false && <p className={s.settingWarn}>{notionState.error}</p>}
       <Steps>
         <p>Duplicate the <a href={STARTER_TEMPLATE_URL} target="_blank" rel="noopener noreferrer">Starter Template</a> (or use any empty page), connect it to your integration (••• → Connections), then paste the integration token and the page’s link above.</p>
       </Steps>
+      </Manage>
     </Card>
   )
 }
@@ -347,7 +361,7 @@ const PREF_OPTIONS = {
 const ERA_HINT: Record<ListenerPreferences['recordingEra'], string> = {
   any: 'The curator chooses freely, from any decade.',
   'historic-welcome': 'Great older recordings welcome, mono included.',
-  'modern-sound': 'Mostly recordings from about 1980 on, with modern sound.',
+  'modern-sound': 'Recordings from about 1980 on, with modern sound; an older one only where no good modern one exists, and said so.',
   'period-practice': 'Historically informed performances, where they exist.',
 }
 

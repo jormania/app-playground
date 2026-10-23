@@ -17,20 +17,20 @@ describe('threadContents', () => {
       ['w3', { id: 'w3', title: '' } as unknown as Work],
     ])
     const events = [{ recordingId: 'r-a', kind: 'heard', at: 'x' }] as unknown as ListeningEvent[]
-    expect(threadContents([{ programme: p }], works, events)).toBe('Sibelius and Nielsen, written between 1915 and 1926 · partly heard')
+    expect(threadContents([{ programme: p }], works, events)).toBe('Sibelius and Nielsen, written between 1915 and 1926 · started')
   })
 
   it('reads a work once across visits, and says nothing for an empty thread', () => {
     const p1 = programme([item('a', 'w1', 'A')])
     const p2 = programme([item('b', 'w1', 'A')])
-    expect(threadContents([{ programme: p1 }, { programme: p2 }], new Map(), [])).toBe('A · not yet heard')
-    expect(threadContents([{ programme: p1 }], new Map(), [{ recordingId: 'r-a', kind: 'heard', at: 'x' }] as unknown as ListeningEvent[])).toBe('A · heard through')
+    expect(threadContents([{ programme: p1 }, { programme: p2 }], new Map(), [])).toBe('A · not started')
+    expect(threadContents([{ programme: p1 }], new Map(), [{ recordingId: 'r-a', kind: 'heard', at: 'x' }] as unknown as ListeningEvent[])).toBe('A · all heard')
     expect(threadContents([], new Map(), [])).toBe('')
   })
 
   it('names three composers at most, then "and others"', () => {
     const p = programme([item('a', 'w1', 'Claude Debussy'), item('b', 'w2', 'Maurice Ravel'), item('c', 'w3', 'Albert Roussel'), item('d', 'w4', 'Henri Dutilleux')])
-    expect(threadContents([{ programme: p }], new Map(), [])).toBe('Debussy, Ravel, Roussel and others · not yet heard')
+    expect(threadContents([{ programme: p }], new Map(), [])).toBe('Debussy, Ravel, Roussel and others · not started')
   })
 
   it('counts a set-aside programme, and its extras, only for what was begun of it (as digestThread does)', () => {
@@ -39,9 +39,9 @@ describe('threadContents', () => {
     const extra = programme([item('d', 'w4', 'D')], 'p3')
     const programmes = new Map([kept, aside, extra].map((p) => [p.id, p]))
     const visits = [visit('v1', 't', '2026-W40', 'p1'), visit('v2', 't', '2026-W41', 'p2', { setAside: true, extraProgrammeIds: ['p3'] })]
-    expect(threadContents(heldBy(visits, programmes), new Map(), [])).toBe('A · not yet heard')
+    expect(threadContents(heldBy(visits, programmes), new Map(), [])).toBe('A · not started')
     const events = [{ recordingId: 'r-b', kind: 'listening', at: 'x' }] as unknown as ListeningEvent[]
-    expect(threadContents(heldBy(visits, programmes), new Map(), events)).toBe('A and B · not yet heard')
+    expect(threadContents(heldBy(visits, programmes), new Map(), events)).toBe('A and B · not started')
   })
 })
 
