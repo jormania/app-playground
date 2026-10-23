@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { listenTargetFor } from './nowListening'
+import { LEFT_FOR_MS, leftPartWay, listenTargetFor } from './nowListening'
 import type { Comparison, Programme, ProgrammeItem, Recording } from './types'
 
 const item = (id: string, recordingId: string, work: string) => ({ id, workId: `w-${id}`, recordingId, proposed: { composer: 'Béla Bartók', work, soloists: [] }, why: '', whyThisRecording: '', listenFor: [] }) as unknown as ProgrammeItem
@@ -28,5 +28,25 @@ describe('the work a Spotify track belongs to (the masthead’s listen along, 23
   it('leads nowhere for music no programme holds', () => {
     expect(listenTargetFor(['elsewhere'], input, '2026-W43')).toBeNull()
     expect(listenTargetFor([undefined], input, '2026-W43')).toBeNull()
+  })
+})
+
+describe('the work left part-way most recently (23 October 2026)', () => {
+  const recordings = [rec('r-gub', ['g1', 'g2']), rec('r-bartok', ['b1']), rec('r-missing'), rec('r-standin', ['s1'])]
+  const programmes = [programme('now', '2026-W43', '2026-10-19', [item('i-gub', 'r-gub', 'Offertorium'), item('i-bartok', 'r-bartok', 'Violin Concerto No. 2'), item('i-miss', 'r-missing', 'Cello Concerto')])]
+  const comparisons = [{ id: 'cmp:now:i-miss', standIn: true, perspectives: [{ recordingId: 'r-missing' }, { recordingId: 'r-standin' }] }] as unknown as Comparison[]
+  const input = { recordings, programmes, comparisons }
+  const NOW = 10 * LEFT_FOR_MS
+
+  it('however it was played: the latest place kept leads there', () => {
+    const places: Record<string, number> = { g1: NOW - 60_000, b1: NOW - 3_600_000 }
+    expect(leftPartWay(input, (ids) => (places[ids[0]] ? { at: places[ids[0]] } : null), NOW)).toMatchObject({ itemId: 'i-gub', work: 'Offertorium' })
+  })
+  it('a stand-in left part-way leads to the work it stood in for', () => {
+    expect(leftPartWay(input, (ids) => (ids[0] === 's1' ? { at: NOW } : null), NOW)).toMatchObject({ itemId: 'i-miss' })
+  })
+  it('nothing left within the last eighteen hours: nothing', () => {
+    expect(leftPartWay(input, () => ({ at: NOW - LEFT_FOR_MS - 1 }), NOW)).toBeNull()
+    expect(leftPartWay(input, () => null, NOW)).toBeNull()
   })
 })

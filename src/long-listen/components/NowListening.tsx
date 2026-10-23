@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useServices } from '../app/services'
 import { usePlayerState, savedPlace } from '../app/playback'
 import { href, type Route } from '../app/router'
-import { lastListen } from '../app/lastListen'
-import { listenTargetFor, type ListenTarget } from '../domain/nowListening'
+import { leftPartWay, listenTargetFor, type ListenTarget } from '../domain/nowListening'
 import { curly } from '../domain/programmeStyle'
 import { displaySurname } from '../domain/identity'
 import s from '../styles/editorial.module.css'
@@ -30,8 +29,8 @@ type Shown = ListenTarget & { how: 'playing' | 'paused' | 'left' }
  * In the masthead, beside the guide and Settings: back to the listening view of
  * the work that is sounding — from any screen, whichever device it plays on and
  * however it was started (the app, the week's playlist, Spotify itself). Paused,
- * it still leads there. With nothing playing, it leads back to the work last
- * listened along to, if it was left part-way. Nothing to return to, or already
+ * it still leads there. With nothing playing, it leads back to the work left
+ * part-way most recently. Nothing to return to, or already
  * there: not shown at all.
  */
 export function NowListening({ route }: { route: Route }) {
@@ -48,10 +47,10 @@ export function NowListening({ route }: { route: Route }) {
       const [recordings, programmes, comparisons] = await Promise.all([repo.recordings.all(), repo.programmes.all(), repo.comparisons.all()])
       const now = np ? listenTargetFor([np.trackId, np.linkedFromId], { recordings, programmes, comparisons }, week.key) : null
       if (now) { if (live) setShown({ ...now, how: playing ? 'playing' : 'paused' }); return }
-      // Nothing of the app's sounding: the work last listened along to, if it was left part-way and is still here.
-      const last = lastListen()
-      const stillHere = last && programmes.some((p) => p.id === last.programmeId && p.sections.some((x) => x.items.some((i) => i.id === last.itemId)))
-      if (live) setShown(last && stillHere && spotify.connected && savedPlace(last.trackIds) ? { ...last, how: 'left' } : null)
+      // Nothing of the app's sounding: the work left part-way most recently, however it was played — the programme's
+      // Resume, the listening view or Spotify itself (it used to need the listening view opened, and missed the rest).
+      const left = spotify.connected ? leftPartWay({ recordings, programmes, comparisons }, (ids) => savedPlace(ids)) : null
+      if (live) setShown(left ? { ...left, how: 'left' } : null)
     })().catch(() => { if (live) setShown(null) })
     return () => { live = false }
     // The track and whether it plays decide it; the store's version brings a newly confirmed recording in.

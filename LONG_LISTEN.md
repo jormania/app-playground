@@ -1318,9 +1318,11 @@ stand-in included (`listenTargetFor`, `domain/nowListening.ts`: this week's prog
 
 - **playing** — in the accent, its arcs breathing in turn (still under `prefers-reduced-motion`);
 - **paused** — muted, same destination;
-- **left part-way** — nothing of the app's sounding, but the listening view last opened (`app/lastListen.ts`,
-  kept eighteen hours) holds a place to resume: muted, "Back to …, where you left it";
+- **left part-way** — nothing of the app's sounding, but a work holds a place kept on this device
+  (`app/place.ts`) from the last eighteen hours, however it was played — the programme's *Resume*, the
+  listening view, Spotify itself (`leftPartWay`): muted, "Back to …, where you left it". (First built from the
+  listening view last opened, which missed a work resumed from the programme page; fixed the same day.)
 - **not shown** — nothing to go back to, music no programme holds, or already on that work's listening view.
 
 It reads the shared player watch, so a screen with no Play button now looks at Spotify too (every 15 s while
-idle and visible). A fresh start or a restore forgets the last listening view.
+idle and visible).
