@@ -306,13 +306,26 @@ export function programmeTextBlocks(p: Programme): unknown[] {
 export const FURTHER_HEADING = 'Further listening and reading'
 
 /** The part of a programme page that changes after it is first written: resources found later. */
-export function furtherBlocks(resources: ResourceLike[]): unknown[] {
-  if (!resources.length) return []
+export function furtherBlocks(resources: ResourceLike[], insteads: string[] = []): unknown[] {
+  // What Spotify played where it lacked the curator's recording: the page's text names the curator's, written
+  // once, so this part — rewritten as it changes — says what was really heard ("Debussy — La mer: Martinon · …").
+  const instead = insteads.length ? [divider(), h3('Heard on Spotify instead'), ...insteads.map((t) => bullet(t))] : []
+  if (!resources.length) return instead
   return [
+    ...instead,
     divider(),
     h2(FURTHER_HEADING),
     ...resources.map((r) => bullet(`${r.kind[0].toUpperCase()}${r.kind.slice(1)} — ${r.title} (${r.source}). ${r.purpose}`, httpUrl(r.url))),
   ]
+}
+
+/** Each work of a programme that was heard through a stand-in, as one line. */
+export function standInLines(p: Programme, comparisons: Comparison[]): string[] {
+  return p.sections.flatMap((sec) => sec.items).flatMap((i) => {
+    const c = comparisons.find((x) => x.standIn && x.id === `cmp:${p.id}:${i.id}`)
+    const played = c?.perspectives[1]?.proposed
+    return played ? [`${i.proposed.composer} — ${i.proposed.work}: ${creditLine(played)}`] : []
+  })
 }
 
 /** Only web links go into Notion. */
@@ -433,27 +446,27 @@ async function legacyFurther(call: NotionCall, pageId: string): Promise<{ anchor
  * changes exactly those blocks are replaced, in place, after the text.
  * Anything the listener wrote on the page in Notion is left alone.
  */
-async function syncProgrammePage(call: NotionCall, repo: Repo, databaseId: string, p: Programme, properties: Record<string, unknown>, resources: ResourceLike[]): Promise<boolean> {
+async function syncProgrammePage(call: NotionCall, repo: Repo, databaseId: string, p: Programme, properties: Record<string, unknown>, resources: ResourceLike[], insteads: string[] = []): Promise<boolean> {
   const key = `programme:${p.id}`
   const state = await repo.notion.get(key)
   try {
-    return await writeProgrammePage(call, repo, databaseId, p, properties, resources, state)
+    return await writeProgrammePage(call, repo, databaseId, p, properties, resources, state, insteads)
   } catch (e) {
     // The listener deleted the page in Notion: write it afresh, text and all,
     // as for a new programme, rather than failing every sync after. The old
     // state is replaced only once the new page exists.
     if (!state || !isGone(e)) throw e
-    return writeProgrammePage(call, repo, databaseId, p, properties, resources, undefined)
+    return writeProgrammePage(call, repo, databaseId, p, properties, resources, undefined, insteads)
   }
 }
 
 async function writeProgrammePage(
   call: NotionCall, repo: Repo, databaseId: string, p: Programme, properties: Record<string, unknown>, resources: ResourceLike[],
-  state: NotionSyncState | undefined,
+  state: NotionSyncState | undefined, insteads: string[] = [],
 ): Promise<boolean> {
   const key = `programme:${p.id}`
   const propsHash = hash(properties)
-  const further = furtherBlocks(resources)
+  const further = furtherBlocks(resources, insteads)
   const bodyHash = hash(further)
   const at = new Date().toISOString()
 
@@ -596,7 +609,7 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
 
   for (const p of programmes.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
     written += Number(await syncProgrammePage(call, repo, dbs.journal, p, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek, standIns),
-      resources.filter((r) => r.programmeId === p.id)))
+      resources.filter((r) => r.programmeId === p.id), standInLines(p, comparisons)))
   }
   // Once a week is enough: a row goes stale only when a week turns. An unchanged notebook still costs no calls.
   if (!(await repo.marks.get(`notion:settled:${currentWeek}`))) {

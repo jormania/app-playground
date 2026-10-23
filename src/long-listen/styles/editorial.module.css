@@ -3077,6 +3077,13 @@
   color: var(--color-muted);
 }
 
+/* On screen the work cards above already name every recording: the list is for paper, where it closes
+   the programme as its credits do. The sign-off line stays on both. */
+@media screen {
+  .colophonHead,
+  .colophonList { display: none; }
+}
+
 @media print {
   .pullQuote { break-inside: avoid; }
   .colophon { break-inside: avoid; }

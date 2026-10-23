@@ -974,7 +974,8 @@ export class Journey {
           title: p.title,
           dek: p.dek,
           theme: theme?.title,
-          works: p.sections.flatMap((s) => s.items).map((i) => ({ composer: i.proposed.composer, title: i.proposed.work })),
+          // With its recording, so a review or note of a performance is matched to the one programmed, or said to differ.
+          works: p.sections.flatMap((s) => s.items).map((i) => ({ composer: i.proposed.composer, title: i.proposed.work, recording: creditLine(i.proposed) })),
         },
       })
       // Like every curator job that writes: nothing kept for a journey cleared meanwhile.

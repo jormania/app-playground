@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { syncToNotion, programmeBlocks, richText, journalProps, checkNotebook, discover, type NotionCall } from './mirror'
+import { syncToNotion, programmeBlocks, richText, journalProps, checkNotebook, discover, furtherBlocks, standInLines, type NotionCall } from './mirror'
 import { Repo, memoryStore } from '../store/repo'
 import type { Programme } from '../domain/types'
 
@@ -283,5 +283,23 @@ describe('the Notion notebook', () => {
 
   it('marks a set-aside programme as such', () => {
     expect(journalProps(programme, 'T', [], [], true, '2026-W41').Status).toEqual({ select: { name: 'Set aside' } })
+  })
+})
+
+describe('what Spotify played instead, on the programme page', () => {
+  it('is said under its own heading, before the further reading, and only when something played instead', () => {
+    const p = { ...programme, id: 'p9', sections: [{ ...programme.sections[0], items: programme.sections[0].items.map((i) => ({ ...i, id: 'i1' })) }] } as typeof programme
+    const lines = standInLines(p, [{
+      id: 'cmp:p9:i1', workId: 'w1', framing: '', whyBoth: '', origin: 'on-request', standIn: true, createdAt: 'x',
+      perspectives: [
+        { recordingId: 'r1', proposed: p.sections[0].items[0].proposed, character: '' },
+        { recordingId: 'r2', proposed: { composer: 'Claude Debussy', work: 'La mer', conductor: 'Jean Martinon', orchestra: 'Orchestre National de l’ORTF', soloists: [] }, character: '' },
+      ],
+    }])
+    expect(lines).toEqual([`${p.sections[0].items[0].proposed.composer} — ${p.sections[0].items[0].proposed.work}: Jean Martinon · Orchestre National de l’ORTF`])
+    const text = (b: any) => b[b.type]?.rich_text?.map((t: any) => t.text.content).join('') ?? b.type
+    expect(furtherBlocks([], lines).map(text)).toEqual(['divider', 'Heard on Spotify instead', lines[0]])
+    expect(furtherBlocks([], [])).toEqual([])
+    expect(standInLines(p, [])).toEqual([])
   })
 })

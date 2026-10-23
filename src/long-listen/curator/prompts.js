@@ -405,7 +405,7 @@ Your job now: the listener wants to hear a work through a second interpretation.
 
 export const RESOURCES = {
   id: 'resources',
-  version: 'resources@2026-10-23.1',
+  version: 'resources@2026-10-23.2',
   effort: 'medium',
   maxTokens: 12000,
   // Three is enough to find a recording note, an article and a talk; each search
@@ -418,6 +418,8 @@ Your job now: find a few genuinely useful things on the web to go with this week
 Use web search. Prefer trustworthy sources: major orchestras and opera houses, universities and conservatoires, music institutions and archives, reputable publications, established classical music organisations, composer estates or official sites. Avoid shops, lyric sites, content farms and AI-written pages.
 
 Choose four to seven resources that serve this particular programme. Every URL must be one that appeared in your search results — never construct or guess a URL.
+
+Spread them across the programme: no more than two about any one work, and favour the works with the most to give a listener rather than the one easiest to find. Each work comes with the recording the programme names ("recording"). A review or note about a particular performance should be about that one; if the best you found is about a different recording, say so plainly in the purpose ("reviews an earlier recording, not this one").
 
 When you are done, reply with ONLY a JSON object, no prose before or after:
 {"resources":[{"kind":"read|watch|listen","title":"…","url":"…","source":"organisation or publication","purpose":"one sentence: what this adds to the listening","relatesTo":"the work or idea it serves"}]}
