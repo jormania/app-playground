@@ -1227,6 +1227,20 @@
   flex: none;
 }
 
+/* The tag with "take it now" under it, kept together and never broken a word a line. */
+.offeredSide {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.offeredSide .inlineButton {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
 /* A small status word set as a tag, for lists (Library, Journal). */
 .tag {
   display: inline-block;
