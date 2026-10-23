@@ -469,9 +469,14 @@ This week (three directions · three others · open paths) → Programme (tools:
 length, playlist, print · sections · recordings · listen-for · marks ·
 feedback · perspectives · more context · resources · change direction) →
 Listening view. Journal (every week: offered, chosen, heard). Library
-(composers → works → recordings, searchable). Threads. Notebook (taste in
-words, how it moved, preferences, a wish for next week, a note). Settings
-(gear) and the guide (book) sit in the masthead.
+(composers → works → recordings, searchable; *Everything · Heard · Recent*),
+with a page per composer (`#/composer/<name>`) and per performer
+(`#/performer/<name>`). Threads. Notebook (taste in words, how it moved,
+preferences, a wish for next week, a note). Concerts (heard live, You're going,
+From your listening) under the Journal; a season in review (`#/season/<n>`).
+Settings (gear) and the guide (book) sit in the masthead, with the listening
+mark beside them when there's a work to go back to (§28). With no key, This
+week is a welcome (§30).
 
 **How the screens are told apart (2026-10-09 visual pass).** One typographic
 system, one accent, no cards — but each section has a shape of its own, drawn
@@ -1301,8 +1306,8 @@ What it changed:
   running order no longer adds "· 3 heard" (the state tags already say it). Inventory words that aren't
   progress (the week's number of works, "2 so far" on a fold) stay, as §10 allows.
 - **Names lead to the Library.** Every performer's name — the programme, the listening view, the Library,
-  concerts — opens the Library searched for them (`PerformerName`, `keepAhead`); tapped on the Library itself,
-  the search changes in place.
+  concerts — opened the Library searched for them. *Superseded in batch three (§30): a name now opens the
+  performer's own page, and `keepAhead` is gone.*
 - **The season's "worth hearing again"** opens each work's latest listening view.
 - **The Notebook can be corrected, and says why.** Each observation says what it rests on ("From what you
   said of Sibelius's Tapiola and Debussy's La mer", from its evidence ids). *Not quite* takes an optional line
