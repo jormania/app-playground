@@ -46,13 +46,20 @@ export async function askClaude(key: string, ask: Ask, options: { signal?: Abort
 
 export type KeyCheck = 'ok' | 'bad-key' | 'no-credit' | 'limited' | 'busy' | 'offline' | 'error'
 
-/** One tiny request, to say whether the key works: Settings' "Test". */
-export async function testAiKey(key: string, fetchImpl?: typeof fetch): Promise<KeyCheck> {
+/** How long the key's test waits for an answer; the coach's note and the others set their own. */
+export const KEY_TEST_TIMEOUT_MS = 20_000
+
+/** One tiny request, to say whether the key works: Settings' "Test". No answer in time reads as offline. */
+export async function testAiKey(key: string, fetchImpl?: typeof fetch, timeoutMs = KEY_TEST_TIMEOUT_MS): Promise<KeyCheck> {
   let res: Response
+  const abort = new AbortController()
+  const timer = setTimeout(() => abort.abort(), timeoutMs)
   try {
-    res = await requestAnthropic(key.trim(), { model: MODEL_HAIKU, max_tokens: 1, ...noThinking(MODEL_HAIKU), messages: [{ role: 'user', content: 'Hi' }] }, { fetchImpl })
+    res = await requestAnthropic(key.trim(), { model: MODEL_HAIKU, max_tokens: 1, ...noThinking(MODEL_HAIKU), messages: [{ role: 'user', content: 'Hi' }] }, { fetchImpl, signal: abort.signal })
   } catch {
     return 'offline'
+  } finally {
+    clearTimeout(timer)
   }
   if (res.ok) return 'ok'
   if (res.status === 401 || res.status === 403) return 'bad-key'

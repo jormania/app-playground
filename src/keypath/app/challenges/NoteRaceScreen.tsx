@@ -146,6 +146,7 @@ export function NoteRaceScreen() {
             <div className={con.settings}>
               <Setting icon={Eye}>
                 <SegmentedControl
+                  wrap
                   size="sm"
                   label={t('raceShow')}
                   value={mode}
@@ -158,6 +159,7 @@ export function NoteRaceScreen() {
               </Setting>
               <Setting icon={BarChart3}>
                 <SegmentedControl
+                  wrap
                   size="sm"
                   label={t('level')}
                   value={String(level)}

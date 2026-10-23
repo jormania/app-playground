@@ -23,6 +23,15 @@ export type Route =
 
 const DOORS: readonly Door[] = ['songs', 'journey', 'challenges', 'studio']
 
+/** decodeURIComponent, but a broken escape (`%E0`) is kept as written instead of throwing. */
+const decode = (s: string) => {
+  try {
+    return decodeURIComponent(s)
+  } catch {
+    return s
+  }
+}
+
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, '')
   const [head, arg] = path.split('/')
@@ -37,13 +46,13 @@ export function parseRoute(hash: string): Route {
     case 'songs':
       return arg === 'import' ? { name: 'songImport' } : { name: 'door', door: 'songs' }
     case 'studio':
-      return arg ? { name: 'studio', songId: decodeURIComponent(arg) } : { name: 'door', door: 'studio' }
+      return arg ? { name: 'studio', songId: decode(arg) } : { name: 'door', door: 'studio' }
     case 'challenge':
       return arg === 'race' || arg === 'echo' || arg === 'chord' || arg === 'ear' || arg === 'read' ? { name: 'challenge', game: arg } : { name: 'door', door: 'challenges' }
     case 'journey':
-      return arg ? { name: 'journeyStep', step: decodeURIComponent(arg) } : { name: 'door', door: 'journey' }
+      return arg ? { name: 'journeyStep', step: decode(arg) } : { name: 'door', door: 'journey' }
     case 'play':
-      return arg ? { name: 'play', songId: decodeURIComponent(arg) } : { name: 'door', door: 'songs' }
+      return arg ? { name: 'play', songId: decode(arg) } : { name: 'door', door: 'songs' }
     case 'door':
       return DOORS.includes(arg as Door) ? { name: 'door', door: arg as Door } : { name: 'home' }
     default:

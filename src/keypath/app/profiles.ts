@@ -69,6 +69,31 @@ export const DEFAULT_PROFILE_SETTINGS: ProfileSettings = {
   coach: true,
 }
 
+const ONE_OF = {
+  language: ['en', 'ro'],
+  noteNames: ['auto', 'letters', 'solfege', 'both'],
+  onWrong: ['keepGoing', 'show', 'wait'],
+  timing: ['relaxed', 'normal', 'strict'],
+  report: ['off', 'short', 'detailed'],
+} as const satisfies Partial<Record<keyof ProfileSettings, readonly string[]>>
+
+/**
+ * A player's settings as stored, made whole: a setting added in a later
+ * version gets its default, and a value that isn't one of its own (a damaged
+ * or hand-edited backup, a choice a later version retired) is the default
+ * too. An unknown language would otherwise leave every screen without words.
+ */
+export function normaliseSettings(stored: unknown): ProfileSettings {
+  const s = stored && typeof stored === 'object' && !Array.isArray(stored) ? (stored as Record<string, unknown>) : {}
+  const out: Record<string, unknown> = { ...DEFAULT_PROFILE_SETTINGS }
+  for (const [key, fallback] of Object.entries(DEFAULT_PROFILE_SETTINGS)) {
+    const v = s[key]
+    const allowed = (ONE_OF as Record<string, readonly string[]>)[key]
+    if (allowed ? typeof v === 'string' && allowed.includes(v) : typeof v === typeof fallback) out[key] = v
+  }
+  return out as unknown as ProfileSettings
+}
+
 /** Picked when creating a profile — a face, not a photo. */
 export const AVATARS = ['🐺', '🦊', '🦉', '🐱', '🐢', '🦄', '🐸', '🐼', '🐙', '🦋'] as const
 
@@ -137,8 +162,7 @@ export class ProfileRepo {
   }
 
   async settings(profileId: string): Promise<ProfileSettings> {
-    // Merge over the defaults so a setting added in a later version has a value.
-    return { ...DEFAULT_PROFILE_SETTINGS, ...((await this.store.get<Partial<ProfileSettings>>(K.settings(profileId))) ?? {}) }
+    return normaliseSettings(await this.store.get<unknown>(K.settings(profileId)))
   }
 
   /**
@@ -160,5 +184,14 @@ export class ProfileRepo {
 
   async saveSettings(profileId: string, settings: ProfileSettings): Promise<void> {
     await this.store.set(K.settings(profileId), settings)
+  }
+
+  /** Change a player's settings from what is stored at that moment, one change at a time. Returns them as saved. */
+  updateSettings(profileId: string, change: (current: ProfileSettings) => ProfileSettings): Promise<ProfileSettings> {
+    return exclusive(this.store, K.settings(profileId), async () => {
+      const next = normaliseSettings(change(await this.settings(profileId)))
+      await this.store.set(K.settings(profileId), next)
+      return next
+    })
   }
 }

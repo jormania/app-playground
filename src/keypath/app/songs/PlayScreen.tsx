@@ -928,6 +928,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             {hasLeft && (
               <Setting icon={HandIcon}>
                 <SegmentedControl
+                  wrap
                   size="sm"
                   label={t('hands')}
                   value={practice}
@@ -959,6 +960,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
                 </div>
                 {mate && duo && (
                   <SegmentedControl
+                    wrap
                     size="sm"
                     label={t('together')}
                     value={duo.mine}
@@ -992,10 +994,11 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               </Setting>
             )}
             <Setting icon={Gauge}>
-              <SegmentedControl size="sm" label={t('speed')} value={speed} onChange={(v) => choose({ speed: v as Speed })} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
+              <SegmentedControl wrap size="sm" label={t('speed')} value={speed} onChange={(v) => choose({ speed: v as Speed })} options={SPEEDS.map((s) => ({ value: s, label: `${Math.round(Number(s) * 100)}%` }))} />
             </Setting>
             <Setting icon={ListMusic}>
               <SegmentedControl
+                wrap
                 size="sm"
                 label={t('notesView')}
                 value={view}

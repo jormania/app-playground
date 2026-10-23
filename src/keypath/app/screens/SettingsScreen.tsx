@@ -287,6 +287,7 @@ export function SettingsScreen() {
       <Section title={t('settingsNames')}>
         <Row label={t('language')}>
           <SegmentedControl
+            wrap
             value={settings.language}
             onChange={set('language') as (v: string) => void}
             options={[
@@ -297,6 +298,7 @@ export function SettingsScreen() {
         </Row>
         <Row label={t('noteNames')} hint={t('noteNamesHint')}>
           <SegmentedControl
+            wrap
             size="sm"
             value={settings.noteNames}
             onChange={set('noteNames')}
@@ -318,6 +320,7 @@ export function SettingsScreen() {
       <Section title={t('settingsPlaying')}>
         <Row label={t('onWrong')} hint={t('onWrongHint')}>
           <SegmentedControl
+            wrap
             size="sm"
             value={settings.onWrong}
             onChange={set('onWrong')}
@@ -330,6 +333,7 @@ export function SettingsScreen() {
         </Row>
         <Row label={t('timing')} hint={t('timingHint')}>
           <SegmentedControl
+            wrap
             size="sm"
             value={settings.timing}
             onChange={set('timing')}
@@ -348,6 +352,7 @@ export function SettingsScreen() {
         />
         <Row label={t('report')} hint={t('reportHint')}>
           <SegmentedControl
+            wrap
             size="sm"
             value={settings.report}
             onChange={set('report')}

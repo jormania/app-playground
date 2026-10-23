@@ -5,7 +5,7 @@ import type { JourneyProgress } from '../journey/progress'
 import type { LogRecord } from '../log'
 import { localDate } from '../progress/summary'
 import { tryNext } from '../songs/level'
-import { K, type KeyValueStore } from '../store'
+import { exclusive, K, type KeyValueStore } from '../store'
 
 // Today (KEYPATH_TUTOR.md §10, "Learning curve", slice 3): four small things
 // for about five minutes: a warm-up, a song (or its next part), a Journey
@@ -84,11 +84,16 @@ export function isDone(item: TodayItem, records: readonly LogRecord[], date: str
   })
 }
 
-/** Today's plan for this player: the one made earlier today, or a new one. */
-export async function todayFor(store: KeyValueStore, profileId: string, make: () => TodayPlan, date: string): Promise<TodayPlan> {
-  const kept = await store.get<TodayPlan>(K.today(profileId))
-  if (kept?.date === date) return kept
-  const plan = make()
-  await store.set(K.today(profileId), plan)
-  return plan
+/**
+ * Today's plan for this player: the one made earlier today, or a new one.
+ * Made once: two asks at once (Home opening twice) both get the plan kept.
+ */
+export function todayFor(store: KeyValueStore, profileId: string, make: () => TodayPlan, date: string): Promise<TodayPlan> {
+  return exclusive(store, K.today(profileId), async () => {
+    const kept = await store.get<TodayPlan>(K.today(profileId))
+    if (kept?.date === date) return kept
+    const plan = make()
+    await store.set(K.today(profileId), plan)
+    return plan
+  })
 }

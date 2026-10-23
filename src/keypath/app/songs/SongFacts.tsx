@@ -42,7 +42,7 @@ export function LevelPick({ level, rated, onChange }: { level: Level; rated: Lev
   return (
     <div className={styles.levelPick}>
       <span className={styles.levelPickLabel}>{t('level')}</span>
-      <SegmentedControl size="sm" value={String(level)} onChange={(v) => onChange(Number(v) as Level)} options={([1, 2, 3] as const).map((l) => ({ value: String(l), label: t(LEVEL_NAME[l]) }))} />
+      <SegmentedControl wrap size="sm" value={String(level)} onChange={(v) => onChange(Number(v) as Level)} options={([1, 2, 3] as const).map((l) => ({ value: String(l), label: t(LEVEL_NAME[l]) }))} />
       <p className={styles.hint}>{t('levelRated', { level: t(LEVEL_NAME[rated]) })}</p>
     </div>
   )
@@ -55,6 +55,7 @@ export function EasyPick({ easy, suggested, onChange }: { easy: boolean; suggest
     <div className={styles.levelPick}>
       <span className={styles.levelPickLabel}>{t('easyTitle')}</span>
       <SegmentedControl
+        wrap
         size="sm"
         value={easy ? 'easy' : 'written'}
         onChange={(v) => onChange(v === 'easy')}

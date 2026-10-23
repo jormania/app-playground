@@ -102,7 +102,7 @@ export function ProgressScreen() {
     <main className={styles.screen}>
       <TopBar title={t('progress')} />
       {players.length > 1 && (
-        <SegmentedControl size="sm" value={who ?? ''} onChange={setWho} options={players.map((p) => ({ value: p.id, label: `${p.avatar} ${p.name}` }))} />
+        <SegmentedControl wrap size="sm" value={who ?? ''} onChange={setWho} options={players.map((p) => ({ value: p.id, label: `${p.avatar} ${p.name}` }))} />
       )}
 
       {data && s && s.sessions === 0 && <p className={styles.hint}>{t('pNoData', { name: data.profile.name })}</p>}

@@ -34,6 +34,10 @@ describe('translations', () => {
     expect(translate('en', 'hello', { name: 'Nora' })).toBe('Hi, Nora!')
     expect(translate('ro', 'hello', { name: 'Nora' })).toBe('Salut, Nora!')
   })
+
+  it('falls back to English for a language it doesn’t know, rather than throwing', () => {
+    expect(translate('fr' as 'en', 'hello', { name: 'Nora' })).toBe('Hi, Nora!')
+  })
 })
 
 describe('noteLabel', () => {

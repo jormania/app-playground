@@ -433,7 +433,7 @@ export const ro: Record<StringKey, string> = {
   echoLevel3: 'Pe contratimp',
   best: 'Record: {score}',
   noBest: 'Încă niciun scor',
-  go: 'Start',
+  go: 'Începe',
   raceFind: 'Găsește',
   raceScore: '{score} găsite',
   raceDone: '{score} găsite în 30 de secunde!',

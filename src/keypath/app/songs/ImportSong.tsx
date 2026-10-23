@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Button, Field } from '../../../ds'
 import { SelectField } from '../../../ds/components/SelectField'
 import { useApp } from '../context'
+import { useOnce } from '../useOnce'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
 import { SPLIT_RANGE, type FitMode } from '../../engine'
@@ -54,13 +55,14 @@ export function ImportSong() {
   // are offered their choices while the parts are still being chosen.
   const preview = useMemo(() => (draft?.right ? buildImport(draft, title, fit, easy) : null), [draft, title, fit, easy])
 
-  const save = async () => {
+  const once = useOnce()
+  const save = once(async () => {
     if (!preview) return
     // A chosen level is kept only when it differs from the rating, so the rating stays live otherwise.
     await library.add(level !== null && level !== rated ? { ...preview.song, level } : preview.song)
     if (profile) await log.add(profile.id, { type: 'song_added' })
     navigate({ name: 'play', songId: preview.song.id }, { replace: true })
-  }
+  })
 
   const rated = preview ? ratedLevel(preview.song) : 1
 

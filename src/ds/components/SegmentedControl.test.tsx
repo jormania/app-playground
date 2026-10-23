@@ -18,6 +18,13 @@ describe('SegmentedControl', () => {
     expect(screen.getByRole('radiogroup', { name: 'Speed' })).toBeTruthy()
   })
 
+  it('wraps rather than scrolls when asked, and scrolls by default', () => {
+    const { container, rerender } = render(<SegmentedControl options={OPTIONS} value="work" onChange={() => {}} />)
+    const plain = container.querySelector('[role="radiogroup"]')!.className
+    rerender(<SegmentedControl options={OPTIONS} value="work" onChange={() => {}} wrap />)
+    expect(container.querySelector('[role="radiogroup"]')!.className).not.toBe(plain)
+  })
+
   it('renders every option', () => {
     render(<SegmentedControl options={OPTIONS} value="work" onChange={() => {}} />)
     expect(screen.getByRole('radio', { name: 'Prep' })).toBeTruthy()

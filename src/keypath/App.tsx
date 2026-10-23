@@ -191,6 +191,7 @@ export default function App() {
           <p className={styles.sub}>MIDI probe · PSR-E383 → {env?.model ?? 'Android phone'}</p>
         </div>
         <SegmentedControl
+          wrap
           size="sm"
           value={snap.sourceKind}
           onChange={switchSource}

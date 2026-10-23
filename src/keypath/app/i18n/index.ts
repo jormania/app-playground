@@ -26,8 +26,9 @@ export function pluralIndex(lang: Language, n: number): number {
  * Falls back to English, then to the key.
  */
 export function translate(lang: Language, key: StringKey, vars: Record<string, string | number> = {}): string {
-  const template = catalogs[lang][key] ?? en[key] ?? key
-  const catalogLang: Language = catalogs[lang][key] ? lang : 'en'
+  const catalog = catalogs[lang] ?? catalogs.en
+  const template = catalog[key] ?? en[key] ?? key
+  const catalogLang: Language = catalogs[lang]?.[key] ? lang : 'en'
   return template
     .replace(/\{(\w+)\|([^}]*)\}/g, (m, name: string, forms: string) => {
       if (!(name in vars)) return m

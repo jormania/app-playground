@@ -437,7 +437,7 @@ export const en = {
   raceDone: '{score} found in 30 seconds!',
   raceNone: 'None found this time. Have another go!',
   newBest: 'A new best!',
-  raceWrong: 'Keys that weren’t it: {count}',
+  raceWrong: 'Wrong keys: {count}',
   raceKeysHidden: 'The keys on screen have no names in this game: finding them is the game.',
   raceShow: 'Show the note',
   raceModeNames: 'By name',

@@ -1100,6 +1100,51 @@ bottom edge (scroll to it; folded, it all fits; the old setup was worse there). 
 the keys gives up some room on short phones before a song (`.stage[data-setup]`), which is what
 keeps the folded case on screen. Paused mid-song stays the slim band over the music it was.
 
+### Audit, Long Listen style (2026-10-23)
+
+The same method as Long Listen's audits (LONG_LISTEN.md §15–§31): each area read on its own,
+only a defect reproduced or traced to its line is reported, then all of it fixed, with a
+regression test for each. Areas: settings and storage, backup, the router, players, saving
+taps, Claude, the service worker, the words, and every screen at 320–915 px in both languages
+and both themes.
+
+- *A setting outside its own values broke the app* (`profiles.ts`, `i18n/index.ts`): settings
+  were read as stored and only gaps filled, so a damaged or hand-edited backup with
+  `language: 'fr'` left every screen without words (the translator threw). `normaliseSettings`
+  now keeps a value only if it is one of its own (or, for a switch, the right type) and takes
+  the default otherwise; the translator falls back to English rather than throwing.
+- *A setting changed in one tab undid another tab's* (`Shell.tsx`): a change was merged into the
+  copy this screen loaded and written whole. `ProfileRepo.updateSettings` merges it into what is
+  stored now, one change at a time.
+- *A backup could hold the wrong shape under a key and go in* (`backup.ts`): only the player list
+  and logs were checked. Every key KeyPath keeps now has its shape (songs with notes, today's plan
+  with items, settings and progress as objects, and so on); keys a later version keeps still go in.
+- *A double tap saved twice* (`useOnce.ts`): creating a player, adding a song, keeping a take and
+  learning an answer in the Studio each made two on a quick second tap. One guard per screen
+  lets the second tap go while the first is saving.
+- *A link with a broken escape threw* (`router.ts`): `#/play/%E0` crashed the screen; it is
+  read as written.
+- *The Studio's phone-wide choices* (count-in, Keyboard / Phone) were read back unchecked; a value
+  that isn't one of theirs is the default now.
+- *Testing a Claude key could wait for ever* (`ai.ts`): the only request without a time limit;
+  it gives up after 20 s and says offline, like the coach and the notes.
+- *The worker's cache only grew* (`keypath-sw.js`): every build's hashed files stayed. It keeps
+  200 entries, oldest out first.
+- *Today's plan made twice* (`today.ts`): two asks at once on a new day each made a plan and the
+  last write won, so one screen could show a plan nobody kept. It is made once.
+- *Options hidden or the page wider than the phone*: at 320 px the Songs filters pushed the
+  page 39 px sideways (49 px in Romanian), and Settings' Note names and On a wrong note hid an
+  option off the end of their track. `SegmentedControl` gained `wrap`: words take two lines,
+  then options take a second row, and nothing scrolls. Every KeyPath segmented control uses it
+  (`segmented-wrap.test.js` fails on one that doesn't).
+- *One word for each thing*: Note race's "Keys that weren’t it" is "Wrong keys", as in Ear
+  training; Romanian *Start* is *Începe* everywhere.
+
+Checked and left: the weekly note on a player switch is right (keyed by player); the coach and
+the notes already had time limits; "Connect" on the setup screens reads 4 px wider than its box
+only because of its larger tap area. A sweep of every screen above, after the fixes: no sideways
+scroll, no hidden option, no page or console error.
+
 ### Loop a stretch of bars (2026-10-04, roadmap item 26)
 
 "Practise one bar" on a song's setup is now **Practise a few bars**: two steppers, *Bars 5 to 7*,

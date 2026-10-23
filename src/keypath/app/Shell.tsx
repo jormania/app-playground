@@ -136,10 +136,12 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
     t: (key, vars) => translate(settings.language, key, vars),
     updateSetting: async (key, value) => {
       if (!profile) return
-      const next = { ...settings, [key]: value }
       const from = settings[key]
+      setSettings((s) => ({ ...s, [key]: value }))
+      // Merged into the settings as stored now: KeyPath open twice (the installed app and a
+      // browser tab) would otherwise undo one window's change from the other's older copy.
+      const next = await profiles.updateSettings(profile.id, (s) => ({ ...s, [key]: value }))
       setSettings(next)
-      await profiles.saveSettings(profile.id, next)
       await log.add(profile.id, { type: 'setting_changed', key, from, to: value })
     },
     choose: async (p) => {

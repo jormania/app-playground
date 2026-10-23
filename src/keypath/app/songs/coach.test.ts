@@ -120,6 +120,9 @@ describe('the key', () => {
         throw new TypeError('offline')
       })),
     ).toBe('offline')
+    // A request that never answers is given up on, and reads as offline.
+    const never = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))))
+    expect(await testAiKey('k', never as unknown as typeof fetch, 20)).toBe('offline')
     const one = status(200)
     await testAiKey(' sk-ant-x ', one)
     const body = JSON.parse((one.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)

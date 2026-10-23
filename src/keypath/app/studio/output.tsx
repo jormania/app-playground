@@ -37,7 +37,7 @@ export function useOutput(kb: KeyboardStatus): Output {
   const { store } = useApp()
   const [via, setVia] = useState<Via>('keyboard')
   useEffect(() => {
-    void store.get<Via>(VIA_KEY).then((v) => v && setVia(v))
+    void store.get<Via>(VIA_KEY).then((v) => (v === 'keyboard' || v === 'phone') && setVia(v))
   }, [store])
   const choose = useCallback(
     (v: Via) => {
@@ -65,6 +65,7 @@ export function OutputChoice({ output, label, phoneOnly }: { output: Output; lab
       {output.canSend ? (
         <Setting icon={Volume2}>
           <SegmentedControl
+            wrap
             size="sm"
             label={label}
             value={output.via}

@@ -10,6 +10,18 @@ const CACHE = 'keypath-cache-v1';
 // Cache Storage is origin-wide and every app here shares one origin: activate only
 // ever deletes this worker's own older caches, never another app's.
 const CACHE_PREFIX = 'keypath-cache-';
+// Every release brings files with new names and the cache's own name never changes, so
+// without a bound it grows by each release's files for good (and a phone that agreed to
+// keep KeyPath's storage never clears it). A file in use is put back on every visit online,
+// which moves it to the end, so trimming from the front lets go of old releases' files first.
+// A release is a few dozen files; this keeps several.
+const MAX_ENTRIES = 200;
+function trim(cache) {
+  return cache.keys().then(function (keys) {
+    var extra = keys.length - MAX_ENTRIES;
+    return extra > 0 ? Promise.all(keys.slice(0, extra).map(function (k) { return cache.delete(k); })) : undefined;
+  });
+}
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -49,7 +61,7 @@ self.addEventListener('fetch', function (e) {
     caches.open(CACHE).then(function (cache) {
       return cache.match(req).then(function (cached) {
         var network = fetch(req).then(function (res) {
-          if (res && res.status === 200 && res.type === 'basic') cache.put(req, res.clone());
+          if (res && res.status === 200 && res.type === 'basic') cache.put(req, res.clone()).then(function () { return trim(cache); }).catch(function () {});
           return res;
         }).catch(function () { return cached; });
         return cached || network;

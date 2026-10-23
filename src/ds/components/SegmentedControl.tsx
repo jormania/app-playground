@@ -15,6 +15,12 @@ export interface SegmentedControlProps {
   className?: string
   /** The group's accessible name, for when no visible label names it. */
   label?: string
+  /**
+   * Where the options don't fit, let their words take two lines instead of
+   * scrolling the track sideways (which hides an option without saying so)
+   * or pushing the page wider. Off by default: the track scrolls, as before.
+   */
+  wrap?: boolean
 }
 
 /** A compact multi-option toggle: a track holding N buttons, one active. */
@@ -26,10 +32,11 @@ export function SegmentedControl({
   disabled = false,
   className,
   label,
+  wrap = false,
 }: SegmentedControlProps) {
   return (
     <div
-      className={cx(styles.track, styles[size], disabled && styles.disabled, className)}
+      className={cx(styles.track, styles[size], wrap && styles.wrap, disabled && styles.disabled, className)}
       role="radiogroup"
       aria-label={label}
       aria-disabled={disabled || undefined}

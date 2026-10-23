@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { backupDue, BackupError, exportBackup, markBackedUp, restoreBackup } from './backup'
 import { EngagementLog } from './log'
-import { DEFAULT_PROFILE_SETTINGS, ProfileRepo } from './profiles'
+import { DEFAULT_PROFILE_SETTINGS, normaliseSettings, ProfileRepo } from './profiles'
 import { exclusive, K, PREFIX, memoryStore, update } from './store'
 import { TakeRepo } from './studio/takes'
 import { markSeen, seenStickers } from './screens/stickers'
@@ -62,6 +62,31 @@ describe('ProfileRepo', () => {
     const p = await repo.create('A', '🦊')
     await store.set(K.settings(p.id), { language: 'ro' }) // an older version's shape
     expect(await repo.settings(p.id)).toEqual({ ...DEFAULT_PROFILE_SETTINGS, language: 'ro' })
+  })
+
+  it('reads a value that isn’t one of its own as the default: an unknown language, a retired choice, a wrong type', async () => {
+    const store = memoryStore()
+    const repo = new ProfileRepo(store)
+    const p = await repo.create('A', '🦊')
+    await store.set(K.settings(p.id), { language: 'fr', onWrong: 'explode', fingers: 'yes', noteNames: 'solfege' })
+    expect(await repo.settings(p.id)).toEqual({ ...DEFAULT_PROFILE_SETTINGS, noteNames: 'solfege' })
+    expect(normaliseSettings(null)).toEqual(DEFAULT_PROFILE_SETTINGS)
+    expect(normaliseSettings([1, 2])).toEqual(DEFAULT_PROFILE_SETTINGS)
+  })
+
+  it('merges a change into what is stored now, not a copy read earlier', async () => {
+    const store = memoryStore()
+    const repo = new ProfileRepo(store)
+    const p = await repo.create('A', '🦊')
+    // Another tab changed the language after this one read its settings.
+    await store.set(K.settings(p.id), { ...DEFAULT_PROFILE_SETTINGS, language: 'ro' })
+    const [a, b] = await Promise.all([
+      repo.updateSettings(p.id, (s) => ({ ...s, fingers: false })),
+      repo.updateSettings(p.id, (s) => ({ ...s, score: true })),
+    ])
+    expect(a.language).toBe('ro')
+    expect(b).toMatchObject({ language: 'ro', fingers: false, score: true })
+    expect(await repo.settings(p.id)).toEqual(b)
   })
 
   it('refuses a player with no name', async () => {
@@ -161,6 +186,25 @@ describe('backup: restore keeps the phone safe', () => {
     expect(JSON.stringify(await exportBackup(store, new Date(0)))).toBe(before)
   })
 
+  it('refuses a backup with the wrong shape under any key KeyPath keeps, and changes nothing', async () => {
+    const { store, nora, before } = await setup()
+    const bad = [
+      { [`${PREFIX}songs`]: { id: 'import:x' } },
+      { [`${PREFIX}songs`]: [{ id: 'import:x' }] },
+      { [K.current]: 7 },
+      { [K.log(nora.id)]: { type: 'session_start' } },
+      { [K.settings(nora.id)]: 'ro' },
+      { [K.today(nora.id)]: { date: '2026-10-23' } },
+      { [K.keyboard]: [] },
+    ]
+    for (const data of bad) {
+      await expect(restoreBackup(store, JSON.stringify({ keypathBackup: 1, exportedAt: '', data }))).rejects.toMatchObject({ reason: 'damaged' })
+    }
+    expect(JSON.stringify(await exportBackup(store, new Date(0)))).toBe(before)
+    // A key a later version keeps is let through.
+    expect(await restoreBackup(store, JSON.stringify({ keypathBackup: 1, exportedAt: '', data: { [`${PREFIX}later`]: 42 } }))).toBe(1)
+  })
+
   it('puts back what was there when the phone refuses a write part way, rather than leaving it empty', async () => {
     const { store, nora, before } = await setup()
     const other = memoryStore()
@@ -251,5 +295,10 @@ describe('router', () => {
     expect(parseRoute(hrefOf({ name: 'progress' }))).toEqual({ name: 'progress' })
     expect(parseRoute(hrefOf({ name: 'studio', songId: 'starter:ode' }))).toEqual({ name: 'studio', songId: 'starter:ode' })
     expect(parseRoute(hrefOf({ name: 'journeyStep', step: 'chord' }))).toEqual({ name: 'journeyStep', step: 'chord' })
+  })
+
+  it('reads a link with a broken escape as written, rather than throwing', () => {
+    expect(parseRoute('#/play/import%E0x')).toEqual({ name: 'play', songId: 'import%E0x' })
+    expect(parseRoute('#/studio/%')).toEqual({ name: 'studio', songId: '%' })
   })
 })

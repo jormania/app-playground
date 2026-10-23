@@ -73,4 +73,13 @@ describe('Today', () => {
     await todayFor(store, 'p', make('2026-09-26'), '2026-09-26')
     expect(made).toBe(2)
   })
+
+  it('makes one plan when asked twice at once', async () => {
+    const store = memoryStore()
+    let made = 0
+    const make = () => (made++, planToday([], {}, songs, '2026-09-25'))
+    const [a, b] = await Promise.all([todayFor(store, 'p', make, '2026-09-25'), todayFor(store, 'p', make, '2026-09-25')])
+    expect(made).toBe(1)
+    expect(b).toEqual(a)
+  })
 })

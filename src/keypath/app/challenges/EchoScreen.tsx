@@ -221,6 +221,7 @@ export function EchoScreen() {
             <div className={con.settings}>
               <Setting icon={BarChart3}>
                 <SegmentedControl
+                  wrap
                   size="sm"
                   label={t('level')}
                   value={String(level)}

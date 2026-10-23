@@ -164,7 +164,7 @@ describe('Challenges', () => {
     await flush()
     expect(screen.getByText('5 found in 30 seconds!')).toBeTruthy()
     expect(screen.getByText(/A new best!/)).toBeTruthy()
-    expect(screen.getByText('Keys that weren’t it: 1')).toBeTruthy()
+    expect(screen.getByText('Wrong keys: 1')).toBeTruthy()
     expect((await new RecordRepo(store).get(profileId)).race[1]).toBe(5)
     const log = await new EngagementLog(store).read(profileId)
     expect(log.find((e) => e.type === 'challenge_finished')).toMatchObject({ game: 'race', level: 1, score: 5, best: true, wrong: 1 })

@@ -6,6 +6,7 @@ import type { MidiEvent } from '../../midi/types'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { useApp } from '../context'
+import { useOnce } from '../useOnce'
 import { noteLabel } from '../i18n'
 import { PREFIX } from '../store'
 import { TopBar } from '../screens/TopBar'
@@ -87,7 +88,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
     if (profileId) void repo.list(profileId).then(setTakes)
   }, [repo, profileId])
   useEffect(() => {
-    void store.get<number>(COUNT_IN_KEY).then((v) => typeof v === 'number' && setCountIn(v))
+    void store.get<number>(COUNT_IN_KEY).then((v) => (COUNT_INS as readonly number[]).includes(v as number) && setCountIn(v as number))
     void store.get<boolean>(CLICK_KEY).then((v) => typeof v === 'boolean' && setClickAll(v))
   }, [store])
   const chooseClick = (all: boolean) => {
@@ -278,7 +279,8 @@ export function StudioScreen({ songId }: { songId?: string }) {
   }, [recording, stopRecording])
   useEffect(() => () => void (recorder.current = null), [])
 
-  const keep = async () => {
+  const once = useOnce()
+  const keep = once(async () => {
     if (!pending || !profileId) return
     const { style, ...r } = pending
     const { bpm, ...notes } = r
@@ -292,7 +294,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
     setPending(null)
     setTakes(await repo.list(profileId))
     void log.add(profileId, { type: 'studio_kept', takeId: take.id })
-  }
+  })
   const discard = () => {
     if (playingId === 'new') stopPlayback()
     setPending(null)
@@ -354,13 +356,13 @@ export function StudioScreen({ songId }: { songId?: string }) {
     setAnswers((a) => ({ ...a, [take.id]: answer ? { state: 'ok', answer } : { state: 'failed' } }))
     if (profileId) void log.add(profileId, { type: 'studio_answer', takeId: take.id, ok: !!answer })
   }
-  const learnAnswer = async (take: Take, answer: Answer) => {
+  const learnAnswer = once(async (take: Take, answer: Answer) => {
     const song = answerSong(answer, `answer:${Date.now().toString(36)}`, t('studioAnswerTitle', { name: nameOf(take) }))
     await library.add(song)
     if (profileId) await log.add(profileId, { type: 'studio_answer_learnt', takeId: take.id, songId: song.id })
     stopPlayback()
     navigate({ name: 'play', songId: song.id })
-  }
+  })
 
   // The screen's own keys play too: on the keyboard or the phone, and into the take.
   const screenPress = (p: number) => {
@@ -425,6 +427,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
             <div className={con.settings}>
               <Setting icon={Timer}>
                 <SegmentedControl
+                  wrap
                   size="sm"
                   label={t('studioCountIn')}
                   value={String(countIn)}

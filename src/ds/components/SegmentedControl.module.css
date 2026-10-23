@@ -65,3 +65,25 @@
 .disabled .option {
   cursor: not-allowed;
 }
+
+/* `wrap`: an option's words take two lines where they don't fit on one, at the
+   size's own height or taller; and where even that is too wide, the options
+   carry on onto a second row. Nothing scrolls and nothing is hidden. */
+.wrap {
+  overflow-x: visible;
+  flex-wrap: wrap;
+}
+.wrap .option {
+  height: auto;
+  white-space: normal;
+  line-height: 1.15;
+  text-align: center;
+}
+.wrap.sm .option {
+  min-height: 32px;
+  padding: var(--space-3xs, 2px) var(--space-xs, 8px);
+}
+.wrap.md .option {
+  min-height: 40px;
+  padding: var(--space-2xs, 4px) var(--space-sm, 12px);
+}

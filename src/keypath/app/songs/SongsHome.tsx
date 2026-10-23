@@ -154,12 +154,14 @@ export function SongsHome() {
           <Field label={t('songFind')} type="search" value={filter.text} onChange={(e) => setFilter({ ...filter, text: e.target.value })} maxLength={MAX_TITLE} />
           <div className={styles.filterRow}>
             <SegmentedControl
+              wrap
               size="sm"
               value={String(filter.level)}
               onChange={(v) => setFilter({ ...filter, level: v === 'any' ? 'any' : (Number(v) as Level) })}
               options={[{ value: 'any', label: t('filterAnyLevel') }, ...([1, 2, 3] as const).map((l) => ({ value: String(l), label: t(LEVEL_NAME[l]) }))]}
             />
             <SegmentedControl
+              wrap
               size="sm"
               value={String(filter.hands)}
               onChange={(v) => setFilter({ ...filter, hands: v === 'any' ? 'any' : (Number(v) as 1 | 2) })}

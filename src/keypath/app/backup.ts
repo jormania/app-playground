@@ -23,18 +23,29 @@ export class BackupError extends Error {
   }
 }
 
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+const P = PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 /**
- * The shapes KeyPath can't open without: the players, and each player's log.
- * A file with the right header but a broken player list would otherwise go in
- * and leave the app unable to start.
+ * The shape KeyPath keeps under each key, for every key it keeps. A file with
+ * the right header but something else under a key (a damaged or hand-edited
+ * backup) would otherwise go in and leave a screen, or the whole app, unable
+ * to open; KeyPath itself only ever writes these shapes. Keys it doesn't know
+ * (a later version's) are let through.
  */
+const SHAPES: [RegExp, (v: unknown) => boolean][] = [
+  [new RegExp(`^${P}profiles$`), (v) => Array.isArray(v) && v.every((p) => isObject(p) && typeof p.id === 'string' && typeof p.name === 'string')],
+  [new RegExp(`^${P}current$`), (v) => typeof v === 'string'],
+  [new RegExp(`^${P}songs$`), (v) => Array.isArray(v) && v.every((s) => isObject(s) && typeof s.id === 'string' && Array.isArray(s.notes))],
+  [new RegExp(`^${P}(log|logArchive:\\d+):`), Array.isArray],
+  [new RegExp(`^${P}(studio|intros|stickers):`), Array.isArray],
+  [new RegExp(`^${P}(settings|journey|challenges|parts|setup|weekly):`), isObject],
+  [new RegExp(`^${P}today:`), (v) => isObject(v) && typeof v.date === 'string' && Array.isArray(v.items)],
+  [new RegExp(`^${P}keyboard$`), isObject],
+]
+
 function damaged(data: Record<string, unknown>): boolean {
-  const profiles = data[K.profiles]
-  if (profiles !== undefined) {
-    if (!Array.isArray(profiles)) return true
-    if (!profiles.every((p) => p && typeof p === 'object' && typeof (p as { id?: unknown }).id === 'string' && typeof (p as { name?: unknown }).name === 'string')) return true
-  }
-  return Object.entries(data).some(([k, v]) => (k.startsWith(`${PREFIX}log:`) || k.startsWith(`${PREFIX}logArchive:`)) && !Array.isArray(v))
+  return Object.entries(data).some(([k, v]) => SHAPES.some(([key, ok]) => key.test(k) && !ok(v)))
 }
 
 /**

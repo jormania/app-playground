@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Field, SegmentedControl } from '../../../ds'
 import { useApp } from '../context'
+import { useOnce } from '../useOnce'
 import { translate, type StringKey } from '../i18n'
 import { AVATARS, DEFAULT_PROFILE_SETTINGS, PIN_LENGTH, type Language, type Profile } from '../profiles'
 import { requestPersistence } from '../store'
@@ -55,8 +56,8 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
     await open(rest)
   }
 
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const once = useOnce()
+  const create = once(async () => {
     if (!name.trim()) return
     const p = await profiles.create(name, avatar)
     if (language !== DEFAULT_PROFILE_SETTINGS.language) await profiles.saveSettings(p.id, { ...DEFAULT_PROFILE_SETTINGS, language })
@@ -64,7 +65,7 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
     // The first real data on this phone: ask Chrome to keep it (store.ts).
     void requestPersistence()
     await pick(p)
-  }
+  })
 
   if (list === null) return null
   return (
@@ -140,11 +141,15 @@ export function WhoIsPlaying({ onChosen }: { onChosen: () => void }) {
         </>
       )}
       {adding && (
-        <form className={styles.panel} onSubmit={create}>
+        <form className={styles.panel} onSubmit={(e) => {
+            e.preventDefault()
+            void create()
+          }}>
           <h2 className={styles.h2}>{t('newProfileTitle')}</h2>
           <div className={styles.row}>
             <span className={styles.label}>{t('language')}</span>
             <SegmentedControl
+              wrap
               value={language}
               onChange={(v) => setLanguage(v as Language)}
               options={[
