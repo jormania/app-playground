@@ -6,6 +6,7 @@ import { go } from '../app/router'
 import { verifyProgramme } from '../spotify/verify'
 import { ConfirmModal } from '../../ds'
 import { NeedsKey, messageOf } from './common'
+import { Twisty } from './Twisty'
 import s from '../styles/editorial.module.css'
 
 export const MOOD_WORD = { immersive: 'Immersive', curious: 'Curious', adventurous: 'Adventurous' } as const
@@ -18,8 +19,13 @@ export const MOOD_WORD = { immersive: 'Immersive', curious: 'Curious', adventuro
  * which then stays in the journal. While the curator builds it, the button
  * says so in place.
  */
-export function OpenPaths({ paths, nowKey, busy = false, onTaking, keyHint = true }: {
+/** The paths shown at once; older ones wait in a fold below, so the list never runs on for a screen. */
+export const RECENT_PATHS = 9
+
+export function OpenPaths({ paths, nowKey, busy = false, onTaking, keyHint = true, single = false }: {
   paths: ProgrammeOption[]
+  /** One path, as a line elsewhere (the Journal's "left open"): only its button, not its card. */
+  single?: boolean
   nowKey: WeekKey
   /** Something else on the screen is with the curator: wait for it. */
   busy?: boolean
@@ -61,23 +67,37 @@ export function OpenPaths({ paths, nowKey, busy = false, onTaking, keyHint = tru
     }
   }
 
+  const button = (o: ProgrammeOption, quiet = false) => (
+    <button className={quiet ? `${s.textButton} ${s.inlineButton}` : `${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={busy || taking !== null || !curatorReady}>
+      {taking === o.id ? 'The curator is building it…' : quiet ? 'take it now' : 'Take this path now'}
+    </button>
+  )
+  const entry = (o: ProgrammeOption) => (
+    <li key={o.id} className={s.entry}>
+      <p className={s.mood}>{MOOD_WORD[o.mood]} · offered {sinceWords(o.weekKey, nowKey)}</p>
+      <h4 className={s.nextOption}>{o.title}</h4>
+      <p className={s.quiet}>{o.pitch}</p>
+      <div className={s.actions}>{button(o)}</div>
+    </li>
+  )
+  const recent = paths.slice(0, RECENT_PATHS)
+  const older = paths.slice(RECENT_PATHS)
   return (
     <>
-      <ul className={s.entries}>
-        {paths.map((o) => (
-          <li key={o.id} className={s.entry}>
-            <p className={s.mood}>{MOOD_WORD[o.mood]} · offered {sinceWords(o.weekKey, nowKey)}</p>
-            <h4 className={s.nextOption}>{o.title}</h4>
-            <p className={s.quiet}>{o.pitch}</p>
-            <div className={s.actions}>
-              <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={busy || taking !== null || !curatorReady}>
-                {taking === o.id ? 'The curator is building it…' : 'Take this path now'}
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {!curatorReady && keyHint && <NeedsKey />}
+      {single
+        ? paths.map((o) => <span key={o.id}>{curatorReady && button(o, true)}</span>)
+        : (
+          <>
+            <ul className={s.entries}>{recent.map(entry)}</ul>
+            {/* Every path stays takeable; the older ones are folded, the same on This week and in Where next. */}
+            {older.length > 0 && (
+              <Twisty label="Older paths" value={`from ${sinceWords(older[0].weekKey, nowKey)} and before`} open={older.some((o) => o.id === taking)}>
+                <ul className={s.entries}>{older.map(entry)}</ul>
+              </Twisty>
+            )}
+          </>
+        )}
+      {!curatorReady && keyHint && !single && <NeedsKey />}
       <ConfirmModal
         isOpen={confirming !== null}
         title="Take this path instead?"

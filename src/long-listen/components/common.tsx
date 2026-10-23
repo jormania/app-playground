@@ -123,3 +123,9 @@ export function Empty({ children, link }: { children: React.ReactNode; link?: { 
     </div>
   )
 }
+
+/** Only http(s) links are rendered: a restored backup is data, and a javascript: URL in it must not become a link. */
+export function webUrl(u: string): string | undefined {
+  try { return ['http:', 'https:'].includes(new URL(u).protocol) ? u : undefined } catch { return undefined }
+}
+

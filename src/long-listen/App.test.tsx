@@ -125,7 +125,9 @@ describe('The Long Listen', () => {
   it('explains, without a stack trace, when the curator is locked', async () => {
     const locked: CuratorClient = { call: () => Promise.reject(new CuratorUnavailable('locked', 'The curator needs your Anthropic key — add it in Settings, then test it.')) }
     render(<App repo={new Repo(memoryStore())} curator={locked} />)
-    expect(await screen.findByText('Before the first programme')).toBeTruthy()
-    expect(screen.getByText('The curator needs your Anthropic key — add it in Settings, then test it.')).toBeTruthy()
+    // The first screen anyone sees without a key: what the app is, and what to set up — no error, no stack trace.
+    expect(await screen.findByText('A curator for orchestral music')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open Settings' }).getAttribute('href')).toBe('#/settings')
+    expect(document.body.textContent).not.toMatch(/Error|at \w+ \(/)
   })
 })

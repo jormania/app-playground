@@ -10,15 +10,17 @@ import type { ConcertDraft } from '../curation/journey'
 import { openUrl, searchUrl } from '../spotify/client'
 import { spotifyCandidates, type SpotifyCandidate } from '../spotify/verify'
 import { resizePhoto } from '../../shared/photo'
-import { CharCount, Empty, MAX_ASK, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
+import { CharCount, Empty, MAX_ASK, NeedsKey, Problem, Waiting, messageOf, webUrl } from '../components/common'
 import { Credits } from '../components/Credits'
 import { ConcertEntry, concertDate } from '../components/ConcertEntry'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { namedSoloists, playingKeys, removeSoloist, soloistKey, toDraft, toForm, toggleSoloist, type ConcertFormState } from '../domain/concertForm'
 import { AlreadyKept, ConcertRefused, draftFrom, goingStage, whenWords, type Going } from '../domain/going'
-import { useGoings } from '../components/Going'
+import { GoingToggle, useGoings } from '../components/Going'
+import { listeningState } from '../domain/listening'
+import { heardAs, standInsOf } from '../domain/standIns'
 import { isoDateIn } from '../domain/week'
-import { venueShort } from '../live/live'
+import { liveEvents, liveMatches, venueShort, whatIsOnAt } from '../live/live'
 import { NotFound } from '../store/repo'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
@@ -55,6 +57,7 @@ export function ConcertsScreen() {
         <a className={s.primaryButton} href={href({ name: 'concert', id: 'new' })}>Add a concert</a>
       </div>
       <YoureGoing />
+      <FromYourListening />
       {heard.length === 0
         ? <Empty>None yet. Share a screenshot of the hall’s programme to the app, or add one here.</Empty>
         : (
@@ -199,6 +202,50 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
         </ul>
       )}
     </li>
+  )
+}
+
+/**
+ * Concerts coming up at the halls the app reads (Live in Bucharest) that meet
+ * what you have heard here — the very work, a performer from its recording,
+ * or its composer — not only this week's programme. Liked or loved first among
+ * works heard; five concerts at most, closest matches first. No calls to the
+ * curator: the halls' listings are read once a day, as for the programme.
+ */
+function FromYourListening() {
+  const { repo, settings } = useServices()
+  const goings = useGoings()
+  const today = isoDateIn(new Date(), settings.timeZone)
+  const { data } = useLoad(async () => {
+    const [programmes, events, feedback, comparisons] = await Promise.all([repo.programmes.all(), repo.events.all(), repo.feedback.all(), repo.comparisons.all()])
+    const standIns = standInsOf(comparisons)
+    const warm = new Set(feedback.filter((f) => f.reaction === 'loved' || f.reaction === 'interesting').map((f) => f.target.id))
+    // Each work heard, once, as the programme item it was heard in — the warmest first.
+    const seen = new Set<string>()
+    const items = programmes.flatMap((p) => p.sections.flatMap((x) => x.items).map((i) => ({ i, ids: heardAs(i, p.id, standIns) })))
+      .filter(({ ids }) => listeningState(events, ids) === 'heard')
+      .sort((a, b) => Number(b.ids.some((x) => warm.has(x)) || warm.has(b.i.workId)) - Number(a.ids.some((x) => warm.has(x)) || warm.has(a.i.workId)))
+      .filter(({ i }) => (seen.has(i.workId) ? false : (seen.add(i.workId), true)))
+      .map(({ i }) => i)
+    if (!items.length || !programmes.length) return []
+    const heardSoFar = { ...programmes[0], sections: [{ ...programmes[0].sections[0], items }] }
+    return liveMatches(heardSoFar, await liveEvents(repo.marks), today).slice(0, 5)
+  }, [today])
+  if (!data?.length) return null
+  return (
+    <section className={s.block} aria-label="From your listening">
+      <p className={s.label}>From your listening</p>
+      <p className={s.quiet}>Coming up in Bucharest, with music you’ve heard here.</p>
+      <ul className={s.bullets}>
+        {data.map((c) => (
+          <li key={c.key}>
+            {whatIsOnAt(c)} at {venueShort(c.event.venue)} {whenWords(c.event.date, today, c.event.time)}
+            {c.event.link && webUrl(c.event.link) && <> · <a href={webUrl(c.event.link)} target="_blank" rel="noopener noreferrer">{c.event.title}</a></>}
+            {' '}<GoingToggle event={c.event} goings={goings} />
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

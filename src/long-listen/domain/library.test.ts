@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { catalogueNotInTitle, filingLetter, libraryEntries, type LibraryInput } from './library'
+import { catalogueNotInTitle, filingLetter, libraryEntries, performerEntries, viewLibrary, type LibraryInput } from './library'
+import { searchLibrary } from './librarySearch'
 import { composerEntry } from './composerGroups'
 import type { Comparison, Concert, Feedback, ListeningEvent, Programme, ProgrammeItem, ProposedRecording, Recording, WeekRecord, Work } from './types'
 
@@ -172,5 +173,43 @@ describe('composerEntry', () => {
     expect(composerEntry([{ composer: 'Claude Debussy', spellings: ['Claude Debussy'] }], 'Debussy')?.composer).toBe('Claude Debussy')
     expect(composerEntry(entries, 'Strauss')).toBeUndefined()
     expect(composerEntry(entries, 'Lili Boulanger')).toBeUndefined()
+  })
+})
+
+describe('the Library seen three ways, and a performer’s part of it (batch three, 23 October 2026)', () => {
+  const base = input({
+    works: [work('w-mer', 'La mer'), work('w-jeux', 'Jeux'), work('w-faune', 'Prélude à l’après-midi d’un faune')],
+    recordings: [rec('r-boulez', 'w-mer'), rec('r-rattle', 'w-jeux'), rec('r-karajan', 'w-faune')],
+    programmes: [
+      programme('p1', '2026-10-05', [item('i1', 'w-mer', 'r-boulez', boulez)]),
+      programme('p2', '2026-10-12', [item('i2', 'w-jeux', 'r-rattle', proposed('Claude Debussy', 'Jeux', { conductor: 'Simon Rattle', orchestra: 'Berliner Philharmoniker' }))]),
+      programme('p3', '2026-10-19', [item('i3', 'w-faune', 'r-karajan', proposed('Claude Debussy', 'Prélude', { conductor: 'Herbert von Karajan', orchestra: 'Berliner Philharmoniker' }))]),
+    ],
+    events: [event('r-rattle', 'heard')],
+    feedback: [feedback('w-jeux', 'work', { reaction: 'loved', note: 'The tennis ballet that never settles.' })],
+  })
+  const entries = libraryEntries(base, opts)
+  const titles = (es: typeof entries) => es.flatMap((e) => e.works.map((w) => w.work.title))
+
+  it('Everything is as filed; Heard keeps only what was heard; Recent puts the latest met first', () => {
+    expect(titles(viewLibrary(entries, 'all'))).toEqual(['Jeux', 'La mer', 'Prélude à l’après-midi d’un faune'])
+    expect(titles(viewLibrary(entries, 'heard'))).toEqual(['Jeux'])
+    expect(titles(viewLibrary(entries, 'recent'))).toEqual(['Prélude à l’après-midi d’un faune', 'Jeux', 'La mer'])
+  })
+
+  it('search finds a work by what was said of it, and by the programme it came from', () => {
+    expect(titles(searchLibrary(entries, 'tennis'))).toEqual(['Jeux'])
+    expect(titles(searchLibrary(entries, 'loved'))).toEqual(['Jeux'])
+    expect(titles(searchLibrary(entries, 'Programme p1'))).toEqual(['La mer'])
+  })
+
+  it('a performer’s part: only their recordings, matched whole, with what they were', () => {
+    const berlin = performerEntries(entries, 'Berliner Philharmoniker')
+    expect(titles(berlin.entries)).toEqual(['Jeux', 'Prélude à l’après-midi d’un faune'])
+    expect(berlin.roles).toEqual(['orchestra'])
+    const boulezOnly = performerEntries(entries, 'pierre boulez')
+    expect(titles(boulezOnly.entries)).toEqual(['La mer'])
+    expect(boulezOnly.roles).toEqual(['conductor'])
+    expect(performerEntries(entries, 'Boulez').entries).toEqual([])
   })
 })

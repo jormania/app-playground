@@ -44,16 +44,18 @@ export function WeekScreen() {
   const [asking, setAsking] = useState(false)
 
   const failedOnMerits = useRef(false)
+  const firstSeen = useRef(false)
   const load = useCallback(async () => {
     setError(null)
     try {
-      const firstVisit = (await repo.weeks.all()).length === 0
+      // Once a first visit, a first visit for as long as the page is open: a reload a second later (a Spotify
+      // sync, a stand-in repaired) used to find the week just written and drop the one-time explanation.
+      const firstVisit = firstSeen.current || (firstSeen.current = (await repo.weeks.all()).length === 0)
       const record = await journey.ensureWeek()
       const options = await repo.options.many(record.optionIds)
       const openPaths = (await repo.options.all())
         .filter((o) => o.status === 'open' && o.weekKey < record.weekKey)
         .sort((a, b) => b.weekKey.localeCompare(a.weekKey))
-        .slice(0, 9)
       const themes = new Map((await repo.themes.all()).map((t) => [t.id, t]))
       setView({ record, options, openPaths, themes, firstVisit, prefs: await repo.preferences() })
       failedOnMerits.current = false
@@ -135,13 +137,34 @@ export function WeekScreen() {
   }
 
   if (error) {
-    const locked = error instanceof CuratorUnavailable && (error.code === 'locked' || error.code === 'bad-key')
+    const noKey = error instanceof CuratorUnavailable && error.code === 'locked'
+    const badKey = error instanceof CuratorUnavailable && error.code === 'bad-key'
+    // No key yet: the first screen anyone sees. It says what the app is and the three things to set up, in order.
+    if (noKey) {
+      return (
+        <div>
+          <p className={s.eyebrow}>Welcome</p>
+          <h1 className={s.title}>A curator for orchestral music</h1>
+          <p className={s.dek}>Each week the curator offers three directions. Choose one and it writes you a programme — a sequence of works with a reason for each, a named recording, and what to listen for. It remembers what you heard and what you said, so a theme that comes back months later carries on from where it was left.</p>
+          <ol className={s.setupSteps}>
+            <li><strong>Your Anthropic key</strong> — the curator writes with it, from this device. <span className={s.faint}>Needed.</span></li>
+            <li><strong>Spotify</strong> — to play each recording and notice what you’ve heard. <span className={s.faint}>Recommended.</span></li>
+            <li><strong>Notion</strong> — a readable notebook of the journey. <span className={s.faint}>Optional.</span></li>
+          </ol>
+          <div className={s.actions}>
+            <a className={s.primaryButton} href={href({ name: 'settings' })}>Open Settings</a>
+            <a className={s.textButton} href={GUIDE_URL} target="_blank" rel="noopener noreferrer">How to get each one (the guide)</a>
+          </div>
+        </div>
+      )
+    }
     return (
       <div>
         <p className={s.eyebrow}>{journey.currentWeek().label}</p>
-        <h1 className={s.titleSmall}>{locked ? 'Before the first programme' : 'This week is still being prepared'}</h1>
-        <Problem error={error} onRetry={locked ? undefined : () => void load()} />
-        {locked && <p><a href="#/settings">Open Settings</a> to add your Anthropic key and test it — it takes a minute. The <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">guide</a> shows where to get one.</p>}
+        {/* A key that stopped working is not a first visit: said as what it is, once. */}
+        <h1 className={s.titleSmall}>{badKey ? 'The curator can’t use this key' : 'This week is still being prepared'}</h1>
+        <Problem error={error} onRetry={badKey ? undefined : () => void load()} />
+        {badKey && <p><a href="#/settings">Open Settings</a> to check the key or add a new one; everything you’ve listened to is still here.</p>}
       </div>
     )
   }

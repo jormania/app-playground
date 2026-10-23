@@ -12,6 +12,7 @@ import { journalWeek } from '../domain/journalWeek'
 import { href } from '../app/router'
 import { Empty, Problem, Waiting, madeWords } from '../components/common'
 import { ConcertEntry } from '../components/ConcertEntry'
+import { OpenPaths } from '../components/OpenPaths'
 import s from '../styles/editorial.module.css'
 import { StateTag } from '../components/WorkRows'
 import { performerLine } from '../components/Credits'
@@ -41,7 +42,7 @@ interface Listened {
  * listened, no streak. This page is memory, not measurement.
  */
 export function JournalScreen() {
-  const { repo, journey, settings } = useServices()
+  const { repo, journey, settings, week } = useServices()
   const { data, error, retry } = useLoad(async () => {
     const [weeks, options, events, feedback, programmes, comparisons, concerts] = await Promise.all([
       repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(),
@@ -163,6 +164,8 @@ export function JournalScreen() {
                     <li key={o.id}>
                       <span className={s.quiet}>{o.title}</span>{' '}
                       {OPTION_WORD[o.status] && <span className={s.tag}>{OPTION_WORD[o.status]}</span>}
+                      {/* Left open is an offer still standing: taken from here as from This week. */}
+                      {o.status === 'open' && <>{' '}<OpenPaths paths={[o]} nowKey={week.key} single /></>}
                     </li>
                   ))}
                 </ul>

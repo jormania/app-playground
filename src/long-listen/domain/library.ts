@@ -183,3 +183,63 @@ export function setAsideProgrammes(
   for (const p of programmes) if (p.extends && setAside.has(p.extends)) setAside.add(p.id)
   return setAside
 }
+
+export type LibraryView = 'all' | 'heard' | 'recent'
+export const LIBRARY_VIEWS: { value: LibraryView; label: string }[] = [
+  { value: 'all', label: 'Everything' },
+  { value: 'heard', label: 'Heard' },
+  { value: 'recent', label: 'Recent' },
+]
+
+/**
+ * The Library seen three ways. *Everything*: as filed, A–Z. *Heard*: only the
+ * works heard — through a recording, or live — so what was only offered stops
+ * crowding out what was listened to. *Recent*: composers and their works by
+ * when they were last met, newest first.
+ */
+export function viewLibrary(entries: LibraryComposer[], view: LibraryView): LibraryComposer[] {
+  if (view === 'all') return entries
+  if (view === 'heard') {
+    return entries
+      .map((e) => ({ ...e, works: e.works.filter((w) => w.live.length > 0 || w.recordings.some((r) => r.state === 'heard')) }))
+      .filter((e) => e.works.length > 0)
+  }
+  const lastMet = (w: LibraryWorkEntry) => [...w.recordings.map((r) => r.at), ...w.live.map((c) => c.date)].sort().pop() ?? ''
+  return entries
+    .map((e) => ({ ...e, works: [...e.works].sort((a, b) => lastMet(b).localeCompare(lastMet(a))) }))
+    .sort((a, b) => lastMet(b.works[0]).localeCompare(lastMet(a.works[0])))
+}
+
+/**
+ * A performer's part of the Library: every work met in a recording they play
+ * on — as conductor, soloist, orchestra or ensemble — and every evening they
+ * were heard live, with only those recordings and evenings kept. The name is
+ * matched whole (folded: "Dutoit" never finds "Charles Dutoit's" neighbour),
+ * and `roles` says what they were, in the credits' own words.
+ */
+export function performerEntries(entries: LibraryComposer[], name: string): { entries: LibraryComposer[]; roles: string[] } {
+  const want = fold(name)
+  const roles = new Set<string>()
+  const same = (n?: string) => Boolean(n && fold(n) === want)
+  const out = entries.map((e) => ({
+    ...e,
+    works: e.works.map((w) => {
+      const recordings = w.recordings.filter((r) => {
+        const p = r.proposed
+        let found = false
+        if (same(p.conductor)) { roles.add('conductor'); found = true }
+        if (same(p.orchestra)) { roles.add('orchestra'); found = true }
+        if (same(p.ensemble)) { roles.add('ensemble'); found = true }
+        for (const x of p.soloists) if (same(x.name)) { roles.add(x.instrument ? x.instrument : 'soloist'); found = true }
+        return found
+      })
+      const live = w.live.filter((c) => {
+        const found = same(c.conductor) || same(c.orchestra) || c.soloists.some((x) => same(x.name))
+        if (found) roles.add('heard live')
+        return found
+      })
+      return { ...w, recordings, live }
+    }).filter((w) => w.recordings.length || w.live.length),
+  })).filter((e) => e.works.length)
+  return { entries: out, roles: [...roles] }
+}
