@@ -255,13 +255,62 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
  *   session;
  * - a session that reached most (≥ 60%) of a multi-movement work's tracks is
  *   `heard`; less is `partial` (shown as "Started");
- * - a single-track work can never be told apart from thirty seconds of it, so
- *   Spotify only ever marks it `partial` — "heard" is the listener's word;
+ * - a single-track work is `heard` only when the timing says it played through
+ *   (`playedThrough`, below: the gap to the play beside it, against its length,
+ *   once the listener's own history shows which end of a play Spotify stamps);
+ *   otherwise `partial` — thirty seconds and the whole look alike;
  * - each session is recorded once: a later poll that sees the same session
  *   (even with its first plays scrolled out of the fifty) only upgrades a
  *   partial to heard, never adds a second hearing.
  */
 const SESSION_GAP = 3 * 3600_000
+
+/**
+ * Which end of a play Spotify's `played_at` marks — its start or its end —
+ * read from the listener's own history rather than assumed (Spotify doesn't
+ * document it). Plays heard back to back sit one track-length apart: if each
+ * gap matches the later track's length, the stamp is the end; the earlier's,
+ * the start. Undecided (too few back-to-back plays, or no clear winner): undefined.
+ */
+export function playedAtMarks(plays: RecentPlay[]): 'start' | 'end' | undefined {
+  const sorted = [...plays].sort((a, b) => a.played_at.localeCompare(b.played_at))
+  let start = 0
+  let end = 0
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = Date.parse(sorted[i].played_at) - Date.parse(sorted[i - 1].played_at)
+    const near = (d?: number) => Boolean(d && Math.abs(gap - d) <= Math.max(5_000, d * 0.02))
+    const before = sorted[i - 1].track.duration_ms
+    const after = sorted[i].track.duration_ms
+    // Two tracks of one length say nothing about which end is stamped.
+    if (before && after && Math.abs(before - after) <= 5_000) continue
+    if (near(after)) end++
+    if (near(before)) start++
+  }
+  if (end >= 3 && end >= 2 * start) return 'end'
+  if (start >= 3 && start >= 2 * end) return 'start'
+  return undefined
+}
+
+/**
+ * The plays (by `played_at` and track) that ran through: the time to the play
+ * beside it — the one before, when stamps mark ends; the one after, when they
+ * mark starts — is at least nine-tenths of the track and not much more (a long
+ * gap may be a pause, or a quiet hour, and proves nothing).
+ */
+export function playedThrough(plays: RecentPlay[]): Set<string> {
+  const marks = playedAtMarks(plays)
+  const out = new Set<string>()
+  if (!marks) return out
+  const sorted = [...plays].sort((a, b) => a.played_at.localeCompare(b.played_at))
+  sorted.forEach((p, i) => {
+    const d = p.track.duration_ms
+    const other = marks === 'end' ? sorted[i - 1] : sorted[i + 1]
+    if (!d || !other) return
+    const ran = Math.abs(Date.parse(p.played_at) - Date.parse(other.played_at))
+    if (ran >= d * 0.9 && ran <= d + 120_000) out.add(`${p.played_at}|${p.track.id}`)
+  })
+  return out
+}
 
 export function playsToEvents(plays: RecentPlay[], recordings: Recording[], known: ListeningEvent[], now: string): ListeningEvent[] {
   // One album's tracks can be confirmed for more than one recording id — the
@@ -271,7 +320,8 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
   for (const r of recordings) if (isConfirmed(r)) for (const t of r.spotify.trackIds) byTrack.set(t, [...(byTrack.get(t) ?? []), r])
 
   // Group plays per recording into sessions: plays of its tracks within three hours of each other.
-  const sessions = new Map<string, { recording: Recording; tracks: Set<string>; last: string; first: string }[]>()
+  const sessions = new Map<string, { recording: Recording; tracks: Set<string>; last: string; first: string; through?: boolean }[]>()
+  const through = playedThrough(plays)
   for (const play of [...plays].sort((a, b) => a.played_at.localeCompare(b.played_at))) {
     // A track Spotify relinked for the market plays under another id;
     // `linked_from` keeps the one that was matched, as for what's playing now.
@@ -280,11 +330,13 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
     for (const r of byTrack.get(trackId) ?? []) {
       const list = sessions.get(r.id) ?? []
       const cur = list[list.length - 1]
+      const ran = through.has(`${play.played_at}|${play.track.id}`)
       if (cur && Date.parse(play.played_at) - Date.parse(cur.last) < SESSION_GAP) {
         cur.tracks.add(trackId)
         cur.last = play.played_at
+        cur.through = cur.through || ran
       } else {
-        list.push({ recording: r, tracks: new Set([trackId]), first: play.played_at, last: play.played_at })
+        list.push({ recording: r, tracks: new Set([trackId]), first: play.played_at, last: play.played_at, through: ran })
       }
       sessions.set(r.id, list)
     }
@@ -302,7 +354,8 @@ export function playsToEvents(plays: RecentPlay[], recordings: Recording[], know
       // Recently-played holds fifty plays: a long work's first movements scroll out before its last
       // are played. The tracks an earlier sync saw of the same session count with today's.
       for (const e of same) for (const t of e.tracksSeen ?? []) s.tracks.add(t)
-      const heard = total > 1 && s.tracks.size / total >= 0.6
+      // A work in movements: most of them reached. A single track: played through, by the timing.
+      const heard = total > 1 ? s.tracks.size / total >= 0.6 : Boolean(s.through)
       if (same.some((e) => e.kind === 'heard')) continue
       if (same.length && !heard) {
         // Still partial, but more of it seen than was kept: the record grows in place, so the

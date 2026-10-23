@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { beginSignIn, completeSignIn, challengeFor, isCallback, SpotifyAuthError } from './auth'
-import { verifyRecording, playsToEvents, rejectMatch, confirmMatch, aboutDuration, saveProgrammePlaylist, keepPlaylistCurrent, needsLook, spotifyCandidates, syncRecentPlays } from './verify'
+import { verifyRecording, playsToEvents, playedAtMarks, rejectMatch, confirmMatch, aboutDuration, saveProgrammePlaylist, keepPlaylistCurrent, needsLook, spotifyCandidates, syncRecentPlays } from './verify'
 import { SpotifyClient, playbackOf, shortDevice } from './client'
 import { Repo, memoryStore } from '../store/repo'
 import type { Recording, ProposedRecording, ListeningEvent } from '../domain/types'
@@ -239,6 +239,34 @@ describe('recently played', () => {
     expect(done).toMatchObject([{ kind: 'heard', tracksPlayed: 4, playedAt: '2026-10-08T19:00:00Z' }])
     // Nothing new seen: nothing written.
     expect(playsToEvents([play('m3', '2026-10-08T19:20:00Z')], [long], grown, 'now')).toEqual([])
+  })
+
+  describe('a single-track work, read by the timing (23 October 2026)', () => {
+    const MIN = 60_000
+    const single: Recording = { ...verified, id: 'rec-clyne', spotify: { ...verified.spotify!, trackIds: ['clyne'] } }
+    const timed = (id: string, at: number, mins: number) => ({ played_at: new Date(Date.parse('2026-10-23T13:00:00Z') + at * MIN).toISOString(), track: { ...t(id, 'x', 1), duration_ms: mins * MIN } })
+    // A playlist heard back to back, Spotify stamping each play at its end: each gap is the later track's length.
+    const ends = [timed('a', 0, 8), timed('b', 11, 11), timed('c', 18, 7), timed('d', 31, 13), timed('clyne', 45, 14)]
+
+    it('reads which end of a play Spotify stamps from the history itself, and says nothing when it can’t tell', () => {
+      expect(playedAtMarks(ends)).toBe('end')
+      const starts = [timed('a', 0, 11), timed('b', 11, 7), timed('c', 18, 13), timed('d', 31, 14), timed('clyne', 45, 9)]
+      expect(playedAtMarks(starts)).toBe('start')
+      expect(playedAtMarks([timed('a', 0, 8), timed('b', 300, 9)])).toBeUndefined()
+    })
+
+    it('is heard when it ran through, and only "started" when it didn’t', () => {
+      expect(playsToEvents(ends, [single], [], 'now')).toMatchObject([{ kind: 'heard', recordingId: 'rec-clyne' }])
+      // Two minutes of it, then the next work: the play before it ended twelve minutes earlier than a full hearing would.
+      const cut = [...ends.slice(0, 4), timed('clyne', 33, 14)]
+      expect(playsToEvents(cut, [single], [], 'now')).toMatchObject([{ kind: 'partial' }])
+    })
+
+    it('upgrades a single track recorded as started once the timing shows it ran through', () => {
+      const first = playsToEvents([timed('clyne', 45, 14)], [single], [], 'now')
+      expect(first[0].kind).toBe('partial')
+      expect(playsToEvents(ends, [single], first, 'now').map((e) => e.kind)).toEqual(['heard'])
+    })
   })
 
   it('counts nothing against a near miss the listener hasn’t confirmed', () => {
