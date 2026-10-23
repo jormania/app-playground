@@ -290,7 +290,7 @@ export function programmeTextBlocks(p: Programme): unknown[] {
   blocks.push(...paragraphs(p.introduction))
   if (p.whyNow) blocks.push(h3('Why this, now'), para(p.whyNow))
   if (p.historicalPlace) blocks.push(h3('Where it sits'), para(p.historicalPlace))
-  if (p.howTheyRelate) blocks.push(h3('How the works speak to each other'), para(p.howTheyRelate))
+  if (p.howTheyRelate) blocks.push(h3('How they connect'), para(p.howTheyRelate))
   for (const s of p.sections) {
     blocks.push(divider(), h2(s.heading))
     if (s.note) blocks.push(para(s.note, { italic: true }))

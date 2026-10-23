@@ -180,8 +180,9 @@ export function NotebookScreen() {
   return (
     <div>
       <p className={s.eyebrow}>Notebook</p>
-      <h1 className={s.title}>Your listening, in words</h1>
-      <p className={s.dek}>What the curator has noticed. Not a score — a few honest sentences, and how sure it is of each.</p>
+      {/* Not "Your listening": on a programme that names a work's heard state. */}
+      <h1 className={s.title}>What the curator has noticed</h1>
+      <p className={s.dek}>Not a score: sentences about your listening, the surer ones first.</p>
 
       {/* What waits to be read comes first: it is what would fill the page. */}
       {data.pending > 0 && (

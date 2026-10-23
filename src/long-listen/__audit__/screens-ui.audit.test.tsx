@@ -285,7 +285,7 @@ describe('asking the curator, and seeing that it is asked', () => {
     const repo = new Repo(memoryStore())
     const c = gatedCurator('themes', 2)
     render(<App repo={repo} curator={c.client} />)
-    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    await screen.findByText('Three directions for the week', {}, { timeout: 4000 })
     const group = screen.getByRole('group', { name: 'Tune this week' })
     await userEvent.click(group.querySelector('button')!)
     // The tuning moved, so the other card says the same three will be reworked, not replaced.
@@ -303,7 +303,7 @@ describe('asking the curator, and seeing that it is asked', () => {
     const repo = new Repo(memoryStore())
     const c = gatedCurator('themes', 2)
     render(<App repo={repo} curator={c.client} />)
-    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    await screen.findByText('Three directions for the week', {}, { timeout: 4000 })
     const chip = screen.getByRole('group', { name: 'Tune this week' }).querySelector('button')!
     await userEvent.click(chip)
     await screen.findByRole('button', { name: 'Rework these three with this in mind' })
@@ -322,7 +322,7 @@ describe('asking the curator, and seeing that it is asked', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Ask for three new directions' }, { timeout: 4000 }))
     await screen.findByRole('button', { name: 'The curator is finding three…' })
     for (const name of ['Ask for more', 'Make tonight’s sitting']) expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
-    for (const b of screen.getAllByRole('button', { name: 'Listen this way instead' })) expect((b as HTMLButtonElement).disabled).toBe(true)
+    for (const b of screen.getAllByRole('button', { name: 'Take this direction instead' })) expect((b as HTMLButtonElement).disabled).toBe(true)
     c.open()
     await waitFor(() => expect((screen.getByRole('button', { name: 'Ask for more' }) as HTMLButtonElement).disabled).toBe(false), { timeout: 4000 })
   }, 15000)
@@ -330,14 +330,14 @@ describe('asking the curator, and seeing that it is asked', () => {
 
 // Paths left open are listed on This week (and in Where next), not on Threads.
 describe('This week', () => {
-  it('offers as "A path left open" only directions from earlier weeks', async () => {
+  it('offers as "Left open from earlier weeks" only directions from earlier weeks', async () => {
     const repo = new Repo(memoryStore())
     const j = new Journey(repo, plain())
     await j.ensureWeek()
     await j.offerOtherDirections() // this week's first three are now open — but this week's
     render(<App repo={repo} curator={plain()} />)
-    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
-    expect(screen.queryByText('A path left open')).toBeNull()
+    await screen.findByText('Three directions for the week', {}, { timeout: 4000 })
+    expect(screen.queryByText('Left open from earlier weeks')).toBeNull()
   }, 15000)
 })
 
@@ -387,7 +387,7 @@ describe('batch two: memory you can act on (23 October 2026)', () => {
     await screen.findByRole('button', { name: 'Return to this thread' }, { timeout: 4000 })
     const facts = await screen.findByRole('list', { name: 'What this thread holds' })
     expect(facts.textContent).not.toMatch(/\d+ works? by \d+ composers?|\d+ heard so far/)
-    expect(facts.textContent).toMatch(/not yet heard|partly heard|heard through/)
+    expect(facts.textContent).toMatch(/not started|started|all heard/)
   }, 15000)
 
   it('a performer’s name opens their page: what you’ve heard them in (batch three)', async () => {

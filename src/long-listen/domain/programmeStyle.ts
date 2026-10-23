@@ -1,6 +1,6 @@
 /**
  * The small conventions of a printed concert programme, as words: a part's
- * Roman numeral and its ordinal ("the second part, of three"), a duration in
+ * Roman numeral, a duration in
  * minutes with the prime ("c. 24′"), a recording's movements as a programme
  * lists them, and the one line of a part worth setting large.
  */
@@ -15,17 +15,6 @@ export function roman(n: number): string {
     while (left >= value) { out += mark; left -= value }
   }
   return out
-}
-
-const ORDINAL = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth']
-const CARDINAL = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
-
-/** "The second part, of three" — "The only part" when there is one. */
-export function partWords(n: number, of: number): string {
-  if (of <= 1) return 'The only part'
-  const ord = ORDINAL[n - 1] ?? `${n}th`
-  const all = CARDINAL[of - 1] ?? String(of)
-  return `The ${ord} part, of ${all}`
 }
 
 /** A duration as a programme prints it: "c. 24′". Undefined when unknown. */

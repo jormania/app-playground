@@ -109,7 +109,7 @@ export function SettingsScreen() {
         New here? <a href={GUIDE_URL} target="_blank" rel="noopener noreferrer">The user’s guide</a> walks through setting up, a section at a time.
       </p>
 
-      <Part title="Your music" intro="The curator follows these above anything it has inferred. A change applies to the next directions; This week offers to rework the current three.">
+      <Part title="Your music" intro="The curator follows these above anything it has inferred. A change applies to the next directions, and the week’s page offers to rework the current three for it.">
         <ExplorationSections />
       </Part>
 

@@ -120,9 +120,10 @@ export function recordingId(workIdValue, r) {
 
 /** A short, readable credit line: "Boulez · Vienna Philharmonic". */
 export function creditLine(r) {
+  // The order every list in the app uses (Credits' creditRows): conductor, soloists, then the orchestra.
   const parts = []
-  for (const s of r.soloists) parts.push(s.name)
   if (r.conductor) parts.push(r.conductor)
+  for (const s of r.soloists) parts.push(s.name)
   if (r.orchestra) parts.push(r.orchestra)
   else if (r.ensemble) parts.push(r.ensemble)
   return parts.join(' · ')

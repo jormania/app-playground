@@ -29,8 +29,8 @@ describe('The Long Listen', () => {
     const repo = new Repo(memoryStore())
     await repo.savePreferences({ ...(await repo.preferences()), pairs: true }) // side-by-side pairs are opt-in
     render(<App repo={repo} curator={curator()} />)
-    expect(await screen.findByText('Three ways into the week', {}, { timeout: 4000 })).toBeTruthy()
-    const choose = screen.getAllByRole('button', { name: 'Listen this way →' })
+    expect(await screen.findByText('Three directions for the week', {}, { timeout: 4000 })).toBeTruthy()
+    const choose = screen.getAllByRole('button', { name: 'Take this direction →' })
     expect(choose).toHaveLength(3)
 
     await userEvent.click(choose[0])
@@ -49,7 +49,7 @@ describe('The Long Listen', () => {
 
   it('never shows a streak, a score or a statistic', async () => {
     render(<App repo={new Repo(memoryStore())} curator={curator()} />)
-    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    await screen.findByText('Three directions for the week', {}, { timeout: 4000 })
     const text = document.body.textContent ?? ''
     expect(text).not.toMatch(/streak|points|badge|minutes listened|days listened|%|level \d|xp\b/i)
   })
@@ -57,7 +57,7 @@ describe('The Long Listen', () => {
   it('asks for three other directions and keeps the first three open', async () => {
     const repo = new Repo(memoryStore())
     render(<App repo={repo} curator={curator()} />)
-    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
+    await screen.findByText('Three directions for the week', {}, { timeout: 4000 })
     // The card opens on its field, then the same button asks.
     await userEvent.click(screen.getByRole('button', { name: 'Ask for three others' }))
     await userEvent.type(screen.getByLabelText(/What are you in the mood for/), 'Something quieter')
@@ -68,8 +68,8 @@ describe('The Long Listen', () => {
   it('fills the journal and the library once a week has been listened to', async () => {
     const repo = new Repo(memoryStore())
     render(<App repo={repo} curator={curator()} />)
-    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
-    await userEvent.click(screen.getAllByRole('button', { name: 'Listen this way →' })[0])
+    await screen.findByText('Three directions for the week', {}, { timeout: 4000 })
+    await userEvent.click(screen.getAllByRole('button', { name: 'Take this direction →' })[0])
     await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })
     await userEvent.click(screen.getAllByRole('radio', { name: 'Heard' })[0])
 
@@ -105,8 +105,8 @@ describe('The Long Listen', () => {
 
   it('holds no side-by-side pair unless the listener asked for one', async () => {
     render(<App repo={new Repo(memoryStore())} curator={curator()} />)
-    await screen.findByText('Three ways into the week', {}, { timeout: 4000 })
-    await userEvent.click(screen.getAllByRole('button', { name: 'Listen this way →' })[0])
+    await screen.findByText('Three directions for the week', {}, { timeout: 4000 })
+    await userEvent.click(screen.getAllByRole('button', { name: 'Take this direction →' })[0])
     await screen.findByRole('heading', { name: 'La mer' }, { timeout: 4000 })
     expect(screen.queryByText('Same work, two perspectives')).toBeNull()
   }, 15000)

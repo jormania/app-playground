@@ -14,8 +14,8 @@ export const MOOD_WORD = { immersive: 'Immersive', curious: 'Curious', adventuro
 /**
  * Directions offered in earlier weeks and not taken then — the same list
  * wherever it appears (This week, the programme's "Where next"):
- * each with its mood and when it was offered, its pitch, and "Take this path
- * now". Taking one asks first only when this week already has a programme,
+ * each with its mood and when it was offered, its pitch, and "Take it this
+ * week". Taking one asks first only when this week already has a programme,
  * which then stays in the journal. While the curator builds it, the button
  * says so in place.
  */
@@ -69,7 +69,7 @@ export function OpenPaths({ paths, nowKey, busy = false, onTaking, keyHint = tru
 
   const button = (o: ProgrammeOption, quiet = false) => (
     <button className={quiet ? `${s.textButton} ${s.inlineButton}` : `${s.outlineButton} ${s.smallButton}`} onClick={() => void take(o)} disabled={busy || taking !== null || !curatorReady}>
-      {taking === o.id ? 'The curator is building it…' : quiet ? 'take it now' : 'Take this path now'}
+      {taking === o.id ? 'The curator is building it…' : quiet ? 'take it this week' : 'Take it this week'}
     </button>
   )
   const entry = (o: ProgrammeOption) => (
@@ -91,7 +91,7 @@ export function OpenPaths({ paths, nowKey, busy = false, onTaking, keyHint = tru
             <ul className={s.entries}>{recent.map(entry)}</ul>
             {/* Every path stays takeable; the older ones are folded, the same on This week and in Where next. */}
             {older.length > 0 && (
-              <Twisty label="Older paths" value={`from ${sinceWords(older[0].weekKey, nowKey)} and before`} open={older.some((o) => o.id === taking)}>
+              <Twisty label="Older directions" value={`from ${sinceWords(older[0].weekKey, nowKey)} and before`} open={older.some((o) => o.id === taking)}>
                 <ul className={s.entries}>{older.map(entry)}</ul>
               </Twisty>
             )}
@@ -100,9 +100,9 @@ export function OpenPaths({ paths, nowKey, busy = false, onTaking, keyHint = tru
       {!curatorReady && keyHint && !single && <NeedsKey />}
       <ConfirmModal
         isOpen={confirming !== null}
-        title="Take this path instead?"
+        title="Take this direction instead?"
         message="This week already has a programme. It stays in your journal; the new one becomes this week’s."
-        confirmText="Take this path"
+        confirmText="Take this direction"
         onConfirm={() => { if (confirming) void take(confirming, true) }}
         onCancel={() => setConfirming(null)}
       />

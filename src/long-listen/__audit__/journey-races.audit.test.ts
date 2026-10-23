@@ -100,7 +100,7 @@ describe('choosing and a sitting at once, from This week', () => {
     })
     const j = journey(c.client)
     const w = await j.ensureWeek()
-    const chosen = j.choose(w.optionIds[0]) // "Listen this way →", curator thinking
+    const chosen = j.choose(w.optionIds[0]) // "Take this direction →", curator thinking
     await tick()
     const tonight = j.sitting('quiet', 1) // SittingCard on the same screen is not disabled meanwhile
     await tick()

@@ -2797,6 +2797,11 @@
   min-width: 0;
 }
 
+/* A value meant to be read whole (This week's settings line) wraps rather than trailing off. */
+.twistyWrap > summary .twistyValue {
+  white-space: normal;
+}
+
 /* A value that only previews the body steps aside once the body is open. */
 .twistyPreview[open] > summary .twistyValue {
   display: none;
@@ -3138,6 +3143,11 @@
     background: color-mix(in srgb, var(--color-accent) 10%, transparent);
     color: var(--color-accent);
   }
+}
+
+/* Spotify searched by hand, without a connection: a small link, so Listen along stays the way in. */
+.searchLink {
+  font-size: var(--text-sm);
 }
 
 .listenAlongNote {

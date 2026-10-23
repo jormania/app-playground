@@ -99,7 +99,7 @@ export function MoreContextRow({ explanation, readKey, writing, canAsk, onAsk }:
   }
   if (!canAsk) return null
   return (
-    <Twisty label="More context" value={writing ? 'being written…' : 'written when you open it'} open={writing} remember={false} onOpen={() => { if (!writing) onAsk() }}>
+    <Twisty label="More context" value={writing ? 'being written…' : 'the curator writes it when you open it'} open={writing} remember={false} onOpen={() => { if (!writing) onAsk() }}>
       {/* Open and not writing: the asking failed (offline, the curator busy) — one tap asks again. */}
       {writing
         ? <Waiting inline>The curator is writing…</Waiting>
