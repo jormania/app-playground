@@ -64,6 +64,33 @@ function spotifySingleton(): SpotifyClient {
   return sharedSpotify
 }
 
+/** The jobs the listener waits on with a button pressed: the ones whose long waits are worth a word. */
+const WAITED_ON = new Set(['themes', 'programme', 'compare', 'season', 'prepare', 'concert'])
+export const SLOW_AFTER_MS = 30_000
+
+/**
+ * What the listener is told while the curator works: once, if a job they're
+ * waiting on runs past half a minute, and once if the first answer wouldn't
+ * do and it is asked again — the two reasons a wait runs long, said as they
+ * happen rather than left to a button that only says "building it…".
+ */
+export function curatorProgress(tell: (message: string) => void, slowAfterMs = SLOW_AFTER_MS) {
+  const timers = new Map<string, ReturnType<typeof setTimeout>[]>()
+  return (op: string, phase: 'start' | 'retry' | 'end') => {
+    if (!WAITED_ON.has(op)) return
+    const list = timers.get(op) ?? []
+    if (phase === 'start') {
+      list.push(setTimeout(() => tell('Still with the curator — a full programme can take a minute or two.'), slowAfterMs))
+      timers.set(op, list)
+    } else if (phase === 'retry') {
+      tell('The curator is checking its first answer and asking once more — a little longer.')
+    } else {
+      const t = list.shift()
+      if (t) clearTimeout(t)
+    }
+  }
+}
+
 export function ServicesProvider({ children, repo: injectedRepo, curator: injectedCurator }: { children: ReactNode; repo?: Repo; curator?: CuratorClient }) {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [version, setVersion] = useState(0)
@@ -73,14 +100,17 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   settingsRef.current = settings
 
   const repo = useMemo(() => injectedRepo ?? repoSingleton(), [injectedRepo])
+  const sayRef = useRef<(m: string) => void>(() => {})
+  const [progress] = useState(() => curatorProgress((m) => sayRef.current(m)))
   const curator = useMemo<CuratorClient>(
-    () => injectedCurator ?? (settings.demo ? demoCurator() : directCurator(() => settingsRef.current.anthropicKey, { onUsage: (_op, model, usage) => recordUsage(model, usage) })),
-    [injectedCurator, settings.demo],
+    () => injectedCurator ?? (settings.demo ? demoCurator() : directCurator(() => settingsRef.current.anthropicKey, { onUsage: (_op, model, usage) => recordUsage(model, usage), onProgress: progress })),
+    [injectedCurator, settings.demo, progress],
   )
   const journey = useMemo(() => new Journey(repo, curator, { timeZone: settings.timeZone }), [repo, curator, settings.timeZone])
   const spotify = spotifySingleton()
   const bump = useCallback(() => setVersion((v) => v + 1), [])
   const say = useCallback((message: string, tone: 'neutral' | 'success' | 'danger' = 'neutral') => { push({ message, tone }) }, [push])
+  sayRef.current = say
 
   // Merged into what is saved now, not this tab's copy: another tab (or the installed app beside a browser
   // tab) may have changed something since — a key added there must not be written back as blank from here.

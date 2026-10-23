@@ -15,6 +15,7 @@ import { ProgrammeScreen } from './Programme'
 import { SittingCard } from '../components/SittingCard'
 import { Twisty } from '../components/Twisty'
 import { Traits } from '../components/Traits'
+import { BackupNudge } from '../components/BackupNudge'
 import s from '../styles/editorial.module.css'
 import { passing } from '../curation/api'
 
@@ -166,6 +167,7 @@ export function WeekScreen() {
           : 'Choose the one you want to follow. The others aren’t set aside — they stay open, and may come back.'}
       </p>
       <GoingCards />
+      <BackupNudge />
 
       <WeekMoodLine record={view.record} prefs={view.prefs} onAsk={askWithMood} busy={busy} asking={asking}
         onMood={(m) => setView((v) => v && { ...v, record: { ...v.record, mood: m.length ? m : undefined } })} />

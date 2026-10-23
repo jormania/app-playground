@@ -124,18 +124,36 @@ export function looksLikeAnthropicKey(key) {
  * Every failure becomes a CuratorUnavailable with words a listener can read;
  * nothing from Anthropic's error body is shown.
  */
-export function anthropicSender(apiKey, fetchImpl) {
+/**
+ * How long one request may take before it is given up. A programme of a dozen
+ * works can take a couple of minutes; a stalled connection used to leave
+ * "building it…" on the screen for good, and the week's other choices locked.
+ */
+export const REQUEST_TIMEOUT_MS = 240_000
+
+const TOO_LONG = 'The curator took too long to answer. Nothing was lost — try again.'
+
+const timedOut = (e) => e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')
+
+export function anthropicSender(apiKey, fetchImpl, timeoutMs = REQUEST_TIMEOUT_MS) {
   return async (body) => {
+    const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(timeoutMs) : undefined
     let res
     try {
-      res = await requestAnthropic(apiKey, body, fetchImpl ? { fetchImpl } : {})
-    } catch {
+      res = await requestAnthropic(apiKey, body, { ...(fetchImpl ? { fetchImpl } : {}), ...(signal ? { signal } : {}) })
+    } catch (e) {
+      // Given up as too slow is not offline: said as it is, and never retried by itself (it may have been paid for).
+      if (timedOut(e)) throw new CuratorUnavailable('failed', TOO_LONG)
       throw new CuratorUnavailable('offline', friendly('offline'))
     }
     if (res.status === 401 || res.status === 403) throw new CuratorUnavailable('bad-key', friendly('bad-key'))
     if (res.status === 429 || res.status === 529) throw new CuratorUnavailable('busy', friendly('busy'))
     if (!res.ok) throw new CuratorUnavailable('failed', friendly('failed'))
-    return res.json()
+    try {
+      return await res.json()
+    } catch (e) {
+      throw new CuratorUnavailable(timedOut(e) ? 'failed' : 'offline', timedOut(e) ? TOO_LONG : friendly('offline'))
+    }
   }
 }
 
@@ -169,6 +187,8 @@ async function withRetry(send, op, payload, validate) {
   const mendable = new Set(checked.mendable ?? [])
   if (checked.problems.every((p) => mendable.has(p))) return { ...checked, attempts: 1 }
 
+  // Said to the listener: the wait is about to double, for a reason.
+  send.onRetry?.()
   const correction = `${userContent}\n\n<previous_answer>\n${first.text}\n</previous_answer>\n\nYour previous answer had these problems. Return the full corrected JSON:\n- ${checked.problems.join('\n- ')}`
   const second = await structured(send, op, correction)
   return { ...validate(second.output), attempts: 2 }
@@ -369,7 +389,7 @@ export const JOBS = {
  * The curator as the app uses it: `call(op, payload)`, with the key read
  * fresh from Settings on every call. `send` can be injected for tests.
  */
-export function directCurator(getKey, { fetchImpl, send, onUsage } = {}) {
+export function directCurator(getKey, { fetchImpl, send, onUsage, onProgress } = {}) {
   return {
     async call(op, payload) {
       const job = JOBS[op]
@@ -388,7 +408,15 @@ export function directCurator(getKey, { fetchImpl, send, onUsage } = {}) {
             return message
           }
         : base
-      return job(metered, payload ?? {})
+      // Told as a job starts, asks again after an answer that wouldn't do, and ends: the app says so when a wait runs long.
+      const told = async (body) => metered(body)
+      told.onRetry = () => { try { onProgress?.(op, 'retry') } catch { /* never let telling break a job */ } }
+      try { onProgress?.(op, 'start') } catch { /* as above */ }
+      try {
+        return await job(told, payload ?? {})
+      } finally {
+        try { onProgress?.(op, 'end') } catch { /* as above */ }
+      }
     },
   }
 }

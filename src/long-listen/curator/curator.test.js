@@ -60,6 +60,15 @@ describe('the key, and the call to Anthropic', () => {
     try { await answer(401) } catch (e) { expect(e.message).not.toMatch(/sk-ant|invalid x-api-key/) }
   })
 
+  it('gives up a request that runs too long, in words, as a failure rather than offline (batch one, 23 October 2026)', async () => {
+    // A fetch that never answers until it is aborted, as a stalled connection does.
+    const hang = vi.fn((_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' })))
+    }))
+    await expect(anthropicSender(KEY, hang, 20)({})).rejects.toMatchObject({ code: 'failed', message: 'The curator took too long to answer. Nothing was lost — try again.' })
+    expect(hang.mock.calls[0][1].signal).toBeDefined()
+  })
+
   it('reports a refusal as such', async () => {
     const { curator } = fakeSend([{ stop_reason: 'refusal', content: [] }])
     await expect(curator.call('explain', { item: {} })).rejects.toMatchObject({ code: 'declined' })
@@ -131,6 +140,14 @@ describe('programme', () => {
       expect(sent[1].messages[0].content).toContain('already explored in this thread')
       expect(res.removedRepeats).toBe(0)
       expect(res.programme.sections.flatMap((s) => s.items).map((i) => i.composer)).toEqual(['Albert Roussel', 'Florent Schmitt', 'Henri Dutilleux'])
+    })
+
+    it('says so when it asks again, and when the job ends (batch one, 23 October 2026)', async () => {
+      const told = []
+      const answers = [json(programme([item('Claude Debussy', 'La mer in D-flat'), ...expanding], { continuityNote: 'Six weeks ago.' })), json(programme(expanding, { continuityNote: 'Another door.' }))]
+      const send = async () => answers.shift()
+      await directCurator(() => '', { send, onProgress: (op, phase) => told.push(`${op}:${phase}`) }).call('programme', { option: { title: 'Colour, again' }, thread })
+      expect(told).toEqual(['programme:start', 'programme:retry', 'programme:end'])
     })
 
     it('strips repeats that survive the retry rather than passing them through', async () => {

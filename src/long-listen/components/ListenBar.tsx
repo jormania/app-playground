@@ -109,11 +109,29 @@ export function ListenBar({ trackIds, durationsMs, durationMs, playback, onStart
         )}
       </p>
       {p.cantFollow && <p className={s.note}>Reconnect Spotify in Settings so the app can follow what’s playing.</p>}
-      {p.noDevice && (
-        <p className={s.note} role="status">
-          Spotify isn’t open on any device yet. Open it on your phone, speaker or computer, then press Play again.
-        </p>
-      )}
+      {p.noDevice && <DeviceChoice playback={p} />}
     </>
   )
+}
+
+/**
+ * Nothing is playing anywhere: the devices Spotify can see (a TV or speaker
+ * with Spotify open but idle), each one tap from playing there — rather than a
+ * walk to the TV to start something first. None seen: how to make one appear.
+ */
+export function DeviceChoice({ playback: p, compact = false }: { playback: Playback; compact?: boolean }) {
+  if (!p.devices.length) {
+    return compact
+      ? <span className={s.miniNote} role="status">Open Spotify on a device, then try again.</span>
+      : <p className={s.note} role="status">Spotify isn’t open on any device yet. Open it on your phone, TV, speaker or computer, then press Play again.</p>
+  }
+  const choices = p.devices.map((d, i) => (
+    <span key={d.id}>
+      {i > 0 && ' · '}
+      <button type="button" className={`${s.textButton} ${s.inlineButton}`} onClick={() => void p.playOn(d.id)} disabled={p.busy}>{d.name}</button>
+    </span>
+  ))
+  return compact
+    ? <span className={s.miniNote} role="status">Play on {choices}</span>
+    : <p className={s.note} role="status">Nothing is playing on Spotify just now. Play it on {choices}</p>
 }

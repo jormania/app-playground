@@ -1255,3 +1255,34 @@ Settings) each reported only defects they had reproduced or traced exactly. What
 Known and left: concert dates are Bucharest dates but "today" is judged in the Settings zone (harmless
 while the zone is Bucharest); two tabs share no in-flight guard across a fresh start; a concert marked as
 going whose start time changes is a new mark.
+
+## 26. Batch one of the QoL audit (23 October 2026)
+
+From a read of the whole app for everyday friction and trust (the audit report is in the session, not the repo).
+What it changed:
+
+- **The journey is guarded.** At start the app asks the browser to keep its storage
+  (`navigator.storage.persist`, `app/backup.ts`). Each backup saved remembers its date: Settings says
+  "Last saved on …" (and says so when the browser hasn't agreed to keep the data), and once a journey is
+  three weeks old with no backup for four weeks, This week carries one quiet line with *Save a backup* and
+  *Not now* (a fortnight) — `BackupNudge`. No count, no badge.
+- **Waits are honest.** A curator request gives up after four minutes ("took too long… nothing was lost"),
+  a `failed`, not `offline`, so it is never asked again by itself. A job the listener waits on (directions,
+  a programme, a pair, the season, a concert) says once past half a minute that it is still with the curator,
+  and says so when a first answer wouldn't do and it asks again (`onProgress` on `directCurator`,
+  `curatorProgress` in `app/services.tsx`).
+- **Nothing paid for is hidden.** A fold held open while something inside was on its way (`Twisty`'s `open`)
+  stays open once it has come or failed; it used to close on the answer. On the programme, *A different
+  direction* lists the week's earlier three as well as the latest (This week still keeps them as paths
+  "for another week", as pinned).
+- **The listening view is safer on an armrest.** A reaction, "want more" and what it's about are kept
+  as drafts with the note, so "Loved it" then *Play next* (or closing the app) no longer loses them, and a
+  panel with something half-said opens open. A work that ends by itself puts "Heard. How did it land? ↓"
+  by the player. A tap on the movement already sounding does nothing (a brush used to restart it).
+  *Play next* doesn't restart a work the playlist already went on into. Movement notes all show while none
+  of the work is sounding, so they can be read before Play. A failed "heard" is said, not swallowed. The view
+  opens at the work's heading, past the masthead and back bar (`arrivalAnchor`, `app/router.ts`).
+- **A device can be chosen.** When Spotify has no active device, the player lists the ones it can see
+  ("Play it on LG TV · Galaxy S24") and plays on the one tapped (`device_id`, `Playback.playOn`).
+- **The Library leads back into the listening.** A work's title opens the listening view of its latest
+  programme item (`LibraryRecording.itemId`), with the notes, what to listen for and the earlier hearing.

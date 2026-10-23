@@ -344,6 +344,23 @@ describe('the client', () => {
     expect(JSON.parse(String(calls[2][1].body))).toMatchObject({ uris: ['spotify:track:1', 'spotify:track:2'], offset: { position: 0 } })
   })
 
+  it('plays on a device chosen by name when nothing is active (batch one, 23 October 2026)', async () => {
+    const s = memStorage()
+    s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
+    const fetchMock = vi.fn(async (url: string) => url.includes('me/player/devices')
+      ? new Response(JSON.stringify({ devices: [{ id: 'tv1', name: 'LG native TV OLED55G42LW', type: 'TV', is_active: false }, { id: null, name: 'Locked', type: 'Speaker', is_active: false, is_restricted: true }] }), { status: 200 })
+      : new Response(null, { status: 204 }))
+    const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
+    expect(await c.devices()).toEqual([
+      { id: 'tv1', name: 'LG native TV OLED55G42LW', type: 'TV', active: false, restricted: false },
+      { id: undefined, name: 'Locked', type: 'Speaker', active: false, restricted: true },
+    ])
+    await c.play(['spotify:track:1'], 0, 0, 'tv1')
+    const urls = (fetchMock.mock.calls as unknown as [string][]).map(([u]) => u)
+    expect(urls.some((u) => u.endsWith('me/player/play?device_id=tv1'))).toBe(true)
+    expect(urls.filter((u) => u.includes('shuffle') || u.includes('repeat')).every((u) => u.includes('device_id=tv1'))).toBe(true)
+  })
+
   it('pauses and resumes without restarting, and shrugs at "already paused"', async () => {
     const s = memStorage()
     s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))

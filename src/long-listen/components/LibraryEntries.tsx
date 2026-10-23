@@ -32,11 +32,16 @@ export async function loadLibrary(repo: Repo, opts: { hideSkipped: boolean; time
  */
 export function LibraryWorks({ works }: { works: LibraryWorkEntry[] }) {
   return <>{works.map(({ work, recordings, live }) => {
+    const again = [...recordings].reverse().find((r) => r.programmeId && r.itemId)
     // What, which number, when — one line; the fuller words are on the programme. A number the title already carries isn't said twice.
     const facts = compactFacts(work.form, catalogueNotInTitle(work.title, work.catalogue), work.composed)
     return (
       <div key={work.id} className={s.libraryWork}>
-        <p className={s.libraryTitle}>{curly(work.title)}</p>
+        {/* The title is the way back to hearing it with the app: the listening view of its latest programme,
+            with the notes, what to listen for and when you heard it before — not only a bare Spotify link. */}
+        <p className={s.libraryTitle}>
+          {again ? <a className={s.quietLink} href={href({ name: 'listen', programmeId: again.programmeId!, itemId: again.itemId! })}>{curly(work.title)}</a> : curly(work.title)}
+        </p>
         {facts && <p className={s.workMeta}>{facts}</p>}
         <ul className={s.libraryRecs}>
           {recordings.map(({ recordingId, rec, proposed, state, said, programmeId, programmeTitle, note }) => (

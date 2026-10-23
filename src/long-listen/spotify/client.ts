@@ -193,9 +193,9 @@ export class SpotifyClient {
     return { name: d.display_name || d.id, id: d.id }
   }
 
-  async devices(): Promise<{ name: string; type: string; active: boolean }[]> {
-    const d = await this.get<{ devices?: { name: string; type: string; is_active: boolean }[] }>('me/player/devices')
-    return (d.devices ?? []).map((x) => ({ name: x.name, type: x.type, active: x.is_active }))
+  async devices(): Promise<SpotifyDevice[]> {
+    const d = await this.get<{ devices?: { id?: string | null; name: string; type: string; is_active: boolean; is_restricted?: boolean }[] }>('me/player/devices')
+    return (d.devices ?? []).map((x) => ({ id: x.id ?? undefined, name: x.name, type: x.type, active: x.is_active, restricted: Boolean(x.is_restricted) }))
   }
 
   /**
@@ -272,12 +272,14 @@ export class SpotifyClient {
    * press Play. `from` starts at a later movement, for a tap on the movement list;
    * `positionMs` a place inside it, to resume where a listening was left.
    */
-  async play(trackUris: string[], from = 0, positionMs = 0): Promise<void> {
+  async play(trackUris: string[], from = 0, positionMs = 0, deviceId?: string): Promise<void> {
+    // On a device chosen by name (a TV with Spotify open but idle): Spotify moves playback there as it starts.
+    const on = deviceId ? `device_id=${encodeURIComponent(deviceId)}` : ''
     await Promise.all([
-      this.request('me/player/shuffle?state=false', { method: 'PUT' }).catch(() => undefined),
-      this.request('me/player/repeat?state=off', { method: 'PUT' }).catch(() => undefined),
+      this.request(`me/player/shuffle?state=false${on ? `&${on}` : ''}`, { method: 'PUT' }).catch(() => undefined),
+      this.request(`me/player/repeat?state=off${on ? `&${on}` : ''}`, { method: 'PUT' }).catch(() => undefined),
     ])
-    const res = await this.request('me/player/play', {
+    const res = await this.request(`me/player/play${on ? `?${on}` : ''}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ uris: trackUris, offset: { position: from }, position_ms: Math.max(0, Math.round(positionMs)) }),
@@ -326,6 +328,15 @@ export function searchUrl(q: string): string {
 }
 
 /** Where this recording stands on Spotify: which movement, and whether it's sounding. Null when something else (or nothing) is on. */
+/** A device Spotify can play on: `id` is missing for one it won't take commands for. */
+export interface SpotifyDevice {
+  id?: string
+  name: string
+  type: string
+  active: boolean
+  restricted: boolean
+}
+
 export function playbackOf(np: NowPlaying | null, trackIds: string[]): { index: number; playing: boolean } | null {
   if (!np) return null
   let index = trackIds.indexOf(np.trackId)

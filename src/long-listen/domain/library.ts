@@ -17,6 +17,8 @@ export interface LibraryRecording {
   said: { reaction?: Reaction; notes: string[] }
   programmeId?: string
   programmeTitle?: string
+  /** The programme item it was met as — the way back into its listening view, with its notes and your earlier hearing. */
+  itemId?: string
   /** "another perspective", or what a stand-in played instead of. */
   note?: string
   /** When it was first met, for the order within a work. */
@@ -83,7 +85,7 @@ export function libraryEntries(input: LibraryInput, opts: { hideSkipped: boolean
       const whose = leadOf(item.proposed)
       rows.push({
         recordingId, rec: recById.get(recordingId), proposed: through?.proposed ?? item.proposed, ids,
-        programmeId: p.id, programmeTitle: p.title, at: p.createdAt, workId: item.workId, composer: item.proposed.composer, fromItem: true,
+        programmeId: p.id, programmeTitle: p.title, itemId: item.id, at: p.createdAt, workId: item.workId, composer: item.proposed.composer, fromItem: true,
         ...(through ? { note: whose ? `on Spotify instead of ${whose}’s recording` : 'on Spotify instead' } : {}),
       })
     }

@@ -26,14 +26,23 @@ export function FeedbackPanel({
   onClose?: (saved: boolean) => void
 }) {
   const { journey, bump, say } = useServices()
-  const [open, setOpen] = useState(startOpen)
-  const [target, setTarget] = useState(0)
-  const [reaction, setReaction] = useState<Reaction | undefined>()
-  const [more, setMore] = useState<WantMore | undefined>()
-  // What stayed with you, half-written, is kept until it is kept properly (or emptied).
+  // What stayed with you, half-written, is kept until it is kept properly (or emptied) — and so are the
+  // chips: "Loved it" tapped and then "Play next" used to be lost without a word.
   // Its own draft per panel: what it asks about (every target, by kind), the question, and where it stands
   // (`place`), so two panels open at once on the same work never share — or twice save — one sentence.
-  const [note, setNote, clearNote] = useKept(`note:${programmeId}:${place}:${prompt}:${targets.map((x) => `${x.type}=${x.id}`).join(',')}`, 'device')
+  const draft = `${programmeId}:${place}:${prompt}:${targets.map((x) => `${x.type}=${x.id}`).join(',')}`
+  const [note, setNote, clearNote] = useKept(`note:${draft}`, 'device')
+  const [reactionKept, setReactionKept, clearReaction] = useKept(`reaction:${draft}`, 'device')
+  const [moreKept, setMoreKept, clearMore] = useKept(`more:${draft}`, 'device')
+  const [targetKept, setTargetKept, clearTarget] = useKept(`about:${draft}`, 'device')
+  const reaction = REACTIONS.find((r) => r.value === reactionKept)?.value as Reaction | undefined
+  const more = WANT_MORE.find((m) => m.value === moreKept)?.value as WantMore | undefined
+  const target = Math.min(Math.max(0, Number(targetKept) || 0), targets.length - 1)
+  const setReaction = (r: Reaction | undefined) => setReactionKept(r ?? '')
+  const setMore = (m: WantMore | undefined) => setMoreKept(m ?? '')
+  const setTarget = (i: number) => setTargetKept(i ? String(i) : '')
+  // Something half-said waits open, not behind "Add a thought".
+  const [open, setOpen] = useState(() => startOpen || Boolean(reaction || more || note.trim()))
   const [saving, setSaving] = useState(false)
 
   const said = targets.map((t) => ({ t, f: latestFeedback(feedback, t.id) })).filter(({ f }) => f.reaction || f.notes.length)
@@ -43,8 +52,9 @@ export function FeedbackPanel({
     setSaving(true)
     try {
       await journey.giveFeedback({ target: { type: targets[target].type, id: targets[target].id }, programmeId, reaction, more, note })
-      setReaction(undefined)
-      setMore(undefined)
+      clearReaction()
+      clearMore()
+      clearTarget()
       clearNote()
       setOpen(false)
       onClose?.(true)

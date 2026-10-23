@@ -69,6 +69,16 @@ export function Twisty({ label, value, open, readOnce, preview, className, onOpe
     if (remember && el && !el.open && openFolds().includes(foldKey(el))) el.open = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  // Held open while something inside was on its way: once it has come (or failed), the fold stays open on
+  // it. Dropping `open` used to let React close it, hiding the very answer the listener waited a minute for.
+  const held = useRef(false)
+  useLayoutEffect(() => {
+    if (open) { held.current = true; return }
+    if (!held.current) return
+    held.current = false
+    const el = ref.current
+    if (el && !el.open) el.open = true
+  }, [open])
   return (
     <details
       ref={ref}
