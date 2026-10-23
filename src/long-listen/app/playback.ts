@@ -208,7 +208,11 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
       )
     },
     pause: async () => { await run(() => spotify.pause(), (np) => np && { ...np, isPlaying: false }) },
-    resume: async () => { await run(() => spotify.resume(), (np) => np && { ...np, isPlaying: true }) },
+    resume: async () => {
+      // Where it is paused, so a device chosen after "no device" carries on from there rather than from the top.
+      if (at) lastPlay.current = { from: at.index, positionMs: state.np?.progressMs ?? 0 }
+      await run(() => spotify.resume(), (np) => np && { ...np, isPlaying: true })
+    },
   }
 }
 

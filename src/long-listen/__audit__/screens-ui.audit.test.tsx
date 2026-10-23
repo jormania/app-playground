@@ -390,7 +390,7 @@ describe('batch two: memory you can act on (23 October 2026)', () => {
     expect(facts.textContent).toMatch(/not yet heard|partly heard|heard through/)
   }, 15000)
 
-  it('a performer’s name opens the Library searched for them', async () => {
+  it('a performer’s name opens their page: what you’ve heard them in (batch three)', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo, plain())
     window.location.hash = `#/p/${p.id}`
@@ -400,9 +400,43 @@ describe('batch two: memory you can act on (23 October 2026)', () => {
       name = screen.getAllByRole('link').find((a) => a.className.includes('performerLink'))!
       expect(name).toBeTruthy()
     }, { timeout: 4000 })
-    fireEvent.click(name)
-    window.location.hash = '#/library'
-    const search = await screen.findByRole('searchbox', {}, { timeout: 4000 })
-    expect((search as HTMLInputElement).value).toBe(name.textContent)
+    expect(name.getAttribute('href')).toBe(`#/performer/${encodeURIComponent(name.textContent!)}`)
+    window.location.hash = name.getAttribute('href')!
+    await screen.findByRole('heading', { name: name.textContent! }, { timeout: 4000 })
+    expect(screen.getByRole('heading', { name: 'What you’ve heard them in' })).toBeTruthy()
+    // The work it was met in is listed, its title a way back into the listening.
+    expect(screen.getAllByRole('link').some((a) => a.getAttribute('href')?.startsWith(`#/listen/${p.id}/`))).toBe(true)
+  }, 15000)
+})
+
+describe('batch three: finding your place, and the hall (23 October 2026)', () => {
+  it('the running order marks the next work once something is heard, and leads down to Where next', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const [first] = p.sections.flatMap((x) => x.items)
+    await new Journey(repo, plain()).markListening({ recordingId: first.recordingId, workId: first.workId }, 'heard', p.id)
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    const order = await screen.findByRole('navigation', { name: 'This week’s music' }, { timeout: 4000 })
+    const rows = [...order.querySelectorAll('li')]
+    expect(rows[0].textContent).toContain('heard')
+    expect(rows[1].textContent).toContain('next')
+    expect(rows.slice(2).every((r) => !r.textContent?.includes('next'))).toBe(true)
+    expect(screen.getByRole('button', { name: 'Where next ↓' })).toBeTruthy()
+  }, 15000)
+
+  it('Concerts lists what’s on in Bucharest with music already heard here', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const [first] = p.sections.flatMap((x) => x.items)
+    await new Journey(repo, plain()).markListening({ recordingId: first.recordingId, workId: first.workId }, 'heard', p.id)
+    // The halls' listing as read today (live/live.ts keeps it a day): one evening with the very work.
+    const surname = first.proposed.composer.split(' ').pop()!
+    await repo.marks.put({ id: 'live:scan', at: new Date().toISOString(), value: [{ venue: 'Filarmonica George Enescu', title: `${surname}: ${first.proposed.work}`, date: '2099-01-15', time: '19:00', link: 'https://www.filarmonicaenescu.ro/x' }] })
+    window.location.hash = '#/concerts'
+    render(<App repo={repo} curator={plain()} />)
+    const block = await screen.findByRole('region', { name: 'From your listening' }, { timeout: 4000 })
+    expect(block.textContent).toContain(first.proposed.work)
+    expect(block.textContent).toMatch(/Ateneu/)
   }, 15000)
 })

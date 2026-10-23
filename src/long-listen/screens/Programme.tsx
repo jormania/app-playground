@@ -22,7 +22,7 @@ import { playbackOf } from '../spotify/client'
 import { useOnline } from '../app/online'
 import { RecordingBlock } from '../components/RecordingBlock'
 import { FeedbackPanel } from '../components/FeedbackPanel'
-import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf, madeWords } from '../components/common'
+import { CharCount, MAX_ASK, NeedsKey, Paragraphs, Problem, Waiting, messageOf, madeWords, webUrl } from '../components/common'
 import { SittingCard } from '../components/SittingCard'
 import { OpenPaths } from '../components/OpenPaths'
 import { Twisty } from '../components/Twisty'
@@ -211,7 +211,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
 
       <ProgrammeTools b={b} showLength={!ordered} />
       {isCurrent && <LiveLine b={b} skip={settings.hideSkipped ? skippedIds : undefined} />}
-      {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} /> : needsSpotify && <SpotifyNote />}
+      {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} isCurrent={isCurrent} /> : needsSpotify && <SpotifyNote />}
       {settings.hideSkipped && skippedIds.size > 0 && (
         <p className={s.faint}>
           {showSkipped ? `Showing ${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'}. ` : `${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'} hidden. `}
@@ -413,8 +413,9 @@ const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard'
  * is what makes the music findable without scrolling past it. Each line jumps
  * to its work (by scrolling — the URL hash belongs to the router).
  */
-function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean }) {
+function RunningOrder({ b, shown, spotifyNote, isCurrent }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean; isCurrent: boolean }) {
   const player = usePlayerState()
+  const { settings, week } = useServices()
   const rows = b.programme.sections.flatMap((section) => section.items.filter(shown).map((item) => ({ item, section })))
   // The part's numeral, counted as the page counts its parts: only those with a work shown.
   const parts = b.programme.sections.filter((section) => section.items.some(shown)).map((section) => section.id)
@@ -429,6 +430,17 @@ function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: Prog
     const r = b.recordings.get(rid)
     return isConfirmed(r) ? positionOf(player.np, r.spotify.trackIds) : null
   }
+  // Where you are mid-week: once something has been begun, the first work not yet heard (nor skipped, nor
+  // sounding now) is marked "next" — the place to pick up from, found at a glance on a long page.
+  const states = rows.map(({ item }) => listeningState(b.events, itemRecordingIds(b, item)))
+  const begun = states.some((st) => st !== 'not-started')
+  const nextAt = begun ? rows.findIndex(({ item }, n) => (states[n] === 'not-started' || states[n] === 'listening') && !itemRecordingIds(b, item).some((rid) => onNow(rid))) : -1
+  // The week's last days, said once: Saturday "ends tomorrow", Sunday "ends tonight".
+  const today = isoDateIn(new Date(), settings.timeZone)
+  const endsSoon = isCurrent && states.some((st) => st === 'not-started' || st === 'listening')
+    ? (today === week.endsOn ? 'The week ends tonight' : addDays(today, 1) === week.endsOn ? 'The week ends tomorrow' : null)
+    : null
+  const toWhereNext = () => document.getElementById(WHERE_NEXT)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   return (
     <nav className={s.runningOrder} aria-label="This week’s music">
       <p className={s.panelHead}>
@@ -458,6 +470,8 @@ function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: Prog
                 <span className={s.roSide}>
                   {now
                     ? <span className={`${s.tag} ${s.tagOn}`}>{now.playing ? 'playing' : 'paused'}</span>
+                    : n === nextAt
+                    ? <span className={`${s.tag} ${s.tagNext}`}>{state === 'listening' ? 'pick up' : 'next'}</span>
                     : STATE_TAG[state]
                     ? <span className={`${s.tag} ${state === 'heard' ? s.tagOn : ''}`}>{STATE_TAG[state]}</span>
                     : null}
@@ -467,8 +481,23 @@ function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: Prog
           )
         })}
       </ol>
+      {/* The ways on — a sitting, more of the theme, how it went — are at the foot of a long page: one tap down. */}
+      {isCurrent && (
+        <p className={s.roFoot}>
+          {endsSoon && <>{endsSoon} — what isn’t heard stays in the Journal. </>}
+          <button type="button" className={`${s.textButton} ${s.inlineButton}`} onClick={toWhereNext}>Where next ↓</button>
+        </p>
+      )}
     </nav>
   )
+}
+
+/** The anchor of "Where next", for the running order's way down to it. */
+const WHERE_NEXT = 'where-next'
+
+function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)
 }
 
 function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number: number; b: Bundle; comparison?: Comparison }) {
@@ -881,11 +910,6 @@ function ComparisonView({ c, b }: { c: Comparison; b: Bundle }) {
   )
 }
 
-/** Only http(s) links are rendered: a restored backup is data, and a javascript: URL in it must not become a link. */
-function webUrl(u: string): string | undefined {
-  try { return ['http:', 'https:'].includes(new URL(u).protocol) ? u : undefined } catch { return undefined }
-}
-
 const KIND_TITLE = { listen: 'Listen', read: 'Read', watch: 'Watch' } as const
 
 function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boolean; onSearch: () => void }) {
@@ -1020,7 +1044,7 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
   // The programme ends where the music does: every way on is one folded line
   // saying what it offers, opened only when wanted. None of them is required.
   return (
-    <section aria-label="Where next" className={s.whereNext}>
+    <section id={WHERE_NEXT} aria-label="Where next" className={`${s.whereNext} ${s.whereNextAnchor}`}>
       <h2 className={s.sectionHead}>Where next</h2>
       <p className={s.sectionGuide}>The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.</p>
       {!curatorReady && <NeedsKey to="ask the curator for any of these" />}

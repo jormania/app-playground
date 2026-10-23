@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { ComposerLink } from './Composer'
 import { filingLetter } from '../domain/library'
 import { useLoad, useServices } from '../app/services'
@@ -6,8 +6,8 @@ import { href } from '../app/router'
 import { useKept } from '../app/kept'
 import { Empty, Problem, Waiting } from '../components/common'
 import { LibraryWorks, loadLibrary } from '../components/LibraryEntries'
-import { SEARCH_EVENT } from '../components/Credits'
 import { searchLibrary } from '../domain/librarySearch'
+import { LIBRARY_VIEWS, viewLibrary, type LibraryView } from '../domain/library'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -19,15 +19,12 @@ export function LibraryScreen() {
   const { repo, settings } = useServices()
   // The search stays as it was left: back from a composer's page, the same list, the same place in it.
   const [q, setQ] = useKept('library-search', 'tab')
-  // A performer's name tapped here, in a row: the list searched for them, from the top.
-  useEffect(() => {
-    const on = (e: Event) => { const name = (e as CustomEvent<string>).detail; if (typeof name === 'string') { setQ(name); window.scrollTo({ top: 0 }) } }
-    window.addEventListener(SEARCH_EVENT, on)
-    return () => window.removeEventListener(SEARCH_EVENT, on)
-  }, [setQ])
   const { data, error, retry } = useLoad(() => loadLibrary(repo, settings), [settings.hideSkipped, settings.timeZone])
 
-  const shown = useMemo(() => (data ? searchLibrary(data, q) : []), [data, q])
+  // Three ways to look: everything met (A–Z), only what was heard (A–Z), or the most recently met first.
+  const [viewKept, setView] = useKept('library-view', 'tab')
+  const view: LibraryView = viewKept === 'heard' || viewKept === 'recent' ? viewKept : 'all'
+  const shown = useMemo(() => (data ? viewLibrary(searchLibrary(data, q), view) : []), [data, q, view])
 
   if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the library…</Waiting>
@@ -41,17 +38,23 @@ export function LibraryScreen() {
       {data.length > 0 && (
         <>
           <label className={s.visuallyHidden} htmlFor="lib-q">Search the library</label>
-          <input id="lib-q" className={s.search} type="search" placeholder="A composer, a work, a conductor…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input id="lib-q" className={s.search} type="search" placeholder="A composer, a work, a conductor, what you said…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className={s.chipRow} role="radiogroup" aria-label="What the library shows">
+            {LIBRARY_VIEWS.map((v) => (
+              <button key={v.value} type="button" role="radio" aria-checked={view === v.value} className={`${s.chip} ${view === v.value ? s.chipOn : ''}`} onClick={() => setView(v.value === 'all' ? '' : v.value)}>{v.label}</button>
+            ))}
+          </div>
         </>
       )}
 
       {data.length === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing yet. Each work you’re offered, and each concert you keep, is filed here.</Empty>}
-      {data.length > 0 && shown.length === 0 && <p className={s.quiet}>Nothing here matches “{q}”.</p>}
+      {data.length > 0 && shown.length === 0 && <p className={s.quiet}>{q.trim() ? <>Nothing here matches “{q}”{view === 'heard' ? ' among what you’ve heard' : ''}.</> : 'Nothing heard yet — what you hear is filed here as you go.'}</p>}
 
       {shown.map((e, i) => {
         // A card catalogue's guide letter wherever the surnames move on to a new one.
         const letter = filingLetter(e.composer)
-        const newLetter = i === 0 || filingLetter(shown[i - 1].composer) !== letter
+        // Not in "recent": the order is time there, and letters would only interrupt it.
+        const newLetter = view !== 'recent' && (i === 0 || filingLetter(shown[i - 1].composer) !== letter)
         return (
           <section key={e.composer} className={s.journalWeek}>
             {newLetter && <p className={s.indexLetter} aria-hidden="true">{letter}</p>}

@@ -93,7 +93,6 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     }
   }, [programmeId, itemId, settings.timeZone])
   useTitle(data ? curly(data.item.proposed.work) : undefined)
-  useWakeLock(true)
 
   // Dusk while this screen is open: one of four dark shades, at random each visit (never last visit's).
   // Chosen once per visit, remembered once, applied while open — and only once there is a work to show:
@@ -109,6 +108,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const sp0 = isConfirmed(data?.recording) ? data.recording.spotify : undefined
   // Which movement is sounding, playing or paused — shared with the programme's buttons.
   const playback = usePlayback(sp0?.trackUris, sp0?.trackIds, sp0?.trackDurationsMs)
+  // The screen kept awake while this work is on — playing or paused in it — not all evening once it has ended.
+  useWakeLock(Boolean(playback.at))
 
   const { curatorReady, say } = useServices()
   // The companion's notes are written once per programme; if this recording has none yet, ask for them now.
@@ -541,7 +542,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
             ? <a className={s.primaryButton} href={href({ name: 'listen', programmeId, itemId: next.id })} onClick={() => { if (spotify.connected && data.nextPlayable) { try { sessionStorage.setItem(AUTOPLAY_KEY, next.id) } catch { /* private mode */ } } }}>
                 {spotify.connected && data.nextPlayable ? 'Play next' : 'Next'}: {curly(next.proposed.work)} →
               </a>
-            : <span className={s.quiet}>That was the last work this week.</span>}
+            : <span className={s.quiet}>That was the last work {programme.sitting ? 'this evening' : programme.extends ? 'of this programme' : 'this week'}.</span>}
           {/* The same way back as at the top of the screen, its rule now above it. */}
           <BackLink to={programmeBackHref(programme.id)} label={programme.title} at="foot" />
         </div>

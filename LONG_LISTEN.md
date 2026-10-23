@@ -469,9 +469,14 @@ This week (three directions · three others · open paths) → Programme (tools:
 length, playlist, print · sections · recordings · listen-for · marks ·
 feedback · perspectives · more context · resources · change direction) →
 Listening view. Journal (every week: offered, chosen, heard). Library
-(composers → works → recordings, searchable). Threads. Notebook (taste in
-words, how it moved, preferences, a wish for next week, a note). Settings
-(gear) and the guide (book) sit in the masthead.
+(composers → works → recordings, searchable; *Everything · Heard · Recent*),
+with a page per composer (`#/composer/<name>`) and per performer
+(`#/performer/<name>`). Threads. Notebook (taste in words, how it moved,
+preferences, a wish for next week, a note). Concerts (heard live, You're going,
+From your listening) under the Journal; a season in review (`#/season/<n>`).
+Settings (gear) and the guide (book) sit in the masthead, with the listening
+mark beside them when there's a work to go back to (§28). With no key, This
+week is a welcome (§30).
 
 **How the screens are told apart (2026-10-09 visual pass).** One typographic
 system, one accent, no cards — but each section has a shape of its own, drawn
@@ -860,8 +865,9 @@ say the decisive things in few words.
   divides the work as the numerals expect (`listenForAt`); programmes curated
   before 14 October show as before.
 - **Focus** (per device): only the music — the movement sounding, its note, its
-  "listen for" points and the controls, a size larger. "Show everything" brings
-  the rest back.
+  "listen for" points and the controls, at the same size (the larger type was
+  taken out); the same *Focus* button, showing its state, brings the rest back.
+  *Your listening* and *More context* stay below the music in Focus too.
 - **The work ends, and it says so at once**: when the last movement plays out
   (`workEnded`), the work is marked heard (source `app`, never against the
   listener's own word) and "How did it land?" opens — not a minute later when
@@ -1300,8 +1306,8 @@ What it changed:
   running order no longer adds "· 3 heard" (the state tags already say it). Inventory words that aren't
   progress (the week's number of works, "2 so far" on a fold) stay, as §10 allows.
 - **Names lead to the Library.** Every performer's name — the programme, the listening view, the Library,
-  concerts — opens the Library searched for them (`PerformerName`, `keepAhead`); tapped on the Library itself,
-  the search changes in place.
+  concerts — opened the Library searched for them. *Superseded in batch three (§30): a name now opens the
+  performer's own page, and `keepAhead` is gone.*
 - **The season's "worth hearing again"** opens each work's latest listening view.
 - **The Notebook can be corrected, and says why.** Each observation says what it rests on ("From what you
   said of Sibelius's Tapiola and Debussy's La mer", from its evidence ids). *Not quite* takes an optional line
@@ -1338,3 +1344,33 @@ end; Spotify doesn't document it, and three clear matches are needed before it i
 track whose neighbouring play is at least nine-tenths of its length away (and not more than two minutes over)
 ran through (`playedThrough`): `heard`, which also brings "How did it land?". A long gap — a pause, a quiet
 hour — proves nothing and stays "Started"; "Heard" by hand still works as before.
+
+## 30. Batch three of the QoL audit (23 October 2026)
+
+- **Where you are mid-week.** Once something is begun, the running order marks the first work not yet heard
+  "next" ("pick up" when it was started), and ends on *Where next ↓*, one tap down past the essay and the
+  works. On Saturday and Sunday, with music still unheard, it says the week ends tomorrow or tonight — and
+  that what isn't heard stays in the Journal. No count.
+- **Open paths, one rule.** `OpenPaths` shows the nine most recent and folds the rest under *Older paths*,
+  the same on This week and in Where next (This week used to cut at nine, Where next to list them all). A
+  direction tagged *left open* in the Journal can be taken from there (*take it now*), with the same
+  confirmation when the week already has a programme.
+- **The Library three ways.** *Everything* (as filed), *Heard* (only works heard, in a recording or live) and
+  *Recent* (newest met first, without the guide letters) — `viewLibrary`. Search also reads what you said
+  (your reaction, your words), the programme a recording came from, the work's form, and a concert's hall and
+  note: "the tennis ballet", "loved".
+- **A performer's page.** Every performer's name now opens `#/performer/<name>`: the works you've heard them in
+  — conductor, soloist, orchestra or ensemble, matched whole — and the evenings they were heard live, read
+  from the Library as the composer page is (`performerEntries`). No portrait: a performer's life is the fact
+  likeliest to be wrong, and their part is in the recordings. (Batch two's Library search by name is retired.)
+- **Concerts from your listening.** Concerts shows what's coming up at the Ateneu and Sala Radio with music
+  heard here — the very work, a performer from its recording, its composer — loved and interesting first, five
+  at most, each with *I'm going*. From the day's listing (`liveEvents`), no curator calls.
+- **A first screen that says what this is.** With no key, This week is a welcome: what the curator does, and
+  the three things to set up in order (key needed, Spotify recommended, Notion optional). A key that stopped
+  working says so as itself, not as a first visit. The one-time explanation on the first week's directions
+  holds for the visit rather than vanishing at the first reload.
+- **Smaller.** The listening view keeps the screen awake only while its work is on (playing or paused in it).
+  "That was the last work" says *this evening* for a sitting and *of this programme* for more of a theme.
+  Choosing a device after Resume found none carries on from where it was paused, not from the top. §20's
+  account of Focus corrected.

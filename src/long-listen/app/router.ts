@@ -31,6 +31,7 @@ export type Route =
   | { name: 'season'; n: number }
   | { name: 'before'; key: string }
   | { name: 'composer'; composer: string }
+  | { name: 'performer'; performer: string }
   | { name: 'settings' }
 
 export function parseRoute(hash: string): Route {
@@ -53,6 +54,7 @@ export function parseRoute(hash: string): Route {
     case 'season': return arg && /^\d+$/.test(arg) && Number(arg) >= 1 ? { name: 'season', n: Number(arg) } : { name: 'journal' }
     case 'before': return arg ? { name: 'before', key: arg } : { name: 'week' }
     case 'composer': return arg ? { name: 'composer', composer: arg } : { name: 'library' }
+    case 'performer': return arg ? { name: 'performer', performer: arg } : { name: 'library' }
     case 'settings': return { name: 'settings' }
     default: return { name: 'week' }
   }
@@ -64,6 +66,7 @@ export function href(r: Route): string {
   if (r.name === 'season') return `#/season/${r.n}`
   if (r.name === 'before') return `#/before/${encodeURIComponent(r.key)}`
   if (r.name === 'composer') return `#/composer/${encodeURIComponent(r.composer)}`
+  if (r.name === 'performer') return `#/performer/${encodeURIComponent(r.performer)}`
   if (r.name === 'listen') return `#/listen/${encodeURIComponent(r.programmeId)}/${encodeURIComponent(r.itemId)}`
   return r.name === 'week' ? '#/' : `#/${r.name}`
 }
