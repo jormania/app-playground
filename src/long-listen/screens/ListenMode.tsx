@@ -4,7 +4,7 @@ import type { ProgrammeItem } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
-import { href, programmeBackHref } from '../app/router'
+import { LISTEN_ANCHOR, href, programmeBackHref } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, onWorkRanOn, usePlayback, usePlayerState } from '../app/playback'
@@ -126,6 +126,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const [explaining, setExplaining] = useState(false)
 
   const [heardOpen, setHeardOpen] = useState(false)
+  // The work ended by itself while the listener read near the top: "How did it land?" opens at the foot,
+  // out of sight — so one line by the player says so, and takes them there.
+  const [landedLine, setLandedLine] = useState(false)
+  const closeRef = useRef<HTMLDivElement>(null)
   // Watched play to its end (app/HeardWitness.tsx): already marked heard — open the same panel as "I've heard it".
   const playedId = data ? (data.recording?.id ?? data.item.recordingId) : undefined
   // Not while still inside the work: a pause in movement II can already read as "heard" in Spotify's history
@@ -136,7 +140,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   useEffect(() => {
     if (heardOpen && playedId) void repo.marks.put({ id: askedMark(playedId), at: new Date().toISOString() }).catch(() => {})
   }, [heardOpen, playedId, repo])
-  useEffect(() => (playedId ? onHeardRecorded((ids) => { if (ids.includes(playedId) && !midWork.current) setHeardOpen(true) }) : undefined), [playedId])
+  useEffect(() => (playedId ? onHeardRecorded((ids) => { if (ids.includes(playedId) && !midWork.current) { setHeardOpen(true); setLandedLine(true) } }) : undefined), [playedId])
   // A ref as well as the state: two taps in one frame both see the state as it was before either.
   const markingNow = useRef(false)
 
@@ -203,7 +207,8 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       if (!d || open) return
       const played = { recordingId: d.recording?.id ?? d.item.recordingId, workId: d.item.workId }
       const mark = d.heardBefore ? Promise.resolve() : journey.markListening(played, 'heard', d.programme.id, 'app').then(() => bump())
-      mark.then(() => setHeardOpen(true), () => {})
+      // Not kept (storage failing): said, rather than nothing at all happening.
+      mark.then(() => { setHeardOpen(true); setLandedLine(true) }, (e: unknown) => say(messageOf(e), 'danger'))
     }
     const stopReading = onPlayerReading((np) => {
       const was = prev
@@ -232,7 +237,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   useEffect(() => {
     if (!data || !sp0 || autoplayed.current || !spotify.connected || !wantsPlay) return
     autoplayed.current = true
-    void playback.play(0).then((ok) => { if (ok) void journey.markListening({ recordingId: data.recording?.id ?? data.item.recordingId, workId: data.item.workId }, 'play-started', data.programme.id, 'app').then(bump, () => {}) })
+    const begun = () => void journey.markListening({ recordingId: data.recording?.id ?? data.item.recordingId, workId: data.item.workId }, 'play-started', data.programme.id, 'app').then(bump, () => {})
+    // Already sounding — the week's playlist went straight on into it: starting it again would go back to its top.
+    if (playbackOf(player.np, sp0.trackIds)?.playing) { begun(); return }
+    void playback.play(0).then((ok) => { if (ok) begun() })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, sp0])
 
@@ -342,7 +350,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
   const nowIndex = playback.at?.index ?? null
 
   // A movement can be started from the list: the place in the music, by its name.
+  // Not the movement already sounding (or paused on): the row is a wide target, and a brush along it on an
+  // armrest used to start it again from the top. Play and pause are the bar's.
   async function playFrom(i: number) {
+    if (nowIndex === i) return
     if (await playback.play(i)) started()
   }
 
@@ -354,7 +365,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         // Focus: only the music, for the phone on the armrest. Remembered on this device.
         aside={<button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>}
       />
-      <p className={s.composer}><ComposerLink name={item.proposed.composer} /></p>
+      <p id={LISTEN_ANCHOR} className={`${s.composer} ${s.listenTop}`}><ComposerLink name={item.proposed.composer} /></p>
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
       {facts && <p className={s.listenFacts}>{facts}</p>}
@@ -387,6 +398,12 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
             </>
           )}
       </div>
+      {landedLine && heardOpen && !saidSomething && (
+        <p className={s.landedLine} role="status">
+          Heard.{' '}
+          <button className={s.textButton} onClick={() => { setLandedLine(false); closeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>How did it land? ↓</button>
+        </p>
+      )}
 
       {/* The whole work's points, before its movements; in focus, once the music has begun, only the movement sounding. */}
       {throughout.length > 0 && !(focus && nowIndex !== null) && (
@@ -410,7 +427,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                   <span className={s.movementNumeral}>{m.numeral}.</span>
                   <span className={s.movementName}>
                     {spotify.connected
-                      ? <button type="button" className={s.movementButton} onClick={() => void playFrom(i)} disabled={playback.busy} title="Play from this movement">{m.title}</button>
+                      ? <button type="button" className={s.movementButton} onClick={() => void playFrom(i)} disabled={playback.busy} aria-disabled={now || undefined} title={now ? undefined : 'Play from this movement'}>{m.title}</button>
                       : m.title}
                     {now && <span className={s.nowWord}> — {playback.at?.playing ? 'now' : 'paused'}</span>}
                     {leftIndex === i && playback.left && <span className={s.nowWord}> — left at {clock(playback.left.progressMs)}</span>}
@@ -419,8 +436,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                 </span>
                 {/* Where in the movement it is: a hairline and a clock, carried by the clock between readings. */}
                 {now && live && live.index === i && <MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} last={i === titled.length - 1} />}
-                {/* The companion's note, as Spotify reaches the movement — or every note, when Spotify can't say where it is. */}
-                {notes[i] && (now || leftIndex === i || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
+                {/* The companion's note, as Spotify reaches the movement; every note while none of this work is
+                    sounding (before Play, or played elsewhere), so they can be read ahead rather than hidden. */}
+                {notes[i] && (now || leftIndex === i || !spotify.connected || nowIndex === null) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
                 {/* What to listen for in this movement: always there, so nothing waits for Spotify to reach it; the movement sounding's stands out. */}
                 {inLine && pointsAt(i).length > 0 && (
                   <ul className={`${s.listenFor} ${s.movementListen} ${nowIndex !== null && !now ? s.listenForLater : ''}`}>
@@ -443,7 +461,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
       {/* A work in one track: its place, under the bar. */}
       {titled.length <= 1 && live && <p className={s.mtSm}><MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} /></p>}
-      {titled.length <= 1 && notes[0] && (nowIndex === 0 || !spotify.connected) && <p className={s.movementNote}><Gloss text={notes[0]} /></p>}
+      {titled.length <= 1 && notes[0] && <p className={s.movementNote}><Gloss text={notes[0]} /></p>}
 
       {!inLine && (() => {
         // Each point with where it belongs: the movement sounding stands out, the rest step back; in focus, only
@@ -495,7 +513,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
       {/* The work closes on the programme's own two rows, alike in shape and weight: where you stand
           with it (how it landed, once heard) and the curator's note. */}
-      <div className={`${s.workClose} ${s.mtXl}`}>
+      <div ref={closeRef} className={`${s.workClose} ${s.mtXl}`}>
         <ListeningRow work={item.proposed.work} state={data.state} open={heardOpen} onPick={(to) => { void mark(to) }}>
           {/* Heard: say how it landed here. Coming back to it, what was said stays folded; open only if nothing was said yet. */}
           {(heardOpen || data.heardBefore) && (

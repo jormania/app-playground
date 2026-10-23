@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { ConfirmModal, Field, SegmentedControl } from '../../ds'
 import { useLoad, useServices } from '../app/services'
 import { beginSignIn, redirectUriFor, renewBy } from '../spotify/auth'
-import { canonicalTimeZone, isValidTimeZone, isoDateIn } from '../domain/week'
+import { canonicalTimeZone, isValidTimeZone } from '../domain/week'
 import { DEFAULT_PREFERENCES, type ListenerPreferences } from '../domain/types'
 import type { ThemeChoice } from '../app/settings'
 import { GUIDE_URL, STARTER_TEMPLATE_URL } from '../app/links'
@@ -18,6 +18,7 @@ import { RELEASE } from '../app/release'
 import s from '../styles/editorial.module.css'
 import { Twisty } from '../components/Twisty'
 import { forgetPlaces } from '../app/kept'
+import { dataKept, downloadBackup, lastBackup } from '../app/backup'
 
 type Result = { ok: boolean; message: string } | null
 
@@ -463,18 +464,6 @@ function TimeZoneField() {
   )
 }
 
-/** Everything in the store, as one JSON file in the downloads. */
-async function downloadBackup(repo: Repo, name: string, timeZone: string) {
-  const data = await repo.exportAll()
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
-  const a = document.createElement('a')
-  a.href = url
-  // Today's date where the listener is, as the week reckons it — not UTC's, a day behind after midnight.
-  a.download = `${name}-${isoDateIn(new Date(), timeZone)}.json`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
-}
-
 /** Is there a journey here to lose? Any week at all; a new device has only its settings. */
 async function holdsJourney(repo: Repo): Promise<boolean> {
   return (await repo.store.keys()).some((k) => k.startsWith(`${PREFIX}week:`))
@@ -496,12 +485,16 @@ function DataSections() {
 function BackupSection({ busy, setBusy }: Busy) {
   const { repo, bump, say, settings, notion, notionState, syncNotion } = useServices()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [last, setLast] = useState(lastBackup)
+  const [kept, setKept] = useState<boolean | undefined>(undefined)
+  useEffect(() => { void dataKept().then(setKept) }, [])
   // A backup read, checked, and waiting for the listener's word: a restore replaces the journey here.
   const [waiting, setWaiting] = useState<{ data: unknown; replaces: boolean } | null>(null)
 
   async function exportBackup() {
     try {
       await downloadBackup(repo, 'the-long-listen', settings.timeZone)
+      setLast(lastBackup())
     } catch (e) {
       say(messageOf(e), 'danger')
     }
@@ -556,6 +549,11 @@ function BackupSection({ busy, setBusy }: Busy) {
   return (
     <Card title="Backup">
       <p className={s.settingText}>Save a copy now and then. Restoring one replaces the journey on this device. Your keys are not in it.</p>
+      {/* When it was last done, in words: the journey lives only on this device. */}
+      <p className={s.settingHint}>
+        {last ? `Last saved on ${dateWords(last, settings.timeZone)}.` : 'No backup saved from this device yet.'}
+        {kept === false && ' The browser hasn’t agreed to keep this app’s data, so it could clear it if space runs short — installing the app usually settles that.'}
+      </p>
       <div className={s.settingsActions}>
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void exportBackup()}>Save a backup</button>
         {/* Not while Notion is being written: the sync would carry on writing the journey being replaced. */}

@@ -38,6 +38,13 @@ describe('libraryEntries — a stand-in is its item', () => {
     expect(rows[0].note).toBeUndefined()
   })
 
+  it('carries the programme item it was met as, the way back into its listening view (batch one, 23 October 2026)', () => {
+    const rows = rowsOf(libraryEntries({ ...base(), comparisons: [comparison('cmp:p1:i1', 'w-mer', '2026-10-06', [['r-boulez', boulez], ['r-karajan', karajan]])] }, opts))
+    expect(rows.find((r) => r.recordingId === 'r-boulez')).toMatchObject({ programmeId: 'p1', itemId: 'i1' })
+    // Another perspective has no listening view of its own: no item to lead to.
+    expect(rows.find((r) => r.recordingId === 'r-karajan')?.itemId).toBeUndefined()
+  })
+
   it('shows one row — the recording that played — with the curator’s choice as a note, and reads both as one', () => {
     const rows = rowsOf(libraryEntries({ ...base(), events: [event('r-rattle', 'heard')], feedback: [feedback('r-rattle', 'recording', { reaction: 'loved' })] }, opts))
     expect(rows).toHaveLength(1)

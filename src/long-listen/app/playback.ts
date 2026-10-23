@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { keepPlace, placeFrom, positionOf, savedPlace, type Place } from './place'
 import { useServices } from './services'
-import { SpotifyUnavailable, playbackOf, type NowPlaying, type SpotifyClient } from '../spotify/client'
+import { SpotifyUnavailable, playbackOf, shortDevice, type NowPlaying, type SpotifyClient } from '../spotify/client'
 import { PlayerWatch, type PlayerState } from '../spotify/watch'
 import { Witness } from '../spotify/witness'
 import { WorkGuard, type Armed } from '../spotify/workGuard'
@@ -116,6 +116,10 @@ export interface Playback {
   device?: string
   cantFollow: boolean
   noDevice: boolean
+  /** With no device active: those Spotify can see (a TV or speaker with Spotify open), to play on by a tap. */
+  devices: { id: string; name: string }[]
+  /** Play again as last asked, on this device. */
+  playOn: (deviceId: string) => Promise<boolean>
   busy: boolean
   /** Start this recording from a movement (the first, unless told), at a place inside it if given. */
   play: (from?: number, positionMs?: number) => Promise<boolean>
@@ -139,6 +143,9 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
 
   const [busy, setBusy] = useState(false)
   const [noDevice, setNoDevice] = useState(false)
+  const [devices, setDevices] = useState<{ id: string; name: string }[]>([])
+  // What Play was last asked for, so a device chosen after "no device" plays the same thing there.
+  const lastPlay = useRef({ from: 0, positionMs: 0 })
   // A finished work is at rest, not paused (positionOf): Play starts it again from the top.
   const at = spotify.connected && trackIds?.length ? positionOf(state.np, trackIds) : null
 
@@ -162,8 +169,13 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
       watch.expect(expect)
       return true
     } catch (e) {
-      if (e instanceof SpotifyUnavailable && e.reason === 'no-device') setNoDevice(true)
-      else say(messageOf(e), 'danger')
+      if (e instanceof SpotifyUnavailable && e.reason === 'no-device') {
+        setNoDevice(true)
+        // Nothing active: perhaps a TV or speaker with Spotify open but idle — offer those by name.
+        spotify.devices()
+          .then((list) => setDevices(list.filter((d) => d.id && !d.restricted).map((d) => ({ id: d.id!, name: shortDevice(d.name, d.type) ?? d.name }))))
+          .catch(() => setDevices([]))
+      } else say(messageOf(e), 'danger')
       return false
     } finally {
       setBusy(false)
@@ -179,10 +191,22 @@ export function usePlayback(trackUris: string[] | undefined, trackIds: string[] 
     busy,
     left: at ? null : left,
     arm: () => armWork(trackIds, durationsMs),
-    play: (from = 0, positionMs = 0) => run(
-      async () => { await spotify.play(trackUris ?? [], from, positionMs); armWork(trackIds, durationsMs) },
-      (np) => ({ trackId: trackIds?.[from] ?? '', trackName: '', isPlaying: true, progressMs: positionMs, durationMs: 0, deviceName: np?.deviceName }),
-    ),
+    devices: noDevice && !at ? devices : [],
+    play: (from = 0, positionMs = 0) => {
+      lastPlay.current = { from, positionMs }
+      return run(
+        async () => { await spotify.play(trackUris ?? [], from, positionMs); armWork(trackIds, durationsMs) },
+        (np) => ({ trackId: trackIds?.[from] ?? '', trackName: '', isPlaying: true, progressMs: positionMs, durationMs: 0, deviceName: np?.deviceName }),
+      )
+    },
+    playOn: (deviceId: string) => {
+      const { from, positionMs } = lastPlay.current
+      const name = devices.find((d) => d.id === deviceId)?.name
+      return run(
+        async () => { await spotify.play(trackUris ?? [], from, positionMs, deviceId); armWork(trackIds, durationsMs); setDevices([]) },
+        () => ({ trackId: trackIds?.[from] ?? '', trackName: '', isPlaying: true, progressMs: positionMs, durationMs: 0, deviceName: name }),
+      )
+    },
     pause: async () => { await run(() => spotify.pause(), (np) => np && { ...np, isPlaying: false }) },
     resume: async () => { await run(() => spotify.resume(), (np) => np && { ...np, isPlaying: true }) },
   }

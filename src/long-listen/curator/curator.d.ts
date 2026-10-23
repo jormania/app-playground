@@ -9,6 +9,7 @@ export declare function curatorBody(op: string, userContent: string | unknown[])
 export declare function resourcesBody(userContent: string, priorTurns?: unknown[]): Record<string, unknown>
 export declare function pingBody(): Record<string, unknown>
 export declare function looksLikeAnthropicKey(key: string): boolean
-export declare function anthropicSender(apiKey: string, fetchImpl?: typeof fetch): Send
-export declare function directCurator(getKey: () => string, opts?: { fetchImpl?: typeof fetch; send?: Send; onUsage?: (op: string, model: string, usage: unknown) => void }): CuratorClient
+export declare const REQUEST_TIMEOUT_MS: number
+export declare function anthropicSender(apiKey: string, fetchImpl?: typeof fetch, timeoutMs?: number): Send
+export declare function directCurator(getKey: () => string, opts?: { fetchImpl?: typeof fetch; send?: Send; onUsage?: (op: string, model: string, usage: unknown) => void; onProgress?: (op: string, phase: 'start' | 'retry' | 'end') => void }): CuratorClient
 export declare function promptVersions(): Record<string, string>

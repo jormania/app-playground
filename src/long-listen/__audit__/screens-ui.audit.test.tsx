@@ -340,3 +340,22 @@ describe('This week', () => {
     expect(screen.queryByText('A path left open')).toBeNull()
   }, 15000)
 })
+
+describe('a reaction picked and not yet kept (batch one, 23 October 2026)', () => {
+  it('is still picked when the app is opened again, waiting open rather than behind "Add a thought"', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    window.location.hash = `#/p/${p.id}`
+    const first = render(<App repo={repo} curator={plain()} />)
+    const heard = (await screen.findAllByRole('radio', { name: 'Heard' }, { timeout: 4000 }))[0]
+    fireEvent.click(heard)
+    const loved = (await screen.findAllByRole('radio', { name: 'Loved it' }, { timeout: 4000 }))[0]
+    fireEvent.click(loved)
+    await waitFor(() => expect(loved.getAttribute('aria-checked')).toBe('true'))
+    first.unmount()
+
+    render(<App repo={repo} curator={plain()} />)
+    const again = (await screen.findAllByRole('radio', { name: 'Loved it' }, { timeout: 4000 }))[0]
+    expect(again.getAttribute('aria-checked')).toBe('true')
+  }, 20000)
+})

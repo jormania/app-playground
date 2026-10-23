@@ -28,6 +28,7 @@ import { OpenPaths } from '../components/OpenPaths'
 import { Twisty } from '../components/Twisty'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
+import { BackupNudge } from '../components/BackupNudge'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
 import { whenWords } from '../domain/going'
@@ -84,8 +85,10 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
   const { language } = await repo.preferences()
   const explanations = new Map((await repo.explanations.many(items.map((i) => `${id}:${i.id}`))).filter((e) => inLanguage(e, language)).map((e) => [e.id.split(':').pop()!, e]))
   const explorations = theme ? await repo.explorations.many(theme.explorationIds) : []
+  // The week's other directions — the latest three and any asked for before them, which were dropped
+  // from view here once three new ones came, though they were still open.
   const otherOptions = week
-    ? (await repo.options.many(week.optionIds)).filter((o) => o.id !== week.chosenOptionId && (o.status === 'offered' || o.status === 'open'))
+    ? (await repo.options.many([...week.optionIds, ...(week.earlierOptionIds ?? [])])).filter((o) => o.id !== week.chosenOptionId && (o.status === 'offered' || o.status === 'open'))
     : []
   const rootId = programme.extends ?? programme.id
   const allProgrammes = await repo.programmes.all()
@@ -195,6 +198,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
       <AlsoThisWeek extensions={b.extensions} current={p.id} isCurrent={isCurrent} timeZone={settings.timeZone} />
+      {isCurrent && !p.extends && <BackupNudge />}
 
       {returning && (
         <div className={s.continuity}>

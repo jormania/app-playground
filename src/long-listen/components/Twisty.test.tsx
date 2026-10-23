@@ -57,3 +57,22 @@ describe('folds kept as they were left', () => {
     expect(localStorage.getItem('long-listen:settings')).toBe('{}')
   })
 })
+
+describe('a fold held open while something inside was on its way (batch one, 23 October 2026)', () => {
+  it('stays open once it has come, rather than closing on the answer', () => {
+    const held = (open: boolean) => <Twisty label="A different direction" value="three new" open={open}><p>the three</p></Twisty>
+    const r = render(held(true))
+    const d = r.container.querySelector('details')!
+    expect(d.open).toBe(true)
+    r.rerender(held(false))
+    expect(d.open).toBe(true)
+  })
+
+  it('a fold never held open is left as the listener has it', () => {
+    const r = render(<Twisty label="More" value="x"><p>body</p></Twisty>)
+    const d = r.container.querySelector('details')!
+    expect(d.open).toBe(false)
+    r.rerender(<Twisty label="More" value="y"><p>body</p></Twisty>)
+    expect(d.open).toBe(false)
+  })
+})

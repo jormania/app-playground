@@ -3,6 +3,7 @@ import { Pause, Play, SkipBack, SkipForward } from 'lucide-react'
 import type { NowPlaying } from '../spotify/client'
 import { playbackOf } from '../spotify/client'
 import type { Playback } from '../app/playback'
+import { DeviceChoice } from './ListenBar'
 import { clock, primeMinutes, type movementTitles } from '../domain/programmeStyle'
 import s from '../styles/editorial.module.css'
 
@@ -97,7 +98,7 @@ export function MiniPlayer({ playback, movement, index, count, progress, onPlaye
           </span>
           {progress && <MovementProgress progressMs={progress.progressMs} durationMs={progress.durationMs} />}
           {/* A command that found no device: said here, where it was tapped, not under a bar scrolled out of sight. */}
-          {playback.noDevice && <span className={s.miniNote} role="status">Open Spotify on a device, then try again.</span>}
+          {playback.noDevice && <DeviceChoice playback={playback} compact />}
         </div>
         <MovementSteps playback={playback} index={index} count={count} onPlayed={onPlayed}>
           <button type="button" className={s.miniPlay} onClick={() => void (playing ? playback.pause() : playback.resume())} disabled={playback.busy} aria-label={playing ? 'Pause' : 'Resume'}>
