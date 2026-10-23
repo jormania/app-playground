@@ -184,7 +184,7 @@ function ConcertWork({ c, w }: { c: Concert; w: Concert['works'][number] }) {
         <p className={s.concertLook}>
           {spotify.connected
             ? <button className={s.textButton} onClick={() => void look()} disabled={looking}>{looking ? 'Looking on Spotify…' : 'Hear it again on Spotify'}</button>
-            : <a href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>}
+            : <a href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify ↗</a>}
         </p>
       ) : found.length === 0 ? (
         <p className={s.note}>Spotify has nothing clearly of this work. <a href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Search it yourself</a>.</p>

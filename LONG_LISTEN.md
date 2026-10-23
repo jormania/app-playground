@@ -1381,7 +1381,7 @@ An audit of three real weeks (W41–W43), a sitting, the taste page and every sc
 report lives with the session; what it changed:
 
 **Tier 1 — what was wrong or growing worse.**
-- **Prompts.** Every prompt carrying the voice moves to `@2026-10-23` (taste `.2`, resources `.2`; concert,
+- **Prompts.** Every prompt carrying the voice moves to `@2026-10-23` (taste `.3`, resources `.2`; concert,
   which has no voice, stays). The voice: the listener's words are for understanding them, never handed back
   ("the growing and ebbing quality you enjoyed") — except in the taste reading and the season in review,
   whose subject is the listener. The programme: at most **two** items refer to the listener's listening
@@ -1415,6 +1415,15 @@ report lives with the session; what it changed:
   Performers columns are rewritten once by it; programme pages already written keep their order.
 - Without Spotify, *Look for it on Spotify* is a small link and *Listen along* the way in. *More context*:
   "the curator writes it when you open it". The listening view's *Focus* is *Just the music*.
+- *Look for it on Spotify ↗* is one small link everywhere it appears (programme card, a recording not found,
+  the listening view, Concerts, Before), never an outlined button competing with Play or Listen along.
+- *Just the music* changes the page the moment it's pressed: before anything plays it folds away the notes
+  under each movement (leaving the movements and what to listen for) and the button then reads *Show
+  everything*. Before, it only trimmed the list once music played, so on an unplayed work it seemed to do
+  nothing (reported 23 October 2026).
+- *Gather it into fewer lines* ran out of room on a real 54-line profile: the taste job's 6000 tokens held
+  Haiku's thinking and twenty merged lines. It now has 20000 (billed as used), and a merged line cites only new
+  feedback, never the absorbed lines' evidence, which the app carries over itself (`taste@2026-10-23.3`).
 
 **Tier 3 — length and what was really heard.**
 - The programme's closing list of recordings is print-only; the sign-off line stays on screen.

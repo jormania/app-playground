@@ -90,7 +90,7 @@ export function BeforeScreen({ goingKey }: { goingKey: string }) {
                     {rec && (
                       <p className={s.quiet}>
                         <span className={s.label}>To hear first</span><br />
-                        {creditLine(rec)}{rec.year ? `, ${rec.year}` : ''} · <a href={searchUrl(spotifyQuery(rec))} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
+                        {creditLine(rec)}{rec.year ? `, ${rec.year}` : ''} · <a href={searchUrl(spotifyQuery(rec))} target="_blank" rel="noopener noreferrer">Look for it on Spotify ↗</a>
                       </p>
                     )}
                   </li>

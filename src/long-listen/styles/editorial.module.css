@@ -871,13 +871,6 @@
   font-size: 1.05rem;
 }
 
-.creditCharacter {
-  margin: var(--space-3xs) 0 0;
-  font-style: italic;
-  color: var(--color-muted);
-  font-size: 1rem;
-}
-
 .album {
   display: flex;
   gap: var(--space-sm);
@@ -1227,7 +1220,7 @@
   flex: none;
 }
 
-/* The tag with "take it now" under it, kept together and never broken a word a line. */
+/* The tag with "take it this week" under it, kept together and never broken a word a line. */
 .offeredSide {
   flex: none;
   display: flex;
@@ -1602,39 +1595,6 @@
   margin-top: var(--space-3xs);
 }
 
-/* Notebook: what you've told the curator, as a two-column ledger. */
-.ledger {
-  margin: var(--space-sm) 0 var(--space-xs);
-}
-
-.ledger > div {
-  display: grid;
-  grid-template-columns: 5.75rem minmax(0, 1fr);
-  gap: var(--space-sm);
-  padding: var(--space-xs) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.ledger > div:last-child {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.ledger dt {
-  font-size: var(--text-sm);
-  font-variant-caps: all-small-caps;
-  letter-spacing: 0.08em;
-  color: var(--color-faint);
-  padding-top: 0.15em;
-}
-
-.ledger dd {
-  margin: 0;
-  line-height: 1.45;
-}
-
-.ledgerWide {
-  grid-column: 1 / -1;
-}
 
 /* ── settings ───────────────────────────────────────────────────────────── */
 
@@ -1985,15 +1945,6 @@
   font-style: normal;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.08em;
-}
-
-/* "This week, differently": four quiet words, one tap each. */
-.weekMood {
-  margin: var(--space-md) 0 var(--space-xs);
-}
-
-.weekMood > * + * {
-  margin-top: var(--space-xs);
 }
 
 .chipRow {
@@ -2877,11 +2828,6 @@
 .changedSettings strong {
   font-weight: 600;
   color: var(--color-ink);
-}
-
-/* A twisty standing alone at the end of a page closes with a rule of its own. */
-.twistyClosed {
-  border-bottom: 1px solid var(--color-border);
 }
 
 /* Straight after the recording block, the fold follows on by space alone. */

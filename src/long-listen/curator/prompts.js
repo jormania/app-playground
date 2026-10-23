@@ -266,9 +266,11 @@ Comparisons: only when preferences.pairs is true. Then, where two interpretation
 
 export const TASTE = {
   id: 'taste',
-  version: 'taste@2026-10-23.2',
+  version: 'taste@2026-10-23.3',
   effort: 'low',
-  maxTokens: 6000,
+  // Room to gather a long profile: twenty merged lines, each naming what it absorbs, after the model's thinking.
+  // 6000 ran out on a real 54-line profile (2026-10-23). Billed as used, not as allowed.
+  maxTokens: 20000,
   schema: {
     type: 'object',
     properties: {
@@ -313,7 +315,7 @@ Return only NEW or CHANGED observations:
 - confidence: tentative for a single remark, emerging when it recurs, settled only when it is consistent over time.
 - evidence: the feedback ids it rests on.
 - replaces: the id of an existing observation this one refines or contradicts, else "".
-- absorbs: ids of other current observations this one makes redundant — the same thing said twice, or several one-recording lines that together say one thing — else []. Absorbed observations are retired and their evidence carries over to this one, so an observation that only merges others may cite no new feedback.
+- absorbs: ids of other current observations this one makes redundant — the same thing said twice, or several one-recording lines that together say one thing — else []. Absorbed observations are retired and their evidence carries over to this one by itself: cite only NEW feedback ids in evidence, never the absorbed lines' evidence, so an observation that only merges others cites none.
 When "tidy" is true the profile has grown long: besides reading the feedback, merge what overlaps (with absorbs) until about twenty observations remain. Keep every distinct view — a wariness, a mixed feeling, a curiosity — and never merge two that disagree.
 Do not over-read. One "not for me" is not a dislike of a whole period. A dislike of a recording is not a dislike of the work.
 Feedback "about" one of your own observations is the listener telling you it isn't quite right: return an observation that replaces it (replaces = its id, evidence includes that feedback) and says what their words and the rest of the evidence support — narrower, softer, or the other way round. Never return it unchanged, and never argue with them.

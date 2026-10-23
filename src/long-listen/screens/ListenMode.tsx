@@ -364,7 +364,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         to={programmeBackHref(programme.id)}
         label={programme.title}
         // Focus: only the music, for the phone on the armrest. Remembered on this device.
-        aside={<button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus} title="Only the music: the movement playing, its note and what to listen for">Just the music</button>}
+        aside={<button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus} title={focus ? 'Back to the notes, questions and everything else' : 'Only the music: the movements and what to listen for; while it plays, the movement sounding'}>{focus ? 'Show everything' : 'Just the music'}</button>}
       />
       <p id={LISTEN_ANCHOR} className={`${s.composer} ${s.listenTop}`}><ComposerLink name={item.proposed.composer} /></p>
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>
@@ -385,9 +385,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
           : (
             // Not confirmed on Spotify (or Spotify not connected): the same search as the programme offers, so it can still be heard.
             <>
-              <div className={`${s.actions} ${s.mtMd}`}>
-                <a className={s.outlineButton} href={searchUrl(spotifyQuery(credit))} target="_blank" rel="noopener noreferrer">Look for it on Spotify</a>
-              </div>
+              {/* The same small link as on the programme's work card: a search outside the app, not the page's main action. */}
+              <p className={s.mtMd}>
+                <a className={s.searchLink} href={searchUrl(spotifyQuery(credit))} target="_blank" rel="noopener noreferrer">Look for it on Spotify ↗</a>
+              </p>
               {/* Why the movements aren't here: said once, with the way to them. */}
               <p className={s.note}>
                 {data.pendingMatch
@@ -439,7 +440,9 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
                 {now && live && live.index === i && <MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} last={i === titled.length - 1} />}
                 {/* The companion's note, as Spotify reaches the movement; every note while none of this work is
                     sounding (before Play, or played elsewhere), so they can be read ahead rather than hidden. */}
-                {notes[i] && (now || leftIndex === i || !spotify.connected || nowIndex === null) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
+                {/* In focus before anything plays, the notes step aside: the movements and what to listen for remain,
+                    so the button changes the page the moment it's pressed (2026-10-23: it seemed to do nothing). */}
+                {notes[i] && (now || leftIndex === i || ((!spotify.connected || nowIndex === null) && !focus)) && <p className={s.movementNote}><Gloss text={notes[i]} /></p>}
                 {/* What to listen for in this movement: always there, so nothing waits for Spotify to reach it; the movement sounding's stands out. */}
                 {inLine && pointsAt(i).length > 0 && (
                   <ul className={`${s.listenFor} ${s.movementListen} ${nowIndex !== null && !now ? s.listenForLater : ''}`}>
@@ -462,7 +465,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
 
       {/* A work in one track: its place, under the bar. */}
       {titled.length <= 1 && live && <p className={s.mtSm}><MovementProgress progressMs={live.progressMs} durationMs={live.durationMs} /></p>}
-      {titled.length <= 1 && notes[0] && <p className={s.movementNote}><Gloss text={notes[0]} /></p>}
+      {titled.length <= 1 && notes[0] && !(focus && !playback.at) && <p className={s.movementNote}><Gloss text={notes[0]} /></p>}
 
       {!inLine && (() => {
         // Each point with where it belongs: the movement sounding stands out, the rest step back; in focus, only
