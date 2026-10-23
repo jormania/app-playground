@@ -4,6 +4,7 @@ import { standInsOf } from '../curation/continuity'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
+import { useFollow } from '../app/follow'
 import { Empty, Problem, Waiting, madeWords } from '../components/common'
 import s from '../styles/editorial.module.css'
 
@@ -11,9 +12,12 @@ import s from '../styles/editorial.module.css'
  * Themes as threads. Each one keeps every visit, how it landed, the questions
  * it left and where it could go next — the memory a returning theme is built
  * from. (Paths offered and not taken are on This week and in Where next.)
+ * Its questions, its next directions and the thread itself each lead to a week
+ * in one tap, as the Notebook's questions do.
  */
 export function ThreadsScreen() {
-  const { repo, week, settings } = useServices()
+  const { repo, week, settings, curatorReady } = useServices()
+  const { following, follow } = useFollow()
   const { data, error, retry } = useLoad(async () => {
     const [themes, explorations, programmes, works, events, feedback, comparisons] = await Promise.all([
       repo.themes.all(), repo.explorations.all(), repo.programmes.all(), repo.works.all(), repo.events.all(), repo.feedback.all(), repo.comparisons.all(),
@@ -43,17 +47,27 @@ export function ThreadsScreen() {
         ? <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing yet. Choose a direction this week and the first thread begins.</Empty>
         : (
           <ul className={s.entries}>
-            {data.threads.map((t) => <ThreadEntry key={t.theme.id} thread={t} programmes={data.programmes} works={data.works} events={data.events} standIns={data.standIns} now={week.key} hideSkipped={settings.hideSkipped} timeZone={settings.timeZone} />)}
+            {data.threads.map((t) => <ThreadEntry key={t.theme.id} thread={t} programmes={data.programmes} works={data.works} events={data.events} standIns={data.standIns} now={week.key} hideSkipped={settings.hideSkipped} timeZone={settings.timeZone}
+              follow={curatorReady ? follow : undefined} following={following} />)}
           </ul>
         )}
     </div>
   )
 }
 
-function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, events, standIns, now, hideSkipped, timeZone }: {
+function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, events, standIns, now, hideSkipped, timeZone, follow, following }: {
   thread: ShownThread; programmes: Map<string, Programme>
   works: Map<string, Work>; events: ListeningEvent[]; standIns: Map<string, string>; now: string; hideSkipped: boolean; timeZone: string
+  /** Turn a seed into three directions (app/follow.ts); absent without a key. */
+  follow?: (seed: string) => Promise<void>
+  following: string | null
 }) {
+  // Each seed the thread left is one tap from a week: the Notebook's "Follow this", here too.
+  const followLink = (seed: string) => follow && (
+    <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Follow this'}</button></>
+  )
+  // The thread named, so the curator is given it even when it is older than the twelve it usually reads (curation/context.ts).
+  const returnSeed = `Return to the thread “${t.title}”, continuing from where it was left — new works, new routes, never a restart.`
   const contents = threadContents(heldBy(visits, programmes), works, events, hideSkipped, standIns)
   // The line of visits is drawn when there is more than the title's one to show — and always when one was set aside, which only it says.
   const lineWorthDrawing = visits.length > 1 || visits.some((v) => v.setAside || v.extraProgrammeIds?.length || v.closingNote)
@@ -100,16 +114,23 @@ function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, 
           {t.openQuestions.length > 0 && (
             <div>
               <h3 className={s.h3}>Questions it left</h3>
-              <ul className={s.bullets}>{t.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+              <ul className={s.bullets}>{t.openQuestions.map((q, i) => <li key={i}>{q}{followLink(q)}</li>)}</ul>
             </div>
           )}
           {t.nextDirections.length > 0 && (
             <div>
               <h3 className={s.h3}>Where it could go next</h3>
-              <ul className={s.bullets}>{t.nextDirections.map((q, i) => <li key={i}>{q}</li>)}</ul>
+              <ul className={s.bullets}>{t.nextDirections.map((q, i) => <li key={i}>{q}{followLink(q)}</li>)}</ul>
             </div>
           )}
         </div>
+      )}
+      {follow && (
+        <p className={s.mtSm}>
+          <button className={`${s.outlineButton} ${s.smallButton}`} onClick={() => void follow(returnSeed)} disabled={following !== null}>
+            {following === returnSeed ? 'The curator is finding three…' : 'Return to this thread'}
+          </button>
+        </p>
       )}
     </li>
   )

@@ -33,6 +33,17 @@ export function useKept(key: string, where: 'tab' | 'device'): [string, (v: stri
   return [value, set, clear, show]
 }
 
+/**
+ * Set what a kept field will hold before its page opens — a performer's name
+ * tapped elsewhere becomes the Library's search, as if typed there.
+ */
+export function keepAhead(key: string, where: 'tab' | 'device', value: string): void {
+  const full = PREFIX + key
+  if (!value.trim()) { forget(full, where); return }
+  if (where === 'tab') writeSessionJson(full, value)
+  else writeJson(full, value)
+}
+
 function forget(full: string, where: 'tab' | 'device'): void {
   if (where === 'tab') removeSessionJson(full)
   else removeJson(full)

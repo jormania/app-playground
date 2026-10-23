@@ -204,6 +204,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         <div className={s.continuity}>
           <p className={s.eyebrow}>A returning thread · {stageWords(p.stage)} visit · first explored {sinceWords(first.weekKey, p.weekKey)}</p>
           {p.continuityNote && <p className={s.flush}>{p.continuityNote}</p>}
+          {/* Where the earlier visits are told: the thread's own entry, its questions and where it could go. */}
+          <p className={`${s.faint} ${s.mtSm} ${s.mb0}`}><a href={href({ name: 'threads' })} className={s.quietLink}>The thread so far</a></p>
         </div>
       )}
 
@@ -417,7 +419,6 @@ function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: Prog
   // The part's numeral, counted as the page counts its parts: only those with a work shown.
   const parts = b.programme.sections.filter((section) => section.items.some(shown)).map((section) => section.id)
   const partNo = (id: string) => parts.indexOf(id) + 1
-  const heard = rows.filter(({ item }) => listeningState(b.events, itemRecordingIds(b, item)) === 'heard').length
   // How long it runs is said here, once (the tools line keeps it only when there is no running order).
   // Partly known, it says how many it counts: a total of two works must not read as the week's.
   const length = lengthOf(b, rows.map(({ item }) => item))
@@ -431,7 +432,7 @@ function RunningOrder({ b, shown, spotifyNote }: { b: Bundle; shown: (item: Prog
   return (
     <nav className={s.runningOrder} aria-label="This week’s music">
       <p className={s.panelHead}>
-        {`The music · ${rows.length} works${lengthWords}${heard > 0 ? ` · ${heard} heard` : ''}`}
+        {`The music · ${rows.length} works${lengthWords}`}
       </p>
       {spotifyNote && <SpotifyNote />}
       {/* Grouped by section, each under its heading: the part of the week a

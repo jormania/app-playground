@@ -1286,3 +1286,25 @@ What it changed:
   ("Play it on LG TV · Galaxy S24") and plays on the one tapped (`device_id`, `Playback.playOn`).
 - **The Library leads back into the listening.** A work's title opens the listening view of its latest
   programme item (`LibraryRecording.itemId`), with the notes, what to listen for and the earlier hearing.
+
+## 27. Batch two of the QoL audit: memory you can act on (23 October 2026)
+
+- **Threads lead somewhere.** Each thread's *Questions it left* and *Where it could go next* carry
+  *Follow this*, and the thread itself *Return to this thread* — the Notebook's follow, shared as
+  `useFollow` (`app/follow.ts`): before a choice this week, three directions replace the three on offer; after
+  one, they wait under Where next. A request that names a thread now brings its digest even when it is older
+  than the twelve latest the curator usually reads (`buildContext`), so a thread past the twelve can still return.
+  A returning programme links to *The thread so far*.
+- **No tallies.** A thread's facts name who it holds and how far in, in words: "Debussy, Ravel, Roussel and
+  others, written between 1911 and 1977 · partly heard" (not "9 works by 6 composers · 2 heard so far"); the
+  running order no longer adds "· 3 heard" (the state tags already say it). Inventory words that aren't
+  progress (the week's number of works, "2 so far" on a fold) stay, as §10 allows.
+- **Names lead to the Library.** Every performer's name — the programme, the listening view, the Library,
+  concerts — opens the Library searched for them (`PerformerName`, `keepAhead`); tapped on the Library itself,
+  the search changes in place.
+- **The season's "worth hearing again"** opens each work's latest listening view.
+- **The Notebook can be corrected, and says why.** Each observation says what it rests on ("From what you
+  said of Sibelius's Tapiola and Debussy's La mer", from its evidence ids). *Not quite* takes an optional line
+  and keeps it as feedback on the observation (`FeedbackTarget` type `observation`); with a key it is read
+  at once — the taste prompt (`taste@2026-10-23.1`) replaces that observation with what the words support —
+  and until then the page says it will be reconsidered. Not yet run against the real model (`npm run check:curation`).

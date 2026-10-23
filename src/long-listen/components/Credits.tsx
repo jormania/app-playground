@@ -1,5 +1,28 @@
 import type { ProposedRecording } from '../domain/types'
+import { href } from '../app/router'
+import { keepAhead } from '../app/kept'
 import s from '../styles/editorial.module.css'
+
+/** The Library's search, kept for the tab (screens/Library.tsx). */
+const LIBRARY_SEARCH = 'library-search'
+/** Told to the Library when a name is tapped on the Library itself: no route change there to read the search afresh. */
+export const SEARCH_EVENT = 'long-listen:library-search'
+
+/**
+ * A performer's name that leads somewhere: the Library, searched for them — the
+ * recordings of theirs met so far, and the concerts they played. Names used to
+ * be plain text everywhere, though "a performer's week" is one of the curator's forms.
+ */
+export function PerformerName({ name }: { name: string }) {
+  return <a href={href({ name: 'library' })} className={s.performerLink} onClick={() => { keepAhead(LIBRARY_SEARCH, 'tab', name); window.dispatchEvent(new CustomEvent(SEARCH_EVENT, { detail: name })) }}>{name}</a>
+}
+
+/** The performers on one line, each name a way to the Library ("Pierre Boulez · Gil Shaham · Chicago Symphony Orchestra"). */
+export function PerformerLine({ r, className }: { r: Performers; className?: string }) {
+  const rows = creditRows(r)
+  if (!rows.length) return null
+  return <p className={className}>{rows.map(([, name], i) => <span key={i}>{i > 0 && ' · '}<PerformerName name={name} /></span>)}</p>
+}
 
 type Performers = Pick<ProposedRecording, 'conductor' | 'orchestra' | 'ensemble' | 'soloists'>
 
@@ -33,7 +56,7 @@ export function Credits({ r, className, after, empty, programme }: { r: Performe
   return (
     <p className={className ? `${s.credits} ${className}` : s.credits}>
       {rows.map(([role, name], i) => (
-        <span key={i} className={s.creditItem}><span className={s.creditRole}>{role}</span> {name}</span>
+        <span key={i} className={s.creditItem}><span className={s.creditRole}>{role}</span> <PerformerName name={name} /></span>
       ))}
       {!rows.length && empty && <span>{empty}</span>}
       {after && <span className={s.creditAfter}>{after}</span>}
@@ -63,7 +86,7 @@ function ProgrammeCredits({ r, className, empty }: { r: Performers; className?: 
   return (
     <p className={className ? `${s.programmeCredits} ${className}` : s.programmeCredits}>
       {rows.map(([name, role], i) => (
-        <span key={i} className={s.programmeCredit}>{name}{role && <> <em className={s.programmeRole}>{role}</em></>}</span>
+        <span key={i} className={s.programmeCredit}><PerformerName name={name} />{role && <> <em className={s.programmeRole}>{role}</em></>}</span>
       ))}
       {!rows.length && empty && <span>{empty}</span>}
     </p>

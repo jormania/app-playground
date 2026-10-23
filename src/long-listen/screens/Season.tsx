@@ -4,7 +4,7 @@ import { seasonName } from '../domain/season'
 import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { Empty, NeedsKey, Paragraphs, Problem, Waiting, dateWords, messageOf } from '../components/common'
-import { displaySurname } from '../domain/identity'
+import { displaySurname, sameWork } from '../domain/identity'
 import s from '../styles/editorial.module.css'
 import { BackLink } from '../components/BackLink'
 
@@ -15,13 +15,21 @@ import { BackLink } from '../components/BackLink'
  * of half a season would be a guess at the rest.
  */
 export function SeasonScreen({ n }: { n: number }) {
-  const { journey, curatorReady, bump, say } = useServices()
-  const { data, error, retry } = useLoad(() => journey.seasonReview(n), [n])
+  const { journey, repo, curatorReady, bump, say } = useServices()
+  const { data, error, retry } = useLoad(async () => ({ ...(await journey.seasonReview(n)), programmes: await repo.programmes.all() }), [n])
   const [writing, setWriting] = useState(false)
 
   if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'No season to read yet: the first begins with your first week.', link: { href: href({ name: 'journal' }), label: 'Journal' } }} />
   if (!data) return <Waiting>Opening the season…</Waiting>
-  const { season, listened, review } = data
+  const { season, listened, review, programmes } = data
+  // A work worth hearing again leads to its listening view — the latest programme it was in, with its notes and your earlier hearing.
+  const againAt = (a: { composer: string; work: string }) => {
+    for (const p of [...programmes].sort((x, y) => y.createdAt.localeCompare(x.createdAt))) {
+      const item = p.sections.flatMap((x) => x.items).find((i) => sameWork({ composer: i.proposed.composer, title: i.proposed.work }, { composer: a.composer, title: a.work }))
+      if (item) return href({ name: 'listen', programmeId: p.id, itemId: item.id })
+    }
+    return undefined
+  }
 
   async function write() {
     setWriting(true)
@@ -60,7 +68,7 @@ export function SeasonScreen({ n }: { n: number }) {
               <h2 className={s.sectionHead}>Worth hearing again</h2>
               <ul className={s.threadFacts}>
                 {review.again.map((a, i) => (
-                  <li key={i} className={s.againItem}><strong><a href={href({ name: 'composer', composer: a.composer })} className={s.composerLink}>{displaySurname(a.composer)}</a>, {curly(a.work)}</strong> — {a.why}</li>
+                  <li key={i} className={s.againItem}><strong><a href={href({ name: 'composer', composer: a.composer })} className={s.composerLink}>{displaySurname(a.composer)}</a>, {againAt(a) ? <a href={againAt(a)} className={s.quietLink}>{curly(a.work)}</a> : curly(a.work)}</strong> — {a.why}</li>
                 ))}
               </ul>
             </>

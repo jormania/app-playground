@@ -521,10 +521,39 @@ describe('on-request extras are cached', () => {
   })
 })
 
+describe('an observation called not quite right (batch two, 23 October 2026)', () => {
+  it('reaches the taste reader as a correction of that observation, named by its id, and is then read', async () => {
+    await repo.saveTaste({
+      observations: [{ id: 'obs-1', facet: 'other', subject: 'Sibelius', statement: 'Drawn to Sibelius above all.', stance: 'drawn-to', confidence: 'emerging', evidence: [], firstSeen: '2026-10-01T10:00:00Z', lastSeen: '2026-10-01T10:00:00Z' }],
+      questions: [], notesToCurator: '', updatedAt: '2026-10-01T10:00:00Z',
+    })
+    const c = fakeCurator({ taste: () => ({ observations: [], questions: [], promptVersion: 'x', model: 'm' }) })
+    const j = journey(c.client)
+    const f = await j.giveFeedback({ target: { type: 'observation', id: 'obs-1' }, note: 'Only the late symphonies.' })
+    expect(await j.interpretPendingFeedback()).toBe(1)
+    const sent = c.calls[0].payload
+    expect(sent.feedback[0]).toMatchObject({ id: f.id, note: 'Only the late symphonies.' })
+    expect(sent.feedback[0].about).toContain('obs-1')
+    expect(sent.feedback[0].about).toContain('Drawn to Sibelius above all.')
+    expect(sent.profile.observations.map((o: { id: string }) => o.id)).toContain('obs-1')
+    expect((await repo.feedback.get(f.id))?.interpretedAt).toBeTruthy()
+  })
+})
+
 describe('the curator context', () => {
   it('is bounded and contains no numbers dressed as taste', async () => {
     const ctx = await buildContext(repo, weekOf(clock))
     expect(ctx).toMatchObject({ threads: [], openPaths: [], recentWeeks: [], recentListening: [], taste: [] })
+  })
+
+  it('reaches past the twelve latest threads for one the request names (batch two, 23 October 2026)', async () => {
+    const theme = (n: number, title: string) => ({ id: `t${n}`, title, summary: '', firstIntroduced: '2026-W30', explorationIds: [], openQuestions: [], adjacentTopics: [], nextDirections: [], updatedAt: `2026-09-${String(n + 1).padStart(2, '0')}T10:00:00Z` })
+    await repo.themes.putMany([theme(0, 'Old French colour'), ...Array.from({ length: 13 }, (_, i) => theme(i + 1, `Thread ${i + 1}`))])
+    const plainCtx = await buildContext(repo, weekOf(clock), '')
+    expect(plainCtx.threads.map((x) => x.title)).not.toContain('Old French colour')
+    expect(plainCtx.threads).toHaveLength(12)
+    const asked = await buildContext(repo, weekOf(clock), 'Return to the thread “Old French colour”, from where it was left.')
+    expect(asked.threads.map((x) => x.title)).toContain('Old French colour')
   })
 })
 

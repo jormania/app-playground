@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { ComposerLink } from './Composer'
 import { filingLetter } from '../domain/library'
 import { useLoad, useServices } from '../app/services'
@@ -6,6 +6,7 @@ import { href } from '../app/router'
 import { useKept } from '../app/kept'
 import { Empty, Problem, Waiting } from '../components/common'
 import { LibraryWorks, loadLibrary } from '../components/LibraryEntries'
+import { SEARCH_EVENT } from '../components/Credits'
 import { searchLibrary } from '../domain/librarySearch'
 import s from '../styles/editorial.module.css'
 
@@ -18,6 +19,12 @@ export function LibraryScreen() {
   const { repo, settings } = useServices()
   // The search stays as it was left: back from a composer's page, the same list, the same place in it.
   const [q, setQ] = useKept('library-search', 'tab')
+  // A performer's name tapped here, in a row: the list searched for them, from the top.
+  useEffect(() => {
+    const on = (e: Event) => { const name = (e as CustomEvent<string>).detail; if (typeof name === 'string') { setQ(name); window.scrollTo({ top: 0 }) } }
+    window.addEventListener(SEARCH_EVENT, on)
+    return () => window.removeEventListener(SEARCH_EVENT, on)
+  }, [setQ])
   const { data, error, retry } = useLoad(() => loadLibrary(repo, settings), [settings.hideSkipped, settings.timeZone])
 
   const shown = useMemo(() => (data ? searchLibrary(data, q) : []), [data, q])

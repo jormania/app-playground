@@ -9,7 +9,7 @@ const visit = (id: string, themeId: string, weekKey: string, programmeId: string
   ({ id, themeId, weekKey, programmeId, ...more }) as ThemeExploration
 
 describe('threadContents', () => {
-  it('says how many works, by how many composers, from when, and how far in — no length, no counts of visits', () => {
+  it('names who it holds, from when, and how far in — in words, never a tally (batch two, 23 October 2026)', () => {
     const p = programme([item('a', 'w1', 'Jean Sibelius'), item('b', 'w2', 'Jean Sibelius'), item('c', 'w3', 'Carl Nielsen')])
     const works = new Map<string, Work>([
       ['w1', { id: 'w1', composedId: '', title: '', composed: '1915–19' } as unknown as Work],
@@ -17,14 +17,20 @@ describe('threadContents', () => {
       ['w3', { id: 'w3', title: '' } as unknown as Work],
     ])
     const events = [{ recordingId: 'r-a', kind: 'heard', at: 'x' }] as unknown as ListeningEvent[]
-    expect(threadContents([{ programme: p }], works, events)).toBe('3 works by 2 composers, written between 1915 and 1926 · 1 heard so far')
+    expect(threadContents([{ programme: p }], works, events)).toBe('Sibelius and Nielsen, written between 1915 and 1926 · partly heard')
   })
 
-  it('counts a work once across visits, and says nothing for an empty thread', () => {
+  it('reads a work once across visits, and says nothing for an empty thread', () => {
     const p1 = programme([item('a', 'w1', 'A')])
     const p2 = programme([item('b', 'w1', 'A')])
-    expect(threadContents([{ programme: p1 }, { programme: p2 }], new Map(), [])).toBe('1 work by 1 composer · none heard yet')
+    expect(threadContents([{ programme: p1 }, { programme: p2 }], new Map(), [])).toBe('A · not yet heard')
+    expect(threadContents([{ programme: p1 }], new Map(), [{ recordingId: 'r-a', kind: 'heard', at: 'x' }] as unknown as ListeningEvent[])).toBe('A · heard through')
     expect(threadContents([], new Map(), [])).toBe('')
+  })
+
+  it('names three composers at most, then "and others"', () => {
+    const p = programme([item('a', 'w1', 'Claude Debussy'), item('b', 'w2', 'Maurice Ravel'), item('c', 'w3', 'Albert Roussel'), item('d', 'w4', 'Henri Dutilleux')])
+    expect(threadContents([{ programme: p }], new Map(), [])).toBe('Debussy, Ravel, Roussel and others · not yet heard')
   })
 
   it('counts a set-aside programme, and its extras, only for what was begun of it (as digestThread does)', () => {
@@ -33,9 +39,9 @@ describe('threadContents', () => {
     const extra = programme([item('d', 'w4', 'D')], 'p3')
     const programmes = new Map([kept, aside, extra].map((p) => [p.id, p]))
     const visits = [visit('v1', 't', '2026-W40', 'p1'), visit('v2', 't', '2026-W41', 'p2', { setAside: true, extraProgrammeIds: ['p3'] })]
-    expect(threadContents(heldBy(visits, programmes), new Map(), [])).toBe('1 work by 1 composer · none heard yet')
+    expect(threadContents(heldBy(visits, programmes), new Map(), [])).toBe('A · not yet heard')
     const events = [{ recordingId: 'r-b', kind: 'listening', at: 'x' }] as unknown as ListeningEvent[]
-    expect(threadContents(heldBy(visits, programmes), new Map(), events)).toBe('2 works by 2 composers · none heard yet')
+    expect(threadContents(heldBy(visits, programmes), new Map(), events)).toBe('A and B · not yet heard')
   })
 })
 

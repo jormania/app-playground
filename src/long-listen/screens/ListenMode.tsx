@@ -10,7 +10,7 @@ import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, onWorkRanOn, usePlayback, usePlayerState } from '../app/playback'
 import { MiniPlayer, MovementProgress, MovementSteps, ThenLine, movementLength, useLiveProgress } from '../components/ListenParts'
 import { clock, listenForAt, movementTitles, primeMinutes, roman, romanValue, curly } from '../domain/programmeStyle'
-import { performerLine } from '../components/Credits'
+import { PerformerLine, performerLine } from '../components/Credits'
 import { workEnded } from '../spotify/workGuard'
 import { readJson, writeJson } from '../../shared/storage'
 import { onHeardRecorded } from '../app/HeardWitness'
@@ -369,7 +369,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
       {facts && <p className={s.listenFacts}>{facts}</p>}
-      {performers && <p className={s.listenPerformers}>{performers}</p>}
+      {performers && <PerformerLine r={credit} className={s.listenPerformers} />}
       {data.earlier && !focus && <EarlierLine earlier={data.earlier} credit={data.earlierCredit} today={isoDateIn(new Date(), settings.timeZone)} />}
       {standIn && !focus && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 

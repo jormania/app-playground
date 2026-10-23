@@ -1,6 +1,6 @@
 import type { Repo } from '../store/repo'
 import type { ListeningWeek } from '../domain/week'
-import { creditLine, sameWork, type WorkLike } from '../domain/identity'
+import { creditLine, fold, sameWork, type WorkLike } from '../domain/identity'
 import { knownWorkIds, listeningState, timesHeard } from '../domain/listening'
 import type { ListenerPreferences, ProgrammeItem, WeekMood } from '../domain/types'
 import { DEFAULT_TIME_ZONE, weekOf, weekOfDate, weeksBetween, type CivilDate } from '../domain/week'
@@ -83,9 +83,12 @@ export async function buildContext(
   const standIns = standInsOf(comparisons)
   const players = standInPlayersOf(comparisons)
 
-  const threads = themes
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 12)
+  // The twelve most recently touched, and any older one the request names ("Return to …" from Threads, or
+  // a wish that names it): past the twelve, a thread could never come back, though Threads says it can.
+  const asked = fold(requestedNext ?? prefs.nextRequest ?? '')
+  const named = (t: { title: string }) => Boolean(asked && t.title.trim() && asked.includes(fold(t.title)))
+  const byRecent = [...themes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const threads = [...byRecent.slice(0, 12), ...byRecent.slice(12).filter(named)]
     .map((t) => digestThread(t, explorations, programmes, events, feedback, week.key, comparisons))
 
   const optionById = new Map(options.map((o) => [o.id, o]))
