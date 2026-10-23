@@ -452,7 +452,7 @@ note to the curator, which says so.
   the sign-in lifecycle (an outage keeps the sign-in, `invalid_grant` ends
   it and says so, one refresh for many callers, another tab's refresh
   used); recently-played (confirmed recordings only, single-track works
-  never "heard" from it, a session counted once as it scrolls out of the fifty);
+  "heard" from it only when the timing shows they ran through (§29), a session counted once as it scrolls out of the fifty);
   playlists (confirmed tracks only); play (shuffle off, first movement).
 - `notion/mirror.test.ts`: further reading that arrives after a page was
   written is added after the curator's text, replaced in place when it
@@ -1326,3 +1326,15 @@ stand-in included (`listenTargetFor`, `domain/nowListening.ts`: this week's prog
 
 It reads the shared player watch, so a screen with no Play button now looks at Spotify too (every 15 s while
 idle and visible).
+
+## 29. A single-track work heard through a playlist (23 October 2026)
+
+Spotify's recently-played says a track was played, never how much of it: it appears after about thirty
+seconds. A work in movements is read by how many movements were reached; a single-track work (Clyne's
+*Prince of Clouds*) used to stay "Started" for good unless the app watched it end, so a playlist heard with
+the app closed never marked it. Now the timing decides: plays heard back to back sit one track-length apart,
+so the listener's own history shows which end of a play Spotify stamps (`playedAtMarks` — its start or its
+end; Spotify doesn't document it, and three clear matches are needed before it is trusted), and a single
+track whose neighbouring play is at least nine-tenths of its length away (and not more than two minutes over)
+ran through (`playedThrough`): `heard`, which also brings "How did it land?". A long gap — a pause, a quiet
+hour — proves nothing and stays "Started"; "Heard" by hand still works as before.
