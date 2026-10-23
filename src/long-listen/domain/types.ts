@@ -412,7 +412,8 @@ export type ListeningState = 'not-started' | 'listening' | 'heard' | 'skipped'
 export type Reaction = 'loved' | 'liked' | 'interesting' | 'not-for-me' | 'too-difficult'
 export type WantMore = 'yes' | 'maybe' | 'no'
 
-export type FeedbackTargetType = 'theme' | 'programme' | 'work' | 'recording' | 'album' | 'interpretation' | 'concert'
+/** `observation`: the listener saying one of the curator's notes on their taste isn't quite right (the Notebook's "Not quite"). */
+export type FeedbackTargetType = 'theme' | 'programme' | 'work' | 'recording' | 'album' | 'interpretation' | 'concert' | 'observation'
 
 export interface Feedback {
   id: string

@@ -1,5 +1,6 @@
 import type { Feedback, ListeningEvent, Programme, Theme, ThemeExploration, Work } from './types'
 import { listeningState } from './listening'
+import { displaySurname } from './identity'
 import { groupByComposer } from './composerGroups'
 import { heardAs } from './standIns'
 
@@ -61,8 +62,10 @@ export function threadsToShow(
 }
 
 /**
- * What a thread holds, in one plain sentence: "9 works by 6 composers,
- * written between 1911 and 1977 · 2 heard so far". Counted across every
+ * What a thread holds, in one plain sentence and no tally (LONG_LISTEN §1):
+ * "Debussy, Ravel, Roussel and others, written between 1911 and 1977 · partly
+ * heard". It used to count ("9 works by 6 composers · 2 heard so far"), which
+ * named nobody and kept score. Counted across every
  * programme the thread has had — a set-aside one only for what was begun of
  * it, the rule the curator's digest follows (curation/continuity.ts). Years
  * come from the curator's dates, so a work without one simply doesn't widen
@@ -96,10 +99,16 @@ export function threadContents(
     .filter((y) => y > 0)
   const heard = new Set(items.filter(({ ids }) => listeningState(events, ids) === 'heard').map(({ i }) => i.workId)).size
 
-  const what = `${workIds.length} work${workIds.length === 1 ? '' : 's'} by ${composers.size} composer${composers.size === 1 ? '' : 's'}`
+  // Who it holds, by name — three at most, in the order the thread met them.
+  const names = [...composers.keys()].map((c) => displaySurname(c))
+  const who = names.length <= 3 ? andList(names) : `${names.slice(0, 3).join(', ')} and others`
   const lo = Math.min(...years)
   const hi = Math.max(...years)
   const when = years.length ? (lo === hi ? `, written in ${lo}` : `, written between ${lo} and ${hi}`) : ''
-  const progress = heard ? `${heard} heard so far` : 'none heard yet'
-  return [what + when, progress].join(' · ')
+  const where = heard === 0 ? 'not yet heard' : heard === workIds.length ? 'heard through' : 'partly heard'
+  return [who + when, where].join(' · ')
+}
+
+function andList(xs: string[]): string {
+  return xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`
 }

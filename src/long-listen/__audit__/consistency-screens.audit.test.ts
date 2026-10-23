@@ -87,7 +87,7 @@ describe('a stand-in is the item — on the screens that still count only the cu
     expect(screen.getByText(`That’s the week: ${items.length} works, ${total}.`)).toBeTruthy()
   }, 15000)
 
-  it('a thread with a work heard through a stand-in does not read "none heard yet" (domain/threadContents.ts)', async () => {
+  it('a thread with a work heard through a stand-in does not read "not yet heard" (domain/threadContents.ts)', async () => {
     const repo = new Repo(memoryStore())
     const p = await chosenWeek(repo)
     const { first } = await withStandIn(repo, p)
@@ -96,7 +96,7 @@ describe('a stand-in is the item — on the screens that still count only the cu
     app(repo)
     await screen.findByText('What we’ve been following')
     await screen.findByRole('list', { name: 'What this thread holds' })
-    expect(screen.queryByText('none heard yet')).toBeNull()
+    expect(screen.queryByText('not yet heard')).toBeNull()
   }, 15000)
 })
 

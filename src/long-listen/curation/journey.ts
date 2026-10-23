@@ -739,8 +739,10 @@ export class Journey {
     const comparisons = await this.repo.comparisons.all()
     const perspectives = comparisons.flatMap((c) => c.perspectives)
     const concerts = await this.repo.concerts.all()
+    const observations = new Map((await this.repo.taste()).observations.map((o) => [o.id, o.statement]))
     return (type, id) => {
       if (type === 'theme') return `the theme "${themes.get(id) ?? id}"`
+      if (type === 'observation') return `your own observation ${id}: "${observations.get(id) ?? ''}" — which the listener says isn't quite right`
       if (type === 'concert') {
         const c = concerts.find((x) => x.id === id)
         return c ? `a concert heard live at ${c.venue} on ${c.date}: ${c.works.map((w) => `${w.composer} — ${w.title}`).join('; ')}` : 'a concert heard live'

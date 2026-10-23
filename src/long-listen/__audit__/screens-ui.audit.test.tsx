@@ -359,3 +359,50 @@ describe('a reaction picked and not yet kept (batch one, 23 October 2026)', () =
     expect(again.getAttribute('aria-checked')).toBe('true')
   }, 20000)
 })
+
+describe('batch two: memory you can act on (23 October 2026)', () => {
+  it('an observation can be called not quite right — kept as feedback on it, and said on the page', async () => {
+    const repo = new Repo(memoryStore())
+    await repo.saveTaste({
+      observations: [{ id: 'obs-1', facet: 'other', subject: 'Sibelius', statement: 'Drawn to Sibelius above all.', stance: 'drawn-to', confidence: 'emerging', evidence: [], firstSeen: '2026-10-01T10:00:00Z', lastSeen: '2026-10-01T10:00:00Z' }],
+      questions: [], notesToCurator: '', updatedAt: '2026-10-01T10:00:00Z',
+    })
+    // No key: the correction is kept and read later, not sent now.
+    localStorage.removeItem('long-listen:settings')
+    window.location.hash = '#/notebook'
+    render(<App repo={repo} curator={plain()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Not quite' }, { timeout: 4000 }))
+    fireEvent.change(screen.getByLabelText('What would be closer?'), { target: { value: 'Only the late symphonies.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Tell the curator' }))
+    await screen.findByText('You said this isn’t quite right; the curator will reconsider it.', {}, { timeout: 4000 })
+    const said = (await repo.feedback.all()).find((f) => f.target.type === 'observation')
+    expect(said).toMatchObject({ target: { type: 'observation', id: 'obs-1' }, note: 'Only the late symphonies.' })
+  }, 15000)
+
+  it('a thread offers "Return to this thread", names its composers and keeps no tally', async () => {
+    const repo = new Repo(memoryStore())
+    await chosenWeek(repo, plain())
+    window.location.hash = '#/threads'
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('button', { name: 'Return to this thread' }, { timeout: 4000 })
+    const facts = await screen.findByRole('list', { name: 'What this thread holds' })
+    expect(facts.textContent).not.toMatch(/\d+ works? by \d+ composers?|\d+ heard so far/)
+    expect(facts.textContent).toMatch(/not yet heard|partly heard|heard through/)
+  }, 15000)
+
+  it('a performer’s name opens the Library searched for them', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    let name!: HTMLElement
+    await waitFor(() => {
+      name = screen.getAllByRole('link').find((a) => a.className.includes('performerLink'))!
+      expect(name).toBeTruthy()
+    }, { timeout: 4000 })
+    fireEvent.click(name)
+    window.location.hash = '#/library'
+    const search = await screen.findByRole('searchbox', {}, { timeout: 4000 })
+    expect((search as HTMLInputElement).value).toBe(name.textContent)
+  }, 15000)
+})

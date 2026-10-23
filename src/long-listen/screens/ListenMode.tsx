@@ -10,7 +10,7 @@ import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, onWorkRanOn, usePlayback, usePlayerState } from '../app/playback'
 import { MiniPlayer, MovementProgress, MovementSteps, ThenLine, movementLength, useLiveProgress } from '../components/ListenParts'
 import { clock, listenForAt, movementTitles, primeMinutes, roman, romanValue, curly } from '../domain/programmeStyle'
-import { performerLine } from '../components/Credits'
+import { PerformerLine, performerLine } from '../components/Credits'
 import { workEnded } from '../spotify/workGuard'
 import { readJson, writeJson } from '../../shared/storage'
 import { onHeardRecorded } from '../app/HeardWitness'
@@ -27,6 +27,7 @@ import { earlierHearing, onDay, reactionAsSaid, shortNote, type EarlierHearing }
 import { isoDateIn } from '../domain/week'
 import { Twisty } from '../components/Twisty'
 import { useKept } from '../app/kept'
+import { rememberListen } from '../app/lastListen'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { Gloss } from '../components/Gloss'
 import s from '../styles/editorial.module.css'
@@ -93,6 +94,10 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
     }
   }, [programmeId, itemId, settings.timeZone])
   useTitle(data ? curly(data.item.proposed.work) : undefined)
+  // The listening view last opened: the masthead leads back to it when the work was left part-way.
+  useEffect(() => {
+    if (data) rememberListen({ programmeId, itemId, work: data.item.proposed.work, composer: data.item.proposed.composer, trackIds: isConfirmed(data.recording) ? data.recording.spotify.trackIds : undefined })
+  }, [data, programmeId, itemId])
   useWakeLock(true)
 
   // Dusk while this screen is open: one of four dark shades, at random each visit (never last visit's).
@@ -369,7 +374,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
       {facts && <p className={s.listenFacts}>{facts}</p>}
-      {performers && <p className={s.listenPerformers}>{performers}</p>}
+      {performers && <PerformerLine r={credit} className={s.listenPerformers} />}
       {data.earlier && !focus && <EarlierLine earlier={data.earlier} credit={data.earlierCredit} today={isoDateIn(new Date(), settings.timeZone)} />}
       {standIn && !focus && <p className={s.note}>On Spotify in place of the curator’s choice ({creditLine(item.proposed)}), which Spotify doesn’t carry.</p>}
 

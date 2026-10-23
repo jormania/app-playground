@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import type { TasteObservation } from '../domain/types'
+import type { Concert, Feedback, Programme, TasteObservation } from '../domain/types'
+import { displaySurname } from '../domain/identity'
+import { curly } from '../domain/programmeStyle'
 import { useLoad, useServices } from '../app/services'
-import { go, href } from '../app/router'
+import { href } from '../app/router'
 import { useKept } from '../app/kept'
+import { useFollow } from '../app/follow'
 import { observationsByStance, pendingFeedback } from '../curation/taste'
 import { CharCount, Empty, MAX_ASK, MAX_NOTE, NeedsKey, Problem, Waiting, messageOf } from '../components/common'
 import { Twisty } from '../components/Twisty'
@@ -15,19 +18,50 @@ const STANCE_TITLE: Record<TasteObservation['stance'], string> = {
   'wary-of': 'Wary of',
 }
 
+/** What each piece of feedback was said of, in the listener's terms: the work, the concert, the programme. */
+function whatWasSaidOf(feedback: Feedback[], programmes: Programme[], concerts: Concert[]): Map<string, string> {
+  const items = programmes.flatMap((p) => p.sections.flatMap((x) => x.items))
+  const out = new Map<string, string>()
+  for (const f of feedback) {
+    const { type, id } = f.target
+    const item = type === 'work' ? items.find((i) => i.workId === id) : type === 'recording' || type === 'interpretation' ? items.find((i) => i.recordingId === id) : undefined
+    const words = item ? `${displaySurname(item.proposed.composer)}’s ${curly(item.proposed.work)}`
+      : type === 'concert' ? (() => { const c = concerts.find((x) => x.id === id); return c ? `the concert at ${c.venue}` : undefined })()
+      : type === 'programme' ? (() => { const p = programmes.find((x) => x.id === id); return p ? `“${p.title}”` : undefined })()
+      : undefined
+    if (words) out.set(f.id, words)
+  }
+  return out
+}
+
+/** "From what you said of Sibelius’s Tapiola and Debussy’s La mer" — two at most, then "and elsewhere". */
+function evidenceWords(o: TasteObservation, said: Map<string, string>): string {
+  const names = [...new Set(o.evidence.map((id) => said.get(id)).filter((x): x is string => Boolean(x)))]
+  if (!names.length) return ''
+  const shown = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and elsewhere`
+  return `From what you said of ${shown}.`
+}
+
 /**
  * What the curator has come to understand about the listener — in words, with
  * how sure it is, and how it has changed. Editable at the one point where the
  * listener can simply tell the curator something.
  */
 export function NotebookScreen() {
-  const { repo, journey, bump, say, week, curatorReady } = useServices()
-  const { data, error, retry } = useLoad(async () => ({ taste: await repo.taste(), prefs: await repo.preferences(), pending: pendingFeedback(await repo.feedback.all()).length }), [])
+  const { repo, journey, bump, say, curatorReady } = useServices()
+  const { data, error, retry } = useLoad(async () => {
+    const [taste, prefs, feedback, programmes, concerts] = await Promise.all([repo.taste(), repo.preferences(), repo.feedback.all(), repo.programmes.all(), repo.concerts.all()])
+    return { taste, prefs, pending: pendingFeedback(feedback).length, feedback, said: whatWasSaidOf(feedback, programmes, concerts) }
+  }, [])
+  // "Not quite": the observation it is about, and what is being typed for it.
+  const [correcting, setCorrecting] = useState<string | null>(null)
+  const [correction, setCorrection] = useState('')
+  const [sending, setSending] = useState(false)
   // Typed and not yet kept: a draft that outlives leaving the page, and wins over the saved text when it comes back.
   const [notes, setNotes, , showNotes] = useKept('notebook-notes', 'device')
   const [wish, setWish, , showWish] = useKept('notebook-wish', 'device')
   const [reading, setReading] = useState(false)
-  const [following, setFollowing] = useState<string | null>(null)
+  const { following, follow } = useFollow()
   // Each field filled from what is kept once, on opening: the page reloads whenever anything is saved (the
   // other field, a taste reading, a Spotify sync), and a refill then threw away what was being typed.
   const filled = useRef(false)
@@ -77,36 +111,34 @@ export function NotebookScreen() {
     }
   }
 
+  // Followed: not offered again, where a second tap would pay for the same three directions twice.
+  const followQuestion = (q: string) => follow(q, async () => {
+    const current = await repo.taste()
+    await repo.saveTaste({ ...current, questions: current.questions.filter((x) => x !== q) })
+  })
+
   /**
-   * A question the curator heard, turned into directions in one tap: before a
-   * choice this week they replace the three on offer (which stay open), after
-   * one they wait under "Where next". Followed, it leaves the list.
+   * The listener says an observation isn't quite right: kept as feedback on it,
+   * read into taste at once when the curator can be asked (the prompt replaces
+   * it with what their words support), or with the next reading otherwise.
    */
-  async function follow(q: string) {
-    setFollowing(q)
+  async function notQuite(o: TasteObservation) {
+    setSending(true)
     try {
-      const thisWeek = await repo.weeks.get(week.key)
-      let said: string | undefined
-      if (thisWeek?.programmeId) {
-        await journey.moreDirections(q)
-        said = 'Three directions from your question are waiting under “Where next”, at the end of this week’s programme.'
-      } else if (thisWeek) {
-        await journey.offerOtherDirections(q)
-        said = 'Three directions from your question are on This week. The three before stay open.'
-      } else {
-        // No week yet: its first three directions start from the question — one call, and next week's wish is left alone.
-        await journey.ensureWeek(q)
-      }
-      // Followed: not offered again, where a second tap would pay for the same three directions twice.
-      const current = await repo.taste()
-      await repo.saveTaste({ ...current, questions: current.questions.filter((x) => x !== q) })
+      await journey.giveFeedback({ target: { type: 'observation', id: o.id }, note: correction.trim() || 'Not quite right.' })
+      setCorrecting(null)
+      setCorrection('')
       bump()
-      if (said) say(said, 'success')
-      go({ name: 'week' })
+      if (curatorReady) {
+        say('Said. The curator is reconsidering it now.', 'success')
+        void journey.interpretPendingFeedback().then(() => bump(), (e: unknown) => say(messageOf(e), 'danger'))
+      } else {
+        say('Said. The curator reconsiders it when it next reads what you’ve said.', 'success')
+      }
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
-      setFollowing(null)
+      setSending(false)
     }
   }
 
@@ -140,7 +172,25 @@ export function NotebookScreen() {
           <h2 className={s.sectionHead}>{STANCE_TITLE[stance]}</h2>
           <ul className={s.bullets}>
             {groups[stance].map((o) => (
-              <li key={o.id}>{o.statement} {o.confidence !== 'settled' && <span className={s.faint}>({o.confidence === 'tentative' ? 'a first impression' : 'becoming clearer'})</span>}</li>
+              <li key={o.id}>
+                {o.statement} {o.confidence !== 'settled' && <span className={s.faint}>({o.confidence === 'tentative' ? 'a first impression' : 'becoming clearer'})</span>}
+                {/* What it rests on, in the listener's own terms: a reason they can check, not a label. */}
+                {evidenceWords(o, data.said) && <span className={s.observationWhy}>{evidenceWords(o, data.said)}</span>}
+                {data.feedback.some((f) => f.target.type === 'observation' && f.target.id === o.id && !f.interpretedAt)
+                  ? <span className={s.observationWhy}>You said this isn’t quite right; the curator will reconsider it.</span>
+                  : correcting === o.id ? (
+                    <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); if (!sending) void notQuite(o) }}>
+                      <label className={s.visuallyHidden} htmlFor={`nq-${o.id}`}>What would be closer?</label>
+                      <input id={`nq-${o.id}`} className={s.input} maxLength={MAX_ASK} placeholder="What would be closer? (optional)" value={correction} onChange={(e) => setCorrection(e.target.value)} disabled={sending} autoFocus />
+                      <div className={s.actions}>
+                        <button type="submit" className={`${s.outlineButton} ${s.smallButton}`} disabled={sending}>{sending ? 'Telling the curator…' : 'Tell the curator'}</button>
+                        <button type="button" className={s.textButton} onClick={() => { setCorrecting(null); setCorrection('') }}>Never mind</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>{' '}<button className={`${s.textButton} ${s.quietButton}`} onClick={() => { setCorrecting(o.id); setCorrection('') }}>Not quite</button></>
+                  )}
+              </li>
             ))}
           </ul>
         </section>
@@ -156,7 +206,7 @@ export function NotebookScreen() {
               <li key={i}>
                 {q}{' '}
                 <span className={s.followLinks}>
-                  <button className={s.textButton} onClick={() => void follow(q)} disabled={following !== null || !curatorReady}>{following === q ? 'The curator is finding three…' : 'Follow this'}</button>
+                  <button className={s.textButton} onClick={() => void followQuestion(q)} disabled={following !== null || !curatorReady}>{following === q ? 'The curator is finding three…' : 'Follow this'}</button>
                 </span>
               </li>
             ))}

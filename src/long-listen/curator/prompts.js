@@ -263,7 +263,7 @@ Comparisons: only when preferences.pairs is true. Then, where two interpretation
 
 export const TASTE = {
   id: 'taste',
-  version: 'taste@2026-10-09.1',
+  version: 'taste@2026-10-23.1',
   effort: 'low',
   maxTokens: 6000,
   schema: {
@@ -308,6 +308,7 @@ Return only NEW or CHANGED observations:
 - evidence: the feedback ids it rests on.
 - replaces: the id of an existing observation this one refines or contradicts, else "".
 Do not over-read. One "not for me" is not a dislike of a whole period. A dislike of a recording is not a dislike of the work.
+Feedback "about" one of your own observations is the listener telling you it isn't quite right: return an observation that replaces it (replaces = its id, evidence includes that feedback) and says what their words and the rest of the evidence support — narrower, softer, or the other way round. Never return it unchanged, and never argue with them.
 questions: up to three questions the listener seems to be asking of the music, or [] — "What happens to the symphony after Mahler?"`,
 }
 
