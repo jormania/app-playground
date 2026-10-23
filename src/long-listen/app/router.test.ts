@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRoute, href, stepTrail, cameFrom, backTo, landingY, GONE, type Route } from './router'
+import { parseRoute, href, stepTrail, cameFrom, backTo, landingY, arrivalAnchor, LISTEN_ANCHOR, GONE, type Route } from './router'
 
 describe('routes', () => {
   it('round-trips every route', () => {
@@ -100,5 +100,15 @@ describe('the browser audit of the screens (15 October 2026)', () => {
   it('a page that wasn’t there is never the way back: its parent is', () => {
     const t = stepTrail([], '#/listen/nope/nope', 0, '#/composer/Nobody', GONE).trail
     expect(backTo(t, { to: '#/library', label: 'Library' })).toEqual({ to: '#/library', label: 'Library' })
+  })
+})
+
+describe('opening the listening view', () => {
+  it('goes straight to the work’s heading when no place is remembered, and keeps a remembered one', () => {
+    expect(arrivalAnchor('#/listen/p1/i1', 0)).toBe(LISTEN_ANCHOR)
+    expect(arrivalAnchor('#/listen/p1/i1', 640)).toBeUndefined()
+    // Other pages open at their top as before.
+    expect(arrivalAnchor('#/p/p1', 0)).toBeUndefined()
+    expect(arrivalAnchor('#/journal', 0)).toBeUndefined()
   })
 })

@@ -3446,6 +3446,11 @@
 }
 
 /* A composer's name, wherever it heads a work: a link to their page that keeps the line's own look. */
+/* Where the listening view opens: a little air above, not the very edge of the screen. */
+.listenTop {
+  scroll-margin-top: var(--space-md);
+}
+
 .composerLink {
   color: inherit;
   text-decoration: none;

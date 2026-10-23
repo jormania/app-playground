@@ -4,7 +4,7 @@ import type { ProgrammeItem } from '../domain/types'
 import { creditLine } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { useLoad, useServices } from '../app/services'
-import { href, programmeBackHref } from '../app/router'
+import { LISTEN_ANCHOR, href, programmeBackHref } from '../app/router'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { applyDusk, chooseDusk, rememberDusk } from '../app/theme'
 import { onPlayerReading, onWorkRanOn, usePlayback, usePlayerState } from '../app/playback'
@@ -354,7 +354,7 @@ export function ListenModeScreen({ programmeId, itemId }: { programmeId: string;
         // Focus: only the music, for the phone on the armrest. Remembered on this device.
         aside={<button type="button" className={`${s.textButton} ${s.quietButton} ${focus ? s.focusOn : ''}`} aria-pressed={focus} onClick={toggleFocus}>Focus</button>}
       />
-      <p className={s.composer}><ComposerLink name={item.proposed.composer} /></p>
+      <p id={LISTEN_ANCHOR} className={`${s.composer} ${s.listenTop}`}><ComposerLink name={item.proposed.composer} /></p>
       <h1 className={s.title}>{curly(item.proposed.work)}</h1>
       {/* What it is and who plays it, one line each: the facts at a glance, not a block to read. */}
       {facts && <p className={s.listenFacts}>{facts}</p>}

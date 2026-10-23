@@ -161,6 +161,18 @@ export function landingAnchor(from: string, to: string): string | undefined {
   return undefined
 }
 
+/** The work's heading in the listening view: where that page opens, with the masthead and the way back just above. */
+export const LISTEN_ANCHOR = 'listen-work'
+
+/**
+ * Opening the listening view at no remembered place ("Listen along", "Play
+ * next"): straight to the work's heading, so the music is on screen at once
+ * and not under the masthead. A place remembered (coming back to it) stands.
+ */
+export function arrivalAnchor(to: string, y: number): string | undefined {
+  return parseRoute(to).name === 'listen' && y <= 0 ? LISTEN_ANCHOR : undefined
+}
+
 /**
  * Where to stand once the page has drawn: the remembered place, unless it is
  * coming back to a work's card that place doesn't show (moved on with "Play
@@ -231,7 +243,7 @@ export function useRoute(): Route {
       const prevHere = here
       here = to
       setRoute(parseRoute(to))
-      restoreScroll(next.y, landingAnchor(prevHere, to))
+      restoreScroll(next.y, landingAnchor(prevHere, to) ?? arrivalAnchor(to, next.y))
     }
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
