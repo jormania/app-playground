@@ -367,10 +367,12 @@ export function validateTaste(out, { feedbackIds, observationIds }) {
       confidence: clean(o?.confidence) || 'tentative',
       evidence: list(o?.evidence, 20).filter((id) => fb.has(id)),
       replaces: obs.has(clean(o?.replaces)) ? clean(o?.replaces) : undefined,
+      absorbs: list(o?.absorbs, 40).filter((id) => obs.has(id) && id !== clean(o?.replaces)),
     }))
     .filter((o) => {
       if (!o.statement || !o.subject) return false
-      if (o.evidence.length === 0) {
+      // A merge of earlier observations carries their evidence; it needs none of its own.
+      if (o.evidence.length === 0 && o.absorbs.length === 0) {
         problems.push(`Observation "${o.statement}" cites no feedback.`)
         return false
       }

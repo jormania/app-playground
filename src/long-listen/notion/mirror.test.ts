@@ -100,9 +100,33 @@ describe('the Notion notebook', () => {
     expect((await syncToNotion(n.client, repo, 'page123', '2026-W41')).written).toBe(0)
     expect(n.calls).toHaveLength(0)
 
-    // A week later the journal page's status changes; only that is patched.
+    // A week later the journal page's status changes; only that is patched, and the
+    // week's one look for rows still saying "This week" (none here) is made.
     expect((await syncToNotion(n.client, repo, 'page123', '2026-W42')).written).toBe(1)
-    expect(n.calls.map((c) => `${c.method} ${c.path.split('/')[0]}`)).toEqual(['PATCH pages'])
+    expect(n.calls.map((c) => `${c.method} ${c.path.split('/')[0]}`)).toEqual(['PATCH pages', 'POST databases'])
+    n.calls.length = 0
+    expect((await syncToNotion(n.client, repo, 'page123', '2026-W42')).written).toBe(0)
+    expect(n.calls).toHaveLength(0)
+  })
+
+  it('sets a row still saying "This week" from an earlier week to "Earlier", once a week, and leaves this week\'s alone', async () => {
+    const repo = await seeded()
+    const n = fakeNotion()
+    await syncToNotion(n.client, repo, 'page123', '2026-W41')
+    const ours = (await repo.notion.get('programme:prog1'))!.pageId
+    // Notion holds this week's row (tracked) and an orphan from an earlier week that nothing tracks any more.
+    const client: NotionCall = async <T,>(c: any): Promise<T> => {
+      if (c.method === 'POST' && /^databases\/[^/]+\/query$/.test(c.path)) return { results: [{ id: ours.toUpperCase() }, { id: 'old-row' }] } as T
+      return n.client(c)
+    }
+    await repo.marks.delete('notion:settled:2026-W41')
+    n.calls.length = 0
+    expect((await syncToNotion(client, repo, 'page123', '2026-W41')).written).toBe(1)
+    const patched = n.calls.filter((c) => c.method === 'PATCH')
+    expect(patched).toEqual([{ path: 'pages/old-row', method: 'PATCH', body: { properties: { Status: { select: { name: 'Earlier' } } } } }])
+    n.calls.length = 0
+    expect((await syncToNotion(client, repo, 'page123', '2026-W41')).written).toBe(0)
+    expect(n.calls).toHaveLength(0)
   })
 
   it('writes what played "On Spotify instead" to Works & recordings, marked as such', async () => {

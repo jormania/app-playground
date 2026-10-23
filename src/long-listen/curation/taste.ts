@@ -13,6 +13,13 @@ import type { TasteResponse } from './api'
  */
 const STRONGER = { tentative: 'emerging', emerging: 'settled', settled: 'settled' } as const
 
+/**
+ * Past this many active observations the profile stops reading as a portrait
+ * and becomes a log: the next reading also merges what overlaps (TASTE's
+ * "tidy"), and the Notebook folds its first impressions away.
+ */
+export const TASTE_TIDY_ABOVE = 24
+
 export function applyTasteUpdate(profile: TasteProfile, update: TasteResponse, now: string): TasteProfile {
   const observations = profile.observations.map((o) => ({ ...o }))
   const active = () => observations.filter((o) => !o.supersededBy)
@@ -25,11 +32,21 @@ export function applyTasteUpdate(profile: TasteProfile, update: TasteResponse, n
     // as two opinions.
     const same = active().find((o) => o !== replaced && o.facet === u.facet && o.subject.toLowerCase() === u.subject.toLowerCase() && o.stance === u.stance)
 
+    // Observations it makes redundant: still active, and not the one it lands on.
+    const absorbed = (u.absorbs ?? [])
+      .map((id) => observations.find((o) => o.id === id && !o.supersededBy))
+      .filter((o): o is TasteObservation => Boolean(o) && o !== replaced && o !== same)
+    const carried = [...(replaced ? [replaced] : []), ...absorbed]
+    // What it absorbs is the same view said before, so its evidence and certainty come along. What it
+    // replaces is a view being corrected — narrower, softer, turned round — so only the model's word counts.
+    const evidence = [...new Set([...u.evidence, ...absorbed.flatMap((o) => o.evidence)])]
+    const confidence = absorbed.reduce<TasteObservation['confidence']>((c, o) => (rank(o.confidence) > rank(c) ? o.confidence : c), u.confidence)
+
     if (same) {
-      if (replaced) replaced.supersededBy = same.id
+      for (const o of carried) o.supersededBy = same.id
       same.statement = u.statement
-      same.confidence = rank(u.confidence) > rank(same.confidence) ? u.confidence : STRONGER[same.confidence]
-      same.evidence = [...new Set([...same.evidence, ...u.evidence])]
+      same.confidence = rank(confidence) > rank(same.confidence) ? confidence : STRONGER[same.confidence]
+      same.evidence = [...new Set([...same.evidence, ...evidence])]
       same.lastSeen = now
       continue
     }
@@ -40,12 +57,12 @@ export function applyTasteUpdate(profile: TasteProfile, update: TasteResponse, n
       subject: u.subject,
       statement: u.statement,
       stance: u.stance,
-      confidence: u.confidence,
-      evidence: u.evidence,
-      firstSeen: replaced?.firstSeen ?? now,
+      confidence,
+      evidence,
+      firstSeen: carried.reduce((first, o) => (o.firstSeen < first ? o.firstSeen : first), now),
       lastSeen: now,
     }
-    if (replaced) replaced.supersededBy = fresh.id
+    for (const o of carried) o.supersededBy = fresh.id
     observations.push(fresh)
   }
 

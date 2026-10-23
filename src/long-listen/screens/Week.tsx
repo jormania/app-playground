@@ -3,7 +3,6 @@ import { GoingCards } from '../components/Going'
 import { WEEK_FORMS, WEEK_MOODS, type ListenerPreferences, type ProgrammeOption, type Theme, type WeekMood, type WeekRecord } from '../domain/types'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { directionChanges } from '../domain/directionChanges'
-import { sinceWords } from '../domain/week'
 import { useServices } from '../app/services'
 import { go, href } from '../app/router'
 import { CuratorUnavailable } from '../curation/api'
@@ -223,7 +222,7 @@ export function WeekScreen() {
       {/* The direction being built stays where it was tapped, saying so; the others wait. */}
       <ol className={s.options}>
         {view.options.map((o) => (
-          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} weekKey={view.record.weekKey} busy={busy || !curatorReady} choosing={choosing === o.id} onChoose={() => void choose(o)} />
+          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} busy={busy || !curatorReady} choosing={choosing === o.id} onChoose={() => void choose(o)} />
         ))}
       </ol>
       {!curatorReady && <NeedsKey to="choose a direction, or ask for anything below" />}
@@ -273,7 +272,7 @@ export function WeekScreen() {
   )
 }
 
-function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: ProgrammeOption; theme?: Theme; weekKey: string; busy: boolean; choosing: boolean; onChoose: () => void }) {
+function OptionEntry({ o, theme, busy, choosing, onChoose }: { o: ProgrammeOption; theme?: Theme; busy: boolean; choosing: boolean; onChoose: () => void }) {
   return (
     <li className={s.option} aria-busy={choosing || undefined}>
       <div className={s.optionHead}>
@@ -289,7 +288,8 @@ function OptionEntry({ o, theme, weekKey, busy, choosing, onChoose }: { o: Progr
         {o.returning && (
           <div className={`${s.continuity} ${s.flush} ${s.mtSm}`}>
             <p className={`${s.eyebrow} ${s.mb0}`}>
-              Returning{theme ? ` · “${theme.title}”, first explored ${sinceWords(theme.firstIntroduced, weekKey)}` : ''}
+              {/* The thread by name only: the curator's note below says when and how, and saying it twice read as an echo. */}
+              Returning{theme ? ` · “${theme.title}”` : ''}
             </p>
             <p className={s.flush}>{o.returning.note}</p>
           </div>

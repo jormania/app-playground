@@ -351,7 +351,12 @@ export function tasteBlocks(t: TasteProfile, prefs?: ListenerPreferences): unkno
   for (const [stance, list] of Object.entries(groups)) {
     if (!list.length) continue
     out.push(h2(titles[stance]))
-    for (const o of list) out.push(bullet(`${o.statement}${o.confidence === 'tentative' ? ' (a first impression)' : ''}`))
+    // As the Notebook sets it: the firmer lines first, single remarks gathered under their own small heading.
+    const firm = list.filter((o) => o.confidence !== 'tentative')
+    const first = list.filter((o) => o.confidence === 'tentative')
+    for (const o of firm) out.push(bullet(o.statement))
+    if (first.length && firm.length) out.push(h3('First impressions'))
+    for (const o of first) out.push(bullet(firm.length ? o.statement : `${o.statement} (a first impression)`))
   }
   if (t.questions.length) {
     out.push(h2('Questions you seem to be asking'))
@@ -505,6 +510,33 @@ async function writeProgrammePage(
   return written
 }
 
+/**
+ * Journal rows still marked "This week" that aren't this week's programmes are
+ * set to "Earlier". Every page the app tracks is put right by its own sync; this
+ * is for a row it no longer tracks — one left by a restore or a lost sync
+ * state — which would otherwise say "This week" for ever (2026-10-23: week 41's
+ * row beside week 43's). Status is the app's column, so correcting it is safe.
+ */
+async function settleStaleThisWeek(call: NotionCall, repo: Repo, databaseId: string, current: Programme[]): Promise<number> {
+  const norm = (id: string) => id.replace(/-/g, '').toLowerCase()
+  const keep = new Set<string>()
+  for (const p of current) {
+    const st = await repo.notion.get(`programme:${p.id}`)
+    if (st) keep.add(norm(st.pageId))
+  }
+  const found = await call<{ results?: { id: string }[] }>({
+    path: `databases/${databaseId}/query`, method: 'POST',
+    body: { filter: { property: 'Status', select: { equals: 'This week' } }, page_size: 100 },
+  })
+  let fixed = 0
+  for (const row of found?.results ?? []) {
+    if (!row?.id || keep.has(norm(row.id))) continue
+    await call({ path: `pages/${row.id}`, method: 'PATCH', body: { properties: { Status: selectProp('Earlier') } } })
+    fixed++
+  }
+  return fixed
+}
+
 /** A database row with no body: create it, or rewrite its columns when they change. */
 async function upsert(call: NotionCall, repo: Repo, key: string, databaseId: string, properties: Record<string, unknown>): Promise<boolean> {
   const h = hash(properties)
@@ -566,6 +598,11 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
     written += Number(await syncProgrammePage(call, repo, dbs.journal, p, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek, standIns),
       resources.filter((r) => r.programmeId === p.id)))
   }
+  // Once a week is enough: a row goes stale only when a week turns. An unchanged notebook still costs no calls.
+  if (!(await repo.marks.get(`notion:settled:${currentWeek}`))) {
+    written += await settleStaleThisWeek(call, repo, dbs.journal, programmes.filter((p) => p.weekKey === currentWeek && !setAside.has(p.id)))
+    await repo.marks.put({ id: `notion:settled:${currentWeek}`, at: new Date().toISOString() })
+  }
   for (const t of themes) {
     written += Number(await upsert(call, repo, `theme:${t.id}`, dbs.threads, threadProps(t, explorations)))
   }
@@ -603,7 +640,8 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
 
   // The taste page belongs to the app: it is rewritten whole when it changes.
   const { nextRequest: _n, ...shownPrefs } = prefs
-  const tasteHash = hash({ o: taste.observations.filter((o) => !o.supersededBy).map((o) => [o.statement, o.stance, o.confidence]), q: taste.questions, n: taste.notesToCurator, p: shownPrefs })
+  // `v`: the page's layout — bumped when tasteBlocks sets it differently, so the page is rewritten once.
+  const tasteHash = hash({ v: 2, o: taste.observations.filter((o) => !o.supersededBy).map((o) => [o.statement, o.stance, o.confidence]), q: taste.questions, n: taste.notesToCurator, p: shownPrefs })
   const tasteState = await repo.notion.get('taste')
   if (tasteState?.hash !== tasteHash) {
     for (const b of await childrenOf(call, dbs.tastePage)) await call({ path: `blocks/${b.id}`, method: 'PATCH', body: { archived: true } })

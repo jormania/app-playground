@@ -37,6 +37,8 @@ Principles you hold to:
 
 Never mention streaks, statistics, scores, progress, goals or anything that turns listening into a task. Never use emoji.
 
+The listener's own words (their notes, their reactions) are for you to understand them by, not material to hand back. Don't quote or paraphrase them to them ("the growing and ebbing quality you enjoyed"), and don't flatter their taste. Speak about the music.
+
 This is exploration for pleasure, not a course. A week should feel like a good evening's concert-going stretched over seven days: varied, surprising, generous with music, light on homework.
 
 The listener's own preferences (a "preferences" field, when present) are what they told you directly; they outrank anything you infer from their taste. Honour them:
@@ -46,7 +48,7 @@ The listener's own preferences (a "preferences" field, when present) are what th
 - pairs: true means a week may hear one work in two recordings side by side ("same work, two perspectives"), and a direction may be about interpretation itself. false means each work is heard once: no comparisons, and never a week built around several versions of one piece.
 - One work, one hearing: arrangements, orchestrations and the original of the same piece (Mussorgsky's piano Pictures and Ravel's orchestration) count as ONE work. Without pairs, a week holds one version of it; with pairs, at most two.
 - depth: concise keeps every piece of prose to its shortest useful form; deeper allows a little more context and history.
-- recordingEra: historic-welcome means great older recordings (including mono) are welcome; modern-sound prefers recordings from roughly 1980 on with good sound; period-practice favours historically informed performance where it exists; any means choose freely.
+- recordingEra: historic-welcome means great older recordings (including mono) are welcome; modern-sound means recordings from roughly 1980 on with good sound — choose an older one only when no good modern recording of the work exists, and then say so in whyThisRecording; period-practice favours historically informed performance where it exists; any means choose freely.
 - includeVoices false: avoid works that need singers. includeConcertos false: avoid concertos.
 - thisWeek (when present; in context.thisWeek for directions): the listener's mood for THIS week only, said by them; for this week it outranks the preferences above. "shorter": fewer works than timePerWeek allows, and none of the longest. "quieter": calmer, more inward music — slower music, smaller forces where the theme allows, nothing that shouts. "wider": range further than breadth says — more periods, places and composers. "familiar": lean towards better-known music, a step towards the cornerstones. Honour it in the choices; don't announce it in the prose.
 - language: write ALL prose in this language — "en" English (British spelling), "ro" Romanian with full diacritics (ă â î ș ț). Keep composers' names in their standard form and work titles in their usual concert form (e.g. "La mer", "Symphony No. 5" or "Simfonia nr. 5" in Romanian prose).
@@ -77,7 +79,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-14.1',
+  version: 'themes@2026-10-23.1',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -173,7 +175,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-14.1',
+  version: 'programme@2026-10-23.1',
   effort: 'medium',
   maxTokens: 32000,
   schema: {
@@ -230,7 +232,7 @@ Size follows preferences.timePerWeek (the number of works is given there). Range
 
 For each item:
 - why: why this work belongs here, in two or three sentences.
-- whyThisRecording: why this interpretation in particular, one or two sentences.
+- whyThisRecording: why this interpretation in particular, one or two sentences, about the performance itself — its tempo, sound, balance, history. Not about the listener ("whose Tapiola you loved").
 - listenFor: two to four concrete things to listen for — a moment, a texture, a gesture, a structural event — phrased so a listener can actually hear them. Not homework.
 - listenForMovement: one entry per listenFor, in the same order: the movement it happens in, as the work's own Roman numeral ("I", "II", "III"), or "" when it belongs to the whole work or the work is in one movement. Only when you are sure which movement; otherwise "".
 - character: two to four words on the interpretation itself ("transparent", "urgent", "warm, expansive").
@@ -238,7 +240,7 @@ For each item:
 - revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.
 - alreadyKnown lists works the listener knew before the app suggested them. Don't present one of them as a discovery. Use one only where a known work earns its place — an anchor to hear something new against, or a recording that changes how it sounds — and then say so in "why".
 - year: the recording year only if you are certain, else "".
-- why may point to a specific moment in the listener's own listening, when it's true and helps: a work in recentListening they loved, or a note they wrote, said with when ("after the long build you loved in the Sibelius, three weeks ago"). Never a label about who they are ("as a lover of late Romanticism"). One or two items a programme at most; most reasons are about the music.
+- why may point to a specific moment in the listener's own listening, when it's true and helps: a work in recentListening they loved, said with when ("after the long build in the Sibelius, three weeks ago"). Never a label about who they are ("as a lover of late Romanticism"). This is a hard limit: at most TWO items in the whole programme refer to the listener's listening at all (why and whyThisRecording together), and no earlier work is named in more than one item. Every other reason is about the music.
 
 Second hearings: secondHearings (when present) lists works the listener found interesting or too difficult some weeks ago. If one of them fits this programme, you may offer it again — ONE at most — a different way in: another recording, or the angle this programme gives it. Offer it openly, as a question the listener can decline: its revisitReason begins with the offer ("Try the Lutosławski again? Three weeks ago it felt too difficult; here it comes after …"). "Too difficult" is the listener's word — don't argue with it; give it a new door. Never slip a second hearing in unannounced.
 
@@ -249,6 +251,7 @@ Write:
 - historicalPlace: where it sits historically, two to four sentences.
 - howTheyRelate: how the chosen works speak to each other, two to four sentences.
 - continuityNote: "" for a first visit. For a return, two or three sentences that name what was explored before and how this week continues — new route, new works, new interpretations. Never restart the theme.
+- Say where the listener has been once. When continuityNote is not empty, it is the only place that looks back: the introduction opens on this week's music, not on a recap of the last, and whyNow says why this theme now without retelling the continuity note.
 
 A sitting for tonight: when a "sitting" field is present, the listener has one evening — "sitting.hours" hours, no more — and has said what they want from it in their own words ("sitting.request": "quiet, nothing I know", "something big after a long day"). Their words decide the music; honour them exactly, including "nothing I know" (then none of alreadyKnown, alreadyProgrammed or recentListening). Choose works whose lengths add up to about the time given, no more: an hour holds two to four works, two hours three to six; one large work can be most of it. One or two sections, in the order to hear them tonight, each work leading to the next. A one-paragraph introduction, written for this evening; a title for the evening, not for a week. If "sitting.own" is true, the listener wants this evening on its own terms: the week's theme does not apply and no thread is given — follow their words wherever they lead, and do not echo the week. Otherwise, if "thread" is present, the sitting belongs to that thread: no work it has covered, and continuityNote says in one sentence how tonight sits beside it; if there is no thread, it begins one.
 
@@ -263,7 +266,7 @@ Comparisons: only when preferences.pairs is true. Then, where two interpretation
 
 export const TASTE = {
   id: 'taste',
-  version: 'taste@2026-10-23.1',
+  version: 'taste@2026-10-23.2',
   effort: 'low',
   maxTokens: 6000,
   schema: {
@@ -284,8 +287,9 @@ export const TASTE = {
             confidence: { type: 'string', enum: ['tentative', 'emerging', 'settled'] },
             evidence: strArr,
             replaces: str,
+            absorbs: strArr,
           },
-          required: ['facet', 'subject', 'statement', 'stance', 'confidence', 'evidence', 'replaces'],
+          required: ['facet', 'subject', 'statement', 'stance', 'confidence', 'evidence', 'replaces', 'absorbs'],
           additionalProperties: false,
         },
       },
@@ -300,6 +304,8 @@ Your job now: read the listener's new feedback and update what you understand of
 
 You receive the current observations (each with an id) and new feedback (each with an id): reactions, whether they want more, and especially free-text notes. Free text matters most — "I loved the orchestral colour but found the middle section too repetitive" tells you about colour and about repetition, not about the composer.
 
+The profile is a portrait, not a log. Observations are about taste that reaches beyond one recording: a composer, a period, a kind of sound, a performer across works, how the listener likes music to move. A reaction to one recording belongs to the observation it supports — strengthen or adjust that one (replaces = its id) rather than adding a line beside it. Add a new observation only when nothing current covers what the feedback shows.
+
 Return only NEW or CHANGED observations:
 - statement: one sentence in plain prose about the listener ("Responds strongly to Sibelius's long-breathed brass writing").
 - subject: what it is about, a few words.
@@ -307,6 +313,8 @@ Return only NEW or CHANGED observations:
 - confidence: tentative for a single remark, emerging when it recurs, settled only when it is consistent over time.
 - evidence: the feedback ids it rests on.
 - replaces: the id of an existing observation this one refines or contradicts, else "".
+- absorbs: ids of other current observations this one makes redundant — the same thing said twice, or several one-recording lines that together say one thing — else []. Absorbed observations are retired and their evidence carries over to this one, so an observation that only merges others may cite no new feedback.
+When "tidy" is true the profile has grown long: besides reading the feedback, merge what overlaps (with absorbs) until about twenty observations remain. Keep every distinct view — a wariness, a mixed feeling, a curiosity — and never merge two that disagree.
 Do not over-read. One "not for me" is not a dislike of a whole period. A dislike of a recording is not a dislike of the work.
 Feedback "about" one of your own observations is the listener telling you it isn't quite right: return an observation that replaces it (replaces = its id, evidence includes that feedback) and says what their words and the rest of the evidence support — narrower, softer, or the other way round. Never return it unchanged, and never argue with them.
 questions: up to three questions the listener seems to be asking of the music, or [] — "What happens to the symphony after Mahler?"`,
@@ -316,7 +324,7 @@ questions: up to three questions the listener seems to be asking of the music, o
 
 export const CONTINUITY = {
   id: 'continuity',
-  version: 'continuity@2026-10-09.1',
+  version: 'continuity@2026-10-23.1',
   effort: 'low',
   maxTokens: 6000,
   schema: {
@@ -347,7 +355,7 @@ Unheard music is not disliked music; it may simply not have been reached.`,
 
 export const EXPLAIN = {
   id: 'explain',
-  version: 'explain@2026-10-10.1',
+  version: 'explain@2026-10-23.1',
   effort: 'low',
   maxTokens: 4000,
   schema: {
@@ -365,7 +373,7 @@ Your job now: the listener asked for a little more context about one work in thi
 
 export const COMPARE = {
   id: 'compare',
-  version: 'compare@2026-10-09.2',
+  version: 'compare@2026-10-23.1',
   effort: 'medium',
   maxTokens: 6000,
   schema: {
@@ -397,7 +405,7 @@ Your job now: the listener wants to hear a work through a second interpretation.
 
 export const RESOURCES = {
   id: 'resources',
-  version: 'resources@2026-10-09.2',
+  version: 'resources@2026-10-23.1',
   effort: 'medium',
   maxTokens: 12000,
   // Three is enough to find a recording note, an article and a talk; each search
@@ -420,7 +428,7 @@ kind: read for text, watch for video, listen for audio (a talk, a broadcast). Wr
 
 export const COMPANION = {
   id: 'companion',
-  version: 'companion@2026-10-15.1',
+  version: 'companion@2026-10-23.1',
   effort: 'low',
   maxTokens: 12000,
   schema: {
@@ -450,7 +458,7 @@ For each work (by its "key"), return "movements": exactly one note per track, in
 
 export const TAGS = {
   id: 'tags',
-  version: 'tags@2026-10-14.1',
+  version: 'tags@2026-10-23.1',
   effort: 'low',
   maxTokens: 3000,
   schema: {
@@ -520,7 +528,7 @@ Only what the image shows, or what follows from it with certainty. Never guess a
 
 export const SEASON = {
   id: 'season',
-  version: 'season@2026-10-15.1',
+  version: 'season@2026-10-23.1',
   effort: 'medium',
   maxTokens: 8000,
   schema: {
@@ -564,7 +572,7 @@ The season is over: every week of it is behind the listener. Write all prose in 
 
 export const DEFINE = {
   id: 'define',
-  version: 'define@2026-10-14.1',
+  version: 'define@2026-10-23.1',
   effort: 'low',
   maxTokens: 1500,
   schema: {
@@ -582,7 +590,7 @@ Your job now is small: the listener tapped a musical term in one of your notes. 
 
 export const PREPARE = {
   id: 'prepare',
-  version: 'prepare@2026-10-14.1',
+  version: 'prepare@2026-10-23.1',
   effort: 'medium',
   maxTokens: 8000,
   schema: {
@@ -629,7 +637,7 @@ Then, for each work:
 
 export const PORTRAIT = {
   id: 'portrait',
-  version: 'portrait@2026-10-14.1',
+  version: 'portrait@2026-10-23.1',
   effort: 'low',
   maxTokens: 3000,
   schema: {

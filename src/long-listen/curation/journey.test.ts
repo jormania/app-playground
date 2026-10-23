@@ -540,6 +540,28 @@ describe('an observation called not quite right (batch two, 23 October 2026)', (
   })
 })
 
+describe('a taste profile grown long (stabilisation, 23 October 2026)', () => {
+  const many = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `obs-${i}`, facet: 'other' as const, subject: `s${i}`, statement: `Line ${i}.`, stance: 'drawn-to' as const, confidence: 'tentative' as const, evidence: ['f'], firstSeen: '2026-10-01T10:00:00Z', lastSeen: '2026-10-01T10:00:00Z' }))
+
+  it('is gathered on request with nothing new to read, and asked to be tidied', async () => {
+    await repo.saveTaste({ observations: many(30), questions: [], notesToCurator: '', updatedAt: 'x' })
+    const c = fakeCurator({ taste: () => ({ observations: [{ facet: 'other', subject: 'all', statement: 'One line.', stance: 'drawn-to', confidence: 'emerging', evidence: [], absorbs: ['obs-0', 'obs-1', 'obs-2'] }], questions: [], promptVersion: 'x', model: 'm' }) })
+    const j = journey(c.client)
+    expect(await j.interpretPendingFeedback()).toBe(0)
+    expect(c.count('taste')).toBe(0) // nothing to read and not asked to tidy: no call
+    await j.interpretPendingFeedback({ tidy: true })
+    expect(c.calls[0].payload).toMatchObject({ tidy: true, feedback: [] })
+    expect((await repo.taste()).observations.filter((o) => !o.supersededBy)).toHaveLength(28)
+  })
+
+  it('is not tidied while it is short, even when asked', async () => {
+    await repo.saveTaste({ observations: many(10), questions: [], notesToCurator: '', updatedAt: 'x' })
+    const c = fakeCurator({})
+    expect(await journey(c.client).interpretPendingFeedback({ tidy: true })).toBe(0)
+    expect(c.calls).toHaveLength(0)
+  })
+})
+
 describe('the curator context', () => {
   it('is bounded and contains no numbers dressed as taste', async () => {
     const ctx = await buildContext(repo, weekOf(clock))

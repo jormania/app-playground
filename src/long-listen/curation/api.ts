@@ -119,6 +119,8 @@ export interface TasteResponse {
     confidence: TasteConfidence
     evidence: string[]
     replaces?: string
+    /** Other current observations this one makes redundant: retired, their evidence carried over. */
+    absorbs?: string[]
   }[]
   questions: string[]
   promptVersion: string
