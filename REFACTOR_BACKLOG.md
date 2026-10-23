@@ -1699,6 +1699,15 @@ gate, the method check, and what an upstream error turns into.
 handler** — every `api/*.js` is a Vercel function and the repo is at the cap of
 twelve.
 
+**Corrected on the Friday read, 2026-10-23.** #136 deleted
+`generate-law-of-the-day.js` and `law-of-the-day-content.js`, so the table above
+has two rows for files that no longer exist. It is now **six of nine** untested,
+or seven counting `steam-search.js`'s partial coverage. **The worked pattern named
+above is gone too**: `api/_tests/generate-law-of-the-day.test.js` was deleted
+with its handler. Copy `api/_tests/wanderlist-remind.test.js` instead. It has
+the `makeRes()` stand-in, and it is where the stubbed-`fetch` shape lives now.
+`api/notion.js` is still the one to take first.
+
 ## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
 
 **Impact:** none visible. A branch list someone can read.
@@ -2262,6 +2271,161 @@ Only the stated reason is wrong. Reword both to say the cap is 12 and the
 count is checked by `scripts/build-meta.test.js`, without writing a number that
 will drift again. `CLAUDE.md`'s deploy section already words it that way.
 Docs only.
+
+**Also, from the Friday read, 2026-10-23:** the count is **9** now, not 11.
+#136 removed `generate-law-of-the-day.js` and `law-of-the-day-content.js` when
+Law of the Day moved to the listener's own key. That makes this item's advice
+to write no number stronger, not weaker. The stale comments that removal left
+behind are R-044.
+
+## R-044 — Three comments still describe the two Law of the Day handlers #136 deleted · `modernise` · `open`
+
+**Impact:** none visible. A reader stops looking for a server function and a
+cron that no longer exist, and stops trusting a reason for a file's shape that
+no longer applies.
+
+Found on the Friday read, 2026-10-23. #136 (*"Law of the Day on your own key
+(no server)"*) deleted `api/generate-law-of-the-day.js` and
+`api/law-of-the-day-content.js`. Today's scenario is now written in the browser
+by `src/law-of-the-day/lib/generate.js`, as `CLAUDE.md`'s map says. Three places
+still describe the old shape:
+
+- **`src/shared/models.js:7-8`**: *"Plain JS, with models.d.ts beside it,
+  because api/generate-law-of-the-day.js imports it too and the serverless
+  functions import only .js from src/."* Nothing under `api/` imports it now.
+  `grep -rn "shared/models" api` is empty. Reword it so it no longer names a
+  deleted file. Keep the general point that `api/` can import only `.js` from
+  `src/`, since that is why the file should stay JS if a handler ever needs a
+  model id. **Do not convert the file to `.ts` in this run.** The Long Listen
+  imports it as `models.js` in two places, and `models.test.js` and
+  `AI_MODELS.md` both name the path.
+- **`src/law-of-the-day/lib/leakCheck.js:7`**: *"api/generate-law-of-the-day.js
+  rejects any generated scenario that leaks."* The second user of the rule is
+  now `lib/generate.js:12`, which imports `titleLeakWords` and
+  `scenarioLeaksTitle`. Name that file instead. The comment's whole point is
+  "used two ways so the rule can never drift", and it currently names a user
+  that no longer exists.
+- **`SILVA.md:903-905`**: *"`api/generate-law-of-the-day.js` is not an option
+  to extend — it holds a real `ANTHROPIC_API_KEY` …"* It is not an option
+  because it is gone. The list of functions at `SILVA.md:886` is fine: it is
+  dated history ("when Silva was built"). Leave it, or add one line saying two
+  of them have since gone.
+
+**R-028 had the same drift and is corrected in place** in this PR: its table
+listed both deleted handlers, and it pointed at
+`api/_tests/generate-law-of-the-day.test.js` as the pattern to copy. That test
+was deleted with its handler.
+
+Comments and docs only. Prove it the usual way. The suite will not notice,
+which is the point of saying so here.
+
+## R-045 — Tempo's mode table has no test, and `ModePicker` indexes it blind · `modernise` · `open`
+
+**Impact:** none visible. Puts tests under the table that defines all six of
+Tempo's timers: their defaults, their field limits, and the order the home
+screen lists them in.
+
+Found on the Friday read, 2026-10-23. Tempo has 24 source files and **3 test
+files** (`relativeTime`, `segments`, `useTimerEngine`). That is the thinnest
+ratio of any non-legacy app now that Loom has R-017. The untested module that
+carries the most is `src/tempo/lib/modes.jsx` (175 lines). It holds `MODES`,
+`DEFAULT_ORDER` and `reconcileOrder`, and no test file names any of them.
+
+Worth pinning, as invariants rather than a transcription (R-009's
+`exercises.test.js` is the model, so rewording a blurb must not fail anything):
+
+- **`DEFAULT_ORDER` and `Object.keys(MODES)` are the same set.**
+  `src/tempo/components/ModePicker.jsx:91` does `const mode = MODES[id]` for
+  every id `reconcileOrder` returns, and reads `mode.summarize` from it. A mode
+  added to `MODES` but not to `DEFAULT_ORDER` never appears. One in
+  `DEFAULT_ORDER` but not in `MODES` is `undefined` and takes the home screen
+  down.
+- **`reconcileOrder`**: it keeps a saved order, drops ids no longer known,
+  appends modes added since the save, and treats `null` / `undefined` as "no
+  saved order". This is the migration path for anyone whose stored order
+  predates a mode.
+- **Every preset mode's `defaults` sit inside its own `fields[].min` / `max`.**
+  `PresetSetup.jsx:30` clamps each value to that range on Start. So a default
+  outside it would show one number on the setup screen and quietly run
+  another. `custom` is the exception and the test should say so: it carries
+  `isCustom` and has no `defaults`, `fields` or `build`.
+- **`summarize(null)` returns `null` for all six.** `ModePicker.jsx:38`
+  calls it with `loadModeConfig(mode.id, null)`, so a first-run user hits that
+  path for every mode. `custom`'s also returns `null` for an empty list.
+- **`build(defaults)` returns segments with positive integer `seconds`** for
+  the five preset modes, and
+  `sumSeconds` from `src/tempo/lib/duration.js` (also untested, 16 lines)
+  leaves out the `countin` segment, as its comment promises.
+  `formatDuration`'s `59 min` / `1h` / `1h 5min` boundaries can go in the
+  same file.
+
+Write `src/tempo/lib/modes.test.js`. No production code changes. Mutation-check
+by dropping an id from `DEFAULT_ORDER` and by moving one default out of its
+range.
+
+## R-046 — `vite-plugin-pwa` 1.3 → 2.0, the one major R-008's inventory never listed · `modernise` · `open`
+
+**Impact:** none visible if done right. This is the plugin that writes Sol
+Odyssey's and Click Deck's service workers. Two hooks in `vite.config.js` are
+ordered against its internals.
+
+Found on the Friday read, 2026-10-23, by `npm outdated`: `vite-plugin-pwa`
+1.3.0 → **2.0.0** (published 2026-10-03, the day after R-008's re-measure).
+R-008's table has no row for it. It is filed on its own rather than as an
+R-008 line because the risk is not the usual "suite green, ship it". The risk
+is **build output the suite never sees**:
+
+- `stampBuildSizePlugin` (`vite.config.js` ~line 247) is ordered
+  `closeBundle: { order: 'post' }` **because** vite-plugin-pwa generates its
+  workers from a post-ordered `closeBundle`. If 2.0 moved generation to another
+  hook, the footer's size gauge silently reads ~42 kB light again. That is the
+  failure P-002 measured and fixed.
+- `stripStraySolOdysseyManifestPlugin` (~line 198) exists because the plugin
+  injects Sol Odyssey's `<link rel="manifest">` into **every** HTML page,
+  after `transformIndexHtml`. If 2.0 changed when or where it injects, the
+  stripper can miss it. Every app would then fetch `sol-odyssey.webmanifest`
+  again, or worse, Sol Odyssey's own page could lose it.
+- `scripts/pwa-scope.test.js` checks the workers' `scope` and `CACHE_PREFIX` in
+  **source**. It does not read what the plugin emits into `dist/`.
+
+So the proof for this bump is a **build diff**, not only the three gates. Run
+`npm run build` before and after, then compare: the file list under `dist/`
+(both `*-sw.js` and their workbox runtimes present), the `<link
+rel="manifest">` tags across every emitted `.html` (exactly one, on
+`sol-odysseys-react.html`, for Sol Odyssey's), and the `stamp-build-size` meta
+value (within a few kB of before). Peer ranges checked on this read: vite `^8`
+and `workbox-build` / `workbox-window` `^7.4.1` are both allowed, with Node
+`>=20.19`. Read its release notes for the breaking list before starting, and
+say on the PR if they could not be reached. Sol Odyssey has its own
+`CLAUDE.md`, so read it first.
+
+## R-047 — Node's version is written three times, and nowhere Vercel or a laptop reads it · `modernise` · `open`
+
+**Impact:** none visible. Moving off Node 22 before it reaches end of life
+(April 2027) becomes a one-line change instead of a hunt. It also means a fresh
+clone says what Node it needs.
+
+Found on the Friday read, 2026-10-23. `node-version: '22'` is written
+separately in `.github/workflows/ci.yml:16`, `daily-refactor.yml:192` and
+`ai-models.yml:80`. The repo has no `.nvmrc`, no `.node-version` and no
+`engines` field in `package.json`. Two facts now depend on that number and are
+recorded nowhere a tool reads:
+
+- jsdom 30 needs `^22.22.2 || ^24.15.0 || >=26` (R-008's jsdom note). A local
+  Node 22 older than 22.22.2 fails `npm ci` on engines with nothing in the repo
+  saying why.
+- `@types/node` is at 26 while CI runs 22 (R-008's caveat), so the typecheck
+  describes APIs the runtime lacks. Writing the runtime version in one place is
+  the first step to keeping those two in step.
+
+The agent-executable part is behaviour-preserving: add `.nvmrc` containing
+`22`, and switch all three `actions/setup-node@v5` steps from `node-version:
+'22'` to `node-version-file: .nvmrc`. CI then resolves the same newest 22.x it
+does today. **Do not add `engines.node` to `package.json` in that run.**
+Vercel reads `engines` to choose the **serverless functions' runtime**. What
+the project's dashboard setting is today cannot be seen from the repo, so
+adding the field could change production. That half is Gabriel's to decide
+with the Vercel setting in front of him. Say so on the PR.
 
 ---
 
