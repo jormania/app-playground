@@ -211,6 +211,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         : <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>)}
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
+      {/* The playlist is this evening's, so it sits with its title, before the week's other evenings are listed. */}
+      <ProgrammeTools b={b} showLength={!ordered} />
       <AlsoThisWeek extensions={b.extensions} members={b.members} current={p.id} isCurrent={isCurrent} timeZone={settings.timeZone} />
       {isCurrent && !p.extends && <BackupNudge />}
 
@@ -223,9 +225,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         </div>
       )}
 
-      <ProgrammeTools b={b} showLength={!ordered} />
       {isCurrent && <LiveLine b={b} skip={settings.hideSkipped ? skippedIds : undefined} />}
-      {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} isCurrent={isCurrent} /> : needsSpotify && <SpotifyNote />}
+      {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} isCurrent={isCurrent} weekly={!p.extends} /> : needsSpotify && <SpotifyNote />}
       {settings.hideSkipped && skippedIds.size > 0 && (
         <p className={s.faint}>
           {showSkipped ? `Showing ${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'}. ` : `${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'} hidden. `}
@@ -426,7 +427,7 @@ const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard'
  * is what makes the music findable without scrolling past it. Each line jumps
  * to its work (by scrolling — the URL hash belongs to the router).
  */
-function RunningOrder({ b, shown, spotifyNote, isCurrent }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean; isCurrent: boolean }) {
+function RunningOrder({ b, shown, spotifyNote, isCurrent, weekly }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean; isCurrent: boolean; weekly: boolean }) {
   const player = usePlayerState()
   const { settings, week } = useServices()
   const rows = b.programme.sections.flatMap((section) => section.items.filter(shown).map((item) => ({ item, section })))
@@ -448,9 +449,10 @@ function RunningOrder({ b, shown, spotifyNote, isCurrent }: { b: Bundle; shown: 
   const states = rows.map(({ item }) => listeningState(b.events, itemRecordingIds(b, item)))
   const begun = states.some((st) => st !== 'not-started')
   const nextAt = begun ? rows.findIndex(({ item }, n) => (states[n] === 'not-started' || states[n] === 'listening') && !itemRecordingIds(b, item).some((rid) => onNow(rid))) : -1
-  // The week's last days, said once: Saturday "ends tomorrow", Sunday "ends tonight".
+  // The week's last days, said once and only on the week's own programme: Saturday "ends tomorrow", Sunday "ends tonight".
+  // A sitting or more of the theme is one evening's music; the week's end is not its business.
   const today = isoDateIn(new Date(), settings.timeZone)
-  const endsSoon = isCurrent && states.some((st) => st === 'not-started' || st === 'listening')
+  const endsSoon = isCurrent && weekly && states.some((st) => st === 'not-started' || st === 'listening')
     ? (today === week.endsOn ? 'The week ends tonight' : addDays(today, 1) === week.endsOn ? 'The week ends tomorrow' : null)
     : null
   const toWhereNext = () => document.getElementById(WHERE_NEXT)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -495,7 +497,7 @@ function RunningOrder({ b, shown, spotifyNote, isCurrent }: { b: Bundle; shown: 
         })}
       </ol>
       {/* The ways on — a sitting, more of the theme, how it went — are at the foot of a long page: one tap down. */}
-      {isCurrent && (
+      {isCurrent && weekly && (
         <p className={s.roFoot}>
           {endsSoon && <>{endsSoon} — what isn’t heard stays in the Journal. </>}
           <button type="button" className={`${s.textButton} ${s.inlineButton}`} onClick={toWhereNext}>Where next ↓</button>
@@ -1094,17 +1096,35 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
     )
   }
 
+  // An evening — a sitting, or more of the theme — ends with itself. The ways on are the week's,
+  // and live on the week's programme alone: one place to go from, not one per evening.
+  if (p.extends) {
+    const root = b.root
+    return (
+      <section aria-label="The end of the evening" className={s.whereNext}>
+        <h2 className={s.sectionHead}>The end of the evening</h2>
+        <p className={s.sectionGuide}>
+          {root
+            ? <>This evening ends here. For anything more, the week’s programme is the way on: <a href={href({ name: 'programme', id: root.id })}>{root.title}</a>.</>
+            : 'This evening ends here. For anything more, the week’s programme is the way on.'}
+        </p>
+        <div className={s.twistyRun}>
+          <Twisty label="How it landed" value="a sentence to the curator">{feedbackBody}</Twisty>
+        </div>
+      </section>
+    )
+  }
+
   // The programme ends where the music does: every way on is one folded line
   // saying what it offers, opened only when wanted. None of them is required.
   return (
     <section id={WHERE_NEXT} aria-label="Where next" className={`${s.whereNext} ${s.whereNextAnchor}`}>
       <h2 className={s.sectionHead}>Where next</h2>
-      <p className={s.sectionGuide}>{own ? 'The end of this evening. The week goes on: here are the ways on from it, none of them required.' : 'The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.'}</p>
+      <p className={s.sectionGuide}>The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.</p>
       {!curatorReady && <NeedsKey to="ask the curator for any of these" />}
 
       <div className={s.twistyRun}>
-        {/* More of the week's theme belongs to its programme's page, not to an evening that stood apart from it. */}
-        {!own && <Twisty label="More of this theme" value={themeMore.length ? `${themeMore.length} so far` : 'another set, on the same theme'} open={extending}>
+        <Twisty label="More of this theme" value={themeMore.length ? `${themeMore.length} so far` : 'another set, on the same theme'} open={extending}>
           <p className={s.quiet}>Another set of works on the same theme, none of them heard yet this week: other composers, other periods, the connections this one pointed to.</p>
           {themeMore.length > 0 && (
             <ul className={s.bullets}>
@@ -1120,7 +1140,7 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
             <CharCount value={wish} />
             <button type="submit" className={s.outlineButton} disabled={held}>{extending ? 'The curator is building it…' : themeMore.length ? 'Ask for more again' : 'Ask for more'}</button>
           </form>
-        </Twisty>}
+        </Twisty>
 
         <SittingCard folded joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} keyHint={false} />
 

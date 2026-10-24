@@ -1467,11 +1467,18 @@ its composers and years joined the thread's summary, and Notion's thread row car
   marks each the same way.
 - **Notion:** an own evening's Journal row reads *An evening of its own* for Theme, with no Visit; thread rows
   drop it on the next sync.
-- **Audited the same day.** On an evening's own page, *Where next* is the evening's: no *More of this theme*
-  (that belongs to the programme's page; its list there now names only theme programmes, not sittings), "How
-  did the evening land?", and a word on it is about the evening, never "the theme itself". An earlier week's
+- **Audited the same day.** On an evening's own page a word on it is about the evening ("How did the evening
+  land?"), never "the theme itself"; *More of this theme* on the programme's page names only theme programmes,
+  not sittings. An earlier week's
   labels say "the week's theme", not "this week's"; its programme page heads the list *Also that week*. The
   Journal line says what the evening was asked for. Making one says where it went. The season review tells an
   evening of its own from a sitting beside the theme, and no longer drops an own evening because its week's
   programme was set aside.
+- **One way on, from the week's programme (owner's review, 24 October 2026).** Every evening that extends the
+  week, a sitting or more of the theme, ends on *The end of the evening*: a link back to the week's
+  programme and *How it landed*, nothing else. *Where next* (more of the theme, a sitting, another direction,
+  left open, a wish) lives on the week's programme alone, so there is one place to go on from, not one per
+  evening; the running order's *Where next ↓* and *The week ends tomorrow / tonight* are likewise the week's
+  programme's only. *Save as a Spotify playlist* sits under the title and standfirst, above *Also this week*,
+  so it reads as this evening's.
 

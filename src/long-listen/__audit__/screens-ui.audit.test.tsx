@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
@@ -487,11 +487,42 @@ describe('evenings of their own (24 October 2026)', () => {
     render(<App repo={repo} curator={plain()} />)
     await screen.findByRole('heading', { name: evening.title }, { timeout: 4000 })
     expect(document.body.textContent).toMatch(/An evening of its own · about two hours/)
-    // Its ways on are the evening's: no "More of this theme", and a word on it is about the evening.
+    // An evening ends with itself: no "Where next" of its own, only a way back to the week's programme and a word on how it landed.
+    expect(screen.queryByRole('heading', { name: 'Where next' })).toBeNull()
     expect(screen.queryByText('More of this theme')).toBeNull()
-    expect(document.body.textContent).toContain('The end of this evening.')
+    expect(screen.queryByText('A different direction')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'The end of the evening' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'The end of the evening' }).querySelector(`a[href="#/p/${p.id}"]`)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Where next ↓' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Belongs with this week’s theme' }))
     await screen.findByRole('button', { name: 'Make it an evening of its own' }, { timeout: 4000 })
     expect((await repo.explorations.require(p.explorationId)).extraProgrammeIds).toContain(evening.id)
+  }, 20000)
+})
+
+describe('the week\'s end is the week\'s programme\'s business (24 October 2026)', () => {
+  afterEach(() => { vi.useRealTimers() })
+  it('says "The week ends tomorrow" on the week\'s programme, not on an evening of its own', async () => {
+    // A Saturday in Bucharest: the week ends on Sunday. Only Date is faked, so the screens' waits still run.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-24T09:00:00Z'))
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const evening = await new Journey(repo, plain()).sitting('minimalism, nothing Nordic', 1, true)
+
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    const order = await screen.findByRole('navigation', { name: 'This week’s music' }, { timeout: 4000 })
+    expect(order.textContent).toContain('The week ends tomorrow')
+    cleanup()
+
+    window.location.hash = `#/p/${evening.id}`
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: evening.title }, { timeout: 4000 })
+    expect(document.body.textContent).not.toContain('The week ends')
+    // The playlist is this evening's: it comes before the week's other evenings are listed.
+    const save = screen.queryByRole('button', { name: /Spotify playlist/ })
+    const also = screen.queryByText(/Also this week/)
+    if (save && also) expect(save.compareDocumentPosition(also) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   }, 20000)
 })
