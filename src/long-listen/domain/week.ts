@@ -118,6 +118,13 @@ export function weekFromKey(key: WeekKey): ListeningWeek {
   return weekOfDate(fromUtc(jan4Monday + (n - 1) * 7 * DAY))
 }
 
+/** The listening week after `week`: the one a week's "next week" means. */
+export function weekAfter(week: ListeningWeek): ListeningWeek {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(week.endsOn)
+  if (!m) throw new Error(`Not a date: ${week.endsOn}`)
+  return weekOfDate(fromUtc(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) + DAY))
+}
+
 /** Whole weeks from `a` to `b` (positive when b is later). */
 export function weeksBetween(a: WeekKey, b: WeekKey): number {
   const sa = Date.parse(`${weekFromKey(a).startsOn}T00:00:00Z`)

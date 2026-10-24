@@ -50,6 +50,8 @@ export interface CuratedOption {
   angle: string
   returning?: { themeId: string; note: string }
   form?: WeekForm
+  /** The title of the listener's sketch this option was written from, or "". */
+  shapedFrom?: string
 }
 
 export interface ThemesResponse {
@@ -213,6 +215,11 @@ export interface PrepareResponse {
   conductor?: string
   soloists: { name: string; instrument?: string }[]
   works: PreparedWork[]
+  promptVersion: string
+}
+
+export interface SketchResponse {
+  sketches: { mood: OptionMood; title: string; line: string; from: string }[]
   promptVersion: string
 }
 

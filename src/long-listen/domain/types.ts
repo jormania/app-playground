@@ -192,6 +192,8 @@ export interface ProgrammeOption {
   returning?: { themeId: string; note: string }
   /** The week's shape: the usual theme, or one of the named forms (WEEK_FORMS). */
   form?: WeekForm
+  /** Written from the listener's sketch (Shape next week): its title, and the nudge if they gave one. */
+  shaped?: { title: string; nudge?: string }
   /**
    * offered → chosen, or offered → open (a path not taken that week — kept,
    * never "rejected") → taken later, if it is.
@@ -229,6 +231,8 @@ export interface WeekRecord {
   mood?: WeekMood[]
   /** The settings and mood the current three were made with. Absent on weeks made before it was kept. */
   madeWith?: DirectionsMadeWith
+  /** The week's three were shaped beforehand (domain/shaping.ts): how many from sketches, and the slot left to the curator. */
+  shaped?: { sketches: number; leftToCurator: OptionMood | null }
 }
 
 /**

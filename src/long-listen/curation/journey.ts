@@ -9,10 +9,11 @@ import { forgetPlaceBefore } from '../app/place'
 import { AlreadyKept, ConcertRefused, goingKey, type Going } from '../domain/going'
 import { sameEvening, type LiveEvent } from '../live/live'
 import { listeningState, latestFeedback } from '../domain/listening'
-import { DEFAULT_TIME_ZONE, isoDateIn, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
+import { DEFAULT_TIME_ZONE, isoDateIn, weekAfter, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
+import { emptyShape, shapeBasis, shapeKey, shapeSaysSomething, shapedBrief, shapedSlots, staleSlots, type Sketch, type WeekShape } from '../domain/shaping'
 import { NotFound, type Repo } from '../store/repo'
 import type {
-  CompanionResponse, TagsResponse, DefineResponse, PrepareResponse, PortraitResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
+  CompanionResponse, TagsResponse, DefineResponse, PrepareResponse, PortraitResponse, SketchResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse,
 } from './api'
 import { season as seasonOf, seasonNumberAt, type Season } from '../domain/season'
 import { seasonContext } from './season'
@@ -212,12 +213,20 @@ export class Journey {
   private async generateWeek(week: ListeningWeek, requestedNext?: string, alsoOfferedThisWeek: string[] = [], rework?: Rework): Promise<WeekRecord> {
     const generation = this.repo.generation
     const context = await buildContext(this.repo, week, requestedNext, this.timeZone, this.today())
+    // Shaped beforehand (Shape next week): read at the start of the week only. Asked again
+    // ("three others", a direction to follow) the listener is going elsewhere, and it is set down.
+    const shape = requestedNext === undefined && !rework ? await this.shapeFor(week.key) : undefined
+    const shaped = shapeSaysSomething(shape) ? shape : undefined
+    // How it should feel becomes the week's mood, as if set on the day: the programme follows it too.
+    if (shaped?.mood.length && !context.thisWeek?.length) context.thisWeek = shaped.mood
+    const brief = shaped ? shapedBrief(shaped) : undefined
     const res = await this.curator.call<ThemesResponse>('themes', {
       today: this.today(),
       week: { key: week.key, label: week.label },
       context,
       alsoOfferedThisWeek,
       ...(rework ? { rework } : {}),
+      ...(brief && (brief.sketches.length || brief.where !== 'either') ? { shaped: brief } : {}),
     })
     this.stillCurrent(generation)
     // A wish for next week is read once, at the start of a week. Clear it only
@@ -239,6 +248,7 @@ export class Journey {
       angle: o.angle,
       returning: o.returning,
       form: o.form && o.form !== 'theme' ? o.form : undefined,
+      ...(o.shapedFrom ? { shaped: { title: o.shapedFrom, ...(brief?.sketches.find((s) => s.title === o.shapedFrom)?.nudge ? { nudge: brief.sketches.find((s) => s.title === o.shapedFrom)!.nudge } : {}) } } : {}),
       status: 'offered',
     }))
     // What these three were made with, exactly as the curator was told it — so a
@@ -248,7 +258,12 @@ export class Journey {
     // what it holds — its mood, its programme, what was set aside — and gains
     // only the new directions; callers that replace more say so themselves.
     await this.repo.options.putMany(options)
-    return this.updateWeek(week.key, (stored) => (stored ? { ...stored, optionIds: options.map((o) => o.id), promptVersion: res.promptVersion, madeWith } : {
+    // Shaped: said once on the week (how many from sketches, the slot left to the curator), and its feel kept as the week's mood.
+    // Only sketches make a direction "yours": a shape that only set the mood leaves the three unmarked.
+    const shapedNote = brief?.sketches.length ? { shaped: { sketches: options.filter((o) => o.shaped).length, leftToCurator: shaped!.leftToCurator } } : {}
+    const shapedMood = shaped?.mood.length ? { mood: shaped.mood } : {}
+    // New directions drop the old note: three others written from nothing shaped are not "shaped by you" (a rework carries it, below).
+    return this.updateWeek(week.key, (stored) => (stored ? { ...stored, ...(stored.mood?.length ? {} : shapedMood), optionIds: options.map((o) => o.id), promptVersion: res.promptVersion, madeWith, shaped: undefined, ...shapedNote } : {
       weekKey: week.key,
       startsOn: week.startsOn,
       endsOn: week.endsOn,
@@ -257,7 +272,125 @@ export class Journey {
       setAsideProgrammeIds: [],
       promptVersion: res.promptVersion,
       madeWith,
+      ...shapedMood,
+      ...shapedNote,
     }))
+  }
+
+  // ── Shape next week ─────────────────────────────────────────────────────
+
+  /** The week "next week" means: the one after the current listening week. */
+  nextWeek(): ListeningWeek {
+    return weekAfter(this.currentWeek())
+  }
+
+  /** What the listener has shaped for a week, if anything. */
+  async shapeFor(weekKey: WeekKey): Promise<WeekShape | undefined> {
+    return (await this.repo.marks.get(shapeKey(weekKey)))?.value as WeekShape | undefined
+  }
+
+  private async saveShape(shape: WeekShape): Promise<WeekShape> {
+    const next = { ...shape, updatedAt: this.stamp() }
+    await this.repo.marks.put({ id: shapeKey(shape.weekKey), at: next.updatedAt, value: next })
+    return next
+  }
+
+  /** Where to go, how it should feel, which slot is the curator's: said without asking the curator anything. */
+  async setShape(patch: Partial<Pick<WeekShape, 'where' | 'mood' | 'leftToCurator'>>): Promise<WeekShape> {
+    const key = this.nextWeek().key
+    const shape = (await this.shapeFor(key)) ?? emptyShape(key, this.stamp())
+    return this.saveShape({ ...shape, ...patch })
+  }
+
+  /** Back to nothing shaped: next week is written the usual way. */
+  async clearShape(): Promise<void> {
+    await this.repo.marks.delete(shapeKey(this.nextWeek().key))
+  }
+
+  /**
+   * Sketch next week (Haiku): every shaped slot without a sketch — all of them
+   * the first time, the one handed back by the curator when the listener takes
+   * it on. Sketches already standing are kept and avoided.
+   */
+  sketchNextWeek(): Promise<WeekShape> {
+    const next = this.nextWeek()
+    return this.once(`shape:${next.key}:sketch`, async () => {
+      const shape = (await this.shapeFor(next.key)) ?? emptyShape(next.key, this.stamp())
+      const slots = shapedSlots(shape).filter((m) => !shape.sketches.some((s) => s.mood === m))
+      if (!slots.length) return shape
+      const res = await this.askSketches(next, shape, { slots })
+      const latest = (await this.shapeFor(next.key)) ?? shape
+      return this.saveShape({ ...latest, sketches: [...latest.sketches.filter((s) => !slots.includes(s.mood)), ...res.sketches] })
+    })
+  }
+
+  /**
+   * Sketch again the slots drawn before the check-in changed (where, how it
+   * should feel, the wish). Not passed over — the listener didn't turn them
+   * down, they changed the brief — so a title may come back if it still fits.
+   * Nudged sketches stay: the listener moved those themselves.
+   */
+  resketchStale(): Promise<WeekShape> {
+    const next = this.nextWeek()
+    return this.once(`shape:${next.key}:sketch`, async () => {
+      const shape = (await this.shapeFor(next.key)) ?? emptyShape(next.key, this.stamp())
+      const slots = staleSlots(shape, (await this.repo.preferences()).nextRequest)
+      if (!slots.length) return shape
+      const res = await this.askSketches(next, { ...shape, sketches: shape.sketches.filter((s) => !slots.includes(s.mood)) }, { slots })
+      const latest = (await this.shapeFor(next.key)) ?? shape
+      return this.saveShape({ ...latest, sketches: [...latest.sketches.filter((s) => !slots.includes(s.mood)), ...res.sketches] })
+    })
+  }
+
+  /** Another sketch for one slot: the one there is passed over, never offered again for this week. */
+  swapSketch(mood: Sketch['mood']): Promise<WeekShape> {
+    const next = this.nextWeek()
+    return this.once(`shape:${next.key}:${mood}`, async () => {
+      const shape = (await this.shapeFor(next.key)) ?? emptyShape(next.key, this.stamp())
+      const gone = shape.sketches.find((s) => s.mood === mood)
+      const passed = gone ? [...shape.passed, gone.title] : shape.passed
+      const res = await this.askSketches(next, { ...shape, passed }, { slots: [mood] })
+      const latest = (await this.shapeFor(next.key)) ?? shape
+      return this.saveShape({ ...latest, passed, sketches: [...latest.sketches.filter((s) => s.mood !== mood), ...res.sketches] })
+    })
+  }
+
+  /** One sketch moved the way the listener says ("less Germanic"): redrafted, and the words kept for the day. */
+  nudgeSketch(mood: Sketch['mood'], words: string): Promise<WeekShape> {
+    const next = this.nextWeek()
+    const w = words.trim()
+    return this.once(`shape:${next.key}:${mood}`, async () => {
+      const shape = (await this.shapeFor(next.key)) ?? emptyShape(next.key, this.stamp())
+      const sketch = shape.sketches.find((s) => s.mood === mood)
+      if (!sketch || !w) return shape
+      const res = await this.askSketches(next, shape, { nudge: { sketch, words: w } })
+      const latest = (await this.shapeFor(next.key)) ?? shape
+      // Where it grew from doesn't change because it was moved: kept when the redraft leaves it out.
+      const moved = res.sketches[0] ? { ...res.sketches[0], from: res.sketches[0].from || sketch.from, nudge: w } : sketch
+      return this.saveShape({ ...latest, sketches: [...latest.sketches.filter((s) => s.mood !== mood), moved] })
+    })
+  }
+
+  private async askSketches(next: ListeningWeek, shape: WeekShape, ask: { slots?: Sketch['mood'][]; nudge?: { sketch: Sketch; words: string } }): Promise<{ sketches: Sketch[] }> {
+    const generation = this.repo.generation
+    // A sketch is a line, not a programme: the curator gets what decides a direction (taste, threads,
+    // open paths and questions, recent weeks, concerts, the wish), not the work-by-work history — a
+    // fraction of the tokens. The full context is still sent when the week's three are written.
+    const { recentListening: _l, alreadyProgrammed: _p, alreadyKnown: _k, secondHearings: _s, ...context } = await buildContext(this.repo, next, undefined, this.timeZone, this.today())
+    const basis = shapeBasis(shape.where, shape.mood, context.requestedNext)
+    // Every title passed over, and the sketches standing in the other slots: a new one is something else.
+    const others = shape.sketches.filter((s) => s.mood !== (ask.nudge?.sketch.mood ?? '') && !(ask.slots ?? []).includes(s.mood)).map((s) => s.title)
+    const res = await this.curator.call<SketchResponse>('sketch', {
+      today: this.today(),
+      week: { key: next.key, label: next.label },
+      context,
+      where: shape.where,
+      mood: shape.mood,
+      avoid: [...shape.passed, ...others],
+      ...(ask.nudge ? { nudge: { sketch: { mood: ask.nudge.sketch.mood, title: ask.nudge.sketch.title, line: ask.nudge.sketch.line }, words: ask.nudge.words } } : { slots: ask.slots ?? [] }),
+    })
+    this.stillCurrent(generation)
+    return { sketches: res.sketches.map((k) => ({ ...k, basis })) }
   }
 
   /** "This week, differently": set this week's mood. Read by every curator job about the week from now on. */
@@ -313,6 +446,15 @@ export class Journey {
       const fresh = rework
         ? await this.generateWeek(lw, request ?? '', [], rework)
         : await this.generateWeek(lw, request ?? '', current.map((o) => o.title))
+      // A rework is the same three made for new settings: one written from the listener's sketch still is.
+      if (rework && week.shaped) {
+        const reworked = await this.repo.options.many(fresh.optionIds)
+        await this.repo.options.putMany(reworked.map((o) => {
+          const was = current.find((c) => c.mood === o.mood)?.shaped
+          return was ? { ...o, shaped: was } : o
+        }))
+        fresh.shaped = week.shaped
+      }
       // Only now that the curator has answered do the three before stop being on
       // offer — read again, as they are now, so a failed call leaves them offered.
       const before = await this.repo.options.many(week.optionIds)
@@ -320,7 +462,7 @@ export class Journey {
       // The week as it is now, not as it was a minute ago: a mood set meanwhile stays.
       return this.updateWeek(lw.key, (latest = fresh) => ({
         ...latest, optionIds: fresh.optionIds, promptVersion: fresh.promptVersion, createdAt: week.createdAt,
-        earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds],
+        earlierOptionIds: [...(week.earlierOptionIds ?? []), ...week.optionIds], shaped: fresh.shaped,
       }))
     }))
   }

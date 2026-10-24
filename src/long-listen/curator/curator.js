@@ -19,7 +19,7 @@ import { CuratorUnavailable, friendly } from '../curation/api'
 import { PROMPTS } from './prompts.js'
 import {
   validateThemes, validateProgramme, stripRepeats, enforceVariety, validateTaste, validateContinuity,
-  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateTags, validateConcert, validateSeason, validateDefine, validatePrepare, validatePortrait,
+  validateExplain, validateCompare, validateResources, extractJsonObject, weekAdjusted, validateCompanion, validateTags, validateConcert, validateSeason, validateDefine, validatePrepare, validatePortrait, validateSketch,
 } from './validate.js'
 
 export const MODEL = MODEL_SONNET
@@ -36,9 +36,10 @@ export const MODEL = MODEL_SONNET
  * repertoire is the point, and it comes up a few times a month (a few cents).
  * So does preparing for a concert (the same reading, and a recording to hear
  * first chosen from the repertoire). A term in the notes and a composer's
- * portrait are written once each and kept: Haiku.
+ * portrait are written once each and kept: Haiku. So are next week's sketches:
+ * a title and a line per slot, redrafted on a tap, written properly on the day.
  */
-const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, tags: MODEL_HAIKU, define: MODEL_HAIKU, portrait: MODEL_HAIKU }
+const MODEL_FOR = { taste: MODEL_HAIKU, continuity: MODEL_HAIKU, explain: MODEL_HAIKU, resources: MODEL_HAIKU, companion: MODEL_HAIKU, tags: MODEL_HAIKU, define: MODEL_HAIKU, portrait: MODEL_HAIKU, sketch: MODEL_HAIKU }
 export function modelFor(op) {
   return MODEL_FOR[op] ?? MODEL
 }
@@ -63,6 +64,9 @@ const LEADS = {
   define: (p) => `Define "${p.term}".`,
   prepare: (p) => `Prepare the listener for this concert on ${p.event?.date} at ${p.event?.venue}: "${p.event?.title}".`,
   portrait: (p) => `Write the portrait of ${p.composer}.`,
+  sketch: (p) => (p.nudge
+    ? `Redraft the ${p.nudge.sketch?.mood} sketch for the week ${p.week?.label ?? p.week?.key} the way the listener asked: "${p.nudge.words}".`
+    : `Sketch next week (${p.week?.label ?? p.week?.key}): ${(p.slots ?? []).join(', ')}.`),
 }
 
 export function buildUserContent(op, payload) {
@@ -199,7 +203,7 @@ async function withRetry(send, op, payload, validate) {
 export async function generateThemes(send, payload) {
   const threadIds = (payload.context?.threads ?? []).map((t) => t.themeId)
   const pairs = payload.context?.preferences?.pairs !== false
-  const r = await withRetry(send, 'themes', payload, (o) => validateThemes(o, { threadIds, pairs }))
+  const r = await withRetry(send, 'themes', payload, (o) => validateThemes(o, { threadIds, pairs, shaped: payload.shaped }))
   if (r.value.options.length !== 3 || r.problems.some((p) => /exactly three|one immersive|title and a pitch/.test(p))) {
     throw new CuratorUnavailable('failed', 'The curator could not settle on three directions. Try again.')
   }
@@ -367,6 +371,14 @@ export async function writePortrait(send, payload) {
   return { ...r.value, promptVersion: PROMPTS.portrait.version }
 }
 
+/** Next week's sketches (Haiku): one line per slot asked for, or one slot redrafted with the listener's nudge. */
+export async function sketchWeek(send, payload) {
+  const slots = payload.nudge ? [payload.nudge.sketch?.mood].filter(Boolean) : (payload.slots ?? [])
+  const r = await withRetry(send, 'sketch', payload, (o) => validateSketch(o, { slots, avoid: payload.avoid ?? [] }))
+  if (r.value.sketches.length !== slots.length) throw new CuratorUnavailable('failed', 'The curator couldn’t sketch next week just now. Try again.')
+  return { ...r.value, promptVersion: PROMPTS.sketch.version }
+}
+
 export const JOBS = {
   ping,
   themes: generateThemes,
@@ -383,6 +395,7 @@ export const JOBS = {
   define: defineTerm,
   prepare: prepareConcert,
   portrait: writePortrait,
+  sketch: sketchWeek,
 }
 
 /**

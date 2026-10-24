@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags, validateTaste } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags, validateTaste, validateSketch } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -205,5 +205,32 @@ describe('validateTaste', () => {
   it('absorbs only observations that exist, and never the one it replaces', () => {
     const { value } = validateTaste({ observations: [o({ evidence: ['fb1'], replaces: 'o1', absorbs: ['o1', 'o3', 'nope'] })], questions: [] }, ctx)
     expect(value.observations[0]).toMatchObject({ replaces: 'o1', absorbs: ['o3'] })
+  })
+})
+
+describe('Shape next week', () => {
+  const opt = (mood, title, shapedFrom = '') => ({ mood, title, pitch: 'p', character: [], why: 'w', angle: 'a', returningThemeId: '', continuityNote: '', form: 'theme', shapedFrom })
+  const shaped = { where: 'either', sketches: [{ mood: 'immersive', title: 'Night music, slowly', line: 'l', nudge: '' }], leftToCurator: 'adventurous' }
+
+  it('sends back a sketched slot written from nothing', () => {
+    const { problems } = validateThemes({ options: [opt('immersive', 'Night'), opt('curious', 'B'), opt('adventurous', 'C')] }, { threadIds: [], shaped })
+    expect(problems.some((p) => /written from the listener's sketch "Night music, slowly"/.test(p))).toBe(true)
+  })
+
+  it('mends a near-miss to the sketch’s own title, and clears a claim on the curator’s slot', () => {
+    const { value, problems } = validateThemes({ options: [opt('immersive', 'Night music', 'night music slowly'), opt('curious', 'B'), opt('adventurous', 'C', 'made up')] }, { threadIds: [], shaped })
+    expect(problems).toEqual([])
+    expect(value.options.map((o) => o.shapedFrom)).toEqual(['Night music, slowly', '', ''])
+  })
+
+  it('keeps one sketch per slot asked for, never a title passed over', () => {
+    const out = { sketches: [
+      { mood: 'immersive', title: 'Spectral light', line: 'l', from: 'f' },
+      { mood: 'curious', title: 'How a theme is built', line: 'l', from: 'f' },
+      { mood: 'adventurous', title: 'Not asked', line: 'l', from: 'f' },
+    ] }
+    const r = validateSketch(out, { slots: ['immersive', 'curious'], avoid: ['spectral LIGHT'] })
+    expect(r.value.sketches.map((s) => s.title)).toEqual(['How a theme is built'])
+    expect(r.problems).toEqual(['"Spectral light" was sketched before; the immersive sketch must be another.', 'Sketch the immersive slot.'])
   })
 })

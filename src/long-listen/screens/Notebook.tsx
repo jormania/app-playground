@@ -259,7 +259,7 @@ export function NotebookScreen() {
 
       <section className={s.block}>
         <h2 className={s.sectionHead}>A wish for next week</h2>
-        <p className={s.sectionGuide}>Read once, when next week’s three directions are written, then cleared.</p>
+        <p className={s.sectionGuide}>Read once, when next week’s three directions are written, then cleared. Once most of this week is heard, <em>Shape next week</em> under the programme’s Where next takes it further: where next week goes, and sketches of its three.</p>
         <label className={s.visuallyHidden} htmlFor="wish">A wish for next week</label>
         <textarea id="wish" className={s.textarea} maxLength={MAX_ASK} value={wish} onChange={(e) => setWish(e.target.value)} placeholder="More Sibelius · something I can listen to while cooking · the orchestra in Latin America" />
         <CharCount value={wish} />
