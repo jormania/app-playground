@@ -19,7 +19,7 @@ export function isOwnEvening(p: Pick<Programme, 'id' | 'sitting' | 'extends'>, m
   return Boolean(p.sitting && p.extends && !members.has(p.id))
 }
 
-/** What "Follow this evening" asks for: three directions that carry it on — and only then a thread. */
+/** What "Ask for three directions from this evening" asks for: three directions that carry it on — and only then a thread. */
 export function eveningSeed(p: Pick<Programme, 'title' | 'dek' | 'sitting'>): string {
   const asked = p.sitting?.request ? ` (asked for as “${p.sitting.request}”)` : ''
   return `Carry on from the evening “${p.title}”${asked}${p.dek ? `: ${p.dek}` : ''} — new directions that start from it, not a repeat of it.`

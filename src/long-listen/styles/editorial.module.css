@@ -1953,7 +1953,7 @@
   gap: var(--space-xs);
 }
 
-/* "Follow this · next week" after a question in the Notebook. */
+/* "Ask for three directions from it · next week" after a question in the Notebook. */
 .followLinks {
   white-space: nowrap;
   font-size: var(--text-sm);

@@ -755,7 +755,7 @@ function EveningPlace({ p, root, own, current }: { p: Programme; root: Programme
         {own ? `Belongs with ${weeksTheme(current)}` : 'Make it an evening of its own'}
       </button>
       {own && curatorReady && (
-        <>{' · '}<button className={`${s.textButton} ${s.quietButton}`} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Follow this evening'}</button></>
+        <>{' · '}<button className={`${s.textButton} ${s.quietButton}`} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Ask for three directions from this evening'}</button></>
       )}
     </p>
   )

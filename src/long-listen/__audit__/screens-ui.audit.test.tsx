@@ -480,6 +480,8 @@ describe('evenings of their own (24 October 2026)', () => {
     const visits = screen.queryByRole('list', { name: 'Visits' })
     expect(visits?.textContent ?? '').not.toContain(evening.title)
     expect(screen.getByText('Evenings of their own')).toBeTruthy()
+    // Says what it does: three directions are asked for, nothing is followed yet.
+    expect(screen.getByRole('button', { name: 'Ask for three directions from this evening' })).toBeTruthy()
     cleanup()
 
     // Its page says what it is and where it stands; one tap puts it with the theme, and the page says so.
