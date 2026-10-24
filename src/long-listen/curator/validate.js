@@ -65,7 +65,13 @@ export function needsVoices(title) {
  * @param {any} out
  * @param {{ threadIds: string[] }} ctx
  */
-export function validateThemes(out, { threadIds, pairs = true }) {
+/**
+ * The week's three directions. With `shaped` (the listener's sketches, Shape
+ * next week), each sketched slot must be written from its sketch: an option
+ * that names none is sent back once; a near-miss on the title is mended to the
+ * sketch's own; the slot left to the curator names none.
+ */
+export function validateThemes(out, { threadIds, pairs = true, shaped } = {}) {
   const problems = []
   const known = new Set(threadIds)
   const raw = Array.isArray(out?.options) ? out.options : []
@@ -84,6 +90,7 @@ export function validateThemes(out, { threadIds, pairs = true }) {
       angle: clean(o?.angle),
       returning,
       form: FORMS.includes(o?.form) ? o.form : 'theme',
+      shapedFrom: clean(o?.shapedFrom),
     }
   })
 
@@ -103,6 +110,14 @@ export function validateThemes(out, { threadIds, pairs = true }) {
   }
   // "One work, several ways" needs pairs; without them it's a plain theme.
   if (!pairs) for (const o of options) if (o.form === 'many-ways') o.form = 'theme'
+
+  const sketches = Array.isArray(shaped?.sketches) ? shaped.sketches : []
+  for (const o of options) {
+    const sketch = sketches.find((s) => s.mood === o.mood)
+    if (!sketch) { o.shapedFrom = ''; continue }
+    if (!o.shapedFrom) problems.push(`The ${o.mood} option must be written from the listener's sketch "${sketch.title}", with shapedFrom set to it.`)
+    else o.shapedFrom = sketch.title
+  }
 
   return { value: { options: options.slice(0, 3) }, problems }
 }
@@ -610,4 +625,27 @@ export function validatePortrait(out) {
   const lifespan = clean(out?.lifespan)
   const value = { lifespan: /\d{4}/.test(lifespan) ? lifespan : undefined, portrait: clean(out?.portrait) }
   return { value, problems: value.portrait ? [] : ['The portrait is empty.'] }
+}
+
+/**
+ * Sketches for next week: one per slot asked for, each with a title and a line,
+ * none a title the listener already passed over or kept in another slot.
+ */
+export function validateSketch(out, { slots = [], avoid = [] } = {}) {
+  const problems = []
+  const avoided = new Set(avoid.map((a) => fold(a)))
+  const raw = Array.isArray(out?.sketches) ? out.sketches : []
+  const sketches = []
+  for (const s of raw) {
+    const mood = MOODS.includes(s?.mood) ? s.mood : undefined
+    if (!mood || !slots.includes(mood) || sketches.some((k) => k.mood === mood)) continue
+    const sketch = { mood, title: clean(s?.title), line: clean(s?.line), from: clean(s?.from) }
+    if (!sketch.title || !sketch.line) { problems.push(`The ${mood} sketch needs a title and a line.`); continue }
+    if (avoided.has(fold(sketch.title))) { problems.push(`"${sketch.title}" was sketched before; the ${mood} sketch must be another.`); continue }
+    sketches.push(sketch)
+  }
+  for (const m of slots) if (!sketches.some((s) => s.mood === m)) problems.push(`Sketch the ${m} slot.`)
+  const titles = sketches.map((s) => fold(s.title))
+  if (new Set(titles).size !== titles.length) problems.push('Two sketches share a title.')
+  return { value: { sketches: slots.map((m) => sketches.find((s) => s.mood === m)).filter(Boolean) }, problems }
 }

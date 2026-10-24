@@ -1485,3 +1485,31 @@ its composers and years joined the thread's summary, and Notion's thread row car
   "evening" where a week's say "week". Once every work of an evening is heard (skips allowed) and nothing
   has been said of it, *How it landed* opens by itself, marked *all heard*.
 
+## 33. Shape next week (24 October 2026)
+
+The owner asked for "a light-touch orchestration of the curation engine" before a week's three directions
+are written, so they arrive shepherded rather than as complete surprises. Roadmap items 27–29.
+
+- **When.** Under *Where next* on the week's programme, *Shape next week* replaces *A wish for next week*
+  once two thirds of the programme is heard (a skip counts as done with), or on the week's last day with one
+  work heard (`shapeOpen`, `domain/shaping.ts`). Evenings don't count; they have no *Where next*. Nothing runs
+  on Sunday night: the three are still written when the app is first opened in the new week.
+- **The check-in** asks nothing of the curator: where next week goes (*stay with this thread · somewhere new ·
+  either*), how it should feel (the four week moods of *This week, differently*) and something to chase or
+  avoid, which is the Notebook's wish for next week (`preferences.nextRequest`), one set of words wherever
+  it is written. The moods become the new week's mood when it begins, so the programme follows them too.
+- **Sketches** (`sketch@2026-10-24.1`, Haiku): a title, a line and what it grew from for each shaped slot.
+  *Nudge* redrafts one with the listener's words (kept, and passed on); *Another* replaces it, and the one
+  passed over is never sketched again for that week; *Leave to the curator* hands a slot back. One slot is
+  left to the curator by default, the adventurous one — a surprise on the day; *Sketch this one too* takes it
+  on. *Start again* clears it all.
+- **The day.** `generateWeek` reads `shape:<week key>` from the marks at the start of a week only (never for
+  *three others*, a rework or a direction to follow) and sends `shaped` with the themes call
+  (`themes@2026-10-24.1`): each sketched slot is written from its sketch and names it in `shapedFrom`; the
+  validator sends back a sketched slot that names none, mends a near miss to the sketch's own title, and
+  clears a claim on the curator's slot. Feedback is read first as always, so the weekend's listening still
+  counts. A shape for a week that has passed is never read.
+- **Where it came from.** Each direction on This week says *From your sketch*, *From your sketch, nudged: "…"*
+  or *The curator's own*, and *Made with your settings* adds "shaped by you: two of three"
+  (`ProgrammeOption.shaped`, `WeekRecord.shaped`). A week nobody shaped looks exactly as before.
+

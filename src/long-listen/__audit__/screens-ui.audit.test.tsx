@@ -547,3 +547,50 @@ describe('an evening heard to the end (24 October 2026)', () => {
     expect(end.textContent).toContain('all heard')
   }, 20000)
 })
+
+describe('shape next week (24 October 2026)', () => {
+  afterEach(() => { vi.useRealTimers() })
+  it('opens once most of the week is heard, sketches with one slot left to the curator, and next week is written from it', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-22T09:00:00Z')) // Thursday, week 43
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const j = new Journey(repo, plain())
+    const items = p.sections.flatMap((x) => x.items)
+
+    // Not yet: one of three heard.
+    await j.markListening({ recordingId: items[0].recordingId, workId: items[0].workId }, 'heard', p.id)
+    window.location.hash = `#/p/${p.id}`
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: 'Where next' }, { timeout: 4000 })
+    expect(screen.queryByText('Shape next week')).toBeNull()
+    expect(screen.getByText('A wish for next week')).toBeTruthy()
+    cleanup()
+
+    // Two of three: it opens, and sketching gives two sketches and the adventurous slot to the curator.
+    await j.markListening({ recordingId: items[1].recordingId, workId: items[1].workId }, 'heard', p.id)
+    render(<App repo={repo} curator={plain()} />)
+    fireEvent.click(await screen.findByText('Shape next week', {}, { timeout: 4000 }))
+    fireEvent.click(screen.getByRole('radio', { name: 'somewhere new' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sketch next week' }))
+    const list = await screen.findByRole('list', { name: 'Next week’s sketches' }, { timeout: 4000 })
+    await waitFor(() => expect(list.textContent).toContain('Night music, slowly'), { timeout: 4000 })
+    expect(list.textContent).toContain('How a theme is built')
+    expect(list.textContent).toContain('Adventurous · left to the curator')
+    // Another for the curious slot: a different sketch, the first never offered again.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Another' })[1])
+    await waitFor(() => expect(list.textContent).toContain('The orchestra as a city'), { timeout: 4000 })
+    cleanup()
+
+    // Next Monday: the three are written from the sketches, and each says where it came from.
+    vi.setSystemTime(new Date('2026-10-26T09:00:00Z'))
+    window.location.hash = '#/'
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: 'Three directions for the week' }, { timeout: 6000 })
+    expect(screen.getByRole('heading', { name: 'Night music, slowly' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'The orchestra as a city' })).toBeTruthy()
+    expect(screen.getAllByText('From your sketch')).toHaveLength(2)
+    expect(screen.getByText('The curator’s own')).toBeTruthy()
+    expect(document.body.textContent).toContain('shaped by you: two of three')
+  }, 30000)
+})

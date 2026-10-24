@@ -32,6 +32,8 @@ import { BackupNudge } from '../components/BackupNudge'
 import { EveningMark, eveningWords, weeksTheme } from '../components/Evening'
 import { eveningSeed, isOwnEvening, threadMembers } from '../domain/evenings'
 import { useFollow } from '../app/follow'
+import { ShapeNextWeek } from '../components/ShapeNextWeek'
+import { shapeOpen } from '../domain/shaping'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
 import { whenWords } from '../domain/going'
@@ -1015,7 +1017,7 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
  * labelled section, so the last page of the week always has a way on.
  */
 function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: boolean }) {
-  const { journey, bump, say, curatorReady, week } = useServices()
+  const { journey, bump, say, curatorReady, week, settings } = useServices()
   const p = b.programme
   const rootId = p.extends ?? p.id
   const [wish, setWish] = useState('')
@@ -1120,6 +1122,9 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
     )
   }
 
+  // Shape next week opens once two thirds of the week is heard (or on its last day, with something heard).
+  const shaping = shapeOpen(p.sections.flatMap((x) => x.items).map((item) => listeningState(b.events, itemRecordingIds(b, item))), isoDateIn(new Date(), settings.timeZone), week.endsOn)
+
   // The programme ends where the music does: every way on is one folded line
   // saying what it offers, opened only when wanted. None of them is required.
   return (
@@ -1187,10 +1192,17 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
 
         <Twisty label="How it landed" value="a sentence to the curator">{feedbackBody}</Twisty>
 
-        <Twisty label="A wish for next week" value="a composer, a mood, a question">
-          <p className={s.quiet}>Plant an idea for the next three directions — a composer, a mood, a question.</p>
-          <a href={href({ name: 'notebook' })}>Write a wish in the Notebook</a>
-        </Twisty>
+        {/* Once most of the week is heard, next week can be shaped here; before that, a wish is planted in the Notebook. */}
+        {shaping ? (
+          <Twisty label="Shape next week" value="where it goes, three sketches">
+            <ShapeNextWeek />
+          </Twisty>
+        ) : (
+          <Twisty label="A wish for next week" value="a composer, a mood, a question">
+            <p className={s.quiet}>Plant an idea for the next three directions — a composer, a mood, a question. Once most of this week is heard, you can shape next week here.</p>
+            <a href={href({ name: 'notebook' })}>Write a wish in the Notebook</a>
+          </Twisty>
+        )}
       </div>
     </section>
   )

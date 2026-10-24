@@ -197,7 +197,7 @@ export function WeekScreen() {
           It opens by itself while a tuning waits to be asked for. */}
       <Twisty label="Made with your settings" className={s.twistyWrap} open={tuning} value={rework
         ? 'changed since'
-        : [TIME[made.timePerWeek].words.replace(/ (of music )?a week$/, ''), BREADTH[made.breadth].glance, FAMILIARITY[made.familiarity].glance, ...(made.pairs ? ['pairs'] : []), ...moodWords(view.record.mood)].join(', ')}>
+        : [TIME[made.timePerWeek].words.replace(/ (of music )?a week$/, ''), BREADTH[made.breadth].glance, FAMILIARITY[made.familiarity].glance, ...(made.pairs ? ['pairs'] : []), ...moodWords(view.record.mood), ...(view.record.shaped ? [`shaped by you: ${SHAPED_WORDS[view.record.shaped.sketches] ?? view.record.shaped.sketches} of three`] : [])].join(', ')}>
         <dl className={s.settingsGlance}>
           <dt>Music each week</dt><dd>{TIME[made.timePerWeek].label} — {TIME[made.timePerWeek].words}</dd>
           <dt>How widely it ranges</dt><dd>{BREADTH[made.breadth].label} — {BREADTH[made.breadth].words}</dd>
@@ -222,7 +222,7 @@ export function WeekScreen() {
       {/* The direction being built stays where it was tapped, saying so; the others wait. */}
       <ol className={s.options}>
         {view.options.map((o) => (
-          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} busy={busy || !curatorReady} choosing={choosing === o.id} onChoose={() => void choose(o)} />
+          <OptionEntry key={o.id} o={o} theme={o.returning ? view.themes.get(o.returning.themeId) : undefined} busy={busy || !curatorReady} choosing={choosing === o.id} onChoose={() => void choose(o)} shapedWeek={Boolean(view.record.shaped)} />
         ))}
       </ol>
       {!curatorReady && <NeedsKey to="choose a direction, or ask for anything below" />}
@@ -272,7 +272,10 @@ export function WeekScreen() {
   )
 }
 
-function OptionEntry({ o, theme, busy, choosing, onChoose }: { o: ProgrammeOption; theme?: Theme; busy: boolean; choosing: boolean; onChoose: () => void }) {
+/** "shaped by you: two of three" */
+const SHAPED_WORDS = ['none', 'one', 'two', 'three']
+
+function OptionEntry({ o, theme, busy, choosing, onChoose, shapedWeek = false }: { o: ProgrammeOption; theme?: Theme; busy: boolean; choosing: boolean; onChoose: () => void; shapedWeek?: boolean }) {
   return (
     <li className={s.option} aria-busy={choosing || undefined}>
       <div className={s.optionHead}>
@@ -281,6 +284,10 @@ function OptionEntry({ o, theme, busy, choosing, onChoose }: { o: ProgrammeOptio
       </div>
       <div className={s.optionBody}>
         <p className={`${s.mood} ${s.mt2xs}`}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
+        {/* A week shaped beforehand says where each came from: the listener's sketch, or the curator's own. */}
+        {shapedWeek && (
+          <p className={s.faint}>{o.shaped ? (o.shaped.nudge ? `From your sketch, nudged: “${o.shaped.nudge}”` : 'From your sketch') : 'The curator’s own'}</p>
+        )}
         <p>{o.pitch}</p>
         {/* The words describe the direction, so they say so; the curator's reason says it's for you. */}
         <Traits label="Character" words={o.character} />

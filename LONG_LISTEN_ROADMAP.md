@@ -143,6 +143,20 @@ owner kept four (*Decided against* has the other two).
 | ~~25~~ | ~~**Before and after a concert** — a concert from *Live in Bucharest* can be marked as one you're going to. A few days ahead: a short preparation (the works, one recording to hear first, what to listen for in the hall that a recording can't give). After: the concert entry comes pre-filled from the announced programme, no screenshot needed~~ | Concerts are the app's anchor to real life; this ties the week's listening to the evening at the Ateneu on both sides | M |
 | ~~26~~ | ~~**A composer's page** — tap a composer's name to get a short portrait written once, the works of theirs you've met, the threads they appear in, the recordings and concerts you heard them in~~ | The Library groups by composer but never says who they are. Prose and memory, not a tally | M |
 
+## After release 4: shaping the week
+
+Asked for 24 October 2026: a light hand on the three directions before they
+are written, not after. Five ideas were offered; the owner chose the first
+three and **they were built the same day** (`LONG_LISTEN.md` §33).
+
+| # | Item | Why it matters | Effort |
+|---|------|----------------|--------|
+| ~~27~~ | ~~**A check-in** — where next week goes (stay with the thread, somewhere new, either) and how it should feel (the week's own moods), with the Notebook's wish as the thing to chase or avoid~~ | Says what matters for next week with a tap, without touching Settings | S |
+| ~~28~~ | ~~**Sketches** — a title and a line per slot, on the cheaper model; nudge one in a few words, or ask for another; the week's three are written from what stands~~ | The directions arrive shepherded, not as complete surprises | M |
+| ~~29~~ | ~~**Leave one to the curator** — on by default for the adventurous slot~~ | Keeps the week finding what the listener didn't know to ask for | S |
+| 30 | **Seeds from anywhere** — "for next week" on a work, an evening or a question, gathered for the sketches to draw on | The wish box is one line; seeds occur while listening | M |
+| 31 | **Where it came from, everywhere** — the provenance line carried into the Journal and Notion | Today it shows on This week only | S |
+
 ## Decided against
 
 - **A spoken host.** The synthetic voice is a recurring complaint about

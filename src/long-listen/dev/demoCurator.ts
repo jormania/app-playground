@@ -1,5 +1,5 @@
 import type {
-  CompanionResponse, TagsResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse, DefineResponse, PortraitResponse, PrepareResponse,
+  CompanionResponse, TagsResponse, CompareResponse, ConcertResponse, ContinuityResponse, CuratedItem, CuratorClient, ExplainResponse, ProgrammeResponse, ResourcesResponse, SeasonResponse, TasteResponse, ThemesResponse, DefineResponse, PortraitResponse, PrepareResponse, SketchResponse,
 } from '../curation/api'
 import { CuratorUnavailable } from '../curation/api'
 
@@ -115,6 +115,11 @@ export function demoCurator(): CuratorClient {
             ],
             promptVersion: 'demo', model: 'demo',
           }
+          // Shaped beforehand: a sketched slot is written from its sketch, as the real curator is asked to.
+          for (const s of payload?.shaped?.sketches ?? []) {
+            const at = res.options.findIndex((o) => o.mood === s.mood)
+            if (at >= 0) res.options[at] = { ...res.options[at], title: s.title, pitch: `${s.line} Demo: written out in full from your sketch.`, shapedFrom: s.title }
+          }
           return res as T
         }
         case 'programme': {
@@ -175,6 +180,23 @@ export function demoCurator(): CuratorClient {
           } satisfies SeasonResponse as T
         case 'define':
           return { definition: `Demo: ${payload?.term ?? 'this term'} — a short, plain definition, and how to hear it in the music.`, promptVersion: 'demo' } satisfies DefineResponse as T
+        case 'sketch': {
+          // Shape next week in the demo: canned sketches per slot; a nudge or a swap gets a variant, never one passed over.
+          const CANNED: Record<string, [string, string, string][]> = {
+            immersive: [['Night music, slowly', 'Nocturnes and slow movements from Bartók to Saariaho, music that lets the dark in.', 'something new'], ['The long adagio', 'Bruckner, Mahler and Pärt at their slowest and widest.', 'your listening']],
+            curious: [['How a theme is built', 'Four ways composers make a whole work from a handful of notes.', 'this thread’s open question'], ['The orchestra as a city', 'Paris, Vienna and Leningrad heard through the halls that shaped them.', 'a path left open']],
+            adventurous: [['Spectral light', 'Grisey, Murail and Haas: music built from the inside of a single sound.', 'something new'], ['Music from the edge of Europe', 'Composers from the Baltic to the Caucasus most listeners never meet.', 'something new']],
+          }
+          const avoid = new Set<string>((payload?.avoid ?? []).map((a: string) => a.toLowerCase()))
+          const pick = (mood: string) => {
+            const c = CANNED[mood].find(([title]) => !avoid.has(title.toLowerCase())) ?? [`${CANNED[mood][0][0]}, again`, CANNED[mood][0][1], 'something new']
+            return { mood, title: c[0], line: c[1], from: c[2] }
+          }
+          const sketches = payload?.nudge
+            ? [{ ...payload.nudge.sketch, line: `${payload.nudge.sketch.line} (moved: ${payload.nudge.words})` }]
+            : (payload?.slots ?? []).map(pick)
+          return { sketches, promptVersion: 'demo' } satisfies SketchResponse as T
+        }
         case 'portrait':
           return {
             lifespan: '1862–1918',
