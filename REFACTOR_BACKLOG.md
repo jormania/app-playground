@@ -2363,6 +2363,36 @@ Write `src/tempo/lib/modes.test.js`. No production code changes. Mutation-check
 by dropping an id from `DEFAULT_ORDER` and by moving one default out of its
 range.
 
+## P-003 — Two WhereItWent flair animations ignore `prefers-reduced-motion` · `qol` · `open`
+
+**Impact:** someone who has asked their OS to reduce motion stops seeing a
+pulsing Add button and a sliding budget bar. Nobody else notices anything.
+
+Found while doing R-022 on 2026-09-24. `src/where-it-went/index.css` has a
+consolidated `@media (prefers-reduced-motion: reduce)` block (~line 296) whose
+comment claims it covers "every animated affordance in the app". It does not:
+
+- **`fab-pulse`** — `.flair-pulse .nav-add-btn:hover` and
+  `.nav-add-btn-classic:hover`, a 1.5s infinite box-shadow pulse.
+- **`slideRight`** — `.flair-budget .budget-bar-fill` and
+  `.budget-bar-fill-large`. The block already names `.budget-bar-wrapper > div`
+  and kills its `transition`, but the `fill` element's `animation` is a separate
+  declaration and survives.
+
+R-022 added the guard for `float-icon` because it was switching that animation
+on for the first time and would otherwise have shipped a regression; it
+deliberately left these two alone as adjacent scope. Both need the same
+`animation: none !important;` treatment — `!important` because all three rules
+are declared further down the file at equal specificity, so source order beats
+the guard without it.
+
+Cheap, but `qol` rather than `refactor`: it changes what a real user sees, just
+only the ones who asked for it. Worth pairing with a test in
+`src/where-it-went/emptyStateFloat.test.jsx`'s stylesheet style — parse the
+reduced-motion block and assert every `@keyframes` name the file declares is
+switched off somewhere inside it, which would stop the next animation from
+arriving unguarded too.
+
 ## R-046 — `vite-plugin-pwa` 1.3 → 2.0, the one major R-008's inventory never listed · `modernise` · `open`
 
 **Impact:** none visible if done right. This is the plugin that writes Sol
@@ -2427,49 +2457,7 @@ the project's dashboard setting is today cannot be seen from the repo, so
 adding the field could change production. That half is Gabriel's to decide
 with the Vercel setting in front of him. Say so on the PR.
 
----
-
-## Proposed
-
-The agent's own ideas. **Nothing here gets worked until it is moved up.** To
-approve one, cut the block, paste it into the list above, and change `proposed`
-to `open`.
-
-To reject one, delete it — or just close the PR that proposed it, which is the
-same answer said faster. The agent treats a proposal that vanished from `main`
-as declined and will not raise it again.
-
-## P-003 — Two WhereItWent flair animations ignore `prefers-reduced-motion` · `qol` · `proposed`
-
-**Impact:** someone who has asked their OS to reduce motion stops seeing a
-pulsing Add button and a sliding budget bar. Nobody else notices anything.
-
-Found while doing R-022 on 2026-09-24. `src/where-it-went/index.css` has a
-consolidated `@media (prefers-reduced-motion: reduce)` block (~line 296) whose
-comment claims it covers "every animated affordance in the app". It does not:
-
-- **`fab-pulse`** — `.flair-pulse .nav-add-btn:hover` and
-  `.nav-add-btn-classic:hover`, a 1.5s infinite box-shadow pulse.
-- **`slideRight`** — `.flair-budget .budget-bar-fill` and
-  `.budget-bar-fill-large`. The block already names `.budget-bar-wrapper > div`
-  and kills its `transition`, but the `fill` element's `animation` is a separate
-  declaration and survives.
-
-R-022 added the guard for `float-icon` because it was switching that animation
-on for the first time and would otherwise have shipped a regression; it
-deliberately left these two alone as adjacent scope. Both need the same
-`animation: none !important;` treatment — `!important` because all three rules
-are declared further down the file at equal specificity, so source order beats
-the guard without it.
-
-Cheap, but `qol` rather than `refactor`: it changes what a real user sees, just
-only the ones who asked for it. Worth pairing with a test in
-`src/where-it-went/emptyStateFloat.test.jsx`'s stylesheet style — parse the
-reduced-motion block and assert every `@keyframes` name the file declares is
-switched off somewhere inside it, which would stop the next animation from
-arriving unguarded too.
-
-## P-004 — Daily Stoic's Stats row draws heavier than the menu around it · `visual` · `proposed`
+## P-004 — Daily Stoic's Stats row draws heavier than the menu around it · `visual` · `open`
 
 **Impact:** the phone's dashboards menu reads as one set — the bottom row stops
 looking bolder than the six above it.
@@ -2481,3 +2469,15 @@ dashboards menu renders six rows with `<Icon size={14} />` (lucide's default
 carried and P-001c kept on purpose so that slice stayed pixel-identical. The fix
 is deleting `strokeWidth={2.5}`. Small, but it changes a pixel Gabriel sees, so
 it waits here. Screenshots: phone width, both themes, menu open.
+
+---
+
+## Proposed
+
+The agent's own ideas. **Nothing here gets worked until it is moved up.** To
+approve one, cut the block, paste it into the list above, and change `proposed`
+to `open`.
+
+To reject one, delete it — or just close the PR that proposed it, which is the
+same answer said faster. The agent treats a proposal that vanished from `main`
+as declined and will not raise it again.
