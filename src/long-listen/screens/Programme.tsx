@@ -132,17 +132,18 @@ export function ProgrammeScreen({ id, asThisWeek = false }: { id: string; asThis
 }
 
 /**
- * What each kind of section is for, in the week's sequence — the curator
- * names the role, the heading is its own; this line says where you are.
+ * What each kind of section is for, in the programme's sequence — the curator
+ * names the role, the heading is its own; this line says where you are. A
+ * sitting is one evening, so its guides say "evening" where a week's say "week".
  */
-const ROLE_GUIDE: Record<string, string> = {
-  start: 'where the week begins: the piece the rest is heard against.',
-  then: 'the next step on from there.',
-  context: 'background: music that shows where the rest came from.',
-  contrast: 'a change of light, chosen to push against what came before.',
-  compare: 'the same idea from another angle.',
-  deeper: 'further in, for when the first pieces have settled.',
-  coda: 'a close to the week.',
+const ROLE_GUIDE: Record<string, (span: string) => string> = {
+  start: (span) => `Where the ${span} begins: the piece the rest is heard against.`,
+  then: () => 'The next step on from there.',
+  context: () => 'Background: music that shows where the rest came from.',
+  contrast: () => 'A change of light, chosen to push against what came before.',
+  compare: () => 'The same idea from another angle.',
+  deeper: () => 'Further in, for when the first pieces have settled.',
+  coda: (span) => `A close to the ${span}.`,
 }
 const PAIR_GUIDE = 'One work in two recordings, side by side. Hear both: the difference between them is the point.'
 const FURTHER_GUIDE = 'Optional: notes, essays, talks and filmed performances found for this programme.'
@@ -261,7 +262,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           {/* Each part is named as a programme names its movements: a numeral, then the title. */}
           <h2 className={`${s.sectionHead} ${s.partHead}`}><span className={s.partNumeral}>{roman(i + 1)}</span>{sectionTitle(section)}</h2>
           {/* What the part is for; its place ("the second of three") is the numeral's job, and the running order's. */}
-          {ROLE_GUIDE[section.role] && <p className={s.sectionGuide}>{ROLE_GUIDE[section.role].charAt(0).toUpperCase() + ROLE_GUIDE[section.role].slice(1)}</p>}
+          {ROLE_GUIDE[section.role] && <p className={s.sectionGuide}>{ROLE_GUIDE[section.role](p.sitting ? 'evening' : 'week')}</p>}
           {section.note && <p className={s.sectionNote}>{section.note}</p>}
           {items.map((item) => (
             <Fragment key={item.id}>
@@ -294,7 +295,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           That’s the {p.sitting ? 'evening' : 'week'}: {shownItems.length} {shownItems.length === 1 ? 'work' : 'works'}{length.all ? `, ${aboutDuration(length.total)}` : ''}.
         </p>
       )}
-      {shownItems.length > 0 && <Colophon b={b} items={shownItems} />}
+      {shownItems.length > 0 && <Colophon b={b} items={shownItems} own={own} />}
 
       <ResourcesView b={b} searching={searching} onSearch={async () => {
         setSearching(true)
@@ -398,7 +399,7 @@ function PinnedWork({ items, parts }: { items: ProgrammeItem[]; parts: Map<strin
  * one to a line, as a printed programme closes on its credits. Each is the
  * recording that plays — a stand-in's, where Spotify lacked the curator's.
  */
-function Colophon({ b, items }: { b: Bundle; items: ProgrammeItem[] }) {
+function Colophon({ b, items, own }: { b: Bundle; items: ProgrammeItem[]; own: boolean }) {
   const p = b.programme
   const players = standInPlayersOf(b.comparisons)
   const performers = (item: ProgrammeItem) => {
@@ -408,7 +409,7 @@ function Colophon({ b, items }: { b: Bundle; items: ProgrammeItem[] }) {
   }
   return (
     <footer className={s.colophon} aria-label="Colophon">
-      <p className={s.colophonLine}>Programme notes by the curator · {p.sitting ? 'a sitting for tonight, ' : ''}{weekFromKey(p.weekKey).label}</p>
+      <p className={s.colophonLine}>Programme notes by the curator · {p.sitting ? `${own ? 'an evening of its own' : 'a sitting'}, ` : ''}{weekFromKey(p.weekKey).label}</p>
       <p className={s.colophonHead}>The recordings</p>
       <ol className={s.colophonList}>
         {items.map((item) => (
@@ -974,7 +975,7 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
       {groups.length === 0 && searching && <Waiting>Looking for good reading and listening…</Waiting>}
       {groups.length === 0 && !searching && (
         <>
-          <p className={s.quiet}>{b.resourcesSearched ? 'Nothing trustworthy turned up this time.' : 'Programme notes, essays and talks to go with this week.'}</p>
+          <p className={s.quiet}>{b.resourcesSearched ? 'Nothing trustworthy turned up this time.' : `Programme notes, essays and talks to go with this ${b.programme.sitting ? 'evening' : 'week'}.`}</p>
           <div className={s.actions}>
             <button className={`${s.outlineButton} ${s.smallButton}`} onClick={onSearch} disabled={!curatorReady}>{b.resourcesSearched ? 'Look again' : 'Find some'}</button>
           </div>
@@ -1100,16 +1101,20 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
   // and live on the week's programme alone: one place to go from, not one per evening.
   if (p.extends) {
     const root = b.root
+    // Once the evening's music has all been heard and nothing has been said of it, the word on it is asked for, open.
+    const states = p.sections.flatMap((x) => x.items).map((item) => listeningState(b.events, itemRecordingIds(b, item)))
+    const allHeard = states.includes('heard') && states.every((st) => st === 'heard' || st === 'skipped')
+    const unsaid = !b.feedback.some((f) => f.target.type === 'programme' && f.target.id === p.id)
     return (
       <section aria-label="The end of the evening" className={s.whereNext}>
         <h2 className={s.sectionHead}>The end of the evening</h2>
         <p className={s.sectionGuide}>
           {root
-            ? <>This evening ends here. For anything more, the week’s programme is the way on: <a href={href({ name: 'programme', id: root.id })}>{root.title}</a>.</>
-            : 'This evening ends here. For anything more, the week’s programme is the way on.'}
+            ? <>For anything more, the week’s programme is the way on: <a href={href({ name: 'programme', id: root.id })}>{root.title}</a>.</>
+            : 'For anything more, the week’s programme is the way on.'}
         </p>
         <div className={s.twistyRun}>
-          <Twisty label="How it landed" value="a sentence to the curator">{feedbackBody}</Twisty>
+          <Twisty label="How it landed" value={allHeard && unsaid ? 'all heard: a sentence to the curator' : 'a sentence to the curator'} open={allHeard && unsaid}>{feedbackBody}</Twisty>
         </div>
       </section>
     )

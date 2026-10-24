@@ -1481,4 +1481,7 @@ its composers and years joined the thread's summary, and Notion's thread row car
   evening; the running order's *Where next ↓* and *The week ends tomorrow / tonight* are likewise the week's
   programme's only. *Save as a Spotify playlist* sits under the title and standfirst, above *Also this week*,
   so it reads as this evening's.
+- **Read as an evening, throughout.** A sitting's section guides, reading-list prompt and colophon say
+  "evening" where a week's say "week". Once every work of an evening is heard (skips allowed) and nothing
+  has been said of it, *How it landed* opens by itself, marked *all heard*.
 

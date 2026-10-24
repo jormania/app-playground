@@ -494,6 +494,10 @@ describe('evenings of their own (24 October 2026)', () => {
     expect(screen.getByRole('heading', { name: 'The end of the evening' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'The end of the evening' }).querySelector(`a[href="#/p/${p.id}"]`)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Where next ↓' })).toBeNull()
+    // Its guides and notes speak of an evening, not a week.
+    expect(document.body.textContent).toContain('Where the evening begins')
+    expect(document.body.textContent).not.toContain('Where the week begins')
+    expect(document.body.textContent).toContain('to go with this evening')
     fireEvent.click(screen.getByRole('button', { name: 'Belongs with this week’s theme' }))
     await screen.findByRole('button', { name: 'Make it an evening of its own' }, { timeout: 4000 })
     expect((await repo.explorations.require(p.explorationId)).extraProgrammeIds).toContain(evening.id)
@@ -524,5 +528,20 @@ describe('the week\'s end is the week\'s programme\'s business (24 October 2026)
     const save = screen.queryByRole('button', { name: /Spotify playlist/ })
     const also = screen.queryByText(/Also this week/)
     if (save && also) expect(save.compareDocumentPosition(also) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }, 20000)
+})
+
+describe('an evening heard to the end (24 October 2026)', () => {
+  it('opens How it landed once every work is heard and nothing has been said of it', async () => {
+    const repo = new Repo(memoryStore())
+    await chosenWeek(repo, plain())
+    const j = new Journey(repo, plain())
+    const evening = await j.sitting('minimalism, nothing Nordic', 1, true)
+    for (const item of evening.sections.flatMap((x) => x.items)) await j.markListening({ recordingId: item.recordingId, workId: item.workId }, 'heard', evening.id)
+    window.location.hash = `#/p/${evening.id}`
+    render(<App repo={repo} curator={plain()} />)
+    const end = await screen.findByRole('region', { name: 'The end of the evening' }, { timeout: 4000 })
+    expect(end.querySelector('details')!.open).toBe(true)
+    expect(end.textContent).toContain('all heard')
   }, 20000)
 })
