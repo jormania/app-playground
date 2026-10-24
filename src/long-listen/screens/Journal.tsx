@@ -118,7 +118,7 @@ export function JournalScreen() {
     )
   }
   const companions = (p: Programme, className: string) =>
-    (data.companionsOf.get(p.id) ?? []).map((x) => programmeLine(x, x.sitting ? `${eveningWords(madeWords(x.createdAt, settings.timeZone), false)}: ` : 'More of this theme: ', className))
+    (data.companionsOf.get(p.id) ?? []).map((x) => programmeLine(x, x.sitting ? `${eveningWords(madeWords(x.createdAt, settings.timeZone), false, x.weekKey === week.key)}: ` : 'More of this theme: ', className))
 
   return (
     <div>
@@ -161,6 +161,8 @@ export function JournalScreen() {
               <Fragment key={p.id}>
                 <p className={`${s.quiet} ${s.flush} ${s.mt3xs}`}>
                   <EveningMark /> {eveningWords(madeWords(p.createdAt, settings.timeZone), true)}: <a href={href({ name: 'programme', id: p.id })} className={s.quietLink}>{p.title}</a>
+                  {/* What was asked for: the evening's reason, since it isn't the week's theme. */}
+                  {p.sitting?.request && <span className={s.faint}> — asked for as “{p.sitting.request}”</span>}
                 </p>
                 {lastWord(data.feedback, p.id) && <p className={`${s.said} ${s.flush}`}><q>{lastWord(data.feedback, p.id)}</q></p>}
               </Fragment>

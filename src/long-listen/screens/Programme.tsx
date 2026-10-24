@@ -29,7 +29,7 @@ import { Twisty } from '../components/Twisty'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { BackupNudge } from '../components/BackupNudge'
-import { EveningMark, eveningWords } from '../components/Evening'
+import { EveningMark, eveningWords, weeksTheme } from '../components/Evening'
 import { eveningSeed, isOwnEvening, threadMembers } from '../domain/evenings'
 import { useFollow } from '../app/follow'
 import s from '../styles/editorial.module.css'
@@ -200,14 +200,14 @@ export function ProgrammeView({ b }: { b: Bundle }) {
       <p className={s.eyebrow}>
         {own && <><EveningMark />{' '}</>}
         {p.sitting && p.extends
-          ? `${own ? 'An evening of its own' : 'A sitting beside this week’s theme'} · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · ${madeWords(p.createdAt, settings.timeZone)}`
+          ? `${own ? 'An evening of its own' : `A sitting beside ${weeksTheme(p.weekKey === week.key)}`} · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · ${madeWords(p.createdAt, settings.timeZone)}`
           : p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · ${madeWords(p.createdAt, settings.timeZone)}`
             : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
         {/* The masthead already dates this week; an earlier week's programme says which it was. */}
         {p.weekKey !== week.key && ` · ${weekFromKey(p.weekKey).label}`}
       </p>
       {b.root && (p.sitting
-        ? <EveningPlace p={p} root={b.root} own={own} />
+        ? <EveningPlace p={p} root={b.root} own={own} current={p.weekKey === week.key} />
         : <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>)}
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
@@ -300,7 +300,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         try { await journey.resources(p.id, { again: b.resourcesSearched }); bump() } catch (e) { say(messageOf(e), 'danger') } finally { setSearching(false) }
       }} />
 
-      <WhereNext b={b} isCurrent={Boolean(isCurrent)} />
+      <WhereNext b={b} isCurrent={Boolean(isCurrent)} own={own} />
     </article>
   )
 }
@@ -728,7 +728,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
  * evening of its own can also be followed: three directions from it, and only
  * then a thread.
  */
-function EveningPlace({ p, root, own }: { p: Programme; root: Programme; own: boolean }) {
+function EveningPlace({ p, root, own, current }: { p: Programme; root: Programme; own: boolean; current: boolean }) {
   const { journey, bump, say, curatorReady } = useServices()
   const { following, follow } = useFollow()
   const [moving, setMoving] = useState(false)
@@ -737,7 +737,7 @@ function EveningPlace({ p, root, own }: { p: Programme; root: Programme; own: bo
     try {
       await journey.placeEvening(p.id, withTheme)
       bump()
-      say(withTheme ? `Now with “${root.title}”, in its thread.` : 'Now an evening of its own, in the week’s timeline.', 'success')
+      say(withTheme ? `Now with “${root.title}”, in its thread.` : 'Now an evening of its own: in the week’s timeline, outside the thread.', 'success')
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
@@ -749,7 +749,7 @@ function EveningPlace({ p, root, own }: { p: Programme; root: Programme; own: bo
     <p className={s.quiet}>
       {own ? 'In the week of ' : 'Beside '}<a href={href({ name: 'programme', id: root.id })}>{root.title}</a>{own ? ', on its own terms.' : ', in its thread.'}{' '}
       <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void place(own)} disabled={moving}>
-        {own ? 'Belongs with this week’s theme' : 'Make it an evening of its own'}
+        {own ? `Belongs with ${weeksTheme(current)}` : 'Make it an evening of its own'}
       </button>
       {own && curatorReady && (
         <>{' · '}<button className={`${s.textButton} ${s.quietButton}`} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Follow this evening'}</button></>
@@ -769,8 +769,8 @@ function AlsoThisWeek({ extensions, members, current, isCurrent, timeZone }: { e
   const others = extensions.filter((x) => x.id !== current).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   if (!others.length) return null
   return (
-    <nav className={s.alsoThisWeek} aria-label={isCurrent ? 'Also this week' : 'Also from this programme'}>
-      <p className={`${s.eyebrow} ${s.flush}`}>{isCurrent ? 'Also this week' : 'Also from this programme'}</p>
+    <nav className={s.alsoThisWeek} aria-label={isCurrent ? 'Also this week' : 'Also that week'}>
+      <p className={`${s.eyebrow} ${s.flush}`}>{isCurrent ? 'Also this week' : 'Also that week'}</p>
       <ul>
         {others.map((x) => (
           <li key={x.id}>
@@ -779,7 +779,7 @@ function AlsoThisWeek({ extensions, members, current, isCurrent, timeZone }: { e
             <span className={s.faint}>
               {' · '}
               {x.sitting
-                ? `${eveningWords(madeWords(x.createdAt, timeZone), isOwnEvening(x, members))}, ${x.sitting.hours === 1 ? 'about an hour' : 'about two hours'}${x.sitting.request ? ` — “${x.sitting.request}”` : ''}`
+                ? `${eveningWords(madeWords(x.createdAt, timeZone), isOwnEvening(x, members), isCurrent)}, ${x.sitting.hours === 1 ? 'about an hour' : 'about two hours'}${x.sitting.request ? ` — “${x.sitting.request}”` : ''}`
                 : `${madeWords(x.createdAt, timeZone)} · more of this theme`}
             </span>
           </li>
@@ -1011,12 +1011,14 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
  * left open earlier, a word to the curator, a wish for next week. One clearly
  * labelled section, so the last page of the week always has a way on.
  */
-function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
+function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: boolean }) {
   const { journey, bump, say, curatorReady, week } = useServices()
   const p = b.programme
   const rootId = p.extends ?? p.id
   const [wish, setWish] = useState('')
   const [directionWish, setDirectionWish] = useState('')
+  // "More of this theme" lists what was made for the theme — not the week's sittings, which have their own line at the top.
+  const themeMore = b.extensions.filter((x) => !x.sitting)
   // One request at a time from here, whichever it is: each of these asks the
   // curator for this week's music, and two at once would race to rewrite the
   // week (another direction taken while three new ones are being found).
@@ -1070,10 +1072,11 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
     <>
       <p className={s.quiet}>A sentence is worth more than a button: what stayed with you, what didn’t. The next directions are shaped by it.</p>
       <FeedbackPanel
-        prompt="How did this week land?"
+        prompt={p.sitting ? 'How did the evening land?' : 'How did this week land?'}
         programmeId={p.id}
         feedback={b.feedback}
-        targets={[{ type: 'programme', id: p.id, label: 'This programme' }, ...(b.theme ? [{ type: 'theme' as const, id: b.theme.id, label: 'The theme itself' }] : [])]}
+        // An evening of its own isn't the week's theme: a word on it is about the evening alone.
+        targets={[{ type: 'programme', id: p.id, label: p.sitting ? 'This evening' : 'This programme' }, ...(b.theme && !own ? [{ type: 'theme' as const, id: b.theme.id, label: 'The theme itself' }] : [])]}
       />
     </>
   )
@@ -1096,15 +1099,16 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
   return (
     <section id={WHERE_NEXT} aria-label="Where next" className={`${s.whereNext} ${s.whereNextAnchor}`}>
       <h2 className={s.sectionHead}>Where next</h2>
-      <p className={s.sectionGuide}>The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.</p>
+      <p className={s.sectionGuide}>{own ? 'The end of this evening. The week goes on: here are the ways on from it, none of them required.' : 'The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.'}</p>
       {!curatorReady && <NeedsKey to="ask the curator for any of these" />}
 
       <div className={s.twistyRun}>
-        <Twisty label="More of this theme" value={b.extensions.length ? `${b.extensions.length} so far` : 'another set, on the same theme'} open={extending}>
+        {/* More of the week's theme belongs to its programme's page, not to an evening that stood apart from it. */}
+        {!own && <Twisty label="More of this theme" value={themeMore.length ? `${themeMore.length} so far` : 'another set, on the same theme'} open={extending}>
           <p className={s.quiet}>Another set of works on the same theme, none of them heard yet this week: other composers, other periods, the connections this one pointed to.</p>
-          {b.extensions.length > 0 && (
+          {themeMore.length > 0 && (
             <ul className={s.bullets}>
-              {b.extensions.map((x) => (
+              {themeMore.map((x) => (
                 <li key={x.id}>{x.id === p.id ? <strong>{x.title}</strong> : <a href={href({ name: 'programme', id: x.id })}>{x.title}</a>}</li>
               ))}
             </ul>
@@ -1114,9 +1118,9 @@ function WhereNext({ b, isCurrent }: { b: Bundle; isCurrent: boolean }) {
             <label className={s.visuallyHidden} htmlFor="more-wish">Anything in particular?</label>
             <input id="more-wish" className={s.input} maxLength={MAX_ASK} placeholder="Anything in particular? (optional)" value={wish} onChange={(e) => setWish(e.target.value)} disabled={busy !== null} />
             <CharCount value={wish} />
-            <button type="submit" className={s.outlineButton} disabled={held}>{extending ? 'The curator is building it…' : b.extensions.length ? 'Ask for more again' : 'Ask for more'}</button>
+            <button type="submit" className={s.outlineButton} disabled={held}>{extending ? 'The curator is building it…' : themeMore.length ? 'Ask for more again' : 'Ask for more'}</button>
           </form>
-        </Twisty>
+        </Twisty>}
 
         <SittingCard folded joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} keyHint={false} />
 

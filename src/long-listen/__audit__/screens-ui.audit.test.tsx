@@ -470,6 +470,7 @@ describe('evenings of their own (24 October 2026)', () => {
     render(<App repo={repo} curator={plain()} />)
     await screen.findByText('The weeks so far', {}, { timeout: 4000 })
     expect(document.body.textContent).toMatch(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) · an evening of its own: /)
+    expect(document.body.textContent).toContain('asked for as “minimalism, nothing Nordic”')
     cleanup()
 
     // Threads: not among the thread's visits; gathered at the foot instead.
@@ -486,6 +487,9 @@ describe('evenings of their own (24 October 2026)', () => {
     render(<App repo={repo} curator={plain()} />)
     await screen.findByRole('heading', { name: evening.title }, { timeout: 4000 })
     expect(document.body.textContent).toMatch(/An evening of its own · about two hours/)
+    // Its ways on are the evening's: no "More of this theme", and a word on it is about the evening.
+    expect(screen.queryByText('More of this theme')).toBeNull()
+    expect(document.body.textContent).toContain('The end of this evening.')
     fireEvent.click(screen.getByRole('button', { name: 'Belongs with this week’s theme' }))
     await screen.findByRole('button', { name: 'Make it an evening of its own' }, { timeout: 4000 })
     expect((await repo.explorations.require(p.explorationId)).extraProgrammeIds).toContain(evening.id)

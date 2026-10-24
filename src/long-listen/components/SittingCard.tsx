@@ -45,6 +45,8 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
       clearHours()
       bump()
       go({ name: 'programme', id: p.id })
+      // Where it went, said once: the page it opens on says the same at the top.
+      if (joinsThread) say(beside ? 'Made beside this week’s theme, in its thread.' : 'An evening of its own: in this week’s timeline, outside the theme.', 'success')
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {

@@ -10,7 +10,15 @@ export function EveningMark() {
   return <Moon size={15} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} />
 }
 
-/** "Saturday · an evening of its own", or "Saturday · beside this week's theme". */
-export function eveningWords(day: string, own: boolean): string {
-  return own ? `${day} · an evening of its own` : `${day} · a sitting beside this week’s theme`
+/**
+ * "Saturday · an evening of its own", or "Saturday · a sitting beside this week's theme" —
+ * "the week's" for an earlier week, which isn't this one.
+ */
+export function eveningWords(day: string, own: boolean, current = true): string {
+  return own ? `${day} · an evening of its own` : `${day} · a sitting beside ${current ? 'this' : 'the'} week’s theme`
+}
+
+/** "this week's theme", or for an earlier week "the week's theme". */
+export function weeksTheme(current: boolean): string {
+  return `${current ? 'this' : 'the'} week’s theme`
 }

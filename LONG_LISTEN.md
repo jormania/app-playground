@@ -1465,4 +1465,11 @@ its composers and years joined the thread's summary, and Notion's thread row car
   marks each the same way.
 - **Notion:** an own evening's Journal row reads *An evening of its own* for Theme, with no Visit; thread rows
   drop it on the next sync.
+- **Audited the same day.** On an evening's own page, *Where next* is the evening's: no *More of this theme*
+  (that belongs to the programme's page; its list there now names only theme programmes, not sittings), "How
+  did the evening land?", and a word on it is about the evening, never "the theme itself". An earlier week's
+  labels say "the week's theme", not "this week's"; its programme page heads the list *Also that week*. The
+  Journal line says what the evening was asked for. Making one says where it went. The season review tells an
+  evening of its own from a sitting beside the theme, and no longer drops an own evening because its week's
+  programme was set aside.
 
