@@ -1,4 +1,5 @@
 import type { ISODate, ListeningState, OptionMood, WeekKey, WeekMood } from './types'
+import { fold } from './identity'
 
 /**
  * Shaping next week: a light hand on the three directions before they are
@@ -28,6 +29,8 @@ export interface Sketch {
   from: string
   /** The listener's words, when they nudged it; the sketch is redrafted with them. */
   nudge?: string
+  /** What it was sketched from (shapeBasis): where, how it should feel, the wish. Changed since, it is out of date. */
+  basis?: string
 }
 
 export interface WeekShape {
@@ -67,6 +70,22 @@ export function shapeOpen(states: ListeningState[], today: ISODate, endsOn: ISOD
   const done = states.filter((s) => s === 'heard' || s === 'skipped').length
   if (done * 3 >= states.length * 2 && states.includes('heard')) return true
   return today === endsOn && states.includes('heard')
+}
+
+/** The check-in as one string, kept on each sketch: a sketch whose basis differs was drawn for another week. */
+export function shapeBasis(where: ShapeWhere, mood: WeekMood[], wish: string | undefined): string {
+  return [where, [...mood].sort().join(','), fold(wish ?? '')].join('|')
+}
+
+/**
+ * The sketches drawn before the check-in last changed: they no longer say what
+ * the listener now wants. A nudged sketch is the listener's own work and is
+ * never called out of date — they moved it themselves.
+ */
+export function staleSlots(shape: WeekShape, wish: string | undefined): OptionMood[] {
+  const now = shapeBasis(shape.where, shape.mood, wish)
+  const shaped = new Set(shapedSlots(shape))
+  return shape.sketches.filter((k) => shaped.has(k.mood) && !k.nudge && k.basis !== undefined && k.basis !== now).map((k) => k.mood)
 }
 
 /** True when the listener has said anything at all: a shape with nothing in it changes nothing. */

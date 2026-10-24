@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { Journey } from './journey'
 import { Repo, memoryStore } from '../store/repo'
 import type { CuratorClient, ThemesResponse } from './api'
-import { shapeOpen, shapedBrief, shapedSlots, emptyShape } from '../domain/shaping'
+import { shapeOpen, shapedBrief, shapedSlots, emptyShape, staleSlots } from '../domain/shaping'
 import { weekAfter, weekOf } from '../domain/week'
 
 function fakeCurator(script: Partial<Record<string, (payload: any, n: number) => unknown>>) {
@@ -158,5 +158,56 @@ describe('shaping next week', () => {
     at('2026-11-02T09:00:00Z') // week 45: week 44 was never opened
     await j.ensureWeek()
     expect(c.calls.find((x) => x.op === 'themes')!.payload.shaped).toBeUndefined()
+  })
+})
+
+describe('shaping, audited', () => {
+  const shaping = (p: any) => themes(['immersive sketch 1', 'curious sketch 1', 'C'], p.shaped ? ['immersive sketch 1', 'curious sketch 1', ''] : ['', '', ''])
+
+  it('sends a sketch only what decides a direction, not the work-by-work history', async () => {
+    const c = fakeCurator({ sketch: sketches })
+    await journey(c.client).sketchNextWeek()
+    const ctx = c.calls[0].payload.context
+    expect(ctx).toHaveProperty('threads')
+    expect(ctx).toHaveProperty('taste')
+    for (const k of ['recentListening', 'alreadyProgrammed', 'alreadyKnown', 'secondHearings']) expect(ctx).not.toHaveProperty(k)
+  })
+
+  it('calls sketches out of date when the check-in or the wish changes, and sketches only those again', async () => {
+    const c = fakeCurator({ sketch: sketches })
+    const j = journey(c.client)
+    let shape = await j.sketchNextWeek()
+    expect(staleSlots(shape, undefined)).toEqual([])
+    shape = await j.nudgeSketch('curious', 'more choral')
+    shape = await j.setShape({ where: 'new' })
+    // The nudged one is the listener's own work: never out of date.
+    expect(staleSlots(shape, undefined)).toEqual(['immersive'])
+    await repo.savePreferences({ ...(await repo.preferences()), nextRequest: 'more Sibelius' })
+    shape = await j.resketchStale()
+    expect(c.calls.at(-1)!.payload.slots).toEqual(['immersive'])
+    expect(c.calls.at(-1)!.payload.avoid).toEqual(['curious sketch 1'])
+    expect(shape.passed).toEqual([])
+    expect(staleSlots(shape, 'more Sibelius')).toEqual([])
+    expect(shape.sketches.find((k) => k.mood === 'curious')!.nudge).toBe('more choral')
+  })
+
+  it('three others on a shaped week drops "shaped by you"; a rework of the same three keeps it', async () => {
+    const c = fakeCurator({ sketch: sketches, themes: shaping })
+    const j = journey(c.client)
+    await j.sketchNextWeek()
+    at('2026-10-26T09:00:00Z')
+    expect((await j.ensureWeek()).shaped).toEqual({ sketches: 2, leftToCurator: 'adventurous' })
+
+    // A setting changed: the same three reworked, still written from the sketches.
+    await repo.savePreferences({ ...(await repo.preferences()), breadth: 5 })
+    const reworked = await j.offerOtherDirections()
+    expect(c.calls.at(-1)!.payload.rework).toBeTruthy()
+    expect(reworked.shaped).toEqual({ sketches: 2, leftToCurator: 'adventurous' })
+    expect((await repo.options.many(reworked.optionIds)).map((o) => o.shaped?.title)).toEqual(['immersive sketch 1', 'curious sketch 1', undefined])
+
+    // Nothing changed: three that differ, and none of them the listener's.
+    const others = await j.offerOtherDirections()
+    expect(others.shaped).toBeUndefined()
+    expect((await repo.options.many(others.optionIds)).every((o) => !o.shaped)).toBe(true)
   })
 })

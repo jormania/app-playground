@@ -272,6 +272,12 @@ export function WeekScreen() {
   )
 }
 
+/** Where a shaped direction came from: the sketch by name when the curator retitled it, and the nudge. */
+function shapedWords(o: ProgrammeOption): string {
+  const named = o.shaped && o.shaped.title.toLowerCase() !== o.title.toLowerCase() ? ` “${o.shaped.title}”` : ''
+  return `From your sketch${named}${o.shaped?.nudge ? `, nudged: “${o.shaped.nudge}”` : ''}`
+}
+
 /** "shaped by you: two of three" */
 const SHAPED_WORDS = ['none', 'one', 'two', 'three']
 
@@ -286,7 +292,7 @@ function OptionEntry({ o, theme, busy, choosing, onChoose, shapedWeek = false }:
         <p className={`${s.mood} ${s.mt2xs}`}>{MOOD_WORD[o.mood]}{o.form ? ` · ${WEEK_FORMS[o.form]}` : ''}</p>
         {/* A week shaped beforehand says where each came from: the listener's sketch, or the curator's own. */}
         {shapedWeek && (
-          <p className={s.faint}>{o.shaped ? (o.shaped.nudge ? `From your sketch, nudged: “${o.shaped.nudge}”` : 'From your sketch') : 'The curator’s own'}</p>
+          <p className={s.faint}>{o.shaped ? shapedWords(o) : 'The curator’s own'}</p>
         )}
         <p>{o.pitch}</p>
         {/* The words describe the direction, so they say so; the curator's reason says it's for you. */}

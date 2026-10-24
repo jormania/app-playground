@@ -1194,9 +1194,7 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
 
         {/* Once most of the week is heard, next week can be shaped here; before that, a wish is planted in the Notebook. */}
         {shaping ? (
-          <Twisty label="Shape next week" value="where it goes, three sketches">
-            <ShapeNextWeek />
-          </Twisty>
+          <ShapeNextWeek />
         ) : (
           <Twisty label="A wish for next week" value="a composer, a mood, a question">
             <p className={s.quiet}>Plant an idea for the next three directions — a composer, a mood, a question. Once most of this week is heard, you can shape next week here.</p>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { OptionMood, WeekMood } from '../domain/types'
 import { WEEK_MOODS } from '../domain/types'
-import { SHAPE_SLOTS, SHAPE_WHERE, shapedSlots, type ShapeWhere, type WeekShape } from '../domain/shaping'
+import { SHAPE_SLOTS, SHAPE_WHERE, shapedSlots, staleSlots, type ShapeWhere, type WeekShape } from '../domain/shaping'
 import { useServices } from '../app/services'
+import { ConfirmModal } from '../../ds'
 import { CharCount, MAX_ASK, NeedsKey, messageOf } from './common'
 import { MOOD_WORD } from './OpenPaths'
+import { Twisty } from './Twisty'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -25,6 +27,7 @@ export function ShapeNextWeek() {
   const [busy, setBusy] = useState<string | null>(null)
   const [nudging, setNudging] = useState<OptionMood | null>(null)
   const [nudge, setNudge] = useState('')
+  const [clearing, setClearing] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -50,11 +53,13 @@ export function ShapeNextWeek() {
 
   const set = (patch: Partial<Pick<WeekShape, 'where' | 'mood' | 'leftToCurator'>>) => void journey.setShape(patch).then(setShape)
 
-  async function keepWish() {
+  // Kept on Enter, on "Keep it", and on leaving the field: a wish typed and walked away from isn't lost.
+  async function keepWish(told: boolean) {
+    if (wish.trim() === keptWish) return
     const prefs = await repo.preferences()
     await repo.savePreferences({ ...prefs, nextRequest: wish.trim() })
     setKeptWish(wish.trim())
-    say(wish.trim() ? 'Kept for next week. The sketches will draw on it.' : 'Cleared.', 'success')
+    if (told) say(wish.trim() ? 'Kept for next week.' : 'Cleared.', 'success')
   }
 
   /** One slot to the curator: the one it held before now needs a sketch of its own. */
@@ -70,9 +75,15 @@ export function ShapeNextWeek() {
   const shaped = shape ? shapedSlots(shape) : shapedSlots({ leftToCurator: 'adventurous' })
   const drafted = shaped.every((m) => sketches.some((k) => k.mood === m))
   const held = busy !== null || !curatorReady
+  // Drawn before where, the feel or the wish last changed: said, with one tap to sketch them again.
+  const stale = shape ? staleSlots(shape, keptWish) : []
+  const yours = sketches.filter((k) => shaped.includes(k.mood)).length
+  const summary = !shape ? 'before next week’s three are written'
+    : yours ? `${['', 'one sketch', 'two sketches', 'three sketches'][yours]}${left ? ', one left to the curator' : ''}`
+      : 'not sketched yet'
 
   return (
-    <div>
+    <Twisty label="Shape next week" value={summary}>
       <p className={s.quiet}>
         Before next week’s three directions are written ({next.label}), say where it should go. Sketch it if you like: what stands when the week begins is what the curator writes from. Nothing here is required.
       </p>
@@ -100,15 +111,23 @@ export function ShapeNextWeek() {
 
       <p className={`${s.eyebrow} ${s.mtSm}`}>Something to chase or avoid</p>
       {/* The Notebook's wish for next week: one set of words, wherever it is written. */}
-      <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); void keepWish() }}>
+      <form className={s.cardForm} onSubmit={(e) => { e.preventDefault(); void keepWish(true) }}>
         <label className={s.visuallyHidden} htmlFor="shape-wish">Something to chase or avoid next week</label>
-        <input id="shape-wish" className={s.input} maxLength={MAX_ASK} placeholder="more Sibelius · no opera" value={wish} onChange={(e) => setWish(e.target.value)} />
+        <input id="shape-wish" className={s.input} maxLength={MAX_ASK} placeholder="more Sibelius · no opera" value={wish} onChange={(e) => setWish(e.target.value)} onBlur={() => void keepWish(false)} />
         <CharCount value={wish} />
         {wish.trim() !== keptWish && <button type="submit" className={`${s.outlineButton} ${s.smallButton}`}>Keep it</button>}
       </form>
 
       <p className={`${s.eyebrow} ${s.mtSm}`}>The sketches</p>
       {!curatorReady && <NeedsKey to="sketch next week" />}
+      {stale.length > 0 && (
+        <p className={s.quiet}>
+          {stale.length === 1 ? 'One sketch was' : `${stale.length === 2 ? 'Two' : 'Three'} sketches were`} drawn before you last changed where next week goes, how it should feel or the wish.{' '}
+          <button type="button" className={`${s.textButton} ${s.inlineButton}`} onClick={() => void run('sketch', () => journey.resketchStale())} disabled={held}>
+            {busy === 'sketch' ? 'The curator is sketching…' : stale.length === 1 ? 'Sketch it again' : 'Sketch them again'}
+          </button>
+        </p>
+      )}
       {!sketches.length && (
         <div className={s.actions}>
           <button type="button" className={s.outlineButton} onClick={() => void run('sketch', () => journey.sketchNextWeek())} disabled={held}>
@@ -133,7 +152,7 @@ export function ShapeNextWeek() {
             }
             return (
               <li key={m} className={s.entry}>
-                <p className={`${s.eyebrow} ${s.flush}`}>{MOOD_WORD[m]}{k?.from ? ` · ${k.from}` : ''}</p>
+                <p className={`${s.eyebrow} ${s.flush}`}>{MOOD_WORD[m]}{k?.from ? ` · ${k.from}` : ''}{stale.includes(m) ? ' · out of date' : ''}</p>
                 {k ? (
                   <>
                     <h4 className={s.nextOption}>{k.title}</h4>
@@ -173,10 +192,18 @@ export function ShapeNextWeek() {
       {sketches.length > 0 && drafted && (
         <p className={s.faint}>
           These stand until the week begins; then its three directions are written from them, with whatever you hear and say before then.{' '}
-          <button type="button" className={`${s.textButton} ${s.quietButton}`} onClick={() => void journey.clearShape().then(() => setShape(null))} disabled={busy !== null}>Start again</button>
+          <button type="button" className={`${s.textButton} ${s.quietButton}`} onClick={() => setClearing(true)} disabled={busy !== null}>Start again</button>
         </p>
       )}
-    </div>
+      <ConfirmModal
+        isOpen={clearing}
+        title="Start next week again?"
+        message="Where it goes, how it should feel and the sketches are cleared; next week is written the usual way unless you shape it again. The wish stays in the Notebook."
+        confirmText="Start again"
+        onConfirm={() => { setClearing(false); void journey.clearShape().then(() => setShape(null)) }}
+        onCancel={() => setClearing(false)}
+      />
+    </Twisty>
   )
 }
 

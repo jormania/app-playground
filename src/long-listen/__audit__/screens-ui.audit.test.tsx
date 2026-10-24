@@ -580,6 +580,14 @@ describe('shape next week (24 October 2026)', () => {
     // Another for the curious slot: a different sketch, the first never offered again.
     fireEvent.click(screen.getAllByRole('button', { name: 'Another' })[1])
     await waitFor(() => expect(list.textContent).toContain('The orchestra as a city'), { timeout: 4000 })
+    // Changing where next week goes leaves the sketches out of date: said, and one tap sketches them again.
+    fireEvent.click(screen.getByRole('radio', { name: 'stay with this thread' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sketch them again' }, { timeout: 4000 }))
+    await waitFor(() => expect(document.body.textContent).not.toContain('drawn before you last changed'), { timeout: 4000 })
+    // Start again asks first: the sketches cost a call each.
+    fireEvent.click(screen.getByRole('button', { name: 'Start again' }))
+    expect(await screen.findByText('Start next week again?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     cleanup()
 
     // Next Monday: the three are written from the sketches, and each says where it came from.
