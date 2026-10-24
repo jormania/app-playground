@@ -10,7 +10,8 @@ export type Route =
   | { name: 'who' }
   | { name: 'home' }
   | { name: 'door'; door: Door }
-  | { name: 'settings' }
+  /** `at`: a section to open at, such as Backup from Home's nudge. */
+  | { name: 'settings'; at?: 'backup' }
   | { name: 'diagnostics' }
   | { name: 'songImport' }
   | { name: 'play'; songId: string }
@@ -36,9 +37,10 @@ export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, '')
   const [head, arg] = path.split('/')
   switch (head) {
+    case 'settings':
+      return arg === 'backup' ? { name: 'settings', at: 'backup' } : { name: 'settings' }
     case 'who':
     case 'home':
-    case 'settings':
     case 'diagnostics':
     case 'connect':
     case 'progress':
@@ -76,6 +78,8 @@ export function hrefOf(route: Route): string {
       return `#/challenge/${route.game}`
     case 'journeyStep':
       return `#/journey/${encodeURIComponent(route.step)}`
+    case 'settings':
+      return route.at ? `#/settings/${route.at}` : '#/settings'
     default:
       return `#/${route.name}`
   }

@@ -24,6 +24,8 @@ import { RecordRepo, type ChallengeRecords } from './records'
 import { SCREEN_KEYS } from './chordCatch'
 import styles from './challenges.module.css'
 import { con, Setting } from '../console/SetupConsole'
+import { GAME_LEVELS, useGameChoice } from './choices'
+import { TodayNext } from '../screens/TodayNext'
 
 type Phase = 'setup' | 'listen' | 'find' | 'result'
 const FLASH_MS = 350
@@ -40,7 +42,7 @@ export function EarScreen() {
   const intro = useIntro('ear')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
-  const [level, setLevel] = useState<EarLevel>(1)
+  const [level, setLevel] = useGameChoice<EarLevel>('ear', 1, GAME_LEVELS)
   const [phase, setPhase] = useState<Phase>('setup')
   const [number, setNumber] = useState(1)
   const [score, setScore] = useState(0)
@@ -267,6 +269,7 @@ export function EarScreen() {
               {t('backToChallenges')}
             </Button>
           </div>
+          <TodayNext current={{ kind: 'game', game: 'ear' }} />
         </section>
       )}
 

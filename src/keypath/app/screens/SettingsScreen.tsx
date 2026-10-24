@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Field, SegmentedControl, SettingsToggle } from '../../../ds'
 import { SelectField } from '../../../ds/components/SelectField'
-import { BackupError, exportBackup, restoreBackup } from '../backup'
+import { BackupError, exportBackup, lastBackup, restoreBackup } from '../backup'
 import { useApp } from '../context'
 import { AVATARS, PIN_LENGTH, type Language, type NoteNames, type ProfileSettings } from '../profiles'
 import { navigate } from '../router'
@@ -37,9 +37,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Row({ label, hint, id, children }: { label: string; hint?: string; id?: string; children: React.ReactNode }) {
   return (
-    <div className={styles.row}>
+    <div className={styles.row} id={id}>
       <span className={styles.label}>{label}</span>
       {children}
       {hint && <p className={styles.hint}>{hint}</p>}
@@ -47,9 +47,12 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
-export function SettingsScreen() {
+/** `at`: open at a section, such as Backup from Home's nudge. */
+export function SettingsScreen({ at }: { at?: 'backup' } = {}) {
   const { profile, profiles, settings, t, updateSetting, choose, removeProfile, store, reload, log } = useApp()
   const [persisted, setPersisted] = useState<Persistence>('unknown')
+  /** When a backup was last saved on this phone; undefined until read. */
+  const [last, setLast] = useState<string | null | undefined>(undefined)
   const [message, setMessage] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   /** A backup file picked, waiting for "Replace everything". */
@@ -70,6 +73,13 @@ export function SettingsScreen() {
   useEffect(() => {
     void persistenceState().then(setPersisted)
   }, [])
+  useEffect(() => {
+    void lastBackup(store).then(setLast)
+  }, [store])
+  // From Home's nudge: straight to Backup, not the top of a long page.
+  useEffect(() => {
+    if (at === 'backup') document.getElementById('settings-backup')?.scrollIntoView({ block: 'start' })
+  }, [at])
 
   if (!profile) return null
   const set = <K extends keyof ProfileSettings>(key: K) => (value: string) => void updateSetting(key, value as ProfileSettings[K])
@@ -83,6 +93,7 @@ export function SettingsScreen() {
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     setMessage(t('backupDone'))
+    setLast(backup.exportedAt)
   }
 
   const restore = async (file: File) => {
@@ -446,7 +457,10 @@ export function SettingsScreen() {
           </div>
           <p className={styles.hint}>{t('progressHint')}</p>
         </div>
-        <Row label={t('backup')} hint={t('backupHint')}>
+        <Row label={t('backup')} hint={t('backupHint')} id="settings-backup">
+          {last !== undefined && (
+            <span className={styles.muted}>{last ? t('backupLast', { date: new Date(last).toLocaleDateString(settings.language === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) }) : t('backupNone')}</span>
+          )}
           <div className={styles.actions}>
             <Button onClick={saveBackup}>{t('backupSave')}</Button>
             <Button variant="outline" onClick={() => fileInput.current?.click()}>

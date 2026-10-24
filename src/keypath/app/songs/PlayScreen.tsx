@@ -38,6 +38,8 @@ import { Playback, realClock, type Sink } from '../studio/playback'
 import { Recorder, type Recording } from '../studio/recorder'
 import styles from './songs.module.css'
 import { con, Setting } from '../console/SetupConsole'
+import type { TodayItem } from '../screens/today'
+import { TodayNext } from '../screens/TodayNext'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone' | 'partDone'
 /** The phases after a run, when nothing is asked of her. */
@@ -242,6 +244,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     }
   }, [phase, profileId, store, settings.language, log, song.id])
   const part = steps.find((x) => x.id === partId) ?? null
+  /** This song as one of Today's four: the warm-up, or the day's song. */
+  const todayItem: TodayItem = song.id === WARMUP_ID ? { kind: 'warmup' } : { kind: 'song', songId: song.id }
   /** Finger numbers, unless she has learnt the whole song (these hands) and they are set to fade. */
   const showFingers = settings.fingers && !(settings.fingersFade && learnt.has('whole'))
   /** A part short of the whole song: played on its own, always in "Wait for it". */
@@ -885,7 +889,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} dense />
-        <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={(bar) => practiseBar(bar)} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} />
+        <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={(bar) => practiseBar(bar)} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} today={todayItem} />
       </main>
     )
   }
@@ -1188,6 +1192,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
               </Button>
             )}
           </div>
+          {partResult.passed && <TodayNext current={todayItem} />}
         </div>
       )}
 

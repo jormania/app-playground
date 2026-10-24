@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { backupDue } from '../backup'
+import { backupDue, lastBackup } from '../backup'
 import { useKeyboard } from '../connect/keyboard'
 import { KeyboardStatus } from '../connect/KeyboardStatus'
 import { rememberedKeyboard, rememberKeyboard } from '../connect/remember'
@@ -25,10 +25,11 @@ export const GUIDE_URL = 'https://claude.ai/code/artifact/2cf64f1e-a27f-4a69-b30
 /** Four equal doors, no order, no gate (KEYPATH_TUTOR.md §3). */
 export function Home() {
   const { profile, t, log, store } = useApp()
-  const [nudge, setNudge] = useState(false)
+  /** The backup nudge: a week since the last backup, or a week of playing with none. */
+  const [nudge, setNudge] = useState<'backupDue' | 'backupNever' | null>(null)
 
   useEffect(() => {
-    void backupDue(store).then(setNudge)
+    void Promise.all([backupDue(store), lastBackup(store)]).then(([due, last]) => setNudge(due ? (last ? 'backupDue' : 'backupNever') : null))
   }, [store])
 
   // Until this phone has reached a keyboard once, the way to connect it is a card, not a footnote.
@@ -79,8 +80,8 @@ export function Home() {
         <KeyboardStatus status={keyboard} />
       )}
       {nudge && (
-        <button type="button" className={styles.nudge} onClick={() => navigate({ name: 'settings' })}>
-          {t('backupDue')}
+        <button type="button" className={styles.nudge} onClick={() => navigate({ name: 'settings', at: 'backup' })}>
+          {t(nudge)}
         </button>
       )}
       <TodayCard />

@@ -9,6 +9,8 @@ import type { StringKey } from '../i18n'
 import styles from './songs.module.css'
 import type { FactsInput } from './coach'
 import { CoachNote } from './CoachNote'
+import type { TodayItem } from '../screens/today'
+import { TodayNext } from '../screens/TodayNext'
 
 const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
 const TIMING_LABEL: Record<Timing, StringKey> = { relaxed: 'timingRelaxed', normal: 'timingNormal', strict: 'timingStrict' }
@@ -32,6 +34,8 @@ interface Props {
   coach?: FactsInput | null
   /** Two players at one keyboard: each one's stars, for their own hand. */
   together?: { name: string; avatar: string; hand: 'right' | 'left'; stars: number }[] | null
+  /** This song as a Today item, to offer the next of Today's four. */
+  today?: TodayItem
 }
 
 /**
@@ -39,7 +43,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, hear, next, coach, together, barLabel = (b) => String(b + 1) }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, hear, next, coach, together, today, barLabel = (b) => String(b + 1) }: Props) {
   const { t, profile, log, updateSetting, settings } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
@@ -143,6 +147,7 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
             </Button>
           </div>
         )}
+        {today && <TodayNext current={today} />}
         {s && !answered && (
           <div className={styles.suggestion}>
             <p>

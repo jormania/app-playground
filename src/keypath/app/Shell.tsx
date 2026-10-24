@@ -184,7 +184,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
         {effective === 'door' && route.name === 'door' && route.door === 'studio' && <StudioScreen />}
         {effective === 'songImport' && <ImportSong />}
         {effective === 'play' && route.name === 'play' && <PlayScreen songId={route.songId} />}
-        {effective === 'settings' && <SettingsScreen />}
+        {effective === 'settings' && route.name === 'settings' && <SettingsScreen at={route.at} />}
         {effective === 'diagnostics' && <DiagnosticsScreen />}
         {effective === 'connect' && <ConnectWizard />}
         {effective === 'progress' && <ProgressScreen />}

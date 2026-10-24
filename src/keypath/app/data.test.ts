@@ -297,6 +297,12 @@ describe('router', () => {
     expect(parseRoute(hrefOf({ name: 'journeyStep', step: 'chord' }))).toEqual({ name: 'journeyStep', step: 'chord' })
   })
 
+  it('opens Settings at Backup from a link, and Settings plain otherwise', () => {
+    expect(parseRoute(hrefOf({ name: 'settings', at: 'backup' }))).toEqual({ name: 'settings', at: 'backup' })
+    expect(parseRoute('#/settings/nope')).toEqual({ name: 'settings' })
+    expect(hrefOf({ name: 'settings' })).toBe('#/settings')
+  })
+
   it('reads a link with a broken escape as written, rather than throwing', () => {
     expect(parseRoute('#/play/import%E0x')).toEqual({ name: 'play', songId: 'import%E0x' })
     expect(parseRoute('#/studio/%')).toEqual({ name: 'studio', songId: '%' })

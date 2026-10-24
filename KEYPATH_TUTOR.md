@@ -1145,6 +1145,32 @@ the notes already had time limits; "Connect" on the setup screens reads 4 px wid
 only because of its larger tap area. A sweep of every screen above, after the fixes: no sideways
 scroll, no hidden option, no page or console error.
 
+### Quality of life, Long Listen style (2026-10-24)
+
+A read of the whole app for everyday friction, the way LONG_LISTEN.md §26–§30 read The Long
+Listen, after the audit above. Most of what a family meets every day was already right (a
+song's setup kept, the next part offered after one is learnt, the screen kept awake, storage
+asked to be kept); three things weren't:
+
+- *Today leads on* (`screens/TodayNext.tsx`). Today is four things in about five minutes, but
+  every end screen led back only to its own door: Home, then the next item, four times. The end
+  of a song (and of a part learnt), of a Journey step and of each game now offers the next of
+  Today's four not yet done, by name. Only when what just ended is on today's card
+  (`sameTodayItem`; the race on the staff is the race), and nothing once the rest is done: the
+  card on Home says that. Its label and how it opens are TodayCard's own (`todayLabel`,
+  `openToday`), so the two can't drift.
+- *Games remember* (`challenges/choices.ts`). Each game opened at level 1 and Note race by name,
+  every visit, though her best was at level 3. A game's level, and how Note race shows the note,
+  are kept per player (`K.games`, in the backup and checked there like the rest), as a song's
+  setup has been since release 3.
+- *The backup, said plainly.* Settings says when the last backup was saved ("Last saved on
+  20 October 2026", or "No backup saved yet"); Home's nudge said "a week since your last backup"
+  to a phone that had never made one, and now says that it hasn't; and it opens Settings at
+  Backup (`#/settings/backup`) rather than at the top of a long page.
+
+Looked at and left: the parent's Progress is a page of counts on purpose (it is the log, read
+for a grown-up), and the Studio's takes already have name, favourite, export and delete.
+
 ### Loop a stretch of bars (2026-10-04, roadmap item 26)
 
 "Practise one bar" on a song's setup is now **Practise a few bars**: two steppers, *Bars 5 to 7*,

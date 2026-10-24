@@ -24,6 +24,7 @@ import { Staff } from './Staff'
 import { JOURNEY, stepById, type JourneyStep } from './steps'
 import { con } from '../console/SetupConsole'
 import styles from './journey.module.css'
+import { TodayNext } from '../screens/TodayNext'
 
 type Mode = 'practice' | 'check'
 type Phase = 'intro' | 'gate' | 'run' | 'result'
@@ -347,6 +348,7 @@ function Step({ step, progress, onProgress, repo, profileId }: StepProps) {
               {t('jMap')}
             </Button>
           </div>
+          <TodayNext current={{ kind: 'journey', step: step.id }} />
         </section>
       )}
 

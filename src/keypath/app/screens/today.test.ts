@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { STARTER_PACK, starterSong, WARMUP_ID } from '../../engine/starterPack'
 import type { LogEvent, LogRecord } from '../log'
 import { memoryStore } from '../store'
-import { isDone, planToday, todayFor } from './today'
+import { isDone, planToday, sameTodayItem, todayFor } from './today'
 
 const songs = STARTER_PACK.map((s) => ({ song: starterSong(s) }))
 const at = (day: string, e: LogEvent): LogRecord => ({ ...e, at: new Date(`${day}T10:00:00`).toISOString(), profileId: 'p' }) as LogRecord
@@ -81,5 +81,13 @@ describe('Today', () => {
     const [a, b] = await Promise.all([todayFor(store, 'p', make, '2026-09-25'), todayFor(store, 'p', make, '2026-09-25')])
     expect(made).toBe(1)
     expect(b).toEqual(a)
+  })
+
+  it('knows the same thing to do: the race on the staff is the race', () => {
+    expect(sameTodayItem({ kind: 'game', game: 'race' }, { kind: 'game', game: 'race' })).toBe(true)
+    expect(sameTodayItem({ kind: 'game', game: 'race' }, { kind: 'game', game: 'ear' })).toBe(false)
+    expect(sameTodayItem({ kind: 'song', songId: 'a' }, { kind: 'song', songId: 'b' })).toBe(false)
+    expect(sameTodayItem({ kind: 'warmup' }, { kind: 'song', songId: 'a' })).toBe(false)
+    expect(sameTodayItem({ kind: 'journey', step: 'cde' }, { kind: 'journey', step: 'cde' })).toBe(true)
   })
 })

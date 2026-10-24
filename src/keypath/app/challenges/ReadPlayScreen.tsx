@@ -25,6 +25,8 @@ import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
 import songStyles from '../songs/songs.module.css'
 import { con, Setting } from '../console/SetupConsole'
+import { GAME_LEVELS, useGameChoice } from './choices'
+import { TodayNext } from '../screens/TodayNext'
 
 type Phase = 'setup' | 'ready' | 'play' | 'between' | 'result'
 const MIDDLE_C = 60
@@ -40,7 +42,7 @@ export function ReadPlayScreen() {
   const intro = useIntro('read')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
-  const [level, setLevel] = useState<ReadLevel>(1)
+  const [level, setLevel] = useGameChoice<ReadLevel>('read', 1, GAME_LEVELS)
   const [phase, setPhase] = useState<Phase>('setup')
   const [piece, setPiece] = useState<ReadPiece | null>(null)
   const [number, setNumber] = useState(1)
@@ -338,6 +340,7 @@ export function ReadPlayScreen() {
               {t('backToChallenges')}
             </Button>
           </div>
+          <TodayNext current={{ kind: 'game', game: 'read' }} />
         </section>
       )}
 

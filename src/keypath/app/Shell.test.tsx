@@ -391,3 +391,33 @@ describe('KeyPath shell: time per door', () => {
     expect((await new EngagementLog(store).read(p.id)).find((e) => e.type === 'door_left')).toMatchObject({ door: 'songs' })
   })
 })
+
+describe('KeyPath shell: the backup, said plainly', () => {
+  it('says when the last backup was saved, or that none has been', async () => {
+    const store = await start()
+    await createPlayer('Nora')
+    history.replaceState(null, '', '#/settings/backup')
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    expect(await screen.findByText('No backup saved yet.')).toBeTruthy()
+    cleanup()
+    await exportBackup(store, new Date('2026-10-20T12:00:00'))
+    history.replaceState(null, '', '#/settings')
+    await start(store)
+    expect(await screen.findByText('Last saved on 20 October 2026.')).toBeTruthy()
+  })
+
+  it('nudges a week of playing with no backup as that, not as “since your last backup”, and leads straight to Backup', async () => {
+    const store = memoryStore()
+    const p = await new ProfileRepo(store).create('Nora', '🐺', new Date(Date.now() - 9 * 24 * 3600 * 1000))
+    await new ProfileRepo(store).setCurrent(p.id)
+    history.replaceState(null, '', '#/home')
+    await start(store)
+    const nudge = await screen.findByRole('button', { name: /no backup yet/ })
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {})
+    fireEvent.click(nudge)
+    await screen.findByText('No backup saved yet.')
+    expect(location.hash).toBe('#/settings/backup')
+    expect(scrolled).toHaveBeenCalled()
+    scrolled.mockRestore()
+  })
+})

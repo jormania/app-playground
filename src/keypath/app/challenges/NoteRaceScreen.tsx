@@ -22,6 +22,8 @@ import { NoteRace, RACE_MS, type RaceLevel, type RaceMode } from './noteRace'
 import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
 import { con, Setting } from '../console/SetupConsole'
+import { GAME_LEVELS, RACE_MODES, useGameChoice } from './choices'
+import { TodayNext } from '../screens/TodayNext'
 
 type Phase = 'setup' | 'run' | 'result'
 const FLASH_MS = 300
@@ -33,8 +35,8 @@ export function NoteRaceScreen() {
   const intro = useIntro('race')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
-  const [level, setLevel] = useState<RaceLevel>(1)
-  const [mode, setMode] = useState<RaceMode>('names')
+  const [level, setLevel] = useGameChoice<RaceLevel>('race', 1, GAME_LEVELS)
+  const [mode, setMode] = useGameChoice<RaceMode>('raceMode', 'names', RACE_MODES)
   const game = mode === 'staff' ? 'staff' : 'race'
   const [phase, setPhase] = useState<Phase>('setup')
   const [prompt, setPrompt] = useState(0)
@@ -222,6 +224,7 @@ export function NoteRaceScreen() {
               {t('backToChallenges')}
             </Button>
           </div>
+          <TodayNext current={{ kind: 'game', game: 'race' }} />
         </section>
       )}
 

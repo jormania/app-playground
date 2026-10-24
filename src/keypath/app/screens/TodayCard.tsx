@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useApp } from '../context'
+import { useApp, type KeyPathApp } from '../context'
 import type { StringKey } from '../i18n'
 import { JourneyRepo } from '../journey/progress'
 import { stepById } from '../journey/steps'
-import type { Door } from '../log'
+import type { Door, EngagementLog } from '../log'
 import { localDate } from '../progress/summary'
 import { navigate } from '../router'
 import { SongLibrary } from '../songs/library'
@@ -18,8 +18,30 @@ const GAME: Record<'race' | 'echo' | 'chord' | 'ear' | 'read', { icon: string; t
   ear: { icon: '👂', title: 'earTitle' },
   read: { icon: '📖', title: 'readTitle' },
 }
+type Translate = KeyPathApp['t']
+
 const KIND: Record<TodayItem['kind'], StringKey> = { warmup: 'todayWarmup', song: 'todaySong', journey: 'todayJourney', game: 'todayGame' }
 const DOOR: Record<TodayItem['kind'], Door> = { warmup: 'songs', song: 'songs', journey: 'journey', game: 'challenges' }
+
+/** What a Today item is called on the card: its icon and name, or null for a song no longer on the phone. */
+export function todayLabel(i: TodayItem, t: Translate, titles: ReadonlyMap<string, string>): string | null {
+  if (i.kind === 'warmup') return titles.has(WARMUP_ID) ? `🤲 ${titles.get(WARMUP_ID)}` : null
+  if (i.kind === 'song') return titles.has(i.songId) ? `🎵 ${titles.get(i.songId)}` : null
+  if (i.kind === 'journey') {
+    const step = stepById(i.step)
+    return step ? `🗺️ ${t(step.title)}` : null
+  }
+  return `${GAME[i.game].icon} ${t(GAME[i.game].title)}`
+}
+
+/** Go to a Today item, counted as opening its door. */
+export function openToday(i: TodayItem, log: EngagementLog, profileId: string): void {
+  void log.add(profileId, { type: 'door_opened', door: DOOR[i.kind] })
+  if (i.kind === 'warmup') navigate({ name: 'play', songId: WARMUP_ID })
+  else if (i.kind === 'song') navigate({ name: 'play', songId: i.songId })
+  else if (i.kind === 'journey') navigate({ name: 'journeyStep', step: i.step })
+  else navigate({ name: 'challenge', game: i.game })
+}
 
 /** Today's local date, which moves on at midnight even if Home stays open overnight. */
 export function useLocalDay(): string {
@@ -65,25 +87,10 @@ export function TodayCard() {
   }, [profile, log, store, settings.language, date])
 
   if (!profile || !today) return null
-  const what = (i: TodayItem): string | null => {
-    if (i.kind === 'warmup') return today.titles.has(WARMUP_ID) ? `🤲 ${today.titles.get(WARMUP_ID)}` : null
-    if (i.kind === 'song') return today.titles.has(i.songId) ? `🎵 ${today.titles.get(i.songId)}` : null
-    if (i.kind === 'journey') {
-      const step = stepById(i.step)
-      return step ? `🗺️ ${t(step.title)}` : null
-    }
-    return `${GAME[i.game].icon} ${t(GAME[i.game].title)}`
-  }
   // A song taken off the phone since the morning simply drops out.
-  const shown = today.plan.items.map((item, i) => ({ item, done: today.done[i], label: what(item) })).filter((x) => x.label)
+  const shown = today.plan.items.map((item, i) => ({ item, done: today.done[i], label: todayLabel(item, t, today.titles) })).filter((x) => x.label)
   const allDone = shown.every((x) => x.done)
-  const open = (i: TodayItem) => {
-    void log.add(profile.id, { type: 'door_opened', door: DOOR[i.kind] })
-    if (i.kind === 'warmup') navigate({ name: 'play', songId: WARMUP_ID })
-    else if (i.kind === 'song') navigate({ name: 'play', songId: i.songId })
-    else if (i.kind === 'journey') navigate({ name: 'journeyStep', step: i.step })
-    else navigate({ name: 'challenge', game: i.game })
-  }
+  const open = (i: TodayItem) => openToday(i, log, profile.id)
 
   return (
     <section className={styles.today} aria-labelledby="today-title" data-all-done={allDone || undefined}>

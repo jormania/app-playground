@@ -729,3 +729,17 @@
     gap: 2px;
   }
 }
+
+/* The end of a song, a step or a game: the next of Today's four, one tap away. */
+.todayNext {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+.todayNextLabel {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}

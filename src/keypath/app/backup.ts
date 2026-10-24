@@ -39,7 +39,7 @@ const SHAPES: [RegExp, (v: unknown) => boolean][] = [
   [new RegExp(`^${P}songs$`), (v) => Array.isArray(v) && v.every((s) => isObject(s) && typeof s.id === 'string' && Array.isArray(s.notes))],
   [new RegExp(`^${P}(log|logArchive:\\d+):`), Array.isArray],
   [new RegExp(`^${P}(studio|intros|stickers):`), Array.isArray],
-  [new RegExp(`^${P}(settings|journey|challenges|parts|setup|weekly):`), isObject],
+  [new RegExp(`^${P}(settings|journey|challenges|parts|setup|weekly|games):`), isObject],
   [new RegExp(`^${P}today:`), (v) => isObject(v) && typeof v.date === 'string' && Array.isArray(v.items)],
   [new RegExp(`^${P}keyboard$`), isObject],
 ]
@@ -99,4 +99,9 @@ export async function backupDue(store: KeyValueStore, now = new Date()): Promise
   // so a brand-new phone isn't nagged on day one.
   const since = (await store.get<Meta>(K.meta))?.lastBackupAt ?? profiles.map((p) => p.createdAt).sort()[0]
   return now.getTime() - new Date(since).getTime() > WEEK_MS
+}
+
+/** When the last backup was saved on this phone, or null when none has been. */
+export async function lastBackup(store: KeyValueStore): Promise<string | null> {
+  return (await store.get<Meta>(K.meta))?.lastBackupAt ?? null
 }

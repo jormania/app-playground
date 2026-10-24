@@ -26,6 +26,15 @@ const GAMES: TodayGame[] = ['race', 'echo', 'chord', 'ear', 'read']
 /** The note race read off a staff counts as the race. */
 const gameOf = (g: string): TodayGame | null => (g === 'staff' ? 'race' : GAMES.includes(g as TodayGame) ? (g as TodayGame) : null)
 
+/** The same thing to do: the warm-up, the same song, step or game (the note race on the staff counts as the race). */
+export function sameTodayItem(a: TodayItem, b: TodayItem): boolean {
+  if (a.kind === 'warmup' || b.kind === 'warmup') return a.kind === b.kind
+  if (a.kind === 'song' && b.kind === 'song') return a.songId === b.songId
+  if (a.kind === 'journey' && b.kind === 'journey') return a.step === b.step
+  if (a.kind === 'game' && b.kind === 'game') return gameOf(a.game) === gameOf(b.game)
+  return false
+}
+
 /** Days since 1970 on the phone's calendar: a number that moves by one each day. */
 const dayNumber = (date: string) => Math.round(Date.parse(`${date}T12:00:00Z`) / 86400000)
 

@@ -81,6 +81,8 @@ export const K = {
   setup: (profileId: string) => `${PREFIX}setup:${profileId}`,
   /** The weekly note in Progress, as last written, so opening Progress doesn't ask again. */
   weekly: (profileId: string) => `${PREFIX}weekly:${profileId}`,
+  /** What she chose on each game's setup last time: its level, and how Note race shows the note. */
+  games: (profileId: string) => `${PREFIX}games:${profileId}`,
   /** The games' and the Journey's first-look cards this player asked not to see again. */
   intros: (profileId: string) => `${PREFIX}intros:${profileId}`,
 }

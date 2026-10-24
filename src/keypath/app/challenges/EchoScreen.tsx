@@ -21,6 +21,8 @@ import { RecordRepo, type ChallengeRecords } from './records'
 import { beatMs, ECHO_BPM, ECHO_PATTERNS, ECHO_WINDOW_MS, judgeEcho, syllables, turnTimeline, type EchoLevel, type EchoResult } from './rhythm'
 import styles from './challenges.module.css'
 import { con, Setting } from '../console/SetupConsole'
+import { GAME_LEVELS, useGameChoice } from './choices'
+import { TodayNext } from '../screens/TodayNext'
 
 type Phase = 'setup' | 'turn' | 'result' | 'done'
 /** What the turn is doing now, for the big label. */
@@ -41,7 +43,7 @@ export function EchoScreen() {
   const intro = useIntro('echo')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
-  const [level, setLevel] = useState<EchoLevel>(1)
+  const [level, setLevel] = useGameChoice<EchoLevel>('echo', 1, GAME_LEVELS)
   const [phase, setPhase] = useState<Phase>('setup')
   const [index, setIndex] = useState(0)
   const [cue, setCue] = useState<Cue>({ kind: 'listen' })
@@ -330,6 +332,7 @@ export function EchoScreen() {
               {t('backToChallenges')}
             </Button>
           </div>
+          <TodayNext current={{ kind: 'game', game: 'echo' }} />
         </section>
       )}
 

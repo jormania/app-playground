@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { MidiEvent } from '../../midi/types'
 import { Shell } from '../Shell'
 import { EngagementLog } from '../log'
 import { ProfileRepo } from '../profiles'
-import { memoryStore } from '../store'
+import { K, memoryStore } from '../store'
+import { localDate } from '../progress/summary'
 import { RecordRepo } from './records'
 import { beatMs, ECHO_BPM, ECHO_PATTERNS } from './rhythm'
 
@@ -352,5 +353,59 @@ describe('The setup console, as on a song', () => {
     expect(screen.getByRole('button', { name: /How it works/ }).parentElement).toBe(screen.getByRole('button', { name: 'Start' }).parentElement)
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     expect(console()).toBeNull()
+  })
+})
+
+describe('Games remember', () => {
+  it('opens each game where this player left it, and another player at the start', async () => {
+    const { store } = await open('#/challenge/race')
+    await flush()
+    fireEvent.click(screen.getByRole('radio', { name: 'On the staff' }))
+    const level3 = () => within(screen.getByRole('radiogroup', { name: 'Level' })).getAllByRole('radio')[2]
+    fireEvent.click(level3())
+    cleanup()
+    history.replaceState(null, '', '#/challenge/race')
+    render(<Shell store={store} />)
+    await flush()
+    expect(screen.getByRole('radio', { name: 'On the staff' }).getAttribute('aria-checked')).toBe('true')
+    expect(level3().getAttribute('aria-checked')).toBe('true')
+    cleanup()
+    const profiles = new ProfileRepo(store)
+    const other = await profiles.create('Gabriel', '🦉')
+    await profiles.setCurrent(other.id)
+    history.replaceState(null, '', '#/challenge/race')
+    render(<Shell store={store} />)
+    await flush()
+    expect(screen.getByRole('radio', { name: 'By name' }).getAttribute('aria-checked')).toBe('true')
+    expect(level3().getAttribute('aria-checked')).toBe('false')
+  })
+})
+
+describe('Today leads on', () => {
+  const plan = (game: 'race' | 'ear') => ({ date: localDate(new Date().toISOString()), items: [{ kind: 'warmup' }, { kind: 'game', game }] })
+
+  it('ends a game on today’s card with the next of Today’s four', async () => {
+    const { store, profileId } = await open('#/challenge/race')
+    await store.set(K.today(profileId), plan('race'))
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    advance(30_000)
+    await flush()
+    await flush()
+    expect(screen.getByText(/Next for today/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Five-finger warm-up/ }))
+    expect(location.hash).toBe('#/play/starter%3Awarmup')
+  })
+
+  it('says nothing after a game today’s card doesn’t hold', async () => {
+    const { store, profileId } = await open('#/challenge/race')
+    await store.set(K.today(profileId), plan('ear'))
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    advance(30_000)
+    await flush()
+    await flush()
+    expect(screen.getByText('None found this time. Have another go!')).toBeTruthy()
+    expect(screen.queryByText(/Next for today/)).toBeNull()
   })
 })

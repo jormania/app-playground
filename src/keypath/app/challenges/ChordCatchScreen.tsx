@@ -22,6 +22,8 @@ import { ChordCatch, SCREEN_KEYS, shows, voicingOf, type ChordDef, type ChordLev
 import { RecordRepo, type ChallengeRecords } from './records'
 import styles from './challenges.module.css'
 import { con, Setting } from '../console/SetupConsole'
+import { GAME_LEVELS, useGameChoice } from './choices'
+import { TodayNext } from '../screens/TodayNext'
 
 type Phase = 'setup' | 'run' | 'result'
 const FLASH_MS = 300
@@ -41,7 +43,7 @@ export function ChordCatchScreen() {
   const intro = useIntro('chord')
   const repo = useMemo(() => new RecordRepo(store), [store])
   const [records, setRecords] = useState<ChallengeRecords | null>(null)
-  const [level, setLevel] = useState<ChordLevel>(1)
+  const [level, setLevel] = useGameChoice<ChordLevel>('chord', 1, GAME_LEVELS)
   const [phase, setPhase] = useState<Phase>('setup')
   const [prompt, setPrompt] = useState<ChordDef | null>(null)
   const [caught, setCaught] = useState(false)
@@ -244,6 +246,7 @@ export function ChordCatchScreen() {
               {t('backToChallenges')}
             </Button>
           </div>
+          <TodayNext current={{ kind: 'game', game: 'chord' }} />
         </section>
       )}
 
