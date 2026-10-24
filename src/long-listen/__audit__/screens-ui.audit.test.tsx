@@ -197,9 +197,9 @@ describe('what was made beside this week’s programme', () => {
     const block = await screen.findByRole('navigation', { name: 'Also this week' }, { timeout: 4000 })
     const link = [...block.querySelectorAll('a')].find((a) => a.textContent === sitting.title)
     expect(link?.getAttribute('href')).toBe(`#/p/${sitting.id}`)
-    expect(block.textContent).toMatch(/a sitting for tonight, about an hour — “minimalist music tonight”/)
+    expect(block.textContent).toMatch(/a sitting beside this week’s theme, about an hour — “minimalist music tonight”/)
     // Each says when it was made, in the listener's zone.
-    expect(block.textContent).toMatch(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) · a sitting for tonight/)
+    expect(block.textContent).toMatch(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) · a sitting beside this week’s theme/)
     // On the sitting's own page it isn't listed against itself.
     cleanup()
     window.location.hash = `#/p/${sitting.id}`
@@ -229,7 +229,7 @@ describe('several sittings in one week', () => {
     window.location.hash = `#/p/${first.id}`
     render(<App repo={repo} curator={plain()} />)
     await screen.findByRole('heading', { name: first.title }, { timeout: 4000 })
-    expect(document.body.textContent).toMatch(/A sitting for tonight · about an hour · (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/)
+    expect(document.body.textContent).toMatch(/A sitting beside this week’s theme · about an hour · (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/)
   }, 20000)
 })
 
@@ -457,4 +457,41 @@ describe('stabilisation: a taste profile grown long (23 October 2026)', () => {
     expect(screen.getByText(/Line 0\./).closest('details')).toBeNull()
     expect(screen.getByRole('button', { name: 'Gather it into fewer lines' })).toBeTruthy()
   }, 15000)
+})
+
+describe('evenings of their own (24 October 2026)', () => {
+  it('stand in the week\'s timeline, not in its thread, and one tap puts one with the theme', async () => {
+    const repo = new Repo(memoryStore())
+    const p = await chosenWeek(repo, plain())
+    const evening = await new Journey(repo, plain()).sitting('minimalism, nothing Nordic', 2, true)
+
+    // The Journal: a sibling of the week's programme, with its day and mark — not "A sitting for tonight" under it.
+    window.location.hash = '#/journal'
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByText('The weeks so far', {}, { timeout: 4000 })
+    expect(document.body.textContent).toMatch(/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) · an evening of its own: /)
+    expect(document.body.textContent).toContain('asked for as “minimalism, nothing Nordic”')
+    cleanup()
+
+    // Threads: not among the thread's visits; gathered at the foot instead.
+    window.location.hash = '#/threads'
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByText('What we’ve been following', {}, { timeout: 4000 })
+    const visits = screen.queryByRole('list', { name: 'Visits' })
+    expect(visits?.textContent ?? '').not.toContain(evening.title)
+    expect(screen.getByText('Evenings of their own')).toBeTruthy()
+    cleanup()
+
+    // Its page says what it is and where it stands; one tap puts it with the theme, and the page says so.
+    window.location.hash = `#/p/${evening.id}`
+    render(<App repo={repo} curator={plain()} />)
+    await screen.findByRole('heading', { name: evening.title }, { timeout: 4000 })
+    expect(document.body.textContent).toMatch(/An evening of its own · about two hours/)
+    // Its ways on are the evening's: no "More of this theme", and a word on it is about the evening.
+    expect(screen.queryByText('More of this theme')).toBeNull()
+    expect(document.body.textContent).toContain('The end of this evening.')
+    fireEvent.click(screen.getByRole('button', { name: 'Belongs with this week’s theme' }))
+    await screen.findByRole('button', { name: 'Make it an evening of its own' }, { timeout: 4000 })
+    expect((await repo.explorations.require(p.explorationId)).extraProgrammeIds).toContain(evening.id)
+  }, 20000)
 })

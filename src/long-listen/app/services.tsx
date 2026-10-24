@@ -207,7 +207,9 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   useEffect(() => {
     void (async () => {
       const moved = await journey.repairStandInFeedback().catch(() => 0)
-      if (moved) bump()
+      // Sittings filed into a thread before evenings of their own existed move out to the week's timeline, once.
+      const settled = await journey.settleEvenings().catch(() => 0)
+      if (moved || settled) bump()
       if (!curatorReady) return
       const read = await journey.interpretPendingFeedback().catch(() => 0)
       if (read) bump()

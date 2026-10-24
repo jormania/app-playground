@@ -8,8 +8,10 @@ import s from '../styles/editorial.module.css'
 
 /**
  * "A sitting for tonight": some weeks there is one evening, not seven. Say
- * what you'd like and how long you have; the curator writes the evening —
- * joining this week's thread if there is one, or beginning one.
+ * what you'd like and how long you have; the curator writes the evening. With
+ * a programme this week it is an evening of its own unless made beside the
+ * theme (domain/evenings.ts); without one, it becomes the week's programme and
+ * begins a thread.
  */
 export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = true, folded = false }: {
   joinsThread: boolean
@@ -43,6 +45,8 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
       clearHours()
       bump()
       go({ name: 'programme', id: p.id })
+      // Where it went, said once: the page it opens on says the same at the top.
+      if (joinsThread) say(beside ? 'Made beside this week’s theme, in its thread.' : 'An evening of its own: in this week’s timeline, outside the theme.', 'success')
     } catch (e) {
       say(messageOf(e), 'danger')
     } finally {
@@ -56,7 +60,7 @@ export function SittingCard({ joinsThread, busy = false, onMaking, keyHint = tru
       <p className={s.quiet}>
         One evening, not seven? Say what you’d like and how long you have.{' '}
         {joinsThread
-          ? (beside ? 'It joins this week’s thread, with nothing you’ve already been given.' : 'Your words decide the music; this week’s theme stays out of it.')
+          ? (beside ? 'It joins this week’s thread, with nothing you’ve already been given.' : 'Your words decide the music. It stands in the week’s timeline as an evening of its own, outside the theme.')
           : 'It becomes this week’s programme and begins its thread.'}
       </p>
       {/* A form, so Enter asks for the evening: one line, one request. */}

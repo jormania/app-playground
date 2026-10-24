@@ -1,3 +1,4 @@
+import { isOwnEvening, threadMembers } from '../domain/evenings'
 import type { Repo } from '../store/repo'
 import type { WeekKey } from '../domain/types'
 import { creditLine } from '../domain/identity'
@@ -48,6 +49,8 @@ export async function seasonContext(
     }
   })
   const exs = explorations.filter((e) => inSeason.has(e.weekKey))
+  // Which sittings stood apart from their week's theme (domain/evenings.ts): the review tells them as such.
+  const members = threadMembers(explorations)
   const themeIds = [...new Set(exs.map((e) => e.themeId))]
   const start = s.startsOn
   const end = s.endsOn
@@ -63,11 +66,12 @@ export async function seasonContext(
     season: { number: s.number, label: s.label },
     weeks: weeks.filter((w) => inSeason.has(w.weekKey)).sort((a, b) => a.weekKey.localeCompare(b.weekKey)).map((w) => {
       // "More of this theme" of a programme set aside went with it: it is not still part of the week.
-      const setAside = (p: (typeof progs)[number]) => w.setAsideProgrammeIds.includes(p.id) || Boolean(p.extends && w.setAsideProgrammeIds.includes(p.extends))
+      // An evening of its own stood apart from its programme: set aside with it only if it were in its thread.
+      const setAside = (p: (typeof progs)[number]) => w.setAsideProgrammeIds.includes(p.id) || Boolean(p.extends && w.setAsideProgrammeIds.includes(p.extends) && !isOwnEvening(p, members))
       return {
         week: weekFromKey(w.weekKey).label,
         programme: progs.find((p) => p.id === w.programmeId)?.title,
-        alsoThisWeek: progs.filter((p) => p.weekKey === w.weekKey && p.id !== w.programmeId && !setAside(p)).map((p) => (p.sitting ? `a sitting: ${p.title} ("${p.sitting.request}")` : p.title)),
+        alsoThisWeek: progs.filter((p) => p.weekKey === w.weekKey && p.id !== w.programmeId && !setAside(p)).map((p) => (p.sitting ? `${isOwnEvening(p, members) ? 'an evening of its own' : 'a sitting beside the theme'}: ${p.title} ("${p.sitting.request}")` : p.title)),
         setAside: progs.filter((p) => p.weekKey === w.weekKey && setAside(p)).map((p) => p.title),
         mood: w.mood,
         ...said(w.programmeId ?? ''),

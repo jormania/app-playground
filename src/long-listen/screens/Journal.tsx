@@ -16,6 +16,8 @@ import { OpenPaths } from '../components/OpenPaths'
 import s from '../styles/editorial.module.css'
 import { StateTag } from '../components/WorkRows'
 import { performerLine } from '../components/Credits'
+import { EveningMark, eveningWords } from '../components/Evening'
+import { isOwnEvening, threadMembers } from '../domain/evenings'
 
 // 'offered' says nothing the heading doesn't: a direction still on offer gets no tag.
 const OPTION_WORD: Record<ProgrammeOption['status'], string> = {
@@ -44,9 +46,12 @@ interface Listened {
 export function JournalScreen() {
   const { repo, journey, settings, week } = useServices()
   const { data, error, retry } = useLoad(async () => {
-    const [weeks, options, events, feedback, programmes, comparisons, concerts] = await Promise.all([
-      repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(),
+    const [weeks, options, events, feedback, programmes, comparisons, concerts, explorations] = await Promise.all([
+      repo.weeks.all(), repo.options.all(), repo.events.all(), repo.feedback.all(), repo.programmes.all(), repo.comparisons.all(), repo.concerts.all(), repo.explorations.all(),
     ])
+    // Evenings of their own stand in the week's timeline beside its programme, not under it (domain/evenings.ts).
+    const members = threadMembers(explorations)
+    const own = (p: Programme) => isOwnEvening(p, members)
     // Concerts stand in the week they happened, with the hall's mark: live, not the week's programme.
     // One still to come wasn't heard: it waits on Live in Bucharest, not here.
     const today = isoDateIn(new Date(), settings.timeZone)
@@ -71,10 +76,10 @@ export function JournalScreen() {
     })
 
     const programmeById = new Map(programmes.map((p) => [p.id, p]))
-    // "More of this theme" and a sitting joined to the week, after the programme they continue.
+    // "More of this theme" and a sitting beside the theme, after the programme they continue.
     const companionsOf = new Map<string, Programme[]>()
     for (const p of [...programmes].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-      if (p.extends) companionsOf.set(p.extends, [...(companionsOf.get(p.extends) ?? []), p])
+      if (p.extends && !own(p)) companionsOf.set(p.extends, [...(companionsOf.get(p.extends) ?? []), p])
     }
     const withCompanions = (p: Programme) => [p, ...(companionsOf.get(p.id) ?? [])]
     const optionById = new Map(options.map((o) => [o.id, o]))
@@ -85,12 +90,14 @@ export function JournalScreen() {
         const { others, choice } = journalWeek(w, optionById, programmes)
         const main = w?.programmeId ? programmeById.get(w.programmeId) : undefined
         const setAside = (w?.setAsideProgrammeIds ?? []).map((id) => programmeById.get(id)).filter((p): p is Programme => Boolean(p))
-        const all = [...(main ? withCompanions(main) : []), ...setAside.flatMap(withCompanions)]
+        // The week's evenings of their own, in the order they came: a day each, whatever its programme became.
+        const evenings = programmes.filter((p) => p.weekKey === key && own(p)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        const all = [...(main ? withCompanions(main) : []), ...setAside.flatMap(withCompanions), ...evenings]
         // One line a work: a work in both a programme set aside and the one that replaced it is listed once.
         const works = new Set<string>()
         const heard = all.flatMap(listened).filter(({ item }) => !works.has(item.workId) && Boolean(works.add(item.workId)))
-        return { key, main, setAside, others, choice, listened: heard, concerts: concertsIn.get(key) ?? [] }
-      }).filter((e) => e.main || e.setAside.length || e.others.length || e.concerts.length),
+        return { key, main, setAside, evenings, others, choice, listened: heard, concerts: concertsIn.get(key) ?? [] }
+      }).filter((e) => e.main || e.setAside.length || e.evenings.length || e.others.length || e.concerts.length),
       feedback, companionsOf, concertCount: concerts.length, seasons: await journey.seasons(),
     }
   }, [settings.timeZone, settings.hideSkipped])
@@ -111,7 +118,7 @@ export function JournalScreen() {
     )
   }
   const companions = (p: Programme, className: string) =>
-    (data.companionsOf.get(p.id) ?? []).map((x) => programmeLine(x, x.sitting ? `A sitting for tonight, ${madeWords(x.createdAt, settings.timeZone)}: ` : 'More of this theme: ', className))
+    (data.companionsOf.get(p.id) ?? []).map((x) => programmeLine(x, x.sitting ? `${eveningWords(madeWords(x.createdAt, settings.timeZone), false, x.weekKey === week.key)}: ` : 'More of this theme: ', className))
 
   return (
     <div>
@@ -129,7 +136,7 @@ export function JournalScreen() {
       ))}
       {data.entries.length === 0 && <Empty link={{ href: href({ name: 'week' }), label: 'This week' }}>Nothing here yet. Your first week begins on This week.</Empty>}
 
-      {data.entries.map(({ key, main, setAside, others, choice, listened, concerts }) => {
+      {data.entries.map(({ key, main, setAside, evenings, others, choice, listened, concerts }) => {
         const wk = weekFromKey(key)
         return (
           <section key={key} className={s.journalWeek} aria-label={`Week ${wk.number}, ${wk.isoYear}`}>
@@ -147,6 +154,17 @@ export function JournalScreen() {
               <Fragment key={p.id}>
                 {programmeLine(p, 'set aside: ', s.faint)}
                 {companions(p, s.faint)}
+              </Fragment>
+            ))}
+            {/* Evenings of their own: siblings of the programme in the week's timeline, each with its day and mark. */}
+            {evenings.map((p) => (
+              <Fragment key={p.id}>
+                <p className={`${s.quiet} ${s.flush} ${s.mt3xs}`}>
+                  <EveningMark /> {eveningWords(madeWords(p.createdAt, settings.timeZone), true)}: <a href={href({ name: 'programme', id: p.id })} className={s.quietLink}>{p.title}</a>
+                  {/* What was asked for: the evening's reason, since it isn't the week's theme. */}
+                  {p.sitting?.request && <span className={s.faint}> — asked for as “{p.sitting.request}”</span>}
+                </p>
+                {lastWord(data.feedback, p.id) && <p className={`${s.said} ${s.flush}`}><q>{lastWord(data.feedback, p.id)}</q></p>}
               </Fragment>
             ))}
             {choice && choice.kind !== 'chosen' && (

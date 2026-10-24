@@ -1434,3 +1434,42 @@ report lives with the session; what it changed:
 - Settings: a connection that works folds its fields, buttons and how-to under *Manage*; warnings stay out.
   *Modern* recordings (and its hint) mean 1980 on, an older one only where no good modern one exists, and said.
 
+## 32. Evenings of their own (24 October 2026)
+
+A week has two axes: **time** (the Journal's calendar — everything heard, in order) and **theme** (a thread's
+argument — only what belongs to it). A sitting for tonight is always on the first; it is on the second only when
+it was made beside the theme. Before this, every sitting made beside a week's programme was filed into its
+thread, however far it strayed ("Pulse, Voices, Light", American minimalism, under *Northern Light*; "Slow Light,
+Many Voices" under *Orchestra and Soloist in Conversation*), so its works counted as the thread's covered music,
+its composers and years joined the thread's summary, and Notion's thread row carried it.
+
+- **Membership is the exploration's `extraProgrammeIds`** — the one record every thread reader already uses
+  (`domain/evenings.ts`: `threadMembers`, `isOwnEvening`). A sitting beside a programme (`extends`) but outside it
+  is an evening of its own. `Journey.sitting` now records `own` either way; an own evening is never added
+  (`companion_`); `Journey.placeEvening(id, withTheme)` moves one in or out.
+- **The backlog**, once per device (`Journey.settleEvenings`, mark `repair:evenings-of-their-own`, run at
+  start-up beside the stand-in repair): every sitting except those made beside the theme since the choice was
+  recorded (`own: false`) leaves its thread. Keyed on the flag, not only the mark, so after a fresh start a
+  sitting made beside the theme is never swept out.
+- **What was heard stays.** Listening, notes and reactions are on the recordings: an own evening is still in
+  recent listening, already programmed and the taste; only the thread stops counting it as covered.
+- **Journal:** own evenings are siblings of the week's programme, each with its day and a moon mark (*Saturday ·
+  an evening of its own*); a sitting beside the theme keeps its place under the programme (*a sitting beside
+  this week's theme*). Their works stay in *What you listened to*.
+- **Threads:** an own evening is in no thread's visits; they gather in the fold *Evenings of their own* at the
+  foot, newest first, each with **Follow this evening** — three directions that start from it, and only then a
+  thread (`eveningSeed`, through `useFollow`).
+- **Programme page:** the eyebrow says *An evening of its own* (moon) or *A sitting beside this week's theme*; a
+  line under it says where it stands, with **Belongs with this week's theme** / **Make it an evening of its own**,
+  and for an own evening **Follow this evening**. It is not told as a return to the thread. *Also this week*
+  marks each the same way.
+- **Notion:** an own evening's Journal row reads *An evening of its own* for Theme, with no Visit; thread rows
+  drop it on the next sync.
+- **Audited the same day.** On an evening's own page, *Where next* is the evening's: no *More of this theme*
+  (that belongs to the programme's page; its list there now names only theme programmes, not sittings), "How
+  did the evening land?", and a word on it is about the evening, never "the theme itself". An earlier week's
+  labels say "the week's theme", not "this week's"; its programme page heads the list *Also that week*. The
+  Journal line says what the evening was asked for. Making one says where it went. The season review tells an
+  evening of its own from a sitting beside the theme, and no longer drops an own evening because its week's
+  programme was set aside.
+
