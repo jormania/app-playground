@@ -29,6 +29,9 @@ import { Twisty } from '../components/Twisty'
 import { ListeningRow, MoreContextRow, type StateChoice } from '../components/WorkRows'
 import { heardAs, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { BackupNudge } from '../components/BackupNudge'
+import { EveningMark, eveningWords } from '../components/Evening'
+import { eveningSeed, isOwnEvening, threadMembers } from '../domain/evenings'
+import { useFollow } from '../app/follow'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
 import { whenWords } from '../domain/going'
@@ -53,8 +56,10 @@ interface Bundle {
   resourcesSearched: boolean
   explanations: Map<string, Explanation>
   playlist?: PlaylistMark
-  /** The week's main programme when this one is "more of this theme". */
+  /** The week's main programme when this one is "more of this theme" or a sitting. */
   root?: Programme
+  /** The thread's members (domain/evenings.ts): a sitting outside them is an evening of its own. */
+  members: Set<string>
   /** "More of this theme" programmes made for the week's programme. */
   extensions: Programme[]
   /** Paths offered in earlier weeks and still open, newest first. */
@@ -107,6 +112,7 @@ async function loadBundle(repo: Repo, id: string): Promise<Bundle> {
     playlist: playlistMark?.value as PlaylistMark | undefined,
     root,
     extensions,
+    members: threadMembers(exploration ? [exploration] : []),
     openPaths,
     pairs: (await repo.preferences()).pairs,
   }
@@ -175,8 +181,10 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCurrent, b.resourcesSearched, p.id])
 
+  const own = isOwnEvening(p, b.members)
   const first = b.firstExploration
-  const returning = p.stage > 1 && first
+  // An evening of its own is no visit to the thread: it isn't told as a return to it.
+  const returning = !own && p.stage > 1 && first
   const shownItems = p.sections.flatMap((x) => x.items).filter(shown)
   // With two works or more the running order heads the music and says how long it runs; with one, the tools line does.
   const ordered = shownItems.length >= 2
@@ -190,14 +198,20 @@ export function ProgrammeView({ b }: { b: Bundle }) {
     // One page however it was reached ("#/" as This week, "#/p/<id>" from the Journal): the folds opened on it are kept under this name.
     <article data-page={`programme:${p.id}`}>
       <p className={s.eyebrow}>
-        {p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · ${madeWords(p.createdAt, settings.timeZone)}` : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
+        {own && <><EveningMark />{' '}</>}
+        {p.sitting && p.extends
+          ? `${own ? 'An evening of its own' : 'A sitting beside this week’s theme'} · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · ${madeWords(p.createdAt, settings.timeZone)}`
+          : p.sitting ? `A sitting for tonight · ${p.sitting.hours === 1 ? 'about an hour' : 'about two hours'} · ${madeWords(p.createdAt, settings.timeZone)}`
+            : p.extends ? 'More of this week’s theme' : isCurrent ? 'This week’s programme' : setAside ? 'Set aside' : 'From the journal'}
         {/* The masthead already dates this week; an earlier week's programme says which it was. */}
         {p.weekKey !== week.key && ` · ${weekFromKey(p.weekKey).label}`}
       </p>
-      {b.root && <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>}
+      {b.root && (p.sitting
+        ? <EveningPlace p={p} root={b.root} own={own} />
+        : <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>)}
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
-      <AlsoThisWeek extensions={b.extensions} current={p.id} isCurrent={isCurrent} timeZone={settings.timeZone} />
+      <AlsoThisWeek extensions={b.extensions} members={b.members} current={p.id} isCurrent={isCurrent} timeZone={settings.timeZone} />
       {isCurrent && !p.extends && <BackupNudge />}
 
       {returning && (
@@ -709,13 +723,49 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
 }
 
 /**
+ * Where a sitting stands: in the week of its programme, on its own terms or
+ * beside the theme — and the one tap that moves it (Journey.placeEvening). An
+ * evening of its own can also be followed: three directions from it, and only
+ * then a thread.
+ */
+function EveningPlace({ p, root, own }: { p: Programme; root: Programme; own: boolean }) {
+  const { journey, bump, say, curatorReady } = useServices()
+  const { following, follow } = useFollow()
+  const [moving, setMoving] = useState(false)
+  async function place(withTheme: boolean) {
+    setMoving(true)
+    try {
+      await journey.placeEvening(p.id, withTheme)
+      bump()
+      say(withTheme ? `Now with “${root.title}”, in its thread.` : 'Now an evening of its own, in the week’s timeline.', 'success')
+    } catch (e) {
+      say(messageOf(e), 'danger')
+    } finally {
+      setMoving(false)
+    }
+  }
+  const seed = eveningSeed(p)
+  return (
+    <p className={s.quiet}>
+      {own ? 'In the week of ' : 'Beside '}<a href={href({ name: 'programme', id: root.id })}>{root.title}</a>{own ? ', on its own terms.' : ', in its thread.'}{' '}
+      <button className={`${s.textButton} ${s.quietButton}`} onClick={() => void place(own)} disabled={moving}>
+        {own ? 'Belongs with this week’s theme' : 'Make it an evening of its own'}
+      </button>
+      {own && curatorReady && (
+        <>{' · '}<button className={`${s.textButton} ${s.quietButton}`} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Follow this evening'}</button></>
+      )}
+    </p>
+  )
+}
+
+/**
  * What was made beside this programme: a sitting for tonight, or more of its
  * theme. They are programmes of their own, joined to this one's thread, and used
  * to be found only in a fold at the very foot of the page ("More of this theme ·
  * 1 so far") — so an evening asked for in the morning was gone by the evening.
  * Said at the top instead, in the order they were made, each with what it is and when.
  */
-function AlsoThisWeek({ extensions, current, isCurrent, timeZone }: { extensions: Programme[]; current: string; isCurrent: boolean; timeZone: string }) {
+function AlsoThisWeek({ extensions, members, current, isCurrent, timeZone }: { extensions: Programme[]; members: Set<string>; current: string; isCurrent: boolean; timeZone: string }) {
   const others = extensions.filter((x) => x.id !== current).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   if (!others.length) return null
   return (
@@ -724,11 +774,12 @@ function AlsoThisWeek({ extensions, current, isCurrent, timeZone }: { extensions
       <ul>
         {others.map((x) => (
           <li key={x.id}>
+            {isOwnEvening(x, members) && <><EveningMark />{' '}</>}
             <a href={href({ name: 'programme', id: x.id })}>{x.title}</a>
             <span className={s.faint}>
               {' · '}
               {x.sitting
-                ? `${madeWords(x.createdAt, timeZone)} · a sitting for tonight, ${x.sitting.hours === 1 ? 'about an hour' : 'about two hours'}${x.sitting.request ? ` — “${x.sitting.request}”` : ''}`
+                ? `${eveningWords(madeWords(x.createdAt, timeZone), isOwnEvening(x, members))}, ${x.sitting.hours === 1 ? 'about an hour' : 'about two hours'}${x.sitting.request ? ` — “${x.sitting.request}”` : ''}`
                 : `${madeWords(x.createdAt, timeZone)} · more of this theme`}
             </span>
           </li>

@@ -366,14 +366,17 @@ export class Journey {
 
   /**
    * "A sitting for tonight": one evening's music, asked for on the day in the
-   * listener's words, for an hour or two. With a programme this week it joins
-   * that programme's thread, like "More of this theme" — nothing it covered
-   * comes back. Without one, it becomes the week's programme and begins its
-   * thread. Either way it is recorded where the rest of the listening is.
+   * listener's words, for an hour or two. With a programme this week it is an
+   * evening of its own by default (`own`): in the week's timeline, outside its
+   * thread (domain/evenings.ts); made beside the theme, it joins the thread like
+   * "More of this theme" — nothing it covered comes back. Without a programme
+   * it becomes the week's programme and begins its thread. Either way it is
+   * recorded where the rest of the listening is.
    */
   sitting(request: string, hours: 1 | 2, own = false): Promise<Programme> {
     const lw = this.currentWeek()
-    const sitting: Sitting = { request: request.trim(), hours, ...(own ? { own: true } : {}) }
+    // Said either way, so a sitting made beside the theme is never mistaken for one from before the choice existed.
+    const sitting: Sitting = { request: request.trim(), hours, own }
     // Keyed by what was asked: a double tap shares the call, another evening asked for meanwhile is its own.
     return this.once(`sitting:${lw.key}:${hours}:${own ? 'own' : 'thread'}:${sitting.request}`, async () => {
       // Outside the week's queue: it may be ensureWeek's call, which queues there itself.
@@ -441,11 +444,26 @@ export class Journey {
     const programme: Programme = ask.sitting ? { ...ingested.programme, sitting: ask.sitting } : ingested.programme
     await this.repo.comparisons.putMany(ingested.comparisons)
     await this.repo.addProgramme(programme)
+    // An evening of its own stays out of the thread: in the week's timeline, not in what the thread covered.
+    if (own) return programme
     // Read again: while the curator wrote, another companion may have joined the
     // thread, or a change of direction set it aside — both are kept.
     const latest = (await this.repo.explorations.get(root.explorationId)) ?? exploration
     await this.repo.explorations.put({ ...latest, extraProgrammeIds: [...(latest.extraProgrammeIds ?? []), programme.id] })
     return programme
+  }
+
+  /**
+   * Put a sitting with its week's theme, or make it an evening of its own: in or
+   * out of the thread (the exploration's `extraProgrammeIds`). What was heard and
+   * said of it is untouched — it stays in the listening and the taste either way.
+   */
+  async placeEvening(programmeId: string, withTheme: boolean): Promise<void> {
+    const p = await this.repo.programmes.require(programmeId)
+    if (!p.sitting || !p.extends) return
+    const ex = await this.repo.explorations.require(p.explorationId)
+    const rest = (ex.extraProgrammeIds ?? []).filter((id) => id !== p.id)
+    await this.repo.explorations.put({ ...ex, extraProgrammeIds: withTheme ? [...rest, p.id] : rest })
   }
 
   /**
@@ -792,6 +810,32 @@ export class Journey {
     }
     await this.repo.feedback.put(f)
     return f
+  }
+
+  /**
+   * Every sitting made beside a week's programme before evenings of their own
+   * existed was filed into the week's thread, however far the evening strayed
+   * from it ("Pulse, Voices, Light" under Northern Light). Once per device —
+   * and again after a restore, whose marks don't carry this one — each moves out
+   * to the week's timeline; "Belongs with this week's theme" puts one back.
+   * Returns how many moved.
+   */
+  async settleEvenings(): Promise<number> {
+    const done = 'repair:evenings-of-their-own'
+    if (await this.repo.marks.get(done)) return 0
+    // Every one but those made beside the theme since that choice was recorded (`own: false`): the oldest carry no
+    // `own` at all, and those asked for on their own terms (`own: true`) were still filed into the thread until now.
+    // So one made beside the theme is never swept out by this on a device that hasn't run it (after a fresh start).
+    const evenings = new Set((await this.repo.programmes.all()).filter((p) => p.sitting && p.extends && p.sitting.own !== false).map((p) => p.id))
+    let moved = 0
+    for (const ex of await this.repo.explorations.all()) {
+      const keep = (ex.extraProgrammeIds ?? []).filter((id) => !evenings.has(id))
+      if (keep.length === (ex.extraProgrammeIds ?? []).length) continue
+      moved += (ex.extraProgrammeIds ?? []).length - keep.length
+      await this.repo.explorations.put({ ...ex, extraProgrammeIds: keep })
+    }
+    await this.repo.marks.put({ id: done, at: this.stamp(), value: { moved } })
+    return moved
   }
 
   /**

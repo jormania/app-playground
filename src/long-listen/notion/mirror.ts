@@ -8,6 +8,7 @@ import type { ListenerPreferences } from '../domain/types'
 import { observationsByStance } from '../curation/taste'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
 import { heardAs, itemFeedback, standInsOf } from '../domain/standIns'
+import { isOwnEvening, threadMembers } from '../domain/evenings'
 import { groupByComposer } from '../domain/composerGroups'
 import { BREADTH, FAMILIARITY, TIME } from '../domain/exploration'
 import { setAsideProgrammes } from '../domain/library'
@@ -607,8 +608,12 @@ async function syncOnce(unguarded: NotionCall, repo: Repo, pageId: string, curre
   const standIns = standInsOf(comparisons)
   let written = 0
 
+  // An evening of its own belongs to no thread (domain/evenings.ts): its row says so, and names no visit.
+  const members = threadMembers(explorations)
   for (const p of programmes.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-    written += Number(await syncProgrammePage(call, repo, dbs.journal, p, journalProps(p, themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek, standIns),
+    const own = isOwnEvening(p, members)
+    const props = journalProps(p, own ? 'An evening of its own' : themeTitle.get(p.themeId) ?? '', events, feedback, setAside.has(p.id), currentWeek, standIns)
+    written += Number(await syncProgrammePage(call, repo, dbs.journal, p, own ? { ...props, Visit: { number: null } } : props,
       resources.filter((r) => r.programmeId === p.id), standInLines(p, comparisons)))
   }
   // Once a week is enough: a row goes stale only when a week turns. An unchanged notebook still costs no calls.

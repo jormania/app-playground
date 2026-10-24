@@ -743,8 +743,8 @@ describe('a sitting for tonight', () => {
     const j = journey(c.client)
     const p = await j.sitting('quiet, nothing I know', 1)
     expect(c.count('themes')).toBe(0)
-    expect(c.calls[0].payload.sitting).toEqual({ request: 'quiet, nothing I know', hours: 1 })
-    expect(p.sitting).toEqual({ request: 'quiet, nothing I know', hours: 1 })
+    expect(c.calls[0].payload.sitting).toEqual({ request: 'quiet, nothing I know', hours: 1, own: false })
+    expect(p.sitting).toEqual({ request: 'quiet, nothing I know', hours: 1, own: false })
     const week = await repo.weeks.require('2026-W41')
     expect(week.programmeId).toBe(p.id)
     const theme = await repo.themes.require(p.themeId)
@@ -766,8 +766,14 @@ describe('a sitting for tonight', () => {
     expect(call.payload.option.title).toBe('Tonight')
     expect(call.payload.option.pitch).toBe('minimalist music')
     expect(tonight.sitting?.own).toBe(true)
-    // Still recorded beside the week's programme, so it is found with the rest.
+    // In the week's timeline (beside its programme), but not in the thread: an evening of its own.
+    expect(tonight.extends).toBeTruthy()
+    expect((await repo.explorations.require(tonight.explorationId)).extraProgrammeIds ?? []).not.toContain(tonight.id)
+    // One tap puts it with the week's theme, and one takes it out again.
+    await j.placeEvening(tonight.id, true)
     expect((await repo.explorations.require(tonight.explorationId)).extraProgrammeIds).toContain(tonight.id)
+    await j.placeEvening(tonight.id, false)
+    expect((await repo.explorations.require(tonight.explorationId)).extraProgrammeIds).not.toContain(tonight.id)
   })
 
   it('with a programme this week, joins its thread and is told what the thread has covered', async () => {
@@ -780,7 +786,7 @@ describe('a sitting for tonight', () => {
     const first = await j.choose(w.optionIds[0])
     const tonight = await j.sitting('something big', 2)
     const call = c.calls.filter((x) => x.op === 'programme')[1]
-    expect(call.payload.sitting).toEqual({ request: 'something big', hours: 2 })
+    expect(call.payload.sitting).toEqual({ request: 'something big', hours: 2, own: false })
     expect(call.payload.thread.covered.works.length).toBeGreaterThan(0)
     expect(tonight.extends).toBe(first.id)
     expect(tonight.themeId).toBe(first.themeId)
@@ -788,6 +794,25 @@ describe('a sitting for tonight', () => {
     expect(ex.extraProgrammeIds).toContain(tonight.id)
     // The week's programme is still the one chosen.
     expect((await repo.weeks.require('2026-W41')).programmeId).toBe(first.id)
+  })
+})
+
+describe('sittings filed into a thread before evenings of their own existed (24 October 2026)', () => {
+  it('move out to the week\'s timeline once, leaving "more of this theme" in the thread', async () => {
+    await repo.programmes.put({ id: 'sit1', extends: 'p1', sitting: { request: 'minimalism', hours: 2 } } as never)
+    await repo.programmes.put({ id: 'more1', extends: 'p1' } as never)
+    // Asked for on its own terms before today, and still filed into the thread then.
+    await repo.programmes.put({ id: 'sit3', extends: 'p1', sitting: { request: 'pulse', hours: 2, own: true } } as never)
+    // Made beside the theme since the choice existed: it says so, and stays.
+    await repo.programmes.put({ id: 'sit2', extends: 'p1', sitting: { request: 'more of it', hours: 1, own: false } } as never)
+    await repo.explorations.put({ id: 'ex1', themeId: 't1', weekKey: '2026-W41', stage: 1, angle: 'a', programmeId: 'p1', extraProgrammeIds: ['sit1', 'more1', 'sit2', 'sit3'] })
+    const j = journey(fakeCurator({}).client)
+    expect(await j.settleEvenings()).toBe(2)
+    expect((await repo.explorations.require('ex1')).extraProgrammeIds).toEqual(['more1', 'sit2'])
+    // Once: a sitting put back with its theme afterwards stays there.
+    await repo.explorations.put({ ...(await repo.explorations.require('ex1')), extraProgrammeIds: ['more1', 'sit2', 'sit1'] })
+    expect(await j.settleEvenings()).toBe(0)
+    expect((await repo.explorations.require('ex1')).extraProgrammeIds).toContain('sit1')
   })
 })
 

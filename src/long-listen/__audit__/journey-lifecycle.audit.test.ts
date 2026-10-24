@@ -112,7 +112,7 @@ describe('a sitting asked for twice the same evening', () => {
     const second = j.sitting('loud and Nordic', 2)
     gate.resolve()
     const [a, b] = await Promise.all([first, second])
-    expect(b.sitting).toEqual({ request: 'loud and Nordic', hours: 2 })
+    expect(b.sitting).toEqual({ request: 'loud and Nordic', hours: 2, own: false })
     expect(a.id).not.toBe(b.id)
   })
 })

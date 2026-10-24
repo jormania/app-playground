@@ -6,6 +6,9 @@ import { useLoad, useServices } from '../app/services'
 import { href } from '../app/router'
 import { useFollow } from '../app/follow'
 import { Empty, Problem, Waiting, madeWords } from '../components/common'
+import { Twisty } from '../components/Twisty'
+import { EveningMark } from '../components/Evening'
+import { eveningSeed, isOwnEvening, threadMembers } from '../domain/evenings'
 import s from '../styles/editorial.module.css'
 
 /**
@@ -25,7 +28,11 @@ export function ThreadsScreen() {
     // A work heard through a stand-in is heard.
     const standIns = standInsOf(comparisons)
     const byId = new Map(programmes.map((p) => [p.id, p]))
+    // Evenings of their own belong to no thread: gathered at the foot, newest first, each one a seed (domain/evenings.ts).
+    const members = threadMembers(explorations)
+    const evenings = programmes.filter((p) => isOwnEvening(p, members)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return {
+      evenings,
       works: new Map(works.map((w) => [w.id, w])),
       events,
       standIns,
@@ -51,9 +58,29 @@ export function ThreadsScreen() {
               follow={curatorReady ? follow : undefined} following={following} />)}
           </ul>
         )}
+
+      {data.evenings.length > 0 && (
+        <Twisty className={s.mtXl} label="Evenings of their own" value="newest first">
+          <ul className={s.bullets}>
+            {data.evenings.map((p) => {
+              const seed = eveningSeed(p)
+              return (
+                <li key={p.id}>
+                  <EveningMark /> <a href={href({ name: 'programme', id: p.id })}>{p.title}</a>
+                  <span className={s.faint}> · {madeWords(p.createdAt, settings.timeZone)}, {weekFromKey(p.weekKey).label}</span>
+                  {curatorReady && (
+                    <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Follow this evening'}</button></>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </Twisty>
+      )}
     </div>
   )
 }
+
 
 function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, events, standIns, now, hideSkipped, timeZone, follow, following }: {
   thread: ShownThread; programmes: Map<string, Programme>
@@ -96,7 +123,7 @@ function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, 
               {v.setAside && <span className={s.faint}> · set aside</span>}
               {/* Its companions, each on a line of its own, in the Journal's and the season's words. */}
               {(v.extraProgrammeIds ?? []).map((id) => programmes.get(id)).filter((x): x is Programme => Boolean(x)).map((x) => (
-                <div key={x.id} className={s.faint}>{x.sitting ? `A sitting for tonight, ${madeWords(x.createdAt, timeZone)}` : 'More of this theme'}: <a href={href({ name: 'programme', id: x.id })}>{x.title}</a></div>
+                <div key={x.id} className={s.faint}>{x.sitting ? `A sitting beside the theme, ${madeWords(x.createdAt, timeZone)}` : 'More of this theme'}: <a href={href({ name: 'programme', id: x.id })}>{x.title}</a></div>
               ))}
               {v.closingNote && <div className={`${s.quiet} ${s.italic}`}>{v.closingNote}</div>}
             </li>
