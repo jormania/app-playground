@@ -590,7 +590,7 @@ nowhere else. What comes next is `LONG_LISTEN_ROADMAP.md`.
   movement Spotify has reached, *Ask about this* (answered with the movement
   sounding; answers now read back by `Journey.answers`), and *A little more
   context*. Stand-ins open in the listening view.
-- *Questions as directions*: the Notebook's questions each have *Follow this*
+- *Questions as directions*: the Notebook's questions each have *Ask for three directions from it* (*Follow this* until 24 October 2026)
   and *next week*.
 - *Second hearings*: works called interesting or too difficult three weeks or
   more ago are offered to the programme curator; one may return, as a question
@@ -1298,7 +1298,7 @@ What it changed:
 ## 27. Batch two of the QoL audit: memory you can act on (23 October 2026)
 
 - **Threads lead somewhere.** Each thread's *Questions it left* and *Where it could go next* carry
-  *Follow this*, and the thread itself *Return to this thread* — the Notebook's follow, shared as
+  *Ask for three directions from it*, and the thread itself *Return to this thread* — the Notebook's follow, shared as
   `useFollow` (`app/follow.ts`): before a choice this week, three directions replace the three on offer; after
   one, they wait under Where next. A request that names a thread now brings its digest even when it is older
   than the twelve latest the curator usually reads (`buildContext`), so a thread past the twelve can still return.
@@ -1459,11 +1459,11 @@ its composers and years joined the thread's summary, and Notion's thread row car
   an evening of its own*); a sitting beside the theme keeps its place under the programme (*a sitting beside
   this week's theme*). Their works stay in *What you listened to*.
 - **Threads:** an own evening is in no thread's visits; they gather in the fold *Evenings of their own* at the
-  foot, newest first, each with **Follow this evening** — three directions that start from it, and only then a
+  foot, newest first, each with **Ask for three directions from this evening** (named *Follow this evening* until 24 October) — three directions that start from it, and only then a
   thread (`eveningSeed`, through `useFollow`).
 - **Programme page:** the eyebrow says *An evening of its own* (moon) or *A sitting beside this week's theme*; a
   line under it says where it stands, with **Belongs with this week's theme** / **Make it an evening of its own**,
-  and for an own evening **Follow this evening**. It is not told as a return to the thread. *Also this week*
+  and for an own evening **Ask for three directions from this evening**. It is not told as a return to the thread. *Also this week*
   marks each the same way.
 - **Notion:** an own evening's Journal row reads *An evening of its own* for Theme, with no Visit; thread rows
   drop it on the next sync.

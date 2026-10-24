@@ -230,14 +230,14 @@ export function NotebookScreen() {
       {taste.questions.length > 0 && (
         <section className={s.block}>
           <h2 className={s.sectionHead}>Questions you seem to be asking</h2>
-          <p className={s.sectionGuide}>Each can become a week. <em>Follow this</em> asks the curator for three directions from it: before you’ve chosen this week, they replace the three on offer (those stay open); after, they wait under Where next.</p>
-          {!curatorReady && <NeedsKey to="follow one now" />}
+          <p className={s.sectionGuide}>Each can become a week. <em>Ask for three directions from it</em>: before you’ve chosen this week, they replace the three on offer (those stay open); after, they wait under Where next.</p>
+          {!curatorReady && <NeedsKey to="ask for directions from one" />}
           <ul className={s.bullets}>
             {taste.questions.map((q, i) => (
               <li key={i}>
                 {q}{' '}
                 <span className={s.followLinks}>
-                  <button className={s.textButton} onClick={() => void followQuestion(q)} disabled={following !== null || !curatorReady}>{following === q ? 'The curator is finding three…' : 'Follow this'}</button>
+                  <button className={s.textButton} onClick={() => void followQuestion(q)} disabled={following !== null || !curatorReady}>{following === q ? 'The curator is finding three…' : 'Ask for three directions from it'}</button>
                 </span>
               </li>
             ))}

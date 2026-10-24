@@ -69,7 +69,7 @@ export function ThreadsScreen() {
                   <EveningMark /> <a href={href({ name: 'programme', id: p.id })}>{p.title}</a>
                   <span className={s.faint}> · {madeWords(p.createdAt, settings.timeZone)}, {weekFromKey(p.weekKey).label}</span>
                   {curatorReady && (
-                    <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Follow this evening'}</button></>
+                    <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Ask for three directions from this evening'}</button></>
                   )}
                 </li>
               )
@@ -89,9 +89,9 @@ function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, 
   follow?: (seed: string) => Promise<void>
   following: string | null
 }) {
-  // Each seed the thread left is one tap from a week: the Notebook's "Follow this", here too.
+  // Each seed the thread left is one tap from a week: the Notebook's "Ask for three directions from it", here too.
   const followLink = (seed: string) => follow && (
-    <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Follow this'}</button></>
+    <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Ask for three directions from it'}</button></>
   )
   // The thread named, so the curator is given it even when it is older than the twelve it usually reads (curation/context.ts).
   const returnSeed = `Return to the thread “${t.title}”, continuing from where it was left — new works, new routes, never a restart.`
