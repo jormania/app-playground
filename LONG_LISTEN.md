@@ -631,7 +631,8 @@ explain@2026-10-10.1, companion@2026-10-10.1, concert@2026-10-10.2.
 - **A sitting for tonight** (`components/SittingCard.tsx`, `Journey.sitting`).
   One or two hours asked for on the day, in words ("quiet, nothing I know").
   With a programme this week it joins that thread, like "more of this theme",
-  and is told what the thread has covered; with none, it becomes the week's
+  and is told what the thread has covered (since §32 only when made beside the
+  theme; otherwise it is an evening of its own, outside the thread); with none, it becomes the week's
   programme and starts a thread named for the evening. It never pays for the
   week's three directions. Sized by the hours (at most four works for an hour,
   six for two, never fewer than two). Offered on This week and under "Where
@@ -1095,7 +1096,8 @@ performers, state, what was said); the listener's word on the week under the
 programme. "Offered" for an unchosen week, no "offered" tag on every row,
 reworked and set-aside duplicates gone, no "Chosen from N directions", no
 Spotify upkeep line. Companions read "More of this theme:" or "A sitting for
-tonight:", also under a set-aside programme. A concert still to come is never
+tonight:", also under a set-aside programme (since §32: "a sitting beside this week's theme", and an
+evening of its own stands beside the programme, not under it). A concert still to come is never
 "heard live". The season review: finished seasons only, and only those with
 music in them (`season@2026-10-15.1`).
 
@@ -1250,12 +1252,12 @@ Settings) each reported only defects they had reproduced or traced exactly. What
 - **A sitting is found again (20 October 2026).** A made sitting was stored and listed in the Journal, but on
   the week's programme it sat only in the folded *More of this theme* row at the foot. This week now names
   what was made beside it right under the dek ("Also this week", `AlsoThisWeek` in `Programme.tsx`; on a
-  sitting's own page, "Also from this programme"). The request and hours typed into *A sitting for tonight*
+  sitting's own page, "Also from this programme" — "Also that week" since §32). The request and hours typed into *A sitting for tonight*
   are kept on the device (`useKept`, `sitting-request`/`sitting-hours`) until the sitting is made, so a
   closed app mid-build doesn't lose them; the folded line then says "not made yet".
   A sitting needn't belong to the week's theme: with a thread this week the card offers *on its own* (the
   default — the curator gets neither the week's direction nor its thread, `Sitting.own`) or *beside this
-  week's theme*. Every sitting says the day it was made (`madeWords`, a weekday in the Settings zone, nothing finer) on its page, in
+  week's theme*. (Until §32 both were still filed into the thread; now only the second is.) Every sitting says the day it was made (`madeWords`, a weekday in the Settings zone, nothing finer) on its page, in
   "Also this week", the Journal and Threads, and "Also this week" lists them oldest first.
 
 Known and left: concert dates are Bucharest dates but "today" is judged in the Settings zone (harmless
@@ -1465,11 +1467,21 @@ its composers and years joined the thread's summary, and Notion's thread row car
   marks each the same way.
 - **Notion:** an own evening's Journal row reads *An evening of its own* for Theme, with no Visit; thread rows
   drop it on the next sync.
-- **Audited the same day.** On an evening's own page, *Where next* is the evening's: no *More of this theme*
-  (that belongs to the programme's page; its list there now names only theme programmes, not sittings), "How
-  did the evening land?", and a word on it is about the evening, never "the theme itself". An earlier week's
+- **Audited the same day.** On an evening's own page a word on it is about the evening ("How did the evening
+  land?"), never "the theme itself"; *More of this theme* on the programme's page names only theme programmes,
+  not sittings. An earlier week's
   labels say "the week's theme", not "this week's"; its programme page heads the list *Also that week*. The
   Journal line says what the evening was asked for. Making one says where it went. The season review tells an
   evening of its own from a sitting beside the theme, and no longer drops an own evening because its week's
   programme was set aside.
+- **One way on, from the week's programme (owner's review, 24 October 2026).** Every evening that extends the
+  week, a sitting or more of the theme, ends on *The end of the evening*: a link back to the week's
+  programme and *How it landed*, nothing else. *Where next* (more of the theme, a sitting, another direction,
+  left open, a wish) lives on the week's programme alone, so there is one place to go on from, not one per
+  evening; the running order's *Where next ↓* and *The week ends tomorrow / tonight* are likewise the week's
+  programme's only. *Save as a Spotify playlist* sits under the title and standfirst, above *Also this week*,
+  so it reads as this evening's.
+- **Read as an evening, throughout.** A sitting's section guides, reading-list prompt and colophon say
+  "evening" where a week's say "week". Once every work of an evening is heard (skips allowed) and nothing
+  has been said of it, *How it landed* opens by itself, marked *all heard*.
 

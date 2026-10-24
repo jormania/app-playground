@@ -132,17 +132,18 @@ export function ProgrammeScreen({ id, asThisWeek = false }: { id: string; asThis
 }
 
 /**
- * What each kind of section is for, in the week's sequence — the curator
- * names the role, the heading is its own; this line says where you are.
+ * What each kind of section is for, in the programme's sequence — the curator
+ * names the role, the heading is its own; this line says where you are. A
+ * sitting is one evening, so its guides say "evening" where a week's say "week".
  */
-const ROLE_GUIDE: Record<string, string> = {
-  start: 'where the week begins: the piece the rest is heard against.',
-  then: 'the next step on from there.',
-  context: 'background: music that shows where the rest came from.',
-  contrast: 'a change of light, chosen to push against what came before.',
-  compare: 'the same idea from another angle.',
-  deeper: 'further in, for when the first pieces have settled.',
-  coda: 'a close to the week.',
+const ROLE_GUIDE: Record<string, (span: string) => string> = {
+  start: (span) => `Where the ${span} begins: the piece the rest is heard against.`,
+  then: () => 'The next step on from there.',
+  context: () => 'Background: music that shows where the rest came from.',
+  contrast: () => 'A change of light, chosen to push against what came before.',
+  compare: () => 'The same idea from another angle.',
+  deeper: () => 'Further in, for when the first pieces have settled.',
+  coda: (span) => `A close to the ${span}.`,
 }
 const PAIR_GUIDE = 'One work in two recordings, side by side. Hear both: the difference between them is the point.'
 const FURTHER_GUIDE = 'Optional: notes, essays, talks and filmed performances found for this programme.'
@@ -211,6 +212,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         : <p className={s.quiet}>Continues <a href={href({ name: 'programme', id: b.root.id })}>{b.root.title}</a>.</p>)}
       <h1 className={s.title}>{p.title}</h1>
       {p.dek && <p className={s.dek}>{p.dek}</p>}
+      {/* The playlist is this evening's, so it sits with its title, before the week's other evenings are listed. */}
+      <ProgrammeTools b={b} showLength={!ordered} />
       <AlsoThisWeek extensions={b.extensions} members={b.members} current={p.id} isCurrent={isCurrent} timeZone={settings.timeZone} />
       {isCurrent && !p.extends && <BackupNudge />}
 
@@ -223,9 +226,8 @@ export function ProgrammeView({ b }: { b: Bundle }) {
         </div>
       )}
 
-      <ProgrammeTools b={b} showLength={!ordered} />
       {isCurrent && <LiveLine b={b} skip={settings.hideSkipped ? skippedIds : undefined} />}
-      {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} isCurrent={isCurrent} /> : needsSpotify && <SpotifyNote />}
+      {ordered ? <RunningOrder b={b} shown={shown} spotifyNote={needsSpotify} isCurrent={isCurrent} weekly={!p.extends} /> : needsSpotify && <SpotifyNote />}
       {settings.hideSkipped && skippedIds.size > 0 && (
         <p className={s.faint}>
           {showSkipped ? `Showing ${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'}. ` : `${skippedIds.size} skipped ${skippedIds.size === 1 ? 'work' : 'works'} hidden. `}
@@ -260,7 +262,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           {/* Each part is named as a programme names its movements: a numeral, then the title. */}
           <h2 className={`${s.sectionHead} ${s.partHead}`}><span className={s.partNumeral}>{roman(i + 1)}</span>{sectionTitle(section)}</h2>
           {/* What the part is for; its place ("the second of three") is the numeral's job, and the running order's. */}
-          {ROLE_GUIDE[section.role] && <p className={s.sectionGuide}>{ROLE_GUIDE[section.role].charAt(0).toUpperCase() + ROLE_GUIDE[section.role].slice(1)}</p>}
+          {ROLE_GUIDE[section.role] && <p className={s.sectionGuide}>{ROLE_GUIDE[section.role](p.sitting ? 'evening' : 'week')}</p>}
           {section.note && <p className={s.sectionNote}>{section.note}</p>}
           {items.map((item) => (
             <Fragment key={item.id}>
@@ -293,7 +295,7 @@ export function ProgrammeView({ b }: { b: Bundle }) {
           That’s the {p.sitting ? 'evening' : 'week'}: {shownItems.length} {shownItems.length === 1 ? 'work' : 'works'}{length.all ? `, ${aboutDuration(length.total)}` : ''}.
         </p>
       )}
-      {shownItems.length > 0 && <Colophon b={b} items={shownItems} />}
+      {shownItems.length > 0 && <Colophon b={b} items={shownItems} own={own} />}
 
       <ResourcesView b={b} searching={searching} onSearch={async () => {
         setSearching(true)
@@ -397,7 +399,7 @@ function PinnedWork({ items, parts }: { items: ProgrammeItem[]; parts: Map<strin
  * one to a line, as a printed programme closes on its credits. Each is the
  * recording that plays — a stand-in's, where Spotify lacked the curator's.
  */
-function Colophon({ b, items }: { b: Bundle; items: ProgrammeItem[] }) {
+function Colophon({ b, items, own }: { b: Bundle; items: ProgrammeItem[]; own: boolean }) {
   const p = b.programme
   const players = standInPlayersOf(b.comparisons)
   const performers = (item: ProgrammeItem) => {
@@ -407,7 +409,7 @@ function Colophon({ b, items }: { b: Bundle; items: ProgrammeItem[] }) {
   }
   return (
     <footer className={s.colophon} aria-label="Colophon">
-      <p className={s.colophonLine}>Programme notes by the curator · {p.sitting ? 'a sitting for tonight, ' : ''}{weekFromKey(p.weekKey).label}</p>
+      <p className={s.colophonLine}>Programme notes by the curator · {p.sitting ? `${own ? 'an evening of its own' : 'a sitting'}, ` : ''}{weekFromKey(p.weekKey).label}</p>
       <p className={s.colophonHead}>The recordings</p>
       <ol className={s.colophonList}>
         {items.map((item) => (
@@ -426,7 +428,7 @@ const STATE_TAG: Record<string, string> = { listening: 'started', heard: 'heard'
  * is what makes the music findable without scrolling past it. Each line jumps
  * to its work (by scrolling — the URL hash belongs to the router).
  */
-function RunningOrder({ b, shown, spotifyNote, isCurrent }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean; isCurrent: boolean }) {
+function RunningOrder({ b, shown, spotifyNote, isCurrent, weekly }: { b: Bundle; shown: (item: ProgrammeItem) => boolean; spotifyNote: boolean; isCurrent: boolean; weekly: boolean }) {
   const player = usePlayerState()
   const { settings, week } = useServices()
   const rows = b.programme.sections.flatMap((section) => section.items.filter(shown).map((item) => ({ item, section })))
@@ -448,9 +450,10 @@ function RunningOrder({ b, shown, spotifyNote, isCurrent }: { b: Bundle; shown: 
   const states = rows.map(({ item }) => listeningState(b.events, itemRecordingIds(b, item)))
   const begun = states.some((st) => st !== 'not-started')
   const nextAt = begun ? rows.findIndex(({ item }, n) => (states[n] === 'not-started' || states[n] === 'listening') && !itemRecordingIds(b, item).some((rid) => onNow(rid))) : -1
-  // The week's last days, said once: Saturday "ends tomorrow", Sunday "ends tonight".
+  // The week's last days, said once and only on the week's own programme: Saturday "ends tomorrow", Sunday "ends tonight".
+  // A sitting or more of the theme is one evening's music; the week's end is not its business.
   const today = isoDateIn(new Date(), settings.timeZone)
-  const endsSoon = isCurrent && states.some((st) => st === 'not-started' || st === 'listening')
+  const endsSoon = isCurrent && weekly && states.some((st) => st === 'not-started' || st === 'listening')
     ? (today === week.endsOn ? 'The week ends tonight' : addDays(today, 1) === week.endsOn ? 'The week ends tomorrow' : null)
     : null
   const toWhereNext = () => document.getElementById(WHERE_NEXT)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -495,7 +498,7 @@ function RunningOrder({ b, shown, spotifyNote, isCurrent }: { b: Bundle; shown: 
         })}
       </ol>
       {/* The ways on — a sitting, more of the theme, how it went — are at the foot of a long page: one tap down. */}
-      {isCurrent && (
+      {isCurrent && weekly && (
         <p className={s.roFoot}>
           {endsSoon && <>{endsSoon} — what isn’t heard stays in the Journal. </>}
           <button type="button" className={`${s.textButton} ${s.inlineButton}`} onClick={toWhereNext}>Where next ↓</button>
@@ -972,7 +975,7 @@ function ResourcesView({ b, searching, onSearch }: { b: Bundle; searching: boole
       {groups.length === 0 && searching && <Waiting>Looking for good reading and listening…</Waiting>}
       {groups.length === 0 && !searching && (
         <>
-          <p className={s.quiet}>{b.resourcesSearched ? 'Nothing trustworthy turned up this time.' : 'Programme notes, essays and talks to go with this week.'}</p>
+          <p className={s.quiet}>{b.resourcesSearched ? 'Nothing trustworthy turned up this time.' : `Programme notes, essays and talks to go with this ${b.programme.sitting ? 'evening' : 'week'}.`}</p>
           <div className={s.actions}>
             <button className={`${s.outlineButton} ${s.smallButton}`} onClick={onSearch} disabled={!curatorReady}>{b.resourcesSearched ? 'Look again' : 'Find some'}</button>
           </div>
@@ -1094,17 +1097,39 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
     )
   }
 
+  // An evening — a sitting, or more of the theme — ends with itself. The ways on are the week's,
+  // and live on the week's programme alone: one place to go from, not one per evening.
+  if (p.extends) {
+    const root = b.root
+    // Once the evening's music has all been heard and nothing has been said of it, the word on it is asked for, open.
+    const states = p.sections.flatMap((x) => x.items).map((item) => listeningState(b.events, itemRecordingIds(b, item)))
+    const allHeard = states.includes('heard') && states.every((st) => st === 'heard' || st === 'skipped')
+    const unsaid = !b.feedback.some((f) => f.target.type === 'programme' && f.target.id === p.id)
+    return (
+      <section aria-label="The end of the evening" className={s.whereNext}>
+        <h2 className={s.sectionHead}>The end of the evening</h2>
+        <p className={s.sectionGuide}>
+          {root
+            ? <>For anything more, the week’s programme is the way on: <a href={href({ name: 'programme', id: root.id })}>{root.title}</a>.</>
+            : 'For anything more, the week’s programme is the way on.'}
+        </p>
+        <div className={s.twistyRun}>
+          <Twisty label="How it landed" value={allHeard && unsaid ? 'all heard: a sentence to the curator' : 'a sentence to the curator'} open={allHeard && unsaid}>{feedbackBody}</Twisty>
+        </div>
+      </section>
+    )
+  }
+
   // The programme ends where the music does: every way on is one folded line
   // saying what it offers, opened only when wanted. None of them is required.
   return (
     <section id={WHERE_NEXT} aria-label="Where next" className={`${s.whereNext} ${s.whereNextAnchor}`}>
       <h2 className={s.sectionHead}>Where next</h2>
-      <p className={s.sectionGuide}>{own ? 'The end of this evening. The week goes on: here are the ways on from it, none of them required.' : 'The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.'}</p>
+      <p className={s.sectionGuide}>The end of this week’s programme. If you’ve run out of music, or want to go somewhere else, here are the ways on. None of them is required.</p>
       {!curatorReady && <NeedsKey to="ask the curator for any of these" />}
 
       <div className={s.twistyRun}>
-        {/* More of the week's theme belongs to its programme's page, not to an evening that stood apart from it. */}
-        {!own && <Twisty label="More of this theme" value={themeMore.length ? `${themeMore.length} so far` : 'another set, on the same theme'} open={extending}>
+        <Twisty label="More of this theme" value={themeMore.length ? `${themeMore.length} so far` : 'another set, on the same theme'} open={extending}>
           <p className={s.quiet}>Another set of works on the same theme, none of them heard yet this week: other composers, other periods, the connections this one pointed to.</p>
           {themeMore.length > 0 && (
             <ul className={s.bullets}>
@@ -1120,7 +1145,7 @@ function WhereNext({ b, isCurrent, own }: { b: Bundle; isCurrent: boolean; own: 
             <CharCount value={wish} />
             <button type="submit" className={s.outlineButton} disabled={held}>{extending ? 'The curator is building it…' : themeMore.length ? 'Ask for more again' : 'Ask for more'}</button>
           </form>
-        </Twisty>}
+        </Twisty>
 
         <SittingCard folded joinsThread busy={busy !== null && busy !== 'sitting'} onMaking={(on) => setBusy(on ? 'sitting' : null)} keyHint={false} />
 
