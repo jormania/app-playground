@@ -2114,11 +2114,15 @@ first. Delete each local `ANTHROPIC_ENDPOINT` const as its app converts. When
 the last one lands, correct `anthropic.ts`'s header, which today claims the
 promotion already happened.
 
-## R-038 — `CLAUDE.md`'s `src/shared/` section undercounts who uses what · `modernise` · `open`
+## R-038 — `CLAUDE.md`'s `src/shared/` section undercounts who uses what · `modernise` · `done 2026-10-25 — lists removed, not corrected`
 
-**Since 2026-10-25 the section is [`src/shared/CLAUDE.md`](src/shared/CLAUDE.md)**,
-moved there word for word; correct the clauses in that file. The root `CLAUDE.md`
-now names the modules without saying who uses them, so it has nothing to drift.
+**Done 2026-10-25, by removal.** The section moved to
+[`src/shared/CLAUDE.md`](src/shared/CLAUDE.md), and its "used by" lists were then
+dropped rather than corrected: they drifted every time an app adopted a module, and
+a grep answers the question exactly. The file keeps only what a grep can't tell
+you: the apps that deliberately keep their own version, and why. The `models.js`
+wording this item flagged now says apps reach the ids through `anthropic.ts`. The
+table below is kept as the record of the drift.
 
 **Impact:** none visible. Fixes the section whose only job is telling the next
 session what already exists, and who would break if it changed.
