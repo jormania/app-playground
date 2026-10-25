@@ -1,326 +1,124 @@
 # app-playground — repo rules
 
-A personal playground for standalone web apps. A few are React + Vite (under
-`src/`); the rest are self-contained static HTML files at the repo root. Deploys
-to Vercel on every push to `main`.
+A personal playground for standalone web apps: React + Vite apps under `src/`,
+self-contained static HTML under `public/`. Every push to `main` deploys to Vercel.
+The human playbook is the Notion page **Dev — Building an App**; this file is its
+enforced, in-repo companion.
 
-For the human-readable build playbook — how to start a new app, extend the
-design system, and the full process/caveats — see the Notion page **Dev —
-Building an App**. This file is its enforced, in-repo companion.
+This file is read at the start of every session, so it keeps to rules that apply
+anywhere. Detail lives where it is used: `src/shared/`, `src/sol-odyssey/`,
+`src/long-listen/` and `src/keypath/` have their own `CLAUDE.md`, loaded when you
+work there; deploy and build-size detail is in [`DEPLOY.md`](DEPLOY.md); each app's
+doc is linked in the table below.
 
 ## Before declaring any task done
 
-Run **`npm test`**, **`npm run typecheck`**, and **`npx eslint <changed paths>`**
-and make sure all three pass. Don't call a change complete on green-looking
-code alone.
+Run **`npm test`**, **`npm run typecheck`** and **`npx eslint <changed paths>`**; all
+three must pass. Run tests through `npm test` (narrow with `-- <path>`), not bare
+`vitest`: the script sets `NODE_OPTIONS=--no-experimental-webstorage` and
+`TZ=Europe/Bucharest`. Without the first, every storage test fails on
+`reading 'clear'`; without the second, Radar-B's date fixtures shift three hours.
+Both look exactly like real regressions.
 
-Running `vitest` directly (rather than through `npm test`) drops **two** things
-the `test` script sets, and both produce failures that read like real
-regressions:
+## Deploy guardrail
 
-- without `NODE_OPTIONS=--no-experimental-webstorage`, Node's native
-  `localStorage` shadows jsdom's and every storage-touching test fails with
-  `Cannot read properties of undefined (reading 'clear')`;
-- without `TZ=Europe/Bucharest`, tests with fixed datetime fixtures fail by the
-  offset — Radar-B's `detail` and `wanderlist` suites go red with a clean
-  three-hour shift, which looks exactly like a date bug someone just introduced.
-
-Either run `npm test` (pass a path after `--` to narrow it), or set both
-yourself.
+- Pushing to `main` **auto-deploys via Vercel**. Never push with failing tests or
+  type errors. **Stop and confirm with me before any push to `main`.**
+- Once pushed, **don't poll GitHub Actions** — I'm emailed on failure and will follow
+  up. Check a run's status only when explicitly asked.
+- **At most 12 serverless functions**: every top-level `api/*.js` is one (not
+  `api/_*`), and so is a `.test.js` placed directly in `api/` — handler tests go in
+  `api/_tests/`. Count with `ls api/*.js | grep -v '^api/_'` before adding one, and
+  prefer folding into an existing endpoint. `scripts/build-meta.test.js` enforces it.
+- **Never import a `@fontsource` family by its bare name or a weight entry point**,
+  and watch for a dependency's `new URL(…, import.meta.url)` emitting dead assets.
+  Read [`DEPLOY.md`](DEPLOY.md) before adding or changing a font import — the right
+  fix depends on how many subsets the app needs, and the wrong one is a regression.
 
 ## Daily refactor workflow
 
-An autonomous agent improves this repo one item each Monday, Wednesday and
-Friday morning, opens a PR,
-and for two of the four classes merges that PR itself. **Full documentation:
-[`DAILY_REFACTOR.md`](DAILY_REFACTOR.md)** — read it before changing the workflow,
-the skill, or the backlog's shape. The essentials:
+An agent takes **one** item off [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md) on
+Monday, Wednesday and Friday mornings (every other Friday from 2026-10-09 is a
+discovery run instead), opens a PR, and auto-merges the `refactor` and `modernise`
+ones. `qol` and `visual` items it may only propose, and they are never auto-merged.
+Backlog order is the priority. Read [`DAILY_REFACTOR.md`](DAILY_REFACTOR.md) before
+changing the workflow, the skill (`.claude/skills/daily-refactor/SKILL.md`) or the
+backlog's shape. Two things that look like noise and are not:
 
-- Driven by [`.github/workflows/daily-refactor.yml`](.github/workflows/daily-refactor.yml)
-  on two crons — 22:41 UTC the evening before (the earliest hour that is already
-  tomorrow in Bucharest in both seasons) and 00:41 UTC as a backstop, since
-  GitHub's scheduled queue both drops and delays runs. **The runner's UTC date is
-  therefore a day behind**: the workflow computes the Bucharest date and hands it
-  to the agent, and nothing in a run may use bare `date +%F`. Needs the
-  `CLAUDE_CODE_OAUTH_TOKEN` secret; add `REFACTOR_PAT` too, or the PRs it opens
-  get no CI at all.
-- It takes **one** item off [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md), works it
-  on a fresh branch off `main`, proves it green, and opens its own PR. Review
-  happens after the fact. Reorder the backlog to reprioritise — the order is the
-  steering wheel. The procedure is
-  [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md).
-- **Classes set the autonomy.** `refactor` and `modernise` are
-  behaviour-preserving: the agent may queue them for itself, and their PRs
-  **merge themselves** once the workflow re-runs all three gates against a clean
-  clone of the pushed branch. `qol` and `visual` change what you see, so the agent
-  may only **propose** them under `## Proposed`, and they are never auto-merged
-  however green. They also need before/after screenshots (both themes, phone and
-  desktop) on the never-merged `claude/shots` branch, since preview deploys are
-  off for `claude/*`.
-- **Every other Friday is a discovery run** (from 2026-10-09; the workflow decides
-  by date and tells the agent) — nothing ships; the session reads the codebase
-  against current standards and adds to the backlog instead. The Fridays between
-  take an item like Monday and Wednesday.
-- It stops on its own at six open refactor PRs, so an unreviewed pile can't grow
-  without bound.
-- **Silence is the failure mode it is built against.** Any run that doesn't finish
-  cleanly fails on purpose, because a failed workflow is the one GitHub emails
-  about by default; every PR body opens with an `@jormania` mention for the same
-  reason. Don't "tidy away" either as noise — they are the reporting channel.
+- Runs use the **Bucharest date** the workflow hands over — the runner's UTC date is
+  a day behind, so nothing in a run may use bare `date +%F`.
+- **A run that doesn't finish cleanly fails on purpose**, and every PR body opens with
+  an `@jormania` mention. They are the reporting channel; don't tidy them away.
 
 ## Design-system boundary (one-way, enforced)
 
-- **New apps** build on the shared design system in [`src/ds/`](src/ds/).
-- **Legacy apps** — `src/touch-grass/`, `src/journal/`, `src/kettlebell/` — are
-  design-locked and own their own styling. They **never import from `src/ds/`**.
-- The rule flows one way: DS → new apps only. Enforced by
-  [`src/ds/boundary.test.js`](src/ds/boundary.test.js) in `npm test` — a legacy
-  import fails the suite. Full scope: [`LEGACY.md`](LEGACY.md).
+New apps build on [`src/ds/`](src/ds/). Legacy apps — `src/touch-grass/`,
+`src/journal/`, `src/kettlebell/` — own their styling and **never import from
+`src/ds/`**. Enforced by `src/ds/boundary.test.js`; full scope in
+[`LEGACY.md`](LEGACY.md).
 
-## Per-app map
+## Shared logic (`src/shared/`)
 
-Each app's own doc (linked below) has the full feature/schema detail — read it
-before working in that app. Don't hold app internals here; this table is a router.
+Any app, new or legacy, may import from `src/shared/`; it is separate from the
+`src/ds/` boundary. **Before writing a helper, look there, and extend what exists
+rather than copying an app's local copy.** Today it has: `notify/`, `installFlag`,
+`weather`, `photo`, `storage`, `notionId`, `notionClient`, `useWakeLock`, `theme`,
+`findings`, `share`, `anthropic`, `models`, `axisLockSlider`, `fullscreen`,
+`haptics`, `mediaSession`, `qrCode`, `useSwipeAction`. Several apps deliberately
+keep their own version of one of these, so read
+[`src/shared/CLAUDE.md`](src/shared/CLAUDE.md) before promoting, re-exporting or
+reconciling anything. Rules that apply from any app:
+
+- **Claude model ids are written only in `src/shared/models.js`**; `models.test.js`
+  fails on one anywhere else. Upgrading a model: [`AI_MODELS.md`](AI_MODELS.md).
+- **The Findings/Wanderlist Notion schema** lives in `src/shared/findings.js`. Change
+  it there, in WANDERLIST.md and in the `wanderlist` skill, or in none of them.
+- Every `react-vite` app calls `watchInstalled('<file>.html')` from
+  `src/shared/installFlag.ts` once at startup.
+
+## Service workers
+
+Every `react-vite` app registers its own scoped service worker from its
+`main.{jsx,tsx}`, cache-first. **Registration is gated on `import.meta.env.PROD`** in
+every entry: under `vite dev` a worker serves the first-cached copy of unhashed URLs
+forever (if one already has, unregister it and clear caches once in DevTools →
+Application). All apps share one origin, so **nothing may claim the root**: each manifest
+declares an `id` and a `scope` narrower than `/`, each worker registers with an
+explicit `scope` (only Touch Grass's legacy `/sw.js` is root-scoped), and each
+worker's `activate` deletes only caches under its own `CACHE_PREFIX`.
+`scripts/pwa-scope.test.js` enforces all three; CABINET.md, "Update (2026-09-24)",
+has the incident behind it.
+
+## Apps
+
+Read an app's doc before working in it. Card data for every app (name, icon, blurb,
+tags) lives in [`src/apps-registry.js`](src/apps-registry.js); the new-app checklist
+is in [`CABINET.md`](CABINET.md). `npm run typecheck` covers the strict-TS apps plus
+`src/ds`, `src/shared` and `src/lexi5/lib` — `tsconfig.json`'s `include` is the list,
+and its comment says why Lexi5's `lib/` alone is typed. The other apps are plain JSX
+by design.
 
 | App | Location | Notes |
 |-----|----------|-------|
-| Radar-B | `src/radar-b/` | JSX, DS — Bucharest event radar; reads the Notion **📡 Radar** DB written by the `/recommend in Bucharest` skill, saves into Wanderlist's Findings. Read [`RADAR_B.md`](RADAR_B.md) — especially "the app does not scrape" and the two-pass dedupe — before touching it |
-| Sol Odyssey | `src/sol-odyssey/` | strict TS — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** in that dir |
+| Radar-B | `src/radar-b/` | JSX, DS — [`RADAR_B.md`](RADAR_B.md): read "the app does not scrape" and the two-pass dedupe first |
+| Sol Odyssey | `src/sol-odyssey/` | strict TS — its own `CLAUDE.md` and `DESIGN.md` govern that directory |
 | Daily Stoic | `src/daily-stoic/` | strict TS, DS — [`DAILY_STOIC.md`](DAILY_STOIC.md) |
 | Tempo | `src/tempo/` | JSX, DS |
-| Law of the Day | `src/law-of-the-day/` | JSX, DS — with a BYO Anthropic key (Settings) today's scenario is written fresh by Sonnet in the browser, once per day used (`lib/generate.js`); no server function, no cron |
+| Law of the Day | `src/law-of-the-day/` | JSX, DS — today's scenario is written in the browser by Sonnet on a BYO key (`lib/generate.js`); no server function, no cron |
 | Yoru | `src/yoru/` | JSX, DS — [`YORU.md`](YORU.md) |
 | The Cabinet | `src/cabinet/` | JSX, DS — [`CABINET.md`](CABINET.md) |
 | Loom | `src/loom/` | JSX, DS — [`LOOM.md`](LOOM.md) |
-| Marquee | `src/marquee/` | JSX, DS — venue watcher; reads venue programme pages through `api/marquee-scan.js` (the ONE endpoint, adapters under `api/_lib/marquee/`), saves into Wanderlist's Findings. Read [`MARQUEE.md`](MARQUEE.md) — especially the health gate, "throttled ≠ broken", the detail cache (§9.75, why an adapter's `extractDetail` exists), and §9.89's time budget (the scheduled check may stop early **and must say so**; don't add per-venue cost without re-reading it) — before touching an adapter |
-| Click Deck | `src/click-deck/` | JSX, **not DS** (self-styled) — [`CLICK_DECK.md`](CLICK_DECK.md) |
-| Wanderlist | `src/wanderlist/` | JSX, **not DS** (self-styled) — [`WANDERLIST.md`](WANDERLIST.md) |
-| WhereItWent | `src/where-it-went/` | JSX, DS — schema is load-bearing, read [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) before touching it; also [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) |
-| Lexi5 | `src/lexi5/` | JSX, DS — [`LEXI5.md`](LEXI5.md); also [`LEXI5_ROADMAP.md`](LEXI5_ROADMAP.md) |
-| Fit Check | `src/fit-check/` | **strict TS**, DS — Notion select options are a **closed vocabulary** and its tags are AI-assigned; read [`FIT_CHECK.md`](FIT_CHECK.md) before touching `lib/vocabulary.ts`. Also [`FIT_CHECK_ROADMAP.md`](FIT_CHECK_ROADMAP.md), [`FIT_CHECK_DISCOVERY.md`](FIT_CHECK_DISCOVERY.md) |
-| Silva | `src/silva/` | **strict TS**, DS — commonplace book: today's walk, reading history, photo/share intake, neighbourhoods. Read [`SILVA.md`](SILVA.md) |
-| KeyPath | `src/keypath/` | **strict TS**, DS — **a piano tutor taster, in progress**: the hardware probe passed on the S24 (KEYPATH.md §1; Nora's Poco F3 still to check) and now lives at Settings → Diagnostics; the tutor is designed in [`KEYPATH_TUTOR.md`](KEYPATH_TUTOR.md), built in steps (engine: `engine/`, shell: `app/`, the Songs door: `app/songs/`, the Journey: `app/journey/`, Challenges: `app/challenges/`, Studio: `app/studio/`, the parent's Progress view: `app/progress/`, keyboard connection wizard: `app/connect/`). An installable PWA, listed in the registry (front page and Cabinet) since step 5, still `noindex`. `midi/` and `engine/` must stay free of React. **No music files in the repo, ever** — `content-boundary.test.js` enforces it. Read [`KEYPATH.md`](KEYPATH.md); what comes next, ranked, is [`KEYPATH_ROADMAP.md`](KEYPATH_ROADMAP.md) |
-| The Long Listen | `src/long-listen/` | **strict TS**, DS — orchestral curator. BYO Anthropic key in Settings, Claude called from the browser like every app (`curator/`, prompts versioned); primary DB is IndexedDB, Notion a one-way mirror via the shared relay. Guide: a Claude Docs doc, like KeyPath's. Read [`LONG_LISTEN.md`](LONG_LISTEN.md) — especially "facts vs curation" and the rule that a returning theme expands, never restarts — before touching it; what comes after release one is [`LONG_LISTEN_ROADMAP.md`](LONG_LISTEN_ROADMAP.md). Release two adds concerts (a POST share target in its manifest and worker), "Live in Bucharest" through Marquee's one endpoint (no function of its own), and `npm run check:curation` — four listener profiles through the real prompts, owner's key, **never in CI**. Release three (stamped 14 October 2026) adds a sitting for tonight, the season in review (`#/season/<n>`, written only on request) and soloists placed per concert work (`domain/concertSoloists.ts`). Release four (§21) adds your earlier hearing, words on tap (a closed term list, `domain/glossary.ts`), before and after a concert ("I'm going" on Live in Bucharest, `#/before/<key>`) and composer pages (`#/composer/<name>`). The QoL audit (23 October 2026, §26–§30) adds performer pages (`#/performer/<name>`), a masthead way back to the work playing, and Library views; read §26 before touching backup, waits or the listening view. The stabilisation pass (§31) sets the vocabulary (a *direction*, *left open*, *how it landed*) and caps the curator at two references to the listener a programme — read it before changing a prompt or the taste profile's shape. §32: a sitting is in a thread only when made beside its theme (`domain/evenings.ts`); otherwise it is an evening of its own, in the week's timeline only. §33: *Shape next week* — sketches for next week's three, read only at the start of a week (`domain/shaping.ts`) |
+| Marquee | `src/marquee/` | JSX, DS — reads venues through `api/marquee-scan.js` (adapters in `api/_lib/marquee/`). Read [`MARQUEE.md`](MARQUEE.md)'s health gate, §9.75 and §9.89 before touching an adapter |
+| Click Deck | `src/click-deck/` | JSX, self-styled (not DS) — [`CLICK_DECK.md`](CLICK_DECK.md) |
+| Wanderlist | `src/wanderlist/` | JSX, self-styled (not DS) — [`WANDERLIST.md`](WANDERLIST.md) |
+| WhereItWent | `src/where-it-went/` | JSX, DS — the schema is load-bearing: [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) first |
+| Lexi5 | `src/lexi5/` | JSX, DS, typed `lib/` — [`LEXI5.md`](LEXI5.md) |
+| Fit Check | `src/fit-check/` | strict TS, DS — Notion options are a closed vocabulary; read [`FIT_CHECK.md`](FIT_CHECK.md) before touching `lib/vocabulary.ts` |
+| Silva | `src/silva/` | strict TS, DS — [`SILVA.md`](SILVA.md) |
+| KeyPath | `src/keypath/` | strict TS, DS — piano tutor, in progress; its own `CLAUDE.md`, and [`KEYPATH.md`](KEYPATH.md) |
+| The Long Listen | `src/long-listen/` | strict TS, DS — orchestral curator; its own `CLAUDE.md`, and [`LONG_LISTEN.md`](LONG_LISTEN.md) |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
 | Static HTML apps | `public/*.html` | design-locked, hand-authored — edit in place |
 | Front page | `index.html` | card grid + the footer's status line — see [`DAILY_REFACTOR.md`](DAILY_REFACTOR.md) |
-
-Card/tile data (name, icon, blurb, tags) for every app lives in one place —
-[`src/apps-registry.js`](src/apps-registry.js) — read by `index.html`'s card
-grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the new-app checklist.
-
-`tsconfig.json` covers **nine** paths — `src/sol-odyssey`, `src/daily-stoic`,
-`src/ds`, `src/shared`, `src/fit-check`, `src/silva`, `src/keypath`, `src/long-listen` and `src/lexi5/lib`; `npm run
-typecheck` checks all nine. Other React apps are plain JS/JSX by design and left
-out of typecheck (they can still import from `src/shared`).
-
-`src/lexi5/lib` is the deliberate half-measure: Lexi5's components stay JSX while
-its pure logic — the stats schema, the config shape, the tile scorer, Hard Mode,
-undo — is typed, because a closed `Config` type is what stops a setting being read
-before it exists in `DEFAULT_CONFIG`. Only `.ts` files are picked up, so the JS
-modules beside them are unaffected.
-
-## Cross-app shared logic (`src/shared/`) — distinct from `src/ds/`
-
-`src/shared/` holds logic any app (new or legacy) may import — not part of the
-styling boundary above. Today: `src/shared/notify/`, the local-notifications
-foundation (Periodic Background Sync + IndexedDB state mirroring + a
-diagnostics reveal) used by Touch Grass, Sol Odyssey, Journal of Delights —
-read [`NOTIFICATIONS.md`](NOTIFICATIONS.md) before adding notifications to
-another app. Also [`src/shared/installFlag.ts`](src/shared/installFlag.ts) —
-every `react-vite` app calls `watchInstalled('<file>.html')` once at startup
-so The Cabinet can detect install reliably; add this call for any new PWA app
-(see CABINET.md's "Install detection, take two").
-
-Promoted here once a second app needed them — **extend these rather than copying
-an app's local copy**: [`weather.ts`](src/shared/weather.ts) (Open-Meteo fetch +
-WMO mapping; Touch Grass wraps it to add its own prose),
-[`photo.ts`](src/shared/photo.ts) (canvas downscale before upload; Wanderlist and
-Journal both re-export `isImageFile`/`resizePhoto` — but **not** `photoFilename`,
-which Journal keeps its own of because it names files from a date key rather than
-slugifying, see `src/journal/photo.test.js`),
-[`storage.ts`](src/shared/storage.ts) (localStorage/sessionStorage helpers that
-can't throw; WhereItWent re-exports it),
-[`notionId.ts`](src/shared/notionId.ts) (parses a Notion id out of a pasted URL,
-dashed UUID or bare id — Loom, Wanderlist and Journal all re-export it.
-**WhereItWent deliberately does not**: its own `extractNotionId` keeps dashes and
-case, and returns unmatched input unchanged rather than `''`, which App.jsx's
-`hasNotionConfig` gate reads as still-configured. An unreconciled overlap, not a
-missed promotion — `Settings.notionId.test.jsx` pins the three differences), and [`useWakeLock.ts`](src/shared/useWakeLock.ts)
-(screen-awake hook wrapping the Wake Lock API, degrading silently where
-unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly),
-[`theme.ts`](src/shared/theme.ts) (the theme **mechanism** only — the
-`matchMedia` probe `systemPrefersDark`, re-exported by all seven apps that had
-written it out, and `useThemeSync(key, {load, save, apply})`, the
-persist-and-cross-tab-sync effect pair, used by **five of the six** theme
-providers — Cabinet, Loom, Law of the Day, Sol Odyssey and Daily Stoic. Tempo
-is the exception and cannot use it: it applies one value and saves another
-(`applyTheme(resolved)`, `saveThemePref(pref)`), so it still hand-writes its
-own `storage` listener. Plus `useSystemThemeFollow(active, onChange)`, the `matchMedia` listener
-for following the OS while a preference is `system` — **all three apps that
-follow the OS use it**: Law of the Day, Tempo and Daily Stoic (R-026).
-**What to do when the OS flips stays with the caller**, because the three want
-different things: Tempo repaints, Daily Stoic re-syncs only the browser-chrome
-tint since its palette swaps in CSS, Law of the Day does both. Each app's own `theme.{js,ts}` keeps its vocabulary — light/dark vs
-three-way-with-system vs palette presets — and **those must not be flattened
-into one API**; see R-015),
-[`findings.js`](src/shared/findings.js) (**the Findings/Wanderlist Notion schema** —
-property names, rich-text chunking, the Category/Tags lowercase rule, the Planned-Date
-offset, `toFindingsProps`; promoted when Radar-B became a second writer to that database,
-Wanderlist re-exports it all — **change the schema here, in WANDERLIST.md, and in the
-`wanderlist` skill, or in none of them**), and [`share.js`](src/shared/share.js) (OS
-share sheet with a clipboard fallback; Wanderlist re-exports it). Each
-promotion left the original path working as a thin re-export, so the old
-app's tests prove the move was behaviour-preserving.
-
-[`notionClient.ts`](src/shared/notionClient.ts) (the `/api/notion` relay call —
-`notionProxy` + `PROXY_URL`. Loom, Journal, Wanderlist, Marquee and Radar-B all
-use it. **WhereItWent, Fit Check and Sol Odyssey deliberately do not**: the first
-two are retrying client classes with backoff and a `NotionError`, and Sol
-Odyssey's `buildRelayInit` is a pure `RequestInit` builder whose caller does the
-fetch. They share about ten lines with this and differ everywhere else — not
-outstanding promotions. See R-003).
-
-The rest of `src/shared/`, which the list above used to leave out entirely —
-this section only does its job (stop an app hand-rolling what already exists) if
-it is complete:
-
-- [`anthropic.ts`](src/shared/anthropic.ts) — the client-side Claude call every
-  app makes the same way: BYO key straight from the browser, the endpoint and
-  API version, `anthropicHeaders()`, `extractAnthropicText()` (reads replies by
-  block type). Used by Silva, The Long Listen (`long-listen/curator/curator.js`) and KeyPath (coach's note, weekly note, Studio answers: `keypath/app/ai.ts`).
-- [`models.js`](src/shared/models.js) — **the only place a Claude model id may be
-  written** (`MODEL_HAIKU`, `MODEL_SONNET`) and `noThinking(model)`, the per-model
-  way to keep a model from thinking. Every app that calls Claude imports from it;
-  `models.test.js` fails on an id anywhere else and on a caller missing from the
-  live API check (`npm run test:live`, needs `ANTHROPIC_API_KEY`). **Upgrading a
-  model: read [`AI_MODELS.md`](AI_MODELS.md).**
-- [`axisLockSlider.js`](src/shared/axisLockSlider.js) — a touch-safe drag handler
-  for range sliders inside a vertically scrolling list, where `touch-action:
-  pan-y` on a native `<input type="range">` isn't reliably honoured. Touch Grass's
-  Chorus and Yoru's mixer.
-- [`fullscreen.ts`](src/shared/fullscreen.ts) — `fullscreenOnTap()`: on a touch
-  device in a browser tab or Chrome shortcut, each tap that finds the page out of
-  full screen puts it back, hiding Chrome's toolbar and Android's button bar the
-  way an install would. A no-op when installed standalone, on desktop, or without
-  the API. For apps Chrome won't install properly on the owner's phone (CABINET.md,
-  "Update (2026-09-24)"): Radar-B. KeyPath tried it and dropped it: Chrome shows a
-  "to exit full screen" toast on every entry, which no page can hide, and on
-  KeyPath it sat over the keys; its landscape layout fits beside the toolbar instead.
-- [`haptics.ts`](src/shared/haptics.ts) — `triggerHaptic(type)` for a named intent
-  (`light` / `heavy` / `success` / `transition`). Daily Stoic and Silva.
-- [`mediaSession.js`](src/shared/mediaSession.js) — `useMediaSession()`, which
-  holds a silent looping WAV so a browser will surface lock-screen, headset and
-  watch transport controls at all. Tempo and Yoru.
-- [`qrCode.ts`](src/shared/qrCode.ts) — `appQrUrl(file)` and `renderAppQr()`,
-  against the same hardcoded production origin as Cabinet's `installState.js`.
-  The Cabinet.
-- [`useSwipeAction.ts`](src/shared/useSwipeAction.ts) — the swipe-to-act gesture
-  hook. Marquee.
-
-One thing in here is **not** a tidy-up waiting to happen:
-
-- **`haptics` is an unreconciled overlap, not a missed promotion.**
-  `src/lexi5/lib/haptics.js`, `src/loom/lib/haptics.js`, `src/tempo/lib/haptics.js`
-  and `src/wanderlist/haptics.js` each keep a local `tap(pattern)`. That is a raw
-  vibrate pattern; the shared module takes a named intent. Genuinely different
-  APIs — do not file this as a mechanical re-export like R-004 was.
-
-There was a second: `audio.ts`, which had no importers and shadowed Tempo's
-richer `playChime(volume, variant)`. It was deleted (R-025). Tempo's
-`lib/sound.js` was briefly promoted here for The Long Listen's chime between
-works, and moved back when that feature was removed (2026-10-09): Tempo is its
-only user again.
-
-## Service workers & dev
-
-Every `react-vite` app registers its own scoped service worker from its
-`main.{jsx,tsx}`, caching assets **cache-first** — correct in production
-(hashed filenames) but **poisons Vite dev** (unhashed dev URLs mean the worker
-serves back the first-cached copy forever). **Registration is gated on
-`import.meta.env.PROD`** in every entry — never let a service worker install
-under `vite dev`. Keep that guard on any new app or SW registration change. If
-a stale worker is already on localhost, unregister it and clear caches
-(DevTools → Application) once — the guard prevents recurrence.
-
-Every app shares one origin, so **nothing may claim the root**: each manifest
-declares an `id` and a `scope` narrower than `/`, each worker registers with an
-explicit `scope` (only Touch Grass's legacy `/sw.js` is root-scoped), and each
-worker's `activate` deletes only caches under its own `CACHE_PREFIX`.
-`scripts/pwa-scope.test.js` enforces all three. A root-scoped install owns
-every app's URLs from the OS, and only uninstalling it on the device clears it —
-one did, a Radar-B WebAPK Chrome minted without its manifest; see CABINET.md,
-"Update (2026-09-24)".
-
-## Deploy guardrail
-
-Pushing to `main` **auto-deploys via Vercel** — an unreviewed edit can reach
-production. Never push with failing tests or type errors. **Stop and confirm
-with me before any push to `main`.**
-
-Once pushed, **don't poll GitHub Actions** — the owner gets emailed on failure
-and will follow up. Only check a run's status when explicitly asked.
-
-**Vercel Hobby caps a deployment at 12 serverless functions, counted across
-the entire repo** — every top-level `api/*.js` file is one function, regardless
-of app (files under `api/_*` don't count). Before adding a new `api/*.js`,
-run `ls api/*.js | grep -v '^api/_'` and check the count. At 12 already, one
-more **will fail the deploy** (happened before, see git history ~2026-07-23).
-**A `.test.js` file placed directly in `api/` counts as a function too** — put tests for
-top-level handlers in `api/_tests/` (caught once, 2026-08-26).
-`scripts/build-meta.test.js` now fails the suite if the count exceeds 12, so CI catches
-the thirteenth file before Vercel does; the front-page footer shows the count from 10 up.
-Prefer folding a new proxy into an existing same-app endpoint (extra
-query param/mode) over a new file when the count is tight.
-
-**Deployment Storage is 10 GB on Hobby, charged per RETAINED deployment** — not
-per push. `dist/` is ~10 MB; at that size the quota is a few hundred builds
-deep, and it filled once already (2026-09-09). Three rules keep it there:
-
-- **Never import a `@fontsource` family by its bare name or weight entry point**
-  (`@fontsource/x`, `@fontsource/x/400.css`). Those emit every subset — greek,
-  cyrillic, and for a CJK family ~120 Japanese chunks — in both `.woff2` and
-  legacy `.woff`. Yoru did the latter and shipped 17 MB of Japanese fonts to
-  draw one kanji.
-
-  **How to fix one depends on how many subsets the app needs, and getting this
-  wrong trades a build-size win for a runtime regression.** fontsource's
-  per-subset files (`latin-400.css`) carry **no `unicode-range`** — only the
-  bare and weight entry points declare the ranges. So:
-
-  - **One subset needed** → import the per-subset file. Nothing else can match,
-    so the missing range costs nothing.
-  - **More than one** → declare the `@font-face` blocks by hand, copying
-    fontsource's own ranges from its entry points, and reference
-    `@fontsource/<family>/files/*.woff2` directly. Importing two per-subset
-    files instead would make every browser fetch both unconditionally.
-    `src/loom/fonts.css` is the worked example (Cinzel, latin + latin-ext,
-    because Loom renders Romanian and `ș`/`ț`/`ă` sit in latin-ext while
-    `â`/`î` do not); `src/yoru/fonts.css` is the same method for a single
-    glyph.
-
-  Either way, declare **`woff2` only** — the legacy `.woff` twins are half the
-  bytes and every browser that can run these apps has supported woff2 for years.
-  **Still outstanding:** `@fontsource-variable/inter` (four apps), `alegreya`,
-  `fraunces` and `jetbrains-mono` are all imported bare — see R-027.
-- **Watch for a dependency's `new URL(…, import.meta.url)`.** Rollup treats it
-  as an asset reference and emits the target even when nothing fetches it —
-  that's how a dead ONNX fallback put a 23 MB `.wasm` in every build. See
-  `dropOrtWasmPlugin` in [`vite.config.js`](vite.config.js).
-- **The front-page footer shows the built size of `dist/` from 20 MB up**, red at
-  40 MB — hidden at the usual ~10 MB, since a number that is always fine is one
-  nobody reads. Measured by `stampBuildSizePlugin` in `vite.config.js` (from
-  `closeBundle`, not `transformIndexHtml` — the weight isn't knowable until the
-  bundle is written), counted by `directorySizeBytes` in `scripts/build-meta.js`.
-- Preview builds on `claude/*` branches are **off** (`git.deploymentEnabled` in
-  [`vercel.json`](vercel.json)) — every change used to cost two deployments,
-  one preview and one production. `main` is unaffected.
-
-Old deployments are swept automatically: the project's **Deployment Retention
-Policy** (Vercel → Settings → Build and Deployment) is set to 1 week for all four
-classes. That cleared ~11 weeks of backlog on 2026-09-10 and holds the retained
-set to about a week's worth. Nothing to run by hand — a retention window only
-works because the per-deployment size above stays small, so the two are one
-mechanism, not two.

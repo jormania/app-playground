@@ -73,7 +73,7 @@ Until then, key names stay on in the reading check: its skill is staff →
 name, and name → key was already tested in step 2.
 
 Romanian needs ș ț ă â î: fonts must include the **latin-ext** subset (see the
-font rules in `CLAUDE.md`; Loom's `fonts.css` is the worked example).
+font rules in `DEPLOY.md`; Loom's `fonts.css` is the worked example).
 
 ---
 
@@ -1907,7 +1907,7 @@ install it and get the full screen):
     "no keyboard" mode.
   - Its last release (1.0.1) is from August 2022, and it needs TensorFlow.js
     3, a major version behind. Load it only when this feature opens, never in
-    the main bundle (the deploy-size rules in `CLAUDE.md`).
+    the main bundle (the deploy-size rules in `DEPLOY.md`).
   - The model is the easy part. The work is the cleanup: extra notes from
     overtones, repeated notes merged, no hands split, and times that must be
     snapped to beats before the engine can use them. So it needs a review

@@ -6,6 +6,13 @@ discovery run (2026-10-09, 10-23, …): nothing ships, the agent reads the codeb
 and adds to this file instead. The Fridays between take an item like Monday and Wednesday.
 Process lives in [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md).
 
+**`CLAUDE.md` was split on 2026-10-25** to cut what every session loads. The
+`src/shared/` catalogue moved to [`src/shared/CLAUDE.md`](src/shared/CLAUDE.md), the
+deploy and build-size detail (fonts, the function cap, Deployment Storage) to
+[`DEPLOY.md`](DEPLOY.md), and The Long Listen's and KeyPath's rows to their own
+`src/<app>/CLAUDE.md`. An item written before then that cites a `CLAUDE.md` section
+means that section's new home. Keep the root file to rules that apply anywhere.
+
 Edit by hand freely. Reorder to change priority — the agent always takes the
 topmost eligible item, so the order of this file is the steering wheel.
 
@@ -2108,6 +2115,10 @@ the last one lands, correct `anthropic.ts`'s header, which today claims the
 promotion already happened.
 
 ## R-038 — `CLAUDE.md`'s `src/shared/` section undercounts who uses what · `modernise` · `open`
+
+**Since 2026-10-25 the section is [`src/shared/CLAUDE.md`](src/shared/CLAUDE.md)**,
+moved there word for word; correct the clauses in that file. The root `CLAUDE.md`
+now names the modules without saying who uses them, so it has nothing to drift.
 
 **Impact:** none visible. Fixes the section whose only job is telling the next
 session what already exists, and who would break if it changed.
