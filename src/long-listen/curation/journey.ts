@@ -155,6 +155,8 @@ export class Journey {
       if (existing && !existing.programmeId && existing.optionIds.length && !existing.madeWith) return this.noteMadeWithNow(existing)
       if (existing && (existing.programmeId || existing.optionIds.length)) return existing
       await this.repo.ensureMeta(this.stamp())
+      // Last week's directions still on offer are left open now, so the new three know them as paths not taken.
+      await this.leaveOpenWhatWeeksLeft()
       // Independent of each other, so side by side: the week waits for the slower one, not the sum.
       await Promise.all([
         this.closeEndedExplorations().catch(() => {}),
@@ -1003,6 +1005,22 @@ export class Journey {
     }
     if (!failed) await this.repo.marks.put({ id: done, at: this.stamp(), value: { rewritten } })
     return rewritten
+  }
+
+  /**
+   * Directions still "offered" in a week that has ended were offered and not
+   * taken: left open, like the others of their week. Taking a direction leaves
+   * its week's other three open, but three asked for after that ("A different
+   * direction", or three from an evening) had nothing to move them on, and sat
+   * in the Journal unmarked and out of the curator's open paths for good
+   * (week 43, 26 October 2026). Cheap and idempotent: run at startup and when a
+   * week begins. Returns how many it left open.
+   */
+  async leaveOpenWhatWeeksLeft(): Promise<number> {
+    const current = this.currentWeek().key
+    const stale = (await this.repo.options.all()).filter((o) => o.status === 'offered' && o.weekKey < current)
+    if (stale.length) await this.repo.options.putMany(stale.map((o) => ({ ...o, status: 'open' as const })))
+    return stale.length
   }
 
   async settleEvenings(): Promise<number> {

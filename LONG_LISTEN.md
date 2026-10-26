@@ -1556,3 +1556,14 @@ reached", which a skip fell under.
   closed in the last four weeks with a work skipped or known is closed again, so its note and next directions
   are rewritten. The mark (`repair:closing-notes-skips`) is set only when every rewrite succeeded.
 
+## 35. Directions asked for after the choice are left open when the week ends (26 October 2026)
+
+Week 43's Journal listed three directions with no *left open* and no *take it this week*: the three asked for
+from an evening of its own (*Ask for three directions from this evening*, then *Follow this evening*), which
+wait under *Where next → A different direction*. Taking a direction leaves its week's others open, but three
+asked for after the choice (that, or *Ask for three new directions*) had nothing to move them on: once the
+week ended they stayed "offered" for good, unmarked in the Journal and missing from the curator's open paths.
+`leaveOpenWhatWeeksLeft` now leaves open every direction still offered in a week that has ended — when a week
+begins (before its three are written, so they know them) and at startup (which settles the ones already
+stuck). Cheap, no curator, idempotent.
+

@@ -950,3 +950,26 @@ describe('a skipped work, known already, is settled, not waiting (26 October 202
   })
 })
 
+
+describe('directions asked for after the week’s choice (26 October 2026)', () => {
+  it('are left open once their week ends, and the next week’s three know them', async () => {
+    const c = fakeCurator({
+      themes: (_p, n) => themes(n === 1 ? ['A', 'B', 'C'] : n === 2 ? ['From the evening 1', 'From the evening 2', 'From the evening 3'] : ['X', 'Y', 'Z']),
+      programme: () => programme('Colour', FRENCH),
+      continuity: () => ({ reaction: 'r', openQuestions: [], adjacentTopics: [], nextDirections: [], closingNote: 'n', promptVersion: 'c' }),
+    })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    await j.choose(w.optionIds[0])
+    const more = await j.moreDirections('Carry on from the evening')
+    expect((await repo.options.many(more.optionIds)).every((o) => o.status === 'offered')).toBe(true)
+
+    at('2026-10-15T09:00:00Z') // the next week
+    await j.ensureWeek()
+    expect((await repo.options.many(more.optionIds)).every((o) => o.status === 'open')).toBe(true)
+    const openPaths = c.calls.filter((x) => x.op === 'themes').at(-1)!.payload.context.openPaths.map((p: { title: string }) => p.title)
+    expect(openPaths).toEqual(expect.arrayContaining(['From the evening 1', 'From the evening 2', 'From the evening 3', 'B', 'C']))
+    // Already-stale ones (from before this existed) are settled the same way at startup; idempotent.
+    expect(await j.leaveOpenWhatWeeksLeft()).toBe(0)
+  })
+})

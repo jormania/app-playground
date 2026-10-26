@@ -209,7 +209,9 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
       const moved = await journey.repairStandInFeedback().catch(() => 0)
       // Sittings filed into a thread before evenings of their own existed move out to the week's timeline, once.
       const settled = await journey.settleEvenings().catch(() => 0)
-      if (moved || settled) bump()
+      // Directions still on offer in a week that has ended are left open (never asked for, never taken).
+      const leftOpen = await journey.leaveOpenWhatWeeksLeft().catch(() => 0)
+      if (moved || settled || leftOpen) bump()
       if (!curatorReady) return
       const read = await journey.interpretPendingFeedback().catch(() => 0)
       // Once: closing notes written before skips were told apart from music not yet reached.
