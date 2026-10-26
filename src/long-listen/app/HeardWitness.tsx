@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useServices } from './services'
 import { onHeardThrough, onPlayerReading, onWorkRanOn, usePlayerState } from './playback'
 import { isConfirmed } from '../spotify/verify'
+import { putWorkBack } from '../spotify/putBack'
 import { trackKey } from '../spotify/witness'
 import { listeningState } from '../domain/listening'
 import type { NowPlaying } from '../spotify/client'
@@ -59,11 +60,18 @@ export function HeardWitness() {
 
   // A work started from the app ran on past its last movement (its album carrying on, or Spotify's
   // autoplay): stop it, and say why the music stopped (spotify/workGuard.ts).
-  useEffect(() => onWorkRanOn(() => {
-    // Said only once Spotify agrees it stopped: without Premium a pause is refused, quietly.
+  useEffect(() => onWorkRanOn((trackIds) => {
+    // Said only once Spotify agrees it stopped: without Premium a pause is refused, quietly. Then the work is put
+    // back in the player, at its start and paused, so what's loaded is the work, not the next track of its album.
     spotify.pause()
       .then(() => spotify.nowPlaying())
-      .then((np) => { if (!np?.isPlaying) say('Stopped at the end of the work: Spotify was going on to music that isn’t in the programme.') })
+      .then(async (np) => {
+        if (np?.isPlaying) return
+        const back = await putWorkBack(spotify, trackIds).catch(() => false)
+        say(back
+          ? 'Stopped at the end of the work and set back at its start: Spotify was going on to music that isn’t in the programme.'
+          : 'Stopped at the end of the work: Spotify was going on to music that isn’t in the programme.')
+      })
       .catch(() => {})
   }), [spotify, say])
   useEffect(() => onHeardThrough((trackIds) => {
