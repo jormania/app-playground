@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags, validateTaste, validateSketch } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags, validateTaste, validateSketch, pitchedAsOneEvening } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -232,5 +232,26 @@ describe('Shape next week', () => {
     const r = validateSketch(out, { slots: ['immersive', 'curious'], avoid: ['spectral LIGHT'] })
     expect(r.value.sketches.map((s) => s.title)).toEqual(['How a theme is built'])
     expect(r.problems).toEqual(['"Spectral light" was sketched before; the immersive sketch must be another.', 'Sketch the immersive slot.'])
+  })
+})
+
+describe('a direction is a week, not an evening (26 October 2026)', () => {
+  it('knows a pitch sold as one evening from a week that mentions evenings', () => {
+    expect(pitchedAsOneEvening('One long, unhurried evening of slow music that thins towards silence.')).toBe(true)
+    expect(pitchedAsOneEvening('A single quiet night of nocturnes.')).toBe(true)
+    expect(pitchedAsOneEvening('Music for tonight, slow and still.')).toBe(true)
+    expect(pitchedAsOneEvening('Slow movements across the week, from Pärt to Vaughan Williams; the Tallis Fantasia for a late evening.')).toBe(false)
+    expect(pitchedAsOneEvening('Nocturnes and slow movements from Bartók to Saariaho.')).toBe(false)
+  })
+  it('sends back a week pitched as an evening, but not a city-year week about one night', () => {
+    const opt = (mood, title, pitch, form = 'theme') => ({ mood, title, pitch, character: [], why: 'w', angle: 'a', returningThemeId: '', continuityNote: '', form, shapedFrom: '' })
+    const evening = validateThemes({ options: [opt('immersive', 'Hush', 'One long, unhurried evening of slow music.'), opt('curious', 'B', 'p'), opt('adventurous', 'C', 'p')] }, { threadIds: [] })
+    expect(evening.problems).toEqual(['Option "Hush" is pitched as one evening; it is a week\'s listening, heard over several sittings.'])
+    const premiere = validateThemes({ options: [opt('immersive', 'A', 'p'), opt('curious', 'Paris, 29 May 1913', 'A single night of premieres and what followed.', 'city-year'), opt('adventurous', 'C', 'p')] }, { threadIds: [] })
+    expect(premiere.problems).toEqual([])
+  })
+  it('sends back a sketch pitched as an evening', () => {
+    const r = validateSketch({ sketches: [{ mood: 'immersive', title: 'Hush', line: 'An evening of slow music.', from: 'f' }] }, { slots: ['immersive'] })
+    expect(r.problems).toEqual(['The immersive sketch is pitched as one evening; it is a week\'s listening.'])
   })
 })

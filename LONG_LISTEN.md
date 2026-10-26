@@ -1531,4 +1531,62 @@ are written, so they arrive shepherded rather than as complete surprises. Roadma
     send only what decides a direction — taste, threads, open paths and questions, recent weeks, concerts,
     the wish — not the work-by-work history (`recentListening`, `alreadyProgrammed`, `alreadyKnown`,
     `secondHearings`), which the week's own call still gets on the day.
+- **A direction is a week, not an evening (owner's report, 26 October 2026).** The first real shaped week
+  pitched its immersive direction as "One long, unhurried evening of slow music…" — a week sold as one
+  sitting, when a sitting for tonight is what one evening is for. A quiet mood, a wish for stillness and the
+  VOICE's own "a good evening's concert-going stretched over seven days" all lean that way, and nothing said
+  otherwise. Now both prompts say it (`themes@2026-10-26.1`, `sketch@2026-10-26.1`): a direction is a week's
+  listening over several sittings, never "an evening of…" or "tonight", however quiet. `pitchedAsOneEvening`
+  (validate.js) sends back once a pitch or sketch line sold as one evening or night; a *city-year* week, which
+  may be about one night in history, is exempt.
+
+## 34. A skipped work is settled, not waiting (26 October 2026)
+
+The owner skipped the Elgar in *The Orchestra Answers Back* because they knew it already; the thread's closing
+note said "The Elgar is still waiting for you, and it will keep." Two causes: the closing call
+(`closeExploration`) sent each work's state and the recording's feedback, but not *I knew it already*, which
+is said of the work; and the continuity prompt's only guidance was "unheard music … may simply not have been
+reached", which a skip fell under.
+
+- Each work now carries `knewIt: true` when the listener said they knew it (`continuity@2026-10-26.1`), and the
+  prompt says what each state means: *not-started* or *listening* may be left for a return; *skipped* is
+  settled — never "still waiting", never invited back, never the ground of a next direction; *knewIt* is
+  familiar ground, and a skip of it says nothing against it.
+- `rewriteClosingNotesForSkips` (once per device, on startup with the curator): each thread's latest visit
+  closed in the last four weeks with a work skipped or known is closed again, so its note and next directions
+  are rewritten. The mark (`repair:closing-notes-skips`) is set only when every rewrite succeeded.
+
+## 35. Directions asked for after the choice are left open when the week ends (26 October 2026)
+
+Week 43's Journal listed three directions with no *left open* and no *take it this week*: the three asked for
+from an evening of its own (*Ask for three directions from this evening*, then *Follow this evening*), which
+wait under *Where next → A different direction*. Taking a direction leaves its week's others open, but three
+asked for after the choice (that, or *Ask for three new directions*) had nothing to move them on: once the
+week ended they stayed "offered" for good, unmarked in the Journal and missing from the curator's open paths.
+`leaveOpenWhatWeeksLeft` now leaves open every direction still offered in a week that has ended — when a week
+begins (before its three are written, so they know them) and at startup (which settles the ones already
+stuck). Cheap, no curator, idempotent.
+
+## 36. Threads, audited (26 October 2026)
+
+The owner asked for the Threads page to be checked end to end — what it reads, how the data is gathered, what
+the curator does with it. The page reads themes, visits (explorations), programmes, listening, feedback and
+stand-ins straight from the store (`threadsToShow`, `heldBy`, `threadContents`); the curator writes a thread's
+*How it landed*, questions and next directions, and each visit's closing note, when a visit's week ends
+(`closeEndedExplorations` → `continuity`), reading the thread's memory (`digestThread`). Found, each proven by a
+failing test first, and fixed:
+
+- **A thread heard through with a skip stayed "started" for ever.** A skip is done with: such a thread now
+  reads "heard, one skipped" (`threadContents`).
+- **A visit set aside part-way never closed.** A direction changed away from after something of it was heard
+  left its thread with no *How it landed*, no questions and no closing note, for good. Such visits now close
+  too, the curator told `exploration.setAside` (`continuity@2026-10-26.2`: what was heard counts; the rest is
+  not left for a return). One set aside with nothing heard is still left alone. Within a week, a set-aside
+  visit closes before the one that replaced it, so the kept one has the last word on the thread.
+- **The thread's memory didn't know a skipped work was known already.** `digestThread` now carries `knewIt`
+  on the recording and says "knew it already" beside it in `response.skipped` — read by the week's directions,
+  a returning programme and every closing.
+- **A question a thread left could start a second thread on the same ground.** *Ask for three directions from
+  it* sent the question alone, so a direction from it was never marked as returning. The seed now names the
+  thread (`seedFromThread`), so the curator can return there.
 

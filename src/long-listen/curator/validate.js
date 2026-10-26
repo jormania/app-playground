@@ -105,6 +105,8 @@ export function validateThemes(out, { threadIds, pairs = true, shaped } = {}) {
   const titles = options.map((o) => o.title.toLowerCase())
   if (new Set(titles).size !== titles.length) problems.push('Two options share a title.')
   if (options.filter((o) => o.returning).length > 2) problems.push('At most two options may return to earlier threads.')
+  // A direction is a week, not one evening (owner's report, 26 October 2026: "One long, unhurried evening of slow music").
+  for (const o of options) if (o.form !== 'city-year' && pitchedAsOneEvening(o.pitch)) problems.push(`Option "${o.title}" is pitched as one evening; it is a week's listening, heard over several sittings.`)
   for (const o of options) {
     if (o.returning && !o.returning.note) problems.push(`Option "${o.title}" returns to a thread but has no continuityNote.`)
   }
@@ -627,6 +629,12 @@ export function validatePortrait(out) {
   return { value, problems: value.portrait ? [] : ['The portrait is empty.'] }
 }
 
+/** A pitch that sells a week as a single evening or night ("one long, unhurried evening of…", "tonight"). */
+export function pitchedAsOneEvening(text) {
+  const t = String(text ?? '').toLowerCase()
+  return /\btonight\b|\bthis evening\b/.test(t) || /\b(one|a single|an?)\s+(?:[a-z’'-]+,?\s+){0,3}(evening|night)\s+of\b/.test(t)
+}
+
 /**
  * Sketches for next week: one per slot asked for, each with a title and a line,
  * none a title the listener already passed over or kept in another slot.
@@ -641,6 +649,7 @@ export function validateSketch(out, { slots = [], avoid = [] } = {}) {
     if (!mood || !slots.includes(mood) || sketches.some((k) => k.mood === mood)) continue
     const sketch = { mood, title: clean(s?.title), line: clean(s?.line), from: clean(s?.from) }
     if (!sketch.title || !sketch.line) { problems.push(`The ${mood} sketch needs a title and a line.`); continue }
+    if (pitchedAsOneEvening(sketch.line)) problems.push(`The ${mood} sketch is pitched as one evening; it is a week's listening.`)
     if (avoided.has(fold(sketch.title))) { problems.push(`"${sketch.title}" was sketched before; the ${mood} sketch must be another.`); continue }
     sketches.push(sketch)
   }

@@ -79,7 +79,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-24.1',
+  version: 'themes@2026-10-26.1',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -133,7 +133,7 @@ Balance across the three: familiarity, discovery, continuity, contrast, depth. U
 
 Field guide:
 - title: an evocative but clear title, at most ten words.
-- pitch: two or three sentences saying what the listening would be.
+- pitch: two or three sentences saying what the listening would be — a week's listening, heard over several sittings (preferences.timePerWeek), never one evening or one night: don't pitch it as "an evening of…", "tonight" or a single sitting, however quiet or slow the week is asked to be. One evening is what a sitting for tonight is for. (A "city-year" week may be about one night in history; it is still listened to across the week.)
 - character: three or four short descriptors (mood, texture, era), e.g. "atmospheric", "20th/21st century".
 - why: one or two sentences on why this might be interesting for this listener now.
 - angle: the route into the theme this time, one sentence.
@@ -330,7 +330,7 @@ questions: up to three questions the listener seems to be asking of the music, o
 
 export const CONTINUITY = {
   id: 'continuity',
-  version: 'continuity@2026-10-23.1',
+  version: 'continuity@2026-10-26.2',
   effort: 'low',
   maxTokens: 6000,
   schema: {
@@ -354,7 +354,7 @@ Your job now: a week of a thread has ended. Read what was programmed, what the l
 - adjacentTopics: up to four neighbouring topics the listening pointed towards.
 - nextDirections: two to four concrete routes for a future return — each one sentence naming composers or works not yet explored ("What happens to the symphony when composers write under political pressure — Shostakovich 10, Prokofiev 6").
 - closingNote: one or two sentences for the listener's notebook, in the second person, warm and plain.
-Unheard music is not disliked music; it may simply not have been reached.`,
+Each work's "state" says where the listener got to. "not-started" or "listening": not reached, or not finished — unheard music is not disliked music, and it may be left for a return. "skipped": the listener chose to pass it over — it is settled, not waiting; never say it is still waiting, will keep, or invite them back to it, and don't build a next direction on it. "knewIt": true means they already knew the work before this week — a skip of it says nothing against it, and it is familiar ground, not a discovery left undone. If "exploration.setAside" is true, the listener changed direction away from this week part-way: read what they heard of it, and don't treat the rest as left for a return — they chose to go elsewhere.`,
 }
 
 // ── 5. A little more context, on request ─────────────────────────────────
@@ -675,7 +675,7 @@ const sketchSchema = {
 
 export const SKETCH = {
   id: 'sketch',
-  version: 'sketch@2026-10-24.1',
+  version: 'sketch@2026-10-26.1',
   effort: 'low',
   maxTokens: 3000,
   schema: {
@@ -694,7 +694,7 @@ If "nudge" is present, the listener is moving one sketch: nudge.sketch is the sk
 
 Field guide:
 - title: at most eight words, evocative but clear.
-- line: one sentence, at most twenty-five words, saying what the listening would be.
+- line: one sentence, at most twenty-five words, saying what the week's listening would be. A direction is a whole week, heard over several sittings, never one evening or one night: no "an evening of…", no "tonight", however quiet the week should feel.
 - from: what it grows from, in at most six words, for the listener to read: "your wish for more Sibelius", "this thread's open question", "a path left open in week 41", "something new". Never quote the listener at length.`,
 }
 

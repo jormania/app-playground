@@ -97,7 +97,10 @@ export function threadContents(
   const years = workIds
     .map((id) => Number(/\b(1[0-9]{3}|20[0-9]{2})\b/.exec(works.get(id)?.composed ?? '')?.[1]))
     .filter((y) => y > 0)
-  const heard = new Set(items.filter(({ ids }) => listeningState(events, ids) === 'heard').map(({ i }) => i.workId)).size
+  const heardIds = new Set(items.filter(({ ids }) => listeningState(events, ids) === 'heard').map(({ i }) => i.workId))
+  const heard = heardIds.size
+  // A work skipped is done with, not waiting: heard through with skips is not "started" for ever (26 October 2026).
+  const skipped = new Set(items.filter(({ ids }) => listeningState(events, ids) === 'skipped').map(({ i }) => i.workId).filter((id) => !heardIds.has(id))).size
 
   // Who it holds, by name — three at most, in the order the thread met them.
   const names = [...composers.keys()].map((c) => displaySurname(c))
@@ -106,8 +109,20 @@ export function threadContents(
   const hi = Math.max(...years)
   const when = years.length ? (lo === hi ? `, written in ${lo}` : `, written between ${lo} and ${hi}`) : ''
   // The words a work's own state uses (Not started · Started · Heard), said of the thread's works together.
-  const where = heard === 0 ? 'not started' : heard === workIds.length ? 'all heard' : 'started'
+  const where = heard === 0 ? 'not started'
+    : heard === workIds.length ? 'all heard'
+      : heard + skipped === workIds.length ? `heard, ${skipped === 1 ? 'one' : skipped === 2 ? 'two' : skipped === 3 ? 'three' : 'some'} skipped`
+        : 'started'
   return [who + when, where].join(' · ')
+}
+
+/**
+ * A question or a direction a thread left, as the seed for three directions: the
+ * thread named with it, so the curator can mark a direction from it as returning
+ * there. Without the name it was free to start a second thread on the same ground.
+ */
+export function seedFromThread(text: string, threadTitle: string): string {
+  return `${text} (a question the thread “${threadTitle}” left: a direction from it may return to that thread)`
 }
 
 function andList(xs: string[]): string {

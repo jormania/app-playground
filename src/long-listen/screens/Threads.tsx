@@ -1,5 +1,5 @@
 import type { ListeningEvent, Programme, Work } from '../domain/types'
-import { heldBy, threadContents, threadsToShow, type ShownThread } from '../domain/threadContents'
+import { heldBy, seedFromThread, threadContents, threadsToShow, type ShownThread } from '../domain/threadContents'
 import { standInsOf } from '../curation/continuity'
 import { sinceWords, weekFromKey } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
@@ -90,9 +90,13 @@ function ThreadEntry({ thread: { theme: t, visits, latest }, programmes, works, 
   following: string | null
 }) {
   // Each seed the thread left is one tap from a week: the Notebook's "Ask for three directions from it", here too.
-  const followLink = (seed: string) => follow && (
-    <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Ask for three directions from it'}</button></>
-  )
+  // Named with the thread, so a direction from it can return there rather than begin a second thread on the same ground.
+  const followLink = (text: string) => {
+    const seed = seedFromThread(text, t.title)
+    return follow && (
+      <>{' '}<button className={s.textButton} onClick={() => void follow(seed)} disabled={following !== null}>{following === seed ? 'The curator is finding three…' : 'Ask for three directions from it'}</button></>
+    )
+  }
   // The thread named, so the curator is given it even when it is older than the twelve it usually reads (curation/context.ts).
   const returnSeed = `Return to the thread “${t.title}”, continuing from where it was left — new works, new routes, never a restart.`
   const contents = threadContents(heldBy(visits, programmes), works, events, hideSkipped, standIns)

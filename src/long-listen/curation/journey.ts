@@ -9,7 +9,7 @@ import { forgetPlaceBefore } from '../app/place'
 import { AlreadyKept, ConcertRefused, goingKey, type Going } from '../domain/going'
 import { sameEvening, type LiveEvent } from '../live/live'
 import { listeningState, latestFeedback } from '../domain/listening'
-import { DEFAULT_TIME_ZONE, isoDateIn, weekAfter, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
+import { DEFAULT_TIME_ZONE, isoDateIn, weekAfter, weekFromKey, weekOf, weeksBetween, type ListeningWeek } from '../domain/week'
 import { emptyShape, shapeBasis, shapeKey, shapeSaysSomething, shapedBrief, shapedSlots, staleSlots, type Sketch, type WeekShape } from '../domain/shaping'
 import { NotFound, type Repo } from '../store/repo'
 import type {
@@ -155,6 +155,8 @@ export class Journey {
       if (existing && !existing.programmeId && existing.optionIds.length && !existing.madeWith) return this.noteMadeWithNow(existing)
       if (existing && (existing.programmeId || existing.optionIds.length)) return existing
       await this.repo.ensureMeta(this.stamp())
+      // Last week's directions still on offer are left open now, so the new three know them as paths not taken.
+      await this.leaveOpenWhatWeeksLeft()
       // Independent of each other, so side by side: the week waits for the slower one, not the sum.
       await Promise.all([
         this.closeEndedExplorations().catch(() => {}),
@@ -770,13 +772,23 @@ export class Journey {
   /** Close every exploration whose week has ended, so its thread knows how it landed. */
   async closeEndedExplorations(): Promise<number> {
     const current = this.currentWeek().key
-    const open = (await this.repo.explorations.all()).filter((e) => e.weekKey < current && !e.closedAt && !e.setAside)
+    // A visit set aside (a direction changed away from) is closed too once something of it was heard or skipped:
+    // otherwise a thread whose only visit was set aside part-way never learnt how it landed (26 October 2026).
+    const events = await this.repo.events.all()
+    const comparisons = await this.repo.comparisons.all()
+    const standIns = standInsOf(comparisons)
+    const begun = async (e: ThemeExploration) => (await this.repo.programmes.many([e.programmeId, ...(e.extraProgrammeIds ?? [])]))
+      .some((p) => p.sections.flatMap((s) => s.items).some((i) => listeningState(events, heardAs(i, p.id, standIns)) !== 'not-started'))
+    const candidates = (await this.repo.explorations.all()).filter((e) => e.weekKey < current && !e.closedAt)
+    const open = (await Promise.all(candidates.map(async (e) => (!e.setAside || await begun(e) ? e : null)))).filter((e): e is ThemeExploration => e !== null)
     // Threads side by side, but one thread's visits in order, oldest first:
     // each closing rewrites the thread's open questions and next directions,
     // so the latest visit must have the last word — and each sees the one
     // before it closed. One failing doesn't stop the others; it is retried next time.
     const byTheme = new Map<string, ThemeExploration[]>()
-    for (const ex of [...open].sort((a, b) => a.weekKey.localeCompare(b.weekKey))) byTheme.set(ex.themeId, [...(byTheme.get(ex.themeId) ?? []), ex])
+    // Within a week, a visit set aside closes before the one that replaced it, so the one kept has the last word.
+    const order = (a: ThemeExploration, b: ThemeExploration) => a.weekKey.localeCompare(b.weekKey) || Number(!a.setAside) - Number(!b.setAside)
+    for (const ex of [...open].sort(order)) byTheme.set(ex.themeId, [...(byTheme.get(ex.themeId) ?? []), ex])
     const counts = await Promise.all([...byTheme.values()].map(async (visits) => {
       let closed = 0
       for (const ex of visits) {
@@ -809,7 +821,7 @@ export class Journey {
     const res = await this.curator.call<ContinuityResponse>('continuity', {
       language,
       thread: digest,
-      exploration: { weekKey: ex.weekKey, stage: ex.stage, angle: ex.angle },
+      exploration: { weekKey: ex.weekKey, stage: ex.stage, angle: ex.angle, ...(ex.setAside ? { setAside: true } : {}) },
       programme: {
         title: programme.title,
         items: [programme, ...extras].flatMap((x) => x.sections.flatMap((s) => s.items).map((i) => ({ i, x, ids: heardAs(i, x.id, standIns) }))).map(({ i, x, ids }) => ({
@@ -819,6 +831,9 @@ export class Journey {
           recording: creditLine(playedProposed(i, x.id, players, events, feedback)),
           state: listeningState(events, ids),
           ...feedbackOnAny(feedback, ids),
+          // "I knew it already" is said of the work, not the recording: without it a work passed over for that reason
+          // read as one not yet reached, and the closing note said it was "still waiting for you" (26 October 2026).
+          ...(latestFeedback(feedback, i.workId).known ? { knewIt: true } : {}),
         })),
         programmeFeedback: latestFeedback(feedback, programme.id),
       },
@@ -962,6 +977,62 @@ export class Journey {
    * to the week's timeline; "Belongs with this week's theme" puts one back.
    * Returns how many moved.
    */
+  /**
+   * A thread's closing note written before skips and "knew it already" were
+   * told apart from music not yet reached ("The Elgar is still waiting for
+   * you", of a work skipped because it was known). Once per device, with the
+   * curator: each thread's latest visit closed in the last four weeks with a
+   * work skipped or known is closed again, so its note and next directions are
+   * rewritten. The mark is set only when every one succeeded.
+   */
+  async rewriteClosingNotesForSkips(): Promise<number> {
+    const done = 'repair:closing-notes-skips'
+    if (await this.repo.marks.get(done)) return 0
+    const current = this.currentWeek().key
+    const events = await this.repo.events.all()
+    const feedback = await this.repo.feedback.all()
+    const comparisons = await this.repo.comparisons.all()
+    const standIns = standInsOf(comparisons)
+    const latestByTheme = new Map<string, ThemeExploration>()
+    for (const ex of await this.repo.explorations.all()) {
+      if (!ex.closedAt || ex.setAside || weeksBetween(ex.weekKey, current) > 4) continue
+      const was = latestByTheme.get(ex.themeId)
+      if (!was || ex.weekKey > was.weekKey) latestByTheme.set(ex.themeId, ex)
+    }
+    let rewritten = 0
+    let failed = false
+    for (const ex of latestByTheme.values()) {
+      const programmes = (await this.repo.programmes.many([ex.programmeId, ...(ex.extraProgrammeIds ?? [])])).filter(Boolean)
+      const passed = programmes.some((p) => p.sections.flatMap((s) => s.items).some((i) =>
+        listeningState(events, heardAs(i, p.id, standIns)) === 'skipped' || latestFeedback(feedback, i.workId).known))
+      if (!passed) continue
+      try {
+        await this.once(`close:${ex.id}`, () => this.closeExploration(ex, current))
+        rewritten++
+      } catch {
+        failed = true
+      }
+    }
+    if (!failed) await this.repo.marks.put({ id: done, at: this.stamp(), value: { rewritten } })
+    return rewritten
+  }
+
+  /**
+   * Directions still "offered" in a week that has ended were offered and not
+   * taken: left open, like the others of their week. Taking a direction leaves
+   * its week's other three open, but three asked for after that ("A different
+   * direction", or three from an evening) had nothing to move them on, and sat
+   * in the Journal unmarked and out of the curator's open paths for good
+   * (week 43, 26 October 2026). Cheap and idempotent: run at startup and when a
+   * week begins. Returns how many it left open.
+   */
+  async leaveOpenWhatWeeksLeft(): Promise<number> {
+    const current = this.currentWeek().key
+    const stale = (await this.repo.options.all()).filter((o) => o.status === 'offered' && o.weekKey < current)
+    if (stale.length) await this.repo.options.putMany(stale.map((o) => ({ ...o, status: 'open' as const })))
+    return stale.length
+  }
+
   async settleEvenings(): Promise<number> {
     const done = 'repair:evenings-of-their-own'
     if (await this.repo.marks.get(done)) return 0
