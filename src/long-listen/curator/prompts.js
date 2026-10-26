@@ -79,7 +79,7 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-24.1',
+  version: 'themes@2026-10-26.1',
   effort: 'medium',
   maxTokens: 12000,
   schema: {
@@ -133,7 +133,7 @@ Balance across the three: familiarity, discovery, continuity, contrast, depth. U
 
 Field guide:
 - title: an evocative but clear title, at most ten words.
-- pitch: two or three sentences saying what the listening would be.
+- pitch: two or three sentences saying what the listening would be — a week's listening, heard over several sittings (preferences.timePerWeek), never one evening or one night: don't pitch it as "an evening of…", "tonight" or a single sitting, however quiet or slow the week is asked to be. One evening is what a sitting for tonight is for. (A "city-year" week may be about one night in history; it is still listened to across the week.)
 - character: three or four short descriptors (mood, texture, era), e.g. "atmospheric", "20th/21st century".
 - why: one or two sentences on why this might be interesting for this listener now.
 - angle: the route into the theme this time, one sentence.
@@ -675,7 +675,7 @@ const sketchSchema = {
 
 export const SKETCH = {
   id: 'sketch',
-  version: 'sketch@2026-10-24.1',
+  version: 'sketch@2026-10-26.1',
   effort: 'low',
   maxTokens: 3000,
   schema: {
@@ -694,7 +694,7 @@ If "nudge" is present, the listener is moving one sketch: nudge.sketch is the sk
 
 Field guide:
 - title: at most eight words, evocative but clear.
-- line: one sentence, at most twenty-five words, saying what the listening would be.
+- line: one sentence, at most twenty-five words, saying what the week's listening would be. A direction is a whole week, heard over several sittings, never one evening or one night: no "an evening of…", no "tonight", however quiet the week should feel.
 - from: what it grows from, in at most six words, for the listener to read: "your wish for more Sibelius", "this thread's open question", "a path left open in week 41", "something new". Never quote the listener at length.`,
 }
 

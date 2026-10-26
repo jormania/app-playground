@@ -1531,4 +1531,12 @@ are written, so they arrive shepherded rather than as complete surprises. Roadma
     send only what decides a direction — taste, threads, open paths and questions, recent weeks, concerts,
     the wish — not the work-by-work history (`recentListening`, `alreadyProgrammed`, `alreadyKnown`,
     `secondHearings`), which the week's own call still gets on the day.
+- **A direction is a week, not an evening (owner's report, 26 October 2026).** The first real shaped week
+  pitched its immersive direction as "One long, unhurried evening of slow music…" — a week sold as one
+  sitting, when a sitting for tonight is what one evening is for. A quiet mood, a wish for stillness and the
+  VOICE's own "a good evening's concert-going stretched over seven days" all lean that way, and nothing said
+  otherwise. Now both prompts say it (`themes@2026-10-26.1`, `sketch@2026-10-26.1`): a direction is a week's
+  listening over several sittings, never "an evening of…" or "tonight", however quiet. `pitchedAsOneEvening`
+  (validate.js) sends back once a pitch or sketch line sold as one evening or night; a *city-year* week, which
+  may be about one night in history, is exempt.
 
