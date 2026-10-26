@@ -1590,3 +1590,18 @@ failing test first, and fixed:
   it* sent the question alone, so a direction from it was never marked as returning. The seed now names the
   thread (`seedFromThread`), so the curator can return there.
 
+## 37. The work put back after it runs on (26 October 2026)
+
+Playing *Nocturnes* from the app, the player went on after *Sirènes* to *Jeux*, the next track of the album:
+loaded, not playing. The app sends Spotify only the work's own tracks (`play`, `uris`), but a device — a TV
+above all — carries on past them into the album, and no request can stop that loading. The guard
+(`spotify/workGuard.ts`) caught it and paused, so it no longer plays (it once did); the player was left showing
+music that isn't in the programme.
+
+`putWorkBack` (`spotify/putBack.ts`) now follows the pause: the volume down to nothing, the work loaded at its
+first movement, paused once the player is seen to have it (a pause sent before the play lands would leave it
+playing silently), and only then the volume back as it was — in a `finally`, so a failed play can't leave the
+device muted. Never on a device whose volume Spotify can't read or set: it stays paused on the other track,
+as before. The note says which happened. The Spotify app's own *Autoplay* setting (Settings → Playback) is
+what makes some devices carry on; turning it off there stops the run-on at its source.
+

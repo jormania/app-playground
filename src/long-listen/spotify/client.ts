@@ -40,6 +40,8 @@ export interface NowPlaying {
   progressMs: number
   durationMs: number
   deviceName?: string
+  /** The device's volume, when Spotify reports it and the device lets it be set (some speakers and TVs don't). */
+  volumePercent?: number
 }
 
 export class SpotifyClient {
@@ -215,13 +217,14 @@ export class SpotifyClient {
     if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify isn’t answering right now.')
     const d = await res.json().catch(() => null) as {
       item?: { id: string; name: string; duration_ms?: number; linked_from?: { id?: string } } | null
-      is_playing?: boolean; progress_ms?: number | null; device?: { name?: string; type?: string } | null
+      is_playing?: boolean; progress_ms?: number | null; device?: { name?: string; type?: string; volume_percent?: number | null; supports_volume?: boolean } | null
     } | null
     if (!d?.item) return null
     return {
       trackId: d.item.id, linkedFromId: d.item.linked_from?.id, trackName: d.item.name,
       isPlaying: Boolean(d.is_playing), progressMs: d.progress_ms ?? 0, durationMs: d.item.duration_ms ?? 0,
       deviceName: shortDevice(d.device?.name, d.device?.type),
+      ...(d.device?.supports_volume !== false && typeof d.device?.volume_percent === 'number' ? { volumePercent: d.device.volume_percent } : {}),
     }
   }
 
@@ -287,6 +290,12 @@ export class SpotifyClient {
     if (res.status === 404) throw new SpotifyUnavailable('no-device', 'Open Spotify on a device first, then try again.')
     if (res.status === 403 && await premiumRequired(res)) throw new SpotifyUnavailable('premium', PREMIUM)
     if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify couldn’t start playback.')
+  }
+
+  /** Set the active device's volume; false when the device refuses (it may not allow it). */
+  async setVolume(percent: number): Promise<boolean> {
+    const res = await this.request(`me/player/volume?volume_percent=${Math.max(0, Math.min(100, Math.round(percent)))}`, { method: 'PUT' }).catch(() => null)
+    return Boolean(res?.ok)
   }
 
   /** Pause whatever is playing on the active device. */
