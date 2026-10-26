@@ -1123,7 +1123,7 @@ Also drifted since: `lucide-react` latest is now **1.49**, `@anthropic-ai/sdk`
 0.128 → 0.131, `sharp` 0.33 → 0.35, and the `@fontsource*` family 5.2 → 5.3
 across all seven packages. Same rule as before: one family per run, and the
 React family last.
-## R-009 — Kettlebell Training has no tests at all · `modernise` · `open` — first tests landed
+## R-009 — Kettlebell Training has no tests at all · `modernise` · `done 2026-10-26`
 
 **Impact:** none visible. Makes the one untested app safe to change later.
 
@@ -1152,9 +1152,17 @@ renders an empty frame today and nothing complains — and `flip` only on a pose
 that actually repeats in its own filmstrip. Five mutations were run against the
 data and each was caught by exactly one test.
 
-**Left for a later run:** `App.jsx`'s scroll-spy, which needs an
-`IntersectionObserver` stub, and `poses.jsx`. Neither is data; both are the
-render tree this item told the first run to avoid.
+**Second slice landed 2026-10-26 — `src/kettlebell/App.test.jsx`, 6 tests.**
+Renders `App` under happy-dom with a stubbed `IntersectionObserver`: one card and
+one chip per exercise linked by `#ex-<id>`, first chip active on load, every card
+observed, an intersecting entry moves the highlight (and a non-intersecting one
+does not), the observer is disconnected on unmount, and the app still renders
+where `IntersectionObserver` is missing. Inverting the `isIntersecting` check was
+caught. `poses.jsx` is covered only through the data test's `POSES` key check
+and the render here.
+
+Kettlebell now has tests for its data and its one piece of state, which is what
+this item asked for.
 ## R-014 — Two dependencies that nothing imports, and one in the wrong list · `modernise` · `done 2026-09-22`
 
 **Impact:** none visible. A `package.json` whose dependency list is true.
