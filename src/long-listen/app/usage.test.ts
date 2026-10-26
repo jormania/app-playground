@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest'
-import { recordUsage, usageSummary, costOf, monthKey } from './usage'
+import { recordUsage, usageSummary, costOf, monthKey, modelLabel } from './usage'
 import { MODEL_HAIKU, MODEL_SONNET } from '../../shared/models.js'
 
 beforeEach(() => localStorage.clear())
@@ -24,5 +24,17 @@ describe('what the curator has cost on this device', () => {
   it('shrugs off a missing usage object', () => {
     recordUsage(MODEL_HAIKU, undefined)
     expect(usageSummary().requests).toBe(1)
+  })
+
+  it('lists the models dearest first', () => {
+    recordUsage(MODEL_HAIKU, { input_tokens: 1_000, output_tokens: 1_000 })
+    recordUsage(MODEL_SONNET, { input_tokens: 1_000, output_tokens: 1_000 })
+    expect(usageSummary().byModel.map((m) => m.model)).toEqual([MODEL_SONNET, MODEL_HAIKU])
+  })
+
+  it('names a model the way a person reads it', () => {
+    expect(modelLabel(MODEL_SONNET)).toMatch(/^Sonnet \d+(\.\d+)*$/)
+    expect(modelLabel(MODEL_HAIKU)).toMatch(/^Haiku \d+(\.\d+)*$/)
+    expect(modelLabel('something-else')).toBe('something-else')
   })
 })

@@ -13,7 +13,7 @@ import { archiveNotebook } from '../notion/mirror'
 import { CuratorUnavailable } from '../curation/api'
 import { PREFIX, checkBackup, type Repo } from '../store/repo'
 import { go } from '../app/router'
-import { usageSummary } from '../app/usage'
+import { modelLabel, usageSummary } from '../app/usage'
 import { RELEASE } from '../app/release'
 import s from '../styles/editorial.module.css'
 import { Twisty } from '../components/Twisty'
@@ -99,11 +99,12 @@ function Steps({ summary = 'How to set it up', children }: { summary?: string; c
 
 /**
  * Settings, in parts. Your music: how a week of listening should feel, what
- * goes into it and how the curator writes. Connections: Claude (with what it
- * has cost this month), Spotify and Notion, each a card with its state, its
- * fields, its actions, and the how-to folded beneath. The app: one card — how
+ * goes into it and how the curator writes. Connections: Claude, Spotify and
+ * Notion, each a card with its state, its fields, its actions, and the how-to
+ * folded beneath. The app: one card — how
  * it looks, what you skip, the week's time zone. Your data: a backup, and a
- * fresh start. About: the release, and the prompts' versions. Every setting is
+ * fresh start. About: the release, what Claude has cost this month by model,
+ * and the prompts' versions. Every setting is
  * labelled the same way, every action is a button of one kind, every hint is
  * one style.
  */
@@ -154,6 +155,7 @@ export function SettingsScreen() {
       <Part title="About">
         <Card>
           <p className={s.settingText}>{RELEASE.name} · {RELEASE.date}</p>
+          <SpendLine />
           <Steps summary="Prompt versions">
             <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
           </Steps>
@@ -171,16 +173,28 @@ export function SettingsScreen() {
   )
 }
 
-/** What Claude has cost on this device this month, from Anthropic's own usage figures. */
+/**
+ * What Claude has cost on this device this month, from Anthropic's own usage
+ * figures: the total, then each model, dearest first. In About, so the figure
+ * is found where a listener looks for "what is this costing me".
+ */
 function SpendLine() {
   const { version } = useServices()
   const [m, setM] = useState(() => usageSummary())
   useEffect(() => setM(usageSummary()), [version])
-  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude this month.</p>
+  const dollars = (d: number | null) => (d === null ? 'not priced here' : d < 0.01 ? 'under a cent' : `about $${d.toFixed(2)}`)
+  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude this month, on this device.</p>
   return (
-    <p className={s.settingText}>
-      This month: {m.dollars < 0.01 ? 'under a cent' : `about $${m.dollars.toFixed(2)}`} — an estimate at list prices; the Anthropic Console has the bill.
-    </p>
+    <>
+      <p className={s.settingText}>
+        Claude this month, on this device: {dollars(m.dollars)} — an estimate at list prices; the Anthropic Console has the bill.
+      </p>
+      {m.byModel.map((b) => (
+        <p key={b.model} className={s.settingText}>
+          {modelLabel(b.model)}: {dollars(b.dollars)}, {b.requests} {b.requests === 1 ? 'request' : 'requests'}
+        </p>
+      ))}
+    </>
   )
 }
 
@@ -225,7 +239,6 @@ function ClaudeSection() {
   return (
     <Card title="Claude, the curator" status={{ on: Boolean(settings.anthropicKey) || settings.demo, text: settings.anthropicKey ? 'Key added' : settings.demo ? 'Demo' : 'Not set up' }}>
       <p className={s.settingText}>Sonnet writes what needs judgement — the directions, programmes and concert readings; Haiku, at a twentieth of the price, does the short reading and writing around them.</p>
-      <SpendLine />
       <Manage settled={Boolean(settings.anthropicKey) && result?.ok !== false} value="the key, a test, how it was set up">
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.settingsActions}>

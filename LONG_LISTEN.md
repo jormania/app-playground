@@ -1610,3 +1610,6 @@ is long JSON, and adaptive thinking is billed as output at $10 a million tokens.
 - **Not done: caching the listener context for a retry.** Writing it to the cache costs a quarter extra on
   every first request, to save on the rare second one; it pays only above roughly one retry in four, and since
   the code mends what it can (#137) most programmes need none.
+- **What Claude has cost moved to Settings → About**, split by model, dearest first ("Sonnet 5.5: about
+  $1.20, 34 requests"), under the month's total. It used to be one line in the Claude card, where nobody
+  looking for a cost would find it. Still this device only, at list prices; the Console has the bill.

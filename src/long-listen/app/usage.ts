@@ -61,6 +61,13 @@ export function costOf(model: string, t: Tally): number | null {
     + t.searches * WEB_SEARCH_PRICE
 }
 
+/** A model id as a person reads it: family and version, as in "Sonnet 5.5". */
+export function modelLabel(model: string): string {
+  const m = /^claude-([a-z]+)-(\d+(?:-\d+)*)/.exec(model)
+  if (!m) return model
+  return `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2].replace(/-/g, '.')}`
+}
+
 export interface MonthSummary {
   month: string
   requests: number
@@ -70,7 +77,9 @@ export interface MonthSummary {
 
 export function usageSummary(month = monthKey()): MonthSummary {
   const all = readJson<Months>(KEY, {})
-  const byModel = Object.entries(all[month] ?? {}).map(([model, t]) => ({ model, requests: t.requests, dollars: costOf(model, t) }))
+  const byModel = Object.entries(all[month] ?? {})
+    .map(([model, t]) => ({ model, requests: t.requests, dollars: costOf(model, t) }))
+    .sort((a, b) => (b.dollars ?? 0) - (a.dollars ?? 0))
   return {
     month,
     requests: byModel.reduce((n, m) => n + m.requests, 0),
