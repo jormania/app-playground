@@ -103,7 +103,7 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
   const sayRef = useRef<(m: string) => void>(() => {})
   const [progress] = useState(() => curatorProgress((m) => sayRef.current(m)))
   const curator = useMemo<CuratorClient>(
-    () => injectedCurator ?? (settings.demo ? demoCurator() : directCurator(() => settingsRef.current.anthropicKey, { onUsage: (_op, model, usage) => recordUsage(model, usage), onProgress: progress })),
+    () => injectedCurator ?? (settings.demo ? demoCurator() : directCurator(() => settingsRef.current.anthropicKey, { onUsage: (op, model, usage) => recordUsage(model, usage, new Date(), op), onProgress: progress })),
     [injectedCurator, settings.demo, progress],
   )
   const journey = useMemo(() => new Journey(repo, curator, { timeZone: settings.timeZone }), [repo, curator, settings.timeZone])

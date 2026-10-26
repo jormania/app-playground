@@ -8,6 +8,8 @@ export declare function buildUserContent(op: string, payload: unknown): string
 export declare function curatorBody(op: string, userContent: string | unknown[]): Record<string, unknown>
 export declare function resourcesBody(userContent: string, priorTurns?: unknown[]): Record<string, unknown>
 export declare function pingBody(): Record<string, unknown>
+/** Every job the curator runs, by its op name. */
+export declare const JOBS: Record<string, (send: Send, payload: unknown) => Promise<unknown>>
 export declare function looksLikeAnthropicKey(key: string): boolean
 export declare const REQUEST_TIMEOUT_MS: number
 export declare function anthropicSender(apiKey: string, fetchImpl?: typeof fetch, timeoutMs?: number): Send

@@ -13,7 +13,7 @@ import { archiveNotebook } from '../notion/mirror'
 import { CuratorUnavailable } from '../curation/api'
 import { PREFIX, checkBackup, type Repo } from '../store/repo'
 import { go } from '../app/router'
-import { usageSummary } from '../app/usage'
+import { COUNTED_BY_JOB_FROM, modelLabel, monthKey, monthName, previousMonth, usageSummary } from '../app/usage'
 import { RELEASE } from '../app/release'
 import s from '../styles/editorial.module.css'
 import { Twisty } from '../components/Twisty'
@@ -99,11 +99,12 @@ function Steps({ summary = 'How to set it up', children }: { summary?: string; c
 
 /**
  * Settings, in parts. Your music: how a week of listening should feel, what
- * goes into it and how the curator writes. Connections: Claude (with what it
- * has cost this month), Spotify and Notion, each a card with its state, its
- * fields, its actions, and the how-to folded beneath. The app: one card — how
+ * goes into it and how the curator writes. Connections: Claude, Spotify and
+ * Notion, each a card with its state, its fields, its actions, and the how-to
+ * folded beneath. The app: one card — how
  * it looks, what you skip, the week's time zone. Your data: a backup, and a
- * fresh start. About: the release, and the prompts' versions. Every setting is
+ * fresh start. About: the release, what Claude has cost this month by model,
+ * and the prompts' versions. Every setting is
  * labelled the same way, every action is a button of one kind, every hint is
  * one style.
  */
@@ -154,6 +155,7 @@ export function SettingsScreen() {
       <Part title="About">
         <Card>
           <p className={s.settingText}>{RELEASE.name} · {RELEASE.date}</p>
+          <SpendLine />
           <Steps summary="Prompt versions">
             <p className={s.mono}>{Object.values(prompts).join(' · ')}</p>
           </Steps>
@@ -171,16 +173,66 @@ export function SettingsScreen() {
   )
 }
 
-/** What Claude has cost on this device this month, from Anthropic's own usage figures. */
+/**
+ * What Claude has cost on this device, from Anthropic's own usage figures: this
+ * month first and in full — the total, each model dearest first, and folded
+ * beneath, what it was for — then last month, folded. In About, so the figure
+ * is found where a listener looks for "what is this costing me".
+ */
 function SpendLine() {
   const { version } = useServices()
-  const [m, setM] = useState(() => usageSummary())
-  useEffect(() => setM(usageSummary()), [version])
-  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude this month.</p>
+  const [now, setNow] = useState(() => monthKey())
+  useEffect(() => setNow(monthKey()), [version])
+  const last = previousMonth(now)
+  const lastHas = usageSummary(last).requests > 0
   return (
-    <p className={s.settingText}>
-      This month: {m.dollars < 0.01 ? 'under a cent' : `about $${m.dollars.toFixed(2)}`} — an estimate at list prices; the Anthropic Console has the bill.
-    </p>
+    <>
+      <MonthSpend month={now} current version={version} />
+      {lastHas && (
+        <Steps summary={`Last month, ${monthName(last)}`}>
+          <MonthSpend month={last} version={version} />
+        </Steps>
+      )}
+    </>
+  )
+}
+
+const dollars = (d: number | null) => (d === null ? 'not priced here' : d < 0.01 ? 'under a cent' : `about $${d.toFixed(2)}`)
+const count = (n: number) => `${n} ${n === 1 ? 'request' : 'requests'}`
+
+/** One month's spend: the total, each model, and what it was for. */
+function MonthSpend({ month, current = false, version }: { month: string; current?: boolean; version: number }) {
+  const [m, setM] = useState(() => usageSummary(month))
+  useEffect(() => setM(usageSummary(month)), [month, version])
+  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude {current ? 'this month' : `in ${monthName(month)}`}, on this device.</p>
+  const forWhat = (
+    <>
+      {m.byCategory.map((c) => (
+        <p key={c.label} className={s.settingText}>{c.label}: {dollars(c.dollars)}, {count(c.requests)}</p>
+      ))}
+      {m.unsorted && (
+        <p className={s.settingText}>
+          {m.byCategory.length > 0
+            ? `Before ${COUNTED_BY_JOB_FROM}, not sorted: ${dollars(m.unsorted.dollars)}, ${count(m.unsorted.requests)}.`
+            : current
+              ? `Not sorted yet: requests are filed by what they were for from ${COUNTED_BY_JOB_FROM}, and none has been made since.`
+              : `Not sorted: requests are filed by what they were for only from ${COUNTED_BY_JOB_FROM}.`}
+        </p>
+      )}
+    </>
+  )
+  return (
+    <>
+      <p className={s.settingText}>
+        {current ? 'Claude this month' : `Claude in ${monthName(month)}`}, on this device: {dollars(m.dollars)}{current ? ' — an estimate at list prices; the Anthropic Console has the bill.' : '.'}
+      </p>
+      {m.byModel.map((b) => (
+        <p key={b.model} className={s.settingText}>
+          {modelLabel(b.model)}: {dollars(b.dollars)}, {count(b.requests)}
+        </p>
+      ))}
+      {current ? <Steps summary="What it was for">{forWhat}</Steps> : forWhat}
+    </>
   )
 }
 
@@ -225,7 +277,6 @@ function ClaudeSection() {
   return (
     <Card title="Claude, the curator" status={{ on: Boolean(settings.anthropicKey) || settings.demo, text: settings.anthropicKey ? 'Key added' : settings.demo ? 'Demo' : 'Not set up' }}>
       <p className={s.settingText}>Sonnet writes what needs judgement — the directions, programmes and concert readings; Haiku, at a twentieth of the price, does the short reading and writing around them.</p>
-      <SpendLine />
       <Manage settled={Boolean(settings.anthropicKey) && result?.ok !== false} value="the key, a test, how it was set up">
       <CommitField label="Anthropic API key" type="password" value={settings.anthropicKey} placeholder="sk-ant-…" onCommit={(v) => { updateSettings({ anthropicKey: v }); setResult(null) }} />
       <div className={s.settingsActions}>

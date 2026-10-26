@@ -79,8 +79,10 @@ const performerKeys = ['conductor', 'orchestra', 'ensemble', 'soloists', 'year']
 
 export const THEMES = {
   id: 'themes',
-  version: 'themes@2026-10-26.1',
-  effort: 'medium',
+  version: 'themes@2026-10-26.2',
+  // Low since 2026-10-26 (LONG_LISTEN.md §37): thinking is billed as output, at
+  // Sonnet's dearest rate. Raise it again if the directions thin out.
+  effort: 'low',
   maxTokens: 12000,
   schema: {
     type: 'object',
@@ -179,8 +181,9 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-23.1',
-  effort: 'medium',
+  version: 'programme@2026-10-26.1',
+  // Low since 2026-10-26, for the same reason as themes: see LONG_LISTEN.md §37.
+  effort: 'low',
   maxTokens: 32000,
   schema: {
     type: 'object',

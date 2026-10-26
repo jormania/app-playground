@@ -61,7 +61,9 @@ describe('the live API check covers every app that calls Claude', () => {
   // A file that builds a Messages API request and isn't in the live check is one
   // whose next 400 nobody sees until the app breaks. Settings.jsx only sends the
   // body lib/curate.js builds; anthropic.ts is the helper the others go through.
-  const EXEMPT = new Set(['src/shared/anthropic.ts'])
+  // batchSender.ts sends only the curation check's requests (never in CI, never
+  // from the app), and those are curator.js's bodies, which the live check covers.
+  const EXEMPT = new Set(['src/shared/anthropic.ts', 'src/long-listen/curator/batchSender.ts'])
   const SENDS_ONLY = { 'src/lexi5/components/Settings.jsx': 'src/lexi5/lib/curate.js' }
 
   it('is imported by the live test and listed in the workflow paths', async () => {
@@ -88,7 +90,7 @@ describe('the live API check covers every app that calls Claude', () => {
       if (EXEMPT.has(file)) continue
       const covered = SENDS_ONLY[file] ?? file
       if (!live.includes(`../${covered}`)) missing.push(`${covered}: not in scripts/anthropic.live.test.js`)
-      // Listed once, under pull_request's paths (scripts/live-check-needed.mjs reads it too).
+      // Listed once, under push's paths (scripts/live-check-needed.mjs reads it too).
       if (workflow.split(`- ${file}\n`).length - 1 !== 1) missing.push(`${file}: not in ai-models.yml paths`)
     }
     expect(callers.length).toBeGreaterThan(10)

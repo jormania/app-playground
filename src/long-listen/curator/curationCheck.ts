@@ -16,7 +16,8 @@ import { DEFAULT_TIME_ZONE, isoDateIn } from '../domain/week'
  *
  * Runs with the owner's key, never in CI: `ANTHROPIC_API_KEY=… npm run
  * check:curation` (curator/curation.check.ts). A run is two Sonnet calls a
- * profile, three or four with retries.
+ * profile, three or four with retries, sent through the Batch API at half price
+ * (batchSender.ts) unless CURATION_DIRECT=1 asks for answers in seconds.
  */
 export interface Profile {
   name: string
@@ -83,8 +84,9 @@ export interface ProfileResult {
  * which is still yesterday in Bucharest until 03:00.
  */
 export async function runCurationCheck(send: Send, profiles: Profile[] = PROFILES, today = isoDateIn(new Date(), DEFAULT_TIME_ZONE)): Promise<ProfileResult[]> {
-  const out: ProfileResult[] = []
-  for (const profile of profiles) {
+  // Side by side, so a batching sender can send each step's requests together;
+  // the report keeps the profiles' order.
+  return Promise.all(profiles.map(async (profile) => {
     const attempts: Record<string, number> = {}
     const counted: Send = async (body) => {
       const system = JSON.stringify(body.system ?? '')
@@ -117,9 +119,8 @@ export async function runCurationCheck(send: Send, profiles: Profile[] = PROFILE
     } catch (e) {
       result.error = e instanceof Error ? e.message : String(e)
     }
-    out.push(result)
-  }
-  return out
+    return result
+  }))
 }
 
 const centuryOf = (composed?: string) => {

@@ -1590,7 +1590,40 @@ failing test first, and fixed:
   it* sent the question alone, so a direction from it was never marked as returning. The seed now names the
   thread (`seedFromThread`), so the curator can return there.
 
-## 37. The work put back after it runs on (26 October 2026)
+## 37. Spending less on the curator: low effort, and the check at half price (26 October 2026)
+
+The API account hit its $5 monthly limit on 26 October. A review of every Claude call in the repo found the
+curator's Sonnet jobs to be most of the spend, and on those, the writing rather than the reading: a programme
+is long JSON, and adaptive thinking is billed as output at $10 a million tokens. Caching was not the leak — the
+8% hit rate is what jobs that run days apart look like, since the listener context in each is new.
+
+- **Directions and programmes run at `low` effort** (themes@2026-10-26.2, programme@2026-10-26.1), down from
+  `medium`. Lower effort mostly means less thinking. Adopted on the owner's say-so without a side-by-side
+  sweep; if directions or programmes thin out, put them back to `medium` in `prompts.js` and compare with
+  `npm run check:curation`.
+- **The curation check goes through the Message Batches API** (`curator/batchSender.ts`): every token at half
+  price, the answers in minutes rather than seconds (at most 24 hours). The four profiles now run side by side,
+  so each step's four requests go out as one batch; the report keeps their order. `CURATION_DIRECT=1` sends
+  each request on its own, at full price, when the answer is wanted now. The app keeps the direct sender: a
+  listener is waiting there.
+- **Not done: caching the listener context for a retry.** Writing it to the cache costs a quarter extra on
+  every first request, to save on the rare second one; it pays only above roughly one retry in four, and since
+  the code mends what it can (#137) most programmes need none.
+- **What Claude has cost moved to Settings → About**, split by model, dearest first ("Sonnet 5.5: about
+  $1.20, 34 requests"), under the month's total. It used to be one line in the Claude card, where nobody
+  looking for a cost would find it. Still this device only, at list prices; the Console has the bill.
+- **And what it was for**, folded under the models: five primary categories — *Directions and programmes*
+  (themes, programme, sketch), *Notes on the music* (explain, compare, companion, tags, define, portrait,
+  season), *Further reading* (resources), *Concerts* (concert, prepare), *Learning your taste* (taste,
+  continuity) — plus *Other* for key tests. Counted per job from 26 October (`long-listen:usage:ops`, its own
+  key so the tally by model keeps its shape); what a month spent before then is reported apart as *not sorted*,
+  so the parts add up to the total, and a month with nothing sorted says why instead of listing one lone line.
+  `usage.test.ts` fails if a new job isn't filed under a category.
+- **Last month, folded under this one** (*Last month, September 2026*): the same total, models and categories,
+  shown only when that month spent something. This month stays first and in full; the app keeps twelve
+  months on the device but shows these two.
+
+## 38. The work put back after it runs on (26 October 2026)
 
 Playing *Nocturnes* from the app, the player went on after *Sirènes* to *Jeux*, the next track of the album:
 loaded, not playing. The app sends Spotify only the work's own tracks (`play`, `uris`), but a device — a TV
@@ -1604,4 +1637,3 @@ playing silently), and only then the volume back as it was — in a `finally`, s
 device muted. Never on a device whose volume Spotify can't read or set: it stays paused on the other track,
 as before. The note says which happened. The Spotify app's own *Autoplay* setting (Settings → Playback) is
 what makes some devices carry on; turning it off there stops the run-on at its source.
-

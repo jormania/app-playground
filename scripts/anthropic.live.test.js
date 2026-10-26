@@ -232,8 +232,14 @@ describe.skipIf(!MODELS_ONLY)('live API: every model id still answers', () => {
   }, 90_000)
 })
 
+// LIVE_APPS (set by the workflow from scripts/live-check-needed.mjs): only the
+// cases of the apps a change touched, named by the prefix before " — ".
+// Unset or 'all' runs every case, as a run by hand does.
+const APPS = (process.env.LIVE_APPS ?? 'all').trim()
+const chosen = (name) => APPS === 'all' || APPS.split(',').some((app) => name.startsWith(`${app.trim()} — `))
+
 describe.skipIf(MODELS_ONLY)('live API: every app request is accepted', () => {
-  for (const [name, run] of Object.entries(CASES)) {
+  for (const [name, run] of Object.entries(CASES).filter(([name]) => chosen(name))) {
     it(name, async () => {
       expectAccepted(await through(run))
     }, 90_000)
