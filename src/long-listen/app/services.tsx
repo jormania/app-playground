@@ -212,7 +212,9 @@ export function ServicesProvider({ children, repo: injectedRepo, curator: inject
       if (moved || settled) bump()
       if (!curatorReady) return
       const read = await journey.interpretPendingFeedback().catch(() => 0)
-      if (read) bump()
+      // Once: closing notes written before skips were told apart from music not yet reached.
+      const rewritten = await journey.rewriteClosingNotesForSkips().catch(() => 0)
+      if (read || rewritten) bump()
     })()
   }, [journey, curatorReady, bump])
 

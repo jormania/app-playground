@@ -1540,3 +1540,19 @@ are written, so they arrive shepherded rather than as complete surprises. Roadma
   (validate.js) sends back once a pitch or sketch line sold as one evening or night; a *city-year* week, which
   may be about one night in history, is exempt.
 
+## 34. A skipped work is settled, not waiting (26 October 2026)
+
+The owner skipped the Elgar in *The Orchestra Answers Back* because they knew it already; the thread's closing
+note said "The Elgar is still waiting for you, and it will keep." Two causes: the closing call
+(`closeExploration`) sent each work's state and the recording's feedback, but not *I knew it already*, which
+is said of the work; and the continuity prompt's only guidance was "unheard music … may simply not have been
+reached", which a skip fell under.
+
+- Each work now carries `knewIt: true` when the listener said they knew it (`continuity@2026-10-26.1`), and the
+  prompt says what each state means: *not-started* or *listening* may be left for a return; *skipped* is
+  settled — never "still waiting", never invited back, never the ground of a next direction; *knewIt* is
+  familiar ground, and a skip of it says nothing against it.
+- `rewriteClosingNotesForSkips` (once per device, on startup with the curator): each thread's latest visit
+  closed in the last four weeks with a work skipped or known is closed again, so its note and next directions
+  are rewritten. The mark (`repair:closing-notes-skips`) is set only when every rewrite succeeded.
+

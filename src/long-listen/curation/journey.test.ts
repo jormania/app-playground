@@ -894,3 +894,59 @@ describe('"listen for" tied to its movement, for a programme written before', ()
     expect(c.count('tags')).toBe(1)
   })
 })
+
+describe('a skipped work, known already, is settled, not waiting (26 October 2026)', () => {
+  const continuity = (closingNote: string) => () => ({ reaction: 'r', openQuestions: [], adjacentTopics: [], nextDirections: [], closingNote, promptVersion: 'c' })
+
+  async function weekWithKnownSkip(c: ReturnType<typeof fakeCurator>) {
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    const p = await j.choose(w.optionIds[0])
+    const [debussy, ravel] = p.sections.flatMap((s) => s.items)
+    await j.markListening(debussy, 'heard', p.id)
+    await j.markListening(ravel, 'skipped', p.id)
+    await j.markKnown(ravel.workId, true, p.id)
+    return p
+  }
+
+  it('tells the thread’s closing that a skipped work was known already', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH), continuity: continuity('You found the sea.') })
+    await weekWithKnownSkip(c)
+    at('2026-10-15T09:00:00Z')
+    await journey(c.client).closeEndedExplorations()
+    const items = c.calls.find((x) => x.op === 'continuity')!.payload.programme.items
+    expect(items[1]).toMatchObject({ work: 'Daphnis et Chloé', state: 'skipped', knewIt: true })
+    expect(items[0].knewIt).toBeUndefined()
+  })
+
+  it('rewrites, once, the latest closing note of a thread whose week had a work skipped or known', async () => {
+    let note = 'The Daphnis is still waiting for you.'
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH), continuity: () => continuity(note)() })
+    const p = await weekWithKnownSkip(c)
+    at('2026-10-15T09:00:00Z')
+    const j = journey(c.client)
+    await j.closeEndedExplorations()
+    const ex = (await repo.explorations.all()).find((e) => e.programmeId === p.id)!
+    expect(ex.closingNote).toBe('The Daphnis is still waiting for you.')
+
+    note = 'You found the sea; the Daphnis you knew already.'
+    expect(await j.rewriteClosingNotesForSkips()).toBe(1)
+    expect((await repo.explorations.require(ex.id)).closingNote).toBe('You found the sea; the Daphnis you knew already.')
+    // Once only.
+    expect(await j.rewriteClosingNotesForSkips()).toBe(0)
+    expect(c.calls.filter((x) => x.op === 'continuity')).toHaveLength(2)
+  })
+
+  it('leaves a thread alone whose week had nothing skipped or known', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH), continuity: continuity('n') })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    const p = await j.choose(w.optionIds[0])
+    await j.markListening(p.sections[0].items[0], 'heard', p.id)
+    at('2026-10-15T09:00:00Z')
+    await j.closeEndedExplorations()
+    expect(await j.rewriteClosingNotesForSkips()).toBe(0)
+    expect(c.calls.filter((x) => x.op === 'continuity')).toHaveLength(1)
+  })
+})
+

@@ -9,7 +9,7 @@ import { forgetPlaceBefore } from '../app/place'
 import { AlreadyKept, ConcertRefused, goingKey, type Going } from '../domain/going'
 import { sameEvening, type LiveEvent } from '../live/live'
 import { listeningState, latestFeedback } from '../domain/listening'
-import { DEFAULT_TIME_ZONE, isoDateIn, weekAfter, weekFromKey, weekOf, type ListeningWeek } from '../domain/week'
+import { DEFAULT_TIME_ZONE, isoDateIn, weekAfter, weekFromKey, weekOf, weeksBetween, type ListeningWeek } from '../domain/week'
 import { emptyShape, shapeBasis, shapeKey, shapeSaysSomething, shapedBrief, shapedSlots, staleSlots, type Sketch, type WeekShape } from '../domain/shaping'
 import { NotFound, type Repo } from '../store/repo'
 import type {
@@ -819,6 +819,9 @@ export class Journey {
           recording: creditLine(playedProposed(i, x.id, players, events, feedback)),
           state: listeningState(events, ids),
           ...feedbackOnAny(feedback, ids),
+          // "I knew it already" is said of the work, not the recording: without it a work passed over for that reason
+          // read as one not yet reached, and the closing note said it was "still waiting for you" (26 October 2026).
+          ...(latestFeedback(feedback, i.workId).known ? { knewIt: true } : {}),
         })),
         programmeFeedback: latestFeedback(feedback, programme.id),
       },
@@ -962,6 +965,46 @@ export class Journey {
    * to the week's timeline; "Belongs with this week's theme" puts one back.
    * Returns how many moved.
    */
+  /**
+   * A thread's closing note written before skips and "knew it already" were
+   * told apart from music not yet reached ("The Elgar is still waiting for
+   * you", of a work skipped because it was known). Once per device, with the
+   * curator: each thread's latest visit closed in the last four weeks with a
+   * work skipped or known is closed again, so its note and next directions are
+   * rewritten. The mark is set only when every one succeeded.
+   */
+  async rewriteClosingNotesForSkips(): Promise<number> {
+    const done = 'repair:closing-notes-skips'
+    if (await this.repo.marks.get(done)) return 0
+    const current = this.currentWeek().key
+    const events = await this.repo.events.all()
+    const feedback = await this.repo.feedback.all()
+    const comparisons = await this.repo.comparisons.all()
+    const standIns = standInsOf(comparisons)
+    const latestByTheme = new Map<string, ThemeExploration>()
+    for (const ex of await this.repo.explorations.all()) {
+      if (!ex.closedAt || ex.setAside || weeksBetween(ex.weekKey, current) > 4) continue
+      const was = latestByTheme.get(ex.themeId)
+      if (!was || ex.weekKey > was.weekKey) latestByTheme.set(ex.themeId, ex)
+    }
+    let rewritten = 0
+    let failed = false
+    for (const ex of latestByTheme.values()) {
+      const programmes = (await this.repo.programmes.many([ex.programmeId, ...(ex.extraProgrammeIds ?? [])])).filter(Boolean)
+      const passed = programmes.some((p) => p.sections.flatMap((s) => s.items).some((i) =>
+        listeningState(events, heardAs(i, p.id, standIns)) === 'skipped' || latestFeedback(feedback, i.workId).known))
+      if (!passed) continue
+      try {
+        await this.once(`close:${ex.id}`, () => this.closeExploration(ex, current))
+        rewritten++
+      } catch {
+        failed = true
+      }
+    }
+    if (!failed) await this.repo.marks.put({ id: done, at: this.stamp(), value: { rewritten } })
+    return rewritten
+  }
+
   async settleEvenings(): Promise<number> {
     const done = 'repair:evenings-of-their-own'
     if (await this.repo.marks.get(done)) return 0
