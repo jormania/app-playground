@@ -1590,3 +1590,23 @@ failing test first, and fixed:
   it* sent the question alone, so a direction from it was never marked as returning. The seed now names the
   thread (`seedFromThread`), so the curator can return there.
 
+
+## 37. Spending less on the curator: low effort, and the check at half price (26 October 2026)
+
+The API account hit its $5 monthly limit on 26 October. A review of every Claude call in the repo found the
+curator's Sonnet jobs to be most of the spend, and on those, the writing rather than the reading: a programme
+is long JSON, and adaptive thinking is billed as output at $10 a million tokens. Caching was not the leak — the
+8% hit rate is what jobs that run days apart look like, since the listener context in each is new.
+
+- **Directions and programmes run at `low` effort** (themes@2026-10-26.2, programme@2026-10-26.1), down from
+  `medium`. Lower effort mostly means less thinking. Adopted on the owner's say-so without a side-by-side
+  sweep; if directions or programmes thin out, put them back to `medium` in `prompts.js` and compare with
+  `npm run check:curation`.
+- **The curation check goes through the Message Batches API** (`curator/batchSender.ts`): every token at half
+  price, the answers in minutes rather than seconds (at most 24 hours). The four profiles now run side by side,
+  so each step's four requests go out as one batch; the report keeps their order. `CURATION_DIRECT=1` sends
+  each request on its own, at full price, when the answer is wanted now. The app keeps the direct sender: a
+  listener is waiting there.
+- **Not done: caching the listener context for a retry.** Writing it to the cache costs a quarter extra on
+  every first request, to save on the rare second one; it pays only above roughly one retry in four, and since
+  the code mends what it can (#137) most programmes need none.

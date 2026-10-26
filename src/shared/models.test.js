@@ -61,7 +61,9 @@ describe('the live API check covers every app that calls Claude', () => {
   // A file that builds a Messages API request and isn't in the live check is one
   // whose next 400 nobody sees until the app breaks. Settings.jsx only sends the
   // body lib/curate.js builds; anthropic.ts is the helper the others go through.
-  const EXEMPT = new Set(['src/shared/anthropic.ts'])
+  // batchSender.ts sends only the curation check's requests (never in CI, never
+  // from the app), and those are curator.js's bodies, which the live check covers.
+  const EXEMPT = new Set(['src/shared/anthropic.ts', 'src/long-listen/curator/batchSender.ts'])
   const SENDS_ONLY = { 'src/lexi5/components/Settings.jsx': 'src/lexi5/lib/curate.js' }
 
   it('is imported by the live test and listed in the workflow paths', async () => {
