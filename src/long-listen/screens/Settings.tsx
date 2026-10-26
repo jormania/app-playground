@@ -175,14 +175,16 @@ export function SettingsScreen() {
 
 /**
  * What Claude has cost on this device this month, from Anthropic's own usage
- * figures: the total, then each model, dearest first. In About, so the figure
- * is found where a listener looks for "what is this costing me".
+ * figures: the total, then each model, dearest first, and folded beneath, what
+ * it was for. In About, so the figure is found where a listener looks for
+ * "what is this costing me".
  */
 function SpendLine() {
   const { version } = useServices()
   const [m, setM] = useState(() => usageSummary())
   useEffect(() => setM(usageSummary()), [version])
   const dollars = (d: number | null) => (d === null ? 'not priced here' : d < 0.01 ? 'under a cent' : `about $${d.toFixed(2)}`)
+  const count = (n: number) => `${n} ${n === 1 ? 'request' : 'requests'}`
   if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude this month, on this device.</p>
   return (
     <>
@@ -191,9 +193,16 @@ function SpendLine() {
       </p>
       {m.byModel.map((b) => (
         <p key={b.model} className={s.settingText}>
-          {modelLabel(b.model)}: {dollars(b.dollars)}, {b.requests} {b.requests === 1 ? 'request' : 'requests'}
+          {modelLabel(b.model)}: {dollars(b.dollars)}, {count(b.requests)}
         </p>
       ))}
+      {m.byCategory.length > 0 && (
+        <Steps summary="What it was for">
+          {m.byCategory.map((c) => (
+            <p key={c.label} className={s.settingText}>{c.label}: {dollars(c.dollars)}, {count(c.requests)}</p>
+          ))}
+        </Steps>
+      )}
     </>
   )
 }

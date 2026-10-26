@@ -1613,3 +1613,9 @@ is long JSON, and adaptive thinking is billed as output at $10 a million tokens.
 - **What Claude has cost moved to Settings → About**, split by model, dearest first ("Sonnet 5.5: about
   $1.20, 34 requests"), under the month's total. It used to be one line in the Claude card, where nobody
   looking for a cost would find it. Still this device only, at list prices; the Console has the bill.
+- **And what it was for**, folded under the models: five primary categories — *Directions and programmes*
+  (themes, programme, sketch), *Notes on the music* (explain, compare, companion, tags, define, portrait,
+  season), *Further reading* (resources), *Concerts* (concert, prepare), *Learning your taste* (taste,
+  continuity) — plus *Other* for key tests. Counted per job from 26 October (`long-listen:usage:ops`, its own
+  key so the tally by model keeps its shape); what this month spent before then shows as one *Earlier* line, so
+  the parts add up to the total. `usage.test.ts` fails if a new job isn't filed under a category.
