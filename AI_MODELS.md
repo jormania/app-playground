@@ -71,16 +71,20 @@ the API accepts the request; reply quality is not tested. Excluded from
 In GitHub, [`.github/workflows/ai-models.yml`](.github/workflows/ai-models.yml)
 runs it:
 
-- on a PR that touches `models.js` or any file that builds a request (the paths
-  list is enforced by `models.test.js`) — and on a later push to that PR only if
-  the push itself changed one of those files (`scripts/live-check-needed.mjs`;
-  GitHub's `paths` filter looks at the whole PR, so docs-only pushes used to
-  re-run it),
-- not on the merge to `main`, which is the code the PR already checked,
+- once per change, when it lands on `main` and touched `models.js` or a file that
+  builds a request (the paths list is enforced by `models.test.js`) — and then only
+  the requests of the apps that change touched: `scripts/live-check-needed.mjs`
+  maps the changed files to apps and sets `LIVE_APPS`, so a change to The Long
+  Listen's prompts sends The Long Listen's requests, not every app's. A shared file
+  (`models.js`, `anthropic.ts`, the live test, the workflow) runs every app's,
+- not on pull requests: in October 2026 it ran in full on every PR push that
+  touched a request file, 44 times, at roughly $0.05–0.10 each. The trade is that
+  a rejected request is reported minutes after the deploy rather than before the
+  merge,
 - every Monday at 06:23 UTC — a retired model fails here before an app finds out.
   This run sends only one tiny request per model id (`LIVE_SCOPE=models`, about a
   tenth of a cent); the full set of app requests runs on request changes and by hand,
-- by hand (Actions → AI models (live) → Run workflow).
+- by hand (Actions → AI models (live) → Run workflow), every app's requests.
 
 It needs the repository secret **`ANTHROPIC_API_KEY`** (Settings → Secrets and
 variables → Actions). Without it the run fails on purpose. A failed run is emailed,
@@ -89,7 +93,7 @@ like every other workflow here.
 **It spends from the same key as the apps.** On 8–9 October 2026 it ran 19
 times in one working session — every push to two long PRs plus each merge, at
 1,024-token answers and six web searches a run — which was most of that day's
-spend. The gate, the dropped merge run and the caps above are the fix.
+spend. The gate and the caps above were the first fix; running once per change on `main`, for the apps it touched, the second (26 October).
 
 Behind a proxy (e.g. a Claude Code cloud session) Node's fetch needs
 `NODE_USE_ENV_PROXY=1` as well.
@@ -98,6 +102,7 @@ Behind a proxy (e.g. a Claude Code cloud session) Node's fetch needs
 
 Import the model from `src/shared/anthropic` (or `models.js` from `api/`), use
 `noThinking(model)` if the reply should be short and thought-free, read replies
-with `extractAnthropicText`, then add a case to the live test and the file to both
-`paths` lists in `ai-models.yml`. `models.test.js` fails until the last two are
-done.
+with `extractAnthropicText`, then add a case to the live test (named `<App> — <request>`), the file to the
+`paths` list in `ai-models.yml`, and the app's directory to `APP_DIRS` in
+`scripts/live-check-needed.mjs`. `models.test.js` and `live-check-needed.test.js`
+fail until those are done.

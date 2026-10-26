@@ -4,19 +4,20 @@ name: AI models (live)
 # (scripts/anthropic.live.test.js). The unit tests fake fetch, so this is the
 # only check that sees a model upgrade break a request. See AI_MODELS.md.
 #
-# It spends real money from the same key the apps use: 26 requests, a dozen on
-# Sonnet and one web search, about $0.05-0.10 a run with the caps in the test
-# (answers cut at 256 tokens, one search). So it runs only when it can tell
-# something new:
-#   - on a pull request that touches a file below, and on each later push to it
-#     only if THAT push changed one (GitHub's own `paths` filter looks at the
-#     whole PR, so a docs-only push used to re-run all 26; the first step below
-#     checks the push itself);
+# It spends real money from the same key the apps use: about $0.05-0.10 for a
+# full run (answers cut at 256 tokens, one search). In October 2026 it ran in
+# full 44 times, on every pull-request push that touched a request file, and
+# was likely a large part of a $5 month. So now it runs:
+#   - once per change, when it lands on main, and only if the change touched a
+#     file below — with only the requests of the apps that change touched
+#     (scripts/live-check-needed.mjs sets LIVE_APPS; a shared file such as
+#     models.js means every app). A broken request is reported minutes after
+#     the deploy rather than before the merge: the trade for not re-running on
+#     every push to a pull request;
 #   - weekly, because a retired model shows up here before it shows up in an app
 #     — and for that one tiny request per model is enough (LIVE_SCOPE=models:
 #     two requests, not every app's);
-#   - by hand (Actions -> AI models (live) -> Run workflow).
-# Not on the merge to main: that is the code the pull request already checked.
+#   - by hand (Actions -> AI models (live) -> Run workflow), every app.
 # Needs the ANTHROPIC_API_KEY repository secret; without it the run fails on
 # purpose, since a check that quietly skips is one nobody finds out is off.
 
@@ -25,7 +26,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '23 6 * * 1'
-  pull_request:
+  push:
     branches: [main]
     paths:
       - src/shared/models.js
@@ -60,19 +61,18 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      # A later push to an open PR runs the check only if it changed a listed file.
-      - name: Did this push change a request?
+      # A push to main runs only the requests of the apps it changed.
+      - name: Which apps did this push change?
         id: gate
         env:
           EVENT: ${{ github.event_name }}
-          ACTION: ${{ github.event.action }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
         run: |
-          if [ "$EVENT" = pull_request ] && [ "$ACTION" = synchronize ]; then
+          if [ "$EVENT" = push ]; then
             node scripts/live-check-needed.mjs "$BEFORE" "$AFTER" >> "$GITHUB_OUTPUT"
           else
-            echo "needed=true" >> "$GITHUB_OUTPUT"
+            { echo "needed=true"; echo "apps=all"; } >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/setup-node@v5
         if: steps.gate.outputs.needed == 'true'
@@ -86,6 +86,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           LIVE_SCOPE: ${{ github.event_name == 'schedule' && 'models' || 'all' }}
+          LIVE_APPS: ${{ steps.gate.outputs.apps }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::error::ANTHROPIC_API_KEY secret is not set — see AI_MODELS.md"
