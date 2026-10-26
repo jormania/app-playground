@@ -772,13 +772,23 @@ export class Journey {
   /** Close every exploration whose week has ended, so its thread knows how it landed. */
   async closeEndedExplorations(): Promise<number> {
     const current = this.currentWeek().key
-    const open = (await this.repo.explorations.all()).filter((e) => e.weekKey < current && !e.closedAt && !e.setAside)
+    // A visit set aside (a direction changed away from) is closed too once something of it was heard or skipped:
+    // otherwise a thread whose only visit was set aside part-way never learnt how it landed (26 October 2026).
+    const events = await this.repo.events.all()
+    const comparisons = await this.repo.comparisons.all()
+    const standIns = standInsOf(comparisons)
+    const begun = async (e: ThemeExploration) => (await this.repo.programmes.many([e.programmeId, ...(e.extraProgrammeIds ?? [])]))
+      .some((p) => p.sections.flatMap((s) => s.items).some((i) => listeningState(events, heardAs(i, p.id, standIns)) !== 'not-started'))
+    const candidates = (await this.repo.explorations.all()).filter((e) => e.weekKey < current && !e.closedAt)
+    const open = (await Promise.all(candidates.map(async (e) => (!e.setAside || await begun(e) ? e : null)))).filter((e): e is ThemeExploration => e !== null)
     // Threads side by side, but one thread's visits in order, oldest first:
     // each closing rewrites the thread's open questions and next directions,
     // so the latest visit must have the last word — and each sees the one
     // before it closed. One failing doesn't stop the others; it is retried next time.
     const byTheme = new Map<string, ThemeExploration[]>()
-    for (const ex of [...open].sort((a, b) => a.weekKey.localeCompare(b.weekKey))) byTheme.set(ex.themeId, [...(byTheme.get(ex.themeId) ?? []), ex])
+    // Within a week, a visit set aside closes before the one that replaced it, so the one kept has the last word.
+    const order = (a: ThemeExploration, b: ThemeExploration) => a.weekKey.localeCompare(b.weekKey) || Number(!a.setAside) - Number(!b.setAside)
+    for (const ex of [...open].sort(order)) byTheme.set(ex.themeId, [...(byTheme.get(ex.themeId) ?? []), ex])
     const counts = await Promise.all([...byTheme.values()].map(async (visits) => {
       let closed = 0
       for (const ex of visits) {
@@ -811,7 +821,7 @@ export class Journey {
     const res = await this.curator.call<ContinuityResponse>('continuity', {
       language,
       thread: digest,
-      exploration: { weekKey: ex.weekKey, stage: ex.stage, angle: ex.angle },
+      exploration: { weekKey: ex.weekKey, stage: ex.stage, angle: ex.angle, ...(ex.setAside ? { setAside: true } : {}) },
       programme: {
         title: programme.title,
         items: [programme, ...extras].flatMap((x) => x.sections.flatMap((s) => s.items).map((i) => ({ i, x, ids: heardAs(i, x.id, standIns) }))).map(({ i, x, ids }) => ({

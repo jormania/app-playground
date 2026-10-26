@@ -1567,3 +1567,26 @@ week ended they stayed "offered" for good, unmarked in the Journal and missing f
 begins (before its three are written, so they know them) and at startup (which settles the ones already
 stuck). Cheap, no curator, idempotent.
 
+## 36. Threads, audited (26 October 2026)
+
+The owner asked for the Threads page to be checked end to end — what it reads, how the data is gathered, what
+the curator does with it. The page reads themes, visits (explorations), programmes, listening, feedback and
+stand-ins straight from the store (`threadsToShow`, `heldBy`, `threadContents`); the curator writes a thread's
+*How it landed*, questions and next directions, and each visit's closing note, when a visit's week ends
+(`closeEndedExplorations` → `continuity`), reading the thread's memory (`digestThread`). Found, each proven by a
+failing test first, and fixed:
+
+- **A thread heard through with a skip stayed "started" for ever.** A skip is done with: such a thread now
+  reads "heard, one skipped" (`threadContents`).
+- **A visit set aside part-way never closed.** A direction changed away from after something of it was heard
+  left its thread with no *How it landed*, no questions and no closing note, for good. Such visits now close
+  too, the curator told `exploration.setAside` (`continuity@2026-10-26.2`: what was heard counts; the rest is
+  not left for a return). One set aside with nothing heard is still left alone. Within a week, a set-aside
+  visit closes before the one that replaced it, so the kept one has the last word on the thread.
+- **The thread's memory didn't know a skipped work was known already.** `digestThread` now carries `knewIt`
+  on the recording and says "knew it already" beside it in `response.skipped` — read by the week's directions,
+  a returning programme and every closing.
+- **A question a thread left could start a second thread on the same ground.** *Ask for three directions from
+  it* sent the question alone, so a direction from it was never marked as returning. The seed now names the
+  thread (`seedFromThread`), so the curator can return there.
+

@@ -4,6 +4,7 @@ import { Repo, memoryStore } from '../store/repo'
 import type { CuratorClient, CuratedItem, ProgrammeResponse, ThemesResponse } from './api'
 import { CuratorUnavailable } from './api'
 import { buildContext } from './context'
+import { threadDigest } from './continuity'
 import { weekOf } from '../domain/week'
 import { pendingFeedback } from './taste'
 import { knownWorkIds } from '../domain/listening'
@@ -971,5 +972,50 @@ describe('directions asked for after the week’s choice (26 October 2026)', () 
     expect(openPaths).toEqual(expect.arrayContaining(['From the evening 1', 'From the evening 2', 'From the evening 3', 'B', 'C']))
     // Already-stale ones (from before this existed) are settled the same way at startup; idempotent.
     expect(await j.leaveOpenWhatWeeksLeft()).toBe(0)
+  })
+})
+
+describe('threads, audited (26 October 2026)', () => {
+  const continuity = () => ({ reaction: 'r', openQuestions: ['q'], adjacentTopics: [], nextDirections: ['n'], closingNote: 'note', promptVersion: 'c' })
+
+  it('the thread’s memory says a skipped work was known already', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: () => programme('Colour', FRENCH), continuity })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    const p = await j.choose(w.optionIds[0])
+    const ravel = p.sections.flatMap((s) => s.items)[1]
+    await j.markListening(ravel, 'skipped', p.id)
+    await j.markKnown(ravel.workId, true, p.id)
+    const digest = await threadDigest(repo, p.themeId, '2026-W42')
+    expect(digest.covered.recordings.find((r) => r.work === 'Daphnis et Chloé')).toMatchObject({ state: 'skipped', knewIt: true })
+    expect(digest.response.skipped[0]).toMatch(/knew it already/)
+  })
+
+  it('a visit set aside after something of it was heard is closed too, and the curator is told it was set aside', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: (_p, n) => programme(n === 1 ? 'Colour' : 'Night', n === 1 ? FRENCH : FRENCH_AGAIN), continuity })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    const first = await j.choose(w.optionIds[0])
+    await j.markListening(first.sections[0].items[0], 'heard', first.id)
+    await j.changeDirection(w.optionIds[1]) // the first is set aside, with one work heard
+    at('2026-10-15T09:00:00Z')
+    await j.closeEndedExplorations()
+    const closings = c.calls.filter((x) => x.op === 'continuity')
+    expect(closings).toHaveLength(2)
+    expect(closings.find((x) => x.payload.exploration.setAside)?.payload.programme.title).toBe('Colour')
+    const firstVisit = (await repo.explorations.all()).find((e) => e.programmeId === first.id)!
+    expect(firstVisit.closedAt).toBeTruthy()
+    expect((await repo.themes.require(first.themeId)).openQuestions).toEqual(['q'])
+  })
+
+  it('a visit set aside with nothing of it heard is left alone', async () => {
+    const c = fakeCurator({ themes: () => themes(['A', 'B', 'C']), programme: (_p, n) => programme(n === 1 ? 'Colour' : 'Night', n === 1 ? FRENCH : FRENCH_AGAIN), continuity })
+    const j = journey(c.client)
+    const w = await j.ensureWeek()
+    await j.choose(w.optionIds[0])
+    await j.changeDirection(w.optionIds[1])
+    at('2026-10-15T09:00:00Z')
+    await j.closeEndedExplorations()
+    expect(c.calls.filter((x) => x.op === 'continuity')).toHaveLength(1)
   })
 })

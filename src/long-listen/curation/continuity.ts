@@ -1,7 +1,7 @@
 import type { Comparison, Feedback, ListeningEvent, Programme, ProgrammeItem, Theme, ThemeExploration, WeekKey } from '../domain/types'
 import { creditLine, sameWork } from '../domain/identity'
 import { groupByComposer } from '../domain/composerGroups'
-import { listeningState, timesHeard } from '../domain/listening'
+import { latestFeedback, listeningState, timesHeard } from '../domain/listening'
 import { heardAs, itemFeedback, playedProposed, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { sinceWords } from '../domain/week'
 import type { Repo } from '../store/repo'
@@ -30,6 +30,8 @@ export interface CoveredRecording {
   reaction?: string
   more?: string
   notes: string[]
+  /** Known before the app offered it ("I knew it already", said of the work): familiar ground, and a skip of it says nothing against it. */
+  knewIt?: true
 }
 
 export interface ThreadDigest {
@@ -87,6 +89,7 @@ export function digestThread(
       if (ex.setAside && state === 'not-started') continue
       // The recording's word and the work's, merged once for every reader (domain/standIns.ts).
       const { reaction, more, notes } = itemFeedback(feedback, ids, item.workId)
+      const knewIt = Boolean(latestFeedback(feedback, item.workId).known)
       // Credited to who played: heard through a stand-in, the stand-in's performers.
       const credit = creditLine(playedProposed(item, p.id, players, events, feedback))
       // One work however the curator spelled it this time ("Symphony No. 5" and
@@ -104,11 +107,12 @@ export function digestThread(
         reaction,
         more,
         notes,
+        ...(knewIt ? { knewIt: true as const } : {}),
       })
       if (reaction === 'loved' || reaction === 'liked' || more === 'yes') response.drawnTo.push(label(item, credit))
       else if (reaction === 'not-for-me' || reaction === 'too-difficult' || more === 'no') response.cooler.push(label(item, credit))
       if (state === 'not-started') response.unheard.push(label(item, credit))
-      if (state === 'skipped') response.skipped.push(label(item, credit))
+      if (state === 'skipped') response.skipped.push(`${label(item, credit)}${knewIt ? ' — knew it already' : ''}`)
     }
   }
 

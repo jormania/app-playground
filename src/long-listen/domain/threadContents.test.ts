@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { heldBy, threadContents, threadsToShow } from './threadContents'
+import { heldBy, seedFromThread, threadContents, threadsToShow } from './threadContents'
 import type { Feedback, ListeningEvent, Programme, Theme, ThemeExploration, Work } from './types'
 
 const item = (id: string, workId: string, composer: string) => ({ id, workId, recordingId: `r-${id}`, why: '', whyThisRecording: '', listenFor: [], proposed: { composer, work: workId, soloists: [] } })
@@ -84,5 +84,24 @@ describe('threadsToShow', () => {
     // "older" was written last (a curator answering late), but its week is the earliest.
     const themes = [theme('older', '2026-10-09'), theme('newer', '2026-10-02'), theme('tied', '2026-10-05')]
     expect(threadsToShow(themes, visits, programmes, [], []).map((t) => t.theme.id)).toEqual(['tied', 'newer', 'older'])
+  })
+})
+
+describe('threads, audited (26 October 2026)', () => {
+  it('a thread heard through, with a work skipped, is not left "started" for ever', () => {
+    const p = programme([item('a', 'w1', 'Brahms'), item('b', 'w2', 'Dvořák'), item('c', 'w3', 'Elgar')])
+    const events = [
+      { recordingId: 'r-a', kind: 'heard', at: '1' }, { recordingId: 'r-b', kind: 'heard', at: '2' }, { recordingId: 'r-c', kind: 'skipped', at: '3', source: 'manual' },
+    ] as unknown as ListeningEvent[]
+    expect(threadContents([{ programme: p }], new Map(), events)).toBe('Brahms, Dvořák and Elgar · heard, one skipped')
+    // With "hide what I skip" the skipped work isn't counted at all: all heard.
+    expect(threadContents([{ programme: p }], new Map(), events, true)).toBe('Brahms and Dvořák · all heard')
+    // Still started while something is neither heard nor skipped.
+    expect(threadContents([{ programme: p }], new Map(), events.slice(0, 1))).toBe('Brahms, Dvořák and Elgar · started')
+  })
+
+  it('a question a thread left carries the thread’s name, so a direction from it can return there', () => {
+    expect(seedFromThread('Where does the concerto go after Brahms?', 'The Orchestra Answers Back'))
+      .toBe('Where does the concerto go after Brahms? (a question the thread “The Orchestra Answers Back” left: a direction from it may return to that thread)')
   })
 })

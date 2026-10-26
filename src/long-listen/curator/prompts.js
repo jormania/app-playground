@@ -330,7 +330,7 @@ questions: up to three questions the listener seems to be asking of the music, o
 
 export const CONTINUITY = {
   id: 'continuity',
-  version: 'continuity@2026-10-26.1',
+  version: 'continuity@2026-10-26.2',
   effort: 'low',
   maxTokens: 6000,
   schema: {
@@ -354,7 +354,7 @@ Your job now: a week of a thread has ended. Read what was programmed, what the l
 - adjacentTopics: up to four neighbouring topics the listening pointed towards.
 - nextDirections: two to four concrete routes for a future return — each one sentence naming composers or works not yet explored ("What happens to the symphony when composers write under political pressure — Shostakovich 10, Prokofiev 6").
 - closingNote: one or two sentences for the listener's notebook, in the second person, warm and plain.
-Each work's "state" says where the listener got to. "not-started" or "listening": not reached, or not finished — unheard music is not disliked music, and it may be left for a return. "skipped": the listener chose to pass it over — it is settled, not waiting; never say it is still waiting, will keep, or invite them back to it, and don't build a next direction on it. "knewIt": true means they already knew the work before this week — a skip of it says nothing against it, and it is familiar ground, not a discovery left undone.`,
+Each work's "state" says where the listener got to. "not-started" or "listening": not reached, or not finished — unheard music is not disliked music, and it may be left for a return. "skipped": the listener chose to pass it over — it is settled, not waiting; never say it is still waiting, will keep, or invite them back to it, and don't build a next direction on it. "knewIt": true means they already knew the work before this week — a skip of it says nothing against it, and it is familiar ground, not a discovery left undone. If "exploration.setAside" is true, the listener changed direction away from this week part-way: read what they heard of it, and don't treat the rest as left for a return — they chose to go elsewhere.`,
 }
 
 // ── 5. A little more context, on request ─────────────────────────────────
