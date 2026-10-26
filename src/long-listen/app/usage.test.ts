@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest'
-import { recordUsage, usageSummary, costOf, monthKey, modelLabel, CATEGORIES, categoryOf } from './usage'
+import { recordUsage, usageSummary, costOf, monthKey, modelLabel, CATEGORIES, categoryOf, previousMonth, monthName } from './usage'
 import { JOBS } from '../curator/curator'
 import { MODEL_HAIKU, MODEL_SONNET } from '../../shared/models.js'
 
@@ -50,14 +50,29 @@ describe('what the curator has cost on this device', () => {
     expect(cats[0].dollars).toBeCloseTo(0.07 + 0.03, 6)
   })
 
-  it('puts requests made before jobs were counted on one line, so the parts add up', () => {
+  it('keeps what was spent before jobs were counted apart, so the parts add up', () => {
     const now = new Date('2026-10-26T10:00:00Z')
     recordUsage(MODEL_SONNET, { input_tokens: 10_000, output_tokens: 5_000 }, now)
     recordUsage(MODEL_HAIKU, { input_tokens: 4_000, output_tokens: 1_000 }, now, 'taste')
     const m = usageSummary(monthKey(now))
-    expect(m.byCategory.map((c) => c.label)).toEqual(['Learning your taste', 'Earlier, before it was counted by job'])
-    expect(m.byCategory.reduce((n, c) => n + c.requests, 0)).toBe(m.requests)
-    expect(m.byCategory.reduce((n, c) => n + c.dollars, 0)).toBeCloseTo(m.dollars, 6)
+    expect(m.byCategory.map((c) => c.label)).toEqual(['Learning your taste'])
+    expect(m.unsorted?.requests).toBe(1)
+    expect(m.byCategory[0].requests + m.unsorted!.requests).toBe(m.requests)
+    expect(m.byCategory[0].dollars + m.unsorted!.dollars).toBeCloseTo(m.dollars, 6)
+  })
+
+  it('has nothing unsorted once every request was filed', () => {
+    const now = new Date('2026-11-03T10:00:00Z')
+    recordUsage(MODEL_HAIKU, { input_tokens: 4_000, output_tokens: 1_000 }, now, 'taste')
+    expect(usageSummary(monthKey(now)).unsorted).toBeNull()
+  })
+
+  it('reads any month, and names it', () => {
+    recordUsage(MODEL_SONNET, { input_tokens: 10_000, output_tokens: 5_000 }, new Date('2026-10-20T10:00:00Z'), 'programme')
+    expect(previousMonth('2026-11')).toBe('2026-10')
+    expect(previousMonth('2027-01')).toBe('2026-12')
+    expect(usageSummary(previousMonth('2026-11')).requests).toBe(1)
+    expect(monthName('2026-10')).toBe('October 2026')
   })
 
   it('files every curator job under a category; only the key test is "other"', () => {

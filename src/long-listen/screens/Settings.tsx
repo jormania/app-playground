@@ -13,7 +13,7 @@ import { archiveNotebook } from '../notion/mirror'
 import { CuratorUnavailable } from '../curation/api'
 import { PREFIX, checkBackup, type Repo } from '../store/repo'
 import { go } from '../app/router'
-import { modelLabel, usageSummary } from '../app/usage'
+import { COUNTED_BY_JOB_FROM, modelLabel, monthKey, monthName, previousMonth, usageSummary } from '../app/usage'
 import { RELEASE } from '../app/release'
 import s from '../styles/editorial.module.css'
 import { Twisty } from '../components/Twisty'
@@ -174,35 +174,64 @@ export function SettingsScreen() {
 }
 
 /**
- * What Claude has cost on this device this month, from Anthropic's own usage
- * figures: the total, then each model, dearest first, and folded beneath, what
- * it was for. In About, so the figure is found where a listener looks for
- * "what is this costing me".
+ * What Claude has cost on this device, from Anthropic's own usage figures: this
+ * month first and in full — the total, each model dearest first, and folded
+ * beneath, what it was for — then last month, folded. In About, so the figure
+ * is found where a listener looks for "what is this costing me".
  */
 function SpendLine() {
   const { version } = useServices()
-  const [m, setM] = useState(() => usageSummary())
-  useEffect(() => setM(usageSummary()), [version])
-  const dollars = (d: number | null) => (d === null ? 'not priced here' : d < 0.01 ? 'under a cent' : `about $${d.toFixed(2)}`)
-  const count = (n: number) => `${n} ${n === 1 ? 'request' : 'requests'}`
-  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude this month, on this device.</p>
+  const [now, setNow] = useState(() => monthKey())
+  useEffect(() => setNow(monthKey()), [version])
+  const last = previousMonth(now)
+  const lastHas = usageSummary(last).requests > 0
+  return (
+    <>
+      <MonthSpend month={now} current version={version} />
+      {lastHas && (
+        <Steps summary={`Last month, ${monthName(last)}`}>
+          <MonthSpend month={last} version={version} />
+        </Steps>
+      )}
+    </>
+  )
+}
+
+const dollars = (d: number | null) => (d === null ? 'not priced here' : d < 0.01 ? 'under a cent' : `about $${d.toFixed(2)}`)
+const count = (n: number) => `${n} ${n === 1 ? 'request' : 'requests'}`
+
+/** One month's spend: the total, each model, and what it was for. */
+function MonthSpend({ month, current = false, version }: { month: string; current?: boolean; version: number }) {
+  const [m, setM] = useState(() => usageSummary(month))
+  useEffect(() => setM(usageSummary(month)), [month, version])
+  if (m.requests === 0) return <p className={s.settingText}>Nothing spent on Claude {current ? 'this month' : `in ${monthName(month)}`}, on this device.</p>
+  const forWhat = (
+    <>
+      {m.byCategory.map((c) => (
+        <p key={c.label} className={s.settingText}>{c.label}: {dollars(c.dollars)}, {count(c.requests)}</p>
+      ))}
+      {m.unsorted && (
+        <p className={s.settingText}>
+          {m.byCategory.length > 0
+            ? `Before ${COUNTED_BY_JOB_FROM}, not sorted: ${dollars(m.unsorted.dollars)}, ${count(m.unsorted.requests)}.`
+            : current
+              ? `Not sorted yet: requests are filed by what they were for from ${COUNTED_BY_JOB_FROM}, and none has been made since.`
+              : `Not sorted: requests are filed by what they were for only from ${COUNTED_BY_JOB_FROM}.`}
+        </p>
+      )}
+    </>
+  )
   return (
     <>
       <p className={s.settingText}>
-        Claude this month, on this device: {dollars(m.dollars)} — an estimate at list prices; the Anthropic Console has the bill.
+        {current ? 'Claude this month' : `Claude in ${monthName(month)}`}, on this device: {dollars(m.dollars)}{current ? ' — an estimate at list prices; the Anthropic Console has the bill.' : '.'}
       </p>
       {m.byModel.map((b) => (
         <p key={b.model} className={s.settingText}>
           {modelLabel(b.model)}: {dollars(b.dollars)}, {count(b.requests)}
         </p>
       ))}
-      {m.byCategory.length > 0 && (
-        <Steps summary="What it was for">
-          {m.byCategory.map((c) => (
-            <p key={c.label} className={s.settingText}>{c.label}: {dollars(c.dollars)}, {count(c.requests)}</p>
-          ))}
-        </Steps>
-      )}
+      {current ? <Steps summary="What it was for">{forWhat}</Steps> : forWhat}
     </>
   )
 }

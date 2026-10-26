@@ -105,12 +105,29 @@ export interface MonthSummary {
   requests: number
   dollars: number
   byModel: { model: string; requests: number; dollars: number | null }[]
-  /**
-   * The same month by what it was for, dearest first. Requests made before
-   * jobs were counted (26 October 2026) appear as one "Earlier" line, so the
-   * parts always add up to the total.
-   */
+  /** The same month by what it was for, dearest first. */
   byCategory: { label: string; requests: number; dollars: number }[]
+  /**
+   * What the month spent before requests were filed by job (from
+   * COUNTED_BY_JOB_FROM), so the categories and this add up to the total.
+   * Null when there is none.
+   */
+  unsorted: { requests: number; dollars: number } | null
+}
+
+/** The day requests began to be filed by what they were for. */
+export const COUNTED_BY_JOB_FROM = '26 October 2026'
+
+/** The calendar month before `month` ('2026-11' → '2026-10'). */
+export function previousMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`
+}
+
+/** '2026-10' → 'October 2026'. */
+export function monthName(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
 export function usageSummary(month = monthKey()): MonthSummary {
@@ -129,7 +146,7 @@ export function usageSummary(month = monthKey()): MonthSummary {
     grouped.set(label, g)
   }
   const byCategory = [...grouped.values()].sort((a, b) => b.dollars - a.dollars)
-  const earlier = requests - byCategory.reduce((n, c) => n + c.requests, 0)
-  if (earlier > 0) byCategory.push({ label: 'Earlier, before it was counted by job', requests: earlier, dollars: Math.max(0, dollars - byCategory.reduce((n, c) => n + c.dollars, 0)) })
-  return { month, requests, dollars, byModel, byCategory }
+  const left = requests - byCategory.reduce((n, c) => n + c.requests, 0)
+  const unsorted = left > 0 ? { requests: left, dollars: Math.max(0, dollars - byCategory.reduce((n, c) => n + c.dollars, 0)) } : null
+  return { month, requests, dollars, byModel, byCategory, unsorted }
 }

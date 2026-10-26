@@ -1617,5 +1617,9 @@ is long JSON, and adaptive thinking is billed as output at $10 a million tokens.
   (themes, programme, sketch), *Notes on the music* (explain, compare, companion, tags, define, portrait,
   season), *Further reading* (resources), *Concerts* (concert, prepare), *Learning your taste* (taste,
   continuity) — plus *Other* for key tests. Counted per job from 26 October (`long-listen:usage:ops`, its own
-  key so the tally by model keeps its shape); what this month spent before then shows as one *Earlier* line, so
-  the parts add up to the total. `usage.test.ts` fails if a new job isn't filed under a category.
+  key so the tally by model keeps its shape); what a month spent before then is reported apart as *not sorted*,
+  so the parts add up to the total, and a month with nothing sorted says why instead of listing one lone line.
+  `usage.test.ts` fails if a new job isn't filed under a category.
+- **Last month, folded under this one** (*Last month, September 2026*): the same total, models and categories,
+  shown only when that month spent something. This month stays first and in full; the app keeps twelve
+  months on the device but shows these two.
