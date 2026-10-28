@@ -872,7 +872,7 @@ function ProgrammeTools({ b, showLength }: { b: Bundle; showLength: boolean }) {
     <div className={`${s.actions} ${s.mtMd}`}>
       {showLength && total > 0 && <span className={s.faint}>{playable.length === items.length ? 'The music runs' : 'What’s confirmed so far runs'} {aboutDuration(total)}</span>}
       {b.playlist && webUrl(b.playlist.url) && (
-        <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer" title="Kept in step with the programme as recordings are confirmed">Open the playlist</a>
+        <a href={webUrl(b.playlist.url)} target="_blank" rel="noopener noreferrer">Open the playlist</a>
       )}
       {!b.playlist && spotify.connected && playable.length > 0 && (
         <button className={`${s.outlineButton} ${s.smallButton}`} onClick={savePlaylist} disabled={saving}>

@@ -6,6 +6,10 @@
 
 .page {
   min-height: 100%;
+  /* The whole app comes up softly the first time it is drawn — a cold start, or the page coming
+     back after it was reloaded out of sight — instead of masthead and page popping into place.
+     Opacity only, so nothing fixed inside is re-anchored. */
+  animation: dawn 520ms var(--ease) backwards;
   /* viewport-fit=cover: on an edge-to-edge Android (One UI 7+) the page runs
      under the gesture bar, and in landscape under the camera cut-out. */
   /* One generous step after the last line — not two: a page ended on a screen
@@ -154,6 +158,32 @@
 @keyframes settle {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
+}
+
+/* What a page shows once its data is read eases in over the moment before, rather than snapping
+   in where "Gathering…" was. Opacity only: a transform on a page's root would become the
+   containing block of the programme's fixed contents rail. */
+.main > * {
+  animation: arrive 360ms var(--ease) backwards;
+}
+
+/* "Gathering…" only for a wait worth saying: a quick read never shows it at all. */
+.main > .waiting {
+  animation: arrive 300ms var(--ease) 350ms backwards;
+}
+
+@keyframes dawn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes arrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page, .main, .main > *, .main > .waiting { animation: none; }
 }
 
 /* ── type ───────────────────────────────────────────────────────────────── */

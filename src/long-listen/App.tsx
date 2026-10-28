@@ -72,7 +72,7 @@ function Shell() {
           <span className={s.mastRight}>
             {/* Back to the work sounding (or paused, or left part-way), from any screen: shown only when there is one. */}
             <NowListening route={route} />
-            <a className={s.iconLink} href={GUIDE_URL} target="_blank" rel="noopener noreferrer" aria-label="User’s guide" title="User’s guide"><BookOpen size={18} strokeWidth={1.6} /></a>
+            <a className={s.iconLink} href={GUIDE_URL} target="_blank" rel="noopener noreferrer" aria-label="User’s guide"><BookOpen size={18} strokeWidth={1.6} /></a>
             <a className={`${s.iconLink} ${route.name === 'settings' ? s.iconOn : ''}`} href={href({ name: 'settings' })} aria-label="Settings" title="Settings"><Settings2 size={18} strokeWidth={1.6} /></a>
           </span>
         </div>

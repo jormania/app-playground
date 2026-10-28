@@ -28,7 +28,7 @@ export function OpenInSpotify({ trackIds, durationMs, durationsMs, onOpened, cla
     onOpened?.()
   }
   return (
-    <a className={className ?? s.listenAlt} title="Opens the first track in Spotify; the app stops it at the work’s last movement while it can follow Spotify" href={openUrl('track', trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={opened}>
+    <a className={className ?? s.listenAlt} href={openUrl('track', trackIds[0])} target="_blank" rel="noopener noreferrer" onClick={opened}>
       {children ?? <>open in Spotify<ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" /></>}
     </a>
   )

@@ -1637,3 +1637,28 @@ playing silently), and only then the volume back as it was — in a `finally`, s
 device muted. Never on a device whose volume Spotify can't read or set: it stays paused on the other track,
 as before. The note says which happened. The Spotify app's own *Autoplay* setting (Settings → Playback) is
 what makes some devices carry on; turning it off there stops the run-on at its source.
+
+## 39. A blank box in Android's recents, and transitions (28 October 2026)
+
+**The box.** After *or open in Spotify*, Android's recent-apps card showed a tall black box over the link.
+It was the link's `title` — a long hover tooltip ("Opens the first track in Spotify; the app stops it…").
+Chrome on Android shows a `title` as a popup when the link is pressed; the link leaves for Spotify at once,
+so the popup is still up as the page goes to the background, and the snapshot draws it as an empty box. The
+three links that leave the app (*open in Spotify*, *Open the playlist*, the guide in the masthead) no longer
+carry a `title`; the guide keeps its `aria-label`.
+
+**Transitions.** Moving between sections already eased in (`.main`, `settle`); what felt harsh was what came
+after and around it:
+
+- *Coming back to the app.* `useNewVersion` reloads the page out of sight when a newer build is out — often,
+  on a day of deploys — so returning meant a cold start: a white flash before the styles, the masthead
+  popping in, "Gathering…", then the page snapping in. Now the paper (or the dark) is painted from the first
+  frame by an inline style in `long-listen-react.html`, and the whole app comes up in one 520 ms fade
+  (`.page`, `dawn`).
+- *A page arriving.* What a screen shows once its data is read now eases in (`.main > *`, `arrive`, 360 ms)
+  instead of snapping where "Gathering…" was — and "Gathering…" itself waits 350 ms before it appears, so a
+  quick read never shows it.
+- Opacity only, as with `settle`'s `backwards` fill: a transform left on a page would contain the programme's
+  fixed contents rail. The masthead and the section bar stay still — only the page moves, a printed
+  programme's turn rather than an app's slide. None of it under *reduce motion*.
+

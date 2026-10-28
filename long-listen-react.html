@@ -23,6 +23,13 @@
       document.documentElement.setAttribute('data-text-size', saved && saved.textSize === 'large' ? 'large' : 'standard');
     } catch (e) {}
   </script>
+  <style>
+    /* The paper (or the dark) from the first paint, before the app's own styles arrive: a page
+       reloaded while it was out of sight comes back on its own colour, never a white flash.
+       Keep in step with --color-bg in src/long-listen/styles/palette.css. */
+    html[data-theme="light"] { background: #f5efe3; }
+    html[data-theme="dark"] { background: #16130f; }
+  </style>
   <link rel="icon" type="image/svg+xml" href="/long-listen-logo.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/long-listen-favicon-32.png" />
   <link rel="apple-touch-icon" href="/long-listen-icon-192.png" />
