@@ -1342,7 +1342,7 @@ renders at cannot be settled from the CSS: most `--font-display` rules inherit
 their weight, there is no heading reset so `h1`–`h3` are 700, and `--weight-bold`
 is 700 from the DS. Dropping one is a visual judgement needing browser evidence,
 not a build-size tidy-up.
-## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js done, five modules to go
+## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js and store.js done, four modules to go
 
 **Impact:** none visible. Makes the least-covered non-legacy app safe to change.
 
@@ -1374,7 +1374,17 @@ returns the next week, which is the entire reason the log is keyed by week rathe
 than flagged on the draft. Four mutations were run against `drafts.js` and each
 was caught.
 
-**Still untested, in the order this item suggests:** `store.js`, `useLoom.js`,
+**`store.js` done 2026-10-28 — 15 tests** (`store.test.js`, same stub). They pin
+the rule the file exists for (saved token ⇒ live client, none or whitespace-only ⇒
+demo), token trimming, the database id parsed from a pasted URL and reverting to
+the built-in one when blank or unparseable, view prefs filling keys an older save
+lacks and reading corrupt JSON as defaults, every accessor surviving a throwing
+`localStorage`, and `testConnection` probing the typed-but-unsaved values without
+saving them (via a stubbed `fetch`). Four mutations run: three caught; the fourth
+(`if (id)` → `if (true)` in `setDatabaseId`) is an equivalent mutant, since a stored
+empty string reads back as unset.
+
+**Still untested, in the order this item suggests:** `useLoom.js`,
 `localClient.js`, `lexicon.js`, `uiStyle.js`.
 ---
 
