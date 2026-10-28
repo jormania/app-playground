@@ -20,7 +20,7 @@ import { CLICK, Metronome } from './metronome'
 import { MAX_TAKE_MS, Recorder, type Recording } from './recorder'
 import { OutputChoice, useOutput } from './output'
 import { saveFile } from './saveFile'
-import { MAX_KEPT, MAX_NAME, TakeRepo, type Take } from './takes'
+import { MAX_KEPT, MAX_NAME, TakeRepo, type Draft, type Take } from './takes'
 import { readAiKey } from '../ai'
 import { navigate } from '../router'
 import { answerLine, answerRecording, answerSong, askAnswer, callOf, type Answer } from './answer'
@@ -56,7 +56,9 @@ export function StudioScreen({ songId }: { songId?: string }) {
     ms: number
     count: number
   } | null>(null)
-  const [pending, setPending] = useState<(Recording & { style: boolean; bpm?: number }) | null>(null)
+  const [pending, setPending] = useState<Draft | null>(null)
+  /** Record tapped while a take waits to be kept: asked first, never recorded over. */
+  const [overwrite, setOverwrite] = useState(false)
   const [countIn, setCountIn] = useState(0)
   /** Clicks still to come before recording starts; null when not counting in. */
   const [counting, setCounting] = useState<number | null>(null)
@@ -86,6 +88,10 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const profileId = profile?.id ?? null
   useEffect(() => {
     if (profileId) void repo.list(profileId).then(setTakes)
+  }, [repo, profileId])
+  // A take left waiting (she went back, or the phone put KeyPath away) is still here to keep.
+  useEffect(() => {
+    if (profileId) void repo.draft(profileId).then((d) => d && setPending((p) => p ?? d))
   }, [repo, profileId])
   useEffect(() => {
     void store.get<number>(COUNT_IN_KEY).then((v) => (COUNT_INS as readonly number[]).includes(v as number) && setCountIn(v as number))
@@ -184,7 +190,9 @@ export function StudioScreen({ songId }: { songId?: string }) {
     }
     const style = styleDuringTake.current
     const bpm = takeBpm.current
-    setPending({ ...r, style, ...(bpm ? { bpm } : {}) })
+    const made: Draft = { ...r, style, ...(bpm ? { bpm } : {}), ...(song ? { songId: song.id, songTitle: song.title } : {}) }
+    setPending(made)
+    if (profileId) void repo.saveDraft(profileId, made)
     if (profileId)
       void log.add(profileId, {
         type: 'studio_recorded',
@@ -195,7 +203,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
         ...(bpm ? { countIn: bpm } : {}),
         ...(clicked ? { click: true } : {}),
       })
-  }, [t, profileId, log, songId])
+  }, [t, profileId, log, songId, song, repo])
 
   const cancelCountIn = useCallback(() => {
     countingIn.current?.()
@@ -282,22 +290,26 @@ export function StudioScreen({ songId }: { songId?: string }) {
   const once = useOnce()
   const keep = once(async () => {
     if (!pending || !profileId) return
-    const { style, ...r } = pending
-    const { bpm, ...notes } = r
+    const { style, bpm, songId: fromId, songTitle: fromTitle, ...notes } = pending
     const take = await repo.keep(profileId, notes, {
       style,
       ...(bpm ? { bpm } : {}),
-      ...(song ? { songId: song.id, songTitle: song.title } : {}),
+      // The song it was made from, even when the Studio has since been opened without one.
+      ...(fromId ? { songId: fromId, songTitle: fromTitle } : {}),
     })
     if (!take) return setMessage(t('studioFull', { max: MAX_KEPT }))
     if (playingId === 'new') stopPlayback()
     setPending(null)
+    setOverwrite(false)
+    void repo.clearDraft(profileId)
     setTakes(await repo.list(profileId))
     void log.add(profileId, { type: 'studio_kept', takeId: take.id })
   })
   const discard = () => {
     if (playingId === 'new') stopPlayback()
     setPending(null)
+    setOverwrite(false)
+    if (profileId) void repo.clearDraft(profileId)
   }
   const toggleFavourite = async (take: Take) => {
     if (!profileId) return
@@ -448,7 +460,7 @@ export function StudioScreen({ songId }: { songId?: string }) {
               type="button"
               className={styles.record}
               data-recording={recording || counting !== null ? true : undefined}
-              onClick={counting !== null ? cancelCountIn : recording ? stopRecording : startRecording}
+              onClick={counting !== null ? cancelCountIn : recording ? stopRecording : pending ? () => setOverwrite(true) : startRecording}
             >
               {counting !== null ? t('studioCancel') : recording ? t('studioStop') : t('studioRecord')}
             </button>
@@ -486,6 +498,29 @@ export function StudioScreen({ songId }: { songId?: string }) {
                   {t('studioDiscard')}
                 </Button>
               </div>
+              {overwrite && (
+                <div className={styles.overwrite} role="alertdialog" aria-label={t('studioOverwrite')}>
+                  <p>{t('studioOverwrite')}</p>
+                  <div className={styles.actions}>
+                    <Button size="sm" onClick={() => void keep()}>
+                      {t('studioKeep')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        discard()
+                        startRecording()
+                      }}
+                    >
+                      {t('studioRecordOver')}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setOverwrite(false)}>
+                      {t('cancel')}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

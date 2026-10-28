@@ -1,7 +1,7 @@
 import { WARMUP_ID } from '../../engine/starterPack'
 import type { StringKey } from '../i18n'
 import { JOURNEY } from '../journey/steps'
-import type { LogRecord } from '../log'
+import { PRACTICE_TYPES, type LogRecord } from '../log'
 import { localDate } from '../progress/summary'
 import { K, update, type KeyValueStore } from '../store'
 
@@ -37,7 +37,7 @@ export interface Sticker {
 }
 
 /** Days she played on, for the practice-day stickers: any day with a song, a step, a game or a take. */
-const PRACTICE = new Set(['song_started', 'journey_started', 'challenge_started', 'studio_recorded'])
+const PRACTICE: ReadonlySet<string> = PRACTICE_TYPES
 export const WEEK_DAYS = 7
 export const MONTH_DAYS = 30
 /**

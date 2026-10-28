@@ -62,9 +62,9 @@
   min-height: 2.75rem;
   padding: var(--space-2xs) var(--space-lg);
   border-radius: var(--radius-pill);
-  border: 2px solid #c8463a;
+  border: 2px solid var(--kp-record);
   background: var(--color-surface);
-  color: #c8463a;
+  color: var(--kp-record);
   font: var(--weight-bold) var(--text-base) / 1 var(--font-sans);
   cursor: pointer;
 }
@@ -77,8 +77,9 @@
   justify-self: center;
 }
 .record[data-recording] {
-  background: #c8463a;
-  color: #fff;
+  background: var(--kp-record);
+  /* The page's own background on the red: readable in both themes. */
+  color: var(--color-bg);
   animation: pulse 1.6s ease-in-out infinite;
 }
 @keyframes pulse {
@@ -108,6 +109,18 @@
 
 .pending > p {
   margin: 0;
+}
+/* Record tapped while a take waits: asked first, under it. */
+.overwrite {
+  flex-basis: 100%;
+  display: grid;
+  gap: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+.overwrite > p {
+  margin: 0;
+  font-weight: var(--weight-medium);
 }
 
 /* ── Takes ── */

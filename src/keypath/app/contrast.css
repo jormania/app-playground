@@ -1,0 +1,24 @@
+/*
+ * KeyPath's text at 4.5:1 or better (WCAG AA) on all three of its light
+ * backgrounds: the shared Solarized tones read at 3.4–4.4:1 here, from muted
+ * lines to the blue of a selected option (audit, 2026-10-28). Each is the
+ * same hue, darkened only as far as it takes. Unlayered, so it wins over the
+ * design system's `@layer ds` tokens, and only on KeyPath's own page: the
+ * other apps keep the palette as it is.
+ */
+:root[data-theme='light'] {
+  --color-ink: #50656b;
+  --color-muted: #52646b;
+  --color-accent: #1c669b;
+  --color-accent-hover: #1c6b65;
+  --color-success: #5a6800;
+  --color-warning: #aa3e12;
+  --color-danger: #b82927;
+  /* A record, a best score: their own colours, set per theme. */
+  --kp-gold: #7e5b0b;
+  --kp-record: #ab3c31;
+}
+:root[data-theme='dark'] {
+  --kp-gold: #e0af68;
+  --kp-record: #f7768e;
+}

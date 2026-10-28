@@ -1,5 +1,5 @@
 import { WARMUP_ID } from '../../engine/starterPack'
-import type { Door, LogRecord } from '../log'
+import { PRACTICE_TYPES, type Door, type LogRecord } from '../log'
 
 // Progress: the engagement log read back as answers to the taster's own
 // questions (KEYPATH_TUTOR.md §6): which door does she open first, where does
@@ -35,7 +35,7 @@ export interface ProgressSummary {
   to: string | null
   sessions: number
   minutes: number
-  /** Local dates with at least one session. */
+  /** Local dates she practised on: a song, a step, a game or a take (PRACTICE_TYPES), not just KeyPath opened. */
   days: string[]
   /** Active days followed by another active day: "does she come back the next day?" */
   cameBackNextDay: number
@@ -100,6 +100,8 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
   for (const r of records) {
     const t = Date.parse(r.at)
     // The five-finger warm-up is a song only in name: a daily one would read as a song finished every day.
+    // Any practice makes the day one she played, the warm-up included; opening KeyPath doesn't.
+    if (PRACTICE_TYPES.has(r.type)) days.add(localDate(r.at))
     if ('songId' in r && r.songId === WARMUP_ID) {
       if (r.type === 'song_finished') s.warmUps++
       continue
@@ -108,7 +110,6 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
       case 'session_start':
         closeDoor(t)
         s.sessions++
-        days.add(localDate(r.at))
         firstDoorTaken = false
         break
       case 'session_end':

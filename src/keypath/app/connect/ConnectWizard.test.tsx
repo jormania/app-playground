@@ -136,6 +136,22 @@ describe('Connect the keyboard', () => {
     await waitFor(() => expect(current()).toBe('Press any key'))
   })
 
+  it('installed, with no address bar, says the way through Chrome’s own settings instead', async () => {
+    const real = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: q.includes('standalone'), media: q, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    try {
+      kb.answer = 'denied'
+      await open()
+      await waitFor(() => expect(current()).toBe('Plug in'))
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Ask me' }))
+      expect(await screen.findByText(/Open Chrome itself \(not KeyPath\)/)).toBeTruthy()
+      expect(screen.queryByText(/icon left of the address/)).toBeNull()
+    } finally {
+      window.matchMedia = real
+    }
+  })
+
   it('goes straight to the key press when the keyboard is already plugged in and allowed', async () => {
     permission = 'granted'
     kb.plugged = true

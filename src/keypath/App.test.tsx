@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import App from './App'
+import App, { forgetProbeSession } from './App'
 
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  forgetProbeSession()
 })
 
 describe('KeyPath probe', () => {

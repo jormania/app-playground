@@ -19,6 +19,18 @@ export interface Take extends Recording {
   bpm?: number
 }
 
+/**
+ * A take recorded and not yet kept or thrown away. Kept on the phone until she
+ * says, so leaving the Studio (the back arrow, the phone putting KeyPath away)
+ * doesn't lose it, with the song it was made from, if any.
+ */
+export interface Draft extends Recording {
+  style: boolean
+  bpm?: number
+  songId?: string
+  songTitle?: string
+}
+
 /** A take's name is kept short enough to fit its row. */
 export const MAX_NAME = 40
 
@@ -27,6 +39,20 @@ export const MAX_KEPT = 50
 
 export class TakeRepo {
   constructor(private readonly store: KeyValueStore) {}
+
+  /** The take waiting for Keep or Discard, if any. */
+  async draft(profileId: string): Promise<Draft | null> {
+    const d = await this.store.get<Draft>(K.studioDraft(profileId))
+    return d && Array.isArray(d.notes) && typeof d.ms === 'number' ? { ...d, pedal: Array.isArray(d.pedal) ? d.pedal : [] } : null
+  }
+
+  async saveDraft(profileId: string, d: Draft): Promise<void> {
+    await this.store.set(K.studioDraft(profileId), d)
+  }
+
+  async clearDraft(profileId: string): Promise<void> {
+    await this.store.del(K.studioDraft(profileId))
+  }
 
   /** Newest first. */
   async list(profileId: string): Promise<Take[]> {

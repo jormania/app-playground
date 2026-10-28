@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../ds/tokens.css'
+import './app/contrast.css'
 import { Shell } from './app/Shell'
 import { systemPrefersDark } from '../shared/theme'
 import { watchInstalled } from '../shared/installFlag'

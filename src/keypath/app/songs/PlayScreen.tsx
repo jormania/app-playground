@@ -1040,7 +1040,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
             </p>
           )}
 
-          {output.phoneMuted && <p className={con.note}>{t('studioPhoneMuted')}</p>}
+          {output.phoneMuted && <p className={con.note}>{t('phoneMuted')}</p>}
           </div>
 
           {/* The practice range, a card of its own under the console: one line that says which bars, opened to change them and loop them. */}
@@ -1094,7 +1094,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
 
       {listening && output.phoneMuted && (
         <div className={styles.prompt} role="status">
-          {t('studioPhoneMuted')}
+          {t('phoneMuted')}
         </div>
       )}
 

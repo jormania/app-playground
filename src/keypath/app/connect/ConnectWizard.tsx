@@ -29,6 +29,18 @@ const TITLE: Record<Exclude<SetupStep, 'done'>, StringKey> = {
  * keyboard is connected when it isn't. The last step asks for a key press:
  * an open port isn't proof, a note arriving is.
  */
+/**
+ * Opened from the home screen, installed: there is no address bar, so the way
+ * to a site's permissions is through Chrome's own settings instead.
+ */
+const installed = () => {
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches
+  } catch {
+    return false
+  }
+}
+
 export function ConnectWizard() {
   const { t, settings, store, profile, log } = useApp()
   const [heard, setHeard] = useState<number | null>(null)
@@ -116,7 +128,7 @@ export function ConnectWizard() {
       case 'allow':
         return access === 'denied' ? (
           <>
-            <p className={styles.problem}>{t('stepAllowDenied')}</p>
+            <p className={styles.problem}>{t(installed() ? 'stepAllowDeniedApp' : 'stepAllowDenied')}</p>
             <div>
               <Button onClick={() => void connectKeyboard()}>{t('stepAllowRetry')}</Button>
             </div>

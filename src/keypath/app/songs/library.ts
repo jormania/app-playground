@@ -133,7 +133,8 @@ function withSplit(d: Omit<ImportDraft, 'split' | 'splitSuggested'>): ImportDraf
   return { ...d, split: suggested, splitSuggested: suggested }
 }
 
-export type ImportProblem = 'not-midi' | 'unsupported' | 'no-notes' | 'too-long'
+/** `damaged`: the right kind of file, but broken (a download cut short, a zip that won't open, notes with no time). */
+export type ImportProblem = 'not-midi' | 'unsupported' | 'no-notes' | 'too-long' | 'damaged'
 
 /**
  * The most a song may hold: an hour of music, or 20,000 notes. A long sonata
@@ -168,6 +169,8 @@ function draftOf(file: SmfFile, fileName: string): ImportDraft | ImportProblem {
   let count = 0
   for (const n of file.notes) {
     if (!played.has(`${n.track}:${n.channel}`)) continue
+    // A broken header (no ticks to a beat) leaves notes with no time at all: nothing to play from.
+    if (!Number.isFinite(n.startMs) || !Number.isFinite(n.endMs)) return 'damaged'
     if (++count > MAX_SONG_NOTES || n.endMs > MAX_SONG_MS) return 'too-long'
   }
   // A score prints its hands on two staves; a MIDI file has to be guessed from.
@@ -199,7 +202,7 @@ export function draftFromFile(bytes: ArrayBuffer, fileName: string): ImportDraft
   try {
     file = parseSmf(bytes)
   } catch (err) {
-    if (err instanceof SmfError) return /not a MIDI file/i.test(err.message) ? 'not-midi' : 'unsupported'
+    if (err instanceof SmfError) return /not a MIDI file/i.test(err.message) ? 'not-midi' : err.kind
     throw err
   }
   return draftOf(file, fileName)
@@ -207,12 +210,18 @@ export function draftFromFile(bytes: ArrayBuffer, fileName: string): ImportDraft
 
 /** Any file "Add a song" takes: MuseScore (.mscz, .mscx), MusicXML (.mxl, .musicxml, .xml) or MIDI. */
 export async function openSongFile(bytes: ArrayBuffer, fileName: string): Promise<ImportDraft | ImportProblem> {
-  if (!isZip(new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 4)))) return draftFromFile(bytes, fileName)
   try {
-    return draftFromScore(await unzipScore(new Uint8Array(bytes)), fileName)
-  } catch (err) {
-    if (err instanceof MxlError) return 'not-midi'
-    throw err
+    if (!isZip(new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 4)))) return draftFromFile(bytes, fileName)
+    try {
+      return draftFromScore(await unzipScore(new Uint8Array(bytes)), fileName)
+    } catch (err) {
+      if (err instanceof MxlError) return 'not-midi'
+      throw err
+    }
+  } catch {
+    // Anything else the readers didn't see coming (a compressed part that won't
+    // inflate, a directory pointing past the end): said, never a tap that does nothing.
+    return 'damaged'
   }
 }
 

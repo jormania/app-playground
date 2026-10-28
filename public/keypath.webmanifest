@@ -7,8 +7,8 @@
   "scope": "/keypath-react.html",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#1f2347",
-  "theme_color": "#1f2347",
+  "background_color": "#eee8d5",
+  "theme_color": "#eee8d5",
   "icons": [
     { "src": "/keypath-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/keypath-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

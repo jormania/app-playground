@@ -41,7 +41,10 @@
   background: var(--color-surface);
 }
 .step[data-state='todo'] {
-  opacity: 0.55;
+  /* Later steps: quieter, and still readable (a faded step read at 2.2:1). */
+  color: var(--color-muted);
+  background: transparent;
+  border-style: dashed;
 }
 .step[data-state='current'] {
   border-color: var(--color-accent);

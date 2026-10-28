@@ -1145,6 +1145,73 @@ the notes already had time limits; "Connect" on the setup screens reads 4 px wid
 only because of its larger tap area. A sweep of every screen above, after the fixes: no sideways
 scroll, no hidden option, no page or console error.
 
+### Second audit, Long Listen style (2026-10-28)
+
+The whole app read again by area (engine and file readers, MIDI, data, every screen's flows, the
+Studio, the reminder and worker, privacy, both languages, accessibility with axe-core on fifteen
+screens in both themes, weight, the user's guide against the code), reporting only what was
+reproduced or traced, then all of it fixed. In three tiers, as reported:
+
+**Tier 1, everyday use and what the parent is told.**
+
+- *Dark mode's buttons were cream on light blue* (2.3:1): the dark theme swapped the accent and
+  kept the light theme's `--color-on-accent`. Fixed in the design system itself
+  (`src/ds/tokens.css`, dark text on the accent, 6.8:1), for every app on it;
+  `src/ds/tokens.contrast.test.js` measures it. The Long Listen sets its own and is unchanged.
+- *"Played" meant "opened"*. A day counted as played on a session alone, so opening KeyPath to
+  look at Progress silenced that evening's reminder, counted as a day played, and went to Claude
+  as a day practised in the weekly note. One meaning now, `PRACTICE_TYPES` in `log.ts`: a song,
+  a step or a game begun, or a take recorded. Progress, the weekly note, the reminder and the
+  stickers all count by it.
+- *A take not kept was lost without a word*: Record again cleared it, and so did leaving the
+  Studio. It is kept on the phone as a draft (`K.studioDraft`, in the backup) until Keep or
+  Discard, with the song it came from; Record while it waits asks first ("Record over it").
+- *The screen never slept while KeyPath was open.* It stays awake where she plays (a song, a
+  game, a step, the Studio, connecting the keyboard: `keepsAwake` in `Shell.tsx`) and sleeps as
+  usual on Home, the lists and Settings.
+
+**Tier 2, real defects on rarer paths.**
+
+- *A damaged score did nothing*: a compressed score that wouldn't inflate threw past Add a song,
+  which showed nothing. Any unexpected failure is now `damaged`, said as such ("try downloading
+  it again").
+- *Blocked MIDI access was explained for a browser tab only* ("the icon left of the address").
+  Installed, there is no address bar: it says the way through Chrome's own Site settings.
+- *Light mode read below 4.5:1* across muted lines, the accent and the level colours. KeyPath's
+  own `app/contrast.css` darkens each just far enough, on its page only; the later
+  steps of the connection wizard are dashed rather than faded. axe-core: no violations on any
+  screen in either theme.
+- *No error boundary*: a screen that threw while drawing left an empty page. `ErrorBoundary`
+  says so, says nothing saved is lost, and offers Home or a reload.
+- *The sound through the keyboard*: its only control was in Diagnostics, in English, and it began
+  at 0 on every load until Diagnostics was opened, so after a reload the phone played silently
+  through the keyboard at any saved level, with no warning. The level now starts from what is
+  saved, and Settings → Keyboard has its slider; the "at 0" line points there (`phoneMuted`).
+
+**Tier 3, hardening.**
+
+- A MIDI header with no ticks to a beat (or shorter than its fields) is refused as damaged
+  instead of saving a song with no timing; a file cut short keeps the notes before the cut.
+- Diagnostics keeps one probe session for the page, as its comment always said; each visit used
+  to leave another bound to the keyboard.
+- Progress's facts are a list, not a definition list without terms; the Diagnostics keyboard is
+  a picture with one name (buttons only in the simulator), and its scroller can be reached by
+  keyboard.
+- The manifest's colours are the light theme's, not a dark navy around a cream app.
+- Remove key asks twice: a key taken off is a trip to the Anthropic console to put back.
+- `t` is the same function until the language changes, so Today's "next" doesn't read again on
+  every render; two screens reading the log at once share one read (never one begun before a
+  write); the reminder reads no log while it is off.
+- Diagnostics is its own download, fetched in idle time after start so the worker has it offline
+  (the entry is 371 KB, 121 KB gzipped, from 406/132).
+- Words: three unused strings gone; `studioPhoneMuted` is `phoneMuted`, as it shows everywhere;
+  Romanian *Oprește* for Stop.
+
+Left as they are, on purpose: the Claude key in `localStorage` is readable by every app on this
+one origin, which is the bring-your-own-key design (each app keeps its own); moving it to another
+store on the same origin changes nothing. And Settings has no lock beyond its confirmations: no
+gate stops an eleven-year-old, and the confirmations are what stop an accident.
+
 ### Quality of life, Long Listen style (2026-10-24)
 
 A read of the whole app for everyday friction, the way LONG_LISTEN.md §26–§30 read The Long

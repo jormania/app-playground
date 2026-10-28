@@ -249,7 +249,10 @@ describe('KeyPath shell, after the audit', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Test the key' }))
       expect(await screen.findByText('The key works.')).toBeTruthy()
       expect(JSON.stringify(await exportBackup(store))).not.toContain('sk-ant-api03')
+      // One tap only asks: a key taken off is a trip to the Anthropic console to put back.
       fireEvent.click(screen.getByRole('button', { name: 'Remove key' }))
+      expect(screen.getByText(/A key is saved/)).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Tap again to remove it' }))
       expect(await screen.findByText('No key yet.')).toBeTruthy()
       expect(localStorage.getItem('keypath:anthropicKey')).toBeNull()
     } finally {
@@ -419,5 +422,19 @@ describe('KeyPath shell: the backup, said plainly', () => {
     expect(location.hash).toBe('#/settings/backup')
     expect(scrolled).toHaveBeenCalled()
     scrolled.mockRestore()
+  })
+})
+
+describe('KeyPath shell: the sound through the keyboard, in Settings', () => {
+  it('sets the level where a player looks for it, and keeps it for Diagnostics too', async () => {
+    await start()
+    await createPlayer('Nora')
+    history.replaceState(null, '', '#/settings')
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    const slider = (await screen.findByRole('slider', { name: 'KeyPath’s sound through the keyboard' })) as HTMLInputElement
+    expect(slider.value).toBe('0')
+    fireEvent.change(slider, { target: { value: '60' } })
+    expect(JSON.parse(localStorage.getItem('keypath:keyboard-output')!)).toMatchObject({ level: 60 })
+    localStorage.removeItem('keypath:keyboard-output')
   })
 })

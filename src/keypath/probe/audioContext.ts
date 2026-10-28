@@ -1,8 +1,11 @@
-import { gainFor } from './outputLevel'
+import { gainFor, loadOutputLevel } from './outputLevel'
 
 let ctx: AudioContext | null = null
 let keyboardBus: GainNode | null = null
-let keyboardGain = 0
+// The level saved on this phone, from the start: it used to begin at 0 and be
+// set only when Diagnostics opened, so after a reload the phone played silently
+// through the keyboard at any saved level, and nothing said why.
+let keyboardGain = gainFor(loadOutputLevel().level)
 
 /**
  * One AudioContext for the whole page, created lazily and resumed on demand.
@@ -42,6 +45,9 @@ export async function keyboardOutput(): Promise<GainNode> {
   }
   return keyboardBus
 }
+
+/** The gain KeyPath's sound through the keyboard is played at now (0–1). */
+export const currentKeyboardGain = () => keyboardGain
 
 /** Apply a 0–100 level. Safe to call before any audio exists; it's remembered. */
 export function setKeyboardLevel(level: number): void {

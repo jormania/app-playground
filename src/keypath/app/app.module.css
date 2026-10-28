@@ -743,3 +743,40 @@
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
+
+/* A screen that failed to draw: what happened, and the way back. */
+.crash {
+  display: grid;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.crash > p {
+  margin: 0;
+  color: var(--color-muted);
+}
+.crashTitle {
+  margin: 0;
+  font: var(--weight-bold) var(--text-xl) / var(--leading-tight) var(--font-display);
+}
+.crashActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* Settings → Keyboard: KeyPath's own sound through the keyboard. */
+.soundRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.soundSlider {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  accent-color: var(--color-accent);
+}

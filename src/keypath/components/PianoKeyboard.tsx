@@ -35,7 +35,7 @@ export const PianoKeyboard = memo(function PianoKeyboard({ low, high, held, onPr
     if (!el) return
     let done = false
     const centre = () => {
-      const c4 = el.querySelector<HTMLElement>('[aria-label="C4"]')
+      const c4 = el.querySelector<HTMLElement>('[data-note="60"]')
       if (done || !c4 || el.clientWidth === 0) return
       done = true
       if (el.scrollWidth > el.clientWidth) el.scrollLeft = c4.offsetLeft - el.clientWidth / 2 + c4.offsetWidth
@@ -77,9 +77,13 @@ export const PianoKeyboard = memo(function PianoKeyboard({ low, high, held, onPr
     return (
       <div
         key={note}
+        data-note={note}
+        // Pressable (the simulator), each key is a button; showing the real
+        // keyboard, the keys are a picture, named as one below.
         role={playable ? 'button' : undefined}
-        aria-label={noteName(note)}
-        aria-pressed={velocity !== undefined}
+        aria-label={playable ? noteName(note) : undefined}
+        aria-pressed={playable ? velocity !== undefined : undefined}
+        aria-hidden={playable ? undefined : true}
         data-target={isTarget || undefined}
         data-wrong={isWrong || undefined}
         className={[
@@ -110,9 +114,12 @@ export const PianoKeyboard = memo(function PianoKeyboard({ low, high, held, onPr
   for (let n = low; n <= high; n++) notes.push(n)
 
   return (
-    <div className={styles.scroller} ref={scroller}>
+    // Scrolls sideways on a phone: reachable from a keyboard too, to scroll it with the arrows.
+    <div className={styles.scroller} ref={scroller} tabIndex={0} role="region" aria-label="Keys">
       <div
         className={styles.keys}
+        role={playable ? undefined : 'img'}
+        aria-label={playable ? undefined : held.size ? `Keys held: ${[...held.keys()].sort((a, b) => a - b).map(noteName).join(', ')}` : 'No keys held'}
         style={{ ['--whites' as string]: whites.length }}
         onContextMenu={(e) => e.preventDefault()}
       >

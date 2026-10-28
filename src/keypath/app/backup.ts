@@ -39,7 +39,7 @@ const SHAPES: [RegExp, (v: unknown) => boolean][] = [
   [new RegExp(`^${P}songs$`), (v) => Array.isArray(v) && v.every((s) => isObject(s) && typeof s.id === 'string' && Array.isArray(s.notes))],
   [new RegExp(`^${P}(log|logArchive:\\d+):`), Array.isArray],
   [new RegExp(`^${P}(studio|intros|stickers):`), Array.isArray],
-  [new RegExp(`^${P}(settings|journey|challenges|parts|setup|weekly|games):`), isObject],
+  [new RegExp(`^${P}(settings|journey|challenges|parts|setup|weekly|games|studioDraft):`), isObject],
   [new RegExp(`^${P}today:`), (v) => isObject(v) && typeof v.date === 'string' && Array.isArray(v.items)],
   [new RegExp(`^${P}keyboard$`), isObject],
 ]

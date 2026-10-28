@@ -99,6 +99,20 @@ describe('summarise', () => {
     expect(s.days).toEqual(['2026-09-21'])
   })
 
+  it('counts a day she practised, not a day KeyPath was only opened', () => {
+    const s = summarise(
+      log(
+        ['2026-09-21T08:00:00', { type: 'session_start' }],
+        ['2026-09-21T08:01:00', { type: 'door_opened', door: 'songs' }],
+        ['2026-09-21T08:02:00', { type: 'session_end', durationMs: 120000 }],
+        ['2026-09-22T18:00:00', { type: 'session_start' }],
+        ['2026-09-22T18:01:00', { type: 'journey_started', step: 'cde', mode: 'practice', testOut: false }],
+      ),
+    )
+    expect(s.sessions).toBe(2)
+    expect(s.days).toEqual(['2026-09-22'])
+  })
+
   it('is empty, not broken, for a player with no log yet', () => {
     expect(summarise([])).toMatchObject({ from: null, sessions: 0, days: [], cameBackNextDay: 0 })
   })

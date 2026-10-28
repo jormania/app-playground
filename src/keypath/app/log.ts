@@ -71,6 +71,14 @@ export type LogRecord = LogEvent & { at: string; profileId: string }
  * (tens of thousands of records) would be rewritten whole on every tap.
  * Nothing is ever dropped: stickers and Progress count from the first day.
  */
+/**
+ * A day she practised is a day with one of these in it: a song, a Journey
+ * step or a game begun, or a take recorded. Opening KeyPath is not practice:
+ * a grown-up looking at Progress, or Settings, plays nothing. Progress's days,
+ * the weekly note, the reminder and the stickers all count by this.
+ */
+export const PRACTICE_TYPES: ReadonlySet<LogEvent['type']> = new Set(['song_started', 'journey_started', 'challenge_started', 'studio_recorded'])
+
 export const LOG_CHUNK = 2000
 
 export class EngagementLog {
@@ -102,8 +110,27 @@ export class EngagementLog {
     return this.queue
   }
 
-  /** The whole log, oldest first: the chunks put away, then the open one. */
-  async read(profileId: string): Promise<LogRecord[]> {
+  /** A read under way, per player, with the writes it waited for. */
+  private reading = new Map<string, { queue: Promise<void>; read: Promise<LogRecord[]> }>()
+
+  /**
+   * The whole log, oldest first: the chunks put away, then the open one. Two
+   * screens asking at once (Home's Today and its stickers) share one read,
+   * as long as nothing was written since it began; each gets its own copy.
+   */
+  read(profileId: string): Promise<LogRecord[]> {
+    const under = this.reading.get(profileId)
+    if (under && under.queue === this.queue) return under.read.then((all) => [...all])
+    const entry = { queue: this.queue, read: this.readAll(profileId) }
+    this.reading.set(profileId, entry)
+    const done = () => {
+      if (this.reading.get(profileId) === entry) this.reading.delete(profileId)
+    }
+    entry.read.then(done, done)
+    return entry.read.then((all) => [...all])
+  }
+
+  private async readAll(profileId: string): Promise<LogRecord[]> {
     await this.queue
     const all: LogRecord[] = []
     for (let n = 0; ; n++) {

@@ -11,6 +11,11 @@ Updated 2026-10-04, after release 5 and its audit: item 21 is half done (below),
 built, and the note on engraved music under the reading items is out of date (release 5
 engraved it).
 
+Updated 2026-10-28: nothing here changed rank. Two audits and a quality-of-life pass since
+release 5 (`KEYPATH_TUTOR.md` §9: "Audit, Long Listen style", "Quality of life", "Second audit")
+fixed what daily use runs into; the open items below are the same ones, waiting on the same
+things.
+
 The ranking is a judgement, not a measurement. Two things should re-rank it:
 - **Nora's answers** to the open questions in `KEYPATH_TUTOR.md` §8 (what she
   liked in Simply Piano and Flowkey, the one song she'd love to play, songs vs

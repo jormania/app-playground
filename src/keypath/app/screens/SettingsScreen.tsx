@@ -12,6 +12,8 @@ import { RELEASE } from '../release'
 import { readAiKey, saveAiKey, testAiKey, type KeyCheck } from '../ai'
 import { disableReminder, enableReminder, readReminder, REMINDER_HOURS, reminderCapability, saveReminder, sendTestReminder, syncReminder } from '../reminder'
 import type { StringKey } from '../i18n'
+import { loadOutputLevel, saveOutputLevel, withLevel } from '../../probe/outputLevel'
+import { setKeyboardLevel } from '../../probe/audioContext'
 import styles from '../app.module.css'
 
 const KEY_CHECK: Record<KeyCheck, StringKey> = {
@@ -51,6 +53,14 @@ function Row({ label, hint, id, children }: { label: string; hint?: string; id?:
 export function SettingsScreen({ at }: { at?: 'backup' } = {}) {
   const { profile, profiles, settings, t, updateSetting, choose, removeProfile, store, reload, log } = useApp()
   const [persisted, setPersisted] = useState<Persistence>('unknown')
+  /** KeyPath's own sound through the keyboard's speakers, 0–100: the phone-wide level Diagnostics also sets. */
+  const [sound, setSound] = useState(loadOutputLevel)
+  const changeSound = (level: number) => {
+    const next = withLevel(sound, level)
+    setSound(next)
+    saveOutputLevel(next)
+    setKeyboardLevel(next.level)
+  }
   /** When a backup was last saved on this phone; undefined until read. */
   const [last, setLast] = useState<string | null | undefined>(undefined)
   const [message, setMessage] = useState<string | null>(null)
@@ -63,6 +73,8 @@ export function SettingsScreen({ at }: { at?: 'backup' } = {}) {
   const [savedKey, setSavedKey] = useState(readAiKey)
   const [keyDraft, setKeyDraft] = useState('')
   const [keyCheck, setKeyCheck] = useState<KeyCheck | 'testing' | null>(null)
+  /** Remove asks once more: a key taken off is a grown-up's trip to the Anthropic console to put back. */
+  const [keySure, setKeySure] = useState(false)
   /** A PIN being typed for this player, and what saving or removing one said. */
   const [pinDraft, setPinDraft] = useState('')
   const [pinNote, setPinNote] = useState<'pinSaved' | 'pinRemoved' | null>(null)
@@ -115,6 +127,8 @@ export function SettingsScreen({ at }: { at?: 'backup' } = {}) {
     setKeyCheck(null)
   }
   const removeKey = () => {
+    if (!keySure) return setKeySure(true)
+    setKeySure(false)
     saveAiKey('')
     setSavedKey('')
     setKeyCheck(null)
@@ -408,8 +422,8 @@ export function SettingsScreen({ at }: { at?: 'backup' } = {}) {
               {keyCheck === 'testing' ? t('coachTesting') : t('coachKeyTest')}
             </Button>
             {savedKey && (
-              <Button type="button" size="sm" variant="ghost" onClick={removeKey}>
-                {t('coachKeyRemove')}
+              <Button type="button" size="sm" variant={keySure ? 'danger' : 'ghost'} onClick={removeKey}>
+                {keySure ? t('coachKeyRemoveSure') : t('coachKeyRemove')}
               </Button>
             )}
           </div>
@@ -506,6 +520,14 @@ export function SettingsScreen({ at }: { at?: 'backup' } = {}) {
 
       {/* The Yamaha: its connection and the hardware tests. */}
       <Section title={t('settingsKeyboard')}>
+        <Row label={t('soundLevel')} hint={t('soundLevelHint')} id="settings-sound">
+          <div className={styles.soundRow}>
+            <input type="range" min={0} max={100} step={5} value={sound.level} onChange={(e) => changeSound(Number(e.target.value))} aria-label={t('soundLevel')} className={styles.soundSlider} />
+            <span className={styles.muted} aria-hidden>
+              {sound.level === 0 ? t('soundOff') : sound.level}
+            </span>
+          </div>
+        </Row>
         <div className={styles.row}>
           <div>
             <Button variant="outline" onClick={() => navigate({ name: 'diagnostics' })}>

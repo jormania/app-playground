@@ -42,8 +42,8 @@ async function setUp() {
 describe('Progress', () => {
   it('reads a player’s log back: days, doors, songs by title, Journey steps', async () => {
     await setUp()
-    // The seeded evening, plus the session opening KeyPath just started.
-    expect(await screen.findByText('Days played: 2')).toBeTruthy()
+    // The seeded evening; the session opening Progress just started plays nothing, so it isn't a day played.
+    expect(await screen.findByText('Days played: 1')).toBeTruthy()
     expect(screen.getByText('Sessions: 2, 10 min in all')).toBeTruthy()
     // Songs, opened once and first; about nine minutes there.
     expect(screen.getByText('opened 1× · first 1× · ~9 min')).toBeTruthy()
@@ -54,7 +54,7 @@ describe('Progress', () => {
 
   it('switches to another player, who has nothing yet', async () => {
     await setUp()
-    await screen.findByText('Days played: 2')
+    await screen.findByText('Days played: 1')
     fireEvent.click(screen.getByRole('radio', { name: /Gabriel/ }))
     expect(await screen.findByText('Nothing yet: the log fills as soon as Gabriel plays.')).toBeTruthy()
   })

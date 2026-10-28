@@ -272,3 +272,49 @@ describe('Studio: the setup console', () => {
     expect(screen.getByRole('button', { name: /Record/ })).toBeTruthy()
   })
 })
+
+describe('Studio: a take not kept yet', () => {
+  const record = async (...notes: number[]) => {
+    fireEvent.click(screen.getByRole('button', { name: '● Record' }))
+    for (const n of notes) {
+      kb.emit({ type: 'noteon', note: n })
+      kb.emit({ type: 'noteoff', note: n })
+    }
+    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+  }
+
+  it('is still there to keep after leaving the Studio and coming back', async () => {
+    const { store, profileId } = await open('#/door/studio')
+    await screen.findByText(/KeyPath records what you play/)
+    await act(async () => {})
+    await record(60, 62, 64)
+    await screen.findByText(/New take: 0:00, 3 notes/)
+    cleanup()
+    history.replaceState(null, '', '#/door/studio')
+    render(<Shell store={store} />)
+    expect(await screen.findByText(/New take: 0:00, 3 notes/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+    expect(await screen.findByText('Take 1')).toBeTruthy()
+    expect(await new TakeRepo(store).draft(profileId)).toBeNull()
+  })
+
+  it('asks before recording over it, and records over it only when told to', async () => {
+    const { store, profileId } = await open('#/door/studio')
+    await screen.findByText(/KeyPath records what you play/)
+    await act(async () => {})
+    await record(60, 62)
+    await screen.findByText(/New take: 0:00, 2 notes/)
+    fireEvent.click(screen.getByRole('button', { name: '● Record' }))
+    expect(screen.getByText('Record a new take? This one isn’t kept yet.')).toBeTruthy()
+    expect(screen.getByText(/New take: 0:00, 2 notes/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByText('Record a new take? This one isn’t kept yet.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '● Record' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Record over it' }))
+    kb.emit({ type: 'noteon', note: 67 })
+    kb.emit({ type: 'noteoff', note: 67 })
+    fireEvent.click(screen.getByRole('button', { name: '■ Stop' }))
+    expect(await screen.findByText(/New take: 0:00, 1 note/)).toBeTruthy()
+    expect((await new TakeRepo(store).draft(profileId))?.notes.map((n) => n.pitch)).toEqual([67])
+  })
+})

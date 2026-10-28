@@ -8,9 +8,10 @@ import { indexedDbStore, type KeyValueStore } from './store'
 import { useWakeLock } from '../../shared/useWakeLock'
 import { useReminderSync } from './reminder'
 import { WhoIsPlaying } from './screens/WhoIsPlaying'
+import { ErrorBoundary } from './ErrorBoundary'
 import { Home } from './screens/Home'
 import { SettingsScreen } from './screens/SettingsScreen'
-import { DiagnosticsScreen } from './screens/DiagnosticsScreen'
+import { DiagnosticsScreen, prefetchDiagnostics } from './screens/DiagnosticsScreen'
 import { SongsHome } from './songs/SongsHome'
 import { ImportSong } from './songs/ImportSong'
 import { PlayScreen } from './songs/PlayScreen'
@@ -50,6 +51,11 @@ export function doorOf(route: Route): Door | null {
  * The KeyPath app: who's playing, the four doors, settings, diagnostics.
  * Everything is kept on this phone (store.ts).
  */
+/** The screens played at the keyboard: the screen stays awake on these, and only these. */
+export function keepsAwake(route: Route): boolean {
+  return route.name === 'play' || route.name === 'challenge' || route.name === 'journeyStep' || route.name === 'studio' || route.name === 'connect' || (route.name === 'door' && route.door === 'studio')
+}
+
 export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
   const profiles = useMemo(() => new ProfileRepo(store), [store])
   const log = useMemo(() => new EngagementLog(store), [store])
@@ -118,14 +124,28 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
     }
   }, [route, profile, log])
 
-  // Hands are on the keys, not the phone: the screen stays on while KeyPath is
-  // open. Chrome drops the lock when the page is hidden; the hook takes it back.
-  useWakeLock(true)
+  // Hands are on the keys, not the phone: the screen stays on where she plays
+  // (a song, a game, a Journey step, the Studio, connecting the keyboard), and
+  // sleeps as usual on Home, the lists and Settings, so a phone left on the
+  // stand doesn't stay lit until its battery runs out. Chrome drops the lock
+  // when the page is hidden; the hook takes it back.
+  useWakeLock(keepsAwake(route))
+
+  // Diagnostics is its own download: fetched once KeyPath has settled, so it is cached for offline.
+  useEffect(() => {
+    const timer = setTimeout(prefetchDiagnostics, 5000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Language drives the page's own lang attribute too (screen readers, hyphenation).
   useEffect(() => {
     document.documentElement.lang = settings.language
   }, [settings.language])
+
+  // The same function until the language changes: screens that read with it in an effect
+  // (Today's "next") don't read again on every render of the shell.
+  const language = settings.language
+  const t = useCallback<KeyPathApp['t']>((key, vars) => translate(language, key, vars), [language])
 
   const app: KeyPathApp = {
     store,
@@ -133,7 +153,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
     log,
     profile,
     settings,
-    t: (key, vars) => translate(settings.language, key, vars),
+    t,
     updateSetting: async (key, value) => {
       if (!profile) return
       const from = settings[key]
@@ -176,6 +196,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
     <AppContext.Provider value={app}>
       <div className={styles.app}>
         <div key={hrefOf(route)} className={styles.view}>
+        <ErrorBoundary title={app.t('crashTitle')} body={app.t('crashBody')} home={app.t('crashHome')} reload={app.t('crashReload')} onHome={() => navigate({ name: 'home' }, { replace: true })}>
         {effective === 'who' && <WhoIsPlaying onChosen={() => navigate({ name: 'home' }, { replace: true })} />}
         {effective === 'home' && <Home />}
         {effective === 'door' && route.name === 'door' && route.door === 'songs' && <SongsHome />}
@@ -191,6 +212,7 @@ export function Shell({ store = indexedDbStore }: { store?: KeyValueStore }) {
         {effective === 'studio' && route.name === 'studio' && <StudioScreen key={route.songId} songId={route.songId} />}
         {effective === 'challenge' && route.name === 'challenge' && (route.game === 'race' ? <NoteRaceScreen /> : route.game === 'chord' ? <ChordCatchScreen /> : route.game === 'ear' ? <EarScreen /> : route.game === 'read' ? <ReadPlayScreen /> : <EchoScreen />)}
         {effective === 'journeyStep' && route.name === 'journeyStep' && <StepScreen stepId={route.step} />}
+        </ErrorBoundary>
         </div>
       </div>
     </AppContext.Provider>

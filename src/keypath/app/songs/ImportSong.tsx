@@ -13,7 +13,7 @@ import { EasyPick, LevelPick, SongFacts } from './SongFacts'
 import { buildImport, choosePart, openSongFile, SongLibrary, type ImportDraft, type ImportProblem } from './library'
 import styles from './songs.module.css'
 
-const PROBLEM_TEXT = { 'not-midi': 'importNotMidi', unsupported: 'importUnsupported', 'no-notes': 'importNoNotes', 'too-long': 'importTooLong' } as const
+const PROBLEM_TEXT = { 'not-midi': 'importNotMidi', unsupported: 'importUnsupported', 'no-notes': 'importNoNotes', 'too-long': 'importTooLong', damaged: 'importDamaged' } as const
 
 /** "Add a song": pick a MIDI file, confirm which part is which hand, save it to this phone. */
 export function ImportSong() {
@@ -32,7 +32,8 @@ export function ImportSong() {
 
   const pick = async (file: File | undefined) => {
     if (!file) return
-    const result = await openSongFile(await file.arrayBuffer(), file.name)
+    // A file the phone can't hand over (gone from the folder, a cloud file not downloaded) is damaged too.
+    const result = await file.arrayBuffer().then((b) => openSongFile(b, file.name), () => 'damaged' as const)
     if (typeof result === 'string') {
       setProblem(result)
       setDraft(null)

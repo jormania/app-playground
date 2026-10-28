@@ -8,6 +8,7 @@ const on = (date: string, h = 18) => new Date(`${date}T${String(h).padStart(2, '
 const records: LogRecord[] = [
   // The week before: one day.
   { type: 'session_start', at: on('2026-09-15'), profileId: P },
+  { type: 'song_started', songId: 'starter:ode', practice: 'right', tempo: 1, mode: 'wait', at: on('2026-09-15'), profileId: P },
   { type: 'song_finished', songId: 'starter:ode', practice: 'right', stars: 2, score: 0.8, hit: 12, total: 15, wrong: 2, at: on('2026-09-15', 19), profileId: P },
   // This week: two days, Ode finished with three stars, Twinkle left unfinished, a check failed.
   { type: 'session_start', at: on('2026-09-20'), profileId: P },

@@ -219,7 +219,7 @@ export function EarScreen() {
               <IntroLink onShow={intro.show} />
             </div>
             <p className={con.note}>{best !== undefined ? t('best', { score: best }) : t('noBest')} · {t('earHintPlain')}</p>
-            {output.phoneMuted && <p className={con.note}>{t('studioPhoneMuted')}</p>}
+            {output.phoneMuted && <p className={con.note}>{t('phoneMuted')}</p>}
           </div>
         </section>
       )}

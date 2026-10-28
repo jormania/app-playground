@@ -113,11 +113,11 @@ export function ProgressScreen() {
           <section className={styles.panel}>
             <h2 className={styles.h2}>{t('pGlance')}</h2>
             <p className={styles.hint}>{s.from === s.to ? day(s.from) : t('pRange', { from: day(s.from), to: day(s.to) })}</p>
-            <dl className={styles.facts}>
-              <dd>{t('pDays', { count: s.days.length })}</dd>
-              <dd>{t('pSessions', { count: s.sessions, minutes: Math.round(s.minutes) })}</dd>
-              <dd>{t('pCameBack', { count: s.cameBackNextDay })}</dd>
-            </dl>
+            <ul className={styles.facts}>
+              <li>{t('pDays', { count: s.days.length })}</li>
+              <li>{t('pSessions', { count: s.sessions, minutes: Math.round(s.minutes) })}</li>
+              <li>{t('pCameBack', { count: s.cameBackNextDay })}</li>
+            </ul>
           </section>
 
           <section className={styles.panel}>

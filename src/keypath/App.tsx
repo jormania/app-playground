@@ -30,8 +30,20 @@ type Source = 'webmidi' | 'simulated'
 // Computer-keyboard piano for the simulator on a laptop: A W S E D F T G Y H U J K → C4…C5.
 const KEYMAP: Record<string, number> = { a: 60, w: 61, s: 62, e: 63, d: 64, f: 65, t: 66, g: 67, y: 68, h: 69, u: 70, j: 71, k: 72 }
 
+/**
+ * One probe session for the page, opened the first time Diagnostics is and
+ * kept: each visit used to make a new one and leave the last still bound to
+ * the keyboard, handling every key for nobody.
+ */
+let pageSession: ProbeSession | null = null
+const probeSession = () => (pageSession ??= new ProbeSession(new WebMidiConnection()))
+/** Tests start each render with a session of its own, as a fresh page would. */
+export function forgetProbeSession(): void {
+  pageSession = null
+}
+
 export default function App() {
-  const [session] = useState(() => new ProbeSession(new WebMidiConnection()))
+  const [session] = useState(probeSession)
   const snap = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const [env, setEnv] = useState<EnvironmentFacts | null>(null)
   const [usb, setUsb] = useState<UsbFinding | null>(null)

@@ -220,6 +220,24 @@ describe('a MusicXML score', () => {
     expect(await openSongFile(bytes(await zip([{ name: 'photo.jpg', text: 'x' }])), 'photos.zip')).toBe('not-midi')
     expect(draftFromFile(bytesOf(score({ parts: [{ name: 'Rests', measures: [measure(1, attributes() + note({ pitch: null, beats: 4 }))] }] })), 'r.xml')).toBe('no-notes')
   })
+
+  it('says a damaged file is damaged, never a tap that does nothing', async () => {
+    // A compressed score whose music won't inflate (a download cut short, a bit flipped).
+    const mxl = await zip([{ name: 'two_hands.xml', text, deflate: true }])
+    const name = 'two_hands.xml'.length
+    for (let i = 30 + name + 2; i < 30 + name + 24; i++) mxl[i] ^= 0xa5
+    expect(await openSongFile(bytes(mxl), 'two_hands.mxl')).toBe('damaged')
+    // A MIDI header with no ticks to a beat: no note could be given a time.
+    expect(draftFromFile(bytes(smf(0, 0, [track([on(0, 1, 60), off(480, 1, 60)])])), 'zero.mid')).toBe('damaged')
+  })
+
+  it('keeps what a MIDI file cut short holds, rather than refusing the song', () => {
+    const whole = smf(0, 480, [track([on(0, 1, 60), off(480, 1, 60), on(0, 1, 62), off(480, 1, 62), on(0, 1, 64), off(480, 1, 64)])])
+    const cut = whole.slice(0, whole.length - 8)
+    const d = draftFromFile(bytes(cut), 'cut.mid') as ImportDraft
+    expect(d.parts).toHaveLength(1)
+    expect(d.file.notes.map((n) => n.pitch).slice(0, 2)).toEqual([60, 62])
+  })
 })
 
 describe('a MuseScore file (.mscz)', () => {

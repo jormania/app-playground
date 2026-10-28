@@ -71,6 +71,8 @@ export const K = {
   journey: (profileId: string) => `${PREFIX}journey:${profileId}`,
   studio: (profileId: string) => `${PREFIX}studio:${profileId}`,
   challenges: (profileId: string) => `${PREFIX}challenges:${profileId}`,
+  /** The Studio's last take, recorded and not yet kept or thrown away: kept here so leaving the Studio doesn't lose it. */
+  studioDraft: (profileId: string) => `${PREFIX}studioDraft:${profileId}`,
   /** Songs learnt in parts: which parts, per song and hands. */
   parts: (profileId: string) => `${PREFIX}parts:${profileId}`,
   /** Today's card: the day's three picks, kept for the day so they don't move as she plays. */

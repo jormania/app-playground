@@ -79,7 +79,7 @@ export function OutputChoice({ output, label, phoneOnly }: { output: Output; lab
       ) : (
         output.keyboardConnected && <p className={con.note}>{phoneOnly}</p>
       )}
-      {output.phoneMuted && <p className={con.note}>{t('studioPhoneMuted')}</p>}
+      {output.phoneMuted && <p className={con.note}>{t('phoneMuted')}</p>}
     </>
   )
 }

@@ -65,7 +65,7 @@ export const REMINDER_TEXT: Record<Language, { title: string; body: string }> = 
 
 const kv = createIdbKv(REMINDER_DB, 'kv')
 
-/** The latest day any player on this phone came to play (a session began), or ''. */
+/** The latest day any player on this phone practised (a song, a step, a game or a take; not KeyPath only opened), or ''. */
 export async function lastPractisedDay(profiles: ProfileRepo, log: EngagementLog): Promise<string> {
   let latest = ''
   for (const p of await profiles.list()) {
@@ -81,7 +81,8 @@ export async function syncReminder(profiles: ProfileRepo, log: EngagementLog): P
   try {
     const r = readReminder()
     const language = (await profiles.current().then((p) => (p ? profiles.settings(p.id) : null)))?.language ?? 'en'
-    const state: ReminderState = { enabled: r.enabled, minutes: r.enabled ? r.minutes : null, language, practisedDay: await lastPractisedDay(profiles, log) }
+    // Off, the worker reads nothing more: no need to read every player's log each time KeyPath is left.
+    const state: ReminderState = { enabled: r.enabled, minutes: r.enabled ? r.minutes : null, language, practisedDay: r.enabled ? await lastPractisedDay(profiles, log) : '' }
     await kv.set('state', state)
   } catch {
     /* the reminder is a nicety */

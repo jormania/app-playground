@@ -157,6 +157,8 @@
 
     --color-accent:       #7aa2f7;
     --color-accent-hover: #89b4fa;
+    /* Text on the accent: the light theme's cream on this light blue read at 2.3:1. */
+    --color-on-accent:    #1a1b26;
     --color-success:      #9ece6a;
     --color-warning:      #e0af68;
     --color-danger:       #f7768e;

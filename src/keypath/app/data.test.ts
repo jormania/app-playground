@@ -95,6 +95,24 @@ describe('ProfileRepo', () => {
 })
 
 describe('EngagementLog', () => {
+  it('shares a read asked for twice at once, and never one that began before a write', async () => {
+    const store = memoryStore()
+    let gets = 0
+    const counting = { ...store, get: <T,>(k: string) => (gets++, store.get<T>(k)) }
+    const log = new EngagementLog(counting)
+    await log.add('p', { type: 'session_start' })
+    gets = 0
+    const [a, b] = await Promise.all([log.read('p'), log.read('p')])
+    expect(a).toEqual(b)
+    expect(a).not.toBe(b)
+    expect(gets).toBe(2) // one archive probe, one open chunk: read once, not twice
+    const before = log.read('p')
+    void log.add('p', { type: 'door_opened', door: 'songs' })
+    const after = await log.read('p')
+    expect((await before).length).toBe(1)
+    expect(after.length).toBe(2)
+  })
+
   it('keeps every event, even when two are written at once', async () => {
     const log = new EngagementLog(memoryStore())
     await Promise.all([log.add('p', { type: 'session_start' }), log.add('p', { type: 'door_opened', door: 'songs' }), log.add('p', { type: 'door_opened', door: 'studio' })])

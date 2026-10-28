@@ -61,7 +61,11 @@ export interface ScoreInfo {
 }
 
 export class SmfError extends Error {
-  constructor(message: string) {
+  /** `damaged`: a MIDI file, but broken; `unsupported`: a kind this reader doesn't take. */
+  constructor(
+    message: string,
+    readonly kind: 'damaged' | 'unsupported' = 'unsupported',
+  ) {
     super(message)
     this.name = 'SmfError'
   }
@@ -80,7 +84,7 @@ class Reader {
     return this.pos >= this.end
   }
   u8(): number {
-    if (this.pos >= this.end) throw new SmfError('Unexpected end of data')
+    if (this.pos >= this.end) throw new SmfError('Unexpected end of data', 'damaged')
     return this.bytes[this.pos++]
   }
   u16(): number {
@@ -102,10 +106,10 @@ class Reader {
       value = (value << 7) | (b & 0x7f)
       if (!(b & 0x80)) return value
     }
-    throw new SmfError('Malformed variable-length quantity')
+    throw new SmfError('Malformed variable-length quantity', 'damaged')
   }
   skip(n: number) {
-    if (this.pos + n > this.end) throw new SmfError('Unexpected end of data')
+    if (this.pos + n > this.end) throw new SmfError('Unexpected end of data', 'damaged')
     this.pos += n
   }
 }
@@ -123,11 +127,14 @@ export function parseSmf(data: ArrayBuffer | Uint8Array): SmfFile {
   const format = r.u16()
   const trackCount = r.u16()
   const division = r.u16()
+  if (headerLength < 6) throw new SmfError('A MIDI header shorter than its own fields', 'damaged')
   r.skip(headerLength - 6)
   if (format === 2) throw new SmfError('MIDI format 2 (independent patterns) is not supported')
   if (format !== 0 && format !== 1) throw new SmfError(`Unknown MIDI format ${format}`)
   if (division & 0x8000) throw new SmfError('SMPTE-timed MIDI files are not supported')
   const ticksPerQuarter = division
+  // No ticks to a beat: no note could be given a time.
+  if (ticksPerQuarter === 0) throw new SmfError('A MIDI header with no ticks to a beat', 'damaged')
 
   const tracks: SmfTrack[] = []
   const tempos: TempoChange[] = []
@@ -152,48 +159,55 @@ export function parseSmf(data: ArrayBuffer | Uint8Array): SmfFile {
     let tick = 0
     let running = 0
 
-    while (!tr.done) {
-      tick += tr.vlq()
-      let status = tr.u8()
-      if (status < 0x80) {
-        // Running status: this byte is data, reuse the last channel status.
-        if (!running) throw new SmfError('Running status with no previous status')
-        tr.pos--
-        status = running
-      }
+    // A file cut short (a download that stopped) ends inside its last track: keep
+    // what was read up to there rather than refuse the whole song.
+    const truncated = end > bytes.length
+    try {
+      while (!tr.done) {
+        tick += tr.vlq()
+        let status = tr.u8()
+        if (status < 0x80) {
+          // Running status: this byte is data, reuse the last channel status.
+          if (!running) throw new SmfError('Running status with no previous status')
+          tr.pos--
+          status = running
+        }
 
-      if (status === 0xff) {
-        const type = tr.u8()
-        const len = tr.vlq()
-        const start = tr.pos
-        if (type === 0x03 && !track.name) track.name = tr.ascii(len).trim()
-        else if (type === 0x51 && len === 3) tempos.push({ tick, usPerQuarter: (tr.u8() << 16) | (tr.u8() << 8) | tr.u8() })
-        else if (type === 0x58 && len >= 2) timeSignatures.push({ tick, numerator: tr.u8(), denominator: 2 ** tr.u8() })
-        tr.pos = start + len
-        if (type === 0x2f) break
-        continue
-      }
-      if (status === 0xf0 || status === 0xf7) {
-        tr.skip(tr.vlq()) // SysEx: not needed
-        continue
-      }
-      if (status >= 0xf0) throw new SmfError(`Unexpected status 0x${status.toString(16)} in track`)
+        if (status === 0xff) {
+          const type = tr.u8()
+          const len = tr.vlq()
+          const start = tr.pos
+          if (type === 0x03 && !track.name) track.name = tr.ascii(len).trim()
+          else if (type === 0x51 && len === 3) tempos.push({ tick, usPerQuarter: (tr.u8() << 16) | (tr.u8() << 8) | tr.u8() })
+          else if (type === 0x58 && len >= 2) timeSignatures.push({ tick, numerator: tr.u8(), denominator: 2 ** tr.u8() })
+          tr.pos = start + len
+          if (type === 0x2f) break
+          continue
+        }
+        if (status === 0xf0 || status === 0xf7) {
+          tr.skip(tr.vlq()) // SysEx: not needed
+          continue
+        }
+        if (status >= 0xf0) throw new SmfError(`Unexpected status 0x${status.toString(16)} in track`)
 
-      running = status
-      const kind = status & 0xf0
-      const channel = (status & 0x0f) + 1
-      const d1 = tr.u8()
-      const d2 = kind === 0xc0 || kind === 0xd0 ? 0 : tr.u8()
-      const key = channel * 128 + d1
+        running = status
+        const kind = status & 0xf0
+        const channel = (status & 0x0f) + 1
+        const d1 = tr.u8()
+        const d2 = kind === 0xc0 || kind === 0xd0 ? 0 : tr.u8()
+        const key = channel * 128 + d1
 
-      if (kind === 0x90 && d2 > 0) {
-        const q = open.get(key) ?? []
-        q.push({ tick, velocity: d2 })
-        open.set(key, q)
-      } else if (kind === 0x80 || kind === 0x90) {
-        const on = open.get(key)?.shift()
-        if (on) pending.push({ track: track.index, channel, pitch: d1, velocity: on.velocity, startTick: on.tick, endTick: tick })
+        if (kind === 0x90 && d2 > 0) {
+          const q = open.get(key) ?? []
+          q.push({ tick, velocity: d2 })
+          open.set(key, q)
+        } else if (kind === 0x80 || kind === 0x90) {
+          const on = open.get(key)?.shift()
+          if (on) pending.push({ track: track.index, channel, pitch: d1, velocity: on.velocity, startTick: on.tick, endTick: tick })
+        }
       }
+    } catch (err) {
+      if (!(truncated && err instanceof SmfError)) throw err
     }
     // Notes never released: end them where the track ends.
     for (const [key, q] of open) {
