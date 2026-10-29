@@ -2894,7 +2894,16 @@
 /* A character the curator wrote as a phrase: said as written, beside its label, not cut into tags. */
 /* The curator's recording that Spotify doesn't carry, set back once a stand-in plays below it. */
 .recordingAside {
-  margin-bottom: 0;
+  margin: var(--space-md) 0 0;
+}
+
+/* The stand-in follows that line closely: one recording's place, not a new section. */
+.standInBlock {
+  margin-top: var(--space-md);
+}
+
+.standInBlock > .recording:first-child {
+  margin-top: 0;
 }
 
 .traitsProse {
