@@ -2892,6 +2892,11 @@
 }
 
 /* A character the curator wrote as a phrase: said as written, beside its label, not cut into tags. */
+/* The curator's recording that Spotify doesn't carry, set back once a stand-in plays below it. */
+.recordingAside {
+  margin-bottom: 0;
+}
+
 .traitsProse {
   flex: 1 1 14rem;
   min-width: 0;

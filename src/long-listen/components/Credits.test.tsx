@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import { creditRows, programmeCreditRows } from './Credits'
-import { Traits } from './Traits'
+import { Traits, traitsOf } from './Traits'
 
 afterEach(cleanup)
 
@@ -26,10 +26,16 @@ describe('the playing', () => {
     expect([...container.querySelectorAll('span')].map((n) => n.textContent)).toEqual(['The playing', 'warm', 'expansive'])
   })
 
-  it('says a sentence as written instead of cutting it into tags', () => {
-    const words = 'warm, velvety and fluid; a rich blended orchestral sound in which the transitions glow'
+  it('takes a sentence’s short opening words as its tags, and leaves the rest', () => {
+    const words = 'Warm, velvety and fluid; a rich blended orchestral sound in which the transitions glow'
+    const { container } = render(<Traits label="The playing" words={words} />)
+    expect([...container.querySelectorAll('span')].map((n) => n.textContent)).toEqual(['The playing', 'warm', 'velvety and fluid'])
+    expect(traitsOf('rich, deep-piled and luminous, with the Berliners’ string sound blooming slowly').tags).toEqual(['rich', 'deep-piled and luminous'])
+  })
+
+  it('says a sentence with no short opening as written', () => {
+    const words = 'a rich blended orchestral sound in which the transitions glow'
     const { container } = render(<Traits label="The playing" words={words} />)
     expect(container.querySelector('em')?.textContent).toBe(words)
-    expect(container.querySelectorAll('span')).toHaveLength(1)
   })
 })
