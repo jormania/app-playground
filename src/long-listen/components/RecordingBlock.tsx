@@ -40,7 +40,8 @@ export function RecordingBlock({
   onFindAlternative?: () => void
   /** A recording Spotify does have is shown just below in its place. */
   standInBelow?: boolean
-  label?: string
+  /** Its heading; null where the page already heads it ("The recording"). */
+  label?: string | null
   /** The work's heading already prints its length (the programme's item): not said twice. */
   durationAbove?: boolean
 }) {
@@ -138,7 +139,7 @@ export function RecordingBlock({
 
   return (
     <div className={s.recording}>
-      <div className={s.label}>{label}</div>
+      {label && <div className={s.label}>{label}</div>}
       <Credits r={proposed} className={s.credit} empty="Performers not named" programme />
       {/* Asked as every doubt in the app is asked (a path taken over this week's, a concert removed). */}
       <ConfirmModal
