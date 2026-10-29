@@ -100,13 +100,49 @@ describe('the tracks of a work on an album', () => {
 describe('search', () => {
   it('builds specific queries first, without key signatures', () => {
     expect(searchQueries(kleiber)[0]).toBe('beethoven symphony 5 kleiber')
-    expect(searchQueries(kleiber)).toContain('symphony 5 kleiber vienna')
+    expect(searchQueries(kleiber)).toContain('symphony 5 kleiber vienna philharmonic')
+  })
+
+  it('also searches with a count as a figure, when the title spells it as a word', () => {
+    const p: ProposedRecording = { composer: 'Giacinto Scelsi', work: 'Quattro pezzi su una nota sola', conductor: 'Sylvain Cambreling', soloists: [] }
+    expect(searchQueries(p)).toContain('scelsi 4 pezzi su una nota sola cambreling')
+    expect(searchQueries(kleiber).some((q) => /\b4\b/.test(q))).toBe(false)
   })
 
   it('reduces orchestra names to what distinguishes them', () => {
-    expect(orchestraTokens('London Symphony Orchestra')).toEqual(['london'])
+    // The kind of orchestra stays: the London Symphony is not the London Philharmonic.
+    expect(orchestraTokens('London Symphony Orchestra')).toEqual(['london', 'symphony'])
     expect(orchestraTokens('Orchestre de Paris')).toEqual(['paris'])
-    expect(orchestraTokens('Wiener Philharmoniker')).toEqual(['vienna'])
+    expect(orchestraTokens('Wiener Philharmoniker')).toEqual(['vienna', 'philharmonic'])
+  })
+})
+
+describe('a count spelt as a word or a figure', () => {
+  it('reads "Quattro pezzi" as "4 pezzi", and "Vier letzte Lieder" as "4 letzte Lieder"', () => {
+    expect(workOverlap('Quattro pezzi su una nota sola', '4 pezzi (su una nota sola): I. —')).toBe(1)
+    expect(workOverlap('Vier letzte Lieder', '4 Letzte Lieder: I. Frühling')).toBe(1)
+  })
+
+  it('keeps another work of the same count apart', () => {
+    // Scelsi's Quattro pezzi for solo trumpet is not the orchestral four pieces on one note.
+    expect(workOverlap('Quattro pezzi su una nota sola', 'Quattro Pezzi: I')).toBeLessThan(0.75)
+  })
+})
+
+describe('a coupling album naming several works', () => {
+  const fratres: ProposedRecording = { composer: 'Arvo Pärt', work: 'Fratres', conductor: 'Dennis Russell Davies', orchestra: 'Staatsorchester Stuttgart', soloists: [{ name: 'Gidon Kremer', instrument: 'violin' }] }
+  const album = { id: 'ecm', name: 'Arvo Pärt: Tabula Rasa, Fratres, Cantus in memoriam Benjamin Britten' }
+
+  it('doesn’t take another work on the album for this one', () => {
+    const cantus: SpotifyTrackLike = { id: 'c', name: 'Cantus in memoriam Benjamin Britten', uri: 'u', artists: [{ name: 'Arvo Pärt' }, { name: 'Stuttgart State Orchestra' }, { name: 'Dennis Russell Davies' }], album }
+    expect(matchTrack(cantus, fratres).level).toBe('none')
+  })
+
+  it('still lets the album name the work for a track named only by its movement', () => {
+    const p: ProposedRecording = { composer: 'Arvo Pärt', work: 'Tabula Rasa', conductor: 'Saulius Sondeckis', soloists: [] }
+    const movement: SpotifyTrackLike = { id: 'm', name: 'I. Ludus', uri: 'u', artists: [{ name: 'Arvo Pärt' }, { name: 'Saulius Sondeckis' }], album }
+    // Probable, as an album-only match always was: the album speaks, at a little less than the track would.
+    expect(matchTrack(movement, p).level).toBe('probable')
   })
 })
 

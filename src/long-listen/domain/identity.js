@@ -143,6 +143,23 @@ export function surname(name) {
   return words[words.length - 1] ?? ''
 }
 
+/**
+ * One spelling for a name word across transliterations, for telling whether two
+ * billings name one person: Rachmaninov / Rachmaninoff / Rachmaninow, Tchaikovsky /
+ * Tschaikowsky / Čajkovskij, Shostakovich / Schostakowitsch, Prokofiev / Prokofjew,
+ * Oistrakh / Oistrach, Khachaturian / Chatschaturjan, Scriabin / Skrjabin,
+ * Schoenberg / Schönberg. Only ever compared with another key, never shown.
+ */
+export function nameKey(word) {
+  return fold(word)
+    .replace(/\s+/g, '')
+    .replace(/ae/g, 'a').replace(/oe/g, 'o').replace(/ue/g, 'u')
+    .replace(/tsch/g, 'c').replace(/sch/g, 'sh').replace(/tch/g, 'c').replace(/ch/g, 'c').replace(/kh/g, 'c').replace(/cz/g, 'c')
+    .replace(/sc/g, 'sk').replace(/ph/g, 'f').replace(/ff$/, 'v').replace(/w/g, 'v').replace(/z/g, 's').replace(/ou/g, 'u')
+    .replace(/[jy]/g, 'i').replace(/ii$/, 'i')
+    .replace(/([a-z])\1+/g, '$1')
+}
+
 /** The surname as written, for a line a person reads: "Johann Strauss II" → "Strauss". */
 export function displaySurname(name) {
   const key = surname(name)

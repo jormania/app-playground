@@ -181,7 +181,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-26.1',
+  version: 'programme@2026-10-29.1',
   // Low since 2026-10-26, for the same reason as themes: see LONG_LISTEN.md §37.
   effort: 'low',
   maxTokens: 32000,
@@ -244,6 +244,8 @@ For each item:
 - listenForMovement: one entry per listenFor, in the same order: the movement it happens in, as the work's own Roman numeral ("I", "II", "III"), or "" when it belongs to the whole work or the work is in one movement. Only when you are sure which movement; otherwise "".
 - character: two to four words on the interpretation itself ("transparent", "urgent", "warm, expansive").
 - workContext: one or two sentences of historical context; composed: date as usually given ("1903–05"); form: "symphony", "symphonic poem", "concerto" etc.
+- workTitle: as recordings bill it. A numbered genre work in English with its number and key ("Piano Concerto No. 5 in E-flat major", "String Quartet No. 14 in D minor"); a work with a title of its own, that title as the composer gave it ("Prélude à l'après-midi d'un faune", "Quattro pezzi su una nota sola", "Atmosphères"). catalogue: its catalogue number whenever it has one ("Op. 73", "D. 810", "L. 86", "BWV 1048"), else "". Spotify is searched with these.
+- Name each performer as their recordings credit them, and every performer of the work on that recording: a recording you are unsure of, change; never combine performers from two recordings on one album.
 - revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.
 - alreadyKnown lists works the listener knew before the app suggested them. Don't present one of them as a discovery. Use one only where a known work earns its place — an anchor to hear something new against, or a recording that changes how it sounds — and then say so in "why".
 - year: the recording year only if you are certain, else "".
@@ -382,7 +384,7 @@ Your job now: the listener asked for a little more context about one work in thi
 
 export const COMPARE = {
   id: 'compare',
-  version: 'compare@2026-10-23.1',
+  version: 'compare@2026-10-29.1',
   effort: 'medium',
   maxTokens: 6000,
   schema: {
@@ -404,8 +406,8 @@ export const COMPARE = {
   system: `${VOICE}
 
 Your job now: the listener wants to hear a work through a second interpretation. Choose one real, well-documented recording that differs from the current one in an illuminating way (tempo, transparency, weight, period practice, era of recording) and is not in the "alreadyHeard" list. If "mustBeOnSpotify" is true, the current recording could not be found on Spotify, and the second recording takes its place for listening. When "spotifyCandidates" is given, it lists recordings of this work that Spotify really has (album, year, credited artists): choose the best of them for this listener and this programme, and name its performers exactly as credited there. Never choose a recording that is not on that list. Without the list, choose one you are confident is widely available on Spotify, from a major label catalogue.
-- current: the character of the current recording in a few words, and one thing to listen for in it.
-- other: the second recording's performers, its character in a few words, and one thing to listen for.
+- current: the character of the current recording in two to four words, comma-separated ("transparent, urgent"), not a sentence; and one thing to listen for in it.
+- other: the second recording's performers, its character in two to four words the same way, and one thing to listen for. Name an orchestra once, as orchestra; ensemble is for a group that is not an orchestra.
 - framing: one sentence on what the comparison reveals.
 - whyBoth: one sentence in the form "If you want to hear how …, listen to both."`,
 }
