@@ -1,4 +1,4 @@
-import { fold, surname, workTitleKey } from '../domain/identity'
+import { fold, nameKey, surname, workTitleKey } from '../domain/identity'
 import type { ProposedRecording } from '../domain/types'
 
 /**
@@ -36,41 +36,57 @@ export interface SpotifyTrackLike {
 
 export type MatchLevel = 'strong' | 'probable' | 'none'
 
-// Orchestras are billed in several languages; fold the common variants together.
+// Orchestras are billed in several languages, and German runs a band's words together
+// ("Gewandhausorchester", Dutch "Concertgebouworkest"): one spelling for both sides.
 const ORCHESTRA_WORDS: [RegExp, string][] = [
+  [/\b(\w+?)(?:orchester|orkest)\b/g, '$1 orchestra'],
+  [/\bsaint\b|\bsankt\b/g, 'st'],
   [/\bwiener\b/g, 'vienna'],
   [/\bberliner\b/g, 'berlin'],
+  [/\bleningrader\b/g, 'leningrad'],
   [/\bmunchner\b/g, 'munich'],
+  [/\bbayerisch(?:e|en|es|er)?\b/g, 'bavarian'],
+  [/\brundfunks?\b/g, 'radio'],
+  [/\bceska\b/g, 'czech'],
+  [/\bstaats\b/g, 'state'],
+  [/\bkammer\b/g, 'chamber'],
   [/\bphilharmoniker\b/g, 'philharmonic'],
   [/\bphilharmonie\b/g, 'philharmonic'],
   [/\bphilharmonique\b/g, 'philharmonic'],
-  [/\bfilarmonica\b/g, 'philharmonic'],
-  [/\bsinfonieorchester\b/g, 'symphony orchestra'],
-  [/\bsymphonieorchester\b/g, 'symphony orchestra'],
+  [/\bfil(?:h)?armoni(?:a|ca|e|c)\b/g, 'philharmonic'],
+  [/\bsymphoniker\b/g, 'symphony'],
+  [/\bsinfonie\b/g, 'symphony'],
+  [/\bsymphonie\b/g, 'symphony'],
   [/\bsymphonique\b/g, 'symphony'],
   [/\bsinfonica\b/g, 'symphony'],
   [/\borchestre\b/g, 'orchestra'],
   [/\borchester\b/g, 'orchestra'],
   [/\borquesta\b/g, 'orchestra'],
-  [/\borchestra\b/g, 'orchestra'],
-  [/\bstaatskapelle\b/g, 'staatskapelle'],
+  [/\borkest\b/g, 'orchestra'],
+  // Chamber groups too: the "Alban Berg Quartett" is the Alban Berg Quartet.
+  [/\b(?:quartett|quatuor|quartetto|cuarteto|kvartet)\b/g, 'quartet'],
+  [/\b(?:quintett|quintette|quintetto)\b/g, 'quintet'],
+  [/\b(?:ensemble|ensemblet)\b/g, 'ensemble'],
 ]
-const FILLER = new Set(['the', 'of', 'de', 'des', 'du', 'la', 'le', 'des', 'and', 'et', 'und', 'orchestra', 'symphony', 'philharmonic', 'national', 'radio', 'chamber'])
+const band = (folded: string) => ORCHESTRA_WORDS.reduce((acc, [re, to]) => acc.replace(re, to), folded)
+// Words every orchestra's name may carry: not what tells one from another. "royal" goes too
+// ("Concertgebouw Orchestra" was "Royal" only from 1988), unless nothing else is left.
+const FILLER = new Set(['the', 'of', 'de', 'des', 'du', 'la', 'le', 'and', 'et', 'und', 'orchestra', 'radio', 'royal', 'symphony', 'philharmonic', 'national', 'chamber'])
+// …but these say which of a city's orchestras it is: the London Symphony is not the London
+// Philharmonic, the Orchestre National de France not Radio France's Philharmonique.
+const KIND = new Set(['symphony', 'philharmonic', 'national', 'chamber'])
 
 export function orchestraTokens(name: string): string[] {
-  let s = fold(name)
-  for (const [re, to] of ORCHESTRA_WORDS) s = s.replace(re, to)
-  const all = s.split(' ').filter(Boolean)
+  const all = band(fold(name)).split(' ').filter(Boolean)
   const distinctive = all.filter((t) => !FILLER.has(t))
-  // "London Symphony Orchestra" → [london]; "Cleveland Orchestra" → [cleveland];
-  // "Orchestre de Paris" → [paris]. If nothing distinctive is left, use all.
-  return distinctive.length ? distinctive : all
+  // "London Symphony Orchestra" → [london, symphony]; "Cleveland Orchestra" → [cleveland];
+  // "Orchestre de Paris" → [paris]. Nothing distinctive ("Royal Philharmonic Orchestra"): the name itself.
+  if (!distinctive.length) return all.filter((t) => t !== 'orchestra' && t !== 'the' && t !== 'of')
+  return [...new Set([...distinctive, ...all.filter((t) => KIND.has(t))])]
 }
 
 function credited(artists: { name: string }[]): string {
-  let s = ` ${artists.map((a) => fold(a.name)).join(' | ')} `
-  for (const [re, to] of ORCHESTRA_WORDS) s = s.replace(re, to)
-  return s
+  return ` ${artists.map((a) => band(fold(a.name))).join(' | ')} `
 }
 
 const tokens = (s: string) => s.split(' ').filter(Boolean)
@@ -98,6 +114,11 @@ const tokens = (s: string) => s.split(' ').filter(Boolean)
  *       and Spotify is also searched with the figure.
  *       The album no longer speaks for a track that names another work on it
  *       (Pärt's Cantus taken for Fratres from "Tabula Rasa, Fratres, Cantus …").
+ *       And the audit that followed (LONG_LISTEN.md §40): names under another
+ *       transliteration; orchestras in another language or run together, and two
+ *       of one city kept apart; titles in German, French and Italian, "&" for
+ *       "and"; a movement after " - "; a work in another key; an excerpt on a
+ *       compilation passed over; a last search by composer and work alone.
  */
 export const MATCHER_VERSION = 7
 
@@ -111,12 +132,100 @@ function matchTitle(title: string): string {
   return title.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
 }
 
-// One instrument, several spellings: "Concerto for Violoncello" is a cello concerto.
+/**
+ * One word for one thing, whatever language the title is billed in: DG bills
+ * "Klavierkonzert Nr. 5", Erato "Quatuor à cordes", the curator "Piano Concerto
+ * No. 5" and "String Quartet". German compounds come apart first. Applied to
+ * both sides, on folded text, so only the spelling changes, never the claim.
+ */
 const SAME_WORD: [RegExp, string][] = [
+  [/\b(klavier|violin|violoncello|cello|bratschen|viola|horn|klarinetten|floten|oboen|trompeten|fagott|harfen|orgel|doppel|tripel)(konzert|sonate|trio|quartett|quintett)\b/g, '$1 $2'],
+  [/\bstreich(quartett|quintett|sextett|trio|orchester)\b/g, 'string $1'],
   [/\bviolon(?:cello|celle|cel)\b/g, 'cello'],
   [/\bvioloncelo\b/g, 'cello'],
+  [/\bklavier\b|\bpianoforte\b/g, 'piano'],
+  [/\bviolin[eo]?\b|\bviolon\b/g, 'violin'],
+  [/\bbratschen?\b/g, 'viola'],
+  [/\bklarinetten?\b|\bclarinette\b|\bclarinetto\b/g, 'clarinet'],
+  [/\bfloten?\b|\bflote\b|\bflauto\b/g, 'flute'],
+  [/\boboen\b/g, 'oboe'],
+  [/\btrompeten?\b|\btromba\b|\btrompette\b/g, 'trumpet'],
+  [/\bfagott\b|\bbasson\b|\bfagotto\b/g, 'bassoon'],
+  [/\bharfen?\b|\bharpe\b|\barpa\b/g, 'harp'],
+  [/\borgel\b|\borgue\b|\borgano\b/g, 'organ'],
+  [/\bdoppel\b/g, 'double'],
+  [/\btripel\b/g, 'triple'],
+  [/\b(?:sinfonie|symphonie|sinfonia|symfonie|simfonia|symphonia|szimfonia)\b/g, 'symphony'],
+  [/\b(?:konzert|concierto|concert|koncert|koncerto)\b/g, 'concerto'],
+  [/\b(?:sonate|sonaten)\b/g, 'sonata'],
+  [/\b(?:quartett|quatuor|quartetto|cuarteto|kvartet)\b/g, 'quartet'],
+  [/\b(?:quintett|quintette|quintetto)\b/g, 'quintet'],
+  [/\b(?:sextett|sextuor|sestetto)\b/g, 'sextet'],
+  [/\b(?:messe|missa|messa|misa)\b/g, 'mass'],
+  [/\b(?:ouverture|overtura|obertura)\b/g, 'overture'],
+  [/\b(?:prelude|praludium|preludio|preludium)\b/g, 'prelude'],
+  [/\b(?:fuge|fuga)\b/g, 'fugue'],
+  [/\b(?:variationen|variazioni|variaciones|variacoes)\b/g, 'variations'],
+  [/\b(?:cordes|archi|streicher|strings)\b/g, 'string'],
+  [/\b(?:orchester|orchestre|orchestra|orquesta)\b/g, 'orchestra'],
 ]
-const sameWords = (s: string) => numerals(SAME_WORD.reduce((acc, [re, to]) => acc.replace(re, to), s))
+const SAME_WORD_KEYS = (s: string) => SAME_WORD.reduce((acc, [re, to]) => acc.replace(re, to), s)
+const sameWords = (s: string) => numerals(SAME_WORD_KEYS(stripKeys(s)))
+
+/**
+ * Words a title is held together with, in any language, and the single letters
+ * left of an apostrophe: they say nothing of which work it is, so a title isn't
+ * a lesser match for "&" where the curator wrote "and", or "für" for "for".
+ */
+const GLUE = new Set(['and', 'und', 'et', 'e', 'y', 'the', 'a', 'an', 'of', 'de', 'des', 'du', 'la', 'le', 'les', 'il', 'lo', 'der', 'die', 'das', 'dem', 'den', 'for', 'fur', 'pour', 'per', 'para', 'in', 'en', 'on', 'to', 'von', 'zu', 'di', 'del', 'della', 'da', 'op', 'no', 'nr'])
+const significant = (ts: string[]) => {
+  const kept = ts.filter((t) => !GLUE.has(t) && (t.length > 1 || /\d/.test(t)))
+  return kept.length ? kept : ts
+}
+
+/**
+ * The key a title names, as one spelling: "c#m", "ebM", or "c" when no mode is
+ * said ("Symphony in C"). Read from English ("in E-flat major"), German ("Es-Dur",
+ * "h-Moll": H is B, B is B-flat), French ("en sol mineur") and Italian ("in re
+ * maggiore"). Folded text; ♭ and ♯ are spelt out before folding (`spelt`).
+ */
+const SOLFEGE: Record<string, string> = { ut: 'c', do: 'c', re: 'd', mi: 'e', fa: 'f', sol: 'g', la: 'a', si: 'b' }
+const MODE: Record<string, string> = { major: 'M', dur: 'M', majeur: 'M', maggiore: 'M', minor: 'm', moll: 'm', mineur: 'm', minore: 'm' }
+const KEY_PATTERNS: { re: RegExp; read: (m: RegExpMatchArray) => string }[] = [
+  { re: /\b([a-h])(is|es|s)? (dur|moll)\b/, read: (m) => germanKey(m[1], m[2]) + MODE[m[3]] },
+  { re: /\b(?:en )?(ut|do|re|mi|fa|sol|la|si)(?: (diese|bemol))? (majeur|mineur)\b/, read: (m) => SOLFEGE[m[1]] + (m[2] === 'diese' ? '#' : m[2] ? 'b' : '') + MODE[m[3]] },
+  { re: /\b(?:in )?(do|re|mi|fa|sol|la|si)(?: (diesis|bemolle))? (maggiore|minore)\b/, read: (m) => SOLFEGE[m[1]] + (m[2] === 'diesis' ? '#' : m[2] ? 'b' : '') + MODE[m[3]] },
+  { re: /\b(?:in )?([a-g])(?: (sharp|flat))? (major|minor)\b/, read: (m) => m[1] + (m[2] === 'sharp' ? '#' : m[2] ? 'b' : '') + MODE[m[3]] },
+  { re: /\bin ([a-g])(?: (sharp|flat))?\b(?! (?:major|minor))/, read: (m) => m[1] + (m[2] === 'sharp' ? '#' : m[2] ? 'b' : '') },
+]
+function germanKey(letter: string, suffix?: string): string {
+  if (letter === 'h') return 'b'
+  if (letter === 'b' && !suffix) return 'bb'
+  if (suffix === 'is') return `${letter}#`
+  if (suffix === 'es' || suffix === 's') return `${letter}b`
+  return letter
+}
+const spelt = (s: string) => s.replace(/♭/g, ' flat').replace(/♯/g, ' sharp')
+
+export function keyOf(title: string): string | undefined {
+  const t = fold(spelt(title))
+  for (const { re, read } of KEY_PATTERNS) {
+    const m = t.match(re)
+    if (m) return read(m)
+  }
+  return undefined
+}
+function stripKeys(folded: string): string {
+  return KEY_PATTERNS.reduce((acc, { re }) => acc.replace(new RegExp(re.source, 'g'), ' '), folded)
+}
+
+/** Two keys that can't both be right: another tonic, or another mode where both say one. */
+export function keysDiffer(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false
+  const tonic = (k: string) => k.replace(/[Mm]$/, '')
+  const mode = (k: string) => (/[Mm]$/.test(k) ? k.slice(-1) : '')
+  return tonic(a) !== tonic(b) || Boolean(mode(a) && mode(b) && mode(a) !== mode(b))
+}
 
 /**
  * A count is spelt as a word in one title and a figure in another: the curator's
@@ -151,26 +260,79 @@ function catalogueSpelling(title: string): string {
 }
 
 /**
+ * Where a track name's movement begins: at the first colon, dash or slash set off
+ * by spaces that a numbered movement follows ("…: IV. Adagietto", "… Op. 92 - 2.
+ * Allegretto", as older and budget releases bill them). The first, so a dash inside
+ * the movement's own name ("I. Adagio - Moderato") is never taken for the break.
+ * -1 when no numbered movement follows any.
+ */
+function movementAt(trackName: string): { at: number; width: number } {
+  for (const m of trackName.matchAll(/\s*:\s*|\s+[-–—/]\s+/g)) {
+    const at = m.index ?? -1
+    if (movementNumber(trackName.slice(at + m[0].length)) !== undefined) return { at, width: m[0].length }
+  }
+  return { at: -1, width: 0 }
+}
+
+/**
  * The part of a track name that names the work. "Symphony No. 2 in C Minor:
  * 4. Urlicht" is the second symphony's fourth movement, and the "4" must not
- * pass for "Symphony No. 4" — so a movement after the last colon is left out.
- * Only a numbered movement: in "Bach: Brandenburg Concerto No. 3" or
- * "Pictures at an Exhibition: Promenade I" what follows the colon is the work,
- * or part of its name, and stays.
+ * pass for "Symphony No. 4" — so a numbered movement after the last colon (or
+ * " - ") is left out. Only a numbered movement: in "Bach: Brandenburg Concerto
+ * No. 3" or "Pictures at an Exhibition: Promenade I" what follows the colon is
+ * the work, or part of its name, and stays.
  */
 export function workPart(trackName: string): string {
-  const at = trackName.lastIndexOf(':')
-  if (at < 0) return trackName
-  return movementNumber(trackName.slice(at + 1)) === undefined ? trackName : trackName.slice(0, at)
+  const { at } = movementAt(trackName)
+  return at < 0 ? trackName : trackName.slice(0, at)
+}
+
+/** The track's own movement number, when it names one after its work: "…: IV. Adagietto" → 4. */
+function movementOf(trackName: string): number | undefined {
+  const { at, width } = movementAt(trackName)
+  return movementNumber(at < 0 ? trackName : trackName.slice(at + width))
+}
+
+/** The title's words that identify the work, both spellings considered. */
+function titleWords(title: string): string[] {
+  return significant(tokens(sameWords(workTitleKey(catalogueSpelling(matchTitle(spelt(title)))))))
 }
 
 /** How much of the work's identifying title appears in a track (or album) name, 0..1. */
 export function workOverlap(workTitle: string, trackName: string): number {
-  const want = tokens(sameWords(workTitleKey(catalogueSpelling(matchTitle(workTitle)))))
+  const want = titleWords(workTitle)
   if (want.length === 0) return 0
-  const name = catalogueSpelling(workPart(trackName))
+  const name = catalogueSpelling(spelt(workPart(trackName)))
   const have = new Set(tokens(sameWords(workTitleKey(name))).concat(tokens(sameWords(fold(name)))))
   return want.filter((t) => have.has(t)).length / want.length
+}
+
+// Catalogue schemes and billing notes a track adds to a title: never a title of its own.
+const CATALOGUE_WORDS = new Set(['op', 'opus', 'bwv', 'k', 'kv', 'd', 'l', 'hob', 'rv', 'wwv', 'hwv', 'woo', 'sz', 'bb', 'trv', 'jw', 'fs', 'b', 's', 'm', 'z', 'posth', 'version', 'live', 'remastered', 'remaster', 'arr', 'orch', 'ed', 'edition'])
+
+// What a title is made of when it says only what kind of piece it is: "Symphony in C",
+// "Cello Concerto", "String Quartet in G minor". Such a title is the work only with its key.
+const GENRE = new Set(['symphony', 'concerto', 'sonata', 'quartet', 'quintet', 'sextet', 'trio', 'octet', 'suite', 'mass', 'overture', 'serenade', 'piano', 'violin', 'cello', 'viola', 'flute', 'oboe', 'clarinet', 'horn', 'trumpet', 'bassoon', 'harp', 'organ', 'string', 'double', 'triple', 'chamber', 'orchestra', 'small'])
+
+/**
+ * A track whose work is in another key than the proposal's ("Piano Concerto No. 26
+ * in D Major" for "Piano Concerto in D minor"), or — when the proposal's title is
+ * only a genre and a key ("Symphony in C") — whose title names something more and
+ * no key ("Symphony in Three Movements"): another work, whatever else agrees. A
+ * track naming the proposal's own catalogue number is the work, whatever key the
+ * proposal gave it.
+ */
+export function keyContradicts(p: Pick<ProposedRecording, 'work' | 'catalogue' | 'composer'>, trackName: string): boolean {
+  const want = keyOf(p.work)
+  if (!want || catalogueAgrees({ ...p, soloists: [] }, trackName)) return false
+  const have = keyOf(workPart(trackName))
+  if (have) return keysDiffer(want, have)
+  if (!titleWords(p.work).every((t) => GENRE.has(t)) || keyOf(trackName)) return false
+  // The title as the track bills it, before any movement and without the composer's name ("Elgar: Cello Concerto").
+  const composer = nameKey(surname(p.composer))
+  const head = trackName.split(/\s*:\s*|\s+[-–—/]\s+/).find((part) => !tokens(fold(part)).every((t) => nameKey(t) === composer)) ?? trackName
+  return significant(tokens(sameWords(workTitleKey(catalogueSpelling(spelt(head))))))
+    .some((t) => !GENRE.has(t) && !CATALOGUE_WORDS.has(t) && !/^\d+$/.test(t) && nameKey(t) !== composer)
 }
 
 /** Is this person credited among these artists (by surname)? */
@@ -180,7 +342,10 @@ export function isCredited(name: string, artists: { name: string }[]): boolean {
 
 function personCredited(name: string, credits: string): boolean {
   const last = surname(name)
-  return last.length > 1 && new RegExp(`\\b${last}\\b`).test(credits)
+  if (last.length < 2) return false
+  // Spelt as credited, or under another transliteration ("Rachmaninoff", "Tschaikowsky", "Oistrach").
+  const key = nameKey(last)
+  return credits.split(/[\s|]+/).some((w) => w === last || (w.length > 1 && nameKey(w) === key))
 }
 
 function orchestraCredited(name: string, credits: string): boolean {
@@ -313,7 +478,7 @@ export function matchTrack(track: SpotifyTrackLike, p: ProposedRecording): Match
   const leadOk = lead ? !missing.includes(lead) : false
 
   let level: MatchLevel = 'none'
-  if (!composer || catalogueContradicts(p, track.name, track.album?.name) || releasedTooEarly(p, track)) level = 'none'
+  if (!composer || catalogueContradicts(p, track.name, track.album?.name) || keyContradicts(p, track.name) || releasedTooEarly(p, track)) level = 'none'
   else if (work >= 0.99 && missing.length === 0) level = 'strong'
   else if (work >= 0.75 && leadOk) level = 'probable'
   return { level, work, composer, missing }
@@ -357,6 +522,8 @@ export function workTracks(albumTracks: SpotifyTrackLike[], matched: SpotifyTrac
       const mine = [...own].filter((o) => schemeOf(o) === schemeOf(h))
       if (mine.length && !mine.includes(h)) return false
     }
+    // Another key is another work too: Mozart's D minor concerto beside his D major.
+    if (keysDiffer(keyOf(workPart(t.name)), keyOf(workPart(ordered[at].name)))) return false
     return !(p && catalogueContradicts(p, t.name))
   }
   const joins = (t: SpotifyTrackLike) => fits(t) && sameWork(t)
@@ -368,6 +535,21 @@ export function workTracks(albumTracks: SpotifyTrackLike[], matched: SpotifyTrac
 }
 
 const ROMAN: Record<string, number> = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10, xi: 11, xii: 12 }
+
+/**
+ * A run of the work's tracks that begins past its first movement: the Adagietto
+ * alone on a compilation, not the symphony. Such an album is passed over for the
+ * work. Not when the proposal is that movement ("the Adagietto from Symphony No.
+ * 5"), and never for a work with no numbered movements.
+ */
+export function isExcerpt(run: SpotifyTrackLike[], p?: Pick<ProposedRecording, 'work'>): boolean {
+  if (!run.length) return false
+  const first = movementOf(run[0].name)
+  if (first === undefined || first <= 1) return false
+  if (!p) return true
+  const movement = new Set(significant(tokens(sameWords(fold(movementTitle(run[0].name))))).filter((t) => !/^\d+$/.test(t) && !(t in ROMAN)))
+  return !titleWords(p.work).some((t) => movement.has(t))
+}
 
 /** "III. Allegro" → 3, "2. Andante" → 2; anything else, undefined. */
 function movementNumber(name: string): number | undefined {
@@ -397,20 +579,27 @@ export function searchQueries(p: ProposedRecording): string[] {
   const work = workTitleKey(matchTitle(p.work)).split(' ').slice(0, 6).join(' ')
   const composer = surname(p.composer)
   const lead = p.conductor ? surname(p.conductor) : p.soloists[0] ? surname(p.soloists[0].name) : ''
-  const band = p.orchestra ?? p.ensemble
-  const bandWords = band ? orchestraTokens(band).slice(0, 2).join(' ') : ''
+  const group = p.orchestra ?? p.ensemble
+  const bandWords = group ? orchestraTokens(group).slice(0, 2).join(' ') : ''
   const qs = [
     [composer, work, lead].filter(Boolean).join(' '),
     [work, lead, bandWords].filter(Boolean).join(' '),
     [composer, work, bandWords].filter(Boolean).join(' '),
     // Spotify's search is literal: "quattro" doesn't find "4 pezzi". Asked only when the title counts in words.
     ...(numerals(work) !== work ? [[composer, numerals(work), lead].filter(Boolean).join(' ')] : []),
+    // Last, and only when nothing better turned up: the composer and the work alone. It finds
+    // what the performer-led queries miss — a stand-in chosen from just this search's results
+    // (spotifyCandidates), or performers Spotify bills under another spelling.
+    [composer, work].filter(Boolean).join(' '),
   ]
   return [...new Set(qs.filter((q) => q.trim().length > 0))]
 }
 
 /** "La mer, L. 109: II. Jeux de vagues" → "II. Jeux de vagues". A single-track work keeps its name. */
 export function movementTitle(trackName: string): string {
-  const at = trackName.lastIndexOf(':')
-  return at >= 0 && at < trackName.length - 1 ? trackName.slice(at + 1).trim() : trackName.trim()
+  // The numbered movement wherever it begins ("…: IV. Adagietto", "… Op. 92 - 2. Allegretto"); else what follows the last colon.
+  const { at, width } = movementAt(trackName)
+  if (at >= 0) return trackName.slice(at + width).trim()
+  const colon = trackName.lastIndexOf(':')
+  return colon >= 0 && colon < trackName.length - 1 ? trackName.slice(colon + 1).trim() : trackName.trim()
 }

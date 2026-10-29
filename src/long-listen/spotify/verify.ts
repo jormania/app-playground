@@ -3,7 +3,7 @@ import { displaySurname, newId } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { heardAs, standInsOf } from '../domain/standIns'
 import type { Repo } from '../store/repo'
-import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, namesAnotherWork, numerals, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
+import { MATCHER_VERSION, catalogueAgrees, catalogueContradicts, isCredited, isExcerpt, keyContradicts, matchTrack, movementTitle, namesAnotherWork, numerals, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import { SpotifyAuthError } from './auth'
 import { SpotifyUnavailable, type RecentPlay, type SpotifyAlbum, type SpotifyClient } from './client'
 import { forgetPlaceBefore } from '../app/place'
@@ -64,12 +64,37 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
   if (!needsLook(recording)) return { recording, album: recording.albumId ? await repo.albums.get(recording.albumId) : undefined }
 
   const rejected = new Set(recording.rejectedAlbumIds ?? [])
-  let found: { track: SpotifyTrackLike; level: 'strong' | 'probable' } | null = null
-  for (const q of searchQueries(proposed)) {
-    const candidates = (await spotify.searchTracks(q)).filter((t) => !t.album || !rejected.has(t.album.id))
-    const best = bestTrack(candidates, proposed)
-    if (best && (!found || (best.result.level === 'strong' && found.level !== 'strong'))) found = { track: best.track, level: best.result.level as 'strong' | 'probable' }
-    if (found?.level === 'strong') break
+  // Every acceptable track the searches turn up, best first; searches stop once a strong one is in hand.
+  const pool: { track: SpotifyTrackLike; level: 'strong' | 'probable'; work: number }[] = []
+  const queries = searchQueries(proposed)
+  let asked = 0
+  const searchMore = async (): Promise<boolean> => {
+    if (asked >= queries.length) return false
+    for (const t of await spotify.searchTracks(queries[asked++])) {
+      if (!t.album || rejected.has(t.album.id) || pool.some((x) => x.track.id === t.id)) continue
+      const r = matchTrack(t, proposed)
+      if (r.level !== 'none') pool.push({ track: t, level: r.level, work: r.work })
+    }
+    pool.sort((a, b) => (a.level === b.level ? b.work - a.work : a.level === 'strong' ? -1 : 1))
+    return true
+  }
+  // An album whose run of the work starts past its first movement holds an excerpt (the
+  // Adagietto on a compilation): passed over, and the next best is read instead.
+  const passedOver = new Set<string>()
+  let found: { track: SpotifyTrackLike; level: 'strong' | 'probable'; album: SpotifyAlbum; work: SpotifyTrackLike[] } | null = null
+  for (let reads = 0; reads < 4;) {
+    const next = pool.find((x) => !passedOver.has(x.track.album!.id))
+    if (!next || next.level !== 'strong') {
+      if (await searchMore()) continue
+      if (!next) break
+    }
+    const albumId = next.track.album!.id
+    reads++
+    const [album, tracks] = await Promise.all([spotify.album(albumId), spotify.albumTracks(albumId)])
+    const run = workTracks(tracks, next.track, proposed.work, proposed)
+    if (isExcerpt(run, proposed)) { passedOver.add(albumId); continue }
+    found = { track: next.track, level: next.level, album, work: run }
+    break
   }
 
   // The search took a while; the listener may have answered meanwhile. Their
@@ -87,11 +112,7 @@ export async function verifyRecording(repo: Repo, spotify: SpotifyClient, record
   }
 
   const albumId = found.track.album.id
-  const [album, tracks] = await Promise.all([spotify.album(albumId), spotify.albumTracks(albumId)])
-  // And again after the album was read, for the same reason.
-  const settledLater = await settledMeanwhile(repo, recording)
-  if (settledLater) return settledLater
-  const work = workTracks(tracks, found.track, proposed.work, proposed)
+  const { album, work } = found
   const credited = [...new Set(work.flatMap((t) => t.artists.map((a) => a.name)))]
   const image = [...(album.images ?? [])].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url
   const trackIds = work.map((t) => t.id)
@@ -238,7 +259,7 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
     for (const t of await spotify.searchTracks(q)) {
       if (!t.album || byAlbum.has(t.album.id)) continue
       const onWork = Math.max(workOverlap(p.work, t.name), namesAnotherWork(p, t) ? 0 : workOverlap(p.work, t.album.name)) >= 0.75 || catalogueAgrees(p, t.name)
-      if (!onWork || catalogueContradicts(p, t.name) || !isCredited(p.composer, t.artists)) continue
+      if (!onWork || catalogueContradicts(p, t.name) || keyContradicts(p, t.name) || !isCredited(p.composer, t.artists)) continue
       const artists = t.artists.map((a) => a.name).filter((n) => !isCredited(p.composer, [{ name: n }]))
       const title = t.name.split(':')[0].trim()
       if (artists.length) byAlbum.set(t.album.id, { album: t.album.name, ...(title ? { title } : {}), albumId: t.album.id, year: t.album.release_date?.slice(0, 4), artists })

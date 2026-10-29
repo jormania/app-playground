@@ -22,5 +22,6 @@ export declare function performersKey(r: RecordingLike): string
 export declare function recordingId(workIdValue: string, r: RecordingLike): string
 export declare function creditLine(r: RecordingLike): string
 export declare function surname(name: string): string
+export declare function nameKey(word: string): string
 export declare function displaySurname(name: string): string
 export declare function newId(prefix: string): string

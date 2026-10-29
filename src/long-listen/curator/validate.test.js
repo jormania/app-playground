@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags, validateTaste, validateSketch, pitchedAsOneEvening } from './validate.js'
+import { weekAdjusted, validateThemes, enforceVariety, validateCompanion, validateConcert, needsSoloists, needsVoices, validateSeason, validateProgramme, validateTags, validateTaste, validateSketch, pitchedAsOneEvening, onCandidateList } from './validate.js'
 
 describe('weekAdjusted — this week, differently', () => {
   const prefs = { timePerWeek: 'generous', breadth: 3, familiarity: 3, pairs: false }
@@ -253,5 +253,13 @@ describe('a direction is a week, not an evening (26 October 2026)', () => {
   it('sends back a sketch pitched as an evening', () => {
     const r = validateSketch({ sketches: [{ mood: 'immersive', title: 'Hush', line: 'An evening of slow music.', from: 'f' }] }, { slots: ['immersive'] })
     expect(r.problems).toEqual(['The immersive sketch is pitched as one evening; it is a week\'s listening.'])
+  })
+})
+
+describe('a stand-in named under another spelling', () => {
+  it('finds its conductor on the candidate list under Spotify’s transliteration', () => {
+    const candidates = [{ album: 'Shostakovich: Symphony No. 5', artists: ['Gennadi Roschdestwenski', 'Sinfonieorchester des Kulturministeriums der UdSSR'] }]
+    expect(onCandidateList({ conductor: 'Gennady Rozhdestvensky', soloists: [] }, candidates)).toBe(true)
+    expect(onCandidateList({ conductor: 'Kirill Kondrashin', soloists: [] }, candidates)).toBe(false)
   })
 })

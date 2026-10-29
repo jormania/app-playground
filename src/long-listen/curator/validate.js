@@ -5,7 +5,7 @@
 // problems as a correction, then accepts the cleaned value if it still stands.
 //
 // Pure functions, no I/O — src/long-listen/curator/curator.test.js pins them.
-import { sameWork, performersKey, fold, surname, workTitleKey } from '../domain/identity.js'
+import { sameWork, performersKey, fold, nameKey, surname, workTitleKey } from '../domain/identity.js'
 
 const MOODS = ['immersive', 'curious', 'adventurous']
 const FORMS = ['theme', 'across-centuries', 'then-and-now', 'city-year', 'performer', 'dialogue', 'many-ways']
@@ -478,8 +478,9 @@ export function validateExplain(out) {
 export function onCandidateList(p, candidates) {
   const lead = p.conductor ?? p.soloists[0]?.name ?? p.ensemble ?? p.orchestra
   if (!lead) return false
-  const last = fold(surname(lead))
-  return candidates.some((c) => (c.artists ?? []).some((a) => new RegExp(`\\b${last}\\b`).test(fold(a))))
+  // Under the spelling Spotify credits, or another transliteration of it ("Rozhdestvensky", "Roschdestwenski").
+  const key = nameKey(surname(lead))
+  return candidates.some((c) => (c.artists ?? []).some((a) => fold(a).split(' ').some((w) => w.length > 1 && nameKey(w) === key)))
 }
 
 export function validateCompare(out, { current, alreadyHeard = [], spotifyCandidates = [] }) {

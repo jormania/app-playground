@@ -100,7 +100,7 @@ describe('the tracks of a work on an album', () => {
 describe('search', () => {
   it('builds specific queries first, without key signatures', () => {
     expect(searchQueries(kleiber)[0]).toBe('beethoven symphony 5 kleiber')
-    expect(searchQueries(kleiber)).toContain('symphony 5 kleiber vienna')
+    expect(searchQueries(kleiber)).toContain('symphony 5 kleiber vienna philharmonic')
   })
 
   it('also searches with a count as a figure, when the title spells it as a word', () => {
@@ -110,9 +110,10 @@ describe('search', () => {
   })
 
   it('reduces orchestra names to what distinguishes them', () => {
-    expect(orchestraTokens('London Symphony Orchestra')).toEqual(['london'])
+    // The kind of orchestra stays: the London Symphony is not the London Philharmonic.
+    expect(orchestraTokens('London Symphony Orchestra')).toEqual(['london', 'symphony'])
     expect(orchestraTokens('Orchestre de Paris')).toEqual(['paris'])
-    expect(orchestraTokens('Wiener Philharmoniker')).toEqual(['vienna'])
+    expect(orchestraTokens('Wiener Philharmoniker')).toEqual(['vienna', 'philharmonic'])
   })
 })
 

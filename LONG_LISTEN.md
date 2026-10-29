@@ -1708,3 +1708,44 @@ track that names another work the album lists (`namesAnotherWork`, in `matchTrac
 The proposal itself looks mixed up: on that album *Fratres* is Kremer with Keith Jarrett, and Russell Davies
 conducts the *Cantus*. Being found "not found", it gets a stand-in from what Spotify has. This rides on
 `MATCHER_VERSION` 7, so the held near match is looked at again.
+
+### The matching audit (29 October 2026)
+
+Three misses in one evening led to a review of the whole path from the curator's proposal to a track that plays.
+Each failure class below now has a regression case in `spotify/match.audit.test.ts`, written with Spotify's own
+billing.
+
+- **Names under another transliteration.** The composer must be credited, so "Rachmaninov" proposed and
+  "Rachmaninoff" credited was simply not found. Performers had the same problem (Oistrakh / Oistrach). `nameKey`
+  (`domain/identity.js`) gives one spelling across the usual Latin transliterations: Tchaikovsky / Tschaikowsky /
+  Čajkovskij, Shostakovich / Schostakowitsch, Prokofiev / Prokofjew, Khachaturian / Chatschaturjan, Scriabin /
+  Skrjabin, Schoenberg / Schönberg, Rozhdestvensky / Roschdestwenski. It is used by the matcher and by the
+  stand-in check (`onCandidateList`).
+- **Orchestras.** German compounds come apart ("Gewandhausorchester", "Staatsorchester", Dutch
+  "Concertgebouworkest"), and other languages read as English ("Symphonieorchester des Bayerischen Rundfunks",
+  "Česká filharmonie", "Wiener Symphoniker", "Alban Berg Quartett"). "Royal" no longer has to be billed. A bug the
+  other way: "London Symphony" and "London Philharmonic" both came down to "london", so either passed for the
+  other (Vienna, the BBC and Radio France likewise). The kind of orchestra now stays in its name (`orchestraTokens`).
+- **Titles in other languages.** DG bills "Klavierkonzert Nr. 5 Es-Dur", Erato "Quatuor à cordes en sol mineur",
+  Bartók's is "Konzert für Orchester". Genre words, instruments and German compounds read as one English word on
+  both sides. Small words ("and" / "&", "for" / "für") no longer count against a title.
+- **Keys** (`keyOf`, in English, German, French and Italian). A work in another key is another work: Mozart's
+  "Piano Concerto in D minor" isn't No. 26 in D major. A title that is only a genre and a key ("Symphony in C")
+  isn't a work of another name ("Symphony in Three Movements"). On an album, another key also ends the run of a work.
+- **A movement after " - ".** Older and budget releases bill "Symphony No. 7 in A Major, Op. 92 - 2. Allegretto".
+  The "2" passed for Symphony No. 2. A numbered movement after a dash or slash is now the movement, as after a colon.
+  The break is the first separator a numbered movement follows, so a dash inside a movement's own name ("I. Adagio -
+  Moderato") stays in the movement.
+- **Excerpts.** A run that begins past the first movement (the Adagietto alone on a compilation) is passed over,
+  unless the proposal is that movement.
+  Verification reads the next best album, up to four, instead of linking one movement as the symphony.
+- **The stand-in's album.** The stand-in is chosen from a search by composer and title. Verification now ends with
+  that same search, so the recording the curator chose is found even when the performer-led searches miss it.
+- **The proposal.** `programme@2026-10-29.1` asks for titles as recordings bill them: numbered works in English
+  with number and key, titled works in the composer's own language, and the catalogue number whenever there is
+  one. It asks for every performer as their recordings credit them, never performers combined from two
+  recordings on one album (the Fratres mix-up).
+
+Still out of reach, and said here so nobody is surprised: a titled work translated in the proposal but not on
+Spotify ("Prelude to the Afternoon of a Faun" against "Prélude à l'après-midi d'un faune") with no catalogue number
+on either side. Both the prompt change and the catalogue number are meant to make that rare.

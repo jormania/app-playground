@@ -181,7 +181,7 @@ const perspectiveSchema = {
 
 export const PROGRAMME = {
   id: 'programme',
-  version: 'programme@2026-10-26.1',
+  version: 'programme@2026-10-29.1',
   // Low since 2026-10-26, for the same reason as themes: see LONG_LISTEN.md §37.
   effort: 'low',
   maxTokens: 32000,
@@ -244,6 +244,8 @@ For each item:
 - listenForMovement: one entry per listenFor, in the same order: the movement it happens in, as the work's own Roman numeral ("I", "II", "III"), or "" when it belongs to the whole work or the work is in one movement. Only when you are sure which movement; otherwise "".
 - character: two to four words on the interpretation itself ("transparent", "urgent", "warm, expansive").
 - workContext: one or two sentences of historical context; composed: date as usually given ("1903–05"); form: "symphony", "symphonic poem", "concerto" etc.
+- workTitle: as recordings bill it. A numbered genre work in English with its number and key ("Piano Concerto No. 5 in E-flat major", "String Quartet No. 14 in D minor"); a work with a title of its own, that title as the composer gave it ("Prélude à l'après-midi d'un faune", "Quattro pezzi su una nota sola", "Atmosphères"). catalogue: its catalogue number whenever it has one ("Op. 73", "D. 810", "L. 86", "BWV 1048"), else "". Spotify is searched with these.
+- Name each performer as their recordings credit them, and every performer of the work on that recording: a recording you are unsure of, change; never combine performers from two recordings on one album.
 - revisitReason: "" normally. If you deliberately return to a work the thread already covered, or one in alreadyProgrammed, say why (e.g. a new interpretation of it); otherwise do not repeat them.
 - alreadyKnown lists works the listener knew before the app suggested them. Don't present one of them as a discovery. Use one only where a known work earns its place — an anchor to hear something new against, or a recording that changes how it sounds — and then say so in "why".
 - year: the recording year only if you are certain, else "".
