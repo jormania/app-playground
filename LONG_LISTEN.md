@@ -1768,3 +1768,19 @@ reverse: the missing recording kept sparse, attention on the one proposed instea
   thoroughly than a person would, so a hand search rarely finds what it missed. The link stays only while Spotify
   isn't connected, when it is the one way in.
 - Also in this change: the masthead's week line has a row of its own and never wraps (PR #213).
+
+## 42. A work in parts (29 October 2026)
+
+A work in a programme ran as one long column: the title box, the notes, the recording with its buttons and
+"Why this recording", "Listen for", then the listener's own folds. The owner asked for the parts to be easier to
+spot, lightly, in both themes. They chose variant A of three mock-ups (A, hairlines and a small heading; B, the
+recording on a card; C, a rail down each part).
+
+- Four parts under the title box: **The work** (the notes, any revisit reason), **The recording** (performers,
+  the playing, album, Play, Listen along, a stand-in, "Why this recording"), **Listen for**, **Yours** (your
+  listening, more context, another perspective).
+- Each opens with a small uppercase heading in the faint colour, with a 5px accent point, and every part but the
+  first with a hairline in `--color-border` (`.workPart`, `.partHead`). The colours are the palette's own, so light,
+  dark and the listening shades all hold.
+- The recording's own "Recommended recording" label gives way to the part's heading (`RecordingBlock label={null}`).
+  The stand-in keeps "On Spotify instead", since it is a second recording within the part.

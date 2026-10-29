@@ -1097,7 +1097,47 @@
 /* One quiet line under each work instead of a box: the state folded to a
    word (a Twisty), the ways on as plain links beneath it. */
 .workClose {
-  margin-top: var(--space-lg);
+  margin-top: var(--space-md);
+}
+
+/* A work's parts — the work, the recording, listen for, yours — each opened by a
+   hairline and a small heading with an accent point (variant A, 29 October 2026). */
+.workPart {
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+/* The first follows the title box: it needs no rule of its own. */
+.workPartFirst {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.partHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin: 0 0 var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.partHead::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+/* What a part opens with sits right under its heading. */
+.workPart > .partHead + * {
+  margin-top: 0;
 }
 
 /* The folded state word takes the colour of what it says: heard in the
