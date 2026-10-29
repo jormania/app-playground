@@ -1661,4 +1661,9 @@ after and around it:
 - Opacity only, as with `settle`'s `backwards` fill: a transform left on a page would contain the programme's
   fixed contents rail. The masthead and the section bar stay still — only the page moves, a printed
   programme's turn rather than an app's slide. None of it under *reduce motion*.
+- **Correction, 29 October.** The first-paint colours were written `html[data-theme=…]`, which outweighed
+  palette.css's `html { background: var(--color-bg) }` — so in a light theme the listening view's dark shade
+  (`data-listening`) never reached `<html>`, and wherever the page didn't cover, the paper showed through under
+  the view's light text. They are now `:where(…)`, of no weight: they paint the first frame and give way the
+  moment the app's styles load.
 
