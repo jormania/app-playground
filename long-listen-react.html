@@ -27,8 +27,11 @@
     /* The paper (or the dark) from the first paint, before the app's own styles arrive: a page
        reloaded while it was out of sight comes back on its own colour, never a white flash.
        Keep in step with --color-bg in src/long-listen/styles/palette.css. */
-    html[data-theme="light"] { background: #f5efe3; }
-    html[data-theme="dark"] { background: #16130f; }
+    /* :where() keeps these at no weight: the moment the app's styles load, palette.css's
+       html { background: var(--color-bg) } wins — the listening view's darks (data-listening)
+       included. With weight, this held the paper behind the listening view (29 October 2026). */
+    :where(html[data-theme="light"]) { background: #f5efe3; }
+    :where(html[data-theme="dark"]) { background: #16130f; }
   </style>
   <link rel="icon" type="image/svg+xml" href="/long-listen-logo.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/long-listen-favicon-32.png" />
