@@ -96,6 +96,8 @@ const tokens = (s: string) => s.split(' ').filter(Boolean)
  *       another catalogue number (Grieg's Op. 16 beside Schumann's Op. 54).
  *   7 — a count spelt as a word is the figure ("Quattro pezzi" is "4 pezzi"),
  *       and Spotify is also searched with the figure.
+ *       The album no longer speaks for a track that names another work on it
+ *       (Pärt's Cantus taken for Fratres from "Tabula Rasa, Fratres, Cantus …").
  */
 export const MATCHER_VERSION = 7
 
@@ -276,6 +278,17 @@ function releasedTooEarly(p: ProposedRecording, track: SpotifyTrackLike): boolea
   return Boolean(recorded && released && released < recorded - 1)
 }
 
+/**
+ * The album speaks for a track named only by its movement ("I. Allegro"). It doesn't for a
+ * track that names another work the album also lists: on "Arvo Pärt: Tabula Rasa, Fratres,
+ * Cantus in memoriam Benjamin Britten", the track "Cantus in memoriam Benjamin Britten" is
+ * not Fratres, though the album names both (29 October 2026; it was offered as a near match).
+ */
+export function namesAnotherWork(p: Pick<ProposedRecording, 'work'>, track: Pick<SpotifyTrackLike, 'name' | 'album'>): boolean {
+  if (!track.album) return false
+  return workOverlap(p.work, track.name) < 0.5 && workOverlap(workPart(track.name), track.album.name) >= 0.75
+}
+
 export function matchTrack(track: SpotifyTrackLike, p: ProposedRecording): MatchResult {
   const credits = credited(track.artists)
   // Classical tracks often carry the work in the album name and only the
@@ -284,7 +297,7 @@ export function matchTrack(track: SpotifyTrackLike, p: ProposedRecording): Match
   // however else its title is spelt.
   const work = catalogueIdentifies(p, track.name, track.album?.name)
     ? 1
-    : Math.max(workOverlap(p.work, track.name), track.album ? workOverlap(p.work, track.album.name) * 0.95 : 0)
+    : Math.max(workOverlap(p.work, track.name), track.album && !namesAnotherWork(p, track) ? workOverlap(p.work, track.album.name) * 0.95 : 0)
   // The composer is credited as an artist on nearly every classical track; a
   // few older uploads only name them in the title. Either will do — but one of
   // them must, or "Symphony No. 7" by the right conductor could be anyone's.

@@ -2885,6 +2885,19 @@
   color: var(--color-muted);
 }
 
+/* A character the curator wrote as a phrase: said as written, beside its label, not cut into tags. */
+.traitsProse {
+  flex: 1 1 14rem;
+  min-width: 0;
+  color: var(--color-muted);
+}
+
+/* A tag never runs off the screen: a long one wraps inside its pill. */
+.traits .tag {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 /* ── The programme as a printed programme (LONG_LISTEN.md §19) ─────────────
    Small flourishes at the turning points only: a numeral for each part, a
    fleuron between parts, a pulled line, a work's movements and duration as a

@@ -9,6 +9,16 @@ import s from '../styles/editorial.module.css'
 export function Traits({ label, words, className }: { label: string; words: string[] | string | undefined; className?: string }) {
   const list = (Array.isArray(words) ? words : String(words ?? '').split(/\s*[,·]\s*/)).map((w) => w.trim()).filter(Boolean)
   if (!list.length) return null
+  // A sentence isn't a handful of words: cut at its commas it ran off the screen as tags
+  // ("velvety and fluid; a rich…", 29 October 2026). Said as it was written, under the same label.
+  if (!Array.isArray(words) && list.some((w) => w.split(/\s+/).length > 3 || /[;.]/.test(w))) {
+    return (
+      <p className={className ? `${s.traits} ${className}` : s.traits}>
+        <span className={s.traitsLabel}>{label}</span>
+        <em className={s.traitsProse}>{String(words).trim()}</em>
+      </p>
+    )
+  }
   return (
     <p className={className ? `${s.traits} ${className}` : s.traits}>
       <span className={s.traitsLabel}>{label}</span>

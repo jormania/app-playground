@@ -1688,3 +1688,23 @@ in Spotify's search or in the title comparison. So the list came back empty, and
   short title is the trumpet set's, and the matcher can't tell them apart.
 - `MATCHER_VERSION` is 7, so every recording an older matcher decided is looked at once more (on Spotify
   alone; the curator is asked again only for a stand-in, as before).
+
+**The same evening, a stand-in that read badly.** Gielen's *Atmosphères* isn't on Spotify, so the curator chose
+Nott and the Berlin Philharmonic, and that part worked. The block showed "Berlin Philharmonic" twice, though,
+because the curator filled both orchestra and ensemble. Its "playing" was a sentence ("warm, velvety and fluid;
+a rich blended orchestral sound in which…"), cut at its commas into tags that ran off the screen.
+- `Credits` names an orchestra once: an ensemble whose distinctive words (`orchestraTokens`) are the orchestra's
+  isn't listed again. Stored stand-ins read right without being asked for again.
+- `Traits` keeps tags for a few words. A phrase (a part longer than three words, or one with `;` or `.`) is set
+  as written beside its label, and a long tag wraps inside its pill.
+- `compare@2026-10-29.1` asks for two to four comma-separated words, not a sentence, and names an orchestra
+  once.
+
+**And a near match that was another work.** Pärt's *Fratres*, proposed with Kremer, the Staatsorchester
+Stuttgart and Russell Davies, was offered as "something close". Spotify had in fact found ECM's track *Cantus in
+memoriam Benjamin Britten*, by that orchestra and conductor. Its album, "Tabula Rasa, Fratres, Cantus…", names
+*Fratres*, and the album is allowed to speak for a track named only by its movement. Now it doesn't speak for a
+track that names another work the album lists (`namesAnotherWork`, in `matchTrack` and `spotifyCandidates`).
+The proposal itself looks mixed up: on that album *Fratres* is Kremer with Keith Jarrett, and Russell Davies
+conducts the *Cantus*. Being found "not found", it gets a stand-in from what Spotify has. This rides on
+`MATCHER_VERSION` 7, so the held near match is looked at again.

@@ -128,6 +128,23 @@ describe('a count spelt as a word or a figure', () => {
   })
 })
 
+describe('a coupling album naming several works', () => {
+  const fratres: ProposedRecording = { composer: 'Arvo Pärt', work: 'Fratres', conductor: 'Dennis Russell Davies', orchestra: 'Staatsorchester Stuttgart', soloists: [{ name: 'Gidon Kremer', instrument: 'violin' }] }
+  const album = { id: 'ecm', name: 'Arvo Pärt: Tabula Rasa, Fratres, Cantus in memoriam Benjamin Britten' }
+
+  it('doesn’t take another work on the album for this one', () => {
+    const cantus: SpotifyTrackLike = { id: 'c', name: 'Cantus in memoriam Benjamin Britten', uri: 'u', artists: [{ name: 'Arvo Pärt' }, { name: 'Stuttgart State Orchestra' }, { name: 'Dennis Russell Davies' }], album }
+    expect(matchTrack(cantus, fratres).level).toBe('none')
+  })
+
+  it('still lets the album name the work for a track named only by its movement', () => {
+    const p: ProposedRecording = { composer: 'Arvo Pärt', work: 'Tabula Rasa', conductor: 'Saulius Sondeckis', soloists: [] }
+    const movement: SpotifyTrackLike = { id: 'm', name: 'I. Ludus', uri: 'u', artists: [{ name: 'Arvo Pärt' }, { name: 'Saulius Sondeckis' }], album }
+    // Probable, as an album-only match always was: the album speaks, at a little less than the track would.
+    expect(matchTrack(movement, p).level).toBe('probable')
+  })
+})
+
 describe('one work, named two ways', () => {
   it('reads violoncello as cello', () => {
     expect(workOverlap('Cello Concerto', 'Concerto for Violoncello and Orchestra')).toBe(1)

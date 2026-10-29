@@ -1,4 +1,5 @@
 import type { ProposedRecording } from '../domain/types'
+import { orchestraTokens } from '../spotify/match'
 import { href } from '../app/router'
 import s from '../styles/editorial.module.css'
 
@@ -20,13 +21,23 @@ export function PerformerLine({ r, className }: { r: Performers; className?: str
 
 type Performers = Pick<ProposedRecording, 'conductor' | 'orchestra' | 'ensemble' | 'soloists'>
 
+/**
+ * The ensemble, unless it is the orchestra named again: a stand-in's performers come from
+ * Spotify's credits, and the curator sometimes fills both fields with "Berlin Philharmonic"
+ * (29 October 2026). "Berliner Philharmoniker" and "Berlin Philharmonic" are one band.
+ */
+function ensembleOf(r: Performers): string | undefined {
+  if (!r.ensemble || !r.orchestra) return r.ensemble
+  return orchestraTokens(r.ensemble).join(' ') === orchestraTokens(r.orchestra).join(' ') ? undefined : r.ensemble
+}
+
 /** The performers in reading order — conductor, soloists, orchestra or ensemble — each with its role. */
 export function creditRows(r: Performers): [role: string, name: string][] {
   return [
     ...(r.conductor ? [['conductor', r.conductor] as [string, string]] : []),
     ...r.soloists.map((x): [string, string] => [x.instrument ? `${x.instrument} soloist` : 'soloist', x.name]),
     ...(r.orchestra ? [['orchestra', r.orchestra] as [string, string]] : []),
-    ...(r.ensemble ? [['ensemble', r.ensemble] as [string, string]] : []),
+    ...(ensembleOf(r) ? [['ensemble', ensembleOf(r)] as [string, string]] : []),
   ]
 }
 
@@ -69,7 +80,7 @@ export function programmeCreditRows(r: Performers): [name: string, role: string]
   return [
     ...r.soloists.map((x): [string, string] => [x.name, x.instrument ?? 'soloist']),
     ...(r.orchestra ? [[r.orchestra, ''] as [string, string]] : []),
-    ...(r.ensemble ? [[r.ensemble, ''] as [string, string]] : []),
+    ...(ensembleOf(r) ? [[ensembleOf(r), ''] as [string, string]] : []),
     ...(r.conductor ? [[r.conductor, 'conductor'] as [string, string]] : []),
   ]
 }

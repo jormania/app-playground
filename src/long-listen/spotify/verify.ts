@@ -3,7 +3,7 @@ import { displaySurname, newId } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { heardAs, standInsOf } from '../domain/standIns'
 import type { Repo } from '../store/repo'
-import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, numerals, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
+import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, namesAnotherWork, numerals, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import { SpotifyAuthError } from './auth'
 import { SpotifyUnavailable, type RecentPlay, type SpotifyAlbum, type SpotifyClient } from './client'
 import { forgetPlaceBefore } from '../app/place'
@@ -237,7 +237,7 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
   for (const q of queries) {
     for (const t of await spotify.searchTracks(q)) {
       if (!t.album || byAlbum.has(t.album.id)) continue
-      const onWork = Math.max(workOverlap(p.work, t.name), workOverlap(p.work, t.album.name)) >= 0.75 || catalogueAgrees(p, t.name)
+      const onWork = Math.max(workOverlap(p.work, t.name), namesAnotherWork(p, t) ? 0 : workOverlap(p.work, t.album.name)) >= 0.75 || catalogueAgrees(p, t.name)
       if (!onWork || catalogueContradicts(p, t.name) || !isCredited(p.composer, t.artists)) continue
       const artists = t.artists.map((a) => a.name).filter((n) => !isCredited(p.composer, [{ name: n }]))
       const title = t.name.split(':')[0].trim()
