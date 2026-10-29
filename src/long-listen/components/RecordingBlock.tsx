@@ -183,11 +183,11 @@ export function RecordingBlock({
           onStarted={() => onOpened?.('play-started')}
           onOpened={() => onOpened?.('opened')}
         />
-      ) : near ? null : (
+      ) : near || recording?.verification === 'not-found' ? null : (
+        // Not found: no search by hand either. Spotify was searched more thoroughly than a person would,
+        // so the way forward is a recording it does have ("Ask for one that's on Spotify", below).
         <div className={s.actions}>
-          {recording?.verification === 'not-found' ? (
-            <a className={s.searchLink} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify ↗</a>
-          ) : spotify.connected && recording ? (
+          {spotify.connected && recording ? (
             <button className={s.outlineButton} onClick={check} disabled={busy}>{busy ? 'Looking on Spotify…' : 'Find this recording on Spotify'}</button>
           ) : (
             // Without Spotify connected, a quiet link: Listen along below is the way in, and it shouldn't sit second to a search.

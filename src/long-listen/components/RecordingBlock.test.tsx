@@ -20,9 +20,10 @@ describe('a recording Spotify doesn’t carry', () => {
     expect(container.querySelector('a')).toBeNull()
   })
 
-  it('keeps its tags and the search while nothing plays in its place', () => {
-    const { container } = render(<RecordingBlock proposed={gielen} recording={missing} />)
+  it('keeps its tags while nothing plays in its place, and offers no search by hand', () => {
+    const { container } = render(<RecordingBlock proposed={gielen} recording={missing} onFindAlternative={() => {}} />)
     expect(container.textContent).toContain('dense')
-    expect(container.textContent).toContain('Look for it on Spotify')
+    expect(container.textContent).not.toContain('Look for it on Spotify')
+    expect(container.textContent).toContain('Ask for one that’s on Spotify')
   })
 })
