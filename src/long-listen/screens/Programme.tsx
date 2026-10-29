@@ -805,7 +805,7 @@ function StandInView({ c, b, children }: { c: Comparison; b: Bundle; children?: 
   const pv = c.perspectives[1]
   if (!pv) return <>{children}</>
   return (
-    <div className={s.block}>
+    <div className={`${s.block} ${s.standInBlock}`}>
       <RecordingBlock
         label="On Spotify instead"
         proposed={pv.proposed}

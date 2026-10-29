@@ -130,7 +130,7 @@ export function RecordingBlock({
     return (
       <div className={`${s.recording} ${s.recordingAside}`}>
         <p className={`${s.note} ${s.flush}`}>
-          The curator’s choice, {performerLine(proposed) || 'unnamed performers'}, isn’t on Spotify. This one plays in its place:
+          The curator’s choice, {performerLine(proposed) || 'unnamed performers'}, isn’t on Spotify.
         </p>
       </div>
     )

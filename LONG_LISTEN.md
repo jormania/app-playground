@@ -1757,8 +1757,8 @@ recording the full treatment: its credits, "the playing" as tags, a Spotify sear
 recording". The stand-in that actually plays came second, its playing sometimes a sentence. The owner asked for the
 reverse: the missing recording kept sparse, attention on the one proposed instead.
 
-- The curator's recording steps back to one line: "The curator's choice, Michael Gielen · SWR Sinfonieorchester
-  Baden-Baden, isn't on Spotify. This one plays in its place:". There are no tags, search or note. Its "Why this
+- The curator's recording steps back to one line, set close to the stand-in below it: "The curator's choice, Michael Gielen · SWR Sinfonieorchester
+  Baden-Baden, isn't on Spotify". There are no tags, search or note. Its "Why this
   recording" is hidden while the stand-in plays; the stand-in's own framing and "Listen for" speak instead.
 - The stand-in's "The playing" is tags. A character the curator wrote as a sentence gives its short opening words as
   tags ("Warm, velvety and fluid; a rich…" → warm · velvety and fluid, `traitsOf`). Only a sentence with no short

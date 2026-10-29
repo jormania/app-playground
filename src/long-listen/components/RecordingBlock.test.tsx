@@ -16,7 +16,7 @@ describe('a recording Spotify doesn’t carry', () => {
   // 29 October 2026: its tags, a search and a long note sat above the stand-in that actually plays.
   it('steps back to one line when a stand-in plays below it', () => {
     const { container } = render(<RecordingBlock proposed={gielen} recording={missing} standInBelow />)
-    expect(container.textContent).toBe('The curator’s choice, Michael Gielen · SWR Sinfonieorchester Baden-Baden, isn’t on Spotify. This one plays in its place:')
+    expect(container.textContent).toBe('The curator’s choice, Michael Gielen · SWR Sinfonieorchester Baden-Baden, isn’t on Spotify.')
     expect(container.querySelector('a')).toBeNull()
   })
 
