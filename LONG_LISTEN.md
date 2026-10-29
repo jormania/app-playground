@@ -1667,3 +1667,24 @@ after and around it:
   the view's light text. They are now `:where(…)`, of no weight: they paint the first frame and give way the
   moment the app's styles load.
 
+
+## 40. A count spelt as a word (29 October 2026)
+
+The owner opened Scelsi's *Quattro pezzi su una nota sola*, proposed with Cambreling and the SWR orchestra, and
+found nothing to play: "Spotify doesn't appear to carry this exact recording", and no stand-in. Spotify has no
+Cambreling recording of the work, but it does have others: Hans Zender with the Bavarian Radio Symphony
+Orchestra ("4 pezzi (su una nota sola)", *Musica Viva, Vol. 17*) and Tito Ceccherini with the RAI orchestra in
+Turin. The stand-in (see "Spotify verification" above) is asked for by itself when a recording is missing, but
+it chooses only from what `spotifyCandidates` finds. That search was too literal: "Quattro" never meets "4",
+in Spotify's search or in the title comparison. So the list came back empty, and the app quietly gave up.
+
+- **Counts read as figures** (`numerals` in `spotify/match.ts`): two to ten and twelve, in Italian, English,
+  German, French and Spanish, on both sides of every title comparison. "Quattro pezzi" is "4 pezzi"; "Vier
+  letzte Lieder" is "4 letzte Lieder". "One" is left out: un, uno and ein are as often articles.
+- **Spotify is also searched with the figure**, only when the title counts in words: one more query for the
+  match (`searchQueries`) and for the stand-in list (`spotifyCandidates`).
+- **Another work of the same count stays apart.** Scelsi's *Quattro pezzi* for solo trumpet shares two words of
+  six and is not taken. Ceccherini's recording is titled only "4 Pezzi", so it is not found either: the same
+  short title is the trumpet set's, and the matcher can't tell them apart.
+- `MATCHER_VERSION` is 7, so every recording an older matcher decided is looked at once more (on Spotify
+  alone; the curator is asked again only for a stand-in, as before).

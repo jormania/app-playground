@@ -136,6 +136,17 @@ describe('verifying a recording', () => {
     expect(spotify.searchTracks).toHaveBeenCalledWith('Brahms Op. 102')
   })
 
+  it('finds a work whose count Spotify spells as a figure, and not another work of the same count', async () => {
+    // The curator's "Quattro pezzi su una nota sola"; Spotify's "4 pezzi (su una nota sola)" (29 October 2026).
+    const p: ProposedRecording = { composer: 'Giacinto Scelsi', work: 'Quattro pezzi su una nota sola', conductor: 'Sylvain Cambreling', orchestra: 'SWR Sinfonieorchester Baden-Baden und Freiburg', soloists: [] }
+    const zender = { ...t('z1', '4 pezzi (su una nota sola): I. —', 1, ['Giacinto Scelsi', 'Bavarian Radio Symphony Orchestra', 'Hans Zender']), album: { id: 'mv17', name: 'Musica Viva, Vol. 17 - Scelsi' } }
+    const trumpet = { ...t('q1', 'Quattro Pezzi: I', 1, ['Giacinto Scelsi', 'Peter Masseurs']), album: { id: 'tr', name: 'Fascinated by a Single Tone' } }
+    const spotify = fakeSpotify([trumpet, zender])
+    const out = await spotifyCandidates(spotify, p)
+    expect(out.map((c) => c.albumId)).toEqual(['mv17'])
+    expect(spotify.searchTracks).toHaveBeenCalledWith('Scelsi 4 pezzi su una nota sola')
+  })
+
   it('takes a concerto for violoncello for a cello concerto, and says which one Spotify has', async () => {
     const p: ProposedRecording = { composer: 'Anatol Vieru', work: 'Cello Concerto', soloists: [] }
     const one = { ...t('c1', 'Concerto for Violoncello and Orchestra No. 1, Op. 29', 1, ['Anatol Vieru', 'Vladimír Orlov', 'Zubin Mehta']), album: { id: 'v2', name: 'Anatol Vieru, Vol. 2' } }

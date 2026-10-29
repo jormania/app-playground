@@ -103,10 +103,28 @@ describe('search', () => {
     expect(searchQueries(kleiber)).toContain('symphony 5 kleiber vienna')
   })
 
+  it('also searches with a count as a figure, when the title spells it as a word', () => {
+    const p: ProposedRecording = { composer: 'Giacinto Scelsi', work: 'Quattro pezzi su una nota sola', conductor: 'Sylvain Cambreling', soloists: [] }
+    expect(searchQueries(p)).toContain('scelsi 4 pezzi su una nota sola cambreling')
+    expect(searchQueries(kleiber).some((q) => /\b4\b/.test(q))).toBe(false)
+  })
+
   it('reduces orchestra names to what distinguishes them', () => {
     expect(orchestraTokens('London Symphony Orchestra')).toEqual(['london'])
     expect(orchestraTokens('Orchestre de Paris')).toEqual(['paris'])
     expect(orchestraTokens('Wiener Philharmoniker')).toEqual(['vienna'])
+  })
+})
+
+describe('a count spelt as a word or a figure', () => {
+  it('reads "Quattro pezzi" as "4 pezzi", and "Vier letzte Lieder" as "4 letzte Lieder"', () => {
+    expect(workOverlap('Quattro pezzi su una nota sola', '4 pezzi (su una nota sola): I. —')).toBe(1)
+    expect(workOverlap('Vier letzte Lieder', '4 Letzte Lieder: I. Frühling')).toBe(1)
+  })
+
+  it('keeps another work of the same count apart', () => {
+    // Scelsi's Quattro pezzi for solo trumpet is not the orchestral four pieces on one note.
+    expect(workOverlap('Quattro pezzi su una nota sola', 'Quattro Pezzi: I')).toBeLessThan(0.75)
   })
 })
 

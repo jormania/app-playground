@@ -94,8 +94,10 @@ const tokens = (s: string) => s.split(' ').filter(Boolean)
  *       past their 200th track are read to the end.
  *   6 — a work no longer runs on into a neighbour of the same title with
  *       another catalogue number (Grieg's Op. 16 beside Schumann's Op. 54).
+ *   7 — a count spelt as a word is the figure ("Quattro pezzi" is "4 pezzi"),
+ *       and Spotify is also searched with the figure.
  */
-export const MATCHER_VERSION = 6
+export const MATCHER_VERSION = 7
 
 /**
  * The curator often adds a version note in brackets — "(original piano
@@ -112,7 +114,27 @@ const SAME_WORD: [RegExp, string][] = [
   [/\bviolon(?:cello|celle|cel)\b/g, 'cello'],
   [/\bvioloncelo\b/g, 'cello'],
 ]
-const sameWords = (s: string) => SAME_WORD.reduce((acc, [re, to]) => acc.replace(re, to), s)
+const sameWords = (s: string) => numerals(SAME_WORD.reduce((acc, [re, to]) => acc.replace(re, to), s))
+
+/**
+ * A count is spelt as a word in one title and a figure in another: the curator's
+ * "Quattro pezzi su una nota sola" is Spotify's "4 pezzi (su una nota sola)", "Vier
+ * letzte Lieder" is often "4 letzte Lieder". The words, in the languages titles are
+ * written in, read as figures. "One" isn't among them: un, uno, ein are as often articles.
+ */
+const NUMERALS: [RegExp, string][] = [
+  [/\b(?:due|two|zwei|deux|dos)\b/gi, '2'],
+  [/\b(?:tre|three|drei|trois|tres)\b/gi, '3'],
+  [/\b(?:quattro|four|vier|quatre|cuatro)\b/gi, '4'],
+  [/\b(?:cinque|five|f(?:u|ü)nf|cinq|cinco)\b/gi, '5'],
+  [/\b(?:sei|six|sechs|seis)\b/gi, '6'],
+  [/\b(?:sette|seven|sieben|sept|siete)\b/gi, '7'],
+  [/\b(?:otto|eight|acht|huit|ocho)\b/gi, '8'],
+  [/\b(?:nove|nine|neun|neuf|nueve)\b/gi, '9'],
+  [/\b(?:dieci|ten|zehn|dix|diez)\b/gi, '10'],
+  [/\b(?:dodici|twelve|zw(?:o|ö)lf|douze|doce)\b/gi, '12'],
+]
+export const numerals = (s: string): string => NUMERALS.reduce((acc, [re, to]) => acc.replace(re, to), s)
 
 /**
  * Spotify spells catalogue numbers several ways — "BWV1048" for "BWV 1048",
@@ -368,6 +390,8 @@ export function searchQueries(p: ProposedRecording): string[] {
     [composer, work, lead].filter(Boolean).join(' '),
     [work, lead, bandWords].filter(Boolean).join(' '),
     [composer, work, bandWords].filter(Boolean).join(' '),
+    // Spotify's search is literal: "quattro" doesn't find "4 pezzi". Asked only when the title counts in words.
+    ...(numerals(work) !== work ? [[composer, numerals(work), lead].filter(Boolean).join(' ')] : []),
   ]
   return [...new Set(qs.filter((q) => q.trim().length > 0))]
 }

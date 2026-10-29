@@ -3,7 +3,7 @@ import { displaySurname, newId } from '../domain/identity'
 import { listeningState } from '../domain/listening'
 import { heardAs, standInsOf } from '../domain/standIns'
 import type { Repo } from '../store/repo'
-import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
+import { MATCHER_VERSION, bestTrack, catalogueAgrees, catalogueContradicts, isCredited, movementTitle, numerals, searchQueries, workOverlap, workTracks, type SpotifyTrackLike } from './match'
 import { SpotifyAuthError } from './auth'
 import { SpotifyUnavailable, type RecentPlay, type SpotifyAlbum, type SpotifyClient } from './client'
 import { forgetPlaceBefore } from '../app/place'
@@ -224,8 +224,11 @@ export async function spotifyCandidates(spotify: SpotifyClient, p: ProposedRecor
   // The surname, as every other Spotify query leads with it (searchQueries): the last
   // word of "Johann Strauss II" is the generation, not the composer.
   const composer = displaySurname(p.composer)
+  const byTitle = `${composer} ${p.work.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')}`.replace(/\s+/g, ' ').trim()
   const queries = [...new Set([
-    `${composer} ${p.work.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')}`.replace(/\s+/g, ' ').trim(),
+    byTitle,
+    // Spotify's search is literal: "Quattro pezzi" doesn't find "4 pezzi".
+    numerals(byTitle),
     // The catalogue number finds the recordings that title the work another way.
     ...(p.catalogue?.trim() ? [`${composer} ${p.catalogue.trim()}`] : []),
     ...searchQueries(p).slice(0, 1),
