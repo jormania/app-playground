@@ -6,7 +6,7 @@ import { useServices } from '../app/services'
 import { messageOf } from './common'
 import { ListenBar } from './ListenBar'
 import { usePlayback } from '../app/playback'
-import { Credits } from '../components/Credits'
+import { Credits, performerLine } from '../components/Credits'
 import { displaySurname } from '../domain/identity'
 import { primeMinutes } from '../domain/programmeStyle'
 import { Traits } from './Traits'
@@ -124,6 +124,18 @@ export function RecordingBlock({
     }
   }
 
+  // Spotify doesn't carry the curator's recording, and a stand-in plays below: one quiet line says whose
+  // it was, and everything else — the playing, a search, the stand-in's tags and the way to play — is the stand-in's.
+  if (recording?.verification === 'not-found' && standInBelow) {
+    return (
+      <div className={`${s.recording} ${s.recordingAside}`}>
+        <p className={`${s.note} ${s.flush}`}>
+          The curator’s choice, {performerLine(proposed) || 'unnamed performers'}, isn’t on Spotify. This one plays in its place:
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className={s.recording}>
       <div className={s.label}>{label}</div>
@@ -171,11 +183,11 @@ export function RecordingBlock({
           onStarted={() => onOpened?.('play-started')}
           onOpened={() => onOpened?.('opened')}
         />
-      ) : near ? null : (
+      ) : near || recording?.verification === 'not-found' ? null : (
+        // Not found: no search by hand either. Spotify was searched more thoroughly than a person would,
+        // so the way forward is a recording it does have ("Ask for one that's on Spotify", below).
         <div className={s.actions}>
-          {recording?.verification === 'not-found' ? (
-            <a className={s.searchLink} href={searchUrl(query)} target="_blank" rel="noopener noreferrer">Look for it on Spotify ↗</a>
-          ) : spotify.connected && recording ? (
+          {spotify.connected && recording ? (
             <button className={s.outlineButton} onClick={check} disabled={busy}>{busy ? 'Looking on Spotify…' : 'Find this recording on Spotify'}</button>
           ) : (
             // Without Spotify connected, a quiet link: Listen along below is the way in, and it shouldn't sit second to a search.
@@ -206,10 +218,8 @@ export function RecordingBlock({
       )}
       {recording?.verification === 'not-found' && (
         <p className={s.note}>
-          {standInBelow
-            ? 'Spotify doesn’t carry this exact recording, so the curator picked one it does, below.'
-            : 'Spotify doesn’t appear to carry this exact recording. The curator’s choice stands; it may be elsewhere.'}
-          {!standInBelow && onFindAlternative && <>{' '}<button className={s.textButton} onClick={onFindAlternative}>Ask for one that’s on Spotify</button></>}
+          Spotify doesn’t appear to carry this exact recording. The curator’s choice stands; it may be elsewhere.
+          {onFindAlternative && <>{' '}<button className={s.textButton} onClick={onFindAlternative}>Ask for one that’s on Spotify</button></>}
         </p>
       )}
     </div>

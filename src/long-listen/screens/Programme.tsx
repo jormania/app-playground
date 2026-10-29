@@ -669,7 +669,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       {standInShown && standIn && <StandInView c={standIn} b={b}>{listenAlong}</StandInView>}
       {!standInShown && listenAlong}
       {/* Read once: open the first time, then one line that still says who and why. */}
-      {item.whyThisRecording && (
+      {/* About the curator's recording: while a stand-in plays in its place, the stand-in's own framing speaks instead. */}
+      {item.whyThisRecording && !standInShown && (
         <Twisty label="Why this recording" value={item.whyThisRecording} preview readOnce={`why-recording:${pid}:${item.id}`}>
           <p>{item.whyThisRecording}</p>
         </Twisty>

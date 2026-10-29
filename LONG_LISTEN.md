@@ -1749,3 +1749,22 @@ billing.
 Still out of reach, and said here so nobody is surprised: a titled work translated in the proposal but not on
 Spotify ("Prelude to the Afternoon of a Faun" against "Prélude à l'après-midi d'un faune") with no catalogue number
 on either side. Both the prompt change and the catalogue number are meant to make that rare.
+
+## 41. The stand-in in front (29 October 2026)
+
+When Spotify doesn't carry the curator's recording and a stand-in plays in its place, the page gave the missing
+recording the full treatment: its credits, "the playing" as tags, a Spotify search, a long note and "Why this
+recording". The stand-in that actually plays came second, its playing sometimes a sentence. The owner asked for the
+reverse: the missing recording kept sparse, attention on the one proposed instead.
+
+- The curator's recording steps back to one line: "The curator's choice, Michael Gielen · SWR Sinfonieorchester
+  Baden-Baden, isn't on Spotify. This one plays in its place:". There are no tags, search or note. Its "Why this
+  recording" is hidden while the stand-in plays; the stand-in's own framing and "Listen for" speak instead.
+- The stand-in's "The playing" is tags. A character the curator wrote as a sentence gives its short opening words as
+  tags ("Warm, velvety and fluid; a rich…" → warm · velvety and fluid, `traitsOf`). Only a sentence with no short
+  opening is set as written. `compare@2026-10-29.1` asks for the words outright.
+- With no stand-in yet (or none to be had), the curator's recording keeps its tags and
+  "Ask for one that's on Spotify". It no longer offers "Look for it on Spotify": the matcher searches Spotify more
+  thoroughly than a person would, so a hand search rarely finds what it missed. The link stays only while Spotify
+  isn't connected, when it is the one way in.
+- Also in this change: the masthead's week line has a row of its own and never wraps (PR #213).
