@@ -23,6 +23,8 @@
   max-width: calc(var(--measure) + 2 * var(--space-md));
   margin: 0 auto;
   padding: var(--space-lg) var(--space-md) 0;
+  /* The week line sizes itself to the masthead's width (cqi). */
+  container-type: inline-size;
 }
 
 .brandRow {
@@ -53,7 +55,11 @@
 }
 
 .weekLine {
-  font-size: var(--text-sm);
+  /* Always one line (29 October 2026: "26 October – 1 November 2026" wrapped on a phone):
+     on a row of its own under the title, at the usual size; a little smaller only where even that is too narrow. */
+  margin: calc(-1 * var(--space-2xs)) 0 var(--space-2xs);
+  font-size: min(var(--text-sm), 6.4cqi);
+  white-space: nowrap;
   color: var(--color-muted);
   font-style: italic;
 }

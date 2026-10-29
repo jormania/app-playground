@@ -67,7 +67,6 @@ function Shell() {
         <div className={s.brandRow}>
           <span className={s.brandStack}>
             <a className={s.brand} href="#/" onClick={(e) => toTopIfHere(e, '#/')}>The Long Listen</a>
-            <span className={s.weekLine}>Week {week.number} · {week.label}</span>
           </span>
           <span className={s.mastRight}>
             {/* Back to the work sounding (or paused, or left part-way), from any screen: shown only when there is one. */}
@@ -76,6 +75,8 @@ function Shell() {
             <a className={`${s.iconLink} ${route.name === 'settings' ? s.iconOn : ''}`} href={href({ name: 'settings' })} aria-label="Settings" title="Settings"><Settings2 size={18} strokeWidth={1.6} /></a>
           </span>
         </div>
+        {/* A row of its own, the masthead's whole width: beside the controls (and the way back to the work playing) it wrapped. */}
+        <p className={s.weekLine}>Week {week.number} · {week.label}</p>
         {/* The listening view is one quiet screen: the sections step back, and
             its own link leads back to the programme. */}
         {route.name !== 'listen' && <nav ref={navRef} className={s.nav} aria-label="Sections">
