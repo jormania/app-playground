@@ -1342,7 +1342,7 @@ renders at cannot be settled from the CSS: most `--font-display` rules inherit
 their weight, there is no heading reset so `h1`–`h3` are 700, and `--weight-bold`
 is 700 from the DS. Dropping one is a visual judgement needing browser evidence,
 not a build-size tidy-up.
-## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js and store.js done, four modules to go
+## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js, store.js and useLoom.js done, three modules to go
 
 **Impact:** none visible. Makes the least-covered non-legacy app safe to change.
 
@@ -1384,8 +1384,22 @@ saving them (via a stubbed `fetch`). Four mutations run: three caught; the fourt
 (`if (id)` → `if (true)` in `setDatabaseId`) is an equivalent mutant, since a stored
 empty string reads back as unset.
 
-**Still untested, in the order this item suggests:** `useLoom.js`,
-`localClient.js`, `lexicon.js`, `uiStyle.js`.
+**`useLoom.js` done 2026-10-30 — 16 tests** (`useLoom.test.jsx`, happy-dom, `store.js`
+mocked so the hook runs against a fake client). They pin the optimistic contract:
+add shows a pending `tmp-` thread and swaps in the saved one, a failed create rolls
+it back, a failed patch reverts to the previous thread, a failed delete restores it,
+patch/remove of a still-in-flight temp id never reaches the client, and the flashed
+error clears itself after ~4.2s or on `dismissError`. Four mutations run (drop the
+roll-back, drop the temp-id guard, drop the revert, never clear the flash); each caught.
+
+One thing for the next person writing a hook test here: `patchThread` and
+`removeThread` capture `prev`/`removed` *inside* the `setThreads` updater, which React
+runs lazily at render. A fake client that rejects immediately beats that render and
+the revert silently does nothing. Real network failures arrive later, so the tests
+reject on a later macrotask (`failLater`) — not a hook bug, but worth knowing.
+
+**Still untested, in the order this item suggests:** `localClient.js`, `lexicon.js`,
+`uiStyle.js`.
 ---
 
 ## R-018 — Sweep for the rest of the date-dependent tests · `modernise` · `done 2026-09-22 — swept clean`
