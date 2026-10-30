@@ -196,7 +196,8 @@
 
 .eyebrow {
   margin: 0 0 var(--space-xs);
-  font-size: var(--text-sm);
+  /* Small capitals at 14px came out about 10px tall; at 16px they read (30 October 2026). */
+  font-size: var(--text-base);
   font-weight: 600;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.1em;
@@ -303,7 +304,8 @@
 
 .h3 {
   margin: 0 0 var(--space-2xs);
-  font-size: var(--text-sm);
+  /* Small capitals at 14px came out about 10px tall; at 16px they read (30 October 2026). */
+  font-size: var(--text-base);
   font-variant-caps: all-small-caps;
   letter-spacing: 0.09em;
   color: var(--color-faint);
@@ -586,7 +588,8 @@
 }
 
 .roComposer {
-  font-size: var(--text-sm);
+  /* Small capitals at 14px came out about 10px tall; at 16px they read (30 October 2026). */
+  font-size: var(--text-base);
   font-variant-caps: all-small-caps;
   letter-spacing: 0.08em;
   color: var(--color-muted);
@@ -1058,7 +1061,8 @@
 }
 
 .label {
-  font-size: var(--text-sm);
+  /* Small capitals at 14px came out about 10px tall; at 16px they read (30 October 2026). */
+  font-size: var(--text-base);
   font-weight: 600;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.09em;
@@ -1114,19 +1118,19 @@
   padding-top: 0;
 }
 
-.partHead {
+.workPartHead {
   display: flex;
   align-items: center;
   gap: var(--space-2xs);
   margin: 0 0 var(--space-xs);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--color-faint);
+  color: var(--color-muted);
 }
 
-.partHead::before {
+.workPartHead::before {
   content: '';
   flex: none;
   width: 5px;
@@ -1136,7 +1140,7 @@
 }
 
 /* What a part opens with sits right under its heading. */
-.workPart > .partHead + * {
+.workPart > .workPartHead + * {
   margin-top: 0;
 }
 
@@ -2807,7 +2811,8 @@
 
 .twistyLabel {
   /* The app's small-caps label, in ink: it is the thing to tap. */
-  font-size: var(--text-sm);
+  /* Small capitals at 14px came out about 10px tall; at 16px they read (30 October 2026). */
+  font-size: var(--text-base);
   font-weight: 600;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.09em;
@@ -2924,7 +2929,8 @@
 
 .traitsLabel {
   margin-right: var(--space-3xs);
-  font-size: var(--text-sm);
+  /* Small capitals at 14px came out about 10px tall; at 16px they read (30 October 2026). */
+  font-size: var(--text-base);
   font-weight: 600;
   font-variant-caps: all-small-caps;
   letter-spacing: 0.09em;

@@ -1784,3 +1784,10 @@ recording on a card; C, a rail down each part).
   dark and the listening shades all hold.
 - The recording's own "Recommended recording" label gives way to the part's heading (`RecordingBlock label={null}`).
   The stand-in keeps "On Spotify instead", since it is a second recording within the part.
+
+**A collision, and labels too small (30 October 2026).** The part headings above took the class name `partHead`,
+which the programme's section headings ("I · Start here") already carried. The section headings shrank to 12px
+uppercase with an accent dot. The part headings are now `.workPartHead`, and the section headings are as they were.
+A sweep of the programme page for small text found the 14px labels set in small capitals (`.eyebrow`, `.h3`,
+`.label`, `.twistyLabel`, `.traitsLabel`, `.roComposer`): their letters come out about 10px tall. They are now 16px
+(`--text-base`). The part headings are 14px, in the muted colour.
