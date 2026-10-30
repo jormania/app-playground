@@ -656,14 +656,14 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       {/* A work in parts, each under a small heading and a hairline (29 October 2026, variant A):
           the work, its recording, what to listen for, and the listener's own. */}
       <section className={`${s.workPart} ${s.workPartFirst}`}>
-        <p className={s.partHead}>The work</p>
+        <p className={s.workPartHead}>The work</p>
         {/* The notes open as a booklet's essays do: their first line in small capitals. */}
         <div className={`${s.prose} ${s.workWhy}`}><p><Gloss text={item.why} /></p></div>
         {item.revisitReason && <p className={`${s.continuity} ${s.flush} ${s.mtSm}`}>{item.revisitReason}</p>}
       </section>
 
       <section className={s.workPart}>
-      <p className={s.partHead}>The recording</p>
+      <p className={s.workPartHead}>The recording</p>
       <RecordingBlock
         label={null}
         proposed={item.proposed}
@@ -687,7 +687,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
 
       {item.listenFor.length > 0 && (
         <section className={s.workPart}>
-          <p className={s.partHead}>Listen for</p>
+          <p className={s.workPartHead}>Listen for</p>
           <ul className={s.listenFor}>{item.listenFor.map((l, i) => <li key={i}><Gloss text={l} /></li>)}</ul>
         </section>
       )}
@@ -697,7 +697,7 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
           plain links. The choices open in place; while a hearing waits for a word
           on how it landed, the fold stays open, as the box it replaced did. */}
       <div className={`${s.workPart} ${s.workClose}`}>
-        <p className={s.partHead}>Yours</p>
+        <p className={s.workPartHead}>Yours</p>
         <ListeningRow work={item.proposed.work} state={state} open={feedbackPending} onPick={(to) => { void mark(to) }}>
           <div className={s.switchRow}>
             <div>
