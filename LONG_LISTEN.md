@@ -1791,3 +1791,8 @@ uppercase with an accent dot. The part headings are now `.workPartHead`, and the
 A sweep of the programme page for small text found the 14px labels set in small capitals (`.eyebrow`, `.h3`,
 `.label`, `.twistyLabel`, `.traitsLabel`, `.roComposer`): their letters come out about 10px tall. They are now 16px
 (`--text-base`). The part headings are 14px, in the muted colour.
+
+**One "Listen for" (1 November 2026).** A stand-in printed its own "Listen for" (the one thing the curator wrote
+for that recording) inside its block, just above the work's "Listen for" part: two headings, one under the other,
+on Lontano. The stand-in's line now joins the work's list as its last item, "In this recording: …", under the
+one heading.
