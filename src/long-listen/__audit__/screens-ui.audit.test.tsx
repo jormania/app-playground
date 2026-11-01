@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
 import { Repo, memoryStore } from '../store/repo'
@@ -119,13 +119,14 @@ describe('marking what was heard', () => {
     })
     window.location.hash = `#/p/${p.id}`
     render(<App repo={repo} curator={plain()} />)
-    const notes = await screen.findByText('The glints on the water.', undefined, { timeout: 4000 })
-    const work = notes.closest('[id]') as HTMLElement
+    const framing = await screen.findByText('Set side by side.', undefined, { timeout: 4000 })
+    const work = framing.closest('[id]') as HTMLElement
     const along = [...work.querySelectorAll('a')].filter((a) => a.textContent?.includes('Listen along'))
     expect(along).toHaveLength(1)
-    const framing = screen.getByText('Set side by side.')
     expect(along[0].compareDocumentPosition(framing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(along[0].compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // The work has its own "Listen for": the stand-in's line, written for the same music, isn't said again (1 November 2026).
+    expect(screen.queryByText(/The glints on the water/)).toBeNull()
+    expect(within(work).getAllByText('Listen for')).toHaveLength(1)
   }, 15000)
 
   it('without Spotify, says once for the page that recordings can’t be confirmed — not under every work', async () => {
