@@ -1794,5 +1794,5 @@ A sweep of the programme page for small text found the 14px labels set in small 
 
 **One "Listen for" (1 November 2026).** A stand-in printed its own "Listen for" (the one thing the curator wrote
 for that recording) inside its block, just above the work's "Listen for" part: two headings, one under the other,
-on Lontano. The stand-in's line now joins the work's list as its last item, "In this recording: …", under the
-one heading.
+on Lontano. There is one heading now. The stand-in's line shows only when the work has no list of its own
+("In this recording: …"): written for the same music, it said again what the list already says, in other words.

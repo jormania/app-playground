@@ -621,7 +621,9 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
   const feedbackPending = state === 'heard' && !b.feedback.some((f) => f.target.id === playedId)
 
   const standInShown = Boolean(standIn) && !isConfirmed(recording)
-  const standInListenFor = standInShown ? standIn?.perspectives[1]?.listenFor : undefined
+  // Only where the work has no list of its own: written for the same music, the stand-in's line said again
+  // what the list already says, in other words ("recedes at the close" under "the close, where everything retreats").
+  const standInListenFor = standInShown && !item.listenFor.length ? standIn?.perspectives[1]?.listenFor : undefined
   // The way most listening happens: the work on a screen of its own, while it plays — set like
   // Play (the same shape and height), outlined so Play stays first, and plainly a way to another screen.
   // It sits straight under the Play that plays: the stand-in's, where there is one.
@@ -686,8 +688,8 @@ function ItemView({ item, number, b, comparison }: { item: ProgrammeItem; number
       )}
       </section>
 
-      {/* One "Listen for": the work's, and — where a stand-in plays — the one thing the curator
-          wrote for that recording, last (two headings stood one above the other, 1 November 2026). */}
+      {/* One "Listen for": the work's list, or — only where it has none — the one thing the curator wrote
+          for the stand-in (two headings stood one above the other, 1 November 2026). */}
       {(item.listenFor.length > 0 || standInListenFor) && (
         <section className={s.workPart}>
           <p className={s.workPartHead}>Listen for</p>
