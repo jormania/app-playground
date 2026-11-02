@@ -1342,7 +1342,7 @@ renders at cannot be settled from the CSS: most `--font-display` rules inherit
 their weight, there is no heading reset so `h1`–`h3` are 700, and `--weight-bold`
 is 700 from the DS. Dropping one is a visual judgement needing browser evidence,
 not a build-size tidy-up.
-## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js, store.js and useLoom.js done, three modules to go
+## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js, store.js, useLoom.js and localClient.js done, two modules to go
 
 **Impact:** none visible. Makes the least-covered non-legacy app safe to change.
 
@@ -1398,8 +1398,16 @@ runs lazily at render. A fake client that rejects immediately beats that render 
 the revert silently does nothing. Real network failures arrive later, so the tests
 reject on a later macrotask (`failLater`) — not a hook bug, but worth knowing.
 
-**Still untested, in the order this item suggests:** `localClient.js`, `lexicon.js`,
-`uiStyle.js`.
+**`localClient.js` done 2026-11-02 — 13 tests** (`localClient.test.js`, same stub). They
+pin first-run seeding (once), respecting a stored board over reseeding, a cleared
+board staying empty (the `loom_seeded` flag), corrupt stored JSON falling back to the
+seed, create ignoring a caller-supplied id, update keeping the id and returning
+`null` for an unknown one, remove touching only its thread, `replaceAll` marking the
+board seeded, and every method surviving a throwing `localStorage`. Four mutations
+run (id overwritten by the patch, the seeded-flag guard dropped, caller id winning on
+create, remove inverted); each caught.
+
+**Still untested, in the order this item suggests:** `lexicon.js`, `uiStyle.js`.
 ---
 
 ## R-018 — Sweep for the rest of the date-dependent tests · `modernise` · `done 2026-09-22 — swept clean`
