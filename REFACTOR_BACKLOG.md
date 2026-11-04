@@ -1342,7 +1342,7 @@ renders at cannot be settled from the CSS: most `--font-display` rules inherit
 their weight, there is no heading reset so `h1`–`h3` are 700, and `--weight-bold`
 is 700 from the DS. Dropping one is a visual judgement needing browser evidence,
 not a build-size tidy-up.
-## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js, store.js, useLoom.js and localClient.js done, two modules to go
+## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js, store.js, useLoom.js, localClient.js and lexicon.js done, one module to go
 
 **Impact:** none visible. Makes the least-covered non-legacy app safe to change.
 
@@ -1407,7 +1407,15 @@ board seeded, and every method surviving a throwing `localStorage`. Four mutatio
 run (id overwritten by the patch, the seeded-flag guard dropped, caller id winning on
 create, remove inverted); each caught.
 
-**Still untested, in the order this item suggests:** `lexicon.js`, `uiStyle.js`.
+**`lexicon.js` done 2026-11-04 — 11 tests** (`lexicon.test.js`, same stub). They pin the
+invariant the file's header promises (every key carries both voices, non-empty), `pickLexicon`
+returning the same keys for both voices and falling back to `loom` for an unknown voice,
+`loadVoice` ignoring a stored non-voice, `saveVoice` coercing to `loom`/`plain`, and both
+survive a throwing `localStorage`. Wording itself is deliberately not transcribed, so
+rewording a term fails nothing. Three mutations run (drop the stored-value check, drop the
+voice fallback, delete one key's `plain`); each caught.
+
+**Still untested:** `uiStyle.js`.
 ---
 
 ## R-018 — Sweep for the rest of the date-dependent tests · `modernise` · `done 2026-09-22 — swept clean`
