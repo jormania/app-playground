@@ -172,6 +172,9 @@ export const DEFAULT_SETTINGS = {
   name: '',
   hintSeen: false, // first-run "tap 夜" hint
   customMixes: [], // saved mixer blends: [{ id, name, mix }]
+  // Pair each night with the sleep Google Health recorded (Settings → nights &
+  // sleep). Off until you turn it on; see lib/nights.js and YORU.md.
+  sleepLink: false,
 }
 
 // Bump whenever the mix's underlying CURVE changes meaning (not just its

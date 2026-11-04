@@ -17,6 +17,12 @@ should never depend on it. Only **new** apps build on `src/ds/`.
 | Journal of Delights | [`src/journal/`](src/journal/) | `journal-of-delights-react.html` |
 | Kettlebell Training | [`src/kettlebell/`](src/kettlebell/) | `kettlebell-training-react.html` |
 
+**Exception, 2026-11-04, at the owner's request:** Touch Grass reads the walk's
+steps and heart rate from Google Health (`src/touch-grass/walkStats.js`,
+[`GOOGLE_HEALTH.md`](GOOGLE_HEALTH.md)). It adds one line under a find and its relic
+and a Settings button in the app's own style. Without a Google Health key the app
+behaves exactly as before.
+
 ## Companion static pages (part of the current apps)
 
 - `public/touch-grass-react-almanac.html` — Touch Grass almanac

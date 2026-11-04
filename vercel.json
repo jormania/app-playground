@@ -16,6 +16,14 @@
       "destination": "/api/steam-search?mode=hltb"
     },
     {
+      "source": "/api/google-health/callback",
+      "destination": "/api/google-health?mode=callback"
+    },
+    {
+      "source": "/api/health-mcp/:key",
+      "destination": "/api/google-health?mode=mcp&key=:key"
+    },
+    {
       "source": "/api/anthropic-proxy/:match*",
       "destination": "https://api.anthropic.com/:match*"
     }

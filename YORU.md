@@ -630,6 +630,27 @@ not linger on screen. The prompt says why it helps (write it down, your mind can
 stop holding it). `prompt` → `writing` → **"set it down"** → `held` (gone from
 view, one faint way to glance back). At the session's end it's **discarded**.
 
+## Nights and sleep (Google Health, optional)
+
+The one place Yoru shows a number, and it is kept out of the night: a section at
+the foot of Settings, **off** by default (`settings.sleepLink`). Home, the session
+and the close still carry no stats. A sleep score glimpsed at bedtime is the kind
+of thing that keeps you awake.
+
+- [`lib/nights.js`](src/yoru/lib/nights.js) logs each night as it begins (start,
+  length, blend name, breathwork, display mode) and when it ends. 90 nights, on this
+  device only. **Never the note.** `blendLabel` names the blend from the mix itself
+  (curated, saved, scene, or "own blend").
+- [`lib/sleepMatch.js`](src/yoru/lib/sleepMatch.js) pairs each night with the main
+  sleep whose onset (the first real sleep stage) falls between 1 h before and 4 h
+  after Begin, and measures minutes from Begin to sleep. It compares by blend,
+  breathwork and display mode with **medians**, and only once two choices each have
+  three paired nights.
+- The screen says the limits out loud: band-estimated onset, and a blend is chosen
+  by mood, so the comparison is a hint.
+- Readings are fetched while the section is open and not stored. Setup and the
+  server side: [`GOOGLE_HEALTH.md`](GOOGLE_HEALTH.md).
+
 ## Same-night resume; PWA
 
 A night rolls over at 4am ([`lib/night.js`](src/yoru/lib/night.js)); a session

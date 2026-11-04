@@ -1,0 +1,91 @@
+/* Nights & sleep — the quietest section of Settings. Same row rhythm as the rest
+   of the sheet; the readings sit in the faint ink, never the glow. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  width: 100%;
+}
+
+.label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.hint,
+.caveat {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-faint);
+}
+
+.caveat {
+  font-size: var(--text-xs);
+}
+
+.link {
+  color: var(--color-ink);
+  text-underline-offset: 0.2em;
+}
+
+.nights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.night {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.when {
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+.what {
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+}
+
+.compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+
+.line {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-faint);
+}
+
+.line b {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.dim {
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
