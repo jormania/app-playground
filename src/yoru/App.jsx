@@ -9,6 +9,7 @@ import {
   saveActiveSession,
   clearActiveSession,
 } from './lib/storage'
+import { recordBegin, recordEnd } from './lib/nights'
 
 // Yoru's three states: the near-empty home, the running descent, and the quiet
 // close. An in-progress session resumes within the same night (see storage.js).
@@ -32,6 +33,7 @@ export default function App() {
     if (!active) return
     const elapsed = (Date.now() - active.startedAt) / 1000
     if (elapsed >= active.totalSec) {
+      recordEnd(active.startedAt, active.startedAt + active.totalSec * 1000)
       clearActiveSession()
       return
     }
@@ -65,6 +67,7 @@ export default function App() {
       note: '',
     }
     saveActiveSession(active)
+    recordBegin(active, settings.customMixes)
     setSession(active)
     setPhase('running')
   }
@@ -80,6 +83,7 @@ export default function App() {
   }
 
   const finish = () => {
+    if (session) recordEnd(session.startedAt)
     clearActiveSession()
     setSession(null)
     setPhase('ended')

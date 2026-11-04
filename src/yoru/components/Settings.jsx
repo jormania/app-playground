@@ -3,6 +3,7 @@ import { SegmentedControl } from '../../ds'
 import { createNightSoundscape } from '../lib/soundscape'
 import { SCENE_PRESETS, CURATED_MIXES } from '../lib/storage'
 import Mixer from './Mixer'
+import SleepNights from './SleepNights'
 import styles from './Settings.module.css'
 
 const LENGTH_OPTIONS = [
@@ -367,6 +368,8 @@ export default function Settings({ settings, onChange, onClose }) {
             />
           </div>
         )}
+
+        <SleepNights enabled={settings.sleepLink === true} onToggle={(on) => onChange({ sleepLink: on })} />
       </div>
 
       <button type="button" className={styles.done} onClick={onClose}>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Sparkle, { starPath } from './Sparkle.jsx'
 import { getTimeOfDay } from './context.js'
+import { walkLine } from './walkStats.js'
 
 const TIER_LABEL = {
   common:    { text: 'Common',    color: null },
@@ -93,6 +94,7 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
                       <span style={tier.color ? { color: tier.color } : undefined}>{tier.text}</span>
                       <span className="tg-relic-sky"> · {foundLine}</span>
                     </div>
+                    {w.stats && <div className="tg-walk-line">{walkLine(w.stats)}</div>}
                   </div>
                 )}
               </button>

@@ -64,7 +64,7 @@ Any app, new or legacy, may import from `src/shared/`; it is separate from the
 rather than copying an app's local copy.** Today it has: `notify/`, `installFlag`,
 `weather`, `photo`, `storage`, `notionId`, `notionClient`, `useWakeLock`, `theme`,
 `findings`, `share`, `anthropic`, `models`, `axisLockSlider`, `fullscreen`,
-`haptics`, `mediaSession`, `qrCode`, `useSwipeAction`. Several apps deliberately
+`haptics`, `mediaSession`, `qrCode`, `useSwipeAction`, `googleHealth`. Several apps deliberately
 keep their own version of one of these, so read
 [`src/shared/CLAUDE.md`](src/shared/CLAUDE.md) before promoting, re-exporting or
 reconciling anything. Rules that apply from any app:
@@ -120,5 +120,6 @@ by design.
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
+| Google Health link | `api/google-health.js`, `public/google-health.html` | not an app: the Fitbit read link behind Yoru, Touch Grass and the Claude connector — [`GOOGLE_HEALTH.md`](GOOGLE_HEALTH.md) |
 | Static HTML apps | `public/*.html` | design-locked, hand-authored — edit in place |
 | Front page | `index.html` | card grid + the footer's status line — see [`DAILY_REFACTOR.md`](DAILY_REFACTOR.md) |

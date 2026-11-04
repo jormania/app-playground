@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Google Health link</title>
+<!--
+  The one-time link between this site and Google Health (Fitbit). Not an app:
+  a utility page Yoru and Touch Grass send you to. It does three things —
+    1. keeps GOOGLE_HEALTH_APP_KEY in this browser's localStorage, under the
+       same key src/shared/googleHealth.ts reads, so every app here can use it;
+    2. starts Google's consent flow (a form POST, so the key never sits in a URL);
+    3. shows whether the server holds a working connection, and can end it.
+  Server side: api/google-health.js. Setup: GOOGLE_HEALTH.md.
+-->
+<style>
+  :root {
+    --bg: #f6f4ef; --surface: #ffffff; --ink: #1f2328; --faint: #5d646e;
+    --line: #dcd8cf; --accent: #2f6f5e; --accent-ink: #ffffff; --warn: #9a3b2f; --ok: #2f6f5e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15181c; --surface: #1d2126; --ink: #e8e6e1; --faint: #9aa1aa;
+      --line: #30353c; --accent: #7cc4ad; --accent-ink: #10231d; --warn: #f0a196; --ok: #7cc4ad;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15181c; --surface: #1d2126; --ink: #e8e6e1; --faint: #9aa1aa;
+    --line: #30353c; --accent: #7cc4ad; --accent-ink: #10231d; --warn: #f0a196; --ok: #7cc4ad;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 34rem; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) 16px 48px; }
+  h1 { font-size: 1.45rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .lede { color: var(--faint); margin: 0 0 24px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--faint); margin: 0 0 10px; font-weight: 600; }
+  label { display: block; font-size: 0.9rem; margin-bottom: 6px; }
+  input[type="password"], input[type="text"] {
+    width: 100%; font: inherit; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button {
+    font: inherit; font-weight: 600; padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  }
+  button.quiet { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .status { margin: 0; }
+  .ok { color: var(--ok); }
+  .warn { color: var(--warn); }
+  .small { font-size: 0.86rem; color: var(--faint); margin: 8px 0 0; }
+  code { font-size: 0.84em; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; word-break: break-all; }
+  ol { margin: 0; padding-left: 1.2rem; }
+  li { margin-bottom: 6px; }
+  a { color: var(--accent); }
+  .banner { border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; border: 1px solid var(--line); background: var(--surface); }
+  .banner.err { border-color: var(--warn); }
+  .apps a { margin-right: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Google Health link</h1>
+  <p class="lede">Lets Yoru and Touch Grass read your Fitbit's sleep, steps and heart rate. Read-only, and nothing is stored on the server but the connection itself.</p>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section>
+    <h2>This device</h2>
+    <label for="key">Health key (<code>GOOGLE_HEALTH_APP_KEY</code>)</label>
+    <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="paste the key you set in Vercel">
+    <div class="row">
+      <button id="save" type="button">Save on this device</button>
+      <button id="forget" type="button" class="quiet">Forget</button>
+    </div>
+    <p class="small">Every app on this site reads the same saved key, so this is once per browser.</p>
+  </section>
+
+  <section>
+    <h2>Google</h2>
+    <p id="status" class="status">Save the key to check the connection.</p>
+    <form id="connect" method="post" action="/api/google-health?mode=connect">
+      <input type="hidden" name="key" id="connectKey">
+      <div class="row">
+        <button id="connectBtn" type="submit" disabled>Connect Google Health</button>
+        <button id="disconnect" type="button" class="quiet" hidden>Disconnect</button>
+      </div>
+    </form>
+    <p class="small">Google will warn that the app is unverified. That's expected for a personal project with one user: choose <em>Advanced → Go to …</em>, then allow the three read-only permissions.</p>
+  </section>
+
+  <section>
+    <h2>Claude</h2>
+    <ol>
+      <li>In Claude, open <em>Settings → Connectors → Add custom connector</em>.</li>
+      <li>Name it <em>Google Health</em> and paste the URL:<br><code id="mcpUrl">https://coneofcold.vercel.app/api/health-mcp/&lt;GOOGLE_HEALTH_MCP_KEY&gt;</code></li>
+      <li>Leave the OAuth fields empty. The key in the URL is the password, so keep the URL to yourself.</li>
+    </ol>
+  </section>
+
+  <p class="apps small">Back to <a href="/yoru-react.html">Yoru</a><a href="/touch-grass-react.html">Touch Grass</a></p>
+</main>
+<script>
+(function () {
+  var STORE = 'google-health:key' // src/shared/googleHealth.ts — JSON-encoded string
+  var $ = function (id) { return document.getElementById(id) }
+
+  function readKey() {
+    try { var raw = localStorage.getItem(STORE); return raw ? String(JSON.parse(raw) || '') : '' } catch (_) { return '' }
+  }
+  function writeKey(k) {
+    try { k ? localStorage.setItem(STORE, JSON.stringify(k)) : localStorage.removeItem(STORE) } catch (_) {}
+  }
+
+  var MESSAGES = {
+    connected: ['Connected. Yoru and Touch Grass can read your band now.', false],
+    key: ['That key does not match GOOGLE_HEALTH_APP_KEY on the server.', true],
+    state: ['The consent took too long or came from elsewhere. Start again.', true],
+    denied: ['Google consent was cancelled.', true],
+    code: ['Google returned without a code. Start again.', true],
+    config: ['The server is missing its Google client or KV store. See GOOGLE_HEALTH.md.', true],
+    exchange: ['Google refused the exchange: ', true],
+  }
+
+  function banner(text, isErr) {
+    var b = $('banner')
+    b.textContent = text
+    b.className = 'banner' + (isErr ? ' err' : '')
+    b.hidden = false
+  }
+
+  var q = new URLSearchParams(location.search)
+  if (q.get('connected')) banner(MESSAGES.connected[0], false)
+  else if (q.get('error') && MESSAGES[q.get('error')]) {
+    var m = MESSAGES[q.get('error')]
+    banner(m[0] + (q.get('error') === 'exchange' ? (q.get('detail') || 'unknown error') : ''), m[1])
+  }
+  if (q.toString()) history.replaceState({}, '', location.pathname)
+
+  function setStatus(html, cls) {
+    var s = $('status')
+    s.textContent = html
+    s.className = 'status' + (cls ? ' ' + cls : '')
+  }
+
+  function refresh() {
+    var key = readKey()
+    $('key').value = key
+    $('connectKey').value = key
+    $('connectBtn').disabled = !key
+    $('disconnect').hidden = true
+    if (!key) { setStatus('Save the key to check the connection.'); return }
+    setStatus('Checking…')
+    fetch('/api/google-health?mode=status', { headers: { 'x-health-key': key } })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d } }) })
+      .then(function (res) {
+        if (!res.ok) { setStatus(res.d.message || 'The server refused the key.', 'warn'); $('connectBtn').disabled = true; return }
+        var d = res.d
+        if (!d.configured) { setStatus('Key accepted, but the server is missing its Google client or KV store.', 'warn'); return }
+        if (d.connected) {
+          setStatus('Connected since ' + new Date(d.connectedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) + '.', 'ok')
+          $('connectBtn').textContent = 'Reconnect'
+          $('disconnect').hidden = false
+        } else if (d.lostAt) {
+          setStatus('Google ended the connection on ' + new Date(d.lostAt).toLocaleDateString('en-GB') + '. Connect again.', 'warn')
+        } else {
+          setStatus('Key accepted. Not connected to Google yet.')
+        }
+      })
+      .catch(function () { setStatus('Could not reach the server.', 'warn') })
+  }
+
+  $('save').addEventListener('click', function () { writeKey($('key').value.trim()); refresh() })
+  $('forget').addEventListener('click', function () { writeKey(''); refresh() })
+  $('disconnect').addEventListener('click', function () {
+    if (!confirm('Disconnect Google Health? Yoru, Touch Grass and the Claude connector will stop reading it until you connect again.')) return
+    fetch('/api/google-health?mode=disconnect', { method: 'POST', headers: { 'x-health-key': readKey() } })
+      .then(function () { $('connectBtn').textContent = 'Connect Google Health'; refresh() })
+  })
+  refresh()
+})()
+</script>
+</body>
+</html>

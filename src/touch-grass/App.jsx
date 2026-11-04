@@ -17,6 +17,8 @@ import { useWorld } from './world.jsx'
 import { moonPhaseName } from './context.js'
 import { weatherWord } from './weather.js'
 import { rollTier, generateDiscovery } from './engine.js'
+import { readWalk, effectiveMinutes, walkPhrase, needsBackfill, walkWindow, applyBackfill } from './walkStats.js'
+import { hasHealthKey } from '../shared/googleHealth'
 
 // a soft haptic tick at the two moments that matter (Android honours it; iOS
 // Safari ignores navigator.vibrate, so this is a no-op there)
@@ -184,6 +186,31 @@ export default function App() {
     } catch (_) {}
   }, [history])
 
+  // The band syncs late: relics from the last day and a half whose walk came
+  // back empty are asked again when the app opens (walkStats.js, "Late syncs").
+  useEffect(() => {
+    if (!hasHealthKey()) return
+    const now = Date.now()
+    const due = (history || []).filter(w => needsBackfill(w, now)).slice(0, 5)
+    if (!due.length) return
+    let live = true
+    ;(async () => {
+      const found = new Map()
+      for (const w of due) {
+        const [a, b] = walkWindow(w)
+        found.set(w.ts, await readWalk(a, b, 8000))
+      }
+      if (!live) return
+      setHistory(prev => prev.map(w => (found.has(w.ts) ? applyBackfill(w, found.get(w.ts), now) : w)))
+      setState(prev => (prev.lastWalk && found.has(prev.lastWalk.ts)
+        ? { ...prev, lastWalk: applyBackfill(prev.lastWalk, found.get(prev.lastWalk.ts), now) }
+        : prev))
+    })()
+    return () => { live = false }
+    // once per open, on purpose: the history it reads is the one just loaded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     try {
       localStorage.setItem(VIEW_STORAGE, JSON.stringify({ settings: showSettings, reliquary: showReliquary, departure: showDeparture }))
@@ -242,11 +269,16 @@ export default function App() {
   }
 
   async function returnFromWalk() {
-    const durationMinutes = (Date.now() - state.departedAt) / 60000
-    const tier = rollTier(durationMinutes)
-    setState(prev => ({ ...prev, status: 'generating', pendingTier: tier }))
+    const returnedAt = Date.now()
+    const durationMinutes = (returnedAt - state.departedAt) / 60000
+    setState(prev => ({ ...prev, status: 'generating', pendingTier: null }))
+    // What the band saw on the way (walkStats.js) — null, at once, without a
+    // Google Health key; otherwise at most a few seconds' wait.
+    const stats = await readWalk(state.departedAt, returnedAt)
+    const tier = rollTier(effectiveMinutes(durationMinutes, stats))
+    setState(prev => ({ ...prev, pendingTier: tier }))
     const recent = (history || []).slice(0, 8).map(w => w && w.discovery && w.discovery.name).filter(Boolean)
-    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments, recent }
+    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments, recent, walk: walkPhrase(stats) }
     const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey, ctx)
     // the sky this find was kept under — a small memory carried by each relic
     const sky = {
@@ -255,7 +287,7 @@ export default function App() {
       biome: world.biome || null,
       tod: world.timeOfDay || null,
     }
-    const walk = { ts: Date.now(), durationMinutes, tier, discovery, isStatic, apiAttempted, sky }
+    const walk = { ts: Date.now(), durationMinutes, tier, discovery, isStatic, apiAttempted, sky, stats, statsFinal: Boolean(stats) }
     setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: walk }))
     setHistory(prev => [walk, ...prev].slice(0, HISTORY_CAP))
     playReveal()

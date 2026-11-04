@@ -1,4 +1,5 @@
 import { starPath } from './Sparkle.jsx'
+import { walkLine } from './walkStats.js'
 
 const TIER_LABEL = {
   common:    { text: 'Common',    color: null },
@@ -29,7 +30,8 @@ function formatDuration(minutes) {
 }
 
 export default function ResultPanel({ lastWalk, onGoBack }) {
-  const { durationMinutes, tier, discovery, isStatic, apiAttempted } = lastWalk
+  const { durationMinutes, tier, discovery, isStatic, apiAttempted, stats } = lastWalk
+  const body = walkLine(stats)
   const { text: tierText, color: tierColor } = TIER_LABEL[tier] ?? TIER_LABEL.common
 
   return (
@@ -40,6 +42,7 @@ export default function ResultPanel({ lastWalk, onGoBack }) {
           ? <span style={{ color: tierColor }}>{tierText}</span>
           : tierText}
       </p>
+      {body && <p className="tg-walk-line">{body}</p>}
       <h2>{discovery.name}</h2>
       <p>{discovery.description}</p>
       <button onClick={onGoBack}>Step inside</button>
