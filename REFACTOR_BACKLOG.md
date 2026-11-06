@@ -1123,6 +1123,16 @@ Also drifted since: `lucide-react` latest is now **1.49**, `@anthropic-ai/sdk`
 0.128 → 0.131, `sharp` 0.33 → 0.35, and the `@fontsource*` family 5.2 → 5.3
 across all seven packages. Same rule as before: one family per run, and the
 React family last.
+
+**Re-measured on the Friday read, 2026-11-06**, with `npm outdated`. The table's
+latest versions have moved again: `vitest` 5.0.3 → **5.1.0**, `react` /
+`react-dom` 19.3.0 → 19.3.1, `tailwindcss` 4.3.3 → 4.3.4. One new major is not
+listed anywhere: **`jsdom` 30 → 31.0.0**. Do it as its own run, and check its
+`engines` floor against the Node 22 CI runs before trusting a green suite
+(R-047 is the item that writes that version down). `happy-dom` 21 is still
+waiting, as the 2026-10-14 note says. In-range drift since the last bumps:
+`vite` 8.0 → 8.3, `@vitejs/plugin-react` 6.0 → 6.2, `lucide-react` 1.52 → 1.69,
+`@tanstack/react-query` 5.101 → 5.106, `playwright` 1.61 → 1.65.
 ## R-009 — Kettlebell Training has no tests at all · `modernise` · `done 2026-10-26`
 
 **Impact:** none visible. Makes the one untested app safe to change later.
@@ -2533,6 +2543,124 @@ carried and P-001c kept on purpose so that slice stayed pixel-identical. The fix
 is deleting `strokeWidth={2.5}`. Small, but it changes a pixel Gabriel sees, so
 it waits here. Screenshots: phone width, both themes, menu open.
 
+## R-048 — CI never runs ESLint, but the daily run's merge check does · `modernise` · `open`
+
+**Impact:** none visible. A lint error stops being able to reach `main` without
+anyone noticing, and then quietly block every agent PR after it.
+
+Found on the Friday read, 2026-11-06. `.github/workflows/ci.yml` runs
+`npm test -- --run` and `npm run typecheck`, and nothing else. `CLAUDE.md` makes
+ESLint the third gate before any task is done, and `package.json` has
+`"lint": "eslint ."` ready. But no workflow that runs on a human's PR or a push
+to `main` calls it.
+
+`.github/workflows/daily-refactor.yml`'s "Verify it independently" step (~line
+390) **does** run `npx eslint .` over the whole repo, on a clean clone of the
+agent's branch. So a lint error that reaches `main` some other way (a hand
+commit, or a PR merged on a green CI) passes CI. Then it fails the next
+agent run's verification over code that run never touched, and the run is
+reported as a failure. `npx eslint .` is clean on `main` today (exit 0, checked
+on this read), so adding the step turns nothing red.
+
+The change is one line in `ci.yml`, after the typecheck: `- run: npm run lint`.
+Using the script rather than `npx eslint .` keeps one definition of "lint" in the
+repo. Workflow-only, behaviour-preserving for every app. Say on the PR that it
+makes lint a required check on `main` from then on.
+
+## R-049 — `api/_shared.js` guards all nine serverless functions and has no test of its own · `modernise` · `open`
+
+**Impact:** none visible. Coverage under the origin allowlist and rate limiter
+that every server endpoint answers through. Its header comment would also stop
+undercounting them.
+
+Found on the Friday read, 2026-11-06. `api/_shared.js` (29 lines) exports
+`originAllowed`, `rateLimited`, `clientIp` and `NOTION_BASE`, and **all nine**
+top-level handlers import it (`grep -ln _shared api/*.js`). The two handler
+tests that reach it, `api/_tests/marquee-scan.test.js:10` and
+`wanderlist-remind.test.js:25`, both `vi.mock('../_shared.js', …)`. So the real
+regexes and the real limiter never run under the suite. R-028 asks each handler
+test to pin the gate *through* its handler. That is one handler per run, with
+six still to go. This item is the module on its own, in one sitting.
+
+Worth pinning, in `api/_tests/shared.test.js` (in `_tests/`, never beside it —
+a `.test.js` directly in `api/` counts against the function cap):
+
+- `originAllowed`: no origin is allowed (same-origin and server calls send none);
+  `https://coneofcold.vercel.app` and a subdomain of it are allowed;
+  `http://localhost:5173` is allowed; **`https://coneofcold.vercel.app.evil.com`
+  and `https://evilconeofcold.vercel.app` are refused**. Those two are the regex
+  mistakes a refactor would make.
+- `rateLimited`: the 21st call inside 10 s from one IP is limited and the 20th is
+  not; another IP is unaffected; after the window passes (fake timers) the IP is
+  free again. `hits` is module state, so `vi.resetModules()` between tests.
+- `clientIp`: first `x-forwarded-for` entry, trimmed; falls back to
+  `socket.remoteAddress`, then `'unknown'`.
+
+**One comment fix in the same run.** The header says the module is for
+*"the Notion proxy endpoints (notion.js, notion-upload.js)"*. Nine import it now.
+Reword it without a list that can drift. Comment-only. Mutation-check by dropping
+the `$` from the first allowlist regex.
+
+## R-050 — Yoru's `useDescent` drives the whole session and has no test · `modernise` · `open`
+
+**Impact:** none visible. Puts tests under the loop that decides when a night's
+session ends and what the breathing orb is doing.
+
+Found on the Friday read, 2026-11-06. Yoru has 19 source files and 4 test files,
+and all four are pure `lib/` helpers. `src/yoru/lib/useDescent.js` (71 lines) is
+the one `requestAnimationFrame` loop behind `src/yoru/components/Session.jsx`.
+It returns `progress`, `remainingSec`, the orb's `scale` and `phase`, and calls
+`onDone` when the session ends. `breath.test.js` covers the `cyclePhases` /
+`scaleFor` it calls. No test names the hook itself (`grep -rn useDescent
+--include='*.test.*' src` is empty).
+
+Worth pinning, with fake timers and a stubbed `requestAnimationFrame`:
+
+- **`onDone` fires exactly once** when elapsed reaches `totalSec`, and the loop
+  stops after it. Also once after a re-render that hands in a new `onDone`
+  (it is read through a ref);
+- `progress` clamps to 1 and `remainingSec` to 0 past the end. A `startedAt` in
+  the past, which is the resume-mid-night path, starts part-way through rather
+  than at 0;
+- `totalSec` of 0 reads as `progress: 1` and does not divide by zero;
+- `running: false` requests no frame, and unmounting cancels the pending one;
+- a large time jump (a tab hidden for an hour) advances through phases without
+  spinning. The `guard < 400` cap is what holds that.
+
+Write `src/yoru/lib/useDescent.test.js`. No production code changes.
+`src/shared/theme.test.ts` is the house style for a hook test. Mutation-check by
+removing the `firedDone` check and by dropping `cancelAnimationFrame` from the
+cleanup.
+
+## R-051 — `useHashRoute` routes two apps, exists twice, and has no test in either · `modernise` · `open`
+
+**Impact:** none visible. First coverage under the router that a notification
+tap uses to open Daily Stoic or Sol Odyssey on the right screen. It also clears
+the way to promoting the two copies into one.
+
+Recorded under R-031 on 2026-09-25 as *"promote it to a real item if it is
+wanted"*, and still true on the Friday read, 2026-11-06.
+`src/daily-stoic/lib/useHashRoute.ts` (33 lines) and
+`src/sol-odyssey/lib/useHashRoute.ts` (31) differ only in their doc comment and
+the service-worker message type they accept (`daily-stoic:navigate` versus
+`sol-odyssey:navigate`). Each has one importer, its app's `App.tsx`. `grep -rln
+useHashRoute --include='*.test.*' src` is still empty.
+
+This item is **tests first, one app per run**, and Daily Stoic first: Sol
+Odyssey has its own `CLAUDE.md` and `DESIGN.md`, so that run should read them
+first. Worth pinning in `src/daily-stoic/lib/useHashRoute.test.ts`: the initial
+route is `location.hash` with the `#` stripped, and `/` when the hash is empty;
+a `hashchange` updates it; `navigate(to)` sets the hash, and still updates the
+route when `to` is the current one; a `message` event from
+`navigator.serviceWorker` with the right `type` and a string `hash` navigates,
+while the other app's type, or a non-string `hash`, is ignored; no
+`navigator.serviceWorker` throws nothing; and both listeners are removed on
+unmount.
+
+**The promotion is a separate, later item and is not filed here.** It would be
+`src/shared/useHashRoute.ts` taking the message type as an argument. File it
+when both apps' tests exist, since those tests are what prove that move.
+
 ---
 
 ## Proposed
@@ -2544,3 +2672,24 @@ to `open`.
 To reject one, delete it — or just close the PR that proposed it, which is the
 same answer said faster. The agent treats a proposal that vanished from `main`
 as declined and will not raise it again.
+
+## P-005 — An unknown media-session action can take Tempo's or Yoru's player down · `qol` · `proposed`
+
+**Impact:** on a browser that does not know the `stop` action, the lock-screen
+controls stay up without it instead of the player throwing. On the owner's
+Chrome on Android, nothing changes.
+
+R-040 flagged this and said that *"if it's wanted, it is a `qol` proposal of its
+own"*. Proposed on the Friday read, 2026-11-06. `src/shared/mediaSession.js:45-56`
+calls `navigator.mediaSession.setActionHandler` ten times (five to set, five to
+clear), and none of the calls is wrapped. Per the Media Session spec, a browser
+throws a `TypeError` for an action it does not support. `stop` is newer than the
+other four. A throw there escapes the effect in `Player.jsx` (Tempo) or
+`Session.jsx` (Yoru), with no error boundary to catch it. The module header
+already promises that *"any failure … degrades silently"*.
+
+The fix is one small `setHandler(action, fn)` helper with a `try`/`catch`, used
+by all ten calls. Take R-040 first: its test pins today's behaviour. This item
+would then add one case, a `setActionHandler` that throws for `'stop'`, and the
+hook should still set the other four. No screenshots needed, since nothing on
+screen changes on a browser that supports every action.
