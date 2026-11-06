@@ -4697,3 +4697,70 @@ Expirat Halele Carol   | ok |  22 events | 21 timed |  0 priced
 
 The two untimed Quantic nights are untimed at the venue: their own pages print
 neither `ora` nor `acces de la`. Null, not guessed.
+
+## 9.95 Odeon's programme left the page, and the gate blamed the reader (2026-11-06)
+
+Teatrul Odeon reported *"The page loaded but no events could be read from it —
+its markup has probably changed."* It had not changed. The programme was simply
+no longer there.
+
+### Where it went
+
+teatrul-odeon.ro still runs **EventON 4.6.8**, and that plugin is now an empty
+shell nobody removed. The homepage carries
+`<div id='evo_global_data' data-d='{"calendars":[]}'>`; the old programme page
+server-renders the theatre's own *"Programul lunii se va anunța ulterior."*; and
+the plugin's own AJAX, called with the page's real nonce and shortcode, answers
+`status: GOOD` with `json: []` over a window its `debug` field puts at
+31 Oct 2026 → 31 Aug 2027. Ten months, nothing.
+
+The programme is drawn in the browser by a third-party widget service:
+
+```
+projects.doimih.net/hub/api/embed/calendar.js?tenant=tenant-teatrul-odeon&api_key=ntk_live_…
+projects.doimih.net/hub/api/embed/hero-carousel.js?…
+projects.doimih.net/hub/api/embed/spotlight.js?…
+```
+
+Checked for the visible card text — "Intrarea liberă", a start time, a hall
+name — across `/`, `/programul-teatrului-odeon-pe-zile/`, `/evenimente/` and
+`/stagiune/`: **zero hits in any page's HTML**. It is not in WordPress either;
+the REST API exposes only `post`, `page`, `portfolio` and the stale
+`ajde_events`.
+
+**Paused**, rather than chased. Reaching the programme means calling a vendor's
+API with a tenant key lifted from Odeon's page source — closer to their own box
+office (`bilete.teatrul-odeon.ro`, whose `/api/shows` answers **401**) than to
+reading a theatre's HTML.
+
+### The near-miss, recorded because it nearly shipped
+
+Working only from EventON's answers, this log briefly concluded that **the
+theatre had published nothing for ten months**. A screenshot of the live site —
+*Încăperi ale scrierii*, 6 November, Sala Studio, 19:30 — showed that was false.
+Every reading was correct and the conclusion was wrong: asking the calendar is
+not the same as asking the theatre, and one source stated confidently is how a
+reader ends up trusting a dead plugin over a running box office.
+
+### What changed in the gate
+
+Zero events has two causes and `assess` cannot tell them apart: the reader
+broke, or the programme is not on the page. The message asserted the first, and
+was right every time until this venue. It now names both and asserts neither:
+
+> No events could be read from the page — either its markup changed, or the
+> programme is no longer published on it.
+
+**The status is unchanged.** `parser-broken` is what puts a venue in front of a
+person, and an unknown dressed as "nothing on" would hide the breakage this gate
+exists to catch.
+
+### Why there is no "the site says it is empty" opt-in
+
+The obvious next step — let an adapter report that the page itself said it had
+nothing, and call that `empty` — is the one thing this venue argues against.
+Odeon's page *does* say so, in its own words, while the shows are running. A
+site's own "no events" message turned out to be the least trustworthy signal on
+the page. Had the gate been taught to believe it, Marquee would have reported
+"nothing upcoming" for a theatre playing that night, which is worse than
+reporting a breakage that isn't one.

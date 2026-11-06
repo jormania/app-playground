@@ -181,10 +181,22 @@ export function assess(adapter, pages, events) {
   if (bytes < 500) {
     return { status: STATUS.PARSER_BROKEN, detail: 'The page came back essentially empty.' }
   }
+  // **Zero events has two causes and this gate cannot tell them apart.** The
+  // reader may have broken, or the programme may simply not be on the page any
+  // more. For two months the message asserted the first — "its markup has
+  // probably changed" — and it was right every time until Teatrul Odeon, where
+  // it was wrong: the theatre had moved its whole programme into a third-party
+  // widget that renders in the browser, so nothing we fetch contains it and
+  // nothing about our reader needs rewriting (§9.95).
+  //
+  // So the message names both readings and asserts neither. The STATUS stays
+  // `parser-broken`, because that is the one that puts a venue in front of a
+  // human, and an unknown dressed as "nothing on" would hide exactly the
+  // breakage this gate exists to catch.
   if (events.length === 0) {
     return {
       status: STATUS.PARSER_BROKEN,
-      detail: 'The page loaded but no events could be read from it — its markup has probably changed.',
+      detail: 'No events could be read from the page — either its markup changed, or the programme is no longer published on it.',
     }
   }
   if (events.length < (adapter.minItems ?? 1)) {

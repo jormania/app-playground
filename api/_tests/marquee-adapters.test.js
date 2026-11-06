@@ -1335,8 +1335,22 @@ describe('the health gate', () => {
   })
 
   it('calls a page that parsed to nothing broken, never empty', () => {
-    // The whole point: silence must be loud.
+    // The whole point: silence must be loud. An unknown dressed as "nothing
+    // on" would hide the breakage this gate exists to catch, so the status
+    // stays `parser-broken` even though the CAUSE is genuinely unknown.
     expect(assess(adapter, pages, []).status).toBe(STATUS.PARSER_BROKEN)
+  })
+
+  it('names both readings of an empty parse, and asserts neither (\u00a79.95)', () => {
+    // It used to say "its markup has probably changed", which was right every
+    // time until Teatrul Odeon moved its whole programme into a third-party
+    // widget: the page we fetch simply no longer contains it, and no reader of
+    // ours needed rewriting. The gate cannot tell the two apart, so it stops
+    // pretending it can.
+    const { detail } = assess(adapter, pages, [])
+    expect(detail).toMatch(/markup changed/i)
+    expect(detail).toMatch(/no longer published/i)
+    expect(detail).not.toMatch(/probably/i)
   })
 
   it('catches a partial parse against the venue’s declared floor', () => {
