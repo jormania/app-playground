@@ -3808,3 +3808,49 @@
 .setupSteps li + li {
   margin-top: var(--space-xs);
 }
+
+/* ── The dictionary (screens/Words.tsx, 9 November 2026) ──────────────────
+   The Journal's timeline, A to Z: the letter in the margin, each word a
+   term in the display face and its two lines under it. */
+.wordList {
+  margin: 0;
+}
+
+.wordEntry + .wordEntry {
+  margin-top: var(--space-md);
+}
+
+.wordTerm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3xs) var(--space-xs);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 36;
+  line-height: 1.25;
+  color: var(--color-ink);
+}
+
+.wordKind {
+  font-family: var(--font-read);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-faint);
+}
+
+.wordDef {
+  margin: var(--space-3xs) 0 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+/* A word the notes underline: marked here as it is there, a faint dotted line. */
+.wordsSample {
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}

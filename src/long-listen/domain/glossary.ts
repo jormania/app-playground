@@ -14,30 +14,39 @@ import { DEFINITIONS_EN } from './glossaryDefinitions'
  * grave) are left out: underlined in "the development of his style" they'd be
  * wrong, and nobody stops at them.
  */
-const TERMS = [
-  // forms and genres
-  'sonata form', 'sonata-allegro', 'rondo', 'scherzo', 'minuet', 'trio section', 'passacaglia', 'chaconne', 'fugue', 'fugato', 'canon',
-  'theme and variations', 'symphonic poem', 'tone poem', 'concerto grosso', 'sinfonia concertante', 'divertimento', 'serenade',
-  'overture', 'prelude', 'intermezzo', 'nocturne', 'rhapsody', 'cantata', 'oratorio', 'requiem', 'song cycle', 'ballade',
-  'toccata', 'fantasia', 'waltz', 'ländler', 'siciliano', 'barcarolle', 'habanera', 'bolero', 'polonaise', 'mazurka', 'tarantella',
-  // structure
-  'exposition', 'recapitulation', 'coda', 'codetta', 'cadenza', 'cadence', 'second subject', 'first subject',
-  'leitmotif', 'motif', 'idée fixe', 'cyclic form', 'ostinato', 'pedal point', 'ground bass', 'cantus firmus', 'chorale',
-  // harmony and line
-  'counterpoint', 'polyphony', 'homophony', 'canonic', 'modulation', 'chromaticism', 'dissonance', 'consonance', 'atonal', 'atonality',
-  'twelve-tone', 'serialism', 'tonality', 'major key', 'minor key', 'pentatonic', 'whole-tone',
-  'polytonality', 'tone cluster', 'microtonal', 'spectralism', 'minimalism', 'neoclassicism', 'impressionism',
-  'hemiola', 'syncopation', 'polyrhythm', 'rubato', 'appoggiatura', 'tremolo', 'trill', 'glissando', 'portamento',
-  // tempo and dynamics
-  'adagio', 'andante', 'allegro', 'presto', 'largo', 'lento', 'moderato', 'allegretto', 'vivace', 'accelerando', 'ritardando',
-  'crescendo', 'diminuendo', 'decrescendo', 'sforzando', 'pianissimo', 'fortissimo', 'tutti', 'ritornello', 'sostenuto', 'staccato', 'legato',
-  // the orchestra's sounds
-  'pizzicato', 'col legno', 'sul ponticello', 'sul tasto', 'con sordino', 'divisi', 'double stops', 'arpeggio',
-  'stopped horn', 'flutter-tongue', 'cor anglais', 'english horn', 'contrabassoon', 'bass clarinet', 'celesta', 'glockenspiel', 'timpani',
-  'double bass', 'ondes martenot', 'continuo', 'basso continuo', 'obbligato', 'concertino', 'ripieno', 'orchestration',
-  // performance
-  'period instruments', 'historically informed', 'vibrato', 'timbre',
-]
+/** The list, in the groups the dictionary shows them under (screens/Words.tsx). */
+export const TERM_GROUPS = {
+  forms: [
+    'sonata form', 'sonata-allegro', 'rondo', 'scherzo', 'minuet', 'trio section', 'passacaglia', 'chaconne', 'fugue', 'fugato', 'canon',
+    'theme and variations', 'symphonic poem', 'tone poem', 'concerto grosso', 'sinfonia concertante', 'divertimento', 'serenade',
+    'overture', 'prelude', 'intermezzo', 'nocturne', 'rhapsody', 'cantata', 'oratorio', 'requiem', 'song cycle', 'ballade',
+    'toccata', 'fantasia', 'waltz', 'ländler', 'siciliano', 'barcarolle', 'habanera', 'bolero', 'polonaise', 'mazurka', 'tarantella',
+  ],
+  structure: [
+    'exposition', 'recapitulation', 'coda', 'codetta', 'cadenza', 'cadence', 'second subject', 'first subject',
+    'leitmotif', 'motif', 'idée fixe', 'cyclic form', 'ostinato', 'pedal point', 'ground bass', 'cantus firmus', 'chorale',
+  ],
+  harmony: [
+    'counterpoint', 'polyphony', 'homophony', 'canonic', 'modulation', 'chromaticism', 'dissonance', 'consonance', 'atonal', 'atonality',
+    'twelve-tone', 'serialism', 'tonality', 'major key', 'minor key', 'pentatonic', 'whole-tone',
+    'polytonality', 'tone cluster', 'microtonal', 'spectralism', 'minimalism', 'neoclassicism', 'impressionism',
+    'hemiola', 'syncopation', 'polyrhythm', 'rubato', 'appoggiatura', 'tremolo', 'trill', 'glissando', 'portamento',
+  ],
+  tempo: [
+    'adagio', 'andante', 'allegro', 'presto', 'largo', 'lento', 'moderato', 'allegretto', 'vivace', 'accelerando', 'ritardando',
+    'crescendo', 'diminuendo', 'decrescendo', 'sforzando', 'pianissimo', 'fortissimo', 'tutti', 'ritornello', 'sostenuto', 'staccato', 'legato',
+  ],
+  orchestra: [
+    'pizzicato', 'col legno', 'sul ponticello', 'sul tasto', 'con sordino', 'divisi', 'double stops', 'arpeggio',
+    'stopped horn', 'flutter-tongue', 'cor anglais', 'english horn', 'contrabassoon', 'bass clarinet', 'celesta', 'glockenspiel', 'timpani',
+    'double bass', 'ondes martenot', 'continuo', 'basso continuo', 'obbligato', 'concertino', 'ripieno', 'orchestration',
+  ],
+  performance: [
+    'period instruments', 'historically informed', 'vibrato', 'timbre',
+  ],
+} as const satisfies Record<string, readonly string[]>
+
+const TERMS: string[] = Object.values(TERM_GROUPS).flat()
 
 /** Every term on the list, lower case. */
 export const GLOSSARY_TERMS: readonly string[] = [...new Set(TERMS)]

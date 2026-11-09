@@ -1810,3 +1810,12 @@ terms don't change, so the owner asked for the definitions to be in the app.
 - `glossaryDefinitions.test.ts` fails when a term is added to the list without a definition, when a definition has
   no term, or when one runs past two sentences or forty-five words.
 - What is underlined, and when (still only with a curator key), is unchanged.
+
+**The dictionary (9 November 2026).** A masthead icon left of the guide (a book with an A, lucide `BookA`) opens
+`#/words` (`screens/Words.tsx`): the words of orchestral music, A to Z, set as the Journal sets its weeks, with the
+letter in the margin and a hairline down to the next. It holds every underlined term and about a hundred plain words
+the notes never underline (`domain/dictionary.ts`): the instruments and the people on the stage, the basics of a
+score, forms such as symphony and opera, and the periods. A search box matches a term or what it does ("bow",
+"slow"), with accents and case set aside; chips narrow to one kind. Underlined terms carry the same dotted line here
+as in the notes. Everything is in the app, so the page opens at once, offline too. `dictionary.test.ts` keeps every
+word unique, defined and within two sentences.

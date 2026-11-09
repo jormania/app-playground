@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { BookOpen, Settings2 } from 'lucide-react'
+import { BookA, BookOpen, Settings2 } from 'lucide-react'
 import { ServicesProvider, useServices } from './app/services'
 import { href, toTopIfHere, useRoute, type Route } from './app/router'
 import { GUIDE_URL } from './app/links'
@@ -20,6 +20,7 @@ import { BeforeScreen } from './screens/Before'
 import { ComposerScreen } from './screens/Composer'
 import { PerformerScreen } from './screens/Performer'
 import { SeasonScreen } from './screens/Season'
+import { WordsScreen } from './screens/Words'
 import type { Repo } from './store/repo'
 import type { CuratorClient } from './curation/api'
 import { useOnline } from './app/online'
@@ -27,7 +28,7 @@ import s from './styles/editorial.module.css'
 import { setTitle } from './app/title'
 
 const STATIC_TITLES: Partial<Record<Route['name'], string>> = {
-  week: 'This week', journal: 'Journal', library: 'Library', threads: 'Threads', notebook: 'Notebook', concerts: 'Concerts', settings: 'Settings',
+  week: 'This week', journal: 'Journal', library: 'Library', threads: 'Threads', notebook: 'Notebook', concerts: 'Concerts', settings: 'Settings', words: 'Words',
 }
 
 const NAV: { route: Route; label: string }[] = [
@@ -71,6 +72,8 @@ function Shell() {
           <span className={s.mastRight}>
             {/* Back to the work sounding (or paused, or left part-way), from any screen: shown only when there is one. */}
             <NowListening route={route} />
+            {/* The dictionary: the words of the orchestra, kept in the app. */}
+            <a className={`${s.iconLink} ${route.name === 'words' ? s.iconOn : ''}`} href={href({ name: 'words' })} aria-label="Words: the dictionary"><BookA size={18} strokeWidth={1.6} /></a>
             <a className={s.iconLink} href={GUIDE_URL} target="_blank" rel="noopener noreferrer" aria-label="User’s guide"><BookOpen size={18} strokeWidth={1.6} /></a>
             <a className={`${s.iconLink} ${route.name === 'settings' ? s.iconOn : ''}`} href={href({ name: 'settings' })} aria-label="Settings" title="Settings"><Settings2 size={18} strokeWidth={1.6} /></a>
           </span>
@@ -110,6 +113,7 @@ function Shell() {
         {route.name === 'before' && <BeforeScreen goingKey={route.key} />}
         {route.name === 'composer' && <ComposerScreen composer={route.composer} />}
         {route.name === 'performer' && <PerformerScreen performer={route.performer} />}
+        {route.name === 'words' && <WordsScreen />}
       </main>
     </div>
   )
