@@ -1821,3 +1821,16 @@ score, forms such as symphony and opera, and the periods. A search box matches a
 the programmes kept on the device, with their count on the chip. The second narrows to one kind. Underlined terms carry the same dotted line here
 as in the notes. Everything is in the app, so the page opens at once, offline too. `dictionary.test.ts` keeps every
 word unique, defined and within two sentences.
+
+**The dictionary, audited (9 November 2026).**
+- A way back at the top, as on a composer's or performer's page (`BackLink`, following the trail; This week by
+  default). The dictionary is looked things up in mid-reading.
+- The search and both chip rows are kept for the tab (`useKept`), as the Library keeps its own: back from a
+  programme, the page is as it was left.
+- A count ("238 words", "12 of 238 words") and an A to Z index under it, offering only the letters the page now holds.
+- Cross-references: a specialist word named in another's definition ("the first section of sonata form") is
+  underlined as in the notes, and a tap goes to its own entry. Whatever would hide it is cleared first, the jump is
+  instant, and the entry takes a brief wash of the accent. Plain words ("key", "bar", "theme") aren't linked.
+- Typography: the definitions used straight quotes and apostrophes; they now use the app's curly ones.
+- Checked and left as is: on the narrowest phones (320px) with the "back to the work" icon showing, the four
+  masthead icons wrap the app's name onto three lines. Nothing overlaps, and it stays on one line from about 400px.

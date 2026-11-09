@@ -3854,3 +3854,69 @@
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
 }
+
+/* A to Z at a tap, under the count: small capitals in the accent, one row that wraps. */
+.letterIndex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3xs);
+  margin: var(--space-2xs) 0 0;
+}
+
+.letterJump {
+  appearance: none;
+  min-width: 32px;
+  min-height: 36px;
+  padding: 0 var(--space-3xs);
+  border: 0;
+  background: none;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* A jump lands the letter under the top edge, not against it. */
+.letterSection {
+  scroll-margin-top: var(--space-md);
+}
+
+/* A word named in another's definition, followed with a tap: the notes' dotted line, as text. */
+.wordRef {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.wordRef:focus-visible,
+.letterJump:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* The word just followed to: a brief wash of the accent, then gone. */
+.wordJumped {
+  animation: wordJumped 2.4s var(--ease) both;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.wordEntry:focus {
+  outline: none;
+}
+
+@keyframes wordJumped {
+  0%, 40% { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+  100% { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wordJumped { animation: none; background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+}
