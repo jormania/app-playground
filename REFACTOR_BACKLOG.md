@@ -1352,7 +1352,7 @@ renders at cannot be settled from the CSS: most `--font-display` rules inherit
 their weight, there is no heading reset so `h1`–`h3` are 700, and `--weight-bold`
 is 700 from the DS. Dropping one is a visual judgement needing browser evidence,
 not a build-size tidy-up.
-## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `open` — drafts.js, store.js, useLoom.js, localClient.js and lexicon.js done, one module to go
+## R-017 — Loom is 36 source files behind 4 test files · `modernise` · `done 2026-11-09` — every `lib` module with logic is now tested
 
 **Impact:** none visible. Makes the least-covered non-legacy app safe to change.
 
@@ -1425,7 +1425,13 @@ survive a throwing `localStorage`. Wording itself is deliberately not transcribe
 rewording a term fails nothing. Three mutations run (drop the stored-value check, drop the
 voice fallback, delete one key's `plain`); each caught.
 
-**Still untested:** `uiStyle.js`.
+**`uiStyle.js` done 2026-11-09 — 10 tests** (`uiStyle.test.js`, same stub). They pin a stored valid style
+winning, an unknown stored value falling to the default (`row`), the pre-coordination
+`loom:barstyle` carry-over (and the current key beating it), a throwing `localStorage`
+reading as default and saving without throwing. Three mutations run (drop the stored-value
+check, drop the legacy branch, change the default); each caught.
+
+**Still untested:** the render tree (components) — out of scope for this item; propose separately if wanted.
 ---
 
 ## R-018 — Sweep for the rest of the date-dependent tests · `modernise` · `done 2026-09-22 — swept clean`
