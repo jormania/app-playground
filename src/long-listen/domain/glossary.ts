@@ -1,8 +1,11 @@
+import { DEFINITIONS_EN } from './glossaryDefinitions'
+
 /**
  * Words on tap (release four): the terms in the curator's notes a listener
  * might stop at — forms, techniques, textures — each found once per passage
- * and given a faint dotted underline. A tap asks the curator for two lines,
- * once per term (journey.define), kept and shown wherever the term recurs.
+ * and given a faint dotted underline. A tap shows two lines the app keeps for
+ * every term (glossaryDefinitions.ts, 9 November 2026); only in a language it
+ * has none for does it ask the curator, once per term (journey.define).
  *
  * A closed list, not the model's guess: what is underlined has to be
  * predictable, and a list costs nothing to find in a passage. Longer terms
@@ -35,6 +38,9 @@ const TERMS = [
   // performance
   'period instruments', 'historically informed', 'vibrato', 'timbre',
 ]
+
+/** Every term on the list, lower case. */
+export const GLOSSARY_TERMS: readonly string[] = [...new Set(TERMS)]
 
 const SORTED = [...new Set(TERMS)].sort((a, b) => b.length - a.length)
 // A space in a term matches any run of spaces, a no-break space included ("idée\u00a0fixe").
@@ -73,6 +79,11 @@ export function sentenceAround(text: string, term: string): string {
   // As a word, as the finder reads it: "lied" is not in "relied".
   const word = new RegExp(`(?<![\\p{L}\\p{N}-])${escape(term)}(?![\\p{L}\\p{N}-])`, 'iu')
   return (sentences.find((x) => word.test(x)) ?? text).slice(0, 400)
+}
+
+/** A term's definition as the app keeps it, without asking anyone: English only, for now (glossaryDefinitions.ts). */
+export function bakedDefinition(term: string, language: string): string | undefined {
+  return language === 'en' ? DEFINITIONS_EN[term.trim().toLowerCase().replace(/\s+/g, ' ')] : undefined
 }
 
 /** The store's key for a term's definition, per language. */

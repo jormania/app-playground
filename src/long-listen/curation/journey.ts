@@ -4,7 +4,7 @@ import type {
 } from '../domain/types'
 import { inLanguage } from '../domain/types'
 import { creditLine, fold, newId, sameWork } from '../domain/identity'
-import { termMark } from '../domain/glossary'
+import { bakedDefinition, termMark } from '../domain/glossary'
 import { forgetPlaceBefore } from '../app/place'
 import { AlreadyKept, ConcertRefused, goingKey, type Going } from '../domain/going'
 import { sameEvening, type LiveEvent } from '../live/live'
@@ -1402,6 +1402,9 @@ export class Journey {
     const t = term.trim().toLowerCase()
     return this.once(`define:${t}`, async () => {
       const { language } = await this.repo.preferences()
+      // The app's own definition first: the terms don't change, so they aren't asked for (9 November 2026).
+      const baked = bakedDefinition(t, language)
+      if (baked) return baked
       const id = termMark(t, language)
       const kept = (await this.repo.marks.get(id))?.value as { definition?: string } | undefined
       if (kept?.definition) return kept.definition
@@ -1416,6 +1419,8 @@ export class Journey {
   /** A term's definition if it was ever asked for: shown without a call. */
   async definition(term: string): Promise<string | undefined> {
     const { language } = await this.repo.preferences()
+    const baked = bakedDefinition(term, language)
+    if (baked) return baked
     return ((await this.repo.marks.get(termMark(term, language)))?.value as { definition?: string } | undefined)?.definition
   }
 

@@ -7,9 +7,9 @@ import s from '../styles/editorial.module.css'
 /**
  * Words on tap: a passage of the curator's notes with its terms (passacaglia,
  * col legno, sonata form) under a faint dotted line. A tap opens two lines
- * from the curator just under the passage — asked once per term, kept, shown
- * at once on every later tap; a second tap folds it. Without a key, the
- * passage is plain text.
+ * just under the passage — the app's own (glossaryDefinitions.ts), or in a
+ * language it keeps none for, the curator's, asked once per term and kept;
+ * a second tap folds it. Without a key, the passage is plain text.
  */
 export function Gloss({ text }: { text: string }) {
   const { journey, curatorReady, say } = useServices()

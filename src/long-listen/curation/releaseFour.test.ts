@@ -21,16 +21,26 @@ function fakeCurator(script: Partial<Record<string, (payload: any) => unknown>>)
 const event: LiveEvent = { venue: 'Filarmonica George Enescu', title: 'Brahms & Sibelius', date: '2026-10-23', time: '19:00', hall: 'Sala Mare', link: 'https://example.org/e', description: 'Brahms: Dublul concert; Sibelius: Simfonia nr. 2' }
 
 describe('release four, in the journey', () => {
-  it('defines a term once per language and keeps it', async () => {
+  it('shows the app’s own definition in English, and never asks the curator for it', async () => {
     const repo = new Repo(memoryStore())
-    const c = fakeCurator({ define: (p) => ({ definition: `${p.term}: a ground that repeats.`, promptVersion: 'define@t' }) })
+    const c = fakeCurator({ define: () => ({ definition: 'should not be asked', promptVersion: 'define@t' }) })
+    const j = new Journey(repo, c.client)
+    expect(await j.definition('Adagio')).toMatch(/^A tempo marking meaning slow/)
+    expect(await j.define('passacaglia', 'A passacaglia closes it.')).toMatch(/^Variations over a short phrase/)
+    expect(c.count('define')).toBe(0)
+  })
+
+  it('in a language the app keeps none for, defines a term once and keeps it', async () => {
+    const repo = new Repo(memoryStore())
+    await repo.savePreferences({ ...(await repo.preferences()), language: 'ro' })
+    const c = fakeCurator({ define: (p) => ({ definition: `${p.term}: o temă care se repetă.`, promptVersion: 'define@t' }) })
     const j = new Journey(repo, c.client)
     expect(await j.definition('passacaglia')).toBeUndefined()
-    expect(await j.define('Passacaglia', 'A passacaglia closes it.')).toBe('passacaglia: a ground that repeats.')
-    await j.define('passacaglia', 'Elsewhere.')
+    expect(await j.define('Passacaglia', 'O passacaglia o încheie.')).toBe('passacaglia: o temă care se repetă.')
+    await j.define('passacaglia', 'Altundeva.')
     expect(c.count('define')).toBe(1)
-    expect(c.calls[0].payload).toMatchObject({ term: 'passacaglia', sentence: 'A passacaglia closes it.', language: 'en' })
-    expect(await j.definition('passacaglia')).toBe('passacaglia: a ground that repeats.')
+    expect(c.calls[0].payload).toMatchObject({ term: 'passacaglia', sentence: 'O passacaglia o încheie.', language: 'ro' })
+    expect(await j.definition('passacaglia')).toBe('passacaglia: o temă care se repetă.')
   })
 
   it('marks a concert as going, prepares it once, and lets the kept concert close the mark', async () => {

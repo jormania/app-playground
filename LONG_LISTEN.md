@@ -1796,3 +1796,17 @@ A sweep of the programme page for small text found the 14px labels set in small 
 for that recording) inside its block, just above the work's "Listen for" part: two headings, one under the other,
 on Lontano. There is one heading now. The stand-in's line shows only when the work has no list of its own
 ("In this recording: …"): written for the same music, it said again what the list already says, in other words.
+
+## 43. Words on tap, kept in the app (9 November 2026)
+
+The underlined terms come from a closed list (`domain/glossary.ts`). Each first tap asked the curator (Haiku) for
+two lines, kept them per term on that device, and asked again on any other device or after a fresh start. The
+terms don't change, so the owner asked for the definitions to be in the app.
+
+- `domain/glossaryDefinitions.ts` holds an English definition for every term on the list: what it is and how to hear
+  it, in two sentences and about forty words at most, as the `define` prompt asked. `journey.definition` and
+  `journey.define` return it first; the curator isn't called for an English term.
+- Romanian keeps the old way: asked once per term and kept (`term:ro:<term>`).
+- `glossaryDefinitions.test.ts` fails when a term is added to the list without a definition, when a definition has
+  no term, or when one runs past two sentences or forty-five words.
+- What is underlined, and when (still only with a curator key), is unchanged.
