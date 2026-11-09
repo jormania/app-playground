@@ -26,6 +26,7 @@ export type Route =
   | { name: 'library' }
   | { name: 'threads' }
   | { name: 'notebook' }
+  | { name: 'words' }
   | { name: 'concerts' }
   | { name: 'concert'; id: string }
   | { name: 'season'; n: number }
@@ -49,6 +50,7 @@ export function parseRoute(hash: string): Route {
     case 'library': return { name: 'library' }
     case 'threads': return { name: 'threads' }
     case 'notebook': return { name: 'notebook' }
+    case 'words': return { name: 'words' }
     case 'concerts': return arg ? { name: 'concert', id: arg } : { name: 'concerts' }
     // A whole number from one up: "1.5" or "1e1" is no season, and was read as one.
     case 'season': return arg && /^\d+$/.test(arg) && Number(arg) >= 1 ? { name: 'season', n: Number(arg) } : { name: 'journal' }

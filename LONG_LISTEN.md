@@ -1796,3 +1796,41 @@ A sweep of the programme page for small text found the 14px labels set in small 
 for that recording) inside its block, just above the work's "Listen for" part: two headings, one under the other,
 on Lontano. There is one heading now. The stand-in's line shows only when the work has no list of its own
 ("In this recording: …"): written for the same music, it said again what the list already says, in other words.
+
+## 43. Words on tap, kept in the app (9 November 2026)
+
+The underlined terms come from a closed list (`domain/glossary.ts`). Each first tap asked the curator (Haiku) for
+two lines, kept them per term on that device, and asked again on any other device or after a fresh start. The
+terms don't change, so the owner asked for the definitions to be in the app.
+
+- `domain/glossaryDefinitions.ts` holds an English definition for every term on the list: what it is and how to hear
+  it, in two sentences and about forty words at most, as the `define` prompt asked. `journey.definition` and
+  `journey.define` return it first; the curator isn't called for an English term.
+- Romanian keeps the old way: asked once per term and kept (`term:ro:<term>`).
+- `glossaryDefinitions.test.ts` fails when a term is added to the list without a definition, when a definition has
+  no term, or when one runs past two sentences or forty-five words.
+- What is underlined, and when (still only with a curator key), is unchanged.
+
+**The dictionary (9 November 2026).** A masthead icon left of the guide (a book with an A, lucide `BookA`) opens
+`#/words` (`screens/Words.tsx`): the words of orchestral music, A to Z, set as the Journal sets its weeks, with the
+letter in the margin and a hairline down to the next. It holds every underlined term and about a hundred plain words
+the notes never underline (`domain/dictionary.ts`): the instruments and the people on the stage, the basics of a
+score, forms such as symphony and opera, and the periods. A search box matches a term or what it does ("bow",
+"slow"), with accents and case set aside. Two rows of chips: the first works like the Library's views, with
+**Everything · In your notes · This week**. "This week" holds the terms this week's programmes underline, read from
+the programmes kept on the device, with their count on the chip. The second narrows to one kind. Underlined terms carry the same dotted line here
+as in the notes. Everything is in the app, so the page opens at once, offline too. `dictionary.test.ts` keeps every
+word unique, defined and within two sentences.
+
+**The dictionary, audited (9 November 2026).**
+- A way back at the top, as on a composer's or performer's page (`BackLink`, following the trail; This week by
+  default). The dictionary is looked things up in mid-reading.
+- The search and both chip rows are kept for the tab (`useKept`), as the Library keeps its own: back from a
+  programme, the page is as it was left.
+- A count ("238 words", "12 of 238 words") and an A to Z index under it, offering only the letters the page now holds.
+- Cross-references: a specialist word named in another's definition ("the first section of sonata form") is
+  underlined as in the notes, and a tap goes to its own entry. Whatever would hide it is cleared first, the jump is
+  instant, and the entry takes a brief wash of the accent. Plain words ("key", "bar", "theme") aren't linked.
+- Typography: the definitions used straight quotes and apostrophes; they now use the app's curly ones.
+- Checked and left as is: on the narrowest phones (320px) with the "back to the work" icon showing, the four
+  masthead icons wrap the app's name onto three lines. Nothing overlaps, and it stays on one line from about 400px.

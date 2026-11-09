@@ -1,8 +1,11 @@
+import { DEFINITIONS_EN } from './glossaryDefinitions'
+
 /**
  * Words on tap (release four): the terms in the curator's notes a listener
  * might stop at — forms, techniques, textures — each found once per passage
- * and given a faint dotted underline. A tap asks the curator for two lines,
- * once per term (journey.define), kept and shown wherever the term recurs.
+ * and given a faint dotted underline. A tap shows two lines the app keeps for
+ * every term (glossaryDefinitions.ts, 9 November 2026); only in a language it
+ * has none for does it ask the curator, once per term (journey.define).
  *
  * A closed list, not the model's guess: what is underlined has to be
  * predictable, and a list costs nothing to find in a passage. Longer terms
@@ -11,30 +14,42 @@
  * grave) are left out: underlined in "the development of his style" they'd be
  * wrong, and nobody stops at them.
  */
-const TERMS = [
-  // forms and genres
-  'sonata form', 'sonata-allegro', 'rondo', 'scherzo', 'minuet', 'trio section', 'passacaglia', 'chaconne', 'fugue', 'fugato', 'canon',
-  'theme and variations', 'symphonic poem', 'tone poem', 'concerto grosso', 'sinfonia concertante', 'divertimento', 'serenade',
-  'overture', 'prelude', 'intermezzo', 'nocturne', 'rhapsody', 'cantata', 'oratorio', 'requiem', 'song cycle', 'ballade',
-  'toccata', 'fantasia', 'waltz', 'ländler', 'siciliano', 'barcarolle', 'habanera', 'bolero', 'polonaise', 'mazurka', 'tarantella',
-  // structure
-  'exposition', 'recapitulation', 'coda', 'codetta', 'cadenza', 'cadence', 'second subject', 'first subject',
-  'leitmotif', 'motif', 'idée fixe', 'cyclic form', 'ostinato', 'pedal point', 'ground bass', 'cantus firmus', 'chorale',
-  // harmony and line
-  'counterpoint', 'polyphony', 'homophony', 'canonic', 'modulation', 'chromaticism', 'dissonance', 'consonance', 'atonal', 'atonality',
-  'twelve-tone', 'serialism', 'tonality', 'major key', 'minor key', 'pentatonic', 'whole-tone',
-  'polytonality', 'tone cluster', 'microtonal', 'spectralism', 'minimalism', 'neoclassicism', 'impressionism',
-  'hemiola', 'syncopation', 'polyrhythm', 'rubato', 'appoggiatura', 'tremolo', 'trill', 'glissando', 'portamento',
-  // tempo and dynamics
-  'adagio', 'andante', 'allegro', 'presto', 'largo', 'lento', 'moderato', 'allegretto', 'vivace', 'accelerando', 'ritardando',
-  'crescendo', 'diminuendo', 'decrescendo', 'sforzando', 'pianissimo', 'fortissimo', 'tutti', 'ritornello', 'sostenuto', 'staccato', 'legato',
-  // the orchestra's sounds
-  'pizzicato', 'col legno', 'sul ponticello', 'sul tasto', 'con sordino', 'divisi', 'double stops', 'arpeggio',
-  'stopped horn', 'flutter-tongue', 'cor anglais', 'english horn', 'contrabassoon', 'bass clarinet', 'celesta', 'glockenspiel', 'timpani',
-  'double bass', 'ondes martenot', 'continuo', 'basso continuo', 'obbligato', 'concertino', 'ripieno', 'orchestration',
-  // performance
-  'period instruments', 'historically informed', 'vibrato', 'timbre',
-]
+/** The list, in the groups the dictionary shows them under (screens/Words.tsx). */
+export const TERM_GROUPS = {
+  forms: [
+    'sonata form', 'sonata-allegro', 'rondo', 'scherzo', 'minuet', 'trio section', 'passacaglia', 'chaconne', 'fugue', 'fugato', 'canon',
+    'theme and variations', 'symphonic poem', 'tone poem', 'concerto grosso', 'sinfonia concertante', 'divertimento', 'serenade',
+    'overture', 'prelude', 'intermezzo', 'nocturne', 'rhapsody', 'cantata', 'oratorio', 'requiem', 'song cycle', 'ballade',
+    'toccata', 'fantasia', 'waltz', 'ländler', 'siciliano', 'barcarolle', 'habanera', 'bolero', 'polonaise', 'mazurka', 'tarantella',
+  ],
+  structure: [
+    'exposition', 'recapitulation', 'coda', 'codetta', 'cadenza', 'cadence', 'second subject', 'first subject',
+    'leitmotif', 'motif', 'idée fixe', 'cyclic form', 'ostinato', 'pedal point', 'ground bass', 'cantus firmus', 'chorale',
+  ],
+  harmony: [
+    'counterpoint', 'polyphony', 'homophony', 'canonic', 'modulation', 'chromaticism', 'dissonance', 'consonance', 'atonal', 'atonality',
+    'twelve-tone', 'serialism', 'tonality', 'major key', 'minor key', 'pentatonic', 'whole-tone',
+    'polytonality', 'tone cluster', 'microtonal', 'spectralism', 'minimalism', 'neoclassicism', 'impressionism',
+    'hemiola', 'syncopation', 'polyrhythm', 'rubato', 'appoggiatura', 'tremolo', 'trill', 'glissando', 'portamento',
+  ],
+  tempo: [
+    'adagio', 'andante', 'allegro', 'presto', 'largo', 'lento', 'moderato', 'allegretto', 'vivace', 'accelerando', 'ritardando',
+    'crescendo', 'diminuendo', 'decrescendo', 'sforzando', 'pianissimo', 'fortissimo', 'tutti', 'ritornello', 'sostenuto', 'staccato', 'legato',
+  ],
+  orchestra: [
+    'pizzicato', 'col legno', 'sul ponticello', 'sul tasto', 'con sordino', 'divisi', 'double stops', 'arpeggio',
+    'stopped horn', 'flutter-tongue', 'cor anglais', 'english horn', 'contrabassoon', 'bass clarinet', 'celesta', 'glockenspiel', 'timpani',
+    'double bass', 'ondes martenot', 'continuo', 'basso continuo', 'obbligato', 'concertino', 'ripieno', 'orchestration',
+  ],
+  performance: [
+    'period instruments', 'historically informed', 'vibrato', 'timbre',
+  ],
+} as const satisfies Record<string, readonly string[]>
+
+const TERMS: string[] = Object.values(TERM_GROUPS).flat()
+
+/** Every term on the list, lower case. */
+export const GLOSSARY_TERMS: readonly string[] = [...new Set(TERMS)]
 
 const SORTED = [...new Set(TERMS)].sort((a, b) => b.length - a.length)
 // A space in a term matches any run of spaces, a no-break space included ("idée\u00a0fixe").
@@ -67,12 +82,24 @@ export function glossPieces(raw: string, skip: Set<string> = new Set()): Piece[]
   return out
 }
 
+/** The listed terms found in these passages, lower case: what the notes underline in them. */
+export function termsIn(passages: string[]): Set<string> {
+  const found = new Set<string>()
+  for (const text of passages) for (const p of glossPieces(text)) if (typeof p !== 'string') found.add(p.term)
+  return found
+}
+
 /** The sentence around a term, for the curator to choose the sense meant (a "development" is not always sonata form's). */
 export function sentenceAround(text: string, term: string): string {
   const sentences = text.normalize('NFC').split(/(?<=[.!?])\s+/)
   // As a word, as the finder reads it: "lied" is not in "relied".
   const word = new RegExp(`(?<![\\p{L}\\p{N}-])${escape(term)}(?![\\p{L}\\p{N}-])`, 'iu')
   return (sentences.find((x) => word.test(x)) ?? text).slice(0, 400)
+}
+
+/** A term's definition as the app keeps it, without asking anyone: English only, for now (glossaryDefinitions.ts). */
+export function bakedDefinition(term: string, language: string): string | undefined {
+  return language === 'en' ? DEFINITIONS_EN[term.trim().toLowerCase().replace(/\s+/g, ' ')] : undefined
 }
 
 /** The store's key for a term's definition, per language. */
