@@ -213,8 +213,35 @@ export function rainWashSwingDb(d = RAIN_DRIFT) {
   return 20 * Math.log10((gainTrough / gainCrest) * Math.sqrt(bwTrough / bwCrest))
 }
 
-const EBB_START = 0.65
 const FADE_IN_SEC = 5
+
+// ── The ebb: how the night goes quiet ─────────────────────────────────────
+// The master holds at full level, then drifts down over the last stretch.
+//
+// It used to start at a fixed 65% of the session and ramp exponentially to
+// 0.0001 (−80 dB) by the end. An exponential ramp is linear in dB, so it sheds
+// level fastest exactly when it is still audible: on a 90' night it began at
+// 58.5', was −12 dB by 65' and −21 dB by 70' — gone under room noise with
+// twenty minutes still on the clock, which is what "it stops a lot sooner"
+// was. Two fixes: the ebb is a share of the night only up to a cap, so a long
+// session keeps its sound; and its curve is quadratic in dB (gentle first,
+// steeper as it disappears), spanning only the range an ear can follow.
+export const EBB_SHARE = 0.35 // of a short session
+export const EBB_MAX_SEC = 12 * 60 // …but never longer than this
+export const EBB_DEPTH_DB = 42 // below the set level at the very end; stop() takes the rest
+const EBB_STEPS = 24 // piecewise-exponential segments approximating the curve
+
+export function ebbStartSec(totalSec) {
+  return Math.max(0, totalSec - Math.min(totalSec * EBB_SHARE, EBB_MAX_SEC))
+}
+
+// The master's gain, as a fraction of the set level, `elapsedSec` into the night.
+export function ebbLevel(totalSec, elapsedSec) {
+  const start = ebbStartSec(totalSec)
+  if (elapsedSec <= start) return 1
+  const t = Math.min(1, (elapsedSec - start) / Math.max(1e-6, totalSec - start))
+  return Math.pow(10, (-EBB_DEPTH_DB * t * t) / 20)
+}
 
 // ── Rule 2: aperiodic drift ────────────────────────────────────────────────
 // One step of a mean-reverting random walk in [-1, 1]. The target is shaped
@@ -389,16 +416,19 @@ export function createNightSoundscape() {
     const now = ctx.currentTime
     const g = master.gain
     g.cancelScheduledValues(now)
-    const remainingToEbb = totalSec * EBB_START - elapsedSec
-    const endIn = Math.max(0.1, totalSec - elapsedSec)
-    if (elapsedSec < fadeIn) {
-      g.setValueAtTime(0.0001, now)
-      g.exponentialRampToValueAtTime(target, now + fadeIn)
-    } else {
-      g.setValueAtTime(target, now)
+    // Resuming mid-ebb (a reload) picks the curve up where it is, rather than
+    // jumping back to full level and ebbing again from the top.
+    const level = (sec) => Math.max(0.0001, target * ebbLevel(totalSec, sec))
+    const fade = Math.min(fadeIn, Math.max(0.1, totalSec - elapsedSec))
+    g.setValueAtTime(0.0001, now)
+    g.exponentialRampToValueAtTime(level(elapsedSec + fade), now + fade)
+    const start = Math.max(ebbStartSec(totalSec), elapsedSec + fade)
+    if (start >= totalSec) return
+    g.setValueAtTime(level(start), now + (start - elapsedSec))
+    for (let i = 1; i <= EBB_STEPS; i++) {
+      const sec = start + ((totalSec - start) * i) / EBB_STEPS
+      g.exponentialRampToValueAtTime(level(sec), now + (sec - elapsedSec))
     }
-    if (remainingToEbb > 0) g.setValueAtTime(target, now + remainingToEbb)
-    g.exponentialRampToValueAtTime(0.0001, now + endIn)
   }
 
   // ── drift: an aperiodic control signal (rule 2) ───────────────────────────
