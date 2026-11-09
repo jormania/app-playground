@@ -16,6 +16,9 @@ import {
   distanceSend,
   RAIN_DRIFT,
   rainWashSwingDb,
+  ebbStartSec,
+  ebbLevel,
+  EBB_DEPTH_DB,
 } from './soundscape'
 
 // Yoru's eight blendable layers (it keeps `drone`, unlike Touch Grass).
@@ -723,5 +726,35 @@ describe("rain's weather depths", () => {
     const d = RAIN_DRIFT
     expect(d.gainWeather + d.gainShower).toBeLessThan(1) // gain can't go negative
     expect(d.lpBase - d.lpWeather - d.lpShower).toBeGreaterThan(d.hpBase) // band can't close
+  })
+})
+
+describe('the ebb', () => {
+  const db = (x) => 20 * Math.log10(x)
+
+  it('a long night keeps its full sound until the last 12 minutes', () => {
+    expect(ebbStartSec(90 * 60)).toBe(78 * 60)
+    expect(ebbLevel(90 * 60, 70 * 60)).toBe(1)
+    expect(ebbLevel(90 * 60, 78 * 60)).toBe(1)
+  })
+
+  it('a short night ebbs over its last 35%', () => {
+    expect(ebbStartSec(15 * 60)).toBeCloseTo(15 * 60 * 0.65)
+  })
+
+  it('is gentle first and steeper as it disappears, ending at −42 dB', () => {
+    const T = 90 * 60
+    const start = ebbStartSec(T)
+    const at = (f) => db(ebbLevel(T, start + (T - start) * f))
+    expect(at(0.25)).toBeGreaterThan(-3) // a quarter in, barely moved
+    expect(at(0.5)).toBeCloseTo(-10.5, 1)
+    expect(at(1)).toBeCloseTo(-EBB_DEPTH_DB, 6)
+    // never rises
+    let prev = 1
+    for (let s = 0; s <= T; s += 30) {
+      const l = ebbLevel(T, s)
+      expect(l).toBeLessThanOrEqual(prev)
+      prev = l
+    }
   })
 })

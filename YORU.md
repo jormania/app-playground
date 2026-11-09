@@ -52,9 +52,13 @@ portalled to `<body>`. **Nature only — no animals, no city.**
   airy), **Motion** (how *much* it swells/gusts), **Pace** (how *fast* it drifts).
 - The `soundscape` quick-pick in Settings stamps a starting blend (`SCENE_PRESETS`
   in [`lib/storage.js`](src/yoru/lib/storage.js)); the mixer refines it.
-- **It always flows and ebbs.** A soft fade-in, a master ebb to true silence by
-  the session's end, and a gentle release on stop — the sound never cuts,
-  whatever the mixer is set to. There is no on/off: sound is the point; the
+- **It always flows and ebbs.** A soft fade-in, a master ebb over the last
+  35% of the night (never more than 12 minutes), and a gentle release on stop —
+  the sound never cuts, whatever the mixer is set to. The ebb is quadratic in dB
+  down to −42 dB: gentle at first, steeper as it disappears. It used to start at
+  a fixed 65% and ramp linearly in dB to −80, which on a 90' night was −21 dB —
+  inaudible in a room — by 70', twenty minutes early. `ebbLevel` in
+  `soundscape.js` is the curve; the screen dims from the same start point. There is no on/off: sound is the point; the
   Volume dial takes it as low as you like.
 - The warm bed **breathes with you** when breathwork is on.
 

@@ -6,7 +6,7 @@ import { useDescent } from '../lib/useDescent'
 import { useWakeLock } from '../lib/useWakeLock'
 import { useMediaSession } from '../../shared/mediaSession'
 import { useCoords } from '../lib/useCoords'
-import { createNightSoundscape } from '../lib/soundscape'
+import { createNightSoundscape, ebbStartSec } from '../lib/soundscape'
 import { phaseLabel } from '../lib/breath'
 import MoonGlyph from './MoonGlyph'
 import { moonBrief, moonPhase } from '../lib/sky'
@@ -222,7 +222,7 @@ export default function Session({ session, onNote, onFinish }) {
   const label = useMemo(() => phaseLabel(phase), [phase])
 
   return (
-    <main className={styles.session} style={{ '--dim': dimFor(progress) }}>
+    <main className={styles.session} style={{ '--dim': dimFor(progress, session.totalSec) }}>
       <div className={styles.enter} aria-hidden="true" />
       <div className={styles.top}>
         {showModes && (
@@ -340,9 +340,11 @@ function fadeLate(progress, max) {
 }
 
 // The whole screen fades toward black over the final stretch, matching the
-// sound's ebb — the room goes quiet and dark together.
-function dimFor(progress) {
-  if (progress < 0.7) return 1
-  const t = (progress - 0.7) / 0.3
+// sound's ebb — the room goes quiet and dark together. Starts where the ebb
+// does (soundscape.js), so a long night isn't dimmed while its sound is full.
+function dimFor(progress, totalSec) {
+  const from = totalSec > 0 ? ebbStartSec(totalSec) / totalSec : 0
+  if (progress < from) return 1
+  const t = (progress - from) / Math.max(1e-6, 1 - from)
   return (1 - 0.72 * Math.min(1, t)).toFixed(3)
 }
