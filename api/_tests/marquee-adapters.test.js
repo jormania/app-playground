@@ -15,7 +15,7 @@ import oveit, { vendorFromUrl } from '../_lib/marquee/oveit.js'
 import iabilet, { seatsNote } from '../_lib/marquee/iabilet.js'
 import tnb from '../_lib/marquee/tnb.js'
 import mystage from '../_lib/marquee/mystage.js'
-import cndb, { isCourse } from '../_lib/marquee/cndb.js'
+import cndb, { isCourse, registrationForm } from '../_lib/marquee/cndb.js'
 import salaradio, { parseMeridiemTime } from '../_lib/marquee/salaradio.js'
 import quantic, { startTimeOf } from '../_lib/marquee/quantic.js'
 import expirat from '../_lib/marquee/expirat.js'
@@ -1948,6 +1948,107 @@ describe('cndb (Centrul Național al Dansului București)', () => {
     expect(ADAPTERS.cndb).toBe(cndb);
     expect(cndb.id).toBe('cndb');
   });
+
+  describe('the registration form (\u00a79.96)', () => {
+    const formPage = {
+      url: 'https://cndb.ro/new_events/11-piese-proaspete-partea-i/',
+      body: fixture('cndb-event-form.html'),
+    }
+    const longFormPage = {
+      url: 'https://cndb.ro/new_events/11-piese-proaspete-partea-ii/',
+      body: fixture('cndb-event-form-long.html'),
+    }
+    const barePage = {
+      url: 'https://cndb.ro/new_events/11-piese-proaspete-partea-i/',
+      body: fixture('cndb-event-no-form.html'),
+    }
+
+    it('reads both shapes of link CNDB publishes', () => {
+      expect(registrationForm(fixture('cndb-event-form.html')))
+        .toBe('https://forms.gle/zoekaBZyvawosdsg8')
+      // The long one arrives with its query &amp;-escaped out of the HTML.
+      expect(registrationForm(fixture('cndb-event-form-long.html')))
+        .toContain('docs.google.com/forms/d/')
+      expect(registrationForm(fixture('cndb-event-form-long.html'))).toContain('&edit_requested=true')
+      expect(registrationForm(fixture('cndb-event-form-long.html'))).not.toContain('&amp;')
+    })
+
+    it('does not care which heading the venue put above it', () => {
+      // "Participare" on one page, "\u00censcriere" on the other, and a third
+      // with a form and no heading at all. Matching the sentence would have
+      // missed two of the four found on the live site.
+      expect(fixture('cndb-event-form.html')).toContain('Participare')
+      expect(fixture('cndb-event-form-long.html')).toContain('nscriere')
+      expect(registrationForm(fixture('cndb-event-form.html'))).toBeTruthy()
+      expect(registrationForm(fixture('cndb-event-form-long.html'))).toBeTruthy()
+    })
+
+    it('finds nothing on a page that has no form yet', () => {
+      expect(registrationForm(fixture('cndb-event-no-form.html'))).toBeNull()
+      expect(registrationForm('')).toBeNull()
+      expect(registrationForm(null)).toBeNull()
+    })
+
+    it('turns a found form into an OPEN showing with the form as its link', () => {
+      const withForm = cndb.parse([page, formPage], { venue })
+      const first = withForm.find((e) => e.link === formPage.url)
+      expect(first).toMatchObject({
+        ticketState: 'open',
+        ticketsUrl: 'https://forms.gle/zoekaBZyvawosdsg8',
+      })
+    })
+
+    it('leaves a showing with no form alone, rather than guessing', () => {
+      // \u00a79.7's rule: silence is `none`, never `open` and never a full house
+      // inferred from a venue that simply has not said.
+      const scanned = cndb.parse([page, barePage], { venue })
+      expect(scanned.every((e) => e.ticketState === 'none')).toBe(true)
+      expect(scanned.every((e) => e.ticketsUrl === null)).toBe(true)
+    })
+
+    it('is what makes a new form a tickets-opened change', () => {
+      // The whole point. `diff` already reports a showing going to `open` as
+      // `tickets-opened`, so the form reaching the page is the same event as
+      // tickets going on sale anywhere else — no new vocabulary, and it lands
+      // in the Changed filter, the notification and the evening mail.
+      const before = cndb.parse([page, barePage], { venue })
+      const after = cndb.parse([page, formPage], { venue })
+      const key = after.find((e) => e.link === formPage.url).key
+      // The key is unchanged, so the diff reads one showing changing state
+      // rather than one vanishing and another appearing.
+      expect(before.find((e) => e.link === formPage.url).key).toBe(key)
+      expect(before.find((e) => e.key === key).ticketState).toBe('none')
+      expect(after.find((e) => e.key === key).ticketState).toBe('open')
+    })
+
+    it('follows only the upcoming rows, and never a course', () => {
+      const soon = new Date('2026-08-07T09:00:00Z')
+      const followed = cndb.follow([page], { venue, now: soon }).map((r) => r.url)
+      expect(followed.length).toBeGreaterThan(0)
+      expect(followed.every((u) => u.startsWith('https://cndb.ro/new_events/'))).toBe(true)
+      expect(new Set(followed).size).toBe(followed.length)
+      // A season's worth of past rows is not news, so a later "today" follows less.
+      const later = cndb.follow([page], { venue, now: new Date('2026-12-31T09:00:00Z') })
+      expect(later.length).toBeLessThan(followed.length)
+    })
+
+    it('REMEMBERS a form and never remembers its absence', () => {
+      // The asymmetry the feature rests on. A cached "no form yet" would
+      // switch off the only thing being watched for, so the empty page stores
+      // nothing and is asked again next scan (\u00a79.80 applied where it bites).
+      expect(cndb.extractDetail(formPage)).toEqual({ form: 'https://forms.gle/zoekaBZyvawosdsg8' })
+      expect(cndb.extractDetail(barePage)).toBeNull()
+      expect(cndb.detailTtlMs).toBe(24 * 60 * 60 * 1000)
+    })
+
+    it('reads a remembered form exactly as it reads a fetched one', () => {
+      const record = cndb.extractDetail(longFormPage)
+      const cached = cndb.parse([page], { venue, details: { [longFormPage.url]: record } })
+      const fetched = cndb.parse([page, longFormPage], { venue })
+      expect(cached).toEqual(fetched)
+    })
+  })
+
 });
 
 describe('salaradio (Sala Radio)', () => {

@@ -353,7 +353,7 @@ describe('the cache boundary — which venues may remember, and which may not', 
   // because its whitelabel cards state their own hour and it follows nothing;
   // the capability is inherited and would come straight back into use the day
   // that template drops its clock.
-  const MAY_CACHE = ['tnb', 'metropolis', 'arcub', 'quantic', 'expirat', 'salaradio', 'iabilet']
+  const MAY_CACHE = ['tnb', 'metropolis', 'arcub', 'quantic', 'expirat', 'salaradio', 'iabilet', 'cndb']
 
   const MUST_NOT_CACHE = {
     // Their extra hops ARE the programme — caching those caches the answer
@@ -407,6 +407,11 @@ describe('the cache boundary — which venues may remember, and which may not', 
     // state their own hour, so it follows nothing — but the capability is
     // there, and it is covered here so it cannot drift away from the rules.
     expirat: { url: 'https://tickets.expirat.org/bilete-x-1/', body: fixture('iabilet-screening.html') },
+    // CNDB remembers one thing: that a registration form has been published
+    // (§9.96). It is a link rather than a state, and the absence of one — the
+    // volatile half, and the half the whole feature watches for — is never
+    // stored at all, which is asserted in the adapter's own suite.
+    cndb: { url: 'https://cndb.ro/new_events/x/', body: fixture('cndb-event-form.html') },
   }
 
   it('no cached record carries an AVAILABILITY fact', () => {

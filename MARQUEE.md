@@ -4764,3 +4764,73 @@ site's own "no events" message turned out to be the least trustworthy signal on
 the page. Had the gate been taught to believe it, Marquee would have reported
 "nothing upcoming" for a theatre playing that night, which is worse than
 reporting a breakage that isn't one.
+
+## 9.96 CNDB's registration form, which appears without warning (2026-11-10)
+
+CNDB mostly does not sell tickets. It gives a performance away free and takes
+bookings through a **Google Form** — and the form is often added to an event's
+page days after the event itself goes up, with no announcement and no visible
+rule about when. A free show with a form fills fast, so the moment the link
+appears is the thing worth knowing, and it was invisible to Marquee.
+
+Measured on 2026-11-10: seventeen upcoming events, eleven detail pages read,
+**four carried a form and the calendar page carried none**. The form exists only
+on the event's own page.
+
+### Reading it
+
+Each upcoming event's page is now read for one fact: is there a registration
+form on it yet. Where there is, the showing comes out `ticketState: open` with
+the form as its `ticketsUrl`.
+
+**That one line is the whole feature**, because everything downstream already
+exists. `diff.js` reports a showing going `none` → `open` as `tickets-opened`,
+so a form landing on a page reaches the Changed filter, the notification and
+the evening mail with no new vocabulary anywhere; the event joins the "On sale"
+filter; and `wanderlist.js` prefers `ticketsUrl` over `link`, so keeping the
+showing saves the form itself rather than the page about it. One tap from the
+card to the booking.
+
+Live, the first time it ran: 17 events, **7 with registration open**.
+
+### The link is the signal, never the sentence
+
+The heading above it has been seen as **Participare** ("Intrarea este liberă, pe
+baza de înscriere in formularul disponibil AICI"), as **Înscriere**
+("Participarea este gratuită pe baza de înscriere în formularul disponibil
+AICI"), and absent altogether on a page that had a form anyway. Matching the
+prose would have missed two of the four found. So `registrationForm()` matches
+the URL — `forms.gle/<id>` or `docs.google.com/forms/…` — and nothing else.
+
+The long shape arrives `&amp;`-escaped out of the HTML and is decoded; beyond
+that the URL is left exactly as CNDB published it, `?ts=…&edit_requested=true`
+and all. It is their link, and a tidied one that no longer matches theirs would
+be a worse answer rather than a better one.
+
+### Only a form found is ever remembered
+
+`extractDetail` returns a record for a page with a form and **null for a page
+without one**, which the scan reads as "store nothing, ask again next time".
+
+This is §9.80's rule applied where it actually bites. Normally the volatile
+fact is the presence of something; here it is the **absence**. A cached "no form
+yet" would mean not re-reading that page, and re-reading that page is the entire
+feature — the cache would quietly switch off the thing it was added to support.
+A form that IS found keeps its record for a day, not the default week, because a
+form can be taken down or replaced and a day bounds how long a dead link sits on
+a card.
+
+Steady-state cost is therefore one request per *form-less* upcoming event per
+scan — about twelve, at a second each, which is also why `MAX_FOLLOWED` is 20
+and scan.js's budget of twelve bites first, handing the oldest pages out across
+consecutive scans with the soonest show at the front of the queue.
+
+### What `open` means here, and what it does not
+
+It means a registration link has been published. **Not that places remain.** A
+Google Form that has stopped accepting responses still answers at its URL, and
+nothing on CNDB's page says otherwise, so neither does Marquee. That is the
+trade the feature is for: knowing within a scan that booking opened, rather than
+knowing how full it is. For a free show that fills in hours, the first is worth
+far more than the second — but a card saying "tickets" here is reporting the
+venue's announcement, not a seat count.
