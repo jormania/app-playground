@@ -49,8 +49,8 @@ describe('the Journal, week by week', () => {
   it('lists a work under its programme’s week, however late it was heard, as one line', async () => {
     const { repo, p, first } = await seeded()
     render(createElement(App, { repo, curator: plain() }))
-    const w41 = await screen.findByRole('region', { name: 'Week 41, 2026' }, { timeout: 4000 })
-    expect(screen.queryByRole('region', { name: /^Week 42/ })).toBeNull()
+    const w41 = await screen.findByRole('region', { name: 'Week 1, 5–11 October 2026' }, { timeout: 4000 })
+    expect(screen.queryByRole('region', { name: /^Week 2,/ })).toBeNull()
     const line = within(w41).getByText(curly(first.proposed.work), { selector: 'em' }).closest('li')!
     expect(line.textContent).toMatch(new RegExp(`^${displaySurname(first.proposed.composer)}, `))
     expect(within(line).getByRole('link', { name: displaySurname(first.proposed.composer) }).getAttribute('href')).toBe(`#/composer/${encodeURIComponent(first.proposed.composer)}`)
@@ -70,7 +70,7 @@ describe('the Journal, week by week', () => {
   it('a concert still to come is not "heard live"', async () => {
     const { repo } = await seeded()
     render(createElement(App, { repo, curator: plain() }))
-    await screen.findByRole('region', { name: 'Week 41, 2026' }, { timeout: 4000 })
+    await screen.findByRole('region', { name: 'Week 1, 5–11 October 2026' }, { timeout: 4000 })
     expect(screen.queryByText('Sala Radio')).toBeNull()
     expect(screen.queryByText(/Heard live/)).toBeNull()
   })
@@ -78,7 +78,7 @@ describe('the Journal, week by week', () => {
   it('links no season under way', async () => {
     const { repo } = await seeded()
     render(createElement(App, { repo, curator: plain() }))
-    await screen.findByRole('region', { name: 'Week 41, 2026' }, { timeout: 4000 })
+    await screen.findByRole('region', { name: 'Week 1, 5–11 October 2026' }, { timeout: 4000 })
     expect(screen.queryByRole('link', { name: /^Season/ })).toBeNull()
   })
 })

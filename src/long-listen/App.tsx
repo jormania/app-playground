@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { BookA, BookOpen, Settings2 } from 'lucide-react'
-import { ServicesProvider, useServices } from './app/services'
+import { ServicesProvider, useLoad, useServices } from './app/services'
+import { firstWeekKey, journeyWeekNumber } from './domain/week'
 import { href, toTopIfHere, useRoute, type Route } from './app/router'
 import { GUIDE_URL } from './app/links'
 import { useNewVersion } from './app/freshness'
@@ -42,7 +43,10 @@ const NAV: { route: Route; label: string }[] = [
 function Shell() {
   const route = useRoute()
   const online = useOnline()
-  const { week, settings } = useServices()
+  const { week, settings, repo } = useServices()
+  // Weeks count from the journey's first, not the calendar's (2026-11-10): "Week 3", never "Week 46".
+  const { data: first } = useLoad(async () => firstWeekKey((await repo.weeks.all()).map((w) => w.weekKey), week.key), [week.key])
+  const weekNumber = journeyWeekNumber(first ?? week.key, week.key)
   const active = route.name === 'programme' || route.name === 'listen' ? 'week' : route.name === 'concerts' || route.name === 'concert' || route.name === 'season' ? 'journal' : route.name === 'before' ? 'week' : route.name === 'composer' || route.name === 'performer' ? 'library' : route.name
   const navRef = useRef<HTMLElement>(null)
   // The screens that are always the same thing are named here; one showing a work, a programme or a
@@ -79,7 +83,7 @@ function Shell() {
           </span>
         </div>
         {/* A row of its own, the masthead's whole width: beside the controls (and the way back to the work playing) it wrapped. */}
-        <p className={s.weekLine}>Week {week.number} · {week.label}</p>
+        <p className={s.weekLine}>{first && weekNumber ? `Week ${weekNumber} · ` : ''}{week.label}</p>
         {/* The listening view is one quiet screen: the sections step back, and
             its own link leads back to the programme. */}
         {route.name !== 'listen' && <nav ref={navRef} className={s.nav} aria-label="Sections">

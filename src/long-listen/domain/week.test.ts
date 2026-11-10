@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekOf, weekFromKey, weeksBetween, sinceWords, civilDateIn, isValidTimeZone, canonicalTimeZone } from './week'
+import { weekOf, weekFromKey, weeksBetween, sinceWords, civilDateIn, isValidTimeZone, canonicalTimeZone, firstWeekKey, journeyWeekNumber } from './week'
 
 describe('the listening week', () => {
   it('turns over at Monday midnight in Bucharest, not in UTC', () => {
@@ -71,5 +71,22 @@ describe('the listening week', () => {
     expect(canonicalTimeZone('utc')).toBe('UTC')
     expect(canonicalTimeZone('+02:00')).toBeNull()
     expect(canonicalTimeZone('Not/AZone')).toBeNull()
+  })
+})
+
+describe('the journey’s week numbers (2026-11-10)', () => {
+  it('count from the first week kept, across a new year, not the calendar’s', () => {
+    const first = firstWeekKey(['2026-W46', '2026-W41', '2026-W43'], '2026-W46')
+    expect(first).toBe('2026-W41')
+    expect(journeyWeekNumber(first, '2026-W41')).toBe(1)
+    expect(journeyWeekNumber(first, '2026-W46')).toBe(6)
+    expect(journeyWeekNumber(first, '2027-W01')).toBe(14) // 2026 has 53 weeks
+  })
+
+  it('make a listener with no weeks yet week one, and give a week before the start no number', () => {
+    expect(journeyWeekNumber(firstWeekKey([], '2026-W46'), '2026-W46')).toBe(1)
+    // Only next week shaped so far: this week is still the first.
+    expect(firstWeekKey(['2026-W47'], '2026-W46')).toBe('2026-W46')
+    expect(journeyWeekNumber('2026-W41', '2026-W39')).toBeUndefined()
   })
 })

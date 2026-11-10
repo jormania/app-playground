@@ -1861,3 +1861,9 @@ shows every word, so there is no "All". *In your notes*, *This week* and *The ba
 named beside each entry. The basics and the periods sit under no shelf. The row shares its width evenly
 (`.shelfRow`) and holds on one line from 320px, and from 360px with text at 120%. Underlined words keep their
 dotted line.
+
+**Weeks counted from the journey (10 November 2026).** The masthead and the Journal's margin said "Week 46", the
+calendar's ISO week. They now count from the journey's first week: the earliest week record kept is Week 1
+(`firstWeekKey`, `journeyWeekNumber` in `domain/week.ts`), across the new year too. A listener with no week yet is in
+Week 1. A Journal week before the journey began (a concert entered from earlier) shows its dates and no number. The
+ISO key (`2026-W46`) stays as the storage key, and in the Notion mirror's Week column.

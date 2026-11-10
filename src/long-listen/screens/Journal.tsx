@@ -4,7 +4,7 @@ import { curly } from '../domain/programmeStyle'
 import { latestFeedback, listeningState, reactionLabel } from '../domain/listening'
 import { heardAs, itemFeedback, playedProposed, standInPlayersOf, standInsOf } from '../domain/standIns'
 import { displaySurname } from '../domain/identity'
-import { isoDateIn, weekFromKey, weekOfDate } from '../domain/week'
+import { firstWeekKey, isoDateIn, journeyWeekNumber, weekFromKey, weekOfDate } from '../domain/week'
 import { useLoad, useServices } from '../app/services'
 import { Landmark } from 'lucide-react'
 import { seasonName } from '../domain/season'
@@ -85,6 +85,8 @@ export function JournalScreen() {
     const optionById = new Map(options.map((o) => [o.id, o]))
     const keys = [...new Set([...weeks.map((w) => w.weekKey), ...concertsIn.keys()])].sort((a, b) => b.localeCompare(a))
     return {
+      // Weeks count from the journey's first (2026-11-10), not the calendar's.
+      first: firstWeekKey(weeks.map((w) => w.weekKey), week.key),
       entries: keys.map((key) => {
         const w = weeks.find((x) => x.weekKey === key)
         const { others, choice } = journalWeek(w, optionById, programmes)
@@ -100,7 +102,7 @@ export function JournalScreen() {
       }).filter((e) => e.main || e.setAside.length || e.evenings.length || e.others.length || e.concerts.length),
       feedback, companionsOf, concertCount: concerts.length, seasons: await journey.seasons(),
     }
-  }, [settings.timeZone, settings.hideSkipped])
+  }, [settings.timeZone, settings.hideSkipped, week.key])
 
   if (error) return <Problem error={error} onRetry={retry} />
   if (!data) return <Waiting>Opening the journal…</Waiting>
@@ -138,13 +140,15 @@ export function JournalScreen() {
 
       {data.entries.map(({ key, main, setAside, evenings, others, choice, listened, concerts }) => {
         const wk = weekFromKey(key)
+        // Counted from the journey's first week; one before it (a concert entered from earlier) has its dates only.
+        const n = journeyWeekNumber(data.first, key)
         return (
-          <section key={key} className={s.journalWeek} aria-label={`Week ${wk.number}, ${wk.isoYear}`}>
+          <section key={key} className={s.journalWeek} aria-label={n ? `Week ${n}, ${wk.label}` : wk.label}>
             {/* The week's number in the margin, a rule running down to the next:
                 the journal reads as a timeline, not a feed. */}
             <div className={s.weekMark} aria-hidden="true">
-              <span className={s.weekWord}>Week</span>
-              <span className={s.weekNum}>{wk.number}</span>
+              {n && <span className={s.weekWord}>Week</span>}
+              {n && <span className={s.weekNum}>{n}</span>}
             </div>
             <div className={s.weekBody}>
             <h2 className={s.weekHead}>{wk.label}</h2>
