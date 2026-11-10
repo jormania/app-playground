@@ -2038,6 +2038,10 @@
   gap: var(--space-xs);
 }
 
+/* The dictionary's four shelves: one row shared evenly, narrower padding so it holds at 320px and with larger text. */
+.shelfRow { gap: var(--space-2xs); }
+.shelfRow .chip { flex: 1 1 auto; padding-inline: var(--space-2xs); text-align: center; }
+
 /* "Ask for three directions from it · next week" after a question in the Notebook. */
 .followLinks {
   white-space: nowrap;

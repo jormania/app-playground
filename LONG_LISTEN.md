@@ -1853,3 +1853,11 @@ them), "The Long Listen" wrapped onto two lines on the owner's phone. The icons 
 them. The name never wraps, and steps down from 1.35rem only where a phone is too narrow for it and the icons
 together (`clamp(1.05rem, (100cqi − 10.5rem) / 7.9, 1.35rem)`): full size from about 393px, 20px at 360px, 17px at
 320px.
+
+**Fewer chips (10 November 2026).** Eleven chips on three rows were too many. The dictionary now has one row of four:
+**Orchestra · Forms · Markings · Harmony** (`FILTERS` in `domain/dictionary.ts`, each a shelf of one or two kinds:
+the orchestra with performance, forms with how a piece is built). None is lit at first; the lit one, tapped again,
+shows every word, so there is no "All". *In your notes*, *This week* and *The basics* are gone, and so is the kind
+named beside each entry. The basics and the periods sit under no shelf. The row shares its width evenly
+(`.shelfRow`) and holds on one line from 320px, and from 360px with text at 120%. Underlined words keep their
+dotted line.
