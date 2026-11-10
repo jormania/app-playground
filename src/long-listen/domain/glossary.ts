@@ -82,13 +82,6 @@ export function glossPieces(raw: string, skip: Set<string> = new Set()): Piece[]
   return out
 }
 
-/** The listed terms found in these passages, lower case: what the notes underline in them. */
-export function termsIn(passages: string[]): Set<string> {
-  const found = new Set<string>()
-  for (const text of passages) for (const p of glossPieces(text)) if (typeof p !== 'string') found.add(p.term)
-  return found
-}
-
 /** The sentence around a term, for the curator to choose the sense meant (a "development" is not always sonata form's). */
 export function sentenceAround(text: string, term: string): string {
   const sentences = text.normalize('NFC').split(/(?<=[.!?])\s+/)

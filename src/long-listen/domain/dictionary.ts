@@ -11,19 +11,20 @@ import { ALIASES, DEFINITIONS_EN } from './glossaryDefinitions'
  */
 export type WordKind = 'basics' | 'forms' | 'structure' | 'harmony' | 'tempo' | 'orchestra' | 'performance' | 'periods'
 
-export const KIND_LABEL: Record<WordKind, string> = {
-  basics: 'The basics',
-  forms: 'Forms and genres',
-  structure: 'How a piece is built',
-  harmony: 'Harmony, line and rhythm',
-  tempo: 'Tempo, loudness, touch',
-  orchestra: 'The orchestra and its sounds',
-  performance: 'Performance',
-  periods: 'Periods and styles',
-}
-
-/** The order the kinds are offered in, as filters. */
+/** Every kind a word is filed under. */
 export const KINDS: WordKind[] = ['basics', 'orchestra', 'forms', 'structure', 'harmony', 'tempo', 'periods', 'performance']
+
+/**
+ * The chips: a few broad shelves, one short word each, so they sit on one row.
+ * None lit shows every word; the basics and the periods have no shelf of their own.
+ */
+export type WordFilter = 'orchestra' | 'forms' | 'markings' | 'harmony'
+export const FILTERS: { value: WordFilter; label: string; kinds: WordKind[] }[] = [
+  { value: 'orchestra', label: 'Orchestra', kinds: ['orchestra', 'performance'] },
+  { value: 'forms', label: 'Forms', kinds: ['forms', 'structure'] },
+  { value: 'markings', label: 'Markings', kinds: ['tempo'] },
+  { value: 'harmony', label: 'Harmony', kinds: ['harmony'] },
+]
 
 export interface Word {
   term: string
