@@ -1,5 +1,5 @@
 import { TERM_GROUPS } from './glossary'
-import { DEFINITIONS_EN } from './glossaryDefinitions'
+import { ALIASES, DEFINITIONS_EN } from './glossaryDefinitions'
 
 /**
  * The dictionary (screens/Words.tsx, 9 November 2026): every term the notes
@@ -31,7 +31,15 @@ export interface Word {
   definition: string
   /** Underlined in the curator's notes (glossary.ts), so it can be tapped where it appears. */
   inNotes: boolean
+  /** Its other names, listed with it rather than as entries of their own: "also english horn". */
+  aka: string[]
 }
+
+/** Every second name, the notes' (glossaryDefinitions.ts) and the dictionary's own, to the word it names. */
+const SECOND_NAMES: Record<string, string> = { ...ALIASES, mute: 'con sordino' }
+
+/** A word by any of its names: "english horn" is the cor anglais. */
+export const mainTerm = (term: string): string => SECOND_NAMES[term] ?? term
 
 /** Words of orchestral music the notes don't underline: defined here only. */
 const MORE: Record<WordKind, Record<string, string>> = {
@@ -128,7 +136,6 @@ const MORE: Record<WordKind, Record<string, string>> = {
     'chamber orchestra': 'A small orchestra of about fifteen to forty players, suited to music from before Beethoven or to lighter, transparent textures.',
     'symphony orchestra': 'A full orchestra of around seventy to a hundred players, with strings, woodwind, brass and percussion. Philharmonic means the same.',
     'section': 'A group of the same or related instruments, such as the cellos or the brass, which plays and rehearses as a team.',
-    'mute': 'A device fitted to an instrument to soften or veil its tone: a clip on a string instrument’s bridge, a cone in a brass bell.',
     'bow': 'The stick strung with horsehair that string players draw across the strings. How it is used (near the bridge, on the fingerboard, bouncing) changes the sound.',
   },
   performance: {
@@ -154,11 +161,13 @@ const MORE: Record<WordKind, Record<string, string>> = {
 /** Every word, in alphabetical order (accents ignored): the notes' terms and the rest. */
 export function allWords(): Word[] {
   const words: Word[] = []
+  const akaOf = (term: string) => Object.keys(SECOND_NAMES).filter((a) => SECOND_NAMES[a] === term)
   for (const [kind, terms] of Object.entries(TERM_GROUPS) as [WordKind, readonly string[]][]) {
-    for (const term of new Set(terms)) words.push({ term, kind, definition: DEFINITIONS_EN[term], inNotes: true })
+    // One entry a thing: a second name is listed with its word, never as a word of its own.
+    for (const term of new Set(terms)) if (!SECOND_NAMES[term]) words.push({ term, kind, definition: DEFINITIONS_EN[term], inNotes: true, aka: akaOf(term) })
   }
   for (const [kind, defs] of Object.entries(MORE) as [WordKind, Record<string, string>][]) {
-    for (const [term, definition] of Object.entries(defs)) words.push({ term, kind, definition, inNotes: false })
+    for (const [term, definition] of Object.entries(defs)) words.push({ term, kind, definition, inNotes: false, aka: akaOf(term) })
   }
   return words.sort((a, b) => a.term.localeCompare(b.term, 'en', { sensitivity: 'base' }))
 }
@@ -172,7 +181,7 @@ export function searchWords(words: Word[], query: string): Word[] {
   const parts = fold(query).split(/\s+/).filter(Boolean)
   if (!parts.length) return words
   return words.filter((w) => {
-    const hay = fold(`${w.term} ${w.definition}`)
+    const hay = fold(`${w.term} ${w.aka.join(' ')} ${w.definition}`)
     return parts.every((p) => hay.includes(p))
   })
 }
@@ -184,7 +193,7 @@ let finder: RegExp | undefined
 function wordFinder(): RegExp {
   if (finder) return finder
   // The specialist words only, as the notes underline them: "key", "bar" or "theme" linked in every line would be noise.
-  const terms = [...new Set(allWords().filter((w) => w.inNotes).map((w) => w.term))].sort((a, b) => b.length - a.length)
+  const terms = [...new Set(allWords().filter((w) => w.inNotes).flatMap((w) => [w.term, ...w.aka]))].sort((a, b) => b.length - a.length)
   const escape = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')
   finder = new RegExp(`(?<![\\p{L}\\p{N}-])(${terms.map(escape).join('|')})(?![\\p{L}\\p{N}-])`, 'giu')
   return finder
@@ -200,7 +209,8 @@ export function crossReferences(definition: string, self: string): DefinitionPie
   const out: DefinitionPiece[] = []
   let at = 0
   for (const m of definition.matchAll(wordFinder())) {
-    const term = m[1].toLowerCase().replace(/\s+/g, ' ')
+    // By any name, to the word itself: "the English horn" in the cor anglais's own line is no reference.
+    const term = mainTerm(m[1].toLowerCase().replace(/\s+/g, ' '))
     if (seen.has(term)) continue
     seen.add(term)
     if (m.index > at) out.push(definition.slice(at, m.index))

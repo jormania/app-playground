@@ -125,6 +125,8 @@ export function WordsScreen() {
                 <dt className={s.wordTerm}>
                   <span className={w.inNotes ? s.wordsSample : undefined}>{w.term}</span>
                   {!kind && <span className={s.wordKind}>{KIND_LABEL[w.kind]}</span>}
+                  {/* Its other name, listed with it rather than as a second entry saying the same. */}
+                  {w.aka.length > 0 && <span className={s.wordKind}>also {w.aka.join(', ')}</span>}
                 </dt>
                 <dd className={s.wordDef}>
                   {/* Another word with its own entry, followed from here: the notes' dotted line, a tap to it. */}

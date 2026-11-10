@@ -6,10 +6,24 @@
  * own set here (Romanian) is still defined by the curator, once per term.
  * `glossaryDefinitions.test.ts` fails when a term on the list has no definition.
  */
+/**
+ * One thing, two names (10 November 2026): the second name has no definition of its own, so the
+ * dictionary lists the thing once ("also english horn") and a tap on either name in the notes shows
+ * the same two lines.
+ */
+export const ALIASES: Record<string, string> = {
+  'english horn': 'cor anglais',
+  'sonata-allegro': 'sonata form',
+  'tone poem': 'symphonic poem',
+  'basso continuo': 'continuo',
+  'decrescendo': 'diminuendo',
+  'atonality': 'atonal',
+  'canonic': 'canon',
+}
+
 export const DEFINITIONS_EN: Record<string, string> = {
   // forms and genres
   'sonata form': 'The classic plan for a first movement: two contrasting themes are set out (the exposition), worked over and pulled apart (the development), then brought back home (the recapitulation). Listen for the moment the opening theme returns in its home key.',
-  'sonata-allegro': 'Another name for sonata form, the plan of most fast first movements: themes set out, developed, then brought back. Listen for the return of the opening theme, which often arrives like a homecoming.',
   'rondo': 'A form in which one main tune keeps coming back between contrasting episodes (A–B–A–C–A). Listen for the returning tune: each time it arrives, the music has come home again.',
   'scherzo': 'A quick, often playful movement in three beats, usually the third movement of a symphony, with a calmer middle section (the trio). Its name means “joke”: listen for sudden accents, surprises and drive.',
   'minuet': 'A stately dance in three beats, used as a movement in symphonies and quartets before the scherzo replaced it. Listen for the even, courtly step and a contrasting middle section, the trio.',
@@ -21,7 +35,6 @@ export const DEFINITIONS_EN: Record<string, string> = {
   'canon': 'A line imitated exactly by another voice entering a little later, like a round (“Frère Jacques”). Listen for the same melody chasing itself, overlapping at a fixed distance.',
   'theme and variations': 'A tune stated simply, then repeated several times with changes of rhythm, harmony, speed or character. Listen for how much of the original you can still recognise in each variation.',
   'symphonic poem': 'A single-movement orchestral work that tells a story or paints a scene, often from a poem, painting or landscape. Listen for how the music follows its subject, theme by theme.',
-  'tone poem': 'Another name for a symphonic poem: a one-movement orchestral piece that depicts a story, scene or idea rather than following an abstract form.',
   'concerto grosso': 'A Baroque concerto in which a small group of soloists (the concertino) alternates and combines with the full ensemble (the ripieno). Listen for the play of small against large.',
   'sinfonia concertante': 'A work for several soloists and orchestra, between symphony and concerto, popular in the late eighteenth century. Listen for the soloists trading phrases with each other as well as with the orchestra.',
   'divertimento': 'A light, entertaining piece in several short movements, often for a small group, written for social occasions in the eighteenth century. Expect charm and dance rather than drama.',
@@ -67,15 +80,13 @@ export const DEFINITIONS_EN: Record<string, string> = {
   'chorale': 'A Lutheran hymn tune, or music in that style: a simple melody harmonised in slow, solemn chords. Listen for a sudden plain, hymnlike texture.',
   // harmony and line
   'counterpoint': 'Two or more independent melodic lines played at once, each with its own shape, fitting together. Listen for separate voices moving against each other rather than a tune with accompaniment.',
-  'polyphony': 'Music made of several independent melodic lines at once, as in a fugue or Renaissance choral music. Try following one line, then another.',
+  'polyphony': 'The texture that counterpoint makes: several voices of equal weight sounding at once, none of them mere accompaniment. Also the name for the choral style of the Renaissance, from Josquin to Palestrina and Byrd.',
   'homophony': 'Music in which one melody is supported by chords moving with it, as in a hymn. The opposite of polyphony: one tune leads, the rest accompany.',
-  'canonic': 'Written as a canon: a line imitated exactly by another voice entering later. Listen for the same melody echoing itself, overlapping at a fixed distance.',
   'modulation': 'A change of key within a piece, shifting its harmonic centre. Listen for a change in colour or mood, as if light falls differently on the same landscape.',
   'chromaticism': 'The use of notes outside the music’s key, sliding by semitones, which adds colour, tension or yearning. Listen for slippery, unstable harmony.',
   'dissonance': 'A combination of notes that sounds tense or unstable and seems to need resolving. Listen for friction, and the release when it gives way.',
   'consonance': 'A combination of notes that sounds stable and at rest. Listen for the sense of arrival when tension resolves into it.',
   'atonal': 'Music with no home key or tonal centre, so no note feels like the place to return to. Listen for freedom from familiar harmonic gravity.',
-  'atonality': 'The absence of a key or tonal centre, explored by Schoenberg and others in the early twentieth century. The ear has no home note to return to.',
   'twelve-tone': 'Schoenberg’s method of building a piece from an ordered row of all twelve notes of the chromatic scale, used so that none dominates. The result is atonal but tightly organised.',
   'serialism': 'Composition built from a fixed ordered series, at first of the twelve pitches, later also of durations, dynamics and timbres. It sounds atonal and closely controlled.',
   'tonality': 'The system of keys, in which music gravitates towards a home note and chord. Listen for the pull home at the end of a phrase.',
@@ -113,7 +124,6 @@ export const DEFINITIONS_EN: Record<string, string> = {
   'ritardando': 'Gradually getting slower, often at the end of a phrase or piece. Listen for the music drawing breath or winding down.',
   'crescendo': 'Gradually getting louder. Listen for the build of tension and power.',
   'diminuendo': 'Gradually getting softer. Listen for the sound withdrawing or fading away.',
-  'decrescendo': 'Gradually getting softer, another word for diminuendo. Listen for the sound receding.',
   'sforzando': 'A sudden strong accent on a single note or chord. Listen for the jolt.',
   'pianissimo': 'Very soft, at the edge of hearing. Listen for a hush that draws you in.',
   'fortissimo': 'Very loud, the full force of the orchestra.',
@@ -134,7 +144,6 @@ export const DEFINITIONS_EN: Record<string, string> = {
   'stopped horn': 'A horn player pushing a hand deep into the bell, which gives a muffled, buzzing, distant tone.',
   'flutter-tongue': 'A wind player rolling the tongue (like a rolled r) while playing. Listen for a buzzing, purring tremor in the flute or brass.',
   'cor anglais': 'The English horn: a lower, larger oboe with a bulb-shaped bell. Listen for a dark, plaintive, pastoral voice, often used for melancholy solos.',
-  'english horn': 'The cor anglais: a larger, lower oboe with a dark, plaintive tone, favoured for melancholy or pastoral solos.',
   'contrabassoon': 'The lowest woodwind instrument, an octave below the bassoon. Listen for a deep, growling rumble at the bottom of the orchestra.',
   'bass clarinet': 'A larger clarinet pitched an octave lower. Listen for a dark, velvety, sometimes sinister tone.',
   'celesta': 'A keyboard instrument whose hammers strike metal plates, giving a soft, bell-like, magical tinkle. Tchaikovsky’s Sugar Plum Fairy is its most famous use.',
@@ -143,10 +152,9 @@ export const DEFINITIONS_EN: Record<string, string> = {
   'double bass': 'The largest and lowest string instrument, the foundation of the orchestra’s bass. Listen for a deep, resonant floor under the music.',
   'ondes martenot': 'An early electronic instrument from 1928, with a wavering, voice-like, otherworldly tone. Messiaen used it in the Turangalîla-Symphonie.',
   'continuo': 'In Baroque music, the bass line and its chords, played throughout by a keyboard (harpsichord or organ) with a cello or bassoon. Listen for the busy harmonic foundation underneath.',
-  'basso continuo': 'The continuous bass line and harmony of Baroque music, played by keyboard and a bass instrument. Listen for the chords filled in beneath the melody.',
   'obbligato': 'An instrumental part that is essential, not optional, often a solo line accompanying a voice. Listen for the instrument in dialogue with the singer.',
-  'concertino': 'The small group of soloists in a concerto grosso, set against the full ensemble. Also a short concerto.',
-  'ripieno': 'The full ensemble in a concerto grosso, as opposed to the small group of soloists. Listen for the larger body of sound answering the soloists.',
+  'concertino': 'The handful of soloists who step forward in a concerto grosso, often two violins and a cello, for its lighter, more intimate passages. Also a name for a short concerto.',
+  'ripieno': 'Italian for “filled up”: the main body of strings and continuo in a Baroque concerto, framing the soloists. Listen for the fuller sound returning between their passages.',
   'orchestration': 'The art of assigning music to the instruments of the orchestra, choosing which colours carry which lines. Listen for how the same idea changes as it passes between instruments.',
   // performance
   'period instruments': 'Instruments built as they were in the composer’s time, or copies: gut strings, natural horns, wooden flutes. Listen for a lighter, leaner, more transparent sound.',
