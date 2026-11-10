@@ -98,6 +98,15 @@ describe('the dictionary page', () => {
   })
 })
 
+describe('a thing with two names', () => {
+  it('stands once, under its main name, with the other beside it', () => {
+    render(<WordsScreen />)
+    fireEvent.change(screen.getByLabelText('Search the words'), { target: { value: 'english horn' } })
+    expect(entry('cor anglais')!.textContent).toContain('also english horn')
+    expect(entry('english horn')).toBeNull()
+  })
+})
+
 describe('cross-references in a definition', () => {
   it('links the specialist words a definition names, once each, never the word itself, never a plain word', () => {
     const refs = crossReferences('Variations over a ground bass, as in a chaconne; a chaconne in a key.', 'chaconne').filter((p) => typeof p !== 'string')

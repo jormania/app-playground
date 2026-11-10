@@ -1834,3 +1834,22 @@ word unique, defined and within two sentences.
 - Typography: the definitions used straight quotes and apostrophes; they now use the app's curly ones.
 - Checked and left as is: on the narrowest phones (320px) with the "back to the work" icon showing, the four
   masthead icons wrap the app's name onto three lines. Nothing overlaps, and it stays on one line from about 400px.
+
+**One entry a thing (10 November 2026).** The dictionary listed the cor anglais and the english horn as two words
+with the same definition. Seven pairs on the list are one thing under two names: cor anglais / english horn, sonata
+form / sonata-allegro, symphonic poem / tone poem, continuo / basso continuo, diminuendo / decrescendo, atonal /
+atonality, canon / canonic. Mute and con sordino make an eighth.
+- `ALIASES` (`glossaryDefinitions.ts`) maps each second name to its word, and the second name has no definition of
+  its own. A tap on either name in the notes shows the same lines (`bakedDefinition`).
+- The dictionary lists the thing once with "also english horn". A search by either name finds it, and a
+  cross-reference by either name leads to it.
+- Polyphony's definition read like counterpoint's, and concertino's and ripieno's echoed each other. All three are
+  reworded to say what sets them apart.
+- `dictionary.test.ts` now fails when two definitions share more than 60% of their content words, or when a name
+  stands twice.
+
+**The masthead's name on one line (10 November 2026).** With four icons (the way back to the work playing among
+them), "The Long Listen" wrapped onto two lines on the owner's phone. The icons are now 40px with no gap between
+them. The name never wraps, and steps down from 1.35rem only where a phone is too narrow for it and the icons
+together (`clamp(1.05rem, (100cqi − 10.5rem) / 7.9, 1.35rem)`): full size from about 393px, 20px at 360px, 17px at
+320px.

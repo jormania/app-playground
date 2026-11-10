@@ -37,7 +37,11 @@
 
 .brand {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  /* One line always (10 November 2026): full size where it fits beside the masthead's icons, a little
+     smaller only on a phone too narrow for both. 100cqi is the masthead's width; 10.5rem the four icons
+     and the gap; 7.9em the name's own width. */
+  font-size: clamp(1.05rem, calc((100cqi - 10.5rem) / 7.9), 1.35rem);
+  white-space: nowrap;
   font-weight: 600;
   font-variation-settings: 'opsz' 72;
   letter-spacing: 0.01em;
@@ -2251,8 +2255,13 @@
 .mastRight {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2xs);
+  gap: 0;
   flex: none;
+}
+
+/* Four icons side by side: 40px each, still a comfortable tap, so the name keeps its line. */
+.mastRight .iconLink {
+  width: 40px;
 }
 
 .iconLink {

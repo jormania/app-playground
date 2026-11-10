@@ -1,4 +1,4 @@
-import { DEFINITIONS_EN } from './glossaryDefinitions'
+import { ALIASES, DEFINITIONS_EN } from './glossaryDefinitions'
 
 /**
  * Words on tap (release four): the terms in the curator's notes a listener
@@ -99,7 +99,10 @@ export function sentenceAround(text: string, term: string): string {
 
 /** A term's definition as the app keeps it, without asking anyone: English only, for now (glossaryDefinitions.ts). */
 export function bakedDefinition(term: string, language: string): string | undefined {
-  return language === 'en' ? DEFINITIONS_EN[term.trim().toLowerCase().replace(/\s+/g, ' ')] : undefined
+  if (language !== 'en') return undefined
+  const t = term.trim().toLowerCase().replace(/\s+/g, ' ')
+  // A second name ("english horn") reads its thing's definition (glossaryDefinitions.ts, ALIASES).
+  return DEFINITIONS_EN[ALIASES[t] ?? t]
 }
 
 /** The store's key for a term's definition, per language. */
