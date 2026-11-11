@@ -1697,7 +1697,7 @@ clean: added in 92c7eb9 (Silva's share-sheet work, 2026-09-02), never referenced
 since, and `grep -rni 'chime|audio|sound'` over `src/silva/` and `SILVA.md`
 matches nothing at all — so no half-built feature was waiting on it. Tempo's
 `playChime(volume, variant)` is untouched and remains the only one.
-## R-027 — Four variable font families imported by bare name · `modernise` · `open`
+## R-027 — Four variable font families imported by bare name · `modernise` · `open` — slice 1 (JetBrains Mono) done 2026-11-11
 
 **Impact:** none visible. ~590 kB of `dist/`, charged against Vercel's
 Deployment Storage on every push.
@@ -1731,6 +1731,14 @@ probably.
 
 Sequence it after R-016's lesson is settled, and do **one family per run** —
 same reason R-008 does.
+
+**Slice 1 done 2026-11-11 — JetBrains Mono.** It had five importers, not zero
+(Radar-B, Wanderlist, Tempo, Daily Stoic, Sol Odyssey). All now use
+`src/shared/fonts/jetbrains-mono.css`: latin + latin-ext declared by hand with
+fontsource's ranges, family name unchanged. `dist/` loses three woff2 files
+(cyrillic, greek, vietnamese), ~36 kB; text in those scripts in a monospace
+slot now falls back to the system mono. Left: Inter, Alegreya, Fraunces — the
+"Where" column above undercounts users (grep before starting each).
 
 ## R-028 — Eight of the eleven serverless functions have no test at all · `modernise` · `open`
 

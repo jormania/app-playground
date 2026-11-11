@@ -5,4 +5,4 @@
      · JetBrains Mono Variable → data & labels (day counts, IDs, monospace) */
 @import '@fontsource-variable/fraunces';
 @import '@fontsource-variable/inter';
-@import '@fontsource-variable/jetbrains-mono';
+@import '../../shared/fonts/jetbrains-mono.css';

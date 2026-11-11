@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/inter';
-import '@fontsource-variable/jetbrains-mono';
+import '../shared/fonts/jetbrains-mono.css';
 import '@fontsource-variable/fraunces'; // Added for Sol Odyssey themes
 import './styles/index.css'; // Replaces ds/tokens.css
 import App from './App';
