@@ -48,8 +48,9 @@ filled once already (2026-09-09). Three rules keep it there:
 
   Either way, declare **`woff2` only** — the legacy `.woff` twins are half the bytes
   and every browser that can run these apps has supported woff2 for years. **Still
-  outstanding:** `@fontsource-variable/inter` (four apps), `alegreya`, `fraunces` and
-  `jetbrains-mono` are all imported bare — see R-027.
+  outstanding:** `@fontsource-variable/inter` (many apps), `alegreya` and `fraunces`
+  are imported bare — see R-027. `jetbrains-mono` is done:
+  `src/shared/fonts/jetbrains-mono.css`, latin + latin-ext.
 - **Watch for a dependency's `new URL(…, import.meta.url)`.** Rollup treats it as an
   asset reference and emits the target even when nothing fetches it — that's how a
   dead ONNX fallback put a 23 MB `.wasm` in every build. See `dropOrtWasmPlugin` in
