@@ -66,13 +66,13 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                 {!e.attended && e.dateExpiring && <ExpiryPill dateKey={e.dateExpiring} today={today} />}
                 {e.plannedDate && (
                   <span className={`when-pill${isPlannedPast(e, today) ? ' slipped' : ''}${e.going ? ' going' : ''}`}>
-                    <CalendarIcon /> {isPlannedPast(e, today) ? 'was planned' : e.going ? 'going' : 'planned'} {formatMedium(e.plannedDate)}
+                    <CalendarIcon /> {isPlannedPast(e, today) ? 'was planned' : e.going ? 'going' : 'planned'} {formatMedium(e.plannedDate, today)}
                     {e.plannedTime ? `, ${formatTime(e.plannedTime)}` : ''}
                   </span>
                 )}
               </div>
               {e.description && <div className="row-excerpt">{e.description}</div>}
-              <MetaChips category={e.category} place={e.place} placeUrl={e.placeUrl} tags={e.tags} cost={e.cost} onChip={onChip} />
+              <MetaChips category={e.category} place={e.place} placeUrl={e.placeUrl} tags={e.tags} cost={e.cost} onChip={onChip} compact />
             </div>
             {/* A quick-check rail: Attended shows always, on or off, so it's a stable
                 landmark; Photo/Link/Tickets are situational shortcuts to that thing (photo,

@@ -59,6 +59,10 @@ describe('formatMedium', () => {
     expect(formatMedium('2026-07-11')).toBe('11 Jul 2026')
     expect(formatMedium(null)).toBe('')
   })
+  test('drops the year only when it matches today\'s', () => {
+    expect(formatMedium('2026-11-14', '2026-11-12')).toBe('14 Nov')
+    expect(formatMedium('2027-01-03', '2026-11-12')).toBe('3 Jan 2027')
+  })
 })
 
 describe('formatTime', () => {

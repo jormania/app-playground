@@ -274,9 +274,14 @@ serverless function was needed) plus one new piece for the multi-file case:
 - **Add to Calendar** on the detail view (`calendar.js`) — a Google Calendar template URL,
   prefilled; a planned date + time (going) arrives as a timed block, a vaguer entry opens
   with the date left to set.
-- **Cost** (lei, optional Number property) — shown above the chips in `MetaChips`, hidden
-  for anything tagged `free` (the editor field disappears entirely once `free` is tagged, and
+- **Cost** (lei, optional Number property) — a gold chip leading the Category/Tags row in
+  `MetaChips` (not a filter), hidden for anything tagged `free` (the editor field disappears entirely once `free` is tagged, and
   any value is dropped on save, so a free thing never carries a cost). No Stats surface, by request.
+- **Compact cards (2026-11-12)** — `MetaChips` is at most two rows: Cost · Category · Tags,
+  then the pin and Place on one line. With `compact` (list, calendar agenda, map) the place
+  chip is a single ellipsized line, full address in its tooltip; the detail view lets it wrap,
+  left-aligned, beside the pin. The list's planned pill drops the year when it's the current
+  one (`formatMedium(key, today)`), and card padding/gaps are a notch tighter.
 - **Ideas filter** (`search.js`'s `isIdea`) — unattended, dateless items, a **subset of
   Backlog**, in the status segment as **Backlog · Ideas · Attended · All** (the first option's
   value is still `'todo'` internally — only its label changed from "To-do" to "Backlog"); plus a
