@@ -1235,3 +1235,50 @@ rule there: reject a WordPress size suffix (`-\d+x\d+` before the extension), or
 strip it to reach the original. Of the four Radar rows carrying an `Image` at
 the time, only this one was affected; the other three (Eventbook ×2,
 curatorial.ro) all serve real bytes at a usable size.
+
+---
+
+## 27. Book launches were being skimmed away (2026-11-13)
+
+Gabriel registered (via Luma) for the Nemira launch of *Înțelepciunea
+conflictului* — Sala Luceafărul, 2026-11-12 — and Radar-B never showed it. The
+app was not at fault: the row was never written. Everything below is in the
+skill, [`.claude/skills/recommend-in-bucharest/SKILL.md`](.claude/skills/recommend-in-bucharest/SKILL.md).
+
+### What the evidence showed
+
+- **The source already had it.** Zile și Nopți lists the launch on its own event
+  page and on the 12 November day page. No new source was needed.
+- **The 2026-11-08 run skimmed.** The day pages for 10–13 November carry 61, 74,
+  98 and 123 events; the run kept about five a day. Three more launches on Zile și
+  Nopți were dropped the same way: *Grace* (Paul Lynch, Humanitas Cișmigiu, 10 Nov),
+  *Ecoul unui tată* (Humanitas Cișmigiu, 12 Nov) and Iulian Tănase (Cărturești
+  Verona, 13 Nov).
+- **35 rows, exactly the top of "aim for 20–35".** The range was read as a ceiling.
+- **32 of those 35 rows were Zile și Nopți-only.** Buletin, B365, Recomandata and
+  Harta Muzeelor contributed nothing, and the run said nothing about it.
+- No run between 8 and 12 November; there is no scheduled run mid-week.
+
+When the launch first appeared on Zile și Nopți is not recoverable (the page
+exposes no publish date), so whether the 8 November run could have seen it is
+unknown. *Grace* was on the 10 November page and was still dropped, which is
+enough to say the selection, not the sourcing, was the failure.
+
+### What changed in the skill
+
+- **Book-launch sweep (Step 2).** Every run fetches
+  `zilesinopti.ro/categorie-eveniment/lansare-de-carte/` and opens each Bucharest
+  entry. About ten launches, one fetch.
+- **Book launches are sorted, never dropped (Step 3).** Gabriel's rule: literary
+  launches go in the main digest as `recommended`; the rest (self-help, pop
+  psychology, business, celebrity) are still written to Radar, as `mainstream`,
+  and listed under „De știut" outside its usual 1–2 cap. Unsure → literary.
+- **20 is a floor, with no upper number.**
+- **Source balance check.** More than 80% of the pool from one source sends the run
+  back to Step 1a's other sources, or into a ⚠️ line in the digest saying which ones
+  could not be read.
+- **📚 closing line** reporting launches written, split literary / „De știut" — same
+  idea as the 📡 line: a missing line means the sweep didn't run.
+
+Nothing in `src/radar-b/` changed: `mainstream` already sinks an event within its
+day, which is the in-app equivalent of „De știut".

@@ -171,6 +171,24 @@ wasn't already fetched in Step 1 this run:
 Also always parse Zile și Nopți's structured event list by category — fetch it
 directly only if Step 1 didn't already retrieve it this run.
 
+**Book-launch sweep — mandatory, every run, both modes.** Fetch
+`zilesinopti.ro/categorie-eveniment/lansare-de-carte/` and open every Bucharest
+entry on it (the event page carries a `"startDate"` in its JSON-LD and the venue
+in `"location"`). Skip only entries outside Bucharest (it also lists Brașov,
+Galați and so on). Every Bucharest launch on that page is a candidate for Step 3's
+book-launch rule — none may be dropped at this stage for volume, taste or
+because the day page already looked full.
+
+Why this exists: the day pages (`zilesinopti.ro/evenimente-bucuresti/?zi=…`)
+carry 60–120 events each, and skimming them for highlights loses the small ones.
+The 2026-11-08 run kept ~5 events per day from those pages and dropped every
+Humanitas and Nemira launch of the week — *Grace* (Paul Lynch, Humanitas
+Cișmigiu, 10 Nov), *Ecoul unui tată* (12 Nov), Iulian Tănase at Cărturești
+Verona (13 Nov) and *Înțelepciunea conflictului* (Nemira, Sala Luceafărul,
+12 Nov), which Gabriel then found on his own. All four were on Zile și Nopți.
+The category page is one fetch and about ten launches; it is cheap enough to read
+in full every time.
+
 **No Facebook sweep, and no Instagram sweep either.** Facebook event pages
 reliably fail to fetch (login wall, even when public) and search-engine coverage
 of them is thin and stale — tested 2026-08-28 across Google, Bing and DuckDuckGo,
@@ -227,7 +245,9 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
   - *Primary:* jazz & improvisation, contemporary/experimental/chamber music, indie/alternative/rock, folk/singer-songwriter
   - *Secondary:* electronic/club nights at venues like Control, Guesthouse, Quantic — include if the act is noteworthy, not as filler
 - **Performance in hybrid/alternative spaces:** Control, Guesthouse, Cărturești, galleries, residences, site-specific
-- **Book launches, author signings, literary events**
+- **Book launches, author signings, literary events** — see "Book launches" below
+  for the split between literary launches (always in, recommended) and the rest
+  (always written, but grouped under „De știut")
 - **Cultural and social conferences** (art, urbanism, design, philosophy, social topics — not business)
 - **Street fairs and open-air markets with cultural character** (Street Delivery, Bazar Cotroceni-style)
 - **Guided tours, urban exploration, heritage walks**
@@ -246,6 +266,33 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 
 ### Include lightly (label clearly, max 1–2 per digest)
 - Mainstream events with broad appeal — group at the bottom under **„De știut"** so Gabriel can skip easily
+- *(Non-literary book launches also go under „De știut", but are not counted
+  against this 1–2 cap — see "Book launches" below.)*
+
+### Book launches — never dropped, only sorted
+Every Bucharest book launch found this run (Step 2's book-launch sweep plus any
+other source) is **written to Radar**. The taste filter decides only *where* it
+sits, never *whether* it survives. Gabriel's own call (2026-11-13): keep the
+literary ones, show the rest at the bottom.
+
+- **Literary → main digest, `recommended`.** Fiction, poetry, drama, essays,
+  literary non-fiction and memoir by writers, translations, history, philosophy,
+  art, architecture and urbanism, criticism, small-press and independent
+  publishers, zines and artist books, literary magazines (e.g. *Martor*).
+- **Everything else → „De știut", `mainstream`.** Self-help, pop psychology,
+  leadership/business, personal development, wellness, celebrity or influencer
+  books, launches built around a panel of famous guests or corporate sponsors.
+  *Înțelepciunea conflictului* (Nemira, 2026-11-12) is the reference case: a
+  psychologist-and-leadership-coach book with twelve public-figure stories and
+  sponsors — not literary, but Gabriel registered for it, so it must still reach
+  him.
+- **When unsure, pick literary.** A wrongly promoted launch costs one glance; a
+  wrongly demoted one is the miss this rule exists to stop.
+- These „De știut" launches do **not** count against the 1–2 mainstream cap above:
+  list every one, after any other „De știut" entries.
+- Online-only launches stay excluded (Step 2), and a launch at a Marquee-covered
+  venue follows Step 1c's second carve-out — a book launch is almost never what a
+  venue's adapter reads, so it normally stays in.
 
 ### No volume ceiling
 There is **no cap per source and no cap per article.** If Buletin's roundup names
@@ -254,13 +301,26 @@ only ~10 events in total, which is a collection failure rather than an accurate
 picture of the city — even a slow August week has more than that once galleries
 and institutes are actually swept.
 
-**Aim for 20-35 events written to Radar per run.** The digest still shows the best
-12-20 (Step 5), but Radar gets everything that passed the taste filter — the app's
-lenses and filters are what make a larger pool browsable, so withholding events from
-Radar to keep the digest tidy is backwards.
+**At least 20 events written to Radar per run — a floor, not a target.** There is
+no upper number. The digest still shows the best 12-20 (Step 5), but Radar gets
+everything that passed the taste filter — the app's lenses and filters are what
+make a larger pool browsable, so withholding events from Radar to keep the digest
+tidy is backwards. This used to read "aim for 20-35", and the 2026-11-08 run wrote
+exactly 35 and stopped, with Zile și Nopți's day pages still holding 60–120 events
+each; a range's top end gets read as a ceiling. Stop collecting when the sweeps
+are done, not when a count is reached.
 
 If a run yields fewer than 15, treat that as a signal you have not finished
 collecting: go back for the gallery / institute sweeps before writing.
+
+**Source balance check — before Step 4.** Count how many rows in this run's pool
+cite **only one source** in `Sources`, and which source it is. If more than 80% of
+the pool comes from a single source, the other sources were not actually read:
+go back and fetch the ones that are missing (Step 1a's table) before writing.
+If they are genuinely unavailable (not yet published, fetch blocked), that is fine
+— but say so in Step 5's closing block rather than letting a one-source week look
+like a complete one. The 2026-11-08 run was 32 of 35 rows Zile și Nopți-only and
+reported nothing unusual.
 Never pad with events you would otherwise exclude — quality is still the filter;
 **breadth of search** is what changes, not the bar.
 
@@ -486,11 +546,17 @@ Format: day-by-day, chronological within each day. **Number every event sequenti
 ---
 ### De știut
 [Max 1–2 evenimente mainstream]
+[Apoi toate lansările de carte non-literare din această perioadă, numerotate în continuare — fără limită]
 
 ---
 📡 [N] evenimente în Radar ([C] noi, [U] actualizate).
+📚 [L] lansări de carte ([Lr] literare, [Ln] în „De știut").
 💡 Spune numărul sau titlul prescurtat și adăugăm în Wanderlist.
 ```
+
+If Step 3's source balance check found a source missing or one source dominating,
+add one line before 💡 saying which: e.g. `⚠️ Buletin, B365 nu au fost citite
+(nepublicate încă) — 90% din Radar vine din Zile și Nopți.`
 
 **This closing line is not decorative — it is the confirmation that Step 4 actually ran.**
 
@@ -498,7 +564,11 @@ Format: day-by-day, chronological within each day. **Number every event sequenti
   Step 4 didn't run or Radar wasn't reachable, say so plainly (`📡 Radar
   indisponibil — nu s-a scris nimic.`) rather than dropping or guessing the line.
 
-A digest missing this line, or carrying a suspiciously round guessed number, is an
+- `📚` — the book launches written this run, split as Step 3's "Book launches"
+  rule sorted them. Zero is a legitimate answer in a quiet week; a missing line
+  means Step 2's book-launch sweep didn't run.
+
+A digest missing either line, or carrying a suspiciously round guessed number, is an
 incomplete run.
 
 **Flags:**
@@ -529,7 +599,8 @@ Radar-only signal.
 - Conferință culturală → `culture`
 - Loc/spațiu în sine → `venue`
 
-**Depth:** 12–20 events covering the current day through Sunday. Prioritise Thursday evening and Friday/Saturday. Sunday is lighter.
+**Depth:** 12–20 events covering the current day through Sunday, plus the
+„De știut" book launches, which sit outside that count. Prioritise Thursday evening and Friday/Saturday. Sunday is lighter.
 
 **Times, addresses, prices, links:** already resolved in Step 3b's enrichment pass —
 reuse those results here rather than re-deriving them. The `(via sursă)` tag's URL is
