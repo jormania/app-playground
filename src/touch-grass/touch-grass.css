@@ -725,6 +725,12 @@ body {
   color: #e3dcc7; opacity: 0.85;
 }
 .tg-relic-sky { opacity: 0.8; }
+/* what the band saw on the walk (Google Health) — under the find and its relic */
+.tg-walk-line {
+  font-size: 0.72rem; color: #e3dcc7; opacity: 0.8;
+  letter-spacing: 0.03em; font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
 .tg-relic-meta {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   font-size: 0.64rem; color: #e3dcc7; font-variant: small-caps;

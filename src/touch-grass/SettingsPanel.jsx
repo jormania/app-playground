@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useWorld } from './world.jsx'
 import { gatherDiagnostics } from '../shared/notify/diagnostics'
 import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal'
+import { hasHealthKey, HEALTH_PAGE } from '../shared/googleHealth'
 
 const DIAG_KEYS = ['callEnabled', 'coords', 'lastWalkDay', 'lastCallDay', 'lastGoldenDay', 'lastAlmanacDay', 'almanacBody']
 
@@ -50,6 +51,13 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
 
       <div className="tg-row">
         <button type="button" onClick={onOpenMixer}>♫ Tune the Chorus →</button>
+      </div>
+
+      <div className="tg-row">
+        {/* the band's steps and heart on each walk — set up once, on its own page */}
+        <button type="button" onClick={() => { window.location.href = HEALTH_PAGE }}>
+          {hasHealthKey() ? '♥ Google Health · linked →' : '♥ Link Google Health →'}
+        </button>
       </div>
 
       <div className="tg-select-row">

@@ -89,6 +89,12 @@ first app's tests prove the move was behaviour-preserving.
 - [`qrCode.ts`](qrCode.ts) — `appQrUrl(file)` and `renderAppQr()`, against the same
   hardcoded production origin as Cabinet's `installState.js`.
 - [`useSwipeAction.ts`](useSwipeAction.ts) — the swipe-to-act gesture hook.
+- [`googleHealth.ts`](googleHealth.ts) — the browser side of the Google Health
+  link: the one shared key (`google-health:key`, also written by
+  `public/google-health.html`, so keep the JSON encoding), and `fetchSleep`,
+  `fetchWindow`, `fetchHealthStatus` against `/api/google-health`. Without a key every
+  call rejects with `code: 'no_key'`; callers treat Google Health as optional.
+  [`GOOGLE_HEALTH.md`](../../GOOGLE_HEALTH.md).
 
 ## Not tidy-ups waiting to happen
 
