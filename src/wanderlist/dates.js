@@ -38,10 +38,14 @@ export function formatShort(key) {
 }
 
 // "24 Jun 2026" — compact but year-unambiguous.
-export function formatMedium(key) {
+// With `today` (a date key), the year is dropped when it's the current one — "14 Nov" — so
+// a list card's pill stays short; other years, and calls without `today`, keep it.
+export function formatMedium(key, today = null) {
   const d = keyToDate(key)
   if (!d) return ''
-  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`
+  const base = formatShort(key)
+  const t = today ? keyToDate(today) : null
+  return t && t.getFullYear() === d.getFullYear() ? base : `${base} ${d.getFullYear()}`
 }
 
 // "19:30" — a stored 'HH:MM' clock time, normalized to zero-padded 24-hour (Romania uses

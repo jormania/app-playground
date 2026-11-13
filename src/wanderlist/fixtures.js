@@ -35,6 +35,7 @@ export function seedEntries() {
       place: 'Cinema Pro, Str. Ion Ghica 3, București',
       placeUrl: 'https://www.google.com/maps/search/?api=1&query=Cinema%20Pro%20Bucuresti',
       tags: ['ticketed', 'film', 'with-friends', 'nightlife'],
+      cost: 45,
       attended: false,
       dateAdded: daysFromToday(-7),
       dateExpiring: daysFromToday(2),

@@ -59,7 +59,7 @@ export default function MapModal({ entries, today, onOpen, onClose }) {
           </ul>
           {focus && (
             <div className="map-focus-actions">
-              <MetaChips category={focus.category} place={focus.place} placeUrl={focus.placeUrl} tags={focus.tags} cost={focus.cost} />
+              <MetaChips category={focus.category} place={focus.place} placeUrl={focus.placeUrl} tags={focus.tags} cost={focus.cost} compact />
               <button type="button" className="btn btn-sm" onClick={() => { onClose(); onOpen(focus) }}>Open “{focus.name || 'Untitled'}”</button>
             </div>
           )}
