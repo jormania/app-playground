@@ -345,6 +345,12 @@ export interface Comparison {
   origin: 'programme' | 'on-request'
   /** Made because the programme's recording isn't on Spotify: the second perspective stands in for it. */
   standIn?: boolean
+  /**
+   * A stand-in's one line, about the recording that plays and nothing else (13 November 2026). Before it,
+   * a stand-in's framing compared it with the curator's recording, "the two recordings", while only one
+   * could be heard: such a stand-in shows no line.
+   */
+  standInNote?: string
   createdAt: Instant
 }
 

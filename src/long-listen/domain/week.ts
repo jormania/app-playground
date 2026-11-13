@@ -132,6 +132,24 @@ export function weeksBetween(a: WeekKey, b: WeekKey): number {
   return Math.round((sb - sa) / (7 * DAY))
 }
 
+/**
+ * The journey's first week: the earliest of the weeks kept (and of `also`, the
+ * week now, so a listener with none yet is in week one). Week keys sort as text.
+ */
+export function firstWeekKey(weekKeys: WeekKey[], also: WeekKey): WeekKey {
+  return [...weekKeys, also].reduce((a, b) => (b < a ? b : a))
+}
+
+/**
+ * A week counted from the journey's start, the first being 1: "Week 3", not
+ * the calendar's week 46. Undefined for a week before the journey began (a
+ * concert entered from earlier, say), which has a date and no number.
+ */
+export function journeyWeekNumber(first: WeekKey, key: WeekKey): number | undefined {
+  const n = weeksBetween(first, key) + 1
+  return n >= 1 ? n : undefined
+}
+
 /** "six weeks ago", "last week", "in March" — how the curator speaks about time. */
 export function sinceWords(then: WeekKey, now: WeekKey): string {
   const n = weeksBetween(then, now)

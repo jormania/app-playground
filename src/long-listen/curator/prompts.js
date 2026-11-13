@@ -384,7 +384,7 @@ Your job now: the listener asked for a little more context about one work in thi
 
 export const COMPARE = {
   id: 'compare',
-  version: 'compare@2026-10-29.1',
+  version: 'compare@2026-11-13.1',
   effort: 'medium',
   maxTokens: 6000,
   schema: {
@@ -409,7 +409,8 @@ Your job now: the listener wants to hear a work through a second interpretation.
 - current: the character of the current recording in two to four words, comma-separated ("transparent, urgent"), not a sentence; and one thing to listen for in it.
 - other: the second recording's performers, its character in two to four words the same way, and one thing to listen for. Name an orchestra once, as orchestra; ensemble is for a group that is not an orchestra.
 - framing: one sentence on what the comparison reveals.
-- whyBoth: one sentence in the form "If you want to hear how …, listen to both."`,
+- whyBoth: one sentence in the form "If you want to hear how …, listen to both."
+If "mustBeOnSpotify" is true, the listener hears only the second recording, so it is not a comparison: framing is one sentence on what this recording brings to the work, about it alone. Never set it against the current recording, never speak of "two recordings" or "both", and give whyBoth as "".`,
 }
 
 // ── 7. Resources from the web ────────────────────────────────────────────

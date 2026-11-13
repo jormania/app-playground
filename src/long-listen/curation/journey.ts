@@ -1549,7 +1549,8 @@ export class Journey {
         ],
       }, 'on-request', this.stamp())
       await ingest.commit()
-      const stored: Comparison = { ...cmp, id, ...(opts.mustBeOnSpotify ? { standIn: true } : {}) }
+      // A stand-in plays alone: its line is about it, kept apart from a pair's framing.
+      const stored: Comparison = { ...cmp, id, ...(opts.mustBeOnSpotify ? { standIn: true, ...(res.framing ? { standInNote: res.framing } : {}) } : {}) }
       await this.repo.comparisons.put(stored)
       return stored
     })
