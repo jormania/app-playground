@@ -1867,3 +1867,10 @@ calendar's ISO week. They now count from the journey's first week: the earliest 
 (`firstWeekKey`, `journeyWeekNumber` in `domain/week.ts`), across the new year too. A listener with no week yet is in
 Week 1. A Journal week before the journey began (a concert entered from earlier) shows its dates and no number. The
 ISO key (`2026-W46`) stays as the storage key, and in the Notion mirror's Week column.
+
+**A stand-in's line is about the stand-in (13 November 2026).** A stand-in is made by the *compare* job, so its
+one-line framing compared it with the curator's recording ("the two recordings disagree about…") while only the
+stand-in could be heard. With `mustBeOnSpotify` the prompt (`compare@2026-11-13.1`) now asks for one sentence about
+the recording that plays, never set against the other, and that line is kept as `standInNote`. The stand-in shows
+`standInNote` only; an older stand-in, whose framing compares, shows no line. Its character words and its thing to
+listen for still say what it is.

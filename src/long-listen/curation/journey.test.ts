@@ -519,6 +519,23 @@ describe('on-request extras are cached', () => {
     expect(cmp.perspectives.map((x) => x.proposed.conductor)).toEqual(['Pierre Boulez', 'Ernest Ansermet'])
     await j.compare(p.id, p.sections[0].items[0].id)
     expect(c.count('compare')).toBe(1)
+    expect(cmp.standInNote).toBeUndefined()
+  })
+
+  it('a stand-in keeps its one line apart, about the recording that plays (13 November 2026)', async () => {
+    const c = fakeCurator({
+      themes: () => themes(['A', 'B', 'C']),
+      programme: () => programme('Colour', FRENCH),
+      compare: (payload) => {
+        expect(payload.mustBeOnSpotify).toBe(true)
+        return { framing: 'Ansermet hears the sea as a dancer would.', whyBoth: '', current: { character: 'lucid' }, other: { conductor: 'Ernest Ansermet', orchestra: 'Orchestre de la Suisse Romande', soloists: [], character: 'pointed' }, promptVersion: 'x' }
+      },
+    })
+    const j = journey(c.client)
+    const p = await j.choose((await j.ensureWeek()).optionIds[0])
+    const cmp = await j.compare(p.id, p.sections[0].items[0].id, { mustBeOnSpotify: true })
+    expect(cmp.standIn).toBe(true)
+    expect(cmp.standInNote).toBe('Ansermet hears the sea as a dancer would.')
   })
 })
 

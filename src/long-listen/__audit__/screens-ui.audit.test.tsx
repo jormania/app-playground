@@ -111,7 +111,7 @@ describe('marking what was heard', () => {
     await repo.recordings.put({ ...r, verification: 'not-found', checkedWith: 99 })
     await repo.recordings.put({ id: 'rec-standin', workId: first.workId, soloistIds: [], character: [], verification: 'verified', checkedWith: 99, spotify: { albumId: 'a', albumName: 'A', albumUri: 'u', artistNames: [], trackIds: ['t'], trackUris: ['spotify:track:t'], confidence: 'strong', matchedAt: 'x', durationMs: 600_000 } })
     await repo.comparisons.put({
-      id: `cmp:${p.id}:${first.id}`, workId: first.workId, framing: 'Set side by side.', whyBoth: '', origin: 'on-request', standIn: true, createdAt: 'x',
+      id: `cmp:${p.id}:${first.id}`, workId: first.workId, framing: 'Two ways with the sea.', standInNote: 'Set side by side.', whyBoth: '', origin: 'on-request', standIn: true, createdAt: 'x',
       perspectives: [
         { recordingId: first.recordingId, proposed: first.proposed, character: '' },
         { recordingId: 'rec-standin', proposed: { ...first.proposed, conductor: 'Neeme Järvi' }, character: '', listenFor: 'The glints on the water.' },
@@ -127,6 +127,8 @@ describe('marking what was heard', () => {
     // The work has its own "Listen for": the stand-in's line, written for the same music, isn't said again (1 November 2026).
     expect(screen.queryByText(/The glints on the water/)).toBeNull()
     expect(within(work).getAllByText('Listen for')).toHaveLength(1)
+    // The pair's framing ("the two recordings") isn't said under a stand-in that plays alone (13 November 2026).
+    expect(screen.queryByText('Two ways with the sea.')).toBeNull()
   }, 15000)
 
   it('without Spotify, says once for the page that recordings can’t be confirmed — not under every work', async () => {

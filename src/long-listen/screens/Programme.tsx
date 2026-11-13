@@ -832,7 +832,9 @@ function StandInView({ c, b, children }: { c: Comparison; b: Bundle; children?: 
         onOpened={(how) => { void journey.markListening({ recordingId: pv.recordingId, workId: c.workId }, how, b.programme.id, 'app').then(bump, (e: unknown) => say(messageOf(e), 'danger')) }}
       />
       {children}
-      {c.framing && <p className={`${s.quiet} ${s.flush}`}>{c.framing}</p>}
+      {/* Its line, about this recording alone. An older stand-in's framing compared it with the curator's,
+          "the two recordings", while only one plays: it shows none (13 November 2026). */}
+      {c.standInNote && <p className={`${s.quiet} ${s.flush}`}>{c.standInNote}</p>}
       {/* Its own thing to listen for joins the work's list below, under the one "Listen for" heading. */}
     </div>
   )
