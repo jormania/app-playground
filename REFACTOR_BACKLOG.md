@@ -971,7 +971,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node`, eslint, lucide-react and testing-library done, React 19 to go
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node`, eslint, lucide-react, testing-library and the lint toolchain done, React 19 to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -1104,6 +1104,8 @@ slices should eyeball icons when they next touch an app.
 **`@fontsource*` done 2026-10-16 — all seven packages to 5.3** (alegreya, fraunces, inter, jetbrains-mono, cinzel 5.2 → 5.3.0; zen-kaku-gothic-new, zen-old-mincho → 5.3.1; floors raised in `package.json`). Suite 5854 across 479 files, typecheck clean, build green; `dist/` is 11860 KB before and after, so no subset or legacy `.woff` came in with the bump. Import lines untouched (the bare-name imports are still R-027's). Release notes not reachable from here; **not checked: glyph shapes** — a redrawn font would pass every gate. `eslint` had no changed source paths to lint.
 
 **`autoprefixer` + `postcss` done 2026-10-21 — 10.5.2 → 10.6.1, 8.5.15 → 8.5.31** (floors raised in `package.json`, were `^10.4.20` / `^8.4.49`). The CSS toolchain, in-range; it also refreshed the `browserslist` / `caniuse-lite` data underneath, which is what could in principle change emitted prefixes. Suite 5884 across 479 files, typecheck clean, build green; `dist/` is 11860 KB before and after. Dev-only. Release notes not reachable from here; **not checked: the emitted CSS byte for byte** — a prefix added or dropped by the newer data would pass every gate. `eslint` had no changed source paths to lint.
+
+**`eslint` + `typescript-eslint` + `globals` done 2026-10-26 — 10.12.0 → 10.13.0, 8.62.1 → 8.72.0, 17.7.0 → 17.13.0** (floors raised in `package.json`). The lint toolchain, all in-range. `eslint .` clean over the whole repo with no config change (the two rules R-008 turned off are still off), suite 5970 across 485 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. Release notes not reachable from here; what is verified is the lint, suite and typecheck. Still in-range and untouched: `vite`, `vitest` 4.1.x, `@vitejs/plugin-react`, `@tanstack/react-query`, `lucide-react` 1.61, `playwright`.
 
 Remaining: the React 19 family (runtime and types together), last, as this item says.
 
