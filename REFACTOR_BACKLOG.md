@@ -1697,7 +1697,7 @@ clean: added in 92c7eb9 (Silva's share-sheet work, 2026-09-02), never referenced
 since, and `grep -rni 'chime|audio|sound'` over `src/silva/` and `SILVA.md`
 matches nothing at all — so no half-built feature was waiting on it. Tempo's
 `playChime(volume, variant)` is untouched and remains the only one.
-## R-027 — Four variable font families imported by bare name · `modernise` · `open` — slice 1 (JetBrains Mono) done 2026-11-11
+## R-027 — Four variable font families imported by bare name · `modernise` · `open` — slices done: JetBrains Mono 2026-11-11, Fraunces 2026-11-13
 
 **Impact:** none visible. ~590 kB of `dist/`, charged against Vercel's
 Deployment Storage on every push.
@@ -1739,6 +1739,15 @@ fontsource's ranges, family name unchanged. `dist/` loses three woff2 files
 (cyrillic, greek, vietnamese), ~36 kB; text in those scripts in a monospace
 slot now falls back to the system mono. Left: Inter, Alegreya, Fraunces — the
 "Where" column above undercounts users (grep before starting each).
+
+**Slice 2 done 2026-11-13 — Fraunces.** Five import sites, not zero: Silva,
+Wanderlist, Sol Odyssey (`styles/fonts.css`), Daily Stoic (`main.tsx` and
+`styles/fonts.css`). All now use `src/shared/fonts/fraunces.css`: latin +
+latin-ext declared by hand, family name unchanged. Bare import emitted three
+faces (the wght axis only), so `dist/` loses just the vietnamese file, ~11 kB;
+Vietnamese text in a Fraunces slot falls back to the next serif. The Long Listen
+already declares its own `LL Fraunces` and was left alone. Left: Inter and
+Alegreya (Loom, Radar-B and Marquee import Alegreya).
 
 ## R-028 — Eight of the eleven serverless functions have no test at all · `modernise` · `open`
 
