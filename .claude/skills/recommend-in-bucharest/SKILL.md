@@ -232,6 +232,10 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 - **Teatrul Roșu** — ignore permanently
 - **Berăria H** — ignore permanently
 - **Hard Rock Cafe** — ignore permanently
+- **Combinatul Fondului Plastic** — ignore permanently
+- **Muzeul Satului** — ignore permanently
+- **Muzeul Tehnic Profesor Inginer Dimitrie Leonida** — ignore permanently
+- **Muzeul Național Cotroceni** — ignore permanently
 - Generic corporate events, trade fairs, business conferences (sales, marketing, etc.)
 - Mainstream pop/commercial concerts at large arenas unless genuinely exceptional
 - **Online-only events** — livestreams, webinars, virtual screenings, anything with no
