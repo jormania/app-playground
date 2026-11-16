@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
-import '@fontsource-variable/alegreya'
+import '../shared/fonts/alegreya.css'
 import '../shared/fonts/jetbrains-mono.css'
 import '../ds/tokens.css'
 import './radar-b.css'
