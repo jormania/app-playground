@@ -1697,7 +1697,7 @@ clean: added in 92c7eb9 (Silva's share-sheet work, 2026-09-02), never referenced
 since, and `grep -rni 'chime|audio|sound'` over `src/silva/` and `SILVA.md`
 matches nothing at all — so no half-built feature was waiting on it. Tempo's
 `playChime(volume, variant)` is untouched and remains the only one.
-## R-027 — Four variable font families imported by bare name · `modernise` · `open` — slices done: JetBrains Mono 2026-11-11, Fraunces 2026-11-13
+## R-027 — Four variable font families imported by bare name · `modernise` · `open` — slices done: JetBrains Mono 2026-11-11, Fraunces 2026-11-13, Alegreya 2026-11-16 — Inter left
 
 **Impact:** none visible. ~590 kB of `dist/`, charged against Vercel's
 Deployment Storage on every push.
@@ -1748,6 +1748,16 @@ faces (the wght axis only), so `dist/` loses just the vietnamese file, ~11 kB;
 Vietnamese text in a Fraunces slot falls back to the next serif. The Long Listen
 already declares its own `LL Fraunces` and was left alone. Left: Inter and
 Alegreya (Loom, Radar-B and Marquee import Alegreya).
+
+**Slice 3 done 2026-11-16 — Alegreya.** Three import sites: Loom, Radar-B,
+Marquee. All now use `src/shared/fonts/alegreya.css`: latin + latin-ext declared
+by hand, upright only (as the bare import was), family name unchanged. `dist/`
+loses five woff2 files (cyrillic, cyrillic-ext, greek, greek-ext, vietnamese);
+none of the three apps' sources contains Cyrillic, Greek or Vietnamese text
+(grepped). The Long Listen declares its own `LL Alegreya` and was left alone.
+**Left: Inter only** — Silva, Fit Check, Radar-B, Loom, Cabinet, Wanderlist,
+Law of the Day, WhereItWent, Tempo, Marquee, plus `@import`s in Sol Odyssey's and
+Daily Stoic's `fonts.css`; any of them may render user text, so decide per app.
 
 ## R-028 — Eight of the eleven serverless functions have no test at all · `modernise` · `open`
 

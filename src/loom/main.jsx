@@ -5,7 +5,7 @@ import '@fontsource-variable/inter'
 // fontsource's own unicode-ranges. See that file's header for why the
 // per-subset entry points CLAUDE.md recommends are the wrong fix here (R-016).
 import './fonts.css'
-import '@fontsource-variable/alegreya'
+import '../shared/fonts/alegreya.css'
 import '../ds/tokens.css'
 import './loom.css'
 import { watchInstalled } from '../shared/installFlag'
