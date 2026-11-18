@@ -1,11 +1,13 @@
-// Which model tonight's daily-refactor run gets.
+// Which model tonight's daily-refactor run gets, and which items it works.
 //
-// `refactor` and `modernise` items — behaviour-preserving work that only merges
-// once the workflow re-runs all three gates on a clean clone — run on Sonnet;
-// `qol`, `visual` and discovery runs stay on Opus. The workflow has to decide
-// before the agent starts, because `--model` is fixed at launch, so it needs
-// its own reading of "the topmost eligible item". That reading is here, beside
-// the backlog counter in build-meta.js, so it can be tested rather than trusted.
+// A run takes the ITEMS_PER_RUN topmost eligible items (two since 2026-11-18),
+// each on its own branch and PR. `refactor` and `modernise` items —
+// behaviour-preserving work that only merges once the workflow re-runs all three
+// gates on a clean clone — run on Sonnet; a run with a `qol` or `visual` item in
+// it, and a discovery run, stays on Opus. The workflow has to decide before the
+// agent starts, because `--model` is fixed at launch, so it needs its own
+// reading of "the topmost eligible items". That reading is here, beside the
+// backlog counter in build-meta.js, so it can be tested rather than trusted.
 //
 // Eligible is the skill's four conditions and nothing else: in the main list
 // (not under `## Proposed`), state `open`, not claimed by an open PR, and not
@@ -26,6 +28,9 @@ export const SONNET = 'claude-sonnet-5-5';
 // change, so a wrong move is caught by tests rather than by taste. Moved
 // `refactor` here on 2026-10-09 to spare the weekly subscription limit.
 const SONNET_CLASSES = new Set(['refactor', 'modernise']);
+
+/** How many backlog items one run works, each on its own branch and PR. */
+export const ITEMS_PER_RUN = 2;
 
 const CLASSES = new Set(['refactor', 'modernise', 'qol', 'visual', 'idea']);
 
@@ -48,47 +53,60 @@ export function parseHeader(line) {
 }
 
 /**
- * The item the agent will take tonight, by the skill's own rule, or null.
+ * The items the agent will take tonight, top first, by the skill's own rule:
+ * up to `n` eligible headers in file order. Empty when there are none.
  *
  * @param {string} md       REFACTOR_BACKLOG.md
  * @param {Set<string>} claimed  ids named on a `Backlog-Item:` line of an open PR
+ * @param {number} n        how many to take
  */
-export function topmostEligible(md, claimed = new Set()) {
+export function eligibleItems(md, claimed = new Set(), n = ITEMS_PER_RUN) {
+  const out = [];
   for (const line of md.split('\n')) {
-    if (/^##\s+Proposed\b/.test(line)) return null;
+    if (/^##\s+Proposed\b/.test(line)) break;
     const h = parseHeader(line);
     if (!h) continue;
     if (!/^open\b/.test(h.state)) continue;
     if (/not agent-executable/i.test(line)) continue;
     if (claimed.has(h.id)) continue;
-    return h;
+    out.push(h);
+    if (out.length >= n) break;
   }
-  return null;
+  return out;
+}
+
+/** The topmost eligible item, or null. */
+export function topmostEligible(md, claimed = new Set()) {
+  return eligibleItems(md, claimed, 1)[0] ?? null;
 }
 
 /**
  * The model for a run, and a one-line note for the agent's prompt.
  *
- * A discovery run (every other Friday — the workflow decides, by date) reads
- * the codebase for what's missing whatever sits on top. That is judgement, not
- * a gated change, so it stays on Opus.
+ * Sonnet only when every item tonight is `refactor` or `modernise`. A discovery
+ * run (every other Friday — the workflow decides, by date) reads the codebase
+ * for what's missing whatever sits on top. That is judgement, not a gated
+ * change, so it stays on Opus. Takes one item or a list.
  */
-export function chooseModel(item, discovery) {
-  if (discovery || !item || !SONNET_CLASSES.has(item.cls)) {
+export function chooseModel(items, discovery) {
+  const list = (Array.isArray(items) ? items : [items]).filter(Boolean);
+  if (discovery || list.length === 0 || !list.every((i) => SONNET_CLASSES.has(i.cls))) {
     return { model: OPUS, note: '' };
   }
+  const named = list.map((i) => `${i.id} (\`${i.cls}\`)`).join(' and ');
   return {
     model: SONNET,
     note:
-      `This run is on a lighter model because today's item, ${item.id}, is ` +
-      `\`${item.cls}\`. Work that item only. If you have to mark it ` +
+      `This run is on a lighter model because tonight's ${list.length === 1 ? 'item is' : 'items are'} ${named}. ` +
+      `Work ${list.length === 1 ? 'that item' : 'those items'} only. If you have to mark one ` +
       '`dropped` or `blocked`, record that in the backlog and stop there — do ' +
-      'not go on to the next item, which may be `qol` or `visual`.',
+      'not go on to another item, which may be `qol` or `visual`.',
   };
 }
 
-// CLI: prints `model=`, `item=`, `class=` and `note=` lines for $GITHUB_OUTPUT.
-// Never exits non-zero and never prints a partial set: any failure is Opus.
+// CLI: prints `model=`, `item=`, `class=` and `note=` lines for $GITHUB_OUTPUT;
+// `item` and `class` are comma lists, top first. Never exits non-zero and never
+// prints a partial set: any failure is Opus.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let out;
   try {
@@ -96,9 +114,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const i = process.argv.indexOf('--discovery');
     const discovery = !(i > -1 && process.argv[i + 1] === 'false');
     const claimed = new Set((process.env.CLAIMED || '').split(',').map((s) => s.trim()).filter(Boolean));
-    const item = topmostEligible(readFileSync('REFACTOR_BACKLOG.md', 'utf8'), claimed);
-    const { model, note } = chooseModel(item, discovery);
-    out = { model, item: item?.id ?? '', cls: item?.cls ?? '', note };
+    const items = eligibleItems(readFileSync('REFACTOR_BACKLOG.md', 'utf8'), claimed);
+    const { model, note } = chooseModel(items, discovery);
+    out = { model, item: items.map((x) => x.id).join(','), cls: items.map((x) => x.cls).join(','), note };
   } catch (e) {
     out = { model: OPUS, item: '', cls: '', note: '' };
     console.error(`pick-model: ${e.message} — falling back to ${OPUS}`);

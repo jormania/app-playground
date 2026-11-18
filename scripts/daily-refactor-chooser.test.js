@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync, mkdtempSync, chmodSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
-import { topmostEligible, OPUS } from './pick-model.mjs'
+import { topmostEligible, eligibleItems, OPUS } from './pick-model.mjs'
 
 const REPO = resolve(__dirname, '..')
 
@@ -65,6 +65,7 @@ function run({ ghOut = '', ghExit = 0, discovery = 'false' }) {
 }
 
 const top = topmostEligible(readFileSync(join(REPO, 'REFACTOR_BACKLOG.md'), 'utf8'))
+const tonight = eligibleItems(readFileSync(join(REPO, 'REFACTOR_BACKLOG.md'), 'utf8')).map((i) => i.id).join(',')
 
 describe('daily-refactor model chooser step', () => {
   it('finds the step in the workflow', () => {
@@ -75,7 +76,7 @@ describe('daily-refactor model chooser step', () => {
     const r = run({ ghOut: 'A PR body\nwith no claim line\n' })
     expect(r.status, r.stderr).toBe(0)
     expect(r.out.model).toMatch(/^claude-/)
-    expect(r.out.item).toBe(top?.id ?? '')
+    expect(r.out.item).toBe(tonight)
   })
 
   it('survives no open PRs at all', () => {
@@ -88,7 +89,7 @@ describe('daily-refactor model chooser step', () => {
     if (!top) return
     const r = run({ ghOut: `Some PR\nBacklog-Item: ${top.id}\n` })
     expect(r.status, r.stderr).toBe(0)
-    expect(r.out.item).not.toBe(top.id)
+    expect(r.out.item.split(',')).not.toContain(top.id)
   })
 
   it('stays on Opus when the open PRs cannot be read', () => {

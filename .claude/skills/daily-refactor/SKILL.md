@@ -1,13 +1,14 @@
 ---
 name: daily-refactor
-description: The autonomous daily improvement pass over app-playground. Picks exactly one item from REFACTOR_BACKLOG.md, implements it on a fresh branch off main, proves it green, and opens a PR for after-the-fact review. Run Monday, Wednesday and Friday by .github/workflows/daily-refactor.yml; also available by hand as /daily-refactor.
+description: The autonomous daily improvement pass over app-playground. Takes the two topmost eligible items from REFACTOR_BACKLOG.md and works them one after the other, each on its own fresh branch off main, proven green, with its own PR for after-the-fact review. Run Monday, Wednesday and Friday by .github/workflows/daily-refactor.yml; also available by hand as /daily-refactor.
 ---
 
 # Daily refactor
 
-One improvement per run. No approval beforehand, full review afterwards on the PR.
-The whole point is that a day's output is small enough that Gabriel can read the
-diff over coffee and merge or close it without a conversation.
+Two improvements per run (one until 2026-11-18), each its own PR. No approval
+beforehand, full review afterwards on the PR. The whole point is that each PR is
+small enough that Gabriel can read the diff over coffee and merge or close it
+without a conversation — two items make two PRs, never one bigger one.
 
 Read `CLAUDE.md` and `.agents/AGENTS.md` first — every rule there outranks this file.
 
@@ -36,6 +37,11 @@ n=2; while git ls-remote --exit-code --heads origin "$BR" >/dev/null 2>&1; do BR
 git checkout -B "$BR" origin/main
 ```
 
+Run the same block again for the second item, after the first is pushed and
+its PR is open: the first branch now exists, so the loop lands on
+`claude/refactor-$DAY-2`, again off fresh `origin/main`. The second branch does
+not contain the first item's change, and must not — each PR merges on its own.
+
 **Never force-push over an existing `claude/refactor-*` branch.** One of them is
 probably behind an open PR, and overwriting it silently rewrites a change
 Gabriel may already be reading.
@@ -47,9 +53,9 @@ Then find out what is already in flight:
 
 - List open PRs whose head branch starts with `claude/refactor-`.
 - Each carries a `Backlog-Item: R-0xx` line in its body. Those items are **claimed** — skip them.
-- **If six or more such PRs are open, stop.** Do not open a seventh. Report that
-  the queue is backed up and that merging or closing some would let the agent
-  resume. A growing pile of unreviewed refactors is worse than no refactors.
+- **If six or more such PRs are open, stop.** Do not open a seventh. With five
+  open, work one item, not two. Report that the queue is backed up and that
+  merging or closing some would let the agent resume. A growing pile of unreviewed refactors is worse than no refactors.
 
 ## 2. Classes, and what each one is allowed to do
 
@@ -76,8 +82,8 @@ right. The queue is his steering wheel; proposing is how you hand him one.
 
 ## 3. Pick
 
-Read `REFACTOR_BACKLOG.md`. **Take the topmost eligible item. The order is
-absolute** — it is Gabriel's steering wheel, and a run that drives somewhere else
+Read `REFACTOR_BACKLOG.md`. **Take the two topmost eligible items, top first.
+The order is absolute** — it is Gabriel's steering wheel, and a run that drives somewhere else
 has taken the wheel off him.
 
 An item is eligible when its `## ` header is **all** of these:
@@ -93,11 +99,19 @@ do the screenshots, and it waits for review because its class never auto-merges.
 **Neither is the order of classes around it.** The backlog header asks whoever
 arranges the queue to interleave review-needed items with self-merging ones;
 that is advice for arranging, never licence for you to skip. If three `visual`
-items sit at the top, the top one is today's.
+items sit at the top, the top two are today's.
+
+**Two slots, worked in order.** Finish the first item completely — branch,
+gates, push, PR — before you start the second. If only one item is eligible, do
+one. If the first is **blocked**, stop: do not start the second. An item
+**dropped** on contact uses up its slot. Never reach for a third item to make up
+for one that fell through.
 
 **Every item you pass over, you name.** For each header above the one you take,
 the PR body gets one line — the id and which of the four conditions made it
-ineligible (`R-024 — not agent-executable`, `R-031 — claimed by #92`). Those are
+ineligible (`R-024 — not agent-executable`, `R-031 — claimed by #92`). In the
+second PR, the first item is simply claimed — by the PR you opened for it
+minutes earlier. Those are
 the only valid reasons. There is no other kind of skip:
 
 - an item that turns out to be a **bad idea on contact** is marked `dropped` in
@@ -107,8 +121,8 @@ the only valid reasons. There is no other kind of skip:
 - an item that is **too big** is split into slices in the backlog and you do the
   first — see step 4.
 
-In each case the backlog changes and says why. Silently taking the second item
-instead of the first is a failed run, however good the second item's work is.
+In each case the backlog changes and says why. Silently taking a lower item
+instead of a higher one is a failed run, however good the second item's work is.
 2026-09-23 is why this paragraph exists: the run passed over three `visual`
 items to take R-008, did excellent work on it, merged itself — and left nothing
 for the human who had put R-022 on top to review, with no word as to why.
@@ -142,13 +156,15 @@ If the backlog has no eligible items on any other morning, do a discovery run
 instead and say so.
 
 If an item turns out to be a bad idea on contact with the code — mark it
-`dropped` with a one-line reason, commit that, and move to the next item.
+`dropped` with a one-line reason and commit that on its branch. It used its
+slot; if it was the first, go on to the second, which may now be the next
+eligible item down.
 
 ## 4. Size
 
 The target is a diff a human reviews in ten minutes. If the chosen item is
 larger, split it **in the backlog** into numbered slices and do only the first
-one this run. Leave the rest as new items. Never let one run sprawl.
+one this run. Leave the rest as new items. Never let one PR sprawl.
 
 ## 5. Execute
 
@@ -243,7 +259,9 @@ to "see what CI says".
 In the same commit as the change, edit `REFACTOR_BACKLOG.md`:
 
 - Mark the item `done` with today's date.
-- Append any new candidates you noticed while working — **at most three**, each
+- Append any new candidates you noticed while working — **at most three a run**,
+  and **only in the run's last PR**: two PRs appending to the same list conflict
+  the moment the first merges. Mark only your own item `done` in the first. Each
   with a class, an `Impact:` line, and a concrete file path or symbol. Vague
   aspirations rot the backlog.
 - `refactor` and `modernise` candidates go in the main list, ready to work.
@@ -290,26 +308,31 @@ from the outside", and mean it.
 **Risk** — what a reviewer should look at hardest. Say "none I can see" if that is true.
 ```
 
-**Then record what you did**, in `/tmp/refactor-result.json`:
+Then go back to step 1's branch block for the second item, and land it the same
+way.
+
+**Then record what you did**, once, at the end, in `/tmp/refactor-result.json` —
+one entry per PR, in the order you opened them:
 
 ```json
-{"branch": "claude/refactor-2026-09-14", "class": "refactor", "pr": 59}
+{"outcome": "shipped", "items": [
+  {"branch": "claude/refactor-2026-09-14", "class": "refactor", "pr": 59},
+  {"branch": "claude/refactor-2026-09-14-2", "class": "modernise", "pr": 60}
+]}
 ```
 
-Add an `outcome` too — `shipped`, `nothing-eligible` or `blocked`:
-
-```json
-{"branch": "claude/refactor-2026-09-14", "class": "refactor", "pr": 59, "outcome": "shipped"}
-```
-
-`branch` and `pr` are null if you opened none; `class` must match the PR's
-`Class:` line exactly. **`blocked` deliberately fails the workflow run**, which
+`outcome` is `shipped`, `nothing-eligible` or `blocked`. `items` is empty if you
+opened no PR; each `class` must match its PR's `Class:` line exactly. `blocked`
+wins if either item was blocked, even though the other shipped — its PR is
+still verified and merged. **`blocked` deliberately fails the workflow run**, which
 is the only notification Gabriel gets by default — so use it when you tried and
 could not finish, and never to mean "there was nothing to do". `nothing-eligible`
 is the quiet, correct outcome for an empty queue; a false alarm on a calm day
-teaches him to ignore the alarm that matters. Do not commit this file. The workflow reads it, re-runs
-the repo's gates against a clean clone of your branch, and — for `refactor` and
-`modernise` only — merges the PR itself once that passes. `qol` and `visual`
+teaches him to ignore the alarm that matters. Do not commit this file. The workflow reads it and takes the PRs in order:
+it re-runs the repo's gates against a clean checkout of each branch and — for
+`refactor` and `modernise` only — merges the PR itself once that passes. If the
+first merged, it brings the second up to date with `main` before checking it,
+and leaves it for Gabriel if that update fails. `qol` and `visual`
 wait for Gabriel however green they are.
 
 Two consequences worth holding in mind. Your `class` line decides whether a
@@ -319,7 +342,7 @@ And the verification is a fresh clone, so anything that only passes in your
 working tree — an uncommitted file, a stale cache — fails there and stops the
 merge.
 
-Then subscribe to the PR's activity and drive it to green if CI disagrees with
+Then subscribe to each PR's activity and drive it to green if CI disagrees with
 your local run.
 
 **Verify the push landed** — `git ls-remote --heads origin <branch>` — before
@@ -339,11 +362,12 @@ hand from there.
 
 ## 10. Report
 
-Close the session with a short note: which item, what changed, the PR link, and
-anything you deliberately left alone. Write it for someone who has not seen the
+Close the session with a short note, one section per PR in the order you opened
+them: which item, what changed, the PR link, and anything you deliberately left
+alone. Write it for someone who has not seen the
 code today.
 
-**Lead with the class and the one-sentence "what you'd notice".** A dependency
+**Lead each section with the class and the one-sentence "what you'd notice".** A dependency
 bump and a redesigned empty state must not arrive in the same inbox reading
 identically — the first line is what tells them apart on a phone screen, so give
 an invisible change an honestly boring opening and a visible one the weight it
@@ -356,7 +380,8 @@ no to without opening anything.
 
 This report is what the completion email carries, and the email is read on a
 phone by someone who was not here. So **end every report that produced a PR
-with the merge instruction, verbatim in this shape**, real values substituted:
+with the merge instruction, verbatim in this shape**, real values substituted —
+one `TO MERGE` line per PR still open when you finish:
 
 ```
 TO MERGE — open https://github.com/jormania/app-playground/pull/<N>
@@ -370,6 +395,7 @@ Name the actual PR number. If CI was still running when you finished, say so on
 the first line rather than implying it was green.
 
 When no PR was opened — nothing eligible in the backlog, the gates wouldn't go
-green, the queue was already six deep — say that in one sentence and **do not**
+green, the queue was already six deep — say that in one sentence. Say the same
+of a second item you didn't reach, and why and **do not**
 include a merge block. An email telling Gabriel to merge something that doesn't
 exist is worse than no email.

@@ -37,9 +37,9 @@ Both look exactly like real regressions.
 
 ## Daily refactor workflow
 
-An agent takes **one** item off [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md) on
+An agent takes **two** items, one PR each, off [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md) on
 Monday, Wednesday and Friday mornings (every other Friday from 2026-10-09 is a
-discovery run instead), opens a PR, and auto-merges the `refactor` and `modernise`
+discovery run instead), opens a PR for each, and auto-merges the `refactor` and `modernise`
 ones. `qol` and `visual` items it may only propose, and they are never auto-merged.
 Backlog order is the priority. Read [`DAILY_REFACTOR.md`](DAILY_REFACTOR.md) before
 changing the workflow, the skill (`.claude/skills/daily-refactor/SKILL.md`) or the

@@ -1,6 +1,6 @@
 # Backlog — refactors, modernisation, and enhancements
 
-The queue the **Daily refactor** Routine burns through — one item each Monday,
+The queue the **Daily refactor** Routine burns through — two items each Monday,
 Wednesday and Friday morning, each landing as its own PR off fresh `main`. Every other Friday is a
 discovery run (2026-10-09, 10-23, …): nothing ships, the agent reads the codebase
 and adds to this file instead. The Fridays between take an item like Monday and Wednesday.

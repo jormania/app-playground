@@ -1,6 +1,6 @@
 # Daily refactor — the autonomous upkeep agent
 
-An agent that improves this repository one item each Monday, Wednesday and Friday morning, without
+An agent that improves this repository two items each Monday, Wednesday and Friday morning, one PR each, without
 asking first. It picks its own work from a queue, implements it, proves it
 green, opens a pull request, and — for the two classes that cannot change what
 you see — merges that pull request itself. Review happens afterwards, on the PR.
@@ -214,22 +214,24 @@ its own must not be the thing that decides it passed.**
    does not match the pattern and is never in scope.
 
 1. **Publish the report** to the run summary, parsed out of the action's output.
-2. **Read the result file** — defensively. Missing or malformed means "nothing to
-   merge", never a red run; a forgotten file should cost a click, not a morning.
-   A `branch` that isn't `claude/refactor-*` is refused outright.
-3. **Assert nothing reached `main`.** Pushing to `main` is forbidden in three
+2. **Assert nothing reached `main`.** Pushing to `main` is forbidden in three
    separate places, so this should never fire — which is exactly why it is
    asserted rather than assumed.
-4. **Re-verify in a clean clone.** The pushed branch is checked out fresh into
-   `verify/` and put through `npm ci`, all three gates. Anything that only passed
-   in the agent's working tree — an uncommitted file, a stale cache — dies here.
-5. **Confirm the PR is this run's:** head ref matches the branch, head repo is
-   this repo, base is `main`, state is open. With auto-merge on, a wrong number
-   would merge something else entirely.
-6. **Merge, if the class allows it.** `refactor|modernise` → squash and delete
-   the branch. Everything else is left for you, with a line in the summary saying
-   why.
-7. **Fail loudly if the run got stuck.** See below.
+3. **Verify and merge each PR, in the order opened** (at most two a run, since
+   2026-11-18). The result file is read defensively — missing or malformed means
+   "nothing to merge", never a red run. For each entry: a `branch` that isn't
+   `claude/refactor-*` is refused outright; the PR is confirmed as this run's
+   (head ref matches the branch, head repo is this repo, base is `main`, state is
+   open — with auto-merge on, a wrong number would merge something else
+   entirely); if an earlier PR this run was just merged, the branch is brought up
+   to date with `main` first, and left for you if that fails; then the branch is
+   checked out clean into its own worktree and put through `npm ci` and all three
+   gates, so anything that only passed in the agent's working tree dies here;
+   finally `refactor|modernise` → squash and delete the branch, everything else
+   left for you with a line in the summary saying why. One PR failing never stops
+   the other being looked at. `scripts/daily-refactor-merge.test.js` runs this
+   step as written against stand-ins for `gh`, `git` and `npm`.
+4. **Fail loudly if the run got stuck.** See below.
 
 ---
 
@@ -340,7 +342,8 @@ judgement. `refactor` moved to Sonnet on 2026-10-09, to spare the weekly limit
 below. `--model` is fixed
 when the agent starts, so the workflow works out tonight's item first, by the
 skill's own four eligibility conditions, in `scripts/pick-model.mjs` (tested in
-`scripts/pick-model.test.js`). On a Sonnet run the prompt names the item and
+`scripts/pick-model.test.js`). Since 2026-11-18 a run takes two items, and it
+goes on Sonnet only when both are `refactor` or `modernise`. On a Sonnet run the prompt names the items and
 tells the agent to stop rather than move on if it has to drop or block it, so a
 cheaper model never ends up on the next item down. Every uncertain path — the
 script failing, open PRs unreadable so claims are unknown — lands on Opus.
@@ -349,7 +352,8 @@ This came from the weekly subscription limit running out in the week of
 2026-09-28, when the workflow had to be switched off for two mornings. The
 tokens are a meter rather than a charge when the OAuth token is
 subscription-backed, but a meter that runs out stops the work. Budget per run:
-45 minutes wall clock, 150 turns, tools limited to
+90 minutes wall clock, 300 turns (doubled with the second item on 2026-11-18),
+tools limited to
 `Bash,Read,Edit,Write,Glob,Grep,TodoWrite`.
 
 ---
@@ -411,3 +415,4 @@ The pattern is one thing, told many ways: **the danger is not a bad change
 reaching production. It is a morning where something other than what you asked
 for happened — usually nothing — and nobody was told.** 2026-09-23 was the first
 time the agent did good work and it was still that failure.
+| 2026-11-18 | The queue stood at 26 open items against roughly three a week | Two items a run, one PR each, worked one after the other. Proposals ride only the last PR, so two PRs never append to the same list. The merge step loops over both, bringing the second up to date with `main` after the first merges; 90 minutes and 300 turns. Sonnet only when both items are Sonnet-class |

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseHeader, topmostEligible, chooseModel, OPUS, SONNET } from './pick-model.mjs';
+import { parseHeader, topmostEligible, eligibleItems, chooseModel, ITEMS_PER_RUN, OPUS, SONNET } from './pick-model.mjs';
 
 const REPO = resolve(__dirname, '..');
 
@@ -66,14 +66,14 @@ describe('chooseModel', () => {
     const { model, note } = chooseModel({ id: 'R-029', cls: 'modernise' }, false);
     expect(model).toBe(SONNET);
     expect(note).toContain('R-029');
-    expect(note).toMatch(/do not go on to the next item/);
+    expect(note).toMatch(/do not go on to another item/);
   });
 
   it('puts a refactor item on Sonnet too, naming its class', () => {
     const { model, note } = chooseModel({ id: 'R-031', cls: 'refactor' }, false);
     expect(model).toBe(SONNET);
     expect(note).toContain('`refactor`');
-    expect(note).toMatch(/do not go on to the next item/);
+    expect(note).toMatch(/do not go on to another item/);
   });
 
   it('keeps what you see — qol and visual — on Opus', () => {
@@ -93,3 +93,36 @@ describe('chooseModel', () => {
     expect(chooseModel(null, false).model).toBe(OPUS);
   });
 });
+
+describe('two items a run', () => {
+  it('takes two a run', () => {
+    expect(ITEMS_PER_RUN).toBe(2);
+  });
+
+  it('takes the top two eligible items in file order, by the same four conditions', () => {
+    const md = backlog(
+      '## R-001 — a · `refactor` · `done 2026-09-01`',
+      '## R-002 — b · `modernise` · `open`',
+      '## R-003 — c · `refactor` · `open` — **not agent-executable**',
+      '## R-004 — d · `visual` · `open`',
+      '## R-005 — e · `refactor` · `open`',
+    );
+    expect(eligibleItems(md).map((i) => i.id)).toEqual(['R-002', 'R-004']);
+    expect(eligibleItems(md, new Set(['R-002'])).map((i) => i.id)).toEqual(['R-004', 'R-005']);
+  });
+
+  it('takes what there is when fewer than two are eligible, and never reaches into Proposed', () => {
+    const md = ['## R-001 — a · `refactor` · `open`', '## Proposed', '## R-099 — x · `modernise` · `open`'].join('\n');
+    expect(eligibleItems(md).map((i) => i.id)).toEqual(['R-001']);
+  });
+
+  it('puts the run on Sonnet only when both items are refactor or modernise', () => {
+    const r = chooseModel([{ id: 'R-030', cls: 'refactor' }, { id: 'R-033', cls: 'modernise' }], false);
+    expect(r.model).toBe(SONNET);
+    expect(r.note).toContain('R-030');
+    expect(r.note).toContain('R-033');
+    expect(chooseModel([{ id: 'R-045', cls: 'modernise' }, { id: 'P-003', cls: 'qol' }], false).model).toBe(OPUS);
+    expect(chooseModel([], false).model).toBe(OPUS);
+  });
+});
+

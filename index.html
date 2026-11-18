@@ -874,7 +874,7 @@ function backlogParts() {
     const low = open <= BACKLOG_LOW;
     parts.push(
       `<a class="${low ? "gauge hot" : ""}" href="${href}" target="_blank" rel="noopener" ` +
-      `title="${low ? "Running low — the scheduled run takes one item each Monday, Wednesday and Friday" : "Items queued in REFACTOR_BACKLOG.md"}">` +
+      `title="${low ? "Running low — the scheduled run takes two items each Monday, Wednesday and Friday" : "Items queued in REFACTOR_BACKLOG.md"}">` +
       `backlog ${open}</a>`
     );
   }
