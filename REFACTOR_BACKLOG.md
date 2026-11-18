@@ -1697,7 +1697,7 @@ clean: added in 92c7eb9 (Silva's share-sheet work, 2026-09-02), never referenced
 since, and `grep -rni 'chime|audio|sound'` over `src/silva/` and `SILVA.md`
 matches nothing at all — so no half-built feature was waiting on it. Tempo's
 `playChime(volume, variant)` is untouched and remains the only one.
-## R-027 — Four variable font families imported by bare name · `modernise` · `open` — slices done: JetBrains Mono 2026-11-11, Fraunces 2026-11-13, Alegreya 2026-11-16 — Inter left
+## R-027 — Four variable font families imported by bare name · `modernise` · `done 2026-11-18` — slices: JetBrains Mono 2026-11-11, Fraunces 2026-11-13, Alegreya 2026-11-16, Inter 2026-11-18
 
 **Impact:** none visible. ~590 kB of `dist/`, charged against Vercel's
 Deployment Storage on every push.
@@ -1758,6 +1758,16 @@ none of the three apps' sources contains Cyrillic, Greek or Vietnamese text
 **Left: Inter only** — Silva, Fit Check, Radar-B, Loom, Cabinet, Wanderlist,
 Law of the Day, WhereItWent, Tempo, Marquee, plus `@import`s in Sol Odyssey's and
 Daily Stoic's `fonts.css`; any of them may render user text, so decide per app.
+
+**Slice 4 done 2026-11-18 — Inter.** Twelve apps (Silva, Fit Check, Radar-B,
+Loom, Cabinet, Wanderlist, Law of the Day, WhereItWent, Tempo, Marquee, plus
+Sol Odyssey's and Daily Stoic's `fonts.css`), all now on
+`src/shared/fonts/inter.css`: latin + latin-ext declared by hand, wght axis
+only as before, family name unchanged. No source file in any of the twelve
+contains Cyrillic, Greek or Vietnamese text (grepped); such text typed or
+fetched at runtime (e.g. from Notion) would fall back to the system sans.
+`dist/` loses the cyrillic, cyrillic-ext, greek, greek-ext and vietnamese woff2
+files. R-027 is complete.
 
 ## R-028 — Eight of the eleven serverless functions have no test at all · `modernise` · `open`
 

@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@fontsource-variable/inter';
+import '../shared/fonts/inter.css';
 import '../shared/fonts/jetbrains-mono.css';
 import '../shared/fonts/fraunces.css'; // Added for Sol Odyssey themes
 import './styles/index.css'; // Replaces ds/tokens.css
