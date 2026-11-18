@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource-variable/inter'
+import '../shared/fonts/inter.css'
 import '../shared/fonts/alegreya.css'
 import '../ds/tokens.css'
 import './marquee.css'

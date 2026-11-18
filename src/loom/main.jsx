@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource-variable/inter'
+import '../shared/fonts/inter.css'
 // Cinzel is declared by hand in ./fonts.css — woff2 only, both latin subsets,
 // fontsource's own unicode-ranges. See that file's header for why the
 // per-subset entry points CLAUDE.md recommends are the wrong fix here (R-016).

@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import '../shared/fonts/fraunces.css'
-import '@fontsource-variable/inter'
+import '../shared/fonts/inter.css'
 import '../shared/fonts/jetbrains-mono.css'
 import App from './App.jsx'
 import { watchInstalled } from '../shared/installFlag'
