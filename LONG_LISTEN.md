@@ -1874,3 +1874,13 @@ stand-in could be heard. With `mustBeOnSpotify` the prompt (`compare@2026-11-13.
 the recording that plays, never set against the other, and that line is kept as `standInNote`. The stand-in shows
 `standInNote` only; an older stand-in, whose framing compares, shows no line. Its character words and its thing to
 listen for still say what it is.
+
+**An album carrying on for several tracks (18 November 2026).** *The Rite of Spring*, played from the app on the
+TV, went on into all of *The Firebird* that follows it on the disc. The page slept through the end and woke to
+Firebird VI. The guard's run-on test (`ranOn`) asks whether what plays began when the work ended; Firebird VI
+began a quarter of an hour later, so the guard took it for the listener's choice and let go. `NowPlaying` now
+carries the track's `albumId`, and `carriedOnInAlbum` (`spotify/workGuard.ts`) counts as a run-on any later track
+of the work's own album, begun after the work should have ended and within 45 minutes of it. Another album, a
+skip before the end, or a track hours later is still the listener's. The guard can only act when the page reads
+the player: with the phone asleep and the tab frozen, the stop comes when the app is next opened. Spotify's
+*Autoplay* off (Settings → Playback, on the phone and the TV) stops it at the source.

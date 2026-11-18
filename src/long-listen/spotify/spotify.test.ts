@@ -440,10 +440,10 @@ describe('the client', () => {
   it('reads the player: the track, its length, and the device it’s on', async () => {
     const s = memStorage()
     s.setItem('long-listen:spotify', JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000, scope: '' }))
-    const body = { is_playing: true, progress_ms: 1000, device: { name: 'Galaxy S24' }, item: { id: 't2', name: 'II. Andante', duration_ms: 500_000, linked_from: { id: 'm2' } } }
+    const body = { is_playing: true, progress_ms: 1000, device: { name: 'Galaxy S24' }, item: { id: 't2', name: 'II. Andante', duration_ms: 500_000, linked_from: { id: 'm2' }, album: { id: 'alb1' } } }
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(body)))
     const c = new SpotifyClient(() => 'client', fetchMock as unknown as typeof fetch, s)
-    expect(await c.nowPlaying()).toEqual({ trackId: 't2', linkedFromId: 'm2', trackName: 'II. Andante', isPlaying: true, progressMs: 1000, durationMs: 500_000, deviceName: 'Galaxy S24' })
+    expect(await c.nowPlaying()).toEqual({ trackId: 't2', linkedFromId: 'm2', trackName: 'II. Andante', isPlaying: true, progressMs: 1000, durationMs: 500_000, deviceName: 'Galaxy S24', albumId: 'alb1' })
     expect(String((fetchMock.mock.calls as unknown as [string][])[0][0])).toMatch(/v1\/me\/player$/)
     fetchMock.mockImplementationOnce(async () => new Response(null, { status: 204 }))
     expect(await c.nowPlaying()).toBeNull()
