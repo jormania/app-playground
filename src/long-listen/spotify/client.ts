@@ -40,6 +40,8 @@ export interface NowPlaying {
   progressMs: number
   durationMs: number
   deviceName?: string
+  /** The album the track is on: a later track of the work's own album is the album carrying on (spotify/workGuard.ts). */
+  albumId?: string
   /** The device's volume, when Spotify reports it and the device lets it be set (some speakers and TVs don't). */
   volumePercent?: number
 }
@@ -216,7 +218,7 @@ export class SpotifyClient {
     // A server error says nothing about what's playing: keep the last reading rather than show nothing.
     if (!res.ok) throw new SpotifyUnavailable('failed', 'Spotify isn’t answering right now.')
     const d = await res.json().catch(() => null) as {
-      item?: { id: string; name: string; duration_ms?: number; linked_from?: { id?: string } } | null
+      item?: { id: string; name: string; duration_ms?: number; linked_from?: { id?: string }; album?: { id?: string } } | null
       is_playing?: boolean; progress_ms?: number | null; device?: { name?: string; type?: string; volume_percent?: number | null; supports_volume?: boolean } | null
     } | null
     if (!d?.item) return null
@@ -224,6 +226,7 @@ export class SpotifyClient {
       trackId: d.item.id, linkedFromId: d.item.linked_from?.id, trackName: d.item.name,
       isPlaying: Boolean(d.is_playing), progressMs: d.progress_ms ?? 0, durationMs: d.item.duration_ms ?? 0,
       deviceName: shortDevice(d.device?.name, d.device?.type),
+      ...(d.item.album?.id ? { albumId: d.item.album.id } : {}),
       ...(d.device?.supports_volume !== false && typeof d.device?.volume_percent === 'number' ? { volumePercent: d.device.volume_percent } : {}),
     }
   }

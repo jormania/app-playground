@@ -34,6 +34,8 @@ const DRIFT_MS = 10_000
  */
 const BEGAN_EARLY_MS = 15_000
 const BEGAN_LATE_MS = 20_000
+/** How long after the work's end a later track of its own album still counts as the album carrying on. */
+export const ALBUM_RUN_ON_MS = 45 * 60_000
 
 /** One reading of the player, and when it came back. */
 export interface Reading { np: NowPlaying; at: number }
@@ -78,6 +80,23 @@ export function ranOn(prev: NowPlaying | null, cur: NowPlaying | null, trackIds:
   if (end === undefined) return false
   const began = elapsedMs - cur.progressMs
   return began >= end - BEGAN_EARLY_MS && began <= end + BEGAN_LATE_MS && elapsedMs + DRIFT_MS >= end
+}
+
+/**
+ * The album carried on, perhaps for several tracks: something else from the
+ * work's own album is playing, begun after the work should have ended, and
+ * not long after. The Rite of Spring played from the app went on into all of
+ * The Firebird that follows it on the disc (18 November 2026) while the page
+ * slept; it woke to Firebird VI, begun far from the work's end, which
+ * `ranOn` reads as the listener's own choice. Within the same album soon
+ * after, it is the run-on still going.
+ */
+export function carriedOnInAlbum(last: Reading, cur: NowPlaying | null, now: number, trackIds: string[], durationsMs?: number[]): boolean {
+  if (!cur?.isPlaying || !cur.albumId || cur.albumId !== last.np.albumId || playbackOf(cur, trackIds)) return false
+  const end = endOfWork(last, trackIds, durationsMs)
+  if (end === undefined) return false
+  const began = now - cur.progressMs
+  return began >= end - BEGAN_EARLY_MS && now + DRIFT_MS >= end && now <= end + ALBUM_RUN_ON_MS
 }
 
 /** What the guard keeps across a page the browser discarded and reloaded. */
@@ -135,7 +154,7 @@ export class WorkGuard {
       this.keep()
       return false
     }
-    if (a.last && ranOn(a.last.np, cur, a.trackIds, now - a.last.at, a.durationsMs)) { this.armed = null; this.keep(); return true }
+    if (a.last && (ranOn(a.last.np, cur, a.trackIds, now - a.last.at, a.durationsMs) || carriedOnInAlbum(a.last, cur, now, a.trackIds, a.durationsMs))) { this.armed = null; this.keep(); return true }
     // Something else playing once the work had begun: the listener's own choice. Before it began, the reading is just late.
     // Nothing on Spotify at all once it had begun (closed, or no device): done too — no reason to keep a hidden page polling.
     if (a.started && (cur?.isPlaying || !cur)) { this.armed = null; this.keep() }

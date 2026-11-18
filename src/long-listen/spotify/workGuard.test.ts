@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { WorkGuard, endOfWork, ranOn, type Armed } from './workGuard'
+import { WorkGuard, carriedOnInAlbum, endOfWork, ranOn, ALBUM_RUN_ON_MS, type Armed } from './workGuard'
 import type { NowPlaying } from './client'
 
 const work = ['m1', 'm2', 'm3']
@@ -135,5 +135,34 @@ describe('a work that ran on while the page slept', () => {
     expect(after.isArmed(1)).toBe(true)
     expect(after.observe(null, np('hymnus', 5_000, 300_000), end + 5_000)).toBe(true)
     expect(kept).toBeNull()
+  })
+})
+
+describe('an album that carried on for several tracks while the page slept (18 November 2026)', () => {
+  // The Rite's last movement, then The Firebird from the same disc, track after track.
+  const rite = ['rite-13', 'rite-14']
+  const lengths = [200_000, 300_000]
+  const np = (trackId: string, progressMs: number, durationMs: number, albumId = 'boulez-dg'): NowPlaying => ({ trackId, trackName: '', isPlaying: true, progressMs, durationMs, albumId })
+  // Last seen 100 s into the penultimate movement: the work ends 100 + 300 s later.
+  const end = 400_000
+
+  it('stops a later track of the work’s own album, begun after the work ended, as the run-on still going', () => {
+    const g = new WorkGuard()
+    g.arm(rite, 0, lengths)
+    g.observe(null, np('rite-13', 100_000, 200_000), 0)
+    // The page wakes 14 minutes on, to Firebird VI two minutes in.
+    expect(g.observe(null, np('firebird-6', 120_000, 240_000), end + 14 * 60_000)).toBe(true)
+    expect(g.isArmed(end + 14 * 60_000 + 1)).toBe(false)
+  })
+
+  it('leaves alone another album, a track of the same album begun before the end, and one long after', () => {
+    const last = { np: np('rite-13', 100_000, 200_000), at: 0 }
+    expect(carriedOnInAlbum(last, np('elsewhere', 120_000, 240_000, 'other-album'), end + 600_000, rite, lengths)).toBe(false)
+    // Skipped on to The Firebird before the Rite could have ended: the listener's.
+    expect(carriedOnInAlbum(last, np('firebird-1', 10_000, 240_000), 200_000, rite, lengths)).toBe(false)
+    // Hours on: the work is long over, and what plays was chosen since.
+    expect(carriedOnInAlbum(last, np('firebird-6', 60_000, 240_000), end + ALBUM_RUN_ON_MS + 60_000, rite, lengths)).toBe(false)
+    // A reading without the album says nothing.
+    expect(carriedOnInAlbum({ np: { ...last.np, albumId: undefined }, at: 0 }, np('firebird-6', 60_000, 240_000), end + 600_000, rite, lengths)).toBe(false)
   })
 })
