@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { liveEvents, liveMatches, meet, sameEvening, whatIsOn, whatIsOnAt } from './live'
+import { liveEvents, liveMatches, meet, sameEvening, venueShort, venueTitle, whatIsOn, whatIsOnAt } from './live'
 import type { Programme, ProgrammeItem } from '../domain/types'
 
 const item = (composer: string, work: string, conductor?: string, soloists: string[] = []): ProgrammeItem => ({
@@ -85,5 +85,15 @@ describe('live in Bucharest', () => {
     expect(await liveEvents(marks, offline as unknown as typeof fetch, new Date('2026-10-10T10:00:00Z'))).toEqual([{ venue: 'Sala Radio', title: 'T', date: '2026-11-20' }])
     store.clear()
     await expect(liveEvents(marks, offline as unknown as typeof fetch, new Date('2026-10-10T10:00:00Z'))).rejects.toThrow()
+  })
+})
+
+describe('one hall, one name (19 November 2026)', () => {
+  it('names the Ateneu however it was written down, and leaves another hall as it is', () => {
+    for (const v of ['Filarmonica George Enescu', 'Ateneul Român', 'The Ateneu', 'Romanian Athenaeum', 'ateneul roman']) expect(venueShort(v)).toBe('the Ateneu')
+    expect(venueTitle('Ateneul Român')).toBe('The Ateneu')
+    expect(venueShort('Sala Radio')).toBe('Sala Radio')
+    expect(venueShort('Sala Radio, Studioul Mihail Jora')).toBe('Sala Radio')
+    expect(venueShort('Opera Națională București')).toBe('Opera Națională București')
   })
 })

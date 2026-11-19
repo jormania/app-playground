@@ -134,10 +134,13 @@ const GENERATION = new Set(['i', 'ii', 'iii', 'iv', 'jr', 'sr', 'junior', 'senio
 /**
  * Surname, for search queries and matching: "Pierre Boulez" → "boulez". A
  * generational suffix is not a surname: "Johann Strauss II" → "strauss", as is
- * "the Elder" ("Pieter Bruegel the Elder").
+ * "the Elder" ("Pieter Bruegel the Elder"). Of "A / B" (a composer and the
+ * orchestrator a programme bills beside them), A's.
  */
 export function surname(name) {
-  const words = fold(name).split(' ').filter(Boolean)
+  // "Modest Mussorgsky / Dmitri Shostakovich", as a concert billing names a work and its orchestrator: the
+  // composer is the first. Spotify credits Mussorgsky, and the last word made it Shostakovich (19 November 2026).
+  const words = fold(String(name ?? '').split(/\s+\/\s+/)[0]).split(' ').filter(Boolean)
   if (words.length > 2 && words[words.length - 2] === 'the' && /^(elder|younger)$/.test(words[words.length - 1])) words.splice(-2)
   while (words.length > 1 && GENERATION.has(words[words.length - 1])) words.pop()
   return words[words.length - 1] ?? ''

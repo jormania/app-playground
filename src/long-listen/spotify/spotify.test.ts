@@ -124,6 +124,16 @@ describe('verifying a recording', () => {
     expect(out).toEqual([{ album: 'Debussy: La mer', title: 'La mer, L. 109', albumId: 'alb2', year: '1964', artists: ['Berliner Philharmoniker', 'Herbert von Karajan'] }])
   })
 
+  it('finds a work billed with its orchestrator, "Mussorgsky / Shostakovich", under its composer (19 November 2026)', async () => {
+    const p: ProposedRecording = { composer: 'Modest Mussorgsky / Dmitri Shostakovich', work: 'Prelude to Khovanshchina', soloists: [] }
+    const abbado = { ...t('a1', 'Khovanshchina: Prelude - Dawn over the Moscov River - Remastered', 1, ['Modest Mussorgsky', 'Claudio Abbado', 'London Symphony Orchestra']), album: { id: 'abb', name: 'Mussorgsky: Symphonic Works' } }
+    const spotify = fakeSpotify([abbado])
+    const out = await spotifyCandidates(spotify, p)
+    expect(out.map((c) => c.albumId)).toEqual(['abb'])
+    expect(out[0].artists).toEqual(['Claudio Abbado', 'London Symphony Orchestra'])
+    expect(spotify.searchTracks).toHaveBeenCalledWith('Mussorgsky Prelude to Khovanshchina')
+  })
+
   it('finds a work Spotify titles another way by its catalogue number, and never one with a different number', async () => {
     // A concert's "Double Concerto in A minor, Op. 102"; DG calls it a concerto for violin and cello.
     const p: ProposedRecording = { composer: 'Johannes Brahms', work: 'Double Concerto in A minor', catalogue: 'Op. 102', soloists: [] }

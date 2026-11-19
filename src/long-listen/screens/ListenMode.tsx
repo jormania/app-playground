@@ -1,3 +1,4 @@
+import { venueShort } from '../live/live'
 import { useEffect, useRef, useState } from 'react'
 import { ComposerLink } from './Composer'
 import type { ProgrammeItem } from '../domain/types'
@@ -571,7 +572,7 @@ function EarlierLine({ earlier, credit, today }: { earlier: EarlierHearing; cred
     return (
       <p className={s.earlierHearing}>
         <span className={s.earlierWord}>Heard before</span>{' '}
-        Live, <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.hall ? `${c.venue}, ${c.hall}` : c.venue}</a>, on {onDay(earlier.on, today)}{c.conductor ? `, with ${c.conductor}` : ''}.{said}
+        Live, <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.hall ? `${venueShort(c.venue)}, ${c.hall}` : venueShort(c.venue)}</a>, on {onDay(earlier.on, today)}{c.conductor ? `, with ${c.conductor}` : ''}.{said}
       </p>
     )
   }

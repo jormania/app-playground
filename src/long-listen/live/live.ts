@@ -191,7 +191,24 @@ export async function liveEvents(
   return events
 }
 
-/** The venue's everyday name for the line: "the Ateneu", "Sala Radio". */
+/**
+ * The venue's everyday name for the line: "the Ateneu", "Sala Radio" — one
+ * name a hall, however it was written down. The Ateneu came three ways: the
+ * Philharmonic's name (Live in Bucharest), the building's ("Ateneul Român",
+ * read from a programme) and the everyday one, and All concerts showed one
+ * hall as two (19 November 2026).
+ */
 export function venueShort(venue: string): string {
-  return LIVE_VENUES.find((v) => v.name === venue)?.short ?? venue
+  const known = LIVE_VENUES.find((v) => v.name === venue)?.short
+  if (known) return known
+  const f = fold(venue)
+  if (/\bateneu|\bathenaeum\b|^filarmonica george enescu$/.test(f)) return 'the Ateneu'
+  if (/^sala radio\b/.test(f)) return 'Sala Radio'
+  return venue
+}
+
+/** The same, to begin a line or a title: "The Ateneu". */
+export function venueTitle(venue: string): string {
+  const v = venueShort(venue)
+  return v.charAt(0).toUpperCase() + v.slice(1)
 }

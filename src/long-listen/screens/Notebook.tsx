@@ -1,3 +1,4 @@
+import { venueShort } from '../live/live'
 import { useEffect, useRef, useState } from 'react'
 import type { Concert, Feedback, Programme, TasteObservation } from '../domain/types'
 import { displaySurname } from '../domain/identity'
@@ -26,7 +27,7 @@ function whatWasSaidOf(feedback: Feedback[], programmes: Programme[], concerts: 
     const { type, id } = f.target
     const item = type === 'work' ? items.find((i) => i.workId === id) : type === 'recording' || type === 'interpretation' ? items.find((i) => i.recordingId === id) : undefined
     const words = item ? `${displaySurname(item.proposed.composer)}’s ${curly(item.proposed.work)}`
-      : type === 'concert' ? (() => { const c = concerts.find((x) => x.id === id); return c ? `the concert at ${c.venue}` : undefined })()
+      : type === 'concert' ? (() => { const c = concerts.find((x) => x.id === id); return c ? `the concert at ${venueShort(c.venue)}` : undefined })()
       : type === 'programme' ? (() => { const p = programmes.find((x) => x.id === id); return p ? `“${p.title}”` : undefined })()
       : undefined
     if (words) out.set(f.id, words)

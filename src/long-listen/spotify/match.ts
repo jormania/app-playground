@@ -119,8 +119,10 @@ const tokens = (s: string) => s.split(' ').filter(Boolean)
  *       of one city kept apart; titles in German, French and Italian, "&" for
  *       "and"; a movement after " - "; a work in another key; an excerpt on a
  *       compilation passed over; a last search by composer and work alone.
+ *   8 — a composer billed with the orchestrator ("Modest Mussorgsky / Dmitri
+ *       Shostakovich") is the composer: searched and credited as Mussorgsky.
  */
-export const MATCHER_VERSION = 7
+export const MATCHER_VERSION = 8
 
 /**
  * The curator often adds a version note in brackets — "(original piano
