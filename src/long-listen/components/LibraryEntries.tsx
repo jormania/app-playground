@@ -1,3 +1,4 @@
+import { venueTitle } from '../live/live'
 import { Landmark } from 'lucide-react'
 import type { Repo } from '../store/repo'
 import { libraryEntries, catalogueNotInTitle, type LibraryComposer, type LibraryWorkEntry } from '../domain/library'
@@ -68,7 +69,7 @@ export function LibraryWorks({ works }: { works: LibraryWorkEntry[] }) {
           <div key={c.id} className={s.libraryLive}>
             <p className={s.flush}>
               <span className={`${s.tag} ${s.tagOn}`}><Landmark size={12} strokeWidth={1.8} aria-hidden="true" /> heard live</span>{' '}
-              <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{c.venue}, {concertDate(c.date)}</a>
+              <a href={href({ name: 'concert', id: c.id })} className={s.quietLink}>{venueTitle(c.venue)}, {concertDate(c.date)}</a>
             </p>
             <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: whoPlays(c, c.works.find((x) => x.workId === work.id) ?? { title: work.title, soloists: [] }) }} />
           </div>

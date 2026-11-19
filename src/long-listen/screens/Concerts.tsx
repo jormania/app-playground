@@ -20,7 +20,7 @@ import { GoingToggle, useGoings } from '../components/Going'
 import { listeningState } from '../domain/listening'
 import { heardAs, standInsOf } from '../domain/standIns'
 import { isoDateIn } from '../domain/week'
-import { liveEvents, liveMatches, venueShort, whatIsOnAt } from '../live/live'
+import { liveEvents, liveMatches, venueShort, venueTitle, whatIsOnAt } from '../live/live'
 import { NotFound } from '../store/repo'
 import s from '../styles/editorial.module.css'
 import { useTitle } from '../app/title'
@@ -85,7 +85,7 @@ export function ConcertScreen({ id }: { id: string }) {
   const [removing, setRemoving] = useState(false)
   const fromGoing = id.startsWith('from-') ? id.slice('from-'.length) : undefined
   const { data, error, retry } = useLoad(async () => (id === 'new' || fromGoing ? null : repo.concerts.require(id)), [id])
-  useTitle(id === 'new' || fromGoing ? 'A concert heard' : data ? `${data.venue}, ${data.date}` : undefined)
+  useTitle(id === 'new' || fromGoing ? 'A concert heard' : data ? `${venueTitle(data.venue)}, ${data.date}` : undefined)
   if (id === 'new') return <ConcertForm />
   if (fromGoing) return <ConcertFromGoing goingKey={fromGoing} />
   if (error) return <Problem error={error} onRetry={retry} notFound={{ text: 'There’s no such concert — perhaps an old link.', link: { href: href({ name: 'concerts' }), label: 'All concerts' } }} />
@@ -107,7 +107,7 @@ export function ConcertScreen({ id }: { id: string }) {
   return (
     <article>
       <BackLink back to={href({ name: 'concerts' })} label="All concerts" />
-      <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {c.date > isoDateIn(new Date(), settings.timeZone) ? 'Not yet heard' : 'Heard live'} · {c.venue}{c.hall ? `, ${c.hall}` : ''}</p>
+      <p className={s.composer}><Landmark size={16} strokeWidth={1.6} aria-hidden="true" className={s.hallMark} /> {c.date > isoDateIn(new Date(), settings.timeZone) ? 'Not yet heard' : 'Heard live'} · {venueShort(c.venue)}{c.hall ? `, ${c.hall}` : ''}</p>
       <h1 className={s.titleSmall}>{concertDate(c.date)}{c.time ? `, ${c.time}` : ''}</h1>
       {/* Who played, as the hall's own programme prints it: name first, the role after in italic. */}
       <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} className={s.concertCredits} programme />

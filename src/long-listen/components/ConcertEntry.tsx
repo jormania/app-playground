@@ -1,7 +1,7 @@
 import type { Concert } from '../domain/types'
 import { displaySurname } from '../domain/identity'
 import { unplaced, whoPlays } from '../domain/concertSoloists'
-import { venueShort } from '../live/live'
+import { venueTitle } from '../live/live'
 import { href } from '../app/router'
 import { Credits } from './Credits'
 import s from '../styles/editorial.module.css'
@@ -16,10 +16,9 @@ export const concertDate = (d: string) => new Intl.DateTimeFormat('en-GB', { wee
  * and what was said of it.
  */
 export function ConcertEntry({ concert: c, className }: { concert: Concert; className?: string }) {
-  const place = venueShort(c.venue)
   return (
     <div className={`${s.journalConcert}${className ? ` ${className}` : ''}`}>
-      <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{place.charAt(0).toUpperCase()}{place.slice(1)}{c.hall ? `, ${c.hall}` : ''}</a>
+      <a className={`${s.journalConcertTitle} ${s.quietLink}`} href={href({ name: 'concert', id: c.id })}>{venueTitle(c.venue)}{c.hall ? `, ${c.hall}` : ''}</a>
       <p className={`${s.faint} ${s.flush}`}>{concertDate(c.date)}</p>
       {/* The evening's own soloists here; each work's beside it. */}
       <Credits r={{ conductor: c.conductor, orchestra: c.orchestra, soloists: unplaced(c) }} />

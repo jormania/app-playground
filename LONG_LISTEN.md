@@ -1892,3 +1892,10 @@ Spotify was searched for "Shostakovich Prelude to Khovanshchina", and every reco
 failed the composer check. In "A / B" the composer is A now (`domain/identity.js`), for search, the credit check
 and the name shown in a query. `MATCHER_VERSION` 8 lets a programme recording turned away the same way be looked
 for again.
+
+**One hall, one name (19 November 2026).** All concerts showed the Ateneu twice: "Ateneul Român, Sala Mare" for a
+concert read from a programme, "The Ateneu" for one from Live in Bucharest ("Filarmonica George Enescu").
+`venueShort` (`live/live.ts`) now knows the Ateneu by any of its names (the Philharmonic's, "Ateneul Român",
+"Romanian Athenaeum", "the Ateneu"), and Sala Radio with a studio after it. `venueTitle` gives the same name to begin
+a line. Every place a concert's venue is shown uses them: All concerts and the Journal, a concert's page and its tab
+title, the Library's "heard live", the Notebook and the listening view. The stored venue is unchanged.
