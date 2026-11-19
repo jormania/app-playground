@@ -1884,3 +1884,11 @@ of the work's own album, begun after the work should have ended and within 45 mi
 skip before the end, or a track hours later is still the listener's. The guard can only act when the page reads
 the player: with the phone asleep and the tab frozen, the stop comes when the app is next opened. Spotify's
 *Autoplay* off (Settings → Playback, on the phone and the TV) stops it at the source.
+
+**A composer billed with the orchestrator (19 November 2026).** The Ateneu billed the opening of a concert as
+"Modest Mussorgsky / Dmitri Shostakovich — Prelude to Khovanshchina", and *Hear it again on Spotify* found
+nothing. Spotify has many recordings, but `surname()` took the last word of the whole billing, Shostakovich.
+Spotify was searched for "Shostakovich Prelude to Khovanshchina", and every recording crediting only Mussorgsky
+failed the composer check. In "A / B" the composer is A now (`domain/identity.js`), for search, the credit check
+and the name shown in a query. `MATCHER_VERSION` 8 lets a programme recording turned away the same way be looked
+for again.

@@ -49,5 +49,7 @@ describe('identity of recordings', () => {
     expect(creditLine({ conductor: 'Pierre Boulez', orchestra: 'Cleveland Orchestra', soloists: [] })).toBe('Pierre Boulez · Cleveland Orchestra')
     expect(creditLine({ ensemble: 'Ensemble intercontemporain', soloists: [{ name: 'Hilary Hahn' }] })).toBe('Hilary Hahn · Ensemble intercontemporain')
     expect(surname('Esa-Pekka Salonen')).toBe('salonen')
+    // A composer billed with the orchestrator: the composer's (19 November 2026).
+    expect(surname('Modest Mussorgsky / Dmitri Shostakovich')).toBe('mussorgsky')
   })
 })
