@@ -11,6 +11,8 @@ import { SessionDetail } from './screens/SessionDetail'
 import { SessionEditor } from './screens/SessionEditor'
 import { Settings } from './screens/Settings'
 import { Surprise } from './screens/Surprise'
+import { SeriesDetail, SeriesList } from './screens/Series'
+import type { StillflowRepo } from './store/repo'
 import styles from './App.module.css'
 
 function Screen({ route }: { route: Route }) {
@@ -22,6 +24,8 @@ function Screen({ route }: { route: Route }) {
     case 'practice': return <Practice />
     case 'collections': return <Collections />
     case 'collection': return <CollectionDetail key={route.id} id={route.id} />
+    case 'series': return <SeriesList />
+    case 'seriesDetail': return <SeriesDetail key={route.id} id={route.id} />
     case 'settings': return <Settings />
     case 'editor': return <SessionEditor key={route.id ?? 'new'} id={route.id} />
   }
@@ -60,9 +64,10 @@ function Root() {
   )
 }
 
-export default function App() {
+/** `repo` is for tests: the whole app on an in-memory store. */
+export default function App({ repo }: { repo?: StillflowRepo }) {
   return (
-    <StateProvider>
+    <StateProvider repo={repo}>
       <Root />
     </StateProvider>
   )

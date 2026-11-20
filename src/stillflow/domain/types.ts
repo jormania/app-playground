@@ -38,6 +38,8 @@ export interface Session {
   timeOfDay: string[]
   equipment: string[]
   series?: string
+  /** Position within `series` (Day 8 of MOVE → 8). Read from the title when absent. */
+  seriesDay?: number
   publishedDate?: string
   tags: string[]
   classificationConfidence: Confidence
@@ -79,6 +81,47 @@ export interface UserCollection {
   updatedAt: string
 }
 
+/** A multi-day programme: one of Adriene's journeys, or one you define. */
+export interface SeriesDef {
+  id: string
+  name: string
+  year?: number
+  /** Number of practices (days or weeks). */
+  length: number
+  unit: 'Day' | 'Week'
+  kind: 'journey' | 'short' | 'custom'
+  blurb?: string
+  /** Where the series facts were checked. Absent on series you created. */
+  sourceUrl?: string
+  /** Lower-case names a session's `series` field may carry to belong here. */
+  match: string[]
+  instructor: string
+}
+
+/** idle: never started (a record may exist only to hold links). */
+export type SeriesStatus = 'idle' | 'active' | 'completed' | 'abandoned'
+
+export interface SeriesRun {
+  startedAt: string
+  endedAt: string
+  status: 'completed' | 'abandoned'
+  daysDone: number
+}
+
+/** Your journey through one series. One record per series; earlier attempts sit in `runs`. */
+export interface SeriesProgress {
+  seriesId: string
+  status: SeriesStatus
+  /** YYYY-MM-DD the current (or last) run began. */
+  startedAt: string
+  endedAt?: string
+  /** Days ticked by hand in this run: day → date. Linked sessions in practice history count too. */
+  manualDays: Record<string, string>
+  /** Sessions you linked to a day yourself: day → session id. */
+  links: Record<string, string>
+  runs: SeriesRun[]
+}
+
 export type OpenMethod = 'auto' | 'link'
 
 export interface Preferences {
@@ -90,6 +133,8 @@ export interface Preferences {
   weeklyTargetMinutes?: number
   view: 'grid' | 'list'
   welcomed: boolean
+  /** ISO date-time of the last full backup saved from Settings. */
+  lastBackupAt?: string
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -114,4 +159,7 @@ export interface Backup {
   history: PracticeEntry[]
   collections: UserCollection[]
   preferences: Preferences
+  /** Added after the first release; absent in older backups. */
+  seriesProgress?: SeriesProgress[]
+  customSeries?: SeriesDef[]
 }

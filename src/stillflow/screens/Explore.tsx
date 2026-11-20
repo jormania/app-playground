@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
-import { Search, SlidersHorizontal, X, LayoutGrid, List, Heart } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Search, SlidersHorizontal, X, LayoutGrid, List, Heart, Shuffle } from 'lucide-react'
 import { Button, Field, Modal } from '../../ds'
 import { useStillflow } from '../app/state'
 import { SessionCard } from '../components/SessionCard'
 import { ChipGroup, Empty } from '../components/ui'
 import {
   DURATION_BUCKETS, ENERGY, EQUIPMENT, EXPERIENCE, INTENSITY_LABELS, OBJECTIVES, PHYSICAL_FOCUS, STYLES, TIME_OF_DAY,
+  repeatLabel,
   type DurationBucketId,
 } from '../domain/vocabulary'
 import { EMPTY_FILTERS, SORT_OPTIONS, activeFilterCount, applyFilters, type Filters, type SortKey } from '../lib/filter'
@@ -21,6 +22,19 @@ export function Explore() {
   const [limit, setLimit] = useState(PAGE)
   const [seed, setSeed] = useState(1)
   const view = preferences.view
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // "/" jumps to search on a keyboard, as on most library sites.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || t?.closest('input, textarea, select, [contenteditable]')) return
+      e.preventDefault()
+      searchRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const results = useMemo(
     () => applyFilters(sessions, filters, sort, { userData, lastPractised }, seed),
@@ -37,6 +51,7 @@ export function Explore() {
     ...filters.intensities.map((i) => ({ label: INTENSITY_LABELS[i - 1], remove: () => update({ intensities: filters.intensities.filter((x) => x !== i) }) })),
     ...(['styles', 'focus', 'objectives', 'energy', 'experience', 'timeOfDay', 'equipment', 'series'] as ListKey[]).flatMap((k) =>
       filters[k].map((v) => ({ label: v, remove: () => update({ [k]: filters[k].filter((x) => x !== v) } as Partial<Filters>) }))),
+    ...(filters.ratings ?? []).map((r) => ({ label: `Again: ${repeatLabel(r)}`, remove: () => update({ ratings: filters.ratings.filter((x) => x !== r) }) })),
     ...(filters.favouritesOnly ? [{ label: 'Favourites', remove: () => update({ favouritesOnly: false }) }] : []),
   ]
 
@@ -52,7 +67,7 @@ export function Explore() {
         <label className={s.search}>
           <Search size={18} strokeWidth={1.6} />
           <span className="sf-visually-hidden">Search sessions</span>
-          <input type="search" placeholder="Search title, style, body area, series…" value={filters.query}
+          <input ref={searchRef} type="search" enterKeyHint="search" placeholder="Search title, style, body area, series…" value={filters.query}
             onChange={(e) => update({ query: e.target.value })} />
           {filters.query && <button type="button" className={s.iconBtn} aria-label="Clear search" onClick={() => update({ query: '' })}><X size={16} /></button>}
         </label>
@@ -70,6 +85,9 @@ export function Explore() {
                 {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>
+            {sort === 'random' && (
+              <button type="button" className={s.iconBtn} aria-label="Shuffle again" onClick={() => setSeed((x) => x + 1)}><Shuffle size={17} /></button>
+            )}
           </div>
           <div className={s.row}>
             <span className={s.count} aria-live="polite">{results.length} {results.length === 1 ? 'session' : 'sessions'}</span>
@@ -115,6 +133,8 @@ export function Explore() {
             <Field label="Custom: from (min)" type="number" inputMode="numeric" min={0} value={filters.customMin ?? ''} onChange={(e) => update({ customMin: num(e.target.value) })} />
             <Field label="to (min)" type="number" inputMode="numeric" min={0} value={filters.customMax ?? ''} onChange={(e) => update({ customMax: num(e.target.value) })} />
           </div>
+          <ChipGroup<number> label="Practise it again? (your rating)" options={[5, 4, 3, 2, 1, 0]} selected={filters.ratings ?? []}
+            onChange={(v) => update({ ratings: v })} render={(r) => repeatLabel(r)} />
           <ChipGroup label="Style" options={STYLES} selected={filters.styles} onChange={(v) => update({ styles: v })} />
           <ChipGroup<number> label="Intensity" options={[1, 2, 3, 4, 5]} selected={filters.intensities}
             onChange={(v) => update({ intensities: v })} render={(i) => INTENSITY_LABELS[i - 1]} />

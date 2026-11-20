@@ -51,6 +51,12 @@
 
   --sf-nav-h: 64px;
   --sf-sidebar-w: 232px;
+  /* Lifts the DS toast stack above the bottom bar (ToastStack reads it). */
+  --toast-offset: calc(var(--sf-nav-h) + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 900px) {
+  :root { --toast-offset: 0px; }
 }
 
 :root[data-theme='dark'] {

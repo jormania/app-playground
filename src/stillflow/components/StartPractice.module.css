@@ -27,3 +27,6 @@
   text-decoration-color: var(--color-border-2);
   text-underline-offset: 3px;
 }
+
+.search { background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-border-2); }
+.search:hover { background: var(--color-surface-2); }

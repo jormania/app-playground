@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowUp, ArrowDown, X, Plus, Pencil, Trash2, ArrowLeft } from 'lucide-react'
 import { Button, ConfirmModal, Field, Modal } from '../../ds'
 import { hrefOf, navigate } from '../app/router'
@@ -6,6 +6,7 @@ import { useStillflow } from '../app/state'
 import { StartPractice } from '../components/StartPractice'
 import { Empty } from '../components/ui'
 import type { UserCollection } from '../domain/types'
+import { fold } from '../lib/filter'
 import { readJson, writeJson } from '../../shared/storage'
 import s from './screens.module.css'
 
@@ -75,10 +76,43 @@ export function Collections() {
 
 const SEQ_KEY = 'stillflow:sequence'
 
+/** Add several sessions to a collection without leaving it. */
+function AddSessions({ collection, onClose }: { collection: UserCollection; onClose: () => void }) {
+  const { sessions, saveCollection } = useStillflow()
+  const [q, setQ] = useState('')
+  const inIt = new Set(collection.sessionIds)
+  const list = useMemo(() => {
+    const t = fold(q.trim())
+    return sessions.filter((x) => !t || fold(`${x.title} ${x.styles.join(' ')} ${x.physicalFocus.join(' ')}`).includes(t))
+      .sort((a, b) => a.title.localeCompare(b.title)).slice(0, 80)
+  }, [sessions, q])
+  const toggle = (id: string) => saveCollection({
+    ...collection,
+    sessionIds: inIt.has(id) ? collection.sessionIds.filter((x) => x !== id) : [...collection.sessionIds, id],
+    updatedAt: new Date().toISOString(),
+  })
+  return (
+    <Modal open onClose={onClose} title={`Add to ${collection.name}`}>
+      <Field label="Search your library" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Title, style or body area" autoFocus />
+      <div className={s.picker}>
+        {list.map((x) => (
+          <button key={x.id} type="button" className={s.pick} aria-pressed={inIt.has(x.id)} onClick={() => toggle(x.id)}>
+            <span>{inIt.has(x.id) ? '✓ ' : ''}{x.title}</span><span className={s.muted}>{x.durationMinutes} min</span>
+          </button>
+        ))}
+      </div>
+      <div className={s.row} style={{ justifyContent: 'flex-end', marginTop: 'var(--space-md)' }}>
+        <Button onClick={onClose}>Done</Button>
+      </div>
+    </Modal>
+  )
+}
+
 export function CollectionDetail({ id }: { id: string }) {
   const { collections, byId, saveCollection, deleteCollection, toast, ready } = useStillflow()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [positions, setPositions] = useState<Record<string, number>>(() => readJson(SEQ_KEY, {}))
   const c = collections.find((x) => x.id === id)
 
@@ -99,7 +133,8 @@ export function CollectionDetail({ id }: { id: string }) {
   const move = (i: number, d: -1 | 1) => {
     const ids = items.map((x) => x.id)
     ;[ids[i], ids[i + d]] = [ids[i + d], ids[i]]
-    update(ids)
+    // Ids no longer in the catalogue keep their place at the end until you tidy up.
+    update([...ids, ...c.sessionIds.filter((x) => !byId.has(x))])
     if (pos === i) setPos(i + d)
     else if (pos === i + d) setPos(i)
   }
@@ -114,6 +149,7 @@ export function CollectionDetail({ id }: { id: string }) {
             <p className={s.lede}>{items.length} {items.length === 1 ? 'session' : 'sessions'} · {minutes} min in all</p>
           </div>
           <div className={s.row}>
+            <Button size="sm" variant="outline" onClick={() => setAdding(true)}><Plus size={15} /> Add sessions</Button>
             <button type="button" className={s.iconBtn} aria-label="Rename collection" onClick={() => setRenaming(true)}><Pencil size={17} /></button>
             <button type="button" className={s.iconBtn} aria-label="Delete collection" onClick={() => setDeleting(true)}><Trash2 size={17} /></button>
           </div>
@@ -122,8 +158,8 @@ export function CollectionDetail({ id }: { id: string }) {
 
       {items.length === 0 ? (
         <Empty title="This collection is empty">
-          <p>Open any session and choose Add to collection.</p>
-          <a className={s.textLink} href="#/explore">Explore sessions</a>
+          <p>Add sessions here, or choose Add to collection on any session.</p>
+          <Button onClick={() => setAdding(true)}><Plus size={16} /> Add sessions</Button>
         </Empty>
       ) : (
         <>
@@ -148,7 +184,11 @@ export function CollectionDetail({ id }: { id: string }) {
               <div className={s.itemTools}>
                 <button type="button" className={s.iconBtn} aria-label={`Move ${x.title} up`} disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp size={16} /></button>
                 <button type="button" className={s.iconBtn} aria-label={`Move ${x.title} down`} disabled={i === items.length - 1} onClick={() => move(i, 1)}><ArrowDown size={16} /></button>
-                <button type="button" className={s.iconBtn} aria-label={`Remove ${x.title}`} onClick={() => { update(items.filter((y) => y.id !== x.id).map((y) => y.id)); toast(`Removed ${x.title}`) }}><X size={16} /></button>
+                <button type="button" className={s.iconBtn} aria-label={`Remove ${x.title}`} onClick={() => {
+                  const before = c.sessionIds
+                  update(before.filter((y) => y !== x.id))
+                  toast(`Removed ${x.title}`, { actionLabel: 'Undo', onAction: () => saveCollection({ ...c, sessionIds: before, updatedAt: new Date().toISOString() }) })
+                }}><X size={16} /></button>
               </div>
             </div>
           ))}
@@ -161,6 +201,7 @@ export function CollectionDetail({ id }: { id: string }) {
         </>
       )}
 
+      {adding && <AddSessions collection={c} onClose={() => setAdding(false)} />}
       {renaming && <NameModal open initial={c.name} title="Rename collection" onClose={() => setRenaming(false)}
         onSave={(name) => { saveCollection({ ...c, name, updatedAt: new Date().toISOString() }); setRenaming(false) }} />}
       <ConfirmModal isOpen={deleting} title="Delete this collection?" message={`“${c.name}” will be removed. The sessions in it stay in your library.`}

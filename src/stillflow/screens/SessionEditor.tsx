@@ -28,6 +28,7 @@ interface Draft {
   timeOfDay: string[]
   equipment: string[]
   series: string
+  seriesDay: string
   tags: string
   confidence: Confidence
   source: ClassificationSource
@@ -49,6 +50,7 @@ function toDraft(x: Session | undefined, instructor: string): Draft {
     timeOfDay: x?.timeOfDay ?? [],
     equipment: x?.equipment ?? [],
     series: x?.series ?? '',
+    seriesDay: x?.seriesDay ? String(x.seriesDay) : '',
     tags: (x?.tags ?? []).join(', '),
     // Something you type in yourself is a manual classification.
     confidence: x?.classificationConfidence ?? 'high',
@@ -57,7 +59,7 @@ function toDraft(x: Session | undefined, instructor: string): Draft {
 }
 
 export function SessionEditor({ id }: { id?: string }) {
-  const { byId, sessions, preferences, upsertSessions, toast, ready } = useStillflow()
+  const { byId, sessions, preferences, upsertSessions, toast, ready, seriesDefs } = useStillflow()
   const existing = id ? byId.get(id) : undefined
   const [d, setD] = useState<Draft>(() => toDraft(existing, preferences.defaultInstructor))
   const [errors, setErrors] = useState<string[]>([])
@@ -82,6 +84,7 @@ export function SessionEditor({ id }: { id?: string }) {
       styles: d.styles, physicalFocus: d.physicalFocus, objectives: d.objectives, energy: d.energy,
       experienceLevel: d.experienceLevel, timeOfDay: d.timeOfDay, equipment: d.equipment,
       series: d.series,
+      seriesDay: d.seriesDay,
       tags: d.tags.split(',').map((t) => t.trim()).filter(Boolean),
       classificationConfidence: d.confidence,
       classificationSource: d.source,
@@ -100,7 +103,7 @@ export function SessionEditor({ id }: { id?: string }) {
     try {
       await upsertSessions([final])
       toast(existing ? 'Session saved' : 'Session added', 'success')
-      navigate({ name: 'session', id: final.id })
+      navigate({ name: 'session', id: final.id }, { replace: true })
     } catch (e) {
       console.error(e)
       toast('The session could not be saved.', 'danger')
@@ -155,7 +158,11 @@ export function SessionEditor({ id }: { id?: string }) {
         <ChipGroup label="Time of day" options={TIME_OF_DAY} selected={d.timeOfDay} onChange={(v) => set('timeOfDay', v)} />
         <ChipGroup label="Equipment" options={EQUIPMENT} selected={d.equipment} onChange={(v) => set('equipment', v)} />
         <div className={s.stack}>
-          <Field label="Series or programme" value={d.series} onChange={(e) => set('series', e.target.value)} placeholder="e.g. 30 Days of Yoga" />
+          <div className={s.twoCol}>
+            <Field label="Series or programme" value={d.series} onChange={(e) => set('series', e.target.value)} placeholder="e.g. MOVE" list="sf-series-names" />
+            <Field label="Day or week in it" type="number" inputMode="numeric" min={1} value={d.seriesDay} onChange={(e) => set('seriesDay', e.target.value)} hint="Links it to that day of the series" />
+          </div>
+          <datalist id="sf-series-names">{seriesDefs.map((x) => <option key={x.id} value={x.name} />)}</datalist>
           <Field label="Tags" value={d.tags} onChange={(e) => set('tags', e.target.value)} hint="Comma separated" />
           <div className={s.twoCol}>
             <SelectField label="Confidence" value={d.confidence} onChange={(e) => set('confidence', e.target.value as Confidence)}>

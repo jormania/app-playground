@@ -23,6 +23,8 @@ export interface Filters {
   timeOfDay: string[]
   equipment: string[]
   series: string[]
+  /** Repeat interest 1–5; 0 selects sessions not rated yet. */
+  ratings: number[]
   favouritesOnly: boolean
 }
 
@@ -38,13 +40,13 @@ export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'intensityLow', label: 'Gentlest' },
   { value: 'practisedRecent', label: 'Practised recently' },
   { value: 'practisedLeast', label: 'Not practised lately' },
-  { value: 'rating', label: 'My rating' },
+  { value: 'rating', label: 'Most wanted again' },
   { value: 'random', label: 'Shuffle' },
 ]
 
 export const EMPTY_FILTERS: Filters = {
   query: '', durations: [], styles: [], intensities: [], focus: [], objectives: [], energy: [],
-  experience: [], timeOfDay: [], equipment: [], series: [], favouritesOnly: false,
+  experience: [], timeOfDay: [], equipment: [], series: [], ratings: [], favouritesOnly: false,
 }
 
 export interface PersonalContext {
@@ -88,6 +90,7 @@ export function matches(s: Session, f: Filters, ctx: PersonalContext, haystack =
   if (f.intensities.length && !f.intensities.includes(s.intensity)) return false
   if (f.series.length && !f.series.includes(s.series ?? '')) return false
   if (f.favouritesOnly && !ctx.userData[s.id]?.favourite) return false
+  if (f.ratings?.length && !f.ratings.includes(ctx.userData[s.id]?.rating ?? 0)) return false
 
   return anyOf(f.styles, s.styles) && anyOf(f.focus, s.physicalFocus) && anyOf(f.objectives, s.objectives) &&
     anyOf(f.energy, s.energy) && anyOf(f.experience, s.experienceLevel) &&
@@ -124,14 +127,16 @@ export function sortSessions(list: Session[], key: SortKey, ctx: PersonalContext
 export function applyFilters(
   sessions: Session[], f: Filters, sort: SortKey, ctx: PersonalContext, seed = 1,
 ): Session[] {
-  const hidden = (s: Session) => ctx.userData[s.id]?.excluded
-  return sortSessions(sessions.filter((s) => !hidden(s) && matches(s, f, ctx)), sort, ctx, seed)
+  // Sessions hidden from suggestions stay browsable here: hiding is about
+  // what Stillflow proposes, not about what you can find.
+  return sortSessions(sessions.filter((s) => matches(s, f, ctx)), sort, ctx, seed)
 }
 
 export function activeFilterCount(f: Filters): number {
   return (f.query.trim() ? 1 : 0) + f.durations.length + (f.customMin != null ? 1 : 0) + (f.customMax != null ? 1 : 0) +
     f.styles.length + f.intensities.length + f.focus.length + f.objectives.length + f.energy.length +
-    f.experience.length + f.timeOfDay.length + f.equipment.length + f.series.length + (f.favouritesOnly ? 1 : 0)
+    f.experience.length + f.timeOfDay.length + f.equipment.length + f.series.length + (f.ratings?.length ?? 0) +
+    (f.favouritesOnly ? 1 : 0)
 }
 
 /** Discover's practice intentions, each a ready-made filter for Explore. */

@@ -7,6 +7,7 @@ import { CompleteSheet } from '../components/Sheets'
 import { Empty, SectionHead } from '../components/ui'
 import type { PracticeEntry, Session } from '../domain/types'
 import { fold } from '../lib/filter'
+import { repeatLabel } from '../domain/vocabulary'
 import { localDate, summarise, thisWeek, topValues } from '../lib/practice'
 import { daysBetween } from '../lib/recommend'
 import s from './screens.module.css'
@@ -53,7 +54,8 @@ function LogPractice({ open, onClose, onPick }: { open: boolean; onClose: () => 
 }
 
 export function Practice() {
-  const { history, sessions, byId, userData, lastPractised, deletePractice } = useStillflow()
+  const { history, sessions, byId, userData, lastPractised, deletePractice, preferences } = useStillflow()
+  const target = preferences.weeklyTargetMinutes
   const [logging, setLogging] = useState(false)
   const [completing, setCompleting] = useState<Session | null>(null)
   const [editing, setEditing] = useState<PracticeEntry | null>(null)
@@ -99,7 +101,11 @@ export function Practice() {
       ) : (
         <>
           <div className={s.stats}>
-            <div className={s.stat}><strong>{week.sessions}</strong><span>This week</span></div>
+            <div className={s.stat}>
+              <strong>{week.minutes}</strong>
+              <span>{target ? `of ${target} min this week` : 'Minutes this week'}</span>
+              {target ? <span className={s.weekBar} style={{ display: 'block', maxWidth: 'none', marginTop: 8 }}><span style={{ width: `${Math.min(100, (week.minutes / target) * 100)}%` }} /></span> : null}
+            </div>
             <div className={s.stat}><strong>{total.sessions}</strong><span>Practices</span></div>
             <div className={s.stat}><strong>{Math.round(total.minutes / 6) / 10}</strong><span>Hours on the mat</span></div>
             <div className={s.stat}><strong>{total.days}</strong><span>Practice days</span></div>
@@ -143,7 +149,7 @@ export function Practice() {
                     <div className={s.entryDate}><strong>{d.getDate()}</strong><span>{d.toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
                     <div>
                       {session ? <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })}>{session.title}</a> : <span className={s.entryTitle}>Removed session</span>}
-                      <div className={s.entryMeta}>{e.minutes} min{e.rating ? ` · ${'★'.repeat(e.rating)}` : ''}{e.note ? ` · ${e.note}` : ''}</div>
+                      <div className={s.entryMeta}>{e.minutes} min{e.rating ? ` · ${repeatLabel(e.rating).toLowerCase()}` : ''}{e.note ? ` · ${e.note}` : ''}</div>
                     </div>
                     {session
                       ? <button type="button" className={s.textLink} onClick={() => setEditing(e)}>Edit</button>

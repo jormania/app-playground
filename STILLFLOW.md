@@ -6,7 +6,32 @@ classified, searchable library. You choose a session by time, body area and
 mood, practise it in the YouTube app, then come back and record it.
 
 Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow/main.tsx`.
-Not yet in `apps-registry.js` (CABINET.md: add once stable).
+Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
+The release number shows at the foot of Settings (`app/release.ts`).
+
+## Release 1 — 2026-11-20
+
+The first release, audited the same day.
+
+- **Library:** Discover, Explore (every filter in the brief, plus filtering by repeat interest),
+  session pages, the YouTube app hand-off with browser and embedded-player fallbacks, and
+  "Did you finish…?" when you come back.
+- **Series:** Adriene's January journeys (30 Days of Yoga 2015 … FLOW 2024) and the shorter
+  PRANA (2025, 7 days) and RETURN (2026, 4 weeks), plus series you create yourself. You can
+  start, tick days, see where you are and your pace, abandon, complete (early if you
+  like) and start again. Earlier runs are kept.
+- **Repeat interest:** the 1–5 rating means how much you'd like to practise a session again,
+  not how good it is. It's drawn as rising steps, not stars. Filter and sort by it.
+  "Once was enough" is rarely proposed by Surprise Me.
+- **Surprise Me, practice history, collections, import/export, backup/restore**, plus the
+  quality-of-life changes from the audit: undo for a deleted entry or a removed collection item,
+  adding sessions from inside a collection, hiding a session from suggestions, sharing a session,
+  a CSV template, a backup reminder, a request that the browser keep the app's storage, "/" to
+  search, Shuffle again, toasts kept above the bottom bar, and an editor whose Back skips the saved form.
+- **Audit fixes:** a launch whose session was deleted could leave "Did you finish…?" pending
+  forever; recording a practice another way didn't clear the prompt; an empty default
+  instructor produced sessions with no instructor; reordering a collection silently dropped
+  sessions no longer in the catalogue; sessions hidden from suggestions also vanished from Explore.
 
 ## Rules that are easy to break
 
@@ -22,6 +47,14 @@ Not yet in `apps-registry.js` (CABINET.md: add once stable).
 - **Catalogue and personal data never share a key prefix.** `sf:v1:session:*`
   vs `user:*`, `history:*`, `collection:*`, `prefs`. A catalogue import, even
   "replace", keeps the existing id, so favourites and history stay attached.
+- **Series facts are sourced.** `data/series.ts` holds only the name, year, length and a
+  `sourceUrl` per series. No day titles or video ids. A day comes alive when a catalogue
+  session carries `series` (matching a name in `match`) and `seriesDay` (or "Day n" in its title),
+  or when you link one by hand. Until then it opens a YouTube search.
+- **Series progress is derived, not double-entered.** A day is done when you ticked it, or
+  when its linked session is in practice history between the run's start and end
+  (`lib/series.ts`, `doneDays`). `idle` progress exists only to hold links.
+- **Rating = repeat interest** (`REPEAT_LABELS`), never quality.
 - **Opening a video never marks it complete.** Start Practice records a
   *pending launch* (localStorage `stillflow:pending`). After 60 s away, the shell
   offers "Did you finish…?", and only the user's confirmation writes history.
@@ -52,8 +85,10 @@ src/stillflow/
   store/    repo.ts — the only module that knows about IndexedDB
   app/      router.ts (hash routes), state.tsx (one context, write-through)
   components/  Shell, SessionCard, StartPractice, Sheets (complete / collection), ui
-  screens/  Discover, Explore, SessionDetail, Surprise, Practice, Collections,
+  screens/  Discover, Explore, SessionDetail, Surprise, Series, Practice, Collections,
             Settings (+ ImportPanel), SessionEditor
+  data/     demo.ts (marked demo records), series.ts (sourced series list)
+  App.test.tsx, __tests__/  use-case tests on an in-memory store; integrity and fuzz tests
 ```
 
 Storage goes through `src/shared/kvStore.ts` (promoted from The Long Listen),
@@ -66,7 +101,7 @@ above `store/` changes.
 JSON (an array, or `{ "sessions": [...] }`, which includes Stillflow's own
 exports) or CSV with a header row. Required fields: `title`, `youtubeUrl` or
 `youtubeVideoId`, and `durationMinutes` (`22`, `22:30` and `1:02:30` are all
-accepted). In CSV, a list goes in one cell, separated by `|` or `;`.
+accepted). Add `series` and `seriesDay` to place a session in a series. In CSV, a list goes in one cell, separated by `|` or `;`.
 Duplicates are matched by video id, both against the library and within the
 file. You choose skip, update (fill in non-empty values) or replace.
 
@@ -91,6 +126,5 @@ the last 30 days of history. Shared adjustments:
 - **Still to do:** weekly planner; a Practice Balance chart and a
   neglected-categories summary (My Practice currently shows top styles and
   body areas only); user-adjustable recommendation weights (now constants in
-  `recommend.ts`); excluding sessions from the UI (the `excluded` flag is
-  honoured but has no toggle yet); bulk edit and classification; optional
+  `recommend.ts`); bulk edit and classification; optional
   YouTube Data API (env key, never required); instructor management UI.

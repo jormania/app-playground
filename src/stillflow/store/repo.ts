@@ -1,7 +1,8 @@
 import { indexedDbStore, type KeyValueStore } from '../../shared/kvStore'
 import {
   normalisePreferences,
-  type Backup, type PracticeEntry, type Preferences, type Session, type UserCollection, type UserSessionData,
+  type Backup, type PracticeEntry, type Preferences, type SeriesDef, type SeriesProgress, type Session,
+  type UserCollection, type UserSessionData,
 } from '../domain/types'
 
 /**
@@ -19,6 +20,8 @@ const K = {
   user: (id: string) => `${PREFIX}user:${id}`,
   history: (id: string) => `${PREFIX}history:${id}`,
   collection: (id: string) => `${PREFIX}collection:${id}`,
+  progress: (id: string) => `${PREFIX}progress:${id}`,
+  seriesDef: (id: string) => `${PREFIX}seriesdef:${id}`,
   prefs: `${PREFIX}prefs`,
   meta: `${PREFIX}meta`,
 }
@@ -34,6 +37,8 @@ export interface Snapshot {
   history: PracticeEntry[]
   collections: UserCollection[]
   preferences: Preferences
+  seriesProgress: Record<string, SeriesProgress>
+  customSeries: SeriesDef[]
 }
 
 export class StillflowRepo {
@@ -45,12 +50,14 @@ export class StillflowRepo {
   }
 
   async load(): Promise<Snapshot> {
-    const [sessions, users, history, collections, prefs] = await Promise.all([
+    const [sessions, users, history, collections, prefs, progress, defs] = await Promise.all([
       this.byPrefix<Session>('session'),
       this.byPrefix<UserSessionData>('user'),
       this.byPrefix<PracticeEntry>('history'),
       this.byPrefix<UserCollection>('collection'),
       this.store.get<Partial<Preferences>>(K.prefs),
+      this.byPrefix<SeriesProgress>('progress'),
+      this.byPrefix<SeriesDef>('seriesdef'),
     ])
     return {
       sessions,
@@ -58,6 +65,8 @@ export class StillflowRepo {
       history: history.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)),
       collections: collections.sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
       preferences: normalisePreferences(prefs),
+      seriesProgress: Object.fromEntries(progress.map((p) => [p.seriesId, p])),
+      customSeries: defs.sort((a, b) => a.name.localeCompare(b.name)),
     }
   }
 
@@ -100,6 +109,23 @@ export class StillflowRepo {
     return this.store.del(K.collection(id))
   }
 
+  putProgress(p: SeriesProgress) {
+    return this.store.set(K.progress(p.seriesId), p)
+  }
+
+  deleteProgress(seriesId: string) {
+    return this.store.del(K.progress(seriesId))
+  }
+
+  putSeriesDef(def: SeriesDef) {
+    return this.store.set(K.seriesDef(def.id), def)
+  }
+
+  /** A custom series goes with its progress. */
+  deleteSeriesDef(id: string) {
+    return this.store.replace([K.seriesDef(id), K.progress(id)], [])
+  }
+
   putPreferences(p: Preferences) {
     return this.store.set(K.prefs, p)
   }
@@ -115,6 +141,8 @@ export class StillflowRepo {
       history: s.history,
       collections: s.collections,
       preferences: s.preferences,
+      seriesProgress: Object.values(s.seriesProgress),
+      customSeries: s.customSeries,
     }
   }
 
@@ -128,6 +156,8 @@ export class StillflowRepo {
       ...b.userData.map((u): [string, unknown] => [K.user(u.sessionId), u]),
       ...b.history.map((h): [string, unknown] => [K.history(h.id), h]),
       ...b.collections.map((c): [string, unknown] => [K.collection(c.id), c]),
+      ...(b.seriesProgress ?? []).map((p): [string, unknown] => [K.progress(p.seriesId), p]),
+      ...(b.customSeries ?? []).map((d): [string, unknown] => [K.seriesDef(d.id), d]),
     ]
     await this.store.replace(old, pairs)
   }
@@ -146,5 +176,7 @@ export function openRepo(): StillflowRepo {
 export function isBackup(value: unknown): value is Backup {
   const b = value as Backup
   return !!b && b.app === 'stillflow' && b.version === 1 &&
-    [b.sessions, b.userData, b.history, b.collections].every(Array.isArray)
+    [b.sessions, b.userData, b.history, b.collections].every(Array.isArray) &&
+    (b.seriesProgress === undefined || Array.isArray(b.seriesProgress)) &&
+    (b.customSeries === undefined || Array.isArray(b.customSeries))
 }

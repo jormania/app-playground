@@ -62,13 +62,13 @@ describe('filters', () => {
     expect(ids(applyFilters(all, f({ customMin: 12, customMax: 22 }), 'shortest', ctx))).toEqual(['back', 'hips'])
   })
 
-  it('filters favourites and hides excluded sessions', () => {
+  it('filters favourites, and keeps sessions hidden from suggestions browsable', () => {
     const c: PersonalContext = {
       userData: { core: { sessionId: 'core', favourite: true }, back: { sessionId: 'back', favourite: false, excluded: true } },
       lastPractised: {},
     }
     expect(ids(applyFilters(all, f({ favouritesOnly: true }), 'shortest', c))).toEqual(['core'])
-    expect(ids(applyFilters(all, EMPTY_FILTERS, 'shortest', c))).not.toContain('back')
+    expect(ids(applyFilters(all, EMPTY_FILTERS, 'shortest', c))).toContain('back')
   })
 
   it('counts active filters', () => {

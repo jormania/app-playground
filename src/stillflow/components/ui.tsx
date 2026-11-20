@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { Star } from 'lucide-react'
 import type { Session } from '../domain/types'
-import { INTENSITY_LABELS } from '../domain/vocabulary'
+import { INTENSITY_LABELS, REPEAT_LABELS, repeatLabel } from '../domain/vocabulary'
 import { cx } from '../../ds/lib/cx'
 import styles from './ui.module.css'
 
@@ -88,21 +87,31 @@ export function ChipGroup<T extends string | number>({
   )
 }
 
-export function Stars({ value, onChange, label = 'Rating' }: { value?: number; onChange?: (v: number | undefined) => void; label?: string }) {
+/**
+ * Repeat interest, 1–5: how much you'd like to practise this again. Drawn as
+ * five rising steps rather than stars, because it is not a quality score.
+ */
+export function RepeatRating({ value, onChange, label = 'Repeat interest', showCaption = true }: {
+  value?: number
+  onChange?: (v: number | undefined) => void
+  label?: string
+  showCaption?: boolean
+}) {
   return (
-    <span className={styles.stars} role={onChange ? 'radiogroup' : undefined} aria-label={label}>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const on = (value ?? 0) >= n
-        const icon = <Star size={18} strokeWidth={1.5} fill={on ? 'currentColor' : 'none'} />
-        return onChange ? (
-          <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} star${n > 1 ? 's' : ''}`}
-            className={cx(styles.star, on && styles.starOn)} onClick={() => onChange(value === n ? undefined : n)}>
-            {icon}
-          </button>
-        ) : (
-          <span key={n} className={cx(styles.star, on && styles.starOn)} aria-hidden="true">{icon}</span>
-        )
-      })}
+    <span className={styles.repeat}>
+      <span className={styles.steps} role={onChange ? 'radiogroup' : 'img'} aria-label={onChange ? label : `${label}: ${repeatLabel(value)}`}>
+        {[1, 2, 3, 4, 5].map((n) => {
+          const on = (value ?? 0) >= n
+          const bar = <i className={cx(styles.step, on && styles.stepOn)} style={{ height: `${6 + n * 3}px` }} />
+          return onChange ? (
+            <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n}: ${REPEAT_LABELS[n - 1]}`}
+              className={styles.stepBtn} onClick={() => onChange(value === n ? undefined : n)}>
+              {bar}
+            </button>
+          ) : <span key={n} className={styles.stepBtn} aria-hidden="true">{bar}</span>
+        })}
+      </span>
+      {showCaption && <span className={styles.repeatCaption}>{repeatLabel(value)}</span>}
     </span>
   )
 }

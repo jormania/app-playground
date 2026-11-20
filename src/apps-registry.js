@@ -36,6 +36,31 @@ export const STACK_TAGS = new Set(["react", "vite", "notion"]);
 
 export const APPS = [
   {
+    emoji: "🪷",
+    iconBg: "rgba(94,122,90,0.16)",
+    title: "Stillflow",
+    subtitle: "yoga companion · find your practice",
+    deployed: "Nov 2026",
+    tech: "React + Vite",
+    tags: ["fitness", "mindfulness", "yoga", "youtube", "react", "vite"],
+    ds: true,
+    kind: "react-vite",
+    manifest: "/stillflow.webmanifest",
+    description: "A personal yoga companion built around Yoga With Adriene. It turns a long list of YouTube videos into a classified library you choose from by time, body area, intensity and mood, then hands the video to the YouTube app on your phone. Come back, mark it done, and a quiet history builds up. Adriene's 30-day journeys and shorter series sit in their own section, so you can follow one day by day.",
+    features: [
+      "Discover: what does your body need today? Practice intentions, quick time limits, suggestions, recent sessions, favourites, and styles you've visited least",
+      "Explore: search and combinable filters for duration (or a custom range), style, intensity, body area, objective, mood, level, time of day, equipment, series and how much you want to repeat it; nine sorts; grid or list",
+      "Start Practice opens the video in the YouTube app on Android (with a browser fallback), or plays it inside Stillflow. Opening a video never counts as finishing it",
+      "Series: Adriene's January journeys from 30 Days of Yoga to FLOW, plus PRANA and RETURN. Start one, see where you are and what's next, tick days, set it aside or complete it, and start again later with earlier runs kept",
+      "Surprise Me: eight ways to choose (perfect match, something different, recovery day, rediscover…), with limits, and always a reason for the pick",
+      "Rate a session by how much you'd like to practise it again (not a verdict on it) and filter or sort by that",
+      "My Practice: a gently kept history with notes, editable and undoable; collections you can reorder and play in sequence",
+      "Catalogue built your way: paste a YouTube link, or import a CSV or JSON with a preview, duplicate detection by video id and nothing silently dropped. Never invents video details",
+      "Everything stays on the phone: works offline, full backup and restore, installable as an app",
+    ],
+    file: "stillflow-react.html",
+  },
+  {
     emoji: "🎻",
     iconBg: "rgba(138,47,34,0.14)",
     title: "The Long Listen",

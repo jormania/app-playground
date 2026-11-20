@@ -32,7 +32,7 @@
   left: 0; right: 0; bottom: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   height: calc(var(--sf-nav-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
@@ -91,11 +91,12 @@
   font-size: var(--text-sm);
   cursor: pointer;
 }
-.bannerClose {
-  width: 36px; height: 36px;
-  border: 0; background: none;
+.bannerSecondary {
+  border: 0;
+  background: none;
   color: var(--color-muted);
-  display: grid; place-items: center;
+  padding: 8px 10px;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 

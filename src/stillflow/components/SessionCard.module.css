@@ -74,3 +74,5 @@
 .list .body { padding: 0 44px 0 0; gap: 4px; }
 .list .title { font-size: 1.02rem; -webkit-line-clamp: 1; }
 .list .fav { top: 50%; transform: translateY(-50%); right: 0; background: none; }
+
+.again { color: var(--sf-lavender-ink); }

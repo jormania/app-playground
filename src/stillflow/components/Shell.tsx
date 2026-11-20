@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Compass, LayoutGrid, Sparkles, NotebookPen, Library, Settings, X } from 'lucide-react'
+import { Compass, LayoutGrid, Sparkles, NotebookPen, Library, Settings, CalendarRange } from 'lucide-react'
 import { hrefOf, tabOf, type Route, type Tab } from '../app/router'
 import { useStillflow } from '../app/state'
 import { cx } from '../../ds/lib/cx'
 import { CompleteSheet } from './Sheets'
+import { localDate } from '../lib/practice'
+import { toggleDay } from '../lib/series'
 import { Wordmark } from './ui'
 import styles from './Shell.module.css'
 
@@ -11,9 +13,12 @@ const TABS: { tab: Tab; label: string; icon: typeof Compass }[] = [
   { tab: 'discover', label: 'Discover', icon: Compass },
   { tab: 'explore', label: 'Explore', icon: LayoutGrid },
   { tab: 'surprise', label: 'Surprise Me', icon: Sparkles },
+  { tab: 'series', label: 'Series', icon: CalendarRange },
   { tab: 'practice', label: 'My Practice', icon: NotebookPen },
   { tab: 'collections', label: 'Collections', icon: Library },
 ]
+
+const SHORT: Partial<Record<Tab, string>> = { practice: 'Practice', surprise: 'Surprise', collections: 'Lists' }
 
 /** Minimum time away before "Back from…?" is offered; a quick bounce isn't a practice. */
 const RETURN_AFTER_MS = 60_000
@@ -30,7 +35,7 @@ function useOnline() {
 }
 
 function ReturnBanner() {
-  const { pending, byId, clearPending } = useStillflow()
+  const { pending, byId, clearPending, seriesDefs, seriesProgress, saveProgress, toast } = useStillflow()
   const [now, setNow] = useState(() => Date.now())
   const [completing, setCompleting] = useState(false)
 
@@ -46,23 +51,43 @@ function ReturnBanner() {
     }
   }, [])
 
-  const session = pending ? byId.get(pending.sessionId) : undefined
-  if (!pending || !session) return null
+  const session = pending?.sessionId ? byId.get(pending.sessionId) : undefined
+  const def = pending?.seriesId ? seriesDefs.find((d) => d.id === pending.seriesId) : undefined
+  const progress = def ? seriesProgress[def.id] : undefined
+  const orphaned = !!pending && !session && !def
+
+  // A launch whose session (or series) has since gone can never be answered.
+  useEffect(() => { if (orphaned) clearPending() }, [orphaned, clearPending])
+
+  if (!pending || orphaned) return null
   if (now - pending.at < RETURN_AFTER_MS && !completing) return null
+
+  const dayLabel = def && pending.day ? `${def.name} ${def.unit} ${pending.day}` : null
+  const what = dayLabel && session ? `${dayLabel}: ${session.title}` : dayLabel ?? session?.title ?? ''
+
+  const confirm = () => {
+    if (session) { setCompleting(true); return }
+    // A series day with no session in the catalogue: tick the day itself.
+    if (def && pending.day && progress?.status === 'active') {
+      saveProgress(toggleDay(progress, pending.day, localDate(), true))
+      toast(`${dayLabel} done`, 'success')
+    }
+    clearPending()
+  }
 
   return (
     <>
       <div className={styles.banner} role="status">
         <div>
           <span className={styles.bannerKicker}>Welcome back</span>
-          <p>Did you finish <strong>{session.title}</strong>?</p>
+          <p>Did you finish <strong>{what}</strong>?</p>
         </div>
         <div className={styles.bannerActions}>
-          <button type="button" className={styles.bannerPrimary} onClick={() => setCompleting(true)}>Mark as completed</button>
-          <button type="button" className={styles.bannerClose} aria-label="Not now" onClick={clearPending}><X size={18} /></button>
+          <button type="button" className={styles.bannerPrimary} onClick={confirm}>Yes, mark it done</button>
+          <button type="button" className={styles.bannerSecondary} onClick={clearPending}>Not this time</button>
         </div>
       </div>
-      {completing && (
+      {completing && session && (
         <CompleteSheet open session={session} onClose={() => { setCompleting(false); clearPending() }} />
       )}
     </>
@@ -106,7 +131,7 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
           <a key={tab} href={hrefOf({ name: tab })} className={cx(styles.tab, active === tab && styles.on, tab === 'surprise' && styles.surpriseTab)}
             aria-current={active === tab ? 'page' : undefined}>
             <Icon size={21} strokeWidth={1.6} />
-            <span>{tab === 'practice' ? 'Practice' : tab === 'surprise' ? 'Surprise' : label}</span>
+            <span>{SHORT[tab] ?? label}</span>
           </a>
         ))}
       </nav>

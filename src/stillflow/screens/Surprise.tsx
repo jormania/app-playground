@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Sparkles, RefreshCw } from 'lucide-react'
+import { Sparkles, RefreshCw, Heart } from 'lucide-react'
 import { Button, Field, SegmentedControl, SettingsToggle } from '../../ds'
 import { hrefOf } from '../app/router'
 import { useStillflow } from '../app/state'
@@ -14,7 +14,7 @@ import s from './screens.module.css'
 const KEY = 'stillflow:surprise'
 
 export function Surprise() {
-  const { sessions, userData, history, preferences } = useStillflow()
+  const { sessions, userData, history, preferences, toggleFavourite } = useStillflow()
   const saved = readSessionJson<{ mode?: SurpriseMode; constraints?: Constraints }>(KEY, {})
   const [mode, setMode] = useState<SurpriseMode>(saved.mode ?? 'match')
   const [c, setC] = useState<Constraints>({ ...DEFAULT_CONSTRAINTS, maxDuration: preferences.preferredMaxDuration, ...saved.constraints })
@@ -80,6 +80,10 @@ export function Surprise() {
             <div className={s.row}>
               <StartPractice session={pick.session} />
               <button type="button" className={s.tryAnother} onClick={() => draw(false)}><RefreshCw size={16} /> Try another</button>
+              <button type="button" className={s.iconBtn} aria-pressed={!!userData[pick.session.id]?.favourite}
+                aria-label={userData[pick.session.id]?.favourite ? 'Remove from favourites' : 'Add to favourites'} onClick={() => toggleFavourite(pick.session.id)}>
+                <Heart size={18} fill={userData[pick.session.id]?.favourite ? 'currentColor' : 'none'} />
+              </button>
             </div>
             <p className={s.muted}>One of {pick.poolSize} that fit.</p>
           </div>

@@ -10,6 +10,16 @@ export const STYLES = [
   'Slow Flow', 'Morning Yoga', 'Evening Yoga', 'Meditation', 'Breathwork', 'Yoga Nidra',
 ] as const
 
+/**
+ * Your rating is how much you'd like to come back to a session, not a verdict
+ * on its quality. 0 means not rated yet.
+ */
+export const REPEAT_LABELS = ['Once was enough', 'Maybe some day', 'Happy to repeat', 'Want to repeat', 'A staple'] as const
+
+export function repeatLabel(r: number | undefined): string {
+  return r && r >= 1 && r <= 5 ? REPEAT_LABELS[r - 1] : 'Not rated'
+}
+
 export const INTENSITY_LABELS = ['Very gentle', 'Gentle', 'Moderate', 'Challenging', 'Very challenging'] as const
 
 export const PHYSICAL_FOCUS = [

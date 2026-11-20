@@ -1,5 +1,6 @@
 import { Heart } from 'lucide-react'
 import type { Session } from '../domain/types'
+import { repeatLabel } from '../domain/vocabulary'
 import { hrefOf } from '../app/router'
 import { useStillflow } from '../app/state'
 import { cx } from '../../ds/lib/cx'
@@ -9,6 +10,7 @@ import styles from './SessionCard.module.css'
 export function SessionCard({ session, layout = 'grid', note }: { session: Session; layout?: 'grid' | 'list' | 'rail'; note?: string }) {
   const { userData, toggleFavourite } = useStillflow()
   const fav = !!userData[session.id]?.favourite
+  const rating = userData[session.id]?.rating
   const focus = session.physicalFocus[0]
   return (
     <article className={cx(styles.card, styles[layout])}>
@@ -21,6 +23,7 @@ export function SessionCard({ session, layout = 'grid', note }: { session: Sessi
             <span>{session.styles.slice(0, layout === 'list' ? 2 : 1).join(' · ') || 'Style not set'}</span>
             {focus && <span>{focus}</span>}
             {layout === 'list' && <span className={styles.minutes}>{session.durationMinutes} min</span>}
+            {rating ? <span className={styles.again}>{repeatLabel(rating)}</span> : null}
           </div>
           <IntensityDots level={session.intensity} />
           {note && <p className={styles.note}>{note}</p>}

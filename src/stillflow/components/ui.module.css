@@ -98,15 +98,27 @@
 }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 
-.stars { display: inline-flex; gap: 2px; }
-.star {
-  appearance: none; border: 0; background: none; padding: 4px;
-  color: var(--color-border-2);
+.repeat { display: inline-flex; align-items: center; gap: var(--space-sm); }
+.steps { display: inline-flex; align-items: flex-end; gap: 2px; }
+.stepBtn {
+  appearance: none; border: 0; background: none;
+  padding: 6px 3px;
+  display: inline-flex; align-items: flex-end;
+  height: 32px;
   cursor: pointer;
-  display: inline-flex;
 }
-span.star { cursor: default; padding: 0; }
-.starOn { color: var(--color-warning); }
+span.stepBtn { cursor: default; padding: 0 1px; height: auto; }
+.step {
+  display: block;
+  width: 7px;
+  border-radius: 2px;
+  background: var(--color-border);
+  transition: background var(--duration) var(--ease);
+}
+.stepOn { background: var(--sf-lavender); }
+.stepBtn:hover .step { background: color-mix(in srgb, var(--sf-lavender) 55%, var(--color-border)); }
+.stepBtn:hover .stepOn { background: var(--sf-lavender); }
+.repeatCaption { font-size: var(--text-sm); color: var(--color-muted); }
 
 .sectionHead {
   display: flex;

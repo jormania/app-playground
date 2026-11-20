@@ -5,7 +5,7 @@ import { ModalFooter } from '../../ds/components/ModalFooter'
 import type { PracticeEntry, Session } from '../domain/types'
 import { useStillflow } from '../app/state'
 import { localDate, newEntry } from '../lib/practice'
-import { Stars } from './ui'
+import { RepeatRating } from './ui'
 import styles from './Sheets.module.css'
 
 /** Mark as Completed, and editing an existing history entry. */
@@ -45,8 +45,8 @@ export function CompleteSheet({
           <Field label="Minutes" type="number" inputMode="numeric" min={1} value={minutes} onChange={(e) => setMinutes(e.target.value)} />
         </div>
         <div className={styles.rating}>
-          <span>How was it?</span>
-          <Stars value={rating} onChange={setRating} label="Your rating" />
+          <span>Practise it again?</span>
+          <RepeatRating value={rating} onChange={setRating} />
         </div>
         <TextAreaField label="Note (optional)" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
           placeholder="What you noticed, what felt good" />

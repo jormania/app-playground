@@ -20,7 +20,7 @@ import { canonicalUrl, parseVideoId, thumbnailUrl } from './youtube'
 export const CSV_COLUMNS = [
   'id', 'title', 'description', 'instructor', 'youtubeUrl', 'youtubeVideoId', 'thumbnailUrl',
   'durationMinutes', 'styles', 'intensity', 'physicalFocus', 'objectives', 'energy', 'experienceLevel',
-  'timeOfDay', 'equipment', 'series', 'publishedDate', 'tags', 'classificationConfidence',
+  'timeOfDay', 'equipment', 'series', 'seriesDay', 'publishedDate', 'tags', 'classificationConfidence',
   'classificationSource', 'dateAdded',
 ] as const
 
@@ -145,10 +145,19 @@ export function normaliseRecord(
   if (!lists.styles.length) warnings.push('No style yet')
   if (!lists.physicalFocus.length) warnings.push('No physical focus yet')
 
+  const seriesDayRaw = str(raw.seriesDay)
+  let seriesDay: number | null = null
+  if (seriesDayRaw) {
+    const n = Number(seriesDayRaw)
+    if (Number.isInteger(n) && n >= 0 && n <= 366) seriesDay = n || null
+    else warnings.push(`Series day "${seriesDayRaw}" is not a whole number; left out`)
+  }
+
   let instructor = str(raw.instructor)
+  const fallbackInstructor = defaultInstructor.trim() || DEFAULT_INSTRUCTOR
   if (!instructor) {
-    instructor = defaultInstructor
-    warnings.push(`Instructor set to the default, ${defaultInstructor}`)
+    instructor = fallbackInstructor
+    warnings.push(`Instructor set to the default, ${fallbackInstructor}`)
   }
 
   const confidenceRaw = str(raw.classificationConfidence).toLowerCase()
@@ -180,6 +189,7 @@ export function normaliseRecord(
     intensity,
     ...lists,
     series: str(raw.series) || undefined,
+    seriesDay: seriesDay ?? undefined,
     publishedDate: str(raw.publishedDate) || undefined,
     classificationConfidence: confidence,
     classificationSource: source,

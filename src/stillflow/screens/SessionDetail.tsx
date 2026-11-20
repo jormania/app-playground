@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { ArrowLeft, Heart, FolderPlus, CheckCircle2, MonitorPlay, Pencil } from 'lucide-react'
+import { ArrowLeft, Heart, FolderPlus, CheckCircle2, MonitorPlay, Pencil, Share2, EyeOff, Eye, CalendarRange } from 'lucide-react'
+import { hrefOf } from '../app/router'
+import { seriesOfSession } from '../lib/series'
+import { shareNative } from '../../shared/share'
 import { useStillflow } from '../app/state'
 import { BrowserLink, StartPractice } from '../components/StartPractice'
 import { CollectionSheet, CompleteSheet } from '../components/Sheets'
-import { ConfidenceNote, Empty, IntensityDots, SectionHead, Stars, Thumb } from '../components/ui'
+import { ConfidenceNote, Empty, IntensityDots, SectionHead, RepeatRating, Thumb } from '../components/ui'
 import type { PracticeEntry } from '../domain/types'
 import { embedUrl } from '../lib/youtube'
+import { repeatLabel } from '../domain/vocabulary'
 import s from './screens.module.css'
 
 function formatDate(date: string) {
@@ -13,7 +17,7 @@ function formatDate(date: string) {
 }
 
 export function SessionDetail({ id }: { id: string }) {
-  const { byId, userData, history, toggleFavourite, setUserData, ready } = useStillflow()
+  const { byId, userData, history, toggleFavourite, setUserData, ready, seriesDefs, seriesProgress, toast } = useStillflow()
   const [embedded, setEmbedded] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [editing, setEditing] = useState<PracticeEntry | null>(null)
@@ -32,6 +36,11 @@ export function SessionDetail({ id }: { id: string }) {
   const mine = userData[session.id] ?? { sessionId: session.id, favourite: false }
   const entries = history.filter((h) => h.sessionId === session.id)
   const canEmbed = !!session.youtubeVideoId
+  const memberships = seriesOfSession(session, seriesDefs, seriesProgress)
+  const share = async () => {
+    const r = await shareNative({ name: session.title, description: `${session.durationMinutes} min · ${session.instructor}`, link: session.youtubeUrl }, 'Stillflow')
+    if (r.copied) toast('Link copied')
+  }
 
   const meta: [string, string[] | string | undefined][] = [
     ['Instructor', session.instructor],
@@ -83,6 +92,13 @@ export function SessionDetail({ id }: { id: string }) {
             <button type="button" className={s.secondary} onClick={() => setCompleting(true)}>
               <CheckCircle2 size={16} /> Mark as completed
             </button>
+            <div className={s.row} style={{ justifyContent: 'space-between' }}>
+              <button type="button" className={s.textLink} onClick={() => void share()}><Share2 size={14} style={{ verticalAlign: '-2px' }} /> Share</button>
+              <button type="button" className={s.textLink} aria-pressed={!!mine.excluded}
+                onClick={() => { setUserData({ ...mine, excluded: !mine.excluded }); toast(mine.excluded ? 'Back in suggestions' : 'Hidden from suggestions and Surprise Me') }}>
+                {mine.excluded ? <><Eye size={14} style={{ verticalAlign: '-2px' }} /> Show in suggestions</> : <><EyeOff size={14} style={{ verticalAlign: '-2px' }} /> Hide from suggestions</>}
+              </button>
+            </div>
           </div>
 
           {session.isDemo && (
@@ -95,7 +111,12 @@ export function SessionDetail({ id }: { id: string }) {
 
         <div>
           <div className={s.row}>
-            {session.series && <span className={s.kicker} style={{ margin: 0 }}>{session.series}</span>}
+            {session.series && memberships.length === 0 && <span className={s.kicker} style={{ margin: 0 }}>{session.series}</span>}
+            {memberships.map(({ def, day }) => (
+              <a key={def.id} className={s.seriesChip} href={hrefOf({ name: 'seriesDetail', id: def.id })}>
+                <CalendarRange size={12} /> {def.name} · {def.unit} {day}
+              </a>
+            ))}
             <ConfidenceNote session={session} />
           </div>
           <h1 className={s.detailTitle}>{session.title}</h1>
@@ -105,8 +126,8 @@ export function SessionDetail({ id }: { id: string }) {
           </div>
 
           <div className={s.spread} style={{ margin: 'var(--space-md) 0' }}>
-            <span className={s.muted}>Your rating</span>
-            <Stars value={mine.rating} label="Your rating" onChange={(r) => setUserData({ ...mine, rating: r })} />
+            <span className={s.muted}>Practise it again?</span>
+            <RepeatRating value={mine.rating} onChange={(r) => setUserData({ ...mine, rating: r })} />
           </div>
 
           <dl className={s.meta}>
@@ -135,7 +156,7 @@ export function SessionDetail({ id }: { id: string }) {
             <ul className={s.history}>
               {entries.map((e) => (
                 <li key={e.id}>
-                  <span>{formatDate(e.date)} · {e.minutes} min {e.rating ? `· ${'★'.repeat(e.rating)}` : ''}</span>
+                  <span>{formatDate(e.date)} · {e.minutes} min {e.rating ? `· ${repeatLabel(e.rating).toLowerCase()}` : ''}</span>
                   <button type="button" className={s.textLink} onClick={() => setEditing(e)}>Edit</button>
                   {e.note && <span className={s.historyNote}>{e.note}</span>}
                 </li>

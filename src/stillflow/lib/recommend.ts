@@ -194,7 +194,7 @@ function scoreMode(mode: SurpriseMode, s: Session, ctx: RecommendContext, p: Pro
       const prefs = ctx.preferences
       if (prefs.preferredStyles.some((x) => s.styles.includes(x))) { w += 1.5; parts.push('in a style you like') }
       if (prefs.preferredMaxDuration && s.durationMinutes <= prefs.preferredMaxDuration) { w += 1; parts.push(`within your usual ${prefs.preferredMaxDuration} minutes`) }
-      if (rating >= 4) { w += rating / 2; parts.push('one you rated highly') }
+      if (rating >= 4) { w += rating / 2; parts.push('one you want to repeat') }
       // Variety: lean away from the body areas and aims that dominated the last month.
       const overlap = s.physicalFocus.filter((f) => recentFocus.includes(f)).length + s.objectives.filter((o) => recentObjectives.includes(o)).length
       if (p.recentCount >= 3 && overlap === 0 && (s.physicalFocus.length || s.objectives.length)) {
@@ -230,6 +230,8 @@ export function surprise(
     const since = last ? daysBetween(last, ctx.today) : null
     let w = x.w
     if (mode !== 'rediscover' && since != null && since <= 3) w *= 0.15
+    // Rated "once was enough": still possible, rarely proposed.
+    if (ctx.userData[x.s.id]?.rating === 1) w *= 0.2
     return { ...x, w }
   })
 

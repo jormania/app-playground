@@ -9,7 +9,37 @@ import { localDate, summarise, thisWeek } from '../lib/practice'
 import { DEFAULT_CONSTRAINTS, buildProfile, surprise } from '../lib/recommend'
 import { seedFromText, seededRandom } from '../lib/seeded'
 import { PHYSICAL_FOCUS } from '../domain/vocabulary'
+import { PracticeLink, StartPractice } from '../components/StartPractice'
+import type { SeriesDef } from '../domain/types'
+import { daySearchUrl } from '../lib/series'
+import { useSeries } from './Series'
+import { hrefOf } from '../app/router'
 import s from './screens.module.css'
+
+function ContinueSeries({ def }: { def: SeriesDef }) {
+  const { markLaunched } = useStillflow()
+  const { done, next, linked, pace } = useSeries(def)
+  const session = next ? linked.get(next) : undefined
+  return (
+    <div className={s.continue}>
+      <div className={s.spread}>
+        <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={s.entryTitle} style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem' }}>
+          {def.name} · {next ? `${def.unit} ${next}` : 'all done'}
+        </a>
+        <span className={s.muted}>{done.size}/{def.length}</span>
+      </div>
+      {pace && <span className={s.paceNote}>{pace.label}</span>}
+      {next && (
+        <div className={s.row}>
+          {session
+            ? <StartPractice session={session} compact series={{ seriesId: def.id, day: next }} label={`Start ${def.unit} ${next}`} />
+            : <PracticeLink url={daySearchUrl(def, next)} compact search label={`Find ${def.unit} ${next}`} onLaunch={() => markLaunched({ seriesId: def.id, day: next })} />}
+          <a className={s.textLink} href={hrefOf({ name: 'seriesDetail', id: def.id })}>Open series</a>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const QUICK_DURATIONS = [10, 15, 20, 30, 45]
 
@@ -22,7 +52,8 @@ function greeting(hour: number) {
 
 export function Discover() {
   const state = useStillflow()
-  const { sessions, history, userData, preferences, byId, setFilters } = state
+  const { sessions, history, userData, preferences, byId, setFilters, seriesDefs, seriesProgress } = state
+  const activeSeries = seriesDefs.filter((d) => seriesProgress[d.id]?.status === 'active')
   const today = localDate()
   const [showAreas, setShowAreas] = useState(false)
 
@@ -65,8 +96,9 @@ export function Discover() {
   if (state.ready && sessions.length === 0) {
     return (
       <Empty title="Your library is empty">
-        <p>Import a catalogue of sessions, or add one by pasting a YouTube link.</p>
+        <p>Import a catalogue of sessions, or add one by pasting a YouTube link. Adriene’s series are ready to follow meanwhile.</p>
         <a className={s.textLink} href="#/settings">Open catalogue settings</a>
+        <a className={s.textLink} href="#/series">Browse series</a>
       </Empty>
     )
   }
@@ -91,6 +123,13 @@ export function Discover() {
           ) : null}
         </div>
       </section>
+
+      {activeSeries.length > 0 && (
+        <>
+          <SectionHead title="Your series" action={<a className={s.textLink} href="#/series">All series</a>} />
+          {activeSeries.map((d) => <ContinueSeries key={d.id} def={d} />)}
+        </>
+      )}
 
       <SectionHead title="Practise for" />
       <div className={s.intentions}>

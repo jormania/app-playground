@@ -13,10 +13,12 @@ export type Route =
   | { name: 'practice' }
   | { name: 'collections' }
   | { name: 'collection'; id: string }
+  | { name: 'series' }
+  | { name: 'seriesDetail'; id: string }
   | { name: 'settings' }
   | { name: 'editor'; id?: string }
 
-export type Tab = 'discover' | 'explore' | 'surprise' | 'practice' | 'collections'
+export type Tab = 'discover' | 'explore' | 'surprise' | 'series' | 'practice' | 'collections'
 
 const decode = (s: string) => {
   try {
@@ -37,6 +39,8 @@ export function parseRoute(hash: string): Route {
       return arg ? { name: 'session', id: decode(arg) } : { name: 'explore' }
     case 'collections':
       return arg ? { name: 'collection', id: decode(arg) } : { name: 'collections' }
+    case 'series':
+      return arg ? { name: 'seriesDetail', id: decode(arg) } : { name: 'series' }
     case 'settings':
       if (arg === 'session') return sub && sub !== 'new' ? { name: 'editor', id: decode(sub) } : { name: 'editor' }
       return { name: 'settings' }
@@ -50,6 +54,7 @@ export function hrefOf(route: Route): string {
     case 'discover': return '#/'
     case 'session': return `#/session/${encodeURIComponent(route.id)}`
     case 'collection': return `#/collections/${encodeURIComponent(route.id)}`
+    case 'seriesDetail': return `#/series/${encodeURIComponent(route.id)}`
     case 'editor': return `#/settings/session/${route.id ? encodeURIComponent(route.id) : 'new'}`
     default: return `#/${route.name}`
   }
@@ -57,15 +62,21 @@ export function hrefOf(route: Route): string {
 
 export function tabOf(route: Route): Tab | null {
   switch (route.name) {
-    case 'discover': case 'explore': case 'surprise': case 'practice': case 'collections': return route.name
+    case 'discover': case 'explore': case 'surprise': case 'series': case 'practice': case 'collections': return route.name
     case 'session': return null
     case 'collection': return 'collections'
+    case 'seriesDetail': return 'series'
     default: return null
   }
 }
 
-export function navigate(route: Route) {
-  window.location.hash = hrefOf(route)
+/** `replace` swaps the current history entry, so Back skips a screen you were done with (an editor after saving). */
+export function navigate(route: Route, opts: { replace?: boolean } = {}) {
+  if (opts.replace) {
+    window.location.replace(hrefOf(route))
+  } else {
+    window.location.hash = hrefOf(route)
+  }
 }
 
 /** Scroll offsets per hash, so Back to a long list lands where you left it. */
