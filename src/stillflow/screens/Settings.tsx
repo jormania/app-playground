@@ -15,6 +15,7 @@ import { localDate } from '../lib/practice'
 import { androidIntentUrl, canonicalUrl, parseVideoId } from '../lib/youtube'
 import { isBackup } from '../store/repo'
 import { ImportPanel } from './ImportPanel'
+import { ChannelSync } from './ChannelSync'
 import { RELEASE } from '../app/release'
 import s from './screens.module.css'
 
@@ -109,6 +110,8 @@ export function Settings() {
           options={[{ value: 'auto', label: 'Hand to the YouTube app' }, { value: 'link', label: 'Plain link' }]} />
         <div style={{ marginTop: 'var(--space-lg)' }}><PlaybackTest /></div>
       </section>
+
+      <ChannelSync />
 
       <section className={s.panel}>
         <div className={s.spread}>

@@ -9,7 +9,7 @@
 // main.tsx (see CLAUDE.md "Service workers & dev") — under `vite dev` a
 // cache-first worker pins the first copy of every unhashed dev URL forever.
 
-var CACHE = 'stillflow-cache-v1';
+var CACHE = 'stillflow-cache-v2';
 var CACHE_PREFIX = 'stillflow-';
 
 self.addEventListener('install', function () {
@@ -32,6 +32,8 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  // API answers (the YouTube channel check) must always be fresh: never cached here.
+  if (new URL(req.url).pathname.indexOf('/api/') === 0) return;
 
   if (req.mode === 'navigate') {
     // A share arrives as a navigation carrying a query string

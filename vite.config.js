@@ -12,6 +12,7 @@ import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
 import notionPhotoProxyHandler from './api/notion-photo-proxy.js'
 import marqueeScanHandler from './api/marquee-scan.js'
+import youtubeChannelHandler from './api/youtube-channel.js'
 
 // Stamps build provenance into every HTML entry as <meta> tags, so the front
 // page can say which build you are actually looking at without spending a
@@ -411,6 +412,7 @@ export default defineConfig({
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
     devBodyRelay('/api/marquee-scan', marqueeScanHandler, 'dev-marquee-scan-relay'),
     devApiRelay('/api/notion-photo-proxy', notionPhotoProxyHandler, 'dev-notion-photo-proxy-relay'),
+    devApiRelay('/api/youtube-channel', youtubeChannelHandler, 'dev-youtube-channel-relay'),
   ],
   server: {
     proxy: {

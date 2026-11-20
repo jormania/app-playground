@@ -55,6 +55,7 @@ export const APPS = [
       "Surprise Me: eight ways to choose (perfect match, something different, recovery day, rediscover…), with limits, and always a reason for the pick",
       "Rate a session by how much you'd like to practise it again (not a verdict on it) and filter or sort by that",
       "My Practice: a gently kept history with notes, editable and undoable; collections you can reorder and play in sequence",
+      "Check for updates or import the whole Yoga With Adriene channel on request: titles, durations and dates from YouTube, everything read from a title marked provisional, always through a preview",
       "Catalogue built your way: paste a YouTube link, or import a CSV or JSON with a preview, duplicate detection by video id and nothing silently dropped. Never invents video details",
       "Everything stays on the phone: works offline, full backup and restore, installable as an app",
     ],

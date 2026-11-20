@@ -135,6 +135,8 @@ export interface Preferences {
   welcomed: boolean
   /** ISO date-time of the last full backup saved from Settings. */
   lastBackupAt?: string
+  /** The last time the YouTube channel was checked, and what it found. */
+  channelCheck?: { at: string; source: 'api' | 'rss'; found: number }
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {

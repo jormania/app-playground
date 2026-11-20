@@ -341,6 +341,82 @@ describe('catalogue', () => {
   })
 })
 
+describe('Yoga With Adriene on YouTube', () => {
+  const vid = (n: number, title: string, seconds: number | null = 1200) => ({
+    videoId: `vid${String(n).padStart(8, '0')}`, title, description: '', publishedAt: '2026-11-0' + ((n % 9) + 1) + 'T10:00:00Z', durationSeconds: seconds,
+  })
+  function stubChannel(pages: { videos: ReturnType<typeof vid>[]; next: string | null }[], source = 'api') {
+    const calls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      calls.push(url)
+      const token = new URL(url, 'http://x').searchParams.get('pageToken')
+      const page = pages[token ? Number(token) : 0]
+      return Response.json({ source, videos: page.videos, nextPageToken: page.next, total: 5 })
+    }))
+    return calls
+  }
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('imports the whole channel through the review, leaving out shorts and marking title readings provisional', async () => {
+    stubChannel([
+      { videos: [vid(1, 'Day 8 - Ground | MOVE - A 30 Day Yoga Journey'), vid(2, 'Yoga for Hips'), vid(3, 'A short', 40)], next: '1' },
+      { videos: [vid(4, 'Bedtime Yoga'), vid(5, 'Power Yoga for Strength', 2400)], next: null },
+    ])
+    const { user } = await start()
+    await go('#/settings')
+    await user.click(await screen.findByRole('button', { name: /Import the whole channel/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/1 short under four minutes left out/)).toBeTruthy()
+    await user.click(within(dialog).getByRole('button', { name: 'Import 4 sessions' }))
+    expect(await within(dialog).findByText(/4 added/)).toBeTruthy()
+    const lib = (await new StillflowRepo(store).load()).sessions.filter((x) => !x.isDemo)
+    expect(lib).toHaveLength(4)
+    expect(lib.every((x) => x.classificationConfidence === 'low' && x.classificationSource === 'inferred')).toBe(true)
+    expect(lib.find((x) => x.youtubeVideoId === 'vid00000001')).toMatchObject({ series: 'MOVE', seriesDay: 8, durationMinutes: 20 })
+    expect(lib.find((x) => x.youtubeVideoId === 'vid00000005')).toMatchObject({ intensity: 4, durationMinutes: 40 })
+  })
+
+  it('Check for updates stops at known videos, shows only what is new, then reports up to date', async () => {
+    await new StillflowRepo(store).putSessions([2, 3].map((n) => ({
+      id: `yt-vid0000000${n}`, title: `old ${n}`, instructor: 'Yoga With Adriene', youtubeUrl: `https://www.youtube.com/watch?v=vid0000000${n}`,
+      youtubeVideoId: `vid0000000${n}`, durationMinutes: 20, styles: [], intensity: 0, physicalFocus: [], objectives: [], energy: [],
+      experienceLevel: [], timeOfDay: [], equipment: [], tags: [], classificationConfidence: 'high' as const, classificationSource: 'manual' as const, dateAdded: 'x',
+    })))
+    const calls = stubChannel([
+      { videos: [vid(1, 'Brand new flow')], next: '1' },
+      { videos: [vid(2, 'old 2'), vid(3, 'old 3')], next: '2' },
+      { videos: [vid(4, 'never read')], next: null },
+    ])
+    const { user } = await start()
+    await go('#/settings')
+    await user.click(await screen.findByRole('button', { name: /Check for updates/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('1 new on Yoga With Adriene')).toBeTruthy()
+    expect(calls).toHaveLength(2)
+    await user.click(within(dialog).getByRole('button', { name: 'Import 1 session' }))
+    await user.click(await within(dialog).findByRole('button', { name: 'Done' }))
+    stubChannel([{ videos: [vid(1, 'Brand new flow'), vid(2, 'old 2')], next: null }])
+    await user.click(screen.getByRole('button', { name: /Check for updates/ }))
+    expect(await screen.findByText(/You’re up to date/)).toBeTruthy()
+    expect(screen.getByText(/Last checked today: 0 new/)).toBeTruthy()
+  })
+
+  it('without an API key says so, and a failure is shown, not swallowed', async () => {
+    stubChannel([{ videos: [vid(9, 'New one, no length', null)], next: null }], 'rss')
+    const { user } = await start()
+    await go('#/settings')
+    await user.click(await screen.findByRole('button', { name: /Check for updates/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/Missing or unreadable duration/)).toBeTruthy()
+    expect(within(dialog).getByText(/only the 15 newest uploads/)).toBeTruthy()
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText(/YOUTUBE_API_KEY/)).toBeTruthy()
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ message: 'The YouTube API quota for today is used up.' }, { status: 429 })))
+    await user.click(screen.getByRole('button', { name: /Check for updates/ }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/quota/)
+  })
+})
+
 describe('every main screen', () => {
   it.each(['#/', '#/explore', '#/surprise', '#/series', '#/practice', '#/collections', '#/settings', '#/settings/session/new'])(
     '%s renders with every control named', async (hash) => {

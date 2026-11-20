@@ -9,6 +9,25 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 2 — 2026-11-20
+
+- **Yoga With Adriene on YouTube** (Settings), only ever on request:
+  - **Check for updates** reads the channel's newest uploads and stops at the first page
+    of videos you already have.
+  - **Import the whole channel** reads every upload (~750).
+
+  Both end in the ordinary import review. Titles, durations and publish dates come from
+  YouTube. Style, body area, a provisional intensity, and series + day (MOVE Day 8…) are
+  read from the title (`lib/channel.ts`) and marked `inferred` / `low`. Videos under four
+  minutes (shorts) are left out.
+- **`api/youtube-channel.js`** (the repo's 10th serverless function) reads one page per call:
+  - **With `YOUTUBE_API_KEY`** set on the Vercel project: the YouTube Data API v3 uploads
+    playlist, with durations. A full import costs about 32 of the free 10,000 daily units.
+  - **Without it:** the channel's public RSS feed. That's the 15 newest uploads, with no
+    durations, so it can tell you something is new but rarely import it.
+
+  No scraping either way. The worker never caches `/api/`.
+
 ## Release 1 — 2026-11-20
 
 The first release, audited the same day.
@@ -95,6 +114,16 @@ Storage goes through `src/shared/kvStore.ts` (promoted from The Long Listen),
 in an IndexedDB database of its own called `stillflow`. To move to Supabase,
 write a `KeyValueStore` backed by it, or a second `StillflowRepo`. Nothing
 above `store/` changes.
+
+## Environment
+
+| Variable | Where | Needed for |
+|---|---|---|
+| `YOUTUBE_API_KEY` | Vercel project env (server only, never sent to the browser) | Importing the whole channel with durations. Optional: without it, Check for updates sees the 15 newest videos. |
+
+To get one: in Google Cloud Console, enable **YouTube Data API v3** in a project (the one
+holding `GOOGLE_PLACES_KEY` will do), create an API key, restrict it to that API, add it in
+Vercel → Settings → Environment Variables, then redeploy.
 
 ## Import format
 
