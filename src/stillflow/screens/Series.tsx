@@ -7,7 +7,7 @@ import { PracticeLink, StartPractice } from '../components/StartPractice'
 import { Empty, SectionHead } from '../components/ui'
 import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
-import { localDate } from '../lib/practice'
+import { localDate, newEntry } from '../lib/practice'
 import {
   customSeries, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay,
 } from '../lib/series'
@@ -27,6 +27,35 @@ export function useSeries(def: SeriesDef) {
     const p = progress && progress.status === 'active' ? pace(def, progress, done.size, localDate()) : null
     return { progress, linked, done, next, pace: p }
   }, [def, sessions, history, progress])
+}
+
+/**
+ * Ticking a day. A day with a session in the library is a practice: it goes
+ * into My Practice (and the series counts it from there). A day with no session
+ * can only be ticked on the series itself.
+ */
+export function useDayActions(def: SeriesDef) {
+  const { saveProgress, savePractice, deletePractice, history, toast } = useStillflow()
+  const { progress, linked } = useSeries(def)
+  const mark = (day: number) => {
+    if (!progress || progress.status !== 'active') return
+    const session = linked.get(day)
+    if (session) {
+      savePractice(newEntry(session, { date: localDate() }))
+      toast(`${def.unit} ${day} recorded in My Practice`, 'success')
+    } else {
+      saveProgress(toggleDay(progress, day, localDate(), true))
+    }
+  }
+  const unmark = (day: number) => {
+    if (!progress || progress.status !== 'active') return
+    if (progress.manualDays[day]) { saveProgress(toggleDay(progress, day, localDate(), false)); return }
+    const session = linked.get(day)
+    if (!session) return
+    // Undo the practice that made this day count in the current run.
+    for (const h of history.filter((e) => e.sessionId === session.id && e.date >= progress.startedAt)) deletePractice(h.id)
+  }
+  return { mark, unmark }
 }
 
 function kindLabel(def: SeriesDef) {
@@ -164,10 +193,10 @@ function SessionPicker({ onPick, onClose, def, day }: { onPick: (s: Session) => 
 function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose: () => void }) {
   const { saveProgress, markLaunched } = useStillflow()
   const { progress, linked, done } = useSeries(def)
+  const { mark, unmark } = useDayActions(def)
   const [picking, setPicking] = useState(false)
   const session = linked.get(day)
   const isDone = done.has(day)
-  const manual = !!progress?.manualDays[day]
   const active = progress?.status === 'active'
   const label = `${def.unit} ${day}`
 
@@ -196,10 +225,12 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
             : <PracticeLink url={daySearchUrl(def, day)} search label={`Find ${label} on YouTube`} onLaunch={() => markLaunched({ seriesId: def.id, day })} />}
         </div>
         {active ? (
-          <Button variant={isDone ? 'secondary' : 'primary'} disabled={isDone && !manual}
-            onClick={() => { saveProgress(toggleDay(progress!, day, localDate(), !isDone)); onClose() }}>
-            {isDone ? (manual ? `Untick ${label}` : `Done ${done.get(day) ? fmt(done.get(day)!) : ''} (from your history)`) : `Mark ${label} done`}
-          </Button>
+          <>
+            <Button variant={isDone ? 'secondary' : 'primary'} onClick={() => { if (isDone) unmark(day); else mark(day); onClose() }}>
+              {isDone ? `Untick ${label} (done ${fmt(done.get(day)!)})` : `Mark ${label} done`}
+            </Button>
+            {!isDone && <p className={s.entryMeta}>{session ? 'Recorded in My Practice too, with today’s date. You can change the date there.' : 'Not in your library, so it’s ticked on the series only.'}</p>}
+          </>
         ) : (
           <p className={s.muted}>Start the series to tick off {def.unit.toLowerCase()}s.</p>
         )}
@@ -228,6 +259,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
   markLaunched: (l: { seriesId?: string; day?: number; sessionId?: string }) => void
 }) {
   const { progress, linked, done, next, pace: p } = useSeries(def)
+  const { mark } = useDayActions(def)
   const [day, setDay] = useState<number | null>(null)
   const [confirm, setConfirm] = useState<null | 'abandon' | 'complete' | 'restart' | 'delete'>(null)
   const today = localDate()
@@ -267,7 +299,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
             {next && (nextSession
               ? <StartPractice session={nextSession} series={{ seriesId: def.id, day: next }} label={`Start ${def.unit} ${next}`} compact />
               : <PracticeLink url={daySearchUrl(def, next)} compact search label={`Find ${def.unit} ${next} on YouTube`} onLaunch={() => markLaunched({ seriesId: def.id, day: next })} />)}
-            {next && <Button size="sm" variant="ghost" onClick={() => saveProgress(toggleDay(progress!, next, today, true))}><Check size={15} /> Mark {def.unit} {next} done</Button>}
+            {next && <Button size="sm" variant="ghost" onClick={() => mark(next)}><Check size={15} /> Mark {def.unit} {next} done</Button>}
           </div>
           <div className={s.row} style={{ justifyContent: 'flex-end', gap: 'var(--space-md)' }}>
             <button type="button" className={s.textLink} onClick={() => setConfirm('complete')}><Flag size={13} style={{ verticalAlign: '-2px' }} /> Complete series</button>

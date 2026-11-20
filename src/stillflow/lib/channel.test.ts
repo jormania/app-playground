@@ -27,14 +27,15 @@ describe('reading a title', () => {
   })
 
   it('reads the series and day only when both are plainly in the title', () => {
-    expect(seriesFromTitle('Day 8 - Ground | MOVE - A 30 Day Yoga Journey')).toEqual({ series: 'MOVE', day: 8 })
-    expect(seriesFromTitle('RETURN | Week 2')).toEqual({ series: 'RETURN', day: 2 })
-    expect(seriesFromTitle('Dedicate - Day 30 - Liberate')).toEqual({ series: 'Dedicate', day: 30 })
-    // Ordinary words in lower case are not series names.
+    // Real formats are covered exhaustively in channel.titles.test.ts; these are the edges.
+    expect(seriesFromTitle('Day 8 - Rest  |  MOVE - A 30 Day Yoga Journey')).toEqual({ series: 'MOVE', day: 8 })
+    expect(seriesFromTitle('Return - 2 - Ground')).toEqual({ series: 'RETURN', day: 2 })
+    expect(seriesFromTitle('TRUE - Day 12 - CENTER  |  Yoga With Adriene')).toEqual({ series: 'TRUE', day: 12 })
     expect(seriesFromTitle('Day 3 - Yoga to move your body at home')).toBeNull()
     expect(seriesFromTitle('MOVEMENT Day 3')).toBeNull()
-    expect(seriesFromTitle('MOVE | A 30 Day Yoga Journey')).toBeNull()
-    expect(seriesFromTitle('Day 45 | MOVE')).toBeNull()
+    expect(seriesFromTitle('Intro to Prana 7-Day Yoga Series')).toBeNull()
+    expect(seriesFromTitle('Flow - Day 0 - Ready')).toBeNull()
+    expect(seriesFromTitle('Prana - Day 8 Bonus!')).toBeNull()
   })
 
   it('reads minutes from a title only as a fallback', () => {
@@ -47,12 +48,12 @@ describe('reading a title', () => {
 
 describe('video → catalogue record', () => {
   it('takes facts from YouTube and marks everything read from the title as provisional', () => {
-    const raw = videoToRecord(v('aaa', { title: 'Day 4 - Hips | CENTER', durationSeconds: 1330 }))
+    const raw = videoToRecord(v('aaa', { title: 'Center - Day 4 - Root', durationSeconds: 1330 }))
     const { session, errors } = normaliseRecord(raw, 'now')
     expect(errors).toEqual([])
     expect(session).toMatchObject({
       id: 'yt-aaaxxxxxxxx', durationMinutes: 22, publishedDate: '2026-11-01', series: 'CENTER', seriesDay: 4,
-      physicalFocus: ['Hips'], classificationConfidence: 'low', classificationSource: 'inferred', tags: ['from-channel'],
+      classificationConfidence: 'low', classificationSource: 'inferred', tags: ['from-channel'],
       thumbnailUrl: 'https://i.ytimg.com/vi/aaaxxxxxxxx/hqdefault.jpg',
     })
   })

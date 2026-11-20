@@ -9,6 +9,23 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 3 — 2026-11-20
+
+- **Series days are read correctly from every real title.** The first reader expected one
+  title format and capital letters. The channel has used about six formats since 2015
+  ("Flow - Day 21 - Curious", "Day 8 - Rest | MOVE - A 30 Day Yoga Journey",
+  "Return - 2 - Ground"…), and the reader misfiled "TRUE - Day 12 - CENTER" under CENTER.
+  The rule now: the series is the name written right before the day, or, in titles that open
+  with "Day N", the last segment. `channel.titles.test.ts` checks all 800 real titles
+  (fixture: `lib/__fixtures__/ywa-titles.json`). Every journey day lands in place, and
+  nothing else on the channel gets pulled into a series.
+- **Ticking a day that has its video in your library records a practice** in My Practice
+  (unticking removes it again, with an Undo option). A day without a video is still ticked
+  on the series only.
+- **One-off repairs on load** (`lib/migrations.ts`): channel sessions get their series re-read
+  from the title, and earlier ticks of days now in the library become practice entries on
+  the date they were ticked. Both are idempotent.
+
 ## Release 2 — 2026-11-20
 
 - **Yoga With Adriene on YouTube** (Settings), only ever on request:

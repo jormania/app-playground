@@ -10,6 +10,7 @@ import {
 } from '../domain/types'
 import { EMPTY_FILTERS, lastPractisedMap, type Filters, type SortKey } from '../lib/filter'
 import { openRepo, type Snapshot, type StillflowRepo } from '../store/repo'
+import { runMigrations, SERIES_READER_VERSION } from '../lib/migrations'
 
 /**
  * The app's one store. Everything lives in memory (a catalogue of a few
@@ -111,7 +112,18 @@ export function StateProvider({ children, repo: injected }: { children: ReactNod
     ;(async () => {
       try {
         await repo.seedOnce(DEMO_SESSIONS)
-        const s = await repo.load()
+        let s = await repo.load()
+        // One-off repairs (lib/migrations.ts): written first, then read back, so
+        // the screen never shows a state the database doesn't hold.
+        const m = runMigrations(s, s.preferences.seriesReaderVersion)
+        const needsVersion = (s.preferences.seriesReaderVersion ?? 0) < SERIES_READER_VERSION
+        if (m.sessionUpdates.length || m.progressUpdates.length || m.newEntries.length || needsVersion) {
+          if (m.sessionUpdates.length) await repo.putSessions(m.sessionUpdates)
+          for (const e of m.newEntries) await repo.putHistory(e)
+          for (const p of m.progressUpdates) await repo.putProgress(p)
+          if (needsVersion) await repo.putPreferences({ ...s.preferences, seriesReaderVersion: SERIES_READER_VERSION })
+          s = await repo.load()
+        }
         if (alive) setSnap(s)
       } catch (e) {
         fail(e)

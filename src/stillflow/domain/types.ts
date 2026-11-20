@@ -137,6 +137,8 @@ export interface Preferences {
   lastBackupAt?: string
   /** The last time the YouTube channel was checked, and what it found. */
   channelCheck?: { at: string; source: 'api' | 'rss'; found: number }
+  /** Which version of the title reader last re-read channel sessions (see lib/migrations.ts). */
+  seriesReaderVersion?: number
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {

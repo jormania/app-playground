@@ -242,6 +242,47 @@ describe('series', () => {
     expect(await screen.findByText(/Next: Day 2/)).toBeTruthy()
   })
 
+  it('ticking a day that has its video in the library records it in My Practice, and unticking takes it back', async () => {
+    const repo = new StillflowRepo(store)
+    await repo.putSessions([{
+      id: 'yt-mmmmmmmmmmm', title: 'Day 1 - Here  |  MOVE - A 30 Day Yoga Journey', instructor: 'Yoga With Adriene',
+      youtubeUrl: 'https://www.youtube.com/watch?v=mmmmmmmmmmm', youtubeVideoId: 'mmmmmmmmmmm', durationMinutes: 24, styles: [], intensity: 2,
+      physicalFocus: [], objectives: [], energy: [], experienceLevel: [], timeOfDay: [], equipment: [], tags: ['from-channel'],
+      series: 'MOVE', seriesDay: 1, classificationConfidence: 'low', classificationSource: 'inferred', dateAdded: 'x',
+    }])
+    await repo.putPreferences({ ...(await repo.load()).preferences, welcomed: true, seriesReaderVersion: 99 })
+    const { user } = await start({ welcomed: false })
+    await go('#/series/move-2022')
+    await user.click(await screen.findByRole('button', { name: 'Start MOVE' }))
+    await user.click(await screen.findByRole('button', { name: /Mark Day 1 done/ }))
+    expect(await screen.findByText(/Next: Day 2/)).toBeTruthy()
+    const history = async () => (await new StillflowRepo(store).load()).history
+    await waitFor(async () => expect((await history()).map((h) => [h.sessionId, h.minutes])).toEqual([['yt-mmmmmmmmmmm', 24]]))
+    await go('#/practice')
+    expect((await screen.findAllByText('Day 1 - Here | MOVE - A 30 Day Yoga Journey', { normalizer: (t) => t.replace(/\s+/g, ' ') })).length).toBeGreaterThan(0)
+    await go('#/series/move-2022')
+    await user.click(await screen.findByRole('button', { name: /Day 1, done/ }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Untick Day 1/ }))
+    await waitFor(async () => expect(await history()).toEqual([]))
+    expect(await screen.findByText(/Next: Day 1/)).toBeTruthy()
+  })
+
+  it('on load, turns earlier ticks of days in the library into practice entries', async () => {
+    const repo = new StillflowRepo(store)
+    await repo.putSessions([{
+      id: 'yt-nnnnnnnnnnn', title: 'Move - Day 28 - TLC', instructor: 'Yoga With Adriene', youtubeUrl: 'https://www.youtube.com/watch?v=nnnnnnnnnnn',
+      youtubeVideoId: 'nnnnnnnnnnn', durationMinutes: 30, styles: [], intensity: 0, physicalFocus: [], objectives: [], energy: [], experienceLevel: [],
+      timeOfDay: [], equipment: [], tags: ['from-channel'], classificationConfidence: 'low', classificationSource: 'inferred', dateAdded: 'x',
+    }])
+    await repo.putProgress({ seriesId: 'move-2022', status: 'active', startedAt: '2026-11-19', manualDays: { 28: '2026-11-19' }, links: {}, runs: [] })
+    await start()
+    await go('#/practice')
+    expect((await screen.findAllByText('Move - Day 28 - TLC')).length).toBeGreaterThan(0)
+    const after = await new StillflowRepo(store).load()
+    expect(after.sessions.find((x) => x.id === 'yt-nnnnnnnnnnn')).toMatchObject({ series: 'MOVE', seriesDay: 28 })
+    expect(after.seriesProgress['move-2022'].manualDays).toEqual({})
+  })
+
   it('complete a series early, and create and delete one of your own', async () => {
     const { user } = await start()
     await go('#/series/prana-2025')

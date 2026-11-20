@@ -144,20 +144,55 @@ const OBJECTIVE_RULES: [string, string[]][] = [
   ['Mindfulness', ['mindful', 'meditation']],
 ]
 
-/** Series whose names are ordinary words are written in capitals in titles (MOVE, HOME, TRUE…). */
-const CAPS_ONLY = new Set(['FLOW', 'CENTER', 'MOVE', 'BREATH', 'HOME', 'TRUE', 'PRANA', 'RETURN'])
-const DAY_IN_TITLE = /\b(?:Day|Week)\s*(\d{1,2})\b/i
-
-/** Which built-in series a title belongs to, and its day, read only when both are plainly there. */
+/**
+ * Which built-in series a title belongs to, and its day. Built from the
+ * channel's real titles (all 821 read on 2026-11-20), whose format changed
+ * almost every year:
+ *
+ *   "Day 4 - Yoga For Your Back - 30 Days of Yoga"    2015: day first, series last
+ *   "Day 24  |  Gentle Yummy Yoga  |  30 Days of Yoga"
+ *   "Yoga Camp Day 1 - I Accept", "Yoga Camp - Day 11 - I Release"
+ *   "Revolution - Day 4 - PRANA Practice"             series first, then the day
+ *   "TRUE - Day 12 - CENTER  |  Yoga With Adriene"
+ *   "Dedicate - Day 5 - Flow", "Center - Day 17 - Move", "Flow - Day 21 - Curious"
+ *   "Home - Day 7 - Stretch  |  30 Days of Yoga", "Unwind  -  Home - Day 25"
+ *   "Day 8 - Snuggle  |  BREATH - A 30 Day Yoga Journey"
+ *   "Day 14 - Closer  |  MOVE - A 30 Day Yoga Journey", "Move - Day 28 - TLC"
+ *   "Prana - Day 3", "Return - 2 - Ground"
+ *
+ * The rule that survives all of them: the series is the name written right
+ * before the day ("Center - Day 17"), or, in titles that open with "Day N",
+ * the last segment. Other series names in a title ("TRUE - Day 12 - CENTER")
+ * are the day's theme, not its series. Day 0 (a welcome) and bonus days past
+ * the series length are left out.
+ */
 export function seriesFromTitle(title: string, defs: SeriesDef[] = BUILT_IN_SERIES): { series: string; day: number } | null {
-  const day = DAY_IN_TITLE.exec(title)
-  if (!day) return null
+  const t = fold(title).replace(/\s+/g, ' ').trim()
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  let best: { series: string; day: number; at: number } | null = null
+
+  // 1. "<name> - Day N", "<name> Day N", "<name> - N - <theme>"
   for (const d of defs) {
-    const found = CAPS_ONLY.has(d.name)
-      ? new RegExp(`(^|[^A-Za-z])${d.name}([^A-Za-z]|$)`).test(title)
-      : new RegExp(`(^|[^a-z])${fold(d.name)}([^a-z]|$)`).test(fold(title))
-    const n = Number(day[1])
-    if (found && n >= 1 && n <= d.length) return { series: d.name, day: n }
+    for (const alias of d.match) {
+      // A bare number counts only between dashes ("Return - 2 - Ground"), so "Prana 7-Day" stays out.
+      const re = new RegExp(`(^|[^a-z0-9])${esc(fold(alias))}(?: ?-? ?(?:day|week) ?(\\d{1,2})\\b| ?- ?(\\d{1,2}) ?- )`)
+      const m = re.exec(t)
+      if (!m) continue
+      const day = Number(m[2] ?? m[3])
+      const at = m.index + m[1].length
+      if (day >= 1 && day <= d.length && (!best || at < best.at)) best = { series: d.name, day, at }
+    }
+  }
+  if (best) return { series: best.series, day: best.day }
+
+  // 2. "Day N - <theme> | <name> - A 30 Day Yoga Journey" and "Day N - <theme> - 30 Days of Yoga"
+  const lead = /^day ?(\d{1,2})\b/.exec(t)
+  if (!lead) return null
+  const parts = t.includes('|') ? t.split('|') : t.split(/ ?- ?/)
+  const tail = parts[parts.length - 1].replace(/ ?- ?a 30 day yoga journey$/, '').trim()
+  const day = Number(lead[1])
+  for (const d of defs) {
+    if (d.match.some((alias) => fold(alias) === tail) && day >= 1 && day <= d.length) return { series: d.name, day }
   }
   return null
 }
