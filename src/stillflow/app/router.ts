@@ -18,7 +18,7 @@ export type Route =
   | { name: 'settings' }
   | { name: 'editor'; id?: string }
 
-export type Tab = 'discover' | 'explore' | 'surprise' | 'series' | 'practice' | 'collections'
+export type Tab = 'discover' | 'explore' | 'series' | 'practice'
 
 const decode = (s: string) => {
   try {
@@ -62,9 +62,11 @@ export function hrefOf(route: Route): string {
 
 export function tabOf(route: Route): Tab | null {
   switch (route.name) {
-    case 'discover': case 'explore': case 'surprise': case 'series': case 'practice': case 'collections': return route.name
+    case 'discover': case 'explore': case 'series': case 'practice': return route.name
+    // Surprise Me lives on Today; collections are part of the library.
+    case 'surprise': return 'discover'
+    case 'collections': case 'collection': return 'explore'
     case 'session': return null
-    case 'collection': return 'collections'
     case 'seriesDetail': return 'series'
     default: return null
   }

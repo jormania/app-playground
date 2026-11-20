@@ -4,7 +4,7 @@ import { Button, ConfirmModal, Field, Modal } from '../../ds'
 import { hrefOf, navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { StartPractice } from '../components/StartPractice'
-import { Empty } from '../components/ui'
+import { Empty, LibraryTabs } from '../components/ui'
 import type { UserCollection } from '../domain/types'
 import { fold } from '../lib/filter'
 import { readJson, writeJson } from '../../shared/storage'
@@ -40,14 +40,13 @@ export function Collections() {
   return (
     <>
       <header className={s.pageHead}>
-        <div className={s.spread}>
-          <div>
-            <h1 className={s.pageTitle}>Collections</h1>
-            <p className={s.lede}>Your own lists of sessions, in the order you want to practise them.</p>
-          </div>
-          <Button variant="outline" onClick={() => setCreating(true)}><Plus size={16} /> New collection</Button>
-        </div>
+        <h1 className={s.pageTitle}>Explore</h1>
       </header>
+      <LibraryTabs on="collections" />
+      <div className={s.spread} style={{ marginBottom: 'var(--space-md)' }}>
+        <p className={s.lede} style={{ margin: 0 }}>Your own lists of sessions, in the order you want to practise them.</p>
+        {collections.length > 0 && <Button variant="outline" onClick={() => setCreating(true)}><Plus size={16} /> New collection</Button>}
+      </div>
 
       {collections.length === 0 ? (
         <Empty title="No collections yet">

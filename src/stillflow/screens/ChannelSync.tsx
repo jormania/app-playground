@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { RefreshCw, MonitorPlay, CloudDownload } from 'lucide-react'
 import { Button } from '../../ds'
 import { useStillflow } from '../app/state'
-import { apiFetchPage, isPractice, scanChannel, videoToRecord, YWA_CHANNEL, type FetchPage } from '../lib/channel'
+import { apiCheckIds, apiFetchPage, checkLibrary, isPractice, scanChannel, videoToRecord, YWA_CHANNEL, type CheckIds, type FetchPage } from '../lib/channel'
+import { applyAvailability, isUnavailable } from '../lib/today'
 import { previewImport, type ImportPreview } from '../lib/importExport'
 import { daysBetween } from '../lib/recommend'
 import { localDate } from '../lib/practice'
@@ -15,8 +16,9 @@ import s from './screens.module.css'
  * videos you already have; "Import the whole channel" reads everything. Both
  * end in the ordinary import review.
  */
-export function ChannelSync({ fetchPage = apiFetchPage() }: { fetchPage?: FetchPage }) {
-  const { sessions, preferences, savePreferences } = useStillflow()
+export function ChannelSync({ fetchPage = apiFetchPage(), checkIds = apiCheckIds() }: { fetchPage?: FetchPage; checkIds?: CheckIds }) {
+  const { sessions, preferences, savePreferences, upsertSessions } = useStillflow()
+  const [goneNote, setGoneNote] = useState('')
   const [busy, setBusy] = useState<null | 'updates' | 'all'>(null)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
@@ -46,7 +48,28 @@ export function ChannelSync({ fetchPage = apiFetchPage() }: { fetchPage?: FetchP
       // An update check shows only what's new; a full import also offers to fill in videos you have.
       const chosen = mode === 'updates' ? practices.filter((v) => !known.has(v.videoId)) : practices
       const now = new Date().toISOString()
-      savePreferences({ ...preferences, channelCheck: { at: now, source: scan.source, found: practices.filter((v) => !known.has(v.videoId)).length } })
+      let availabilityCheck = preferences.availabilityCheck
+      setGoneNote('')
+      // With the API key, the same check also asks which of your videos still play,
+      // so a video Adriene made private stops being suggested. Its history stays.
+      if (scan.source === 'api' && known.size) {
+        try {
+          setProgress('Checking your videos still play…')
+          const r = await checkLibrary([...known] as string[], checkIds, (d, t) => setProgress(`Checking your videos still play: ${d} of ${t}…`))
+          const changed = applyAvailability(sessions, r.checked, r.available)
+          if (changed.length) await upsertSessions(changed)
+          const gone = sessions.filter((x) => x.youtubeVideoId && r.checked.includes(x.youtubeVideoId) && !r.available.includes(x.youtubeVideoId)).length
+          availabilityCheck = { at: now, checked: r.checked.length, gone }
+          const back = changed.filter((x) => !isUnavailable(x)).length
+          setGoneNote([
+            gone ? `${gone} of your videos no longer play on YouTube. They’re marked and left out of suggestions; your history keeps them.` : 'Every video in your library still plays.',
+            back ? `${back} came back and are suggested again.` : '',
+          ].filter(Boolean).join(' '))
+        } catch {
+          setGoneNote('Couldn’t check whether your videos still play this time.')
+        }
+      }
+      savePreferences({ ...preferences, availabilityCheck, channelCheck: { at: now, source: scan.source, found: practices.filter((v) => !known.has(v.videoId)).length } })
       const notes = [
         shorts ? `${shorts} short${shorts === 1 ? '' : 's'} under four minutes left out.` : '',
         'Style, body area, intensity and series are guessed from each title and marked as a guess until you check them.',
@@ -90,6 +113,7 @@ export function ChannelSync({ fetchPage = apiFetchPage() }: { fetchPage?: FetchP
       </div>
       {!online && <p className={s.muted} style={{ marginTop: 'var(--space-sm)' }}>You’re offline. Connect to the internet to check YouTube.</p>}
       {progress && <p className={s.muted} role="status" style={{ marginTop: 'var(--space-sm)' }}>{progress}</p>}
+      {goneNote && <p className={s.muted} role="status" style={{ marginTop: 'var(--space-sm)' }}>{goneNote}</p>}
       {error && <p role="alert" style={{ marginTop: 'var(--space-sm)', color: 'var(--color-danger)' }}>{error}</p>}
       {last?.source === 'rss' && (
         <p className={s.entryMeta} style={{ marginTop: 'var(--space-sm)' }}>

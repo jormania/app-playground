@@ -3,7 +3,7 @@ import { Search, SlidersHorizontal, X, LayoutGrid, List, Heart, Shuffle } from '
 import { Button, Field, Modal } from '../../ds'
 import { useStillflow } from '../app/state'
 import { SessionCard } from '../components/SessionCard'
-import { ChipGroup, Empty } from '../components/ui'
+import { ChipGroup, Empty, LibraryTabs } from '../components/ui'
 import {
   DURATION_BUCKETS, ENERGY, EQUIPMENT, EXPERIENCE, INTENSITY_LABELS, OBJECTIVES, PHYSICAL_FOCUS, STYLES, TIME_OF_DAY,
   repeatLabel,
@@ -62,6 +62,7 @@ export function Explore() {
       <header className={s.pageHead}>
         <h1 className={s.pageTitle}>Explore</h1>
       </header>
+      <LibraryTabs on="sessions" />
 
       <div className={s.toolbar}>
         <label className={s.search}>

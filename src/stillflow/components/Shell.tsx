@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Compass, LayoutGrid, Sparkles, NotebookPen, Library, Settings, CalendarRange } from 'lucide-react'
+import { Sun, LayoutGrid, NotebookPen, Settings, CalendarRange } from 'lucide-react'
 import { hrefOf, tabOf, type Route, type Tab } from '../app/router'
 import { useStillflow } from '../app/state'
 import { cx } from '../../ds/lib/cx'
@@ -9,16 +9,15 @@ import { toggleDay } from '../lib/series'
 import { Wordmark } from './ui'
 import styles from './Shell.module.css'
 
-const TABS: { tab: Tab; label: string; icon: typeof Compass }[] = [
-  { tab: 'discover', label: 'Discover', icon: Compass },
+/** Four places, one job each: today's practice, the library, series, your record. */
+const TABS: { tab: Tab; label: string; icon: typeof Sun }[] = [
+  { tab: 'discover', label: 'Today', icon: Sun },
   { tab: 'explore', label: 'Explore', icon: LayoutGrid },
-  { tab: 'surprise', label: 'Surprise Me', icon: Sparkles },
   { tab: 'series', label: 'Series', icon: CalendarRange },
   { tab: 'practice', label: 'My Practice', icon: NotebookPen },
-  { tab: 'collections', label: 'Collections', icon: Library },
 ]
 
-const SHORT: Partial<Record<Tab, string>> = { practice: 'Practice', surprise: 'Surprise', collections: 'Lists' }
+const SHORT: Partial<Record<Tab, string>> = { practice: 'Practice' }
 
 /** Minimum time away before "Back from…?" is offered; a quick bounce isn't a practice. */
 const RETURN_AFTER_MS = 60_000
@@ -128,7 +127,7 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
 
       <nav className={styles.bottom} aria-label="Main">
         {TABS.map(({ tab, label, icon: Icon }) => (
-          <a key={tab} href={hrefOf({ name: tab })} className={cx(styles.tab, active === tab && styles.on, tab === 'surprise' && styles.surpriseTab)}
+          <a key={tab} href={hrefOf({ name: tab })} className={cx(styles.tab, active === tab && styles.on)}
             aria-current={active === tab ? 'page' : undefined}>
             <Icon size={21} strokeWidth={1.6} />
             <span>{SHORT[tab] ?? label}</span>

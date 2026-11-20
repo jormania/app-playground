@@ -113,6 +113,12 @@ export function SessionDetail({ id }: { id: string }) {
             </div>
           </div>
 
+          {session.tags.includes('unavailable') && (
+            <p className={s.demoNote}>
+              YouTube no longer plays this video: it was made private or removed. It stays in your history and is left out of
+              suggestions. If it comes back, the next “Check for updates” notices.
+            </p>
+          )}
           {session.isDemo && (
             <p className={s.demoNote}>
               This is a demonstration record, not a real video. Start Practice opens a YouTube search for this kind of session.

@@ -14,6 +14,7 @@ import { Settings } from './screens/Settings'
 import { Surprise } from './screens/Surprise'
 import { SeriesDetail, SeriesList } from './screens/Series'
 import type { StillflowRepo } from './store/repo'
+import type { Session } from './domain/types'
 import styles from './App.module.css'
 import screenStyles from './screens/screens.module.css'
 
@@ -47,12 +48,11 @@ function Welcome() {
         <Wordmark size="lg" />
         <p className={styles.tagline}>Find your practice.</p>
         <p className={styles.sub}>A personal yoga companion. Choose by time, body and mood, then practise in the YouTube app.</p>
-        {demos > 0 && (
-          <p className={styles.note}>
-            To show you around, the library holds {demos} clearly marked demo records. They aren’t real videos: replace them with your own
-            sessions from Settings whenever you’re ready.
-          </p>
-        )}
+        <p className={styles.note}>
+          {demos > 0
+            ? `The library holds ${demos} clearly marked demo records to show you around. They aren’t real videos.`
+            : 'Start in Settings: “Import the whole channel” brings in Adriene’s videos. Her series are ready to follow meanwhile.'}
+        </p>
         <Button onClick={() => savePreferences({ ...preferences, welcomed: true })}>Begin</Button>
       </div>
     </div>
@@ -75,9 +75,9 @@ function Root() {
 }
 
 /** `repo` is for tests: the whole app on an in-memory store. */
-export default function App({ repo }: { repo?: StillflowRepo }) {
+export default function App({ repo, seed }: { repo?: StillflowRepo; seed?: Session[] }) {
   return (
-    <StateProvider repo={repo}>
+    <StateProvider repo={repo} seed={seed}>
       <Root />
     </StateProvider>
   )

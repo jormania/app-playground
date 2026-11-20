@@ -9,6 +9,7 @@ import type { KeyValueStore } from '../shared/kvStore'
 import App from './App'
 import { StillflowRepo } from './store/repo'
 import { localDate } from './lib/practice'
+import { DEMO_SESSIONS } from './data/demo'
 
 let store: KeyValueStore
 
@@ -26,7 +27,7 @@ async function start(opts: { welcomed?: boolean } = { welcomed: true }) {
     await repo.putPreferences({ ...preferences, welcomed: true })
   }
   const user = userEvent.setup()
-  const view = render(<App repo={new StillflowRepo(store)} />)
+  const view = render(<App repo={new StillflowRepo(store)} seed={DEMO_SESSIONS} />)
   await screen.findByRole('navigation', { name: 'Main' }, {}).catch(() => undefined)
   return { user, view }
 }
@@ -220,7 +221,7 @@ describe('series', () => {
     expect(screen.getByRole('heading', { name: 'Earlier runs' })).toBeTruthy()
 
     await go('#/')
-    expect(await screen.findByRole('heading', { name: 'Your series' })).toBeTruthy()
+    expect(await screen.findByText('Your next practice')).toBeTruthy()
     expect(screen.getByText('MOVE · Day 1')).toBeTruthy()
   })
 
@@ -386,9 +387,14 @@ describe('Yoga With Adriene on YouTube', () => {
   const vid = (n: number, title: string, seconds: number | null = 1200) => ({
     videoId: `vid${String(n).padStart(8, '0')}`, title, description: '', publishedAt: '2026-11-0' + ((n % 9) + 1) + 'T10:00:00Z', durationSeconds: seconds,
   })
-  function stubChannel(pages: { videos: ReturnType<typeof vid>[]; next: string | null }[], source = 'api') {
+  function stubChannel(pages: { videos: ReturnType<typeof vid>[]; next: string | null }[], source = 'api', gone: string[] = []) {
     const calls: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const ids = new URL(url, 'http://x').searchParams.get('ids')
+      if (ids) {
+        const list = ids.split(',')
+        return Response.json({ checked: list, available: list.filter((id) => !gone.includes(id)) })
+      }
       calls.push(url)
       const token = new URL(url, 'http://x').searchParams.get('pageToken')
       const page = pages[token ? Number(token) : 0]
@@ -415,6 +421,24 @@ describe('Yoga With Adriene on YouTube', () => {
     expect(lib.every((x) => x.classificationConfidence === 'low' && x.classificationSource === 'inferred')).toBe(true)
     expect(lib.find((x) => x.youtubeVideoId === 'vid00000001')).toMatchObject({ series: 'MOVE', seriesDay: 8, durationMinutes: 20 })
     expect(lib.find((x) => x.youtubeVideoId === 'vid00000005')).toMatchObject({ intensity: 4, durationMinutes: 40 })
+  })
+
+  it('Check for updates also marks videos that no longer play, and they stop being suggested', async () => {
+    await new StillflowRepo(store).putSessions([2, 3].map((n) => ({
+      id: `yt-vid0000000${n}`, title: `old ${n}`, instructor: 'Yoga With Adriene', youtubeUrl: `https://www.youtube.com/watch?v=vid0000000${n}`,
+      youtubeVideoId: `vid0000000${n}`, durationMinutes: 20, styles: [], intensity: 0, physicalFocus: [], objectives: [], energy: [],
+      experienceLevel: [], timeOfDay: [], equipment: [], tags: [], classificationConfidence: 'high' as const, classificationSource: 'manual' as const, dateAdded: 'x',
+    })))
+    stubChannel([{ videos: [vid(2, 'old 2'), vid(3, 'old 3')], next: null }], 'api', ['vid00000003'])
+    const { user } = await start()
+    await go('#/settings')
+    await user.click(await screen.findByRole('button', { name: /Check for updates/ }))
+    expect(await screen.findByText(/1 of your videos no longer play/)).toBeTruthy()
+    const lib = (await new StillflowRepo(store).load()).sessions
+    expect(lib.find((x) => x.id === 'yt-vid00000003')?.tags).toContain('unavailable')
+    expect(lib.find((x) => x.id === 'yt-vid00000002')?.tags).not.toContain('unavailable')
+    await go('#/session/yt-vid00000003')
+    expect(await screen.findByText(/YouTube no longer plays this video/)).toBeTruthy()
   })
 
   it('Check for updates stops at known videos, shows only what is new, then reports up to date', async () => {

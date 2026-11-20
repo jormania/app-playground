@@ -108,6 +108,8 @@ const joinAnd = (list: string[]) => list.length <= 1 ? list.join('') : `${list.s
 export function passesConstraints(s: Session, c: Constraints, ctx: RecommendContext, profile: Profile): boolean {
   const fav = !!ctx.userData[s.id]?.favourite
   if (ctx.userData[s.id]?.excluded) return false
+  // Gone from YouTube: still in your history, never proposed.
+  if (s.tags.includes('unavailable')) return false
   if (c.maxDuration != null && s.durationMinutes > c.maxDuration) return false
   if (c.minIntensity != null && s.intensity < c.minIntensity) return false
   if (c.maxIntensity != null && (s.intensity === 0 || s.intensity > c.maxIntensity)) return false

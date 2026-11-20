@@ -9,6 +9,39 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 6 — 2026-11-21
+
+- **Four tabs:** Today, Explore, Series, My Practice. Surprise Me lives on Today
+  ("More ways to choose") and keeps its own page (`#/surprise`, with a way back);
+  Collections sit inside Explore behind "All sessions | Collections". Old links still work.
+- **Today** leads with one obvious next step: the next day of your first active series,
+  or one practice picked for today, re-picked for 10, 20 or 30 minutes or shuffled.
+  The week's minutes show as a ring against your weekly goal (tap it for My Practice).
+- **Due for a repeat:** sessions rated "Want to repeat" or "A staple" come back after six
+  weeks unpractised, "Happy to repeat" after three months (`lib/today.ts`).
+- **Short card titles:** a series day reads as its theme ("Open") with "MOVE · Day 2"
+  above it; other titles drop a trailing "| Yoga With Adriene". The session page keeps
+  the full YouTube title.
+- **Backup reminder on Today:** after ten practices with no backup, twenty since the last,
+  or a month on with anything new. "Save a backup" downloads it there; "Not now" waits a week.
+- **Videos that no longer play:** with the API key, "Check for updates" also asks YouTube
+  which library videos still play (`/api/youtube-channel?ids=`, 1 unit per 50, folded into
+  the existing function). Missing ones are tagged `unavailable`: marked on cards and the
+  session page, never suggested, kept in history. A video that comes back is cleared.
+- **No demo records:** new installs start empty, pointed at "Import the whole channel".
+  Existing demo records are removed once ten real sessions exist, unless you practised,
+  rated, favourited, collected or linked one.
+- **Editor:** posted date, tags and "How sure / Where from" fold under "More details".
+  Changing a title guess's style, body area, intensity or series marks it as yours
+  (sure, entered by you) unless you set those yourself.
+- **Home-screen shortcuts** (long-press the icon): Today's practice, Surprise me, Series,
+  My practice.
+
+Audit fixes shipped just before (6d61041): a whole-channel re-import in "update" mode no
+longer overwrites reviewed classification or drops your tags; posted dates and "last
+checked" use the local calendar day; unmarking a series day is one toast with one Undo;
+deleting a practice from its sheet no longer shows two toasts.
+
 ## Release 5 — 2026-11-20
 
 - **New settings**, three of them asked for in the original brief:

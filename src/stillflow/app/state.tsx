@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useToastStack, ToastStack, type ToastTone } from '../../ds'
 import { readJson, readSessionJson, removeJson, writeJson, writeSessionJson } from '../../shared/storage'
-import { DEMO_SESSIONS } from '../data/demo'
 import { BUILT_IN_SERIES } from '../data/series'
 import {
   DEFAULT_PREFERENCES,
@@ -10,7 +9,7 @@ import {
 } from '../domain/types'
 import { EMPTY_FILTERS, lastPractisedMap, type Filters, type SortKey } from '../lib/filter'
 import { openRepo, type Snapshot, type StillflowRepo } from '../store/repo'
-import { runMigrations, SERIES_READER_VERSION } from '../lib/migrations'
+import { demosToRemove, runMigrations, SERIES_READER_VERSION } from '../lib/migrations'
 
 /**
  * The app's one store. Everything lives in memory (a catalogue of a few
@@ -88,9 +87,14 @@ function readPending(): PendingLaunch | null {
   return p && typeof p.at === 'number' && (p.sessionId || p.seriesId) ? p : null
 }
 
-export function StateProvider({ children, repo: injected }: { children: ReactNode; repo?: StillflowRepo }) {
+/**
+ * `seed` fills an empty store on first launch. The app ships none since Release 6
+ * (the library comes from the channel); tests pass fixtures.
+ */
+export function StateProvider({ children, repo: injected, seed = [] }: { children: ReactNode; repo?: StillflowRepo; seed?: Session[] }) {
   const repoRef = useRef<StillflowRepo>(injected ?? openRepo())
   const repo = repoRef.current
+  const seedRef = useRef(seed)
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
   const [ready, setReady] = useState(false)
   const [filters, setFiltersState] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...readSessionJson<Partial<Filters>>(FILTERS_KEY, {}) }))
@@ -113,10 +117,12 @@ export function StateProvider({ children, repo: injected }: { children: ReactNod
     let alive = true
     ;(async () => {
       try {
-        await repo.seedOnce(DEMO_SESSIONS)
+        await repo.seedOnce(seedRef.current)
         let s = await repo.load()
         // One-off repairs (lib/migrations.ts): written first, then read back, so
         // the screen never shows a state the database doesn't hold.
+        const demos = demosToRemove(s)
+        if (demos.length) { await repo.deleteSessions(demos); s = await repo.load() }
         const m = runMigrations(s, s.preferences.seriesReaderVersion)
         const needsVersion = (s.preferences.seriesReaderVersion ?? 0) < SERIES_READER_VERSION
         if (m.sessionUpdates.length || m.progressUpdates.length || m.newEntries.length || needsVersion) {

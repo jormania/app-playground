@@ -36,6 +36,15 @@ interface Draft {
   source: ClassificationSource
 }
 
+/** True when a session that was only a title guess had its classification changed by hand. */
+function reviewedGuess(existing: Session | undefined, d: Draft): boolean {
+  if (!existing || existing.classificationSource !== 'inferred') return false
+  if (d.source !== 'inferred' || d.confidence !== existing.classificationConfidence) return false
+  const before = toDraft(existing, '')
+  const keys: (keyof Draft)[] = ['styles', 'physicalFocus', 'objectives', 'energy', 'experienceLevel', 'timeOfDay', 'equipment', 'intensity', 'series', 'seriesDay']
+  return keys.some((k) => JSON.stringify(before[k]) !== JSON.stringify(d[k]))
+}
+
 /** Five equal steps, the chosen level named underneath; tap the chosen one again to clear it. */
 function IntensityPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
@@ -119,8 +128,12 @@ export function SessionEditor({ id }: { id?: string }) {
         ...(existing && (d.series !== (existing.series ?? '') || d.seriesDay !== (existing.seriesDay ? String(existing.seriesDay) : '')) &&
           !d.tags.includes('series-by-hand') ? ['series-by-hand'] : []),
       ],
-      classificationConfidence: d.confidence,
-      classificationSource: d.source,
+      // Changing the style, body area, intensity or series of a guess is reviewing it:
+      // it becomes yours, unless you also set how sure you are yourself.
+      ...(reviewedGuess(existing, d) ? { classificationConfidence: 'high', classificationSource: 'manual' } : {
+        classificationConfidence: d.confidence,
+        classificationSource: d.source,
+      }),
       dateAdded: existing?.dateAdded,
       publishedDate: d.publishedDate,
       thumbnailUrl: existing?.thumbnailUrl && existing.youtubeVideoId === videoId ? existing.thumbnailUrl : undefined,
@@ -190,9 +203,12 @@ export function SessionEditor({ id }: { id?: string }) {
           <Field label="Series" value={d.series} onChange={(e) => set('series', e.target.value)} placeholder="e.g. MOVE" list="sf-series-names" />
           <Field label="Day in the series" type="number" inputMode="numeric" min={1} value={d.seriesDay} onChange={(e) => set('seriesDay', e.target.value)} placeholder="e.g. 8" />
           <datalist id="sf-series-names">{seriesDefs.map((x) => <option key={x.id} value={x.name} />)}</datalist>
-          <Field label="Posted on YouTube" type="date" value={d.publishedDate} onChange={(e) => set('publishedDate', e.target.value)} hint="Filled in for videos read from YouTube" />
-          <Field label="Tags" value={d.tags} onChange={(e) => set('tags', e.target.value)} hint="Separate with commas" />
-          <div className={s.stack}>
+        </div>
+        <details className={s.moreDetails}>
+          <summary>More details <span className={s.muted}>· posted date, tags, how sure</span></summary>
+          <div className={s.stack} style={{ marginTop: 'var(--space-md)' }}>
+            <Field label="Posted on YouTube" type="date" value={d.publishedDate} onChange={(e) => set('publishedDate', e.target.value)} hint="Filled in for videos read from YouTube" />
+            <Field label="Tags" value={d.tags} onChange={(e) => set('tags', e.target.value)} hint="Separate with commas" />
             <SelectField label="How sure are these details?" value={d.confidence} onChange={(e) => set('confidence', e.target.value as Confidence)}>
               <option value="high">Sure: I’ve checked them</option>
               <option value="medium">Fairly sure</option>
@@ -204,7 +220,7 @@ export function SessionEditor({ id }: { id?: string }) {
               <option value="inferred">Read from the title</option>
             </SelectField>
           </div>
-        </div>
+        </details>
       </section>
 
       <div className={s.row} style={{ justifyContent: 'flex-end' }}>

@@ -6,10 +6,13 @@ import { hrefOf } from '../app/router'
 import { useStillflow } from '../app/state'
 import { cx } from '../../ds/lib/cx'
 import { IntensityDots, Thumb } from './ui'
+import { isUnavailable, shortTitle } from '../lib/today'
 import styles from './SessionCard.module.css'
 
 export function SessionCard({ session, layout = 'grid', note }: { session: Session; layout?: 'grid' | 'list' | 'rail'; note?: string }) {
-  const { userData, toggleFavourite } = useStillflow()
+  const { userData, toggleFavourite, seriesDefs } = useStillflow()
+  const name = shortTitle(session, seriesDefs)
+  const gone = isUnavailable(session)
   const fav = !!userData[session.id]?.favourite
   const rating = userData[session.id]?.rating
   const focus = session.physicalFocus[0]
@@ -18,8 +21,9 @@ export function SessionCard({ session, layout = 'grid', note }: { session: Sessi
       <a href={hrefOf({ name: 'session', id: session.id })} className={styles.link}>
         <Thumb session={session} className={styles.thumb} />
         <div className={styles.body}>
-          {session.series && <span className={styles.series}>{session.series}</span>}
-          <h3 className={styles.title}>{session.title}</h3>
+          {name.label && <span className={styles.series}>{name.label}</span>}
+          <h3 className={styles.title} title={name.title !== session.title ? session.title : undefined}>{name.title}</h3>
+          {gone && <span className={styles.gone}>No longer on YouTube</span>}
           <div className={styles.meta}>
             <span>{session.styles.slice(0, layout === 'list' ? 2 : 1).join(' · ') || 'No style yet'}</span>
             {focus && <span>{focus}</span>}

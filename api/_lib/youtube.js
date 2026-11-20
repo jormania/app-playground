@@ -115,6 +115,32 @@ export async function readChannelPage({ channelId, pageToken, apiKey, fetchImpl 
   return { source: 'rss', videos: parseChannelFeed(await res.text()), nextPageToken: null, total: null }
 }
 
+const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/
+
+/** "a,b,c" → up to 50 well-formed video ids; null when the list is malformed. */
+export function parseIds(raw) {
+  if (typeof raw !== 'string' || raw === '') return null
+  const ids = raw.split(',')
+  if (ids.length > 50 || !ids.every((id) => VIDEO_ID_RE.test(id))) return null
+  return [...new Set(ids)]
+}
+
+/**
+ * Which of these videos still play: videos.list returns only public and
+ * unlisted ones, so anything missing is private, deleted or blocked. Needs
+ * the API key; the feed can't answer this. 1 unit per 50 videos.
+ */
+export async function checkAvailable({ ids, apiKey, fetchImpl = fetch }) {
+  if (!apiKey) throw new HttpError(501, 'Checking which videos still play needs the YouTube Data API key (YOUTUBE_API_KEY).')
+  const url = new URL('https://www.googleapis.com/youtube/v3/videos')
+  url.search = new URLSearchParams({ part: 'status', id: ids.join(','), key: apiKey, maxResults: '50' }).toString()
+  const body = await apiJson(fetchImpl, url)
+  const available = (body.items || [])
+    .filter((v) => !v.status || (v.status.uploadStatus === 'processed' && v.status.privacyStatus !== 'private'))
+    .map((v) => v.id)
+  return { checked: ids, available }
+}
+
 export class HttpError extends Error {
   constructor(status, message) {
     super(message)

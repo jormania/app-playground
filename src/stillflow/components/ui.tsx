@@ -149,3 +149,13 @@ export function ConfidenceNote({ session }: { session: Session }) {
     </span>
   )
 }
+
+/** Explore's two views of the library: every session, or your own lists. */
+export function LibraryTabs({ on }: { on: 'sessions' | 'collections' }) {
+  return (
+    <nav className={styles.libraryTabs} aria-label="Library">
+      <a href="#/explore" aria-current={on === 'sessions' ? 'page' : undefined}>All sessions</a>
+      <a href="#/collections" aria-current={on === 'collections' ? 'page' : undefined}>Collections</a>
+    </nav>
+  )
+}

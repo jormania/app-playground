@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Sparkles, RefreshCw, Heart } from 'lucide-react'
+import { Sparkles, RefreshCw, Heart, ArrowLeft } from 'lucide-react'
 import { Button, Field, SegmentedControl, SettingsToggle } from '../../ds'
 import { hrefOf } from '../app/router'
 import { useStillflow } from '../app/state'
@@ -58,6 +58,7 @@ export function Surprise() {
   return (
     <>
       <header className={s.pageHead}>
+        <a className={s.back} href="#/"><ArrowLeft size={16} /> Today</a>
         <h1 className={s.pageTitle}>Surprise me</h1>
         <p className={s.lede}>Choose how Stillflow should pick. It looks at what you’ve practised, your favourites and your time, and always tells you why.</p>
       </header>

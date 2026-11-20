@@ -155,3 +155,20 @@ span.stepBtn { cursor: default; padding: 0 1px; height: auto; }
 }
 .badgeLow { border-color: var(--color-warning); color: var(--color-warning); }
 .badgeDemo { border-style: solid; border-color: var(--sf-lavender); color: var(--sf-lavender-ink); background: var(--sf-lavender-soft); }
+
+/* Explore ↔ Collections: two underlined links, the current one marked. */
+.libraryTabs {
+  display: flex;
+  gap: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-md);
+}
+.libraryTabs a {
+  padding: var(--space-xs) 0 var(--space-sm);
+  color: var(--color-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 240ms var(--ease), border-color 240ms var(--ease);
+}
+.libraryTabs a[aria-current='page'] { color: var(--color-ink); border-bottom-color: var(--color-accent); }

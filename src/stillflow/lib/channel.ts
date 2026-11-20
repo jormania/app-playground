@@ -48,6 +48,33 @@ export function apiFetchPage(channelId = YWA_CHANNEL.id): FetchPage {
   }
 }
 
+export type CheckIds = (ids: string[]) => Promise<{ checked: string[]; available: string[] }>
+
+export function apiCheckIds(): CheckIds {
+  return async (ids) => {
+    const res = await fetch(`/api/youtube-channel?ids=${ids.join(',')}`)
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body?.message || `YouTube could not be asked (${res.status}).`)
+    return body as { checked: string[]; available: string[] }
+  }
+}
+
+/** Every video id in the library, asked fifty at a time. */
+export async function checkLibrary(
+  videoIds: string[], check: CheckIds, onProgress?: (done: number, total: number) => void,
+): Promise<{ checked: string[]; available: string[] }> {
+  const ids = [...new Set(videoIds)]
+  const checked: string[] = []
+  const available: string[] = []
+  for (let i = 0; i < ids.length; i += 50) {
+    const r = await check(ids.slice(i, i + 50))
+    checked.push(...r.checked)
+    available.push(...r.available)
+    onProgress?.(checked.length, ids.length)
+  }
+  return { checked, available }
+}
+
 export interface ScanResult {
   source: 'api' | 'rss'
   videos: ChannelVideo[]

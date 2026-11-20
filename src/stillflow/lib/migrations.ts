@@ -63,6 +63,25 @@ export function ticksToPractice(
   return { progress: { ...progress, manualDays }, entries }
 }
 
+/**
+ * Demo records were seeded on first launch until Release 6. Once a real library
+ * is in place (ten or more of your own sessions) they're only clutter: removed,
+ * unless you practised, rated, linked or otherwise touched one.
+ */
+export function demosToRemove(
+  snap: Snapshotish & { userData?: Record<string, unknown>; collections?: { sessionIds: string[] }[] },
+): string[] {
+  const real = snap.sessions.filter((s) => !s.isDemo).length
+  if (real < 10) return []
+  const used = new Set<string>([
+    ...snap.history.map((h) => h.sessionId),
+    ...Object.keys(snap.userData ?? {}),
+    ...(snap.collections ?? []).flatMap((c) => c.sessionIds),
+    ...Object.values(snap.seriesProgress).flatMap((p) => Object.values(p.links ?? {})),
+  ])
+  return snap.sessions.filter((s) => s.isDemo && !used.has(s.id)).map((s) => s.id)
+}
+
 export function runMigrations(snap: Snapshotish, seriesReaderVersion: number | undefined, now = new Date()) {
   // Cheap and idempotent, so it runs on every load: sessions imported since the
   // last load (a file, a backup) get their series too. The version is kept for

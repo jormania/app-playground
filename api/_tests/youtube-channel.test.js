@@ -122,3 +122,30 @@ describe('handler', () => {
     expect(res.body.message).toMatch(/ECONNRESET/)
   })
 })
+
+describe('which videos still play', () => {
+  it('rejects malformed id lists', async () => {
+    expect((await call({ ids: 'short' }, {})).statusCode).toBe(400)
+    expect((await call({ ids: Array(51).fill('aaaaaaaaaaa').map((x, i) => x.slice(0, 9) + String(i).padStart(2, '0')).join(',') })).statusCode).toBe(400)
+    expect((await call({ ids: '' })).statusCode).toBe(400)
+  })
+
+  it('needs the API key', async () => {
+    vi.stubEnv('YOUTUBE_API_KEY', '')
+    const res = await call({ ids: 'aaaaaaaaaaa' })
+    expect(res.statusCode).toBe(501)
+  })
+
+  it('returns only the ids YouTube still serves publicly', async () => {
+    vi.stubEnv('YOUTUBE_API_KEY', 'k')
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ items: [
+      { id: 'aaaaaaaaaaa', status: { uploadStatus: 'processed', privacyStatus: 'public' } },
+      { id: 'ccccccccccc', status: { uploadStatus: 'processed', privacyStatus: 'private' } },
+    ] }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await call({ ids: 'aaaaaaaaaaa,bbbbbbbbbbb,ccccccccccc' })
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toEqual({ checked: ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc'], available: ['aaaaaaaaaaa'] })
+    expect(String(fetchMock.mock.calls[0][0])).toContain('part=status')
+  })
+})

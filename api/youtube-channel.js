@@ -1,5 +1,5 @@
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
-import { CHANNEL_ID_RE, HttpError, readChannelPage, validPageToken } from './_lib/youtube.js'
+import { CHANNEL_ID_RE, HttpError, checkAvailable, parseIds, readChannelPage, validPageToken } from './_lib/youtube.js'
 
 // Stillflow's "Check for updates" and "Import the whole channel": one page of a
 // YouTube channel's uploads per call, so each call stays short and the app can
@@ -7,6 +7,8 @@ import { CHANNEL_ID_RE, HttpError, readChannelPage, validPageToken } from './_li
 //
 //   GET /api/youtube-channel?channel=UC…&pageToken=…
 //   → { source: 'api' | 'rss', videos: [...], nextPageToken, total }
+//   GET /api/youtube-channel?ids=a,b,c (≤ 50)
+//   → { checked: [...], available: [...] }   which videos still play (needs the key)
 //
 // YOUTUBE_API_KEY (optional, Vercel env var) unlocks the full channel with
 // durations. Without it the app still works; it just sees the 15 newest uploads.
@@ -26,7 +28,23 @@ export default async function handler(req, res) {
     return
   }
 
-  const { channel, pageToken } = req.query || {}
+  const { channel, pageToken, ids } = req.query || {}
+  if (ids !== undefined) {
+    const list = parseIds(ids)
+    if (!list) {
+      res.status(400).json({ message: 'ids must be 1–50 YouTube video ids, comma-separated.' })
+      return
+    }
+    try {
+      const out = await checkAvailable({ ids: list, apiKey: process.env.YOUTUBE_API_KEY })
+      res.setHeader('Cache-Control', 's-maxage=3600')
+      res.status(200).json(out)
+    } catch (err) {
+      const status = err instanceof HttpError ? err.status : 502
+      res.status(status).json({ message: err instanceof HttpError ? err.message : `Could not reach YouTube: ${err.message}` })
+    }
+    return
+  }
   if (typeof channel !== 'string' || !CHANNEL_ID_RE.test(channel)) {
     res.status(400).json({ message: 'Missing or malformed channel id.' })
     return

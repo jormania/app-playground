@@ -9,7 +9,7 @@
 // main.tsx (see CLAUDE.md "Service workers & dev") — under `vite dev` a
 // cache-first worker pins the first copy of every unhashed dev URL forever.
 
-var CACHE = 'stillflow-cache-v2';
+var CACHE = 'stillflow-cache-v3';
 var CACHE_PREFIX = 'stillflow-';
 
 self.addEventListener('install', function () {

@@ -144,6 +144,10 @@ export interface Preferences {
   welcomed: boolean
   /** ISO date-time of the last full backup saved from Settings. */
   lastBackupAt?: string
+  /** When Today's backup suggestion was last answered "Not now"; it stays quiet for a week. */
+  backupNudgeDismissedAt?: string
+  /** Last check of which library videos still play on YouTube. */
+  availabilityCheck?: { at: string; checked: number; gone: number }
   /** The last time the YouTube channel was checked, and what it found. */
   channelCheck?: { at: string; source: 'api' | 'rss'; found: number }
   /** Which version of the title reader last re-read channel sessions (see lib/migrations.ts). */

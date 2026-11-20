@@ -77,3 +77,9 @@
 
 .again { color: var(--sf-lavender-ink); }
 .posted { font-variant-numeric: tabular-nums; }
+
+.gone {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  letter-spacing: 0.02em;
+}
