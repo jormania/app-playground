@@ -62,7 +62,7 @@ New apps build on [`src/ds/`](src/ds/). Legacy apps — `src/touch-grass/`,
 Any app, new or legacy, may import from `src/shared/`; it is separate from the
 `src/ds/` boundary. **Before writing a helper, look there, and extend what exists
 rather than copying an app's local copy.** Today it has: `notify/`, `installFlag`,
-`weather`, `photo`, `storage`, `notionId`, `notionClient`, `useWakeLock`, `theme`,
+`weather`, `photo`, `storage`, `kvStore`, `notionId`, `notionClient`, `useWakeLock`, `theme`,
 `findings`, `share`, `anthropic`, `models`, `axisLockSlider`, `fullscreen`,
 `haptics`, `mediaSession`, `qrCode`, `useSwipeAction`. Several apps deliberately
 keep their own version of one of these, so read
@@ -117,6 +117,7 @@ by design.
 | Silva | `src/silva/` | strict TS, DS — [`SILVA.md`](SILVA.md) |
 | KeyPath | `src/keypath/` | strict TS, DS — piano tutor, in progress; its own `CLAUDE.md`, and [`KEYPATH.md`](KEYPATH.md) |
 | The Long Listen | `src/long-listen/` | strict TS, DS — orchestral curator; its own `CLAUDE.md`, and [`LONG_LISTEN.md`](LONG_LISTEN.md) |
+| Stillflow | `src/stillflow/` | strict TS, DS — yoga library and practice companion; [`STILLFLOW.md`](STILLFLOW.md): never invent video metadata |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |

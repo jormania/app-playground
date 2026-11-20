@@ -1,0 +1,31 @@
+.form { display: grid; gap: var(--space-md); }
+.lede { font-family: var(--font-display); font-size: 1.1rem; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); }
+.rating { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); font-size: var(--text-sm); color: var(--color-muted); }
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 40vh; overflow: auto; }
+.option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px var(--space-xs);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.option:hover { background: var(--color-surface-2); }
+.check {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-2);
+  display: grid; place-items: center;
+  color: var(--color-accent);
+}
+.count { font-size: var(--text-sm); color: var(--color-faint); font-variant-numeric: tabular-nums; }
+.create { display: grid; grid-template-columns: 1fr auto; gap: var(--space-sm); align-items: end; }
+.done { display: flex; justify-content: flex-end; }

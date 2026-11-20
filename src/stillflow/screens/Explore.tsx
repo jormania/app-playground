@@ -1,0 +1,136 @@
+import { useMemo, useState } from 'react'
+import { Search, SlidersHorizontal, X, LayoutGrid, List, Heart } from 'lucide-react'
+import { Button, Field, Modal } from '../../ds'
+import { useStillflow } from '../app/state'
+import { SessionCard } from '../components/SessionCard'
+import { ChipGroup, Empty } from '../components/ui'
+import {
+  DURATION_BUCKETS, ENERGY, EQUIPMENT, EXPERIENCE, INTENSITY_LABELS, OBJECTIVES, PHYSICAL_FOCUS, STYLES, TIME_OF_DAY,
+  type DurationBucketId,
+} from '../domain/vocabulary'
+import { EMPTY_FILTERS, SORT_OPTIONS, activeFilterCount, applyFilters, type Filters, type SortKey } from '../lib/filter'
+import s from './screens.module.css'
+
+const PAGE = 48
+
+type ListKey = 'styles' | 'focus' | 'objectives' | 'energy' | 'experience' | 'timeOfDay' | 'equipment' | 'series'
+
+export function Explore() {
+  const { sessions, filters, setFilters, sort, setSort, userData, lastPractised, preferences, savePreferences } = useStillflow()
+  const [open, setOpen] = useState(false)
+  const [limit, setLimit] = useState(PAGE)
+  const [seed, setSeed] = useState(1)
+  const view = preferences.view
+
+  const results = useMemo(
+    () => applyFilters(sessions, filters, sort, { userData, lastPractised }, seed),
+    [sessions, filters, sort, userData, lastPractised, seed],
+  )
+  const series = useMemo(() => [...new Set(sessions.map((x) => x.series).filter((x): x is string => !!x))].sort(), [sessions])
+  const update = (patch: Partial<Filters>) => { setFilters({ ...filters, ...patch }); setLimit(PAGE) }
+  const n = activeFilterCount(filters)
+
+  const chips: { label: string; remove: () => void }[] = [
+    ...filters.durations.map((d) => ({ label: DURATION_BUCKETS.find((b) => b.id === d)!.label, remove: () => update({ durations: filters.durations.filter((x) => x !== d) }) })),
+    ...(filters.customMin != null ? [{ label: `≥ ${filters.customMin} min`, remove: () => update({ customMin: undefined }) }] : []),
+    ...(filters.customMax != null ? [{ label: `≤ ${filters.customMax} min`, remove: () => update({ customMax: undefined }) }] : []),
+    ...filters.intensities.map((i) => ({ label: INTENSITY_LABELS[i - 1], remove: () => update({ intensities: filters.intensities.filter((x) => x !== i) }) })),
+    ...(['styles', 'focus', 'objectives', 'energy', 'experience', 'timeOfDay', 'equipment', 'series'] as ListKey[]).flatMap((k) =>
+      filters[k].map((v) => ({ label: v, remove: () => update({ [k]: filters[k].filter((x) => x !== v) } as Partial<Filters>) }))),
+    ...(filters.favouritesOnly ? [{ label: 'Favourites', remove: () => update({ favouritesOnly: false }) }] : []),
+  ]
+
+  const num = (v: string) => (v.trim() === '' ? undefined : Math.max(0, Number(v)))
+
+  return (
+    <>
+      <header className={s.pageHead}>
+        <h1 className={s.pageTitle}>Explore</h1>
+      </header>
+
+      <div className={s.toolbar}>
+        <label className={s.search}>
+          <Search size={18} strokeWidth={1.6} />
+          <span className="sf-visually-hidden">Search sessions</span>
+          <input type="search" placeholder="Search title, style, body area, series…" value={filters.query}
+            onChange={(e) => update({ query: e.target.value })} />
+          {filters.query && <button type="button" className={s.iconBtn} aria-label="Clear search" onClick={() => update({ query: '' })}><X size={16} /></button>}
+        </label>
+        <div className={s.spread}>
+          <div className={s.row}>
+            <button type="button" className={s.toolButton} aria-pressed={open} onClick={() => setOpen(true)}>
+              <SlidersHorizontal size={15} /> Filters {n > 0 && <span className={s.badge}>{n}</span>}
+            </button>
+            <button type="button" className={s.toolButton} aria-pressed={filters.favouritesOnly} onClick={() => update({ favouritesOnly: !filters.favouritesOnly })}>
+              <Heart size={15} /> Favourites
+            </button>
+            <label>
+              <span className="sf-visually-hidden">Sort</span>
+              <select className={s.select} value={sort} onChange={(e) => { setSort(e.target.value as SortKey); if (e.target.value === 'random') setSeed((x) => x + 1) }}>
+                {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className={s.row}>
+            <span className={s.count} aria-live="polite">{results.length} {results.length === 1 ? 'session' : 'sessions'}</span>
+            <button type="button" className={s.iconBtn} aria-label="Grid view" aria-pressed={view === 'grid'} onClick={() => savePreferences({ ...preferences, view: 'grid' })}><LayoutGrid size={18} /></button>
+            <button type="button" className={s.iconBtn} aria-label="List view" aria-pressed={view === 'list'} onClick={() => savePreferences({ ...preferences, view: 'list' })}><List size={18} /></button>
+          </div>
+        </div>
+        {chips.length > 0 && (
+          <div className={s.active}>
+            {chips.map((c, i) => (
+              <button key={`${c.label}-${i}`} type="button" className={s.activeChip} onClick={c.remove} aria-label={`Remove filter ${c.label}`}>
+                {c.label} <X size={12} />
+              </button>
+            ))}
+            <button type="button" className={s.textLink} onClick={() => { setFilters(EMPTY_FILTERS); setLimit(PAGE) }}>Clear all</button>
+          </div>
+        )}
+      </div>
+
+      {results.length === 0 ? (
+        <Empty title="Nothing matches yet">
+          <p>Try fewer filters, or a different word.</p>
+          {n > 0 && <Button variant="outline" onClick={() => setFilters(EMPTY_FILTERS)}>Clear all filters</Button>}
+        </Empty>
+      ) : (
+        <>
+          <div className={view === 'grid' ? s.grid : s.listView}>
+            {results.slice(0, limit).map((x) => <SessionCard key={x.id} session={x} layout={view} />)}
+          </div>
+          {results.length > limit && (
+            <div className={s.more}>
+              <Button variant="outline" onClick={() => setLimit((l) => l + PAGE)}>Show more ({results.length - limit} left)</Button>
+            </div>
+          )}
+        </>
+      )}
+
+      <Modal open={open} onClose={() => setOpen(false)} title="Filters">
+        <div className={s.filterSheet}>
+          <ChipGroup<DurationBucketId> label="Duration" options={DURATION_BUCKETS.map((b) => b.id)} selected={filters.durations}
+            onChange={(v) => update({ durations: v })} render={(id) => DURATION_BUCKETS.find((b) => b.id === id)!.label} />
+          <div className={s.rangeRow}>
+            <Field label="Custom: from (min)" type="number" inputMode="numeric" min={0} value={filters.customMin ?? ''} onChange={(e) => update({ customMin: num(e.target.value) })} />
+            <Field label="to (min)" type="number" inputMode="numeric" min={0} value={filters.customMax ?? ''} onChange={(e) => update({ customMax: num(e.target.value) })} />
+          </div>
+          <ChipGroup label="Style" options={STYLES} selected={filters.styles} onChange={(v) => update({ styles: v })} />
+          <ChipGroup<number> label="Intensity" options={[1, 2, 3, 4, 5]} selected={filters.intensities}
+            onChange={(v) => update({ intensities: v })} render={(i) => INTENSITY_LABELS[i - 1]} />
+          <ChipGroup label="Physical focus" options={PHYSICAL_FOCUS} selected={filters.focus} onChange={(v) => update({ focus: v })} />
+          <ChipGroup label="Objective" options={OBJECTIVES} selected={filters.objectives} onChange={(v) => update({ objectives: v })} />
+          <ChipGroup label="Energy and mood" options={ENERGY} selected={filters.energy} onChange={(v) => update({ energy: v })} />
+          <ChipGroup label="Experience" options={EXPERIENCE} selected={filters.experience} onChange={(v) => update({ experience: v })} />
+          <ChipGroup label="Time of day" options={TIME_OF_DAY} selected={filters.timeOfDay} onChange={(v) => update({ timeOfDay: v })} />
+          <ChipGroup label="Equipment" options={EQUIPMENT} selected={filters.equipment} onChange={(v) => update({ equipment: v })} />
+          {series.length > 0 && <ChipGroup label="Series and programmes" options={series} selected={filters.series} onChange={(v) => update({ series: v })} />}
+        </div>
+        <div className={s.spread} style={{ marginTop: 'var(--space-md)' }}>
+          <button type="button" className={s.textLink} onClick={() => setFilters({ ...EMPTY_FILTERS, query: filters.query })}>Clear filters</button>
+          <Button onClick={() => setOpen(false)}>Show {results.length} {results.length === 1 ? 'session' : 'sessions'}</Button>
+        </div>
+      </Modal>
+    </>
+  )
+}

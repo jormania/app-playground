@@ -447,6 +447,7 @@ export default defineConfig({
         marquee: resolve(__dirname, 'marquee-react.html'),
         keypath: resolve(__dirname, 'keypath-react.html'),
         longListen: resolve(__dirname, 'long-listen-react.html'),
+        stillflow: resolve(__dirname, 'stillflow-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }

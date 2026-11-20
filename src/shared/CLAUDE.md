@@ -28,6 +28,11 @@ first app's tests prove the move was behaviour-preserving.
   `resizePhoto`). **Journal keeps its own `photoFilename`**: it names files from a
   date key rather than slugifying (`src/journal/photo.test.js`).
 - [`storage.ts`](storage.ts) — localStorage/sessionStorage helpers that can't throw.
+- [`kvStore.ts`](kvStore.ts) — the `KeyValueStore` seam: `indexedDbStore(dbName)`
+  (one IndexedDB database per app, via idb-keyval) and `memoryStore()` for tests.
+  Promoted from The Long Listen, whose `store/repo.ts` re-exports it. **KeyPath
+  deliberately keeps its own `app/store.ts`**: it lives in idb-keyval's *default*
+  database, and switching would orphan every profile already on the phone.
 - [`notionId.ts`](notionId.ts) — parses a Notion id out of a pasted URL, dashed UUID
   or bare id. **WhereItWent deliberately keeps its own `extractNotionId`**: it keeps
   dashes and case, and returns unmatched input unchanged rather than `''`, which

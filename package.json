@@ -27,6 +27,7 @@
     "gen:long-listen-icons": "node scripts/generate-long-listen-icons.mjs",
     "gen:journal-icons": "node scripts/generate-journal-icons.mjs",
     "gen:wanderlist-icons": "node scripts/generate-wanderlist-icons.mjs",
+    "gen:stillflow-icons": "node scripts/generate-stillflow-icons.mjs",
     "gen:kobo-fixture": "node scripts/generate-kobo-sample-db.mjs",
     "gen:where-it-went-demo-data": "node scripts/generate-where-it-went-demo-data.mjs"
   },

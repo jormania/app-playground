@@ -1,0 +1,85 @@
+/* Stillflow's identity, layered on the design system (src/ds/tokens.css).
+ *
+ * The look: a wellness journal left open on a linen table. Warm ivory paper,
+ * sage for the one accent that means "go", lavender only for discovery
+ * (Surprise Me and its traces), sand for quiet fills. Hairlines instead of
+ * shadows; a literary serif (Alegreya) for anything you read as a heading,
+ * Inter for everything you operate. Deliberately light: almost no elevation,
+ * no gradients except the placeholder thumbnails.
+ *
+ * Only token VALUES are overridden here, plus a handful of `--sf-*` tokens the
+ * DS has no slot for. Components never hard-code a colour.
+ */
+
+:root {
+  --color-bg:        #f7f3ea;
+  --color-bg-sunken: #efe9dc;
+  --color-surface:   #fcfaf5;
+  --color-surface-2: #f1ebdf;
+  --color-border:    #e3dacb;
+  --color-border-2:  #c9bda8;
+
+  --color-ink:    #2e302c;
+  --color-muted:  #636458;
+  --color-faint:  #9a9886;
+
+  --color-accent:       #5e7a5a;
+  --color-accent-hover: #4d6849;
+  --color-on-accent:    #fbf9f3;
+
+  --color-success: #5e7a5a;
+  --color-warning: #a7743a;
+  --color-danger:  #a14c3f;
+
+  --sf-sage-soft:     #e3eadc;
+  --sf-sand:          #eadfca;
+  --sf-lavender:      #8a7fb8;
+  --sf-lavender-ink:  #574d86;
+  --sf-lavender-soft: #ebe7f4;
+  --sf-thumb-a:       #dfe7d6;
+  --sf-thumb-b:       #ece2f0;
+
+  --font-display: 'Alegreya Variable', 'Alegreya', Georgia, serif;
+  --font-sans:    'Inter Variable', 'Inter', system-ui, sans-serif;
+
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-sm: none;
+  --shadow-md: 0 1px 0 rgba(46, 48, 44, 0.04), 0 6px 18px rgba(46, 48, 44, 0.06);
+  --shadow-lg: 0 18px 48px rgba(46, 48, 44, 0.16);
+
+  --sf-nav-h: 64px;
+  --sf-sidebar-w: 232px;
+}
+
+:root[data-theme='dark'] {
+  --color-bg:        #1b1d1a;
+  --color-bg-sunken: #161815;
+  --color-surface:   #222520;
+  --color-surface-2: #2a2d27;
+  --color-border:    #343830;
+  --color-border-2:  #4a4f44;
+
+  --color-ink:    #e8e4d8;
+  --color-muted:  #b2ae9f;
+  --color-faint:  #7c7a6d;
+
+  --color-accent:       #9bb894;
+  --color-accent-hover: #b0caa8;
+  --color-on-accent:    #1b1d1a;
+  --color-success:      #9bb894;
+  --color-warning:      #d6a465;
+  --color-danger:       #e08c7d;
+
+  --sf-sage-soft:     #2b3428;
+  --sf-sand:          #2e2b24;
+  --sf-lavender:      #b3a8dc;
+  --sf-lavender-ink:  #cfc7ee;
+  --sf-lavender-soft: #2c2938;
+  --sf-thumb-a:       #2c3529;
+  --sf-thumb-b:       #322d3c;
+
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.5);
+}
