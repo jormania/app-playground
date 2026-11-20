@@ -11,10 +11,11 @@
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#f7f3ea" />
   <script>
-    // Follows the OS before first paint, so a dark phone never flashes ivory.
-    // Kept in step with src/stillflow/main.tsx.
+    // Applies your light/dark choice (or the phone's) before first paint, so a
+    // dark screen never flashes ivory. Kept in step with src/stillflow/app/theme.ts.
     try {
-      var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var choice = JSON.parse(localStorage.getItem('stillflow:theme') || '"system"');
+      var dark = choice === 'dark' || (choice !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
       if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#1b1d1a');
     } catch (e) {}

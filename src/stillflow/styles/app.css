@@ -1,5 +1,9 @@
 /* Page-level rules only; components carry their own CSS Modules. */
 
+/* The page never scrolls sideways: a long unbroken word (a link in a description)
+   wraps instead of widening everything, which on a phone looked like being zoomed in. */
+html, body { overflow-x: clip; }
+
 html, body {
   background: var(--color-bg);
   color: var(--color-ink);
@@ -36,3 +40,5 @@ button, input, select, textarea { font: inherit; }
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+main { min-width: 0; overflow-wrap: break-word; }

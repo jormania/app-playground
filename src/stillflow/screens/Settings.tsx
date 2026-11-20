@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Download, Plus, Trash2, Upload, FileSpreadsheet, ShieldCheck, Eye } from 'lucide-react'
-import { Button, ConfirmModal, Field, SegmentedControl } from '../../ds'
+import { Button, ConfirmModal, Field, SegmentedControl, SettingsToggle } from '../../ds'
 import { hrefOf, navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { usePlatform } from '../components/StartPractice'
 import { ChipGroup, Wordmark } from '../components/ui'
-import { STYLES } from '../domain/vocabulary'
+import { INTENSITY_LABELS, OBJECTIVES, STYLES } from '../domain/vocabulary'
+import { MODES } from '../lib/recommend'
 import { downloadText, stamp } from '../lib/download'
 import { fold } from '../lib/filter'
 import { CSV_COLUMNS, exportCsv, exportJson } from '../lib/importExport'
@@ -49,6 +50,26 @@ function csvTemplate(): string {
   return toCsv([...CSV_COLUMNS], [CSV_COLUMNS.map((c) => example[c] ?? '')])
 }
 
+/** One setting per row: what it is and what it does on the left, a compact minutes box on the right. */
+function MinutesRow({ label, hint, value, placeholder, onChange }: {
+  label: string; hint: string; value?: number; placeholder: string; onChange: (v: number | undefined) => void
+}) {
+  return (
+    <label className={s.settingRow}>
+      <span className={s.settingText}>
+        <span className={s.settingLabel}>{label}</span>
+        <span className={s.settingHint}>{hint}</span>
+      </span>
+      <span className={s.minutesBox}>
+        <input type="number" inputMode="numeric" min={1} max={600} className={s.settingInput} value={value ?? ''} placeholder={placeholder}
+          aria-label={`${label} in minutes`}
+          onChange={(e) => onChange(e.target.value.trim() === '' ? undefined : Math.max(1, Math.round(Number(e.target.value))))} />
+        <span className={s.unit}>min</span>
+      </span>
+    </label>
+  )
+}
+
 export function Settings() {
   const state = useStillflow()
   const { sessions, preferences, savePreferences, deleteSessions, exportBackup, restore, resetAll, toast, userData, setUserData, persisted, requestPersistence, history } = state
@@ -62,7 +83,6 @@ export function Settings() {
     const t = fold(q.trim())
     return [...sessions].filter((x) => !t || fold(x.title).includes(t)).sort((a, b) => a.title.localeCompare(b.title))
   }, [sessions, q])
-  const num = (v: string) => (v.trim() === '' ? undefined : Math.max(1, Math.round(Number(v))))
 
   const doRestore = async (file: File) => {
     try {
@@ -83,18 +103,53 @@ export function Settings() {
       </header>
 
       <section className={s.panel}>
-        <h2>Preferences</h2>
+        <h2>Your practice</h2>
+        <p className={s.sectionLede}>Perfect Match and Discover’s suggestions lean towards these. Leave any of them empty for no preference.</p>
         <ChipGroup label="Styles you enjoy" options={STYLES} selected={preferences.preferredStyles}
           onChange={(v) => savePreferences({ ...preferences, preferredStyles: v })} />
-        <div className={s.twoCol}>
-          <Field label="Longest you usually practise (min)" type="number" inputMode="numeric" min={1} value={preferences.preferredMaxDuration ?? ''}
-            onChange={(e) => savePreferences({ ...preferences, preferredMaxDuration: num(e.target.value) })} hint="Surprise Me prefers sessions this long or shorter" />
-          <Field label="Weekly target (min)" type="number" inputMode="numeric" min={1} value={preferences.weeklyTargetMinutes ?? ''}
-            onChange={(e) => savePreferences({ ...preferences, weeklyTargetMinutes: num(e.target.value) })} hint="Shown as a bar on Discover" />
+        <ChipGroup<number> label="Intensity you usually want" options={[1, 2, 3, 4, 5]} selected={preferences.preferredIntensities}
+          render={(i) => INTENSITY_LABELS[i - 1]} onChange={(v) => savePreferences({ ...preferences, preferredIntensities: v })} />
+        <ChipGroup label="Goals you practise for" options={OBJECTIVES} selected={preferences.favouriteGoals}
+          onChange={(v) => savePreferences({ ...preferences, favouriteGoals: v })} />
+        <div className={s.rows}>
+          <MinutesRow label="Usual practice length" hint="Suggestions prefer sessions this long or shorter."
+            value={preferences.preferredMaxDuration} placeholder="Any" onChange={(v) => savePreferences({ ...preferences, preferredMaxDuration: v })} />
+          <MinutesRow label="Weekly goal" hint="Minutes a week, shown as a bar on Discover and My Practice."
+            value={preferences.weeklyTargetMinutes} placeholder="None" onChange={(v) => savePreferences({ ...preferences, weeklyTargetMinutes: v })} />
         </div>
-        <div style={{ marginTop: 'var(--space-md)' }}>
-          <Field label="Default instructor for new sessions" value={preferences.defaultInstructor}
-            onChange={(e) => savePreferences({ ...preferences, defaultInstructor: e.target.value })} />
+      </section>
+
+      <section className={s.panel}>
+        <h2>Surprise me</h2>
+        <div className={s.rows}>
+          <label className={`${s.settingRow} ${s.settingStack}`}>
+            <span className={s.settingText}>
+              <span className={s.settingLabel}>Starts with</span>
+              <span className={s.settingHint}>How Surprise Me chooses when you open it. You can always switch there.</span>
+            </span>
+            <select className={s.select} value={preferences.surpriseMode}
+              onChange={(e) => savePreferences({ ...preferences, surpriseMode: e.target.value as typeof preferences.surpriseMode })}>
+              {MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className={s.panel}>
+        <h2>Appearance and reminders</h2>
+        <div className={s.rows}>
+          <div className={`${s.settingRow} ${s.settingStack}`}>
+            <span className={s.settingText}>
+              <span className={s.settingLabel}>Theme</span>
+              <span className={s.settingHint}>“Device” follows your phone’s light or dark mode.</span>
+            </span>
+            <SegmentedControl label="Theme" size="sm" value={preferences.theme}
+              onChange={(v) => savePreferences({ ...preferences, theme: v as typeof preferences.theme })}
+              options={[{ value: 'system', label: 'Device' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
+          </div>
+          <SettingsToggle label="Ask “Did you finish?” when I come back" checked={preferences.askOnReturn}
+            hint="After you’ve been away on YouTube for a minute or more. Nothing is recorded unless you say yes."
+            onChange={(e) => savePreferences({ ...preferences, askOnReturn: e.target.checked })} />
         </div>
       </section>
 
@@ -134,6 +189,16 @@ export function Settings() {
             <button type="button" className={s.textLink} onClick={() => setConfirm('demo')}>Remove demo records</button>
           </p>
         )}
+        <div className={s.rows} style={{ marginTop: 'var(--space-md)' }}>
+          <label className={`${s.settingRow} ${s.settingStack}`}>
+            <span className={s.settingText}>
+              <span className={s.settingLabel}>Instructor for new sessions</span>
+              <span className={s.settingHint}>Used when you add a session or import one without an instructor.</span>
+            </span>
+            <input className={s.settingInput} value={preferences.defaultInstructor}
+              onChange={(e) => savePreferences({ ...preferences, defaultInstructor: e.target.value })} />
+          </label>
+        </div>
         <div style={{ marginTop: 'var(--space-lg)' }}>
           <Field label="Find a session to edit" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Title" />
           <div className={s.catalogueList}>

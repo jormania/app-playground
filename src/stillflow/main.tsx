@@ -10,13 +10,7 @@ import { watchInstalled } from '../shared/installFlag'
 
 watchInstalled('stillflow-react.html')
 
-// Follow the OS light/dark setting, live. index.html sets it before first paint.
-const dark = window.matchMedia('(prefers-color-scheme: dark)')
-const applyTheme = () => {
-  document.documentElement.setAttribute('data-theme', dark.matches ? 'dark' : 'light')
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark.matches ? '#1b1d1a' : '#f7f3ea')
-}
-dark.addEventListener('change', applyTheme)
+// Light/dark is applied by app/theme.ts (Settings → Appearance); the page sets it before first paint.
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {

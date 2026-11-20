@@ -9,6 +9,34 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 5 — 2026-11-20
+
+- **New settings**, three of them asked for in the original brief:
+  - Intensity you usually want, and Goals you practise for (both feed Perfect Match and the
+    suggestions).
+  - How Surprise Me starts.
+  - Light, Dark or Device theme, applied before first paint.
+  - A switch for the "Did you finish?" prompt.
+
+  Default instructor moved to Catalogue, where it applies.
+- **Settings layout:** one setting per row, its label and a one-line explanation on the left
+  and a compact control on the right (minutes in a small box with "min"). Wide controls sit
+  under their text on phones. This replaces the side-by-side fields whose labels wrapped
+  unevenly and threw the inputs out of line.
+- **Session pages no longer overflow the screen.** Adriene's descriptions carry long
+  unbroken links that widened the page (it looked zoomed in). Long text now wraps, the page
+  never scrolls sideways, and the description shows only what comes before the channel's
+  "- - - -" divider, with "Show the full description" for the rest. Checked on all 773 session
+  pages at phone width.
+- **Editor:** every field gets a full line, so labels no longer wrap beside a neighbour and
+  the two "How sure / Where from" pickers show their whole text. Length has a short hint
+  ("Minutes, like 28 or 28:30"). Intensity is five equal steps of rising bars, with the
+  chosen level named underneath; tap the chosen step again to clear it.
+- **Transitions:** each screen settles in with a short fade and rise (320 ms, opacity and
+  transform only, off with reduced motion). The bottom-bar icons ease between states.
+- **Margins:** one shared side margin (`--sf-gutter`): 20 px on phones (was 16), 28 px from
+  600 px up. The header, page edges and scrolling rows all use it.
+
 ## Release 4 — 2026-11-20
 
 An audit with the real channel loaded (773 practices), a redesigned progress panel and a

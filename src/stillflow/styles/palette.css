@@ -50,11 +50,16 @@
   --shadow-lg: 0 18px 48px rgba(46, 48, 44, 0.16);
 
   --sf-nav-h: 64px;
+  /* Side margin of every screen; the header, rails and page edges all share it. */
+  --sf-gutter: max(20px, env(safe-area-inset-left));
   --sf-sidebar-w: 232px;
   /* Lifts the DS toast stack above the bottom bar (ToastStack reads it). */
   --toast-offset: calc(var(--sf-nav-h) + env(safe-area-inset-bottom));
 }
 
+@media (min-width: 600px) {
+  :root { --sf-gutter: 28px; }
+}
 @media (min-width: 900px) {
   :root { --toast-offset: 0px; }
 }

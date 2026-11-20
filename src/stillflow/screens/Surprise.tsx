@@ -16,7 +16,7 @@ const KEY = 'stillflow:surprise'
 export function Surprise() {
   const { sessions, userData, history, preferences, toggleFavourite } = useStillflow()
   const saved = readSessionJson<{ mode?: SurpriseMode; constraints?: Constraints }>(KEY, {})
-  const [mode, setMode] = useState<SurpriseMode>(saved.mode ?? 'match')
+  const [mode, setMode] = useState<SurpriseMode>(saved.mode ?? preferences.surpriseMode ?? 'match')
   const [c, setC] = useState<Constraints>({ ...DEFAULT_CONSTRAINTS, maxDuration: preferences.preferredMaxDuration, ...saved.constraints })
   const [pick, setPick] = useState<Pick | null>(null)
   const [shown, setShown] = useState<string[]>([])

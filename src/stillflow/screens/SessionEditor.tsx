@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { Button, Field, SegmentedControl, TextAreaField } from '../../ds'
+import { Button, Field, TextAreaField } from '../../ds'
 import { SelectField } from '../../ds/components/SelectField'
+import { cx } from '../../ds/lib/cx'
 import { hrefOf, navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { ChipGroup, Empty, Thumb } from '../components/ui'
@@ -33,6 +34,31 @@ interface Draft {
   tags: string
   confidence: Confidence
   source: ClassificationSource
+}
+
+/** Five equal steps, the chosen level named underneath; tap the chosen one again to clear it. */
+function IntensityPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className={s.intensityPick}>
+      <span className={s.intensityLegend} id="sf-intensity">Intensity</span>
+      <div className={s.intensitySteps} role="radiogroup" aria-labelledby="sf-intensity">
+        {INTENSITY_LABELS.map((label, i) => {
+          const n = i + 1
+          return (
+            <button key={label} type="button" role="radio" aria-checked={value === n} aria-label={label}
+              className={cx(s.intensityStep, value >= n && s.intensityOn, value === n && s.intensityChosen)}
+              onClick={() => onChange(value === n ? 0 : n)}>
+              <span className={s.intensityBar} style={{ height: `${8 + n * 5}px` }} />
+              <span className={s.intensityNum}>{n}</span>
+            </button>
+          )
+        })}
+      </div>
+      <span className={s.intensityCaption} aria-live="polite">
+        {value ? INTENSITY_LABELS[value - 1] : 'Not set: tap a step, from very gentle to very challenging'}
+      </span>
+    </div>
+  )
 }
 
 function toDraft(x: Session | undefined, instructor: string): Draft {
@@ -145,18 +171,14 @@ export function SessionEditor({ id }: { id?: string }) {
             </div>
           )}
           <Field label="Title" required value={d.title} onChange={(e) => set('title', e.target.value)} placeholder="As it appears on YouTube" />
-          <div className={s.twoCol}>
-            <Field label="Length (minutes, or mm:ss)" required value={d.duration} onChange={(e) => set('duration', e.target.value)} inputMode="numeric" />
-            <Field label="Instructor" value={d.instructor} onChange={(e) => set('instructor', e.target.value)} />
-          </div>
+          <Field label="Length" required value={d.duration} onChange={(e) => set('duration', e.target.value)} inputMode="numeric" hint="Minutes, like 28 or 28:30" />
+          <Field label="Instructor" value={d.instructor} onChange={(e) => set('instructor', e.target.value)} />
           <TextAreaField label="Description" rows={4} value={d.description} onChange={(e) => set('description', e.target.value)} />
         </div>
       </section>
 
       <section className={s.panel}>
-        <SegmentedControl label="Intensity" value={d.intensity} onChange={(v) => set('intensity', v)} wrap
-          options={[{ value: '0', label: 'Not sure' }, ...INTENSITY_LABELS.map((l, i) => ({ value: String(i + 1), label: l }))]} />
-        <div style={{ height: 'var(--space-lg)' }} />
+        <IntensityPicker value={Number(d.intensity)} onChange={(v) => set('intensity', String(v))} />
         <ChipGroup label="Style" options={STYLES} selected={d.styles} onChange={(v) => set('styles', v)} />
         <ChipGroup label="Body area" options={PHYSICAL_FOCUS} selected={d.physicalFocus} onChange={(v) => set('physicalFocus', v)} />
         <ChipGroup label="Goal" options={OBJECTIVES} selected={d.objectives} onChange={(v) => set('objectives', v)} />
@@ -165,14 +187,12 @@ export function SessionEditor({ id }: { id?: string }) {
         <ChipGroup label="Time of day" options={TIME_OF_DAY} selected={d.timeOfDay} onChange={(v) => set('timeOfDay', v)} />
         <ChipGroup label="Equipment" options={EQUIPMENT} selected={d.equipment} onChange={(v) => set('equipment', v)} />
         <div className={s.stack}>
-          <div className={s.twoCol}>
-            <Field label="Series or programme" value={d.series} onChange={(e) => set('series', e.target.value)} placeholder="e.g. MOVE" list="sf-series-names" />
-            <Field label="Day in the series" type="number" inputMode="numeric" min={1} value={d.seriesDay} onChange={(e) => set('seriesDay', e.target.value)} hint="Puts it on that day of the series" />
-          </div>
+          <Field label="Series" value={d.series} onChange={(e) => set('series', e.target.value)} placeholder="e.g. MOVE" list="sf-series-names" />
+          <Field label="Day in the series" type="number" inputMode="numeric" min={1} value={d.seriesDay} onChange={(e) => set('seriesDay', e.target.value)} placeholder="e.g. 8" />
           <datalist id="sf-series-names">{seriesDefs.map((x) => <option key={x.id} value={x.name} />)}</datalist>
-          <Field label="Posted on YouTube" type="date" value={d.publishedDate} onChange={(e) => set('publishedDate', e.target.value)} hint="Filled in automatically for videos read from the channel" />
+          <Field label="Posted on YouTube" type="date" value={d.publishedDate} onChange={(e) => set('publishedDate', e.target.value)} hint="Filled in for videos read from YouTube" />
           <Field label="Tags" value={d.tags} onChange={(e) => set('tags', e.target.value)} hint="Separate with commas" />
-          <div className={s.twoCol}>
+          <div className={s.stack}>
             <SelectField label="How sure are these details?" value={d.confidence} onChange={(e) => set('confidence', e.target.value as Confidence)}>
               <option value="high">Sure: I’ve checked them</option>
               <option value="medium">Fairly sure</option>

@@ -129,7 +129,16 @@ export interface Preferences {
   /** auto: Android intent handoff to the YouTube app; link: plain https link everywhere. */
   openMethod: OpenMethod
   preferredStyles: string[]
+  /** Intensities (1–5) you usually want; empty = no preference. */
+  preferredIntensities: number[]
+  /** Goals you practise for (Strength, Mobility…); empty = no preference. */
+  favouriteGoals: string[]
   preferredMaxDuration?: number
+  /** How Surprise Me picks when you open it. */
+  surpriseMode: 'match' | 'random' | 'different' | 'challenge' | 'recovery' | 'short' | 'rediscover' | 'comfort'
+  theme: 'system' | 'light' | 'dark'
+  /** Offer "Did you finish…?" when you come back from YouTube. */
+  askOnReturn: boolean
   weeklyTargetMinutes?: number
   view: 'grid' | 'list'
   welcomed: boolean
@@ -145,6 +154,11 @@ export const DEFAULT_PREFERENCES: Preferences = {
   defaultInstructor: 'Yoga With Adriene',
   openMethod: 'auto',
   preferredStyles: [],
+  preferredIntensities: [],
+  favouriteGoals: [],
+  surpriseMode: 'match',
+  theme: 'system',
+  askOnReturn: true,
   view: 'grid',
   welcomed: false,
 }

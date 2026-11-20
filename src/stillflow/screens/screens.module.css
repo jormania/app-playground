@@ -23,9 +23,9 @@
   gap: var(--space-md);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--space-md);
-  margin: 0 calc(-1 * var(--space-md));
-  padding: 0 var(--space-md) var(--space-sm);
+  scroll-padding-inline: var(--sf-gutter);
+  margin: 0 calc(-1 * var(--sf-gutter));
+  padding: 0 var(--sf-gutter) var(--space-sm);
   scrollbar-width: none;
 }
 .rail::-webkit-scrollbar { display: none; }
@@ -45,7 +45,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  padding: var(--space-lg) clamp(18px, 5vw, var(--space-lg));
 }
 
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
@@ -204,8 +204,10 @@
 
 .detail {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-xl);
 }
+.detail > * { min-width: 0; }
 @media (min-width: 900px) {
   .detail { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; }
 }
@@ -224,7 +226,7 @@
   cursor: pointer;
   margin-bottom: var(--space-md);
 }
-.detailTitle { font-size: clamp(1.7rem, 5vw, 2.3rem); margin: var(--space-xs) 0 var(--space-sm); }
+.detailTitle { font-size: clamp(1.6rem, 5vw, 2.3rem); margin: var(--space-xs) 0 var(--space-sm); overflow-wrap: anywhere; }
 .facts {
   display: flex;
   flex-wrap: wrap;
@@ -257,7 +259,7 @@
   background: var(--color-surface-2);
   font-size: var(--text-xs);
 }
-.description { white-space: pre-line; color: var(--color-ink); line-height: 1.7; }
+.description { white-space: pre-line; color: var(--color-ink); line-height: 1.7; overflow-wrap: anywhere; }
 .history { list-style: none; padding: 0; margin: 0; display: grid; }
 .history li {
   display: grid;
@@ -648,3 +650,87 @@
 .footBtn + .footBtn { border-left: 1px solid var(--color-border); }
 .footBtn:hover { background: var(--color-surface-2); }
 .footQuiet { color: var(--color-muted); }
+
+/* ── Settings rows ───────────────────────────────────────────────────── */
+
+.sectionLede { font-size: var(--text-sm); color: var(--color-muted); margin: calc(-1 * var(--space-xs)) 0 var(--space-lg); }
+.rows { display: grid; border-top: 1px solid var(--color-border); }
+.rows > * { border-bottom: 1px solid var(--color-border); }
+.rows > :last-child { border-bottom: 0; }
+.settingRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  cursor: default;
+}
+.settingText { display: grid; gap: 2px; min-width: 0; }
+.settingLabel { font-weight: var(--weight-medium); color: var(--color-ink); }
+.settingHint { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.45; }
+.settingInput {
+  height: 40px;
+  width: 5.5rem;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-2);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.settingInput:focus { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+input.settingInput:not([type='number']) { text-align: left; }
+.minutesBox { display: inline-flex; align-items: center; gap: 6px; }
+.unit { font-size: var(--text-sm); color: var(--color-muted); }
+.settingStack { grid-template-columns: 1fr; gap: var(--space-sm); }
+.settingStack > select, .settingStack > input { width: 100%; text-align: left; }
+.settingStack > [role='radiogroup'] { justify-self: start; }
+@media (min-width: 640px) {
+  /* With room, wide controls sit to the right like the rest. */
+  .settingStack { grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem); }
+}
+
+
+/* ── Intensity picker (editor) ───────────────────────────────────────── */
+
+.intensityPick { display: grid; gap: var(--space-xs); margin-bottom: var(--space-lg); }
+.intensityLegend {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+.intensitySteps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.intensityStep {
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  gap: 6px;
+  height: 72px;
+  padding: 8px 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+.intensityBar { width: 10px; border-radius: 3px; background: var(--color-border-2); transition: background var(--duration) var(--ease); }
+.intensityNum { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.intensityOn .intensityBar { background: var(--color-accent); }
+.intensityChosen { border-color: var(--color-accent); background: var(--sf-sage-soft); color: var(--color-ink); }
+.intensityCaption { font-size: var(--text-sm); color: var(--color-muted); min-height: 1.4em; }
+
+/* ── Screen transitions ──────────────────────────────────────────────── */
+
+/* A slow exhale between screens: the new one settles in from just below.
+   Only opacity and transform, so it costs nothing on a phone. */
+.screenIn { animation: screenIn 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .screenIn { animation: none; }
+}

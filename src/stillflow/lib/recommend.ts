@@ -194,6 +194,9 @@ function scoreMode(mode: SurpriseMode, s: Session, ctx: RecommendContext, p: Pro
       const prefs = ctx.preferences
       if (prefs.preferredStyles.some((x) => s.styles.includes(x))) { w += 1.5; parts.push('in a style you like') }
       if (prefs.preferredMaxDuration && s.durationMinutes <= prefs.preferredMaxDuration) { w += 1; parts.push(`within your usual ${prefs.preferredMaxDuration} minutes`) }
+      if (prefs.preferredIntensities?.includes(s.intensity)) { w += 1; parts.push('at an intensity you like') }
+      const goal = prefs.favouriteGoals?.find((g) => s.objectives.includes(g))
+      if (goal) { w += 1; parts.push(`for ${goal.toLowerCase()}, a goal you care about`) }
       if (rating >= 4) { w += rating / 2; parts.push('one you want to repeat') }
       // Variety: lean away from the body areas and aims that dominated the last month.
       const overlap = s.physicalFocus.filter((f) => recentFocus.includes(f)).length + s.objectives.filter((o) => recentObjectives.includes(o)).length

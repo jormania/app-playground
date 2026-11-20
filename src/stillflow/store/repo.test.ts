@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { memoryStore } from '../../shared/kvStore'
 import { DEMO_SESSIONS } from '../data/demo'
 import { DEFAULT_PREFERENCES } from '../domain/types'
-import { formatDay, formatMonth, newEntry, summarise, thisWeek, topValues, weekStart } from '../lib/practice'
+import { descriptionLead, formatDay, formatMonth, newEntry, summarise, thisWeek, topValues, weekStart } from '../lib/practice'
 import { StillflowRepo, isBackup } from './repo'
 
 const demo = DEMO_SESSIONS.slice(0, 3)
@@ -111,5 +111,14 @@ describe('dates for display', () => {
     expect(formatMonth('2024-01-22')).toMatch(/2024/)
     expect(formatDay(undefined)).toBe('')
     expect(formatDay('soon')).toBe('')
+  })
+})
+
+describe('description lead', () => {
+  it('keeps what comes before the channel divider and says there is more', () => {
+    const d = 'On day 21 we notice curiosity.\n\nLet me know how it goes!\n\n- - - - - - - - - - \n\nWELCOME to the channel https://www.youtube.com/user/x?sub_confirmation=1'
+    expect(descriptionLead(d)).toEqual({ lead: 'On day 21 we notice curiosity.\n\nLet me know how it goes!', rest: true })
+    expect(descriptionLead('Short and plain.')).toEqual({ lead: 'Short and plain.', rest: false })
+    expect(descriptionLead(undefined)).toEqual({ lead: '', rest: false })
   })
 })

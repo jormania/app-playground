@@ -9,12 +9,23 @@ import { CollectionSheet, CompleteSheet } from '../components/Sheets'
 import { ConfidenceNote, Empty, IntensityDots, SectionHead, RepeatRating, Thumb } from '../components/ui'
 import type { PracticeEntry } from '../domain/types'
 import { embedUrl } from '../lib/youtube'
-import { formatDay } from '../lib/practice'
+import { descriptionLead, formatDay } from '../lib/practice'
 import { repeatLabel } from '../domain/vocabulary'
 import s from './screens.module.css'
 
 function formatDate(date: string) {
   return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function Description({ text }: { text: string }) {
+  const [full, setFull] = useState(false)
+  const { lead, rest } = descriptionLead(text)
+  return (
+    <>
+      <p className={s.description}>{full ? text : lead}</p>
+      {rest && <button type="button" className={s.textLink} style={{ marginTop: 'var(--space-xs)' }} onClick={() => setFull((v) => !v)}>{full ? 'Show less' : 'Show the full description'}</button>}
+    </>
+  )
 }
 
 export function SessionDetail({ id }: { id: string }) {
@@ -147,7 +158,7 @@ export function SessionDetail({ id }: { id: string }) {
           {session.description && (
             <>
               <SectionHead title="About" />
-              <p className={s.description}>{session.description}</p>
+              <Description text={session.description} />
             </>
           )}
 

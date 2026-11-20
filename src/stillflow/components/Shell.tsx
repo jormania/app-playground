@@ -35,7 +35,7 @@ function useOnline() {
 }
 
 function ReturnBanner() {
-  const { pending, byId, clearPending, seriesDefs, seriesProgress, saveProgress, toast } = useStillflow()
+  const { pending, byId, clearPending, seriesDefs, seriesProgress, saveProgress, toast, preferences } = useStillflow()
   const [now, setNow] = useState(() => Date.now())
   const [completing, setCompleting] = useState(false)
 
@@ -59,7 +59,7 @@ function ReturnBanner() {
   // A launch whose session (or series) has since gone can never be answered.
   useEffect(() => { if (orphaned) clearPending() }, [orphaned, clearPending])
 
-  if (!pending || orphaned) return null
+  if (!pending || orphaned || !preferences.askOnReturn) return null
   if (now - pending.at < RETURN_AFTER_MS && !completing) return null
 
   const dayLabel = def && pending.day ? `${def.name} ${def.unit} ${pending.day}` : null

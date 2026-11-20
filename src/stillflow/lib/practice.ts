@@ -14,6 +14,19 @@ export function formatMonth(date: string | undefined): string {
   return new Date(`${date.slice(0, 7)}-15T12:00:00`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
 }
 
+/**
+ * The part of a YouTube description worth reading on the session page:
+ * everything before the channel's divider ("- - - - - -"), which is where
+ * Yoga With Adriene's subscribe links and disclaimer begin. The full text is
+ * kept and can be shown on request.
+ */
+export function descriptionLead(text: string | undefined): { lead: string; rest: boolean } {
+  if (!text) return { lead: '', rest: false }
+  const m = /\n\s*(?:-\s*){4,}/.exec(text)
+  if (!m || m.index < 20) return { lead: text.trim(), rest: false }
+  return { lead: text.slice(0, m.index).trim(), rest: true }
+}
+
 export function localDate(d = new Date()): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')

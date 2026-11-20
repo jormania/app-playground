@@ -2,6 +2,7 @@ import { Button } from '../ds'
 import { useRoute, type Route } from './app/router'
 import { StateProvider, useStillflow } from './app/state'
 import { Shell } from './components/Shell'
+import { useTheme } from './app/theme'
 import { Wordmark } from './components/ui'
 import { CollectionDetail, Collections } from './screens/Collections'
 import { Discover } from './screens/Discover'
@@ -14,6 +15,7 @@ import { Surprise } from './screens/Surprise'
 import { SeriesDetail, SeriesList } from './screens/Series'
 import type { StillflowRepo } from './store/repo'
 import styles from './App.module.css'
+import screenStyles from './screens/screens.module.css'
 
 function Screen({ route }: { route: Route }) {
   switch (route.name) {
@@ -29,6 +31,11 @@ function Screen({ route }: { route: Route }) {
     case 'settings': return <Settings />
     case 'editor': return <SessionEditor key={route.id ?? 'new'} id={route.id} />
   }
+}
+
+/** One key per screen (and per session, series or collection), so each arrival animates. */
+function screenKey(route: Route): string {
+  return 'id' in route && route.id ? `${route.name}:${route.id}` : route.name
 }
 
 function Welcome() {
@@ -55,11 +62,14 @@ function Welcome() {
 function Root() {
   const route = useRoute()
   const { ready, preferences } = useStillflow()
+  useTheme(preferences.theme)
   if (!ready) return <div className={styles.loading} aria-busy="true"><Wordmark /></div>
   if (!preferences.welcomed) return <Welcome />
   return (
     <Shell route={route}>
-      <Screen route={route} />
+      <div key={screenKey(route)} className={screenStyles.screenIn}>
+        <Screen route={route} />
+      </div>
     </Shell>
   )
 }
