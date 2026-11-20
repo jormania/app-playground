@@ -2706,6 +2706,109 @@ unmount.
 `src/shared/useHashRoute.ts` taking the message type as an argument. File it
 when both apps' tests exist, since those tests are what prove that move.
 
+## R-052 — Silva's `richText.ts` merged the write side; the read side is still four identical `plainText` copies · `refactor` · `open`
+
+**Impact:** none visible. Four private copies of the same five lines become one
+export beside the encoder that already replaced their write-side twins.
+
+Found on the Friday read, 2026-11-20. `src/silva/lib/richText.ts` exists because
+Silva's four mappings each had *"its own identical `richText` helper"* and they
+needed to stop drifting apart. Its header says so. The reverse helper was left
+behind: `src/silva/lib/notion.ts:70`, `sources.ts:32`, `loci.ts:33` and
+`paths.ts:42` each define a private `plainText(runs: unknown): string`, and the
+four bodies are byte-identical (`Array.isArray(runs) ? runs.map(r => r?.plain_text || '').join('') : ''`).
+
+The move: export `plainText` from `richText.ts`, delete the four copies, and import
+it in each. Update the header comment's "in one place" claim so it covers reading
+too. Keep the `|| ''` exactly (it differs from `src/shared/findings.js`'s
+`richTextToPlain`, which falls back to `text.content`), so don't reconcile with the
+shared one in this run. The four mappings' existing tests are the proof. Add a
+`plainText` case to the existing `src/silva/lib/richText.test.ts`: a non-array is
+`''`, and a run with no `plain_text` contributes `''`. Strict TS, so
+`npm run typecheck` covers it.
+
+## R-053 — `src/shared/notify/` is imported by seven apps; three of its five modules have no test · `modernise` · `open`
+
+**Impact:** none visible. First coverage under the feature detection that decides
+whether a reminder can be scheduled at all, in every app that offers one.
+
+Found on the Friday read, 2026-11-20. `src/shared/notify/` has tests for
+`dayKey.ts`, `schedule.ts` and `useDiagnosticsReveal.ts` only. `permission.ts`
+(38 lines), `periodicSync.ts` (49) and `diagnostics.ts` (30) have none. They are
+imported by Daily Stoic, Journal, KeyPath, Marquee, Sol Odyssey, Touch Grass and
+WhereItWent (`grep -rln 'shared/notify/' src`). The two component tests that reach
+them, `src/daily-stoic/Settings.test.tsx` and
+`src/where-it-went/components/ReminderSettings.test.jsx`, mock them away.
+
+Worth pinning, with `vi.stubGlobal` for `Notification`, `navigator` and
+`PeriodicSyncManager`:
+
+- `permission.ts`: with no `Notification`, `notificationPermission()` is `'denied'`
+  and `requestPermission()` resolves `'denied'` without throwing.
+  `requestPermission()` only calls `Notification.requestPermission` when the
+  permission is `'default'`. `capabilities().supported` needs both halves.
+- `periodicSync.ts`: `registerPeriodicSync` does nothing without a service worker,
+  without `reg.periodicSync`, or when the permission query says anything but
+  `'granted'`. It **still registers when `permissions.query` throws** (an
+  unsupported permission name). That branch is the one a tidy-up would delete.
+  A rejected `register` never escapes. `getPeriodicSyncTags` is `[]` on every
+  failure path.
+- `diagnostics.ts`: `permission` is `'n/a'` without `Notification`, and `values`
+  maps each requested key to what the store returned. Mock `./idbKv` here.
+
+Leave `idbKv.ts` out of this item. It needs a fake IndexedDB, and the repo has no
+`fake-indexeddb` dev dependency. Adding one is a separate decision. Files:
+`src/shared/notify/permission.test.ts`, `periodicSync.test.ts`,
+`diagnostics.test.ts`. No production code changes. Mutation-check by deleting the
+inner `try`/`catch` around `permissions.query`.
+
+## R-054 — `src/shared/fonts/` is missing from both catalogues of `src/shared/` · `modernise` · `open`
+
+**Impact:** none visible. An agent that reads the shared catalogue before adding a
+font finds the four subset stylesheets R-027 built, instead of writing a fifth.
+
+Found on the Friday read, 2026-11-20. R-027 left four hand-subset stylesheets in
+`src/shared/fonts/` (`alegreya.css`, `fraunces.css`, `inter.css`,
+`jetbrains-mono.css`), imported from 13 places: eleven entry points plus Daily Stoic's and Sol
+Odyssey's own `styles/fonts.css` (`grep -rln shared/fonts src`). `CLAUDE.md`'s "Today it has:" list of
+`src/shared/` names 19 entries and not `fonts/`. `src/shared/CLAUDE.md` has a
+bullet for every module except this one (`grep -c fonts src/shared/CLAUDE.md` is
+`0`). Only `DEPLOY.md:51` mentions it, which is the right home for *how* to
+subset. The catalogue is where *"before writing a helper, look there"* sends you.
+
+The change: add `fonts/` to `CLAUDE.md`'s list, and give `src/shared/CLAUDE.md` a
+one-line bullet that names the four families and points to `DEPLOY.md` for the
+rule. Docs only. Don't restate the subsetting rule in either place, because
+`DEPLOY.md` owns it.
+
+## R-055 — Click Deck spells its eight `localStorage` keys out as literals in five files · `refactor` · `open`
+
+**Impact:** none visible. A typo in one of twenty-four string literals stops being
+able to fork a setting silently between the Settings modal and the code that reads
+it.
+
+Found on the Friday read, 2026-11-20. Click Deck reads and writes `cd_notion_token`,
+`cd_notion_db`, `cd_studios_db_id`, `cd_theme`, `cd_crt_effect`,
+`cd_random_weight`, `cd_sort_by` and `cd_status_filter` with raw
+`localStorage.getItem('cd_…')` / `setItem` calls. There are 24 of them across
+`src/click-deck/App.jsx`, `components/SettingsModal.jsx`,
+`components/RandomGameModal.jsx`, `lib/mcp-connector.js` and
+`lib/studios-connector.js`. The token alone is read in three files, and
+`mcp-connector.js:5` and `studios-connector.js:18` each define the same private
+`getToken()`.
+
+The move: one `src/click-deck/lib/settingsKeys.js` that exports a frozen `KEYS`
+object, plus `getToken()`. Replace every literal with `KEYS.*` and both private
+`getToken`s with the import. **Do not route these through
+`src/shared/storage.ts`.** Its `readJson` JSON-parses, while Click Deck stores raw
+strings (`'true'`, a bare token). Switching would change what an existing install
+reads back, so it isn't a refactor. Values, defaults (`|| 'union'`,
+`=== 'true'`) and call sites stay as they are. The three test files that set
+`cd_notion_token` directly (`lib/mcp-connector.test.js`,
+`lib/studios-connector.test.js`, `components/SettingsModal.test.jsx`) keep their
+literals: they pin the stored key name, and that is the point. Add a test that
+`KEYS` values equal today's strings.
+
 ---
 
 ## Proposed
@@ -2738,3 +2841,27 @@ by all ten calls. Take R-040 first: its test pins today's behaviour. This item
 would then add one case, a `setActionHandler` that throws for `'stop'`, and the
 hook should still set the other four. No screenshots needed, since nothing on
 screen changes on a browser that supports every action.
+
+## P-006 — A Sol Odyssey reflection over 2000 characters fails to save · `qol` · `proposed`
+
+**Impact:** a long weekly reflection, check-in, charter field or harvest note saves
+instead of being rejected by Notion. Below 2000 characters, nothing changes.
+
+Proposed on the Friday read, 2026-11-20. This is the bug `src/silva/lib/richText.ts`'s
+header describes and fixed for Silva: Notion rejects the whole write with a 400
+when one rich-text element's `content` exceeds 2000 characters. Sol Odyssey has
+four private, identical `richText(value)` helpers that each emit **one unbounded
+element**: `src/sol-odyssey/lib/charter.ts:175`, `reflections.ts:98`,
+`checkins.ts:123` and `harvest.ts:50`. They feed free-text fields like
+`Break Points`, `Risk + Plan`, `Outcome Picture` and Harvest `Notes`, and no input
+in the app sets a `maxLength`. It is worse offline: `lib/sync.ts`'s `flushQueue`
+stops at the first failure and keeps the item, so a queued over-long reflection
+would sit at the head of the queue and block every write behind it.
+
+The fix: one `lib/richText.ts` in Sol Odyssey that keeps today's `.trim()` and
+chunks at 2000 characters, as Silva's does. The four helpers become imports. It
+stays inside the app: Sol Odyssey's `CLAUDE.md` makes the directory
+self-contained, so read it and `DESIGN.md` first. Test: a 4500-character value
+writes three elements, and the empty and whitespace-only cases still write `[]`.
+No screenshots, since nothing on screen changes. It is filed as `qol`, not
+`refactor`, because a save that failed now succeeds.
