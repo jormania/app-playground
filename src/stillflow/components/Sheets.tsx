@@ -51,7 +51,7 @@ export function CompleteSheet({
         <TextAreaField label="Note (optional)" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
           placeholder="What you noticed, what felt good" />
         <ModalFooter onCancel={onClose} saveLabel={entry ? 'Save' : 'Record practice'}
-          onDelete={entry ? () => { deletePractice(entry.id); toast('Entry deleted'); onClose() } : undefined} />
+          onDelete={entry ? () => { deletePractice(entry.id); onClose() } : undefined} />
       </form>
     </Modal>
   )

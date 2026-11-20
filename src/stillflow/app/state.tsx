@@ -50,6 +50,8 @@ interface StateValue extends Snapshot {
   setUserData: (data: UserSessionData) => void
   savePractice: (entry: PracticeEntry) => void
   deletePractice: (id: string) => void
+  /** Several entries at once, with one toast and one Undo for all of them. */
+  deletePractices: (ids: string[], message: string) => void
   saveCollection: (c: UserCollection) => void
   deleteCollection: (id: string) => void
   savePreferences: (p: Preferences) => void
@@ -204,6 +206,19 @@ export function StateProvider({ children, repo: injected }: { children: ReactNod
             },
           })
         }
+      },
+      deletePractices: (ids, message) => {
+        const gone = snap.history.filter((h) => ids.includes(h.id))
+        if (!gone.length) return
+        setSnap((s) => ({ ...s, history: s.history.filter((h) => !ids.includes(h.id)) }))
+        for (const e of gone) write(repo.deleteHistory(e.id))
+        toast(message, {
+          actionLabel: 'Undo',
+          onAction: () => {
+            setSnap((s) => ({ ...s, history: [...gone, ...s.history.filter((h) => !ids.includes(h.id))].sort(byNewest) }))
+            for (const e of gone) write(repo.putHistory(e))
+          },
+        })
       },
       saveCollection: (c) => {
         setSnap((s) => {

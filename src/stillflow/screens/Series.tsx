@@ -35,7 +35,7 @@ export function useSeries(def: SeriesDef) {
  * can only be ticked on the series itself.
  */
 export function useDayActions(def: SeriesDef) {
-  const { saveProgress, savePractice, deletePractice, history, toast } = useStillflow()
+  const { saveProgress, savePractice, deletePractices, history, toast } = useStillflow()
   const { progress, linked } = useSeries(def)
   const mark = (day: number) => {
     if (!progress || progress.status !== 'active') return
@@ -53,7 +53,8 @@ export function useDayActions(def: SeriesDef) {
     const session = linked.get(day)
     if (!session) return
     // Undo the practice that made this day count in the current run.
-    for (const h of history.filter((e) => e.sessionId === session.id && e.date >= progress.startedAt)) deletePractice(h.id)
+    const ids = history.filter((e) => e.sessionId === session.id && e.date >= progress.startedAt).map((e) => e.id)
+    deletePractices(ids, ids.length > 1 ? `${def.unit} ${day} unmarked: ${ids.length} practices removed` : `${def.unit} ${day} unmarked`)
   }
   return { mark, unmark }
 }

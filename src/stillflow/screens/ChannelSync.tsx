@@ -70,7 +70,7 @@ export function ChannelSync({ fetchPage = apiFetchPage() }: { fetchPage?: FetchP
     }
   }
 
-  const age = last ? daysBetween(last.at.slice(0, 10), localDate()) : null
+  const age = last ? daysBetween(localDate(new Date(last.at)), localDate()) : null
 
   return (
     <section className={s.panel}>

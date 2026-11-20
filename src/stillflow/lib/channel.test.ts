@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { normaliseRecord, previewImport } from './importExport'
 import {
-  isPractice, minutesFromTitle, readTitle, scanChannel, seriesFromTitle, videoToRecord, type ChannelPage, type ChannelVideo,
+  isPractice, minutesFromTitle, publishedDay, readTitle, scanChannel, seriesFromTitle, videoToRecord, type ChannelPage, type ChannelVideo,
 } from './channel'
 
 const v = (id: string, over: Partial<ChannelVideo> = {}): ChannelVideo => ({
@@ -117,5 +117,15 @@ describe('scanning the channel', () => {
 
   it('passes errors through for the screen to show', async () => {
     await expect(scanChannel({ mode: 'all', knownIds: new Set(), fetchPage: async () => { throw new Error('quota') } })).rejects.toThrow('quota')
+  })
+})
+
+describe('the day a video went up', () => {
+  it('is the Bucharest calendar day, not the UTC one', () => {
+    // 23:30 UTC on 1 Jan is 01:30 on 2 Jan in Bucharest (tests run on TZ=Europe/Bucharest).
+    expect(publishedDay('2026-01-01T23:30:00Z')).toBe('2026-01-02')
+    expect(publishedDay('2026-01-01T08:00:00Z')).toBe('2026-01-01')
+    expect(publishedDay(null)).toBeUndefined()
+    expect(publishedDay('nonsense')).toBeUndefined()
   })
 })

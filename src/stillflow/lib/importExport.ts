@@ -274,11 +274,23 @@ export function planImport(preview: ImportPreview, existing: Session[], mode: Du
   return plan
 }
 
+/** What a guess may not overwrite once you have reviewed a session yourself. */
+const CLASSIFICATION_KEYS = new Set([
+  'styles', 'physicalFocus', 'objectives', 'timeOfDay', 'experienceLevel', 'intensity',
+  'series', 'seriesDay', 'classificationConfidence', 'classificationSource',
+])
+
 function mergeSession(current: Session, incoming: Session): Session {
   const merged: Session = { ...current }
   const target = merged as unknown as Record<string, unknown>
+  // A guess read from a title never beats what you set by hand.
+  const keepYours = incoming.classificationSource === 'inferred' && current.classificationSource !== 'inferred'
+  const seriesByHand = current.tags.includes('series-by-hand')
   for (const [k, v] of Object.entries(incoming)) {
     if (k === 'id' || k === 'dateAdded') continue
+    if (keepYours && CLASSIFICATION_KEYS.has(k)) continue
+    if (seriesByHand && (k === 'series' || k === 'seriesDay')) continue
+    if (k === 'tags') { merged.tags = [...new Set([...current.tags, ...incoming.tags])]; continue }
     const empty = v == null || v === '' || (Array.isArray(v) && v.length === 0) || (k === 'intensity' && v === 0)
     if (!empty) target[k] = v
   }

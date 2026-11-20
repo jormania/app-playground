@@ -252,7 +252,7 @@ export function videoToRecord(v: ChannelVideo, instructor = YWA_CHANNEL.name): R
     instructor,
     youtubeVideoId: v.videoId,
     durationMinutes: minutes ?? '',
-    publishedDate: v.publishedAt ? v.publishedAt.slice(0, 10) : undefined,
+    publishedDate: publishedDay(v.publishedAt),
     ...reading,
     series: series?.series,
     seriesDay: series?.day,
@@ -260,6 +260,14 @@ export function videoToRecord(v: ChannelVideo, instructor = YWA_CHANNEL.name): R
     classificationConfidence: 'low',
     classificationSource: 'inferred',
   }
+}
+
+/** The day a video went up, on your calendar rather than UTC's (YouTube shows it the same way). */
+export function publishedDay(iso: string | null): string | undefined {
+  if (!iso) return undefined
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(0, 10) : undefined
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /** Shorts and anything too short to be a practice; videos with no duration at all are kept for review. */

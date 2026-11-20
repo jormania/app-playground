@@ -132,6 +132,26 @@ describe('planImport', () => {
     expect(plan.updated).toBe(1)
   })
 
+  it('update never lets a title guess overwrite what you reviewed, nor drop your tags', () => {
+    const mine = [existing('mine', A, { tags: ['series-by-hand', 'favourite-teacher'], series: 'MOVE', seriesDay: 3 })]
+    const guess = previewImport(JSON.stringify([{
+      title: 'From the channel', youtubeVideoId: A, durationMinutes: 25, styles: ['Vinyasa'], intensity: 4,
+      series: 'CENTER', seriesDay: 9, tags: ['from-channel'], classificationConfidence: 'low', classificationSource: 'inferred',
+    }]), 'json', mine, NOW)
+    const out = planImport(guess, mine, 'update').write[0]
+    expect(out).toMatchObject({
+      title: 'From the channel', durationMinutes: 25, styles: ['Hatha'], intensity: 2,
+      series: 'MOVE', seriesDay: 3, classificationConfidence: 'high', classificationSource: 'manual',
+    })
+    expect(out.tags).toEqual(['series-by-hand', 'favourite-teacher', 'from-channel'])
+  })
+
+  it('update still refreshes a session that is itself only a guess', () => {
+    const guessed = [existing('g', A, { classificationSource: 'inferred', classificationConfidence: 'low', styles: [] })]
+    const again = previewImport(JSON.stringify([{ title: 'T', youtubeVideoId: A, durationMinutes: 20, styles: ['Yin Yoga'], classificationSource: 'inferred', classificationConfidence: 'low' }]), 'json', guessed, NOW)
+    expect(planImport(again, guessed, 'update').write[0].styles).toEqual(['Yin Yoga'])
+  })
+
   it('replace takes the incoming record but keeps the existing id', () => {
     const plan = planImport(preview, catalogue, 'replace')
     const replaced = plan.write.find((s) => s.id === 'mine')!
