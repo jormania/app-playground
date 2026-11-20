@@ -216,7 +216,10 @@ export function surprise(
   mode: SurpriseMode, c: Constraints, ctx: RecommendContext, random: () => number = Math.random,
 ): Pick | null {
   const p = buildProfile(ctx.sessions, ctx.history, ctx.today)
-  const scored = ctx.sessions
+  // Once there's a real library, demo records stop being proposed (they stay browsable).
+  const real = ctx.sessions.filter((s) => !s.isDemo)
+  const candidates = real.length >= 10 ? real : ctx.sessions
+  const scored = candidates
     .filter((s) => passesConstraints(s, c, ctx, p))
     .map((s) => scoreMode(mode, s, ctx, p, c))
     .filter((x): x is Scored => !!x && x.w > 0)

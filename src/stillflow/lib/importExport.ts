@@ -113,26 +113,26 @@ export function normaliseRecord(
   const warnings: string[] = []
 
   const title = str(raw.title)
-  if (!title) errors.push('Missing title')
+  if (!title) errors.push('No title')
 
   const isDemo = raw.isDemo === true || str(raw.isDemo).toLowerCase() === 'true'
   const videoId = parseVideoId(str(raw.youtubeVideoId)) ?? parseVideoId(str(raw.youtubeUrl))
   if (!videoId && !isDemo) {
-    errors.push(str(raw.youtubeUrl) || str(raw.youtubeVideoId) ? 'YouTube URL or video id is not valid' : 'Missing YouTube URL or video id')
+    errors.push(str(raw.youtubeUrl) || str(raw.youtubeVideoId) ? 'This isn’t a YouTube video link' : 'No YouTube link')
   }
   if (videoId && str(raw.youtubeVideoId) && str(raw.youtubeUrl)) {
     const fromUrl = parseVideoId(str(raw.youtubeUrl))
-    if (fromUrl && fromUrl !== videoId) errors.push('youtubeUrl and youtubeVideoId point to different videos')
+    if (fromUrl && fromUrl !== videoId) errors.push('The link and the video id point to different videos')
   }
 
   const duration = parseDuration(raw.durationMinutes ?? raw.duration)
-  if (duration == null) errors.push('Missing or unreadable duration')
+  if (duration == null) errors.push('No length: add minutes, like 22 or 22:30')
 
   let intensity = Number(str(raw.intensity) || 0)
   if (!Number.isInteger(intensity) || intensity < 0 || intensity > 5) {
-    warnings.push(`Intensity "${str(raw.intensity)}" is not 1–5; left unclassified`)
+    warnings.push(`Intensity "${str(raw.intensity)}" isn’t 1–5, so it’s left empty`)
     intensity = 0
-  } else if (intensity === 0) warnings.push('No intensity; left unclassified')
+  } else if (intensity === 0) warnings.push('No intensity yet')
 
   const lists = {} as Record<ListField, string[]>
   for (const field of LIST_FIELDS) {
@@ -140,17 +140,17 @@ export function normaliseRecord(
     const vocab = VOCAB[field]
     lists[field] = vocab ? values.map((v) => canon(vocab, v) ?? v) : values
     const unknown = vocab ? values.filter((v) => !canon(vocab, v)) : []
-    if (unknown.length) warnings.push(`Unrecognised ${field}: ${unknown.join(', ')} (kept)`)
+    if (unknown.length) warnings.push(`Kept, though Stillflow doesn’t know it: ${unknown.join(', ')}`)
   }
   if (!lists.styles.length) warnings.push('No style yet')
-  if (!lists.physicalFocus.length) warnings.push('No physical focus yet')
+  if (!lists.physicalFocus.length) warnings.push('No body area yet')
 
   const seriesDayRaw = str(raw.seriesDay)
   let seriesDay: number | null = null
   if (seriesDayRaw) {
     const n = Number(seriesDayRaw)
     if (Number.isInteger(n) && n >= 0 && n <= 366) seriesDay = n || null
-    else warnings.push(`Series day "${seriesDayRaw}" is not a whole number; left out`)
+    else warnings.push(`Series day "${seriesDayRaw}" isn’t a whole number, so it’s left out`)
   }
 
   let instructor = str(raw.instructor)
@@ -164,7 +164,7 @@ export function normaliseRecord(
   const confidence: Confidence = (['high', 'medium', 'low'] as const).find((c) => c === confidenceRaw) ?? 'low'
   const sourceRaw = str(raw.classificationSource).toLowerCase()
   const source: ClassificationSource = (['manual', 'verified', 'inferred'] as const).find((c) => c === sourceRaw) ?? 'inferred'
-  if (confidenceRaw && confidence !== confidenceRaw) warnings.push(`Confidence "${confidenceRaw}" not recognised; set to low`)
+  if (confidenceRaw && confidence !== confidenceRaw) warnings.push(`Confidence "${confidenceRaw}" isn’t high, medium or low, so it’s set to low`)
 
   const extra: Record<string, string> = {}
   if (raw.extra && typeof raw.extra === 'object' && !Array.isArray(raw.extra)) {
@@ -173,7 +173,7 @@ export function normaliseRecord(
   for (const [k, v] of Object.entries(raw)) {
     if (!KNOWN.has(k) && k !== 'duration' && str(v)) extra[k] = typeof v === 'string' ? v : JSON.stringify(v)
   }
-  if (Object.keys(extra).length) warnings.push(`Kept ${Object.keys(extra).length} extra field(s): ${Object.keys(extra).join(', ')}`)
+  if (Object.keys(extra).length) warnings.push(`Also kept: ${Object.keys(extra).join(', ')}`)
 
   if (errors.length) return { errors, warnings }
 
@@ -238,7 +238,7 @@ export function previewImport(
     const key = videoKey(session)
     const earlier = seen.get(key)
     if (earlier != null) {
-      return { index, title: session.title, status: 'invalid', errors: [`Same video as row ${earlier + 1} in this file`], warnings, session, duplicateInFile: earlier }
+      return { index, title: session.title, status: 'invalid', errors: [`Same video as row ${earlier + 1}, so it’s skipped`], warnings, session, duplicateInFile: earlier }
     }
     seen.set(key, index)
     const duplicateOf = byVideo.get(key)

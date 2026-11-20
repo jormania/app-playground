@@ -9,6 +9,30 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 4 — 2026-11-20
+
+An audit with the real channel loaded (773 practices), a redesigned progress panel and a
+copy pass.
+
+- **Posted on YouTube:** each video's publish date shows on its page and on cards. Explore
+  sorts by Newest or Oldest on YouTube, and opens newest first. You can set the date by hand
+  in the editor.
+- **Progress panel:** a progress ring with the count, the start date and a pace pill. Then an
+  Up next card naming the day's theme from its title ("Day 2 · Notice"), its length, and
+  Start and Mark done side by side as equal-sized buttons. Complete early and Abandon sit
+  in a footer.
+- **Audit fixes:**
+  - Series re-reading now runs on every load, so sessions imported later (from a file or a
+    backup) are placed too. It skips any session whose series you set by hand
+    (`series-by-hand` tag).
+  - Pace no longer says you're behind on the day you start.
+  - Demo records stop being suggested once ten real sessions exist.
+  - Settings' session list is capped at 100 rows (type to narrow it).
+- **Copy:** every screen's heading now names the screen. Jargon is gone: "Android intent",
+  "Confidence: inferred", "Plain https link". The same idea now has the same name everywhere
+  (Body area, Goal, Level, Length). Import problems say how to fix them, for example
+  "No length: add minutes, like 22 or 22:30".
+
 ## Release 3 — 2026-11-20
 
 - **Series days are read correctly from every real title.** The first reader expected one

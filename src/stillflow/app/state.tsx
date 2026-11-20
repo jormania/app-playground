@@ -92,7 +92,7 @@ export function StateProvider({ children, repo: injected }: { children: ReactNod
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
   const [ready, setReady] = useState(false)
   const [filters, setFiltersState] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...readSessionJson<Partial<Filters>>(FILTERS_KEY, {}) }))
-  const [sort, setSortState] = useState<SortKey>(() => readSessionJson<SortKey>(SORT_KEY, 'recent'))
+  const [sort, setSortState] = useState<SortKey>(() => readSessionJson<SortKey>(SORT_KEY, 'postedNew'))
   const [pending, setPending] = useState<PendingLaunch | null>(readPending)
   const [persisted, setPersisted] = useState<boolean | null>(null)
   const { toasts, push, dismiss } = useToastStack()

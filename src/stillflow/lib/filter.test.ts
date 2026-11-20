@@ -100,3 +100,14 @@ describe('sorting', () => {
     expect(sortSessions(all, 'random', ctx, 7)).toHaveLength(4)
   })
 })
+
+describe('posted on YouTube', () => {
+  it('sorts newest and oldest by publish date, undated last both ways', () => {
+    const a = session('a', { publishedDate: '2015-01-02' })
+    const b = session('b', { publishedDate: '2024-01-22' })
+    const c = session('c')
+    const ctx2 = { userData: {}, lastPractised: {} }
+    expect(sortSessions([a, b, c], 'postedNew', ctx2).map((s) => s.id)).toEqual(['b', 'a', 'c'])
+    expect(sortSessions([a, b, c], 'postedOld', ctx2).map((s) => s.id)).toEqual(['a', 'b', 'c'])
+  })
+})

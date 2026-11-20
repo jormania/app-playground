@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BUILT_IN_SERIES } from '../data/series'
 import type { PracticeEntry, SeriesDef, SeriesProgress, Session } from '../domain/types'
 import {
-  belongsTo, customSeries, dayOf, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace,
+  belongsTo, customSeries, dayTheme, dayOf, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace,
   seriesOfSession, startProgress, toggleDay,
 } from './series'
 
@@ -96,9 +96,11 @@ describe('progress through a run', () => {
 describe('pace', () => {
   const p = startProgress(move, '2026-11-01')
   it('is gentle: on rhythm, one behind, several behind, all done', () => {
+    expect(pace(move, p, 0, '2026-11-01').label).toBe('On your rhythm') // the first day isn't over yet
     expect(pace(move, p, 1, '2026-11-01').label).toBe('On your rhythm')
-    expect(pace(move, p, 1, '2026-11-02').label).toMatch(/One day to catch up/)
-    expect(pace(move, p, 2, '2026-11-08').label).toMatch(/^6 days behind/)
+    expect(pace(move, p, 1, '2026-11-02').label).toBe('On your rhythm')
+    expect(pace(move, p, 1, '2026-11-03').label).toMatch(/One day to catch up/)
+    expect(pace(move, p, 2, '2026-11-08').label).toMatch(/^5 days behind/)
     expect(pace(move, p, 30, '2026-12-20').label).toBe('Every practice done')
   })
 
@@ -107,12 +109,28 @@ describe('pace', () => {
     const w = startProgress(ret, '2026-11-01')
     expect(pace(ret, w, 1, '2026-11-07').expected).toBe(1)
     expect(pace(ret, w, 1, '2026-11-08').expected).toBe(2)
-    expect(pace(ret, w, 1, '2026-11-08').label).toMatch(/One week/)
+    expect(pace(ret, w, 0, '2026-11-08').label).toMatch(/One week/)
   })
 
   it('crosses a month end and the October DST change without losing a day', () => {
     const q = startProgress(move, '2026-10-24')
     expect(pace(move, q, 0, '2026-10-26').expected).toBe(3)
+  })
+})
+
+describe('day names from real titles', () => {
+  const def = (name: string) => BUILT_IN_SERIES.find((d) => d.name === name)!
+  it.each([
+    ['Flow - Day 2 - Notice', 'FLOW', 'Notice'],
+    ['Day 2 - Arrive | BREATH - A 30 Day Yoga Journey', 'BREATH', 'Arrive'],
+    ['TRUE - Day 15 - BELIEVE  |  Yoga With Adriene', 'TRUE', 'BELIEVE'],
+    ['Yoga Camp Day 1 - I Accept', 'Yoga Camp', 'I Accept'],
+    ['Day 4 - Yoga For Your Back - 30 Days of Yoga', '30 Days of Yoga', 'Yoga For Your Back'],
+    ['Return - 2 - Ground', 'RETURN', 'Ground'],
+    ['Unwind  -  Home - Day 25  |  30 Days of Yoga', 'HOME', 'Unwind'],
+    ['Prana - Day 3', 'PRANA', ''],
+  ])('%s → %s', (title, name, theme) => {
+    expect(dayTheme(title, def(name))).toBe(theme)
   })
 })
 

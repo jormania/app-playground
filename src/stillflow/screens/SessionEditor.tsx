@@ -29,6 +29,7 @@ interface Draft {
   equipment: string[]
   series: string
   seriesDay: string
+  publishedDate: string
   tags: string
   confidence: Confidence
   source: ClassificationSource
@@ -51,6 +52,7 @@ function toDraft(x: Session | undefined, instructor: string): Draft {
     equipment: x?.equipment ?? [],
     series: x?.series ?? '',
     seriesDay: x?.seriesDay ? String(x.seriesDay) : '',
+    publishedDate: x?.publishedDate?.slice(0, 10) ?? '',
     tags: (x?.tags ?? []).join(', '),
     // Something you type in yourself is a manual classification.
     confidence: x?.classificationConfidence ?? 'high',
@@ -85,11 +87,16 @@ export function SessionEditor({ id }: { id?: string }) {
       experienceLevel: d.experienceLevel, timeOfDay: d.timeOfDay, equipment: d.equipment,
       series: d.series,
       seriesDay: d.seriesDay,
-      tags: d.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      tags: [
+        ...d.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        // Your own series/day is never overwritten by the channel title reader.
+        ...(existing && (d.series !== (existing.series ?? '') || d.seriesDay !== (existing.seriesDay ? String(existing.seriesDay) : '')) &&
+          !d.tags.includes('series-by-hand') ? ['series-by-hand'] : []),
+      ],
       classificationConfidence: d.confidence,
       classificationSource: d.source,
       dateAdded: existing?.dateAdded,
-      publishedDate: existing?.publishedDate,
+      publishedDate: d.publishedDate,
       thumbnailUrl: existing?.thumbnailUrl && existing.youtubeVideoId === videoId ? existing.thumbnailUrl : undefined,
       extra: existing?.extra,
     }, new Date().toISOString(), preferences.defaultInstructor)
@@ -118,7 +125,7 @@ export function SessionEditor({ id }: { id?: string }) {
       <header>
         <p className={s.kicker}>Catalogue</p>
         <h1 className={s.pageTitle}>{existing ? 'Edit session' : 'Add a session'}</h1>
-        <p className={s.lede}>Only record what you know. Leave anything unsure empty; it shows as not classified rather than guessed.</p>
+        <p className={s.lede}>Fill in what you know and leave the rest empty. Empty fields show as “not set” rather than a guess.</p>
       </header>
 
       {errors.length > 0 && (
@@ -139,7 +146,7 @@ export function SessionEditor({ id }: { id?: string }) {
           )}
           <Field label="Title" required value={d.title} onChange={(e) => set('title', e.target.value)} placeholder="As it appears on YouTube" />
           <div className={s.twoCol}>
-            <Field label="Duration (minutes or mm:ss)" required value={d.duration} onChange={(e) => set('duration', e.target.value)} inputMode="numeric" />
+            <Field label="Length (minutes, or mm:ss)" required value={d.duration} onChange={(e) => set('duration', e.target.value)} inputMode="numeric" />
             <Field label="Instructor" value={d.instructor} onChange={(e) => set('instructor', e.target.value)} />
           </div>
           <TextAreaField label="Description" rows={4} value={d.description} onChange={(e) => set('description', e.target.value)} />
@@ -151,29 +158,30 @@ export function SessionEditor({ id }: { id?: string }) {
           options={[{ value: '0', label: 'Not sure' }, ...INTENSITY_LABELS.map((l, i) => ({ value: String(i + 1), label: l }))]} />
         <div style={{ height: 'var(--space-lg)' }} />
         <ChipGroup label="Style" options={STYLES} selected={d.styles} onChange={(v) => set('styles', v)} />
-        <ChipGroup label="Physical focus" options={PHYSICAL_FOCUS} selected={d.physicalFocus} onChange={(v) => set('physicalFocus', v)} />
-        <ChipGroup label="Objectives" options={OBJECTIVES} selected={d.objectives} onChange={(v) => set('objectives', v)} />
+        <ChipGroup label="Body area" options={PHYSICAL_FOCUS} selected={d.physicalFocus} onChange={(v) => set('physicalFocus', v)} />
+        <ChipGroup label="Goal" options={OBJECTIVES} selected={d.objectives} onChange={(v) => set('objectives', v)} />
         <ChipGroup label="Energy and mood" options={ENERGY} selected={d.energy} onChange={(v) => set('energy', v)} />
-        <ChipGroup label="Experience" options={EXPERIENCE} selected={d.experienceLevel} onChange={(v) => set('experienceLevel', v)} />
+        <ChipGroup label="Level" options={EXPERIENCE} selected={d.experienceLevel} onChange={(v) => set('experienceLevel', v)} />
         <ChipGroup label="Time of day" options={TIME_OF_DAY} selected={d.timeOfDay} onChange={(v) => set('timeOfDay', v)} />
         <ChipGroup label="Equipment" options={EQUIPMENT} selected={d.equipment} onChange={(v) => set('equipment', v)} />
         <div className={s.stack}>
           <div className={s.twoCol}>
             <Field label="Series or programme" value={d.series} onChange={(e) => set('series', e.target.value)} placeholder="e.g. MOVE" list="sf-series-names" />
-            <Field label="Day or week in it" type="number" inputMode="numeric" min={1} value={d.seriesDay} onChange={(e) => set('seriesDay', e.target.value)} hint="Links it to that day of the series" />
+            <Field label="Day in the series" type="number" inputMode="numeric" min={1} value={d.seriesDay} onChange={(e) => set('seriesDay', e.target.value)} hint="Puts it on that day of the series" />
           </div>
           <datalist id="sf-series-names">{seriesDefs.map((x) => <option key={x.id} value={x.name} />)}</datalist>
-          <Field label="Tags" value={d.tags} onChange={(e) => set('tags', e.target.value)} hint="Comma separated" />
+          <Field label="Posted on YouTube" type="date" value={d.publishedDate} onChange={(e) => set('publishedDate', e.target.value)} hint="Filled in automatically for videos read from the channel" />
+          <Field label="Tags" value={d.tags} onChange={(e) => set('tags', e.target.value)} hint="Separate with commas" />
           <div className={s.twoCol}>
-            <SelectField label="Confidence" value={d.confidence} onChange={(e) => set('confidence', e.target.value as Confidence)}>
-              <option value="high">High: verified or reviewed</option>
-              <option value="medium">Medium: inferred from good context</option>
-              <option value="low">Low: provisional</option>
+            <SelectField label="How sure are these details?" value={d.confidence} onChange={(e) => set('confidence', e.target.value as Confidence)}>
+              <option value="high">Sure: I’ve checked them</option>
+              <option value="medium">Fairly sure</option>
+              <option value="low">A guess: needs a look</option>
             </SelectField>
-            <SelectField label="Source" value={d.source} onChange={(e) => set('source', e.target.value as ClassificationSource)}>
-              <option value="manual">Manual</option>
-              <option value="verified">Verified</option>
-              <option value="inferred">Inferred</option>
+            <SelectField label="Where they came from" value={d.source} onChange={(e) => set('source', e.target.value as ClassificationSource)}>
+              <option value="manual">I entered them</option>
+              <option value="verified">Checked against the video</option>
+              <option value="inferred">Read from the title</option>
             </SelectField>
           </div>
         </div>

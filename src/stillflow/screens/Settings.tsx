@@ -25,14 +25,14 @@ function PlaybackTest() {
   const id = parseVideoId(url)
   return (
     <div className={s.stack}>
-      <Field label="Paste any YouTube link to test hand-off on this device" value={url} onChange={(e) => setUrl(e.target.value)}
+      <Field label="Test it: paste any YouTube link" value={url} onChange={(e) => setUrl(e.target.value)}
         placeholder="https://youtu.be/…" error={url && !id ? 'Not a YouTube video link' : undefined} />
       {id && (
         <div className={s.testLinks}>
-          <span className={s.muted}>Detected platform: {platform}. Try each and note which opens the YouTube app:</span>
-          <a href={canonicalUrl(id)} target="_blank" rel="noopener noreferrer">1 · Plain https link</a>
-          <a href={androidIntentUrl(canonicalUrl(id))}>2 · Android intent (YouTube app, browser fallback)</a>
-          <a href={`https://youtu.be/${id}`} target="_blank" rel="noopener noreferrer">3 · Short youtu.be link</a>
+          <span className={s.muted}>This device: {platform === 'android' ? 'Android' : platform === 'ios' ? 'iPhone or iPad' : 'computer'}. Try each and see which one opens the YouTube app:</span>
+          <a href={androidIntentUrl(canonicalUrl(id))}>Open in the YouTube app (Android)</a>
+          <a href={canonicalUrl(id)} target="_blank" rel="noopener noreferrer">Open as an ordinary link</a>
+          <a href={`https://youtu.be/${id}`} target="_blank" rel="noopener noreferrer">Open as a short youtu.be link</a>
         </div>
       )}
     </div>
@@ -79,8 +79,7 @@ export function Settings() {
   return (
     <div className={s.settings}>
       <header className={s.pageHead} style={{ marginBottom: 0 }}>
-        <p className={s.kicker}>Settings</p>
-        <h1 className={s.pageTitle}>Make it yours</h1>
+        <h1 className={s.pageTitle}>Settings</h1>
       </header>
 
       <section className={s.panel}>
@@ -88,10 +87,10 @@ export function Settings() {
         <ChipGroup label="Styles you enjoy" options={STYLES} selected={preferences.preferredStyles}
           onChange={(v) => savePreferences({ ...preferences, preferredStyles: v })} />
         <div className={s.twoCol}>
-          <Field label="Usual maximum length (min)" type="number" inputMode="numeric" min={1} value={preferences.preferredMaxDuration ?? ''}
-            onChange={(e) => savePreferences({ ...preferences, preferredMaxDuration: num(e.target.value) })} hint="Guides Perfect Match and Surprise Me" />
+          <Field label="Longest you usually practise (min)" type="number" inputMode="numeric" min={1} value={preferences.preferredMaxDuration ?? ''}
+            onChange={(e) => savePreferences({ ...preferences, preferredMaxDuration: num(e.target.value) })} hint="Surprise Me prefers sessions this long or shorter" />
           <Field label="Weekly target (min)" type="number" inputMode="numeric" min={1} value={preferences.weeklyTargetMinutes ?? ''}
-            onChange={(e) => savePreferences({ ...preferences, weeklyTargetMinutes: num(e.target.value) })} hint="Shown on Discover" />
+            onChange={(e) => savePreferences({ ...preferences, weeklyTargetMinutes: num(e.target.value) })} hint="Shown as a bar on Discover" />
         </div>
         <div style={{ marginTop: 'var(--space-md)' }}>
           <Field label="Default instructor for new sessions" value={preferences.defaultInstructor}
@@ -102,12 +101,12 @@ export function Settings() {
       <section className={s.panel}>
         <h2>Opening videos</h2>
         <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
-          On Android, “Hand to the YouTube app” asks Chrome to open the video in the YouTube app and falls back to the browser if it can’t.
-          “Plain link” lets the phone decide. Other devices always use the plain link.
+          On Android, Start Practice can open videos straight in the YouTube app, or in the browser if the app isn’t there.
+          If videos open in the wrong place, switch to “Let the phone decide”. iPhones and computers always let the device decide.
         </p>
         <SegmentedControl label="On Android" value={preferences.openMethod} wrap
           onChange={(v) => savePreferences({ ...preferences, openMethod: v as typeof preferences.openMethod })}
-          options={[{ value: 'auto', label: 'Hand to the YouTube app' }, { value: 'link', label: 'Plain link' }]} />
+          options={[{ value: 'auto', label: 'YouTube app' }, { value: 'link', label: 'Let the phone decide' }]} />
         <div style={{ marginTop: 'var(--space-lg)' }}><PlaybackTest /></div>
       </section>
 
@@ -132,18 +131,19 @@ export function Settings() {
         {demos.length > 0 && (
           <p className={s.demoNote} style={{ marginTop: 'var(--space-md)' }}>
             {demos.length} demonstration records are in your library.{' '}
-            <button type="button" className={s.textLink} onClick={() => setConfirm('demo')}>Remove them</button>
+            <button type="button" className={s.textLink} onClick={() => setConfirm('demo')}>Remove demo records</button>
           </p>
         )}
         <div style={{ marginTop: 'var(--space-lg)' }}>
           <Field label="Find a session to edit" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Title" />
           <div className={s.catalogueList}>
-            {list.map((x) => (
+            {list.slice(0, 100).map((x) => (
               <div key={x.id} className={s.catRow}>
                 <a className={s.entryTitle} href={hrefOf({ name: 'editor', id: x.id })}>{x.title}</a>
                 <button type="button" className={s.iconBtn} aria-label={`Delete ${x.title}`} onClick={() => setConfirm({ kind: 'delete', id: x.id, title: x.title })}><Trash2 size={15} /></button>
               </div>
             ))}
+            {list.length > 100 && <p className={s.muted}>{list.length - 100} more; type to narrow the list.</p>}
           </div>
         </div>
       </section>
@@ -173,7 +173,7 @@ export function Settings() {
         <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
           <ShieldCheck size={14} style={{ verticalAlign: '-2px' }} />{' '}
           {persisted === true ? 'This browser has agreed to keep Stillflow’s data even when space runs low.'
-            : persisted === false ? <>The browser may clear Stillflow’s data if the device runs short of space. <button type="button" className={s.textLink} onClick={async () => toast((await requestPersistence()) ? 'Storage protected' : 'The browser declined; installing Stillflow usually helps')}>Ask it to keep it</button></>
+            : persisted === false ? <>The browser may clear Stillflow’s data if the device runs short of space. <button type="button" className={s.textLink} onClick={async () => toast((await requestPersistence()) ? 'Done: your data is protected' : 'The browser said no. Installing Stillflow to the home screen usually changes that.')}>Ask the browser to keep it</button></>
             : 'Storage protection is unknown in this browser.'}
         </p>
         <div className={s.row}>
@@ -191,7 +191,7 @@ export function Settings() {
       <section className={s.panel}>
         <h2>Reset</h2>
         <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>Erase every Stillflow record on this device. Save a backup first if you might want it back.</p>
-        <Button variant="danger" onClick={() => setConfirm('reset')}>Erase local data</Button>
+        <Button variant="danger" onClick={() => setConfirm('reset')}>Erase all data on this device</Button>
       </section>
 
       <footer className={s.stack} style={{ textAlign: 'center', padding: 'var(--space-lg) 0' }}>

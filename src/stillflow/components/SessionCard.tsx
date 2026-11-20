@@ -1,6 +1,7 @@
 import { Heart } from 'lucide-react'
 import type { Session } from '../domain/types'
 import { repeatLabel } from '../domain/vocabulary'
+import { formatDay, formatMonth } from '../lib/practice'
 import { hrefOf } from '../app/router'
 import { useStillflow } from '../app/state'
 import { cx } from '../../ds/lib/cx'
@@ -20,9 +21,10 @@ export function SessionCard({ session, layout = 'grid', note }: { session: Sessi
           {session.series && <span className={styles.series}>{session.series}</span>}
           <h3 className={styles.title}>{session.title}</h3>
           <div className={styles.meta}>
-            <span>{session.styles.slice(0, layout === 'list' ? 2 : 1).join(' · ') || 'Style not set'}</span>
+            <span>{session.styles.slice(0, layout === 'list' ? 2 : 1).join(' · ') || 'No style yet'}</span>
             {focus && <span>{focus}</span>}
             {layout === 'list' && <span className={styles.minutes}>{session.durationMinutes} min</span>}
+            {session.publishedDate && <span className={styles.posted} title={`Posted ${formatDay(session.publishedDate)}`}>{formatMonth(session.publishedDate)}</span>}
             {rating ? <span className={styles.again}>{repeatLabel(rating)}</span> : null}
           </div>
           <IntensityDots level={session.intensity} />

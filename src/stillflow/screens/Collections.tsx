@@ -42,8 +42,8 @@ export function Collections() {
       <header className={s.pageHead}>
         <div className={s.spread}>
           <div>
-            <p className={s.kicker}>My collections</p>
-            <h1 className={s.pageTitle}>Your own sequences</h1>
+            <h1 className={s.pageTitle}>Collections</h1>
+            <p className={s.lede}>Your own lists of sessions, in the order you want to practise them.</p>
           </div>
           <Button variant="outline" onClick={() => setCreating(true)}><Plus size={16} /> New collection</Button>
         </div>
@@ -167,7 +167,7 @@ export function CollectionDetail({ id }: { id: string }) {
             <span className={s.kicker} style={{ margin: 0 }}>Play in sequence · {pos + 1} of {items.length}</span>
             <strong style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.15rem' }}>{items[pos].title}</strong>
             <div className={s.row}>
-              <StartPractice session={items[pos]} compact label="Start this one" />
+              <StartPractice session={items[pos]} compact label="Start" />
               <Button variant="ghost" size="sm" disabled={pos === 0} onClick={() => setPos(pos - 1)}>Previous</Button>
               <Button variant="ghost" size="sm" disabled={pos >= items.length - 1} onClick={() => setPos(pos + 1)}>Next</Button>
               {pos > 0 && <button type="button" className={s.textLink} onClick={() => setPos(0)}>Start over</button>}
@@ -195,7 +195,7 @@ export function CollectionDetail({ id }: { id: string }) {
           {missing > 0 && (
             <p className={s.muted} style={{ marginTop: 'var(--space-md)' }}>
               {missing} {missing === 1 ? 'session is' : 'sessions are'} no longer in the catalogue.{' '}
-              <button type="button" className={s.textLink} onClick={() => update(items.map((y) => y.id))}>Tidy up</button>
+              <button type="button" className={s.textLink} onClick={() => update(items.map((y) => y.id))}>Remove them from this list</button>
             </p>
           )}
         </>

@@ -20,7 +20,7 @@ export const SERIES_READER_VERSION = 2
 export function rereadChannelSeries(sessions: Session[]): Session[] {
   const changed: Session[] = []
   for (const s of sessions) {
-    if (!s.tags.includes('from-channel')) continue
+    if (!s.tags.includes('from-channel') || s.tags.includes('series-by-hand')) continue
     const r = seriesFromTitle(s.title)
     const series = r?.series
     const seriesDay = r?.day
@@ -64,7 +64,11 @@ export function ticksToPractice(
 }
 
 export function runMigrations(snap: Snapshotish, seriesReaderVersion: number | undefined, now = new Date()) {
-  const sessionUpdates = (seriesReaderVersion ?? 0) < SERIES_READER_VERSION ? rereadChannelSeries(snap.sessions) : []
+  // Cheap and idempotent, so it runs on every load: sessions imported since the
+  // last load (a file, a backup) get their series too. The version is kept for
+  // the record; it no longer gates the re-read.
+  void seriesReaderVersion
+  const sessionUpdates = rereadChannelSeries(snap.sessions)
   const byId = new Map(snap.sessions.map((s) => [s.id, s]))
   for (const s of sessionUpdates) byId.set(s.id, s)
   const sessions = [...byId.values()]

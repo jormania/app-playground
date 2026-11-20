@@ -76,3 +76,4 @@
 .list .fav { top: 50%; transform: translateY(-50%); right: 0; background: none; }
 
 .again { color: var(--sf-lavender-ink); }
+.posted { font-variant-numeric: tabular-nums; }

@@ -19,7 +19,7 @@ export function Wordmark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 }
 
 export function IntensityDots({ level, showLabel = false }: { level: number; showLabel?: boolean }) {
-  const label = level ? INTENSITY_LABELS[level - 1] : 'Intensity not classified'
+  const label = level ? INTENSITY_LABELS[level - 1] : 'Intensity not set'
   return (
     <span className={styles.intensity} title={label} aria-label={label}>
       <span className={styles.dots} aria-hidden="true">
@@ -145,7 +145,7 @@ export function ConfidenceNote({ session }: { session: Session }) {
   return (
     <span className={cx(styles.badge, session.classificationConfidence === 'low' && styles.badgeLow)}
       title={`Classification: ${session.classificationSource}, ${session.classificationConfidence} confidence`}>
-      {session.classificationConfidence === 'low' ? 'Provisional tags' : 'Inferred tags'}
+      {session.classificationConfidence === 'low' ? 'Tags are a guess' : 'Tags read from title'}
     </span>
   )
 }

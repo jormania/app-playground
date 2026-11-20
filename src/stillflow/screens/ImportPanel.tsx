@@ -48,7 +48,7 @@ export function ImportReview({ preview, title, note, onClose }: {
       {result && (
         <div className={s.stack}>
           <p>{result.added} added · {result.updated} updated · {result.replaced} replaced · {result.skipped} skipped · {result.invalid} not imported</p>
-          {result.invalid > 0 && <p className={s.muted}>Rows that weren’t imported are listed with their reasons below.</p>}
+          {result.invalid > 0 && <p className={s.muted}>The rows that couldn’t be imported are listed below, each with what to fix.</p>}
         </div>
       )}
       {!preview.fatal && (
@@ -76,7 +76,7 @@ export function ImportReview({ preview, title, note, onClose }: {
                         </ul>
                       )}
                     </td>
-                    <td><span className={`${s.status} ${s[`status_${r.status}`]}`}>{r.status === 'duplicate' ? 'Already in library' : r.status === 'new' ? 'New' : 'Not importable'}</span></td>
+                    <td><span className={`${s.status} ${s[`status_${r.status}`]}`}>{r.status === 'duplicate' ? 'Already in library' : r.status === 'new' ? 'New' : 'Can’t import'}</span></td>
                   </tr>
                 ))}
               </tbody>

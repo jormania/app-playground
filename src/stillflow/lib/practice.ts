@@ -2,6 +2,18 @@ import type { PracticeEntry, Session } from '../domain/types'
 
 /** Practice history arithmetic: pure functions over entries and the catalogue. */
 
+/** "22 Jan 2024" from YYYY-MM-DD (or an ISO date-time); '' when unreadable. */
+export function formatDay(date: string | undefined): string {
+  if (!date || !/^\d{4}-\d{2}-\d{2}/.test(date)) return ''
+  return new Date(`${date.slice(0, 10)}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/** "Jan 2024": short enough for a card. */
+export function formatMonth(date: string | undefined): string {
+  if (!date || !/^\d{4}-\d{2}/.test(date)) return ''
+  return new Date(`${date.slice(0, 7)}-15T12:00:00`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+}
+
 export function localDate(d = new Date()): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')

@@ -29,18 +29,20 @@ export interface Filters {
 }
 
 export type SortKey =
-  | 'recent' | 'shortest' | 'longest' | 'intensityHigh' | 'intensityLow'
+  | 'recent' | 'postedNew' | 'postedOld' | 'shortest' | 'longest' | 'intensityHigh' | 'intensityLow'
   | 'practisedRecent' | 'practisedLeast' | 'rating' | 'random'
 
 export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'recent', label: 'Recently added' },
+  { value: 'postedNew', label: 'Newest on YouTube' },
+  { value: 'postedOld', label: 'Oldest on YouTube' },
   { value: 'shortest', label: 'Shortest' },
   { value: 'longest', label: 'Longest' },
   { value: 'intensityHigh', label: 'Most intense' },
   { value: 'intensityLow', label: 'Gentlest' },
   { value: 'practisedRecent', label: 'Practised recently' },
   { value: 'practisedLeast', label: 'Not practised lately' },
-  { value: 'rating', label: 'Most wanted again' },
+  { value: 'rating', label: 'Want to repeat most' },
   { value: 'random', label: 'Shuffle' },
 ]
 
@@ -111,6 +113,9 @@ export function sortSessions(list: Session[], key: SortKey, ctx: PersonalContext
   const byTitle = (a: Session, b: Session) => a.title.localeCompare(b.title)
   const cmp: Record<SortKey, (a: Session, b: Session) => number> = {
     recent: (a, b) => b.dateAdded.localeCompare(a.dateAdded) || byTitle(a, b),
+    // Sessions with no publish date go last either way.
+    postedNew: (a, b) => (b.publishedDate ?? '').localeCompare(a.publishedDate ?? '') || byTitle(a, b),
+    postedOld: (a, b) => (a.publishedDate ?? '9999').localeCompare(b.publishedDate ?? '9999') || byTitle(a, b),
     shortest: (a, b) => a.durationMinutes - b.durationMinutes || byTitle(a, b),
     longest: (a, b) => b.durationMinutes - a.durationMinutes || byTitle(a, b),
     intensityHigh: (a, b) => b.intensity - a.intensity || byTitle(a, b),

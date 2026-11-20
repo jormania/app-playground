@@ -18,8 +18,8 @@ export function usePlatform() {
 
 /** Practice link for any https YouTube URL (a video, or a search when nothing is linked). */
 export function PracticeLink({
-  url, label, compact = false, search = false, onLaunch, className,
-}: { url: string; label: string; compact?: boolean; search?: boolean; onLaunch: () => void; className?: string }) {
+  url, label, compact = false, search = false, onLaunch, className, ariaLabel,
+}: { url: string; label: string; compact?: boolean; search?: boolean; onLaunch: () => void; className?: string; ariaLabel?: string }) {
   const { preferences } = useStillflow()
   const platform = usePlatform()
   const href = practiceHref(url, platform, preferences.openMethod)
@@ -28,7 +28,7 @@ export function PracticeLink({
     // An intent:// link must navigate the current tab (Chrome hands it to the app
     // and the page stays put); a _blank target would first open an empty tab.
     <a className={cx(styles.start, compact && styles.compact, search && styles.search, className)} href={href}
-      target={href.startsWith('intent:') ? undefined : '_blank'} rel="noopener noreferrer" onClick={onLaunch}>
+      target={href.startsWith('intent:') ? undefined : '_blank'} rel="noopener noreferrer" onClick={onLaunch} aria-label={ariaLabel}>
       <Icon size={compact ? 16 : 18} strokeWidth={1.8} fill={search ? 'none' : 'currentColor'} />
       <span>{label}</span>
     </a>

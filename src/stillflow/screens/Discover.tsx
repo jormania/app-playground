@@ -84,7 +84,8 @@ export function Discover() {
 
   const quietStyles = useMemo(() => {
     const p = buildProfile(sessions, history, today)
-    const present = new Set(sessions.flatMap((x) => x.styles))
+    const real = sessions.filter((x) => !x.isDemo)
+    const present = new Set((real.length >= 10 ? real : sessions).flatMap((x) => x.styles))
     return [...present].sort((a, b) => (p.allStyleCounts[a] ?? 0) - (p.allStyleCounts[b] ?? 0) || a.localeCompare(b)).slice(0, 6)
   }, [sessions, history, today])
 

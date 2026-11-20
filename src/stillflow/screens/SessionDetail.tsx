@@ -9,6 +9,7 @@ import { CollectionSheet, CompleteSheet } from '../components/Sheets'
 import { ConfidenceNote, Empty, IntensityDots, SectionHead, RepeatRating, Thumb } from '../components/ui'
 import type { PracticeEntry } from '../domain/types'
 import { embedUrl } from '../lib/youtube'
+import { formatDay } from '../lib/practice'
 import { repeatLabel } from '../domain/vocabulary'
 import s from './screens.module.css'
 
@@ -45,14 +46,14 @@ export function SessionDetail({ id }: { id: string }) {
   const meta: [string, string[] | string | undefined][] = [
     ['Instructor', session.instructor],
     ['Style', session.styles],
-    ['Physical focus', session.physicalFocus],
-    ['Objectives', session.objectives],
+    ['Body area', session.physicalFocus],
+    ['Goal', session.objectives],
     ['Energy', session.energy],
-    ['Experience', session.experienceLevel],
+    ['Level', session.experienceLevel],
     ['Time of day', session.timeOfDay],
     ['Equipment', session.equipment],
     ['Series', session.series],
-    ['Published', session.publishedDate],
+    ['Posted on YouTube', formatDay(session.publishedDate)],
   ]
 
   return (
@@ -123,6 +124,7 @@ export function SessionDetail({ id }: { id: string }) {
           <div className={s.facts}>
             <span>{session.durationMinutes} min</span>
             <IntensityDots level={session.intensity} showLabel />
+            {session.publishedDate && <span>Posted {formatDay(session.publishedDate)}</span>}
           </div>
 
           <div className={s.spread} style={{ margin: 'var(--space-md) 0' }}>
@@ -136,7 +138,7 @@ export function SessionDetail({ id }: { id: string }) {
               return (
                 <div key={label} className={s.metaRow}>
                   <dt>{label}</dt>
-                  <dd>{list.length ? (Array.isArray(value) ? <span className={s.tags}>{list.map((v) => <span key={v} className={s.tag}>{v}</span>)}</span> : list[0]) : <span className={s.muted}>{label === 'Series' || label === 'Published' ? '—' : 'Not classified'}</span>}</dd>
+                  <dd>{list.length ? (Array.isArray(value) ? <span className={s.tags}>{list.map((v) => <span key={v} className={s.tag}>{v}</span>)}</span> : list[0]) : <span className={s.muted}>{label === 'Series' || label === 'Posted on YouTube' ? '—' : 'Not set'}</span>}</dd>
                 </div>
               )
             })}
@@ -151,7 +153,7 @@ export function SessionDetail({ id }: { id: string }) {
 
           <SectionHead title="Your practice" action={<a className={s.textLink} href={`#/settings/session/${encodeURIComponent(session.id)}`}><Pencil size={13} /> Edit details</a>} />
           {entries.length === 0 ? (
-            <p className={s.muted}>Not practised yet. Use Mark as completed when you’ve finished.</p>
+            <p className={s.muted}>Not practised yet. When you finish it, tap Mark as completed.</p>
           ) : (
             <ul className={s.history}>
               {entries.map((e) => (

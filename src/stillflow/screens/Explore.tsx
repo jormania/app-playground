@@ -67,7 +67,7 @@ export function Explore() {
         <label className={s.search}>
           <Search size={18} strokeWidth={1.6} />
           <span className="sf-visually-hidden">Search sessions</span>
-          <input ref={searchRef} type="search" enterKeyHint="search" placeholder="Search title, style, body area, series…" value={filters.query}
+          <input ref={searchRef} type="search" enterKeyHint="search" placeholder="Search by title, style, body area, series…" value={filters.query}
             onChange={(e) => update({ query: e.target.value })} />
           {filters.query && <button type="button" className={s.iconBtn} aria-label="Clear search" onClick={() => update({ query: '' })}><X size={16} /></button>}
         </label>
@@ -127,21 +127,21 @@ export function Explore() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Filters">
         <div className={s.filterSheet}>
-          <ChipGroup<DurationBucketId> label="Duration" options={DURATION_BUCKETS.map((b) => b.id)} selected={filters.durations}
+          <ChipGroup<DurationBucketId> label="Length" options={DURATION_BUCKETS.map((b) => b.id)} selected={filters.durations}
             onChange={(v) => update({ durations: v })} render={(id) => DURATION_BUCKETS.find((b) => b.id === id)!.label} />
           <div className={s.rangeRow}>
-            <Field label="Custom: from (min)" type="number" inputMode="numeric" min={0} value={filters.customMin ?? ''} onChange={(e) => update({ customMin: num(e.target.value) })} />
-            <Field label="to (min)" type="number" inputMode="numeric" min={0} value={filters.customMax ?? ''} onChange={(e) => update({ customMax: num(e.target.value) })} />
+            <Field label="At least (min)" type="number" inputMode="numeric" min={0} value={filters.customMin ?? ''} onChange={(e) => update({ customMin: num(e.target.value) })} />
+            <Field label="At most (min)" type="number" inputMode="numeric" min={0} value={filters.customMax ?? ''} onChange={(e) => update({ customMax: num(e.target.value) })} />
           </div>
-          <ChipGroup<number> label="Practise it again? (your rating)" options={[5, 4, 3, 2, 1, 0]} selected={filters.ratings ?? []}
+          <ChipGroup<number> label="Want to repeat it? (your rating)" options={[5, 4, 3, 2, 1, 0]} selected={filters.ratings ?? []}
             onChange={(v) => update({ ratings: v })} render={(r) => repeatLabel(r)} />
           <ChipGroup label="Style" options={STYLES} selected={filters.styles} onChange={(v) => update({ styles: v })} />
           <ChipGroup<number> label="Intensity" options={[1, 2, 3, 4, 5]} selected={filters.intensities}
             onChange={(v) => update({ intensities: v })} render={(i) => INTENSITY_LABELS[i - 1]} />
-          <ChipGroup label="Physical focus" options={PHYSICAL_FOCUS} selected={filters.focus} onChange={(v) => update({ focus: v })} />
-          <ChipGroup label="Objective" options={OBJECTIVES} selected={filters.objectives} onChange={(v) => update({ objectives: v })} />
+          <ChipGroup label="Body area" options={PHYSICAL_FOCUS} selected={filters.focus} onChange={(v) => update({ focus: v })} />
+          <ChipGroup label="Goal" options={OBJECTIVES} selected={filters.objectives} onChange={(v) => update({ objectives: v })} />
           <ChipGroup label="Energy and mood" options={ENERGY} selected={filters.energy} onChange={(v) => update({ energy: v })} />
-          <ChipGroup label="Experience" options={EXPERIENCE} selected={filters.experience} onChange={(v) => update({ experience: v })} />
+          <ChipGroup label="Level" options={EXPERIENCE} selected={filters.experience} onChange={(v) => update({ experience: v })} />
           <ChipGroup label="Time of day" options={TIME_OF_DAY} selected={filters.timeOfDay} onChange={(v) => update({ timeOfDay: v })} />
           <ChipGroup label="Equipment" options={EQUIPMENT} selected={filters.equipment} onChange={(v) => update({ equipment: v })} />
           {series.length > 0 && <ChipGroup label="Series and programmes" options={series} selected={filters.series} onChange={(v) => update({ series: v })} />}

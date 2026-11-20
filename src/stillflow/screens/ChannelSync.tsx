@@ -49,7 +49,7 @@ export function ChannelSync({ fetchPage = apiFetchPage() }: { fetchPage?: FetchP
       savePreferences({ ...preferences, channelCheck: { at: now, source: scan.source, found: practices.filter((v) => !known.has(v.videoId)).length } })
       const notes = [
         shorts ? `${shorts} short${shorts === 1 ? '' : 's'} under four minutes left out.` : '',
-        'Style, body area, intensity and series are read from each title and marked provisional until you review them.',
+        'Style, body area, intensity and series are guessed from each title and marked as a guess until you check them.',
         scan.source === 'rss' ? 'Without a YouTube API key only the 15 newest uploads are visible, without durations.' : '',
       ].filter(Boolean).join(' ')
       if (chosen.length === 0) {
@@ -76,8 +76,8 @@ export function ChannelSync({ fetchPage = apiFetchPage() }: { fetchPage?: FetchP
     <section className={s.panel}>
       <h2><MonitorPlay size={20} style={{ verticalAlign: '-3px' }} /> {YWA_CHANNEL.name} on YouTube</h2>
       <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
-        Bring Adriene’s videos into your library, only when you ask. Titles, durations and dates come from YouTube; everything
-        else is a provisional reading of the title for you to review.
+        Bring Adriene’s videos into your library whenever you ask. Titles, lengths and dates come straight from YouTube;
+        style, body area and series are guessed from each title for you to check.
         {last ? ` Last checked ${age === 0 ? 'today' : age === 1 ? 'yesterday' : `${age} days ago`}: ${last.found} new.` : ' Not checked yet.'}
       </p>
       <div className={s.row}>
@@ -88,7 +88,7 @@ export function ChannelSync({ fetchPage = apiFetchPage() }: { fetchPage?: FetchP
           <CloudDownload size={16} /> Import the whole channel
         </Button>
       </div>
-      {!online && <p className={s.muted} style={{ marginTop: 'var(--space-sm)' }}>Needs a connection.</p>}
+      {!online && <p className={s.muted} style={{ marginTop: 'var(--space-sm)' }}>You’re offline. Connect to the internet to check YouTube.</p>}
       {progress && <p className={s.muted} role="status" style={{ marginTop: 'var(--space-sm)' }}>{progress}</p>}
       {error && <p role="alert" style={{ marginTop: 'var(--space-sm)', color: 'var(--color-danger)' }}>{error}</p>}
       {last?.source === 'rss' && (

@@ -90,8 +90,10 @@ export interface Pace {
 export function pace(def: SeriesDef, progress: SeriesProgress, doneCount: number, today: string): Pace {
   const elapsed = Math.max(0, daysBetween(progress.startedAt, today))
   const step = def.unit === 'Week' ? 7 : 1
+  // Where the calendar is today (Day 1 on the day you start)…
   const expected = Math.min(def.length, Math.floor(elapsed / step) + 1)
-  const delta = doneCount - expected
+  // …but today's practice can still happen today, so you're only behind on days already gone.
+  const delta = Math.min(0, doneCount - (expected - 1))
   const unit = def.unit.toLowerCase()
   let label: string
   if (doneCount >= def.length) label = 'Every practice done'
@@ -99,6 +101,24 @@ export function pace(def: SeriesDef, progress: SeriesProgress, doneCount: number
   else if (delta === -1) label = `One ${unit} to catch up, whenever suits`
   else label = `${-delta} ${unit}s behind the calendar, and that’s fine`
   return { expected, done: doneCount, delta, label }
+}
+
+const NOISE = new Set(['yoga with adriene', 'a 30 day yoga journey', '30 days of yoga', 'a january series with adriene'])
+
+/** The day's own name from its video title: "Flow - Day 2 - Notice" → "Notice". '' when the title has none. */
+export function dayTheme(title: string, def: SeriesDef): string {
+  const aliases = new Set(def.match.map(fold))
+  return title
+    .split(/\s*\|\s*|\s+-\s*|\s*-\s+/)
+    .map((p) => p.trim())
+    .filter((p) => {
+      const f = fold(p)
+      if (!f || NOISE.has(f) || aliases.has(f)) return false
+      if (/^(?:day|week)\s*\d+\b/.test(f) || /^\d+$/.test(f)) return false
+      if ([...aliases].some((a) => f.startsWith(`${a} day`) || f.startsWith(`${a} week`))) return false
+      return true
+    })
+    .join(' – ')
 }
 
 export function daySearchUrl(def: SeriesDef, day: number): string {

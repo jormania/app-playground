@@ -58,9 +58,8 @@ export function Surprise() {
   return (
     <>
       <header className={s.pageHead}>
-        <p className={s.kicker}>Surprise me</p>
-        <h1 className={s.pageTitle}>Let the practice find you</h1>
-        <p className={s.lede}>Pick a mood for the choice. Stillflow weighs your history, favourites and time, and tells you why.</p>
+        <h1 className={s.pageTitle}>Surprise me</h1>
+        <p className={s.lede}>Choose how Stillflow should pick. It looks at what you’ve practised, your favourites and your time, and always tells you why.</p>
       </header>
 
       {pick && (
@@ -85,17 +84,17 @@ export function Surprise() {
                 <Heart size={18} fill={userData[pick.session.id]?.favourite ? 'currentColor' : 'none'} />
               </button>
             </div>
-            <p className={s.muted}>One of {pick.poolSize} that fit.</p>
+            <p className={s.muted}>Chosen from {pick.poolSize} {pick.poolSize === 1 ? 'session' : 'sessions'} that fit.</p>
           </div>
         </section>
       )}
       {none && (
         <Empty title="Nothing fits those limits">
-          <p>Loosen a constraint or choose another mode.</p>
+          <p>Try loosening a limit, or choose a different way to pick.</p>
         </Empty>
       )}
 
-      <h2 style={{ fontSize: '1.35rem', margin: 'var(--space-xl) 0 var(--space-sm)' }}>{pick ? 'Or choose again' : 'How should I choose?'}</h2>
+      <h2 style={{ fontSize: '1.35rem', margin: 'var(--space-xl) 0 var(--space-sm)' }}>{pick ? 'Pick a different way' : 'How should Stillflow pick?'}</h2>
       <div className={s.modes}>
         {MODES.map((m) => (
           <button key={m.id} type="button" className={s.mode} aria-pressed={mode === m.id}
@@ -107,7 +106,7 @@ export function Surprise() {
       </div>
 
       <details className={s.constraints}>
-        <summary>Constraints {mode === 'short' ? '(set your time limit here)' : '(optional)'}</summary>
+        <summary>{mode === 'short' ? 'Limits: set your time here' : 'Limits (optional)'}</summary>
         <div className={s.constraintsBody}>
           <div className={s.rangeRow}>
             <Field label="Maximum minutes" type="number" inputMode="numeric" min={1} placeholder={mode === 'short' ? '15' : 'Any'}
@@ -137,7 +136,7 @@ export function Surprise() {
             <SettingsToggle label="Skip sessions I’ve already completed" checked={c.excludeCompleted} onChange={(e) => setConstraint({ excludeCompleted: e.target.checked })} />
             <SegmentedControl label="Favourites" value={c.favourites} onChange={(v) => setConstraint({ favourites: v as Constraints['favourites'] })}
               options={[{ value: 'any', label: 'Include' }, { value: 'only', label: 'Only' }, { value: 'exclude', label: 'Leave out' }]} />
-            <button type="button" className={s.textLink} style={{ justifySelf: 'start' }} onClick={() => setConstraint({ ...DEFAULT_CONSTRAINTS })}>Reset constraints</button>
+            <button type="button" className={s.textLink} style={{ justifySelf: 'start' }} onClick={() => setConstraint({ ...DEFAULT_CONSTRAINTS })}>Clear limits</button>
           </div>
         </div>
       </details>

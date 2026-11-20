@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { memoryStore } from '../../shared/kvStore'
 import { DEMO_SESSIONS } from '../data/demo'
 import { DEFAULT_PREFERENCES } from '../domain/types'
-import { newEntry, summarise, thisWeek, topValues, weekStart } from '../lib/practice'
+import { formatDay, formatMonth, newEntry, summarise, thisWeek, topValues, weekStart } from '../lib/practice'
 import { StillflowRepo, isBackup } from './repo'
 
 const demo = DEMO_SESSIONS.slice(0, 3)
@@ -101,5 +101,15 @@ describe('practice history', () => {
     expect(weekStart('2026-11-16')).toBe('2026-11-16')
     expect(thisWeek(es, '2026-11-20')).toHaveLength(2)
     expect(topValues(es, demo, (s) => s.styles, 1)[0].count).toBeGreaterThan(0)
+  })
+})
+
+describe('dates for display', () => {
+  it('formats a posted date from a day or a full timestamp, and says nothing when there is none', () => {
+    expect(formatDay('2024-01-22')).toMatch(/22/)
+    expect(formatDay('2024-01-22T06:00:10Z')).toMatch(/2024/)
+    expect(formatMonth('2024-01-22')).toMatch(/2024/)
+    expect(formatDay(undefined)).toBe('')
+    expect(formatDay('soon')).toBe('')
   })
 })

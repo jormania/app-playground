@@ -62,3 +62,12 @@ describe('series ticks become practice', () => {
       .toEqual({ sessionUpdates: [], progressUpdates: [], newEntries: [] })
   })
 })
+
+describe('re-reading respects your edits', () => {
+  it('skips a session whose series you set by hand, and re-reads newly imported ones on every load', () => {
+    const mine = s('h', 'Flow - Day 3 - How', { series: 'My own', seriesDay: 1, tags: ['from-channel', 'series-by-hand'] })
+    const fresh = s('n', 'Center - Day 9 - Corazón')
+    const m = runMigrations({ sessions: [mine, fresh], history: [], seriesProgress: {}, customSeries: [] }, SERIES_READER_VERSION)
+    expect(m.sessionUpdates).toEqual([expect.objectContaining({ id: 'n', series: 'CENTER', seriesDay: 9 })])
+  })
+})

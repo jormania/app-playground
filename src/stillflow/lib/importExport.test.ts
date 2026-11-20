@@ -51,12 +51,12 @@ describe('normaliseRecord', () => {
   it('requires title, a valid video and a duration', () => {
     const { session, errors } = normaliseRecord({ youtubeUrl: 'https://vimeo.com/1' }, NOW)
     expect(session).toBeUndefined()
-    expect(errors).toEqual(['Missing title', 'YouTube URL or video id is not valid', 'Missing or unreadable duration'])
+    expect(errors).toEqual(['No title', 'This isn’t a YouTube video link', 'No length: add minutes, like 22 or 22:30'])
   })
 
   it('rejects a URL and id that disagree', () => {
     const { errors } = normaliseRecord({ title: 'x', youtubeVideoId: A, youtubeUrl: `https://youtu.be/${B}`, durationMinutes: 5 }, NOW)
-    expect(errors).toContain('youtubeUrl and youtubeVideoId point to different videos')
+    expect(errors).toContain('The link and the video id point to different videos')
   })
 
   it('canonicalises vocabulary, keeps unknown values and extra columns with warnings', () => {
@@ -66,9 +66,9 @@ describe('normaliseRecord', () => {
     expect(session?.styles).toEqual(['Hatha', 'Acro'])
     expect(session?.intensity).toBe(0)
     expect(session?.extra).toEqual({ mood: 'sunny' })
-    expect(warnings.join('\n')).toMatch(/Unrecognised styles: Acro/)
-    expect(warnings.join('\n')).toMatch(/not 1–5/)
-    expect(warnings.join('\n')).toMatch(/extra field/)
+    expect(warnings.join('\n')).toMatch(/doesn’t know it: Acro/)
+    expect(warnings.join('\n')).toMatch(/isn’t 1–5/)
+    expect(warnings.join('\n')).toMatch(/Also kept: mood/)
   })
 })
 

@@ -123,3 +123,13 @@ describe('Surprise Me', () => {
     expect(hits).toBeLessThan(60)
   })
 })
+
+describe('demo records and a real library', () => {
+  it('once ten real sessions exist, Surprise Me never proposes a demo record', () => {
+    const real = DEMO_SESSIONS.slice(0, 12).map((s, i) => ({ ...s, id: `real-${i}`, isDemo: undefined, title: `Real ${i}` }))
+    for (let n = 0; n < 100; n++) {
+      const r = surprise('random', DEFAULT_CONSTRAINTS, { sessions: [...DEMO_SESSIONS, ...real], userData: {}, history: [], preferences: DEFAULT_PREFERENCES, shown: [], today: '2026-11-20' }, rand)
+      expect(r?.session.isDemo).toBeUndefined()
+    }
+  })
+})

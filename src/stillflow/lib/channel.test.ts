@@ -62,7 +62,7 @@ describe('video → catalogue record', () => {
     expect(normaliseRecord(videoToRecord(v('b', { title: '20 Minute Flow', durationSeconds: null })), 'now').session?.tags)
       .toEqual(['from-channel', 'duration-from-title'])
     expect(normaliseRecord(videoToRecord(v('c', { title: 'A new practice', durationSeconds: null })), 'now').errors)
-      .toContain('Missing or unreadable duration')
+      .toContain('No length: add minutes, like 22 or 22:30')
   })
 
   it('leaves shorts out but keeps videos with unknown length for review', () => {

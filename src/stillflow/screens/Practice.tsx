@@ -87,8 +87,8 @@ export function Practice() {
       <header className={s.pageHead}>
         <div className={s.spread}>
           <div>
-            <p className={s.kicker}>My practice</p>
-            <h1 className={s.pageTitle}>A record, gently kept</h1>
+            <h1 className={s.pageTitle}>My practice</h1>
+            <p className={s.lede}>Everything you’ve practised, newest first. Tap Edit to change a date, a note or your rating.</p>
           </div>
           <Button variant="outline" onClick={() => setLogging(true)}><Plus size={16} /> Log a practice</Button>
         </div>
@@ -96,7 +96,7 @@ export function Practice() {
 
       {history.length === 0 ? (
         <Empty title="No practices recorded yet">
-          <p>After a session, return to Stillflow and tap Mark as completed. You can also log one here.</p>
+          <p>After a session, come back to Stillflow and tap Mark as completed, or add one here with Log a practice.</p>
         </Empty>
       ) : (
         <>

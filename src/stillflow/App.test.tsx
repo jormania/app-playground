@@ -202,11 +202,11 @@ describe('series', () => {
     expectNamedControls()
     await go('#/series/move-2022')
     await user.click(await screen.findByRole('button', { name: 'Start MOVE' }))
-    expect(await screen.findByText(/Next: Day 1/)).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Up next: Day 1' })).toBeTruthy()
     // Nothing is in the library yet, so Day 1 is a YouTube search, never a guessed video.
     expect(screen.getByRole('link', { name: /Find Day 1 on YouTube/ }).getAttribute('href')).toContain('MOVE%20Day%201')
     await user.click(screen.getByRole('button', { name: /Mark Day 1 done/ }))
-    expect(await screen.findByText(/Next: Day 2/)).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Up next: Day 2' })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Day 5, not in library/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Mark Day 5 done' }))
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('2')
@@ -216,7 +216,7 @@ describe('series', () => {
     expect(await screen.findByText(/Set aside .* after 2 of 30/)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Start again/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Start again' }))
-    expect(await screen.findByText(/Next: Day 1/)).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Up next: Day 1' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Earlier runs' })).toBeTruthy()
 
     await go('#/')
@@ -239,7 +239,7 @@ describe('series', () => {
     await user.click(screen.getByRole('button', { name: 'Mark as completed' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Record practice' }))
     await go('#/series/move-2022')
-    expect(await screen.findByText(/Next: Day 2/)).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Up next: Day 2' })).toBeTruthy()
   })
 
   it('ticking a day that has its video in the library records it in My Practice, and unticking takes it back', async () => {
@@ -255,7 +255,7 @@ describe('series', () => {
     await go('#/series/move-2022')
     await user.click(await screen.findByRole('button', { name: 'Start MOVE' }))
     await user.click(await screen.findByRole('button', { name: /Mark Day 1 done/ }))
-    expect(await screen.findByText(/Next: Day 2/)).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Up next: Day 2' })).toBeTruthy()
     const history = async () => (await new StillflowRepo(store).load()).history
     await waitFor(async () => expect((await history()).map((h) => [h.sessionId, h.minutes])).toEqual([['yt-mmmmmmmmmmm', 24]]))
     await go('#/practice')
@@ -264,7 +264,7 @@ describe('series', () => {
     await user.click(await screen.findByRole('button', { name: /Day 1, done/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Untick Day 1/ }))
     await waitFor(async () => expect(await history()).toEqual([]))
-    expect(await screen.findByText(/Next: Day 1/)).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Up next: Day 1' })).toBeTruthy()
   })
 
   it('on load, turns earlier ticks of days in the library into practice entries', async () => {
@@ -287,7 +287,7 @@ describe('series', () => {
     const { user } = await start()
     await go('#/series/prana-2025')
     await user.click(await screen.findByRole('button', { name: 'Start PRANA' }))
-    await user.click(await screen.findByRole('button', { name: /Complete series/ }))
+    await user.click(await screen.findByRole('button', { name: /Complete early/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Complete' }))
     expect(await screen.findByText(/Completed .*, 0 of 7 days/)).toBeTruthy()
 
@@ -315,7 +315,7 @@ describe('catalogue', () => {
     await user.upload(input, new File([csv], 'mine.csv', { type: 'text/csv' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Bad')).toBeTruthy()
-    expect(within(dialog).getByText(/YouTube URL or video id is not valid/)).toBeTruthy()
+    expect(within(dialog).getByText(/This isn’t a YouTube video link/)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'Import 1 session' }))
     expect(await within(dialog).findByText(/1 added/)).toBeTruthy()
     await go('#/session/yt-bbbbbbbbbbb')
@@ -336,7 +336,7 @@ describe('catalogue', () => {
     await user.clear(screen.getByLabelText(/YouTube link/))
     await user.type(screen.getByLabelText(/YouTube link/), 'https://youtu.be/ccccccccccc')
     await user.type(screen.getByLabelText(/^Title/), 'Copy')
-    await user.type(screen.getByLabelText(/^Duration/), '10')
+    await user.type(screen.getByLabelText(/^Length/), '10')
     await user.click(screen.getByRole('button', { name: 'Add to library' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByRole('alert').textContent).toMatch(/already in your library as “Already here”/)
@@ -448,7 +448,7 @@ describe('Yoga With Adriene on YouTube', () => {
     await go('#/settings')
     await user.click(await screen.findByRole('button', { name: /Check for updates/ }))
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText(/Missing or unreadable duration/)).toBeTruthy()
+    expect(within(dialog).getByText(/No length: add minutes/)).toBeTruthy()
     expect(within(dialog).getByText(/only the 15 newest uploads/)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(screen.getByText(/YOUTUBE_API_KEY/)).toBeTruthy()

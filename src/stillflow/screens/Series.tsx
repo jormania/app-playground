@@ -9,7 +9,7 @@ import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
 import { localDate, newEntry } from '../lib/practice'
 import {
-  customSeries, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay,
+  customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay,
 } from '../lib/series'
 import { cx } from '../../ds/lib/cx'
 import s from './screens.module.css'
@@ -61,6 +61,22 @@ export function useDayActions(def: SeriesDef) {
 function kindLabel(def: SeriesDef) {
   if (def.kind === 'custom') return `Your series · ${def.length} ${def.unit.toLowerCase()}s`
   return `${def.year ?? ''} · ${def.length} ${def.unit.toLowerCase()}s`.replace(/^ · /, '')
+}
+
+/** A quiet progress ring: the fraction done, with the count in its middle. */
+function Ring({ value, max }: { value: number; max: number }) {
+  const r = 30
+  const c = 2 * Math.PI * r
+  const frac = max ? Math.min(1, value / max) : 0
+  return (
+    <span className={s.ring} role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={`${value} of ${max} done`}>
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <circle cx="36" cy="36" r={r} className={s.ringTrack} />
+        {frac > 0 && <circle cx="36" cy="36" r={r} className={s.ringFill} strokeDasharray={`${c * frac} ${c}`} transform="rotate(-90 36 36)" />}
+      </svg>
+      <span className={s.ringLabel}><strong>{value}</strong><small>/{max}</small></span>
+    </span>
+  )
 }
 
 function Bar({ value, max }: { value: number; max: number }) {
@@ -143,9 +159,8 @@ export function SeriesList() {
       <header className={s.pageHead}>
         <div className={s.spread}>
           <div>
-            <p className={s.kicker}>Series</p>
-            <h1 className={s.pageTitle}>One practice at a time</h1>
-            <p className={s.lede}>Adriene’s journeys and shorter series. Start one, follow it day by day, and set it aside or finish it when you choose.</p>
+            <h1 className={s.pageTitle}>Series</h1>
+            <p className={s.lede}>Adriene’s 30-day journeys and shorter series. Start one and Stillflow keeps your place, one day at a time.</p>
           </div>
           <Button variant="outline" onClick={() => setCreating(true)}><Plus size={16} /> Create a series</Button>
         </div>
@@ -217,7 +232,7 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
             <div className={s.entryMeta}>{session.durationMinutes} min{session.styles[0] ? ` · ${session.styles[0]}` : ''}</div>
           </div>
         ) : (
-          <p className={s.muted}>This {def.unit.toLowerCase()} isn’t in your library yet, so Stillflow can’t say what it holds. Find it on YouTube, or link a session you’ve added.</p>
+          <p className={s.muted}>This {def.unit.toLowerCase()}’s video isn’t in your library yet. Find it on YouTube, or link a session you’ve already added.</p>
         )}
         <div className={s.row}>
           {session
@@ -232,7 +247,7 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
             {!isDone && <p className={s.entryMeta}>{session ? 'Recorded in My Practice too, with today’s date. You can change the date there.' : 'Not in your library, so it’s ticked on the series only.'}</p>}
           </>
         ) : (
-          <p className={s.muted}>Start the series to tick off {def.unit.toLowerCase()}s.</p>
+          <p className={s.muted}>Start the series to tick {def.unit.toLowerCase()}s off.</p>
         )}
         <div className={s.row} style={{ justifyContent: 'space-between' }}>
           <button type="button" className={s.textLink} onClick={() => setPicking(true)}><Link2 size={14} style={{ verticalAlign: '-2px' }} /> {session ? 'Link a different session' : 'Link a session'}</button>
@@ -286,24 +301,44 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
       </header>
 
       {status === 'active' ? (
-        <section className={s.seq} aria-label="Where you are">
-          <div className={s.spread}>
-            <span className={s.kicker} style={{ margin: 0 }}>Started {fmt(progress!.startedAt)}</span>
-            {p && <span className={s.paceNote}>{p.label}</span>}
+        <section className={s.journey} aria-label="Where you are">
+          <div className={s.journeyTop}>
+            <Ring value={done.size} max={def.length} />
+            <div className={s.journeyHead}>
+              <span className={s.journeyKicker}>{done.size >= def.length ? 'Every practice done' : `${done.size} of ${def.length} ${unit}s done`}</span>
+              <span className={s.journeyStarted}>Started {fmt(progress!.startedAt)}</span>
+              {p && done.size < def.length && <span className={cx(s.pacePill, p.delta < 0 && s.paceBehind)}>{p.label}</span>}
+            </div>
           </div>
-          <Bar value={done.size} max={def.length} />
-          <strong style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.25rem' }}>
-            {next ? `Next: ${def.unit} ${next}${nextSession ? ` · ${nextSession.title}` : ''}` : `All ${def.length} ${unit}s done`}
-          </strong>
-          <div className={s.row}>
-            {next && (nextSession
-              ? <StartPractice session={nextSession} series={{ seriesId: def.id, day: next }} label={`Start ${def.unit} ${next}`} compact />
-              : <PracticeLink url={daySearchUrl(def, next)} compact search label={`Find ${def.unit} ${next} on YouTube`} onLaunch={() => markLaunched({ seriesId: def.id, day: next })} />)}
-            {next && <Button size="sm" variant="ghost" onClick={() => mark(next)}><Check size={15} /> Mark {def.unit} {next} done</Button>}
-          </div>
-          <div className={s.row} style={{ justifyContent: 'flex-end', gap: 'var(--space-md)' }}>
-            <button type="button" className={s.textLink} onClick={() => setConfirm('complete')}><Flag size={13} style={{ verticalAlign: '-2px' }} /> Complete series</button>
-            <button type="button" className={s.textLink} style={{ color: 'var(--color-muted)' }} onClick={() => setConfirm('abandon')}><X size={13} style={{ verticalAlign: '-2px' }} /> Abandon</button>
+
+          {next ? (
+            <section className={s.upNext} aria-label={`Up next: ${def.unit} ${next}`}>
+              <span className={s.upNextLabel}>Up next</span>
+              <div className={s.upNextTitle}>
+                <span className={s.upNextDay}>{def.unit} {next}</span>
+                {nextSession && dayTheme(nextSession.title, def) && <span className={s.upNextTheme}>{dayTheme(nextSession.title, def)}</span>}
+              </div>
+              <span className={s.upNextMeta}>
+                {nextSession ? `${nextSession.durationMinutes} min${nextSession.styles[0] ? ` · ${nextSession.styles[0]}` : ''}` : 'Not in your library yet: opens a YouTube search'}
+              </span>
+              <div className={s.upNextActions}>
+                {nextSession
+                  ? <StartPractice session={nextSession} series={{ seriesId: def.id, day: next }} label="Start" />
+                  : <PracticeLink url={daySearchUrl(def, next)} search label="Find on YouTube" ariaLabel={`Find ${def.unit} ${next} on YouTube`} onLaunch={() => markLaunched({ seriesId: def.id, day: next })} />}
+                <button type="button" className={s.markDone} aria-label={`Mark ${def.unit} ${next} done`} onClick={() => mark(next)}><Check size={17} strokeWidth={2} /> Mark done</button>
+              </div>
+            </section>
+          ) : (
+            <div className={s.upNext}>
+              <span className={s.upNextLabel}>Well practised</span>
+              <span className={s.upNextMeta}>All {def.length} {unit}s are done. Complete the series to file it under your finished runs.</span>
+              <div className={s.upNextActions}><Button onClick={() => setConfirm('complete')}><Flag size={16} /> Complete series</Button></div>
+            </div>
+          )}
+
+          <div className={s.journeyFoot}>
+            {next && <button type="button" className={s.footBtn} onClick={() => setConfirm('complete')}><Flag size={14} /> Complete early</button>}
+            <button type="button" className={cx(s.footBtn, s.footQuiet)} onClick={() => setConfirm('abandon')}><X size={14} /> Abandon</button>
           </div>
         </section>
       ) : (
@@ -312,7 +347,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
           {status === 'abandoned' && progress!.runs.length > 0 && <p>Set aside {fmt(progress!.endedAt!)} after {progress!.runs.at(-1)?.daysDone} of {def.length}. Nothing is lost; begin again any time.</p>}
           <div className={s.row}>
             <Button onClick={status ? () => setConfirm('restart') : start}>{status ? <><RotateCcw size={15} /> Start again</> : `Start ${def.name}`}</Button>
-            {!status && <span className={s.muted}>One {unit} at a time; Stillflow keeps your place.</span>}
+            {!status && <span className={s.muted}>Stillflow keeps your place, one {unit} at a time.</span>}
           </div>
         </section>
       )}
@@ -331,7 +366,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
           )
         })}
       </div>
-      <p className={s.entryMeta} style={{ marginTop: 'var(--space-sm)' }}>Dashed: not in your library yet. Tap any {unit} to open it, tick it, or link a session.</p>
+      <p className={s.entryMeta} style={{ marginTop: 'var(--space-sm)' }}>Tap any {unit} to start it or tick it off. A dashed outline means its video isn’t in your library yet.</p>
 
       {progress && progress.runs.length > 0 && (
         <>
