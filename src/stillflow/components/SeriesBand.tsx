@@ -1,6 +1,7 @@
 import type { SeriesDef } from '../domain/types'
 import type { Pace } from '../lib/series'
 import { cx } from '../../ds/lib/cx'
+import { YoursTag } from './ui'
 import s from '../screens/screens.module.css'
 
 const fmt = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -38,7 +39,7 @@ export function SeriesBand({ def, done, started, pace, name = false }: {
     <div className={s.journeyTop}>
       <Ring value={done} max={def.length} />
       <div className={s.journeyHead}>
-        {name && <span className={s.entrySource}>{def.name}</span>}
+        {name && <span className={cx(s.entrySource, s.titleTag)}>{def.name}{def.kind === 'custom' && <YoursTag kind="series" />}</span>}
         <span className={s.journeyKicker}>{done >= def.length ? 'Every practice done' : `${done} of ${def.length} ${unit}s done`}</span>
         {started && <span className={s.journeyStarted}>Started {fmt(started)}</span>}
         {pace && done < def.length && <span className={cx(s.pacePill, pace.delta < 0 && s.paceBehind)}>{pace.label}</span>}

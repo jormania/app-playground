@@ -172,3 +172,19 @@ span.stepBtn { cursor: default; padding: 0 1px; height: auto; }
   transition: color 240ms var(--ease), border-color 240ms var(--ease);
 }
 .libraryTabs a[aria-current='page'] { color: var(--color-ink); border-bottom-color: var(--color-accent); }
+
+/* "Yours": a series or collection you made, not one of Adriene's. */
+.yours {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--sf-lavender-soft);
+  color: var(--sf-lavender-ink);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  vertical-align: middle;
+  white-space: nowrap;
+}

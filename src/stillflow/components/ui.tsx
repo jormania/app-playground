@@ -116,6 +116,15 @@ export function RepeatRating({ value, onChange, label = 'Repeat interest', showC
   )
 }
 
+/**
+ * Marks what you made yourself apart from Adriene's own, in the lavender accent:
+ * "Your series", "Your collection". The tag is the whole phrase, so it reads on
+ * its own beside a count or a name. Pair with `mine` on the card for its edge.
+ */
+export function YoursTag({ kind }: { kind: 'series' | 'collection' }) {
+  return <span className={styles.yours}>Your {kind}</span>
+}
+
 export function SectionHead({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <div className={styles.sectionHead}>

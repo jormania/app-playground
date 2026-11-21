@@ -4,7 +4,8 @@ import { Button, ConfirmModal, Field, Modal } from '../../ds'
 import { hrefOf, navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { StartPractice } from '../components/StartPractice'
-import { Empty, LibraryTabs } from '../components/ui'
+import { Empty, LibraryTabs, YoursTag } from '../components/ui'
+import { cx } from '../../ds/lib/cx'
 import type { Session, UserCollection } from '../domain/types'
 import { fold } from '../lib/filter'
 import { readJson, writeJson } from '../../shared/storage'
@@ -60,7 +61,8 @@ export function Collections() {
             const items = c.sessionIds.map((id) => byId.get(id)).filter((x) => !!x)
             const minutes = items.reduce((sum, x) => sum + x.durationMinutes, 0)
             return (
-              <a key={c.id} href={hrefOf({ name: 'collection', id: c.id })} className={s.collection}>
+              <a key={c.id} href={hrefOf({ name: 'collection', id: c.id })} className={cx(s.collection, s.mine)}>
+                <span className={cx(s.kicker, s.titleTag)} style={{ margin: 0 }}><YoursTag kind="collection" /></span>
                 <h3>{c.name}</h3>
                 <span className={s.muted}>{items.length} {items.length === 1 ? 'session' : 'sessions'} · {minutes} min</span>
                 <span className={s.stripe} aria-hidden="true">{items.slice(0, 8).map((x) => <i key={x.id} />)}</span>
@@ -146,6 +148,7 @@ export function CollectionDetail({ id }: { id: string }) {
       <header className={s.pageHead}>
         <div className={s.spread}>
           <div>
+            <p className={cx(s.kicker, s.titleTag)}><YoursTag kind="collection" /></p>
             <h1 className={s.pageTitle}>{c.name}</h1>
             <p className={s.lede}>{items.length} {items.length === 1 ? 'session' : 'sessions'} · {minutes} min in all</p>
           </div>

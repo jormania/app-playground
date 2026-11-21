@@ -4,7 +4,7 @@ import { Button, ConfirmModal, Field, Modal, SegmentedControl } from '../../ds'
 import { hrefOf, navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { PracticeLink, StartPractice } from '../components/StartPractice'
-import { Empty, SectionHead, Thumb } from '../components/ui'
+import { Empty, SectionHead, Thumb, YoursTag } from '../components/ui'
 import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
 import { localDate, newEntry, teaser } from '../lib/practice'
@@ -112,7 +112,7 @@ function JourneySummary({ def }: { def: SeriesDef }) {
 }
 
 function kindLabel(def: SeriesDef) {
-  if (def.kind === 'custom') return `Your series · ${def.length} ${def.unit.toLowerCase()}s`
+  if (def.kind === 'custom') return `${def.length} ${def.unit.toLowerCase()}s`
   return `${def.year ?? ''} · ${def.length} ${def.unit.toLowerCase()}s`.replace(/^ · /, '')
 }
 
@@ -128,8 +128,8 @@ function SeriesCard({ def }: { def: SeriesDef }) {
   const { progress, done, linked, next, pace: p } = useSeries(def)
   const status = progress?.status
   return (
-    <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={cx(s.collection, status === 'active' && s.seriesActive)}>
-      <span className={s.kicker} style={{ margin: 0 }}>{kindLabel(def)}</span>
+    <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={cx(s.collection, status === 'active' && s.seriesActive, def.kind === 'custom' && s.mine)}>
+      <span className={cx(s.kicker, s.titleTag)} style={{ margin: 0 }}>{def.kind === 'custom' && <YoursTag kind="series" />}{kindLabel(def)}</span>
       <h3>{def.name}</h3>
 
       {status === 'active' ? (
@@ -331,7 +331,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast }: {
     <>
       <a className={s.back} href="#/series"><ArrowLeft size={16} /> Series</a>
       <header className={s.pageHead}>
-        <p className={s.kicker}>{kindLabel(def)}</p>
+        <p className={cx(s.kicker, s.titleTag)}>{def.kind === 'custom' && <YoursTag kind="series" />}{kindLabel(def)}</p>
         <h1 className={s.pageTitle}>{def.name}</h1>
         {def.blurb && <p className={s.lede}>{def.blurb}</p>}
         <div className={s.row} style={{ marginTop: 'var(--space-sm)' }}>
