@@ -148,3 +148,28 @@ describe('series definitions', () => {
     expect(customSeries('x', 0, 'Week', 'Y').length).toBe(1)
   })
 })
+
+describe('practices logged with dates before Start', () => {
+  it('count towards a first run, and the run reads as starting from the first one', async () => {
+    const { BUILT_IN_SERIES } = await import('../data/series')
+    const { doneDays, inRun, runStart, nextDay, pace } = await import('./series')
+    const def = BUILT_IN_SERIES.find((d) => d.id === 'move-2022')!
+    const mk = (n: number) => ({ id: `m${n}`, title: `Day ${n}`, series: 'MOVE', seriesDay: n } as unknown as import('../domain/types').Session)
+    const linked = new Map([[1, mk(1)], [2, mk(2)]])
+    const progress = { seriesId: def.id, status: 'active' as const, startedAt: '2026-11-20', manualDays: {}, links: {}, runs: [] }
+    const history = [
+      { id: 'b', sessionId: 'm2', date: '2026-11-19', minutes: 28, createdAt: '2026-11-21T07:00:00Z' },
+      { id: 'a', sessionId: 'm1', date: '2026-11-18', minutes: 29, createdAt: '2026-11-21T07:00:00Z' },
+    ]
+    const done = doneDays(def, progress, linked, history)
+    expect([...done.keys()].sort()).toEqual([1, 2])
+    expect(nextDay(def, done)).toBe(3)
+    expect(runStart(progress, done)).toBe('2026-11-18')
+    expect(pace(def, { ...progress, startedAt: runStart(progress, done) }, done.size, '2026-11-21').delta).toBe(-1)
+    // A second run doesn't inherit practices from before the previous one ended.
+    const second = { ...progress, startedAt: '2026-12-01', runs: [{ startedAt: '2026-11-01', endedAt: '2026-11-25', status: 'abandoned' as const, daysDone: 2 }] }
+    expect(inRun(second, '2026-11-19')).toBe(false)
+    expect(inRun(second, '2026-11-26')).toBe(true)
+    expect(inRun(second, '2026-12-02')).toBe(true)
+  })
+})

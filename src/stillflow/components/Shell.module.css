@@ -2,7 +2,7 @@
 
 .main {
   min-width: 0;
-  padding: var(--space-md) var(--sf-gutter) calc(var(--sf-nav-h) + var(--space-2xl) + env(safe-area-inset-bottom));
+  padding: var(--space-xs) var(--sf-gutter) calc(var(--sf-nav-h) + var(--space-2xl) + env(safe-area-inset-bottom));
   max-width: 1120px;
   margin: 0 auto;
 }

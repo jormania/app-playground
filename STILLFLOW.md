@@ -37,6 +37,11 @@ The release number shows at the foot of Settings (`app/release.ts`).
 - **Home-screen shortcuts** (long-press the icon): Today's practice, Surprise me, Series,
   My practice.
 
+Follow-up (same day): practices logged in My Practice with dates before you pressed
+Start now count towards the series (a first run counts everything; a later run counts
+what came after the previous one ended), and "Started" shows the first such date. Less
+space between the app bar and each screen's title.
+
 Audit fixes shipped just before (6d61041): a whole-channel re-import in "update" mode no
 longer overwrites reviewed classification or drops your tags; posted dates and "last
 checked" use the local calendar day; unmarking a series day is one toast with one Undo;

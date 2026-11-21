@@ -9,8 +9,7 @@ import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
 import { localDate, newEntry } from '../lib/practice'
 import {
-  customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay,
-} from '../lib/series'
+  customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay, inRun, runStart } from '../lib/series'
 import { cx } from '../../ds/lib/cx'
 import s from './screens.module.css'
 
@@ -24,8 +23,9 @@ export function useSeries(def: SeriesDef) {
     const linked = linkedSessions(def, sessions, progress)
     const done = doneDays(def, progress, linked, history)
     const next = nextDay(def, done)
-    const p = progress && progress.status === 'active' ? pace(def, progress, done.size, localDate()) : null
-    return { progress, linked, done, next, pace: p }
+    const p = progress && progress.status === 'active' ? pace(def, { ...progress, startedAt: runStart(progress, done) }, done.size, localDate()) : null
+    const started = progress ? runStart(progress, done) : undefined
+    return { progress, linked, done, next, pace: p, started }
   }, [def, sessions, history, progress])
 }
 
@@ -53,7 +53,7 @@ export function useDayActions(def: SeriesDef) {
     const session = linked.get(day)
     if (!session) return
     // Undo the practice that made this day count in the current run.
-    const ids = history.filter((e) => e.sessionId === session.id && e.date >= progress.startedAt).map((e) => e.id)
+    const ids = history.filter((e) => e.sessionId === session.id && inRun(progress, e.date)).map((e) => e.id)
     deletePractices(ids, ids.length > 1 ? `${def.unit} ${day} unmarked: ${ids.length} practices removed` : `${def.unit} ${day} unmarked`)
   }
   return { mark, unmark }
@@ -274,7 +274,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
   toast: (m: string, t?: 'success' | 'neutral' | 'danger') => void
   markLaunched: (l: { seriesId?: string; day?: number; sessionId?: string }) => void
 }) {
-  const { progress, linked, done, next, pace: p } = useSeries(def)
+  const { progress, linked, done, next, pace: p, started } = useSeries(def)
   const { mark } = useDayActions(def)
   const [day, setDay] = useState<number | null>(null)
   const [confirm, setConfirm] = useState<null | 'abandon' | 'complete' | 'restart' | 'delete'>(null)
@@ -307,7 +307,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
             <Ring value={done.size} max={def.length} />
             <div className={s.journeyHead}>
               <span className={s.journeyKicker}>{done.size >= def.length ? 'Every practice done' : `${done.size} of ${def.length} ${unit}s done`}</span>
-              <span className={s.journeyStarted}>Started {fmt(progress!.startedAt)}</span>
+              <span className={s.journeyStarted}>Started {fmt(started ?? progress!.startedAt)}</span>
               {p && done.size < def.length && <span className={cx(s.pacePill, p.delta < 0 && s.paceBehind)}>{p.label}</span>}
             </div>
           </div>

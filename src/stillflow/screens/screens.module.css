@@ -1,6 +1,6 @@
 /* Layout shared by every screen. Screen-specific rules sit at the end, by screen. */
 
-.pageHead { margin: var(--space-sm) 0 var(--space-lg); }
+.pageHead { margin: 0 0 var(--space-md); }
 .kicker {
   font-size: var(--text-xs);
   text-transform: uppercase;
@@ -742,8 +742,9 @@ input.settingInput:not([type='number']) { text-align: left; }
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: var(--space-md);
-  padding: var(--space-lg) 0 var(--space-md);
+  padding: 0 0 var(--space-md);
 }
+.todayHead .kicker { margin-top: 0; }
 
 .weekRing {
   display: grid;

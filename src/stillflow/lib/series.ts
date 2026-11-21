@@ -52,6 +52,25 @@ export function linkedSessions(def: SeriesDef, sessions: Session[], progress?: S
 }
 
 /** Which days are done in the current (or last) run, with the date each was done. */
+/**
+ * Whether a practice on `date` belongs to this run. Anything since the run
+ * started does; so does anything earlier that came after the previous run ended
+ * (all of it, on a first run). Days you practised before pressing Start, or
+ * logged afterwards with their real dates, count.
+ */
+export function inRun(progress: SeriesProgress, date: string): boolean {
+  if (date >= progress.startedAt) return true
+  const lastEnd = progress.runs.reduce((m, r) => (r.endedAt > m ? r.endedAt : m), '')
+  return date > lastEnd
+}
+
+/** When this run really began: its start, or an earlier practice it counts. */
+export function runStart(progress: SeriesProgress, done: Map<number, string>): string {
+  let start = progress.startedAt
+  for (const date of done.values()) if (date < start) start = date
+  return start
+}
+
 export function doneDays(
   def: SeriesDef, progress: SeriesProgress | undefined, linked: Map<number, Session>, history: PracticeEntry[],
 ): Map<number, string> {
@@ -67,7 +86,7 @@ export function doneDays(
   for (let i = history.length - 1; i >= 0; i--) {
     const h = history[i]
     const d = dayBySession.get(h.sessionId)
-    if (d && !out.has(d) && h.date >= progress.startedAt && h.date <= until) out.set(d, h.date)
+    if (d && !out.has(d) && inRun(progress, h.date) && h.date <= until) out.set(d, h.date)
   }
   return out
 }
