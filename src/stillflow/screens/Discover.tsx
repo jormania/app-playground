@@ -37,7 +37,7 @@ function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef
           <span>
             <span className={s.entrySource}>{where}</span>
             <strong className={s.todayTitle}>{theme || `${def.unit} ${next}`}</strong>
-            <span className={s.muted}>{session.durationMinutes} min · {done.size} of {def.length} done</span>
+            <span className={s.muted}>{done.size} of {def.length} done</span>
           </span>
         </a>
       ) : (
@@ -104,7 +104,7 @@ function TodayPick({ state, quiet = false, kicker }: { state: ReturnType<typeof 
           <span>
             {shortTitle(pick.session, seriesDefs).label && <span className={s.entrySource}>{shortTitle(pick.session, seriesDefs).label}</span>}
             <strong className={s.todayTitle}>{shortTitle(pick.session, seriesDefs).title}</strong>
-            <span className={s.muted}>{pick.session.durationMinutes} min{reason ? ` · ${reason}` : ''}</span>
+            {reason && <span className={s.muted}>{reason}</span>}
           </span>
         </a>
       ) : (
