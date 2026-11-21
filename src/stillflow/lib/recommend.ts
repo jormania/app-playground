@@ -1,4 +1,4 @@
-import { isExtra } from './filter'
+import { isExtra, isWomenSpecific } from './filter'
 import type { PracticeEntry, Preferences, Session, UserSessionData } from '../domain/types'
 import { INTENSITY_LABELS } from '../domain/vocabulary'
 
@@ -115,6 +115,8 @@ export function passesConstraints(s: Session, c: Constraints, ctx: RecommendCont
   if (s.tags.includes('unavailable')) return false
   // A vlog, trailer or pose tutorial isn't a practice to propose.
   if (isExtra(s)) return false
+  // Made for women's particular needs: never proposed while the setting is on (the default).
+  if (ctx.preferences.skipWomenSpecific !== false && isWomenSpecific(s)) return false
   if (c.maxDuration != null && s.durationMinutes > c.maxDuration) return false
   if (c.minIntensity != null && s.intensity < c.minIntensity) return false
   if (c.maxIntensity != null && (s.intensity === 0 || s.intensity > c.maxIntensity)) return false

@@ -39,6 +39,13 @@ Opening videos on Android now defaults to the app Android uses for YouTube links
 `intent://` with no package), so a patched player such as Morphe or ReVanced opens
 instead of Google's app. "A named app" pins a package; "Official YouTube" pins Google's.
 
+Follow-up 2: My Practice drops "Last 30 days" (calendar, notes and history cover it).
+Suggestions skip practices made for women's particular needs (pregnancy, the cycle,
+menopause, "for women"; `isWomenSpecific`) on Today, Surprise Me and Practise for, on by
+default under Settings › Surprise Me; they stay in Explore and search. Pelvic floor and
+other generic titles are not caught. Surprise Me shows the short title and hides an unset
+intensity, like the cards.
+
 Audit and wording (same release): one set of words everywhere: "Mark as done" for a
 session, "Mark done" / "Untick" for a series day, "Abandon" / "abandoned" (no more "set
 aside"), "My Practice" and "Surprise Me" as names, "Today" instead of "Discover" in

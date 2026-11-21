@@ -7,36 +7,12 @@ import { CompleteSheet } from '../components/Sheets'
 import { WeekRing } from '../components/WeekRing'
 import { Empty, SectionHead } from '../components/ui'
 import type { PracticeEntry, Session } from '../domain/types'
-import { fold, matchesIntention } from '../lib/filter'
+import { fold } from '../lib/filter'
 import { FEELS, shortTitle } from '../lib/today'
-import { PHYSICAL_FOCUS } from '../domain/vocabulary'
 import { cx } from '../../ds/lib/cx'
 import { repeatLabel } from '../domain/vocabulary'
-import { formatDay, localDate, summarise, thisWeek, topValues } from '../lib/practice'
-import { daysBetween } from '../lib/recommend'
+import { formatDay, localDate, summarise, thisWeek } from '../lib/practice'
 import s from './screens.module.css'
-
-function Leanings({ title, rows }: { title: string; rows: { value: string; count: number }[] }) {
-  if (!rows.length) return null
-  const max = rows[0].count
-  return (
-    <div className={s.panel}>
-      <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-sm)' }}>{title}</h3>
-      <div className={s.leanings}>
-        {rows.map((r) => (
-          <div key={r.value} className={s.lean}>
-            <span>{r.value}</span>
-            <span className={s.leanBar}><span style={{ width: `${(r.count / max) * 100}%` }} /></span>
-            <span className={s.muted} style={{ textAlign: 'right' }}>{r.count}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** A body area counts when the session says so or its title does ("Yoga For Tight Hips"). */
-const areasOf = (x: Session) => PHYSICAL_FOCUS.filter((a) => x.physicalFocus.includes(a) || matchesIntention(x, `area:${a}`))
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -109,7 +85,7 @@ function LogPractice({ open, onClose, onPick }: { open: boolean; onClose: () => 
 }
 
 export function Practice() {
-  const { history, sessions, byId, userData, lastPractised, deletePractice, preferences, seriesDefs } = useStillflow()
+  const { history, byId, deletePractice, preferences, seriesDefs } = useStillflow()
   const target = preferences.weeklyTargetMinutes
   const [logging, setLogging] = useState(false)
   const [completing, setCompleting] = useState<Session | null>(null)
@@ -118,7 +94,6 @@ export function Practice() {
 
   const total = summarise(history)
   const week = summarise(thisWeek(history, today))
-  const recent30 = history.filter((h) => daysBetween(h.date, today) <= 30)
 
   const months = useMemo(() => {
     const out: { label: string; entries: PracticeEntry[] }[] = []
@@ -130,10 +105,6 @@ export function Practice() {
     return out
   }, [history])
 
-  const notRevisited = sessions
-    .filter((x) => (lastPractised[x.id] && daysBetween(lastPractised[x.id], today) > 30) || (userData[x.id]?.favourite && !lastPractised[x.id]))
-    .sort((a, b) => (lastPractised[a.id] ?? '').localeCompare(lastPractised[b.id] ?? ''))
-    .slice(0, 5)
 
   const notes = useMemo(() => history.filter((h) => h.note), [history])
   const [allNotes, setAllNotes] = useState(false)
@@ -142,7 +113,6 @@ export function Practice() {
   const source = (id: string) => { const x = byId.get(id); return x ? shortTitle(x, seriesDefs).label : undefined }
   const withSource = (id: string) => (source(id) ? ` · ${source(id)}` : '')
 
-  const longest = useMemo(() => [...history].sort((a, b) => b.minutes - a.minutes).slice(0, 3), [history])
 
   return (
     <>
@@ -184,32 +154,6 @@ export function Practice() {
               ))}
               {notes.length > 4 && <button type="button" className={s.textLink} onClick={() => setAllNotes((v) => !v)}>{allNotes ? 'Show fewer' : `Show all ${notes.length}`}</button>}
             </>
-          )}
-
-          <SectionHead title="Last 30 days" />
-          <div className={s.collections}>
-            <Leanings title="Styles" rows={topValues(recent30, sessions, (x) => x.styles, 4)} />
-            <Leanings title="Body areas" rows={topValues(recent30, sessions, areasOf, 4)} />
-          </div>
-          {recent30.length === 0 && <p className={s.muted}>Nothing in the last 30 days.</p>}
-
-          {(notRevisited.length > 0 || longest.length > 0) && (
-            <div className={s.collections} style={{ marginTop: 'var(--space-md)' }}>
-              {notRevisited.length > 0 && (
-                <div className={s.panel}>
-                  <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-sm)' }}>Not revisited lately</h3>
-                  {notRevisited.map((x) => (
-                    <p key={x.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: x.id })}>{title(x.id)}</a>{withSource(x.id)}{lastPractised[x.id] ? ` · ${daysBetween(lastPractised[x.id], today)} days ago` : ' · favourite, never logged'}</p>
-                  ))}
-                </div>
-              )}
-              <div className={s.panel}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-sm)' }}>Longest sessions</h3>
-                {longest.map((e) => (
-                  <p key={e.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: e.sessionId })}>{title(e.sessionId)}</a>{withSource(e.sessionId)} · {e.minutes} min</p>
-                ))}
-              </div>
-            </div>
           )}
 
           <SectionHead title="History" />

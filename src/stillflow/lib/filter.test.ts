@@ -144,3 +144,24 @@ describe('Practise for', () => {
     expect(activeFilterCount({ ...EMPTY_FILTERS, intention: 'restore' })).toBe(1)
   })
 })
+
+describe('women-specific practices', () => {
+  it('are recognised by title, while generic ones are not', async () => {
+    const { isWomenSpecific } = await import('./filter')
+    for (const t of ['Yoga For Women |  Yoga With Adriene', 'Prenatal Yoga - 5 Poses for All Trimesters', 'Yoga for Cramps and PMS  |  20-Minute Home Yoga', 'Yoga for Menopause']) {
+      expect(isWomenSpecific({ title: t })).toBe(true)
+    }
+    for (const t of ['Yoga For Pelvic Floor  |  Yoga With Adriene', 'Rebirth Yoga  |  24-Minute Yoga Flow', 'Yoga For Manual Labor', 'Goddess Pose - Foundations of Yoga', 'Yoga For Men']) {
+      expect(isWomenSpecific({ title: t })).toBe(false)
+    }
+  })
+
+  it('stay browsable but leave "Practise for" when the setting is on', async () => {
+    const { applyFilters, EMPTY_FILTERS } = await import('./filter')
+    const list = [{ ...session('w'), title: 'Yoga For Women | Relax and Restore' }, { ...session('g'), title: 'Gentle Restore' }] as Session[]
+    const ctx = { userData: {}, lastPractised: {} }
+    expect(applyFilters(list, EMPTY_FILTERS, 'recent', { ...ctx, skipWomenSpecific: true })).toHaveLength(2)
+    expect(applyFilters(list, { ...EMPTY_FILTERS, intention: 'restore' }, 'recent', { ...ctx, skipWomenSpecific: true }).map((x) => x.id)).toEqual(['g'])
+    expect(applyFilters(list, { ...EMPTY_FILTERS, intention: 'restore' }, 'recent', ctx)).toHaveLength(2)
+  })
+})

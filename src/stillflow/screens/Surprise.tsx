@@ -9,12 +9,13 @@ import { INTENSITY_LABELS, PHYSICAL_FOCUS, STYLES } from '../domain/vocabulary'
 import { localDate } from '../lib/practice'
 import { DEFAULT_CONSTRAINTS, MODES, surprise, type Constraints, type Pick, type SurpriseMode } from '../lib/recommend'
 import { readSessionJson, writeSessionJson } from '../../shared/storage'
+import { shortTitle } from '../lib/today'
 import s from './screens.module.css'
 
 const KEY = 'stillflow:surprise'
 
 export function Surprise() {
-  const { sessions, userData, history, preferences, toggleFavourite } = useStillflow()
+  const { sessions, userData, history, preferences, toggleFavourite, seriesDefs } = useStillflow()
   const saved = readSessionJson<{ mode?: SurpriseMode; constraints?: Constraints }>(KEY, {})
   const [mode, setMode] = useState<SurpriseMode>(saved.mode ?? preferences.surpriseMode ?? 'match')
   const [c, setC] = useState<Constraints>({ ...DEFAULT_CONSTRAINTS, maxDuration: preferences.preferredMaxDuration, ...saved.constraints })
@@ -69,11 +70,11 @@ export function Surprise() {
           <div className={s.stack}>
             <p className={s.why}>{pick.reason}</p>
             <div>
-              <h2 className={s.revealTitle}><a href={hrefOf({ name: 'session', id: pick.session.id })}>{pick.session.title}</a></h2>
+              <h2 className={s.revealTitle}><a href={hrefOf({ name: 'session', id: pick.session.id })}>{shortTitle(pick.session, seriesDefs).title}</a></h2>
               <div className={s.facts}>
                 <span>{pick.session.durationMinutes} min</span>
                 <span>{pick.session.styles.join(' · ')}</span>
-                <IntensityDots level={pick.session.intensity} showLabel />
+                {pick.session.intensity > 0 && <IntensityDots level={pick.session.intensity} showLabel />}
               </div>
               {pick.session.physicalFocus.length > 0 && <p className={s.muted} style={{ marginTop: 4 }}>Focus: {pick.session.physicalFocus.join(', ')}</p>}
             </div>

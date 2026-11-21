@@ -140,6 +140,8 @@ export interface Preferences {
   favouriteGoals: string[]
   preferredMaxDuration?: number
   /** How Surprise Me picks when you open it. */
+  /** Leave practices made for women's particular needs (pregnancy, cycle, menopause) out of suggestions. They stay in the library. */
+  skipWomenSpecific?: boolean
   surpriseMode: 'match' | 'random' | 'different' | 'challenge' | 'recovery' | 'short' | 'rediscover' | 'comfort'
   theme: 'system' | 'light' | 'dark'
   /** Offer "Did you finish…?" when you come back from YouTube. */
@@ -166,6 +168,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   preferredIntensities: [],
   favouriteGoals: [],
   surpriseMode: 'match',
+  skipWomenSpecific: true,
   theme: 'system',
   askOnReturn: true,
   view: 'grid',

@@ -132,6 +132,9 @@ export function Settings() {
               {MODES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
           </label>
+          <SettingsToggle label="Leave out practices for women’s particular needs" checked={preferences.skipWomenSpecific !== false}
+            hint="Pregnancy, the cycle, menopause and the like are never suggested on Today, in Surprise Me or Practise for. They stay in Explore and search."
+            onChange={(e) => savePreferences({ ...preferences, skipWomenSpecific: e.target.checked })} />
         </div>
       </section>
 

@@ -118,3 +118,17 @@ describe('constraints and repetition', () => {
     expect(t.yin ?? 0).toBeLessThan(t.hips ?? 0)
   })
 })
+
+describe('women-specific practices in suggestions', () => {
+  const prenatal = s('prenatal', { title: 'Prenatal Yoga | 22-Minute Home Yoga Practice', intensity: 2 })
+  const draws = (prefs = DEFAULT_PREFERENCES) =>
+    tally((r) => surprise('random', DEFAULT_CONSTRAINTS, ctx({ sessions: [...sessions, prenatal], preferences: prefs }), r)?.session.id)
+
+  it('are never proposed by default', () => {
+    expect(draws().prenatal).toBeUndefined()
+  })
+
+  it('come back if you turn the setting off', () => {
+    expect(draws({ ...DEFAULT_PREFERENCES, skipWomenSpecific: false }).prenatal).toBeGreaterThan(0)
+  })
+})

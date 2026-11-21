@@ -59,6 +59,8 @@ export interface PersonalContext {
   userData: Record<string, UserSessionData>
   /** sessionId → latest practice date (YYYY-MM-DD). */
   lastPractised: Record<string, string>
+  /** "Practise for" leaves out women-specific practices (Settings). */
+  skipWomenSpecific?: boolean
 }
 
 export function lastPractisedMap(history: PracticeEntry[]): Record<string, string> {
@@ -98,6 +100,7 @@ export function matches(s: Session, f: Filters, ctx: PersonalContext, haystack =
   if (f.favouritesOnly && !ctx.userData[s.id]?.favourite) return false
   if (f.ratings?.length && !f.ratings.includes(ctx.userData[s.id]?.rating ?? 0)) return false
   if (f.intention && !matchesIntention(s, f.intention)) return false
+  if (f.intention && ctx.skipWomenSpecific && isWomenSpecific(s)) return false
 
   return anyOf(f.styles, s.styles) && anyOf(f.focus, s.physicalFocus) && anyOf(f.objectives, s.objectives) &&
     anyOf(f.energy, s.energy) && anyOf(f.experience, s.experienceLevel) &&
@@ -213,6 +216,21 @@ export function isExtra(s: Pick<Session, 'title' | 'durationMinutes'>): boolean 
   if (EXTRA_PATTERNS.some((re) => re.test(t))) return true
   // "Side Plank Pose | Vasisthasana": a short breakdown of one pose.
   return s.durationMinutes < 12 && /\bpose\b/.test(t) && !/\byoga for\b/.test(t)
+}
+
+/**
+ * Practices made for women's particular needs: pregnancy and after, the cycle,
+ * menopause, fertility, or billed "for women". Generic ones (pelvic floor
+ * included) are not. With the setting on, never suggested; always searchable.
+ */
+const WOMEN_SPECIFIC = [
+  /\bfor women\b/, /\bwomen'?s\b/, /\bladies\b/, /prenatal/, /pregnan/, /postnatal/, /postpartum/, /trimester/,
+  /\bpms\b/, /menstrua/, /\bperiod\b/, /menopaus/, /fertility/, /\b(new )?moms?\b/, /moms to be/, /\bmama\b/,
+]
+
+export function isWomenSpecific(s: Pick<Session, 'title'>): boolean {
+  const t = fold(s.title)
+  return WOMEN_SPECIFIC.some((re) => re.test(t))
 }
 
 const NO_CONTEXT: PersonalContext = { userData: {}, lastPractised: {} }

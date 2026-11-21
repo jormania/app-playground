@@ -37,8 +37,8 @@ export function Explore() {
   }, [])
 
   const results = useMemo(
-    () => applyFilters(sessions, filters, sort, { userData, lastPractised }, seed),
-    [sessions, filters, sort, userData, lastPractised, seed],
+    () => applyFilters(sessions, filters, sort, { userData, lastPractised, skipWomenSpecific: preferences.skipWomenSpecific !== false }, seed),
+    [sessions, filters, sort, userData, lastPractised, seed, preferences.skipWomenSpecific],
   )
   const series = useMemo(() => [...new Set(sessions.map((x) => x.series).filter((x): x is string => !!x))].sort(), [sessions])
   const update = (patch: Partial<Filters>) => { setFilters({ ...filters, ...patch }); setLimit(PAGE) }
