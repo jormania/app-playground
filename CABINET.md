@@ -303,12 +303,13 @@ add it while still iterating. When it is:
    - `kind: "react-vite"` — this is what the Cabinet filters on
    - `manifest: "/your-app.webmanifest"` — must match the `<link rel="manifest">`
      the app's own HTML entry actually serves
-2. Make sure that app has a real webmanifest + PWA icon set + scoped service
-   worker. If it doesn't yet (see `LEGACY.md` for apps that predate this),
-   copy the pattern in `public/law-of-the-day.webmanifest` +
-   `public/law-of-the-day-sw.js` + `src/law-of-the-day/main.jsx`'s registration
-   snippet, and a `scripts/generate-<app>-icons.mjs` icon script (copy
-   `scripts/generate-law-of-the-day-icons.mjs`).
+2. Make sure that app has a real webmanifest + scoped service worker. If it
+   doesn't yet (see `LEGACY.md` for apps that predate this), copy the pattern in
+   `public/law-of-the-day.webmanifest` + `public/law-of-the-day-sw.js` +
+   `src/law-of-the-day/main.jsx`'s registration snippet. The manifest's `icons`
+   are the shared Cone of Cold set (`/coneofcold-icon-192.png`, `-512.png`,
+   `-512-maskable.png`), never the app's own: see CLAUDE.md, "PWA icon". An icon
+   script is only for the app's favicon and logo.
 3. Nothing to add to [`public/cabinet.webmanifest`](public/cabinet.webmanifest) —
    its `related_applications` list was removed on purpose (see "The Cabinet's
    WebAPK: a dead end"); the next step is what wires up detection.

@@ -11,19 +11,19 @@
   "theme_color": "#f2ecd9",
   "icons": [
     {
-      "src": "/silva-icon-192.png",
+      "src": "/coneofcold-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/silva-icon-512.png",
+      "src": "/coneofcold-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/silva-icon-512-maskable.png",
+      "src": "/coneofcold-icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

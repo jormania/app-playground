@@ -10,8 +10,23 @@
   "background_color": "#F7F7FC",
   "theme_color": "#4B45C6",
   "icons": [
-    { "src": "/daily-stoic-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/daily-stoic-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/daily-stoic-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/coneofcold-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/coneofcold-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/coneofcold-icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

@@ -32,6 +32,24 @@ describe('web app manifests', () => {
     expect(m.scope).not.toBe('/')
     expect(m.start_url.startsWith(m.scope), 'start_url must sit inside scope').toBe(true)
   })
+
+  // When an install does claim the whole origin, its splash shows on every app's launch.
+  // With one shared icon that splash is the same neutral snowflake whichever app it is
+  // (CLAUDE.md, "PWA icon"). Home-screen icons are the same icon too; Android has no
+  // separate splash icon.
+  it.each(manifests)('%s uses the shared Cone of Cold icon', (file) => {
+    const m = JSON.parse(readFileSync(join(PUBLIC, file), 'utf8'))
+    const srcs = m.icons.map((i) => i.src).sort()
+    expect(srcs).toEqual(['/coneofcold-icon-192.png', '/coneofcold-icon-512-maskable.png', '/coneofcold-icon-512.png'])
+    for (const sc of m.shortcuts ?? []) for (const i of sc.icons ?? []) expect(i.src).toBe('/coneofcold-icon-192.png')
+  })
+
+  it('Sol Odyssey, whose manifest vite.config.js generates, uses it too', () => {
+    const cfg = readFileSync(join(REPO, 'vite.config.js'), 'utf8')
+    const icons = cfg.slice(cfg.indexOf("name: 'Sol Odyssey'")).match(/icons: \[([\s\S]*?)\]/)[1]
+    expect(icons).toContain('/coneofcold-icon-192.png')
+    expect(icons).not.toMatch(/sol-odyssey-icon/)
+  })
 })
 
 function walk(dir, out = []) {

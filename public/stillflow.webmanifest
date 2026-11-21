@@ -16,19 +16,19 @@
   ],
   "icons": [
     {
-      "src": "/stillflow-icon-192.png",
+      "src": "/coneofcold-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/stillflow-icon-512.png",
+      "src": "/coneofcold-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/stillflow-icon-512-maskable.png",
+      "src": "/coneofcold-icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -42,7 +42,7 @@
       "url": "/stillflow-react.html#/",
       "icons": [
         {
-          "src": "/stillflow-icon-192.png",
+          "src": "/coneofcold-icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -53,7 +53,7 @@
       "url": "/stillflow-react.html#/surprise",
       "icons": [
         {
-          "src": "/stillflow-icon-192.png",
+          "src": "/coneofcold-icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -64,7 +64,7 @@
       "url": "/stillflow-react.html#/series",
       "icons": [
         {
-          "src": "/stillflow-icon-192.png",
+          "src": "/coneofcold-icon-192.png",
           "sizes": "192x192"
         }
       ]
@@ -75,7 +75,7 @@
       "url": "/stillflow-react.html#/practice",
       "icons": [
         {
-          "src": "/stillflow-icon-192.png",
+          "src": "/coneofcold-icon-192.png",
           "sizes": "192x192"
         }
       ]

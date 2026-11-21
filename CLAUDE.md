@@ -89,6 +89,13 @@ worker's `activate` deletes only caches under its own `CACHE_PREFIX`.
 `scripts/pwa-scope.test.js` enforces all three; CABINET.md, "Update (2026-09-24)",
 has the incident behind it.
 
+**PWA icon:** every manifest (and Sol Odyssey's in `vite.config.js`) uses the shared
+Cone of Cold snowflake, `/coneofcold-icon-192.png`, `-512.png` and `-512-maskable.png`,
+including shortcut icons; a new app adds no icon of its own there. When an install
+claims the whole origin, its splash shows on every launch, and one neutral icon keeps
+that harmless. Favicons, logos and `apps-registry.js` card icons stay per app. Enforced
+by `scripts/pwa-scope.test.js`.
+
 ## Apps
 
 Read an app's doc before working in it. Card data for every app (name, icon, blurb,

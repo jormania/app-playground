@@ -99,6 +99,9 @@ function solOdysseyPWA() {
       'sol-odyssey-favicon-32.png',
       'sol-odyssey-icon-192.png',
       'sol-odyssey-icon-512.png',
+      'coneofcold-icon-192.png',
+      'coneofcold-icon-512.png',
+      'coneofcold-icon-512-maskable.png',
     ],
     workbox: {
       // Precache Sol Odyssey's shell so it boots offline: its entry HTML, its own JS/CSS, the
@@ -124,10 +127,11 @@ function solOdysseyPWA() {
       display: 'standalone',
       background_color: '#F7F7FC',
       theme_color: '#4B45C6',
+      // Every installed app shares the Cone of Cold icon (CLAUDE.md, "PWA icon").
       icons: [
-        { src: '/sol-odyssey-icon-192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/sol-odyssey-icon-512.png', sizes: '512x512', type: 'image/png' },
-        { src: '/sol-odyssey-icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        { src: '/coneofcold-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/coneofcold-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/coneofcold-icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ],
     },
   });
