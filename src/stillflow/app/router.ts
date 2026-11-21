@@ -81,19 +81,46 @@ export function navigate(route: Route, opts: { replace?: boolean } = {}) {
   }
 }
 
-/** Scroll offsets per hash, so Back to a long list lands where you left it. */
-const scrollMemory = new Map<string, number>()
+/**
+ * Scroll offsets per history entry. Each entry is stamped with a number the
+ * first time it is seen, so the router can tell the two ways of arriving:
+ * Back or Forward lands on a stamped entry and returns to where you left it;
+ * anything else (a link, a tab, a "Practise for" card, a replace after saving)
+ * is a new, unstamped entry and starts at the top. Keyed by entry rather than
+ * by hash, so two visits to the same screen keep their own place.
+ */
+const scrollMemory = new Map<number, number>()
+let nextEntry = 0
+
+/** The current entry's stamp, stamping it if it is new. */
+function stampEntry(): { id: number; fresh: boolean } {
+  const st = window.history.state as { sfEntry?: number } | null
+  if (st && typeof st.sfEntry === 'number') {
+    nextEntry = Math.max(nextEntry, st.sfEntry + 1)
+    return { id: st.sfEntry, fresh: false }
+  }
+  const id = nextEntry++
+  try {
+    window.history.replaceState({ ...(st ?? {}), sfEntry: id }, '')
+  } catch {
+    // Some embedded browsers refuse replaceState; the screen just starts at the top.
+  }
+  return { id, fresh: true }
+}
 
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash))
   useEffect(() => {
-    let current = window.location.hash
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'
+    let current = stampEntry().id
     const onScroll = () => scrollMemory.set(current, window.scrollY)
     window.addEventListener('scroll', onScroll, { passive: true })
     const on = () => {
-      current = window.location.hash
-      setRoute(parseRoute(current))
-      const y = scrollMemory.get(current) ?? 0
+      const entry = stampEntry()
+      current = entry.id
+      setRoute(parseRoute(window.location.hash))
+      const y = entry.fresh ? 0 : scrollMemory.get(current) ?? 0
+      // Twice: once the new screen has rendered, and once it has laid out.
       requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y })))
     }
     window.addEventListener('hashchange', on)

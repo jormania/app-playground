@@ -42,6 +42,13 @@ export function Explore() {
   )
   const series = useMemo(() => [...new Set(sessions.map((x) => x.series).filter((x): x is string => !!x))].sort(), [sessions])
   const update = (patch: Partial<Filters>) => { setFilters({ ...filters, ...patch }); setLimit(PAGE) }
+  // A new filter, sort or shuffle is a new list: if you had scrolled down the old
+  // one, go back to its top rather than staying somewhere in the middle of it.
+  const firstList = useRef(true)
+  useEffect(() => {
+    if (firstList.current) { firstList.current = false; return }
+    if (window.scrollY > 0) window.scrollTo({ top: 0 })
+  }, [filters, sort, seed])
   const n = activeFilterCount(filters)
 
   const intention = filters.intention ? intentionById(filters.intention) : undefined
