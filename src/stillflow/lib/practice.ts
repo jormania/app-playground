@@ -27,6 +27,30 @@ export function descriptionLead(text: string | undefined): { lead: string; rest:
   return { lead: text.slice(0, m.index).trim(), rest: true }
 }
 
+/**
+ * A line or two from the opening of a video's description, for a quiet note
+ * beside its thumbnail. Skips a first line that only repeats the title ("TRUE -
+ * DAY 19 - THOUGHT"), keeps whole sentences up to about `max` characters, and
+ * returns '' when there is nothing to say. Adriene's own words, never invented.
+ */
+export function teaser(description: string | undefined, title: string, max = 140): string {
+  const lines = descriptionLead(description).lead.split(/\n+/).map((l) => l.trim()).filter(Boolean)
+  const words = (t: string) => t.toLowerCase().normalize('NFD').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean)
+  const inTitle = new Set(words(title))
+  while (lines.length && words(lines[0]).every((w) => inTitle.has(w) || w === 'day')) lines.shift()
+  const text = lines.join(' ').replace(/https?:\S+/g, '').replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  const sentences = text.match(/[^.!?]+[.!?]+["”’]?|[^.!?]+$/g) ?? [text]
+  let out = ''
+  for (const sentence of sentences) {
+    const next = `${out} ${sentence.trim()}`.trim()
+    if (out && next.length > max) break
+    out = next
+    if (out.length >= max * 0.6) break
+  }
+  return out.length > max + 40 ? `${out.slice(0, max).replace(/\s+\S*$/, '')}…` : out
+}
+
 export function localDate(d = new Date()): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')

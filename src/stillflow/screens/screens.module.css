@@ -891,3 +891,14 @@ input.settingInput:not([type='number']) { text-align: left; }
 /* Series › Up next: the day's thumbnail beside its number and theme, as on Today. */
 .upNextPick { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--space-md); align-items: center; }
 .upNextText { display: grid; gap: 4px; min-width: 0; }
+
+/* A quiet line of the video's own description beside its thumbnail. */
+.teaser {
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--color-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

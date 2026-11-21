@@ -7,7 +7,7 @@ import { PracticeLink, StartPractice } from '../components/StartPractice'
 import { Empty, SectionHead, Thumb } from '../components/ui'
 import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
-import { localDate, newEntry } from '../lib/practice'
+import { localDate, newEntry, teaser } from '../lib/practice'
 import {
   customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay, inRun, runStart, dayOf, belongsTo } from '../lib/series'
 import { cx } from '../../ds/lib/cx'
@@ -281,9 +281,10 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
         {session ? (
           <a className={s.todayPick} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>
             <Thumb session={session} className={s.todayThumb} />
+            {/* The theme is on the thumbnail, in the sheet's title and on the day tile; here, a line of what the day is about. */}
             <span>
-              <strong className={s.todayTitle}>{dayTheme(session.title, def) || shortTitle(session, seriesDefs).title}</strong>
-              {session.styles[0] && <span className={s.muted}>{session.styles[0]}</span>}
+              {session.styles[0] && <span className={s.entrySource}>{session.styles[0]}</span>}
+              <span className={s.teaser}>{teaser(session.description, session.title) || (dayTheme(session.title, def) || shortTitle(session, seriesDefs).title)}</span>
             </span>
           </a>
         ) : (

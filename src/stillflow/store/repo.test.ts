@@ -121,3 +121,14 @@ describe('description lead', () => {
     expect(descriptionLead(undefined)).toEqual({ lead: '', rest: false })
   })
 })
+
+describe('teaser', () => {
+  it('skips a heading that repeats the title and keeps whole sentences', async () => {
+    const { teaser } = await import('../lib/practice')
+    const d = 'TRUE - DAY 19 - THOUGHT\n\nToday we exercise a different set of muscles.\n\nA yoga practice for your mind. \n\nToday’s session invites you to consider how your thoughts create your reality.\n- - - - -\nMusic by'
+    expect(teaser(d, 'TRUE - Day 19 - THOUGHT  |  Yoga With Adriene')).toBe('Today we exercise a different set of muscles. A yoga practice for your mind.')
+    expect(teaser(undefined, 'x')).toBe('')
+    expect(teaser('Watch here https://youtu.be/x', 'x')).toBe('Watch here')
+    expect(teaser('a'.repeat(400), 'x').endsWith('…')).toBe(true)
+  })
+})
