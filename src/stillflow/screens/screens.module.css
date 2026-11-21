@@ -576,7 +576,7 @@
 }
 .paceBehind { color: var(--sf-lavender-ink); border-color: var(--sf-lavender); background: var(--sf-lavender-soft); }
 
-.upNext { display: grid; gap: 6px; padding: var(--space-lg); }
+.upNext { display: grid; gap: var(--space-sm); padding: var(--space-lg); }
 .upNextLabel {
   font-size: var(--text-xs);
   text-transform: uppercase;
@@ -850,8 +850,6 @@ input.settingInput:not([type='number']) { text-align: left; }
 .lvl2 { background: color-mix(in srgb, var(--color-accent) 55%, transparent); color: var(--color-ink); }
 .lvl3 { background: var(--color-accent); color: var(--color-on-accent); }
 .calendarToday { outline: 1.5px solid var(--sf-lavender); outline-offset: 1px; }
-.noteRow { display: grid; gap: 2px; margin: 0 0 var(--space-sm); }
-.noteText { font-family: var(--font-display); font-style: italic; font-size: 1.05rem; }
 .statRing span, .statRing small { text-transform: none; letter-spacing: 0; }
 
 /* Day sheet: Start, with a quiet tag to tick the day. */
@@ -908,3 +906,11 @@ input.settingInput:not([type='number']) { text-align: left; }
 .dayIntroThumb { float: left; width: 128px; margin: 2px var(--space-md) var(--space-xs) 0; border-radius: var(--radius-md); }
 .dayIntroText { font-size: var(--text-sm); line-height: 1.55; color: var(--color-ink-2, var(--color-muted)); }
 .dayIntro .entrySource { margin-bottom: 4px; }
+
+/* My Practice › a calendar day: each practice as a series day sheet shows it. */
+.dayEntry { display: grid; gap: var(--space-xs); justify-items: start; }
+.dayEntry + .dayEntry { padding-top: var(--space-md); border-top: 1px solid var(--color-border); }
+.dayEntry .dayIntro { width: 100%; }
+.dayEntry .dayIntro > :not(:first-child) { display: block; }
+.dayNote { margin: 2px 0 0; font-family: var(--font-display); font-style: italic; font-size: var(--text-sm); line-height: 1.45; color: var(--sf-lavender-ink, var(--color-muted)); }
+button.calendarDay { border: 0; padding: 0; font: inherit; font-size: var(--text-xs); cursor: pointer; }

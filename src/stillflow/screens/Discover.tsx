@@ -19,20 +19,33 @@ import { useSaveBackup } from '../app/backup'
 import { WeekRing } from '../components/WeekRing'
 import { formatDay } from '../lib/practice'
 import { NextDay, PracticeBlock } from '../components/NextDay'
+import { SeriesBand } from '../components/SeriesBand'
 import s from './screens.module.css'
 
 function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef; primary?: boolean; soft?: boolean }) {
-  const { done, next, linked, pace } = useSeries(def)
+  const { done, next, linked, pace, started } = useSeries(def)
   if (!next) return null
-  // The same block as the series page's Up next; Today adds the series name, the
-  // progress, the pace and a way to the series.
+  const day = linked.get(next)
+  const open = <a className={s.textLink} href={hrefOf({ name: 'seriesDetail', id: def.id })}>Open series</a>
+  // The lead series is drawn exactly as on its own page: the progress band, then
+  // the next day. Only the kicker and the companion link differ.
+  if (primary) {
+    return (
+      <section className={s.journey} aria-label="Your next practice">
+        <SeriesBand def={def} done={done.size} started={started} pace={pace} name />
+        <div className={s.upNext}>
+          <span className={s.todayKicker}>Your next practice</span>
+          <NextDay def={def} day={next} session={day} withSeries={false} meta={day?.styles[0]} secondary={open} />
+        </div>
+      </section>
+    )
+  }
   return (
-    <div className={primary ? s.todayCard : s.continue}>
-      {primary && <span className={s.todayKicker}>Your next practice</span>}
-      <NextDay def={def} day={next} session={linked.get(next)} withSeries
+    <div className={s.continue}>
+      <NextDay def={def} day={next} session={day} withSeries
         meta={`${done.size} of ${def.length} done`}
         note={soft ? `${def.unit} ${next} is waiting whenever you are` : pace?.label}
-        secondary={<a className={s.textLink} href={hrefOf({ name: 'seriesDetail', id: def.id })}>Open series</a>} />
+        secondary={open} />
     </div>
   )
 }

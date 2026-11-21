@@ -124,8 +124,11 @@ describe('a session, end to end', () => {
     expect(await screen.findByText(/Hips felt open/)).toBeTruthy()
 
     await go('#/practice')
-    // In the history list, and under Your notes.
-    expect((await screen.findAllByText(/Hips felt open/)).length).toBe(2)
+    // In the history list once; the calendar day opens the same practice with its note.
+    expect((await screen.findAllByText(/Hips felt open/)).length).toBe(1)
+    await user.click(screen.getByRole('gridcell', { name: /show what you practised/ }))
+    expect(within(await screen.findByRole('dialog')).getByText(/Hips felt open/)).toBeTruthy()
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /close/i }))
 
     await go('#/explore')
     await user.click(await screen.findByRole('button', { name: /^Filters/ }))
@@ -284,8 +287,10 @@ describe('series', () => {
     expect(screen.getByRole('heading', { name: 'Earlier runs' })).toBeTruthy()
 
     await go('#/')
-    expect(await screen.findByText('Your next practice')).toBeTruthy()
-    expect(screen.getByText('MOVE · Day 1')).toBeTruthy()
+    const lead = await screen.findByRole('region', { name: 'Your next practice' })
+    expect(within(lead).getByText('MOVE')).toBeTruthy()
+    expect(within(lead).getByText('0 of 30 days done')).toBeTruthy()
+    expect(within(lead).getByRole('link', { name: /Day 1/ })).toBeTruthy()
   })
 
   it('a practice recorded anywhere for a linked session moves the series on', async () => {

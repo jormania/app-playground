@@ -14,6 +14,7 @@ import { cx } from '../../ds/lib/cx'
 import { repeatLabel } from '../domain/vocabulary'
 import { shortTitle } from '../lib/today'
 import { NextDay } from '../components/NextDay'
+import { SeriesBand } from '../components/SeriesBand'
 import s from './screens.module.css'
 
 const fmtShort = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
@@ -113,22 +114,6 @@ function JourneySummary({ def }: { def: SeriesDef }) {
 function kindLabel(def: SeriesDef) {
   if (def.kind === 'custom') return `Your series · ${def.length} ${def.unit.toLowerCase()}s`
   return `${def.year ?? ''} · ${def.length} ${def.unit.toLowerCase()}s`.replace(/^ · /, '')
-}
-
-/** A quiet progress ring: the fraction done, with the count in its middle. */
-function Ring({ value, max }: { value: number; max: number }) {
-  const r = 30
-  const c = 2 * Math.PI * r
-  const frac = max ? Math.min(1, value / max) : 0
-  return (
-    <span className={s.ring} role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={`${value} of ${max} done`}>
-      <svg viewBox="0 0 72 72" aria-hidden="true">
-        <circle cx="36" cy="36" r={r} className={s.ringTrack} />
-        {frac > 0 && <circle cx="36" cy="36" r={r} className={s.ringFill} strokeDasharray={`${c * frac} ${c}`} transform="rotate(-90 36 36)" />}
-      </svg>
-      <span className={s.ringLabel}><strong>{value}</strong><small>/{max}</small></span>
-    </span>
-  )
 }
 
 function Bar({ value, max }: { value: number; max: number }) {
@@ -359,14 +344,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast }: {
 
       {status === 'active' ? (
         <section className={s.journey} aria-label="Where you are">
-          <div className={s.journeyTop}>
-            <Ring value={done.size} max={def.length} />
-            <div className={s.journeyHead}>
-              <span className={s.journeyKicker}>{done.size >= def.length ? 'Every practice done' : `${done.size} of ${def.length} ${unit}s done`}</span>
-              <span className={s.journeyStarted}>Started {fmt(started ?? progress!.startedAt)}</span>
-              {p && done.size < def.length && <span className={cx(s.pacePill, p.delta < 0 && s.paceBehind)}>{p.label}</span>}
-            </div>
-          </div>
+          <SeriesBand def={def} done={done.size} started={started ?? progress!.startedAt} pace={p} />
 
           {next ? (
             <section className={s.upNext} aria-label={`Up next: ${def.unit} ${next}`}>

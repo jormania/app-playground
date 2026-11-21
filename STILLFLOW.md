@@ -382,3 +382,16 @@ the last 30 days of history. Shared adjustments:
   body areas only); user-adjustable recommendation weights (now constants in
   `recommend.ts`); bulk edit and classification; optional
   YouTube Data API (env key, never required); instructor management UI.
+
+### After Release 9 — the series band on Today, a tappable calendar
+
+- Today's "Your next practice" is drawn as the series page draws its run: the
+  progress band (`components/SeriesBand.tsx`: ring, days done, started, pace, and
+  on Today the series name) above the next day in the shared `NextDay` shape. The
+  card no longer repeats "3 of 30 done" or the pace under the practice. Other
+  series on Today keep the compact card.
+- My Practice: a shaded calendar day opens a sheet of what was practised that day,
+  in the series day-sheet style (thumbnail with the video's length, where it comes
+  from, how it went, the note, Edit). Practised minutes show only when they differ
+  from the video's length. "Your notes" is gone; History shows each note on its
+  own italic line instead.

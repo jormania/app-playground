@@ -5,19 +5,19 @@ import { hrefOf } from '../app/router'
 import { useStillflow } from '../app/state'
 import { CompleteSheet } from '../components/Sheets'
 import { WeekRing } from '../components/WeekRing'
-import { Empty, SectionHead } from '../components/ui'
+import { Empty, SectionHead, Thumb } from '../components/ui'
 import type { PracticeEntry, Session } from '../domain/types'
 import { fold } from '../lib/filter'
 import { FEELS, shortTitle } from '../lib/today'
 import { cx } from '../../ds/lib/cx'
 import { repeatLabel } from '../domain/vocabulary'
-import { formatDay, localDate, summarise, thisWeek } from '../lib/practice'
+import { localDate, summarise, thisWeek } from '../lib/practice'
 import s from './screens.module.css'
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 /** A month of practice days, shaded by minutes. Weeks start on Monday. */
-function PracticeCalendar({ history, today }: { history: PracticeEntry[]; today: string }) {
+function PracticeCalendar({ history, today, onPick }: { history: PracticeEntry[]; today: string; onPick: (date: string) => void }) {
   const [offset, setOffset] = useState(0)
   const first = new Date(`${today.slice(0, 7)}-01T12:00:00`)
   first.setMonth(first.getMonth() + offset)
@@ -50,15 +50,67 @@ function PracticeCalendar({ history, today }: { history: PracticeEntry[]; today:
           if (!d) return <span key={`x${i}`} />
           const m = minutes.get(d) ?? 0
           const level = m === 0 ? 0 : m < 20 ? 1 : m < 40 ? 2 : 3
-          return (
-            <span key={d} role="gridcell" className={cx(s.calendarDay, s[`lvl${level}`], d === today && s.calendarToday)}
-              title={m ? `${m} min` : undefined} aria-label={`${Number(d.slice(8))}${m ? `, ${m} minutes` : ''}`}>
+          const cls = cx(s.calendarDay, s[`lvl${level}`], d === today && s.calendarToday)
+          // A practice day opens what was practised; an empty day stays a plain number.
+          return m ? (
+            <button key={d} type="button" role="gridcell" className={cls} onClick={() => onPick(d)}
+              title={`${m} min`} aria-label={`${Number(d.slice(8))}, ${m} minutes: show what you practised`}>
               {Number(d.slice(8))}
-            </span>
+            </button>
+          ) : (
+            <span key={d} role="gridcell" className={cls} aria-label={String(Number(d.slice(8)))}>{Number(d.slice(8))}</span>
           )
         })}
       </div>
     </div>
+  )
+}
+
+/** Minutes, how it felt and the repeat rating: the one line every practice shows. */
+const entryMeta = (e: PracticeEntry, videoMinutes?: number) =>
+  [e.minutes === videoMinutes ? '' : `${e.minutes} min`, e.feel ? `felt ${FEELS.find((f) => f.value === e.feel)?.label.toLowerCase() ?? ''}` : '', e.rating ? repeatLabel(e.rating).toLowerCase() : '']
+    .filter(Boolean).join(' · ')
+
+/**
+ * One calendar day: what was practised, in the same sheet as a series day (the
+ * thumbnail with the length on it, where it comes from, how it went, the note).
+ */
+function PracticeDaySheet({ date, entries, onEdit, onClose }: {
+  date: string
+  entries: PracticeEntry[]
+  onEdit: (e: PracticeEntry) => void
+  onClose: () => void
+}) {
+  const { byId, seriesDefs } = useStillflow()
+  const title = new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+  const minutes = entries.reduce((t, e) => t + e.minutes, 0)
+  return (
+    <Modal open onClose={onClose} title={title}>
+      <div className={s.stack}>
+        {entries.length > 1 && <p className={s.muted}>{entries.length} practices · {minutes} min</p>}
+        {entries.map((e) => {
+          const session = byId.get(e.sessionId)
+          const name = session ? shortTitle(session, seriesDefs) : null
+          return (
+            <div key={e.id} className={s.dayEntry}>
+              {session ? (
+                <a className={s.dayIntro} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>
+                  <Thumb session={session} className={s.dayIntroThumb} />
+                  {name?.label && <span className={s.entrySource}>{name.label}</span>}
+                  <strong className={s.todayTitle}>{name?.title}</strong>
+                  {/* The thumbnail already carries the video's length; the minutes show only when they differ. */}
+                  <span className={s.dayIntroText}>{entryMeta(e, session.durationMinutes)}</span>
+                </a>
+              ) : (
+                <p className={s.muted}>A removed session · {entryMeta(e)}</p>
+              )}
+              {e.note && <p className={s.dayNote}>“{e.note}”</p>}
+              {session && <button type="button" className={s.textLink} onClick={() => onEdit(e)}>Edit</button>}
+            </div>
+          )
+        })}
+      </div>
+    </Modal>
   )
 }
 
@@ -90,6 +142,7 @@ export function Practice() {
   const [logging, setLogging] = useState(false)
   const [completing, setCompleting] = useState<Session | null>(null)
   const [editing, setEditing] = useState<PracticeEntry | null>(null)
+  const [day, setDay] = useState<string | null>(null)
   const today = localDate()
 
   const total = summarise(history)
@@ -106,12 +159,9 @@ export function Practice() {
   }, [history])
 
 
-  const notes = useMemo(() => history.filter((h) => h.note), [history])
-  const [allNotes, setAllNotes] = useState(false)
   const title = (id: string) => { const x = byId.get(id); return x ? shortTitle(x, seriesDefs).title : 'Removed session' }
   /** Where a session comes from: "MOVE · Day 3", or its programme. */
   const source = (id: string) => { const x = byId.get(id); return x ? shortTitle(x, seriesDefs).label : undefined }
-  const withSource = (id: string) => (source(id) ? ` · ${source(id)}` : '')
 
 
   return (
@@ -120,7 +170,7 @@ export function Practice() {
         <div className={s.spread}>
           <div>
             <h1 className={s.pageTitle}>My Practice</h1>
-            <p className={s.lede}>Everything you’ve practised, newest first. Tap Edit to change a date, a note or your rating.</p>
+            <p className={s.lede}>Everything you’ve practised, newest first. Tap a shaded day for what you did then, or Edit to change a date, a note or your rating.</p>
           </div>
           <Button variant="outline" onClick={() => setLogging(true)}><Plus size={16} /> Log a practice</Button>
         </div>
@@ -141,20 +191,7 @@ export function Practice() {
             <div className={s.stat}><strong>{total.days}</strong><span>Practice days</span></div>
           </div>
 
-          <PracticeCalendar history={history} today={today} />
-
-          {notes.length > 0 && (
-            <>
-              <SectionHead title="Your notes" />
-              {(allNotes ? notes : notes.slice(0, 4)).map((e) => (
-                <p key={e.id} className={s.noteRow}>
-                  <span className={s.noteText}>“{e.note}”</span>
-                  <span className={s.muted}>{formatDay(e.date)} · {title(e.sessionId)}{withSource(e.sessionId)}</span>
-                </p>
-              ))}
-              {notes.length > 4 && <button type="button" className={s.textLink} onClick={() => setAllNotes((v) => !v)}>{allNotes ? 'Show fewer' : `Show all ${notes.length}`}</button>}
-            </>
-          )}
+          <PracticeCalendar history={history} today={today} onPick={setDay} />
 
           <SectionHead title="History" />
           {months.map((m) => (
@@ -169,7 +206,8 @@ export function Practice() {
                     <div>
                       {session && source(session.id) && <span className={s.entrySource}>{source(session.id)}</span>}
                       {session ? <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })}>{title(session.id)}</a> : <span className={s.entryTitle}>Removed session</span>}
-                      <div className={s.entryMeta}>{e.minutes} min{e.feel ? ` · felt ${FEELS.find((f) => f.value === e.feel)?.label.toLowerCase() ?? ''}` : ''}{e.rating ? ` · ${repeatLabel(e.rating).toLowerCase()}` : ''}{e.note ? ` · ${e.note}` : ''}</div>
+                      <div className={s.entryMeta}>{entryMeta(e)}</div>
+                      {e.note && <div className={s.dayNote}>“{e.note}”</div>}
                     </div>
                     {session
                       ? <button type="button" className={s.textLink} onClick={() => setEditing(e)}>Edit</button>
@@ -182,6 +220,8 @@ export function Practice() {
         </>
       )}
 
+      {day && <PracticeDaySheet date={day} entries={history.filter((h) => h.date === day)}
+        onEdit={(e) => { setDay(null); setEditing(e) }} onClose={() => setDay(null)} />}
       {logging && <LogPractice open onClose={() => setLogging(false)} onPick={(x) => { setLogging(false); setCompleting(x) }} />}
       {completing && <CompleteSheet open session={completing} onClose={() => setCompleting(null)} />}
       {editing && byId.get(editing.sessionId) && (
