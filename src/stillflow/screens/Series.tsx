@@ -4,7 +4,7 @@ import { Button, ConfirmModal, Field, Modal, SegmentedControl } from '../../ds'
 import { hrefOf, navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { PracticeLink, StartPractice } from '../components/StartPractice'
-import { Empty, SectionHead } from '../components/ui'
+import { Empty, SectionHead, Thumb } from '../components/ui'
 import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
 import { localDate, newEntry } from '../lib/practice'
@@ -279,10 +279,13 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
     <Modal open onClose={onClose} title={`${def.name} · ${label}`}>
       <div className={s.stack}>
         {session ? (
-          <div className={s.panel} style={{ padding: 'var(--space-md)' }}>
-            <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>{dayTheme(session.title, def) || shortTitle(session, seriesDefs).title}</a>
-            <div className={s.entryMeta}>{session.durationMinutes} min{session.styles[0] ? ` · ${session.styles[0]}` : ''}</div>
-          </div>
+          <a className={s.todayPick} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>
+            <Thumb session={session} className={s.todayThumb} />
+            <span>
+              <strong className={s.todayTitle}>{dayTheme(session.title, def) || shortTitle(session, seriesDefs).title}</strong>
+              {session.styles[0] && <span className={s.muted}>{session.styles[0]}</span>}
+            </span>
+          </a>
         ) : (
           <p className={s.muted}>This {def.unit.toLowerCase()}’s video isn’t in your library yet. Find it on YouTube, or link a session you’ve already added.</p>
         )}
@@ -367,13 +370,18 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
           {next ? (
             <section className={s.upNext} aria-label={`Up next: ${def.unit} ${next}`}>
               <span className={s.upNextLabel}>Up next</span>
-              <div className={s.upNextTitle}>
-                <span className={s.upNextDay}>{def.unit} {next}</span>
-                {nextSession && dayTheme(nextSession.title, def) && <span className={s.upNextTheme}>{dayTheme(nextSession.title, def)}</span>}
+              <div className={nextSession ? s.upNextPick : undefined}>
+                {nextSession && <a href={hrefOf({ name: 'session', id: nextSession.id })}><Thumb session={nextSession} className={s.todayThumb} /></a>}
+                <div className={s.upNextText}>
+                  <div className={s.upNextTitle}>
+                    <span className={s.upNextDay}>{def.unit} {next}</span>
+                    {nextSession && dayTheme(nextSession.title, def) && <span className={s.upNextTheme}>{dayTheme(nextSession.title, def)}</span>}
+                  </div>
+                  {(!nextSession || nextSession.styles[0]) && (
+                    <span className={s.upNextMeta}>{nextSession ? nextSession.styles[0] : 'Not in your library yet: opens a YouTube search'}</span>
+                  )}
+                </div>
               </div>
-              <span className={s.upNextMeta}>
-                {nextSession ? `${nextSession.durationMinutes} min${nextSession.styles[0] ? ` · ${nextSession.styles[0]}` : ''}` : 'Not in your library yet: opens a YouTube search'}
-              </span>
               <div className={s.upNextActions}>
                 {nextSession
                   ? <StartPractice session={nextSession} series={{ seriesId: def.id, day: next }} label="Start" />

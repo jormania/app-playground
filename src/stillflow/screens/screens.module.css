@@ -887,3 +887,7 @@ input.settingInput:not([type='number']) { text-align: left; }
 .todayActions > a:last-child { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .todayPlain { display: grid; gap: 4px; color: inherit; text-decoration: none; }
 .todayPick .entrySource { margin-bottom: 0; }
+
+/* Series › Up next: the day's thumbnail beside its number and theme, as on Today. */
+.upNextPick { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--space-md); align-items: center; }
+.upNextText { display: grid; gap: 4px; min-width: 0; }
