@@ -98,3 +98,18 @@ describe('service worker cache cleanup', () => {
     expect(cache.startsWith(prefix)).toBe(true)
   })
 })
+
+// Workers that answer fetches must fetch the manifest fresh: a cache-first copy hands
+// Chrome the old icon and name on install and on its update check, so a manifest change
+// (the shared PWA icon, CLAUDE.md) never reaches an installed app.
+describe('service workers serve the manifest from the network', () => {
+  const workers = readdirSync(PUBLIC).filter((f) => f === 'sw.js' || f.endsWith('-sw.js'))
+  it.each(workers)('%s', (file) => {
+    const src = readFileSync(join(PUBLIC, file), 'utf8')
+    if (!src.includes("addEventListener('fetch'")) return
+    const handler = src.slice(src.indexOf("addEventListener('fetch'"))
+    const first = handler.split('\n').slice(1, 12).join('\n')
+    expect(first, 'the manifest check must come first in the fetch handler').toContain(".webmanifest')")
+    expect(first).toContain('fetch(e.request)')
+  })
+})

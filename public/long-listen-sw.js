@@ -46,6 +46,13 @@ function receiveShare(req) {
 }
 
 self.addEventListener('fetch', function (e) {
+  // The manifest always comes from the network (the stored copy only when offline), so a
+  // changed icon or name reaches Chrome's install and update checks at once instead of a
+  // cached copy (CLAUDE.md, "PWA icon"). Checked by scripts/pwa-scope.test.js.
+  if (new URL(e.request.url).pathname.endsWith('.webmanifest')) {
+    e.respondWith(fetch(e.request).catch(function () { return caches.match(e.request); }));
+    return;
+  }
   var req = e.request;
   var url = new URL(req.url);
   if (req.method === 'POST' && url.origin === self.location.origin && url.pathname === '/long-listen-react.html' && url.searchParams.get('share-target') === 'concert') {
