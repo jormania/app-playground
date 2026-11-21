@@ -11,6 +11,8 @@ import { localDate, newEntry } from '../lib/practice'
 import {
   customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay, inRun, runStart } from '../lib/series'
 import { cx } from '../../ds/lib/cx'
+import { repeatLabel } from '../domain/vocabulary'
+import { shortTitle } from '../lib/today'
 import s from './screens.module.css'
 
 const fmt = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -36,16 +38,17 @@ export function useSeries(def: SeriesDef) {
  */
 export function useDayActions(def: SeriesDef) {
   const { saveProgress, savePractice, deletePractices, history, toast } = useStillflow()
-  const { progress, linked } = useSeries(def)
+  const { progress, linked, done } = useSeries(def)
   const mark = (day: number) => {
     if (!progress || progress.status !== 'active') return
     const session = linked.get(day)
     if (session) {
       savePractice(newEntry(session, { date: localDate() }))
-      toast(`${def.unit} ${day} recorded in My Practice`, 'success')
     } else {
       saveProgress(toggleDay(progress, day, localDate(), true))
     }
+    const left = def.length - done.size - (done.has(day) ? 0 : 1)
+    toast(left > 0 ? `${def.unit} ${day} done · ${left} to go${session ? ' · in My Practice too' : ''}` : `Every ${def.unit.toLowerCase()} of ${def.name} done`, 'success')
   }
   const unmark = (day: number) => {
     if (!progress || progress.status !== 'active') return
@@ -54,9 +57,51 @@ export function useDayActions(def: SeriesDef) {
     if (!session) return
     // Undo the practice that made this day count in the current run.
     const ids = history.filter((e) => e.sessionId === session.id && inRun(progress, e.date)).map((e) => e.id)
-    deletePractices(ids, ids.length > 1 ? `${def.unit} ${day} unmarked: ${ids.length} practices removed` : `${def.unit} ${day} unmarked`)
+    deletePractices(ids, ids.length > 1 ? `${def.unit} ${day} unticked: ${ids.length} practices removed` : `${def.unit} ${day} unticked`)
   }
   return { mark, unmark }
+}
+
+/**
+ * The closing page of a finished run: when it ran, how much time it held, the
+ * days you'd most like to return to and what you wrote along the way.
+ */
+function JourneySummary({ def }: { def: SeriesDef }) {
+  const { history, seriesDefs } = useStillflow()
+  const { progress, linked, done, started } = useSeries(def)
+  if (!progress || progress.status !== 'completed') return null
+  const from = started ?? progress.startedAt
+  const to = progress.endedAt ?? localDate()
+  const dayOfSession = new Map([...linked].map(([d, x]) => [x.id, d]))
+  const entries = history.filter((h) => dayOfSession.has(h.sessionId) && h.date >= from && h.date <= to)
+  const minutes = entries.reduce((m, h) => m + h.minutes, 0)
+  const loved = [...new Map(entries.filter((h) => (h.rating ?? 0) >= 4).map((h) => [h.sessionId, h])).values()]
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 4)
+  const notes = entries.filter((h) => h.note).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6)
+  const name = (id: string) => {
+    const d = dayOfSession.get(id)!
+    const x = linked.get(d)
+    return `${def.unit} ${d}${x ? ` · ${dayTheme(x.title, def) || shortTitle(x, seriesDefs).title}` : ''}`
+  }
+  return (
+    <section className={s.summary} aria-label={`${def.name} completed`}>
+      <span className={s.journeyKicker}>Journey complete</span>
+      <h2 className={s.summaryTitle}>{done.size} of {def.length} {def.unit.toLowerCase()}s, {fmt(from)} to {fmt(to)}</h2>
+      <p className={s.muted}>{minutes ? `${Math.round(minutes / 6) / 10} hours on the mat across ${entries.length} practices.` : 'Ticked off on the series.'}</p>
+      {loved.length > 0 && (
+        <div>
+          <h3 className={s.summaryHead}>Days you’d return to</h3>
+          {loved.map((h) => <p key={h.sessionId} className={s.summaryRow}>{name(h.sessionId)} <span className={s.muted}>· {repeatLabel(h.rating).toLowerCase()}</span></p>)}
+        </div>
+      )}
+      {notes.length > 0 && (
+        <div>
+          <h3 className={s.summaryHead}>What you wrote</h3>
+          {notes.map((h) => <p key={h.id} className={s.summaryNote}>“{h.note}” <span className={s.muted}>· {name(h.sessionId)}</span></p>)}
+        </div>
+      )}
+    </section>
+  )
 }
 
 function kindLabel(def: SeriesDef) {
@@ -95,6 +140,8 @@ function SeriesCard({ def }: { def: SeriesDef }) {
     <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={cx(s.collection, status === 'active' && s.seriesActive)}>
       <span className={s.kicker} style={{ margin: 0 }}>{kindLabel(def)}</span>
       <h3>{def.name}</h3>
+      {status === 'completed' && <JourneySummary def={def} />}
+
       {status === 'active' ? (
         <>
           <Bar value={done.size} max={def.length} />
@@ -104,7 +151,7 @@ function SeriesCard({ def }: { def: SeriesDef }) {
       ) : status === 'completed' ? (
         <span className={s.muted}><Check size={14} style={{ verticalAlign: '-2px' }} /> Completed {progress?.endedAt ? fmt(progress.endedAt) : ''}</span>
       ) : status === 'abandoned' ? (
-        <span className={s.muted}>Set aside after {progress?.runs.at(-1)?.daysDone ?? done.size} of {def.length}</span>
+        <span className={s.muted}>Abandoned after {progress?.runs.at(-1)?.daysDone ?? done.size} of {def.length}</span>
       ) : (
         <span className={s.muted}>{def.blurb ?? 'Not started'}</span>
       )}
@@ -345,7 +392,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
       ) : (
         <section className={s.seq}>
           {status === 'completed' && <p><Check size={15} style={{ verticalAlign: '-2px' }} /> Completed {fmt(progress!.endedAt!)}, {progress!.runs.at(-1)?.daysDone ?? done.size} of {def.length} {unit}s.</p>}
-          {status === 'abandoned' && progress!.runs.length > 0 && <p>Set aside {fmt(progress!.endedAt!)} after {progress!.runs.at(-1)?.daysDone} of {def.length}. Nothing is lost; begin again any time.</p>}
+          {status === 'abandoned' && progress!.runs.length > 0 && <p>Abandoned {fmt(progress!.endedAt!)} after {progress!.runs.at(-1)?.daysDone} of {def.length}. Nothing is lost; begin again any time.</p>}
           <div className={s.row}>
             <Button onClick={status ? () => setConfirm('restart') : start}>{status ? <><RotateCcw size={15} /> Start again</> : `Start ${def.name}`}</Button>
             {!status && <span className={s.muted}>Stillflow keeps your place, one {unit} at a time.</span>}
@@ -361,7 +408,8 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
             <button key={d} type="button" onClick={() => setDay(d)}
               className={cx(s.dayTile, done.has(d) && s.dayDone, status === 'active' && d === next && s.dayNext, !linkedSession && s.dayUnlinked)}
               aria-label={`${def.unit} ${d}${done.has(d) ? ', done' : ''}${d === next && status === 'active' ? ', next' : ''}${linkedSession ? `, ${linkedSession.title}` : ', not in library'}`}>
-              <span>{d}</span>
+              <span className={s.dayNum}>{d}</span>
+              {linkedSession && <span className={s.dayTheme}>{dayTheme(linkedSession.title, def) || `${linkedSession.durationMinutes} min`}</span>}
               {done.has(d) && <Check size={12} strokeWidth={2.4} />}
             </button>
           )
@@ -373,7 +421,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
         <>
           <SectionHead title="Earlier runs" />
           {[...progress.runs].reverse().map((r, i) => (
-            <p key={i} className={s.muted}>{fmt(r.startedAt)} – {fmt(r.endedAt)} · {r.status === 'completed' ? 'completed' : 'set aside'} · {r.daysDone} of {def.length}</p>
+            <p key={i} className={s.muted}>{fmt(r.startedAt)} – {fmt(r.endedAt)} · {r.status === 'completed' ? 'completed' : 'abandoned'} · {r.daysDone} of {def.length}</p>
           ))}
         </>
       )}
@@ -385,10 +433,10 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
       )}
 
       {day != null && <DaySheet def={def} day={day} onClose={() => setDay(null)} />}
-      <ConfirmModal isOpen={confirm === 'abandon'} title={`Set ${def.name} aside?`} variant="danger" confirmText="Abandon"
+      <ConfirmModal isOpen={confirm === 'abandon'} title={`Abandon ${def.name}?`} variant="danger" confirmText="Abandon"
         message={`You’ve done ${done.size} of ${def.length}. The run is kept in Earlier runs, and you can start again whenever you like.`}
         onCancel={() => setConfirm(null)}
-        onConfirm={() => { saveProgress(finishProgress(progress!, 'abandoned', today, done.size)); setConfirm(null); toast(`${def.name} set aside`) }} />
+        onConfirm={() => { saveProgress(finishProgress(progress!, 'abandoned', today, done.size)); setConfirm(null); toast(`${def.name} abandoned`) }} />
       <ConfirmModal isOpen={confirm === 'complete'} title={`Complete ${def.name}?`} confirmText="Complete"
         message={done.size >= def.length ? `All ${def.length} ${unit}s done. Well practised.` : `${done.size} of ${def.length} ${unit}s are ticked. Finishing now records the series as completed as it stands.`}
         onCancel={() => setConfirm(null)}

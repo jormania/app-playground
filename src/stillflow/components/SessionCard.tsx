@@ -25,13 +25,14 @@ export function SessionCard({ session, layout = 'grid', note }: { session: Sessi
           <h3 className={styles.title} title={name.title !== session.title ? session.title : undefined}>{name.title}</h3>
           {gone && <span className={styles.gone}>No longer on YouTube</span>}
           <div className={styles.meta}>
-            <span>{session.styles.slice(0, layout === 'list' ? 2 : 1).join(' · ') || 'No style yet'}</span>
+            {session.styles.length > 0 && <span>{session.styles.slice(0, layout === 'list' ? 2 : 1).join(' · ')}</span>}
             {focus && <span>{focus}</span>}
             {layout === 'list' && <span className={styles.minutes}>{session.durationMinutes} min</span>}
             {session.publishedDate && <span className={styles.posted} title={`Posted ${formatDay(session.publishedDate)}`}>{formatMonth(session.publishedDate)}</span>}
             {rating ? <span className={styles.again}>{repeatLabel(rating)}</span> : null}
           </div>
-          <IntensityDots level={session.intensity} />
+          {/* Only what's known: an unset intensity fills in once you practise it and say how it felt. */}
+          {session.intensity > 0 && <IntensityDots level={session.intensity} />}
           {note && <p className={styles.note}>{note}</p>}
         </div>
       </a>

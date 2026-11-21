@@ -1,7 +1,7 @@
 import type { PracticeEntry, Preferences, SeriesDef, Session, UserSessionData } from '../domain/types'
 import { daysBetween } from './recommend'
 import { belongsTo, dayOf, dayTheme } from './series'
-import { fold } from './filter'
+import { fold, matchesIntention } from './filter'
 
 /**
  * The small decisions behind the Today screen, kept pure so they can be tested
@@ -111,3 +111,64 @@ export function weekRing(minutes: number, target?: number): { frac: number; labe
   if (!target) return { frac: 0, label: `${minutes} min` }
   return { frac: Math.min(1, minutes / target), label: `${minutes} of ${target} min` }
 }
+
+/**
+ * What the hour suggests. Mornings lean towards waking up, evenings towards
+ * winding down; the middle of the day is open. Matched by title words, so it
+ * works on a library with no classification.
+ */
+export interface Moment {
+  id: 'morning' | 'day' | 'evening' | 'night'
+  kicker: string
+  reason: string
+  /** Sessions this moment prefers; none in the middle of the day. */
+  suits?: (s: Session) => boolean
+}
+
+const relaxing = (s: Session) => matchesIntention(s, 'relax') || matchesIntention(s, 'restore')
+
+export function momentOf(hour: number): Moment {
+  if (hour >= 5 && hour < 11) return { id: 'morning', kicker: 'A practice for this morning', reason: 'To wake up the body', suits: (s) => matchesIntention(s, 'energise') }
+  if (hour >= 11 && hour < 17) return { id: 'day', kicker: 'A practice for today', reason: '' }
+  if (hour >= 17 && hour < 21) return { id: 'evening', kicker: 'A practice for this evening', reason: 'To let the day go', suits: relaxing }
+  return { id: 'night', kicker: 'Something to wind down', reason: 'Slow and quiet, for before bed', suits: (s) => relaxing(s) && s.durationMinutes <= 30 }
+}
+
+/** Days since your most recent practice; null before the first one. */
+export function daysAway(history: PracticeEntry[], today: string): number | null {
+  let last = ''
+  for (const h of history) if (h.date > last) last = h.date
+  return last ? daysBetween(last, today) : null
+}
+
+/** After this many days away, Today welcomes you back before anything else. */
+export const RETURN_AFTER_DAYS = 5
+
+/** A gentle way back in: short, soft, nothing to prove. */
+export const gentleReturn = (s: Session) => s.durationMinutes <= 20 && s.durationMinutes >= 5 && relaxing(s)
+
+/**
+ * Feeling and "good for", from the finish sheet, folded into the session so the
+ * library fills itself in as you practise. Your own earlier choices are kept:
+ * intensity is set only where none is, and goals and areas are added, never removed.
+ */
+export function learnFromPractice(s: Session, feel: number | undefined, goals: string[], areas: string[]): Session | null {
+  const intensity = feel && (s.intensity === 0 || s.classificationSource === 'inferred') ? feel : s.intensity
+  const objectives = [...new Set([...s.objectives, ...goals])]
+  const physicalFocus = [...new Set([...s.physicalFocus, ...areas])]
+  if (intensity === s.intensity && objectives.length === s.objectives.length && physicalFocus.length === s.physicalFocus.length) return null
+  return { ...s, intensity, objectives, physicalFocus }
+}
+
+/** "Good for" choices on the finish sheet: plain words, each mapped to the vocabulary. */
+export const GOOD_FOR_GOALS: { label: string; value: string }[] = [
+  { label: 'Calm', value: 'Relaxation' }, { label: 'Energy', value: 'Energy' }, { label: 'Strength', value: 'Strength' },
+  { label: 'Flexibility', value: 'Flexibility' }, { label: 'Mobility', value: 'Mobility' }, { label: 'Recovery', value: 'Recovery' },
+  { label: 'Balance', value: 'Balance' },
+]
+export const GOOD_FOR_AREAS = ['Hips', 'Back', 'Shoulders', 'Neck', 'Core', 'Legs', 'Full body']
+
+/** How a finished practice felt: three plain steps onto the intensity scale. */
+export const FEELS: { label: string; value: number }[] = [
+  { label: 'Gentle', value: 2 }, { label: 'Steady', value: 3 }, { label: 'Strong', value: 4 },
+]

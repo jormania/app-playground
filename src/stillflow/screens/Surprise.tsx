@@ -59,7 +59,7 @@ export function Surprise() {
     <>
       <header className={s.pageHead}>
         <a className={s.back} href="#/"><ArrowLeft size={16} /> Today</a>
-        <h1 className={s.pageTitle}>Surprise me</h1>
+        <h1 className={s.pageTitle}>Surprise Me</h1>
         <p className={s.lede}>Choose how Stillflow should pick. It looks at what you’ve practised, your favourites and your time, and always tells you why.</p>
       </header>
 
@@ -134,7 +134,7 @@ export function Surprise() {
           <ChipGroup label="Only these styles" options={STYLES} selected={c.styles} onChange={(v) => setConstraint({ styles: v })} />
           <ChipGroup label="Never these styles" options={STYLES} selected={c.excludeStyles} onChange={(v) => setConstraint({ excludeStyles: v })} />
           <div className={s.stack}>
-            <SettingsToggle label="Skip sessions I’ve already completed" checked={c.excludeCompleted} onChange={(e) => setConstraint({ excludeCompleted: e.target.checked })} />
+            <SettingsToggle label="Skip sessions I’ve already practised" checked={c.excludeCompleted} onChange={(e) => setConstraint({ excludeCompleted: e.target.checked })} />
             <SegmentedControl label="Favourites" value={c.favourites} onChange={(v) => setConstraint({ favourites: v as Constraints['favourites'] })}
               options={[{ value: 'any', label: 'Include' }, { value: 'only', label: 'Only' }, { value: 'exclude', label: 'Leave out' }]} />
             <button type="button" className={s.textLink} style={{ justifySelf: 'start' }} onClick={() => setConstraint({ ...DEFAULT_CONSTRAINTS })}>Clear limits</button>

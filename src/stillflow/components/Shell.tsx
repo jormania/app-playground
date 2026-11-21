@@ -4,6 +4,7 @@ import { hrefOf, tabOf, type Route, type Tab } from '../app/router'
 import { useStillflow } from '../app/state'
 import { cx } from '../../ds/lib/cx'
 import { CompleteSheet } from './Sheets'
+import { shortTitle } from '../lib/today'
 import { localDate } from '../lib/practice'
 import { toggleDay } from '../lib/series'
 import { Wordmark } from './ui'
@@ -62,7 +63,8 @@ function ReturnBanner() {
   if (now - pending.at < RETURN_AFTER_MS && !completing) return null
 
   const dayLabel = def && pending.day ? `${def.name} ${def.unit} ${pending.day}` : null
-  const what = dayLabel && session ? `${dayLabel}: ${session.title}` : dayLabel ?? session?.title ?? ''
+  const name = session ? shortTitle(session, seriesDefs).title : ''
+  const what = dayLabel && session ? `${dayLabel}: ${name}` : dayLabel ?? name
 
   const confirm = () => {
     if (session) { setCompleting(true); return }
@@ -78,7 +80,7 @@ function ReturnBanner() {
     <>
       <div className={styles.banner} role="status">
         <div>
-          <span className={styles.bannerKicker}>Welcome back</span>
+          <span className={styles.bannerKicker}>Back from YouTube</span>
           <p>Did you finish <strong>{what}</strong>?</p>
         </div>
         <div className={styles.bannerActions}>

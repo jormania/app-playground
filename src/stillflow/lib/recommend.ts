@@ -48,6 +48,8 @@ export interface RecommendContext {
   shown: string[]
   /** YYYY-MM-DD, local. */
   today: string
+  /** Narrows the pool (time of day, a gentle return) without changing what the profile learns from. */
+  only?: (s: Session) => boolean
 }
 
 export interface Pick {
@@ -226,7 +228,9 @@ export function surprise(
   const p = buildProfile(ctx.sessions, ctx.history, ctx.today)
   // Once there's a real library, demo records stop being proposed (they stay browsable).
   const real = ctx.sessions.filter((s) => !s.isDemo)
-  const candidates = real.length >= 10 ? real : ctx.sessions
+  const all = real.length >= 10 ? real : ctx.sessions
+  const narrowed = ctx.only ? all.filter(ctx.only) : all
+  const candidates = narrowed.length ? narrowed : all
   const scored = candidates
     .filter((s) => passesConstraints(s, c, ctx, p))
     .map((s) => scoreMode(mode, s, ctx, p, c))

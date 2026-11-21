@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button, Field, Modal } from '../../ds'
 import { hrefOf } from '../app/router'
 import { useStillflow } from '../app/state'
 import { CompleteSheet } from '../components/Sheets'
+import { WeekRing } from '../components/WeekRing'
 import { Empty, SectionHead } from '../components/ui'
 import type { PracticeEntry, Session } from '../domain/types'
-import { fold } from '../lib/filter'
+import { fold, matchesIntention } from '../lib/filter'
+import { FEELS, shortTitle } from '../lib/today'
+import { PHYSICAL_FOCUS } from '../domain/vocabulary'
+import { cx } from '../../ds/lib/cx'
 import { repeatLabel } from '../domain/vocabulary'
-import { localDate, summarise, thisWeek, topValues } from '../lib/practice'
+import { formatDay, localDate, summarise, thisWeek, topValues } from '../lib/practice'
 import { daysBetween } from '../lib/recommend'
 import s from './screens.module.css'
 
@@ -26,6 +30,57 @@ function Leanings({ title, rows }: { title: string; rows: { value: string; count
             <span className={s.muted} style={{ textAlign: 'right' }}>{r.count}</span>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+/** A body area counts when the session says so or its title does ("Yoga For Tight Hips"). */
+const areasOf = (x: Session) => PHYSICAL_FOCUS.filter((a) => x.physicalFocus.includes(a) || matchesIntention(x, `area:${a}`))
+
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** A month of practice days, shaded by minutes. Weeks start on Monday. */
+function PracticeCalendar({ history, today }: { history: PracticeEntry[]; today: string }) {
+  const [offset, setOffset] = useState(0)
+  const first = new Date(`${today.slice(0, 7)}-01T12:00:00`)
+  first.setMonth(first.getMonth() + offset)
+  const minutes = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const h of history) m.set(h.date, (m.get(h.date) ?? 0) + h.minutes)
+    return m
+  }, [history])
+  const lead = (first.getDay() + 6) % 7
+  const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
+  const cells: (string | null)[] = [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => iso(new Date(first.getFullYear(), first.getMonth(), i + 1, 12)))]
+  const monthDays = cells.filter((d): d is string => !!d && minutes.has(d))
+  const total = monthDays.reduce((t, d) => t + (minutes.get(d) ?? 0), 0)
+  const earliest = history.reduce((m, h) => (h.date < m ? h.date : m), today)
+  const canBack = iso(first) > earliest.slice(0, 8) + '01'
+  const label = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  return (
+    <div className={s.calendar}>
+      <div className={s.spread}>
+        <button type="button" className={s.iconBtn} aria-label="Previous month" disabled={!canBack} onClick={() => setOffset((o) => o - 1)}><ChevronLeft size={18} /></button>
+        <div className={s.calendarHead}>
+          <strong>{label}</strong>
+          <span className={s.muted}>{monthDays.length ? `${monthDays.length} ${monthDays.length === 1 ? 'day' : 'days'} · ${total} min` : 'No practice yet'}</span>
+        </div>
+        <button type="button" className={s.iconBtn} aria-label="Next month" disabled={offset >= 0} onClick={() => setOffset((o) => o + 1)}><ChevronRight size={18} /></button>
+      </div>
+      <div className={s.calendarGrid} role="grid" aria-label={label}>
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} className={s.calendarDow} aria-hidden="true">{d}</span>)}
+        {cells.map((d, i) => {
+          if (!d) return <span key={`x${i}`} />
+          const m = minutes.get(d) ?? 0
+          const level = m === 0 ? 0 : m < 20 ? 1 : m < 40 ? 2 : 3
+          return (
+            <span key={d} role="gridcell" className={cx(s.calendarDay, s[`lvl${level}`], d === today && s.calendarToday)}
+              title={m ? `${m} min` : undefined} aria-label={`${Number(d.slice(8))}${m ? `, ${m} minutes` : ''}`}>
+              {Number(d.slice(8))}
+            </span>
+          )
+        })}
       </div>
     </div>
   )
@@ -54,7 +109,7 @@ function LogPractice({ open, onClose, onPick }: { open: boolean; onClose: () => 
 }
 
 export function Practice() {
-  const { history, sessions, byId, userData, lastPractised, deletePractice, preferences } = useStillflow()
+  const { history, sessions, byId, userData, lastPractised, deletePractice, preferences, seriesDefs } = useStillflow()
   const target = preferences.weeklyTargetMinutes
   const [logging, setLogging] = useState(false)
   const [completing, setCompleting] = useState<Session | null>(null)
@@ -80,6 +135,10 @@ export function Practice() {
     .sort((a, b) => (lastPractised[a.id] ?? '').localeCompare(lastPractised[b.id] ?? ''))
     .slice(0, 5)
 
+  const notes = useMemo(() => history.filter((h) => h.note), [history])
+  const [allNotes, setAllNotes] = useState(false)
+  const title = (id: string) => { const x = byId.get(id); return x ? shortTitle(x, seriesDefs).title : 'Removed session' }
+
   const longest = useMemo(() => [...history].sort((a, b) => b.minutes - a.minutes).slice(0, 3), [history])
 
   return (
@@ -87,7 +146,7 @@ export function Practice() {
       <header className={s.pageHead}>
         <div className={s.spread}>
           <div>
-            <h1 className={s.pageTitle}>My practice</h1>
+            <h1 className={s.pageTitle}>My Practice</h1>
             <p className={s.lede}>Everything you’ve practised, newest first. Tap Edit to change a date, a note or your rating.</p>
           </div>
           <Button variant="outline" onClick={() => setLogging(true)}><Plus size={16} /> Log a practice</Button>
@@ -96,25 +155,38 @@ export function Practice() {
 
       {history.length === 0 ? (
         <Empty title="No practices recorded yet">
-          <p>After a session, come back to Stillflow and tap Mark as completed, or add one here with Log a practice.</p>
+          <p>After a session, come back to Stillflow and tap Mark as done, or add one here with Log a practice.</p>
         </Empty>
       ) : (
         <>
           <div className={s.stats}>
-            <div className={s.stat}>
-              <strong>{week.minutes}</strong>
-              <span>{target ? `of ${target} min this week` : 'Minutes this week'}</span>
-              {target ? <span className={s.weekBar} style={{ display: 'block', maxWidth: 'none', marginTop: 8 }}><span style={{ width: `${Math.min(100, (week.minutes / target) * 100)}%` }} /></span> : null}
+            <div className={cx(s.stat, s.statRing)}>
+              <WeekRing minutes={week.minutes} sessions={week.sessions} target={target} link={false} />
             </div>
             <div className={s.stat}><strong>{total.sessions}</strong><span>Practices</span></div>
             <div className={s.stat}><strong>{Math.round(total.minutes / 6) / 10}</strong><span>Hours on the mat</span></div>
             <div className={s.stat}><strong>{total.days}</strong><span>Practice days</span></div>
           </div>
 
+          <PracticeCalendar history={history} today={today} />
+
+          {notes.length > 0 && (
+            <>
+              <SectionHead title="Your notes" />
+              {(allNotes ? notes : notes.slice(0, 4)).map((e) => (
+                <p key={e.id} className={s.noteRow}>
+                  <span className={s.noteText}>“{e.note}”</span>
+                  <span className={s.muted}>{formatDay(e.date)} · {byId.get(e.sessionId) ? shortTitle(byId.get(e.sessionId)!, seriesDefs).title : 'Removed session'}</span>
+                </p>
+              ))}
+              {notes.length > 4 && <button type="button" className={s.textLink} onClick={() => setAllNotes((v) => !v)}>{allNotes ? 'Show fewer' : `Show all ${notes.length}`}</button>}
+            </>
+          )}
+
           <SectionHead title="Last 30 days" />
           <div className={s.collections}>
             <Leanings title="Styles" rows={topValues(recent30, sessions, (x) => x.styles, 4)} />
-            <Leanings title="Body areas" rows={topValues(recent30, sessions, (x) => x.physicalFocus, 4)} />
+            <Leanings title="Body areas" rows={topValues(recent30, sessions, areasOf, 4)} />
           </div>
           {recent30.length === 0 && <p className={s.muted}>Nothing in the last 30 days.</p>}
 
@@ -124,14 +196,14 @@ export function Practice() {
                 <div className={s.panel}>
                   <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-sm)' }}>Not revisited lately</h3>
                   {notRevisited.map((x) => (
-                    <p key={x.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: x.id })}>{x.title}</a>{lastPractised[x.id] ? ` · ${daysBetween(lastPractised[x.id], today)} days ago` : ' · favourite, never logged'}</p>
+                    <p key={x.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: x.id })}>{title(x.id)}</a>{lastPractised[x.id] ? ` · ${daysBetween(lastPractised[x.id], today)} days ago` : ' · favourite, never logged'}</p>
                   ))}
                 </div>
               )}
               <div className={s.panel}>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-sm)' }}>Longest sessions</h3>
                 {longest.map((e) => (
-                  <p key={e.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: e.sessionId })}>{byId.get(e.sessionId)?.title ?? 'Removed session'}</a> · {e.minutes} min</p>
+                  <p key={e.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: e.sessionId })}>{title(e.sessionId)}</a> · {e.minutes} min</p>
                 ))}
               </div>
             </div>
@@ -148,8 +220,8 @@ export function Practice() {
                   <div key={e.id} className={s.entry}>
                     <div className={s.entryDate}><strong>{d.getDate()}</strong><span>{d.toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
                     <div>
-                      {session ? <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })}>{session.title}</a> : <span className={s.entryTitle}>Removed session</span>}
-                      <div className={s.entryMeta}>{e.minutes} min{e.rating ? ` · ${repeatLabel(e.rating).toLowerCase()}` : ''}{e.note ? ` · ${e.note}` : ''}</div>
+                      {session ? <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })}>{title(session.id)}</a> : <span className={s.entryTitle}>Removed session</span>}
+                      <div className={s.entryMeta}>{e.minutes} min{e.feel ? ` · felt ${FEELS.find((f) => f.value === e.feel)?.label.toLowerCase() ?? ''}` : ''}{e.rating ? ` · ${repeatLabel(e.rating).toLowerCase()}` : ''}{e.note ? ` · ${e.note}` : ''}</div>
                     </div>
                     {session
                       ? <button type="button" className={s.textLink} onClick={() => setEditing(e)}>Edit</button>

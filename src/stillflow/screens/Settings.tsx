@@ -104,7 +104,7 @@ export function Settings() {
 
       <section className={s.panel}>
         <h2>Your practice</h2>
-        <p className={s.sectionLede}>Perfect Match and Discover’s suggestions lean towards these. Leave any of them empty for no preference.</p>
+        <p className={s.sectionLede}>Perfect Match and Today’s suggestions lean towards these. Leave any of them empty for no preference.</p>
         <ChipGroup label="Styles you enjoy" options={STYLES} selected={preferences.preferredStyles}
           onChange={(v) => savePreferences({ ...preferences, preferredStyles: v })} />
         <ChipGroup<number> label="Intensity you usually want" options={[1, 2, 3, 4, 5]} selected={preferences.preferredIntensities}
@@ -114,13 +114,13 @@ export function Settings() {
         <div className={s.rows}>
           <MinutesRow label="Usual practice length" hint="Suggestions prefer sessions this long or shorter."
             value={preferences.preferredMaxDuration} placeholder="Any" onChange={(v) => savePreferences({ ...preferences, preferredMaxDuration: v })} />
-          <MinutesRow label="Weekly goal" hint="Minutes a week, shown as a bar on Discover and My Practice."
+          <MinutesRow label="Weekly goal" hint="Minutes a week, shown as a ring on Today and in My Practice."
             value={preferences.weeklyTargetMinutes} placeholder="None" onChange={(v) => savePreferences({ ...preferences, weeklyTargetMinutes: v })} />
         </div>
       </section>
 
       <section className={s.panel}>
-        <h2>Surprise me</h2>
+        <h2>Surprise Me</h2>
         <div className={s.rows}>
           <label className={`${s.settingRow} ${s.settingStack}`}>
             <span className={s.settingText}>
@@ -216,7 +216,7 @@ export function Settings() {
       {hidden.length > 0 && (
         <section className={s.panel}>
           <h2>Hidden from suggestions</h2>
-          <p className={s.muted} style={{ marginBottom: 'var(--space-sm)' }}>Still in your library and Explore, but never proposed by Discover or Surprise Me.</p>
+          <p className={s.muted} style={{ marginBottom: 'var(--space-sm)' }}>Still in your library and Explore, but never proposed by Today or Surprise Me.</p>
           <div className={s.catalogueList}>
             {hidden.map((x) => (
               <div key={x.id} className={s.catRow}>

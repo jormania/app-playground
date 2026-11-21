@@ -9,6 +9,36 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 7 — 2026-11-21
+
+- **The library learns from your practice.** "Mark as done" asks how it felt (Gentle,
+  Steady, Strong) and, optionally, what it was good for (Calm, Energy, Strength…; Hips,
+  Back, Shoulders…). Feel fills in the session's intensity where none is set (or only a
+  title guess); goals and areas are added, never removed (`learnFromPractice`). Cards no
+  longer show "No style yet" or empty intensity dots.
+- **Picks follow the hour.** Mornings lean to waking-up practices, evenings to winding
+  down, late night to short quiet ones; midday is open (`momentOf`, matched on titles).
+  More ideas never repeats Today's own pick.
+- **A gentle return.** Five or more days since your last practice: Today says welcome
+  back and offers something short and soft (5–20 min, relax or restore); a series waits
+  with "Day N is waiting whenever you are" instead of a pace.
+- **Series read as a journey.** Each day tile shows its theme from Adriene's title (Here,
+  Open, Deepen…). A completed run opens with a closing page: dates, hours on the mat,
+  the days you'd return to and the notes you wrote.
+- **A moment when you finish.** After recording, the week's ring fills and one line says
+  where you are ("MOVE · Day 3 done, 27 to go", "Your 4th practice this week"). Ticking
+  a series day says how many are left.
+- **My Practice to read back.** A month calendar shaded by minutes, your notes, the week
+  as a ring, short titles throughout, body areas read from titles too.
+- **Ratings at the right moment.** The second time you record a session you haven't
+  rated, the sheet asks whether you'd practise it again; an existing rating is prefilled.
+
+Audit and wording (same release): one set of words everywhere: "Mark as done" for a
+session, "Mark done" / "Untick" for a series day, "Abandon" / "abandoned" (no more "set
+aside"), "My Practice" and "Surprise Me" as names, "Today" instead of "Discover" in
+Settings, the weekly goal described as a ring. The return banner reads "Back from
+YouTube" and uses the short title.
+
 ## Release 6 — 2026-11-21
 
 - **Four tabs:** Today, Explore, Series, My Practice. Surprise Me lives on Today

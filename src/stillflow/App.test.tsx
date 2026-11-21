@@ -113,14 +113,19 @@ describe('a session, end to end', () => {
     await user.click(screen.getByRole('radio', { name: '4: Want to repeat' }))
     expect(screen.getByText('Want to repeat')).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: 'Mark as completed' }))
+    await user.click(screen.getByRole('button', { name: 'Mark as done' }))
     const dialog = await screen.findByRole('dialog')
     await user.type(within(dialog).getByLabelText(/Note/), 'Hips felt open')
     await user.click(within(dialog).getByRole('button', { name: 'Record practice' }))
+    // A short finishing moment, then back to the session.
+    expect(await screen.findByText('Namaste')).toBeTruthy()
+    expect(screen.getByText('Your first practice in Stillflow')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Done' }))
     expect(await screen.findByText(/Hips felt open/)).toBeTruthy()
 
     await go('#/practice')
-    expect(await screen.findByText(/Hips felt open/)).toBeTruthy()
+    // In the history list, and under Your notes.
+    expect((await screen.findAllByText(/Hips felt open/)).length).toBe(2)
 
     await go('#/explore')
     await user.click(await screen.findByRole('button', { name: /^Filters/ }))
@@ -197,6 +202,35 @@ describe('coming back from YouTube', () => {
   })
 })
 
+describe('Release 7', () => {
+  const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return localDate(d) }
+
+  it('after five days away, Today welcomes you back with something gentle', async () => {
+    await new StillflowRepo(store).putHistory({ id: 'h1', sessionId: DEMO_SESSIONS[0].id, date: daysAgo(6), minutes: 20, createdAt: new Date().toISOString() })
+    await start()
+    expect(await screen.findByText('Welcome back')).toBeTruthy()
+    expect(screen.getByText(/6 days away/)).toBeTruthy()
+  })
+
+  it('asks how much you would repeat a session the second time you record it, and learns how it felt', async () => {
+    const id = DEMO_SESSIONS[0].id
+    await new StillflowRepo(store).putHistory({ id: 'h1', sessionId: id, date: daysAgo(1), minutes: 20, createdAt: new Date().toISOString() })
+    const { user } = await start()
+    await go(`#/session/${id}`)
+    await user.click(await screen.findByRole('button', { name: 'Mark as done' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/Your 2nd time with this one/)).toBeTruthy()
+    await user.click(within(dialog).getByRole('button', { name: 'Strong' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Hips' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Record practice' }))
+    await user.click(await screen.findByRole('button', { name: 'Done' }))
+    await waitFor(async () => {
+      const lib = (await new StillflowRepo(store).load()).sessions.find((x) => x.id === id)!
+      expect(lib.physicalFocus).toContain('Hips')
+    })
+  })
+})
+
 describe('series', () => {
   it('start MOVE, tick days, abandon, start again with the earlier run kept', async () => {
     const { user } = await start()
@@ -217,7 +251,7 @@ describe('series', () => {
 
     await user.click(screen.getByRole('button', { name: /Abandon/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Abandon' }))
-    expect(await screen.findByText(/Set aside .* after 2 of 30/)).toBeTruthy()
+    expect(await screen.findByText(/Abandoned .* after 2 of 30/)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Start again/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Start again' }))
     expect(await screen.findByRole('region', { name: 'Up next: Day 1' })).toBeTruthy()
@@ -240,8 +274,10 @@ describe('series', () => {
     const { user } = await start()
     await go('#/session/yt-aaaaaaaaaaa')
     expect(await screen.findByRole('link', { name: /MOVE · Day 1/ })).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: 'Mark as completed' }))
+    await user.click(screen.getByRole('button', { name: 'Mark as done' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Record practice' }))
+    expect(await screen.findByText(/MOVE · Day 1 done, 29 to go/)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Done' }))
     await go('#/series/move-2022')
     expect(await screen.findByRole('region', { name: 'Up next: Day 2' })).toBeTruthy()
   })
@@ -263,7 +299,7 @@ describe('series', () => {
     const history = async () => (await new StillflowRepo(store).load()).history
     await waitFor(async () => expect((await history()).map((h) => [h.sessionId, h.minutes])).toEqual([['yt-mmmmmmmmmmm', 24]]))
     await go('#/practice')
-    expect((await screen.findAllByText('Day 1 - Here | MOVE - A 30 Day Yoga Journey', { normalizer: (t) => t.replace(/\s+/g, ' ') })).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('link', { name: 'Here' })).length).toBeGreaterThan(0)
     await go('#/series/move-2022')
     await user.click(await screen.findByRole('button', { name: /Day 1, done/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Untick Day 1/ }))
@@ -281,7 +317,7 @@ describe('series', () => {
     await repo.putProgress({ seriesId: 'move-2022', status: 'active', startedAt: '2026-11-19', manualDays: { 28: '2026-11-19' }, links: {}, runs: [] })
     await start()
     await go('#/practice')
-    expect((await screen.findAllByText('Move - Day 28 - TLC')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('link', { name: 'TLC' })).length).toBeGreaterThan(0)
     const after = await new StillflowRepo(store).load()
     expect(after.sessions.find((x) => x.id === 'yt-nnnnnnnnnnn')).toMatchObject({ series: 'MOVE', seriesDay: 28 })
     expect(after.seriesProgress['move-2022'].manualDays).toEqual({})

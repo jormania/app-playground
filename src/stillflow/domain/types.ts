@@ -61,6 +61,8 @@ export interface PracticeEntry {
   minutes: number
   rating?: number
   note?: string
+  /** How it felt, on the intensity scale (2 gentle, 3 steady, 4 strong). */
+  feel?: number
   createdAt: string
 }
 

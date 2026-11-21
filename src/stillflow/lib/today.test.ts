@@ -126,3 +126,36 @@ describe('demo records', () => {
     expect(out).toEqual(['demo-c'])
   })
 })
+
+describe('Release 7: the hour, time away, and learning from practice', async () => {
+  const { momentOf, daysAway, gentleReturn, learnFromPractice } = await import('./today')
+
+  it('mornings lean to waking up, evenings to winding down, midday is open', () => {
+    expect(momentOf(7).suits?.(sess('m', { title: 'Wake Up Yoga' }))).toBe(true)
+    expect(momentOf(7).suits?.(sess('m', { title: 'Bedtime Yoga' }))).toBe(false)
+    expect(momentOf(13).suits).toBeUndefined()
+    expect(momentOf(19).suits?.(sess('e', { title: 'Yoga For Stress Relief' }))).toBe(true)
+    expect(momentOf(23).suits?.(sess('n', { title: 'Bedtime Yoga', durationMinutes: 45 }))).toBe(false)
+    expect(momentOf(2).id).toBe('night')
+  })
+
+  it('counts days since the latest practice, whatever order history is in', () => {
+    expect(daysAway([], '2026-11-21')).toBeNull()
+    expect(daysAway([entry('a', '2026-11-10'), entry('b', '2026-11-15')], '2026-11-21')).toBe(6)
+  })
+
+  it('a gentle return is short and soft', () => {
+    expect(gentleReturn(sess('g', { title: 'Gentle Yoga For Tired Bodies', durationMinutes: 15 }))).toBe(true)
+    expect(gentleReturn(sess('g', { title: 'Gentle Yoga', durationMinutes: 40 }))).toBe(false)
+    expect(gentleReturn(sess('p', { title: 'Power Yoga', durationMinutes: 15 }))).toBe(false)
+  })
+
+  it('fills in intensity only where none is set, and only adds goals and areas', () => {
+    const blank = sess('b', { intensity: 0, objectives: [], physicalFocus: [] })
+    expect(learnFromPractice(blank, 2, ['Relaxation'], ['Hips'])).toMatchObject({ intensity: 2, objectives: ['Relaxation'], physicalFocus: ['Hips'] })
+    const mine = sess('m', { intensity: 4, objectives: ['Strength'], classificationSource: 'manual' })
+    expect(learnFromPractice(mine, 2, ['Core' as never], [])?.intensity).toBe(4)
+    expect(learnFromPractice(mine, 2, ['Strength'], [])).toBeNull()
+    expect(learnFromPractice(sess('g', { intensity: 3, classificationSource: 'inferred' }), 2, [], [])?.intensity).toBe(2)
+  })
+})

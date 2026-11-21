@@ -102,7 +102,7 @@ export function SessionDetail({ id }: { id: string }) {
               </button>
             </div>
             <button type="button" className={s.secondary} onClick={() => setCompleting(true)}>
-              <CheckCircle2 size={16} /> Mark as completed
+              <CheckCircle2 size={16} /> Mark as done
             </button>
             <div className={s.row} style={{ justifyContent: 'space-between' }}>
               <button type="button" className={s.textLink} onClick={() => void share()}><Share2 size={14} style={{ verticalAlign: '-2px' }} /> Share</button>
@@ -140,7 +140,7 @@ export function SessionDetail({ id }: { id: string }) {
           <h1 className={s.detailTitle}>{session.title}</h1>
           <div className={s.facts}>
             <span>{session.durationMinutes} min</span>
-            <IntensityDots level={session.intensity} showLabel />
+            {session.intensity > 0 && <IntensityDots level={session.intensity} showLabel />}
             {session.publishedDate && <span>Posted {formatDay(session.publishedDate)}</span>}
           </div>
 
@@ -170,7 +170,7 @@ export function SessionDetail({ id }: { id: string }) {
 
           <SectionHead title="Your practice" action={<a className={s.textLink} href={`#/settings/session/${encodeURIComponent(session.id)}`}><Pencil size={13} /> Edit details</a>} />
           {entries.length === 0 ? (
-            <p className={s.muted}>Not practised yet. When you finish it, tap Mark as completed.</p>
+            <p className={s.muted}>Not practised yet. When you finish it, tap Mark as done.</p>
           ) : (
             <ul className={s.history}>
               {entries.map((e) => (

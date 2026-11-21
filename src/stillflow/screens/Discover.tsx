@@ -14,13 +14,14 @@ import type { SeriesDef } from '../domain/types'
 import { dayTheme, daySearchUrl, doneDays, linkedSessions, nextDay } from '../lib/series'
 import { useSeries } from './Series'
 import { hrefOf } from '../app/router'
-import { backupNudge, dueForRepeat, isUnavailable, shortTitle, weekRing } from '../lib/today'
+import { backupNudge, daysAway, dueForRepeat, gentleReturn, isUnavailable, momentOf, RETURN_AFTER_DAYS, shortTitle } from '../lib/today'
 import { downloadText, stamp } from '../lib/download'
 import { Thumb } from '../components/ui'
+import { WeekRing } from '../components/WeekRing'
 import { formatDay } from '../lib/practice'
 import s from './screens.module.css'
 
-function ContinueSeries({ def, primary = false }: { def: SeriesDef; primary?: boolean }) {
+function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef; primary?: boolean; soft?: boolean }) {
   const { markLaunched } = useStillflow()
   const { done, next, linked, pace } = useSeries(def)
   const session = next ? linked.get(next) : undefined
@@ -34,7 +35,7 @@ function ContinueSeries({ def, primary = false }: { def: SeriesDef; primary?: bo
         <span className={s.muted}>{done.size}/{def.length}</span>
       </div>
       {session && dayTheme(session.title, def) && <span className={s.muted}>{dayTheme(session.title, def)} · {session.durationMinutes} min</span>}
-      {pace && <span className={s.paceNote}>{pace.label}</span>}
+      {soft && next ? <span className={s.paceNote}>{def.unit} {next} is waiting whenever you are</span> : pace && <span className={s.paceNote}>{pace.label}</span>}
       {next && (
         <div className={s.row}>
           {session
@@ -57,46 +58,40 @@ function greeting(hour: number) {
   return 'Good evening'
 }
 
-/** Minutes this week against your goal, as a quiet ring. */
-function WeekRing({ minutes, sessions, target }: { minutes: number; sessions: number; target?: number }) {
-  const r = 26
-  const c = 2 * Math.PI * r
-  const { frac, label } = weekRing(minutes, target)
-  return (
-    <a href="#/practice" className={s.weekRing} aria-label={`This week: ${sessions} ${sessions === 1 ? 'practice' : 'practices'}, ${label}`}>
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <circle cx="32" cy="32" r={r} className={s.ringTrack} />
-        {frac > 0 && <circle cx="32" cy="32" r={r} className={s.ringFill} strokeDasharray={`${c * frac} ${c}`} transform="rotate(-90 32 32)" />}
-      </svg>
-      <span className={s.weekRingText}>
-        <strong>{minutes}</strong>
-        <small>{target ? `of ${target} min` : 'min'} this week</small>
-      </span>
-    </a>
-  )
-}
-
 /** One practice for today, re-picked when you say how long you have. */
-function TodayPick({ quiet = false }: { quiet?: boolean }) {
-  const { sessions, userData, history, preferences, seriesDefs } = useStillflow()
+type PickKind = 'moment' | 'return'
+
+/** One practice for today: shaped by the hour, or by a gentle return after time away. */
+function useTodayPick(kind: PickKind) {
+  const { sessions, userData, history, preferences } = useStillflow()
   const today = localDate()
+  const moment = momentOf(new Date().getHours())
   const [minutes, setMinutes] = useState<number | null>(null)
   const [turn, setTurn] = useState(0)
+  const suits = kind === 'return' ? gentleReturn : moment.suits
   const pick = useMemo(() => {
-    const rand = seededRandom(seedFromText(`${today}:${minutes ?? 'any'}:${turn}`))
+    const rand = seededRandom(seedFromText(`${today}:${kind}:${moment.id}:${minutes ?? 'any'}:${turn}`))
     const c = minutes ? { ...DEFAULT_CONSTRAINTS, maxDuration: minutes } : DEFAULT_CONSTRAINTS
-    return surprise('match', c, { sessions, userData, history, preferences, shown: [], today }, rand)
-  }, [sessions, userData, history, preferences, today, minutes, turn])
+    return surprise('match', c, { sessions, userData, history, preferences, shown: [], today, only: suits }, rand)
+  }, [sessions, userData, history, preferences, today, minutes, turn, kind, moment.id, suits])
+  const reason = pick && suits?.(pick.session)
+    ? (kind === 'return' ? 'Short and gentle, to land back on the mat' : moment.reason)
+    : pick?.reason
+  return { pick, reason, minutes, setMinutes, setTurn, moment }
+}
 
+function TodayPick({ state, quiet = false, kicker }: { state: ReturnType<typeof useTodayPick>; quiet?: boolean; kicker?: string }) {
+  const { seriesDefs } = useStillflow()
+  const { pick, reason, minutes, setMinutes, setTurn, moment } = state
   return (
     <div className={quiet ? s.continue : s.todayCard}>
-      {!quiet && <span className={s.todayKicker}>A practice for today</span>}
+      {!quiet && <span className={s.todayKicker}>{kicker ?? moment.kicker}</span>}
       {pick ? (
         <a href={hrefOf({ name: 'session', id: pick.session.id })} className={s.todayPick}>
           <Thumb session={pick.session} className={s.todayThumb} />
           <span>
             <strong className={s.todayTitle}>{shortTitle(pick.session, seriesDefs).title}</strong>
-            <span className={s.muted}>{pick.session.durationMinutes} min · {pick.reason}</span>
+            <span className={s.muted}>{pick.session.durationMinutes} min{reason ? ` · ${reason}` : ''}</span>
           </span>
         </a>
       ) : (
@@ -158,9 +153,16 @@ export function Discover() {
   const favourites = useMemo(() => sessions.filter((x) => userData[x.id]?.favourite && !isUnavailable(x)).slice(0, 8), [sessions, userData])
   const due = useMemo(() => dueForRepeat(sessions, userData, lastPractised, today), [sessions, userData, lastPractised, today])
 
+  // After a few days away, Today opens with something gentle; the series waits, without a "behind".
+  const away = daysAway(history, today)
+  const returning = away != null && away >= RETURN_AFTER_DAYS
+  const todayPick = useTodayPick(returning ? 'return' : 'moment')
+  const pickId = todayPick.pick?.session.id
+
   const suggestions = useMemo(() => {
     const rand = seededRandom(seedFromText(`${today}:rail`))
-    const shown: string[] = []
+    // Never the same session as Today's own pick.
+    const shown: string[] = pickId ? [pickId] : []
     const out: { id: string; reason: string }[] = []
     for (let i = 0; i < 4; i++) {
       const pick = surprise('match', DEFAULT_CONSTRAINTS, { sessions, userData, history, preferences, shown, today }, rand)
@@ -169,7 +171,7 @@ export function Discover() {
       out.push({ id: pick.session.id, reason: pick.reason })
     }
     return out
-  }, [sessions, userData, history, preferences, today])
+  }, [sessions, userData, history, preferences, today, pickId])
 
   const quietStyles = useMemo(() => {
     const p = buildProfile(sessions, history, today)
@@ -188,7 +190,7 @@ export function Discover() {
     return nextDay(d, doneDays(d, p, linkedSessions(d, sessions, p), history)) != null
   })
   const [lead, ...otherSeries] = withNext
-  const leadHasNext = !!lead
+  const leadHasNext = !!lead && !returning
 
   if (state.ready && sessions.length === 0) {
     return (
@@ -204,26 +206,29 @@ export function Discover() {
     <>
       <section className={s.todayHead}>
         <div>
-          <p className={s.kicker}>{greeting(new Date().getHours())}</p>
-          <h1 className={s.heroTitle}>What does your body <em>need</em> today?</h1>
+          <p className={s.kicker}>{returning ? 'Welcome back' : greeting(new Date().getHours())}</p>
+          <h1 className={s.heroTitle}>{returning ? <>Ease back in, <em>gently</em>.</> : <>What does your body <em>need</em> today?</>}</h1>
         </div>
         <WeekRing minutes={week.minutes} sessions={week.sessions} target={preferences.weeklyTargetMinutes} />
       </section>
 
-      {leadHasNext ? <ContinueSeries def={lead} primary /> : <TodayPick />}
+      {leadHasNext
+        ? <ContinueSeries def={lead} primary />
+        : <TodayPick state={todayPick} kicker={returning ? `${away} days away · something short and soft` : undefined} />}
+      {returning && lead && <ContinueSeries def={lead} soft />}
 
       {backup != null && <BackupNudge count={backup} />}
 
       {otherSeries.length > 0 && (
         <>
           <SectionHead title="Your other series" action={<a className={s.textLink} href="#/series">All series</a>} />
-          {otherSeries.map((d) => <ContinueSeries key={d.id} def={d} />)}
+          {otherSeries.map((d) => <ContinueSeries key={d.id} def={d} soft={returning} />)}
         </>
       )}
       {leadHasNext && (
         <>
           <SectionHead title="Or something else" />
-          <TodayPick quiet />
+          <TodayPick state={todayPick} quiet />
         </>
       )}
 
@@ -261,7 +266,7 @@ export function Discover() {
 
       {suggestions.length > 0 && (
         <>
-          <SectionHead title="More ideas for today" action={<a className={s.textLink} href="#/surprise">Surprise me</a>} />
+          <SectionHead title="More ideas for today" action={<a className={s.textLink} href="#/surprise">Surprise Me</a>} />
           <div className={s.rail}>
             {suggestions.map((x) => {
               const session = byId.get(x.id)
