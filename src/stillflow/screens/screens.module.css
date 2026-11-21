@@ -880,3 +880,10 @@ input.settingInput:not([type='number']) { text-align: left; }
   color: var(--color-accent);
   margin-bottom: 2px;
 }
+
+/* Today's cards: Start and one quiet link, always on one row. */
+.todayActions { display: flex; align-items: center; gap: var(--space-md); flex-wrap: nowrap; min-width: 0; }
+.todayActions > * { flex: none; white-space: nowrap; }
+.todayActions > a:last-child { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.todayPlain { display: grid; gap: 4px; color: inherit; text-decoration: none; }
+.todayPick .entrySource { margin-bottom: 0; }

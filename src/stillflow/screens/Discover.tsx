@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Sparkles, ArrowRight, Shuffle, Download } from 'lucide-react'
+import { ArrowRight, Shuffle, Download } from 'lucide-react'
 import { navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { SessionCard } from '../components/SessionCard'
@@ -25,19 +25,30 @@ function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef
   const { markLaunched } = useStillflow()
   const { done, next, linked, pace } = useSeries(def)
   const session = next ? linked.get(next) : undefined
+  const theme = session ? dayTheme(session.title, def) : ''
+  const where = next ? `${def.name} · ${def.unit} ${next}` : `${def.name} · all done`
+  // Laid out like Today's own pick: thumbnail, the day's theme as the title, then the actions on one row.
   return (
     <div className={primary ? s.todayCard : s.continue}>
       {primary && <span className={s.todayKicker}>Your next practice</span>}
-      <div className={s.spread}>
-        <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={s.entryTitle} style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem' }}>
-          {def.name} · {next ? `${def.unit} ${next}` : 'all done'}
+      {session ? (
+        <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={s.todayPick}>
+          <Thumb session={session} className={s.todayThumb} />
+          <span>
+            <span className={s.entrySource}>{where}</span>
+            <strong className={s.todayTitle}>{theme || `${def.unit} ${next}`}</strong>
+            <span className={s.muted}>{session.durationMinutes} min · {done.size} of {def.length} done</span>
+          </span>
         </a>
-        <span className={s.muted}>{done.size}/{def.length}</span>
-      </div>
-      {session && dayTheme(session.title, def) && <span className={s.muted}>{dayTheme(session.title, def)} · {session.durationMinutes} min</span>}
+      ) : (
+        <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={s.todayPlain}>
+          <strong className={s.todayTitle}>{where}</strong>
+          <span className={s.muted}>{done.size} of {def.length} done{next ? ' · not in your library yet' : ''}</span>
+        </a>
+      )}
       {soft && next ? <span className={s.paceNote}>{def.unit} {next} is waiting whenever you are</span> : pace && <span className={s.paceNote}>{pace.label}</span>}
       {next && (
-        <div className={s.row}>
+        <div className={s.todayActions}>
           {session
             ? <StartPractice session={session} compact series={{ seriesId: def.id, day: next }} label={`Start ${def.unit} ${next}`} />
             : <PracticeLink url={daySearchUrl(def, next)} compact search label={`Find ${def.unit} ${next}`} onLaunch={() => markLaunched({ seriesId: def.id, day: next })} />}
@@ -91,6 +102,7 @@ function TodayPick({ state, quiet = false, kicker }: { state: ReturnType<typeof 
         <a href={hrefOf({ name: 'session', id: pick.session.id })} className={s.todayPick}>
           <Thumb session={pick.session} className={s.todayThumb} />
           <span>
+            {shortTitle(pick.session, seriesDefs).label && <span className={s.entrySource}>{shortTitle(pick.session, seriesDefs).label}</span>}
             <strong className={s.todayTitle}>{shortTitle(pick.session, seriesDefs).title}</strong>
             <span className={s.muted}>{pick.session.durationMinutes} min{reason ? ` · ${reason}` : ''}</span>
           </span>
@@ -106,9 +118,9 @@ function TodayPick({ state, quiet = false, kicker }: { state: ReturnType<typeof 
         ))}
         <button type="button" aria-label="Another idea" onClick={() => setTurn((t) => t + 1)}><Shuffle size={16} /></button>
       </div>
-      <div className={s.row}>
-        {pick && <StartPractice session={pick.session} compact />}
-        <a href="#/surprise" className={s.textLink}><Sparkles size={14} style={{ verticalAlign: '-2px' }} /> More ways to choose</a>
+      <div className={s.todayActions}>
+        {pick && <StartPractice session={pick.session} compact label="Start" />}
+        <a href="#/surprise" className={s.textLink}>More ways to choose</a>
       </div>
     </div>
   )
