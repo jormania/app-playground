@@ -211,7 +211,9 @@ const EXTRA_PATTERNS = [
   /^[a-z ]+ - a 30 day yoga journey$/,
 ]
 
-export function isExtra(s: Pick<Session, 'title' | 'durationMinutes'>): boolean {
+export function isExtra(s: Pick<Session, 'title' | 'durationMinutes'> & { description?: string }): boolean {
+  // Her description says so when a video is a vlog ("This vlog is an attempt to answer…").
+  if (s.description && /\b(this|today'?s|in this|a) vlog\b/.test(fold(s.description.slice(0, 300)))) return true
   const t = fold(s.title).replace(/\s+/g, ' ').replace(/\s*[|-]\s*yoga with adriene\s*$/, '').trim()
   if (EXTRA_PATTERNS.some((re) => re.test(t))) return true
   // "Side Plank Pose | Vasisthasana": a short breakdown of one pose.
@@ -245,4 +247,29 @@ export function matchesIntention(s: Session, id: string): boolean {
   if (!i.words.length) return false
   const text = ` ${fold(`${s.title} ${s.series ?? ''}`).replace(/[^a-z0-9]+/g, ' ')} `
   return i.words.some((w) => text.includes(` ${w}`))
+}
+
+/**
+ * Filters saved before Release 7 held a "Practise for" card as raw fields
+ * (Recovery + Very gentle + Gentle), which hid the card's name and found
+ * nothing on an unclassified library. Read back, they become the named card.
+ */
+const LEGACY_INTENTIONS: { id: string; fields: Partial<Filters> }[] = [
+  { id: 'restore', fields: { objectives: ['Recovery'], intensities: [1, 2] } },
+  { id: 'energise', fields: { energy: ['Energising'] } },
+  ...INTENTIONS.filter((i) => i.id !== 'short').map((i) => ({ id: i.id, fields: i.fields })),
+]
+
+export function upgradeFilters(f: Filters): Filters {
+  if (f.intention) return f
+  const keys = ['styles', 'intensities', 'focus', 'objectives', 'energy', 'experience', 'timeOfDay', 'equipment', 'series', 'durations', 'ratings'] as const
+  const same = (a: unknown[] = [], b: unknown[] = []) => a.length === b.length && a.every((x) => b.includes(x))
+  for (const legacy of LEGACY_INTENTIONS) {
+    const lf = legacy.fields as Partial<Record<(typeof keys)[number], unknown[]>>
+    if (keys.every((k) => same((f[k] ?? []) as unknown[], lf[k] ?? []))) {
+      const cleared = Object.fromEntries(keys.map((k) => [k, []]))
+      return { ...f, ...cleared, intention: legacy.id }
+    }
+  }
+  return f
 }

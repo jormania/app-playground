@@ -15,7 +15,7 @@ import { dayTheme, daySearchUrl, doneDays, linkedSessions, nextDay } from '../li
 import { useSeries } from './Series'
 import { hrefOf } from '../app/router'
 import { backupNudge, daysAway, dueForRepeat, gentleReturn, isUnavailable, momentOf, RETURN_AFTER_DAYS, shortTitle } from '../lib/today'
-import { downloadText, stamp } from '../lib/download'
+import { useSaveBackup } from '../app/backup'
 import { Thumb } from '../components/ui'
 import { WeekRing } from '../components/WeekRing'
 import { formatDay } from '../lib/practice'
@@ -115,18 +115,16 @@ function TodayPick({ state, quiet = false, kicker }: { state: ReturnType<typeof 
 
 /** Your history lives only in this browser: a gentle reminder to keep a copy. */
 function BackupNudge({ count }: { count: number }) {
-  const { exportBackup, preferences, savePreferences, toast } = useStillflow()
+  const { preferences, savePreferences } = useStillflow()
+  const save = useSaveBackup()
   return (
     <div className={s.nudge} role="note">
       <p>
         <strong>{count} {count === 1 ? 'practice' : 'practices'} since your last backup.</strong>{' '}
-        Your history is kept only on this phone. A backup file keeps it safe if the browser clears its data.
+        Your history is kept only on this phone. Save a copy to Drive or your files, and it’s safe if the browser clears its data.
       </p>
       <div className={s.row}>
-        <button type="button" className={s.nudgePrimary} onClick={async () => {
-          downloadText(`stillflow-backup-${stamp()}.json`, JSON.stringify(await exportBackup(), null, 2), 'application/json')
-          toast('Backup saved to your downloads', 'success')
-        }}><Download size={15} /> Save a backup</button>
+        <button type="button" className={s.nudgePrimary} onClick={() => void save()}><Download size={15} /> Save a backup</button>
         <button type="button" className={s.textLink} onClick={() => savePreferences({ ...preferences, backupNudgeDismissedAt: new Date().toISOString() })}>Not now</button>
       </div>
     </div>

@@ -51,51 +51,10 @@
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
 .spread { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
 .muted { color: var(--color-muted); font-size: var(--text-sm); }
-.stack { display: grid; gap: var(--space-md); }
+.stack { display: grid; gap: var(--space-md); }/* ── Discover ─────────────────────────────────────────────────────────── */
 
-/* ── Discover ─────────────────────────────────────────────────────────── */
-
-.hero {
-  display: grid;
-  gap: var(--space-lg);
-  padding: var(--space-lg) 0 var(--space-md);
-}
 .heroTitle { font-size: clamp(2.1rem, 8vw, 3.3rem); max-width: 14ch; }
 .heroTitle em { font-style: italic; color: var(--color-accent); }
-
-.surpriseCta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  justify-self: start;
-  padding: 14px 22px 14px 18px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--sf-lavender);
-  background: var(--sf-lavender-soft);
-  color: var(--sf-lavender-ink);
-  text-decoration: none;
-  font-weight: var(--weight-medium);
-  transition: transform 160ms var(--ease);
-}
-.surpriseCta:hover { transform: translateY(-1px); }
-.surpriseCta small { font-weight: var(--weight-regular); color: var(--color-muted); }
-
-.week {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-}
-.weekBar {
-  flex: 1;
-  max-width: 220px;
-  height: 4px;
-  border-radius: 4px;
-  background: var(--color-border);
-  overflow: hidden;
-}
-.weekBar span { display: block; height: 100%; background: var(--color-accent); border-radius: inherit; }
 
 .intentions {
   display: grid;
@@ -386,10 +345,7 @@
 .entryDate span { font-size: var(--text-xs); color: var(--color-muted); text-transform: uppercase; }
 .entryTitle { font-size: var(--text-sm); text-decoration: none; color: var(--color-ink); }
 .entryMeta { font-size: var(--text-xs); color: var(--color-muted); }
-.leanings { display: grid; gap: var(--space-xs); font-size: var(--text-sm); }
-.lean { display: grid; grid-template-columns: 120px 1fr 28px; gap: var(--space-sm); align-items: center; }
-.leanBar { height: 6px; border-radius: 3px; background: var(--color-border); overflow: hidden; }
-.leanBar span { display: block; height: 100%; background: var(--color-accent); }
+
 .picker { max-height: 46vh; overflow-y: auto; display: grid; gap: 2px; margin-top: var(--space-sm); }
 .pick {
   text-align: left;
@@ -708,7 +664,6 @@ input.settingInput:not([type='number']) { text-align: left; }
   /* With room, wide controls sit to the right like the rest. */
   .settingStack { grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem); }
 }
-
 
 /* ── Intensity picker (editor) ───────────────────────────────────────── */
 

@@ -7,7 +7,7 @@ import {
   type Backup, type PracticeEntry, type Preferences, type SeriesDef, type SeriesProgress, type Session,
   type UserCollection, type UserSessionData,
 } from '../domain/types'
-import { EMPTY_FILTERS, lastPractisedMap, type Filters, type SortKey } from '../lib/filter'
+import { EMPTY_FILTERS, lastPractisedMap, type Filters, type SortKey, upgradeFilters } from '../lib/filter'
 import { openRepo, type Snapshot, type StillflowRepo } from '../store/repo'
 import { demosToRemove, runMigrations, SERIES_READER_VERSION } from '../lib/migrations'
 
@@ -63,6 +63,8 @@ interface StateValue extends Snapshot {
   restore: (b: Backup) => Promise<void>
   resetAll: () => Promise<void>
   exportBackup: () => Promise<Backup>
+  /** Records that a backup was actually saved or shared (not merely built). */
+  markBackedUp: (at: string) => void
   markLaunched: (launch: Omit<PendingLaunch, 'at'>) => void
   clearPending: () => void
   requestPersistence: () => Promise<boolean>
@@ -97,7 +99,7 @@ export function StateProvider({ children, repo: injected, seed = [] }: { childre
   const seedRef = useRef(seed)
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
   const [ready, setReady] = useState(false)
-  const [filters, setFiltersState] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...readSessionJson<Partial<Filters>>(FILTERS_KEY, {}) }))
+  const [filters, setFiltersState] = useState<Filters>(() => upgradeFilters({ ...EMPTY_FILTERS, ...readSessionJson<Partial<Filters>>(FILTERS_KEY, {}) }))
   const [sort, setSortState] = useState<SortKey>(() => readSessionJson<SortKey>(SORT_KEY, 'postedNew'))
   const [pending, setPending] = useState<PendingLaunch | null>(readPending)
   const [persisted, setPersisted] = useState<boolean | null>(null)
@@ -288,12 +290,11 @@ export function StateProvider({ children, repo: injected, seed = [] }: { childre
         clearPending()
         setSnap(await repo.load())
       },
-      exportBackup: async () => {
-        const b = await repo.exportBackup()
-        const prefs = { ...snap.preferences, lastBackupAt: b.exportedAt }
+      exportBackup: () => repo.exportBackup(),
+      markBackedUp: (at) => {
+        const prefs = { ...snap.preferences, lastBackupAt: at }
         setSnap((s) => ({ ...s, preferences: prefs }))
         write(repo.putPreferences(prefs))
-        return b
       },
       markLaunched: (launch) => {
         const p = { ...launch, at: Date.now() }

@@ -71,3 +71,30 @@ describe('re-reading respects your edits', () => {
     expect(m.sessionUpdates).toEqual([expect.objectContaining({ id: 'n', series: 'CENTER', seriesDay: 9 })])
   })
 })
+
+describe('reading descriptions (Release 8)', async () => {
+  const { readDescriptions } = await import('./migrations')
+  const base = {
+    id: 'd', title: 'Yoga For Renewal', instructor: 'YWA', youtubeUrl: '', youtubeVideoId: 'ddddddddddd', durationMinutes: 30,
+    styles: [] as string[], intensity: 0, physicalFocus: [] as string[], objectives: [] as string[], energy: [], experienceLevel: [],
+    timeOfDay: [], equipment: [], tags: ['from-channel'], classificationConfidence: 'low' as const, classificationSource: 'inferred' as const, dateAdded: 'x',
+  }
+  const desc = 'Find a little ease with this gentle yoga practice for tight hips and the lower back. Come back to the breath.\n- - - - -\nPower yoga music by somebody'
+
+  it('fills styles, areas and intensity from the opening, ignoring what follows the divider and everyday phrases', () => {
+    const [s] = readDescriptions([{ ...base, description: desc }])
+    expect(s.styles).toContain('Gentle Yoga')
+    expect(s.physicalFocus).toEqual(expect.arrayContaining(['Hips', 'Lower back']))
+    expect(s.physicalFocus).not.toContain('Back')
+    expect(s.intensity).toBe(2)
+    expect(s.styles).not.toContain('Power Yoga')
+  })
+
+  it('only adds, never touches your own classification, and is idempotent', () => {
+    const [once] = readDescriptions([{ ...base, description: desc, objectives: ['Strength'], intensity: 4 }])
+    expect(once.objectives).toContain('Strength')
+    expect(once.intensity).toBe(4)
+    expect(readDescriptions([once])).toEqual([])
+    expect(readDescriptions([{ ...base, description: desc, classificationSource: 'manual' as never }])).toEqual([])
+  })
+})

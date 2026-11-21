@@ -51,3 +51,21 @@ export async function shareNative(entry, appName = 'Wanderlist') {
     return { ok: false }
   }
 }
+
+// A file through the OS share sheet (on Android: Drive, email, Files…), for apps that
+// hand over a whole document such as a backup. Unlike shareNative this carries an
+// attachment, so it reports `unsupported` where the browser can't share files and the
+// caller falls back to a download.
+export async function shareFile(file, title) {
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' ||
+    typeof navigator.canShare !== 'function' || !navigator.canShare({ files: [file] })) {
+    return { ok: false, unsupported: true }
+  }
+  try {
+    await navigator.share({ files: [file], title })
+    return { ok: true, shared: true }
+  } catch (err) {
+    if (err?.name === 'AbortError') return { ok: true, cancelled: true }
+    return { ok: false }
+  }
+}

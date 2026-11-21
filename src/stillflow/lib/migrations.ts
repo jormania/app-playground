@@ -1,6 +1,6 @@
 import { BUILT_IN_SERIES } from '../data/series'
 import type { PracticeEntry, SeriesDef, SeriesProgress, Session, Snapshotish } from './migrationTypes'
-import { seriesFromTitle } from './channel'
+import { readDescription, seriesFromTitle } from './channel'
 import { linkedSessions } from './series'
 
 /**
@@ -82,15 +82,42 @@ export function demosToRemove(
   return snap.sessions.filter((s) => s.isDemo && !used.has(s.id)).map((s) => s.id)
 }
 
+/**
+ * Until Release 8 only titles were read, so most of the library carried no
+ * style, body area or goal. Fill those in from the opening of each video's
+ * description, for sessions that are still a guess. Only adds: anything you
+ * set, or that a practice taught it, stays; intensity is set only where none is.
+ */
+export function readDescriptions(sessions: Session[]): Session[] {
+  const changed: Session[] = []
+  const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
+  for (const s of sessions) {
+    if (s.classificationSource !== 'inferred' || !s.description) continue
+    const d = readDescription(s.description)
+    const next: Session = {
+      ...s,
+      styles: union(s.styles, d.styles),
+      physicalFocus: union(s.physicalFocus, d.physicalFocus),
+      objectives: union(s.objectives, d.objectives),
+      intensity: s.intensity || d.intensity,
+    }
+    if (next.styles.length !== s.styles.length || next.physicalFocus.length !== s.physicalFocus.length ||
+      next.objectives.length !== s.objectives.length || next.intensity !== s.intensity) changed.push(next)
+  }
+  return changed
+}
+
 export function runMigrations(snap: Snapshotish, seriesReaderVersion: number | undefined, now = new Date()) {
   // Cheap and idempotent, so it runs on every load: sessions imported since the
   // last load (a file, a backup) get their series too. The version is kept for
   // the record; it no longer gates the re-read.
   void seriesReaderVersion
-  const sessionUpdates = rereadChannelSeries(snap.sessions)
   const byId = new Map(snap.sessions.map((s) => [s.id, s]))
-  for (const s of sessionUpdates) byId.set(s.id, s)
+  const touched = new Set<string>()
+  for (const s of rereadChannelSeries(snap.sessions)) { byId.set(s.id, s); touched.add(s.id) }
+  for (const s of readDescriptions([...byId.values()])) { byId.set(s.id, s); touched.add(s.id) }
   const sessions = [...byId.values()]
+  const sessionUpdates = [...touched].map((id) => byId.get(id)!)
 
   const defs = [...BUILT_IN_SERIES, ...snap.customSeries]
   const progressUpdates: SeriesProgress[] = []

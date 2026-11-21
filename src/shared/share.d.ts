@@ -10,3 +10,4 @@ export interface ShareResult { ok: boolean; shared?: boolean; copied?: boolean; 
 export function canShare(): boolean
 export function shareText(entry: ShareEntry): string
 export function shareNative(entry: ShareEntry, appName?: string): Promise<ShareResult>
+export function shareFile(file: File, title?: string): Promise<ShareResult & { unsupported?: boolean }>

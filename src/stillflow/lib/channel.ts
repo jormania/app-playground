@@ -1,6 +1,7 @@
 import { BUILT_IN_SERIES } from '../data/series'
 import type { SeriesDef } from '../domain/types'
 import { fold } from './filter'
+import { descriptionLead } from './practice'
 
 /**
  * Reading Yoga With Adriene's YouTube channel into the catalogue, on request.
@@ -121,7 +122,13 @@ export async function scanChannel(opts: {
 
 // ── Reading a title ────────────────────────────────────────────────────────
 
-const has = (text: string, words: string[]) => words.some((w) => new RegExp(`\\b${w}`).test(text))
+const WORD_RES = new Map<string, RegExp>()
+const wordRe = (w: string) => {
+  let re = WORD_RES.get(w)
+  if (!re) { re = new RegExp(`\\b${w}`); WORD_RES.set(w, re) }
+  return re
+}
+const has = (text: string, words: string[]) => words.some((w) => wordRe(w).test(text))
 
 const STYLE_RULES: [string, string[]][] = [
   ['Yin Yoga', ['yin yoga', 'yin ']],
@@ -260,6 +267,41 @@ export function readTitle(title: string): TitleReading {
   }
 }
 
+/**
+ * The opening of Adriene's description says what a practice is ("a gentle
+ * hip-opening practice to release the lower back"). Only the first ~450
+ * characters before her divider are read: further down come links, music
+ * credits and talk about the wider series. Intensity is taken only from plain
+ * words (gentle, restorative, power), never from series pep talk.
+ */
+export function readDescription(description: string | undefined): TitleReading {
+  const lead = fold(descriptionLead(description).lead.slice(0, 450))
+    // Everyday phrases that would read as a body area, a goal or an intensity.
+    .replace(/\b(come|coming|comes|get|getting|welcome|bring|bringing|right|go|going|way|turn) back\b/g, ' ')
+    .replace(/\bback (to|into|in|on|home|again)\b/g, ' ')
+    .replace(/\b(set|sets|setting) the tone\b|\btone (for|of)\b/g, ' ')
+    .replace(/\b(powerful|empower\w*|power of)\b/g, ' ')
+    .replace(/\b(balance it out|work-life balance|life balance)\b/g, ' ')
+  const r = readTitle(lead)
+  // Morning/evening from a description is too loose ("start your day", "end of a long week").
+  return { ...r, styles: r.styles.filter((x) => x !== 'Morning Yoga' && x !== 'Evening Yoga'), timeOfDay: [] }
+}
+
+/** Title first, description to fill the gaps: values are combined, intensity comes from the title when it has one. */
+export function readVideo(title: string, description?: string): TitleReading {
+  const t = readTitle(title)
+  const d = readDescription(description)
+  const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
+  return {
+    styles: union(t.styles, d.styles),
+    physicalFocus: union(t.physicalFocus, d.physicalFocus),
+    objectives: union(t.objectives, d.objectives),
+    timeOfDay: t.timeOfDay,
+    experienceLevel: t.experienceLevel.length ? t.experienceLevel : d.experienceLevel,
+    intensity: t.intensity || d.intensity,
+  }
+}
+
 /** Minutes read from "20 Minute", "20-Min", "20 min" in a title: only for feed videos, which carry no duration. */
 export function minutesFromTitle(title: string): number | null {
   const m = /\b(\d{1,3})\s*-?\s*(?:minutes?|mins?)\b/i.exec(title)
@@ -269,7 +311,7 @@ export function minutesFromTitle(title: string): number | null {
 
 /** One channel video → a raw import record for importExport.normaliseRecord. */
 export function videoToRecord(v: ChannelVideo, instructor = YWA_CHANNEL.name): Record<string, unknown> {
-  const reading = readTitle(v.title)
+  const reading = readVideo(v.title, v.description)
   const series = seriesFromTitle(v.title)
   const fromTitle = v.durationSeconds == null ? minutesFromTitle(v.title) : null
   const minutes = v.durationSeconds != null ? Math.max(1, Math.round(v.durationSeconds / 60)) : fromTitle

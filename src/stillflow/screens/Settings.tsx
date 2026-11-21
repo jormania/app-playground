@@ -18,6 +18,8 @@ import { isBackup } from '../store/repo'
 import { ImportPanel } from './ImportPanel'
 import { ChannelSync } from './ChannelSync'
 import { RELEASE } from '../app/release'
+import { useSaveBackup } from '../app/backup'
+import { backupNudge } from '../lib/today'
 import s from './screens.module.css'
 
 function PlaybackTest() {
@@ -72,10 +74,12 @@ function MinutesRow({ label, hint, value, placeholder, onChange }: {
 
 export function Settings() {
   const state = useStillflow()
-  const { sessions, preferences, savePreferences, deleteSessions, exportBackup, restore, resetAll, toast, userData, setUserData, persisted, requestPersistence, history } = state
+  const { sessions, preferences, savePreferences, deleteSessions, restore, resetAll, toast, userData, setUserData, persisted, requestPersistence, history } = state
   const hidden = sessions.filter((x) => userData[x.id]?.excluded)
   const backupAge = preferences.lastBackupAt ? daysBetween(preferences.lastBackupAt.slice(0, 10), localDate()) : null
-  const backupDue = history.length > 0 && (backupAge == null || backupAge > 30)
+  // The same rule as Today's reminder, so the two never disagree.
+  const backupDue = backupNudge(history, { lastBackupAt: preferences.lastBackupAt }, localDate()) != null
+  const saveBackup = useSaveBackup()
   const [q, setQ] = useState('')
   const [confirm, setConfirm] = useState<null | 'demo' | 'reset' | { kind: 'delete'; id: string; title: string } | { kind: 'restore'; file: File }>(null)
   const demos = sessions.filter((x) => x.isDemo)
@@ -251,7 +255,7 @@ export function Settings() {
       <section className={s.panel}>
         <h2>Backup</h2>
         <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
-          Everything lives on this device only. A backup holds the catalogue, favourites, ratings, practice history, collections, series progress and preferences.
+          Everything lives on this device only. On Android, Save a backup opens the share sheet so you can keep it in Drive. A backup holds the catalogue, favourites, ratings, practice history, collections, series progress and preferences.
           {' '}{preferences.lastBackupAt ? `Last saved ${backupAge === 0 ? 'today' : `${backupAge} days ago`}.` : 'No backup saved yet.'}
         </p>
         {backupDue && <p className={s.demoNote} style={{ marginBottom: 'var(--space-md)' }}>It’s been a while. A fresh backup keeps your history safe if the phone is reset or the browser clears its data.</p>}
@@ -262,7 +266,7 @@ export function Settings() {
             : 'Storage protection is unknown in this browser.'}
         </p>
         <div className={s.row}>
-          <Button variant="outline" onClick={async () => downloadText(`stillflow-backup-${stamp()}.json`, JSON.stringify(await exportBackup(), null, 2), 'application/json')}>
+          <Button variant="outline" onClick={() => void saveBackup()}>
             <Download size={16} /> Save a backup
           </Button>
           <label className={s.fileButton}>

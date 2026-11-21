@@ -74,18 +74,3 @@ export function thisWeek(entries: PracticeEntry[], today: string): PracticeEntry
   const start = weekStart(today)
   return entries.filter((e) => e.date >= start && e.date <= today)
 }
-
-/** Most common values of one session dimension across the history, highest first. */
-export function topValues(
-  entries: PracticeEntry[], sessions: Session[], pick: (s: Session) => string[], n = 3,
-): { value: string; count: number }[] {
-  const byId = new Map(sessions.map((s) => [s.id, s]))
-  const counts = new Map<string, number>()
-  for (const e of entries) {
-    const s = byId.get(e.sessionId)
-    if (!s) continue
-    for (const v of pick(s)) counts.set(v, (counts.get(v) ?? 0) + 1)
-  }
-  return [...counts].map(([value, count]) => ({ value, count }))
-    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value)).slice(0, n)
-}

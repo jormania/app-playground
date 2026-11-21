@@ -9,6 +9,26 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 8 — 2026-11-21
+
+- **Descriptions are read, not just titles.** The opening of each video's description
+  (before Adriene's "- - - -" divider, first ~450 characters) fills in styles, body areas,
+  goals and a plain-word intensity (`readDescription`, `readVideo`). Everyday phrases that
+  would mislead ("come back to", "set the tone", "powerful") are set aside first. On the
+  real library: sessions with a body area 79 → 227, with a goal 121 → 471, with a style
+  85 → 194, with an intensity 49 → 158. Existing sessions are filled in on load
+  (`readDescriptions`), only while still a guess, only by adding; new channel imports
+  read both. A description that calls the video a vlog marks it as not a practice.
+- **Backups go where you keep things.** Save a backup opens the phone's share sheet with
+  the file (Drive is two taps away on Android; `shareFile` in `src/shared/share.js`),
+  and downloads where files can't be shared. It counts as saved only once shared or
+  downloaded, so dismissing the sheet keeps the reminder. Settings and Today use one rule
+  for when a backup is due.
+- **Housekeeping.** Filters saved before Release 7 as raw fields (Recovery + Very gentle +
+  Gentle) are read back as the named Practise for card (`upgradeFilters`). Styles and
+  code left over from removed panels (week bar, leanings, the old hero, `topValues`) are
+  gone.
+
 ## Release 7 — 2026-11-21
 
 - **The library learns from your practice.** "Mark as done" asks how it felt (Gentle,

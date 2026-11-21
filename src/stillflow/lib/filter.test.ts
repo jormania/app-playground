@@ -165,3 +165,15 @@ describe('women-specific practices', () => {
     expect(applyFilters(list, { ...EMPTY_FILTERS, intention: 'restore' }, 'recent', ctx)).toHaveLength(2)
   })
 })
+
+describe('filters saved before Release 7', () => {
+  it('become the named "Practise for" card, and anything else is left alone', async () => {
+    const { upgradeFilters, EMPTY_FILTERS } = await import('./filter')
+    expect(upgradeFilters({ ...EMPTY_FILTERS, objectives: ['Recovery'], intensities: [2, 1] })).toMatchObject({ intention: 'restore', objectives: [], intensities: [] })
+    expect(upgradeFilters({ ...EMPTY_FILTERS, energy: ['Energising'] }).intention).toBe('energise')
+    expect(upgradeFilters({ ...EMPTY_FILTERS, objectives: ['Strength'] }).intention).toBe('strength')
+    const mine = { ...EMPTY_FILTERS, objectives: ['Recovery'], focus: ['Hips'] }
+    expect(upgradeFilters(mine)).toBe(mine)
+    expect(upgradeFilters(EMPTY_FILTERS).intention ?? null).toBeNull()
+  })
+})
