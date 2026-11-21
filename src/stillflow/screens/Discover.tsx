@@ -9,52 +9,30 @@ import { localDate, summarise, thisWeek } from '../lib/practice'
 import { DEFAULT_CONSTRAINTS, buildProfile, surprise } from '../lib/recommend'
 import { seedFromText, seededRandom } from '../lib/seeded'
 import { PHYSICAL_FOCUS } from '../domain/vocabulary'
-import { PracticeLink, StartPractice } from '../components/StartPractice'
+import { StartPractice } from '../components/StartPractice'
 import type { SeriesDef } from '../domain/types'
-import { dayTheme, daySearchUrl, doneDays, linkedSessions, nextDay } from '../lib/series'
+import { doneDays, linkedSessions, nextDay } from '../lib/series'
 import { useSeries } from './Series'
 import { hrefOf } from '../app/router'
 import { backupNudge, daysAway, dueForRepeat, gentleReturn, isUnavailable, momentOf, RETURN_AFTER_DAYS, shortTitle } from '../lib/today'
 import { useSaveBackup } from '../app/backup'
-import { Thumb } from '../components/ui'
 import { WeekRing } from '../components/WeekRing'
 import { formatDay } from '../lib/practice'
+import { NextDay, PracticeBlock } from '../components/NextDay'
 import s from './screens.module.css'
 
 function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef; primary?: boolean; soft?: boolean }) {
-  const { markLaunched } = useStillflow()
   const { done, next, linked, pace } = useSeries(def)
-  const session = next ? linked.get(next) : undefined
-  const theme = session ? dayTheme(session.title, def) : ''
-  const where = next ? `${def.name} · ${def.unit} ${next}` : `${def.name} · all done`
-  // Laid out like Today's own pick: thumbnail, the day's theme as the title, then the actions on one row.
+  if (!next) return null
+  // The same block as the series page's Up next; Today adds the series name, the
+  // progress, the pace and a way to the series.
   return (
     <div className={primary ? s.todayCard : s.continue}>
       {primary && <span className={s.todayKicker}>Your next practice</span>}
-      {session ? (
-        <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={s.todayPick}>
-          <Thumb session={session} className={s.todayThumb} />
-          <span>
-            <span className={s.entrySource}>{where}</span>
-            <strong className={s.todayTitle}>{theme || `${def.unit} ${next}`}</strong>
-            <span className={s.muted}>{done.size} of {def.length} done</span>
-          </span>
-        </a>
-      ) : (
-        <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={s.todayPlain}>
-          <strong className={s.todayTitle}>{where}</strong>
-          <span className={s.muted}>{done.size} of {def.length} done{next ? ' · not in your library yet' : ''}</span>
-        </a>
-      )}
-      {soft && next ? <span className={s.paceNote}>{def.unit} {next} is waiting whenever you are</span> : pace && <span className={s.paceNote}>{pace.label}</span>}
-      {next && (
-        <div className={s.todayActions}>
-          {session
-            ? <StartPractice session={session} compact series={{ seriesId: def.id, day: next }} label={`Start ${def.unit} ${next}`} />
-            : <PracticeLink url={daySearchUrl(def, next)} compact search label={`Find ${def.unit} ${next}`} onLaunch={() => markLaunched({ seriesId: def.id, day: next })} />}
-          <a className={s.textLink} href={hrefOf({ name: 'seriesDetail', id: def.id })}>Open series</a>
-        </div>
-      )}
+      <NextDay def={def} day={next} session={linked.get(next)} withSeries
+        meta={`${done.size} of ${def.length} done`}
+        note={soft ? `${def.unit} ${next} is waiting whenever you are` : pace?.label}
+        secondary={<a className={s.textLink} href={hrefOf({ name: 'seriesDetail', id: def.id })}>Open series</a>} />
     </div>
   )
 }
@@ -95,33 +73,38 @@ function useTodayPick(kind: PickKind) {
 function TodayPick({ state, quiet = false, kicker }: { state: ReturnType<typeof useTodayPick>; quiet?: boolean; kicker?: string }) {
   const { seriesDefs } = useStillflow()
   const { pick, reason, minutes, setMinutes, setTurn, moment } = state
+  const name = pick ? shortTitle(pick.session, seriesDefs) : null
+  // Same shape as the series' next day: label, title, meta, the why as a note, then Start.
+  const times = (
+    <div className={s.todayTimes} role="group" aria-label="How long have you got?">
+      {TIME_CHOICES.map((m) => (
+        <button key={m} type="button" aria-pressed={minutes === m} onClick={() => { setMinutes(minutes === m ? null : m); setTurn(0) }}>
+          {m} min
+        </button>
+      ))}
+      <button type="button" aria-label="Another idea" onClick={() => setTurn((t) => t + 1)}><Shuffle size={16} /></button>
+    </div>
+  )
+  const more = <a href="#/surprise" className={s.textLink}>More ways to choose</a>
   return (
     <div className={quiet ? s.continue : s.todayCard}>
       {!quiet && <span className={s.todayKicker}>{kicker ?? moment.kicker}</span>}
-      {pick ? (
-        <a href={hrefOf({ name: 'session', id: pick.session.id })} className={s.todayPick}>
-          <Thumb session={pick.session} className={s.todayThumb} />
-          <span>
-            {shortTitle(pick.session, seriesDefs).label && <span className={s.entrySource}>{shortTitle(pick.session, seriesDefs).label}</span>}
-            <strong className={s.todayTitle}>{shortTitle(pick.session, seriesDefs).title}</strong>
-            {reason && <span className={s.muted}>{reason}</span>}
-          </span>
-        </a>
+      {pick && name ? (
+        <PracticeBlock session={pick.session}
+          label={name.label ?? pick.session.styles[0]}
+          title={name.title}
+          meta={pick.session.physicalFocus.slice(0, 2).join(' · ') || undefined}
+          note={reason}
+          extra={times}
+          start={<StartPractice session={pick.session} compact label="Start" />}
+          secondary={more} />
       ) : (
-        <p className={s.muted}>Nothing fits {minutes ? `${minutes} minutes` : 'right now'}. Try another length.</p>
+        <>
+          <p className={s.muted}>Nothing fits {minutes ? `${minutes} minutes` : 'right now'}. Try another length.</p>
+          {times}
+          <div className={s.todayActions}>{more}</div>
+        </>
       )}
-      <div className={s.todayTimes} role="group" aria-label="How long have you got?">
-        {TIME_CHOICES.map((m) => (
-          <button key={m} type="button" aria-pressed={minutes === m} onClick={() => { setMinutes(minutes === m ? null : m); setTurn(0) }}>
-            {m} min
-          </button>
-        ))}
-        <button type="button" aria-label="Another idea" onClick={() => setTurn((t) => t + 1)}><Shuffle size={16} /></button>
-      </div>
-      <div className={s.todayActions}>
-        {pick && <StartPractice session={pick.session} compact label="Start" />}
-        <a href="#/surprise" className={s.textLink}>More ways to choose</a>
-      </div>
     </div>
   )
 }

@@ -9,6 +9,16 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## After Release 9 — one shape for an offered practice
+
+Today's "Your next practice", its "Or something else" pick and the series page's "Up
+next" are one component, `PracticeBlock` (with `NextDay` for series days) in
+`components/NextDay.tsx`: thumbnail with the length on its badge; label, title and one
+line of meta; an italic note (the pace, or why it was picked); anything particular to
+the card (Today's 10/20/30); then Start and one quiet companion on one row. Change the
+shape there, not in a screen. The series day sheet shows the start of the day's own
+description, wrapped around its thumbnail, instead of repeating the theme.
+
 ## Release 9 — 2026-11-21 (full audit)
 
 Every page was opened on a phone-sized screen in light and dark (no overflow, no unnamed

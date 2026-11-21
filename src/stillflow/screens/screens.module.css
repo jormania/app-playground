@@ -902,3 +902,9 @@ input.settingInput:not([type='number']) { text-align: left; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Series day sheet: thumbnail floated at the start, Adriene's description flowing around it. */
+.dayIntro { display: flow-root; color: inherit; text-decoration: none; }
+.dayIntroThumb { float: left; width: 128px; margin: 2px var(--space-md) var(--space-xs) 0; border-radius: var(--radius-md); }
+.dayIntroText { font-size: var(--text-sm); line-height: 1.55; color: var(--color-ink-2, var(--color-muted)); }
+.dayIntro .entrySource { margin-bottom: 4px; }

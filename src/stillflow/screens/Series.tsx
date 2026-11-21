@@ -13,6 +13,7 @@ import {
 import { cx } from '../../ds/lib/cx'
 import { repeatLabel } from '../domain/vocabulary'
 import { shortTitle } from '../lib/today'
+import { NextDay } from '../components/NextDay'
 import s from './screens.module.css'
 
 const fmtShort = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
@@ -279,13 +280,13 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
     <Modal open onClose={onClose} title={`${def.name} · ${label}`}>
       <div className={s.stack}>
         {session ? (
-          <a className={s.todayPick} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>
-            <Thumb session={session} className={s.todayThumb} />
-            {/* The theme is on the thumbnail, in the sheet's title and on the day tile; here, a line of what the day is about. */}
-            <span>
-              {session.styles[0] && <span className={s.entrySource}>{session.styles[0]}</span>}
-              <span className={s.teaser}>{teaser(session.description, session.title) || (dayTheme(session.title, def) || shortTitle(session, seriesDefs).title)}</span>
-            </span>
+          <a className={s.dayIntro} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>
+            {/* The thumbnail sits at the start and the description wraps around and under it, so
+                a few sentences fit without a tall empty column. The theme is already on the
+                thumbnail, in the sheet's title and on the day tile. */}
+            <Thumb session={session} className={s.dayIntroThumb} />
+            {session.styles[0] && <span className={s.entrySource}>{session.styles[0]}</span>}
+            <span className={s.dayIntroText}>{teaser(session.description, session.title, 320) || (dayTheme(session.title, def) || shortTitle(session, seriesDefs).title)}</span>
           </a>
         ) : (
           <p className={s.muted}>This {def.unit.toLowerCase()}’s video isn’t in your library yet. Find it on YouTube, or link a session you’ve already added.</p>
@@ -313,18 +314,17 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
 }
 
 export function SeriesDetail({ id }: { id: string }) {
-  const { seriesDefs, saveProgress, deleteSeriesDef, toast, ready, markLaunched } = useStillflow()
+  const { seriesDefs, saveProgress, deleteSeriesDef, toast, ready } = useStillflow()
   const def = seriesDefs.find((d) => d.id === id)
   if (!def) return ready ? <Empty title="Series not found"><a className={s.textLink} href="#/series">All series</a></Empty> : null
-  return <SeriesDetailInner def={def} saveProgress={saveProgress} deleteSeriesDef={deleteSeriesDef} toast={toast} markLaunched={markLaunched} />
+  return <SeriesDetailInner def={def} saveProgress={saveProgress} deleteSeriesDef={deleteSeriesDef} toast={toast} />
 }
 
-function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaunched }: {
+function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast }: {
   def: SeriesDef
   saveProgress: (p: SeriesProgress) => void
   deleteSeriesDef: (id: string) => void
   toast: (m: string, t?: 'success' | 'neutral' | 'danger') => void
-  markLaunched: (l: { seriesId?: string; day?: number; sessionId?: string }) => void
 }) {
   const { progress, linked, done, next, pace: p, started } = useSeries(def)
   const { mark } = useDayActions(def)
@@ -370,25 +370,13 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast, markLaun
 
           {next ? (
             <section className={s.upNext} aria-label={`Up next: ${def.unit} ${next}`}>
-              <span className={s.upNextLabel}>Up next</span>
-              <div className={nextSession ? s.upNextPick : undefined}>
-                {nextSession && <a href={hrefOf({ name: 'session', id: nextSession.id })}><Thumb session={nextSession} className={s.todayThumb} /></a>}
-                <div className={s.upNextText}>
-                  <div className={s.upNextTitle}>
-                    <span className={s.upNextDay}>{def.unit} {next}</span>
-                    {nextSession && dayTheme(nextSession.title, def) && <span className={s.upNextTheme}>{dayTheme(nextSession.title, def)}</span>}
-                  </div>
-                  {(!nextSession || nextSession.styles[0]) && (
-                    <span className={s.upNextMeta}>{nextSession ? nextSession.styles[0] : 'Not in your library yet: opens a YouTube search'}</span>
-                  )}
-                </div>
-              </div>
-              <div className={s.upNextActions}>
-                {nextSession
-                  ? <StartPractice session={nextSession} series={{ seriesId: def.id, day: next }} label="Start" />
-                  : <PracticeLink url={daySearchUrl(def, next)} search label="Find on YouTube" ariaLabel={`Find ${def.unit} ${next} on YouTube`} onLaunch={() => markLaunched({ seriesId: def.id, day: next })} />}
-                <button type="button" className={s.markDone} aria-label={`Mark ${def.unit} ${next} done`} onClick={() => mark(next)}><Check size={17} strokeWidth={2} /> Mark done</button>
-              </div>
+              {/* The same block as Today's "Your next practice"; progress and pace are in the header above. */}
+              <span className={s.todayKicker}>Up next</span>
+              <NextDay def={def} day={next} session={nextSession} withSeries={false}
+                meta={nextSession?.styles[0]}
+                secondary={<button type="button" className={s.dayTag} aria-label={`Mark ${def.unit} ${next} done`}
+                  title={nextSession ? 'Also recorded in My Practice, dated today' : 'Ticked on the series only'}
+                  onClick={() => mark(next)}><Check size={14} strokeWidth={2.4} /> Mark done</button>} />
             </section>
           ) : (
             <div className={s.upNext}>
