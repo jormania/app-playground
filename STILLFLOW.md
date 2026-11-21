@@ -42,6 +42,14 @@ Start now count towards the series (a first run counts everything; a later run c
 what came after the previous one ended), and "Started" shows the first such date. Less
 space between the app bar and each screen's title.
 
+Follow-up 2: "Practise for" cards and body areas are one named filter each (shown as a chip
+and at the top of Filters), matched by classification or by words in the title, since most
+channel sessions carry no classification: restore 42, energise 43, relax 63, strength 42,
+flexibility 29, mobility 24, balance 23, posture 22, short 127 on the real library. Vlogs,
+trailers, tips, Q&As, kids' yoga and pose tutorials (`isExtra`) stay searchable but are never
+offered by Practise for, Today or Surprise Me. Explore's search and filters scroll away with
+the page; the sort sits beside Favourites, with shorter labels.
+
 Audit fixes shipped just before (6d61041): a whole-channel re-import in "update" mode no
 longer overwrites reviewed classification or drops your tags; posted dates and "last
 checked" use the local calendar day; unmarking a series day is one toast with one Undo;

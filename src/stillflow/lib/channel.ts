@@ -138,7 +138,7 @@ const STYLE_RULES: [string, string[]][] = [
   ['Yoga Nidra', ['nidra']],
 ]
 
-const FOCUS_RULES: [string, string[]][] = [
+export const FOCUS_RULES: [string, string[]][] = [
   ['Hip flexors', ['hip flexor', 'psoas']],
   ['Hips', ['hips', 'hip opening', 'hip opener', 'hip ']],
   ['Lower back', ['lower back', 'low back', 'sciatica']],

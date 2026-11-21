@@ -4,7 +4,7 @@ import { navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { SessionCard } from '../components/SessionCard'
 import { Chip, Empty, SectionHead } from '../components/ui'
-import { EMPTY_FILTERS, INTENTIONS, type Filters } from '../lib/filter'
+import { EMPTY_FILTERS, INTENTIONS, matchesIntention, type Filters } from '../lib/filter'
 import { localDate, summarise, thisWeek } from '../lib/practice'
 import { DEFAULT_CONSTRAINTS, buildProfile, surprise } from '../lib/recommend'
 import { seedFromText, seededRandom } from '../lib/seeded'
@@ -178,7 +178,7 @@ export function Discover() {
     return [...present].sort((a, b) => (p.allStyleCounts[a] ?? 0) - (p.allStyleCounts[b] ?? 0) || a.localeCompare(b)).slice(0, 6)
   }, [sessions, history, today])
 
-  const areas = useMemo(() => PHYSICAL_FOCUS.filter((f) => sessions.some((x) => x.physicalFocus.includes(f))), [sessions])
+  const areas = useMemo(() => PHYSICAL_FOCUS.filter((f) => sessions.some((x) => matchesIntention(x, `area:${f}`))), [sessions])
 
   const week = summarise(thisWeek(history, today))
   const backup = backupNudge(history, preferences, today)
@@ -243,7 +243,7 @@ export function Discover() {
       <SectionHead title="Practise for" />
       <div className={s.intentions}>
         {INTENTIONS.map((i) => (
-          <button key={i.id} type="button" className={s.intention} onClick={() => explore(i.filters)}>
+          <button key={i.id} type="button" className={s.intention} onClick={() => explore({ intention: i.id })}>
             <strong>{i.label}</strong>
             <span>{i.hint}</span>
           </button>
@@ -255,7 +255,7 @@ export function Discover() {
       </div>
       {showAreas && (
         <div className={s.row} style={{ marginTop: 'var(--space-md)' }}>
-          {areas.map((a) => <Chip key={a} onClick={() => explore({ focus: [a] })}>{a}</Chip>)}
+          {areas.map((a) => <Chip key={a} onClick={() => explore({ intention: `area:${a}` })}>{a}</Chip>)}
         </div>
       )}
 

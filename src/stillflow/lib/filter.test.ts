@@ -111,3 +111,36 @@ describe('posted on YouTube', () => {
     expect(sortSessions([a, b, c], 'postedOld', ctx2).map((s) => s.id)).toEqual(['a', 'b', 'c'])
   })
 })
+
+describe('Practise for', () => {
+  const t = (title: string, over: Partial<Session> = {}) => ({ ...session('x'), title, durationMinutes: 20, ...over }) as Session
+  it('matches by title words when a session carries no classification', async () => {
+    const { matchesIntention } = await import('./filter')
+    expect(matchesIntention(t('Yoga For Tired Legs'), 'restore')).toBe(true)
+    expect(matchesIntention(t('Morning Yoga - Energizing Morning Sequence'), 'energise')).toBe(true)
+    expect(matchesIntention(t('Bedtime Yoga Sequence'), 'relax')).toBe(true)
+    expect(matchesIntention(t('Lower Back Mobility'), 'area:Lower back')).toBe(true)
+    expect(matchesIntention(t('Power Yoga - with Adriene'), 'relax')).toBe(false)
+    // The series name isn't a theme: "BREATH" days aren't all relaxation.
+    expect(matchesIntention(t('Day 6 - Burn |  BREATH - A 30 Day Yoga Journey'), 'relax')).toBe(false)
+  })
+  it('matches by classification too', async () => {
+    const { matchesIntention } = await import('./filter')
+    expect(matchesIntention(t('Untitled flow', { objectives: ['Recovery'] }), 'restore')).toBe(true)
+  })
+  it('never offers vlogs, trailers, tips or pose tutorials', async () => {
+    const { isExtra, matchesIntention } = await import('./filter')
+    for (const title of ['FWFG Austin Roadshow VLOG', 'CENTER - A 30 Day Yoga Journey', 'Yoga Tips: Engage Your Warrior',
+      'Welcome to MOVE - A 30 Day Yoga Journey  |  Yoga With Adriene', 'Foundations of Salad - with Hilah Cooking', 'What is Vinyasa?']) {
+      expect(isExtra({ title, durationMinutes: 8 })).toBe(true)
+    }
+    expect(isExtra({ title: 'Side Plank Pose |  Vasisthasana', durationMinutes: 8 })).toBe(true)
+    expect(isExtra({ title: 'Yoga for Beginners - Foundations of Flow', durationMinutes: 20 })).toBe(false)
+    expect(isExtra({ title: 'Yoga For Hips | Yoga With Adriene', durationMinutes: 8 })).toBe(false)
+    expect(matchesIntention(t('Yoga Tips For Relaxation'), 'relax')).toBe(false)
+  })
+  it('counts as one filter, named', async () => {
+    const { activeFilterCount, EMPTY_FILTERS } = await import('./filter')
+    expect(activeFilterCount({ ...EMPTY_FILTERS, intention: 'restore' })).toBe(1)
+  })
+})

@@ -120,16 +120,17 @@
 
 /* ── Explore ──────────────────────────────────────────────────────────── */
 
+/* Scrolls away with the page: only the app bar stays, so the list gets the room. */
 .toolbar {
-  position: sticky;
-  top: 64px;
-  z-index: 10;
-  background: var(--color-bg);
   padding: var(--space-xs) 0 var(--space-sm);
   display: grid;
   gap: var(--space-sm);
 }
-@media (min-width: 900px) { .toolbar { top: 0; } }
+/* Filters, Favourites and the sort on one line; the sort takes what's left. */
+.toolRow { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 6px; align-items: center; }
+.toolRow .toolButton { padding: 0 12px; }
+.sortLabel { min-width: 0; }
+.sortLabel .select { width: 100%; text-overflow: ellipsis; }
 .search {
   display: flex;
   align-items: center;

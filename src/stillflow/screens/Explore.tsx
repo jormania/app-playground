@@ -9,7 +9,7 @@ import {
   repeatLabel,
   type DurationBucketId,
 } from '../domain/vocabulary'
-import { EMPTY_FILTERS, SORT_OPTIONS, activeFilterCount, applyFilters, type Filters, type SortKey } from '../lib/filter'
+import { EMPTY_FILTERS, SORT_OPTIONS, activeFilterCount, applyFilters, type Filters, type SortKey, INTENTIONS, intentionById } from '../lib/filter'
 import s from './screens.module.css'
 
 const PAGE = 48
@@ -44,7 +44,9 @@ export function Explore() {
   const update = (patch: Partial<Filters>) => { setFilters({ ...filters, ...patch }); setLimit(PAGE) }
   const n = activeFilterCount(filters)
 
+  const intention = filters.intention ? intentionById(filters.intention) : undefined
   const chips: { label: string; remove: () => void }[] = [
+    ...(intention ? [{ label: intention.label, remove: () => update({ intention: null }) }] : []),
     ...filters.durations.map((d) => ({ label: DURATION_BUCKETS.find((b) => b.id === d)!.label, remove: () => update({ durations: filters.durations.filter((x) => x !== d) }) })),
     ...(filters.customMin != null ? [{ label: `≥ ${filters.customMin} min`, remove: () => update({ customMin: undefined }) }] : []),
     ...(filters.customMax != null ? [{ label: `≤ ${filters.customMax} min`, remove: () => update({ customMax: undefined }) }] : []),
@@ -72,26 +74,26 @@ export function Explore() {
             onChange={(e) => update({ query: e.target.value })} />
           {filters.query && <button type="button" className={s.iconBtn} aria-label="Clear search" onClick={() => update({ query: '' })}><X size={16} /></button>}
         </label>
+        <div className={s.toolRow}>
+          <button type="button" className={s.toolButton} aria-pressed={open} onClick={() => setOpen(true)}>
+            <SlidersHorizontal size={15} /> Filters {n > 0 && <span className={s.badge}>{n}</span>}
+          </button>
+          <button type="button" className={s.toolButton} aria-pressed={filters.favouritesOnly} onClick={() => update({ favouritesOnly: !filters.favouritesOnly })}>
+            <Heart size={15} /> Favourites
+          </button>
+          <label className={s.sortLabel}>
+            <span className="sf-visually-hidden">Sort</span>
+            <select className={s.select} value={sort} onChange={(e) => { setSort(e.target.value as SortKey); if (e.target.value === 'random') setSeed((x) => x + 1) }}>
+              {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+        </div>
         <div className={s.spread}>
+          <span className={s.count} aria-live="polite">{results.length} {results.length === 1 ? 'session' : 'sessions'}</span>
           <div className={s.row}>
-            <button type="button" className={s.toolButton} aria-pressed={open} onClick={() => setOpen(true)}>
-              <SlidersHorizontal size={15} /> Filters {n > 0 && <span className={s.badge}>{n}</span>}
-            </button>
-            <button type="button" className={s.toolButton} aria-pressed={filters.favouritesOnly} onClick={() => update({ favouritesOnly: !filters.favouritesOnly })}>
-              <Heart size={15} /> Favourites
-            </button>
-            <label>
-              <span className="sf-visually-hidden">Sort</span>
-              <select className={s.select} value={sort} onChange={(e) => { setSort(e.target.value as SortKey); if (e.target.value === 'random') setSeed((x) => x + 1) }}>
-                {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </label>
             {sort === 'random' && (
               <button type="button" className={s.iconBtn} aria-label="Shuffle again" onClick={() => setSeed((x) => x + 1)}><Shuffle size={17} /></button>
             )}
-          </div>
-          <div className={s.row}>
-            <span className={s.count} aria-live="polite">{results.length} {results.length === 1 ? 'session' : 'sessions'}</span>
             <button type="button" className={s.iconBtn} aria-label="Grid view" aria-pressed={view === 'grid'} onClick={() => savePreferences({ ...preferences, view: 'grid' })}><LayoutGrid size={18} /></button>
             <button type="button" className={s.iconBtn} aria-label="List view" aria-pressed={view === 'list'} onClick={() => savePreferences({ ...preferences, view: 'list' })}><List size={18} /></button>
           </div>
@@ -128,6 +130,10 @@ export function Explore() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Filters">
         <div className={s.filterSheet}>
+          <ChipGroup<string> label="Practise for" options={[...INTENTIONS.map((i) => i.id), ...(filters.intention?.startsWith('area:') ? [filters.intention] : [])]}
+            selected={filters.intention ? [filters.intention] : []}
+            onChange={(v) => update({ intention: v.find((x) => x !== filters.intention) ?? null })}
+            render={(id) => intentionById(id)?.label ?? id} />
           <ChipGroup<DurationBucketId> label="Length" options={DURATION_BUCKETS.map((b) => b.id)} selected={filters.durations}
             onChange={(v) => update({ durations: v })} render={(id) => DURATION_BUCKETS.find((b) => b.id === id)!.label} />
           <div className={s.rangeRow}>

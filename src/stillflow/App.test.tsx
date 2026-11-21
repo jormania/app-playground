@@ -74,7 +74,10 @@ describe('finding a practice', () => {
     const { user } = await start()
     await user.click(await screen.findByRole('button', { name: /Restore and recover/ }))
     await go('#/explore')
-    expect(await screen.findByText('4 sessions')).toBeTruthy()
+    // One named filter, visible as a chip, with results behind it.
+    expect(await screen.findByRole('button', { name: 'Remove filter Restore and recover' })).toBeTruthy()
+    expect(await screen.findByText(/^[1-9]\d* sessions?$/)).toBeTruthy()
+    expect(screen.queryByText('16 sessions')).toBeNull()
     await user.click(screen.getAllByRole('button', { name: 'Clear all' })[0])
     expect(await screen.findByText('16 sessions')).toBeTruthy()
   })

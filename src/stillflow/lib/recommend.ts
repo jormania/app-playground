@@ -1,3 +1,4 @@
+import { isExtra } from './filter'
 import type { PracticeEntry, Preferences, Session, UserSessionData } from '../domain/types'
 import { INTENSITY_LABELS } from '../domain/vocabulary'
 
@@ -110,6 +111,8 @@ export function passesConstraints(s: Session, c: Constraints, ctx: RecommendCont
   if (ctx.userData[s.id]?.excluded) return false
   // Gone from YouTube: still in your history, never proposed.
   if (s.tags.includes('unavailable')) return false
+  // A vlog, trailer or pose tutorial isn't a practice to propose.
+  if (isExtra(s)) return false
   if (c.maxDuration != null && s.durationMinutes > c.maxDuration) return false
   if (c.minIntensity != null && s.intensity < c.minIntensity) return false
   if (c.maxIntensity != null && (s.intensity === 0 || s.intensity > c.maxIntensity)) return false
