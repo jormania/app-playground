@@ -350,8 +350,7 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast }: {
             <section className={s.upNext} aria-label={`Up next: ${def.unit} ${next}`}>
               {/* The same block as Today's "Your next practice"; progress and pace are in the header above. */}
               <span className={s.todayKicker}>Up next</span>
-              <NextDay def={def} day={next} session={nextSession} withSeries={false}
-                meta={nextSession?.styles[0]}
+              <NextDay def={def} day={next} session={nextSession} withSeries={false} actionsBeside
                 secondary={<button type="button" className={s.dayTag} aria-label={`Mark ${def.unit} ${next} done`}
                   title={nextSession ? 'Also recorded in My Practice, dated today' : 'Ticked on the series only'}
                   onClick={() => mark(next)}><Check size={14} strokeWidth={2.4} /> Mark done</button>} />

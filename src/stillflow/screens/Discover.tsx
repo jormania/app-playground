@@ -35,7 +35,7 @@ function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef
         <SeriesBand def={def} done={done.size} started={started} pace={pace} name />
         <div className={s.upNext}>
           <span className={s.todayKicker}>Your next practice</span>
-          <NextDay def={def} day={next} session={day} withSeries={false} meta={day?.styles[0]} secondary={open} />
+          <NextDay def={def} day={next} session={day} withSeries={false} secondary={open} actionsBeside />
         </div>
       </section>
     )

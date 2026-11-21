@@ -914,3 +914,9 @@ input.settingInput:not([type='number']) { text-align: left; }
 .dayEntry .dayIntro > :not(:first-child) { display: block; }
 .dayNote { margin: 2px 0 0; font-family: var(--font-display); font-style: italic; font-size: var(--text-sm); line-height: 1.45; color: var(--sf-lavender-ink, var(--color-muted)); }
 button.calendarDay { border: 0; padding: 0; font: inherit; font-size: var(--text-xs); cursor: pointer; }
+
+/* A series day whose thumbnail speaks for itself: Start beside it, the companion below. */
+.pickBeside { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--space-md); align-items: center; }
+.pickBesideThumb { display: grid; color: inherit; text-decoration: none; }
+.pickBesideActions { display: grid; gap: var(--space-xs); justify-items: center; min-width: 0; }
+.pickBesideActions > :first-child { justify-self: stretch; justify-content: center; }

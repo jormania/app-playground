@@ -18,8 +18,11 @@ import s from '../screens/screens.module.css'
  *   Start, and one quiet companion (a link or a tag) on the same row
  *
  * Each card fills the slots it has; none adds elements of its own elsewhere.
+ *
+ * `actionsBeside` is for a series day: its thumbnail already shows the day and
+ * its theme, so the text goes and Start sits beside it, its companion below.
  */
-export function PracticeBlock({ session, label, title, meta, note, extra, start, secondary }: {
+export function PracticeBlock({ session, label, title, meta, note, extra, start, secondary, actionsBeside = false }: {
   session?: Session
   label?: string
   title: string
@@ -28,7 +31,25 @@ export function PracticeBlock({ session, label, title, meta, note, extra, start,
   extra?: ReactNode
   start: ReactNode
   secondary?: ReactNode
+  actionsBeside?: boolean
 }) {
+  if (actionsBeside && session) {
+    return (
+      <>
+        <div className={s.pickBeside}>
+          <a href={hrefOf({ name: 'session', id: session.id })} className={s.pickBesideThumb} aria-label={label ? `${label}: ${title}` : title}>
+            <Thumb session={session} className={s.todayThumb} />
+          </a>
+          <div className={s.pickBesideActions}>
+            {start}
+            {secondary}
+          </div>
+        </div>
+        {note && <span className={s.paceNote}>{note}</span>}
+        {extra}
+      </>
+    )
+  }
   const text = (
     <span>
       {label && <span className={s.entrySource}>{label}</span>}
@@ -57,7 +78,7 @@ export function PracticeBlock({ session, label, title, meta, note, extra, start,
 }
 
 /** The next day of a series, in the shared shape. */
-export function NextDay({ def, day, session, withSeries, meta, note, secondary }: {
+export function NextDay({ def, day, session, withSeries, meta, note, secondary, actionsBeside }: {
   def: SeriesDef
   day: number
   session?: Session
@@ -66,6 +87,7 @@ export function NextDay({ def, day, session, withSeries, meta, note, secondary }
   meta?: ReactNode
   note?: ReactNode
   secondary?: ReactNode
+  actionsBeside?: boolean
 }) {
   const { markLaunched } = useStillflow()
   return (
@@ -79,6 +101,7 @@ export function NextDay({ def, day, session, withSeries, meta, note, secondary }
         ? <StartPractice session={session} compact series={{ seriesId: def.id, day }} label={`Start ${def.unit} ${day}`} />
         : <PracticeLink url={daySearchUrl(def, day)} compact search label={`Find ${def.unit} ${day}`} ariaLabel={`Find ${def.unit} ${day} on YouTube`} onLaunch={() => markLaunched({ seriesId: def.id, day })} />}
       secondary={secondary}
+      actionsBeside={actionsBeside}
     />
   )
 }
