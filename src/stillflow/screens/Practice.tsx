@@ -138,6 +138,9 @@ export function Practice() {
   const notes = useMemo(() => history.filter((h) => h.note), [history])
   const [allNotes, setAllNotes] = useState(false)
   const title = (id: string) => { const x = byId.get(id); return x ? shortTitle(x, seriesDefs).title : 'Removed session' }
+  /** Where a session comes from: "MOVE · Day 3", or its programme. */
+  const source = (id: string) => { const x = byId.get(id); return x ? shortTitle(x, seriesDefs).label : undefined }
+  const withSource = (id: string) => (source(id) ? ` · ${source(id)}` : '')
 
   const longest = useMemo(() => [...history].sort((a, b) => b.minutes - a.minutes).slice(0, 3), [history])
 
@@ -176,7 +179,7 @@ export function Practice() {
               {(allNotes ? notes : notes.slice(0, 4)).map((e) => (
                 <p key={e.id} className={s.noteRow}>
                   <span className={s.noteText}>“{e.note}”</span>
-                  <span className={s.muted}>{formatDay(e.date)} · {byId.get(e.sessionId) ? shortTitle(byId.get(e.sessionId)!, seriesDefs).title : 'Removed session'}</span>
+                  <span className={s.muted}>{formatDay(e.date)} · {title(e.sessionId)}{withSource(e.sessionId)}</span>
                 </p>
               ))}
               {notes.length > 4 && <button type="button" className={s.textLink} onClick={() => setAllNotes((v) => !v)}>{allNotes ? 'Show fewer' : `Show all ${notes.length}`}</button>}
@@ -196,14 +199,14 @@ export function Practice() {
                 <div className={s.panel}>
                   <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-sm)' }}>Not revisited lately</h3>
                   {notRevisited.map((x) => (
-                    <p key={x.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: x.id })}>{title(x.id)}</a>{lastPractised[x.id] ? ` · ${daysBetween(lastPractised[x.id], today)} days ago` : ' · favourite, never logged'}</p>
+                    <p key={x.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: x.id })}>{title(x.id)}</a>{withSource(x.id)}{lastPractised[x.id] ? ` · ${daysBetween(lastPractised[x.id], today)} days ago` : ' · favourite, never logged'}</p>
                   ))}
                 </div>
               )}
               <div className={s.panel}>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-sm)' }}>Longest sessions</h3>
                 {longest.map((e) => (
-                  <p key={e.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: e.sessionId })}>{title(e.sessionId)}</a> · {e.minutes} min</p>
+                  <p key={e.id} className={s.muted}><a className={s.entryTitle} href={hrefOf({ name: 'session', id: e.sessionId })}>{title(e.sessionId)}</a>{withSource(e.sessionId)} · {e.minutes} min</p>
                 ))}
               </div>
             </div>
@@ -220,6 +223,7 @@ export function Practice() {
                   <div key={e.id} className={s.entry}>
                     <div className={s.entryDate}><strong>{d.getDate()}</strong><span>{d.toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
                     <div>
+                      {session && source(session.id) && <span className={s.entrySource}>{source(session.id)}</span>}
                       {session ? <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })}>{title(session.id)}</a> : <span className={s.entryTitle}>Removed session</span>}
                       <div className={s.entryMeta}>{e.minutes} min{e.feel ? ` · felt ${FEELS.find((f) => f.value === e.feel)?.label.toLowerCase() ?? ''}` : ''}{e.rating ? ` · ${repeatLabel(e.rating).toLowerCase()}` : ''}{e.note ? ` · ${e.note}` : ''}</div>
                     </div>

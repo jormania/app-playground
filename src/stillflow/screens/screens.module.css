@@ -915,3 +915,13 @@ input.settingInput:not([type='number']) { text-align: left; }
 }
 .dayTag:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .dayTagOn { background: var(--sf-sage-soft); border-color: transparent; color: var(--color-accent); }
+
+/* My Practice: which series and day a practice came from, above its title. */
+.entrySource {
+  display: block;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 2px;
+}
