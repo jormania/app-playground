@@ -898,3 +898,20 @@ input.settingInput:not([type='number']) { text-align: left; }
 .noteRow { display: grid; gap: 2px; margin: 0 0 var(--space-sm); }
 .noteText { font-family: var(--font-display); font-style: italic; font-size: 1.05rem; }
 .statRing span, .statRing small { text-transform: none; letter-spacing: 0; }
+
+/* Day sheet: Start, with a quiet tag to tick the day. */
+.dayActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.dayTag {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-2);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background 240ms var(--ease), color 240ms var(--ease), border-color 240ms var(--ease);
+}
+.dayTag:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.dayTagOn { background: var(--sf-sage-soft); border-color: transparent; color: var(--color-accent); }

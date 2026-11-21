@@ -15,6 +15,7 @@ import { repeatLabel } from '../domain/vocabulary'
 import { shortTitle } from '../lib/today'
 import s from './screens.module.css'
 
+const fmtShort = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 const fmt = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 
 /** Everything a screen needs to know about one series right now. */
@@ -254,7 +255,7 @@ function SessionPicker({ onPick, onClose, def, day }: { onPick: (s: Session) => 
 }
 
 function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose: () => void }) {
-  const { saveProgress, markLaunched } = useStillflow()
+  const { saveProgress, markLaunched, seriesDefs } = useStillflow()
   const { progress, linked, done } = useSeries(def)
   const { mark, unmark } = useDayActions(def)
   const [picking, setPicking] = useState(false)
@@ -276,27 +277,24 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
       <div className={s.stack}>
         {session ? (
           <div className={s.panel} style={{ padding: 'var(--space-md)' }}>
-            <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>{session.title}</a>
+            <a className={s.entryTitle} href={hrefOf({ name: 'session', id: session.id })} onClick={onClose}>{dayTheme(session.title, def) || shortTitle(session, seriesDefs).title}</a>
             <div className={s.entryMeta}>{session.durationMinutes} min{session.styles[0] ? ` · ${session.styles[0]}` : ''}</div>
           </div>
         ) : (
           <p className={s.muted}>This {def.unit.toLowerCase()}’s video isn’t in your library yet. Find it on YouTube, or link a session you’ve already added.</p>
         )}
-        <div className={s.row}>
+        {/* Start leads; ticking it off is a small tag beside it, not a second big button. */}
+        <div className={s.dayActions}>
           {session
             ? <StartPractice session={session} series={{ seriesId: def.id, day }} label={`Start ${label}`} />
             : <PracticeLink url={daySearchUrl(def, day)} search label={`Find ${label} on YouTube`} onLaunch={() => markLaunched({ seriesId: def.id, day })} />}
+          {active && (isDone
+            ? <button type="button" className={cx(s.dayTag, s.dayTagOn)} aria-label={`Untick ${label}, done ${fmt(done.get(day)!)}`}
+                title="Tap to untick" onClick={() => { unmark(day); onClose() }}><Check size={14} strokeWidth={2.4} /> Done {fmtShort(done.get(day)!)}</button>
+            : <button type="button" className={s.dayTag} aria-label={`Mark ${label} done`}
+                title={session ? 'Also recorded in My Practice, dated today' : 'Ticked on the series only'} onClick={() => { mark(day); onClose() }}><Check size={14} strokeWidth={2.4} /> Mark done</button>)}
         </div>
-        {active ? (
-          <>
-            <Button variant={isDone ? 'secondary' : 'primary'} onClick={() => { if (isDone) unmark(day); else mark(day); onClose() }}>
-              {isDone ? `Untick ${label} (done ${fmt(done.get(day)!)})` : `Mark ${label} done`}
-            </Button>
-            {!isDone && <p className={s.entryMeta}>{session ? 'Recorded in My Practice too, with today’s date. You can change the date there.' : 'Not in your library, so it’s ticked on the series only.'}</p>}
-          </>
-        ) : (
-          <p className={s.muted}>Start the series to tick {def.unit.toLowerCase()}s off.</p>
-        )}
+        {!active && <p className={s.muted}>Start the series to tick {def.unit.toLowerCase()}s off.</p>}
         <div className={s.row} style={{ justifyContent: 'space-between' }}>
           <button type="button" className={s.textLink} onClick={() => setPicking(true)}><Link2 size={14} style={{ verticalAlign: '-2px' }} /> {session ? 'Link a different session' : 'Link a session'}</button>
           {progress?.links[day] && <button type="button" className={s.textLink} onClick={() => setLink(null)}>Unlink</button>}

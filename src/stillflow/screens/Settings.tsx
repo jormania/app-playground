@@ -13,7 +13,7 @@ import { CSV_COLUMNS, exportCsv, exportJson } from '../lib/importExport'
 import { toCsv } from '../lib/csv'
 import { daysBetween } from '../lib/recommend'
 import { localDate } from '../lib/practice'
-import { androidIntentUrl, canonicalUrl, parseVideoId } from '../lib/youtube'
+import { androidIntentUrl, canonicalUrl, isPackageName, parseVideoId } from '../lib/youtube'
 import { isBackup } from '../store/repo'
 import { ImportPanel } from './ImportPanel'
 import { ChannelSync } from './ChannelSync'
@@ -31,7 +31,7 @@ function PlaybackTest() {
       {id && (
         <div className={s.testLinks}>
           <span className={s.muted}>This device: {platform === 'android' ? 'Android' : platform === 'ios' ? 'iPhone or iPad' : 'computer'}. Try each and see which one opens the YouTube app:</span>
-          <a href={androidIntentUrl(canonicalUrl(id))}>Open in the YouTube app (Android)</a>
+          <a href={androidIntentUrl(canonicalUrl(id))}>Open in my YouTube app (Android)</a>
           <a href={canonicalUrl(id)} target="_blank" rel="noopener noreferrer">Open as an ordinary link</a>
           <a href={`https://youtu.be/${id}`} target="_blank" rel="noopener noreferrer">Open as a short youtu.be link</a>
         </div>
@@ -156,12 +156,29 @@ export function Settings() {
       <section className={s.panel}>
         <h2>Opening videos</h2>
         <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
-          On Android, Start Practice can open videos straight in the YouTube app, or in the browser if the app isn’t there.
-          If videos open in the wrong place, switch to “Let the phone decide”. iPhones and computers always let the device decide.
+          On Android, Start opens the video in the app your phone uses for YouTube links, so a patched player such as Morphe or
+          ReVanced keeps its settings. If nothing opens, it falls back to the browser. iPhones and computers always let the device decide.
         </p>
         <SegmentedControl label="On Android" value={preferences.openMethod} wrap
           onChange={(v) => savePreferences({ ...preferences, openMethod: v as typeof preferences.openMethod })}
-          options={[{ value: 'auto', label: 'YouTube app' }, { value: 'link', label: 'Let the phone decide' }]} />
+          options={[{ value: 'auto', label: 'My YouTube app' }, { value: 'custom', label: 'A named app' }, { value: 'youtube', label: 'Official YouTube' }, { value: 'link', label: 'Plain link' }]} />
+        <p className={s.settingHint} style={{ marginTop: 'var(--space-xs)' }}>
+          {{
+            auto: 'The app Android opens YouTube links with. Set it under Settings › Apps › your player › Open by default.',
+            custom: 'Always this app, by its package name. Use it if My YouTube app still opens the official one.',
+            youtube: 'Google’s YouTube app, even if another player handles YouTube links.',
+            link: 'A plain web link: the phone or the browser decides.',
+          }[preferences.openMethod]}
+        </p>
+        {preferences.openMethod === 'custom' && (
+          <div style={{ marginTop: 'var(--space-sm)' }}>
+            <Field label="Package name" value={preferences.openPackage ?? ''} placeholder="e.g. app.revanced.android.youtube"
+              autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              onChange={(e) => savePreferences({ ...preferences, openPackage: e.target.value.trim() })}
+              hint="Android Settings › Apps › your player › App info shows it (often at the bottom, or under App details)." />
+            {preferences.openPackage && !isPackageName(preferences.openPackage) && <p className={s.settingHint}>That doesn’t look like a package name (it reads like com.example.app).</p>}
+          </div>
+        )}
         <div style={{ marginTop: 'var(--space-lg)' }}><PlaybackTest /></div>
       </section>
 

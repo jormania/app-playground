@@ -22,7 +22,7 @@ export function PracticeLink({
 }: { url: string; label: string; compact?: boolean; search?: boolean; onLaunch: () => void; className?: string; ariaLabel?: string }) {
   const { preferences } = useStillflow()
   const platform = usePlatform()
-  const href = practiceHref(url, platform, preferences.openMethod)
+  const href = practiceHref(url, platform, preferences.openMethod, preferences.openPackage)
   const Icon = search ? Search : Play
   return (
     // An intent:// link must navigate the current tab (Chrome hands it to the app

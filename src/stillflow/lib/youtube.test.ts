@@ -46,9 +46,11 @@ describe('URL builders', () => {
     expect(searchUrl('hips & back')).toBe('https://www.youtube.com/results?search_query=hips%20%26%20back')
   })
 
-  it('builds an Android intent that names the YouTube app and falls back to https', () => {
+  it('builds an Android intent that falls back to https, naming a package only when asked', () => {
     const url = canonicalUrl(ID)
-    const intent = androidIntentUrl(url)
+    expect(androidIntentUrl(url)).not.toContain('package=')
+    expect(androidIntentUrl(url)).toContain('category=android.intent.category.BROWSABLE')
+    const intent = androidIntentUrl(url, 'com.google.android.youtube')
     expect(intent.startsWith(`intent://www.youtube.com/watch?v=${ID}#Intent;`)).toBe(true)
     expect(intent).toContain('scheme=https')
     expect(intent).toContain('package=com.google.android.youtube')
@@ -75,6 +77,12 @@ describe('platform handling', () => {
     expect(practiceHref(url, 'android', 'link')).toBe(url)
     expect(practiceHref(url, 'ios', 'auto')).toBe(url)
     expect(practiceHref(url, 'desktop', 'auto')).toBe(url)
+    // Default: whichever app handles YouTube links (Morphe, ReVanced…); never pinned to Google's.
+    expect(practiceHref(url, 'android', 'auto')).not.toContain('package=')
+    expect(practiceHref(url, 'android', 'youtube')).toContain('package=com.google.android.youtube')
+    expect(practiceHref(url, 'android', 'custom', 'app.example.youtube')).toContain('package=app.example.youtube;')
+    // A malformed package falls back to the default app rather than a broken intent.
+    expect(practiceHref(url, 'android', 'custom', 'not a package')).not.toContain('package=')
     for (const p of ['android', 'ios', 'desktop'] as const) {
       expect(practiceHref(url, p, 'auto')).not.toMatch(/^youtube:/)
     }

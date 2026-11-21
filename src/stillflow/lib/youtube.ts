@@ -6,8 +6,10 @@
  *    and iOS that URL is an App Link / Universal Link the YouTube app claims, so
  *    a user tap on it hands off to the app when the OS allows.
  * 2. An installed PWA opens other-origin links in a Custom Tab, where hand-off is
- *    less dependable. On Android we therefore offer an `intent://` URL naming the
- *    YouTube package, with the https URL as `browser_fallback_url` — if the app
+ *    less dependable. On Android we therefore offer an `intent://` URL, with the
+ *    https URL as `browser_fallback_url`. By default it names no package, so it
+ *    opens whichever app you've set to handle YouTube links (a patched client such
+ *    as Morphe or ReVanced included); "Official YouTube app" names Google's. If the app
  *    is missing or disabled, Chrome opens the browser URL instead. This is not a
  *    custom `youtube://` scheme; it is Chrome's documented intent syntax.
  * 3. A plain browser link and an embedded player are always available too.
@@ -68,13 +70,15 @@ export function embedUrl(videoId: string): string {
 }
 
 /**
- * Chrome-on-Android intent URL that opens `httpsUrl` in the YouTube app, and
- * `httpsUrl` itself in the browser when the app can't take it.
+ * Chrome-on-Android intent URL that opens `httpsUrl` in an app, and `httpsUrl`
+ * itself in the browser when no app can take it. Without `pkg`, Android picks
+ * the app you've chosen for YouTube links; with it, only that app.
  */
-export function androidIntentUrl(httpsUrl: string): string {
+export function androidIntentUrl(httpsUrl: string, pkg?: string): string {
   const u = new URL(httpsUrl)
   const path = `${u.host}${u.pathname}${u.search}`
-  return `intent://${path}#Intent;scheme=https;package=${YOUTUBE_APP_PACKAGE};S.browser_fallback_url=${encodeURIComponent(httpsUrl)};end`
+  const target = pkg ? `package=${pkg};` : 'category=android.intent.category.BROWSABLE;'
+  return `intent://${path}#Intent;scheme=https;${target}S.browser_fallback_url=${encodeURIComponent(httpsUrl)};end`
 }
 
 export type Platform = 'android' | 'ios' | 'desktop'
@@ -87,6 +91,15 @@ export function detectPlatform(userAgent: string, maxTouchPoints = 0): Platform 
 }
 
 /** The href Start Practice uses for this platform and preference. */
-export function practiceHref(httpsUrl: string, platform: Platform, method: 'auto' | 'link'): string {
-  return platform === 'android' && method === 'auto' ? androidIntentUrl(httpsUrl) : httpsUrl
+const PACKAGE_RE = /^[a-zA-Z][\w]*(\.[a-zA-Z][\w]*)+$/
+
+export function isPackageName(value: string): boolean {
+  return PACKAGE_RE.test(value.trim())
+}
+
+export function practiceHref(httpsUrl: string, platform: Platform, method: 'auto' | 'youtube' | 'custom' | 'link', pkg?: string): string {
+  if (platform !== 'android' || method === 'link') return httpsUrl
+  if (method === 'youtube') return androidIntentUrl(httpsUrl, YOUTUBE_APP_PACKAGE)
+  if (method === 'custom' && pkg && isPackageName(pkg)) return androidIntentUrl(httpsUrl, pkg.trim())
+  return androidIntentUrl(httpsUrl)
 }

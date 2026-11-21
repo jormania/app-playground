@@ -33,6 +33,12 @@ The release number shows at the foot of Settings (`app/release.ts`).
 - **Ratings at the right moment.** The second time you record a session you haven't
   rated, the sheet asks whether you'd practise it again; an existing rating is prefilled.
 
+Follow-up: a series day's sheet leads with Start; ticking it is a small "Mark done" tag
+beside it ("Done 19 Nov" once ticked, tap to untick), and the day reads by its theme.
+Opening videos on Android now defaults to the app Android uses for YouTube links (an
+`intent://` with no package), so a patched player such as Morphe or ReVanced opens
+instead of Google's app. "A named app" pins a package; "Official YouTube" pins Google's.
+
 Audit and wording (same release): one set of words everywhere: "Mark as done" for a
 session, "Mark done" / "Untick" for a series day, "Abandon" / "abandoned" (no more "set
 aside"), "My Practice" and "Surprise Me" as names, "Today" instead of "Discover" in

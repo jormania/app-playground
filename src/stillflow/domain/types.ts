@@ -124,12 +124,15 @@ export interface SeriesProgress {
   runs: SeriesRun[]
 }
 
-export type OpenMethod = 'auto' | 'link'
+/** auto: your app for YouTube links (Morphe, ReVanced or YouTube); youtube: Google's app only; link: a plain link. */
+export type OpenMethod = 'auto' | 'youtube' | 'custom' | 'link'
 
 export interface Preferences {
   defaultInstructor: string
   /** auto: Android intent handoff to the YouTube app; link: plain https link everywhere. */
   openMethod: OpenMethod
+  /** Android package for 'custom' (a patched YouTube client, say). */
+  openPackage?: string
   preferredStyles: string[]
   /** Intensities (1–5) you usually want; empty = no preference. */
   preferredIntensities: number[]
