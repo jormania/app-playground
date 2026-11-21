@@ -31,9 +31,9 @@ export function Surprise() {
     setShown([])
   }
 
-  const draw = (fresh: boolean) => {
+  const draw = (fresh: boolean, m: SurpriseMode = mode) => {
     const already = fresh ? [] : shown
-    const p = surprise(mode, c, { sessions, userData, history, preferences, shown: already, today: localDate() })
+    const p = surprise(m, c, { sessions, userData, history, preferences, shown: already, today: localDate() })
     setPick(p)
     setNone(!p)
     setShown(p ? [...already, p.session.id] : already)
@@ -53,7 +53,7 @@ export function Surprise() {
   const num = (v: string) => (v.trim() === '' ? undefined : Math.max(1, Number(v)))
 
   if (sessions.length === 0) {
-    return <Empty title="Nothing to choose from yet"><p>Add sessions to your catalogue first.</p><a className={s.textLink} href="#/settings">Catalogue settings</a></Empty>
+    return <Empty title="Nothing to choose from yet"><p>Bring Adriene’s videos into your library first, from Settings.</p><a className={s.textLink} href="#/settings">Open Settings</a></Empty>
   }
 
   return (
@@ -70,10 +70,11 @@ export function Surprise() {
           <div className={s.stack}>
             <p className={s.why}>{pick.reason}</p>
             <div>
+              {shortTitle(pick.session, seriesDefs).label && <span className={s.entrySource}>{shortTitle(pick.session, seriesDefs).label}</span>}
               <h2 className={s.revealTitle}><a href={hrefOf({ name: 'session', id: pick.session.id })}>{shortTitle(pick.session, seriesDefs).title}</a></h2>
               <div className={s.facts}>
                 <span>{pick.session.durationMinutes} min</span>
-                <span>{pick.session.styles.join(' · ')}</span>
+                {pick.session.styles.length > 0 && <span>{pick.session.styles.join(' · ')}</span>}
                 {pick.session.intensity > 0 && <IntensityDots level={pick.session.intensity} showLabel />}
               </div>
               {pick.session.physicalFocus.length > 0 && <p className={s.muted} style={{ marginTop: 4 }}>Focus: {pick.session.physicalFocus.join(', ')}</p>}
@@ -100,7 +101,7 @@ export function Surprise() {
       <div className={s.modes}>
         {MODES.map((m) => (
           <button key={m.id} type="button" className={s.mode} aria-pressed={mode === m.id}
-            onClick={() => { setMode(m.id); persist(m.id, c); setShown([]) }}>
+            onClick={() => { setMode(m.id); persist(m.id, c); draw(true, m.id) }}>
             <strong>{m.label}</strong>
             <span>{m.hint}</span>
           </button>

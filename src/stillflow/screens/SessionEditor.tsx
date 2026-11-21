@@ -162,9 +162,9 @@ export function SessionEditor({ id }: { id?: string }) {
     <div className={s.editor}>
       <a className={s.back} href={existing ? hrefOf({ name: 'session', id: existing.id }) : '#/settings'}><ArrowLeft size={16} /> {existing ? 'Back to session' : 'Settings'}</a>
       <header>
-        <p className={s.kicker}>Catalogue</p>
+        <p className={s.kicker}>Library</p>
         <h1 className={s.pageTitle}>{existing ? 'Edit session' : 'Add a session'}</h1>
-        <p className={s.lede}>Fill in what you know and leave the rest empty. Empty fields show as “not set” rather than a guess.</p>
+        <p className={s.lede}>Fill in what you know and leave the rest empty: anything empty simply isn’t shown.</p>
       </header>
 
       {errors.length > 0 && (

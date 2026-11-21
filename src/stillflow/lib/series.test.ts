@@ -173,3 +173,18 @@ describe('practices logged with dates before Start', () => {
     expect(inRun(second, '2026-12-02')).toBe(true)
   })
 })
+
+describe('two copies of the same day', () => {
+  it('a practice of either copy counts the day', async () => {
+    const { BUILT_IN_SERIES } = await import('../data/series')
+    const { doneDays, linkedSessions } = await import('./series')
+    const def = BUILT_IN_SERIES.find((d) => d.id === 'move-2022')!
+    const mk = (id: string) => ({ id, title: 'Day 2 - Open | MOVE - A 30 Day Yoga Journey', series: 'MOVE', seriesDay: 2, tags: [] } as unknown as import('../domain/types').Session)
+    const sessions = [mk('first'), mk('reupload')]
+    const progress = { seriesId: def.id, status: 'active' as const, startedAt: '2026-11-20', manualDays: {}, links: {}, runs: [] }
+    const linked = linkedSessions(def, sessions, progress)
+    const history = [{ id: 'h', sessionId: 'reupload', date: '2026-11-20', minutes: 28, createdAt: 'x' }]
+    expect(doneDays(def, progress, linked, history).has(2)).toBe(linked.get(2)!.id === 'reupload')
+    expect(doneDays(def, progress, linked, history, sessions).has(2)).toBe(true)
+  })
+})

@@ -47,7 +47,7 @@ function Welcome() {
       <div className={styles.welcomeInner}>
         <Wordmark size="lg" />
         <p className={styles.tagline}>Find your practice.</p>
-        <p className={styles.sub}>A personal yoga companion. Choose by time, body and mood, then practise in the YouTube app.</p>
+        <p className={styles.sub}>A personal yoga companion. Choose by time, body and mood, then practise in your YouTube app.</p>
         <p className={styles.note}>
           {demos > 0
             ? `The library holds ${demos} clearly marked demo records to show you around. They aren’t real videos.`

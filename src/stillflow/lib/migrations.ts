@@ -1,6 +1,6 @@
 import { BUILT_IN_SERIES } from '../data/series'
 import type { PracticeEntry, SeriesDef, SeriesProgress, Session, Snapshotish } from './migrationTypes'
-import { readDescription, seriesFromTitle } from './channel'
+import { readVideo, seriesFromTitle } from './channel'
 import { linkedSessions } from './series'
 
 /**
@@ -83,17 +83,18 @@ export function demosToRemove(
 }
 
 /**
- * Until Release 8 only titles were read, so most of the library carried no
- * style, body area or goal. Fill those in from the opening of each video's
- * description, for sessions that are still a guess. Only adds: anything you
+ * Until Release 8 only titles were read, and only at import (with whatever the
+ * reader knew then), so most of the library carried no style, body area or goal.
+ * Fill those in from the title and the opening of the description, for
+ * sessions that are still a guess. Only adds: anything you
  * set, or that a practice taught it, stays; intensity is set only where none is.
  */
 export function readDescriptions(sessions: Session[]): Session[] {
   const changed: Session[] = []
   const union = (a: string[], b: string[]) => [...new Set([...a, ...b])]
   for (const s of sessions) {
-    if (s.classificationSource !== 'inferred' || !s.description) continue
-    const d = readDescription(s.description)
+    if (s.classificationSource !== 'inferred') continue
+    const d = readVideo(s.title, s.description)
     const next: Session = {
       ...s,
       styles: union(s.styles, d.styles),

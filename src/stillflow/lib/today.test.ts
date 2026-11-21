@@ -55,9 +55,9 @@ describe('card titles', () => {
     expect(shortTitle(sess('d', { title: 'Yoga With Adriene' }), BUILT_IN_SERIES).title).toBe('Yoga With Adriene')
   })
 
-  it('a series day with no theme of its own keeps its title', () => {
+  it('a series day with no theme of its own is named by its day', () => {
     expect(shortTitle(sess('e', { title: 'Prana - Day 3', series: 'PRANA', seriesDay: 3 }), BUILT_IN_SERIES))
-      .toEqual({ title: 'Prana - Day 3', label: 'PRANA · Day 3' })
+      .toEqual({ title: 'Day 3', label: 'PRANA' })
   })
 })
 

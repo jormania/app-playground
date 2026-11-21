@@ -231,6 +231,32 @@ describe('Release 7', () => {
   })
 })
 
+describe('audit, Release 9', () => {
+  it('choosing a way to pick in Surprise Me picks straight away', async () => {
+    const { user } = await start()
+    await go('#/surprise')
+    const why = async () => (await screen.findByText(/./, { selector: 'p[class*="why"]' })).textContent
+    await why()
+    await user.click(screen.getByRole('button', { name: /^Recovery day/ }))
+    await waitFor(async () => expect(await why()).toMatch(/kind to the body/))
+    await user.click(screen.getByRole('button', { name: /^Completely random/ }))
+    await waitFor(async () => expect(await why()).toMatch(/at random/))
+  })
+
+  it('a completed series shows its closing page on the series, not in the list', async () => {
+    await new StillflowRepo(store).putProgress({ seriesId: 'prana-2025', status: 'completed', startedAt: '2026-10-01', endedAt: '2026-10-08',
+      manualDays: { 1: '2026-10-01' }, links: {}, runs: [{ startedAt: '2026-10-01', endedAt: '2026-10-08', status: 'completed', daysDone: 1 }] })
+    await start()
+    await go('#/series')
+    await screen.findByRole('heading', { name: 'PRANA' })
+    expect(screen.queryByText('Journey complete')).toBeNull()
+    await go('#/series/prana-2025')
+    expect(await screen.findByText('Journey complete')).toBeTruthy()
+    // The finished run is described once, not repeated under Earlier runs.
+    expect(screen.queryByRole('heading', { name: 'Earlier runs' })).toBeNull()
+  })
+})
+
 describe('series', () => {
   it('start MOVE, tick days, abandon, start again with the earlier run kept', async () => {
     const { user } = await start()
@@ -329,7 +355,8 @@ describe('series', () => {
     await user.click(await screen.findByRole('button', { name: 'Start PRANA' }))
     await user.click(await screen.findByRole('button', { name: /Complete early/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Complete' }))
-    expect(await screen.findByText(/Completed .*, 0 of 7 days/)).toBeTruthy()
+    expect(await screen.findByText('Journey complete')).toBeTruthy()
+    expect(screen.getByText(/^0 of 7 days, /)).toBeTruthy()
 
     await go('#/series')
     await user.click(await screen.findByRole('button', { name: /Create a series/ }))
@@ -351,7 +378,7 @@ describe('catalogue', () => {
     const { user } = await start()
     await go('#/settings')
     const csv = 'title,youtubeUrl,durationMinutes,styles,series,seriesDay\nMy hips,https://youtu.be/bbbbbbbbbbb,22:30,Hatha,CENTER,3\nBad,https://vimeo.com/1,10,,,\n'
-    const input = await screen.findByLabelText('Import a JSON or CSV catalogue file')
+    const input = await screen.findByLabelText('Import a JSON or CSV library file')
     await user.upload(input, new File([csv], 'mine.csv', { type: 'text/csv' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Bad')).toBeTruthy()

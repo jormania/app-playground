@@ -13,13 +13,12 @@ import styles from './Sheets.module.css'
 
 /** How a series stands once this practice is in, for the finish moment. */
 function seriesLine(session: Session, entry: PracticeEntry, state: ReturnType<typeof useStillflow>): string | null {
-  for (const { def } of seriesOfSession(session, state.seriesDefs, state.seriesProgress)) {
+  for (const { def, day } of seriesOfSession(session, state.seriesDefs, state.seriesProgress)) {
     const progress = state.seriesProgress[def.id]
     if (progress?.status !== 'active') continue
     const linked = linkedSessions(def, state.sessions, progress)
-    const done = doneDays(def, progress, linked, [entry, ...state.history.filter((h) => h.id !== entry.id)])
-    const day = [...linked].find(([, x]) => x.id === session.id)?.[0]
-    if (!day || !done.has(day)) continue
+    const done = doneDays(def, progress, linked, [entry, ...state.history.filter((h) => h.id !== entry.id)], state.sessions)
+    if (!done.has(day)) continue
     const left = def.length - done.size
     return left > 0 ? `${def.name} · ${def.unit} ${day} done, ${left} to go` : `${def.name} · every ${def.unit.toLowerCase()} done`
   }

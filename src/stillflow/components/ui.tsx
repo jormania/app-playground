@@ -145,7 +145,7 @@ export function ConfidenceNote({ session }: { session: Session }) {
   return (
     <span className={cx(styles.badge, session.classificationConfidence === 'low' && styles.badgeLow)}
       title={`Classification: ${session.classificationSource}, ${session.classificationConfidence} confidence`}>
-      {session.classificationConfidence === 'low' ? 'Tags are a guess' : 'Tags read from title'}
+      {session.classificationConfidence === 'low' ? 'Details are a guess' : 'Details read from YouTube'}
     </span>
   )
 }

@@ -121,7 +121,7 @@ export function ImportPanel() {
     <>
       <label className={s.fileButton}>
         <Button variant="outline" tabIndex={-1}><Upload size={16} /> Import JSON or CSV</Button>
-        <input type="file" accept=".json,.csv,application/json,text/csv" aria-label="Import a JSON or CSV catalogue file"
+        <input type="file" accept=".json,.csv,application/json,text/csv" aria-label="Import a JSON or CSV library file"
           onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = '' }} />
       </label>
       {preview && <ImportReview preview={preview} title={`Import ${fileName}`} onClose={() => setPreview(null)} />}

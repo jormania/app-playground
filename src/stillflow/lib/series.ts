@@ -51,7 +51,6 @@ export function linkedSessions(def: SeriesDef, sessions: Session[], progress?: S
   return out
 }
 
-/** Which days are done in the current (or last) run, with the date each was done. */
 /**
  * Whether a practice on `date` belongs to this run. Anything since the run
  * started does; so does anything earlier that came after the previous run ended
@@ -71,8 +70,13 @@ export function runStart(progress: SeriesProgress, done: Map<number, string>): s
   return start
 }
 
+/**
+ * Which days are done in the current (or last) run, with the date each was done.
+ * With `sessions`, a practice of any copy of a day counts (the channel sometimes
+ * has two uploads of the same day), not only the one linked.
+ */
 export function doneDays(
-  def: SeriesDef, progress: SeriesProgress | undefined, linked: Map<number, Session>, history: PracticeEntry[],
+  def: SeriesDef, progress: SeriesProgress | undefined, linked: Map<number, Session>, history: PracticeEntry[], sessions?: Session[],
 ): Map<number, string> {
   const out = new Map<number, string>()
   if (!progress || progress.status === 'idle') return out
@@ -82,6 +86,10 @@ export function doneDays(
   }
   const until = progress.status === 'active' ? '9999-12-31' : progress.endedAt ?? '9999-12-31'
   const dayBySession = new Map([...linked].map(([d, s]) => [s.id, d]))
+  for (const s of sessions ?? []) {
+    const d = dayOf(s)
+    if (d && d <= def.length && !dayBySession.has(s.id) && belongsTo(s, def)) dayBySession.set(s.id, d)
+  }
   // History is newest first; walk it oldest first so each day keeps its first date.
   for (let i = history.length - 1; i >= 0; i--) {
     const h = history[i]

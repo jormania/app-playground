@@ -5,9 +5,10 @@ import { hrefOf, navigate } from '../app/router'
 import { useStillflow } from '../app/state'
 import { StartPractice } from '../components/StartPractice'
 import { Empty, LibraryTabs } from '../components/ui'
-import type { UserCollection } from '../domain/types'
+import type { Session, UserCollection } from '../domain/types'
 import { fold } from '../lib/filter'
 import { readJson, writeJson } from '../../shared/storage'
+import { shortTitle } from '../lib/today'
 import s from './screens.module.css'
 
 function NameModal({ open, initial, title, onSave, onClose }: { open: boolean; initial: string; title: string; onSave: (name: string) => void; onClose: () => void }) {
@@ -108,7 +109,8 @@ function AddSessions({ collection, onClose }: { collection: UserCollection; onCl
 }
 
 export function CollectionDetail({ id }: { id: string }) {
-  const { collections, byId, saveCollection, deleteCollection, toast, ready } = useStillflow()
+  const { collections, byId, saveCollection, deleteCollection, toast, ready, seriesDefs } = useStillflow()
+  const name = (x: Session) => shortTitle(x, seriesDefs)
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -164,7 +166,8 @@ export function CollectionDetail({ id }: { id: string }) {
         <>
           <section className={s.seq} aria-label="Play in sequence">
             <span className={s.kicker} style={{ margin: 0 }}>Play in sequence · {pos + 1} of {items.length}</span>
-            <strong style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.15rem' }}>{items[pos].title}</strong>
+            {name(items[pos]).label && <span className={s.entrySource}>{name(items[pos]).label}</span>}
+            <strong style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '1.15rem' }}>{name(items[pos]).title}</strong>
             <div className={s.row}>
               <StartPractice session={items[pos]} compact label="Start" />
               <Button variant="ghost" size="sm" disabled={pos === 0} onClick={() => setPos(pos - 1)}>Previous</Button>
@@ -177,8 +180,9 @@ export function CollectionDetail({ id }: { id: string }) {
             <div key={x.id} className={`${s.item} ${i === pos ? s.current : ''}`}>
               <span className={s.itemIndex}>{i + 1}</span>
               <div>
-                <a className={s.itemTitle} href={hrefOf({ name: 'session', id: x.id })}>{x.title}</a>
-                <div className={s.entryMeta}>{x.durationMinutes} min · {x.styles[0] ?? 'Style not set'}</div>
+                {name(x).label && <span className={s.entrySource}>{name(x).label}</span>}
+                <a className={s.itemTitle} href={hrefOf({ name: 'session', id: x.id })}>{name(x).title}</a>
+                <div className={s.entryMeta}>{x.durationMinutes} min{x.styles[0] ? ` · ${x.styles[0]}` : ''}</div>
               </div>
               <div className={s.itemTools}>
                 <button type="button" className={s.iconBtn} aria-label={`Move ${x.title} up`} disabled={i === 0} onClick={() => move(i, -1)}><ArrowUp size={16} /></button>
@@ -186,14 +190,14 @@ export function CollectionDetail({ id }: { id: string }) {
                 <button type="button" className={s.iconBtn} aria-label={`Remove ${x.title}`} onClick={() => {
                   const before = c.sessionIds
                   update(before.filter((y) => y !== x.id))
-                  toast(`Removed ${x.title}`, { actionLabel: 'Undo', onAction: () => saveCollection({ ...c, sessionIds: before, updatedAt: new Date().toISOString() }) })
+                  toast(`Removed ${name(x).title}`, { actionLabel: 'Undo', onAction: () => saveCollection({ ...c, sessionIds: before, updatedAt: new Date().toISOString() }) })
                 }}><X size={16} /></button>
               </div>
             </div>
           ))}
           {missing > 0 && (
             <p className={s.muted} style={{ marginTop: 'var(--space-md)' }}>
-              {missing} {missing === 1 ? 'session is' : 'sessions are'} no longer in the catalogue.{' '}
+              {missing} {missing === 1 ? 'session is' : 'sessions are'} no longer in your library.{' '}
               <button type="button" className={s.textLink} onClick={() => update(items.map((y) => y.id))}>Remove them from this list</button>
             </p>
           )}

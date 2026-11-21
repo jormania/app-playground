@@ -9,6 +9,43 @@ Strict TypeScript on `src/ds/`. Entry: `stillflow-react.html` → `src/stillflow
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Release 9 — 2026-11-21 (full audit)
+
+Every page was opened on a phone-sized screen in light and dark (no overflow, no unnamed
+buttons, no console errors), and every flow was run end to end: fresh install, restore,
+each Practise for card and body area, search, filters and every sort, mark as done with
+the finish moment, series tick, untick, abandon, start again and complete, collections,
+every Surprise Me mode, hiding, adding and deleting a session, backup, theme, erase all.
+
+Fixed:
+- Surprise Me reasons could read "You've been focusing on recently. Today: a practice";
+  they now name what is known ("a gentle hips practice for flexibility"), use "an" where
+  it belongs, and only mention a recent lean when there is one.
+- Choosing a way to pick in Surprise Me now picks straight away; before, the old pick
+  stayed on screen under the new mode.
+- A completed series' closing page appeared inside the card on the Series list and not
+  on the series itself; it is now on the series page, and the finished run isn't repeated
+  under Earlier runs.
+- A practice of a second copy of a series day (the channel has a few re-uploads) now
+  counts the day, in progress, the finish line and the closing page; unticking removes
+  either copy.
+- Release 8's description reading didn't re-read titles, so sessions imported by an older
+  reader kept missing what their title says ("7 Minute Morning Meditation" with no
+  style). The load-time fill now reads title and description together.
+- Series days with no theme ("Prana - Day 3") read as "Day 3" under "PRANA", instead of
+  repeating the series name.
+
+Tidied:
+- One word for the library: "catalogue" is gone from the screens (Settings › Library,
+  export files named stillflow-library-*).
+- The session page lists only what is known: no column of "Not set", no second
+  "Posted" line. The badge says "Details are a guess" / "Details read from YouTube".
+- Collections use the short titles with their series and day, and drop "Style not set".
+- Settings › Find a session to edit lists matches as you type instead of the whole
+  library; hidden sessions show short titles.
+- The series Mark done button no longer wraps on narrow phones; copy that still said "Perfect Match", "the YouTube app" or "not set"
+  now matches the rest of the app.
+
 ## Release 8 — 2026-11-21
 
 - **Descriptions are read, not just titles.** The opening of each video's description

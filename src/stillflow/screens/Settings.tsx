@@ -19,7 +19,7 @@ import { ImportPanel } from './ImportPanel'
 import { ChannelSync } from './ChannelSync'
 import { RELEASE } from '../app/release'
 import { useSaveBackup } from '../app/backup'
-import { backupNudge } from '../lib/today'
+import { backupNudge, shortTitle } from '../lib/today'
 import s from './screens.module.css'
 
 function PlaybackTest() {
@@ -108,7 +108,7 @@ export function Settings() {
 
       <section className={s.panel}>
         <h2>Your practice</h2>
-        <p className={s.sectionLede}>Perfect Match and Today’s suggestions lean towards these. Leave any of them empty for no preference.</p>
+        <p className={s.sectionLede}>Today’s suggestions and Surprise Me’s Perfect match lean towards these. Leave any of them empty for no preference.</p>
         <ChipGroup label="Styles you enjoy" options={STYLES} selected={preferences.preferredStyles}
           onChange={(v) => savePreferences({ ...preferences, preferredStyles: v })} />
         <ChipGroup<number> label="Intensity you usually want" options={[1, 2, 3, 4, 5]} selected={preferences.preferredIntensities}
@@ -193,7 +193,7 @@ export function Settings() {
 
       <section className={s.panel}>
         <div className={s.spread}>
-          <h2>Catalogue</h2>
+          <h2>Library</h2>
           <span className={s.muted}>{sessions.length} sessions{demos.length ? `, ${demos.length} demo` : ''}</span>
         </div>
         <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
@@ -203,8 +203,8 @@ export function Settings() {
         <div className={s.row}>
           <Button onClick={() => navigate({ name: 'editor' })}><Plus size={16} /> Add a session</Button>
           <ImportPanel />
-          <Button variant="ghost" onClick={() => downloadText(`stillflow-catalogue-${stamp()}.json`, exportJson(sessions), 'application/json')}><Download size={16} /> JSON</Button>
-          <Button variant="ghost" onClick={() => downloadText(`stillflow-catalogue-${stamp()}.csv`, exportCsv(sessions), 'text/csv')}><Download size={16} /> CSV</Button>
+          <Button variant="ghost" onClick={() => downloadText(`stillflow-library-${stamp()}.json`, exportJson(sessions), 'application/json')}><Download size={16} /> JSON</Button>
+          <Button variant="ghost" onClick={() => downloadText(`stillflow-library-${stamp()}.csv`, exportCsv(sessions), 'text/csv')}><Download size={16} /> CSV</Button>
           <Button variant="ghost" onClick={() => downloadText('stillflow-template.csv', csvTemplate(), 'text/csv')}><FileSpreadsheet size={16} /> CSV template</Button>
         </div>
         {demos.length > 0 && (
@@ -224,16 +224,18 @@ export function Settings() {
           </label>
         </div>
         <div style={{ marginTop: 'var(--space-lg)' }}>
-          <Field label="Find a session to edit" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Title" />
-          <div className={s.catalogueList}>
+          <Field label="Find a session to edit" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Part of a title"
+            hint={q.trim() ? undefined : `Type to search all ${sessions.length} sessions.`} />
+          {q.trim() && <div className={s.catalogueList}>
+            {list.length === 0 && <p className={s.muted}>No session with that title.</p>}
             {list.slice(0, 100).map((x) => (
               <div key={x.id} className={s.catRow}>
                 <a className={s.entryTitle} href={hrefOf({ name: 'editor', id: x.id })}>{x.title}</a>
                 <button type="button" className={s.iconBtn} aria-label={`Delete ${x.title}`} onClick={() => setConfirm({ kind: 'delete', id: x.id, title: x.title })}><Trash2 size={15} /></button>
               </div>
             ))}
-            {list.length > 100 && <p className={s.muted}>{list.length - 100} more; type to narrow the list.</p>}
-          </div>
+            {list.length > 100 && <p className={s.muted}>{list.length - 100} more; type more to narrow the list.</p>}
+          </div>}
         </div>
       </section>
 
@@ -244,7 +246,7 @@ export function Settings() {
           <div className={s.catalogueList}>
             {hidden.map((x) => (
               <div key={x.id} className={s.catRow}>
-                <a className={s.entryTitle} href={hrefOf({ name: 'session', id: x.id })}>{x.title}</a>
+                <a className={s.entryTitle} href={hrefOf({ name: 'session', id: x.id })}>{shortTitle(x, state.seriesDefs).title}</a>
                 <button type="button" className={s.textLink} onClick={() => setUserData({ ...userData[x.id], excluded: false })}><Eye size={14} style={{ verticalAlign: '-2px' }} /> Show again</button>
               </div>
             ))}
@@ -255,7 +257,7 @@ export function Settings() {
       <section className={s.panel}>
         <h2>Backup</h2>
         <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
-          Everything lives on this device only. On Android, Save a backup opens the share sheet so you can keep it in Drive. A backup holds the catalogue, favourites, ratings, practice history, collections, series progress and preferences.
+          Everything lives on this device only. On Android, Save a backup opens the share sheet so you can keep it in Drive. A backup holds your library, favourites, ratings, practice history, collections, series progress and preferences.
           {' '}{preferences.lastBackupAt ? `Last saved ${backupAge === 0 ? 'today' : `${backupAge} days ago`}.` : 'No backup saved yet.'}
         </p>
         {backupDue && <p className={s.demoNote} style={{ marginBottom: 'var(--space-md)' }}>It’s been a while. A fresh backup keeps your history safe if the phone is reset or the browser clears its data.</p>}
@@ -296,11 +298,11 @@ export function Settings() {
       <ConfirmModal isOpen={confirm === 'demo'} title="Remove the demo records?" message={`${demos.length} demonstration sessions will be deleted. Your own sessions stay.`}
         confirmText="Remove" variant="danger" onCancel={() => setConfirm(null)}
         onConfirm={async () => { await deleteSessions(demos.map((x) => x.id)); setConfirm(null); toast('Demo records removed', 'success') }} />
-      <ConfirmModal isOpen={confirm === 'reset'} title="Erase everything?" message="The catalogue, history, favourites, collections and preferences on this device will be deleted."
+      <ConfirmModal isOpen={confirm === 'reset'} title="Erase everything?" message="Your library, history, favourites, collections, series progress and preferences on this device will be deleted."
         confirmText="Erase" variant="danger" onCancel={() => setConfirm(null)}
-        onConfirm={async () => { await resetAll(); setConfirm(null); toast('Local data erased') }} />
+        onConfirm={async () => { await resetAll(); setConfirm(null); toast('Everything on this device was erased') }} />
       <ConfirmModal isOpen={!!confirm && typeof confirm === 'object' && confirm.kind === 'delete'} title="Delete this session?"
-        message={confirm && typeof confirm === 'object' && confirm.kind === 'delete' ? `“${confirm.title}” leaves the catalogue. Your history for it is kept.` : ''}
+        message={confirm && typeof confirm === 'object' && confirm.kind === 'delete' ? `“${confirm.title}” leaves your library. Your history for it is kept.` : ''}
         confirmText="Delete" variant="danger" onCancel={() => setConfirm(null)}
         onConfirm={async () => { if (confirm && typeof confirm === 'object' && confirm.kind === 'delete') await deleteSessions([confirm.id]); setConfirm(null) }} />
       <ConfirmModal isOpen={!!confirm && typeof confirm === 'object' && confirm.kind === 'restore'} title="Restore this backup?"

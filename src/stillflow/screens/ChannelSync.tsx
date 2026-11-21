@@ -72,7 +72,7 @@ export function ChannelSync({ fetchPage = apiFetchPage(), checkIds = apiCheckIds
       savePreferences({ ...preferences, availabilityCheck, channelCheck: { at: now, source: scan.source, found: practices.filter((v) => !known.has(v.videoId)).length } })
       const notes = [
         shorts ? `${shorts} short${shorts === 1 ? '' : 's'} under four minutes left out.` : '',
-        'Style, body area, intensity and series are guessed from each title and marked as a guess until you check them.',
+        'Style, body area, intensity and series are read from each title and description, and marked as a guess until you check them.',
         scan.source === 'rss' ? 'Without a YouTube API key only the 15 newest uploads are visible, without durations.' : '',
       ].filter(Boolean).join(' ')
       if (chosen.length === 0) {
@@ -100,7 +100,7 @@ export function ChannelSync({ fetchPage = apiFetchPage(), checkIds = apiCheckIds
       <h2><MonitorPlay size={20} style={{ verticalAlign: '-3px' }} /> {YWA_CHANNEL.name} on YouTube</h2>
       <p className={s.muted} style={{ marginBottom: 'var(--space-md)' }}>
         Bring Adriene’s videos into your library whenever you ask. Titles, lengths and dates come straight from YouTube;
-        style, body area and series are guessed from each title for you to check.
+        style, body area and series are read from each title and description for you to check.
         {last ? ` Last checked ${age === 0 ? 'today' : age === 1 ? 'yesterday' : `${age} days ago`}: ${last.found} new.` : ' Not checked yet.'}
       </p>
       <div className={s.row}>

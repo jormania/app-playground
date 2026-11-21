@@ -65,7 +65,8 @@ type PickKind = 'moment' | 'return'
 function useTodayPick(kind: PickKind) {
   const { sessions, userData, history, preferences } = useStillflow()
   const today = localDate()
-  const moment = momentOf(new Date().getHours())
+  const hour = new Date().getHours()
+  const moment = useMemo(() => momentOf(hour), [hour])
   const [minutes, setMinutes] = useState<number | null>(null)
   const [turn, setTurn] = useState(0)
   const suits = kind === 'return' ? gentleReturn : moment.suits
@@ -185,7 +186,7 @@ export function Discover() {
   // A series with a day left leads Today; one that's all done waits on the Series tab to be completed.
   const withNext = activeSeries.filter((d) => {
     const p = seriesProgress[d.id]
-    return nextDay(d, doneDays(d, p, linkedSessions(d, sessions, p), history)) != null
+    return nextDay(d, doneDays(d, p, linkedSessions(d, sessions, p), history, sessions)) != null
   })
   const [lead, ...otherSeries] = withNext
   const leadHasNext = !!lead && !returning

@@ -39,7 +39,7 @@ export function SessionDetail({ id }: { id: string }) {
   if (!session) {
     return ready ? (
       <Empty title="Session not found">
-        <p>It may have been removed from the catalogue.</p>
+        <p>It may have been removed from your library.</p>
         <a className={s.textLink} href="#/explore">Back to Explore</a>
       </Empty>
     ) : null
@@ -64,7 +64,6 @@ export function SessionDetail({ id }: { id: string }) {
     ['Time of day', session.timeOfDay],
     ['Equipment', session.equipment],
     ['Series', session.series],
-    ['Posted on YouTube', formatDay(session.publishedDate)],
   ]
 
   return (
@@ -150,12 +149,14 @@ export function SessionDetail({ id }: { id: string }) {
           </div>
 
           <dl className={s.meta}>
+            {/* Only what's known; the rest fills in as you practise (or in Edit details). */}
             {meta.map(([label, value]) => {
               const list = Array.isArray(value) ? value : value ? [value] : []
+              if (!list.length) return null
               return (
                 <div key={label} className={s.metaRow}>
                   <dt>{label}</dt>
-                  <dd>{list.length ? (Array.isArray(value) ? <span className={s.tags}>{list.map((v) => <span key={v} className={s.tag}>{v}</span>)}</span> : list[0]) : <span className={s.muted}>{label === 'Series' || label === 'Posted on YouTube' ? '—' : 'Not set'}</span>}</dd>
+                  <dd>{Array.isArray(value) ? <span className={s.tags}>{list.map((v) => <span key={v} className={s.tag}>{v}</span>)}</span> : list[0]}</dd>
                 </div>
               )
             })}

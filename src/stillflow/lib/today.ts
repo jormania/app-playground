@@ -58,9 +58,9 @@ export function shortTitle(s: Session, defs: SeriesDef[]): { title: string; labe
   if (def && day) {
     const theme = dayTheme(s.title, def)
     const label = `${def.name} · ${def.unit} ${day}`
-    // A theme that is just the series name again, or empty, adds nothing.
+    // A theme that is just the series name again, or empty, adds nothing: the day is the name.
     if (theme && fold(theme) !== fold(def.name)) return { title: theme, label }
-    return { title: s.title.replace(CHANNEL_SUFFIX, ''), label }
+    return { title: `${def.unit} ${day}`, label: def.name }
   }
   const title = s.title.replace(CHANNEL_SUFFIX, '').trim()
   return { title: title || s.title, label: s.series || undefined }

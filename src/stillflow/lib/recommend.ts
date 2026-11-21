@@ -133,11 +133,18 @@ type Scored = { s: Session; w: number; reason: string }
 
 const GENTLE_STYLES = ['Restorative', 'Yin Yoga', 'Gentle Yoga', 'Yoga Nidra', 'Meditation', 'Breathwork']
 
+/** "gentle hips practice for flexibility": what is known about a session, in a few words. */
 function describe(s: Session): string {
   const intensity = s.intensity ? INTENSITY_LABELS[s.intensity - 1].toLowerCase() : ''
-  const what = s.physicalFocus.length ? `${lower(s.physicalFocus.slice(0, 2)).join(' and ')} practice` : 'practice'
-  return [intensity, what].filter(Boolean).join(' ')
+  const what = s.physicalFocus.length ? lower(s.physicalFocus.slice(0, 2)).join(' and ')
+    : s.styles.length ? s.styles[0].toLowerCase() : ''
+  const goal = s.objectives[0] ? ` for ${s.objectives[0].toLowerCase()}` : ''
+  return `${[intensity, what, 'practice'].filter(Boolean).join(' ')}${goal}`
 }
+
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+/** "a" or "an", by sound: an upper back practice, a yin yoga practice. */
+const an = (phrase: string) => `${/^[aeiou]/i.test(phrase) ? 'an' : 'a'} ${phrase}`
 
 function scoreMode(mode: SurpriseMode, s: Session, ctx: RecommendContext, p: Profile, c: Constraints): Scored | null {
   const last = p.lastPractised[s.id]
@@ -154,13 +161,13 @@ function scoreMode(mode: SurpriseMode, s: Session, ctx: RecommendContext, p: Pro
     case 'challenge': {
       const strong = s.intensity >= 4 || (s.intensity >= 3 && (s.objectives.includes('Strength') || s.styles.includes('Power Yoga')))
       if (!strong) return null
-      return { s, w: s.intensity + (s.objectives.includes('Strength') ? 2 : 0), reason: `A ${describe(s)} with real effort in it${s.objectives.includes('Strength') ? ', built around strength' : ''}.` }
+      return { s, w: s.intensity + (s.objectives.includes('Strength') ? 2 : 0), reason: `${cap(an(describe(s)))}, with real effort in it.` }
     }
 
     case 'recovery': {
       const gentle = (s.intensity > 0 && s.intensity <= 2) || s.styles.some((x) => GENTLE_STYLES.includes(x)) || s.objectives.includes('Recovery')
       if (!gentle || s.intensity >= 4) return null
-      return { s, w: 1 + (s.objectives.includes('Recovery') ? 1 : 0) + (3 - Math.min(s.intensity || 3, 3)), reason: `Low effort and kind to the body: a ${describe(s)} for a recovery day.` }
+      return { s, w: 1 + (s.objectives.includes('Recovery') ? 1 : 0) + (3 - Math.min(s.intensity || 3, 3)), reason: describe(s) === 'practice' ? 'Low effort and kind to the body, for a recovery day.' : `${cap(an(describe(s)))}: low effort and kind to the body.` }
     }
 
     case 'short': {
@@ -185,7 +192,7 @@ function scoreMode(mode: SurpriseMode, s: Session, ctx: RecommendContext, p: Pro
       const w = 1 / (1 + usage)
       const reason = rare.length
         ? `You haven’t practised ${lower(rare.slice(0, 2)).join(' or ')} in Stillflow yet.`
-        : `${s.styles[0] ?? 'This style'} is one you come back to less often.`
+        : s.styles[0] ? `${s.styles[0]} is a style you come back to less often.` : 'Something you rarely practise, for a change.'
       return { s, w, reason }
     }
 
@@ -209,13 +216,15 @@ function scoreMode(mode: SurpriseMode, s: Session, ctx: RecommendContext, p: Pro
       if (rating >= 4) { w += rating / 2; parts.push('one you want to repeat') }
       // Variety: lean away from the body areas and aims that dominated the last month.
       const overlap = s.physicalFocus.filter((f) => recentFocus.includes(f)).length + s.objectives.filter((o) => recentObjectives.includes(o)).length
-      if (p.recentCount >= 3 && overlap === 0 && (s.physicalFocus.length || s.objectives.length)) {
+      // Only when the last month has a clear lean to name.
+      const leaning = recentObjectives.length > 0 || recentFocus.length > 0
+      if (p.recentCount >= 3 && leaning && overlap === 0 && (s.physicalFocus.length || s.objectives.length)) {
         w += 1.5
         const lean = joinAnd(lower([...recentObjectives.slice(0, 1), ...recentFocus.slice(0, 1)]))
-        return { s, w, reason: `You’ve been focusing on ${lean} recently. Today: a ${describe(s)}, for some variety${parts.length ? `, ${parts[0]}` : ''}.` }
+        return { s, w, reason: `You’ve been focusing on ${lean} recently. Today: ${an(describe(s))}, for some variety${parts.length ? `, ${parts[0]}` : ''}.` }
       }
       if (overlap > 0 && p.recentCount >= 3) w *= 0.6
-      return { s, w, reason: parts.length ? `A ${describe(s)}, ${joinAnd(parts)}.` : `A ${describe(s)} that suits today.` }
+      return { s, w, reason: parts.length ? `${cap(an(describe(s)))}, ${joinAnd(parts)}.` : `${cap(an(describe(s)))} that suits today.` }
     }
   }
 }

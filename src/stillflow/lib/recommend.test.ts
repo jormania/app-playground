@@ -132,3 +132,19 @@ describe('women-specific practices in suggestions', () => {
     expect(draws({ ...DEFAULT_PREFERENCES, skipWomenSpecific: false }).prenatal).toBeGreaterThan(0)
   })
 })
+
+describe('reasons read as sentences', () => {
+  it('never leave a gap where nothing is known, and use "an" before a vowel', () => {
+    const blank = (id: string, over: Partial<Session> = {}) => s(id, { intensity: 0, styles: [], objectives: [], physicalFocus: [], ...over })
+    const lib = [blank('a'), blank('b'), blank('c'), blank('d', { physicalFocus: ['Upper back'] }), blank('e', { objectives: ['Flexibility'] })]
+    const history = ['a', 'b', 'c'].map((id, i) => entry(id, `2026-11-1${i}`))
+    for (const mode of ['match', 'recovery', 'challenge', 'comfort', 'different', 'random', 'short', 'rediscover'] as const) {
+      for (let i = 0; i < 20; i++) {
+        const p = surprise(mode, DEFAULT_CONSTRAINTS, ctx({ sessions: lib, history, today: '2026-11-20' }), () => (i + 0.5) / 20)
+        if (!p) continue
+        expect(p.reason).not.toMatch(/ {2}|on {1,2}recently|\ba (upper|ankle|arm|easy)|\ba practice, for/)
+        expect(p.reason).toMatch(/^[A-Z]/)
+      }
+    }
+  })
+})

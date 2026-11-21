@@ -593,7 +593,7 @@
   gap: var(--space-sm);
   margin-top: var(--space-sm);
 }
-.upNextActions > * { width: 100%; min-height: 48px; padding-left: var(--space-sm); padding-right: var(--space-sm); }
+.upNextActions > * { width: 100%; min-height: 48px; padding-left: var(--space-sm); padding-right: var(--space-sm); white-space: nowrap; }
 .upNextActions > :only-child { grid-column: 1 / -1; }
 .markDone {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
