@@ -1818,6 +1818,17 @@ with its handler. Copy `api/_tests/wanderlist-remind.test.js` instead. It has
 the `makeRes()` stand-in, and it is where the stubbed-`fetch` shape lives now.
 `api/notion.js` is still the one to take first.
 
+**`api/notion.js` done 2026-11-23** — `api/_tests/notion.test.js`, 17 tests, run
+against the real `_shared.js` guards with only `fetch` stubbed: 405, origin 403
+(foreign vs localhost vs `*.coneofcold.vercel.app`), the 429 on the 21st call from
+one IP, 401 without a token, path/method 400s, string-body parsing, the Bearer and
+pinned `Notion-Version` (only the two known versions honoured), GET carrying no
+body, status/body passthrough, empty body → `{}`, network failure → 502. Handler
+untouched. The item stays open: `clickdeck-pricing`, `clickdeck-studio-search`,
+`notion-photo-proxy`, `notion-upload`, `places` and `steam-search` (non-hltb
+modes) are still untested — one per run, `notion-upload.js` next since it shares
+`_shared.js`.
+
 ## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
 
 **Impact:** none visible. A branch list someone can read.
