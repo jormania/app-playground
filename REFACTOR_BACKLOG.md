@@ -1107,6 +1107,8 @@ slices should eyeball icons when they next touch an app.
 
 **`eslint` + `typescript-eslint` + `globals` done 2026-10-26 — 10.12.0 → 10.13.0, 8.62.1 → 8.72.0, 17.7.0 → 17.13.0** (floors raised in `package.json`). The lint toolchain, all in-range. `eslint .` clean over the whole repo with no config change (the two rules R-008 turned off are still off), suite 5970 across 485 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. Release notes not reachable from here; what is verified is the lint, suite and typecheck. Still in-range and untouched: `vite`, `vitest` 4.1.x, `@vitejs/plugin-react`, `@tanstack/react-query`, `lucide-react` 1.61, `playwright`.
 
+**`eslint` + `typescript-eslint` + `globals` done 2026-11-23 — 10.13.0 → 10.15.0, 8.72.0 → 8.73.0, 17.13.0 → 17.14.0** (floors raised in `package.json`). The lint toolchain again, all in-range. `eslint .` clean over the whole repo with no config change, suite 6782 across 519 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. Release notes not reachable from here; what is verified is the lint, suite and typecheck.
+
 Remaining: the React 19 family (runtime and types together), last, as this item says.
 
 **The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
