@@ -1,9 +1,9 @@
 # Backlog — refactors, modernisation, and enhancements
 
-The queue the **Daily refactor** Routine burns through — two items each Monday,
-Wednesday and Friday morning, each landing as its own PR off fresh `main`. Every other Friday is a
+The queue the **Daily refactor** Routine burns through — two items every
+morning, each landing as its own PR off fresh `main`. Every other Friday is a
 discovery run (2026-10-09, 10-23, …): nothing ships, the agent reads the codebase
-and adds to this file instead. The Fridays between take an item like Monday and Wednesday.
+and adds to this file instead. The Fridays between take items like any other morning.
 Process lives in [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md).
 
 **`CLAUDE.md` was split on 2026-10-25** to cut what every session loads. The
@@ -54,6 +54,32 @@ wording is gone.)
 Anything under **`## Proposed`** is the agent's own idea and will not be worked
 until a human moves it up into the main list. That move is the whole approval
 ritual: cut the block, paste it above, change `proposed` to `open`.
+
+## P-006 — A Sol Odyssey reflection over 2000 characters fails to save · `qol` · `open`
+
+Approved 2026-11-24 and put at the top.
+
+**Impact:** a long weekly reflection, check-in, charter field or harvest note saves
+instead of being rejected by Notion. Below 2000 characters, nothing changes.
+
+Proposed on the Friday read, 2026-11-20. This is the bug `src/silva/lib/richText.ts`'s
+header describes and fixed for Silva: Notion rejects the whole write with a 400
+when one rich-text element's `content` exceeds 2000 characters. Sol Odyssey has
+four private, identical `richText(value)` helpers that each emit **one unbounded
+element**: `src/sol-odyssey/lib/charter.ts:175`, `reflections.ts:98`,
+`checkins.ts:123` and `harvest.ts:50`. They feed free-text fields like
+`Break Points`, `Risk + Plan`, `Outcome Picture` and Harvest `Notes`, and no input
+in the app sets a `maxLength`. It is worse offline: `lib/sync.ts`'s `flushQueue`
+stops at the first failure and keeps the item, so a queued over-long reflection
+would sit at the head of the queue and block every write behind it.
+
+The fix: one `lib/richText.ts` in Sol Odyssey that keeps today's `.trim()` and
+chunks at 2000 characters, as Silva's does. The four helpers become imports. It
+stays inside the app: Sol Odyssey's `CLAUDE.md` makes the directory
+self-contained, so read it and `DESIGN.md` first. Test: a 4500-character value
+writes three elements, and the empty and whitespace-only cases still write `[]`.
+No screenshots, since nothing on screen changes. It is filed as `qol`, not
+`refactor`, because a save that failed now succeeds.
 
 ## R-013 — The suite goes red for a week whenever the clock walks past a fixture date · `modernise` · `done 2026-09-18`
 
@@ -2346,6 +2372,29 @@ global `Audio`. Reset the module between tests (`vi.resetModules()`), since
 `sharedAudio` is module state. `src/shared/theme.test.ts` is the house style for
 a hook test.
 
+## P-005 — An unknown media-session action can take Tempo's or Yoru's player down · `qol` · `open`
+
+Approved 2026-11-24, placed straight after R-040, whose test it extends.
+
+**Impact:** on a browser that does not know the `stop` action, the lock-screen
+controls stay up without it instead of the player throwing. On the owner's
+Chrome on Android, nothing changes.
+
+R-040 flagged this and said that *"if it's wanted, it is a `qol` proposal of its
+own"*. Proposed on the Friday read, 2026-11-06. `src/shared/mediaSession.js:45-56`
+calls `navigator.mediaSession.setActionHandler` ten times (five to set, five to
+clear), and none of the calls is wrapped. Per the Media Session spec, a browser
+throws a `TypeError` for an action it does not support. `stop` is newer than the
+other four. A throw there escapes the effect in `Player.jsx` (Tempo) or
+`Session.jsx` (Yoru), with no error boundary to catch it. The module header
+already promises that *"any failure … degrades silently"*.
+
+The fix is one small `setHandler(action, fn)` helper with a `try`/`catch`, used
+by all ten calls. Take R-040 first: its test pins today's behaviour. This item
+would then add one case, a `setActionHandler` that throws for `'stop'`, and the
+hook should still set the other four. No screenshots needed, since nothing on
+screen changes on a browser that supports every action.
+
 ## R-041 — The Long Listen's `app/settings.ts` has no test, and it is what keeps demo mode out of production · `modernise` · `open`
 
 **Impact:** none visible. Gives coverage to the 56 lines that hold the
@@ -2843,48 +2892,3 @@ to `open`.
 To reject one, delete it — or just close the PR that proposed it, which is the
 same answer said faster. The agent treats a proposal that vanished from `main`
 as declined and will not raise it again.
-
-## P-005 — An unknown media-session action can take Tempo's or Yoru's player down · `qol` · `proposed`
-
-**Impact:** on a browser that does not know the `stop` action, the lock-screen
-controls stay up without it instead of the player throwing. On the owner's
-Chrome on Android, nothing changes.
-
-R-040 flagged this and said that *"if it's wanted, it is a `qol` proposal of its
-own"*. Proposed on the Friday read, 2026-11-06. `src/shared/mediaSession.js:45-56`
-calls `navigator.mediaSession.setActionHandler` ten times (five to set, five to
-clear), and none of the calls is wrapped. Per the Media Session spec, a browser
-throws a `TypeError` for an action it does not support. `stop` is newer than the
-other four. A throw there escapes the effect in `Player.jsx` (Tempo) or
-`Session.jsx` (Yoru), with no error boundary to catch it. The module header
-already promises that *"any failure … degrades silently"*.
-
-The fix is one small `setHandler(action, fn)` helper with a `try`/`catch`, used
-by all ten calls. Take R-040 first: its test pins today's behaviour. This item
-would then add one case, a `setActionHandler` that throws for `'stop'`, and the
-hook should still set the other four. No screenshots needed, since nothing on
-screen changes on a browser that supports every action.
-
-## P-006 — A Sol Odyssey reflection over 2000 characters fails to save · `qol` · `proposed`
-
-**Impact:** a long weekly reflection, check-in, charter field or harvest note saves
-instead of being rejected by Notion. Below 2000 characters, nothing changes.
-
-Proposed on the Friday read, 2026-11-20. This is the bug `src/silva/lib/richText.ts`'s
-header describes and fixed for Silva: Notion rejects the whole write with a 400
-when one rich-text element's `content` exceeds 2000 characters. Sol Odyssey has
-four private, identical `richText(value)` helpers that each emit **one unbounded
-element**: `src/sol-odyssey/lib/charter.ts:175`, `reflections.ts:98`,
-`checkins.ts:123` and `harvest.ts:50`. They feed free-text fields like
-`Break Points`, `Risk + Plan`, `Outcome Picture` and Harvest `Notes`, and no input
-in the app sets a `maxLength`. It is worse offline: `lib/sync.ts`'s `flushQueue`
-stops at the first failure and keeps the item, so a queued over-long reflection
-would sit at the head of the queue and block every write behind it.
-
-The fix: one `lib/richText.ts` in Sol Odyssey that keeps today's `.trim()` and
-chunks at 2000 characters, as Silva's does. The four helpers become imports. It
-stays inside the app: Sol Odyssey's `CLAUDE.md` makes the directory
-self-contained, so read it and `DESIGN.md` first. Test: a 4500-character value
-writes three elements, and the empty and whitespace-only cases still write `[]`.
-No screenshots, since nothing on screen changes. It is filed as `qol`, not
-`refactor`, because a save that failed now succeeds.

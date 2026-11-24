@@ -1,6 +1,6 @@
 ---
 name: daily-refactor
-description: The autonomous daily improvement pass over app-playground. Takes the two topmost eligible items from REFACTOR_BACKLOG.md and works them one after the other, each on its own fresh branch off main, proven green, with its own PR for after-the-fact review. Run Monday, Wednesday and Friday by .github/workflows/daily-refactor.yml; also available by hand as /daily-refactor.
+description: The autonomous daily improvement pass over app-playground. Takes the two topmost eligible items from REFACTOR_BACKLOG.md and works them one after the other, each on its own fresh branch off main, proven green, with its own PR for after-the-fact review. Run every morning by .github/workflows/daily-refactor.yml; also available by hand as /daily-refactor.
 ---
 
 # Daily refactor
@@ -15,7 +15,7 @@ Read `CLAUDE.md` and `.agents/AGENTS.md` first — every rule there outranks thi
 ## Where this runs
 
 [`.github/workflows/daily-refactor.yml`](../../../.github/workflows/daily-refactor.yml),
-on a GitHub runner, Monday, Wednesday and Friday mornings. By the time you read this the runner has
+on a GitHub runner, every morning. By the time you read this the runner has
 already checked the repo out with full history and run `npm ci` — so you have
 the code, the dependencies, and push rights. Don't clone, don't reinstall.
 

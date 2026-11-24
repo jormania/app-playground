@@ -1,6 +1,6 @@
 # Daily refactor — the autonomous upkeep agent
 
-An agent that improves this repository two items each Monday, Wednesday and Friday morning, one PR each, without
+An agent that improves this repository two items every morning, one PR each, without
 asking first. It picks its own work from a queue, implements it, proves it
 green, opens a pull request, and — for the two classes that cannot change what
 you see — merges that pull request itself. Review happens afterwards, on the PR.
@@ -35,14 +35,15 @@ and the workflow is auditable without reading prose.
 ## When it runs
 
 ```yaml
-- cron: '41 22 * * 0,2,4'  # 22:41 UTC — 01:41 Bucharest next day, 00:41 in winter
-- cron: '41 0 * * 1,3,5'   # 00:41 UTC — 03:41 Bucharest, backstop, usually skipped
+- cron: '41 22 * * *'  # 22:41 UTC — 01:41 Bucharest next day, 00:41 in winter
+- cron: '41 0 * * *'   # 00:41 UTC — 03:41 Bucharest, backstop, usually skipped
 ```
 
-Monday, Wednesday and Friday mornings in Bucharest, plus a **Run workflow**
-button for testing. Note the first cron fires the *evening before*, on days
-`0,2,4` (Sunday, Tuesday, Thursday UTC). It was every weekday until 2026-10-09,
-cut to three to spare the weekly subscription limit (see "Model and costs").
+Every morning in Bucharest, plus a **Run workflow** button for testing. Note the
+first cron fires the *evening before*. It was every weekday until 2026-10-09,
+then Monday, Wednesday and Friday to spare the weekly subscription limit (see
+"Model and costs"), and every day since 2026-11-24, when the backlog had grown
+to 32 open items under three runs a week.
 
 **GitHub's queue fails in two independent ways, and both have happened here.**
 Their docs cover the first: the `schedule` event "can be delayed during periods
@@ -142,7 +143,7 @@ weeks from that date (not ISO week parity, which a 53-week year breaks). The
 workflow's first step decides it from the Bucharest date and hands the agent a
 `Discovery morning: true|false` line, so a run and its backstop always agree;
 `scripts/daily-refactor-chooser.test.js` pins the calendar. The Fridays between
-take an item like Monday and Wednesday. It halved on 2026-10-09 to spare the weekly
+take items like any other morning. It halved on 2026-10-09 to spare the weekly
 subscription limit: discovery is the longest open-ended Opus session, and one a
 fortnight keeps the backlog well ahead of one item a day. On a discovery
 morning nothing ships. The session reads the codebase
@@ -416,3 +417,4 @@ reaching production. It is a morning where something other than what you asked
 for happened — usually nothing — and nobody was told.** 2026-09-23 was the first
 time the agent did good work and it was still that failure.
 | 2026-11-18 | The queue stood at 26 open items against roughly three a week | Two items a run, one PR each, worked one after the other. Proposals ride only the last PR, so two PRs never append to the same list. The merge step loops over both, bringing the second up to date with `main` after the first merges; 90 minutes and 300 turns. Sonnet only when both items are Sonnet-class |
+| 2026-11-24 | Two items a run still left the queue growing — 26 open on 2026-11-18, 32 six days later — because three runs a week took six items while the fortnightly discovery run and approvals added more | Runs every morning, both crons on all seven days. Discovery stays every other Friday. P-005 and P-006 approved, P-006 at the top |
