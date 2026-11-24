@@ -990,6 +990,16 @@ directories, and that deserves its own week rather than a morning.
 Watch the `@fontsource` bumps for the subset trap in `CLAUDE.md`: never import a
 family by bare name or weight entry point.
 
+**Only a family marked done that is a major behind again is worth a run
+(rule added 2026-11-24).** Before taking anything else, check what is left
+against `npm outdated`: a family this item already brought up and that is now
+only minor or patch versions behind is not work — skip it, and do not open a PR
+for it. #239 was exactly that: the lint toolchain bumped again from eslint 10.13
+to 10.15 days after #205, which used a run and did nothing for the item. What is
+left is React 19 (`react`, `react-dom`, `@types/react`, `@types/react-dom`), so
+that is the next run's work. If it is too big for one PR, split it into slices
+here, as step 4 of the skill says, and do the first slice.
+
 
 **jsdom done 2026-09-22 — 29.1.1 → 30.1.1.** The 25 test files carrying an
 `@vitest-environment jsdom` pragma all pass unchanged; full suite 4601, typecheck
