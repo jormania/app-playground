@@ -38,7 +38,7 @@ Both look exactly like real regressions.
 ## Daily refactor workflow
 
 An agent takes **two** items, one PR each, off [`REFACTOR_BACKLOG.md`](REFACTOR_BACKLOG.md) on
-every morning (every other Friday from 2026-10-09 is a
+every morning (Fridays are a
 discovery run instead), opens a PR for each, and auto-merges the `refactor` and `modernise`
 ones. `qol` and `visual` items it may only propose, and they are never auto-merged.
 Backlog order is the priority. Read [`DAILY_REFACTOR.md`](DAILY_REFACTOR.md) before

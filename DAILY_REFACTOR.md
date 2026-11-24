@@ -40,7 +40,8 @@ and the workflow is auditable without reading prose.
 ```
 
 Every morning in Bucharest, plus a **Run workflow** button for testing. Note the
-first cron fires the *evening before*. It was every weekday until 2026-10-09,
+first cron fires the *evening before*. Fridays are discovery, the other six
+mornings take items. It was every weekday until 2026-10-09,
 then Monday, Wednesday and Friday to spare the weekly subscription limit (see
 "Model and costs"), and every day since 2026-11-24, when the backlog had grown
 to 32 open items under three runs a week.
@@ -138,15 +139,15 @@ skip. An item found to be a bad idea is marked `dropped`, one that cannot be
 finished is marked `blocked`, one that is too big is split — each a visible
 backlog change, never a silent jump to the next header.
 
-**Every other Friday is a discovery run** — since 2026-10-09, counted in whole
-weeks from that date (not ISO week parity, which a 53-week year breaks). The
+**Every Friday is a discovery run**, and the other six mornings take items. The
 workflow's first step decides it from the Bucharest date and hands the agent a
 `Discovery morning: true|false` line, so a run and its backstop always agree;
-`scripts/daily-refactor-chooser.test.js` pins the calendar. The Fridays between
-take items like any other morning. It halved on 2026-10-09 to spare the weekly
-subscription limit: discovery is the longest open-ended Opus session, and one a
-fortnight keeps the backlog well ahead of one item a day. On a discovery
-morning nothing ships. The session reads the codebase
+`scripts/daily-refactor-chooser.test.js` pins the calendar. History: weekly at
+first, every other Friday from 2026-10-09 to spare the weekly subscription limit
+(discovery is the longest open-ended Opus session), weekly again from
+2026-11-24 alongside daily runs — up to five findings a week against about
+twelve items taken. On a discovery morning nothing is fixed and nothing ships
+but the backlog. The session reads the codebase
 against current standards and appends up to five findings, each with a class, an
 `Impact:` line and a concrete file path — then opens a backlog-only PR like any
 other run. Findings that stay on a branch nobody visits are findings that die.
@@ -418,3 +419,4 @@ for happened — usually nothing — and nobody was told.** 2026-09-23 was the f
 time the agent did good work and it was still that failure.
 | 2026-11-18 | The queue stood at 26 open items against roughly three a week | Two items a run, one PR each, worked one after the other. Proposals ride only the last PR, so two PRs never append to the same list. The merge step loops over both, bringing the second up to date with `main` after the first merges; 90 minutes and 300 turns. Sonnet only when both items are Sonnet-class |
 | 2026-11-24 | Two items a run still left the queue growing — 26 open on 2026-11-18, 32 six days later — because three runs a week took six items while the fortnightly discovery run and approvals added more | Runs every morning, both crons on all seven days. Discovery stays every other Friday. P-005 and P-006 approved, P-006 at the top |
+| 2026-11-24 | With runs every day, discovery every other Friday left a week without a read | Discovery every Friday; six mornings fix, one reads and fixes nothing |

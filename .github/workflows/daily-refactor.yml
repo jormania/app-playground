@@ -23,7 +23,8 @@ on:
     #
     # Every day since 2026-11-24, to bring the backlog down: three mornings a
     # week (from 2026-10-09) took six items while discovery added five a
-    # fortnight, and the queue grew. The runs share the weekly subscription
+    # fortnight, and the queue grew. Discovery is every Friday now, so six
+    # mornings fix and one reads. The runs share the weekly subscription
     # limit with interactive sessions (DAILY_REFACTOR.md, "Model and costs").
     - cron: '41 22 * * *'  # 22:41 UTC = 01:41 Bucharest next day (00:41 in winter)
     - cron: '41 0 * * *'   # 00:41 UTC = 03:41 Bucharest — backstop, usually skipped
@@ -116,17 +117,15 @@ jobs:
       # decides by date — the branch, and whether this is a discovery run — has
       # to use the morning it is landing in, not `date` on the runner.
       #
-      # Discovery is every OTHER Friday, counted in whole weeks from 2026-10-09
-      # (a discovery Friday) — not by ISO week parity, which a 53-week year
-      # breaks. The off Fridays take items like any other morning. Decided here, by
-      # date alone, so the run and its backstop always agree.
+      # Discovery is every Friday since 2026-11-24 (every other Friday before):
+      # six mornings fix, one reads. Decided here, by the Bucharest date alone,
+      # so the run and its backstop always agree.
       - name: Work out which morning this is
         id: when
         run: |
           today=$(TZ=Europe/Bucharest date +%F)
           day=$(TZ=Europe/Bucharest date +%A)
-          weeks=$(( ($(date -u -d "$today 12:00" +%s) - $(date -u -d "2026-10-09 12:00" +%s)) / 604800 ))
-          if [ "$day" = Friday ] && [ $(( weeks % 2 )) -eq 0 ]; then discovery=true; else discovery=false; fi
+          if [ "$day" = Friday ]; then discovery=true; else discovery=false; fi
           echo "date=$today" >> "$GITHUB_OUTPUT"
           echo "day=$day" >> "$GITHUB_OUTPUT"
           echo "discovery=$discovery" >> "$GITHUB_OUTPUT"
@@ -291,9 +290,9 @@ jobs:
             until a human has moved it up into the main list.
 
             **Discovery morning: ${{ steps.when.outputs.discovery }}.** The
-            workflow decides this, not you: discovery is every other Friday, and
-            every other morning, the Fridays between included, takes items. If it says
-            `true`, ship nothing: read the codebase against current
+            workflow decides this, not you: discovery is every Friday, and the
+            other six mornings take items. If it says `true`, fix nothing and
+            work no backlog item, however small: read the codebase against current
             standards, append up to five new backlog items each with a class, an
             `Impact:` line and a concrete file path, and open a backlog-only PR.
 

@@ -105,8 +105,8 @@ describe('daily-refactor model chooser step', () => {
   })
 })
 
-// The "which morning" step decides discovery — every other Friday, counted from
-// 2026-10-09 — by date alone. Run it as written, with `date` answering for a
+// The "which morning" step decides discovery — every Friday since 2026-11-24 —
+// by the Bucharest date alone. Run it as written, with `date` answering for a
 // chosen Bucharest morning and passing every other call to the real one.
 describe('daily-refactor discovery calendar', () => {
   function morning(iso) {
@@ -134,21 +134,15 @@ describe('daily-refactor discovery calendar', () => {
     return /discovery=(\w+)/.exec(out)?.[1]
   }
 
-  it('makes 2026-10-09 a discovery Friday and the next one an item Friday', () => {
-    expect(morning('2026-10-09')).toBe('true')
-    expect(morning('2026-10-16')).toBe('false')
-    expect(morning('2026-10-23')).toBe('true')
+  it('makes every Friday a discovery morning', () => {
+    for (const d of ['2026-11-27', '2026-12-04', '2026-12-11', '2027-01-01', '2027-01-08']) {
+      expect(morning(d), d).toBe('true')
+    }
   })
 
-  it('keeps alternating across a 53-week ISO year, where week parity would not', () => {
-    // 2026 has an ISO week 53: week parity would make 2027-01-01 (W53) and
-    // 2027-01-08 (W01) both odd. Counting whole weeks keeps them apart.
-    expect(morning('2027-01-01')).toBe('true')
-    expect(morning('2027-01-08')).toBe('false')
-  })
-
-  it('never makes another weekday a discovery morning', () => {
-    expect(morning('2026-10-12')).toBe('false')
-    expect(morning('2026-10-22')).toBe('false')
+  it('makes the other six mornings item mornings', () => {
+    for (const d of ['2026-11-28', '2026-11-29', '2026-11-30', '2026-12-01', '2026-12-02', '2026-12-03']) {
+      expect(morning(d), d).toBe('false')
+    }
   })
 })

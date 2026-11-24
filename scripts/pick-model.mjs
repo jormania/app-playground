@@ -84,7 +84,7 @@ export function topmostEligible(md, claimed = new Set()) {
  * The model for a run, and a one-line note for the agent's prompt.
  *
  * Sonnet only when every item tonight is `refactor` or `modernise`. A discovery
- * run (every other Friday — the workflow decides, by date) reads the codebase
+ * run (every Friday — the workflow decides, by date) reads the codebase
  * for what's missing whatever sits on top. That is judgement, not a gated
  * change, so it stays on Opus. Takes one item or a list.
  */
