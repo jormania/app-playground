@@ -137,20 +137,49 @@ stops meaning anything once a slice sits inside a parent already marked `done`.
 workflow decides it by the Bucharest date and says so in your prompt
 ("Discovery morning: true/false") — go by that line, never by the runner's
 clock, which is a day behind when the evening cron fires. On a discovery
-morning, fix nothing: no backlog item, however small, and no drive-by change. Spend the session reading the
-codebase against current standards — deprecated APIs, dependency generations
-behind, duplicated patterns that want promoting to `src/shared/`, documentation
-that has drifted from the code, apps with no test coverage, places where the
-design system could replace something hand-rolled. Append what you find: up to
-five items, each with a class, an `Impact:` line, and a concrete file path.
+morning, fix nothing: no backlog item, however small, and no drive-by change.
+
+The read exists to find what would actually hurt, and to keep the queue short
+— the owner wants it near empty. Five rules, since 2026-11-24, when a review of
+four reads found 21 findings, none yet worked, about a third of them filler:
+
+1. **At most three findings.** Zero is a good outcome; say "nothing worth a
+   slot this week" and still open the PR if rule 3 changed anything. Never fill
+   a quota — the old one (five) was met four reads running.
+2. **Every finding names how it fails**, on a `Fails when:` line: a concrete
+   input or date and what then goes wrong ("a 2001-character reflection is
+   rejected by Notion and blocks the offline queue"). "X has no test" is not a
+   failure; a test is worth a slot only for code that guards a deploy, a
+   production-only switch or the owner's data, and the line says which. A
+   finding that cannot fill this line is not a finding.
+3. **Prune before you add.** Read the open items and drop or merge up to three
+   that no longer earn a slot — comment and doc drift, duplication nobody would
+   notice, coverage of code that cannot lose data — marking each `dropped
+   <date> — <one-line reason>` or folding it into the item it duplicates. Only
+   `refactor` and `modernise` items that an earlier read added; never a `P-`
+   item, which a human approved, and never one with work already done on it.
+4. **Bugs go first.** A finding that loses data, breaks an app or will turn the
+   suite red goes to the **top** of its list: a `refactor`/`modernise` one to
+   the top of the main list, so the next morning takes it; a `qol` one to the
+   top of `## Proposed`, its header ending `— **bug**`, and named first in the
+   report. Everything else is appended as before.
+5. **Look for time bombs.** Alongside deprecated APIs, dependency generations,
+   duplication and drift, check for code and tests that break on a future date:
+   hard-coded dates and years, fixtures that expire, anything keyed off "today"
+   that a test does not pin (Lexi5's App tests broke on 2026-11-24, the day its
+   word list wrapped; R-013 was the same failure in September).
+
+Each finding still carries a class, an `Impact:` line and a concrete file path.
 Commit that alone, then **push and open a PR exactly as any other run does** —
 step 9 applies. A discovery run that never opens a PR is a discovery run whose
 findings die on a branch nobody visits.
 
-Title it so it reads as safe at a glance ("Backlog: five proposals from the
-Friday read"), and say in the body that it touches `REFACTOR_BACKLOG.md` and
-nothing else. It should be the easiest merge of the week. A week that adds five good
-proposals is worth more than a week that ships five shrugs.
+Title it so it reads as safe at a glance ("Backlog: two findings, three
+pruned, from the Friday read"), and say in the body that it touches
+`REFACTOR_BACKLOG.md` and nothing else. List what was dropped or merged, one
+line each with its reason, so a wrong prune is easy to spot and revert. It
+should be the easiest merge of the week. One finding that would have hurt is
+worth more than five that only tidy.
 
 If the backlog has no eligible items on any other morning, do a discovery run
 instead and say so.

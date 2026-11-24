@@ -147,7 +147,17 @@ first, every other Friday from 2026-10-09 to spare the weekly subscription limit
 (discovery is the longest open-ended Opus session), weekly again from
 2026-11-24 alongside daily runs — up to five findings a week against about
 twelve items taken. On a discovery morning nothing is fixed and nothing ships
-but the backlog. The session reads the codebase
+but the backlog.
+
+**Since 2026-11-24 the read is held to five rules** (the skill's step 3 has the
+wording): at most three findings, each with a `Fails when:` line naming a
+concrete failure, so "has no test" alone no longer qualifies; up to three weak
+open items pruned per read (agent-added `refactor`/`modernise` only, never a
+human-approved `P-` item); bugs placed at the top rather than appended; and
+date-dependent time bombs on the checklist. A review that day found the four
+reads since 2026-10-09 had added 21 items, filled their quota every time, had
+none worked yet because new items queue at the bottom, and had missed the Lexi5
+date failure that broke the suite the same day. The session reads the codebase
 against current standards and appends up to five findings, each with a class, an
 `Impact:` line and a concrete file path — then opens a backlog-only PR like any
 other run. Findings that stay on a branch nobody visits are findings that die.
@@ -420,3 +430,4 @@ time the agent did good work and it was still that failure.
 | 2026-11-18 | The queue stood at 26 open items against roughly three a week | Two items a run, one PR each, worked one after the other. Proposals ride only the last PR, so two PRs never append to the same list. The merge step loops over both, bringing the second up to date with `main` after the first merges; 90 minutes and 300 turns. Sonnet only when both items are Sonnet-class |
 | 2026-11-24 | Two items a run still left the queue growing — 26 open on 2026-11-18, 32 six days later — because three runs a week took six items while the fortnightly discovery run and approvals added more | Runs every morning, both crons on all seven days. Discovery stays every other Friday. P-005 and P-006 approved, P-006 at the top |
 | 2026-11-24 | With runs every day, discovery every other Friday left a week without a read | Discovery every Friday; six mornings fix, one reads and fixes nothing |
+| 2026-11-24 | Of 21 findings from four reads, about six clearly earned their place; none had been worked; every read filled its five-item quota | Discovery capped at three findings, each with a `Fails when:` line; up to three weak items pruned per read; bugs placed at the top; time bombs on the checklist |

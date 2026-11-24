@@ -292,9 +292,10 @@ jobs:
             **Discovery morning: ${{ steps.when.outputs.discovery }}.** The
             workflow decides this, not you: discovery is every Friday, and the
             other six mornings take items. If it says `true`, fix nothing and
-            work no backlog item, however small: read the codebase against current
-            standards, append up to five new backlog items each with a class, an
-            `Impact:` line and a concrete file path, and open a backlog-only PR.
+            work no backlog item, however small: follow the skill's five
+            discovery rules — at most three findings, each with a `Fails when:`
+            line; prune up to three weak open items first; bugs to the top; look
+            for date time bombs — and open a backlog-only PR.
 
             Never push to `main` — it auto-deploys to Vercel. If you cannot get
             all three gates green, throw the branch away, mark the item blocked

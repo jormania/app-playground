@@ -2,8 +2,9 @@
 
 The queue the **Daily refactor** Routine burns through — two items every
 morning, each landing as its own PR off fresh `main`. Every Friday is a
-discovery run: nothing is fixed, the agent reads the codebase and adds to this
-file instead. The other six mornings take items.
+discovery run: nothing is fixed, the agent reads the codebase, adds at most three
+findings (each with a `Fails when:` line, bugs at the top) and prunes up to three
+weak items instead. The other six mornings take items.
 Process lives in [`.claude/skills/daily-refactor/SKILL.md`](.claude/skills/daily-refactor/SKILL.md).
 
 **`CLAUDE.md` was split on 2026-10-25** to cut what every session loads. The
