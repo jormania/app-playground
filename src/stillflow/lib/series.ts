@@ -110,11 +110,18 @@ export interface Pace {
   done: number
   /** done − expected, so negative means behind. */
   delta: number
+  /** For the series itself: the honest calendar count, worded neutrally. */
   label: string
+  /**
+   * For the Today page, which never counts misses: it celebrates a practice done
+   * today and otherwise simply invites the next one. At one practice a day there
+   * is no catching up, so a deficit there would only nag.
+   */
+  today: string
 }
 
 /** A gentle reading of the run so far. Never a score. */
-export function pace(def: SeriesDef, progress: SeriesProgress, doneCount: number, today: string): Pace {
+export function pace(def: SeriesDef, progress: SeriesProgress, doneCount: number, today: string, practisedToday = false): Pace {
   const elapsed = Math.max(0, daysBetween(progress.startedAt, today))
   const step = def.unit === 'Week' ? 7 : 1
   // Where the calendar is today (Day 1 on the day you start)…
@@ -122,12 +129,32 @@ export function pace(def: SeriesDef, progress: SeriesProgress, doneCount: number
   // …but today's practice can still happen today, so you're only behind on days already gone.
   const delta = Math.min(0, doneCount - (expected - 1))
   const unit = def.unit.toLowerCase()
-  let label: string
-  if (doneCount >= def.length) label = 'Every practice done'
-  else if (delta >= 0) label = 'On your rhythm'
-  else if (delta === -1) label = `One ${unit} to catch up, whenever suits`
-  else label = `${-delta} ${unit}s behind the calendar, and that’s fine`
-  return { expected, done: doneCount, delta, label }
+  const allDone = doneCount >= def.length
+  const label = allDone ? 'Every practice done'
+    : delta >= 0 ? 'On your rhythm'
+    : `${-delta} ${-delta === 1 ? unit : `${unit}s`} off the calendar`
+  const todayLabel = allDone ? 'Every practice done'
+    : practisedToday ? (def.unit === 'Week' ? 'Practised this week' : 'Practised today')
+    : delta >= 0 ? 'On your rhythm'
+    : 'Ready when you are'
+  return { expected, done: doneCount, delta, label, today: todayLabel }
+}
+
+/**
+ * Whether this series was practised today (in the current series week, for a
+ * weekly one): a practice of one of its sessions logged then, or a day ticked then.
+ */
+export function practisedToday(def: SeriesDef, progress: SeriesProgress, linked: Map<number, Session>, history: PracticeEntry[], today: string): boolean {
+  let since = today
+  if (def.unit === 'Week') {
+    const back = Math.max(0, daysBetween(progress.startedAt, today)) % 7
+    const d = new Date(`${today}T12:00:00`)
+    d.setDate(d.getDate() - back)
+    since = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const ids = new Set([...linked.values()].map((x) => x.id))
+  if (history.some((h) => h.date >= since && h.date <= today && ids.has(h.sessionId))) return true
+  return Object.values(progress.manualDays).some((d) => d >= since && d <= today)
 }
 
 const NOISE = new Set(['yoga with adriene', 'a 30 day yoga journey', '30 days of yoga', 'a january series with adriene'])

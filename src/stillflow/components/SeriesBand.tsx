@@ -25,7 +25,9 @@ export function Ring({ value, max }: { value: number; max: number }) {
 /**
  * Where a series run stands: ring, days done, when it started, the pace. The
  * same band heads the series page and Today's "Your next practice"; on Today it
- * also names the series, which the series page already has as its title.
+ * also names the series, which the series page already has as its title, and
+ * shows the Today message: never a count of misses, only "Practised today" or
+ * an invitation. The series page keeps the honest calendar count.
  */
 export function SeriesBand({ def, done, started, pace, name = false }: {
   def: SeriesDef
@@ -42,7 +44,7 @@ export function SeriesBand({ def, done, started, pace, name = false }: {
         {name && <span className={cx(s.entrySource, s.titleTag)}>{def.name}{def.kind === 'custom' && <YoursTag kind="series" />}</span>}
         <span className={s.journeyKicker}>{done >= def.length ? 'Every practice done' : `${done} of ${def.length} ${unit}s done`}</span>
         {started && <span className={s.journeyStarted}>Started {fmt(started)}</span>}
-        {pace && done < def.length && <span className={cx(s.pacePill, pace.delta < 0 && s.paceBehind)}>{pace.label}</span>}
+        {pace && done < def.length && <span className={s.pacePill}>{name ? pace.today : pace.label}</span>}
       </div>
     </div>
   )

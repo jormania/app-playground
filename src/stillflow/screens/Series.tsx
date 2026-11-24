@@ -9,7 +9,7 @@ import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
 import { localDate, newEntry, teaser } from '../lib/practice'
 import {
-  customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, startProgress, toggleDay, inRun, runStart, dayOf, belongsTo } from '../lib/series'
+  customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, practisedToday, startProgress, toggleDay, inRun, runStart, dayOf, belongsTo } from '../lib/series'
 import { cx } from '../../ds/lib/cx'
 import { repeatLabel } from '../domain/vocabulary'
 import { shortTitle } from '../lib/today'
@@ -28,7 +28,10 @@ export function useSeries(def: SeriesDef) {
     const linked = linkedSessions(def, sessions, progress)
     const done = doneDays(def, progress, linked, history, sessions)
     const next = nextDay(def, done)
-    const p = progress && progress.status === 'active' ? pace(def, { ...progress, startedAt: runStart(progress, done) }, done.size, localDate()) : null
+    const today = localDate()
+    const p = progress && progress.status === 'active'
+      ? pace(def, { ...progress, startedAt: runStart(progress, done) }, done.size, today, practisedToday(def, progress, linked, history, today))
+      : null
     const started = progress ? runStart(progress, done) : undefined
     return { progress, linked, done, next, pace: p, started }
   }, [def, sessions, history, progress])

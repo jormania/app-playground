@@ -93,14 +93,25 @@ describe('progress through a run', () => {
   })
 })
 
+describe('pace on the Today page', () => {
+  const p = { seriesId: 'move', status: 'active' as const, startedAt: '2026-11-01', manualDays: {}, links: {}, runs: [] }
+  const move = { id: 'move', name: 'MOVE', length: 30, unit: 'Day' as const, kind: 'journey' as const, match: ['move'], instructor: 'x' }
+  it('never counts misses: it celebrates today, or invites', () => {
+    expect(pace(move, p, 5, '2026-11-07', true).today).toBe('Practised today')
+    expect(pace(move, p, 5, '2026-11-07', false).today).toBe('Ready when you are')
+    expect(pace(move, p, 6, '2026-11-07', false).today).toBe('On your rhythm')
+    expect(pace(move, p, 5, '2026-11-07', true).label).toBe('1 day off the calendar')
+  })
+})
+
 describe('pace', () => {
   const p = startProgress(move, '2026-11-01')
   it('is gentle: on rhythm, one behind, several behind, all done', () => {
     expect(pace(move, p, 0, '2026-11-01').label).toBe('On your rhythm') // the first day isn't over yet
     expect(pace(move, p, 1, '2026-11-01').label).toBe('On your rhythm')
     expect(pace(move, p, 1, '2026-11-02').label).toBe('On your rhythm')
-    expect(pace(move, p, 1, '2026-11-03').label).toMatch(/One day to catch up/)
-    expect(pace(move, p, 2, '2026-11-08').label).toMatch(/^5 days behind/)
+    expect(pace(move, p, 1, '2026-11-03').label).toBe('1 day off the calendar')
+    expect(pace(move, p, 2, '2026-11-08').label).toBe('5 days off the calendar')
     expect(pace(move, p, 30, '2026-12-20').label).toBe('Every practice done')
   })
 
@@ -109,7 +120,7 @@ describe('pace', () => {
     const w = startProgress(ret, '2026-11-01')
     expect(pace(ret, w, 1, '2026-11-07').expected).toBe(1)
     expect(pace(ret, w, 1, '2026-11-08').expected).toBe(2)
-    expect(pace(ret, w, 0, '2026-11-08').label).toMatch(/One week/)
+    expect(pace(ret, w, 0, '2026-11-08').label).toBe('1 week off the calendar')
   })
 
   it('crosses a month end and the October DST change without losing a day', () => {

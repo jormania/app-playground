@@ -44,7 +44,7 @@ function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef
     <div className={s.continue}>
       <NextDay def={def} day={next} session={day} withSeries
         meta={`${done.size} of ${def.length} done`}
-        note={soft ? `${def.unit} ${next} is waiting whenever you are` : pace?.label}
+        note={soft ? `${def.unit} ${next} is waiting whenever you are` : pace?.today}
         secondary={open} />
     </div>
   )

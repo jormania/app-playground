@@ -574,7 +574,6 @@
   color: var(--color-accent);
   border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
-.paceBehind { color: var(--sf-lavender-ink); border-color: var(--sf-lavender); background: var(--sf-lavender-soft); }
 
 .upNext { display: grid; gap: var(--space-sm); padding: var(--space-lg); }
 .upNextLabel {
