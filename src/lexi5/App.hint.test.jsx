@@ -10,6 +10,10 @@ vi.mock('./lib/gameState', async (importOriginal) => {
   return {
     ...actual,
     getWord: vi.fn(),
+    // The word is fixed above, so fix where it sits in the list too: otherwise, on a
+    // day the real list wraps round, a "starting a fresh cycle" toast greets the game
+    // and the toasts these tests wait for queue behind it.
+    getWordProgress: vi.fn(() => ({ position: 1, total: 100, cycleNumber: 0, justWrapped: false })),
     isValidGuess: vi.fn(),
   }
 })
