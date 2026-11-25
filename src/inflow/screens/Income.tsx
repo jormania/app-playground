@@ -204,6 +204,7 @@ function EntryRow({ r, data, large, today, onOpen, tax, currencies }: { r: Incom
           </span>
           <span className={styles.tag}>{VAT_SHORT[r.vat]}</span>
           </>}
+          {r.sessions > 1 && <span className={styles.tag}>{r.sessions} sessions</span>}
           {r.recurring && <span className={styles.tag}><Repeat size={10} aria-hidden /> recurring</span>}
           {large && <span className={`${styles.tag} ${styles.tagAlert}`}><AlertTriangle size={10} aria-hidden /> unusually large</span>}
         </span>

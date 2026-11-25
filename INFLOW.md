@@ -432,3 +432,19 @@ page; viewport screenshots while scrolling confirm the tab bar stays at the bott
   next frame and the `/` shortcut focuses search on `hashchange`, not after guessed delays.
   The edit forms' button bar is pinned flush to the bottom of the dialog so Save and Cancel
   stay inside it on a phone.
+
+## Audit of the last commits, 25 Nov 2026
+- **Notion, older databases:** a database duplicated before a column was added (Sessions,
+  Hours, Attendees, a venue's deal) would have refused every save that named it. `NotionRepo`
+  now reads each database's columns once and writes only those (`fit`); if the schema can't
+  be read, everything is sent as before.
+- **Simple start notice:** ticking a feature in the welcome guide now retires it, as Settings
+  already did, so it never claims a feature is off that was just switched on.
+- **Losing sessions** count sessions, not payments, in their title and pain/tip threshold.
+- **Conveniences:** "Expect it" confirms with an **Edit** button (a payout's amount varies);
+  a payment covering more than one session is tagged "N sessions" in Income; the target hint
+  says it also applies to a year.
+- Checked and sound: per-session venue costs and monthly rent split, people per session, kept
+  per hour, settings migration for new and existing users, feature gating of insights, Income
+  and Costs donuts (received only), no sideways overflow on any screen at 360 px in Month or
+  Custom, no runtime errors.

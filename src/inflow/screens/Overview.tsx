@@ -82,7 +82,9 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
     writeJson(DISMISSED_KEY, [...next].slice(-40))
   }
   const addSuggested = async (s: (typeof suggested)[number]) => {
-    if (await saveRecord(asExpected(s))) toast({ message: `Expected on ${shortDate(s.date)}: ${money(s.from.amount, s.from.currency)}`, tone: 'success' })
+    // The last amount is a guess for a payout that varies: Edit opens it straight away.
+    const saved = await saveRecord(asExpected(s))
+    if (saved) toast({ message: `Expected on ${shortDate(s.date)}: ${money(s.from.amount, s.from.currency)}`, tone: 'success', actionLabel: 'Edit', onAction: () => onOpen(saved.id) })
   }
   const all = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected'), tax: on('tax') }) : []), [on, data, range, today])
   const fb = useInsightFeedback()

@@ -299,6 +299,8 @@ export class NotionRepo implements Repo {
   readonly kind = 'notion' as const
   private dbs: NotionDbs | null = null
   private call: Call
+  /** Each database's column names, read once: only those are written. */
+  private columns = new Map<string, Promise<Set<string> | null>>()
   /** Whether a Costs database was found next to Income. */
   hasCosts = false
 
@@ -309,6 +311,22 @@ export class NotionRepo implements Repo {
   private async databases(): Promise<NotionDbs> {
     if (!this.dbs) this.dbs = await discoverDatabases(this.call, this.incomeDbId)
     return this.dbs
+  }
+
+  /**
+   * The properties a database actually has. A database duplicated before a column was added
+   * (Sessions, Hours, Attendees, a venue's deal) would refuse the whole page if it were named,
+   * so those are left out and the rest saves. If the schema can't be read, everything is sent.
+   */
+  private async fit(dbId: string, props: Props): Promise<Props> {
+    if (!this.columns.has(dbId)) {
+      this.columns.set(dbId, this.call(`databases/${dbId}`, 'GET')
+        .then((db) => new Set(Object.keys(db.properties ?? {})))
+        .catch(() => null))
+    }
+    const known = await this.columns.get(dbId)!
+    if (!known || known.size === 0) return props
+    return Object.fromEntries(Object.entries(props).filter(([k]) => known.has(k)))
   }
 
   async load(): Promise<InflowData> {
@@ -338,7 +356,7 @@ export class NotionRepo implements Repo {
   async saveRecord(r: IncomeRecord): Promise<IncomeRecord> {
     refuseDemo(r, [r.id, r.clientId, r.sourceId, r.venueId])
     const dbs = await this.databases()
-    const properties = recordToProps(r)
+    const properties = await this.fit(dbs.income, recordToProps(r))
     const page = r.id
       ? await this.call(`pages/${r.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: dbs.income }, properties })
@@ -354,7 +372,7 @@ export class NotionRepo implements Repo {
     refuseDemo(c, [c.id, c.clientId, c.venueId])
     const dbs = await this.databases()
     if (!dbs.costs) throw new Error('No "InFlow — Costs" database next to Income in Notion. Duplicate it from the Starter Template.')
-    const properties = costToProps(c)
+    const properties = await this.fit(dbs.costs, costToProps(c))
     const page = c.id
       ? await this.call(`pages/${c.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: dbs.costs }, properties })
@@ -370,7 +388,7 @@ export class NotionRepo implements Repo {
     refuseDemo(e, [e.id])
     const dbs = await this.databases()
     const db = kind === 'client' ? dbs.clients : kind === 'source' ? dbs.sources : dbs.venues
-    const properties = TO_PROPS[kind](e)
+    const properties = await this.fit(db, TO_PROPS[kind](e))
     const page = e.id
       ? await this.call(`pages/${e.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: db }, properties })

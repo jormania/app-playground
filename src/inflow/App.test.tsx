@@ -302,6 +302,10 @@ describe('audit conveniences', () => {
     const box = await screen.findByLabelText('Suggested from recurring payments')
     await user.click(within(box).getByRole('button', { name: /Expect Ioana/ }))
     expect(await screen.findByText(/Expected on/)).toBeTruthy()
+    // Edit opens the new expected payment, its amount ready to adjust.
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(await screen.findByRole('dialog', { name: 'Edit payment' })).toBeTruthy()
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
     expect(within(screen.getByLabelText('Expected payments')).queryByRole('button', { name: /Expect Ioana/ })).toBeNull()
     const next = within(screen.getByLabelText('Suggested from recurring payments')).getAllByRole('button', { name: /^Not this time/ })[0]
     const name = next.getAttribute('aria-label')!

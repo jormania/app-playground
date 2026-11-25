@@ -86,7 +86,7 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
         {s.feature && (
           <label className={styles.tourCheck}>
             <input type="checkbox" checked={settings.features[s.feature.key]}
-              onChange={(e) => updateSettings({ features: { [s.feature!.key]: e.target.checked } })} />
+              onChange={(e) => updateSettings({ features: { [s.feature!.key]: e.target.checked }, simpleStartNotice: false })} />
             {s.feature.label} (optional)
           </label>
         )}

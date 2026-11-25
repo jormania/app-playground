@@ -313,7 +313,7 @@ export function Settings() {
       <Section id="targets" title="Target and flags">
         <div className={styles.settingsGroup}>
           <NumberInput label="Monthly income target (lei)" value={settings.monthlyTarget} placeholder="none"
-            onCommit={(n) => updateSettings({ monthlyTarget: n ?? 0 })} hint="A progress bar under “This month”. Empty for none." />
+            onCommit={(n) => updateSettings({ monthlyTarget: n ?? 0 })} hint="A progress bar under the total for a month, and for a year as twelve of them. Empty for none." />
           <SettingsToggle label="Flag unusually large payments" hint="Tags payments several times your typical one, so a windfall isn't read as a trend."
             checked={settings.largeMultiple > 0} onChange={(e) => updateSettings({ largeMultiple: e.target.checked ? 4 : 0 })} />
           {settings.largeMultiple > 0 && (

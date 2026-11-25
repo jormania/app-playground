@@ -155,10 +155,12 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
     for (const d of venueDeals(data.venues, data.records, r)) {
       const v = d.venue
       if (d.losing.length && (v.deal === 'fixed' || v.deal === 'hybrid' || v.deal === 'monthly')) {
+        // Count sessions, not payments: a losing 4-session package is four sessions.
+        const n = d.losing.reduce((a, x) => a + x.sessions, 0)
         out.push({
           // One evening that fell short is a tip; a pattern, or real money, is a pain point.
-          id: `losing-${v.id}`, rule: 'losing-sessions', kind: d.losing.length >= 2 || d.lost >= 300 ? 'pain' : 'tip', weight: d.lost * 3,
-          title: `${d.losing.length} ${d.losing.length === 1 ? 'session' : 'sessions'} at ${v.name} cost more than ${d.losing.length === 1 ? 'it' : 'they'} earned`,
+          id: `losing-${v.id}`, rule: 'losing-sessions', kind: n >= 2 || d.lost >= 300 ? 'pain' : 'tip', weight: d.lost * 3,
+          title: `${n} ${n === 1 ? 'session' : 'sessions'} at ${v.name} cost more than ${n === 1 ? 'it' : 'they'} earned`,
           detail: `The ${v.deal === 'monthly' ? 'rent' : 'fee'} is paid whoever comes; together they lost ${lei(d.lost)}.${d.breakEvenAttendees && d.breakEvenAttendees > 1 ? ` Confirming a session there once ${d.breakEvenAttendees} people have booked would avoid it.` : ''}`,
           link: { label: 'Venue deals', hash: '#/reports/deals' },
         })

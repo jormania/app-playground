@@ -107,6 +107,22 @@ describe('NotionRepo', () => {
     expect(calls.at(-1)).toEqual(['pages/xyz', 'PATCH', { archived: true }])
   })
 
+  it('leaves out columns an older copy of the database lacks, instead of failing the save', async () => {
+    const calls: [string, string, any][] = []
+    const income = { Description: {}, Amount: {}, Date: {}, Taxability: {}, Client: { relation: { database_id: 'c1' } }, Source: { relation: { database_id: 's1' } }, Venue: { relation: { database_id: 'v1' } } }
+    const call = async (path: string, method: string, body?: any) => {
+      calls.push([path, method, body])
+      return path.startsWith('databases/') && method === 'GET' ? { properties: income } : { id: 'p1' }
+    }
+    const repo = new NotionRepo('t', 'inc', memoryStore(), call)
+    await repo.saveRecord({ ...demo.records[0], id: '', demo: undefined, clientId: null, sourceId: null, venueId: null })
+    const sent = Object.keys(calls.at(-1)![2].properties)
+    expect(sent).toContain('Amount')
+    expect(sent).not.toContain('Sessions')
+    expect(sent).not.toContain('Hours')
+    expect(sent.every((k) => k in income)).toBe(true)
+  })
+
   it('copies device data to Notion with relations remapped, never demo rows', async () => {
     const mine = { ...demo, records: [{ ...demo.records[0], id: 'loc_1', demo: undefined }] }
     let n = 0
