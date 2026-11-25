@@ -1,5 +1,8 @@
 /**
- * Demo data: fourteen months of a Bucharest coaching practice — private 1:1
+ * Demo data: twenty-six months of a Bucharest coaching practice. The first
+ * year is smaller: a corporate contract that ended, a weekly client who
+ * finished, evening circles at a room rented by the evening. The second grows:
+ * private 1:1
  * clients and a couple, intro sessions that never came back, a Saturday group
  * circle, corporate team coaching and workshops, an EU client paying in euro,
  * platform and course payouts in dollars, retreats in the mountains and on a
@@ -54,6 +57,10 @@ export const DEMO_CLIENTS: Client[] = [
   C('foundation', 'Women in Coaching Foundation', 'business', 'RO', '', 'Annual award.'),
   C('studio9', 'Studio Nouă', 'business', 'RO', '', 'Design studio: rebuilt the website in exchange for coaching.'),
   C('vouchers', 'Gift vouchers', 'individual', 'RO', '', 'Vouchers bought as presents.'),
+  C('orion', 'Orion Pharma SRL', 'business', 'RO', 'HR', 'First big contract: monthly team coaching. Ended after ten months.'),
+  C('elena', 'Elena Dobre', 'individual', 'RO', '', 'Weekly 1:1 in the first year. Finished her programme.'),
+  C('lumiere', 'Evening circles', 'individual', 'RO', '', 'Monthly evening circle at Sala Lumière, 120 lei a seat.'),
+  C('shala', 'Sunday workshops', 'individual', 'RO', '', 'Every other month at the yoga shala, 180 lei a seat.'),
   // One-off intro sessions: the long tail every practice has.
   C('intro_bogdan', 'Bogdan Tudor', 'individual', 'RO', '', 'Intro session.'),
   C('intro_irina', 'Irina Popa', 'individual', 'RO', '', 'Intro session; came back once.'),
@@ -94,6 +101,8 @@ export const DEMO_VENUES: Venue[] = [
   V('coachlane', 'Coachlane app', 'online', 'coachlane.example', 'The platform keeps 20% of each session.', 'share', 0, 0.20),
   V('course', 'Courseline classroom', 'online', 'courseline.example', 'The platform keeps 15% of sales.', 'share', 0, 0.15),
   V('stage', 'Tech Week main stage', 'in_person', 'Romexpo, Bucharest'),
+  V('lumiere', 'Sala Lumière', 'in_person', 'Universitate, Bucharest', 'Evening room. 450 lei a booking, paid whoever comes.', 'fixed', 450),
+  V('shala', 'Yoga Shala Herăstrău', 'in_person', 'Herăstrău, Bucharest', 'Sunday workshops. The shala keeps 40% of the tickets.', 'share', 0, 0.40),
 ]
 
 /** Small deterministic generator, so the demo is the same every time for the same date. */
@@ -141,7 +150,10 @@ export const DEMO_SETTINGS_TAX: Settings['tax'] = {
 /** Busy autumn and spring, a quiet August and holiday season. */
 const SEASON = [0.8, 0.95, 1.1, 1.1, 1.05, 0.95, 0.75, 0.45, 1.15, 1.2, 1.15, 0.7]
 
-const MONTHS = 14
+/** Twenty-six months: a smaller first year, then the year the practice grows into. */
+const MONTHS = 26
+/** Where the second year starts: every pattern below that says `n` counts from here. */
+const Y2 = 12
 
 function drafts(today: string): Draft[] {
   const rand = rng(Number(today.slice(0, 7).replace('-', '')))
@@ -164,44 +176,53 @@ function drafts(today: string): Draft[] {
   for (let m = 0; m < MONTHS; m++) {
     const month = monthAt(m)
     const s = season(month)
+    // n: the month within the second year (negative in the first).
+    const n = m - Y2
+    if (n < 0) {
+      // First year: Orion's monthly team coaching for ten months, then it ended.
+      if (m < 10) out.push({ description: 'Team coaching — monthly', amount: 5500, currency: 'RON', date: dayIn(month, 11 + Math.floor(rand() * 4)), client: 'orion', source: 'corporate', venue: 'meet', category: 'group_coaching', recurring: true, attendees: 6 })
+      // Coachlane, smaller in the first year.
+      out.push({ description: 'Platform payout', amount: Math.round(jitter(170 + m * 16, 50) * s), currency: 'USD', date: dayIn(month, 1), client: 'coachlane', source: 'platform', venue: 'coachlane', category: 'coaching_1on1', recurring: true })
+      continue
+    }
     // Ioana: monthly package from month two, paid at the start of the month; a break in August.
-    if (m >= 1 && !isAugust(month)) {
-      out.push({ description: 'Monthly package — 4 sessions', amount: m >= 8 ? 1400 : 1300, currency: 'RON', date: dayIn(month, 2 + Math.floor(rand() * 3)), client: 'ioana', source: 'retainer', venue: 'studio', category: 'coaching_1on1', recurring: true, notes: m === 8 ? 'New rate from this month.' : undefined })
+    if (n >= 1 && !isAugust(month)) {
+      out.push({ description: 'Monthly package — 4 sessions', amount: n >= 8 ? 1400 : 1300, currency: 'RON', date: dayIn(month, 2 + Math.floor(rand() * 3)), client: 'ioana', source: 'retainer', venue: 'studio', category: 'coaching_1on1', recurring: true, notes: n === 8 ? 'New rate from this month.' : undefined })
     }
     // Nordwind: monthly group coaching invoice, paid around the 10th.
-    out.push({ description: 'Team-lead coaching circle', amount: 6500, currency: 'RON', date: dayIn(month, 9 + Math.floor(rand() * 5)), client: 'nordwind', source: 'corporate', venue: m % 3 === 2 ? 'meet' : 'nordwind', category: 'group_coaching', recurring: true, attendees: 7 })
+    out.push({ description: 'Team-lead coaching circle', amount: 6500, currency: 'RON', date: dayIn(month, 9 + Math.floor(rand() * 5)), client: 'nordwind', source: 'corporate', venue: n % 3 === 2 ? 'meet' : 'nordwind', category: 'group_coaching', recurring: true, attendees: 7 })
     // Coachlane: monthly USD payout, rising and seasonal.
-    out.push({ description: 'Platform payout', amount: Math.round(jitter(380 + m * 22, 90) * s), currency: 'USD', date: dayIn(month, 1), client: 'coachlane', source: 'platform', venue: 'coachlane', category: 'coaching_1on1', recurring: true })
-    if (m >= 6) {
+    out.push({ description: 'Platform payout', amount: Math.round(jitter(380 + n * 22, 90) * s), currency: 'USD', date: dayIn(month, 1), client: 'coachlane', source: 'platform', venue: 'coachlane', category: 'coaching_1on1', recurring: true })
+    if (n >= 6) {
       // Verdant: EUR leadership circle.
       out.push({ description: 'Leadership circle — monthly', amount: 1800, currency: 'EUR', date: dayIn(month, 15), client: 'verdant', source: 'corporate', venue: 'zoom', category: 'group_coaching', recurring: true, attendees: 6 })
     }
-    if (m >= 3 && !isAugust(month)) {
+    if (n >= 3 && !isAugust(month)) {
       // Saturday Circle: second Saturday of the month.
       const first = parseDate(month)
       const sat = addDays(month, ((6 - first.getDay() + 7) % 7) + 7)
       const people = Math.max(5, Math.round((6 + Math.floor(rand() * 5)) * Math.min(1.1, s)))
-      out.push({ description: `Saturday Circle — ${people} participants`, amount: people * (m >= 9 ? 280 : 250), currency: 'RON', date: sat, client: 'circle', source: 'direct', venue: 'cowork', category: 'workshop', attendees: people })
+      out.push({ description: `Saturday Circle — ${people} participants`, amount: people * (n >= 9 ? 280 : 250), currency: 'RON', date: sat, client: 'circle', source: 'direct', venue: 'cowork', category: 'workshop', attendees: people })
     }
-    if (m >= 7) {
+    if (n >= 7) {
       // Course sales: launched in month eight, then a long tail.
-      const sales = m === 7 ? 1250 : jitter(Math.max(180, 900 - (m - 7) * 95), 120)
-      out.push({ description: m === 7 ? 'Course launch payout — Calm Leadership' : 'Course sales payout', amount: sales, currency: 'USD', date: dayIn(month, 6), client: 'courseline', source: 'course', venue: 'course', category: 'content', recurring: m > 7 })
+      const sales = n === 7 ? 1250 : jitter(Math.max(180, 900 - (n - 7) * 95), 120)
+      out.push({ description: n === 7 ? 'Course launch payout — Calm Leadership' : 'Course sales payout', amount: sales, currency: 'USD', date: dayIn(month, 6), client: 'courseline', source: 'course', venue: 'course', category: 'content', recurring: n > 7 })
     }
-    if (m % 3 === 1) {
+    if (n % 3 === 1) {
       out.push({ description: 'Workbook royalties — quarter', amount: jitter(1150, 250), currency: 'RON', date: dayIn(month, 20), client: 'pagina', source: 'royalties', venue: 'zoom', category: 'content', notes: '10% tax withheld by the publisher.' })
     }
-    if (m % 3 === 0 && m > 0) {
+    if (n % 3 === 0 && n > 0) {
       out.push({ description: 'Leadership workshop — branch managers', amount: jitter(9800, 1200), currency: 'RON', date: dayIn(month, 24), client: 'northbridge', source: 'corporate', venue: 'northbridge', category: 'workshop', attendees: 14 })
     }
-    if (m >= 4 && m <= 7) {
+    if (n >= 4 && n <= 7) {
       out.push({ description: 'Mentoring stipend — youth workers', amount: 1000, currency: 'RON', date: dayIn(month, 28), client: 'ngo', source: 'ngo', venue: 'meet', category: 'group_coaching', recurring: true, attendees: 8 })
     }
   }
 
   // Thursday evening workshops at the loft: fixed rent, uneven turnout. Some evenings lose money.
   const turnout = [7, 3, 9, 2, 11, 6, 4, 12, 8, 5]
-  for (let m = 4, k = 0; m < MONTHS; m++) {
+  for (let m = Y2 + 4, k = 0; m < MONTHS; m++) {
     const month = monthAt(m)
     if (isAugust(month)) continue
     const first = parseDate(month)
@@ -210,13 +231,40 @@ function drafts(today: string): Draft[] {
     out.push({ description: `Evening workshop — ${people} ${people === 1 ? 'seat' : 'seats'}`, amount: people * 220, currency: 'RON', date: thu, client: 'evening', source: 'direct', venue: 'loft', category: 'workshop', attendees: people })
   }
 
+  // Evening circles at Sala Lumière since the first year: 450 lei a booking, 120 a seat.
+  // Turnout sits just above the four seats that cover the room — never below, never far above.
+  const circle = [5, 4, 6, 4, 5, 4, 5, 6, 4, 5, 4, 5]
+  for (let m = 2, k = 0; m < MONTHS; m++) {
+    const month = monthAt(m)
+    if (isAugust(month) || m === Y2 - 1) continue
+    const first = parseDate(month)
+    const wed = addDays(month, ((3 - first.getDay() + 7) % 7) + 7)
+    const people = circle[k++ % circle.length]
+    out.push({ description: `Evening circle — ${people} seats`, amount: people * 120, currency: 'RON', date: wed, client: 'lumiere', source: 'direct', venue: 'lumiere', category: 'group_coaching', attendees: people })
+  }
+
+  // Sunday workshops at the yoga shala, every other month in the second year: 40% to the shala.
+  const sunday = [10, 8, 12, 9, 11, 10]
+  for (let m = Y2 + 1, k = 0; m < MONTHS; m += 2) {
+    const month = monthAt(m)
+    if (isAugust(month)) continue
+    const first = parseDate(month)
+    const sun = addDays(month, ((0 - first.getDay() + 7) % 7) + 21)
+    const people = sunday[k++ % sunday.length]
+    out.push({ description: `Sunday workshop — ${people} seats`, amount: people * 180, currency: 'RON', date: sun, client: 'shala', source: 'direct', venue: 'shala', category: 'workshop', attendees: people })
+  }
+
   const end = today
+  // Elena: weekly 1:1 on Wednesdays through the first year, then she finished.
+  weekly(monthAt(0), 3, 1, monthAt(Y2 + 1), (d) => {
+    if (!isAugust(d)) out.push({ description: 'Coaching session', amount: 300, currency: 'RON', date: d, client: 'elena', source: 'direct', venue: 'studio', category: 'coaching_1on1' })
+  })
   // Radu: every other Tuesday, alternating studio and Zoom; skips August.
-  weekly(monthAt(0), 2, 2, end, (d, i) => {
+  weekly(monthAt(Y2), 2, 2, end, (d, i) => {
     if (!isAugust(d)) out.push({ description: 'Coaching session', amount: i > 14 ? 450 : 400, currency: 'RON', date: d, client: 'radu', source: 'referral', venue: i % 2 ? 'zoom' : 'studio', category: 'coaching_1on1' })
   })
   // Mihai & Ana: couples coaching, every other Monday, months 2–9.
-  weekly(monthAt(1), 1, 2, monthAt(9), (d) => {
+  weekly(monthAt(Y2 + 1), 1, 2, monthAt(Y2 + 9), (d) => {
     if (!isAugust(d)) out.push({ description: 'Couples session', amount: 550, currency: 'RON', date: d, client: 'couple', source: 'referral', venue: 'studio', category: 'coaching_1on1', attendees: 2 })
   })
   // Andreea: weekly on Thursdays, the last five months.
@@ -253,12 +301,17 @@ function drafts(today: string): Draft[] {
     { description: 'Travel costs reimbursed', amount: 640, currency: 'RON', date: ago(2, 18), client: 'techweek', source: 'events', venue: 'stage', category: 'reimbursement', notes: 'Train and hotel, at cost.' },
     { description: 'Online workshop — feedback culture', amount: 950, currency: 'GBP', date: ago(3, 12), client: 'harbour', source: 'referral', venue: 'zoom', category: 'workshop', attendees: 9 },
     { description: 'Coach of the Year award', amount: 2000, currency: 'RON', date: ago(9, 9), client: 'foundation', source: 'awards', venue: 'stage', category: 'other', notes: 'Prize money. Ask the accountant whether it counts as professional income.' },
-    { description: 'New website, in exchange for 6 sessions', amount: 2400, currency: 'RON', date: ago(6, 3), client: 'studio9', source: 'awards', venue: 'studio', category: 'other', notes: 'Barter at market value. Is it income? Check.' },
+    { description: 'New website, in exchange for 6 sessions', amount: 2400, currency: 'RON', date: ago(6, 9), client: 'studio9', source: 'awards', venue: 'studio', category: 'other', notes: 'Barter at market value. Is it income? Check.' },
     { description: 'Gift vouchers — Christmas', amount: 1500, currency: 'RON', date: `${Number(today.slice(0, 4)) - 1}-12-15`, client: 'vouchers', source: 'direct', venue: 'studio', category: 'coaching_1on1', notes: 'Three vouchers of three sessions each.' },
     // This week, so the dashboard's week is never empty on a Monday-to-Wednesday visit.
     { description: 'Single session', amount: 400, currency: 'RON', date: today, client: 'intro_mara', source: 'direct', venue: 'studio', category: 'coaching_1on1', notes: 'Came back after the intro.' },
     { description: 'Strategy session (EN)', amount: 150, currency: 'EUR', date: startOfWeekOf(today), client: 'sophie', source: 'direct', venue: 'zoom', category: 'coaching_1on1' },
-    // Outstanding: one overdue, two coming.
+    // The first year's one-offs.
+    { description: 'Summer retreat — facilitation, 3 days', amount: 8000, currency: 'RON', date: ago(16, 18), client: 'retreats', source: 'agency', venue: 'cabana', category: 'retreat', attendees: 9 },
+    { description: 'Guest lecture — coaching psychology', amount: 1000, currency: 'RON', date: ago(22, 14), client: 'unibuc', source: 'teaching', venue: 'aula', category: 'speaking' },
+    { description: 'Gift vouchers — Christmas', amount: 900, currency: 'RON', date: `${Number(today.slice(0, 4)) - 2}-12-15`, client: 'vouchers', source: 'direct', venue: 'studio', category: 'coaching_1on1', notes: 'Two vouchers of three sessions each.' },
+    // Outstanding: two overdue, two coming.
+    { description: 'Six-session package — second half', amount: 975, currency: 'RON', date: addDays(today, -24), client: 'clara', source: 'direct', venue: 'zoom', category: 'coaching_1on1', expected: true, notes: 'Agreed to pay in two parts.' },
     { description: 'Follow-up workshop — invoice sent', amount: 950, currency: 'GBP', date: addDays(today, -6), client: 'harbour', source: 'referral', venue: 'zoom', category: 'workshop', expected: true },
     { description: 'Team-lead coaching circle — next invoice', amount: 6500, currency: 'RON', date: addDays(today, 9), client: 'nordwind', source: 'corporate', venue: 'nordwind', category: 'group_coaching', recurring: true, expected: true },
     { description: 'Leadership workshop — Q1 booking', amount: 10500, currency: 'RON', date: addDays(today, 40), client: 'northbridge', source: 'corporate', venue: 'northbridge', category: 'workshop', expected: true },
@@ -359,6 +412,7 @@ function demoCosts(today: string, records: IncomeRecord[]): CostRecord[] {
   const received = records.filter((r) => r.status === 'received')
   for (let m = 0; m < MONTHS; m++) {
     const month = addMonths(first, m)
+    const n = m - Y2
     const inMonth = received.filter((r) => r.date.slice(0, 7) === month.slice(0, 7))
     const studio = inMonth.filter((r) => r.venueId === 'demo_v_studio' && r.category === 'coaching_1on1').length
     if (studio) out.push({ description: `Studio Lumina — ${studio} hours`, amount: studio * 60, date: at(month, 28), group: 'direct', category: 'venue_hire', venue: 'studio', activity: 'coaching_1on1' })
@@ -376,31 +430,41 @@ function demoCosts(today: string, records: IncomeRecord[]): CostRecord[] {
     for (const r of inMonth.filter((x) => x.clientId === 'demo_c_courseline')) {
       out.push({ description: 'Courseline platform fee (15%)', amount: Math.round(r.amountRon * 0.15), date: r.date, group: 'direct', category: 'platform_fees', venue: 'course', activity: 'content', client: 'courseline' })
     }
+    for (const r of inMonth.filter((x) => x.venueId === 'demo_v_lumiere')) {
+      out.push({ description: 'Sala Lumière — evening booking', amount: 450, date: r.date, group: 'direct', category: 'venue_hire', venue: 'lumiere', activity: 'group_coaching', client: 'lumiere' })
+    }
+    for (const r of inMonth.filter((x) => x.venueId === 'demo_v_shala')) {
+      out.push({ description: 'Yoga Shala — 40% of tickets', amount: Math.round(r.amountRon * 0.4), date: r.date, group: 'direct', category: 'venue_hire', venue: 'shala', activity: 'workshop', client: 'shala' })
+      out.push({ description: 'Mats, tea and handouts', amount: 90, date: r.date, group: 'direct', category: 'materials', venue: 'shala', activity: 'workshop', client: 'shala' })
+    }
     for (const r of inMonth.filter((x) => x.clientId === 'demo_c_northbridge')) {
       out.push({ description: 'Co-trainer — branch managers workshop', amount: 1800, date: r.date, group: 'direct', category: 'facilitator', venue: 'northbridge', activity: 'workshop', client: 'northbridge' })
     }
     out.push(
       { description: 'Zoom Pro', amount: 75, date: at(month, 5), group: 'operating', category: 'software', recurring: true },
-      { description: 'Coworking desk — monthly membership', amount: 850, date: at(month, 2), group: 'operating', category: 'rent', recurring: true },
+      n >= 0
+        ? { description: 'Coworking desk — monthly membership', amount: 850, date: at(month, 2), group: 'operating', category: 'rent', recurring: true }
+        : { description: 'Home office share of rent', amount: 400, date: at(month, 2), group: 'operating', category: 'rent', recurring: true },
       { description: 'Utilities share', amount: Math.round(140 + rand() * 60), date: at(month, 15), group: 'operating', category: 'utilities', recurring: true },
       { description: 'Website, domain and booking tool', amount: m % 2 ? 45 : 120, date: at(month, 5), group: 'operating', category: 'software', recurring: true },
       { description: 'Accountant — monthly fee', amount: 350, date: at(month, 20), group: 'operating', category: 'accounting', recurring: true },
       { description: 'Phone and internet', amount: 115, date: at(month, 18), group: 'operating', category: 'phone_internet', recurring: true },
       { description: 'Bank account and card fees', amount: 22, date: at(month, 1), group: 'operating', category: 'bank_fees', recurring: true },
-      { description: 'Owner drawing', amount: m < 4 ? 6_000 : 9_000, date: at(month, 27), group: 'financing', category: 'owner_drawings', recurring: true },
+      { description: 'Owner drawing', amount: n < 0 ? 4_500 : n < 4 ? 6_000 : 9_000, date: at(month, 27), group: 'financing', category: 'owner_drawings', recurring: true },
     )
     out.push({ description: 'Supervision session', amount: 400, date: at(month, 12), group: 'operating', category: 'training', recurring: true })
     if (m >= 2) out.push({ description: 'Laptop — monthly depreciation (36 months)', amount: 217, date: at(month, 28), group: 'depreciation', category: 'depreciation', recurring: true })
-    const ads = month.slice(5, 7) === '08' ? 0 : m === 7 ? 1_400 : Math.round((250 + rand() * 300) / 10) * 10
-    if (ads) out.push({ description: m === 7 ? 'Course launch ads' : 'Social media ads', amount: ads, date: at(month, 8), group: 'operating', category: 'marketing' })
+    const ads = month.slice(5, 7) === '08' ? 0 : n === 7 ? 1_400 : Math.round(((n < 0 ? 120 : 250) + rand() * 300) / 10) * 10
+    if (ads) out.push({ description: n === 7 ? 'Course launch ads' : 'Social media ads', amount: ads, date: at(month, 8), group: 'operating', category: 'marketing' })
   }
   const ago = (months: number, day: number) => at(addMonths(startOfMonth(today), -months), day)
   out.push(
     { description: 'Professional liability insurance — year', amount: 720, date: at(addMonths(first, 1), 10), group: 'operating', category: 'insurance' },
     { description: 'Laptop', amount: 7_800, date: at(addMonths(first, 2), 4), group: 'investment', category: 'equipment', notes: 'Depreciated over 36 months.' },
     { description: 'Coaching credential renewal', amount: 1_250, date: at(addMonths(first, 4), 15), group: 'operating', category: 'training' },
-    { description: 'Team coaching certification — module 2', amount: 3_200, date: at(addMonths(first, 9), 10), group: 'operating', category: 'training' },
-    { description: 'Brand photos and new website design', amount: 2_400, date: at(addMonths(first, 5), 18), group: 'operating', category: 'marketing' },
+    { description: 'Team coaching certification — module 1', amount: 2_900, date: at(addMonths(first, 6), 10), group: 'operating', category: 'training' },
+    { description: 'Team coaching certification — module 2', amount: 3_200, date: at(addMonths(first, Y2 + 9), 10), group: 'operating', category: 'training' },
+    { description: 'Brand photos and new website design', amount: 2_400, date: at(addMonths(first, Y2 + 5), 18), group: 'operating', category: 'marketing' },
     { description: 'Co-facilitator — spring retreat', amount: 2_500, date: ago(7, 22), group: 'direct', category: 'facilitator', venue: 'cabana', activity: 'retreat', client: 'retreats' },
     { description: 'Retreat materials and journals', amount: 640, date: ago(7, 19), group: 'direct', category: 'materials', venue: 'cabana', activity: 'retreat', client: 'retreats' },
     { description: 'Co-facilitator — island retreat', amount: 600, currency: 'EUR', date: ago(4, 29), group: 'direct', category: 'facilitator', venue: 'thassos', activity: 'retreat', client: 'aegean' },
@@ -409,17 +473,19 @@ function demoCosts(today: string, records: IncomeRecord[]): CostRecord[] {
     { description: 'Train to Cluj and one night', amount: 380, date: ago(4, 8), group: 'direct', category: 'travel', venue: 'festival', activity: 'speaking', client: 'festival' },
     { description: 'Co-facilitator — autumn retreat', amount: 2_800, date: ago(1, 6), group: 'direct', category: 'facilitator', venue: 'cabana', activity: 'retreat', client: 'retreats' },
     { description: 'Retreat materials and journals', amount: 720, date: ago(1, 3), group: 'direct', category: 'materials', venue: 'cabana', activity: 'retreat', client: 'retreats' },
-    { description: 'Course platform — video editing', amount: 1_600, date: at(addMonths(first, 6), 22), group: 'direct', category: 'platform_fees', venue: 'course', activity: 'content', client: 'courseline' },
+    { description: 'Co-facilitator — summer retreat', amount: 2_000, date: ago(16, 18), group: 'direct', category: 'facilitator', venue: 'cabana', activity: 'retreat', client: 'retreats' },
+    { description: 'Course platform — video editing', amount: 1_600, date: at(addMonths(first, Y2 + 6), 22), group: 'direct', category: 'platform_fees', venue: 'course', activity: 'content', client: 'courseline' },
     // Next month's accountant and the bank workshop's co-trainer, not yet paid.
     { description: 'Accountant — monthly fee', amount: 350, date: addDays(today, 25), group: 'operating', category: 'accounting', recurring: true, due: true },
     { description: 'Co-trainer — Q1 branch managers workshop', amount: 1_800, date: addDays(today, 40), group: 'direct', category: 'facilitator', venue: 'northbridge', activity: 'workshop', client: 'northbridge', due: true },
   )
-  // Last year's Declarația unică, paid on 25 May.
-  const may = `${today.slice(0, 4)}-05-25`
-  if (may >= first && may <= today) {
+  // The Declarația unică for the year before, paid on 25 May — this year and last.
+  for (const [year, cas, income] of [[Number(today.slice(0, 4)), 4_860 + 2_430, 1_480], [Number(today.slice(0, 4)) - 1, 2_430 + 2_430, 620]] as const) {
+    const may = `${year}-05-25`
+    if (may < first || may > today) continue
     out.push(
-      { description: 'CAS and CASS for last year', amount: 4_860 + 2_430, date: may, group: 'tax', category: 'contributions' },
-      { description: 'Income tax for last year', amount: 1_480, date: may, group: 'tax', category: 'income_tax' },
+      { description: `CAS and CASS for ${year - 1}`, amount: cas, date: may, group: 'tax', category: 'contributions' },
+      { description: `Income tax for ${year - 1}`, amount: income, date: may, group: 'tax', category: 'income_tax' },
     )
   }
   return out

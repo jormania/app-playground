@@ -52,7 +52,12 @@ export function movers(
       .slice(0, perDim)
     all.push(...list)
   }
-  return all.sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, n)
+  // The biggest drops always make the list (up to two), so a client who stopped
+  // is never crowded out by a good year's rises.
+  const ranked = all.sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+  const drops = ranked.filter((x) => x.change < 0).slice(0, 2)
+  const rest = ranked.filter((x) => !drops.includes(x)).slice(0, Math.max(0, n - drops.length))
+  return [...rest, ...drops].sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
 }
 
 /** Who carries the income: the top rows of one dimension. */

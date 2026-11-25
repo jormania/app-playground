@@ -242,13 +242,33 @@ in Notion first. The Starter Template (`Dev → Starter Templates`) has all five
 each other. Moving from device to Notion: a one-time copy of the user's own rows, entities
 first so relations point at new ids; demo rows never leave the device.
 
-**Demo:** `data/demo.ts` — fourteen months of a coaching practice relative to today:
-186 payments from 30 clients at 14 venues in five places, RON/EUR/USD/GBP, growth with a
-quiet August, withheld royalties and lecture fees, reimbursements, an award and a barter for
-review, three expected payments — and 225 costs: studio hire per session, the Saturday
-room and snacks, co-facilitators on retreats and bank workshops, platform commissions,
-coworking desk, software, accountant, supervision, a laptop bought and depreciated, last
-year's tax paid on 25 May, monthly owner drawings, two costs still due.
+**Demo:** `data/demo.ts`, twenty-six months of a coaching practice relative to today, so
+every feature has something real to show (extended 25 Nov 2026):
+- **Two years.** A smaller first year has Orion Pharma's monthly contract (ended after ten
+  months), Elena Dobre's weekly 1:1 (finished), smaller platform payouts, a summer retreat and
+  a lecture. The second year grows. "Year" therefore compares with a full last year, movers
+  show drops as well as rises, the quietest month has settled history, and both the 2025 and
+  2026 tax rulesets and May tax payments appear.
+- **Rooms on both kinds of deal:**
+
+  | Room | Deal | Role in the demo |
+  |---|---|---|
+  | Studio Lumina | fixed 60 | 1:1 |
+  | Casa Verde loft | fixed 600 | uneven turnout, one losing evening |
+  | Sala Lumière | fixed 450, 120 a seat | turnout 4–6 against a break-even of 4: close, never losing |
+  | Coworking Cotroceni | 30% | |
+  | Yoga Shala Herăstrău | 40% | |
+  | Coachlane | 20% | platform |
+  | Courseline | 15% | platform |
+
+  The same workshop runs at three rooms.
+- **Also covered:** four currencies, withheld royalties and lecture fees, reimbursements, an
+  award and a barter for review, two overdue and two upcoming payments, intro clients who never
+  came back, and regular clients going quiet and growing.
+- **About 300 payments and 435 costs:** room bookings and shares, co-facilitators, materials,
+  platform commissions, a home office then a coworking desk, software, accountant, supervision,
+  two certification modules, a laptop depreciated over 36 months, and owner drawings.
+- Cash stays positive from a 14,000 lei start.
 
 ## Feature switches
 

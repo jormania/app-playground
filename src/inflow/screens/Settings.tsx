@@ -156,7 +156,7 @@ export function Settings() {
             options={[{ value: 'mine', label: 'My data' }, { value: 'demo', label: 'Demo practice' }]} />
           {workspace === 'demo' ? (
             <>
-              <p className={styles.hint}>Fourteen months of a coaching practice: private clients, group workshops at rooms rented by the evening or on a share of the tickets, corporate work in lei and euro, platform payouts in dollars, retreats, and the costs behind them. It lives apart from your data, on this device only: try anything here, then switch back to “My data” — nothing of the demo comes with you.</p>
+              <p className={styles.hint}>Two years of a coaching practice: private clients, group workshops at rooms rented by the evening or on a share of the tickets, corporate work in lei and euro, platform payouts in dollars, retreats, and the costs behind them. It lives apart from your data, on this device only: try anything here, then switch back to “My data” — nothing of the demo comes with you.</p>
               <div className={styles.buttonPair}>
                 <Button variant="secondary" onClick={() => setConfirm('reset')}>Reset demo</Button>
                 <Button variant="danger" onClick={() => setConfirm('clear')}>Clear demo data</Button>

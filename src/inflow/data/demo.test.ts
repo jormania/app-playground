@@ -20,8 +20,8 @@ describe('demo data', () => {
     expect(rs.some((r) => r.taxHandling === 'withheld' && r.taxWithheld > 0)).toBe(true)
     expect(rs.some((r) => r.taxHandling === 'self_declared')).toBe(true)
     expect(rs.some((r) => r.vat === 'reverse_charge')).toBe(true)
-    expect(rs.filter((r) => r.status === 'expected')).toHaveLength(3)
-    expect(new Set(rs.map((r) => r.date.slice(0, 7))).size).toBeGreaterThanOrEqual(14)
+    expect(rs.filter((r) => r.status === 'expected')).toHaveLength(4)
+    expect(new Set(rs.map((r) => r.date.slice(0, 7))).size).toBeGreaterThanOrEqual(26)
     expect(rs.length).toBeGreaterThan(150)
     // Several cities, not just Bucharest.
     expect(new Set(demo.venues.map((v) => v.location.split(', ').pop())).size).toBeGreaterThanOrEqual(4)
@@ -61,6 +61,35 @@ describe('demo data', () => {
   })
 })
 
+describe('the demo exercises every feature', () => {
+  const rec = (y: string) => demo.records.filter((r) => r.status === 'received' && r.date.startsWith(y))
+  it('has a full previous year, so "Year" compares with a real last year', () => {
+    expect(new Set(rec('2025').map((r) => r.date.slice(0, 7))).size).toBe(12)
+    expect(rec('2025').reduce((a, r) => a + r.amountRon, 0)).toBeGreaterThan(80_000)
+    // and the practice grew into its second year
+    expect(rec('2026').reduce((a, r) => a + r.amountRon, 0)).toBeGreaterThan(rec('2025').reduce((a, r) => a + r.amountRon, 0) * 1.5)
+  })
+  it('has a client that ended and one that finished, for movers and year comparisons', () => {
+    const last = (id: string) => demo.records.filter((r) => r.clientId === `demo_c_${id}`).map((r) => r.date).sort().at(-1)!
+    expect(last('orion') < '2025-09-01').toBe(true)
+    expect(last('elena') < '2025-12-01').toBe(true)
+  })
+  it('has rooms on both kinds of deal, one losing evenings and one just above its break-even', () => {
+    const deals = new Set(demo.venues.filter((v) => demo.records.some((r) => r.venueId === v.id)).map((v) => v.deal))
+    expect(deals).toEqual(new Set(['fixed', 'share', 'none']))
+    const lumiere = demo.records.filter((r) => r.venueId === 'demo_v_lumiere')
+    expect(lumiere.every((r) => (r.attendees ?? 0) >= 4)).toBe(true)
+    expect(lumiere.length).toBeGreaterThan(15)
+  })
+  it('runs the same workshop at three rooms', () => {
+    const rooms = new Set(demo.records.filter((r) => r.category === 'workshop' && r.date.startsWith('2026') && ['demo_v_loft', 'demo_v_cowork', 'demo_v_shala'].includes(r.venueId!)).map((r) => r.venueId))
+    expect(rooms.size).toBe(3)
+  })
+  it('pays last year\'s tax in May, both years', () => {
+    expect(demo.costs.filter((c) => c.group === 'tax').map((c) => c.date.slice(0, 4)).sort()).toEqual(['2025', '2025', '2026', '2026'])
+  })
+})
+
 describe('dashboard figures come from the records', () => {
   const month = resolvePeriod({ preset: 'month' }, today)
   const rs = received(demo.records, month)
@@ -84,8 +113,8 @@ describe('dashboard figures come from the records', () => {
     const large = largeRecordIds(demo.records, 4)
     expect(demo.records.filter((r) => large.has(r.id)).map((r) => r.description).join()).toMatch(/retreat/i)
     const o = outstanding(demo.records, today)
-    expect(o.count).toBe(3)
-    expect(o.overdue).toBe(1)
+    expect(o.count).toBe(4)
+    expect(o.overdue).toBe(2)
   })
 
   it('produces a plausible annual estimate (between 10% and 40% of taxable income)', () => {

@@ -58,7 +58,7 @@ export const APPS = [
       "Venue deals: each venue's fixed fee or revenue share with what it left you, the head count that covers a fee, and a what-if on other terms",
       "Clients & work: ranked by what you kept after venue fees and direct costs, with sessions and the average a session; plain-language pain points and wins in the Review",
       "Feature switches: start simple and turn on deals, costs, tax, currencies, filters and printing when you need them, each explained in Settings",
-      "Notion-backed (Income, Costs, Clients, Sources, Venues) or kept on this device; a fourteen-month coaching-practice demo kept apart from your data, one switch away and back; a short welcome guide; installable, works offline",
+      "Notion-backed (Income, Costs, Clients, Sources, Venues) or kept on this device; a two-year coaching-practice demo kept apart from your data, one switch away and back; a short welcome guide; installable, works offline",
     ],
     file: "inflow-react.html",
   },

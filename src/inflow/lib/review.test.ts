@@ -58,3 +58,15 @@ describe('a comparison reaching before the first record', () => {
     expect(text).not.toMatch(/(up|down) \d+%/)
   })
 })
+
+describe('movers keep the biggest drops', () => {
+  it('lists a client who stopped even when larger rises fill the list', () => {
+    const data = { clients: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'x'].map((id) => ({ ...demo.clients[0], id, name: id.toUpperCase() })), sources: [], venues: [] }
+    const before = [rec('x', 3000, '2025-03-01')]
+    const cur = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id, i) => rec(id, 10_000 + i * 1000, '2026-03-01'))
+    const m = movers(data, cur, before, ['client'], 6, 10)
+    expect(m).toHaveLength(6)
+    expect(m.map((x) => x.name)).toContain('X')
+    expect(m.find((x) => x.name === 'X')!.change).toBe(-3000)
+  })
+})
