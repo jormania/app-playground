@@ -13,7 +13,7 @@ import { usePeriodData } from '../app/usePeriod'
 import { MonthlyPair, ShareBar, SplitBar, Sparkline } from '../components/charts'
 import { Optional } from '../components/Optional'
 import { ReportBuilder } from './ReportBuilder'
-import { DealsReport, ReviewReport, SectionIndex } from './Insights'
+import { DEAL_SECTIONS, DealsReport, ReviewReport, SectionIndex } from './Insights'
 import type { CostRecord } from '../domain/types'
 import { ACTIVITY, PROFILE, options } from '../domain/vocabulary'
 import {
@@ -91,6 +91,7 @@ export function Reports({ tab, onAddCost }: { tab: ReportTab; onTab?: (t: Report
           </div>
         )}
         {shown === 'insights' && <SectionIndex />}
+        {shown === 'deals' && <SectionIndex items={DEAL_SECTIONS} />}
       </nav>
       {scoped && (filters || scopeIsSet(scope)) && <ScopeBar />}
       <div key={shown} className={`${styles.screen} ${styles.screenIn}`}>

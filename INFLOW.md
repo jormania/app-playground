@@ -64,6 +64,25 @@ Navigation: a drill-down from a report leaves a trail (`app/trail.ts`), and Inco
 "← Back to Review". Month headings on Income and Costs stick while scrolling. Tapping the
 current tab scrolls to the top. Each screen names itself in the browser tab.
 
+**Venue deals** (`DealsReport`, `lib/deals.ts`), in five sections under a section index:
+- **Keep, watch or rethink**: every room ranked by what a session leaves you. `verdict()`:
+  *early* under 3 sessions; *rethink* if it loses on average or ≥ 25% of sessions lost
+  money; *watch* if any lost, turnout is within 30% of the break-even, or the venue takes
+  over a third; *keep* otherwise. Each verdict is a word with an icon, never colour alone.
+- **How full each room must be**: seat strips. The break-even seats are outlined amber, the
+  rest are green, with a marker at the average turnout and the cushion in words.
+  Revenue-share rooms say "no break-even".
+- **Every session, after the room**: one bar per session on one scale, with losses below
+  the line.
+- **Fixed fee or a share?**: the deal types side by side, with advice for each and a caveat
+  that different rooms host different work.
+- **Venue by venue**: twisties, opened for *rethink*, with the "try another deal" chart. A
+  crossover under one person reads "from the first person on".
+
+The Review's grid is **Which work pays best, and where**: a sentence saying what a square
+is, four ready-made questions, "Customise the grid", and the three strongest and weakest
+squares in words. A period too short to compare offers the whole year.
+
 ### Printable reports
 Four reports, each with when to print it and what it holds (`PRESET_ADVICE`):
 - **Month at a glance**: headline, *In short* with the movers, top clients, pain points.

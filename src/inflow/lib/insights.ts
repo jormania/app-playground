@@ -50,9 +50,9 @@ export type HeatMeasure = 'income' | 'perSession' | 'take' | 'takePerSession'
 export type HeatAxis = Dimension | 'month'
 
 export const HEAT_MEASURE_LABEL: Record<HeatMeasure, string> = {
-  income: 'Income',
+  income: 'Total income',
   perSession: 'Income per session',
-  take: 'What you kept',
+  take: 'Total kept',
   takePerSession: 'Kept per session',
 }
 
@@ -192,7 +192,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
       id: `best-activity`, kind: 'win', weight: best.kept * 0.5,
       title: `${nameOf(data, 'activity', best.id)} keeps the most per session: ${lei(best.perSession)}`,
       detail: `${best.n} sessions brought ${lei(best.income)}${opts.deals || opts.costs ? `, and ${lei(best.kept)} stayed with you` : ''}. More of this is the quickest way up.`,
-      link: { label: 'Heat map', hash: '#/reports/insights' },
+      link: { label: 'See where it pays best', hash: '#/reports/insights' },
     })
   }
 

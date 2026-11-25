@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildDemo } from '../data/demo'
-import { crossover, dealCurve, defaultAlternative, venueCostOf, venueDeal } from './deals'
+import { crossover, dealCurve, dealTypes, defaultAlternative, venueCostOf, venueDeal, venueDeals, verdict } from './deals'
 import { heatMap, insights, takeHome } from './insights'
 
 const today = '2026-11-25'
@@ -97,3 +97,26 @@ describe('take-home and the heat map', () => {
   })
 })
 
+
+describe('keep, watch or rethink', () => {
+  const at = (id: string) => venueDeal(venue(id), demo.records, year)
+  it('keeps a share deal that never lost money, and watches the loft that once did', () => {
+    expect(verdict(at('cowork')).level).toBe('keep')
+    const loft = verdict(at('loft'))
+    expect(loft.level).toBe('watch')
+    expect(loft.reason).toMatch(/1 session of 9 lost money/)
+  })
+  it('rethinks a room where a quarter of sessions lose money', () => {
+    const v = { ...venue('loft'), feePerSession: 1500 }
+    expect(verdict(venueDeal(v, demo.records, year)).level).toBe('rethink')
+  })
+  it('is too early with fewer than three sessions', () => {
+    const one = demo.records.filter((r) => r.venueId === 'demo_v_loft' && r.status === 'received').slice(0, 2)
+    expect(verdict(venueDeal(venue('loft'), one, year)).level).toBe('early')
+  })
+  it('compares the kinds of deal', () => {
+    const rows = dealTypes(venueDeals(demo.venues, demo.records, year).filter((d) => d.venue.deal !== 'none'))
+    expect(rows.map((r) => r.deal).sort()).toEqual(['fixed', 'share'])
+    expect(rows.find((r) => r.deal === 'fixed')!.losing).toBeGreaterThan(0)
+  })
+})

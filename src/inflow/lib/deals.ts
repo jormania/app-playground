@@ -12,7 +12,7 @@
  *   none     nothing (online, client's office, an agency pays)
  */
 import type { IncomeRecord, Venue } from '../domain/types'
-import { round2 } from './money'
+import { lei, percent, round2 } from './money'
 
 const inRange = (d: string, r: { from: string; to: string }) => d >= r.from && d <= r.to
 
@@ -166,4 +166,76 @@ export function defaultAlternative(d: VenueDeal): Pick<Venue, 'deal' | 'feePerSe
   // Fixed, hybrid, monthly: the share that would have cost the same overall, else 30%.
   const share = d.effectiveShare && d.effectiveShare > 0 ? Math.min(0.9, Math.round(d.effectiveShare * 20) / 20) : 0.3
   return { deal: 'share', feePerSession: 0, sharePct: share, monthlyFee: 0 }
+}
+
+export type VerdictLevel = 'keep' | 'watch' | 'rethink' | 'early'
+
+export interface Verdict { level: VerdictLevel; reason: string }
+
+const MIN_SESSIONS = 3
+
+/**
+ * Keep, watch or rethink a venue: the call a beginner needs, in one line.
+ *   early    fewer than three sessions — nothing to judge yet
+ *   rethink  a quarter or more of sessions lost money, or it loses on average
+ *   watch    some sessions lost money, turnout sits near the break-even, or the
+ *            venue takes over a third of the takings
+ *   keep     none of that
+ */
+export function verdict(d: VenueDeal): Verdict {
+  const n = d.sessions.length
+  const s = (k: number, word = 'session') => `${k} ${word}${k === 1 ? '' : 's'}`
+  if (n < MIN_SESSIONS) return { level: 'early', reason: `Only ${s(n)} so far: too early to judge.` }
+  const lostShare = d.losing.length / n
+  if (d.takePerSession < 0) return { level: 'rethink', reason: `Loses ${lei(-d.takePerSession)} a session on average after the room.` }
+  if (lostShare >= 0.25) return { level: 'rethink', reason: `${d.losing.length} of ${n} sessions lost money (${lei(d.lost)} in all).` }
+  if (d.losing.length) return { level: 'watch', reason: `${s(d.losing.length)} of ${n} lost money (${lei(d.lost)}); the rest carried it.` }
+  if (d.breakEvenAttendees && d.avgAttendees !== null && d.breakEvenAttendees > 1 && d.avgAttendees < d.breakEvenAttendees * 1.3) {
+    return { level: 'watch', reason: `Turnout averages ${people(d.avgAttendees)}; the room needs ${people(d.breakEvenAttendees)}. Little cushion.` }
+  }
+  if (d.effectiveShare !== null && d.effectiveShare > 0.34) return { level: 'watch', reason: `The venue takes ${percent(d.effectiveShare)} of what comes in.` }
+  return {
+    level: 'keep',
+    reason: d.venue.deal === 'share' || d.venue.deal === 'hybrid'
+      ? `Never lost money; the venue's ${percent(d.effectiveShare ?? 0)} share moves with turnout.`
+      : d.breakEvenAttendees && d.avgAttendees !== null && d.breakEvenAttendees > 1
+        ? `Turnout averages ${people(d.avgAttendees)}, well past the ${people(d.breakEvenAttendees)} the room needs.`
+        : `Every session paid for itself.`,
+  }
+}
+
+export function people(n: number): string {
+  return `${n} ${n === 1 ? 'person' : 'people'}`
+}
+
+export interface DealTypeRow {
+  deal: Venue['deal']
+  venues: number
+  sessions: number
+  revenue: number
+  venueCost: number
+  takePerSession: number
+  /** Venue cost ÷ revenue. */
+  share: number
+  losing: number
+}
+
+/** The kinds of deal side by side: what each did for you over the period. */
+export function dealTypes(deals: VenueDeal[]): DealTypeRow[] {
+  const m = new Map<Venue['deal'], DealTypeRow>()
+  for (const d of deals) {
+    const r = m.get(d.venue.deal) ?? { deal: d.venue.deal, venues: 0, sessions: 0, revenue: 0, venueCost: 0, takePerSession: 0, share: 0, losing: 0 }
+    r.venues += 1
+    r.sessions += d.sessions.length
+    r.revenue += d.revenue
+    r.venueCost += d.venueCost
+    r.losing += d.losing.length
+    m.set(d.venue.deal, r)
+  }
+  return [...m.values()].map((r) => ({
+    ...r,
+    revenue: round2(r.revenue), venueCost: round2(r.venueCost),
+    takePerSession: r.sessions ? round2((r.revenue - r.venueCost) / r.sessions) : 0,
+    share: r.revenue > 0 ? r.venueCost / r.revenue : 0,
+  })).sort((a, b) => b.takePerSession - a.takePerSession)
 }
