@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>InFlow · where your income comes from</title>
+  <meta name="description" content="InFlow — a lightweight income tracker for freelancers: where the money comes from, how it's moving, and what to set aside for tax." />
+  <meta name="application-name" content="InFlow" />
+  <meta name="apple-mobile-web-app-title" content="InFlow" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f4f3ef" />
+  <script>
+    // Applies the saved light/dark choice (or the phone's) before first paint.
+    // Kept in step with useTheme in src/inflow/App.tsx.
+    try {
+      var choice = JSON.parse(localStorage.getItem('inflow:theme') || '"system"');
+      var dark = choice === 'dark' || (choice !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#101312');
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/inflow-logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/inflow-favicon-32.png" />
+  <link rel="apple-touch-icon" href="/inflow-icon-192.png" />
+  <link rel="manifest" href="/inflow.webmanifest" />
+  <script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/inflow/main.tsx"></script>
+</body>
+</html>

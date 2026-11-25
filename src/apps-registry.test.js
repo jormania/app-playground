@@ -22,6 +22,7 @@ const REACT_VITE_TITLES = [
   'KeyPath',
   'The Long Listen',
   'Stillflow',
+  'InFlow',
 ]
 
 // Codex Alchymicus dropped its "— KCD2" suffix when it grew to cover KCD1 too

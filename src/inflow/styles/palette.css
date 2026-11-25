@@ -1,0 +1,77 @@
+/* InFlow's palette: a quiet ledger — warm paper, ink, one deep green.
+   Unlayered on purpose, so it states over src/ds/tokens.css's layered defaults
+   (see the comment atop that file). Only roles change; the scale is the DS's. */
+
+:root {
+  --color-bg:        #f4f3ef;
+  --color-bg-sunken: #ecebe5;
+  --color-surface:   #ffffff;
+  --color-surface-2: #f3f2ed;
+  --color-border:    #e2dfd7;
+  --color-border-2:  #c9c5ba;
+
+  --color-ink:   #1d2321;
+  --color-muted: #545c58;
+  --color-faint: #7c8480;
+
+  --color-accent:       #1e6b57;
+  --color-accent-hover: #175747;
+  --color-on-accent:    #ffffff;
+  --color-success:      #2f7d4f;
+  --color-warning:      #a85f0c;
+  --color-danger:       #b3412f;
+
+  /* Chart series — validated with the dataviz checker on #ffffff (2026-11-25):
+     taxable, non-taxable, needs review. Fixed order, never cycled. */
+  --chart-1: #0a8a6c;
+  --chart-2: #5d6fc4;
+  --chart-3: #c07a22;
+  --chart-ghost: #d9d6cd;
+  --chart-grid: #ebe9e3;
+
+  --inflow-up:   #2f7d4f;
+  --inflow-down: #b3412f;
+}
+
+:root[data-theme="dark"] {
+  --color-bg:        #101312;
+  --color-bg-sunken: #0b0e0d;
+  --color-surface:   #181c1a;
+  --color-surface-2: #1f2422;
+  --color-border:    #2c3330;
+  --color-border-2:  #3d4642;
+
+  --color-ink:   #e7ebe8;
+  --color-muted: #a8b1ac;
+  --color-faint: #78827d;
+
+  --color-accent:       #5bbf9c;
+  --color-accent-hover: #74cfae;
+  --color-on-accent:    #0d1311;
+  --color-success:      #6cc48d;
+  --color-warning:      #e0a95a;
+  --color-danger:       #ef8a77;
+
+  /* Validated on #191919. */
+  --chart-1: #3a9c7d;
+  --chart-2: #7f8bd0;
+  --chart-3: #c48a3a;
+  --chart-ghost: #2f3633;
+  --chart-grid: #232927;
+
+  --inflow-up:   #6cc48d;
+  --inflow-down: #ef8a77;
+}
+
+html { background: var(--color-bg); }
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Figures line up in columns. */
+.num { font-variant-numeric: tabular-nums; }

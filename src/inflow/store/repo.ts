@@ -1,0 +1,98 @@
+/**
+ * The storage seam. The app talks to a `Repo`; on this device it is the
+ * IndexedDB-backed `DeviceRepo`, with Notion connected it is `NotionRepo`
+ * (store/notion.ts). Both hand back whole `InflowData` on load and the saved
+ * entity (with its final id) on every write.
+ */
+import type { KeyValueStore } from '../../shared/kvStore'
+import type { Client, IncomeRecord, InflowData, Source, Venue } from '../domain/types'
+
+export type EntityKind = 'client' | 'source' | 'venue'
+export type Entity = Client | Source | Venue
+
+export interface Repo {
+  readonly kind: 'device' | 'notion'
+  load(): Promise<InflowData>
+  saveRecord(r: IncomeRecord): Promise<IncomeRecord>
+  deleteRecord(id: string): Promise<void>
+  saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T>
+  deleteEntity(kind: EntityKind, id: string): Promise<void>
+}
+
+export const EMPTY: InflowData = { records: [], clients: [], sources: [], venues: [] }
+
+export const DATA_KEY = 'data'
+
+export function newId(prefix = 'loc'): string {
+  const rnd = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+    : Math.random().toString(36).slice(2, 18)
+  return `${prefix}_${rnd}`
+}
+
+export function isLocalId(id: string): boolean {
+  return /^(loc|demo)_/.test(id)
+}
+
+export function listKey(kind: EntityKind): 'clients' | 'sources' | 'venues' {
+  return kind === 'client' ? 'clients' : kind === 'source' ? 'sources' : 'venues'
+}
+
+function upsert<T extends { id: string }>(list: T[], item: T): T[] {
+  const i = list.findIndex((x) => x.id === item.id)
+  if (i === -1) return [...list, item]
+  const next = [...list]
+  next[i] = item
+  return next
+}
+
+/** Everything on this device, in one IndexedDB value written as a whole. */
+export class DeviceRepo implements Repo {
+  readonly kind = 'device' as const
+  private data: InflowData = EMPTY
+  constructor(private store: KeyValueStore) {}
+
+  async load(): Promise<InflowData> {
+    const stored = await this.store.get<InflowData>(DATA_KEY)
+    this.data = { ...EMPTY, ...(stored ?? {}) }
+    return this.data
+  }
+
+  async replaceAll(data: InflowData): Promise<void> {
+    this.data = data
+    await this.store.set(DATA_KEY, data)
+  }
+
+  private async commit(next: InflowData) {
+    await this.store.set(DATA_KEY, next)
+    this.data = next
+  }
+
+  async saveRecord(r: IncomeRecord): Promise<IncomeRecord> {
+    const saved = r.id ? r : { ...r, id: newId() }
+    await this.commit({ ...this.data, records: upsert(this.data.records, saved) })
+    return saved
+  }
+
+  async deleteRecord(id: string): Promise<void> {
+    await this.commit({ ...this.data, records: this.data.records.filter((r) => r.id !== id) })
+  }
+
+  async saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T> {
+    const saved = e.id ? e : { ...e, id: newId() }
+    const key = listKey(kind)
+    await this.commit({ ...this.data, [key]: upsert(this.data[key] as Entity[], saved) })
+    return saved
+  }
+
+  async deleteEntity(kind: EntityKind, id: string): Promise<void> {
+    const key = listKey(kind)
+    const field = kind === 'client' ? 'clientId' : kind === 'source' ? 'sourceId' : 'venueId'
+    await this.commit({
+      ...this.data,
+      [key]: (this.data[key] as Entity[]).filter((x) => x.id !== id),
+      // Records keep their history; the link is simply cleared.
+      records: this.data.records.map((r) => (r[field] === id ? { ...r, [field]: null } : r)),
+    })
+  }
+}

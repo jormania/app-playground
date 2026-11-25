@@ -36,6 +36,30 @@ export const STACK_TAGS = new Set(["react", "vite", "notion"]);
 
 export const APPS = [
   {
+    emoji: "🌊",
+    iconBg: "rgba(30,107,87,0.14)",
+    title: "InFlow",
+    subtitle: "freelance income · where it comes from",
+    deployed: "Nov 2026",
+    tech: "React + Vite",
+    tags: ["finance", "freelance", "tax", "reports", "notion", "react", "vite"],
+    ds: true,
+    kind: "react-vite",
+    manifest: "/inflow.webmanifest",
+    description: "A light income tracker for freelancers. Open it for twenty seconds and you know how much came in this week and this month, which clients, venues and sources it came from, and how it compares with the period before. Tax is optional: switch it on and each payment gets a suggested classification under Romanian rules (PFA real, normă, SRL micro), the tax already withheld, and what to set aside — always labelled as a suggestion, always yours to change.",
+    features: [
+      "Overview: this week, this month, any period or a custom range, against the period before; a trend chart by day, week or month; where the money came from by client, source and venue; how much rests on your largest client",
+      "Quick entry: amount and client, and the rest is remembered from that client's last payment. Fifteen currencies converted to lei at the day's rate; new clients, sources and venues created inside the form",
+      "Optional tax: taxable or not, withheld or self-declared, and VAT treatment as separate questions, each suggested and labelled so. Reserve suggestions from versioned 2025/2026 rules (CAS and CASS thresholds, the 72-minimum-wage cap, micro 1%, dividends 16%); stored figures are never silently recalculated",
+      "Reports by client, venue and source with drill-down to the payments behind every row, a tax report, and a printable report you shape on the fly — presets, dates, sections, one client only — saved as PDF or HTML",
+      "Expected payments with overdue flags, a monthly target, recurring income marked, unusually large payments called out",
+      "Search and filters, CSV export, full backup and restore",
+      "Notion-backed (Income, Clients, Sources, Venues) or kept on this device; a fourteen-month coaching-practice demo you can clear with one tap",
+      "A short welcome tour on first open, installable as an app, works offline",
+    ],
+    file: "inflow-react.html",
+  },
+  {
     emoji: "🪷",
     iconBg: "rgba(94,122,90,0.16)",
     title: "Stillflow",
