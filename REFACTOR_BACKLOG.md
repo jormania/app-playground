@@ -998,7 +998,7 @@ Hobby cap of 12` asserts `countServerlessFunctions('api') <= 12`. It lives
 outside `api/`, so it does not itself count as a function. Verified during the
 P-001 audit run, not worked — nothing was changed for it.
 
-## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node`, eslint, lucide-react, testing-library and the lint toolchain done, React 19 to go
+## R-008 — Bring the dependency floor up, one family per run · `modernise` · `open` — jsdom, the Anthropic SDK, `@types/node`, eslint, lucide-react, testing-library, the lint toolchain and React 19 done; the table's other majors to go
 
 **Impact:** none visible if done right. That is the whole risk.
 
@@ -1147,6 +1147,10 @@ slices should eyeball icons when they next touch an app.
 **`eslint` + `typescript-eslint` + `globals` done 2026-11-23 — 10.13.0 → 10.15.0, 8.72.0 → 8.73.0, 17.13.0 → 17.14.0** (floors raised in `package.json`). The lint toolchain again, all in-range. `eslint .` clean over the whole repo with no config change, suite 6782 across 519 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. Release notes not reachable from here; what is verified is the lint, suite and typecheck.
 
 Remaining: the React 19 family (runtime and types together), last, as this item says.
+
+**React 19 done 2026-11-25 — `react` / `react-dom` 18.3.1 → 19.3.1, `@types/react` 18.3.31 → 19.3.2, `@types/react-dom` 18.3.7 → 19.3.0** (runtime and types together, as this item asked). It needed **no source change**: `npm run typecheck` clean across every path, suite 6799 across 520 files, `eslint .` clean, build green, and `npm ls react` shows one deduped copy (no peer conflicts in react-query, testing-library, speed-insights, lucide-react, react-markdown or recharts 2.15). `dist/` 12412 → 12492 KB. Checked against react.dev's React 19 upgrade guide, which was reachable this time: no `propTypes`/`defaultProps` on function components, no legacy context, string refs, `createFactory`, `ReactDOM.render`/`hydrate`/`findDOMNode`/`unmountComponentAtNode`, `react-dom/test-utils`, `react-is` or `javascript:` URLs anywhere in `src/`. The one silent runtime change that typecheck can't see in the JSX apps is that a ref callback's return value is now a cleanup. The only arrow ref callback with an expression body (`src/loom/components/ThreadList.jsx:70`) returns `undefined`. The three error boundaries (Daily Stoic, Lexi5, KeyPath) are class components and still supported. **Not checked: behaviour the suite does not cover**: render errors now go to `window.reportError` instead of being re-thrown, and Strict Mode's double render reuses `useMemo` results.
+
+**What's still left is the 2026-10-02 table** and later re-measurements, each its own run: `vitest` 5, `typescript` 7, `tailwindcss` 4 + `tailwind-merge` 3, `recharts` 3, `jsdom` 31, `happy-dom` 21, `sharp` 0.35 (`vite-plugin-pwa` 2 is R-046).
 
 **The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
 `npm outdated` on the Friday read. Five majors behind that this item never
