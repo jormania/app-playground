@@ -331,6 +331,43 @@ describe('clients & work', () => {
   })
 })
 
+describe('insight feedback', () => {
+  it('hides an insight with 👎, undoes it, mutes a rule, and Settings brings them back', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    const panel = screen.getByLabelText('Worth a look')
+    const first = within(panel).getAllByRole('listitem')[0]
+    const title = first.querySelector('b')!.textContent!
+    await user.click(within(first).getByRole('button', { name: 'Not useful' }))
+    await user.click(within(first).getByRole('button', { name: 'Hide this one' }))
+    expect(within(screen.getByLabelText('Worth a look')).queryByText(title)).toBeNull()
+    await user.click(await screen.findByRole('button', { name: 'Undo' }))
+    expect(within(screen.getByLabelText('Worth a look')).getByText(title)).toBeTruthy()
+    // Hide all like it, then bring everything back from Settings.
+    const again = within(screen.getByLabelText('Worth a look')).getAllByRole('listitem')[0]
+    await user.click(within(again).getByRole('button', { name: 'Not useful' }))
+    await user.click(within(again).getByRole('button', { name: /Hide all about/ }))
+    expect(within(screen.getByLabelText('Worth a look')).queryByText(title)).toBeNull()
+    await go('#/settings')
+    await user.click(screen.getByRole('button', { name: 'Show them again' }))
+    await go('#/overview')
+    expect(within(await screen.findByLabelText('Worth a look')).getByText(title)).toBeTruthy()
+  })
+
+  it('👍 keeps an insight first', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    const items = within(screen.getByLabelText('Worth a look')).getAllByRole('listitem')
+    const third = items[2].querySelector('b')!.textContent!
+    await user.click(within(items[2]).getByRole('button', { name: 'Useful' }))
+    expect(within(screen.getByLabelText('Worth a look')).getAllByRole('listitem')[0].querySelector('b')!.textContent).toBe(third)
+  })
+})
+
 describe('switching between the demo and Notion', () => {
   const mineInNotion: InflowData = {
     records: [{ ...buildDemo(today).records.find((r) => r.status === 'received' && r.date.startsWith('2026-11'))!, id: 'notion1', clientId: null, sourceId: null, venueId: null, demo: undefined, amount: 1234, amountRon: 1234, currency: 'RON', fxRate: 1 }],

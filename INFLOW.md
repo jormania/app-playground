@@ -100,6 +100,28 @@ on 25 Nov 2026. It answers one question: which clients and kinds of work earn th
 - A session is a received, non-reimbursement payment in the selected period. The global
   period is the only filter.
 
+**Insights** (`lib/insights.ts`), reworked 25 Nov 2026 for relevance. `practice()` reads the
+records first: regular clients (paid in ≥ 3 separate months in the last year), full months of
+history, whether there is group work. Each rule then fires only where it applies:
+
+| Rule | When it fires |
+|---|---|
+| losing-sessions | a fixed-fee room had sessions that lost money; advice: confirm once N have booked (terms are the venue's) |
+| close-to-break-even | ≥ 3 sessions averaging within 30% of a fixed fee's break-even |
+| venue-for-the-same-work | the same work, ≥ 3 sessions at each of two in-person rooms, ≥ 15% apart (never an online platform paid monthly) |
+| best-work | ≥ 2 kinds of work with ≥ 5 sessions each, the best ≥ 25% ahead |
+| thin-margin | work keeping < 50% after venue and direct costs, ≥ 4% of income |
+| regular-fading / -growing | regular clients only, ≥ 6 full months, last 3 months vs the 3 before |
+| one-client | ≥ 35% of the last 12 months from one client (never read from a short period) |
+| intro-clients | individual clients only (not companies with a project), ≥ 5 new this year |
+| overdue | an expected payment past its date |
+| quiet-month | ≥ 9 complete months, never the running month or a start-up month |
+
+**Feedback** (`app/insightFeedback.ts`, this device): 👍 keeps an insight first. 👎 asks
+"Hide this one" or "Hide all about <rule>", with Undo. Settings → Features shows how many are
+hidden, with "Show them again". Hidden insights stay out of the Review's summary count and the
+printable report.
+
 **Break-even** on Venue deals sits beside "What if…". It takes a price per person (the venue's
 recorded one is filled in), and seat icons show how many people cover the fee
 (`breakEvenPeople`) and what each person after that leaves you (`keptPerPerson`). A revenue

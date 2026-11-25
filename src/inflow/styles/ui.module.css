@@ -1176,3 +1176,20 @@ details[open] > .earnSummary { padding-bottom: var(--space-sm); }
 .seatDivider { width: 2px; height: 24px; margin: 0 3px; border-radius: 1px; background: var(--color-ink); opacity: 0.6; }
 .breakEvenAnswer { margin: 0; font-size: var(--text-sm); line-height: 1.5; }
 .breakEvenNumber { font-size: var(--text-2xl, 1.6rem); line-height: 1; color: var(--chart-3); margin-right: 2px; vertical-align: -2px; }
+
+/* Feedback on an insight: two quiet thumbs, and a choice when it's not useful. */
+.insightFoot { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); margin-top: 4px; }
+.insightVotes { display: flex; gap: 2px; }
+.vote {
+  display: grid; place-items: center; width: 36px; height: 32px; border-radius: var(--radius-md);
+  background: none; border: 1px solid transparent; color: var(--color-faint); cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
+}
+.vote:hover { color: var(--color-ink); background: var(--color-surface-2); }
+.voteOn { color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); }
+.hideChoice { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-top: var(--space-xs); }
+.hideChoice > button {
+  font: inherit; font-size: var(--text-sm); padding: 6px 12px; border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-2); background: var(--color-surface); color: var(--color-ink); cursor: pointer;
+}
+.hideChoice > button:hover { border-color: var(--color-accent); }

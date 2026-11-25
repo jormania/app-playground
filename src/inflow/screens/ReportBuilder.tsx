@@ -10,6 +10,7 @@ import { Download, Printer } from 'lucide-react'
 import { Button } from '../../ds'
 import { readJson, writeJson } from '../../shared/storage'
 import { useInflow } from '../app/state'
+import { useInsightFeedback } from '../app/insightFeedback'
 import { usePeriodData } from '../app/usePeriod'
 import { SelectInput, TextInput } from '../components/fields'
 import {
@@ -27,6 +28,7 @@ const PRESETS = Object.keys(PRESET_LABEL) as ReportPreset[]
 export function ReportBuilder() {
   const { data, settings, today, on } = useInflow()
   const { range } = usePeriodData()
+  const insightFb = useInsightFeedback()
   const [preset, setPreset] = useState<ReportPreset>(() => readJson<ReportPreset>(KEY, 'monthly'))
   const base = (p: ReportPreset): ReportOptions => ({
     title: '', subtitle: '', from: range.from, to: range.to, sections: [], topN: 5, compare: true,
@@ -51,10 +53,10 @@ export function ReportBuilder() {
   const needsClient = preset === 'client' && !opt.clientId
   const html = useMemo(
     () => renderReport(data, live, {
-      today, trackTax: on('tax'), tax: settings.tax, trackCosts: on('costs'), trackDeals: on('deals'), trackExpected: on('expected'),
+      today, trackTax: on('tax'), tax: settings.tax, insightFeedback: insightFb.feedback, trackCosts: on('costs'), trackDeals: on('deals'), trackExpected: on('expected'),
       openingCash: settings.openingCash, openingCashDate: settings.openingCashDate,
     }),
-    [data, live, today, on, settings.tax, settings.openingCash, settings.openingCashDate],
+    [data, live, today, on, settings.tax, settings.openingCash, settings.openingCashDate, insightFb.feedback],
   )
 
   const print = () => {

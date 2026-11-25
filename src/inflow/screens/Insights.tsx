@@ -16,6 +16,7 @@ import { movers, reviewSummary, reviewTitle, shakers } from '../lib/review'
 import { ANY_SCOPE, DIMENSION_NOUN, inScope, NO_ENTITY, sum, type Dimension, type Scope } from '../lib/analytics'
 import type { CostRecord, FeatureKey } from '../domain/types'
 import { insights } from '../lib/insights'
+import { useInsightFeedback } from '../app/insightFeedback'
 import { compact, delta, lei } from '../lib/money'
 import styles from '../styles/ui.module.css'
 
@@ -82,6 +83,7 @@ export function ReviewReport() {
   const curS = useMemo(() => cur.filter((r) => inScope(r, scope)), [cur, scope])
   const beforeS = useMemo(() => before.filter((r) => inScope(r, scope)), [before, scope])
   const scoped = useMemo(() => ({ ...data, records: data.records.filter((r) => inScope(r, scope)) }), [data, scope])
+  const fb = useInsightFeedback()
   const list = useMemo(() => (on('insights') ? insights(scoped, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected') }) : []), [scoped, range, today, on])
   const kept = useMemo(() => {
     if (!on('costs')) return null
@@ -92,12 +94,13 @@ export function ReviewReport() {
   const prevTotal = sum(beforeS)
   const d = delta(total, prevTotal)
   const firstRecord = useMemo(() => data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999'), [data.records])
-  const summary = reviewSummary({ data, cur: curS, before: beforeS, prevLabel: prev.label, kept, insights: list, periodLabel: range.label, prevFrom: prev.from, firstRecord })
+  const summary = reviewSummary({ data, cur: curS, before: beforeS, prevLabel: prev.label, kept, insights: fb.apply(list), periodLabel: range.label, prevFrom: prev.from, firstRecord })
   const moved = useMemo(() => movers(data, curS, beforeS), [data, curS, beforeS])
   const [dim, setDim] = useState<Dimension>('client')
   const parts = useMemo(() => shakers(data, curS, beforeS, dim).map((r) => ({ id: r.id, name: r.name, value: r.total })), [data, curS, beforeS, dim])
-  const pains = list.filter((i) => i.kind === 'pain').length
-  const wins = list.filter((i) => i.kind === 'win').length
+  const visible = fb.apply(list)
+  const pains = visible.filter((i) => i.kind === 'pain').length
+  const wins = visible.filter((i) => i.kind === 'win').length
 
   const open = (patch: Record<string, string>) => {
     setFilter({ ...EMPTY_FILTER, range: 'period', ...patch })
@@ -151,7 +154,8 @@ export function ReviewReport() {
             <h2 className={styles.panelTitle}>Pain points and wins</h2>
             <span className={styles.panelSub}>{pains} to look at · {wins} going well</span>
           </div>
-          <InsightList items={list} />
+          <InsightList items={list} feedback={fb}
+            onHidden={(undo, what) => toast({ message: what, actionLabel: 'Undo', onAction: undo })} />
         </section>
       )}
 

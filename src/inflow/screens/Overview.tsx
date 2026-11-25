@@ -22,6 +22,7 @@ import { projectYear, suggestReserve } from '../tax/estimate'
 import { breakEven, buildPnl } from '../lib/finance'
 import { insights } from '../lib/insights'
 import { InsightList } from '../components/insightsUi'
+import { useInsightFeedback } from '../app/insightFeedback'
 import type { IncomeRecord } from '../domain/types'
 import styles from '../styles/ui.module.css'
 
@@ -74,7 +75,9 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
   // Tax off: no projection is computed at all.
   const taxOn = on('tax')
   const projection = useMemo(() => (taxOn ? projectYear(settings.tax, data.records, yearOf(range.to > today ? today : range.to), today, 0, costsForTax) : null), [taxOn, settings.tax, data.records, range.to, today, costsForTax])
-  const top = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected') }).slice(0, 3) : []), [on, data, range, today])
+  const all = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected') }) : []), [on, data, range, today])
+  const fb = useInsightFeedback()
+  const top = fb.apply(all)
   const pnl = useMemo(() => (settings.features.costs ? buildPnl(data.records, data.costs, [{ from: range.from, to: range.to, label: '' }]) : null), [settings.features.costs, data, range])
   const pnlLine = (k: string) => pnl?.lines.find((l) => l.key === k)?.total ?? 0
   const be = useMemo(() => (settings.features.costs ? breakEven(data.records, data.costs, today) : null), [settings.features.costs, data, today])
@@ -185,7 +188,8 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
             <h2 className={styles.panelTitle}><Lightbulb size={14} aria-hidden /> Worth a look</h2>
             <a className={styles.linkButton} href="#/reports/insights">All insights</a>
           </div>
-          <InsightList items={top} />
+          <InsightList items={top} limit={3} feedback={fb}
+            onHidden={(undo, what) => toast({ message: what, actionLabel: 'Undo', onAction: undo })} />
         </section>
       )}
 

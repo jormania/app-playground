@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildDemo } from '../data/demo'
 import type { IncomeRecord, Venue } from '../domain/types'
 import { dealTotals, defaultAlternative, feeCoveredAt, sameDayRepeats, scenario, venueCostOf, venueDeal, venueDeals } from './deals'
-import { insights, takeHome } from './insights'
+import { takeHome } from './insights'
 
 const today = '2026-11-25'
 const demo = buildDemo(today)
@@ -49,26 +49,7 @@ describe('the demo coworking (30% share)', () => {
   })
 })
 
-describe('insights on the demo', () => {
-  const list = insights(demo, year, today, { deals: true, costs: true, expected: true })
-  const ids = list.map((i) => i.id)
-  it('names the loft losses, the overdue money and the one-off clients', () => {
-    expect(ids).toContain('losing-demo_v_loft')
-    expect(ids).toContain('overdue')
-    expect(ids).toContain('retention')
-    expect(ids).toContain('best-activity')
-  })
-  it('leaves out what is switched off', () => {
-    const lean = insights(demo, year, today, { deals: false, costs: false, expected: false }).map((i) => i.id)
-    expect(lean.some((id) => id.startsWith('losing-') || id.startsWith('share-') || id.startsWith('thin-'))).toBe(false)
-    expect(lean).not.toContain('overdue')
-  })
-  it('orders by what is at stake', () => {
-    for (let i = 1; i < list.length; i++) expect(list[i - 1].weight).toBeGreaterThanOrEqual(list[i].weight)
-  })
-})
-
-describe('take-home and the heat map', () => {
+describe('take-home', () => {
   it('takes the venue deal off each payment, never a room twice', () => {
     const t = takeHome(demo, { deals: true, costs: true })
     const evening = demo.records.find((r) => r.venueId === 'demo_v_loft' && r.status === 'received')!

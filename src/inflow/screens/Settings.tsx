@@ -8,6 +8,7 @@ import { Button, ConfirmModal, SegmentedControl, SettingsToggle } from '../../ds
 import { memoryStore } from '../../shared/kvStore'
 import { parseNotionId } from '../../shared/notionId'
 import { useInflow } from '../app/state'
+import { useInsightFeedback } from '../app/insightFeedback'
 import { EntityEditor } from '../components/EntityEditor'
 import { NumberInput, SelectInput, TextInput } from '../components/fields'
 import type { Client, FeatureKey, Features, Settings as SettingsT, TaxProfileId, Venue } from '../domain/types'
@@ -30,7 +31,7 @@ import styles from '../styles/ui.module.css'
  */
 export const FEATURES: { key: FeatureKey; label: string; hint: string; more: string[] }[] = [
   { key: 'insights', label: 'Insights', hint: 'Pain points and wins, in plain words.',
-    more: ['A short list on the Overview and a full Insights report: sessions that lost money, clients drifting away, work that keeps little after costs, one-off clients who never came back, overdue money, your quietest month.', 'Off: the Overview panel and the pain points in the Review go away.'] },
+    more: ['Read from your own records, and only where they apply: sessions that lost money at a room, the same work at two rooms, regular clients going quiet or growing, individual clients who came once, work that keeps little after costs, overdue money, a quiet month once you have most of a year. Shown on the Overview and in the Review. 👍 keeps one near the top; 👎 hides it, or all like it.', 'Off: the Overview panel and the pain points in the Review go away.'] },
   { key: 'deals', label: 'Venue deals', hint: 'Fixed fee or revenue share, and what each venue leaves you.',
     more: ['Set each venue\'s deal — a fee per session, a share of the takings, both, or monthly rent — and record how many people came. InFlow shows what each venue left you per session, the sessions that cost more than they earned, the head count a room needs, and a "fixed or share?" chart to try the other deal on your own numbers.', 'Off: deal fields leave the venue form, the head-count field leaves the income form, and the Venue deals report goes away.'] },
   { key: 'costs', label: 'Costs, P&L and cash flow', hint: 'Record what you spend; see what you keep.',
@@ -95,6 +96,7 @@ export function Settings() {
   const [dbLink, setDbLink] = useState(settings.incomeDbId)
   const [testing, setTesting] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<null | 'clear' | 'reset' | 'restore' | 'copy'>(null)
+  const insightFb = useInsightFeedback()
   const [lastBackup, setLastBackup] = useState(() => readJson<string>(LAST_BACKUP_KEY, ''))
   const [pendingBackup, setPendingBackup] = useState<ReturnType<typeof readBackup> | null>(null)
   const [copying, setCopying] = useState<string | null>(null)
@@ -209,6 +211,12 @@ export function Settings() {
           <Button size="sm" variant="secondary" onClick={() => updateSettings({ features: SIMPLE_START })}>Simple start</Button>
           <Button size="sm" variant="secondary" onClick={() => updateSettings({ features: ALL_FEATURES })}>Turn everything on</Button>
         </div>
+        {insightFb.hiddenCount > 0 && on('insights') && (
+          <p className={styles.hint} style={{ margin: '0 0 var(--space-sm)' }}>
+            {insightFb.hiddenCount} {insightFb.hiddenCount === 1 ? 'insight' : 'insights'} hidden with 👎.{' '}
+            <button type="button" className={styles.linkButton} onClick={() => insightFb.reset()}>Show them again</button>
+          </p>
+        )}
         <div className={styles.settingsGroup}>
           {FEATURES.map((f) => (
             <div key={f.key} className={styles.featureRow}>

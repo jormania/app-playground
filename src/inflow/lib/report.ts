@@ -18,6 +18,7 @@ import { delta, lei, money, percent } from './money'
 import { buckets, inRange } from './period'
 import { projectYear } from '../tax/estimate'
 import { insights } from './insights'
+import { applyFeedback, type Feedback } from '../app/insightFeedback'
 import { movers, reviewSummary } from './review'
 
 export type ReportSection =
@@ -117,6 +118,8 @@ export interface ReportContext {
   /** Features on, for the insight rules (venue deals, costs, expected payments). */
   trackDeals?: boolean
   trackExpected?: boolean
+  /** Insights hidden or muted with 👎 stay out of the print too. */
+  insightFeedback?: Feedback
   /** Shown in the footer, e.g. the practice's name. */
   owner?: string
 }
@@ -213,7 +216,8 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
   }
 
   if (has('insights')) {
-    const list = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected })
+    const raw = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected })
+    const list = ctx.insightFeedback ? applyFeedback(raw, ctx.insightFeedback) : raw
     const word = { pain: 'Look at', win: 'Working', tip: 'Note' } as const
     parts.push(`<section><h2>Pain points and wins</h2>${list.length ? `<ul class="insights">${list.map((i) => `<li class="${i.kind}"><b><span class="kind">${word[i.kind]}</span> ${esc(i.title)}</b><div>${esc(i.detail)}</div></li>`).join('')}</ul>` : '<p class="muted">Nothing stands out in this period.</p>'}</section>`)
   }
