@@ -56,7 +56,7 @@ describe('InFlow', () => {
     expect(total.textContent).toMatch(/lei$/)
     expect(total.textContent).not.toBe('0 lei')
     expect(screen.getByText('Where it came from')).toBeTruthy()
-    expect(screen.getByText(/Taxable or not/)).toBeTruthy()
+    expect(screen.getByText(/Set aside for tax/)).toBeTruthy()
     expect(screen.getAllByText('Optional').length).toBeGreaterThan(0)
   })
 
@@ -83,8 +83,8 @@ describe('InFlow', () => {
     settings({ trackTax: false })
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
-    expect(screen.queryByText(/Taxable or not/)).toBeNull()
-    expect(screen.getByText('Regular or one-off')).toBeTruthy()
+    expect(screen.queryByText(/Set aside for tax/)).toBeNull()
+    expect(screen.getByText('Average payment')).toBeTruthy()
     await go('#/reports')
     expect(screen.queryByRole('radio', { name: 'Tax*' })).toBeNull()
   })
@@ -259,15 +259,46 @@ describe('small conveniences', () => {
     await go('#/costs')
     const panel = await screen.findByLabelText('Where it went')
     expect(within(panel).getByText(/Nothing paid .* yet/)).toBeTruthy()
-    await user.click(within(panel).getByRole('button', { name: 'Show all time' }))
+    await user.click(within(panel).getByRole('button', { name: 'See the whole year' }))
     expect(await within(screen.getByLabelText('Where it went')).findByText('spent')).toBeTruthy()
   })
 
 })
 
+describe('one period, no repeats', () => {
+  it('on Week, the Overview shows the week once and no monthly target; lists follow the period with no own range', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'week' }))
+    render(<App store={store} today={today} />)
+    const hero = await screen.findByLabelText('Income this period')
+    expect(within(hero).queryByText('This month')).toBeNull()
+    expect(within(hero).getAllByText(/This week/)).toHaveLength(1)
+    expect(within(hero).queryByLabelText('Target')).toBeNull()
+    await go('#/income')
+    expect(screen.queryByRole('button', { name: 'All time' })).toBeNull()
+    // Expected payments stay in view whatever the period.
+    expect((await screen.findAllByText('Expected')).length).toBeGreaterThan(0)
+  })
+})
+
 describe('audit conveniences', () => {
+  it('suggests next month from a recurring client, adds it in one tap, or lets it go', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    const box = await screen.findByLabelText('Suggested from recurring payments')
+    await user.click(within(box).getByRole('button', { name: /Expect Ioana/ }))
+    expect(await screen.findByText(/Expected on/)).toBeTruthy()
+    expect(within(screen.getByLabelText('Expected payments')).queryByRole('button', { name: /Expect Ioana/ })).toBeNull()
+    const next = within(screen.getByLabelText('Suggested from recurring payments')).getAllByRole('button', { name: /^Not this time/ })[0]
+    const name = next.getAttribute('aria-label')!
+    await user.click(next)
+    expect(screen.queryByRole('button', { name })).toBeNull()
+  })
+
   it('finds payments by amount in the search', async () => {
     settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
     const user = userEvent.setup()
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
@@ -334,7 +365,7 @@ describe('clients & work', () => {
     const items = within(list).getAllByRole('listitem').filter((li) => li.parentElement?.tagName === 'OL')
     expect(items.length).toBeGreaterThan(3)
     expect(within(items[0]).getByText(/sessions? · .* a session/)).toBeTruthy()
-    await user.click(screen.getByRole('radio', { name: 'By work type' }))
+    await user.click(screen.getByRole('radio', { name: 'Work' }))
     const work = screen.getByLabelText('Work types, most kept first')
     await user.click(within(work).getByText('Workshop'))
     const row = within(work).getByText('Workshop').closest('li')!
@@ -490,18 +521,48 @@ describe('feature switches', () => {
     return [...new Set([...tabs, ...sub])]
   }
 
-  it('everything is on for a new user', async () => {
+  it('someone who has used InFlow keeps every feature they had on', async () => {
     settings()
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     expect(screen.getByLabelText('Worth a look')).toBeTruthy()
-    expect(screen.getByLabelText('Monthly target')).toBeTruthy()
+    expect(screen.getByLabelText('Target')).toBeTruthy()
     expect(screen.getByRole('link', { name: /Costs/ })).toBeTruthy()
+    expect(screen.queryByLabelText('Simple start')).toBeNull()
     const tabs = await reportTabs()
-    for (const t of ['Review', 'Clients & work', 'Breakdown', 'Venue deals', 'Profit', 'P&L', 'Cash flow', 'Tax*', 'Print']) expect(tabs).toContain(t)
-    expect(screen.getByRole('button', { name: /Filter/ })).toBeTruthy()
-    await go('#/reports/insights')
-    expect(await screen.findByLabelText('Pain points and wins')).toBeTruthy()
+    for (const t of ['Review', 'Clients & work', 'Venue deals', 'Profit', 'P&L', 'Cash flow', 'Tax*', 'Print']) expect(tabs).toContain(t)
+    // Breakdown and its filter bar are folded into Clients & work.
+    expect(tabs).not.toContain('Breakdown')
+    expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull()
+  })
+
+  it('a new user starts simple, is told so, and can turn everything on at once', async () => {
+    // Nothing stored: a first visit. The tour is closed so the Overview shows.
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await user.click(await screen.findByRole('button', { name: 'Skip' }))
+    const notice = await screen.findByLabelText('Simple start')
+    expect(within(notice).getByText(/Costs, tax, venue deals/)).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /Costs/ })).toBeNull()
+    expect(await reportTabs()).not.toContain('Venue deals')
+    await go('#/overview')
+    await user.click(within(screen.getByLabelText('Simple start')).getByRole('button', { name: 'Turn everything on' }))
+    expect(screen.queryByLabelText('Simple start')).toBeNull()
+    expect(screen.getByRole('link', { name: /Costs/ })).toBeTruthy()
+    // The master switch turns them all off, and back to simple.
+    await go('#/settings')
+    await user.click(screen.getByRole('checkbox', { name: /^Everything/ }))
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false })
+    await user.click(screen.getByRole('button', { name: 'Back to simple start' }))
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features.insights).toBe(true)
+  })
+
+  it('old Breakdown links open Clients & work on that view', async () => {
+    settings()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/venues')
+    expect(await screen.findByLabelText('Venues, most kept first')).toBeTruthy()
   })
 
   it('insights off: no Overview panel, no Insights report', async () => {
@@ -568,10 +629,9 @@ describe('feature switches', () => {
     settings({ features: { ...ALL_FEATURES, targets: false, unusual: false, reportTools: false, printable: false } })
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
-    expect(screen.queryByLabelText('Monthly target')).toBeNull()
+    expect(screen.queryByLabelText('Target')).toBeNull()
     expect(screen.queryByLabelText('Unusually large')).toBeNull()
     expect(await reportTabs()).not.toContain('Print')
-    expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull()
   })
 
   it('Settings lists every feature with an explanation, and a switch takes effect at once', async () => {

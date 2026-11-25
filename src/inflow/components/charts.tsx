@@ -154,22 +154,6 @@ export function SplitBar({ parts, total }: { parts: SplitPart[]; total: number }
   )
 }
 
-/** A tiny monthly trend for a report row. */
-export function Sparkline({ values, label }: { values: number[]; label: string }) {
-  const W = 72
-  const H = 20
-  const max = Math.max(1, ...values)
-  const step = W / Math.max(1, values.length)
-  return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} style={{ verticalAlign: 'middle' }}>
-      {values.map((v, i) => {
-        const h = Math.max(v > 0 ? 2 : 0, (v / max) * H)
-        return <rect key={i} x={i * step + 1} y={H - h} width={Math.max(2, step - 3)} height={h} rx={1.5} fill="var(--color-accent)" opacity={i === values.length - 1 ? 1 : 0.55} />
-      })}
-    </svg>
-  )
-}
-
 const SLOTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
 
 export interface SharePart { id: string; name: string; value: number }

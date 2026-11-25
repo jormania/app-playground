@@ -1,30 +1,24 @@
 /**
- * Reports answer practical questions for the selected period: who pays most,
- * which venues and activities earn (and, with costs, what they keep), which
- * sources matter, the P&L and cash flow, and where tax stands.
- *
- * One filter bar narrows every report at once (client, source, venue,
- * activity), and every row drills down to the payments behind it.
+ * Reports answer practical questions for the selected period: the review,
+ * what clients and kinds of work leave you, venue deals, profit and cash
+ * flow, and where tax stands. The period is the only filter; rows drill down
+ * to the payments behind them.
  */
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Download, SlidersHorizontal, X } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
-import { MonthlyPair, ShareBar, SplitBar, Sparkline } from '../components/charts'
+import { MonthlyPair, SplitBar } from '../components/charts'
 import { Optional } from '../components/Optional'
 import { ReportBuilder } from './ReportBuilder'
 import { ReviewReport, SectionIndex } from './Insights'
 import { DealsReport } from './VenueDeals'
 import { EarningsReport } from './Earnings'
-import type { CostRecord } from '../domain/types'
-import { ACTIVITY, PROFILE, options } from '../domain/vocabulary'
-import {
-  ANY_SCOPE, breakdown, DIMENSION_NOUN, inScope, keyOf, NO_ENTITY, pivot, received, scopeIsSet, sum, summarise,
-  type BreakdownRow, type Dimension, type Scope,
-} from '../lib/analytics'
-import { addMonths, endOfMonth, monthShort, startOfMonth, yearOf } from '../lib/dates'
-import { buildCashFlow, buildPnl, margins, monthColumns } from '../lib/finance'
-import { delta, lei, percent } from '../lib/money'
+import { PROFILE } from '../domain/vocabulary'
+import { sum, type Dimension } from '../lib/analytics'
+import { yearOf } from '../lib/dates'
+import { breakEven, buildCashFlow, buildPnl, monthColumns } from '../lib/finance'
+import { lei, percent } from '../lib/money'
 import { download, toCsv } from '../store/backup'
 import { projectYear, taxableGross } from '../tax/estimate'
 import { leaveTrail } from '../app/trail'
@@ -40,274 +34,85 @@ export function trailLabel(): string {
 export const REPORT_TABS = ['insights', 'earnings', 'clients', 'venues', 'activities', 'sources', 'deals', 'pnl', 'cashflow', 'tax', 'print'] as const
 export type ReportTab = (typeof REPORT_TABS)[number]
 
-const DIM: Record<'clients' | 'venues' | 'activities' | 'sources', Dimension> = { clients: 'client', venues: 'venue', activities: 'activity', sources: 'source' }
+/** Old Breakdown links (#/reports/venues…) open Clients & work on that view. */
+const DIM: Partial<Record<ReportTab, Dimension>> = { clients: 'client', venues: 'venue', activities: 'activity', sources: 'source' }
 
 /** The six reports, each owning one or more routes (old links keep working). */
 interface Group { id: string; label: string; routes: ReportTab[] }
 const GROUPS: Group[] = [
   { id: 'review', label: 'Review', routes: ['insights'] },
-  { id: 'earnings', label: 'Clients & work', routes: ['earnings'] },
-  { id: 'breakdown', label: 'Breakdown', routes: ['clients', 'venues', 'activities', 'sources'] },
+  { id: 'earnings', label: 'Clients & work', routes: ['earnings', 'clients', 'venues', 'activities', 'sources'] },
   { id: 'deals', label: 'Venue deals', routes: ['deals'] },
   { id: 'profit', label: 'Profit', routes: ['pnl', 'cashflow'] },
   { id: 'tax', label: 'Tax*', routes: ['tax'] },
   { id: 'print', label: 'Print', routes: ['print'] },
 ]
-const SUB_LABEL: Partial<Record<ReportTab, string>> = { clients: 'Clients', venues: 'Venues', activities: 'Activities', sources: 'Sources', pnl: 'P&L', cashflow: 'Cash flow' }
+const SUB_LABEL: Partial<Record<ReportTab, string>> = { pnl: 'P&L', cashflow: 'Cash flow' }
 
-/** A cost in scope: costs carry venue, client and activity, but never a source. */
-export function costInScope(c: CostRecord, s: Scope): boolean {
-  if (s.sourceId) return false
-  const m = (field: string | null, want: string) => !want || (want === NO_ENTITY ? !field : field === want)
-  return m(c.clientId, s.clientId) && m(c.venueId, s.venueId) && m(c.activity, s.activity)
-}
-
-export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; anchor?: string; onTab?: (t: ReportTab) => void; onAddCost: () => void }) {
-  // A link to a section (#/reports/insights/act) lands on it once the report is drawn.
+export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; anchor?: string; onAddCost: () => void }) {
+  const { on } = useInflow()
+  // A link to a section (#/reports/insights/act) lands on it once the report is drawn: the next frame, not a guessed delay.
   useEffect(() => {
     if (!anchor) return
     const id = `${tab === 'insights' ? 'review' : tab}-${anchor}`
-    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 120)
-    return () => clearTimeout(t)
+    const f = requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }))
+    return () => cancelAnimationFrame(f)
   }, [tab, anchor])
-  const { on } = useInflow()
   // Each optional report appears only while its feature is on.
   const groups = GROUPS.filter((g) => (g.id !== 'deals' || on('deals')) && (g.id !== 'profit' || on('costs')) && (g.id !== 'tax' || on('tax')) && (g.id !== 'print' || on('printable')))
   const current = groups.find((g) => g.routes.includes(tab)) ?? groups[0]
   // A report switched off (or a bare #/reports) falls back to the first one offered.
   const shown: ReportTab = current.routes.includes(tab) ? tab : current.routes[0]
-  const scoped = on('reportTools') && shown !== 'print' && shown !== 'cashflow' && shown !== 'tax' && shown !== 'earnings'
-  const [filters, setFilters] = useState(false)
-  const { scope } = useInflow()
+  const subs = current.routes.filter((r) => SUB_LABEL[r])
   return (
     <>
       <nav className={styles.reportNav} aria-label="Reports">
-        <div className={styles.reportTabs} ref={(el) => { el?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' }) }}>
+        <div className={styles.reportTabs}>
           {groups.map((g) => (
             <a key={g.id} href={`#/reports/${g.routes[0]}`} className={styles.reportTab} aria-current={g === current ? 'page' : undefined}>{g.label}</a>
           ))}
-          {scoped && (
-            <button type="button" className={`${styles.reportTab} ${styles.filterToggle} ${scopeIsSet(scope) ? styles.filterOn : ''}`}
-              aria-expanded={filters} onClick={() => setFilters((f) => !f)}>
-              <SlidersHorizontal size={14} aria-hidden /> Filter{scopeIsSet(scope) ? ' ·' : ''}
-            </button>
-          )}
         </div>
-        {current.routes.length > 1 && (
+        {subs.length > 1 && (
           <div className={styles.subTabs}>
-            {current.routes.map((r) => (
+            {subs.map((r) => (
               <a key={r} href={`#/reports/${r}`} className={styles.subTab} aria-current={r === shown ? 'page' : undefined}>{SUB_LABEL[r]}</a>
             ))}
           </div>
         )}
         {shown === 'insights' && <SectionIndex />}
       </nav>
-      {scoped && (filters || scopeIsSet(scope)) && <ScopeBar />}
-      <div key={shown} className={`${styles.screen} ${styles.screenIn}`}>
+      <div key={current.id} className={`${styles.screen} ${styles.screenIn}`}>
         {shown === 'tax' ? <TaxReport />
           : shown === 'print' ? <ReportBuilder />
             : shown === 'pnl' ? <PnlReport onAddCost={onAddCost} />
               : shown === 'cashflow' ? <CashFlowReport />
                 : shown === 'insights' ? <ReviewReport />
-                  : shown === 'earnings' ? <EarningsReport />
                   : shown === 'deals' ? <DealsReport />
-                    : <DimensionReport dim={DIM[shown]} />}
+                    : <EarningsReport initial={DIM[shown]} />}
       </div>
       {on('tax') && shown === 'tax' && <p className={styles.hint}>* Tax is optional; switch it off in Settings → Features to see only the money flow.</p>}
     </>
   )
 }
 
-/** The filter every report shares. */
-export function ScopeBar() {
-  const { data, scope, setScope } = useInflow()
-  const sorted = <T extends { name: string }>(l: T[]) => [...l].sort((a, b) => a.name.localeCompare(b.name))
-  const field = (key: keyof Scope, label: string, opts: { value: string; label: string }[], none: string) => (
-    <label>
-      {label}
-      <select value={scope[key]} className={scope[key] ? styles.scopeOn : undefined} onChange={(e) => setScope({ ...scope, [key]: e.target.value })}>
-        <option value="">All</option>
-        {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        <option value={NO_ENTITY}>{none}</option>
-      </select>
-    </label>
-  )
-  return (
-    <section className={styles.panel} aria-label="Filter reports">
-      <div className={styles.scope}>
-        {field('clientId', 'Client', sorted(data.clients).map((c) => ({ value: c.id, label: c.name })), 'No client')}
-        {field('venueId', 'Venue', sorted(data.venues).map((v) => ({ value: v.id, label: v.name })), 'No venue')}
-        {field('activity', 'Activity', options(ACTIVITY), 'No activity')}
-        {field('sourceId', 'Source', sorted(data.sources).map((s) => ({ value: s.id, label: s.name })), 'No source')}
-      </div>
-      {scopeIsSet(scope) && (
-        <div className={styles.chips} style={{ marginTop: 'var(--space-xs)' }}>
-          <button type="button" className={styles.chip} onClick={() => setScope(ANY_SCOPE)}><X size={12} aria-hidden /> Clear filters</button>
-          <span className={styles.panelSub}>These filters apply to every report.</span>
-        </div>
-      )}
-    </section>
-  )
-}
-
+/** Open the payments behind a figure, leaving the way back to this report. */
 function useDrill() {
-  const { setFilter, scope: rawScope, on } = useInflow()
-  const scope = on('reportTools') ? rawScope : ANY_SCOPE
+  const { setFilter } = useInflow()
   return (patch: Partial<IncomeFilter>) => {
-    setFilter({ ...EMPTY_FILTER, range: 'period', clientId: scope.clientId, sourceId: scope.sourceId, venueId: scope.venueId, activity: scope.activity, ...patch })
+    setFilter({ ...EMPTY_FILTER, ...patch })
     leaveTrail(trailLabel())
     location.hash = '#/income'
   }
 }
 
-const FILTER_KEY: Record<Dimension, keyof IncomeFilter> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
-
-function DimensionReport({ dim }: { dim: Dimension }) {
-  const { data, today, scope: rawScope, on } = useInflow()
-  // With report tools off the filter bar is gone, and so is its effect.
-  const scope = on('reportTools') ? rawScope : ANY_SCOPE
-  const { range, prev, cur, before } = usePeriodData()
-  const drill = useDrill()
-  const [splitBy, setSplitBy] = useState<Dimension | ''>('')
-  const curS = useMemo(() => cur.filter((r) => inScope(r, scope)), [cur, scope])
-  const beforeS = useMemo(() => before.filter((r) => inScope(r, scope)), [before, scope])
-  const total = summarise(curS).total
-  const rows = useMemo(() => breakdown(data, curS, beforeS, dim), [data, curS, beforeS, dim])
-  const costs = on('costs') && dim !== 'source'
-  const marginRows = useMemo(
-    () => (costs ? margins(data, curS, data.costs.filter((c) => costInScope(c, scope)), range, dim) : []),
-    [costs, data, curS, scope, range, dim],
-  )
-  const marginOf = (id: string) => marginRows.find((m) => m.id === id)
-  const piv = useMemo(() => (splitBy ? pivot(data, curS, dim, splitBy) : null), [data, curS, dim, splitBy])
-
-  // Six-month history per row.
-  const months = useMemo(() => {
-    const end = range.to > today ? today : range.to
-    return Array.from({ length: 6 }, (_, i) => startOfMonth(addMonths(startOfMonth(end), i - 5)))
-  }, [range.to, today])
-  const history = (row: BreakdownRow) => months.map((m) => sum(received(data.records, { from: m, to: endOfMonth(m) })
-    .filter((r) => inScope(r, scope) && keyOf(r, dim) === row.id)))
-
-  const noun = DIMENSION_NOUN[dim]
-  const countNoun = dim === 'venue' || dim === 'activity' ? 'Engagements' : 'Payments'
-  const exportCsv = () => download(
-    `inflow-${dim}-${range.from}-${range.to}.csv`,
-    toCsv([noun, 'Total RON', 'Share', countNoun, 'Average RON', `Previous (${prev.from}–${prev.to}) RON`, ...(costs ? ['Linked costs RON', 'Margin RON', 'Margin %'] : [])],
-      rows.map((r) => {
-        const m = marginOf(r.id)
-        return [r.name, r.total, (r.share * 100).toFixed(1) + '%', r.count, r.average, r.previous,
-          ...(costs ? [m?.costs ?? 0, m?.margin ?? r.total, m?.marginRate === null || !m ? '' : (m.marginRate * 100).toFixed(1) + '%'] : [])]
-      })),
-    'text/csv',
-  )
-  const go = (id: string) => drill({ [FILTER_KEY[dim]]: id })
-
-  return (
-    <>
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h2 className={styles.panelTitle}>Income by {noun.toLowerCase()} · {range.label}</h2>
-          <span className={styles.panelSub}>{lei(total)} from {rows.length} · vs {prev.label}</span>
-        </div>
-        {rows.length === 0 ? <p className={styles.hint}>No income in this period{scopeIsSet(scope) ? ' for these filters' : ''}.</p> : (
-          <>
-          <div style={{ marginBottom: 'var(--space-md)' }}>
-            <ShareBar parts={rows.map((r) => ({ id: r.id, name: r.name, value: r.total }))} label={`Income by ${noun.toLowerCase()}`} onSelect={go} />
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{noun}</th>
-                  <th>Total</th>
-                  <th>Share</th>
-                  <th className={styles.hideNarrow}>{countNoun}</th>
-                  <th className={styles.hideNarrow}>Average</th>
-                  {costs && <th>Margin</th>}
-                  <th className={costs ? styles.hideNarrow : undefined}>Change</th>
-                  <th className={styles.hideNarrow}>6 months</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const d = delta(r.total, r.previous)
-                  const m = marginOf(r.id)
-                  return (
-                    <tr key={r.id} className={styles.clickable} onClick={() => go(r.id)}
-                      tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') go(r.id) }}>
-                      <td>{r.name}<div className={styles.panelSub}>{r.count} · avg {lei(r.average)}{m && m.costs > 0 ? ` · costs ${lei(m.costs)}` : ''}</div></td>
-                      <td>{lei(r.total)}</td>
-                      <td>{percent(r.share)}</td>
-                      <td className={styles.hideNarrow}>{r.count}</td>
-                      <td className={styles.hideNarrow}>{lei(r.average)}</td>
-                      {costs && <td title={m ? `${lei(m.revenue)} − ${lei(m.costs)} linked costs` : undefined}>{m && m.costs > 0 ? <>{lei(m.margin)}<div className={styles.panelSub}>{m.marginRate === null ? '' : percent(m.marginRate)}</div></> : <span className={styles.panelSub}>no costs</span>}</td>}
-                      <td className={costs ? styles.hideNarrow : undefined}><span className={d.direction === 'up' || d.direction === 'new' ? styles.up : d.direction === 'down' ? styles.down : styles.flat}>{d.text}</span></td>
-                      <td className={styles.hideNarrow}><Sparkline values={history(r)} label={`${r.name}, ${months.map((mm, i) => `${monthShort(mm)} ${lei(history(r)[i])}`).join(', ')}`} /></td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          </>
-        )}
-        {rows.length > 0 && (
-          <p className={styles.hint} style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <span>Tap a row to see its payments.{costs ? ' Margin = income less the costs linked to it.' : ''}</span>
-            <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
-          </p>
-        )}
-      </section>
-
-      {rows.length > 0 && on('reportTools') && (
-        <section className={styles.panel}>
-          <div className={styles.panelHead}>
-            <h2 className={styles.panelTitle}>{noun} × …</h2>
-            <label className={styles.panelSub} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              Split by
-              <select value={splitBy} onChange={(e) => setSplitBy(e.target.value as Dimension | '')} style={{ font: 'inherit' }} aria-label="Split by">
-                <option value="">—</option>
-                {(['client', 'venue', 'activity', 'source'] as Dimension[]).filter((d) => d !== dim).map((d) => <option key={d} value={d}>{DIMENSION_NOUN[d]}</option>)}
-              </select>
-            </label>
-          </div>
-          {piv && piv.cols.length > 2 && <p className={styles.hint} style={{ marginTop: 0 }}>Swipe the table sideways for more columns.</p>}
-          {!piv ? <p className={styles.hint}>Cross one dimension with another, e.g. which activities pay at each venue.</p> : (
-            <div className={styles.tableWrap}>
-              <table className={styles.statement}>
-                <thead><tr><th>{noun}</th>{piv.cols.map((c) => <th key={c.id}>{c.name}</th>)}<th>Total</th></tr></thead>
-                <tbody>
-                  {piv.rows.map((r) => (
-                    <tr key={r.id} className={styles.clickable} onClick={() => go(r.id)}>
-                      <td title={r.name}>{r.name}</td>
-                      {r.cells.map((v, i) => <td key={i}>{v ? lei(v) : <span className={styles.panelSub}>·</span>}</td>)}
-                      <td className={styles.totalCol}>{lei(r.total)}</td>
-                    </tr>
-                  ))}
-                  <tr className={styles.sub}><td>Total</td>{piv.colTotals.map((v, i) => <td key={i}>{lei(v)}</td>)}<td className={styles.totalCol}>{lei(total)}</td></tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
-    </>
-  )
-}
-
 function PnlReport({ onAddCost }: { onAddCost: () => void }) {
-  const { data, scope: rawScope, today, on } = useInflow()
-  const scope = on('reportTools') ? rawScope : ANY_SCOPE
+  const { data, today } = useInflow()
   const { range } = usePeriodData()
   const [details, setDetails] = useState(false)
-  const scoped = scopeIsSet(scope)
   const columns = useMemo(() => monthColumns(range), [range])
-  const pnl = useMemo(() => buildPnl(
-    data.records.filter((r) => inScope(r, scope)),
-    data.costs.filter((c) => costInScope(c, scope)),
-    columns,
-  ), [data, scope, columns])
+  const pnl = useMemo(() => buildPnl(data.records, data.costs, columns), [data, columns])
+  // The income a month needs to cover its fixed costs, and where this month stands.
+  const be = useMemo(() => breakEven(data.records, data.costs, today), [data, today])
   const t = (k: string) => pnl.lines.find((l) => l.key === k)!.total
   const rev = t('revenue')
   const costTotal = rev - t('net')
@@ -324,6 +129,16 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
         <div className={styles.stat}><div className={styles.statLabel}>Gross margin</div><div className={styles.statValue}>{lei(t('gross'))}</div><div className={styles.statNote}>{rev ? percent(t('gross') / rev) : '—'} of revenue</div></div>
         <div className={styles.stat}><div className={styles.statLabel}>Costs</div><div className={styles.statValue}>{lei(costTotal)}</div><div className={styles.statNote}>incl. tax paid</div></div>
         <div className={styles.stat}><div className={styles.statLabel}>Net profit</div><div className={`${styles.statValue} ${t('net') < 0 ? styles.down : ''}`}>{lei(t('net'))}</div><div className={styles.statNote}>{rev ? percent(t('net') / rev) : '—'} margin</div></div>
+        {be && (
+          <div className={styles.stat}>
+            <div className={styles.statLabel}>Break-even each month</div>
+            <div className={styles.statValue}>{lei(be.revenueNeeded)}</div>
+            <div className={styles.progress} role="progressbar" aria-label="Break-even this month" aria-valuenow={Math.round(be.covered * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <div className={styles.progressFill} style={{ width: `${Math.min(100, be.covered * 100)}%`, background: be.covered < 1 ? 'var(--color-warning)' : undefined }} />
+            </div>
+            <div className={styles.statNote}>{be.covered >= 1 ? 'this month is past it' : `this month at ${percent(be.covered)}`}</div>
+          </div>
+        )}
       </div>
       <section className={styles.panel}>
         <div className={styles.panelHead}>
@@ -360,7 +175,6 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
         <ul className={styles.notes}>
           <li>Cash basis: income when received, costs when paid.</li>
           <li>Equipment, loan repayments and drawings are in Cash flow, not here.</li>
-          {scoped && <li>Filtered: overheads not linked to the filters are left out.</li>}
           {due.length > 0 && <li>{due.length} {due.length === 1 ? 'cost is' : 'costs are'} due and not counted until paid ({lei(due.reduce((s, c) => s + c.amountRon, 0))}).</li>}
           {range.to > today && <li>The period runs to {range.to}; figures are to date.</li>}
         </ul>

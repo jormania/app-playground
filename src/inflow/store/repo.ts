@@ -36,7 +36,7 @@ export function normalise(stored: Partial<InflowData> | undefined | null): Inflo
   return {
     ...d,
     costs: d.costs ?? [],
-    records: (d.records ?? []).map((r) => ({ ...r, attendees: r.attendees ?? null })),
+    records: (d.records ?? []).map((r) => ({ ...r, attendees: r.attendees ?? null, sessions: r.sessions && r.sessions > 0 ? r.sessions : 1, hours: r.hours ?? null })),
     venues: (d.venues ?? []).map((v) => ({ ...v, deal: v.deal ?? 'none', feePerSession: v.feePerSession ?? 0, sharePct: v.sharePct ?? 0, monthlyFee: v.monthlyFee ?? 0 })),
   }
 }

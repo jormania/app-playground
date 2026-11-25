@@ -62,7 +62,7 @@ describe('take-home', () => {
 /** Three sessions at one venue: 1,000, 400 and 2,000 lei; 5, 2 and 10 people. */
 const room = (terms: Partial<Venue>): Venue => ({ ...venue('loft'), id: 'v_room', ...terms })
 const session = (id: string, date: string, amountRon: number, attendees: number): IncomeRecord =>
-  ({ ...demo.records[0], id, date, amount: amountRon, amountRon, currency: 'RON', fxRate: 1, venueId: 'v_room', status: 'received', category: 'workshop', attendees, demo: undefined })
+  ({ ...demo.records[0], id, date, amount: amountRon, amountRon, currency: 'RON', fxRate: 1, venueId: 'v_room', status: 'received', category: 'workshop', attendees, sessions: 1, hours: null, demo: undefined })
 const three = [session('a', '2026-03-02', 1000, 5), session('b', '2026-03-09', 400, 2), session('c', '2026-03-16', 2000, 10)]
 const all = { from: '2026-01-01', to: '2026-12-31' }
 
@@ -127,5 +127,22 @@ describe('totals and data questions', () => {
   })
   it('lists the demo venues that have a deal', () => {
     expect(venueDeals(demo.venues, demo.records, year).filter((d) => d.venue.deal !== 'none').length).toBeGreaterThan(2)
+  })
+})
+
+describe('a payment covering several sessions', () => {
+  const pack = { ...session('p', '2026-04-01', 1600, 2), sessions: 4 }
+  it('pays a fixed fee for each session it covers, and counts people per session', () => {
+    const d = venueDeal(room({ deal: 'fixed', feePerSession: 100 }), [pack], all)
+    expect(d.sessionCount).toBe(4)
+    expect(d.venueCost).toBe(400)
+    expect(d.takePerSession).toBe(300)
+    // 2 people at each of 4 sessions: 8 seats, 200 lei a head.
+    expect(d.revenuePerHead).toBe(200)
+    expect(d.avgAttendees).toBe(2)
+  })
+  it('the what-if runs per session too', () => {
+    const d = venueDeal(room({ deal: 'share', sharePct: 0.25 }), [pack], all)
+    expect(scenario(d, { deal: 'fixed', feePerSession: 50, sharePct: 0, monthlyFee: 0 }).hypothetical).toBe(1400)
   })
 })

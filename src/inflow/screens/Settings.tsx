@@ -12,7 +12,7 @@ import { useInflow } from '../app/state'
 import { useInsightFeedback } from '../app/insightFeedback'
 import { EntityEditor } from '../components/EntityEditor'
 import { NumberInput, SelectInput, TextInput } from '../components/fields'
-import type { Client, FeatureKey, Features, Settings as SettingsT, TaxProfileId, Venue } from '../domain/types'
+import type { Client, FeatureKey, Settings as SettingsT, TaxProfileId, Venue } from '../domain/types'
 import { CLIENT_COUNTRY, DEAL, PROFILE, SOURCE_TYPE, VENUE_TYPE, options } from '../domain/vocabulary'
 import { clientStats } from '../lib/analytics'
 import { shortDate } from '../lib/dates'
@@ -21,7 +21,7 @@ import { BackupError, costsCsv, download, makeBackup, readBackup, recordsCsv } f
 import { NotionRepo } from '../store/notion'
 import type { Entity, EntityKind } from '../store/repo'
 import { RULESETS } from '../tax/rules'
-import { ALL_FEATURES } from '../store/settings'
+import { ALL_FEATURES, NO_FEATURES, SIMPLE_FEATURES } from '../store/settings'
 import { readJson, writeJson } from '../../shared/storage'
 import type { ReactNode } from 'react'
 import styles from '../styles/ui.module.css'
@@ -49,24 +49,11 @@ export const FEATURES: { key: FeatureKey; label: string; hint: string; on: strin
   { key: 'currencies', label: 'Foreign currencies', hint: 'Euro, dollars and more, converted to lei.',
     on: ['A currency on each payment or cost', 'The day’s rate, fetched for you', 'Every total in lei'],
     off: 'Lei only.' },
-  { key: 'targets', label: 'Monthly target', hint: 'A goal for the month and how far you are.',
-    on: ['A progress bar under “This month”'],
-    off: 'No target is shown.' },
-  { key: 'unusual', label: 'Unusual payments', hint: 'Flags payments far above your typical one.',
-    on: ['Payments several times your typical one, tagged', 'Listed on the Overview, so a windfall isn’t read as a trend'],
-    off: 'No flags.' },
-  { key: 'reportTools', label: 'Report filters & split-by', hint: 'Narrow every report; cross two dimensions.',
-    on: ['One filter bar for every report', 'Split by: which activities pay at which venue'],
-    off: 'Reports show everything, unfiltered.' },
   { key: 'printable', label: 'Printable reports', hint: 'Build a report and save it as PDF or HTML.',
     on: ['Month at a glance, Year in review', 'A client statement; a pack for your accountant', 'Saved as PDF or HTML'],
     off: 'The Print tab goes. CSV exports stay.' },
 ]
 
-/** A first-day InFlow: income, where it comes from, insights. The rest can come later. */
-export const SIMPLE_START: Features = {
-  ...ALL_FEATURES, tax: false, costs: false, deals: false, currencies: false, reportTools: false, printable: false, unusual: false,
-}
 
 function dealText(v: Venue): string {
   switch (v.deal) {
@@ -108,6 +95,10 @@ export function Settings() {
   const [testing, setTesting] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<null | 'clear' | 'reset' | 'restore' | 'copy'>(null)
   const insightFb = useInsightFeedback()
+  const onCount = FEATURES.filter((f) => settings.features[f.key]).length
+  const allOn = onCount === FEATURES.length
+  const noneOn = onCount === 0
+  const isSimple = FEATURES.every((f) => settings.features[f.key] === SIMPLE_FEATURES[f.key])
   const [lastBackup, setLastBackup] = useState(() => readJson<string>(LAST_BACKUP_KEY, ''))
   const [pendingBackup, setPendingBackup] = useState<ReturnType<typeof readBackup> | null>(null)
   const [copying, setCopying] = useState<string | null>(null)
@@ -224,11 +215,16 @@ export function Settings() {
         </div>
       </Section>
 
-      <Section id="features" title="Features" sub={`${Object.values(settings.features).filter(Boolean).length} of ${FEATURES.length} on`}>
-        <p className={styles.hint}>Everything is on to start. Switch off what you don't need: it disappears from every screen, report and sum, and comes back exactly as it was when you switch it on.</p>
-        <div className={styles.buttonRow} style={{ margin: 'var(--space-sm) 0' }}>
-          <Button size="sm" variant="secondary" onClick={() => updateSettings({ features: SIMPLE_START })}>Simple start</Button>
-          <Button size="sm" variant="secondary" onClick={() => updateSettings({ features: ALL_FEATURES })}>Turn everything on</Button>
+      <Section id="features" title="Features" sub={`${onCount} of ${FEATURES.length} on`}>
+        <ul className={styles.featurePoints} style={{ marginTop: 0 }}>
+          <li><Check size={13} aria-hidden />New here? You start simple: income, where it comes from, insights, expected payments.</li>
+          <li><Check size={13} aria-hidden />Switch on more below, one at a time, or all at once.</li>
+          <li><Check size={13} aria-hidden />Off hides a part everywhere; your data stays and comes back when it's on.</li>
+        </ul>
+        <div className={styles.masterSwitch}>
+          <SettingsToggle label="Everything" hint={allOn ? 'Every feature is on.' : noneOn ? 'Every optional feature is off.' : `${onCount} of ${FEATURES.length} on.`}
+            checked={allOn} onChange={(e) => updateSettings({ features: e.target.checked ? ALL_FEATURES : NO_FEATURES, simpleStartNotice: false })} />
+          {!isSimple && <Button size="sm" variant="secondary" onClick={() => updateSettings({ features: SIMPLE_FEATURES })}>Back to simple start</Button>}
         </div>
         {insightFb.hiddenCount > 0 && on('insights') && (
           <p className={styles.hint} style={{ margin: '0 0 var(--space-sm)' }}>
@@ -240,7 +236,7 @@ export function Settings() {
           {FEATURES.map((f) => (
             <div key={f.key} className={styles.featureRow}>
               <SettingsToggle label={f.label} hint={f.hint} checked={settings.features[f.key]}
-                onChange={(e) => updateSettings({ features: { [f.key]: e.target.checked } })} />
+                onChange={(e) => updateSettings({ features: { [f.key]: e.target.checked }, simpleStartNotice: false })} />
               <details className={styles.featureMore}>
                 <summary><span className={styles.twistyArrow} aria-hidden>▶</span>What this does</summary>
                 <ul className={styles.featurePoints}>
@@ -314,16 +310,18 @@ export function Settings() {
         </Section>
       )}
 
-      {(on('targets') || on('unusual')) && (
-        <Section id="targets" title="Targets and flags">
-          <div className={styles.formRow}>
-            {on('targets') && <NumberInput label="Monthly income target (lei)" value={settings.monthlyTarget}
-              placeholder="none" onCommit={(n) => updateSettings({ monthlyTarget: n ?? 0 })} />}
-            {on('unusual') && <NumberInput label="Flag payments above (× typical)" value={settings.largeMultiple}
-              onCommit={(n) => { if (n && n >= 1.5) updateSettings({ largeMultiple: n }) }} hint="1.5 or more." />}
-          </div>
-        </Section>
-      )}
+      <Section id="targets" title="Target and flags">
+        <div className={styles.settingsGroup}>
+          <NumberInput label="Monthly income target (lei)" value={settings.monthlyTarget} placeholder="none"
+            onCommit={(n) => updateSettings({ monthlyTarget: n ?? 0 })} hint="A progress bar under “This month”. Empty for none." />
+          <SettingsToggle label="Flag unusually large payments" hint="Tags payments several times your typical one, so a windfall isn't read as a trend."
+            checked={settings.largeMultiple > 0} onChange={(e) => updateSettings({ largeMultiple: e.target.checked ? 4 : 0 })} />
+          {settings.largeMultiple > 0 && (
+            <NumberInput label="Flag above (× typical)" value={settings.largeMultiple}
+              onCommit={(n) => { if (n && n >= 1.5) updateSettings({ largeMultiple: n }) }} hint="1.5 or more." />
+          )}
+        </div>
+      </Section>
 
       <Section id="entities" title="Clients, sources & venues"
         action={<button type="button" className={styles.linkButton} onClick={() => setEditing({ kind: manage, entity: null })}>+ Add</button>}>

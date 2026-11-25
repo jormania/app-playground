@@ -41,6 +41,8 @@ interface Draft {
   recurring: boolean
   notes: string
   attendees: string
+  sessions: string
+  hours: string
   taxability: Taxability
   taxHandling: TaxHandling
   vat: VatTreatment
@@ -55,7 +57,7 @@ function fromRecord(r: IncomeRecord): Draft {
   return {
     description: r.description, amount: String(r.amount), currency: r.currency, fxRate: String(r.fxRate), date: r.date,
     status: r.status, clientId: r.clientId ?? '', sourceId: r.sourceId ?? '', venueId: r.venueId ?? '', category: r.category ?? '',
-    recurring: r.recurring, notes: r.notes, attendees: r.attendees === null ? '' : String(r.attendees), taxability: r.taxability, taxHandling: r.taxHandling, vat: r.vat,
+    recurring: r.recurring, notes: r.notes, attendees: r.attendees === null ? '' : String(r.attendees), sessions: String(r.sessions ?? 1), hours: r.hours === null || r.hours === undefined ? '' : String(r.hours), taxability: r.taxability, taxHandling: r.taxHandling, vat: r.vat,
     confirmed: r.classification === 'confirmed', reserve: r.taxReserve === null ? '' : String(r.taxReserve), withheld: r.taxWithheld ? String(r.taxWithheld) : '',
   }
 }
@@ -76,7 +78,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     const last = readJson<{ currency?: Currency }>(LAST_KEY, {})
     return {
       description: '', amount: '', currency: last.currency ?? 'RON', fxRate: '1', date: today, status: 'received',
-      clientId: '', sourceId: '', venueId: '', category: '', recurring: false, notes: '', attendees: '',
+      clientId: '', sourceId: '', venueId: '', category: '', recurring: false, notes: '', attendees: '', sessions: '1', hours: '',
       taxability: 'taxable', taxHandling: 'self_declared', vat: 'exempt', confirmed: false, reserve: '', withheld: '',
     }
   }
@@ -136,7 +138,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     const like = data.records.filter((r) => r.status === 'received' && r.attendees && r.attendees > 0 && r.id !== record?.id
       && (draft.venueId ? r.venueId === draft.venueId : draft.category ? r.category === draft.category : false))
     if (like.length < 2) return null
-    const per = like.map((r) => r.amountRon / r.attendees!).sort((a, b) => a - b)
+    const per = like.map((r) => r.amountRon / (r.attendees! * (r.sessions || 1))).sort((a, b) => a - b)
     return Math.round(per[Math.floor(per.length / 2)])
   }, [data.records, draft.venueId, draft.category, record?.id])
 
@@ -209,6 +211,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           sourceId: draft.sourceId || last.sourceId || '', venueId: draft.venueId || last.venueId || '',
           category: draft.category || last.category || '', currency: last.currency, recurring: last.recurring,
           description: draft.description || last.description, amount: draft.amount || String(last.amount),
+          sessions: draft.sessions !== '1' ? draft.sessions : String(last.sessions ?? 1), hours: draft.hours || (last.hours ? String(last.hours) : ''),
         })
         if (last.currency !== 'RON') patch.fxRate = String(last.fxRate)
       }
@@ -242,6 +245,10 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     if (draft.currency !== 'RON' && (!Number.isFinite(fxRate) || fxRate <= 0)) { setError('Enter the exchange rate to lei.'); return }
     const attendeesNum = draft.attendees.trim() === '' ? null : Math.round(parseAmount(draft.attendees))
     if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setError('People who came should be a whole number.'); return }
+    const sessionsNum = draft.sessions.trim() === '' ? 1 : Math.round(parseAmount(draft.sessions))
+    if (!Number.isFinite(sessionsNum) || sessionsNum < 1) { setError('Sessions should be a whole number, 1 or more.'); return }
+    const hoursNum = draft.hours.trim() === '' ? null : parseRate(draft.hours)
+    if (hoursNum !== null && (!Number.isFinite(hoursNum) || hoursNum <= 0)) { setError('Hours should be a number above zero, or empty.'); return }
     const reserveNum = !settings.features.tax ? record?.taxReserve ?? null : draft.reserve === '' ? null : parseAmount(draft.reserve)
     if (reserveNum !== null && !Number.isFinite(reserveNum)) { setError('The tax reserve is not a number.'); return }
     const allSuggested = !touched.has('taxability') && !touched.has('taxHandling') && !touched.has('vat')
@@ -262,6 +269,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       recurring: draft.recurring,
       notes: draft.notes.trim(),
       attendees: attendeesNum,
+      sessions: sessionsNum,
+      hours: hoursNum === null ? null : round2(hoursNum),
       taxability: draft.taxability,
       taxHandling: draft.taxHandling,
       vat: draft.vat,
@@ -293,13 +302,14 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   // Optional parts of the form follow the feature switches, but never hide a value a record already has.
   const showCurrency = on('currencies') || draft.currency !== 'RON'
   const showStatus = on('expected') || draft.status === 'expected'
-  const perHead = Number(draft.attendees) > 0 && amountRon > 0 ? amountRon / Number(draft.attendees) : 0
-  const heads = Number(draft.attendees)
+  const sessionsN = Math.max(1, Math.round(parseAmount(draft.sessions)) || 1)
+  const heads = Number(draft.attendees) * sessionsN
+  const perHead = heads > 0 && amountRon > 0 ? amountRon / heads : 0
   const fromHeads = usualPerHead && heads > 0 && draft.currency === 'RON' ? heads * usualPerHead : 0
   const attendeesField = (
     <TextInput label="People who came (optional)" value={draft.attendees} onChange={(v) => set({ attendees: v })} inputMode="numeric" placeholder="—"
       hint={fromHeads && Math.round(amountRon) !== fromHeads
-        ? <>Usually {lei(usualPerHead!)} a head here: {heads} × {lei(usualPerHead!)} = <b>{lei(fromHeads)}</b>{' '}
+        ? <>Usually {lei(usualPerHead!)} a head here: {heads}{sessionsN > 1 ? ` seats (${draft.attendees} × ${sessionsN} sessions)` : ''} × {lei(usualPerHead!)} = <b>{lei(fromHeads)}</b>{' '}
           <button type="button" className={styles.linkButton} onClick={() => set({ amount: String(fromHeads) })}>Use</button></>
         : perHead ? `${lei(perHead)} a head` : 'For group sessions: shows what each seat earns and how full a room must be.'} />
   )
@@ -370,6 +380,12 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             ) : on('deals') ? attendeesField : <span />}
           </div>
           {showStatus && on('deals') && attendeesField}
+          <div className={styles.formRow}>
+            <TextInput label="Sessions" value={draft.sessions} onChange={(v) => set({ sessions: v })} inputMode="numeric"
+              hint="A 4-session package is 4." />
+            <TextInput label="Hours (optional)" value={draft.hours} onChange={(v) => set({ hours: v })} inputMode="decimal" placeholder="—"
+              hint="All of it, to see what an hour keeps." />
+          </div>
           <div className={styles.formRow}>
             <SelectInput label="Source" value={draft.sourceId} onChange={(v) => pickEntity('source', v)} name="source">
               <option value="">— none —</option>

@@ -1,25 +1,24 @@
 /**
- * The 20-second screen: how much came in, from where, how it's moving, what
- * was kept after costs (optional), how much of it is taxable, what's been
- * withheld and what to put aside (optional).
+ * The 20-second screen: how much came in and how it's moving, what's worth
+ * a look, where it came from, and what's still to come. Profit, tax detail and
+ * unusual payments live in Reports and Income.
  */
 import { useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Copy, DoorOpen, HardDriveDownload, Plus, Info, Lightbulb, PieChart, Receipt, Repeat, Scale, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarPlus, Check, Copy, DoorOpen, HardDriveDownload, Plus, Info, Lightbulb, PieChart, Receipt, Sparkles, TrendingUp } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
-import { EMPTY_FILTER, useInflow } from '../app/state'
+import { DIM_FILTER, EMPTY_FILTER, useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
-import { SplitBar, TrendChart } from '../components/charts'
+import { TrendChart } from '../components/charts'
 import { Donut } from '../components/Donut'
 import { useCountUp } from '../components/useCountUp'
 import { Optional } from '../components/Optional'
 import {
-  breakdown, concentration, largeRecordIds, NO_ENTITY, outstanding, received, series, sum, type Dimension,
+  asExpected, breakdown, concentration, NO_ENTITY, outstanding, series, suggestExpected, sum, type Dimension,
 } from '../lib/analytics'
-import { addDays, daysBetween, endOfMonth, shortDate, startOfMonth, startOfWeek, yearOf } from '../lib/dates'
+import { daysBetween, shortDate, yearOf } from '../lib/dates'
 import { delta, lei, money, percent } from '../lib/money'
 import { alignedPrevious, buckets, type Bucket } from '../lib/period'
-import { projectYear, suggestReserve } from '../tax/estimate'
-import { breakEven, buildPnl } from '../lib/finance'
+import { suggestReserve } from '../tax/estimate'
 import { insights } from '../lib/insights'
 import { InsightList } from '../components/insightsUi'
 import { useInsightFeedback } from '../app/insightFeedback'
@@ -27,6 +26,7 @@ import type { IncomeRecord } from '../domain/types'
 import { readJson, writeJson } from '../../shared/storage'
 import { download, makeBackup } from '../store/backup'
 import { LAST_BACKUP_KEY } from './Settings'
+import { ALL_FEATURES } from '../store/settings'
 import styles from '../styles/ui.module.css'
 
 /** The reminder "Remind" copies: short, friendly, with what, how much and when. */
@@ -41,6 +41,8 @@ function granularity(bs: Bucket[]): string {
   return widest === 1 ? 'per day' : widest <= 7 ? 'per week' : 'per month'
 }
 
+const DISMISSED_KEY = 'inflow:suggest-dismissed'
+
 const DIMS: { value: Dimension; label: string }[] = [
   { value: 'client', label: 'Clients' },
   { value: 'source', label: 'Sources' },
@@ -48,17 +50,14 @@ const DIMS: { value: Dimension; label: string }[] = [
   { value: 'activity', label: 'Activities' },
 ]
 
-const FILTER_KEY: Record<Dimension, 'clientId' | 'sourceId' | 'venueId' | 'activity'> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
 
 export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) => void; onAddCost: () => void; onAdd?: () => void }) {
-  const { data, settings, today, setFilter, saveRecord, toast, on, loadDemo } = useInflow()
+  const { data, settings, today, setFilter, saveRecord, toast, on, loadDemo, period } = useInflow()
   const { range, prev, prevWhole, cur, before, summary, prevSummary } = usePeriodData()
   const [dim, setDim] = useState<Dimension>('client')
-  const go = (patch: Partial<typeof EMPTY_FILTER>) => { setFilter({ ...EMPTY_FILTER, range: 'period', ...patch }); location.hash = '#/income' }
+  const go = (patch: Partial<typeof EMPTY_FILTER>) => { setFilter({ ...EMPTY_FILTER, ...patch }); location.hash = '#/income' }
   const costsForTax = useMemo(() => (settings.features.costs ? data.costs : []), [settings.features.costs, data.costs])
 
-  const week = sum(received(data.records, { from: startOfWeek(today), to: addDays(startOfWeek(today), 6) }))
-  const month = sum(received(data.records, { from: startOfMonth(today), to: endOfMonth(today) }))
   const d = delta(summary.total, prevSummary.total)
   const heroTotal = useCountUp(summary.total)
 
@@ -71,20 +70,22 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
   const rows = useMemo(() => breakdown(data, cur, before, dim), [data, cur, before, dim])
   const clientRows = useMemo(() => breakdown(data, cur, before, 'client'), [data, cur, before])
   const conc = concentration(clientRows)
-  const showUnusual = on('unusual')
-  const large = useMemo(() => (showUnusual ? largeRecordIds(data.records, settings.largeMultiple) : new Set<string>()), [showUnusual, data.records, settings.largeMultiple])
-  const notable = cur.filter((r) => large.has(r.id))
   const owed = on('expected') ? outstanding(data.records, today) : { total: 0, count: 0, overdue: 0, records: [] }
-  // Tax off: no projection is computed at all.
-  const taxOn = on('tax')
-  const projection = useMemo(() => (taxOn ? projectYear(settings.tax, data.records, yearOf(range.to > today ? today : range.to), today, 0, costsForTax) : null), [taxOn, settings.tax, data.records, range.to, today, costsForTax])
+  // Next month's payment from a recurring client, offered once nothing is expected from them yet.
+  const [dismissed, setDismissed] = useState(() => new Set(readJson<string[]>(DISMISSED_KEY, [])))
+  const suggested = useMemo(() => (on('expected') ? suggestExpected(data.records, today, dismissed) : []), [on, data.records, today, dismissed])
+  const dismiss = (key: string) => {
+    const next = new Set(dismissed).add(key)
+    setDismissed(next)
+    // Only the recent ones matter: a key carries its date, and old dates never come back.
+    writeJson(DISMISSED_KEY, [...next].slice(-40))
+  }
+  const addSuggested = async (s: (typeof suggested)[number]) => {
+    if (await saveRecord(asExpected(s))) toast({ message: `Expected on ${shortDate(s.date)}: ${money(s.from.amount, s.from.currency)}`, tone: 'success' })
+  }
   const all = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected') }) : []), [on, data, range, today])
   const fb = useInsightFeedback()
   const top = fb.apply(all)
-  const pnl = useMemo(() => (settings.features.costs ? buildPnl(data.records, data.costs, [{ from: range.from, to: range.to, label: '' }]) : null), [settings.features.costs, data, range])
-  const pnlLine = (k: string) => pnl?.lines.find((l) => l.key === k)?.total ?? 0
-  const be = useMemo(() => (settings.features.costs ? breakEven(data.records, data.costs, today) : null), [settings.features.costs, data, today])
-  const costsDue = data.costs.filter((c) => c.status === 'due')
 
   // One tap when an expected payment lands: received today, with its tax reserve suggested.
   const markReceived = async (r: IncomeRecord) => {
@@ -108,20 +109,18 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
       () => toast('Could not copy the reminder'),
     )
   }
+  // The monthly target, for periods it fits: a month, or a year as twelve of them. A week or a custom range has none.
   const target = settings.monthlyTarget
+  const targetFor = target <= 0 ? 0 : period.preset === 'month' || period.preset === 'last_month' ? target : period.preset === 'year' ? target * 12 : 0
   const recurringTotal = sum(cur.filter((r) => r.recurring))
   const recurringShare = summary.total > 0 ? recurringTotal / summary.total : 0
-  const currencies = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const r of cur) m.set(r.currency, (m.get(r.currency) ?? 0) + r.amountRon)
-    return [...m.entries()].sort((a, b) => b[1] - a[1])
-  }, [cur])
 
   // A first run with nothing recorded: a few steps in, not a dashboard of zeros.
-  if (data.records.length === 0) return <StartHere onAdd={onAdd} onAddCost={on('costs') ? onAddCost : undefined} onDemo={() => void loadDemo()} hasVenues={data.venues.length > 0} />
+  if (data.records.length === 0) return <><SimpleStartNotice /><StartHere onAdd={onAdd} onAddCost={on('costs') ? onAddCost : undefined} onDemo={() => void loadDemo()} hasVenues={data.venues.length > 0} /></>
 
   return (
     <>
+      <SimpleStartNotice />
       <BackupNudge />
       <section className={`${styles.panel} ${styles.hero}`} aria-label="Income this period">
         <div>
@@ -137,21 +136,16 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
             <span>{summary.count} {summary.count === 1 ? 'payment' : 'payments'}</span>
           </div>
         </div>
-        <div className={styles.stats}>
-          <div className={styles.stat}><div className={styles.statLabel}>This week</div><div className={styles.statValue}>{lei(week)}</div></div>
-          <div className={styles.stat}>
-            <div className={styles.statLabel}>This month</div>
-            <div className={styles.statValue}>{lei(month)}</div>
-            {target > 0 && on('targets') && (
-              <>
-                <div className={styles.progress} role="progressbar" aria-label="Monthly target" aria-valuenow={Math.round((month / target) * 100)} aria-valuemin={0} aria-valuemax={100}>
-                  <div className={styles.progressFill} style={{ width: `${Math.min(100, (month / target) * 100)}%` }} />
-                </div>
-                <div className={styles.statNote}>{percent(month / target)} of {lei(target)} target</div>
-              </>
-            )}
+        {targetFor > 0 && (
+          <div className={styles.heroTarget}>
+            <div className={styles.progress} role="progressbar" aria-label="Target" aria-valuenow={Math.round((summary.total / targetFor) * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <div className={styles.progressFill} style={{ width: `${Math.min(100, (summary.total / targetFor) * 100)}%` }} />
+            </div>
+            <span className={styles.statNote}>{percent(summary.total / targetFor)} of {lei(targetFor)} {period.preset === 'year' ? 'yearly target (12 × monthly)' : 'monthly target'}</span>
           </div>
-          {taxOn ? (
+        )}
+        <div className={styles.stats}>
+          {on('tax') ? (
             <>
               <div className={styles.stat}>
                 <div className={styles.statLabel}>Set aside for tax <Optional /></div>
@@ -169,7 +163,7 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
               <div className={styles.stat}>
                 <div className={styles.statLabel}>Average payment</div>
                 <div className={styles.statValue}>{lei(summary.count ? summary.total / summary.count : 0)}</div>
-                <div className={styles.statNote}>{summary.count} in {range.label.toLowerCase()}</div>
+                <div className={styles.statNote}>per payment</div>
               </div>
               <div className={styles.stat}>
                 <div className={styles.statLabel}>Clients paid</div>
@@ -208,7 +202,7 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
           <SegmentedControl size="sm" options={DIMS} value={dim} onChange={(v) => setDim(v as Dimension)} label="Break down by" />
           <div style={{ marginTop: 'var(--space-md)' }}>
             <Donut key={dim} parts={rows.map((r) => ({ id: r.id, name: r.name, value: r.total }))} caption={range.label.toLowerCase()}
-              label={`Income by ${dim}`} onSelect={(id) => go({ [FILTER_KEY[dim]]: id })} />
+              label={`Income by ${dim}`} onSelect={(id) => go({ [DIM_FILTER[dim]]: id })} />
           </div>
           {dim === 'client' && conc && conc.level !== 'healthy' && (
             <p className={styles.hint} style={{ marginTop: 'var(--space-sm)' }}>
@@ -218,98 +212,11 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
           )}
         </section>
 
-        {taxOn && projection ? (
-        <section className={styles.panel} aria-label="Taxable or not">
-          <div className={styles.panelHead}>
-            <h2 className={styles.panelTitle}><Receipt size={14} aria-hidden /> Taxable or not <Optional /></h2>
-            <button type="button" className={styles.linkButton} onClick={() => { location.hash = '#/reports/tax' }}>Tax report</button>
-          </div>
-          <SplitBar total={summary.total} parts={[
-            { key: 'taxable', label: 'Taxable', value: summary.taxable, color: 'var(--chart-1)' },
-            { key: 'non', label: 'Non-taxable', value: summary.nonTaxable, color: 'var(--chart-2)' },
-            { key: 'review', label: 'Needs review', value: summary.review, color: 'var(--chart-3)' },
-          ]} />
-          <div className={styles.lineList} style={{ marginTop: 'var(--space-md)' }}>
-            <div className={styles.line}><span>Tax withheld or paid</span><span>{lei(summary.taxWithheld)}</span></div>
-            <div className={styles.line}><span>Set aside (stored on payments)</span><span>{lei(summary.reserve)}</span></div>
-            <div className={styles.line}>
-              <span>{projection.year} effective rate{projection.estimate.provisional ? ' (provisional)' : ''}</span>
-              <span>{percent(projection.rate, 1)}</span>
-            </div>
-            <span className={styles.lineNote}>
-              {settings.tax.id === 'custom' ? 'Your own flat rate.'
-                : projection.capped ? `Capped: on ${lei(projection.projected)} a year, fixed minimums would take ${percent(projection.rawRate)}. See the Tax report.`
-                  : `At ${lei(projection.projected)} of taxable income for ${projection.year}. Estimate, not advice.`}
-            </span>
-          </div>
-          {summary.review > 0 && (
-            <p className={styles.hint} style={{ marginTop: 'var(--space-sm)' }}>
-              <button type="button" className={styles.linkButton} onClick={() => go({ taxability: 'review' })}>{lei(summary.review)} needs a decision →</button>
-            </p>
-          )}
-        </section>
-        ) : (
-        <section className={styles.panel} aria-label="Regular or one-off">
-          <div className={styles.panelHead}>
-            <h2 className={styles.panelTitle}><Repeat size={14} aria-hidden /> Regular or one-off</h2>
-            <span className={styles.panelSub}>{currencies.length > 1 ? `${currencies.length} currencies` : 'one currency'}</span>
-          </div>
-          <SplitBar total={summary.total} parts={[
-            { key: 'recurring', label: 'Recurring', value: recurringTotal, color: 'var(--chart-1)' },
-            { key: 'oneoff', label: 'One-off', value: Math.max(0, summary.total - recurringTotal), color: 'var(--chart-2)' },
-          ]} />
-          <div className={styles.lineList} style={{ marginTop: 'var(--space-md)' }}>
-            {currencies.map(([cur, v]) => (
-              <div key={cur} className={styles.line}><span>Paid in {cur}</span><span>{lei(v)}</span></div>
-            ))}
-          </div>
-        </section>
-        )}
-
-        {pnl && (
-          <section className={styles.panel} aria-label="What you kept">
-            <div className={styles.panelHead}>
-              <h2 className={styles.panelTitle}><Scale size={14} aria-hidden /> What you kept</h2>
-              <button type="button" className={styles.linkButton} onClick={() => { location.hash = '#/reports/pnl' }}>P&L</button>
-            </div>
-            {data.costs.length === 0 ? (
-              <p className={styles.hint}>Add your costs to see profit, margins per venue and your break-even. <button type="button" className={styles.linkButton} onClick={onAddCost}>Add a cost</button></p>
-            ) : (
-              <div className={styles.lineList}>
-                <div className={styles.line}><span>Income received</span><span>{lei(pnlLine('revenue'))}</span></div>
-                <div className={styles.line}><span>− Direct costs</span><span>{lei(pnlLine('direct'))}</span></div>
-                <div className={styles.line}><span>− Operating costs</span><span>{lei(pnlLine('operating'))}</span></div>
-                <div className={styles.line}><span>− Depreciation, interest, tax paid</span><span>{lei(pnlLine('depreciation') + pnlLine('interest') + pnlLine('tax'))}</span></div>
-                <div className={`${styles.line} ${styles.lineTotal}`}>
-                  <span>Net profit</span>
-                  <span className={pnlLine('net') < 0 ? styles.down : undefined}>{lei(pnlLine('net'))}{pnlLine('revenue') > 0 ? ` · ${percent(pnlLine('net') / pnlLine('revenue'))}` : ''}</span>
-                </div>
-                {be && (
-                  <>
-                    <div className={styles.line} style={{ marginTop: 'var(--space-sm)' }}><span>Break-even each month</span><span>{lei(be.revenueNeeded)}</span></div>
-                    <div className={styles.progress} role="progressbar" aria-label="Break-even this month" aria-valuenow={Math.round(be.covered * 100)} aria-valuemin={0} aria-valuemax={100}>
-                      <div className={styles.progressFill} style={{ width: `${Math.min(100, be.covered * 100)}%`, background: be.covered < 1 ? 'var(--color-warning)' : undefined }} />
-                    </div>
-                    <span className={styles.lineNote}>
-                      {be.covered >= 1 ? 'This month is past break-even. ' : `This month is at ${percent(be.covered)} of it. `}
-                      Fixed costs average {lei(be.fixedPerMonth)} a month, and {percent(be.grossRate)} of each leu is left after direct costs.
-                    </span>
-                  </>
-                )}
-                {costsDue.length > 0 && (
-                  <span className={styles.lineNote}>
-                    <button type="button" className={styles.linkButton} onClick={() => { location.hash = '#/costs' }}>{costsDue.length} {costsDue.length === 1 ? 'cost' : 'costs'} to pay ({lei(costsDue.reduce((a, c) => a + c.amountRon, 0))}) →</button>
-                  </span>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-        {owed.count > 0 && (
+        {(owed.count > 0 || suggested.length > 0) && (
             <section className={styles.panel} aria-label="Expected payments">
               <div className={styles.panelHead}>
                 <h2 className={styles.panelTitle}><CalendarClock size={14} aria-hidden /> Expected</h2>
-                <span className={styles.panelSub}>{lei(owed.total)}{owed.overdue ? ` · ${owed.overdue} overdue` : ''}</span>
+                {owed.count > 0 && <span className={styles.panelSub}>{lei(owed.total)}{owed.overdue ? ` · ${owed.overdue} overdue` : ''}</span>}
               </div>
               <div className={styles.rows}>
                 {owed.records.slice(0, 4).map((r) => (
@@ -331,25 +238,33 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
                     </div>
                   </div>
                 ))}
-                {owed.count > 4 && <button type="button" className={styles.linkButton} onClick={() => go({ status: 'expected', range: 'all' })}>All {owed.count} expected →</button>}
+                {owed.count > 4 && <button type="button" className={styles.linkButton} onClick={() => go({ status: 'expected' })}>All {owed.count} expected →</button>}
               </div>
-            </section>
-          )}
-          {notable.length > 0 && (
-            <section className={styles.panel} aria-label="Unusually large">
-              <div className={styles.panelHead}>
-                <h2 className={styles.panelTitle}><Sparkles size={14} aria-hidden /> Out of the ordinary</h2>
-                <span className={styles.panelSub}>{settings.largeMultiple}× your typical payment or more</span>
-              </div>
-              <div className={styles.rows}>
-                {notable.slice(0, 4).map((r) => (
-                  <button key={r.id} type="button" className={styles.row} onClick={() => onOpen(r.id)}>
-                    <span className={styles.rowName}>{r.description}</span>
-                    <span className={styles.rowValue}>{lei(r.amountRon)}</span>
-                    <span className={styles.rowMeta}>{shortDate(r.date)} · {data.clients.find((c) => c.id === r.clientId)?.name ?? '—'}</span>
-                  </button>
-                ))}
-              </div>
+              {suggested.length > 0 && (
+                <div className={styles.rows} aria-label="Suggested from recurring payments">
+                  <p className={styles.hint} style={{ margin: 'var(--space-sm) 0 0' }}>Recurring clients with nothing expected yet:</p>
+                  {suggested.slice(0, 3).map((x) => {
+                    const who = data.clients.find((c) => c.id === x.from.clientId)?.name ?? x.from.description
+                    return (
+                      <div key={x.key} className={styles.expectedRow}>
+                        <div className={`${styles.row} ${styles.suggestRow}`}>
+                          <span className={styles.rowName}>{who}</span>
+                          <span className={styles.rowValue}>{money(x.from.amount, x.from.currency)}</span>
+                          <span className={styles.rowMeta}>{x.from.description} · around {shortDate(x.date)}</span>
+                        </div>
+                        <div className={styles.expectedActions}>
+                          <button type="button" className={styles.chip} onClick={() => void addSuggested(x)} aria-label={`Expect ${who} on ${shortDate(x.date)}`}>
+                            <CalendarPlus size={12} aria-hidden /> Expect it
+                          </button>
+                          <button type="button" className={styles.chip} onClick={() => dismiss(x.key)} aria-label={`Not this time for ${who}`}>
+                            Not this time
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </section>
           )}
       </div>
@@ -359,15 +274,14 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
 
 function StartHere({ onAdd, onAddCost, onDemo, hasVenues }: { onAdd?: () => void; onAddCost?: () => void; onDemo: () => void; hasVenues: boolean }) {
   const steps: { icon: typeof Check; title: string; note: string; action: string; run: () => void }[] = [
-    { icon: Plus, title: 'Add your first payment', note: 'Amount and client; the rest is remembered next time.', action: 'Add income', run: () => onAdd?.() },
-    { icon: DoorOpen, title: hasVenues ? 'Check your venues' : 'Add the rooms you work in', note: 'With their deal: a fee per session or a share.', action: 'Venues', run: () => { location.hash = '#/settings' } },
+    { icon: Plus, title: 'Add a payment', note: 'The rest is remembered next time.', action: 'Add income', run: () => onAdd?.() },
+    { icon: DoorOpen, title: hasVenues ? 'Check your rooms' : 'Add your rooms', note: 'With their fee or share.', action: 'Venues', run: () => { location.hash = '#/settings' } },
     ...(onAddCost ? [{ icon: Receipt, title: 'Record a cost', note: 'Room hire, software, the accountant.', action: 'Add cost', run: onAddCost }] : []),
-    { icon: Sparkles, title: 'Not sure where to start?', note: 'Look round the demo practice; your data stays apart.', action: 'See the demo', run: onDemo },
+    { icon: Sparkles, title: 'Or try the demo', note: 'Your data stays apart.', action: 'See the demo', run: onDemo },
   ]
   return (
     <section className={`${styles.panel} ${styles.startHere}`} aria-label="Start here">
-      <div className={styles.eyebrow}>Start here</div>
-      <h2 className={styles.reviewTitle}>Nothing recorded yet</h2>
+      <h2 className={styles.reviewTitle}>Start here</h2>
       <ol className={styles.startSteps}>
         {steps.map((s, i) => (
           <li key={s.title}>
@@ -401,5 +315,31 @@ function BackupNudge() {
       <span><HardDriveDownload size={14} aria-hidden /> {last ? `Last backup ${daysBetween(last, today)} days ago.` : 'No backup yet.'} Your data is only in this browser.</span>
       <button type="button" className={styles.linkButton} onClick={save}>Download backup</button>
     </div>
+  )
+}
+
+/**
+ * A new user starts simple. Say so once, plainly, with the two ways on:
+ * everything at once, or choosing in Settings → Features. Gone once dismissed
+ * or once any feature is switched.
+ */
+function SimpleStartNotice() {
+  const { settings, updateSettings } = useInflow()
+  if (!settings.simpleStartNotice) return null
+  return (
+    <section className={`${styles.panel} ${styles.simpleNotice}`} aria-label="Simple start">
+      <div className={styles.simpleHead}>
+        <span className={styles.hlIcon + ' ' + styles.hl_neutral} aria-hidden><Sparkles size={18} /></span>
+        <div>
+          <b>You're on a simple start</b>
+          <span>Income, where it comes from, insights and expected payments. Costs, tax, venue deals, currencies and printing are off until you want them.</span>
+        </div>
+      </div>
+      <div className={styles.buttonRow}>
+        <button type="button" className={styles.chip} onClick={() => updateSettings({ features: ALL_FEATURES, simpleStartNotice: false })}>Turn everything on</button>
+        <a className={styles.chip} href="#/settings" onClick={() => updateSettings({ simpleStartNotice: false })}>Choose features</a>
+        <button type="button" className={styles.chip} onClick={() => updateSettings({ simpleStartNotice: false })}>Got it</button>
+      </div>
+    </section>
   )
 }

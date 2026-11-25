@@ -197,3 +197,14 @@ describe('CSV is safe to open in a spreadsheet', () => {
     expect(csv).toContain(',-350')
   })
 })
+
+describe('older data', () => {
+  it('reads a payment saved before sessions and hours as one session, hours unknown', async () => {
+    const { normalise } = await import('./repo')
+    const old = { ...demo.records[0] } as Record<string, unknown>
+    delete old.sessions
+    delete old.hours
+    const n = normalise({ records: [old as never], clients: [], sources: [], venues: [] })
+    expect(n.records[0]).toMatchObject({ sessions: 1, hours: null })
+  })
+})

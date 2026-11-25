@@ -9,7 +9,6 @@ import { readJson, writeJson } from '../../shared/storage'
 import { useToastStack, type ToastInput } from '../../ds'
 import { buildDemo, demoOpening, hasDemo, withoutDemo } from '../data/demo'
 import type { CostRecord, FeatureKey, IncomeRecord, InflowData, Settings, Workspace } from '../domain/types'
-import { ANY_SCOPE, type Scope } from '../lib/analytics'
 import { todayString, type PeriodChoice } from '../lib/period'
 import { copyToNotion, NotionRepo } from '../store/notion'
 import { DEMO_KEY, DeviceRepo, EMPTY, normalise, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
@@ -29,13 +28,13 @@ export interface IncomeFilter {
   activity: string
   taxability: string
   status: string
-  /** 'period' follows the selected period; 'all' shows everything. */
-  range: 'period' | 'all'
 }
 
-export const EMPTY_FILTER: IncomeFilter = { query: '', clientId: '', sourceId: '', venueId: '', activity: '', taxability: '', status: '', range: 'all' }
+/** Which filter field narrows the income list to one client, source, venue or work type. */
+export const DIM_FILTER = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' } as const
 
-const SCOPE_KEY = 'inflow:report-scope'
+export const EMPTY_FILTER: IncomeFilter = { query: '', clientId: '', sourceId: '', venueId: '', activity: '', taxability: '', status: '' }
+
 
 interface InflowState {
   today: string
@@ -52,9 +51,6 @@ interface InflowState {
   setPeriod: (p: PeriodChoice) => void
   filter: IncomeFilter
   setFilter: (f: IncomeFilter) => void
-  /** The filter every report shares: client, source, venue, activity. */
-  scope: Scope
-  setScope: (s: Scope) => void
   saveRecord: (r: IncomeRecord) => Promise<IncomeRecord | null>
   deleteRecord: (r: IncomeRecord) => Promise<void>
   saveCost: (c: CostRecord) => Promise<CostRecord | null>
@@ -109,8 +105,6 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
   const [offlineCopy, setOfflineCopy] = useState(false)
   const [period, setPeriodState] = useState<PeriodChoice>(() => readJson<PeriodChoice>(PERIOD_KEY, { preset: 'month' }))
   const [filter, setFilter] = useState<IncomeFilter>(EMPTY_FILTER)
-  const [scope, setScopeState] = useState<Scope>(() => ({ ...ANY_SCOPE, ...readJson<Partial<Scope>>(SCOPE_KEY, {}) }))
-  const setScope = useCallback((s: Scope) => { setScopeState(s); writeJson(SCOPE_KEY, s) }, [])
   const [costsAvailable, setCostsAvailable] = useState(true)
   const toasts = useToastStack()
   const { push } = toasts
@@ -340,7 +334,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
 
   const value: InflowState = {
     today, settings: shownSettings, updateSettings, on, data, load, error, offlineCopy, reload, period, setPeriod,
-    filter, setFilter, scope, setScope, saveRecord, deleteRecord, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore,
+    filter, setFilter, saveRecord, deleteRecord, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore,
     copyDeviceToNotion, deviceHasOwnData, toast, toasts,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

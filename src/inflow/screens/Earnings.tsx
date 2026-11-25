@@ -18,13 +18,14 @@ import { WiderPeriod } from './Insights'
 import styles from '../styles/ui.module.css'
 
 const KEY = 'inflow:earnings-by'
+const LIST_LABEL: Record<EarningsBy, string> = { client: 'Clients', activity: 'Work types', venue: 'Venues', source: 'Sources' }
 const SHOWN = 10
 
-export function EarningsReport() {
+export function EarningsReport({ initial }: { initial?: EarningsBy }) {
   // The period is the only filter here: a report filter set elsewhere must not narrow it unseen.
   const { data, on } = useInflow()
   const { range } = usePeriodData()
-  const [by, setBy] = useState<EarningsBy>(() => readJson<EarningsBy>(KEY, 'client'))
+  const [by, setBy] = useState<EarningsBy>(() => initial ?? readJson<EarningsBy>(KEY, 'client'))
   const [all, setAll] = useState(false)
   const e = useMemo(() => earnings(data, range, by, { deals: on('deals'), costs: on('costs') }), [data, range, by, on])
   const maxIncome = Math.max(1, ...e.rows.map((r) => r.income))
@@ -42,7 +43,7 @@ export function EarningsReport() {
       </section>
 
       <SegmentedControl label="Show" value={by} onChange={(v) => { setBy(v as EarningsBy); writeJson(KEY, v) }}
-        options={[{ value: 'client', label: 'By client' }, { value: 'activity', label: 'By work type' }]} />
+        options={[{ value: 'client', label: 'Client' }, { value: 'activity', label: 'Work' }, { value: 'venue', label: 'Venue' }, { value: 'source', label: 'Source' }]} />
 
       {e.rows.length === 0 ? (
         <section className={styles.panel}>
@@ -50,7 +51,7 @@ export function EarningsReport() {
           <div style={{ textAlign: 'center' }}><WiderPeriod what="" /></div>
         </section>
       ) : (
-        <section className={styles.panel} aria-label={by === 'client' ? 'Clients, most kept first' : 'Work types, most kept first'}>
+        <section className={styles.panel} aria-label={`${LIST_LABEL[by]}, most kept first`}>
           <ol className={styles.earnList}>
             {rows.map((r, i) => <EarnRow key={r.id} r={r} rank={i + 1} maxIncome={maxIncome} />)}
           </ol>
@@ -76,7 +77,7 @@ function EarnRow({ r, rank, maxIncome }: { r: EarningsRow; rank: number; maxInco
           <span className={styles.earnRank}>{rank}</span>
           <span className={styles.earnName}>{r.name}</span>
           <b className={`${styles.earnValue} ${r.kept < 0 ? styles.down : styles.earnKept}`}>{lei(r.kept)}</b>
-          <span className={styles.earnMeta}>{r.sessions} {r.sessions === 1 ? 'session' : 'sessions'} · {lei(r.keptPerSession)} a session</span>
+          <span className={styles.earnMeta}>{r.sessions} {r.sessions === 1 ? 'session' : 'sessions'} · {lei(r.keptPerSession)} a session{r.keptPerHour !== null && r.hoursCoverage === 1 ? ` · ${lei(r.keptPerHour)} an hour` : ''}</span>
           <span className={styles.earnBar} aria-hidden>
             <span className={styles.earnBarKept} style={{ width: `${keptW}%` }} />
             <span className={styles.earnBarCosts} style={{ width: `${costW}%` }} />
@@ -89,13 +90,16 @@ function EarnRow({ r, rank, maxIncome }: { r: EarningsRow; rank: number; maxInco
             <div><dt><i className={styles.keyCosts} />Direct costs</dt><dd>{r.directCosts ? `− ${lei(r.directCosts)}` : '–'}</dd></div>
             <div className={styles.earnFigureKept}><dt><i className={styles.keyKept} />You kept</dt><dd>{lei(r.kept)}</dd></div>
           </dl>
+          {r.keptPerHour !== null && (
+            <p className={styles.earnLine}>{lei(r.keptPerHour)} an hour{r.hoursCoverage < 1 ? ` (hours on ${Math.round(r.hoursCoverage * 100)}% of payments)` : ''}</p>
+          )}
           <p className={styles.earnLine}>
             {lei(r.keptPerSession)} a session on average
             {r.sessions > 1 && Math.round(r.lowest) !== Math.round(r.highest) && <> · from {lei(r.lowest)} to {lei(r.highest)}</>}
           </p>
-          {r.venues.length > 0 && !(r.venues.length === 1 && r.venues[0].id.startsWith('__')) && (
+          {r.parts.length > 0 && !(r.parts.length === 1 && r.parts[0].id.startsWith('__')) && (
             <ul className={styles.earnVenues}>
-              {r.venues.map((v) => (
+              {r.parts.map((v) => (
                 <li key={v.id}>
                   <span>{v.name}</span>
                   <span>{v.sessions} × · {lei(v.kept)}</span>

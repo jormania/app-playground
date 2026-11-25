@@ -149,8 +149,13 @@ function Shell() {
       if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (screen === 'costs') openCost(null); else open(null) }
       if (e.key === '/') {
         e.preventDefault()
-        if (screen !== 'income' && screen !== 'costs') location.hash = '#/income'
-        setTimeout(() => (document.querySelector('input[type="search"]') as HTMLInputElement | null)?.focus(), 60)
+        const focus = () => (document.querySelector('input[type="search"]') as HTMLInputElement | null)?.focus()
+        if (screen === 'income' || screen === 'costs') focus()
+        else {
+          // Focus once the Income screen has rendered, not after a guessed delay.
+          window.addEventListener('hashchange', () => requestAnimationFrame(focus), { once: true })
+          location.hash = '#/income'
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -210,13 +215,14 @@ function Shell() {
             {screen === 'overview' && <Overview onOpen={open} onAdd={() => open(null)} onAddCost={() => openCost(null)} />}
             {screen === 'income' && <Income onOpen={open} />}
             {screen === 'costs' && <Costs onOpen={openCost} filter={costFilter} setFilter={setCostFilter} />}
-            {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onTab={(t) => { location.hash = `#/reports/${t}` }} onAddCost={() => openCost(null)} />}
+            {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onAddCost={() => openCost(null)} />}
             {screen === 'settings' && <Settings />}
           </div>
         )}
       </main>
 
-      {screen !== 'settings' && (
+      {/* No floating button over Start here: its first step is the same action. */}
+      {screen !== 'settings' && !(screen === 'overview' && data.records.length === 0) && (
         <button type="button" className={`${styles.fab} ${compact ? styles.fabCompact : ''}`} onClick={() => (screen === 'costs' ? openCost(null) : open(null))}
           aria-label={screen === 'costs' ? 'Add cost' : 'Add income'}>
           <Plus size={22} aria-hidden /> <span className={styles.fabLabel}>{screen === 'costs' ? 'Add cost' : 'Add income'}</span>

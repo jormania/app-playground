@@ -3,7 +3,8 @@
  *
  * Read from the deal terms set on the venue (a 600-lei evening fee, a 30%
  * share), not from recorded costs, so a beginner sees the answer without
- * keeping a ledger. Every income record at a venue counts as one session.
+ * keeping a ledger. A payment covers its `sessions` (1 unless it's a package
+ * or a payout): a fixed fee is paid for each of them.
  *
  *   fixed    you pay the fee per session whoever turns up
  *   share    the venue takes a share of what the session brings in
@@ -21,13 +22,16 @@ export function sessionsAt(records: IncomeRecord[], venueId: string, r: { from: 
   return records.filter((x) => x.status === 'received' && x.venueId === venueId && x.category !== 'reimbursement' && inRange(x.date, r))
 }
 
-/** What the venue costs for one session under its deal. `sessionsThatMonth` spreads monthly rent. */
-export function venueCostOf(revenue: number, v: Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'>, sessionsThatMonth = 1): number {
+/**
+ * What the venue costs for a payment covering `sessions` sessions under its deal.
+ * `sessionsThatMonth` spreads monthly rent over the month's sessions.
+ */
+export function venueCostOf(revenue: number, v: Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'>, sessionsThatMonth = 1, sessions = 1): number {
   switch (v.deal) {
-    case 'fixed': return v.feePerSession
+    case 'fixed': return round2(v.feePerSession * sessions)
     case 'share': return round2(revenue * v.sharePct)
-    case 'hybrid': return round2(v.feePerSession + revenue * v.sharePct)
-    case 'monthly': return round2(v.monthlyFee / Math.max(1, sessionsThatMonth))
+    case 'hybrid': return round2(v.feePerSession * sessions + revenue * v.sharePct)
+    case 'monthly': return round2((v.monthlyFee / Math.max(1, sessionsThatMonth)) * sessions)
     case 'none': return 0
   }
 }
@@ -39,13 +43,13 @@ export function venueCosts(records: IncomeRecord[], venues: Venue[]): Map<string
   for (const r of records) {
     if (r.status !== 'received' || !r.venueId || r.category === 'reimbursement') continue
     const k = `${r.venueId}|${r.date.slice(0, 7)}`
-    monthCount.set(k, (monthCount.get(k) ?? 0) + 1)
+    monthCount.set(k, (monthCount.get(k) ?? 0) + (r.sessions || 1))
   }
   const out = new Map<string, number>()
   for (const r of records) {
     const v = r.venueId ? byVenue.get(r.venueId) : undefined
     if (!v || r.status !== 'received' || r.category === 'reimbursement') continue
-    out.set(r.id, venueCostOf(r.amountRon, v, monthCount.get(`${r.venueId}|${r.date.slice(0, 7)}`) ?? 1))
+    out.set(r.id, venueCostOf(r.amountRon, v, monthCount.get(`${r.venueId}|${r.date.slice(0, 7)}`) ?? 1, r.sessions || 1))
   }
   return out
 }
@@ -56,13 +60,17 @@ export interface DealSession {
   description: string
   revenue: number
   attendees: number | null
+  /** Sessions this payment covers. */
+  sessions: number
   venueCost: number
   takeHome: number
 }
 
 export interface VenueDeal {
   venue: Venue
+  /** One entry per payment; `sessionCount` adds up the sessions they cover. */
   sessions: DealSession[]
+  sessionCount: number
   revenue: number
   venueCost: number
   takeHome: number
@@ -82,25 +90,28 @@ export interface VenueDeal {
 export function venueDeal(venue: Venue, records: IncomeRecord[], r: { from: string; to: string }): VenueDeal {
   const rs = sessionsAt(records, venue.id, r)
   const months = new Map<string, number>()
-  for (const x of rs) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + 1)
+  for (const x of rs) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + (x.sessions || 1))
   const sessions = rs.map((x): DealSession => {
-    const cost = venueCostOf(x.amountRon, venue, months.get(x.date.slice(0, 7)) ?? 1)
-    return { id: x.id, date: x.date, description: x.description, revenue: x.amountRon, attendees: x.attendees, venueCost: cost, takeHome: round2(x.amountRon - cost) }
+    const n = x.sessions || 1
+    const cost = venueCostOf(x.amountRon, venue, months.get(x.date.slice(0, 7)) ?? 1, n)
+    return { id: x.id, date: x.date, description: x.description, revenue: x.amountRon, attendees: x.attendees, sessions: n, venueCost: cost, takeHome: round2(x.amountRon - cost) }
   }).sort((a, b) => a.date.localeCompare(b.date))
   const sum = (f: (s: DealSession) => number) => round2(sessions.reduce((a, s) => a + f(s), 0))
   const revenue = sum((s) => s.revenue)
   const venueCost = sum((s) => s.venueCost)
+  const sessionCount = sessions.reduce((a, s) => a + s.sessions, 0)
   const counted = sessions.filter((s) => s.attendees && s.attendees > 0)
-  const heads = counted.reduce((a, s) => a + (s.attendees ?? 0), 0)
+  // People who came is per session: a 4-session payment with 6 people is 24 seats.
+  const heads = counted.reduce((a, s) => a + (s.attendees ?? 0) * s.sessions, 0)
   const revenuePerHead = heads ? round2(counted.reduce((a, s) => a + s.revenue, 0) / heads) : null
   const keepPerHead = revenuePerHead === null ? null : revenuePerHead * (1 - (venue.deal === 'hybrid' ? venue.sharePct : 0))
   const losing = sessions.filter((s) => s.takeHome < 0)
   return {
-    venue, sessions, revenue, venueCost,
+    venue, sessions, sessionCount, revenue, venueCost,
     takeHome: round2(revenue - venueCost),
-    takePerSession: sessions.length ? round2((revenue - venueCost) / sessions.length) : 0,
+    takePerSession: sessionCount ? round2((revenue - venueCost) / sessionCount) : 0,
     effectiveShare: revenue > 0 ? venueCost / revenue : null,
-    avgAttendees: counted.length ? Math.round((heads / counted.length) * 10) / 10 : null,
+    avgAttendees: counted.length ? Math.round((heads / counted.reduce((a, s) => a + s.sessions, 0)) * 10) / 10 : null,
     revenuePerHead,
     breakEvenAttendees: (venue.deal === 'fixed' || venue.deal === 'hybrid') && keepPerHead && keepPerHead > 0
       ? Math.ceil(venue.feePerSession / keepPerHead) : null,
@@ -122,7 +133,7 @@ export function defaultAlternative(d: VenueDeal): Terms {
   const v = d.venue
   if (v.deal === 'share') {
     // A fixed fee equal to what the share cost per session on average.
-    const fee = d.sessions.length ? Math.round(d.venueCost / d.sessions.length / 10) * 10 : 0
+    const fee = d.sessionCount ? Math.round(d.venueCost / d.sessionCount / 10) * 10 : 0
     return { deal: 'fixed', feePerSession: fee, sharePct: 0, monthlyFee: 0 }
   }
   // Fixed, hybrid, monthly: the share that would have cost the same overall, else 30%.
@@ -150,7 +161,7 @@ export interface Scenario {
  * retained. Pure — the venue and its records are never changed.
  */
 export function scenario(d: VenueDeal, alt: Terms): Scenario {
-  const hypothetical = round2(d.sessions.reduce((s, x) => s + x.revenue - venueCostOf(x.revenue, alt), 0))
+  const hypothetical = round2(d.sessions.reduce((s, x) => s + x.revenue - venueCostOf(x.revenue, alt, 1, x.sessions), 0))
   const current = d.takeHome
   const difference = round2(hypothetical - current)
   return { current, hypothetical, difference, differencePct: current > 0 ? difference / current : null }
@@ -158,7 +169,7 @@ export function scenario(d: VenueDeal, alt: Terms): Scenario {
 
 /** Totals across venues: revenue, paid to the venues, retained. */
 export function dealTotals(deals: VenueDeal[]): { sessions: number; revenue: number; venueCost: number; retained: number } {
-  const t = deals.reduce((a, d) => ({ sessions: a.sessions + d.sessions.length, revenue: a.revenue + d.revenue, venueCost: a.venueCost + d.venueCost }), { sessions: 0, revenue: 0, venueCost: 0 })
+  const t = deals.reduce((a, d) => ({ sessions: a.sessions + d.sessionCount, revenue: a.revenue + d.revenue, venueCost: a.venueCost + d.venueCost }), { sessions: 0, revenue: 0, venueCost: 0 })
   return { sessions: t.sessions, revenue: round2(t.revenue), venueCost: round2(t.venueCost), retained: round2(t.revenue - t.venueCost) }
 }
 

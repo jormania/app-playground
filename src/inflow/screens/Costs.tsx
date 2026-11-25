@@ -27,17 +27,17 @@ export interface CostFilter {
   clientId: string
   activity: string
   status: string
-  range: 'period' | 'all'
 }
 
-export const EMPTY_COST_FILTER: CostFilter = { query: '', group: '', venueId: '', clientId: '', activity: '', status: '', range: 'period' }
+export const EMPTY_COST_FILTER: CostFilter = { query: '', group: '', venueId: '', clientId: '', activity: '', status: '' }
 
 export function applyCostFilter(data: InflowData, f: CostFilter, range: { from: string; to: string }): CostRecord[] {
   const q = f.query.trim().toLowerCase()
   const name = (l: { id: string; name: string }[], id: string | null) => l.find((x) => x.id === id)?.name ?? ''
   const match = (field: string | null, want: string) => !want || (want === NO_ENTITY ? !field : field === want)
   return data.costs
-    .filter((c) => f.range === 'all' || (c.date >= range.from && c.date <= range.to) || (c.status === 'due' && f.range === 'period'))
+    // The selected period is the list's range; costs still due show whenever they fall due.
+    .filter((c) => (c.date >= range.from && c.date <= range.to) || c.status === 'due')
     .filter((c) => !f.group || c.group === f.group)
     .filter((c) => match(c.venueId, f.venueId) && match(c.clientId, f.clientId) && match(c.activity, f.activity))
     .filter((c) => !f.status || c.status === f.status)
@@ -77,7 +77,7 @@ function WhereWent({ costs, data, onPick, empty, onWiden }: { costs: CostRecord[
       {parts.length === 0 ? (
         <p className={styles.emptyNote}>
           Nothing paid {empty ?? 'for these filters'} yet.{' '}
-          {empty && <button type="button" className={styles.linkButton} onClick={onWiden}>Show all time</button>}
+          {empty && <button type="button" className={styles.linkButton} onClick={onWiden}>See the whole year</button>}
         </p>
       ) : <Donut key={split} parts={parts} caption="spent" label={`Costs ${SPLIT_LABEL[split]}`}
         onSelect={split === 'category' ? undefined : (id) => onPick(split === 'group' ? { group: id } : { venueId: id })} />}
@@ -87,7 +87,7 @@ function WhereWent({ costs, data, onPick, empty, onWiden }: { costs: CostRecord[
 }
 
 export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => void; filter: CostFilter; setFilter: (f: CostFilter) => void }) {
-  const { data, today, costsAvailable } = useInflow()
+  const { data, today, costsAvailable, setPeriod } = useInflow()
   const { range } = usePeriodData()
   const [showFilters, setShowFilters] = useState(false)
   const list = useMemo(() => applyCostFilter(data, filter, range), [data, filter, range])
@@ -125,15 +125,13 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
         <Button size="sm" variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
       </div>
       <div className={styles.chips}>
-        <button type="button" className={`${styles.chip} ${filter.range === 'period' ? styles.chipOn : ''}`} onClick={() => set({ range: 'period' })}>{range.label}</button>
-        <button type="button" className={`${styles.chip} ${filter.range === 'all' ? styles.chipOn : ''}`} onClick={() => set({ range: 'all' })}>All time</button>
         {active.map(([k, label]) => (
           <button key={k} type="button" className={`${styles.chip} ${styles.chipOn}`} onClick={() => set({ [k]: '' })} aria-label={`Remove filter ${label}`}>
             {label} <X size={12} aria-hidden />
           </button>
         ))}
         {(active.length > 0 || filter.query) && (
-          <button type="button" className={styles.chip} onClick={() => setFilter({ ...EMPTY_COST_FILTER, range: filter.range })}>Clear</button>
+          <button type="button" className={styles.chip} onClick={() => setFilter(EMPTY_COST_FILTER)}>Clear</button>
         )}
       </div>
       {showFilters && (
@@ -174,7 +172,7 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
         )}
       </div>
 
-      {data.costs.some((c) => c.status === 'paid') && <WhereWent costs={pnl} data={data} onPick={(patch) => set(patch)} empty={filter.range === 'all' ? null : range.label.toLowerCase()} onWiden={() => set({ range: 'all' })} />}
+      {data.costs.some((c) => c.status === 'paid') && <WhereWent costs={pnl} data={data} onPick={(patch) => set(patch)} empty={range.label.toLowerCase()} onWiden={() => setPeriod({ preset: 'year' })} />}
 
       {list.length === 0 ? (
         <div className={styles.empty}>

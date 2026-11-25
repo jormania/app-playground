@@ -62,11 +62,11 @@ export function recordsCsv(records: IncomeRecord[], data: InflowData): string {
   const name = (list: { id: string; name: string }[], id: string | null) => list.find((x) => x.id === id)?.name ?? ''
   return toCsv(
     ['Date', 'Description', 'Amount', 'Currency', 'FX rate', 'Amount RON', 'Status', 'Client', 'Source', 'Venue', 'Category',
-      'Recurring', 'Taxability', 'Tax handling', 'VAT', 'Classification', 'Tax reserve RON', 'Tax withheld RON', 'Tax rules', 'Notes'],
+      'Sessions', 'Hours', 'People', 'Recurring', 'Taxability', 'Tax handling', 'VAT', 'Classification', 'Tax reserve RON', 'Tax withheld RON', 'Tax rules', 'Notes'],
     [...records].sort((a, b) => a.date.localeCompare(b.date)).map((r) => [
       r.date, r.description, r.amount, r.currency, r.fxRate, r.amountRon, STATUS[r.status],
       name(data.clients, r.clientId), name(data.sources, r.sourceId), name(data.venues, r.venueId),
-      r.category ? CATEGORY[r.category] : '', r.recurring ? 'yes' : '', TAXABILITY[r.taxability],
+      r.category ? CATEGORY[r.category] : '', r.sessions ?? 1, r.hours ?? '', r.attendees ?? '', r.recurring ? 'yes' : '', TAXABILITY[r.taxability],
       TAX_HANDLING[r.taxHandling], VAT[r.vat], r.classification, r.taxReserve ?? '', r.taxWithheld, r.taxRules, r.notes,
     ]),
   )

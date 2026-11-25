@@ -8,6 +8,7 @@
 import type { Category, IncomeRecord, InflowData } from '../domain/types'
 import { CATEGORY } from '../domain/vocabulary'
 import { round2 } from './money'
+import { addDays, addMonths } from './dates'
 import { inRange, type Bucket } from './period'
 
 export type Dimension = 'client' | 'source' | 'venue' | 'activity'
@@ -184,6 +185,50 @@ export function outstanding(records: IncomeRecord[], today: string): Outstanding
   return { total: sum(rs), count: rs.length, overdue: rs.filter((r) => r.date < today).length, records: rs }
 }
 
+export interface ExpectedSuggestion {
+  /** Client and suggested date: stable, so a dismissal sticks. */
+  key: string
+  date: string
+  /** The recurring payment it repeats. */
+  from: IncomeRecord
+}
+
+/**
+ * Next month's payment from each client paid on a recurring basis, where
+ * nothing is expected from them yet: the last recurring payment, one month
+ * on, same amount. Only dates from a week ago to six weeks ahead; older ones
+ * mean the client has gone quiet, which is an insight, not a suggestion.
+ */
+export function suggestExpected(records: IncomeRecord[], today: string, dismissed: ReadonlySet<string> = new Set()): ExpectedSuggestion[] {
+  const last = new Map<string, IncomeRecord>()
+  const waiting = new Set<string>()
+  const latest = new Map<string, string>()
+  for (const r of records) {
+    if (!r.clientId) continue
+    if (r.status === 'expected') { waiting.add(r.clientId); continue }
+    if (r.date > (latest.get(r.clientId) ?? '')) latest.set(r.clientId, r.date)
+    if (!r.recurring) continue
+    const cur = last.get(r.clientId)
+    if (!cur || r.date > cur.date) last.set(r.clientId, r)
+  }
+  const out: ExpectedSuggestion[] = []
+  for (const [client, r] of last) {
+    if (waiting.has(client)) continue
+    const date = addMonths(r.date, 1)
+    // Paid again since (a top-up, a one-off): the month's payment may already be in.
+    if ((latest.get(client) ?? '') > r.date && (latest.get(client) ?? '') >= addDays(date, -20)) continue
+    if (date < addDays(today, -7) || date > addDays(today, 42)) continue
+    const key = `${client}:${date}`
+    if (!dismissed.has(key)) out.push({ key, date, from: r })
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/** A suggestion as an expected record, ready to save. */
+export function asExpected(s: ExpectedSuggestion): IncomeRecord {
+  return { ...s.from, id: '', status: 'expected', date: s.date, notes: '', taxReserve: null, reserveSource: null, taxWithheld: 0 }
+}
+
 /** Per-client totals across all time, with the most recent payment. */
 export function clientStats(records: IncomeRecord[]): Map<string, { total: number; last: string | null; count: number }> {
   const out = new Map<string, { total: number; last: string | null; count: number }>()
@@ -198,34 +243,3 @@ export function clientStats(records: IncomeRecord[]): Map<string, { total: numbe
   return out
 }
 
-export interface Pivot {
-  cols: { id: string; name: string }[]
-  rows: { id: string; name: string; cells: number[]; total: number }[]
-  colTotals: number[]
-}
-
-/**
- * Rows by one dimension, columns by another: "which activity at which venue".
- * The largest `maxCols` columns are kept and the rest fold into "Other".
- */
-export function pivot(data: Pick<InflowData, 'clients' | 'sources' | 'venues'>, rs: IncomeRecord[], rowDim: Dimension, colDim: Dimension, maxCols = 4): Pivot {
-  const colTotals = new Map<string, number>()
-  for (const r of rs) colTotals.set(keyOf(r, colDim), (colTotals.get(keyOf(r, colDim)) ?? 0) + r.amountRon)
-  const ranked = [...colTotals.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
-  const keep = ranked.slice(0, maxCols)
-  const hasOther = ranked.length > maxCols
-  const OTHER = '__other__'
-  const colOf = (r: IncomeRecord) => (keep.includes(keyOf(r, colDim)) ? keyOf(r, colDim) : OTHER)
-  const cols = [...keep.map((id) => ({ id, name: nameOf(data, colDim, id) })), ...(hasOther ? [{ id: OTHER, name: 'Other' }] : [])]
-  const rowMap = new Map<string, number[]>()
-  for (const r of rs) {
-    const k = keyOf(r, rowDim)
-    const cells = rowMap.get(k) ?? cols.map(() => 0)
-    cells[cols.findIndex((c) => c.id === colOf(r))] += r.amountRon
-    rowMap.set(k, cells)
-  }
-  const rows = [...rowMap.entries()]
-    .map(([id, cells]) => ({ id, name: nameOf(data, rowDim, id), cells: cells.map(round2), total: round2(cells.reduce((a, b) => a + b, 0)) }))
-    .sort((a, b) => b.total - a.total)
-  return { cols, rows, colTotals: cols.map((_, i) => round2(rows.reduce((s, r) => s + r.cells[i], 0))) }
-}

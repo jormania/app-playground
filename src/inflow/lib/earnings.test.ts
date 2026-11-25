@@ -9,7 +9,7 @@ const demo = buildDemo('2026-11-25')
 const base = demo.records[0]
 const venue: Venue = { ...demo.venues[0], id: 'v1', name: 'Loft', deal: 'fixed', feePerSession: 300, sharePct: 0, monthlyFee: 0 }
 const rec = (id: string, clientId: string, category: IncomeRecord['category'], date: string, amount: number, venueId: string | null = 'v1'): IncomeRecord =>
-  ({ ...base, id, clientId, category, date, amount, amountRon: amount, currency: 'RON', fxRate: 1, venueId, status: 'received', demo: undefined })
+  ({ ...base, id, clientId, category, date, amount, amountRon: amount, currency: 'RON', fxRate: 1, venueId, status: 'received', sessions: 1, hours: null, demo: undefined })
 const cost = (date: string, amount: number): CostRecord =>
   ({ ...demo.costs[0], id: `c${date}`, date, amount, amountRon: amount, currency: 'RON', fxRate: 1, status: 'paid', group: 'direct', category: 'materials', venueId: 'v1', clientId: null, activity: null, demo: undefined })
 
@@ -53,7 +53,7 @@ describe('earnings by client', () => {
   it('breaks each result down by venue', () => {
     const bo = e.rows.find((r) => r.id === 'bo')!
     // Most kept first.
-    expect(bo.venues.map((v) => [v.name, v.sessions, v.kept])).toEqual([['No venue', 1, 400], ['Loft', 1, 350]])
+    expect(bo.parts.map((v) => [v.name, v.sessions, v.kept])).toEqual([['No venue', 1, 400], ['Loft', 1, 350]])
   })
 })
 
@@ -91,5 +91,16 @@ describe('reimbursements take no share of a day\'s costs', () => {
     const d: InflowData = { ...data, records: [rec('s', 'ana', 'workshop', '2026-05-05', 1000), { ...rec('r', 'ana', 'reimbursement', '2026-05-05', 200) }], costs: [cost('2026-05-05', 100)] }
     const e = earnings(d, range, 'client', opts)
     expect(e.rows[0]).toMatchObject({ income: 1000, directCosts: 100, kept: 600, sessions: 1 })
+  })
+})
+
+describe('sessions and hours', () => {
+  it('counts the sessions a payment covers, and keeps per hour where hours are known', () => {
+    const d: InflowData = { ...data, costs: [], records: [
+      { ...rec('a', 'ana', 'coaching_1on1', '2026-06-01', 1200, null), sessions: 4, hours: 4 },
+      { ...rec('b', 'ana', 'coaching_1on1', '2026-06-09', 300, null), sessions: 1, hours: null },
+    ] }
+    const r = earnings(d, range, 'client', opts).rows[0]
+    expect(r).toMatchObject({ sessions: 5, keptPerSession: 300, keptPerHour: 300, hoursCoverage: 0.5, lowest: 300, highest: 300 })
   })
 })

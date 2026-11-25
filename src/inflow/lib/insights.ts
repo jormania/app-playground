@@ -150,7 +150,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
           detail: `The ${v.deal === 'monthly' ? 'rent' : 'fee'} is paid whoever comes; together they lost ${lei(d.lost)}.${d.breakEvenAttendees && d.breakEvenAttendees > 1 ? ` Confirming a session there once ${d.breakEvenAttendees} people have booked would avoid it.` : ''}`,
           link: { label: 'Venue deals', hash: '#/reports/deals' },
         })
-      } else if (d.breakEvenAttendees && d.breakEvenAttendees > 1 && d.avgAttendees !== null && d.sessions.length >= 3 && d.avgAttendees < d.breakEvenAttendees * 1.3) {
+      } else if (d.breakEvenAttendees && d.breakEvenAttendees > 1 && d.avgAttendees !== null && d.sessionCount >= 3 && d.avgAttendees < d.breakEvenAttendees * 1.3) {
         out.push({
           id: `thin-${v.id}`, rule: 'close-to-break-even', kind: 'tip', weight: d.revenue * 0.2,
           title: `${v.name} runs close to its break-even`,
@@ -170,7 +170,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
       const m = pairs.get(x.category) ?? new Map()
       const c = m.get(x.venueId) ?? { kept: 0, n: 0 }
       c.kept += kept(x)
-      c.n += 1
+      c.n += x.sessions || 1
       m.set(x.venueId, c)
       pairs.set(x.category, m)
     }
@@ -194,7 +194,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
     if (!x.category) continue
     const a = byActivity.get(x.category) ?? { kept: 0, n: 0, income: 0 }
     a.kept += kept(x)
-    a.n += 1
+    a.n += x.sessions || 1
     a.income += x.amountRon
     byActivity.set(x.category, a)
   }

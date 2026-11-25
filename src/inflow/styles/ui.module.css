@@ -643,12 +643,14 @@ button.row:hover { background: var(--color-surface-2); }
   gap: var(--space-sm);
   justify-content: space-between;
   align-items: center;
+  /* Pinned flush to the bottom of the scrolling body. An offset below it put the
+     buttons past the dialog's edge on a phone, where its padding is smaller. */
   position: sticky;
-  bottom: calc(-1 * var(--space-lg));
+  bottom: 0;
   background: var(--color-surface);
   padding: var(--space-sm) 0;
-  margin-bottom: calc(-1 * var(--space-sm));
   border-top: 1px solid var(--color-border);
+  z-index: 1;
 }
 
 .formActions { flex-wrap: wrap; row-gap: var(--space-xs); }
@@ -795,15 +797,6 @@ button.row:hover { background: var(--color-surface-2); }
 .statement .totalCol { font-weight: var(--weight-bold); background: var(--color-surface-2); }
 .statement tr.clickable { cursor: pointer; }
 .statement tr.clickable:hover td { background: var(--color-surface-2); }
-
-.scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-sm); }
-@media (min-width: 760px) { .scope { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.scope select {
-  font: inherit; font-size: var(--text-sm); color: var(--color-ink); background: var(--color-surface);
-  border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 8px 10px; width: 100%; min-width: 0;
-}
-.scope select.scopeOn { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
-.scope label { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-xs); color: var(--color-muted); min-width: 0; }
 
 .cards3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm); margin-bottom: var(--space-md); }
 @media (min-width: 760px) { .cards3 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -964,8 +957,6 @@ button.mover:hover { background: var(--color-surface-2); }
   transition: background 160ms ease, color 160ms ease;
 }
 .reportTab[aria-current='page'] { background: var(--color-accent); color: var(--color-on-accent, #fff); }
-.filterToggle { margin-left: auto; background: transparent; border-color: var(--color-border); }
-.filterOn { border-color: var(--color-accent); color: var(--color-accent); }
 .subTab {
   flex: none; padding: 4px 2px; margin-right: var(--space-sm);
   font: inherit; font-size: var(--text-sm); color: var(--color-muted);
@@ -1234,3 +1225,33 @@ button.hlRow:hover .hlValue { color: var(--color-accent); }
 .startText { display: grid; gap: 2px; min-width: 0; }
 .startText > span { font-size: var(--text-sm); color: var(--color-muted); }
 .startSteps .chip { white-space: nowrap; }
+.masterSwitch { display: grid; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); margin-bottom: var(--space-sm); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent); }
+.masterSwitch > button { justify-self: start; }
+.simpleNotice { display: grid; gap: var(--space-sm); border-color: color-mix(in srgb, var(--chart-2) 40%, var(--color-border)); }
+.simpleHead { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--space-sm); align-items: start; }
+.simpleHead b { display: block; }
+.simpleHead span:last-child { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.45; }
+a.chip { text-decoration: none; color: inherit; }
+.heroTarget { display: grid; gap: 4px; margin-top: var(--space-xs); }
+/* On a phone a step's button sits under its words, so neither is squeezed. */
+@media (max-width: 480px) {
+  .startSteps li { grid-template-columns: 28px minmax(0, 1fr); grid-template-areas: 'num text' '. action'; row-gap: 6px; }
+  .startSteps .startNum { grid-area: num; }
+  .startSteps .startText { grid-area: text; }
+  .startSteps .chip { grid-area: action; justify-self: start; }
+}
+
+/* ── no sideways scrolling on a phone ──────────────────────────────────── */
+/* The five periods share the width evenly and always fit. */
+.periodBar [role='radiogroup'] { overflow: visible; }
+.periodBar [role='radiogroup'] [role='radio'] { flex: 1 1 0; min-width: 0; padding: 0 4px; font-size: clamp(12px, 3.5vw, 14px); }
+/* Report tabs: a grid of three across instead of a strip that scrolls. */
+@media (max-width: 640px) {
+  .reportTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; margin: 0; padding: 0; }
+  .reportTab { justify-content: center; padding: 7px 4px; font-size: clamp(12px, 3.4vw, 14px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .subTabs { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; row-gap: 2px; }
+}
+
+/* A suggested expected payment: a row to read, not to open. */
+.suggestRow { cursor: default; }
+.suggestRow .rowValue { color: var(--color-muted); }

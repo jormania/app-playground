@@ -13,7 +13,6 @@ import { usePeriodData } from '../app/usePeriod'
 import { SegmentedControl } from '../../ds'
 import { parseAmount, TextInput } from '../components/fields'
 import { DEAL } from '../domain/vocabulary'
-import { ANY_SCOPE, inScope, NO_ENTITY } from '../lib/analytics'
 import { breakEvenPeople, dealTotals, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
 import { lei, percent } from '../lib/money'
 import { WiderPeriod } from './Insights'
@@ -31,18 +30,15 @@ export function dealTerms(t: Terms): string {
 }
 
 export function DealsReport() {
-  const { data, scope: rawScope, on } = useInflow()
-  const scope = on('reportTools') ? rawScope : ANY_SCOPE
+  const { data } = useInflow()
   const { range } = usePeriodData()
-  const records = useMemo(() => data.records.filter((r) => inScope(r, { ...scope, venueId: '' })), [data.records, scope])
   const deals = useMemo(
-    () => venueDeals(data.venues, records, range)
+    () => venueDeals(data.venues, data.records, range)
       .filter((d) => d.venue.deal !== 'none')
-      .filter((d) => !scope.venueId || scope.venueId === NO_ENTITY || d.venue.id === scope.venueId)
       .sort((a, b) => b.takePerSession - a.takePerSession),
-    [data.venues, records, range, scope.venueId],
+    [data.venues, data.records, range],
   )
-  const withoutDeal = data.venues.filter((v) => v.deal === 'none' && records.some((r) => r.venueId === v.id && r.status === 'received' && r.date >= range.from && r.date <= range.to)).length
+  const withoutDeal = data.venues.filter((v) => v.deal === 'none' && data.records.some((r) => r.venueId === v.id && r.status === 'received' && r.date >= range.from && r.date <= range.to)).length
 
   if (!deals.length) {
     return (
@@ -82,7 +78,7 @@ export function DealsReport() {
 
 function VenueRow({ d, best }: { d: VenueDeal; best: number }) {
   const v = d.venue
-  const n = d.sessions.length
+  const n = d.sessionCount
   const covered = feeCoveredAt(d)
   const repeats = v.deal === 'fixed' ? sameDayRepeats(d) : 0
   return (
@@ -191,7 +187,7 @@ function WhatIf({ d }: { d: VenueDeal }) {
             {sign}{lei(Math.abs(s.difference))}{s.differencePct !== null && s.difference !== 0 ? ` (${sign}${percent(Math.abs(s.differencePct), 1)})` : ''}
           </dd></div>
         </dl>
-        <p className={styles.dealNote}>Same {d.sessions.length} {d.sessions.length === 1 ? 'session' : 'sessions'} and revenue. Hypothetical only; the venue's deal is unchanged.</p>
+        <p className={styles.dealNote}>Same {d.sessionCount} {d.sessionCount === 1 ? 'session' : 'sessions'} and revenue. Hypothetical only; the venue's deal is unchanged.</p>
       </div>
     </details>
   )

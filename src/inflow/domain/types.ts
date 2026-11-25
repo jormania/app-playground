@@ -73,8 +73,12 @@ export interface IncomeRecord {
   category: Category | null
   recurring: boolean
   notes: string
-  /** People who came (paid seats, participants). Optional; feeds venue-deal analysis. */
+  /** People who came to each session (paid seats, participants). Optional; feeds venue-deal analysis. */
   attendees: number | null
+  /** Sessions this payment covers: a 4-session package is 4, a monthly platform payout its sessions. Default 1. */
+  sessions: number
+  /** Total hours of work it covers, if known; gives what an hour keeps you. */
+  hours: number | null
 
   taxability: Taxability
   taxHandling: TaxHandling
@@ -196,9 +200,7 @@ export interface TaxProfile {
   expensesFromCosts: boolean
 }
 
-export type FeatureKey =
-  | 'tax' | 'costs' | 'deals' | 'insights' | 'expected' | 'currencies'
-  | 'targets' | 'printable' | 'reportTools' | 'unusual'
+export type FeatureKey = 'tax' | 'costs' | 'deals' | 'insights' | 'expected' | 'currencies' | 'printable'
 
 export type Features = Record<FeatureKey, boolean>
 
@@ -215,7 +217,7 @@ export interface Settings {
   tax: TaxProfile
   /** Monthly income target in RON; 0 = none. */
   monthlyTarget: number
-  /** An entry this many times the typical (median) amount gets flagged. */
+  /** An entry this many times the typical (median) amount gets flagged; 0 = don't flag. */
   largeMultiple: number
   /** Device mode only: demo data was seeded once, so an emptied list stays empty. */
   demoSeeded: boolean
@@ -226,8 +228,10 @@ export interface Settings {
   workspace: Workspace | null
   /** Show the welcome tour when the app opens. The tour's own checkbox sets it. */
   showTour: boolean
-  /** Optional parts of the app, all on for a new user; off hides them from screens and sums alike. */
+  /** Optional parts of the app; off hides them from screens and sums alike. A new user starts simple. */
   features: Features
+  /** A new user's simple start is announced once on the Overview, until dismissed. */
+  simpleStartNotice: boolean
   /** Cash in hand and in the bank on `openingCashDate`, the cash-flow starting point. */
   openingCash: number
   openingCashDate: string

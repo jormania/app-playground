@@ -12,19 +12,22 @@ optional and switch off cleanly: **costs** (P&L, cash flow, margins, break-even)
 
 | Place | What's there |
 |---|---|
-| **Overview** | Period total vs the previous equivalent period (to date while it runs), this week and this month, target progress, trend chart (days / weeks / months, the previous period as ghost bars), breakdown by client · source · venue · activity with drill-down, client concentration, *What you kept* (profit after costs, break-even gauge, costs to pay) *(costs)*, taxable split *(tax)*, expected payments with one-tap **Received**, unusually large payments |
+| **Overview** | Four panels (shortened 25 Nov 2026): the period total vs the previous equivalent period with its trend chart and, for a month or a year, target progress; *Worth a look*; *Where it came from* (client · source · venue · activity, with drill-down and client concentration); *Expected*, with one-tap **Received** and **Remind**, plus next month's payment from each recurring client with nothing expected yet (**Expect it** / **Not this time**). Profit, tax detail and unusual payments live in Reports and Income |
 | **Income** | Every payment, expected ones grouped on top with their month; search; filters (client, source, venue, activity, tax, status); CSV |
 | **Costs** *(optional)* | Every cost, unpaid ones on top; filters (kind, venue, client, activity, status); CSV |
-| **Reports** | Clients · Venues · Activities · Sources (total, share, count, average, **margin** with costs, change, 6-month sparkline, and a *split by* pivot), **P&L**, **Cash flow** *(costs)*, **Tax** *(tax)*, **Printable**. One filter bar (client, venue, activity, source) narrows every report at once; every row drills down to its payments |
-| **Settings** | Device or Notion; demo load/clear; costs on/off and opening cash; tax on/off and profile; targets; clients/sources/venues; backup, restore, CSV; theme; the welcome guide |
+| **Reports** | **Review**, **Clients & work** (by client, work type, venue or source, ranked by what you kept), **Venue deals** *(deals)*, **Profit** (P&L with break-even, cash flow) *(costs)*, **Tax** *(tax)*, **Print** *(printable)*. The period at the top is the only filter |
+| **Settings** | Device or Notion; demo load/clear; costs on/off and opening cash; tax on/off and profile; monthly target and unusual-payment flags; clients/sources/venues; backup, restore, CSV; theme; the welcome guide |
 
 Periods: this week (Monday-based), this month, last month, this year, custom. One
-selection drives Overview, Income, Costs and Reports.
+selection drives Overview, Income, Costs and Reports; no screen has a range of its own.
+Expected payments and costs still due show in Income and Costs whatever the period.
 
 ### Entering things
 - **Income:** amount + client is enough. Recent clients are chips above the picker; a
   client's last *received* payment prefills source, venue, activity, currency and
-  description. Any payment can be **copied** (dated today). Foreign currency gets the
+  description. Any payment can be **copied** (dated today). **Sessions** (default 1: a
+  4-session package is 4, a platform payout its sessions) and optional **Hours** feed the
+  per-session and per-hour figures and the venue deals. Foreign currency gets the
   ECB rate for the day from Frankfurter, editable because the BNR rate is what's declared.
 - **Costs:** amount, what it was, kind (direct / operating / depreciation / interest / tax /
   investment / financing) and category. *Repeat a recent cost* offers the five costs paid
@@ -38,10 +41,18 @@ or show it now.
 
 ### Reports (simplified 25 Nov 2026)
 Six tabs at most, as links (`#/reports/<route>`), so back and forward work and old links
-land: **Review** (`insights`), **Breakdown** (`clients|venues|activities|sources`, a second
-row), **Venue deals**, **Profit** (`pnl|cashflow`), **Tax**, **Print**. The report bar sticks
-under the header (`--inflow-header`, measured in `App.tsx`); the filter bar opens from a
-*Filter* button and stays open while a filter is set.
+land: **Review** (`insights`), **Clients & work** (`earnings`; the old Breakdown routes
+`clients|venues|activities|sources` open it on that view), **Venue deals**, **Profit**
+(`pnl|cashflow`), **Tax**, **Print**. The report bar sticks under the header
+(`--inflow-header`, measured in `App.tsx`). There is no report filter bar any more: the
+period is the only filter, so nothing narrows a report out of sight. On a phone the tabs
+are a three-column grid with no sideways scroll.
+
+**Clients & work** (`lib/earnings.ts`, `screens/Earnings.tsx`) ranks by what you kept:
+income less each payment's venue fee and its share of same-day direct costs. Each row has
+sessions, kept a session and, when every payment has hours, kept an hour; the detail shows
+the lowest and highest session and the parts behind it (venues, or clients when ranking
+venues).
 
 **Review** follows WhereItWent's order (`lib/review.ts`, `screens/Insights.tsx`):
 - *Understand*: "<period> in review", a plain summary paragraph (`reviewSummary`), KPIs,
@@ -50,14 +61,14 @@ under the header (`--inflow-header`, measured in `App.tsx`); the filter bar open
   activities (at most three from one), with a client who stopped included. Drawn either side
   of zero: green up, amber down.
 - *Who carries the income*: a share bar by any dimension.
-- *Act*: pain points and wins. *Explore*: the heat map.
+- *Act*: pain points and wins.
 
 A section index under the tabs lights the section in view and scrolls to it. A comparison that
 reaches before the first record says so instead of quoting "+1644%".
 
 Charts follow the dataviz skill: part-to-whole is a tall segmented bar (`ShareBar`, ≤ 5
 named parts plus "Other"), never a donut. `--chart-4`/`--chart-5` were added and the five
-hues validated together, light and dark. Breakdown, Income ("Where it came from") and Costs
+hues validated together, light and dark. Review, Income ("Where it came from") and Costs
 ("Where it went") each carry one. Profit has monthly income vs costs bars (`MonthlyPair`).
 
 Navigation: a drill-down from a report leaves a trail (`app/trail.ts`), and Income offers
@@ -274,7 +285,7 @@ still works and says costs can't be saved there. Reads and writes go through
 
 | Database | Properties |
 |---|---|
-| InFlow — Income | Description, Amount, Currency, FX rate, Amount RON, Date, Status, Client/Source/Venue (relations), Category, Recurring, Taxability, Tax handling, VAT, Classification, Tax reserve RON, Reserve source, Tax withheld RON, Tax rules, Notes |
+| InFlow — Income | Description, Amount, Currency, FX rate, Amount RON, Date, Status, Client/Source/Venue (relations), Category, Recurring, Attendees, Sessions, Hours, Taxability, Tax handling, VAT, Classification, Tax reserve RON, Reserve source, Tax withheld RON, Tax rules, Notes |
 | InFlow — Costs | Description, Amount, Currency, FX rate, Amount RON, Date, Status (Paid/Due), Group, Category, Venue/Client (relations), Activity, Recurring, Deductible, Notes |
 | InFlow — Clients | Name, Kind, Country, Contact, Notes, Archived |
 | InFlow — Sources | Name, Type, Description, Active, Tax default |
@@ -316,8 +327,17 @@ every feature has something real to show (extended 25 Nov 2026):
 ## Feature switches
 
 Settings → Features (`FEATURES` in `screens/Settings.tsx`, `settings.features`, `on(key)`
-in state). All on for a new user; *Simple start* keeps income, insights, expected payments
-and the target. Off means gone from the UI *and* the logic: no tab, panel, field, report
+in state). Seven switches since 25 Nov 2026.
+
+**Simple start for new users only.** With no stored settings, InFlow starts on
+`SIMPLE_FEATURES` (insights and expected payments) and no target, and the Overview shows a
+*Simple start* notice: **Turn everything on**, **Choose features** (to Settings) or **Got
+it** (`settings.simpleStartNotice`). Anyone with stored settings keeps their switches, all
+on by default. Settings → Features opens with how this works, an **Everything** master
+switch (on = all, off = none) and **Back to simple start**. The tour's last step says the
+same. Old `targets: false` becomes `monthlyTarget: 0`, old `unusual: false` becomes
+`largeMultiple: 0`; `reportTools` is dropped. Both now live under Settings → *Target and
+flags*. Off means gone from the UI *and* the logic: no tab, panel, field, report
 section, insight rule or computed reserve. Data recorded under a feature stays stored and
 returns when it is switched back on. Each toggle has a one-line hint and a "What this does"
 twisty; every Settings section folds, remembered per device (`inflow:settings-open:<id>`).
@@ -325,15 +345,12 @@ twisty; every Settings section folds, remembered per device (`inflow:settings-op
 
 | Key | Off removes |
 |---|---|
-| insights | Overview "Worth a look", Insights report and heat map |
+| insights | Overview "Worth a look", the Review's pain points and wins |
 | deals | Venue deals report, deal fields on venues, the head-count field |
 | costs | Costs tab, P&L, cash flow, margins after costs, break-even |
 | tax | tax panels, Tax report, reserves, tax fields in the form and report |
-| expected | Expected status, panel and overdue insight |
+| expected | Expected status, panel, suggestions from recurring payments and overdue insight |
 | currencies | currency select (lei only; an existing foreign record keeps its currency) |
-| targets | monthly target bar |
-| unusual | "Out of the ordinary" flags |
-| reportTools | report filter bar and split-by |
 | printable | Printable tab |
 
 Screens enter with Stillflow's 320 ms rise (`.screenIn`, off under reduced motion); the
@@ -380,3 +397,18 @@ demo. Found and fixed:
 
 Full-page screenshots draw fixed elements (tab bar, add button) at the scroll position, mid-
 page; viewport screenshots while scrolling confirm the tab bar stays at the bottom.
+
+## Less and more, 25 Nov 2026
+- **Less:** Breakdown folded into Clients & work; the report filter bar, scope and split-by
+  pivot removed; the Overview cut to four panels (no week/month tiles that repeated the
+  headline or ignored the selected period); range chips gone from Income and Costs; the
+  `targets`, `unusual` and `reportTools` switches became settings.
+- **More:** sessions per payment, optional hours (kept an hour), expected payments suggested
+  from recurring ones (`suggestExpected` in `lib/analytics.ts`; a dismissal is remembered
+  per device under `inflow:suggest-dismissed`), break-even in Profit, simple start with a
+  master switch.
+- **Tidy:** one `DIM_FILTER` map in `app/state.tsx` instead of three copies; unused
+  `Sparkline`, `pivot` and the scope/filter CSS removed; the section index observes on the
+  next frame and the `/` shortcut focuses search on `hashchange`, not after guessed delays.
+  The edit forms' button bar is pinned flush to the bottom of the dialog so Save and Cancel
+  stay inside it on a phone.

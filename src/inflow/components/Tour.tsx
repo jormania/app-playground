@@ -58,7 +58,7 @@ const STEPS: Step[] = [
   {
     icon: Database,
     title: 'Your data, your choice',
-    points: ['Everything is on; Settings → Features turns parts off', 'The demo lives apart from your data', 'On this device, or in your Notion'],
+    points: ['You start simple; tick a feature above to add it', 'Settings → Features: one by one, or “Everything”', 'The demo lives apart from your data', 'On this device, or in your Notion'],
   },
 ]
 
@@ -87,7 +87,7 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
           <label className={styles.tourCheck}>
             <input type="checkbox" checked={settings.features[s.feature.key]}
               onChange={(e) => updateSettings({ features: { [s.feature!.key]: e.target.checked } })} />
-            {s.feature.label} (optional — on now)
+            {s.feature.label} (optional)
           </label>
         )}
       </div>

@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, Download, PieChart, Repeat, X } from 'lucide-react'
 import { Button } from '../../ds'
-import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
+import { useInflow, EMPTY_FILTER, DIM_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { parseAmount, SelectInput } from '../components/fields'
 import type { IncomeRecord, InflowData } from '../domain/types'
@@ -29,7 +29,8 @@ export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: st
   const name = (list: { id: string; name: string }[], id: string | null) => list.find((x) => x.id === id)?.name ?? ''
   const match = (field: string | null, want: string) => !want || (want === NO_ENTITY ? !field : field === want)
   return data.records
-    .filter((r) => f.range === 'all' || inRange(r.date, range))
+    // The selected period is the list's range; expected payments show whenever they fall due.
+    .filter((r) => inRange(r.date, range) || r.status === 'expected')
     .filter((r) => match(r.clientId, f.clientId) && match(r.sourceId, f.sourceId) && match(r.venueId, f.venueId) && match(r.category, f.activity))
     .filter((r) => !f.taxability || r.taxability === f.taxability)
     .filter((r) => !f.status || (f.status === 'suggested' ? r.classification === 'suggested' : r.status === f.status))
@@ -39,13 +40,13 @@ export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: st
 }
 
 export function Income({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, filter, setFilter, settings, today, on } = useInflow()
+  const { data, filter, setFilter, settings, today, on, setPeriod } = useInflow()
   const { range } = usePeriodData()
   const [showFilters, setShowFilters] = useState(false)
   // Expected payments switched off: they leave the list too, not just the label.
   const showExpected = on('expected')
   const list = useMemo(() => applyFilter(data, filter, range).filter((r) => showExpected || r.status !== 'expected'), [data, filter, range, showExpected])
-  const showUnusual = on('unusual')
+  const showUnusual = settings.largeMultiple > 0
   const large = useMemo(() => (showUnusual ? largeRecordIds(data.records, settings.largeMultiple) : new Set<string>()), [showUnusual, data.records, settings.largeMultiple])
   const set = (patch: Partial<IncomeFilter>) => setFilter({ ...filter, ...patch })
 
@@ -77,15 +78,13 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
         <Button size="sm" variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
       </div>
       <div className={styles.chips}>
-        <button type="button" className={`${styles.chip} ${filter.range === 'all' ? styles.chipOn : ''}`} onClick={() => set({ range: 'all' })}>All time</button>
-        <button type="button" className={`${styles.chip} ${filter.range === 'period' ? styles.chipOn : ''}`} onClick={() => set({ range: 'period' })}>{range.label}</button>
         {active.map(([k, label]) => (
           <button key={k} type="button" className={`${styles.chip} ${styles.chipOn}`} onClick={() => set({ [k]: '' })} aria-label={`Remove filter ${label}`}>
             {label} <X size={12} aria-hidden />
           </button>
         ))}
         {(active.length > 0 || filter.query) && (
-          <button type="button" className={styles.chip} onClick={() => setFilter({ ...EMPTY_FILTER, range: filter.range })}>Clear</button>
+          <button type="button" className={styles.chip} onClick={() => setFilter(EMPTY_FILTER)}>Clear</button>
         )}
       </div>
       {showFilters && (
@@ -136,7 +135,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
         )}
       </div>
 
-      {data.records.some((r) => r.status === 'received') && <WhereFrom list={list.filter((r) => r.status === 'received')} data={data} onPick={(patch) => set(patch)} empty={filter.range === 'all' ? null : range.label.toLowerCase()} onWiden={() => set({ range: 'all' })} />}
+      {data.records.some((r) => r.status === 'received') && <WhereFrom list={list.filter((r) => r.status === 'received')} data={data} onPick={(patch) => set(patch)} empty={range.label.toLowerCase()} onWiden={() => setPeriod({ preset: 'year' })} />}
 
       {list.length === 0 ? (
         <div className={styles.empty}>
@@ -156,8 +155,6 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
   )
 }
 
-const PICK: Record<Dimension, keyof IncomeFilter> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
-
 /** Where the income in this list came from: one bar, its largest parts, tap one to narrow the list. */
 function WhereFrom({ list, data, onPick, empty, onWiden }: { list: IncomeRecord[]; data: InflowData; onPick: (patch: Partial<IncomeFilter>) => void; empty: string | null; onWiden: () => void }) {
   const [dim, setDim] = useState<Dimension>(() => readJson<Dimension>('inflow:income-split', 'source'))
@@ -174,10 +171,10 @@ function WhereFrom({ list, data, onPick, empty, onWiden }: { list: IncomeRecord[
       {parts.length === 0 ? (
         <p className={styles.emptyNote}>
           Nothing received {empty ?? 'for these filters'} yet.{' '}
-          {empty && <button type="button" className={styles.linkButton} onClick={onWiden}>Show all time</button>}
+          {empty && <button type="button" className={styles.linkButton} onClick={onWiden}>See the whole year</button>}
         </p>
       ) : <Donut key={dim} parts={parts} caption="received" label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`}
-        onSelect={(id) => onPick({ [PICK[dim]]: id })} />}
+        onSelect={(id) => onPick({ [DIM_FILTER[dim]]: id })} />}
     </section>
   )
 }

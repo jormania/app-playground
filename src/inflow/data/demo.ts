@@ -130,7 +130,15 @@ interface Draft {
   expected?: boolean
   notes?: string
   attendees?: number
+  /** A platform payout: the sessions in it are the amount over this. */
+  perSessionUsd?: number
+  /** Sessions the payment covers (default 1) and hours (default by kind of work). */
+  sessions?: number
+  hours?: number | null
 }
+
+/** Typical hours of one session of each kind of work; null where hours mean nothing. */
+const HOURS: Partial<Record<Category, number>> = { coaching_1on1: 1, group_coaching: 2, workshop: 3, retreat: 24, speaking: 1.5 }
 
 export const DEMO_SETTINGS_TAX: Settings['tax'] = {
   id: 'pfa_real',
@@ -180,22 +188,22 @@ function drafts(today: string): Draft[] {
     const n = m - Y2
     if (n < 0) {
       // First year: Orion's monthly team coaching for ten months, then it ended.
-      if (m < 10) out.push({ description: 'Team coaching — monthly', amount: 5500, currency: 'RON', date: dayIn(month, 11 + Math.floor(rand() * 4)), client: 'orion', source: 'corporate', venue: 'meet', category: 'group_coaching', recurring: true, attendees: 6 })
+      if (m < 10) out.push({ sessions: 2, description: 'Team coaching — monthly', amount: 5500, currency: 'RON', date: dayIn(month, 11 + Math.floor(rand() * 4)), client: 'orion', source: 'corporate', venue: 'meet', category: 'group_coaching', recurring: true, attendees: 6 })
       // Coachlane, smaller in the first year.
-      out.push({ description: 'Platform payout', amount: Math.round(jitter(170 + m * 16, 50) * s), currency: 'USD', date: dayIn(month, 1), client: 'coachlane', source: 'platform', venue: 'coachlane', category: 'coaching_1on1', recurring: true })
+      out.push({ perSessionUsd: 85, description: 'Platform payout', amount: Math.round(jitter(170 + m * 16, 50) * s), currency: 'USD', date: dayIn(month, 1), client: 'coachlane', source: 'platform', venue: 'coachlane', category: 'coaching_1on1', recurring: true })
       continue
     }
     // Ioana: monthly package from month two, paid at the start of the month; a break in August.
     if (n >= 1 && !isAugust(month)) {
-      out.push({ description: 'Monthly package — 4 sessions', amount: n >= 8 ? 1400 : 1300, currency: 'RON', date: dayIn(month, 2 + Math.floor(rand() * 3)), client: 'ioana', source: 'retainer', venue: 'studio', category: 'coaching_1on1', recurring: true, notes: n === 8 ? 'New rate from this month.' : undefined })
+      out.push({ sessions: 4, description: 'Monthly package — 4 sessions', amount: n >= 8 ? 1400 : 1300, currency: 'RON', date: dayIn(month, 2 + Math.floor(rand() * 3)), client: 'ioana', source: 'retainer', venue: 'studio', category: 'coaching_1on1', recurring: true, notes: n === 8 ? 'New rate from this month.' : undefined })
     }
     // Nordwind: monthly group coaching invoice, paid around the 10th.
-    out.push({ description: 'Team-lead coaching circle', amount: 6500, currency: 'RON', date: dayIn(month, 9 + Math.floor(rand() * 5)), client: 'nordwind', source: 'corporate', venue: n % 3 === 2 ? 'meet' : 'nordwind', category: 'group_coaching', recurring: true, attendees: 7 })
+    out.push({ sessions: 2, description: 'Team-lead coaching circle', amount: 6500, currency: 'RON', date: dayIn(month, 9 + Math.floor(rand() * 5)), client: 'nordwind', source: 'corporate', venue: n % 3 === 2 ? 'meet' : 'nordwind', category: 'group_coaching', recurring: true, attendees: 7 })
     // Coachlane: monthly USD payout, rising and seasonal.
-    out.push({ description: 'Platform payout', amount: Math.round(jitter(380 + n * 22, 90) * s), currency: 'USD', date: dayIn(month, 1), client: 'coachlane', source: 'platform', venue: 'coachlane', category: 'coaching_1on1', recurring: true })
+    out.push({ perSessionUsd: 85, description: 'Platform payout', amount: Math.round(jitter(380 + n * 22, 90) * s), currency: 'USD', date: dayIn(month, 1), client: 'coachlane', source: 'platform', venue: 'coachlane', category: 'coaching_1on1', recurring: true })
     if (n >= 6) {
       // Verdant: EUR leadership circle.
-      out.push({ description: 'Leadership circle — monthly', amount: 1800, currency: 'EUR', date: dayIn(month, 15), client: 'verdant', source: 'corporate', venue: 'zoom', category: 'group_coaching', recurring: true, attendees: 6 })
+      out.push({ sessions: 2, hours: 3, description: 'Leadership circle — monthly', amount: 1800, currency: 'EUR', date: dayIn(month, 15), client: 'verdant', source: 'corporate', venue: 'zoom', category: 'group_coaching', recurring: true, attendees: 6 })
     }
     if (n >= 3 && !isAugust(month)) {
       // Saturday Circle: second Saturday of the month.
@@ -213,10 +221,10 @@ function drafts(today: string): Draft[] {
       out.push({ description: 'Workbook royalties — quarter', amount: jitter(1150, 250), currency: 'RON', date: dayIn(month, 20), client: 'pagina', source: 'royalties', venue: 'zoom', category: 'content', notes: '10% tax withheld by the publisher.' })
     }
     if (n % 3 === 0 && n > 0) {
-      out.push({ description: 'Leadership workshop — branch managers', amount: jitter(9800, 1200), currency: 'RON', date: dayIn(month, 24), client: 'northbridge', source: 'corporate', venue: 'northbridge', category: 'workshop', attendees: 14 })
+      out.push({ hours: 6, description: 'Leadership workshop — branch managers', amount: jitter(9800, 1200), currency: 'RON', date: dayIn(month, 24), client: 'northbridge', source: 'corporate', venue: 'northbridge', category: 'workshop', attendees: 14 })
     }
     if (n >= 4 && n <= 7) {
-      out.push({ description: 'Mentoring stipend — youth workers', amount: 1000, currency: 'RON', date: dayIn(month, 28), client: 'ngo', source: 'ngo', venue: 'meet', category: 'group_coaching', recurring: true, attendees: 8 })
+      out.push({ sessions: 2, description: 'Mentoring stipend — youth workers', amount: 1000, currency: 'RON', date: dayIn(month, 28), client: 'ngo', source: 'ngo', venue: 'meet', category: 'group_coaching', recurring: true, attendees: 8 })
     }
   }
 
@@ -287,13 +295,13 @@ function drafts(today: string): Draft[] {
   }
 
   out.push(
-    { description: 'Six-session package', amount: 1800, currency: 'RON', date: ago(11, 8), client: 'clara', source: 'direct', venue: 'studio', category: 'coaching_1on1' },
-    { description: 'Six-session package — renewal', amount: 1950, currency: 'RON', date: ago(5, 19), client: 'clara', source: 'direct', venue: 'zoom', category: 'coaching_1on1' },
+    { sessions: 6, description: 'Six-session package', amount: 1800, currency: 'RON', date: ago(11, 8), client: 'clara', source: 'direct', venue: 'studio', category: 'coaching_1on1' },
+    { sessions: 6, description: 'Six-session package — renewal', amount: 1950, currency: 'RON', date: ago(5, 19), client: 'clara', source: 'direct', venue: 'zoom', category: 'coaching_1on1' },
     { description: 'Spring retreat — facilitation, 3 days', amount: 2400, currency: 'EUR', date: ago(7, 22), client: 'retreats', source: 'agency', venue: 'cabana', category: 'retreat', attendees: 10 },
     { description: 'Autumn retreat — facilitation, 3 days', amount: 9800, currency: 'RON', date: ago(1, 6), client: 'retreats', source: 'agency', venue: 'cabana', category: 'retreat', notes: 'Twelve participants; agency invoice.', attendees: 12 },
-    { description: 'Island retreat — 5 days, Thassos', amount: 3600, currency: 'EUR', date: ago(4, 29), client: 'aegean', source: 'agency', venue: 'thassos', category: 'retreat', notes: 'Fourteen participants.', attendees: 14 },
+    { hours: 35, description: 'Island retreat — 5 days, Thassos', amount: 3600, currency: 'EUR', date: ago(4, 29), client: 'aegean', source: 'agency', venue: 'thassos', category: 'retreat', notes: 'Fourteen participants.', attendees: 14 },
     { description: 'Flights and transfers reimbursed', amount: 280, currency: 'EUR', date: ago(4, 29), client: 'aegean', source: 'agency', venue: 'thassos', category: 'reimbursement', notes: 'At cost, receipts attached to the invoice.' },
-    { description: 'Management offsite — 2 days', amount: 7200, currency: 'RON', date: ago(6, 17), client: 'carpathia', source: 'corporate', venue: 'carpatica', category: 'workshop', attendees: 18 },
+    { hours: 14, description: 'Management offsite — 2 days', amount: 7200, currency: 'RON', date: ago(6, 17), client: 'carpathia', source: 'corporate', venue: 'carpatica', category: 'workshop', attendees: 18 },
     { description: 'Festival workshop: "Rest is a skill"', amount: 1500, currency: 'RON', date: ago(4, 9), client: 'festival', source: 'events', venue: 'festival', category: 'speaking', attendees: 35 },
     { description: 'Guest lecture — coaching psychology', amount: 1200, currency: 'RON', date: ago(10, 13), client: 'unibuc', source: 'teaching', venue: 'aula', category: 'speaking' },
     { description: 'Guest lecture — coaching psychology', amount: 1200, currency: 'RON', date: ago(2, 12), client: 'unibuc', source: 'teaching', venue: 'aula', category: 'speaking' },
@@ -311,7 +319,7 @@ function drafts(today: string): Draft[] {
     { description: 'Guest lecture — coaching psychology', amount: 1000, currency: 'RON', date: ago(22, 14), client: 'unibuc', source: 'teaching', venue: 'aula', category: 'speaking' },
     { description: 'Gift vouchers — Christmas', amount: 900, currency: 'RON', date: `${Number(today.slice(0, 4)) - 2}-12-15`, client: 'vouchers', source: 'direct', venue: 'studio', category: 'coaching_1on1', notes: 'Two vouchers of three sessions each.' },
     // Outstanding: two overdue, two coming.
-    { description: 'Six-session package — second half', amount: 975, currency: 'RON', date: addDays(today, -24), client: 'clara', source: 'direct', venue: 'zoom', category: 'coaching_1on1', expected: true, notes: 'Agreed to pay in two parts.' },
+    { sessions: 3, description: 'Six-session package — second half', amount: 975, currency: 'RON', date: addDays(today, -24), client: 'clara', source: 'direct', venue: 'zoom', category: 'coaching_1on1', expected: true, notes: 'Agreed to pay in two parts.' },
     { description: 'Follow-up workshop — invoice sent', amount: 950, currency: 'GBP', date: addDays(today, -6), client: 'harbour', source: 'referral', venue: 'zoom', category: 'workshop', expected: true },
     { description: 'Team-lead coaching circle — next invoice', amount: 6500, currency: 'RON', date: addDays(today, 9), client: 'nordwind', source: 'corporate', venue: 'nordwind', category: 'group_coaching', recurring: true, expected: true },
     { description: 'Leadership workshop — Q1 booking', amount: 10500, currency: 'RON', date: addDays(today, 40), client: 'northbridge', source: 'corporate', venue: 'northbridge', category: 'workshop', expected: true },
@@ -352,6 +360,9 @@ export function buildDemo(today: string, tax: Settings['tax'] = DEMO_SETTINGS_TA
       category: dr.category,
       recurring: !!dr.recurring,
       attendees: dr.attendees ?? (dr.category === 'coaching_1on1' && dr.client !== 'coachlane' && dr.client !== 'ioana' ? 1 : null),
+      sessions: dr.sessions ?? (dr.perSessionUsd ? Math.max(1, Math.round(dr.amount / dr.perSessionUsd)) : 1),
+      hours: dr.hours !== undefined ? dr.hours
+        : HOURS[dr.category] !== undefined ? HOURS[dr.category]! * (dr.sessions ?? (dr.perSessionUsd ? Math.max(1, Math.round(dr.amount / dr.perSessionUsd)) : 1)) : null,
       notes: dr.notes ?? '',
       taxability: cls.taxability,
       taxHandling: cls.taxHandling,
