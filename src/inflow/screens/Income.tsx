@@ -134,7 +134,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
         )}
       </div>
 
-      {receivedTotal > 0 && <WhereFrom list={list.filter((r) => r.status === 'received')} data={data} onPick={(patch) => set(patch)} />}
+      {data.records.some((r) => r.status === 'received') && <WhereFrom list={list.filter((r) => r.status === 'received')} data={data} onPick={(patch) => set(patch)} empty={filter.range === 'all' ? null : range.label.toLowerCase()} onWiden={() => set({ range: 'all' })} />}
 
       {list.length === 0 ? (
         <div className={styles.empty}>
@@ -157,7 +157,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
 const PICK: Record<Dimension, keyof IncomeFilter> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
 
 /** Where the income in this list came from: one bar, its largest parts, tap one to narrow the list. */
-function WhereFrom({ list, data, onPick }: { list: IncomeRecord[]; data: InflowData; onPick: (patch: Partial<IncomeFilter>) => void }) {
+function WhereFrom({ list, data, onPick, empty, onWiden }: { list: IncomeRecord[]; data: InflowData; onPick: (patch: Partial<IncomeFilter>) => void; empty: string | null; onWiden: () => void }) {
   const [dim, setDim] = useState<Dimension>(() => readJson<Dimension>('inflow:income-split', 'source'))
   const parts = useMemo(() => breakdown(data, list, [], dim).map((r) => ({ id: r.id, name: r.name, value: r.total })), [data, list, dim])
   return (
@@ -169,8 +169,13 @@ function WhereFrom({ list, data, onPick }: { list: IncomeRecord[]; data: InflowD
           {(['source', 'client', 'venue', 'activity'] as Dimension[]).map((x) => <option key={x} value={x}>by {DIMENSION_NOUN[x].toLowerCase()}</option>)}
         </select>
       </div>
-      <Donut key={dim} parts={parts} caption="received" label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`}
-        onSelect={(id) => onPick({ [PICK[dim]]: id })} />
+      {parts.length === 0 ? (
+        <p className={styles.emptyNote}>
+          Nothing received {empty ?? 'for these filters'} yet.{' '}
+          {empty && <button type="button" className={styles.linkButton} onClick={onWiden}>Show all time</button>}
+        </p>
+      ) : <Donut key={dim} parts={parts} caption="received" label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`}
+        onSelect={(id) => onPick({ [PICK[dim]]: id })} />}
     </section>
   )
 }

@@ -244,6 +244,19 @@ describe('small conveniences', () => {
     expect(await screen.findByRole('dialog', { name: /Add cost/ })).toBeTruthy()
   })
 
+  it('keeps "Where it went" when nothing was paid in the period, with all time one tap away', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'custom', from: '2026-11-25', to: '2026-11-25' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/costs')
+    const panel = await screen.findByLabelText('Where it went')
+    expect(within(panel).getByText(/Nothing paid .* yet/)).toBeTruthy()
+    await user.click(within(panel).getByRole('button', { name: 'Show all time' }))
+    expect(await within(screen.getByLabelText('Where it went')).findByText('spent')).toBeTruthy()
+  })
+
   it('says when the work-by-place grid has too little to compare', async () => {
     settings()
     localStorage.setItem('inflow:period', JSON.stringify({ preset: 'week' }))

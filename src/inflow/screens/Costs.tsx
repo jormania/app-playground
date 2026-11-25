@@ -52,7 +52,7 @@ type CostSplit = 'group' | 'category' | 'venue'
 const SPLIT_LABEL: Record<CostSplit, string> = { group: 'by kind', category: 'by category', venue: 'by venue' }
 
 /** Where the money went, WhereItWent's question: one bar of the P&L costs in this list, its largest parts. */
-function WhereWent({ costs, data, onPick }: { costs: CostRecord[]; data: InflowData; onPick: (patch: Partial<CostFilter>) => void }) {
+function WhereWent({ costs, data, onPick, empty, onWiden }: { costs: CostRecord[]; data: InflowData; onPick: (patch: Partial<CostFilter>) => void; empty: string | null; onWiden: () => void }) {
   const [split, setSplit] = useState<CostSplit>(() => readJson<CostSplit>('inflow:cost-split', 'category'))
   const parts = useMemo(() => {
     const m = new Map<string, number>()
@@ -74,8 +74,13 @@ function WhereWent({ costs, data, onPick }: { costs: CostRecord[]; data: InflowD
           {(Object.keys(SPLIT_LABEL) as CostSplit[]).map((k) => <option key={k} value={k}>{SPLIT_LABEL[k]}</option>)}
         </select>
       </div>
-      <Donut key={split} parts={parts} caption="spent" label={`Costs ${SPLIT_LABEL[split]}`}
-        onSelect={split === 'category' ? undefined : (id) => onPick(split === 'group' ? { group: id } : { venueId: id })} />
+      {parts.length === 0 ? (
+        <p className={styles.emptyNote}>
+          Nothing paid {empty ?? 'for these filters'} yet.{' '}
+          {empty && <button type="button" className={styles.linkButton} onClick={onWiden}>Show all time</button>}
+        </p>
+      ) : <Donut key={split} parts={parts} caption="spent" label={`Costs ${SPLIT_LABEL[split]}`}
+        onSelect={split === 'category' ? undefined : (id) => onPick(split === 'group' ? { group: id } : { venueId: id })} />}
       <p className={styles.hint} style={{ marginTop: 'var(--space-xs)' }}>Costs in the P&L only: equipment, loan repayments and drawings are left out.</p>
     </section>
   )
@@ -169,7 +174,7 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
         )}
       </div>
 
-      {sumRon(pnl) > 0 && <WhereWent costs={pnl} data={data} onPick={(patch) => set(patch)} />}
+      {data.costs.some((c) => c.status === 'paid') && <WhereWent costs={pnl} data={data} onPick={(patch) => set(patch)} empty={filter.range === 'all' ? null : range.label.toLowerCase()} onWiden={() => set({ range: 'all' })} />}
 
       {list.length === 0 ? (
         <div className={styles.empty}>
