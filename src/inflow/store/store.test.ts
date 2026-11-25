@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { memoryStore } from '../../shared/kvStore'
 import { buildDemo, withoutDemo } from '../data/demo'
 import { DEFAULT_SETTINGS } from './settings'
-import { BackupError, makeBackup, readBackup, recordsCsv } from './backup'
+import { BackupError, makeBackup, readBackup, recordsCsv, toCsv } from './backup'
 import {
   clientFromPage, clientToProps, copyToNotion, costFromPage, costToProps, discoverDatabases, NotionRepo, recordFromPage, recordToProps,
   sourceFromPage, sourceToProps, venueFromPage, venueToProps,
@@ -185,5 +185,15 @@ describe('the demo never reaches Notion', () => {
     await expect(repo.deleteRecord(r.id)).rejects.toThrow(/demo/)
     await expect(repo.deleteEntity('venue', demo.venues[0].id)).rejects.toThrow(/demo/)
     expect(call).not.toHaveBeenCalled()
+  })
+})
+
+describe('CSV is safe to open in a spreadsheet', () => {
+  it('keeps text that looks like a formula as text', () => {
+    const csv = toCsv(['a', 'b'], [['=HYPERLINK("x")', -350], ['+1 call', '@home'], ['plain', 12]])
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`)
+    expect(csv).toContain("'+1 call")
+    expect(csv).toContain("'@home")
+    expect(csv).toContain(',-350')
   })
 })

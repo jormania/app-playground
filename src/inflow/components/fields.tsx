@@ -56,14 +56,36 @@ export function TextArea({ label, value, onChange, placeholder }: Base & { value
 }
 
 /** Parse a typed amount: accepts "1 250,50", "1,250.50" and "1250.5". */
+/**
+ * An exchange rate: a single separator is always the decimal point ("4.976", "4,976"),
+ * never a thousands one. Lei per euro is never in the thousands.
+ */
+export function parseRate(s: string): number {
+  const t = String(s).trim().replace(/[\s\u00a0\u202f]/g, '')
+  if (!t) return 0
+  const n = Number(t.includes(',') && !t.includes('.') ? t.replace(',', '.') : t.replace(/,/g, ''))
+  return Number.isFinite(n) ? n : NaN
+}
+
 export function parseAmount(s: string): number {
-  const t = String(s).trim().replace(/\s/g, '')
+  // Spaces (also non-breaking) group thousands too: "1 500".
+  const t = String(s).trim().replace(/[\s\u00a0\u202f]/g, '')
   if (!t) return 0
   const lastComma = t.lastIndexOf(',')
   const lastDot = t.lastIndexOf('.')
-  let norm = t
-  if (lastComma > lastDot) norm = t.replace(/\./g, '').replace(',', '.')
-  else norm = t.replace(/,/g, '')
+  let norm: string
+  if (lastComma !== -1 && lastDot !== -1) {
+    // Both: the last one is the decimal point ("1.234,56", "1,234.56").
+    norm = lastComma > lastDot ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '')
+  } else {
+    const sep = lastComma !== -1 ? ',' : lastDot !== -1 ? '.' : ''
+    const parts = sep ? t.split(sep) : [t]
+    // One separator before exactly three digits, after one to three that don't start with 0, groups
+    // thousands: "1.500" and "2,500" are 1500 and 2500 (in Romania the dot groups thousands). So does
+    // more than one: "1.234.567". Otherwise it is the decimal point: "1,5", "12.50", "0.125".
+    const thousands = parts.length > 2 || (parts.length === 2 && parts[1].length === 3 && /^[1-9]\d{0,2}$/.test(parts[0].replace('-', '')))
+    norm = !sep ? t : thousands ? parts.join('') : parts.join('.')
+  }
   const n = Number(norm)
   return Number.isFinite(n) ? n : NaN
 }

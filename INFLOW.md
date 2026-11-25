@@ -127,6 +127,37 @@ recorded one is filled in), and seat icons show how many people cover the fee
 (`breakEvenPeople`) and what each person after that leaves you (`keptPerPerson`). A revenue
 share has no break-even.
 
+### Audit, 25 Nov 2026 (second)
+**Defects fixed:**
+- **Amounts were misread.** "1.500" (the Romanian way to write 1500) was read as 1.5 lei. So was
+  "2,500". One separator before exactly three digits now groups thousands. Otherwise it's
+  the decimal point, and with both separators the last one is the decimal (`parseAmount`, tested
+  case by case). Exchange rates use `parseRate`, where a single separator is always the decimal, so
+  4.976 stays 4.976.
+- **CSV exports could run formulas.** Text starting with `=`, `+`, `-` or `@` would run as a formula
+  in Excel or Sheets; it is now kept as text.
+- **Reimbursements absorbed costs.** A reimbursement took a share of the same day's direct costs at
+  a venue, understating what the session cost.
+- **Clients & work was filtered unseen.** It applied a report filter left set elsewhere while
+  showing no filter bar. The period is now its only filter, with a test that fails without the fix.
+- **Two smaller fixes.** The what-if and break-even fields now read "30%" and "220 lei". `N` no
+  longer opens a form over a confirmation dialog.
+
+**Improvements:**
+- **A first run starts with steps,** not a dashboard of zeros: add a payment, add your rooms, record
+  a cost, or see the demo.
+- **Income search finds amounts:** "450", "6.500".
+- **A backup nudge:** on the Overview, for your own data on this device, after 30 days without a
+  backup.
+- **No empty copy button:** "Copy summary" hides when there's nothing to copy.
+
+**Checked and sound:**
+- A sweep of every screen and report in three states (demo, empty, simple start), on
+  Week/Month/Last month/Year, at 340, 412 and 1280 px, in light and dark: no errors, no overflow,
+  no NaN or undefined in the page.
+- The service worker serves pages network-first and hashed assets.
+- Reversed custom periods are swapped.
+
 ### Information mapping (25 Nov 2026)
 No paragraphs to read where facts can be laid out.
 - **The Review's summary** is rows (`reviewHighlights`): came in, you kept, top client, biggest

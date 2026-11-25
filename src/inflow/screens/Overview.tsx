@@ -4,7 +4,7 @@
  * withheld and what to put aside (optional).
  */
 import { useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Copy, Info, Lightbulb, PieChart, Receipt, Repeat, Scale, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Copy, DoorOpen, HardDriveDownload, Plus, Info, Lightbulb, PieChart, Receipt, Repeat, Scale, Sparkles, TrendingUp } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
 import { EMPTY_FILTER, useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
@@ -24,6 +24,9 @@ import { insights } from '../lib/insights'
 import { InsightList } from '../components/insightsUi'
 import { useInsightFeedback } from '../app/insightFeedback'
 import type { IncomeRecord } from '../domain/types'
+import { readJson, writeJson } from '../../shared/storage'
+import { download, makeBackup } from '../store/backup'
+import { LAST_BACKUP_KEY } from './Settings'
 import styles from '../styles/ui.module.css'
 
 /** The reminder "Remind" copies: short, friendly, with what, how much and when. */
@@ -47,8 +50,8 @@ const DIMS: { value: Dimension; label: string }[] = [
 
 const FILTER_KEY: Record<Dimension, 'clientId' | 'sourceId' | 'venueId' | 'activity'> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
 
-export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; onAddCost: () => void }) {
-  const { data, settings, today, setFilter, saveRecord, toast, on } = useInflow()
+export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) => void; onAddCost: () => void; onAdd?: () => void }) {
+  const { data, settings, today, setFilter, saveRecord, toast, on, loadDemo } = useInflow()
   const { range, prev, prevWhole, cur, before, summary, prevSummary } = usePeriodData()
   const [dim, setDim] = useState<Dimension>('client')
   const go = (patch: Partial<typeof EMPTY_FILTER>) => { setFilter({ ...EMPTY_FILTER, range: 'period', ...patch }); location.hash = '#/income' }
@@ -114,8 +117,12 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }, [cur])
 
+  // A first run with nothing recorded: a few steps in, not a dashboard of zeros.
+  if (data.records.length === 0) return <StartHere onAdd={onAdd} onAddCost={on('costs') ? onAddCost : undefined} onDemo={() => void loadDemo()} hasVenues={data.venues.length > 0} />
+
   return (
     <>
+      <BackupNudge />
       <section className={`${styles.panel} ${styles.hero}`} aria-label="Income this period">
         <div>
           <div className={styles.heroLabel}>{range.label} · {shortDate(range.from)} – {shortDate(range.to, yearOf(today))}</div>
@@ -347,5 +354,52 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
           )}
       </div>
     </>
+  )
+}
+
+function StartHere({ onAdd, onAddCost, onDemo, hasVenues }: { onAdd?: () => void; onAddCost?: () => void; onDemo: () => void; hasVenues: boolean }) {
+  const steps: { icon: typeof Check; title: string; note: string; action: string; run: () => void }[] = [
+    { icon: Plus, title: 'Add your first payment', note: 'Amount and client; the rest is remembered next time.', action: 'Add income', run: () => onAdd?.() },
+    { icon: DoorOpen, title: hasVenues ? 'Check your venues' : 'Add the rooms you work in', note: 'With their deal: a fee per session or a share.', action: 'Venues', run: () => { location.hash = '#/settings' } },
+    ...(onAddCost ? [{ icon: Receipt, title: 'Record a cost', note: 'Room hire, software, the accountant.', action: 'Add cost', run: onAddCost }] : []),
+    { icon: Sparkles, title: 'Not sure where to start?', note: 'Look round the demo practice; your data stays apart.', action: 'See the demo', run: onDemo },
+  ]
+  return (
+    <section className={`${styles.panel} ${styles.startHere}`} aria-label="Start here">
+      <div className={styles.eyebrow}>Start here</div>
+      <h2 className={styles.reviewTitle}>Nothing recorded yet</h2>
+      <ol className={styles.startSteps}>
+        {steps.map((s, i) => (
+          <li key={s.title}>
+            <span className={styles.startNum}>{i + 1}</span>
+            <span className={styles.startText}><b>{s.title}</b><span>{s.note}</span></span>
+            <button type="button" className={styles.chip} onClick={s.run}><s.icon size={13} aria-hidden /> {s.action}</button>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+/**
+ * Your data on this device lives in this browser only. When a month has gone
+ * by without a backup (or there has never been one), one line offers it.
+ */
+function BackupNudge() {
+  const { data, settings, workspace, today, toast } = useInflow()
+  const [last, setLast] = useState(() => readJson<string>(LAST_BACKUP_KEY, ''))
+  if (workspace !== 'mine' || settings.mode !== 'device' || data.records.length < 5) return null
+  if (last && daysBetween(last, today) < 30) return null
+  const save = () => {
+    download(`inflow-backup-${today}.json`, JSON.stringify(makeBackup(data, settings), null, 2), 'application/json')
+    writeJson(LAST_BACKUP_KEY, today)
+    setLast(today)
+    toast({ message: 'Backup downloaded', tone: 'success' })
+  }
+  return (
+    <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">
+      <span><HardDriveDownload size={14} aria-hidden /> {last ? `Last backup ${daysBetween(last, today)} days ago.` : 'No backup yet.'} Your data is only in this browser.</span>
+      <button type="button" className={styles.linkButton} onClick={save}>Download backup</button>
+    </div>
   )
 }

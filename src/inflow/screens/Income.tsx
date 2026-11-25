@@ -8,7 +8,7 @@ import { AlertTriangle, Download, PieChart, Repeat, X } from 'lucide-react'
 import { Button } from '../../ds'
 import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
-import { SelectInput } from '../components/fields'
+import { parseAmount, SelectInput } from '../components/fields'
 import type { IncomeRecord, InflowData } from '../domain/types'
 import { ACTIVITY, TAX_HANDLING, TAXABILITY, VAT_SHORT, options } from '../domain/vocabulary'
 import { breakdown, DIMENSION_NOUN, largeRecordIds, NO_ENTITY, sum, type Dimension } from '../lib/analytics'
@@ -24,6 +24,8 @@ import styles from '../styles/ui.module.css'
 
 export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: string; to: string }): IncomeRecord[] {
   const q = f.query.trim().toLowerCase()
+  // A number in the search finds payments of that amount, in its currency or in lei: "450", "1.500".
+  const amountQ = /^[\d\s.,]+$/.test(q) && Number.isFinite(parseAmount(q)) && parseAmount(q) > 0 ? Math.round(parseAmount(q)) : null
   const name = (list: { id: string; name: string }[], id: string | null) => list.find((x) => x.id === id)?.name ?? ''
   const match = (field: string | null, want: string) => !want || (want === NO_ENTITY ? !field : field === want)
   return data.records
@@ -32,7 +34,7 @@ export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: st
     .filter((r) => !f.taxability || r.taxability === f.taxability)
     .filter((r) => !f.status || (f.status === 'suggested' ? r.classification === 'suggested' : r.status === f.status))
     .filter((r) => !q || [r.description, r.notes, name(data.clients, r.clientId), name(data.sources, r.sourceId), name(data.venues, r.venueId), r.currency]
-      .some((s) => s.toLowerCase().includes(q)))
+      .some((s) => s.toLowerCase().includes(q)) || (amountQ !== null && (Math.round(r.amount) === amountQ || Math.round(r.amountRon) === amountQ)))
     .sort((a, b) => b.date.localeCompare(a.date) || b.amountRon - a.amountRon)
 }
 

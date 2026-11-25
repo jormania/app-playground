@@ -144,7 +144,7 @@ export function ReviewReport() {
         </ul>
         <div className={styles.hlFoot}>
           <span className={styles.panelSub}>{curS.length} {curS.length === 1 ? 'payment' : 'payments'} · {d.text === '—' ? range.label : `${d.text} vs ${prev.label}`}</span>
-          <button type="button" className={styles.linkButton} onClick={copy}><Copy size={12} aria-hidden /> Copy summary</button>
+          {curS.length > 0 && <button type="button" className={styles.linkButton} onClick={copy}><Copy size={12} aria-hidden /> Copy summary</button>}
         </div>
       </section>
 

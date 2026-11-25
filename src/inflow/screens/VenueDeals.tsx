@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react'
 import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SegmentedControl } from '../../ds'
-import { TextInput } from '../components/fields'
+import { parseAmount, TextInput } from '../components/fields'
 import { DEAL } from '../domain/vocabulary'
 import { ANY_SCOPE, inScope, NO_ENTITY } from '../lib/analytics'
 import { breakEvenPeople, dealTotals, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
@@ -125,7 +125,7 @@ function VenueRow({ d, best }: { d: VenueDeal; best: number }) {
 function BreakEven({ d }: { d: VenueDeal }) {
   const v = d.venue
   const [price, setPrice] = useState(d.revenuePerHead ? String(Math.round(d.revenuePerHead)) : '')
-  const p = Number(price.replace(',', '.'))
+  const p = parseAmount(price.replace(/[^\d.,\s-]/g, ''))
   const ok = Number.isFinite(p) && p > 0
   const need = ok ? breakEvenPeople(v, p) : null
   const each = ok ? keptPerPerson(v, p) : 0
@@ -166,7 +166,8 @@ function WhatIf({ d }: { d: VenueDeal }) {
   const [deal, setDeal] = useState<'fixed' | 'share'>(start.deal === 'share' ? 'share' : 'fixed')
   const [fee, setFee] = useState(String(Math.round(start.deal === 'fixed' ? start.feePerSession : d.venue.feePerSession || 0)))
   const [share, setShare] = useState(String(Math.round((start.deal === 'share' ? start.sharePct : d.venue.sharePct || 0.3) * 100)))
-  const num = (s: string) => { const x = Number(s.replace(',', '.')); return Number.isFinite(x) && x >= 0 ? x : 0 }
+  // "30%", "450 lei" and "1.500" all read as people mean them.
+  const num = (s: string) => { const x = parseAmount(s.replace(/[^\d.,\s-]/g, '')); return Number.isFinite(x) && x >= 0 ? x : 0 }
   const alt: Terms = deal === 'fixed'
     ? { deal: 'fixed', feePerSession: num(fee), sharePct: 0, monthlyFee: 0 }
     : { deal: 'share', feePerSession: 0, sharePct: Math.min(100, num(share)) / 100, monthlyFee: 0 }

@@ -138,13 +138,16 @@ describe('InFlow', () => {
     const demoTotal = (await screen.findByTestId('period-total')).textContent
     expect(screen.getByText(/exploring a demo practice/)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Switch to my data' }))
-    await waitFor(() => expect(screen.getByTestId('period-total').textContent).toBe('0 lei'))
+    // Nothing recorded yet: steps in, not a dashboard of zeros.
+    const start = await screen.findByLabelText('Start here')
+    expect(screen.queryByTestId('period-total')).toBeNull()
     expect(screen.queryByText(/exploring a demo practice/)).toBeNull()
-    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    await user.click(within(start).getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
     await user.type(within(dialog).getByLabelText('Amount'), '500')
     await user.click(within(dialog).getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(screen.getByTestId('period-total').textContent).toMatch(/^500/))
+    expect(screen.queryByLabelText('Start here')).toBeNull()
     const mine = (await store.get<{ records: { amount: number; demo?: boolean }[] }>('data'))!
     expect(mine.records).toHaveLength(1)
     expect(mine.records[0].demo).toBeFalsy()
@@ -262,6 +265,34 @@ describe('small conveniences', () => {
 
 })
 
+describe('audit conveniences', () => {
+  it('finds payments by amount in the search', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/income')
+    await user.type(screen.getByLabelText('Search income'), '6.500')
+    const rows = await screen.findAllByRole('button', { name: /Team-lead coaching circle/ })
+    expect(rows.length).toBeGreaterThan(5)
+    expect(screen.queryByRole('button', { name: /Coaching session, 400/ })).toBeNull()
+  })
+
+  it('nudges a backup when your own data on this device has none for a month', async () => {
+    settings({ workspace: 'mine', demoSeeded: true })
+    const own = buildDemo(today).records.filter((r) => r.status === 'received').slice(0, 6).map((r, i) => ({ ...r, id: `loc_${i}`, demo: undefined }))
+    await store.set('data', { records: own, costs: [], clients: [], sources: [], venues: [] })
+    localStorage.setItem('inflow:last-backup', JSON.stringify('2026-09-01'))
+    // jsdom has no object URLs; a browser does.
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    expect(await screen.findByText(/Last backup 85 days ago/)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Download backup' }))
+    await waitFor(() => expect(screen.queryByText(/Last backup/)).toBeNull())
+  })
+})
+
 describe('venue deals', () => {
   it('shows each venue\'s actual deal and results; the what-if changes nothing stored', async () => {
     settings()
@@ -314,6 +345,21 @@ describe('clients & work', () => {
     // No grid, no question chips, no filter button on this report.
     expect(screen.queryByRole('table')).toBeNull()
     expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull()
+  })
+
+  it('ignores a report filter left set elsewhere: the period is its only filter', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/earnings')
+    const before = within(await screen.findByLabelText('Earnings in total')).getAllByText(/lei$/).map((x) => x.textContent).join()
+    cleanup()
+    localStorage.setItem('inflow:report-scope', JSON.stringify({ clientId: 'demo_c_radu', sourceId: '', venueId: '', activity: '' }))
+    render(<App store={store} today={today} />)
+    await go('#/reports/earnings')
+    const after = within(await screen.findByLabelText('Earnings in total')).getAllByText(/lei$/).map((x) => x.textContent).join()
+    expect(after).toBe(before)
   })
 
   it('works out the break-even on a fixed-fee venue from a price per person', async () => {

@@ -85,3 +85,11 @@ describe('break-even', () => {
     expect(keptPerPerson({ deal: 'share', feePerSession: 0, sharePct: 0.3, monthlyFee: 0 }, 200)).toBe(140)
   })
 })
+
+describe('reimbursements take no share of a day\'s costs', () => {
+  it('puts the whole same-day cost on the session, not on the money paid back', () => {
+    const d: InflowData = { ...data, records: [rec('s', 'ana', 'workshop', '2026-05-05', 1000), { ...rec('r', 'ana', 'reimbursement', '2026-05-05', 200) }], costs: [cost('2026-05-05', 100)] }
+    const e = earnings(d, range, 'client', opts)
+    expect(e.rows[0]).toMatchObject({ income: 1000, directCosts: 100, kept: 600, sessions: 1 })
+  })
+})

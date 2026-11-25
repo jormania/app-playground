@@ -12,7 +12,7 @@ import type { Category, CostCategory, CostGroup, CostRecord, Currency } from '..
 import { ACTIVITY, CATEGORIES_BY_GROUP, COST_CATEGORY, COST_GROUP, COST_GROUP_HINT, CURRENCIES, options } from '../domain/vocabulary'
 import { fetchRonRate, lei, money, round2, toRon } from '../lib/money'
 import { addMonths } from '../lib/dates'
-import { parseAmount, SelectInput, TextArea, TextInput } from './fields'
+import { parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-cost'
@@ -75,7 +75,7 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
 
   const amount = parseAmount(draft.amount)
-  const fxRate = draft.currency === 'RON' ? 1 : parseAmount(draft.fxRate)
+  const fxRate = draft.currency === 'RON' ? 1 : parseRate(draft.fxRate)
   const amountRon = Number.isFinite(amount) && Number.isFinite(fxRate) ? toRon(amount, fxRate) : 0
 
   const fxReq = useRef(0)

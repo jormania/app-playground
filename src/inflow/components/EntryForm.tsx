@@ -20,7 +20,7 @@ import { suggestClassification, suggestedWithholding } from '../tax/classify'
 import { suggestReserve } from '../tax/estimate'
 import type { Entity, EntityKind } from '../store/repo'
 import { blankEntity, EntityEditor, KIND_LABEL } from './EntityEditor'
-import { parseAmount, SelectInput, TextArea, TextInput } from './fields'
+import { parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
 import { Optional } from './Optional'
 import styles from '../styles/ui.module.css'
 
@@ -146,7 +146,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   // An empty description is written from what's known: the activity, then where or for whom.
   const autoDescription = [draft.category ? CATEGORY[draft.category as keyof typeof CATEGORY] : '', venue?.name ?? client?.name ?? ''].filter(Boolean).join(' · ') || 'Payment'
   const amount = parseAmount(draft.amount)
-  const fxRate = draft.currency === 'RON' ? 1 : parseAmount(draft.fxRate)
+  const fxRate = draft.currency === 'RON' ? 1 : parseRate(draft.fxRate)
   const amountRon = Number.isFinite(amount) && Number.isFinite(fxRate) ? toRon(amount, fxRate) : 0
 
   const cls = useMemo(

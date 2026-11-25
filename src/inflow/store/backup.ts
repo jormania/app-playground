@@ -48,7 +48,8 @@ export function readBackup(text: string): Backup {
 
 // ── CSV ─────────────────────────────────────────────────────────────────────
 function cell(v: string | number): string {
-  const s = String(v)
+  // Text that starts like a formula would run as one in Excel or Sheets: keep it text.
+  const s = typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : String(v)
   return /[",\r\n]/.test(s) || /^\s|\s$/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

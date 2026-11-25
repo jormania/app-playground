@@ -42,12 +42,13 @@ export function recordCosts(data: InflowData, opts: { deals: boolean; costs: boo
   }
   // Same-day linked costs are shared across that venue's payments that day.
   const sameDay = new Map<string, number>()
-  for (const r of data.records) if (r.status === 'received' && r.venueId) sameDay.set(`${r.venueId}|${r.date}`, (sameDay.get(`${r.venueId}|${r.date}`) ?? 0) + 1)
+  // A reimbursement is money back, not a session: it takes no share of the day's costs.
+  for (const r of data.records) if (r.status === 'received' && r.venueId && r.category !== 'reimbursement') sameDay.set(`${r.venueId}|${r.date}`, (sameDay.get(`${r.venueId}|${r.date}`) ?? 0) + 1)
   const out = new Map<string, RecordCosts>()
   for (const r of data.records) {
     if (r.status !== 'received') continue
     const k = `${r.venueId}|${r.date}`
-    const direct = r.venueId ? (linked.get(k) ?? 0) / (sameDay.get(k) ?? 1) : 0
+    const direct = r.venueId && r.category !== 'reimbursement' ? (linked.get(k) ?? 0) / (sameDay.get(k) ?? 1) : 0
     const venueFee = venue.get(r.id) ?? 0
     out.set(r.id, { income: r.amountRon, venueFee: round2(venueFee), direct: round2(direct), kept: round2(r.amountRon - venueFee - direct) })
   }

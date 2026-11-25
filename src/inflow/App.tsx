@@ -142,7 +142,8 @@ function Shell() {
   // On a keyboard: N adds (income, or a cost on Costs), / jumps to the search.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || entry || tour) return
+      // Not while any dialog is open (a form, the tour, a confirmation).
+      if (e.metaKey || e.ctrlKey || e.altKey || entry || tour || document.querySelector('[role="dialog"]')) return
       const t = e.target as HTMLElement | null
       if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return
       if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (screen === 'costs') openCost(null); else open(null) }
@@ -206,7 +207,7 @@ function Shell() {
                 <button type="button" className={styles.linkButton} onClick={() => setWorkspace('mine')}>Switch to my data</button>
               </div>
             )}
-            {screen === 'overview' && <Overview onOpen={open} onAddCost={() => openCost(null)} />}
+            {screen === 'overview' && <Overview onOpen={open} onAdd={() => open(null)} onAddCost={() => openCost(null)} />}
             {screen === 'income' && <Income onOpen={open} />}
             {screen === 'costs' && <Costs onOpen={openCost} filter={costFilter} setFilter={setCostFilter} />}
             {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onTab={(t) => { location.hash = `#/reports/${t}` }} onAddCost={() => openCost(null)} />}

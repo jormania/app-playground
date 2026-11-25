@@ -12,7 +12,6 @@ import { SegmentedControl } from '../../ds'
 import { readJson, writeJson } from '../../shared/storage'
 import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
-import { ANY_SCOPE, inScope } from '../lib/analytics'
 import { earnings, type EarningsBy, type EarningsRow } from '../lib/earnings'
 import { lei } from '../lib/money'
 import { WiderPeriod } from './Insights'
@@ -22,13 +21,12 @@ const KEY = 'inflow:earnings-by'
 const SHOWN = 10
 
 export function EarningsReport() {
-  const { data, on, scope: rawScope } = useInflow()
-  const scope = on('reportTools') ? rawScope : ANY_SCOPE
+  // The period is the only filter here: a report filter set elsewhere must not narrow it unseen.
+  const { data, on } = useInflow()
   const { range } = usePeriodData()
   const [by, setBy] = useState<EarningsBy>(() => readJson<EarningsBy>(KEY, 'client'))
   const [all, setAll] = useState(false)
-  const scoped = useMemo(() => ({ ...data, records: data.records.filter((r) => inScope(r, scope)) }), [data, scope])
-  const e = useMemo(() => earnings(scoped, range, by, { deals: on('deals'), costs: on('costs') }), [scoped, range, by, on])
+  const e = useMemo(() => earnings(data, range, by, { deals: on('deals'), costs: on('costs') }), [data, range, by, on])
   const maxIncome = Math.max(1, ...e.rows.map((r) => r.income))
   const rows = all ? e.rows : e.rows.slice(0, SHOWN)
 

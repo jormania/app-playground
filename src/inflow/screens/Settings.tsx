@@ -97,7 +97,7 @@ function Section({ id, title, sub, action, children }: { id: string; title: stri
   )
 }
 
-const LAST_BACKUP_KEY = 'inflow:last-backup'
+export const LAST_BACKUP_KEY = 'inflow:last-backup'
 
 export const STARTER_STEPS = ['Duplicate “InFlow — Starter Template” in Notion', 'Share it with your integration', 'Paste its Income database link below']
 
