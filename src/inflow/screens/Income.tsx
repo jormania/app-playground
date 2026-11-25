@@ -33,11 +33,14 @@ export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: st
 }
 
 export function Income({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, filter, setFilter, settings, today } = useInflow()
+  const { data, filter, setFilter, settings, today, on } = useInflow()
   const { range } = usePeriodData()
   const [showFilters, setShowFilters] = useState(false)
-  const list = useMemo(() => applyFilter(data, filter, range), [data, filter, range])
-  const large = useMemo(() => largeRecordIds(data.records, settings.largeMultiple), [data.records, settings.largeMultiple])
+  // Expected payments switched off: they leave the list too, not just the label.
+  const showExpected = on('expected')
+  const list = useMemo(() => applyFilter(data, filter, range).filter((r) => showExpected || r.status !== 'expected'), [data, filter, range, showExpected])
+  const showUnusual = on('unusual')
+  const large = useMemo(() => (showUnusual ? largeRecordIds(data.records, settings.largeMultiple) : new Set<string>()), [showUnusual, data.records, settings.largeMultiple])
   const set = (patch: Partial<IncomeFilter>) => setFilter({ ...filter, ...patch })
 
   // Expected payments get their own group on top; the months hold what was received.
@@ -101,7 +104,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
               {options(ACTIVITY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               <option value={NO_ENTITY}>No activity</option>
             </SelectInput>
-            {settings.trackTax && <SelectInput label="Tax" value={filter.taxability} onChange={(v) => set({ taxability: v })}>
+            {settings.features.tax && <SelectInput label="Tax" value={filter.taxability} onChange={(v) => set({ taxability: v })}>
               <option value="">Any</option>
               <option value="taxable">Taxable</option>
               <option value="non_taxable">Non-taxable</option>
@@ -110,8 +113,8 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
             <SelectInput label="Status" value={filter.status} onChange={(v) => set({ status: v })}>
               <option value="">Any</option>
               <option value="received">Received</option>
-              <option value="expected">Expected</option>
-              {settings.trackTax && <option value="suggested">Tax not yet confirmed</option>}
+              {showExpected && <option value="expected">Expected</option>}
+              {settings.features.tax && <option value="suggested">Tax not yet confirmed</option>}
             </SelectInput>
           </div>
         </section>
@@ -136,14 +139,14 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
             <span>{month === 'expected' ? 'Expected' : monthLabel(`${month}-01`)}</span>
             <span className="num">{month === 'expected' ? `${lei(sum(rs))} to come` : lei(sum(rs))}</span>
           </div>
-          {rs.map((r) => <EntryRow key={r.id} r={r} data={data} large={large.has(r.id)} today={today} onOpen={onOpen} tax={settings.trackTax} />)}
+          {rs.map((r) => <EntryRow key={r.id} r={r} data={data} large={large.has(r.id)} today={today} onOpen={onOpen} tax={settings.features.tax} currencies={on('currencies')} />)}
         </div>
       ))}
     </>
   )
 }
 
-function EntryRow({ r, data, large, today, onOpen, tax }: { r: IncomeRecord; data: InflowData; large: boolean; today: string; onOpen: (id: string) => void; tax: boolean }) {
+function EntryRow({ r, data, large, today, onOpen, tax, currencies }: { r: IncomeRecord; data: InflowData; large: boolean; today: string; onOpen: (id: string) => void; tax: boolean; currencies: boolean }) {
   const client = data.clients.find((c) => c.id === r.clientId)?.name
   const venue = data.venues.find((v) => v.id === r.venueId)?.name
   const activity = r.category ? ACTIVITY[r.category] : null
@@ -173,8 +176,8 @@ function EntryRow({ r, data, large, today, onOpen, tax }: { r: IncomeRecord; dat
         </span>
       </span>
       <span className={styles.entryAmount}>
-        <span className={styles.entryAmountMain} style={{ display: 'block' }}>{money(r.amount, r.currency)}</span>
-        {r.currency !== 'RON' && <span className={styles.entryAmountSub} style={{ display: 'block' }}>{lei(r.amountRon)}</span>}
+        <span className={styles.entryAmountMain} style={{ display: 'block' }}>{currencies ? money(r.amount, r.currency) : lei(r.amountRon)}</span>
+        {currencies && r.currency !== 'RON' && <span className={styles.entryAmountSub} style={{ display: 'block' }}>{lei(r.amountRon)}</span>}
         {tax && r.taxReserve !== null && r.taxReserve > 0 && <span className={styles.entryAmountSub} style={{ display: 'block' }}>set aside {lei(r.taxReserve)}</span>}
       </span>
     </button>

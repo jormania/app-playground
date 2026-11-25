@@ -18,6 +18,8 @@ import { delta, lei, money, percent } from '../lib/money'
 import { alignedPrevious, buckets, type Bucket } from '../lib/period'
 import { projectYear, suggestReserve } from '../tax/estimate'
 import { breakEven, buildPnl } from '../lib/finance'
+import { insights } from '../lib/insights'
+import { InsightList } from '../components/insightsUi'
 import type { IncomeRecord } from '../domain/types'
 import styles from '../styles/ui.module.css'
 
@@ -36,11 +38,11 @@ const DIMS: { value: Dimension; label: string }[] = [
 const FILTER_KEY: Record<Dimension, 'clientId' | 'sourceId' | 'venueId' | 'activity'> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
 
 export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; onAddCost: () => void }) {
-  const { data, settings, today, setFilter, saveRecord, toast } = useInflow()
+  const { data, settings, today, setFilter, saveRecord, toast, on } = useInflow()
   const { range, prev, prevWhole, cur, before, summary, prevSummary } = usePeriodData()
   const [dim, setDim] = useState<Dimension>('client')
   const go = (patch: Partial<typeof EMPTY_FILTER>) => { setFilter({ ...EMPTY_FILTER, range: 'period', ...patch }); location.hash = '#/income' }
-  const costsForTax = useMemo(() => (settings.trackCosts ? data.costs : []), [settings.trackCosts, data.costs])
+  const costsForTax = useMemo(() => (settings.features.costs ? data.costs : []), [settings.features.costs, data.costs])
 
   const week = sum(received(data.records, { from: startOfWeek(today), to: addDays(startOfWeek(today), 6) }))
   const month = sum(received(data.records, { from: startOfMonth(today), to: endOfMonth(today) }))
@@ -55,20 +57,24 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
   const rows = useMemo(() => breakdown(data, cur, before, dim), [data, cur, before, dim])
   const clientRows = useMemo(() => breakdown(data, cur, before, 'client'), [data, cur, before])
   const conc = concentration(clientRows)
-  const large = useMemo(() => largeRecordIds(data.records, settings.largeMultiple), [data.records, settings.largeMultiple])
+  const showUnusual = on('unusual')
+  const large = useMemo(() => (showUnusual ? largeRecordIds(data.records, settings.largeMultiple) : new Set<string>()), [showUnusual, data.records, settings.largeMultiple])
   const notable = cur.filter((r) => large.has(r.id))
-  const owed = outstanding(data.records, today)
-  const projection = useMemo(() => projectYear(settings.tax, data.records, yearOf(range.to > today ? today : range.to), today, 0, costsForTax), [settings.tax, data.records, range.to, today, costsForTax])
-  const pnl = useMemo(() => (settings.trackCosts ? buildPnl(data.records, data.costs, [{ from: range.from, to: range.to, label: '' }]) : null), [settings.trackCosts, data, range])
+  const owed = on('expected') ? outstanding(data.records, today) : { total: 0, count: 0, overdue: 0, records: [] }
+  // Tax off: no projection is computed at all.
+  const taxOn = on('tax')
+  const projection = useMemo(() => (taxOn ? projectYear(settings.tax, data.records, yearOf(range.to > today ? today : range.to), today, 0, costsForTax) : null), [taxOn, settings.tax, data.records, range.to, today, costsForTax])
+  const top = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected') }).slice(0, 3) : []), [on, data, range, today])
+  const pnl = useMemo(() => (settings.features.costs ? buildPnl(data.records, data.costs, [{ from: range.from, to: range.to, label: '' }]) : null), [settings.features.costs, data, range])
   const pnlLine = (k: string) => pnl?.lines.find((l) => l.key === k)?.total ?? 0
-  const be = useMemo(() => (settings.trackCosts ? breakEven(data.records, data.costs, today) : null), [settings.trackCosts, data, today])
+  const be = useMemo(() => (settings.features.costs ? breakEven(data.records, data.costs, today) : null), [settings.features.costs, data, today])
   const costsDue = data.costs.filter((c) => c.status === 'due')
 
   // One tap when an expected payment lands: received today, with its tax reserve suggested.
   const markReceived = async (r: IncomeRecord) => {
     const others = data.records.filter((x) => x.id !== r.id)
     const next: IncomeRecord = { ...r, status: 'received', date: today }
-    if (settings.trackTax && r.taxability === 'taxable' && r.taxReserve === null) {
+    if (settings.features.tax && r.taxability === 'taxable' && r.taxReserve === null) {
       const s = suggestReserve(next, others, settings.tax, today, costsForTax)
       next.taxReserve = s.amount
       next.reserveSource = 'suggested'
@@ -106,7 +112,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
           <div className={styles.stat}>
             <div className={styles.statLabel}>This month</div>
             <div className={styles.statValue}>{lei(month)}</div>
-            {target > 0 && (
+            {target > 0 && on('targets') && (
               <>
                 <div className={styles.progress} role="progressbar" aria-label="Monthly target" aria-valuenow={Math.round((month / target) * 100)} aria-valuemin={0} aria-valuemax={100}>
                   <div className={styles.progressFill} style={{ width: `${Math.min(100, (month / target) * 100)}%` }} />
@@ -115,7 +121,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
               </>
             )}
           </div>
-          {settings.trackTax ? (
+          {taxOn ? (
             <>
               <div className={styles.stat}>
                 <div className={styles.statLabel}>Set aside for tax <Optional /></div>
@@ -153,6 +159,16 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
         <TrendChart buckets={chart.bs} current={chart.current} previous={chart.previous} previousLabel={prevWhole.label} />
       </section>
 
+      {top.length > 0 && (
+        <section className={styles.panel} aria-label="Worth a look">
+          <div className={styles.panelHead}>
+            <h2 className={styles.panelTitle}>Worth a look</h2>
+            <a className={styles.linkButton} href="#/reports/insights">All insights</a>
+          </div>
+          <InsightList items={top} />
+        </section>
+      )}
+
       <div className={styles.grid2}>
         <section className={styles.panel} aria-label="Where it came from">
           <div className={styles.panelHead}>
@@ -170,7 +186,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
           )}
         </section>
 
-        {settings.trackTax ? (
+        {taxOn && projection ? (
         <section className={styles.panel} aria-label="Taxable or not">
           <div className={styles.panelHead}>
             <h2 className={styles.panelTitle}>Taxable or not <Optional /></h2>

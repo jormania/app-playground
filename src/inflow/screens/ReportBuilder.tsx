@@ -23,10 +23,10 @@ const KEY = 'inflow:report-options'
 const ORDER: ReportSection[] = ['summary', 'trend', 'clients', 'venues', 'activities', 'sources', 'mix', 'margins', 'pnl', 'cashflow', 'outstanding', 'tax', 'payments']
 
 export function ReportBuilder() {
-  const { data, settings, today, scope } = useInflow()
+  const { data, settings, today, scope, on } = useInflow()
   const { range } = usePeriodData()
   const [opt, setOpt] = useState<ReportOptions>(() => ({
-    ...defaultReportOptions(range, settings.trackTax, settings.trackCosts),
+    ...defaultReportOptions(range, settings.features.tax, settings.features.costs),
     ...readJson<Partial<ReportOptions>>(KEY, {}),
     from: range.from,
     to: range.to,
@@ -42,12 +42,15 @@ export function ReportBuilder() {
   })
   const toggle = (s: ReportSection) => set({ sections: opt.sections.includes(s) ? opt.sections.filter((x) => x !== s) : ORDER.filter((x) => x === s || opt.sections.includes(x)) })
 
+  const sections = ORDER.filter((s) => (s !== 'tax' || on('tax')) && (!COST_SECTIONS.includes(s) || on('costs')) && (s !== 'outstanding' || on('expected')) && (s !== 'mix' || on('currencies')))
+  // Sections switched off in Settings leave the rendered report too.
+  const live = useMemo(() => ({ ...opt, sections: opt.sections.filter((x) => sections.includes(x)) }), [opt, sections])
   const html = useMemo(
-    () => renderReport(data, opt, {
-      today, trackTax: settings.trackTax, tax: settings.tax, trackCosts: settings.trackCosts,
+    () => renderReport(data, live, {
+      today, trackTax: settings.features.tax, tax: settings.tax, trackCosts: settings.features.costs,
       openingCash: settings.openingCash, openingCashDate: settings.openingCashDate,
     }),
-    [data, opt, today, settings.trackTax, settings.tax, settings.trackCosts, settings.openingCash, settings.openingCashDate],
+    [data, live, today, settings.features.tax, settings.tax, settings.features.costs, settings.openingCash, settings.openingCashDate],
   )
 
   const print = () => {
@@ -55,7 +58,6 @@ export function ReportBuilder() {
     if (w) { w.focus(); w.print() }
   }
   const file = `inflow-${(opt.title || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${opt.from}-${opt.to}.html`
-  const sections = ORDER.filter((s) => (s !== 'tax' || settings.trackTax) && (!COST_SECTIONS.includes(s) || settings.trackCosts))
   const clients = [...data.clients].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
@@ -64,7 +66,7 @@ export function ReportBuilder() {
         <div className={styles.form}>
           <div className={styles.chips}>
             {(Object.keys(PRESET_LABEL) as ReportPreset[]).map((p) => (
-              <button key={p} type="button" className={styles.chip} onClick={() => set(presetOptions(p, range, today, settings.trackTax, settings.trackCosts))}>{PRESET_LABEL[p]}</button>
+              <button key={p} type="button" className={styles.chip} onClick={() => set(presetOptions(p, range, today, settings.features.tax, settings.features.costs))}>{PRESET_LABEL[p]}</button>
             ))}
           </div>
           <TextInput label="Title" value={opt.title} onChange={(v) => set({ title: v })} />

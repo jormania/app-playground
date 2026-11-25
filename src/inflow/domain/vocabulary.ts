@@ -5,7 +5,7 @@
  * reject the whole page write. Add an option in Notion first, then here.
  */
 import type {
-  Category, ClientCountry, CostCategory, CostGroup, CostStatus, ClientKind, Currency, PaymentStatus, SourceTaxDefault,
+  Category, ClientCountry, CostCategory, CostGroup, CostStatus, DealType, ClientKind, Currency, PaymentStatus, SourceTaxDefault,
   SourceType, TaxHandling, Taxability, TaxProfileId, VatTreatment, VenueType,
 } from './types'
 
@@ -153,6 +153,22 @@ export const VENUE_TYPE: Record<VenueType, string> = {
   online: 'Online',
   hybrid: 'Hybrid',
   client_site: 'Client site',
+}
+
+export const DEAL: Record<DealType, string> = {
+  fixed: 'Fixed fee',
+  share: 'Revenue share',
+  hybrid: 'Fixed + share',
+  monthly: 'Monthly rent',
+  none: 'No venue cost',
+}
+
+export const DEAL_HINT: Record<DealType, string> = {
+  fixed: 'You book and pay a fee per session, whoever turns up. Empty rooms cost you; full ones are all yours.',
+  share: 'The venue takes a share of what each session brings in. Empty rooms cost nothing; full ones cost more.',
+  hybrid: 'A fee per session plus a share of the takings.',
+  monthly: 'Rent per month, used as often as you like.',
+  none: 'No venue cost: online, the client\'s office, or an agency pays the room.',
 }
 
 export const PROFILE: Record<TaxProfileId, string> = {

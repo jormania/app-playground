@@ -47,6 +47,13 @@ export type SourceType = 'direct' | 'agency' | 'platform' | 'referral' | 'recurr
 /** What a source usually means for tax; feeds the suggestion, never overrides the user. */
 export type SourceTaxDefault = 'profile' | 'withheld' | 'non_taxable' | 'review'
 export type VenueType = 'in_person' | 'online' | 'hybrid' | 'client_site'
+/**
+ * How a venue is paid. Fixed: a fee per booking, paid whoever turns up.
+ * Share: the venue takes a percentage of what the session brings in.
+ * Fixed + share: both. Monthly: rent whatever happens. None: no venue cost
+ * (online, the client's office, an agency that pays the room).
+ */
+export type DealType = 'fixed' | 'share' | 'hybrid' | 'monthly' | 'none'
 
 export interface IncomeRecord {
   id: string
@@ -66,6 +73,8 @@ export interface IncomeRecord {
   category: Category | null
   recurring: boolean
   notes: string
+  /** People who came (paid seats, participants). Optional; feeds venue-deal analysis. */
+  attendees: number | null
 
   taxability: Taxability
   taxHandling: TaxHandling
@@ -132,6 +141,14 @@ export interface Venue {
   location: string
   notes: string
   archived: boolean
+  /** The deal with the venue. */
+  deal: DealType
+  /** Fee per booking, RON (fixed and hybrid deals). */
+  feePerSession: number
+  /** Share of a session's income the venue takes, 0–1 (share and hybrid deals). */
+  sharePct: number
+  /** Rent per month, RON (monthly deals). */
+  monthlyFee: number
   demo?: boolean
 }
 
@@ -179,8 +196,16 @@ export interface TaxProfile {
   expensesFromCosts: boolean
 }
 
+export type FeatureKey =
+  | 'tax' | 'costs' | 'deals' | 'insights' | 'expected' | 'currencies'
+  | 'targets' | 'printable' | 'reportTools' | 'unusual'
+
+export type Features = Record<FeatureKey, boolean>
+
 export type ThemeChoice = 'system' | 'light' | 'dark'
 export type DataMode = 'device' | 'notion'
+
+export type Workspace = 'demo' | 'mine'
 
 export interface Settings {
   theme: ThemeChoice
@@ -195,15 +220,14 @@ export interface Settings {
   /** Device mode only: demo data was seeded once, so an emptied list stays empty. */
   demoSeeded: boolean
   /**
-   * Tax is optional. Off: no reserves, no tax panels, no tax tab — just the
-   * money flow. Records still carry a suggested classification, quietly, so
-   * switching it on later has something to start from.
+   * What the screens show: the demo practice or your own data (this device or
+   * Notion). Never both. null until decided on first load.
    */
-  trackTax: boolean
+  workspace: Workspace | null
   /** Show the welcome tour when the app opens. The tour's own checkbox sets it. */
   showTour: boolean
-  /** Costs, P&L and cash flow. Off: InFlow is income only. */
-  trackCosts: boolean
+  /** Optional parts of the app, all on for a new user; off hides them from screens and sums alike. */
+  features: Features
   /** Cash in hand and in the bank on `openingCashDate`, the cash-flow starting point. */
   openingCash: number
   openingCashDate: string

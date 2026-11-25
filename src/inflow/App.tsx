@@ -33,7 +33,7 @@ interface Route { screen: Screen; report: ReportTab }
 export function parseRoute(hash: string): Route {
   const [, screen = 'overview', sub = ''] = hash.replace(/^#/, '').split('/')
   const s: Screen = (['overview', 'income', 'costs', 'reports', 'settings'] as const).includes(screen as Screen) ? (screen as Screen) : 'overview'
-  const report: ReportTab = (REPORT_TABS as readonly string[]).includes(sub) ? (sub as ReportTab) : 'clients'
+  const report: ReportTab = (REPORT_TABS as readonly string[]).includes(sub) ? (sub as ReportTab) : 'insights'
   return { screen: s, report }
 }
 
@@ -76,7 +76,7 @@ const PRESETS: PeriodPreset[] = ['week', 'month', 'last_month', 'year', 'custom'
 const SHORT: Record<PeriodPreset, string> = { week: 'Week', month: 'Month', last_month: 'Last month', year: 'Year', custom: 'Custom' }
 
 function Shell() {
-  const { settings, data, load, error, offlineCopy, period, setPeriod, today, toasts, reload } = useInflow()
+  const { settings, data, load, error, offlineCopy, period, setPeriod, today, toasts, reload, workspace, setWorkspace } = useInflow()
   const route = useRoute()
   /** The open form: an income record or a cost; `copyOf` starts a new one from an old one. */
   const [entry, setEntry] = useState<{ kind: 'income' | 'cost'; id: string | null; copyOf: string | null; n: number } | null>(null)
@@ -111,8 +111,8 @@ function Shell() {
   const copyOfRecord = entry?.kind === 'income' && entry.copyOf ? data.records.find((r) => r.id === entry.copyOf) ?? null : null
   const copyOfCost = entry?.kind === 'cost' && entry.copyOf ? data.costs.find((c) => c.id === entry.copyOf) ?? null : null
   // Costs is optional: with it off, its tab and screen go away.
-  const screen: Screen = route.screen === 'costs' && !settings.trackCosts ? 'overview' : route.screen
-  const tabs = TABS.filter((t) => t.screen !== 'costs' || settings.trackCosts)
+  const screen: Screen = route.screen === 'costs' && !settings.features.costs ? 'overview' : route.screen
+  const tabs = TABS.filter((t) => t.screen !== 'costs' || settings.features.costs)
   const showPeriod = screen !== 'settings'
   const custom = resolvePeriod(period, today)
   const notion = settings.mode === 'notion' && !!settings.notionToken && !!settings.incomeDbId
@@ -122,9 +122,10 @@ function Shell() {
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div className={styles.brand}><Waves size={22} aria-hidden /> InFlow</div>
-          <span className={styles.modeTag} title={notion ? 'Reading and writing your Notion databases' : 'Stored in this browser'}>
-            {notion ? (offlineCopy ? 'Notion · offline copy' : 'Notion') : data.records.some((r) => r.demo) ? 'Demo · this device' : 'This device'}
-          </span>
+          <a href="#/settings" className={`${styles.modeTag} ${workspace === 'demo' ? styles.modeTagDemo : ''}`}
+            title={workspace === 'demo' ? 'The demo practice. Switch to your data in Settings.' : notion ? 'Reading and writing your Notion databases' : 'Stored in this browser'}>
+            {workspace === 'demo' ? 'Demo' : notion ? (offlineCopy ? 'Notion · offline copy' : 'Notion') : 'This device'}
+          </a>
         </div>
         {showPeriod && (
           <div className={styles.periodBar}>
@@ -152,13 +153,19 @@ function Shell() {
         {load === 'loading' && data.records.length === 0 ? (
           <div className={styles.empty}>Loading…</div>
         ) : (
-          <>
+          <div key={`${screen}-${workspace}`} className={`${styles.screen} ${styles.screenIn}`}>
+            {workspace === 'demo' && screen !== 'settings' && (
+              <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">
+                <span>You're exploring a demo practice. Your own data is kept apart.</span>
+                <button type="button" className={styles.linkButton} onClick={() => setWorkspace('mine')}>Switch to my data</button>
+              </div>
+            )}
             {screen === 'overview' && <Overview onOpen={open} onAddCost={() => openCost(null)} />}
             {screen === 'income' && <Income onOpen={open} />}
             {screen === 'costs' && <Costs onOpen={openCost} filter={costFilter} setFilter={setCostFilter} />}
             {screen === 'reports' && <Reports tab={route.report} onTab={(t) => { location.hash = `#/reports/${t}` }} onAddCost={() => openCost(null)} />}
             {screen === 'settings' && <Settings />}
-          </>
+          </div>
         )}
       </main>
 

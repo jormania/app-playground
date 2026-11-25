@@ -103,8 +103,16 @@ CASS 5,700, tax 3,915).
 "Activity" in the interface is `category` on income and `activity` on costs.
 
 **On this device:** one IndexedDB value (`inflow` database, key `data`); data written
-before costs existed loads with an empty cost list, and a demo seeded then gets the demo's
-costs. Settings in localStorage (`inflow:settings`).
+before costs existed loads with an empty cost list. Settings in localStorage (`inflow:settings`).
+
+**Demo or my data (`settings.workspace`).** The demo practice lives under its own key
+(`demo`), never in `data` and never in Notion; the screens show one or the other. A first
+run opens on the demo; a banner on every screen and the header chip say so, with a way out.
+*Clear demo data* empties the `demo` key and switches to your data, and its toast offers the
+demo back; choosing *Demo practice* again rebuilds it; *Reset demo* drops changes made
+while exploring. The demo shows its own opening cash and never writes it into your settings.
+An older InFlow that mixed demo rows into `data` is split on load (`withoutDemo`, which keeps
+any demo client your own payment points at).
 
 **In Notion:** `Dev → App Databases → InFlow`, five databases. Settings take the
 **Income** link; Clients, Sources and Venues are found through its relations, **Costs** as a
@@ -131,8 +139,33 @@ quiet August, withheld royalties and lecture fees, reimbursements, an award and 
 review, three expected payments — and 225 costs: studio hire per session, the Saturday
 room and snacks, co-facilitators on retreats and bank workshops, platform commissions,
 coworking desk, software, accountant, supervision, a laptop bought and depreciated, last
-year's tax paid on 25 May, monthly owner drawings, two costs still due. *Clear demo data*
-removes exactly the demo rows.
+year's tax paid on 25 May, monthly owner drawings, two costs still due.
+
+## Feature switches
+
+Settings → Features (`FEATURES` in `screens/Settings.tsx`, `settings.features`, `on(key)`
+in state). All on for a new user; *Simple start* keeps income, insights, expected payments
+and the target. Off means gone from the UI *and* the logic: no tab, panel, field, report
+section, insight rule or computed reserve. Data recorded under a feature stays stored and
+returns when it is switched back on. Each toggle has a one-line hint and a "What this does"
+twisty; every Settings section folds, remembered per device (`inflow:settings-open:<id>`).
+`App.test.tsx` → "feature switches" checks each key's UI disappears.
+
+| Key | Off removes |
+|---|---|
+| insights | Overview "Worth a look", Insights report and heat map |
+| deals | Venue deals report, deal fields on venues, the head-count field |
+| costs | Costs tab, P&L, cash flow, margins after costs, break-even |
+| tax | tax panels, Tax report, reserves, tax fields in the form and report |
+| expected | Expected status, panel and overdue insight |
+| currencies | currency select (lei only; an existing foreign record keeps its currency) |
+| targets | monthly target bar |
+| unusual | "Out of the ordinary" flags |
+| reportTools | report filter bar and split-by |
+| printable | Printable tab |
+
+Screens enter with Stillflow's 320 ms rise (`.screenIn`, off under reduced motion); the
+theme is Device / Light / Dark.
 
 ## PWA
 `public/inflow.webmanifest` (scope `/inflow-react.html`, shared Cone of Cold icons),

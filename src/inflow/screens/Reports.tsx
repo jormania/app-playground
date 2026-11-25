@@ -14,6 +14,7 @@ import { usePeriodData } from '../app/usePeriod'
 import { SplitBar, Sparkline } from '../components/charts'
 import { Optional } from '../components/Optional'
 import { ReportBuilder } from './ReportBuilder'
+import { DealsReport, InsightsReport } from './Insights'
 import type { CostRecord } from '../domain/types'
 import { ACTIVITY, PROFILE, options } from '../domain/vocabulary'
 import {
@@ -27,7 +28,7 @@ import { download, toCsv } from '../store/backup'
 import { projectYear, taxableGross } from '../tax/estimate'
 import styles from '../styles/ui.module.css'
 
-export const REPORT_TABS = ['clients', 'venues', 'activities', 'sources', 'pnl', 'cashflow', 'tax', 'print'] as const
+export const REPORT_TABS = ['insights', 'clients', 'venues', 'activities', 'sources', 'deals', 'pnl', 'cashflow', 'tax', 'print'] as const
 export type ReportTab = (typeof REPORT_TABS)[number]
 
 const DIM: Record<'clients' | 'venues' | 'activities' | 'sources', Dimension> = { clients: 'client', venues: 'venue', activities: 'activity', sources: 'source' }
@@ -40,28 +41,36 @@ export function costInScope(c: CostRecord, s: Scope): boolean {
 }
 
 export function Reports({ tab, onTab, onAddCost }: { tab: ReportTab; onTab: (t: ReportTab) => void; onAddCost: () => void }) {
-  const { settings } = useInflow()
+  const { on } = useInflow()
+  // Each optional report appears only while its feature is on.
   const tabs = [
+    ...(on('insights') ? [{ value: 'insights', label: 'Insights' }] : []),
     { value: 'clients', label: 'Clients' },
     { value: 'venues', label: 'Venues' },
     { value: 'activities', label: 'Activities' },
     { value: 'sources', label: 'Sources' },
-    ...(settings.trackCosts ? [{ value: 'pnl', label: 'P&L' }, { value: 'cashflow', label: 'Cash flow' }] : []),
-    ...(settings.trackTax ? [{ value: 'tax', label: 'Tax*' }] : []),
-    { value: 'print', label: 'Printable' },
+    ...(on('deals') ? [{ value: 'deals', label: 'Venue deals' }] : []),
+    ...(on('costs') ? [{ value: 'pnl', label: 'P&L' }, { value: 'cashflow', label: 'Cash flow' }] : []),
+    ...(on('tax') ? [{ value: 'tax', label: 'Tax*' }] : []),
+    ...(on('printable') ? [{ value: 'print', label: 'Printable' }] : []),
   ]
-  // Optional sections switched off fall back to the first report.
-  const shown: ReportTab = tabs.some((t) => t.value === tab) ? tab : 'clients'
+  // A report switched off (or a bare #/reports) falls back to the first one offered.
+  const shown: ReportTab = tabs.some((t) => t.value === tab) ? tab : (tabs[0].value as ReportTab)
+  const scoped = on('reportTools') && shown !== 'print' && shown !== 'cashflow' && shown !== 'tax'
   return (
     <>
       <SegmentedControl wrap options={tabs} value={shown} onChange={(v) => onTab(v as ReportTab)} label="Report" />
-      {shown !== 'print' && shown !== 'cashflow' && shown !== 'tax' && <ScopeBar />}
-      {shown === 'tax' ? <TaxReport />
-        : shown === 'print' ? <ReportBuilder />
-          : shown === 'pnl' ? <PnlReport onAddCost={onAddCost} />
-            : shown === 'cashflow' ? <CashFlowReport />
-              : <DimensionReport dim={DIM[shown]} />}
-      {settings.trackTax && shown === 'tax' && <p className={styles.hint}>* Tax is optional; switch it off in Settings to see only the money flow.</p>}
+      {scoped && <ScopeBar />}
+      <div key={shown} className={styles.screenIn} style={{ display: 'contents' }}>
+        {shown === 'tax' ? <TaxReport />
+          : shown === 'print' ? <ReportBuilder />
+            : shown === 'pnl' ? <PnlReport onAddCost={onAddCost} />
+              : shown === 'cashflow' ? <CashFlowReport />
+                : shown === 'insights' ? <InsightsReport />
+                  : shown === 'deals' ? <DealsReport />
+                    : <DimensionReport dim={DIM[shown]} />}
+      </div>
+      {on('tax') && shown === 'tax' && <p className={styles.hint}>* Tax is optional; switch it off in Settings → Features to see only the money flow.</p>}
     </>
   )
 }
@@ -99,7 +108,8 @@ export function ScopeBar() {
 }
 
 function useDrill() {
-  const { setFilter, scope } = useInflow()
+  const { setFilter, scope: rawScope, on } = useInflow()
+  const scope = on('reportTools') ? rawScope : ANY_SCOPE
   return (patch: Partial<IncomeFilter>) => {
     setFilter({ ...EMPTY_FILTER, range: 'period', clientId: scope.clientId, sourceId: scope.sourceId, venueId: scope.venueId, activity: scope.activity, ...patch })
     location.hash = '#/income'
@@ -109,7 +119,9 @@ function useDrill() {
 const FILTER_KEY: Record<Dimension, keyof IncomeFilter> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
 
 function DimensionReport({ dim }: { dim: Dimension }) {
-  const { data, today, scope, settings } = useInflow()
+  const { data, today, scope: rawScope, on } = useInflow()
+  // With report tools off the filter bar is gone, and so is its effect.
+  const scope = on('reportTools') ? rawScope : ANY_SCOPE
   const { range, prev, cur, before } = usePeriodData()
   const drill = useDrill()
   const [splitBy, setSplitBy] = useState<Dimension | ''>('')
@@ -117,7 +129,7 @@ function DimensionReport({ dim }: { dim: Dimension }) {
   const beforeS = useMemo(() => before.filter((r) => inScope(r, scope)), [before, scope])
   const total = summarise(curS).total
   const rows = useMemo(() => breakdown(data, curS, beforeS, dim), [data, curS, beforeS, dim])
-  const costs = settings.trackCosts && dim !== 'source'
+  const costs = on('costs') && dim !== 'source'
   const marginRows = useMemo(
     () => (costs ? margins(data, curS, data.costs.filter((c) => costInScope(c, scope)), range, dim) : []),
     [costs, data, curS, scope, range, dim],
@@ -199,7 +211,7 @@ function DimensionReport({ dim }: { dim: Dimension }) {
         )}
       </section>
 
-      {rows.length > 0 && (
+      {rows.length > 0 && on('reportTools') && (
         <section className={styles.panel}>
           <div className={styles.panelHead}>
             <h2 className={styles.panelTitle}>{noun} × …</h2>
@@ -236,7 +248,8 @@ function DimensionReport({ dim }: { dim: Dimension }) {
 }
 
 function PnlReport({ onAddCost }: { onAddCost: () => void }) {
-  const { data, scope, today } = useInflow()
+  const { data, scope: rawScope, today, on } = useInflow()
+  const scope = on('reportTools') ? rawScope : ANY_SCOPE
   const { range } = usePeriodData()
   const [details, setDetails] = useState(false)
   const scoped = scopeIsSet(scope)
@@ -349,7 +362,7 @@ function TaxReport() {
   const { range, summary } = usePeriodData()
   const drill = useDrill()
   const year = yearOf(range.to > today ? today : range.to)
-  const costs = useMemo(() => (settings.trackCosts ? data.costs : []), [settings.trackCosts, data.costs])
+  const costs = useMemo(() => (settings.features.costs ? data.costs : []), [settings.features.costs, data.costs])
   const p = useMemo(() => projectYear(settings.tax, data.records, year, today, 0, costs), [settings.tax, data.records, year, today, costs])
   const ytdWithheld = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxWithheld)
   const ytdReserved = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxReserve ?? 0)

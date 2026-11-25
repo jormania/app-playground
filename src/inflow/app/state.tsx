@@ -8,12 +8,12 @@ import { indexedDbStore, type KeyValueStore } from '../../shared/kvStore'
 import { readJson, writeJson } from '../../shared/storage'
 import { useToastStack, type ToastInput } from '../../ds'
 import { buildDemo, demoOpening, hasDemo, withoutDemo } from '../data/demo'
-import type { CostRecord, IncomeRecord, InflowData, Settings } from '../domain/types'
+import type { CostRecord, FeatureKey, IncomeRecord, InflowData, Settings, Workspace } from '../domain/types'
 import { ANY_SCOPE, type Scope } from '../lib/analytics'
 import { todayString, type PeriodChoice } from '../lib/period'
 import { copyToNotion, NotionRepo } from '../store/notion'
-import { DeviceRepo, EMPTY, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
-import { loadSettings, notionReady, saveSettings } from '../store/settings'
+import { DEMO_KEY, DeviceRepo, EMPTY, normalise, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
+import { featureOn, loadSettings, mergeSettings, notionReady, saveSettings, type SettingsPatch } from '../store/settings'
 import type { Backup } from '../store/backup'
 
 const PERIOD_KEY = 'inflow:period'
@@ -40,7 +40,9 @@ const SCOPE_KEY = 'inflow:report-scope'
 interface InflowState {
   today: string
   settings: Settings
-  updateSettings: (patch: Partial<Settings>) => void
+  updateSettings: (patch: SettingsPatch) => void
+  /** A feature is on, and so is whatever it needs. */
+  on: (key: FeatureKey) => boolean
   data: InflowData
   load: LoadState
   error: string | null
@@ -61,10 +63,18 @@ interface InflowState {
   costsAvailable: boolean
   saveEntity: <T extends Entity>(kind: EntityKind, e: T) => Promise<T | null>
   deleteEntity: (kind: EntityKind, id: string) => Promise<void>
+  /** Demo or your own data; switching keeps both as they are. */
+  workspace: Workspace
+  setWorkspace: (w: Workspace) => void
+  /** Removes the demo from this device and shows your data; the toast offers it back. */
   clearDemo: () => Promise<void>
+  /** Shows the demo, building it afresh if it was cleared. */
   loadDemo: () => Promise<void>
+  /** Puts the demo back as it started, dropping changes made while exploring. */
+  resetDemo: () => Promise<void>
   restore: (b: Backup) => Promise<void>
   copyDeviceToNotion: (onProgress?: (done: number, total: number) => void) => Promise<number>
+  /** Your own data on this device (not the demo) has something in it. */
   deviceHasOwnData: boolean
   toast: (t: ToastInput | string) => void
   toasts: ReturnType<typeof useToastStack>
@@ -107,18 +117,21 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
   const toast = useCallback((t: ToastInput | string) => { push(typeof t === 'string' ? { message: t } : t) }, [push])
 
   const device = useMemo(() => new DeviceRepo(store), [store])
+  const demoRepo = useMemo(() => new DeviceRepo(store, DEMO_KEY), [store])
   const useNotion = notionReady(settings)
+  const workspace: Workspace = settings.workspace ?? 'mine'
   const repo: Repo = useMemo(
-    () => (useNotion ? notionRepo ?? new NotionRepo(settings.notionToken, settings.incomeDbId, store) : device),
-    [useNotion, notionRepo, settings.notionToken, settings.incomeDbId, store, device],
+    () => (settings.workspace === 'demo' ? demoRepo
+      : useNotion ? notionRepo ?? new NotionRepo(settings.notionToken, settings.incomeDbId, store) : device),
+    [settings.workspace, demoRepo, useNotion, notionRepo, settings.notionToken, settings.incomeDbId, store, device],
   )
 
   const settingsRef = useRef(settings)
   settingsRef.current = settings
 
-  const updateSettings = useCallback((patch: Partial<Settings>) => {
+  const updateSettings = useCallback((patch: SettingsPatch) => {
     setSettings((cur) => {
-      const next = { ...cur, ...patch, tax: { ...cur.tax, ...(patch.tax ?? {}) } }
+      const next = mergeSettings(cur, patch)
       saveSettings(next)
       return next
     })
@@ -134,20 +147,29 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     setError(null)
     try {
       let dev = await device.load()
-      // First run on this device: seed the demo once, so the app is never an empty page.
-      if (!settingsRef.current.demoSeeded && dev.records.length === 0 && dev.clients.length === 0) {
-        dev = buildDemo(today, settingsRef.current.tax)
+      let demo = await demoRepo.load()
+      // An older InFlow kept the demo in the same list as your data: split it off.
+      const mixed = hasDemo(dev)
+      if (mixed) {
+        dev = withoutDemo(dev)
         await device.replaceAll(dev)
-        updateSettings({ demoSeeded: true, ...(settingsRef.current.openingCashDate ? {} : demoOpening(today)) })
-      } else if (dev.records.some((r) => r.demo) && dev.costs.length === 0) {
-        // A demo seeded before costs existed gets the demo's costs, so the P&L isn't empty.
-        dev = { ...dev, costs: buildDemo(today, settingsRef.current.tax).costs }
-        await device.replaceAll(dev)
-        if (!settingsRef.current.openingCashDate) updateSettings(demoOpening(today))
+      }
+      let ws = settingsRef.current.workspace
+      if (ws === null) {
+        const own = dev.records.length > 0 || dev.costs.length > 0 || notionReady(settingsRef.current)
+        // A first run opens on the demo, so the app is never an empty page.
+        ws = own ? 'mine' : !settingsRef.current.demoSeeded || mixed || demo.records.length > 0 ? 'demo' : 'mine'
+        updateSettings({ workspace: ws, demoSeeded: true })
+        // The repo follows the workspace on the next render, and this runs again.
+        if (ws === 'demo') return
+      }
+      if (ws === 'demo' && demo.records.length === 0) {
+        demo = buildDemo(today, settingsRef.current.tax)
+        await demoRepo.replaceAll(demo)
       }
       setDeviceData(dev)
-      if (repo.kind === 'device') {
-        setData(dev)
+      if (repo === demoRepo || repo === device) {
+        setData(repo === demoRepo ? demo : dev)
         setCostsAvailable(true)
         setOfflineCopy(false)
       } else {
@@ -169,14 +191,14 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
       setError((e as Error).message || 'Could not load your data.')
       setLoad('error')
     }
-  }, [device, repo, today, updateSettings])
+  }, [device, demoRepo, repo, today, updateSettings])
 
   useEffect(() => { void reload() }, [reload])
 
   const apply = useCallback((fn: (d: InflowData) => InflowData) => {
     setData(fn)
-    if (repo.kind === 'device') setDeviceData(fn)
-  }, [repo])
+    if (repo === device) setDeviceData(fn)
+  }, [repo, device])
 
   const fail = useCallback((e: unknown, what: string) => {
     toast({ message: `${what} failed: ${(e as Error).message || 'unknown error'}`, tone: 'danger', duration: 8000 })
@@ -255,56 +277,59 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     } catch (e) { fail(e, 'Deleting') }
   }, [repo, apply, fail])
 
-  const clearDemo = useCallback(async () => {
-    const next = withoutDemo(deviceData)
-    await device.replaceAll(next)
-    setDeviceData(next)
-    if (repo.kind === 'device') setData(next)
-    updateSettings({ demoSeeded: true })
-    toast({ message: 'Demo data cleared', tone: 'success' })
-  }, [deviceData, device, repo, updateSettings, toast])
+  const setWorkspace = useCallback((w: Workspace) => {
+    if (w === settingsRef.current.workspace) return
+    setLoad('loading')
+    updateSettings({ workspace: w })
+  }, [updateSettings])
 
   const loadDemo = useCallback(async () => {
-    const demo = buildDemo(today, settingsRef.current.tax)
-    const mine = withoutDemo(deviceData)
-    const ids = (l: { id: string }[]) => new Set(l.map((x) => x.id))
-    const merge = <T extends { id: string }>(a: T[], b: T[]) => [...a, ...b.filter((x) => !ids(a).has(x.id))]
-    const next: InflowData = {
-      records: [...mine.records, ...demo.records],
-      costs: [...mine.costs, ...demo.costs],
-      clients: merge(mine.clients, demo.clients),
-      sources: merge(mine.sources, demo.sources),
-      venues: merge(mine.venues, demo.venues),
-    }
-    await device.replaceAll(next)
-    setDeviceData(next)
-    if (repo.kind === 'device') setData(next)
-    if (!settingsRef.current.openingCashDate) updateSettings(demoOpening(today))
-    toast({ message: 'Demo data loaded on this device', tone: 'success' })
-  }, [today, deviceData, device, repo, toast, updateSettings])
+    if (settingsRef.current.workspace === 'demo') return
+    setWorkspace('demo')
+    toast({ message: 'Showing the demo practice. Your own data is untouched.', actionLabel: 'Back to my data', onAction: () => setWorkspace('mine') })
+  }, [setWorkspace, toast])
+
+  const clearDemo = useCallback(async () => {
+    await demoRepo.replaceAll(EMPTY)
+    setWorkspace('mine')
+    if (settingsRef.current.workspace === 'mine') setData(deviceData)
+    toast({ message: 'Demo cleared', actionLabel: 'Bring it back', onAction: () => { void loadDemo() } })
+  }, [demoRepo, setWorkspace, deviceData, toast, loadDemo])
+
+  const resetDemo = useCallback(async () => {
+    const fresh = buildDemo(today, settingsRef.current.tax)
+    await demoRepo.replaceAll(fresh)
+    if (repo === demoRepo) setData(fresh)
+    toast({ message: 'Demo reset to how it started', tone: 'success' })
+  }, [today, demoRepo, repo, toast])
 
   const restore = useCallback(async (b: Backup) => {
-    const data = { ...b.data, costs: b.data.costs ?? [] }
+    const data = normalise(b.data)
     await device.replaceAll(data)
     setDeviceData(data)
     const { notionToken: _t, ...keep } = b.settings as Settings
-    updateSettings({ ...keep, notionToken: settingsRef.current.notionToken, mode: 'device', demoSeeded: true })
-    setData(data)
+    updateSettings({ ...keep, features: { ...(keep.features ?? {}) }, notionToken: settingsRef.current.notionToken, mode: 'device', demoSeeded: true, workspace: 'mine' })
+    if (repo === device) setData(data)
     toast({ message: `Restored ${b.data.records.length} payments to this device`, tone: 'success' })
-  }, [device, updateSettings, toast])
+  }, [device, repo, updateSettings, toast])
 
   const copyDeviceToNotion = useCallback(async (onProgress?: (done: number, total: number) => void) => {
     if (repo.kind !== 'notion') throw new Error('Connect Notion first.')
-    const n = await copyToNotion(repo, deviceData, onProgress)
+    const n = await copyToNotion(repo, withoutDemo(deviceData), onProgress)
     await reload()
     return n
   }, [repo, deviceData, reload])
 
-  const deviceHasOwnData = deviceData.records.some((r) => !r.demo) || deviceData.costs.some((c) => !c.demo)
+  const deviceHasOwnData = deviceData.records.length > 0 || deviceData.costs.length > 0
+
+  const on = useCallback((key: FeatureKey) => featureOn(settings.features, key), [settings.features])
+
+  // The demo keeps its own cash on hand, so the demo's never leaks into yours.
+  const shownSettings = useMemo(() => (workspace === 'demo' ? { ...settings, ...demoOpening(today) } : settings), [workspace, settings, today])
 
   const value: InflowState = {
-    today, settings, updateSettings, data, load, error, offlineCopy, reload, period, setPeriod,
-    filter, setFilter, scope, setScope, saveRecord, deleteRecord, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, clearDemo, loadDemo, restore,
+    today, settings: shownSettings, updateSettings, on, data, load, error, offlineCopy, reload, period, setPeriod,
+    filter, setFilter, scope, setScope, saveRecord, deleteRecord, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore,
     copyDeviceToNotion, deviceHasOwnData, toast, toasts,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

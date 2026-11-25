@@ -5,7 +5,7 @@ import { balanceAt, breakEven, buildCashFlow, buildPnl, deductibleCosts, margins
 
 const inc = (p: Partial<IncomeRecord>): IncomeRecord => ({
   id: Math.random().toString(36), description: '', amount: 0, currency: 'RON', fxRate: 1, amountRon: 0, date: '2026-03-10',
-  status: 'received', clientId: null, sourceId: null, venueId: null, category: null, recurring: false, notes: '',
+  status: 'received', clientId: null, sourceId: null, venueId: null, category: null, recurring: false, notes: '', attendees: null,
   taxability: 'taxable', taxHandling: 'self_declared', vat: 'exempt', classification: 'confirmed', taxReserve: null,
   reserveSource: null, taxWithheld: 0, taxRules: 'RO-2026', ...p,
 })

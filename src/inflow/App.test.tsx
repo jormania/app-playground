@@ -7,7 +7,9 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event'
 import { memoryStore, type KeyValueStore } from '../shared/kvStore'
 import App from './App'
-import { SETTINGS_KEY } from './store/settings'
+import { ALL_FEATURES, SETTINGS_KEY } from './store/settings'
+import { buildDemo } from './data/demo'
+import type { FeatureKey } from './domain/types'
 
 const today = '2026-11-25'
 let store: KeyValueStore
@@ -68,7 +70,8 @@ describe('InFlow', () => {
     expect(within(dialog).getByText(/\(suggested\)/)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    const saved = (await store.get<{ records: { amount: number; clientId: string; classification: string; taxReserve: number | null }[] }>('data'))!
+    // The demo is its own workspace: what you add while exploring stays in it.
+    const saved = (await store.get<{ records: { amount: number; clientId: string; classification: string; taxReserve: number | null }[] }>('demo'))!
     const mine = saved.records.find((r) => r.amount === 750 && r.clientId === 'demo_c_andreea')!
     expect(mine.classification).toBe('suggested')
     expect(mine.taxReserve).toBeGreaterThan(0)
@@ -96,23 +99,157 @@ describe('InFlow', () => {
     expect(frame.getAttribute('srcdoc')).not.toContain('By venue')
   })
 
-  it('clears the demo data and keeps a payment the user added', async () => {
+  it('keeps the demo and your own data apart, and switches between them', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    const demoTotal = (await screen.findByTestId('period-total')).textContent
+    expect(screen.getByText(/exploring a demo practice/)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Switch to my data' }))
+    await waitFor(() => expect(screen.getByTestId('period-total').textContent).toBe('0 lei'))
+    expect(screen.queryByText(/exploring a demo practice/)).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Amount'), '500')
+    await user.click(within(dialog).getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(screen.getByTestId('period-total').textContent).toMatch(/^500/))
+    const mine = (await store.get<{ records: { amount: number; demo?: boolean }[] }>('data'))!
+    expect(mine.records).toHaveLength(1)
+    expect(mine.records[0].demo).toBeFalsy()
+    // Back to the demo: untouched by the payment above.
+    await go('#/settings')
+    await user.click(screen.getByRole('radio', { name: 'Demo practice' }))
+    await go('#/overview')
+    await waitFor(() => expect(screen.getByTestId('period-total').textContent).toBe(demoTotal))
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).openingCash).toBe(0)
+  })
+
+  it('clears the demo, offers it back, and never touches your data', async () => {
+    settings({ workspace: 'demo', demoSeeded: true })
+    await store.set('data', { records: [{ ...buildDemo(today).records[0], id: 'loc_mine', demo: undefined, description: 'Mine' }], costs: [], clients: [], sources: [], venues: [] })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/settings')
+    await user.click(await screen.findByRole('button', { name: 'Clear demo data' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Clear' }))
+    await waitFor(async () => expect((await store.get<{ records: unknown[] }>('demo'))!.records).toHaveLength(0))
+    expect((await store.get<{ records: { id: string }[] }>('data'))!.records.map((r) => r.id)).toEqual(['loc_mine'])
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).workspace).toBe('mine')
+    await user.click(await screen.findByRole('button', { name: 'Bring it back' }))
+    await waitFor(async () => expect((await store.get<{ records: unknown[] }>('demo'))!.records.length).toBeGreaterThan(100))
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).workspace).toBe('demo')
+  })
+
+  it('splits a demo an older InFlow mixed into your data', async () => {
+    settings({ demoSeeded: true })
+    const demo = buildDemo(today)
+    await store.set('data', { ...demo, records: [...demo.records, { ...demo.records[0], id: 'loc_mine', demo: undefined, description: 'Mine' }] })
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    const data = (await store.get<{ records: { id: string }[]; clients: { id: string }[] }>('data'))!
+    expect(data.records.map((r) => r.id)).toEqual(['loc_mine'])
+    // The demo client that payment points at stays, so it keeps its name.
+    expect(data.clients.map((c) => c.id)).toEqual([demo.records[0].clientId])
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).workspace).toBe('mine')
+  })
+})
+
+describe('feature switches', () => {
+  const off = (key: FeatureKey) => settings({ features: { ...ALL_FEATURES, [key]: false } })
+  const reportTabs = async () => {
+    await go('#/reports')
+    return screen.getAllByRole('radio').map((r) => r.getAttribute('aria-label') ?? r.textContent)
+  }
+
+  it('everything is on for a new user', async () => {
+    settings()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(screen.getByLabelText('Worth a look')).toBeTruthy()
+    expect(screen.getByLabelText('Monthly target')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Costs/ })).toBeTruthy()
+    const tabs = await reportTabs()
+    for (const t of ['Insights', 'Venue deals', 'P&L', 'Cash flow', 'Tax*', 'Printable']) expect(tabs).toContain(t)
+    expect(screen.getByLabelText('Filter reports')).toBeTruthy()
+  })
+
+  it('insights off: no Overview panel, no Insights report', async () => {
+    off('insights')
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(screen.queryByLabelText('Worth a look')).toBeNull()
+    expect(await reportTabs()).not.toContain('Insights')
+  })
+
+  it('venue deals off: no report, no deal fields, no head count', async () => {
+    off('deals')
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(await reportTabs()).not.toContain('Venue deals')
+    await go('#/overview')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    expect(within(await screen.findByRole('dialog')).queryByLabelText(/People who came/)).toBeNull()
+  })
+
+  it('costs off: no Costs tab, P&L, cash flow or break-even', async () => {
+    off('costs')
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(screen.queryByRole('link', { name: /Costs/ })).toBeNull()
+    expect(screen.queryByLabelText('What you kept')).toBeNull()
+    const tabs = await reportTabs()
+    expect(tabs).not.toContain('P&L')
+    expect(tabs).not.toContain('Cash flow')
+  })
+
+  it('tax off: no tax panel or report', async () => {
+    off('tax')
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(screen.queryByLabelText('Taxable or not')).toBeNull()
+    expect(await reportTabs()).not.toContain('Tax*')
+  })
+
+  it('expected off: no Expected panel and no status choice', async () => {
+    off('expected')
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(screen.queryByLabelText('Expected payments')).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    expect(within(await screen.findByRole('dialog')).queryByLabelText('Status')).toBeNull()
+  })
+
+  it('currencies off: amounts in lei only', async () => {
+    off('currencies')
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    expect(within(await screen.findByRole('dialog')).queryByLabelText('Currency')).toBeNull()
+  })
+
+  it('target, unusual flags, filters and printable off: each goes', async () => {
+    settings({ features: { ...ALL_FEATURES, targets: false, unusual: false, reportTools: false, printable: false } })
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(screen.queryByLabelText('Monthly target')).toBeNull()
+    expect(screen.queryByLabelText('Unusually large')).toBeNull()
+    expect(await reportTabs()).not.toContain('Printable')
+    expect(screen.queryByLabelText('Filter reports')).toBeNull()
+  })
+
+  it('Settings lists every feature with an explanation, and a switch takes effect at once', async () => {
     settings()
     const user = userEvent.setup()
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
-    const data = (await store.get<{ records: { id: string; demo?: boolean }[] }>('data'))!
-    await store.set('data', { ...data, records: [...data.records, { ...data.records[0], id: 'loc_mine', demo: undefined, description: 'Mine' }] })
     await go('#/settings')
-    // Reload so the provider reads the record added behind its back.
-    cleanup()
-    render(<App store={store} today={today} />)
-    await go('#/settings')
-    await user.click(await screen.findByRole('button', { name: 'Clear demo data' }))
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Clear' }))
-    await waitFor(async () => {
-      const after = (await store.get<{ records: { id: string }[] }>('data'))!
-      expect(after.records.map((r) => r.id)).toEqual(['loc_mine'])
-    })
+    expect(screen.getAllByText('What this does')).toHaveLength(Object.keys(ALL_FEATURES).length)
+    await user.click(screen.getByRole('checkbox', { name: /Costs, P&L and cash flow/ }))
+    expect(screen.queryByRole('link', { name: /Costs/ })).toBeNull()
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features.costs).toBe(false)
   })
 })

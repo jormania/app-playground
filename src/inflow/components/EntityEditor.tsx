@@ -5,10 +5,10 @@
 import { useState } from 'react'
 import { Button, Modal, SettingsToggle } from '../../ds'
 import type { Client, Source, Venue } from '../domain/types'
-import { CLIENT_COUNTRY, CLIENT_KIND, SOURCE_TAX_DEFAULT, SOURCE_TYPE, VENUE_TYPE, options } from '../domain/vocabulary'
+import { CLIENT_COUNTRY, CLIENT_KIND, DEAL, DEAL_HINT, SOURCE_TAX_DEFAULT, SOURCE_TYPE, VENUE_TYPE, options } from '../domain/vocabulary'
 import { useInflow } from '../app/state'
 import type { Entity, EntityKind } from '../store/repo'
-import { SelectInput, TextArea, TextInput } from './fields'
+import { NumberInput, SelectInput, TextArea, TextInput } from './fields'
 import styles from '../styles/ui.module.css'
 
 export const KIND_LABEL: Record<EntityKind, string> = { client: 'client', source: 'income source', venue: 'venue' }
@@ -16,7 +16,7 @@ export const KIND_LABEL: Record<EntityKind, string> = { client: 'client', source
 export function blankEntity(kind: EntityKind, name = ''): Entity {
   if (kind === 'client') return { id: '', name, kind: 'individual', country: 'RO', contact: '', notes: '', archived: false } satisfies Client
   if (kind === 'source') return { id: '', name, type: 'direct', description: '', active: true, taxDefault: 'profile' } satisfies Source
-  return { id: '', name, type: 'in_person', location: '', notes: '', archived: false } satisfies Venue
+  return { id: '', name, type: 'in_person', location: '', notes: '', archived: false, deal: 'none', feePerSession: 0, sharePct: 0, monthlyFee: 0 } satisfies Venue
 }
 
 export interface EntityEditorProps {
@@ -29,7 +29,7 @@ export interface EntityEditorProps {
 }
 
 export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }: EntityEditorProps) {
-  const { saveEntity } = useInflow()
+  const { saveEntity, on } = useInflow()
   const [draft, setDraft] = useState<Entity>(() => entity ?? blankEntity(kind))
   const [busy, setBusy] = useState(false)
   // Mounted fresh per opening by its parent, so the draft never carries over.
@@ -91,6 +91,22 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
                 {options(VENUE_TYPE).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </SelectInput>
               <TextInput label="Location or URL (optional)" value={v.location} onChange={(x) => set({ location: x })} />
+              {on('deals') && (
+                <>
+                  <SelectInput label="Deal with the venue" value={v.deal} onChange={(x) => set({ deal: x })} hint={DEAL_HINT[v.deal]}>
+                    {options(DEAL).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </SelectInput>
+                  {(v.deal === 'fixed' || v.deal === 'hybrid') && (
+                    <NumberInput label="Fee per session (lei)" value={v.feePerSession} onCommit={(n) => set({ feePerSession: n ?? 0 })} />
+                  )}
+                  {(v.deal === 'share' || v.deal === 'hybrid') && (
+                    <NumberInput label="Venue's share of takings (%)" value={v.sharePct} scale={100} onCommit={(n) => set({ sharePct: Math.min(1, n ?? 0) })} />
+                  )}
+                  {v.deal === 'monthly' && (
+                    <NumberInput label="Rent per month (lei)" value={v.monthlyFee} onCommit={(n) => set({ monthlyFee: n ?? 0 })} />
+                  )}
+                </>
+              )}
               <TextArea label="Notes" value={v.notes} onChange={(x) => set({ notes: x })} />
               <SettingsToggle label="Archived" hint="Hidden from the pickers; history stays." checked={v.archived} onChange={(e) => set({ archived: e.target.checked })} />
             </>

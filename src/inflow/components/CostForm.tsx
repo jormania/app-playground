@@ -54,7 +54,7 @@ export interface CostFormProps {
 }
 
 export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) {
-  const { data, today, saveCost, deleteCost, toast } = useInflow()
+  const { data, today, saveCost, deleteCost, toast, on } = useInflow()
   const isNew = !cost
   const [draft, setDraft] = useState<Draft>(() => {
     if (cost) return fromCost(cost)
@@ -152,12 +152,16 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
               </div>
             </div>
           )}
-          <div className={styles.amountRow}>
-            <TextInput label="Amount" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew && !copyOf} name="amount" />
-            <SelectInput label="Currency" value={draft.currency} onChange={(v) => { setFxTouched(false); set({ currency: v as Currency, fxRate: v === 'RON' ? '1' : draft.fxRate }) }}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </SelectInput>
-          </div>
+          {on('currencies') || draft.currency !== 'RON' ? (
+            <div className={styles.amountRow}>
+              <TextInput label="Amount" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew && !copyOf} name="amount" />
+              <SelectInput label="Currency" value={draft.currency} onChange={(v) => { setFxTouched(false); set({ currency: v as Currency, fxRate: v === 'RON' ? '1' : draft.fxRate }) }}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </SelectInput>
+            </div>
+          ) : (
+            <TextInput label="Amount (lei)" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew && !copyOf} name="amount" />
+          )}
           {draft.currency !== 'RON' && (
             <TextInput label={`Lei per 1 ${draft.currency}`} value={draft.fxRate} inputMode="decimal"
               onChange={(v) => { setFxTouched(true); set({ fxRate: v }) }}

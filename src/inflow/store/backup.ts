@@ -5,8 +5,8 @@
  * settings that shape the numbers (tax profile, target). The Notion token is
  * never written into it — a backup gets emailed and dropped into Drive.
  */
-import type { IncomeRecord, InflowData, Settings } from '../domain/types'
-import { CATEGORY, STATUS, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
+import type { CostRecord, IncomeRecord, InflowData, Settings } from '../domain/types'
+import { ACTIVITY, CATEGORY, COST_CATEGORY, COST_GROUP_SHORT, STATUS, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
 
 export const BACKUP_APP = 'inflow'
 export const BACKUP_VERSION = 1
@@ -67,6 +67,18 @@ export function recordsCsv(records: IncomeRecord[], data: InflowData): string {
       name(data.clients, r.clientId), name(data.sources, r.sourceId), name(data.venues, r.venueId),
       r.category ? CATEGORY[r.category] : '', r.recurring ? 'yes' : '', TAXABILITY[r.taxability],
       TAX_HANDLING[r.taxHandling], VAT[r.vat], r.classification, r.taxReserve ?? '', r.taxWithheld, r.taxRules, r.notes,
+    ]),
+  )
+}
+
+export function costsCsv(costs: CostRecord[], data: InflowData): string {
+  const name = (list: { id: string; name: string }[], id: string | null) => list.find((x) => x.id === id)?.name ?? ''
+  return toCsv(
+    ['Date', 'Description', 'Amount', 'Currency', 'FX rate', 'Amount RON', 'Status', 'Kind', 'Category', 'Venue', 'Client', 'Activity', 'Recurring', 'Deductible', 'Notes'],
+    [...costs].sort((a, b) => a.date.localeCompare(b.date)).map((c) => [
+      c.date, c.description, c.amount, c.currency, c.fxRate, c.amountRon, c.status === 'due' ? 'Due' : 'Paid', COST_GROUP_SHORT[c.group],
+      COST_CATEGORY[c.category], name(data.venues, c.venueId), name(data.clients, c.clientId),
+      c.activity ? ACTIVITY[c.activity] : '', c.recurring ? 'yes' : '', c.deductible ? 'yes' : '', c.notes,
     ]),
   )
 }

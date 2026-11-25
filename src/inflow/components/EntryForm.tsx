@@ -40,6 +40,7 @@ interface Draft {
   category: string
   recurring: boolean
   notes: string
+  attendees: string
   taxability: Taxability
   taxHandling: TaxHandling
   vat: VatTreatment
@@ -54,7 +55,7 @@ function fromRecord(r: IncomeRecord): Draft {
   return {
     description: r.description, amount: String(r.amount), currency: r.currency, fxRate: String(r.fxRate), date: r.date,
     status: r.status, clientId: r.clientId ?? '', sourceId: r.sourceId ?? '', venueId: r.venueId ?? '', category: r.category ?? '',
-    recurring: r.recurring, notes: r.notes, taxability: r.taxability, taxHandling: r.taxHandling, vat: r.vat,
+    recurring: r.recurring, notes: r.notes, attendees: r.attendees === null ? '' : String(r.attendees), taxability: r.taxability, taxHandling: r.taxHandling, vat: r.vat,
     confirmed: r.classification === 'confirmed', reserve: r.taxReserve === null ? '' : String(r.taxReserve), withheld: r.taxWithheld ? String(r.taxWithheld) : '',
   }
 }
@@ -69,13 +70,13 @@ export interface EntryFormProps {
 }
 
 export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryFormProps) {
-  const { data, settings, today, saveRecord, deleteRecord, toast } = useInflow()
+  const { data, settings, today, saveRecord, deleteRecord, toast, on } = useInflow()
   const isNew = !record
   const blank = (): Draft => {
     const last = readJson<{ currency?: Currency }>(LAST_KEY, {})
     return {
       description: '', amount: '', currency: last.currency ?? 'RON', fxRate: '1', date: today, status: 'received',
-      clientId: '', sourceId: '', venueId: '', category: '', recurring: false, notes: '',
+      clientId: '', sourceId: '', venueId: '', category: '', recurring: false, notes: '', attendees: '',
       taxability: 'taxable', taxHandling: 'self_declared', vat: 'exempt', confirmed: false, reserve: '', withheld: '',
     }
   }
@@ -146,7 +147,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   }, [suggestedWithheld, touched])
 
   const others = useMemo(() => data.records.filter((r) => r.id !== record?.id), [data.records, record?.id])
-  const costsForTax = useMemo(() => (settings.trackCosts ? data.costs : []), [settings.trackCosts, data.costs])
+  const costsForTax = useMemo(() => (settings.features.costs ? data.costs : []), [settings.features.costs, data.costs])
   const reserveSuggestion = useMemo(
     () => suggestReserve({ amountRon, date: draft.date || today, taxability: draft.taxability, taxHandling: draft.taxHandling, taxWithheld: Number.isFinite(withheldNum) ? withheldNum : 0, status: draft.status }, others, settings.tax, today, costsForTax),
     [amountRon, draft.date, draft.taxability, draft.taxHandling, withheldNum, draft.status, others, settings.tax, today, costsForTax],
@@ -212,7 +213,9 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     if (!Number.isFinite(amount) || amount <= 0) { setError('Enter an amount above zero.'); return }
     if (!draft.date) { setError('Pick the date it was received.'); return }
     if (draft.currency !== 'RON' && (!Number.isFinite(fxRate) || fxRate <= 0)) { setError('Enter the exchange rate to lei.'); return }
-    const reserveNum = !settings.trackTax ? record?.taxReserve ?? null : draft.reserve === '' ? null : parseAmount(draft.reserve)
+    const attendeesNum = draft.attendees.trim() === '' ? null : Math.round(parseAmount(draft.attendees))
+    if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setError('People who came should be a whole number.'); return }
+    const reserveNum = !settings.features.tax ? record?.taxReserve ?? null : draft.reserve === '' ? null : parseAmount(draft.reserve)
     if (reserveNum !== null && !Number.isFinite(reserveNum)) { setError('The tax reserve is not a number.'); return }
     const allSuggested = !touched.has('taxability') && !touched.has('taxHandling') && !touched.has('vat')
     const reserveUnchanged = !!record && record.taxReserve === (reserveNum === null ? null : round2(reserveNum))
@@ -231,6 +234,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       category: (draft.category || null) as IncomeRecord['category'],
       recurring: draft.recurring,
       notes: draft.notes.trim(),
+      attendees: attendeesNum,
       taxability: draft.taxability,
       taxHandling: draft.taxHandling,
       vat: draft.vat,
@@ -259,16 +263,29 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     ? <span className={styles.badge} title="Suggested by InFlow from your tax profile; not confirmed">Suggested</span>
     : <span className={`${styles.badge} ${styles.badgeOk}`}>Your choice</span>
 
+  // Optional parts of the form follow the feature switches, but never hide a value a record already has.
+  const showCurrency = on('currencies') || draft.currency !== 'RON'
+  const showStatus = on('expected') || draft.status === 'expected'
+  const perHead = Number(draft.attendees) > 0 && amountRon > 0 ? amountRon / Number(draft.attendees) : 0
+  const attendeesField = (
+    <TextInput label="People who came (optional)" value={draft.attendees} onChange={(v) => set({ attendees: v })} inputMode="numeric" placeholder="—"
+      hint={perHead ? `${lei(perHead)} a head` : 'For group sessions: shows what each seat earns and how full a room must be.'} />
+  )
+
   return (
     <>
       <Modal open={open && !creating} onClose={onClose} title={isNew ? (copyOf ? 'Add income (copy)' : 'Add income') : 'Edit payment'}>
         <form className={styles.form} onSubmit={(e) => { e.preventDefault(); void save() }}>
-          <div className={styles.amountRow}>
-            <TextInput label="Amount" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew} name="amount" />
-            <SelectInput label="Currency" value={draft.currency} onChange={(v) => set({ currency: v as Currency, fxRate: v === 'RON' ? '1' : draft.fxRate })}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </SelectInput>
-          </div>
+          {showCurrency ? (
+            <div className={styles.amountRow}>
+              <TextInput label="Amount" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew} name="amount" />
+              <SelectInput label="Currency" value={draft.currency} onChange={(v) => set({ currency: v as Currency, fxRate: v === 'RON' ? '1' : draft.fxRate })}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </SelectInput>
+            </div>
+          ) : (
+            <TextInput label="Amount (lei)" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew} name="amount" />
+          )}
           {draft.currency !== 'RON' && (
             <TextInput
               label={`Lei per 1 ${draft.currency}`}
@@ -298,11 +315,14 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           <TextInput label="Description" value={draft.description} onChange={(v) => set({ description: v })} placeholder="e.g. Coaching session" name="description" />
           <div className={styles.formRow}>
             <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date" />
-            <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}>
-              <option value="received">Received</option>
-              <option value="expected">Expected</option>
-            </SelectInput>
+            {showStatus ? (
+              <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}>
+                <option value="received">Received</option>
+                <option value="expected">Expected</option>
+              </SelectInput>
+            ) : on('deals') ? attendeesField : <span />}
           </div>
+          {showStatus && on('deals') && attendeesField}
           <div className={styles.formRow}>
             <SelectInput label="Source" value={draft.sourceId} onChange={(v) => pickEntity('source', v)} name="source">
               <option value="">— none —</option>
@@ -321,7 +341,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           </SelectInput>
           <SettingsToggle label="Recurring" hint="A package, retainer or regular payout." checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
 
-          {settings.trackTax && !taxOpen && (
+          {settings.features.tax && !taxOpen && (
             <button type="button" className={styles.disclosure} onClick={() => setTaxOpen(true)} aria-expanded={false}>
               <span>
                 <b>Tax</b> <Optional />
@@ -334,7 +354,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               <ChevronDown size={18} aria-hidden />
             </button>
           )}
-          {settings.trackTax && taxOpen && (
+          {settings.features.tax && taxOpen && (
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>
               <span>Tax <Optional /></span>

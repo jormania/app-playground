@@ -24,6 +24,22 @@ export interface Repo {
 export const EMPTY: InflowData = { records: [], costs: [], clients: [], sources: [], venues: [] }
 
 export const DATA_KEY = 'data'
+/** The demo practice lives under its own key, never mixed with your data. */
+export const DEMO_KEY = 'demo'
+
+/**
+ * Data saved by an older InFlow, filled in: costs arrived after income, venue
+ * deals and head counts after costs. Missing means "none" / "not recorded".
+ */
+export function normalise(stored: Partial<InflowData> | undefined | null): InflowData {
+  const d = { ...EMPTY, ...(stored ?? {}) }
+  return {
+    ...d,
+    costs: d.costs ?? [],
+    records: (d.records ?? []).map((r) => ({ ...r, attendees: r.attendees ?? null })),
+    venues: (d.venues ?? []).map((v) => ({ ...v, deal: v.deal ?? 'none', feePerSession: v.feePerSession ?? 0, sharePct: v.sharePct ?? 0, monthlyFee: v.monthlyFee ?? 0 })),
+  }
+}
 
 export function newId(prefix = 'loc'): string {
   const rnd = typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -52,22 +68,21 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 export class DeviceRepo implements Repo {
   readonly kind = 'device' as const
   private data: InflowData = EMPTY
-  constructor(private store: KeyValueStore) {}
+  constructor(private store: KeyValueStore, private key: string = DATA_KEY) {}
 
   async load(): Promise<InflowData> {
-    const stored = await this.store.get<InflowData>(DATA_KEY)
-    // Data written before costs existed has no costs list.
-    this.data = { ...EMPTY, ...(stored ?? {}), costs: stored?.costs ?? [] }
+    const stored = await this.store.get<InflowData>(this.key)
+    this.data = normalise(stored)
     return this.data
   }
 
   async replaceAll(data: InflowData): Promise<void> {
     this.data = data
-    await this.store.set(DATA_KEY, data)
+    await this.store.set(this.key, data)
   }
 
   private async commit(next: InflowData) {
-    await this.store.set(DATA_KEY, next)
+    await this.store.set(this.key, next)
     this.data = next
   }
 

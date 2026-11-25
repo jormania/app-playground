@@ -16,11 +16,11 @@ import { notionProxy } from '../../shared/notionClient'
 import { parseNotionId } from '../../shared/notionId'
 import type { Category, Client, CostRecord, Currency, IncomeRecord, InflowData, Source, Venue } from '../domain/types'
 import {
-  CATEGORY, CLIENT_COUNTRY, COST_CATEGORY, COST_GROUP_SHORT, COST_STATUS, CLIENT_KIND, CURRENCIES, SOURCE_TAX_DEFAULT, SOURCE_TYPE, STATUS,
+  CATEGORY, CLIENT_COUNTRY, COST_CATEGORY, DEAL, COST_GROUP_SHORT, COST_STATUS, CLIENT_KIND, CURRENCIES, SOURCE_TAX_DEFAULT, SOURCE_TYPE, STATUS,
   TAX_HANDLING, TAXABILITY, VAT, VENUE_TYPE, fromLabel,
 } from '../domain/vocabulary'
 import { round2 } from '../lib/money'
-import { EMPTY, type Entity, type EntityKind, type Repo } from './repo'
+import { normalise, type Entity, type EntityKind, type Repo } from './repo'
 
 export const CACHE_KEY = 'notion-cache'
 
@@ -73,6 +73,7 @@ export function recordFromPage(page: { id: string; properties: Props }): IncomeR
     category: sel(p['Category']) ? fromLabel<Category>(CATEGORY, sel(p['Category']), 'other') : null,
     recurring: chk(p['Recurring']),
     notes: text(p['Notes']),
+    attendees: num(p['Attendees']),
     taxability: fromLabel(TAXABILITY, sel(p['Taxability']), 'review'),
     taxHandling: fromLabel(TAX_HANDLING, sel(p['Tax handling']), 'other'),
     vat: fromLabel(VAT, sel(p['VAT']), 'undetermined'),
@@ -99,6 +100,7 @@ export function recordToProps(r: IncomeRecord): Props {
     'Category': wSel(r.category ? CATEGORY[r.category] : null),
     'Recurring': wChk(r.recurring),
     'Notes': wText(r.notes),
+    'Attendees': wNum(r.attendees),
     'Taxability': wSel(TAXABILITY[r.taxability]),
     'Tax handling': wSel(TAX_HANDLING[r.taxHandling]),
     'VAT': wSel(VAT[r.vat]),
@@ -205,6 +207,11 @@ export function venueFromPage(page: { id: string; properties: Props }): Venue {
     location: text(p['Location']),
     notes: text(p['Notes']),
     archived: chk(p['Archived']),
+    deal: fromLabel<Venue['deal']>(DEAL, sel(p['Deal']), 'none'),
+    feePerSession: num(p['Fee per session']) ?? 0,
+    // Notion holds the share as a percent (30); the app as a fraction (0.3).
+    sharePct: (num(p['Share %']) ?? 0) / 100,
+    monthlyFee: num(p['Monthly fee']) ?? 0,
   }
 }
 
@@ -212,6 +219,8 @@ export function venueToProps(v: Venue): Props {
   return {
     'Name': wTitle(v.name), 'Type': wSel(VENUE_TYPE[v.type]), 'Location': wText(v.location),
     'Notes': wText(v.notes), 'Archived': wChk(v.archived),
+    'Deal': wSel(DEAL[v.deal]), 'Fee per session': wNum(v.feePerSession),
+    'Share %': wNum(Math.round(v.sharePct * 10000) / 100), 'Monthly fee': wNum(v.monthlyFee),
   }
 }
 
@@ -309,7 +318,7 @@ export class NotionRepo implements Repo {
 
   /** The last data loaded from Notion on this device, for opening offline. */
   async cached(): Promise<InflowData> {
-    return (await this.cache.get<InflowData>(CACHE_KEY)) ?? EMPTY
+    return normalise(await this.cache.get<InflowData>(CACHE_KEY))
   }
 
   async saveRecord(r: IncomeRecord): Promise<IncomeRecord> {

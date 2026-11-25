@@ -14,7 +14,7 @@ import { ACTIVITY, COST_CATEGORY, COST_GROUP, COST_GROUP_SHORT, options } from '
 import { NO_ENTITY } from '../lib/analytics'
 import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
 import { lei, money, round2 } from '../lib/money'
-import { download, toCsv } from '../store/backup'
+import { costsCsv, download } from '../store/backup'
 import styles from '../styles/ui.module.css'
 
 export interface CostFilter {
@@ -69,13 +69,7 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
   if (filter.activity) active.push(['activity', filter.activity === NO_ENTITY ? 'No activity' : ACTIVITY[filter.activity as keyof typeof ACTIVITY]])
   if (filter.status) active.push(['status', filter.status === 'due' ? 'Due' : 'Paid'])
 
-  const exportCsv = () => download(`inflow-costs-${today}.csv`, toCsv(
-    ['Date', 'Description', 'Amount', 'Currency', 'FX rate', 'Amount RON', 'Status', 'Kind', 'Category', 'Venue', 'Client', 'Activity', 'Recurring', 'Deductible', 'Notes'],
-    [...list].sort((a, b) => a.date.localeCompare(b.date)).map((c) => [
-      c.date, c.description, c.amount, c.currency, c.fxRate, c.amountRon, c.status === 'due' ? 'Due' : 'Paid', COST_GROUP_SHORT[c.group],
-      COST_CATEGORY[c.category], c.venueId ? name(data.venues, c.venueId) : '', c.clientId ? name(data.clients, c.clientId) : '',
-      c.activity ? ACTIVITY[c.activity] : '', c.recurring ? 'yes' : '', c.deductible ? 'yes' : '', c.notes,
-    ])), 'text/csv')
+  const exportCsv = () => download(`inflow-costs-${today}.csv`, costsCsv(list, data), 'text/csv')
 
   return (
     <>
