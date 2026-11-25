@@ -4,7 +4,7 @@
  * a report row drills down into.
  */
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Download, Repeat, X } from 'lucide-react'
+import { AlertTriangle, Download, PieChart, Repeat, X } from 'lucide-react'
 import { Button } from '../../ds'
 import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
@@ -12,7 +12,8 @@ import { SelectInput } from '../components/fields'
 import type { IncomeRecord, InflowData } from '../domain/types'
 import { ACTIVITY, TAX_HANDLING, TAXABILITY, VAT_SHORT, options } from '../domain/vocabulary'
 import { breakdown, DIMENSION_NOUN, largeRecordIds, NO_ENTITY, sum, type Dimension } from '../lib/analytics'
-import { ShareBar } from '../components/charts'
+import { Donut } from '../components/Donut'
+import { ListEnd } from '../components/ListEnd'
 import { BackBar } from '../components/BackBar'
 import { readJson, writeJson } from '../../shared/storage'
 import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
@@ -148,6 +149,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
           {rs.map((r) => <EntryRow key={r.id} r={r} data={data} large={large.has(r.id)} today={today} onOpen={onOpen} tax={settings.features.tax} currencies={on('currencies')} />)}
         </div>
       ))}
+      {list.length > 4 && <ListEnd>That's everything: {list.length} payments, {lei(receivedTotal)} received.</ListEnd>}
     </>
   )
 }
@@ -161,13 +163,13 @@ function WhereFrom({ list, data, onPick }: { list: IncomeRecord[]; data: InflowD
   return (
     <section className={styles.panel} aria-label="Where it came from">
       <div className={styles.panelHead}>
-        <h2 className={styles.panelTitle}>Where it came from</h2>
+        <h2 className={styles.panelTitle}><PieChart size={14} aria-hidden /> Where it came from</h2>
         <select className={styles.inlineSelect} value={dim} aria-label="Split by"
           onChange={(e) => { const v = e.target.value as Dimension; setDim(v); writeJson('inflow:income-split', v) }}>
           {(['source', 'client', 'venue', 'activity'] as Dimension[]).map((x) => <option key={x} value={x}>by {DIMENSION_NOUN[x].toLowerCase()}</option>)}
         </select>
       </div>
-      <ShareBar parts={parts} label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`} max={4}
+      <Donut key={dim} parts={parts} caption="received" label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`}
         onSelect={(id) => onPick({ [PICK[dim]]: id })} />
     </section>
   )

@@ -4,11 +4,13 @@
  * withheld and what to put aside (optional).
  */
 import { useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Info, Scale, Sparkles } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Info, Lightbulb, PieChart, Receipt, Repeat, Scale, Sparkles, TrendingUp } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
 import { EMPTY_FILTER, useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
-import { BreakdownList, SplitBar, TrendChart } from '../components/charts'
+import { SplitBar, TrendChart } from '../components/charts'
+import { Donut } from '../components/Donut'
+import { useCountUp } from '../components/useCountUp'
 import { Optional } from '../components/Optional'
 import {
   breakdown, concentration, largeRecordIds, NO_ENTITY, outstanding, received, series, sum, type Dimension,
@@ -47,6 +49,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
   const week = sum(received(data.records, { from: startOfWeek(today), to: addDays(startOfWeek(today), 6) }))
   const month = sum(received(data.records, { from: startOfMonth(today), to: endOfMonth(today) }))
   const d = delta(summary.total, prevSummary.total)
+  const heroTotal = useCountUp(summary.total)
 
   const chart = useMemo(() => {
     const bs = buckets(range)
@@ -96,7 +99,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
       <section className={`${styles.panel} ${styles.hero}`} aria-label="Income this period">
         <div>
           <div className={styles.heroLabel}>{range.label} · {shortDate(range.from)} – {shortDate(range.to, yearOf(today))}</div>
-          <div className={styles.heroValue} data-testid="period-total">{lei(summary.total)}</div>
+          <div className={styles.heroValue} data-testid="period-total">{lei(heroTotal)}</div>
           <div className={styles.heroMeta}>
             <span className={`${styles.delta} ${d.direction === 'up' || d.direction === 'new' ? styles.up : d.direction === 'down' ? styles.down : styles.flat}`}>
               {d.direction === 'up' && <ArrowUpRight size={16} aria-hidden />}
@@ -153,7 +156,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
 
       <section className={styles.panel} aria-label="Trend">
         <div className={styles.panelHead}>
-          <h2 className={styles.panelTitle}>How it's moving</h2>
+          <h2 className={styles.panelTitle}><TrendingUp size={14} aria-hidden /> How it's moving</h2>
           <span className={styles.panelSub}>{granularity(chart.bs)}</span>
         </div>
         <TrendChart buckets={chart.bs} current={chart.current} previous={chart.previous} previousLabel={prevWhole.label} />
@@ -162,7 +165,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
       {top.length > 0 && (
         <section className={styles.panel} aria-label="Worth a look">
           <div className={styles.panelHead}>
-            <h2 className={styles.panelTitle}>Worth a look</h2>
+            <h2 className={styles.panelTitle}><Lightbulb size={14} aria-hidden /> Worth a look</h2>
             <a className={styles.linkButton} href="#/reports/insights">All insights</a>
           </div>
           <InsightList items={top} />
@@ -172,11 +175,12 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
       <div className={styles.grid2}>
         <section className={styles.panel} aria-label="Where it came from">
           <div className={styles.panelHead}>
-            <h2 className={styles.panelTitle}>Where it came from</h2>
+            <h2 className={styles.panelTitle}><PieChart size={14} aria-hidden /> Where it came from</h2>
           </div>
           <SegmentedControl size="sm" options={DIMS} value={dim} onChange={(v) => setDim(v as Dimension)} label="Break down by" />
-          <div style={{ marginTop: 'var(--space-sm)' }}>
-            <BreakdownList rows={rows} onSelect={(r) => go({ [FILTER_KEY[dim]]: r.id })} />
+          <div style={{ marginTop: 'var(--space-md)' }}>
+            <Donut key={dim} parts={rows.map((r) => ({ id: r.id, name: r.name, value: r.total }))} caption={range.label.toLowerCase()}
+              label={`Income by ${dim}`} onSelect={(id) => go({ [FILTER_KEY[dim]]: id })} />
           </div>
           {dim === 'client' && conc && conc.level !== 'healthy' && (
             <p className={styles.hint} style={{ marginTop: 'var(--space-sm)' }}>
@@ -189,7 +193,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
         {taxOn && projection ? (
         <section className={styles.panel} aria-label="Taxable or not">
           <div className={styles.panelHead}>
-            <h2 className={styles.panelTitle}>Taxable or not <Optional /></h2>
+            <h2 className={styles.panelTitle}><Receipt size={14} aria-hidden /> Taxable or not <Optional /></h2>
             <button type="button" className={styles.linkButton} onClick={() => { location.hash = '#/reports/tax' }}>Tax report</button>
           </div>
           <SplitBar total={summary.total} parts={[
@@ -219,7 +223,7 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
         ) : (
         <section className={styles.panel} aria-label="Regular or one-off">
           <div className={styles.panelHead}>
-            <h2 className={styles.panelTitle}>Regular or one-off</h2>
+            <h2 className={styles.panelTitle}><Repeat size={14} aria-hidden /> Regular or one-off</h2>
             <span className={styles.panelSub}>{currencies.length > 1 ? `${currencies.length} currencies` : 'one currency'}</span>
           </div>
           <SplitBar total={summary.total} parts={[

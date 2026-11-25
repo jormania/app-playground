@@ -11,7 +11,8 @@ import { Copy } from 'lucide-react'
 import { useInflow, EMPTY_FILTER } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { DealChart, HeatMapTable, InsightList } from '../components/insightsUi'
-import { MoversChart, ShareBar } from '../components/charts'
+import { MoversChart } from '../components/charts'
+import { Donut } from '../components/Donut'
 import { leaveTrail } from '../app/trail'
 import { buildPnl, monthColumns } from '../lib/finance'
 import { movers, reviewSummary, reviewTitle, shakers } from '../lib/review'
@@ -118,7 +119,7 @@ export function ReviewReport() {
       <section id="review-summary" className={`${styles.panel} ${styles.reviewHero} ${styles.anchored}`} aria-label="Summary">
         <div className={styles.eyebrow}>Understand</div>
         <h2 className={styles.reviewTitle}>{reviewTitle(range)}</h2>
-        <p className={styles.reviewLede}>{summary}</p>
+        <p className={`${styles.reviewLede} ${styles.dropCap}`}>{summary}</p>
         <div className={styles.kpis}>
           <div><span className={styles.statLabel}>Came in</span><b>{lei(total)}</b></div>
           <div><span className={styles.statLabel}>vs {prev.label}</span><b className={d.direction === 'up' || d.direction === 'new' ? styles.up : d.direction === 'down' ? styles.down : undefined}>{d.text}</b></div>
@@ -145,7 +146,7 @@ export function ReviewReport() {
             {(['client', 'venue', 'activity', 'source'] as Dimension[]).map((x) => <option key={x} value={x}>by {DIMENSION_NOUN[x].toLowerCase()}</option>)}
           </select>
         </div>
-        <ShareBar parts={parts} label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`} onSelect={(id) => open({ [FILTER_KEY[dim]]: id })} />
+        <Donut key={dim} parts={parts} caption={range.label.toLowerCase()} label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`} onSelect={(id) => open({ [FILTER_KEY[dim]]: id })} />
       </section>
 
       {on('insights') && (

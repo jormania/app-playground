@@ -4,7 +4,7 @@
  * the kind of cost.
  */
 import { useMemo, useState } from 'react'
-import { Download, Repeat, X } from 'lucide-react'
+import { Download, PieChart, Repeat, X } from 'lucide-react'
 import { Button } from '../../ds'
 import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
@@ -15,7 +15,8 @@ import { NO_ENTITY } from '../lib/analytics'
 import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
 import { lei, money, round2 } from '../lib/money'
 import { costsCsv, download } from '../store/backup'
-import { ShareBar } from '../components/charts'
+import { Donut } from '../components/Donut'
+import { ListEnd } from '../components/ListEnd'
 import { readJson, writeJson } from '../../shared/storage'
 import styles from '../styles/ui.module.css'
 
@@ -67,13 +68,13 @@ function WhereWent({ costs, data, onPick }: { costs: CostRecord[]; data: InflowD
   return (
     <section className={styles.panel} aria-label="Where it went">
       <div className={styles.panelHead}>
-        <h2 className={styles.panelTitle}>Where it went</h2>
+        <h2 className={styles.panelTitle}><PieChart size={14} aria-hidden /> Where it went</h2>
         <select className={styles.inlineSelect} value={split} aria-label="Split by"
           onChange={(e) => { const v = e.target.value as CostSplit; setSplit(v); writeJson('inflow:cost-split', v) }}>
           {(Object.keys(SPLIT_LABEL) as CostSplit[]).map((k) => <option key={k} value={k}>{SPLIT_LABEL[k]}</option>)}
         </select>
       </div>
-      <ShareBar parts={parts} label={`Costs ${SPLIT_LABEL[split]}`} max={4}
+      <Donut key={split} parts={parts} caption="spent" label={`Costs ${SPLIT_LABEL[split]}`}
         onSelect={split === 'category' ? undefined : (id) => onPick(split === 'group' ? { group: id } : { venueId: id })} />
       <p className={styles.hint} style={{ marginTop: 'var(--space-xs)' }}>Costs in the P&L only: equipment, loan repayments and drawings are left out.</p>
     </section>
@@ -183,6 +184,7 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
           {cs.map((c) => <CostRow key={c.id} c={c} data={data} today={today} onOpen={onOpen} />)}
         </div>
       ))}
+      {list.length > 4 && <ListEnd>That's everything: {list.length} costs, {lei(sumRon(paid))} paid.</ListEnd>}
     </>
   )
 }

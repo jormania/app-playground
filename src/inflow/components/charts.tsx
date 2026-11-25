@@ -190,7 +190,6 @@ export function ShareBar({ parts, onSelect, label, max = 5 }: { parts: SharePart
     ...named.map((p, i) => ({ ...p, color: SLOTS[i], other: false })),
     ...(rest.length ? [{ id: '__other', name: `${rest.length} other${rest.length === 1 ? '' : 's'}`, value: rest.reduce((s, p) => s + p.value, 0), color: 'var(--chart-other)', other: true }] : []),
   ]
-  const Row = onSelect ? 'button' : 'div'
   return (
     <div>
       <div className={styles.shareBar} role="img" aria-label={`${label}: ${blocks.map((b) => `${b.name} ${percent(b.value / total)}`).join(', ')}`}>
@@ -205,14 +204,17 @@ export function ShareBar({ parts, onSelect, label, max = 5 }: { parts: SharePart
         })}
       </div>
       <div className={styles.shareKey}>
-        {blocks.map((b) => (
+        {blocks.map((b) => {
+          const Row = onSelect && !b.other ? 'button' : 'div'
+          return (
           <Row key={b.id} className={styles.shareKeyRow} onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)}
-            {...(onSelect && !b.other ? { type: 'button' as const, onClick: () => onSelect(b.id) } : {})}>
+            {...(Row === 'button' ? { type: 'button' as const, onClick: () => onSelect!(b.id) } : {})}>
             <span className={styles.swatch} style={{ background: b.color }} />
             <span className={styles.shareName}>{b.name}</span>
             <span className={styles.shareValue}>{lei(b.value)} <span className={styles.panelSub}>{percent(b.value / total)}</span></span>
           </Row>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
