@@ -1,11 +1,12 @@
 /**
  * The welcome tour: seven short steps, shown the first time InFlow opens.
+ * At most three short points each; the five main features carry their switch.
  * The checkbox on every step decides whether it comes back next time; it
  * starts ticked on first run, and Settings can always bring the tour back.
  * Steps that introduce an optional feature carry its switch.
  */
 import { useState } from 'react'
-import { Check, Database, DoorOpen, Flame, PlusCircle, Receipt, Scale, Waves } from 'lucide-react'
+import { CalendarClock, Check, Database, DoorOpen, Flame, Receipt, Scale, Waves } from 'lucide-react'
 import type { FeatureKey } from '../domain/types'
 import { Button, Modal } from '../../ds'
 import { useInflow } from '../app/state'
@@ -14,7 +15,7 @@ import styles from '../styles/ui.module.css'
 interface Step {
   icon: typeof Waves
   title: string
-  /** Two to four short points, read at a glance. */
+  /** Two or three short points, read at a glance. */
   points: string[]
   /** A feature this step introduces, switchable right here. */
   feature?: { key: FeatureKey; label: string }
@@ -24,41 +25,42 @@ const STEPS: Step[] = [
   {
     icon: Waves,
     title: 'Welcome to InFlow',
-    points: ['How much came in, and from whom', 'Where the work happened', 'What you actually keep', 'Not accounting software — just the picture'],
-  },
-  {
-    icon: PlusCircle,
-    title: 'Add a payment in seconds',
-    points: ['Tap “Add income”, type the amount, pick the client', 'The rest is filled in from their last payment', 'Your usual amounts are one tap away', 'Foreign currencies are converted to lei'],
+    points: ['What came in, from whom, and what you keep', 'Add a payment: amount and client is enough', 'The period at the top drives every screen'],
   },
   {
     icon: Flame,
     title: 'Where the money is good',
-    points: ['Reports → Clients & work ranks by what you kept', 'The Review maps the period: totals, rises, drops', 'Pain points in plain words; 👍 or 👎 each one'],
+    points: ['Clients & work, ranked by what you kept', 'Pain points: only what costs money or needs a decision', '👍 or 👎 to tune them'],
     feature: { key: 'insights', label: 'Insights' },
+  },
+  {
+    icon: CalendarClock,
+    title: 'Money on its way',
+    points: ['Log a payment before it arrives', 'Overdue ones flagged, with a reminder to send', 'Recurring clients suggested for next month'],
+    feature: { key: 'expected', label: 'Expected payments' },
   },
   {
     icon: DoorOpen,
     title: 'Fixed fee or a share?',
-    points: ['Each venue’s deal: a fee per session, or a share', 'What every room leaves you, side by side', 'Break-even: how many people cover the fee', 'What if: the same sessions on other terms'],
+    points: ['What each room leaves you a session', 'How many people cover the fee', 'What if: other terms, same sessions'],
     feature: { key: 'deals', label: 'Venue deals' },
   },
   {
     icon: Scale,
     title: 'Costs and profit',
-    points: ['Record what you spend', 'P&L and monthly cash flow', 'Your break-even each month'],
-    feature: { key: 'costs', label: 'Costs, P&L and cash flow' },
+    points: ['Record what you spend', 'Profit, cash flow and break-even for any period'],
+    feature: { key: 'costs', label: 'Costs and profit' },
   },
   {
     icon: Receipt,
-    title: 'Tax, only if you want it',
-    points: ['Taxable or not, withheld or not, VAT', 'What to set aside, under Romanian rules', 'Always a suggestion; you decide'],
+    title: 'Tax, if you want it',
+    points: ['What to set aside, under Romanian rules', 'Withholding and VAT included', 'A suggestion; you decide'],
     feature: { key: 'tax', label: 'Tax suggestions' },
   },
   {
     icon: Database,
-    title: 'Your data, your choice',
-    points: ['You start simple; tick a feature above to add it', 'Settings → Features: one by one, or “Everything”', 'The demo lives apart from your data', 'On this device, or in your Notion'],
+    title: 'You start simple',
+    points: ['Tick a feature in this guide to add it', 'Or in Settings → Features, “Everything” included', 'Your data stays on this device, or in your Notion'],
   },
 ]
 
@@ -87,7 +89,7 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
           <label className={styles.tourCheck}>
             <input type="checkbox" checked={settings.features[s.feature.key]}
               onChange={(e) => updateSettings({ features: { [s.feature!.key]: e.target.checked }, simpleStartNotice: false })} />
-            {s.feature.label} (optional)
+            {s.feature.label}
           </label>
         )}
       </div>
@@ -96,14 +98,23 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
       </div>
       <label className={styles.tourCheck}>
         <input type="checkbox" checked={again} onChange={(e) => setAgain(e.target.checked)} />
-        Show this guide next time I open InFlow
+        Show this guide next time
       </label>
+      {/* Skip and Back on the left, the way forward on the right; the last step's two choices stacked full width. */}
+      {last && workspace === 'demo' && (
+        <div className={styles.tourChoice}>
+          <Button onClick={finish}>Explore the demo</Button>
+          <Button variant="secondary" onClick={() => { setWorkspace('mine'); finish() }}>Start with my data</Button>
+        </div>
+      )}
       <div className={styles.tourActions}>
-        <div><Button variant="ghost" onClick={finish}>Skip</Button></div>
+        {last
+          ? <Button variant="ghost" onClick={() => setStep(step - 1)}>Back</Button>
+          : <Button variant="ghost" onClick={finish}>Skip</Button>}
         <div>
-          {step > 0 && <Button variant="secondary" onClick={() => setStep(step - 1)}>Back</Button>}
-          {last && workspace === 'demo' && <Button variant="secondary" onClick={() => { setWorkspace('mine'); finish() }}>Start with my data</Button>}
-          <Button onClick={() => (last ? finish() : setStep(step + 1))}>{last ? (workspace === 'demo' ? 'Explore the demo' : 'Start') : 'Next'}</Button>
+          {!last && step > 0 && <Button variant="secondary" onClick={() => setStep(step - 1)}>Back</Button>}
+          {!last && <Button onClick={() => setStep(step + 1)}>Next</Button>}
+          {last && workspace !== 'demo' && <Button onClick={finish}>Start</Button>}
         </div>
       </div>
     </Modal>

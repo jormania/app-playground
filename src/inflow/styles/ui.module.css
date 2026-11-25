@@ -886,7 +886,12 @@ a.modeTag { text-decoration: none; }
   padding-top: var(--space-sm);
   border-top: 1px solid var(--color-border);
 }
-.tourActions > div { display: flex; gap: var(--space-sm); flex-wrap: wrap; justify-content: flex-end; }
+.tourActions > div { display: flex; gap: var(--space-sm); justify-content: flex-end; }
+/* One row on any phone: Skip or Back left, the way forward right. */
+.tourActions { flex-wrap: nowrap; }
+.tourActions > button:first-child { margin-left: calc(-1 * var(--space-sm)); }
+.tourChoice { display: grid; gap: var(--space-sm); margin-top: var(--space-md); }
+.tourChoice > button { width: 100%; }
 
 /* ── part-to-whole bar ─────────────────────────────────────────────────── */
 .shareBar {
