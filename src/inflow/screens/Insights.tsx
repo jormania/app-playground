@@ -216,6 +216,7 @@ function HeatSection() {
   }
   const colNoun = cols === 'month' ? 'month' : DIMENSION_NOUN[cols].toLowerCase()
   const rowNoun = DIMENSION_NOUN[rows].toLowerCase()
+  const thin = map.rows.length < 2 || map.cols.length < 2
   const question = HEAT_QUESTIONS.find((q) => q.rows === rows && q.cols === cols)
 
   // The squares worth naming: best and weakest, with at least two sessions behind them where there are enough.
@@ -265,9 +266,17 @@ function HeatSection() {
           </label>
         </div>
       </details>
-      <HeatMapTable map={map} rowNoun={DIMENSION_NOUN[rows]} onCell={drill} />
-      {(map.rows.length < 2 || map.cols.length < 2) && <div style={{ marginTop: 'var(--space-sm)' }}><WiderPeriod what="This period has too little to compare." /></div>}
-      {best.length > 0 && (
+      {thin ? (
+        <div className={styles.heatThin}>
+          <Grid3x3 size={22} aria-hidden />
+          <p>
+            {map.rows.length === 0 ? 'Nothing to map in this period.'
+              : `Too little to compare in this period: ${map.rows.length} ${rowNoun}${map.rows.length === 1 ? '' : 's'} at ${map.cols.length} ${colNoun}${map.cols.length === 1 ? '' : 's'}. The grid needs at least two of each.`}
+          </p>
+          <WiderPeriod what="" />
+        </div>
+      ) : <HeatMapTable map={map} rowNoun={DIMENSION_NOUN[rows]} onCell={drill} />}
+      {!thin && best.length > 0 && (
         <div className={styles.heatCalls}>
           <div>
             <div className={styles.heatCallHead}><TrendingUp size={14} aria-hidden /> Strongest</div>

@@ -1178,3 +1178,7 @@ button.mover:hover { background: var(--color-surface-2); }
 .heatCall > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .heatCall > b { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .heatCall > em { grid-column: 1 / -1; font-style: normal; font-size: var(--text-xs); color: var(--color-muted); }
+.heatThin { display: grid; justify-items: center; gap: var(--space-xs); text-align: center; padding: var(--space-lg) var(--space-md); border: 1px dashed var(--color-border-2); border-radius: var(--radius-md); color: var(--color-muted); }
+.heatThin > svg { color: var(--color-faint); }
+.heatThin p { margin: 0; font-size: var(--text-sm); max-width: 40ch; }
+.expectedActions { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }

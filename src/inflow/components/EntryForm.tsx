@@ -116,8 +116,35 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     return out
   }, [data.records, data.clients])
 
+  // The amounts this client pays most often, as one-tap chips: most freelancers charge a few set prices.
+  const usual = useMemo(() => {
+    if (!draft.clientId) return []
+    const count = new Map<string, { amount: number; currency: Currency; n: number; last: string }>()
+    for (const r of data.records) {
+      if (r.clientId !== draft.clientId || r.status !== 'received' || r.id === record?.id) continue
+      const k = `${r.amount}|${r.currency}`
+      const c = count.get(k) ?? { amount: r.amount, currency: r.currency, n: 0, last: '' }
+      c.n += 1
+      if (r.date > c.last) c.last = r.date
+      count.set(k, c)
+    }
+    return [...count.values()].sort((a, b) => b.n - a.n || b.last.localeCompare(a.last)).slice(0, 3)
+  }, [draft.clientId, data.records, record?.id])
+
+  // What a head usually brings at this venue (or for this activity): turns "people who came" into an amount.
+  const usualPerHead = useMemo(() => {
+    const like = data.records.filter((r) => r.status === 'received' && r.attendees && r.attendees > 0 && r.id !== record?.id
+      && (draft.venueId ? r.venueId === draft.venueId : draft.category ? r.category === draft.category : false))
+    if (like.length < 2) return null
+    const per = like.map((r) => r.amountRon / r.attendees!).sort((a, b) => a - b)
+    return Math.round(per[Math.floor(per.length / 2)])
+  }, [data.records, draft.venueId, draft.category, record?.id])
+
   const client = data.clients.find((c) => c.id === draft.clientId) ?? null
   const source = data.sources.find((s) => s.id === draft.sourceId) ?? null
+  const venue = data.venues.find((v) => v.id === draft.venueId) ?? null
+  // An empty description is written from what's known: the activity, then where or for whom.
+  const autoDescription = [draft.category ? CATEGORY[draft.category as keyof typeof CATEGORY] : '', venue?.name ?? client?.name ?? ''].filter(Boolean).join(' · ') || 'Payment'
   const amount = parseAmount(draft.amount)
   const fxRate = draft.currency === 'RON' ? 1 : parseAmount(draft.fxRate)
   const amountRon = Number.isFinite(amount) && Number.isFinite(fxRate) ? toRon(amount, fxRate) : 0
@@ -221,7 +248,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     const reserveUnchanged = !!record && record.taxReserve === (reserveNum === null ? null : round2(reserveNum))
     const r: IncomeRecord = {
       id: record?.id ?? '',
-      description: draft.description.trim() || (draft.category ? CATEGORY[draft.category as keyof typeof CATEGORY] : client?.name) || 'Payment',
+      description: draft.description.trim() || autoDescription,
       amount: round2(amount),
       currency: draft.currency,
       fxRate,
@@ -267,9 +294,14 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const showCurrency = on('currencies') || draft.currency !== 'RON'
   const showStatus = on('expected') || draft.status === 'expected'
   const perHead = Number(draft.attendees) > 0 && amountRon > 0 ? amountRon / Number(draft.attendees) : 0
+  const heads = Number(draft.attendees)
+  const fromHeads = usualPerHead && heads > 0 && draft.currency === 'RON' ? heads * usualPerHead : 0
   const attendeesField = (
     <TextInput label="People who came (optional)" value={draft.attendees} onChange={(v) => set({ attendees: v })} inputMode="numeric" placeholder="—"
-      hint={perHead ? `${lei(perHead)} a head` : 'For group sessions: shows what each seat earns and how full a room must be.'} />
+      hint={fromHeads && Math.round(amountRon) !== fromHeads
+        ? <>Usually {lei(usualPerHead!)} a head here: {heads} × {lei(usualPerHead!)} = <b>{lei(fromHeads)}</b>{' '}
+          <button type="button" className={styles.linkButton} onClick={() => set({ amount: String(fromHeads) })}>Use</button></>
+        : perHead ? `${lei(perHead)} a head` : 'For group sessions: shows what each seat earns and how full a room must be.'} />
   )
 
   return (
@@ -312,7 +344,22 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             {activeClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             <option value={NEW}>+ New client…</option>
           </SelectInput>
-          <TextInput label="Description" value={draft.description} onChange={(v) => set({ description: v })} placeholder="e.g. Coaching session" name="description" />
+          {usual.length > 0 && (
+            <div className={styles.chips} aria-label="Usual amounts">
+              <span className={styles.panelSub}>Usual:</span>
+              {usual.map((u) => {
+                const same = parseAmount(draft.amount) === u.amount && draft.currency === u.currency
+                return (
+                  <button key={`${u.amount}-${u.currency}`} type="button" className={`${styles.chip} ${same ? styles.chipOn : ''}`}
+                    onClick={() => set({ amount: String(u.amount), currency: u.currency, fxRate: u.currency === 'RON' ? '1' : draft.fxRate })}>
+                    {money(u.amount, u.currency)} <span className={styles.panelSub}>×{u.n}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <TextInput label="Description" value={draft.description} onChange={(v) => set({ description: v })} placeholder={autoDescription === 'Payment' ? 'e.g. Coaching session' : autoDescription} name="description"
+            hint={!draft.description.trim() && autoDescription !== 'Payment' ? 'Left empty, it is saved as shown.' : undefined} />
           <div className={styles.formRow}>
             <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date" />
             {showStatus ? (

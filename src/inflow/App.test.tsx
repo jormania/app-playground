@@ -184,6 +184,79 @@ describe('InFlow', () => {
   })
 })
 
+describe('small conveniences', () => {
+  it('offers a client\'s usual amounts, and writes an empty description from what is known', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.selectOptions(within(dialog).getByLabelText('Client'), within(dialog).getByRole('option', { name: 'Radu Stoica' }))
+    const chips = within(within(dialog).getByLabelText('Usual amounts')).getAllByRole('button')
+    expect(chips.length).toBeGreaterThan(0)
+    await user.click(chips[0])
+    expect((within(dialog).getByLabelText('Amount') as HTMLInputElement).value).not.toBe('')
+    await user.clear(within(dialog).getByLabelText('Description'))
+    expect((within(dialog).getByLabelText('Description') as HTMLInputElement).placeholder).toContain(' · ')
+  })
+
+  it('turns the head count into an amount at a venue with a known price per head', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
+    await user.type(within(dialog).getByLabelText(/People who came/), '10')
+    expect(within(dialog).getByText(/10 × 220 lei/)).toBeTruthy()
+    await user.click(within(dialog).getByRole('button', { name: 'Use' }))
+    expect((within(dialog).getByLabelText('Amount') as HTMLInputElement).value).toBe('2200')
+  })
+
+  it('copies a friendly reminder for an expected payment', async () => {
+    settings()
+    const user = userEvent.setup()
+    // After setup: user-event installs a clipboard of its own.
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getAllByRole('button', { name: /Copy a reminder for/ })[0])
+    expect(writeText).toHaveBeenCalledTimes(1)
+    const text = writeText.mock.calls[0][0] as string
+    expect(text.startsWith('Hello')).toBe(true)
+    expect(text).toContain('A gentle reminder about the payment for')
+    expect(await screen.findByText(/Reminder copied/)).toBeTruthy()
+  })
+
+  it('opens the form from a home-screen shortcut, and N adds from the keyboard', async () => {
+    settings()
+    window.location.hash = '#/add/cost'
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    expect(await screen.findByRole('dialog', { name: /Add cost/ })).toBeTruthy()
+    expect(window.location.hash).toBe('#/costs')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await user.keyboard('n')
+    expect(await screen.findByRole('dialog', { name: /Add cost/ })).toBeTruthy()
+  })
+
+  it('says when the work-by-place grid has too little to compare', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'week' }))
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/insights/heat')
+    const heat = await screen.findByLabelText('Heat map')
+    expect(within(heat).getByText(/Too little to compare in this period|Nothing to map/)).toBeTruthy()
+    expect(within(heat).queryByRole('table')).toBeNull()
+    expect(within(heat).getByRole('button', { name: 'See the whole year' })).toBeTruthy()
+  })
+})
+
 describe('switching between the demo and Notion', () => {
   const mineInNotion: InflowData = {
     records: [{ ...buildDemo(today).records.find((r) => r.status === 'received' && r.date.startsWith('2026-11'))!, id: 'notion1', clientId: null, sourceId: null, venueId: null, demo: undefined, amount: 1234, amountRon: 1234, currency: 'RON', fxRate: 1 }],

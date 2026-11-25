@@ -4,7 +4,7 @@
  * withheld and what to put aside (optional).
  */
 import { useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Info, Lightbulb, PieChart, Receipt, Repeat, Scale, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Copy, Info, Lightbulb, PieChart, Receipt, Repeat, Scale, Sparkles, TrendingUp } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
 import { EMPTY_FILTER, useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
@@ -24,6 +24,13 @@ import { insights } from '../lib/insights'
 import { InsightList } from '../components/insightsUi'
 import type { IncomeRecord } from '../domain/types'
 import styles from '../styles/ui.module.css'
+
+/** The reminder "Remind" copies: short, friendly, with what, how much and when. */
+export function reminderText(r: Pick<IncomeRecord, 'description' | 'amount' | 'currency' | 'date'>, clientName: string, today: string): string {
+  const hello = clientName ? `Hello ${clientName},` : 'Hello,'
+  const when = r.date < today ? `which was due on ${shortDate(r.date, 0)}` : `due on ${shortDate(r.date, 0)}`
+  return `${hello}\n\nA gentle reminder about the payment for ${r.description} (${money(r.amount, r.currency)}), ${when}. If it's already on its way, thank you, and please ignore this.\n\nAll the best`
+}
 
 function granularity(bs: Bucket[]): string {
   const widest = Math.max(...bs.map((b) => daysBetween(b.from, b.to) + 1))
@@ -84,6 +91,16 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
       next.taxRules = s.rulesId
     }
     if (await saveRecord(next)) toast({ message: `Marked received: ${money(r.amount, r.currency)}`, tone: 'success' })
+  }
+  // A polite note for the client, ready to paste into a message or an email.
+  const copyReminder = (r: IncomeRecord) => {
+    const who = data.clients.find((c) => c.id === r.clientId)
+    // A person is greeted by first name; a business without a name to greet.
+    const text = reminderText(r, who?.kind === 'individual' ? who.name.split(' ')[0] : '', today)
+    void navigator.clipboard?.writeText(text).then(
+      () => toast({ message: 'Reminder copied: paste it into a message', tone: 'success' }),
+      () => toast('Could not copy the reminder'),
+    )
   }
   const target = settings.monthlyTarget
   const recurringTotal = sum(cur.filter((r) => r.recurring))
@@ -293,9 +310,14 @@ export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; 
                         {data.clients.find((c) => c.id === r.clientId)?.name ?? '—'} · {r.date < today ? `due ${shortDate(r.date)}, overdue` : `due ${shortDate(r.date)}`}
                       </span>
                     </button>
-                    <button type="button" className={styles.chip} onClick={() => void markReceived(r)} aria-label={`Mark ${r.description} received`}>
-                      <Check size={12} aria-hidden /> Received
-                    </button>
+                    <div className={styles.expectedActions}>
+                      <button type="button" className={styles.chip} onClick={() => void markReceived(r)} aria-label={`Mark ${r.description} received`}>
+                        <Check size={12} aria-hidden /> Received
+                      </button>
+                      <button type="button" className={styles.chip} onClick={() => copyReminder(r)} aria-label={`Copy a reminder for ${r.description}`}>
+                        <Copy size={12} aria-hidden /> Remind
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {owed.count > 4 && <button type="button" className={styles.linkButton} onClick={() => go({ status: 'expected', range: 'all' })}>All {owed.count} expected →</button>}

@@ -83,6 +83,19 @@ The Review's grid is **Which work pays best, and where**: a sentence saying what
 is, four ready-made questions, "Customise the grid", and the three strongest and weakest
 squares in words. A period too short to compare offers the whole year.
 
+### Small conveniences (25 Nov 2026)
+- **Usual amounts**: pick a client and their three most frequent amounts appear as chips.
+- **People × price**: a head count at a venue (or for an activity) with a known price per head
+  offers the amount ("9 × 220 lei = 1,980 lei · Use"), from the median of past sessions.
+- **Automatic descriptions**: an empty description is saved as "activity · venue" (or the
+  client), shown as the field's placeholder.
+- **Remind**: an expected payment on the Overview copies a polite reminder. People are greeted
+  by first name, businesses with a plain hello.
+- **Shortcuts**: the manifest's shortcuts open forms (`#/add/income`, `#/add/cost`, replaced in
+  history so Back doesn't reopen them). On a keyboard, `N` adds and `/` searches.
+- Insight links land on their section (`#/reports/insights/heat`, `#/reports/deals/verdict`).
+  A grid with fewer than two rows or columns says so instead of drawing one.
+
 ### Printable reports
 Four reports, each with when to print it and what it holds (`PRESET_ADVICE`):
 - **Month at a glance**: headline, *In short* with the movers, top clients, pain points.

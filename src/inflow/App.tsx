@@ -31,13 +31,17 @@ type Screen = 'overview' | 'income' | 'costs' | 'reports' | 'settings'
 
 const TITLE: Record<Screen, string> = { overview: 'Overview', income: 'Income', costs: 'Costs', reports: 'Reports', settings: 'Settings' }
 
-interface Route { screen: Screen; report: ReportTab }
+interface Route { screen: Screen; report: ReportTab; /** A section to land on, e.g. #/reports/insights/heat. */ anchor: string; /** #/add/income or #/add/cost: open the form at once. */ add: 'income' | 'cost' | null }
 
 export function parseRoute(hash: string): Route {
-  const [, screen = 'overview', sub = ''] = hash.replace(/^#/, '').split('/')
+  const [, first = 'overview', second = '', anchor = ''] = hash.replace(/^#/, '').split('/')
+  // Home-screen shortcuts open a form straight away, over the list it belongs to.
+  const add = first === 'add' ? (second === 'cost' ? 'cost' : 'income') : null
+  const screen = add ? (add === 'cost' ? 'costs' : 'income') : first
+  const sub = add ? '' : second
   const s: Screen = (['overview', 'income', 'costs', 'reports', 'settings'] as const).includes(screen as Screen) ? (screen as Screen) : 'overview'
   const report: ReportTab = (REPORT_TABS as readonly string[]).includes(sub) ? (sub as ReportTab) : 'insights'
-  return { screen: s, report }
+  return { screen: s, report, anchor, add }
 }
 
 function useRoute(): Route {
@@ -125,6 +129,33 @@ function Shell() {
   const copyOfCost = entry?.kind === 'cost' && entry.copyOf ? data.costs.find((c) => c.id === entry.copyOf) ?? null : null
   // Costs is optional: with it off, its tab and screen go away.
   const screen: Screen = route.screen === 'costs' && !settings.features.costs ? 'overview' : route.screen
+  // A home-screen shortcut (#/add/income, #/add/cost) opens its form once, then
+  // leaves the list behind it as the address, so Back doesn't reopen it.
+  useEffect(() => {
+    if (!route.add || load === 'loading') return
+    if (route.add === 'cost' && !settings.features.costs) { history.replaceState(null, '', '#/income'); return }
+    if (route.add === 'cost') openCost(null)
+    else open(null)
+    history.replaceState(null, '', route.add === 'cost' ? '#/costs' : '#/income')
+  }, [route.add, load]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On a keyboard: N adds (income, or a cost on Costs), / jumps to the search.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || entry || tour) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (screen === 'costs') openCost(null); else open(null) }
+      if (e.key === '/') {
+        e.preventDefault()
+        if (screen !== 'income' && screen !== 'costs') location.hash = '#/income'
+        setTimeout(() => (document.querySelector('input[type="search"]') as HTMLInputElement | null)?.focus(), 60)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }) // re-bound each render: it reads the screen and the open dialogs
+
   // Every screen names itself in the browser tab.
   useEffect(() => { document.title = `${TITLE[screen]} · InFlow` }, [screen])
   const tabs = TABS.filter((t) => t.screen !== 'costs' || settings.features.costs)
@@ -178,7 +209,7 @@ function Shell() {
             {screen === 'overview' && <Overview onOpen={open} onAddCost={() => openCost(null)} />}
             {screen === 'income' && <Income onOpen={open} />}
             {screen === 'costs' && <Costs onOpen={openCost} filter={costFilter} setFilter={setCostFilter} />}
-            {screen === 'reports' && <Reports tab={route.report} onTab={(t) => { location.hash = `#/reports/${t}` }} onAddCost={() => openCost(null)} />}
+            {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onTab={(t) => { location.hash = `#/reports/${t}` }} onAddCost={() => openCost(null)} />}
             {screen === 'settings' && <Settings />}
           </div>
         )}

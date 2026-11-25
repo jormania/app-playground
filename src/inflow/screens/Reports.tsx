@@ -6,7 +6,7 @@
  * One filter bar narrows every report at once (client, source, venue,
  * activity), and every row drills down to the payments behind it.
  */
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Download, SlidersHorizontal, X } from 'lucide-react'
 import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
@@ -59,7 +59,14 @@ export function costInScope(c: CostRecord, s: Scope): boolean {
   return m(c.clientId, s.clientId) && m(c.venueId, s.venueId) && m(c.activity, s.activity)
 }
 
-export function Reports({ tab, onAddCost }: { tab: ReportTab; onTab?: (t: ReportTab) => void; onAddCost: () => void }) {
+export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; anchor?: string; onTab?: (t: ReportTab) => void; onAddCost: () => void }) {
+  // A link to a section (#/reports/insights/heat) lands on it once the report is drawn.
+  useEffect(() => {
+    if (!anchor) return
+    const id = `${tab === 'insights' ? 'review' : tab}-${anchor}`
+    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 120)
+    return () => clearTimeout(t)
+  }, [tab, anchor])
   const { on } = useInflow()
   // Each optional report appears only while its feature is on.
   const groups = GROUPS.filter((g) => (g.id !== 'deals' || on('deals')) && (g.id !== 'profit' || on('costs')) && (g.id !== 'tax' || on('tax')) && (g.id !== 'print' || on('printable')))

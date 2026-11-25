@@ -32,13 +32,36 @@
   "shortcuts": [
     {
       "name": "Add income",
-      "url": "/inflow-react.html#/income",
-      "icons": [{ "src": "/coneofcold-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "url": "/inflow-react.html#/add/income",
+      "icons": [
+        {
+          "src": "/coneofcold-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
-      "name": "Reports",
-      "url": "/inflow-react.html#/reports",
-      "icons": [{ "src": "/coneofcold-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "name": "Add cost",
+      "url": "/inflow-react.html#/add/cost",
+      "icons": [
+        {
+          "src": "/coneofcold-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Review",
+      "url": "/inflow-react.html#/reports/insights",
+      "icons": [
+        {
+          "src": "/coneofcold-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
