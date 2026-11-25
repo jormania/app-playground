@@ -1244,7 +1244,9 @@ a.chip { text-decoration: none; color: inherit; }
 /* ── no sideways scrolling on a phone ──────────────────────────────────── */
 /* The five periods share the width evenly and always fit. */
 .periodBar [role='radiogroup'] { overflow: visible; }
-.periodBar [role='radiogroup'] [role='radio'] { flex: 1 1 0; min-width: 0; padding: 0 4px; font-size: clamp(12px, 3.5vw, 14px); }
+/* Each option as wide as its label plus the same breathing room, the spare width shared out
+   evenly: equal widths squeezed "Last month" against the edges of its pill. */
+.periodBar [role='radiogroup'] [role='radio'] { flex: 1 1 auto; min-width: 0; padding: 0 clamp(6px, 2.4vw, 12px); white-space: nowrap; font-size: clamp(12px, 3.5vw, 14px); }
 /* Report tabs: a grid of three across instead of a strip that scrolls. */
 @media (max-width: 640px) {
   .reportTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; margin: 0; padding: 0; }
