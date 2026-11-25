@@ -62,10 +62,13 @@ function fromRecord(r: IncomeRecord): Draft {
 export interface EntryFormProps {
   open: boolean
   record: IncomeRecord | null
+  /** Start a new payment as a copy of this one, dated today. */
+  copyOf?: IncomeRecord | null
   onClose: () => void
+  onDuplicate?: (r: IncomeRecord) => void
 }
 
-export function EntryForm({ open, record, onClose }: EntryFormProps) {
+export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryFormProps) {
   const { data, settings, today, saveRecord, deleteRecord, toast } = useInflow()
   const isNew = !record
   const blank = (): Draft => {
@@ -76,10 +79,15 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
       taxability: 'taxable', taxHandling: 'self_declared', vat: 'exempt', confirmed: false, reserve: '', withheld: '',
     }
   }
-  const [draft, setDraft] = useState<Draft>(() => (record ? fromRecord(record) : blank()))
+  const [draft, setDraft] = useState<Draft>(() => {
+    if (record) return fromRecord(record)
+    // A copy keeps who, where and what, and starts fresh on when, status and tax.
+    if (copyOf) return { ...fromRecord(copyOf), date: today, status: 'received', notes: '', confirmed: false, reserve: '', withheld: '' }
+    return blank()
+  })
   // Fields the user has set by hand; these stop following the suggestion.
   const [touched, setTouched] = useState<Set<TaxField | 'reserve' | 'withheld' | 'fx' | 'prefill'>>(
-    () => new Set(record ? ['taxability', 'taxHandling', 'vat', 'reserve', 'withheld', 'fx', 'prefill'] : []),
+    () => new Set(record ? ['taxability', 'taxHandling', 'vat', 'reserve', 'withheld', 'fx', 'prefill'] : copyOf ? ['prefill'] : []),
   )
   // The parent mounts a fresh form per opening (keyed), so state starts clean each time.
   const [fxState, setFxState] = useState<'idle' | 'loading' | 'failed' | 'ok'>('idle')
@@ -92,6 +100,20 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
   const touch = (f: TaxField | 'reserve' | 'withheld' | 'fx' | 'prefill') => setTouched((t) => new Set(t).add(f))
+
+  // The clients paid most recently, as one-tap chips above the picker.
+  const recentClients = useMemo(() => {
+    const seen = new Set<string>()
+    const out: { id: string; name: string }[] = []
+    for (const r of [...data.records].sort((a, b) => b.date.localeCompare(a.date))) {
+      if (!r.clientId || seen.has(r.clientId)) continue
+      seen.add(r.clientId)
+      const c = data.clients.find((x) => x.id === r.clientId)
+      if (c && !c.archived) out.push(c)
+      if (out.length === 5) break
+    }
+    return out
+  }, [data.records, data.clients])
 
   const client = data.clients.find((c) => c.id === draft.clientId) ?? null
   const source = data.sources.find((s) => s.id === draft.sourceId) ?? null
@@ -124,9 +146,10 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
   }, [suggestedWithheld, touched])
 
   const others = useMemo(() => data.records.filter((r) => r.id !== record?.id), [data.records, record?.id])
+  const costsForTax = useMemo(() => (settings.trackCosts ? data.costs : []), [settings.trackCosts, data.costs])
   const reserveSuggestion = useMemo(
-    () => suggestReserve({ amountRon, date: draft.date || today, taxability: draft.taxability, taxHandling: draft.taxHandling, taxWithheld: Number.isFinite(withheldNum) ? withheldNum : 0, status: draft.status }, others, settings.tax, today),
-    [amountRon, draft.date, draft.taxability, draft.taxHandling, withheldNum, draft.status, others, settings.tax, today],
+    () => suggestReserve({ amountRon, date: draft.date || today, taxability: draft.taxability, taxHandling: draft.taxHandling, taxWithheld: Number.isFinite(withheldNum) ? withheldNum : 0, status: draft.status }, others, settings.tax, today, costsForTax),
+    [amountRon, draft.date, draft.taxability, draft.taxHandling, withheldNum, draft.status, others, settings.tax, today, costsForTax],
   )
   useEffect(() => {
     if (touched.has('reserve')) return
@@ -151,7 +174,8 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
     const patch: Partial<Draft> = { clientId: id }
     // A new payment from a known client starts as a copy of their last one.
     if (isNew && !touched.has('prefill') && id) {
-      const last = [...data.records].filter((r) => r.clientId === id).sort((a, b) => b.date.localeCompare(a.date))[0]
+      // The last payment actually received, not one still expected.
+      const last = [...data.records].filter((r) => r.clientId === id && r.status === 'received').sort((a, b) => b.date.localeCompare(a.date))[0]
       if (last) {
         Object.assign(patch, {
           sourceId: draft.sourceId || last.sourceId || '', venueId: draft.venueId || last.venueId || '',
@@ -237,7 +261,7 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
 
   return (
     <>
-      <Modal open={open && !creating} onClose={onClose} title={isNew ? 'Add income' : 'Edit payment'}>
+      <Modal open={open && !creating} onClose={onClose} title={isNew ? (copyOf ? 'Add income (copy)' : 'Add income') : 'Edit payment'}>
         <form className={styles.form} onSubmit={(e) => { e.preventDefault(); void save() }}>
           <div className={styles.amountRow}>
             <TextInput label="Amount" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew} name="amount" />
@@ -258,6 +282,13 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
                 {amountRon > 0 && <> · <b>{lei(amountRon)}</b></>}
               </>}
             />
+          )}
+          {isNew && !copyOf && !draft.clientId && recentClients.length > 0 && (
+            <div className={styles.chips} aria-label="Recent clients">
+              {recentClients.map((c) => (
+                <button key={c.id} type="button" className={styles.chip} onClick={() => pickClient(c.id)}>{c.name}</button>
+              ))}
+            </div>
           )}
           <SelectInput label="Client" value={draft.clientId} onChange={pickClient} name="client">
             <option value="">— none —</option>
@@ -284,7 +315,7 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
               <option value={NEW}>+ New venue…</option>
             </SelectInput>
           </div>
-          <SelectInput label="Kind of work (optional)" value={draft.category} onChange={(v) => set({ category: v })}>
+          <SelectInput label="Activity (optional)" value={draft.category} onChange={(v) => set({ category: v })}>
             <option value="">—</option>
             {options(CATEGORY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </SelectInput>
@@ -351,7 +382,10 @@ export function EntryForm({ open, record, onClose }: EntryFormProps) {
           <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
           <div className={styles.formActions}>
-            <div>{!isNew && <Button variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}</div>
+            <div>
+              {!isNew && <Button variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+              {!isNew && onDuplicate && <Button variant="ghost" onClick={() => onDuplicate(record!)}>Copy</Button>}
+            </div>
             <div>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>
               <Button type="submit" disabled={busy}>{isNew ? 'Add' : 'Save'}</Button>

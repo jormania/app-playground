@@ -5,7 +5,7 @@ import { rulesFor, RULESETS } from './rules'
 
 const base: TaxProfile = {
   id: 'pfa_real', vatRegistered: false, cassCoveredElsewhere: false, casExempt: false, casOptIn: false,
-  annualExpenses: 0, annualNorm: 0, microRate: null, dividendPayout: 1, customRate: 0.2, expectedAnnualIncome: 0,
+  annualExpenses: 0, annualNorm: 0, microRate: null, dividendPayout: 1, customRate: 0.2, expectedAnnualIncome: 0, expensesFromCosts: false,
 }
 const R2026 = rulesFor(2026).rules
 const R2025 = rulesFor(2025).rules
@@ -158,6 +158,16 @@ describe('projection and reserve suggestion', () => {
     const b = suggestReserve({ amountRon: 1000, date: '2026-05-01', taxability: 'taxable', taxHandling: 'withheld', taxWithheld: 100, status: 'received' }, [], profile, '2026-05-01')
     expect(b.amount).toBe(Math.max(0, a.amount - 100))
     expect(a.rulesId).toBe('RO-2026')
+  })
+
+  it('never suggests more than 45% of a payment, even when fixed minimums outweigh a tiny income', () => {
+    const p = projectYear({ ...base, expectedAnnualIncome: 1_000 }, [], 2026, '2026-06-01')
+    expect(p.rawRate).toBeGreaterThan(1)
+    expect(p.rate).toBe(0.45)
+    expect(p.capped).toBe(true)
+    expect(p.estimate.notes[0]).toMatch(/capped/)
+    const s = suggestReserve({ amountRon: 1000, date: '2026-06-01', taxability: 'taxable', taxHandling: 'self_declared', taxWithheld: 0, status: 'received' }, [], { ...base, expectedAnnualIncome: 1_000 }, '2026-06-01')
+    expect(s.amount).toBe(450)
   })
 
   it('suggests nothing for non-taxable income', () => {

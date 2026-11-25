@@ -1,128 +1,345 @@
 /**
  * Reports answer practical questions for the selected period: who pays most,
- * which venues earn, which sources matter, and where tax stands. Every row
- * drills down to the payments behind it.
+ * which venues and activities earn (and, with costs, what they keep), which
+ * sources matter, the P&L and cash flow, and where tax stands.
+ *
+ * One filter bar narrows every report at once (client, source, venue,
+ * activity), and every row drills down to the payments behind it.
  */
-import { Fragment, useMemo } from 'react'
-import { Download } from 'lucide-react'
+import { Fragment, useMemo, useState } from 'react'
+import { Download, X } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
 import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SplitBar, Sparkline } from '../components/charts'
 import { Optional } from '../components/Optional'
 import { ReportBuilder } from './ReportBuilder'
-import { PROFILE } from '../domain/vocabulary'
-import { breakdown, received, sum, type BreakdownRow, type Dimension } from '../lib/analytics'
+import type { CostRecord } from '../domain/types'
+import { ACTIVITY, PROFILE, options } from '../domain/vocabulary'
+import {
+  ANY_SCOPE, breakdown, DIMENSION_NOUN, inScope, keyOf, NO_ENTITY, pivot, received, scopeIsSet, sum, summarise,
+  type BreakdownRow, type Dimension, type Scope,
+} from '../lib/analytics'
 import { addMonths, endOfMonth, monthShort, startOfMonth, yearOf } from '../lib/dates'
+import { buildCashFlow, buildPnl, margins, monthColumns } from '../lib/finance'
 import { delta, lei, percent } from '../lib/money'
 import { download, toCsv } from '../store/backup'
 import { projectYear, taxableGross } from '../tax/estimate'
 import styles from '../styles/ui.module.css'
 
-export type ReportTab = 'clients' | 'venues' | 'sources' | 'tax' | 'print'
+export const REPORT_TABS = ['clients', 'venues', 'activities', 'sources', 'pnl', 'cashflow', 'tax', 'print'] as const
+export type ReportTab = (typeof REPORT_TABS)[number]
 
-const TABS = [
-  { value: 'clients', label: 'Clients' },
-  { value: 'venues', label: 'Venues' },
-  { value: 'sources', label: 'Sources' },
-]
-const TAX_TAB = { value: 'tax', label: 'Tax*' }
-const PRINT_TAB = { value: 'print', label: 'Printable' }
+const DIM: Record<'clients' | 'venues' | 'activities' | 'sources', Dimension> = { clients: 'client', venues: 'venue', activities: 'activity', sources: 'source' }
 
-const DIM: Record<Exclude<ReportTab, 'tax' | 'print'>, Dimension> = { clients: 'client', venues: 'venue', sources: 'source' }
+/** A cost in scope: costs carry venue, client and activity, but never a source. */
+export function costInScope(c: CostRecord, s: Scope): boolean {
+  if (s.sourceId) return false
+  const m = (field: string | null, want: string) => !want || (want === NO_ENTITY ? !field : field === want)
+  return m(c.clientId, s.clientId) && m(c.venueId, s.venueId) && m(c.activity, s.activity)
+}
 
-export function Reports({ tab, onTab }: { tab: ReportTab; onTab: (t: ReportTab) => void }) {
+export function Reports({ tab, onTab, onAddCost }: { tab: ReportTab; onTab: (t: ReportTab) => void; onAddCost: () => void }) {
   const { settings } = useInflow()
-  // Tax is optional: with tracking off, its tab isn't offered at all.
-  const shown: ReportTab = tab === 'tax' && !settings.trackTax ? 'clients' : tab
+  const tabs = [
+    { value: 'clients', label: 'Clients' },
+    { value: 'venues', label: 'Venues' },
+    { value: 'activities', label: 'Activities' },
+    { value: 'sources', label: 'Sources' },
+    ...(settings.trackCosts ? [{ value: 'pnl', label: 'P&L' }, { value: 'cashflow', label: 'Cash flow' }] : []),
+    ...(settings.trackTax ? [{ value: 'tax', label: 'Tax*' }] : []),
+    { value: 'print', label: 'Printable' },
+  ]
+  // Optional sections switched off fall back to the first report.
+  const shown: ReportTab = tabs.some((t) => t.value === tab) ? tab : 'clients'
   return (
     <>
-      <SegmentedControl wrap options={[...TABS, ...(settings.trackTax ? [TAX_TAB] : []), PRINT_TAB]} value={shown} onChange={(v) => onTab(v as ReportTab)} label="Report" />
-      {settings.trackTax && <p className={styles.hint}>* Tax is optional; switch it off in Settings to see only the money flow.</p>}
-      {shown === 'tax' ? <TaxReport /> : shown === 'print' ? <ReportBuilder /> : <DimensionReport dim={DIM[shown]} />}
+      <SegmentedControl wrap options={tabs} value={shown} onChange={(v) => onTab(v as ReportTab)} label="Report" />
+      {shown !== 'print' && shown !== 'cashflow' && shown !== 'tax' && <ScopeBar />}
+      {shown === 'tax' ? <TaxReport />
+        : shown === 'print' ? <ReportBuilder />
+          : shown === 'pnl' ? <PnlReport onAddCost={onAddCost} />
+            : shown === 'cashflow' ? <CashFlowReport />
+              : <DimensionReport dim={DIM[shown]} />}
+      {settings.trackTax && shown === 'tax' && <p className={styles.hint}>* Tax is optional; switch it off in Settings to see only the money flow.</p>}
     </>
   )
 }
 
+/** The filter every report shares. */
+export function ScopeBar() {
+  const { data, scope, setScope } = useInflow()
+  const sorted = <T extends { name: string }>(l: T[]) => [...l].sort((a, b) => a.name.localeCompare(b.name))
+  const field = (key: keyof Scope, label: string, opts: { value: string; label: string }[], none: string) => (
+    <label>
+      {label}
+      <select value={scope[key]} className={scope[key] ? styles.scopeOn : undefined} onChange={(e) => setScope({ ...scope, [key]: e.target.value })}>
+        <option value="">All</option>
+        {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        <option value={NO_ENTITY}>{none}</option>
+      </select>
+    </label>
+  )
+  return (
+    <section className={styles.panel} aria-label="Filter reports">
+      <div className={styles.scope}>
+        {field('clientId', 'Client', sorted(data.clients).map((c) => ({ value: c.id, label: c.name })), 'No client')}
+        {field('venueId', 'Venue', sorted(data.venues).map((v) => ({ value: v.id, label: v.name })), 'No venue')}
+        {field('activity', 'Activity', options(ACTIVITY), 'No activity')}
+        {field('sourceId', 'Source', sorted(data.sources).map((s) => ({ value: s.id, label: s.name })), 'No source')}
+      </div>
+      {scopeIsSet(scope) && (
+        <div className={styles.chips} style={{ marginTop: 'var(--space-xs)' }}>
+          <button type="button" className={styles.chip} onClick={() => setScope(ANY_SCOPE)}><X size={12} aria-hidden /> Clear filters</button>
+          <span className={styles.panelSub}>These filters apply to every report.</span>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function useDrill() {
-  const { setFilter } = useInflow()
+  const { setFilter, scope } = useInflow()
   return (patch: Partial<IncomeFilter>) => {
-    setFilter({ ...EMPTY_FILTER, range: 'period', ...patch })
+    setFilter({ ...EMPTY_FILTER, range: 'period', clientId: scope.clientId, sourceId: scope.sourceId, venueId: scope.venueId, activity: scope.activity, ...patch })
     location.hash = '#/income'
   }
 }
 
-function DimensionReport({ dim }: { dim: Dimension }) {
-  const { data, today } = useInflow()
-  const { range, prev, cur, before, summary } = usePeriodData()
-  const drill = useDrill()
-  const rows = useMemo(() => breakdown(data, cur, before, dim), [data, cur, before, dim])
+const FILTER_KEY: Record<Dimension, keyof IncomeFilter> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
 
-  // Six-month history per row, for venues' trend column.
+function DimensionReport({ dim }: { dim: Dimension }) {
+  const { data, today, scope, settings } = useInflow()
+  const { range, prev, cur, before } = usePeriodData()
+  const drill = useDrill()
+  const [splitBy, setSplitBy] = useState<Dimension | ''>('')
+  const curS = useMemo(() => cur.filter((r) => inScope(r, scope)), [cur, scope])
+  const beforeS = useMemo(() => before.filter((r) => inScope(r, scope)), [before, scope])
+  const total = summarise(curS).total
+  const rows = useMemo(() => breakdown(data, curS, beforeS, dim), [data, curS, beforeS, dim])
+  const costs = settings.trackCosts && dim !== 'source'
+  const marginRows = useMemo(
+    () => (costs ? margins(data, curS, data.costs.filter((c) => costInScope(c, scope)), range, dim) : []),
+    [costs, data, curS, scope, range, dim],
+  )
+  const marginOf = (id: string) => marginRows.find((m) => m.id === id)
+  const piv = useMemo(() => (splitBy ? pivot(data, curS, dim, splitBy) : null), [data, curS, dim, splitBy])
+
+  // Six-month history per row.
   const months = useMemo(() => {
     const end = range.to > today ? today : range.to
     return Array.from({ length: 6 }, (_, i) => startOfMonth(addMonths(startOfMonth(end), i - 5)))
   }, [range.to, today])
   const history = (row: BreakdownRow) => months.map((m) => sum(received(data.records, { from: m, to: endOfMonth(m) })
-    .filter((r) => (dim === 'client' ? r.clientId : dim === 'source' ? r.sourceId : r.venueId) === (row.id === '__none__' ? null : row.id))))
+    .filter((r) => inScope(r, scope) && keyOf(r, dim) === row.id)))
 
-  const noun = dim === 'client' ? 'Client' : dim === 'source' ? 'Source' : 'Venue'
-  const countNoun = dim === 'venue' ? 'Engagements' : 'Payments'
+  const noun = DIMENSION_NOUN[dim]
+  const countNoun = dim === 'venue' || dim === 'activity' ? 'Engagements' : 'Payments'
   const exportCsv = () => download(
-    `inflow-${dim}s-${range.from}-${range.to}.csv`,
-    toCsv([noun, 'Total RON', 'Share', countNoun, 'Average RON', `Previous (${prev.from}–${prev.to}) RON`],
-      rows.map((r) => [r.name, r.total, (r.share * 100).toFixed(1) + '%', r.count, r.average, r.previous])),
+    `inflow-${dim}-${range.from}-${range.to}.csv`,
+    toCsv([noun, 'Total RON', 'Share', countNoun, 'Average RON', `Previous (${prev.from}–${prev.to}) RON`, ...(costs ? ['Linked costs RON', 'Margin RON', 'Margin %'] : [])],
+      rows.map((r) => {
+        const m = marginOf(r.id)
+        return [r.name, r.total, (r.share * 100).toFixed(1) + '%', r.count, r.average, r.previous,
+          ...(costs ? [m?.costs ?? 0, m?.margin ?? r.total, m?.marginRate === null || !m ? '' : (m.marginRate * 100).toFixed(1) + '%'] : [])]
+      })),
     'text/csv',
   )
+  const go = (id: string) => drill({ [FILTER_KEY[dim]]: id })
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.panelHead}>
-        <h2 className={styles.panelTitle}>Income by {dim} · {range.label}</h2>
-        <span className={styles.panelSub}>{lei(summary.total)} from {rows.length} · vs {prev.label}</span>
+    <>
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <h2 className={styles.panelTitle}>Income by {noun.toLowerCase()} · {range.label}</h2>
+          <span className={styles.panelSub}>{lei(total)} from {rows.length} · vs {prev.label}</span>
+        </div>
+        {rows.length === 0 ? <p className={styles.hint}>No income in this period{scopeIsSet(scope) ? ' for these filters' : ''}.</p> : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>{noun}</th>
+                  <th>Total</th>
+                  <th>Share</th>
+                  <th className={styles.hideNarrow}>{countNoun}</th>
+                  <th className={styles.hideNarrow}>Average</th>
+                  {costs && <th>Margin</th>}
+                  <th className={costs ? styles.hideNarrow : undefined}>Change</th>
+                  <th className={styles.hideNarrow}>6 months</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const d = delta(r.total, r.previous)
+                  const m = marginOf(r.id)
+                  return (
+                    <tr key={r.id} className={styles.clickable} onClick={() => go(r.id)}
+                      tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') go(r.id) }}>
+                      <td>{r.name}<div className={styles.panelSub}>{r.count} · avg {lei(r.average)}{m && m.costs > 0 ? ` · costs ${lei(m.costs)}` : ''}</div></td>
+                      <td>{lei(r.total)}</td>
+                      <td>{percent(r.share)}</td>
+                      <td className={styles.hideNarrow}>{r.count}</td>
+                      <td className={styles.hideNarrow}>{lei(r.average)}</td>
+                      {costs && <td title={m ? `${lei(m.revenue)} − ${lei(m.costs)} linked costs` : undefined}>{m && m.costs > 0 ? <>{lei(m.margin)}<div className={styles.panelSub}>{m.marginRate === null ? '' : percent(m.marginRate)}</div></> : <span className={styles.panelSub}>no costs</span>}</td>}
+                      <td className={costs ? styles.hideNarrow : undefined}><span className={d.direction === 'up' || d.direction === 'new' ? styles.up : d.direction === 'down' ? styles.down : styles.flat}>{d.text}</span></td>
+                      <td className={styles.hideNarrow}><Sparkline values={history(r)} label={`${r.name}, ${months.map((mm, i) => `${monthShort(mm)} ${lei(history(r)[i])}`).join(', ')}`} /></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {rows.length > 0 && (
+          <p className={styles.hint} style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <span>Tap a row to see its payments.{costs ? ' Margin = income less the costs linked to it.' : ''}</span>
+            <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
+          </p>
+        )}
+      </section>
+
+      {rows.length > 0 && (
+        <section className={styles.panel}>
+          <div className={styles.panelHead}>
+            <h2 className={styles.panelTitle}>{noun} × …</h2>
+            <label className={styles.panelSub} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              Split by
+              <select value={splitBy} onChange={(e) => setSplitBy(e.target.value as Dimension | '')} style={{ font: 'inherit' }} aria-label="Split by">
+                <option value="">—</option>
+                {(['client', 'venue', 'activity', 'source'] as Dimension[]).filter((d) => d !== dim).map((d) => <option key={d} value={d}>{DIMENSION_NOUN[d]}</option>)}
+              </select>
+            </label>
+          </div>
+          {piv && piv.cols.length > 2 && <p className={styles.hint} style={{ marginTop: 0 }}>Swipe the table sideways for more columns.</p>}
+          {!piv ? <p className={styles.hint}>Cross one dimension with another, e.g. which activities pay at each venue.</p> : (
+            <div className={styles.tableWrap}>
+              <table className={styles.statement}>
+                <thead><tr><th>{noun}</th>{piv.cols.map((c) => <th key={c.id}>{c.name}</th>)}<th>Total</th></tr></thead>
+                <tbody>
+                  {piv.rows.map((r) => (
+                    <tr key={r.id} className={styles.clickable} onClick={() => go(r.id)}>
+                      <td title={r.name}>{r.name}</td>
+                      {r.cells.map((v, i) => <td key={i}>{v ? lei(v) : <span className={styles.panelSub}>·</span>}</td>)}
+                      <td className={styles.totalCol}>{lei(r.total)}</td>
+                    </tr>
+                  ))}
+                  <tr className={styles.sub}><td>Total</td>{piv.colTotals.map((v, i) => <td key={i}>{lei(v)}</td>)}<td className={styles.totalCol}>{lei(total)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+    </>
+  )
+}
+
+function PnlReport({ onAddCost }: { onAddCost: () => void }) {
+  const { data, scope, today } = useInflow()
+  const { range } = usePeriodData()
+  const [details, setDetails] = useState(false)
+  const scoped = scopeIsSet(scope)
+  const columns = useMemo(() => monthColumns(range), [range])
+  const pnl = useMemo(() => buildPnl(
+    data.records.filter((r) => inScope(r, scope)),
+    data.costs.filter((c) => costInScope(c, scope)),
+    columns,
+  ), [data, scope, columns])
+  const t = (k: string) => pnl.lines.find((l) => l.key === k)!.total
+  const rev = t('revenue')
+  const costTotal = rev - t('net')
+  const due = data.costs.filter((c) => c.status === 'due' && c.date <= range.to)
+  const exportCsv = () => download(`inflow-pnl-${range.from}-${range.to}.csv`, toCsv(
+    ['Line', ...columns.map((c) => c.label), 'Total', '% of revenue'],
+    pnl.lines.filter((l) => details || l.kind !== 'detail').map((l) => [l.label, ...l.values, l.total, rev ? ((l.total / rev) * 100).toFixed(1) + '%' : '']),
+  ), 'text/csv')
+
+  return (
+    <>
+      <div className={styles.cards3}>
+        <div className={styles.stat}><div className={styles.statLabel}>Revenue</div><div className={styles.statValue}>{lei(rev)}</div></div>
+        <div className={styles.stat}><div className={styles.statLabel}>Gross margin</div><div className={styles.statValue}>{lei(t('gross'))}</div><div className={styles.statNote}>{rev ? percent(t('gross') / rev) : '—'} of revenue</div></div>
+        <div className={styles.stat}><div className={styles.statLabel}>Costs</div><div className={styles.statValue}>{lei(costTotal)}</div><div className={styles.statNote}>incl. tax paid</div></div>
+        <div className={styles.stat}><div className={styles.statLabel}>Net profit</div><div className={`${styles.statValue} ${t('net') < 0 ? styles.down : ''}`}>{lei(t('net'))}</div><div className={styles.statNote}>{rev ? percent(t('net') / rev) : '—'} margin</div></div>
       </div>
-      {rows.length === 0 ? <p className={styles.hint}>No income in this period.</p> : (
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <h2 className={styles.panelTitle}>Profit & loss · {range.label}</h2>
+          <span style={{ display: 'flex', gap: 'var(--space-md)' }}>
+            <button type="button" className={styles.linkButton} onClick={() => setDetails((d) => !d)}>{details ? 'Hide categories' : 'Show categories'}</button>
+            <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
+          </span>
+        </div>
+        {data.costs.length === 0 ? (
+          <p className={styles.hint}>No costs yet, so this is revenue only. <button type="button" className={styles.linkButton} onClick={onAddCost}>Add a cost</button></p>
+        ) : null}
         <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{noun}</th>
-                <th>Total</th>
-                <th>Share</th>
-                <th className={styles.hideNarrow}>{countNoun}</th>
-                <th className={styles.hideNarrow}>Average</th>
-                <th>{dim === 'venue' ? '6 months' : 'Change'}</th>
-              </tr>
-            </thead>
+          <table className={styles.statement}>
+            {/* Total and % sit beside the labels, so a phone sees the period's answer before scrolling the months. */}
+            <thead><tr><th></th><th>{columns.length > 1 ? 'Total' : columns[0]?.label}</th><th>%</th>{columns.length > 1 && columns.map((c) => <th key={c.from}>{c.label}</th>)}</tr></thead>
             <tbody>
-              {rows.map((r) => {
-                const d = delta(r.total, r.previous)
-                return (
-                  <tr key={r.id} className={styles.clickable} onClick={() => drill({ [`${dim}Id`]: r.id })}
-                    tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') drill({ [`${dim}Id`]: r.id }) }}>
-                    <td>{r.name}<div className={styles.panelSub}>{r.count} · avg {lei(r.average)}</div></td>
-                    <td>{lei(r.total)}</td>
-                    <td>{percent(r.share)}</td>
-                    <td className={styles.hideNarrow}>{r.count}</td>
-                    <td className={styles.hideNarrow}>{lei(r.average)}</td>
-                    <td>
-                      {dim === 'venue'
-                        ? <Sparkline values={history(r)} label={`${r.name}, ${months.map((m) => `${monthShort(m)} ${lei(history(r)[months.indexOf(m)])}`).join(', ')}`} />
-                        : <span className={d.direction === 'up' || d.direction === 'new' ? styles.up : d.direction === 'down' ? styles.down : styles.flat}>{d.text}</span>}
-                    </td>
-                  </tr>
-                )
-              })}
+              {pnl.lines.filter((l) => details || l.kind !== 'detail').map((l) => (
+                <tr key={l.key} className={l.kind === 'subtotal' || l.kind === 'revenue' ? styles.sub : l.kind === 'detail' ? styles.detail : undefined}>
+                  <td title={l.label}>{l.kind === 'cost' ? `− ${l.label}` : l.label}</td>
+                  <td className={`${columns.length > 1 ? styles.totalCol : ''} ${l.total < 0 ? styles.neg : ''}`}>{fmt(l.total)}</td>
+                  <td>{rev && l.kind !== 'detail' ? percent(l.total / rev) : ''}</td>
+                  {columns.length > 1 && l.values.map((v, i) => <td key={i} className={v < 0 ? styles.neg : undefined}>{fmt(v)}</td>)}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-      )}
-      {rows.length > 0 && (
-        <p className={styles.hint} style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>Tap a row to see its payments.</span>
-          <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
-        </p>
-      )}
+        <ul className={styles.notes}>
+          <li>Cash basis: income when received, costs when paid. Equipment purchases, loan repayments and drawings are cash movements, not P&L costs; see Cash flow.</li>
+          {scoped && <li>Filtered: only costs linked to these filters are counted, so unlinked overheads (rent, software…) are left out. Clear the filters for the whole business.</li>}
+          {due.length > 0 && <li>{due.length} {due.length === 1 ? 'cost is' : 'costs are'} due and not counted until paid ({lei(due.reduce((s, c) => s + c.amountRon, 0))}).</li>}
+          {range.to > today && <li>The period runs to {range.to}; figures are to date.</li>}
+        </ul>
+      </section>
+    </>
+  )
+}
+
+function fmt(v: number) {
+  if (v === 0) return '–'
+  return lei(v).replace(' lei', '')
+}
+
+function CashFlowReport() {
+  const { data, settings } = useInflow()
+  const { range } = usePeriodData()
+  const columns = useMemo(() => monthColumns(range), [range])
+  const cf = useMemo(() => buildCashFlow(data.records, data.costs, columns, settings.openingCash, settings.openingCashDate), [data, columns, settings.openingCash, settings.openingCashDate])
+  const exportCsv = () => download(`inflow-cashflow-${range.from}-${range.to}.csv`, toCsv(
+    ['Line', ...columns.map((c) => c.label)], cf.rows.map((r) => [r.label, ...r.values]),
+  ), 'text/csv')
+  const end = cf.closing[cf.closing.length - 1] ?? 0
+  return (
+    <section className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h2 className={styles.panelTitle}>Cash flow · {range.label}</h2>
+        <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
+      </div>
+      <div className={styles.tableWrap}>
+        <table className={styles.statement}>
+          <thead><tr><th></th>{columns.map((c) => <th key={c.from}>{c.label}</th>)}</tr></thead>
+          <tbody>
+            {cf.rows.map((r) => (
+              <tr key={r.key} className={r.kind === 'subtotal' || r.kind === 'balance' ? styles.sub : undefined}>
+                <td>{r.kind === 'out' ? `− ${r.label}` : r.kind === 'in' ? `+ ${r.label}` : r.label}</td>
+                {r.values.map((v, i) => <td key={i} className={v < 0 ? styles.neg : undefined}>{fmt(v)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul className={styles.notes}>
+        <li>{cf.relative
+          ? 'No opening balance set, so balances start from zero. Set your cash on a date in Settings → Costs for real balances.'
+          : `From ${lei(settings.openingCash)} in cash on ${settings.openingCashDate}. Ends the period at ${lei(end)}.`}</li>
+        <li>The whole business, unfiltered. Depreciation is not cash and is left out; equipment shows when bought. Loans received and money you put in are not recorded.</li>
+      </ul>
     </section>
   )
 }
@@ -132,7 +349,8 @@ function TaxReport() {
   const { range, summary } = usePeriodData()
   const drill = useDrill()
   const year = yearOf(range.to > today ? today : range.to)
-  const p = useMemo(() => projectYear(settings.tax, data.records, year, today), [settings.tax, data.records, year, today])
+  const costs = useMemo(() => (settings.trackCosts ? data.costs : []), [settings.trackCosts, data.costs])
+  const p = useMemo(() => projectYear(settings.tax, data.records, year, today, 0, costs), [settings.tax, data.records, year, today, costs])
   const ytdWithheld = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxWithheld)
   const ytdReserved = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxReserve ?? 0)
   const yearGross = taxableGross(data.records, year)
@@ -194,7 +412,7 @@ function TaxReport() {
         <div className={styles.lineList}>
           <div className={styles.line}><span>Taxable income so far</span><span>{lei(p.ytd)}</span></div>
           <div className={styles.line}><span>Read at, for the full year</span><span>{lei(p.projected)}</span></div>
-          <span className={styles.lineNote}>From {how}.{settings.tax.id === 'pfa_real' && p.estimate.expenses > 0 ? ` Less ${lei(p.estimate.expenses)} of expenses.` : ''}</span>
+          <span className={styles.lineNote}>From {how}.{(settings.tax.id === 'pfa_real' || settings.tax.id === 'srl_micro') && p.estimate.expenses > 0 ? ` Less ${lei(p.estimate.expenses)} of expenses.` : ''}</span>
           {p.estimate.lines.map((l) => (
             <Fragment key={l.key}>
               <div className={styles.line}>
@@ -237,3 +455,4 @@ function TaxReport() {
     </>
   )
 }
+

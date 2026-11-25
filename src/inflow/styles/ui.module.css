@@ -65,7 +65,11 @@
   align-items: center;
   font-size: var(--text-sm);
   color: var(--color-muted);
+  flex: 1 1 100%;
+  min-width: 0;
 }
+
+.customRange input { flex: 1 1 0; min-width: 0; }
 
 .customRange input {
   font: inherit;
@@ -763,3 +767,45 @@ button.row:hover { background: var(--color-surface-2); }
   border-radius: var(--radius-md);
   background: #fff;
 }
+
+/* ── wide statement tables (P&L, cash flow, pivot) ─────────────────────── */
+.statement { width: max-content; min-width: 100%; border-collapse: collapse; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.statement th, .statement td { padding: 7px 10px; text-align: right; white-space: nowrap; border-top: 1px solid var(--color-border); }
+.statement th { font-size: var(--text-xs); color: var(--color-faint); font-weight: var(--weight-medium); border-top: 0; }
+.statement th:first-child, .statement td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: var(--color-surface);
+  z-index: 1;
+  padding-left: 0;
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.statement .sub td { font-weight: var(--weight-bold); border-top: 1px solid var(--color-border-2); }
+.statement .detail td { color: var(--color-muted); font-size: var(--text-xs); border-top: 0; padding-top: 2px; padding-bottom: 2px; }
+.statement .detail td:first-child { padding-left: var(--space-sm); }
+.statement .neg { color: var(--inflow-down); }
+.statement .totalCol { font-weight: var(--weight-bold); background: var(--color-surface-2); }
+.statement tr.clickable { cursor: pointer; }
+.statement tr.clickable:hover td { background: var(--color-surface-2); }
+
+.scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-sm); }
+@media (min-width: 760px) { .scope { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.scope select {
+  font: inherit; font-size: var(--text-sm); color: var(--color-ink); background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 8px 10px; width: 100%; min-width: 0;
+}
+.scope select.scopeOn { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+.scope label { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-xs); color: var(--color-muted); min-width: 0; }
+
+.cards3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm); margin-bottom: var(--space-md); }
+@media (min-width: 760px) { .cards3 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.expectedRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-xs); }
+
+.fab { transition: padding var(--duration) var(--ease), width var(--duration) var(--ease); }
+.fabLabel { white-space: nowrap; }
+.fabCompact { width: 52px; padding: 0; justify-content: center; }
+.fabCompact .fabLabel { display: none; }

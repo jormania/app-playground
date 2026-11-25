@@ -1,12 +1,16 @@
 /**
- * InFlow's data model. Four kinds of thing, kept apart on purpose:
+ * InFlow's data model, kept apart on purpose:
  *
  *   IncomeRecord — one payment, received or expected
+ *   CostRecord   — one cost, paid or due (optional: Settings → Track costs)
  *   Client       — who paid
  *   Source       — how the work arrived (direct, agency, platform, …)
  *   Venue        — where the work happened (a room, Zoom, a client's office)
  *
- * The same four live as four Notion databases (see INFLOW.md); the select
+ * "Activity" in the interface is `category` here: the kind of work (1:1
+ * coaching, a workshop, a retreat…). It is a dimension like the others.
+ *
+ * The same five live as five Notion databases (see INFLOW.md); the select
  * values below are a closed vocabulary mirrored there.
  */
 
@@ -21,6 +25,21 @@ export type PaymentStatus = 'received' | 'expected'
 export type Category =
   | 'coaching_1on1' | 'group_coaching' | 'workshop' | 'retreat'
   | 'speaking' | 'content' | 'reimbursement' | 'other'
+
+/**
+ * Where a cost sits in the P&L. Direct costs (COGS) exist because a piece of
+ * work happened — the facilitator, the room hired for it, materials. Operating
+ * costs (SG&A) are paid regardless — rent, software, the accountant. The last
+ * two never touch the P&L: they are cash movements only.
+ */
+export type CostGroup = 'direct' | 'operating' | 'depreciation' | 'interest' | 'tax' | 'investment' | 'financing'
+export type CostCategory =
+  | 'facilitator' | 'venue_hire' | 'materials' | 'travel' | 'platform_fees'
+  | 'rent' | 'utilities' | 'software' | 'marketing' | 'accounting' | 'phone_internet'
+  | 'training' | 'insurance' | 'bank_fees' | 'other_operating'
+  | 'depreciation' | 'loan_interest' | 'income_tax' | 'contributions'
+  | 'equipment' | 'loan_repayment' | 'owner_drawings'
+export type CostStatus = 'paid' | 'due'
 
 export type ClientKind = 'individual' | 'business'
 export type ClientCountry = 'RO' | 'EU' | 'NON_EU'
@@ -63,6 +82,28 @@ export interface IncomeRecord {
   demo?: boolean
 }
 
+export interface CostRecord {
+  id: string
+  description: string
+  amount: number
+  currency: Currency
+  fxRate: number
+  amountRon: number
+  date: string
+  status: CostStatus
+  group: CostGroup
+  category: CostCategory
+  /** Optional links, so margins can be read per venue, client and activity. */
+  venueId: string | null
+  clientId: string | null
+  activity: Category | null
+  recurring: boolean
+  /** Counts as a deductible expense for the tax estimate (PFA sistem real, SRL). */
+  deductible: boolean
+  notes: string
+  demo?: boolean
+}
+
 export interface Client {
   id: string
   name: string
@@ -96,6 +137,8 @@ export interface Venue {
 
 export interface InflowData {
   records: IncomeRecord[]
+  /** Optional in stored data written before costs existed; always present after load. */
+  costs: CostRecord[]
   clients: Client[]
   sources: Source[]
   venues: Venue[]
@@ -129,6 +172,11 @@ export interface TaxProfile {
    * because the thresholds make the rate depend on the whole year, not one payment.
    */
   expectedAnnualIncome: number
+  /**
+   * With costs tracked, read deductible expenses from the recorded costs
+   * (annualised like income) instead of `annualExpenses`.
+   */
+  expensesFromCosts: boolean
 }
 
 export type ThemeChoice = 'system' | 'light' | 'dark'
@@ -154,4 +202,9 @@ export interface Settings {
   trackTax: boolean
   /** Show the welcome tour when the app opens. The tour's own checkbox sets it. */
   showTour: boolean
+  /** Costs, P&L and cash flow. Off: InFlow is income only. */
+  trackCosts: boolean
+  /** Cash in hand and in the bank on `openingCashDate`, the cash-flow starting point. */
+  openingCash: number
+  openingCashDate: string
 }

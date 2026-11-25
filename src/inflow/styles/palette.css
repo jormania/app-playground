@@ -31,6 +31,10 @@
 
   --inflow-up:   #2f7d4f;
   --inflow-down: #b3412f;
+
+  /* Lifts the DS toast stack above the tab bar and the add button, so a
+     toast never sits on the controls you reach for next. */
+  --toast-offset: calc(124px + env(safe-area-inset-bottom));
 }
 
 :root[data-theme="dark"] {

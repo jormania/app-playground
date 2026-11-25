@@ -5,11 +5,12 @@
  * "Income" means received payments. Expected ones are counted separately as
  * outstanding and never inflate a total.
  */
-import type { IncomeRecord, InflowData } from '../domain/types'
+import type { Category, IncomeRecord, InflowData } from '../domain/types'
+import { CATEGORY } from '../domain/vocabulary'
 import { round2 } from './money'
 import { inRange, type Bucket } from './period'
 
-export type Dimension = 'client' | 'source' | 'venue'
+export type Dimension = 'client' | 'source' | 'venue' | 'activity'
 
 export function received(records: IncomeRecord[], r: { from: string; to: string }): IncomeRecord[] {
   return records.filter((x) => x.status === 'received' && inRange(x.date, r))
@@ -65,19 +66,41 @@ export interface BreakdownRow {
 
 const NONE = '__none__'
 
-function keyOf(r: IncomeRecord, dim: Dimension): string {
-  const id = dim === 'client' ? r.clientId : dim === 'source' ? r.sourceId : r.venueId
+export function keyOf(r: Pick<IncomeRecord, 'clientId' | 'sourceId' | 'venueId' | 'category'>, dim: Dimension): string {
+  const id = dim === 'client' ? r.clientId : dim === 'source' ? r.sourceId : dim === 'venue' ? r.venueId : r.category
   return id ?? NONE
 }
 
-export function nameOf(data: InflowData, dim: Dimension, id: string): string {
-  if (id === NONE) return dim === 'client' ? 'No client' : dim === 'source' ? 'No source' : 'No venue'
+export const DIMENSION_NOUN: Record<Dimension, string> = { client: 'Client', source: 'Source', venue: 'Venue', activity: 'Activity' }
+
+export function nameOf(data: Pick<InflowData, 'clients' | 'sources' | 'venues'>, dim: Dimension, id: string): string {
+  if (id === NONE) return dim === 'client' ? 'No client' : dim === 'source' ? 'No source' : dim === 'venue' ? 'No venue' : 'No activity'
+  if (dim === 'activity') return CATEGORY[id as Category] ?? id
   const list = dim === 'client' ? data.clients : dim === 'source' ? data.sources : data.venues
   return list.find((x) => x.id === id)?.name ?? 'Deleted'
 }
 
+/** The four scope filters reports share: '' = any, NO_ENTITY = not set. */
+export interface Scope {
+  clientId: string
+  sourceId: string
+  venueId: string
+  activity: string
+}
+
+export const ANY_SCOPE: Scope = { clientId: '', sourceId: '', venueId: '', activity: '' }
+
+export function inScope(r: Pick<IncomeRecord, 'clientId' | 'sourceId' | 'venueId' | 'category'>, s: Scope): boolean {
+  const m = (field: string | null, want: string) => !want || (want === NONE ? !field : field === want)
+  return m(r.clientId, s.clientId) && m(r.sourceId, s.sourceId) && m(r.venueId, s.venueId) && m(r.category, s.activity)
+}
+
+export function scopeIsSet(s: Scope): boolean {
+  return !!(s.clientId || s.sourceId || s.venueId || s.activity)
+}
+
 /** Totals per client, source or venue, largest first, with the previous period beside each. */
-export function breakdown(data: InflowData, rs: IncomeRecord[], prev: IncomeRecord[], dim: Dimension): BreakdownRow[] {
+export function breakdown(data: Pick<InflowData, 'clients' | 'sources' | 'venues'>, rs: IncomeRecord[], prev: IncomeRecord[], dim: Dimension): BreakdownRow[] {
   const total = sum(rs)
   const groups = new Map<string, IncomeRecord[]>()
   for (const r of rs) {
@@ -173,4 +196,36 @@ export function clientStats(records: IncomeRecord[]): Map<string, { total: numbe
     out.set(r.clientId, cur)
   }
   return out
+}
+
+export interface Pivot {
+  cols: { id: string; name: string }[]
+  rows: { id: string; name: string; cells: number[]; total: number }[]
+  colTotals: number[]
+}
+
+/**
+ * Rows by one dimension, columns by another: "which activity at which venue".
+ * The largest `maxCols` columns are kept and the rest fold into "Other".
+ */
+export function pivot(data: Pick<InflowData, 'clients' | 'sources' | 'venues'>, rs: IncomeRecord[], rowDim: Dimension, colDim: Dimension, maxCols = 4): Pivot {
+  const colTotals = new Map<string, number>()
+  for (const r of rs) colTotals.set(keyOf(r, colDim), (colTotals.get(keyOf(r, colDim)) ?? 0) + r.amountRon)
+  const ranked = [...colTotals.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+  const keep = ranked.slice(0, maxCols)
+  const hasOther = ranked.length > maxCols
+  const OTHER = '__other__'
+  const colOf = (r: IncomeRecord) => (keep.includes(keyOf(r, colDim)) ? keyOf(r, colDim) : OTHER)
+  const cols = [...keep.map((id) => ({ id, name: nameOf(data, colDim, id) })), ...(hasOther ? [{ id: OTHER, name: 'Other' }] : [])]
+  const rowMap = new Map<string, number[]>()
+  for (const r of rs) {
+    const k = keyOf(r, rowDim)
+    const cells = rowMap.get(k) ?? cols.map(() => 0)
+    cells[cols.findIndex((c) => c.id === colOf(r))] += r.amountRon
+    rowMap.set(k, cells)
+  }
+  const rows = [...rowMap.entries()]
+    .map(([id, cells]) => ({ id, name: nameOf(data, rowDim, id), cells: cells.map(round2), total: round2(cells.reduce((a, b) => a + b, 0)) }))
+    .sort((a, b) => b.total - a.total)
+  return { cols, rows, colTotals: cols.map((_, i) => round2(rows.reduce((s, r) => s + r.cells[i], 0))) }
 }

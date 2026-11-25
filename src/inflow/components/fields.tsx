@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import styles from '../styles/ui.module.css'
 
 interface Base {
@@ -66,4 +66,39 @@ export function parseAmount(s: string): number {
   else norm = t.replace(/,/g, '')
   const n = Number(norm)
   return Number.isFinite(n) ? n : NaN
+}
+
+/**
+ * A number field that keeps what you type ("12." on the way to "12.5") and
+ * reports the parsed number. A plain controlled input rebuilt from the number
+ * on every keystroke swallows the decimal point.
+ */
+export function NumberInput({ label, value, onCommit, hint, placeholder, scale = 1, emptyIsZero = true }: {
+  label: string
+  value: number | null
+  onCommit: (n: number | null) => void
+  hint?: ReactNode
+  placeholder?: string
+  /** Shown × scale: a stored 0.2 shows as 20 with scale 100. */
+  scale?: number
+  emptyIsZero?: boolean
+}) {
+  const show = (v: number | null) => (v === null || (v === 0 && emptyIsZero && placeholder) ? '' : String(Math.round(v * scale * 100) / 100))
+  const [text, setText] = useState(() => show(value))
+  const [seen, setSeen] = useState(value)
+  // Follow changes made elsewhere (a restore, a preset) without fighting the typist.
+  if (value !== seen) {
+    setSeen(value)
+    const parsed = text.trim() === '' ? (emptyIsZero ? 0 : null) : parseAmount(text) / scale
+    if (parsed !== value) setText(show(value))
+  }
+  return (
+    <TextInput label={label} value={text} inputMode="decimal" placeholder={placeholder} hint={hint}
+      onChange={(t) => {
+        setText(t)
+        if (t.trim() === '') { onCommit(emptyIsZero ? 0 : null); return }
+        const n = parseAmount(t)
+        if (Number.isFinite(n) && n >= 0) onCommit(n / scale)
+      }} />
+  )
 }

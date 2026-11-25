@@ -10,9 +10,9 @@ import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SelectInput } from '../components/fields'
 import type { IncomeRecord, InflowData } from '../domain/types'
-import { TAX_HANDLING, TAXABILITY, VAT_SHORT } from '../domain/vocabulary'
+import { ACTIVITY, TAX_HANDLING, TAXABILITY, VAT_SHORT, options } from '../domain/vocabulary'
 import { largeRecordIds, NO_ENTITY, sum } from '../lib/analytics'
-import { monthLabel, parseDate, weekdayShort } from '../lib/dates'
+import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
 import { lei, money } from '../lib/money'
 import { inRange } from '../lib/period'
 import { download, recordsCsv } from '../store/backup'
@@ -24,7 +24,7 @@ export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: st
   const match = (field: string | null, want: string) => !want || (want === NO_ENTITY ? !field : field === want)
   return data.records
     .filter((r) => f.range === 'all' || inRange(r.date, range))
-    .filter((r) => match(r.clientId, f.clientId) && match(r.sourceId, f.sourceId) && match(r.venueId, f.venueId))
+    .filter((r) => match(r.clientId, f.clientId) && match(r.sourceId, f.sourceId) && match(r.venueId, f.venueId) && match(r.category, f.activity))
     .filter((r) => !f.taxability || r.taxability === f.taxability)
     .filter((r) => !f.status || (f.status === 'suggested' ? r.classification === 'suggested' : r.status === f.status))
     .filter((r) => !q || [r.description, r.notes, name(data.clients, r.clientId), name(data.sources, r.sourceId), name(data.venues, r.venueId), r.currency]
@@ -53,6 +53,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
   if (filter.clientId) active.push(['clientId', filter.clientId === NO_ENTITY ? 'No client' : name(data.clients, filter.clientId) ?? 'Client'])
   if (filter.sourceId) active.push(['sourceId', filter.sourceId === NO_ENTITY ? 'No source' : name(data.sources, filter.sourceId) ?? 'Source'])
   if (filter.venueId) active.push(['venueId', filter.venueId === NO_ENTITY ? 'No venue' : name(data.venues, filter.venueId) ?? 'Venue'])
+  if (filter.activity) active.push(['activity', filter.activity === NO_ENTITY ? 'No activity' : ACTIVITY[filter.activity as keyof typeof ACTIVITY]])
   if (filter.taxability) active.push(['taxability', TAXABILITY[filter.taxability as keyof typeof TAXABILITY]])
   if (filter.status) active.push(['status', filter.status === 'suggested' ? 'Unconfirmed tax' : filter.status === 'expected' ? 'Expected' : 'Received'])
 
@@ -94,6 +95,11 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
               <option value="">Any</option>
               {data.venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               <option value={NO_ENTITY}>No venue</option>
+            </SelectInput>
+            <SelectInput label="Activity" value={filter.activity} onChange={(v) => set({ activity: v })}>
+              <option value="">Any</option>
+              {options(ACTIVITY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <option value={NO_ENTITY}>No activity</option>
             </SelectInput>
             {settings.trackTax && <SelectInput label="Tax" value={filter.taxability} onChange={(v) => set({ taxability: v })}>
               <option value="">Any</option>
@@ -140,16 +146,17 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
 function EntryRow({ r, data, large, today, onOpen, tax }: { r: IncomeRecord; data: InflowData; large: boolean; today: string; onOpen: (id: string) => void; tax: boolean }) {
   const client = data.clients.find((c) => c.id === r.clientId)?.name
   const venue = data.venues.find((v) => v.id === r.venueId)?.name
+  const activity = r.category ? ACTIVITY[r.category] : null
   const taxClass = r.taxability === 'taxable' ? styles.tagTax : r.taxability === 'non_taxable' ? styles.tagNon : styles.tagReview
   return (
     <button type="button" className={styles.entry} onClick={() => onOpen(r.id)} aria-label={`${r.description}, ${money(r.amount, r.currency)}, ${r.date}`}>
       <span className={styles.entryDate}>
         <span className={styles.entryDay}>{parseDate(r.date).getDate()}</span>
-        <span className={styles.entryDow}>{weekdayShort(r.date)}</span>
+        <span className={styles.entryDow}>{r.status === 'expected' ? monthShort(r.date) : weekdayShort(r.date)}</span>
       </span>
       <span style={{ minWidth: 0 }}>
         <span className={styles.entryTitle} style={{ display: 'block' }}>{r.description}</span>
-        <span className={styles.entrySub} style={{ display: 'block' }}>{[client, venue].filter(Boolean).join(' · ') || '—'}</span>
+        <span className={styles.entrySub} style={{ display: 'block' }}>{[client, venue, activity].filter(Boolean).join(' · ') || '—'}</span>
         <span className={styles.tags}>
           {r.status === 'expected' && (
             <span className={`${styles.tag} ${styles.tagAlert}`}>{r.date < today ? 'Overdue' : 'Expected'}</span>

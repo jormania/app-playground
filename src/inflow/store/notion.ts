@@ -14,9 +14,9 @@
 import type { KeyValueStore } from '../../shared/kvStore'
 import { notionProxy } from '../../shared/notionClient'
 import { parseNotionId } from '../../shared/notionId'
-import type { Category, Client, Currency, IncomeRecord, InflowData, Source, Venue } from '../domain/types'
+import type { Category, Client, CostRecord, Currency, IncomeRecord, InflowData, Source, Venue } from '../domain/types'
 import {
-  CATEGORY, CLIENT_COUNTRY, CLIENT_KIND, CURRENCIES, SOURCE_TAX_DEFAULT, SOURCE_TYPE, STATUS,
+  CATEGORY, CLIENT_COUNTRY, COST_CATEGORY, COST_GROUP_SHORT, COST_STATUS, CLIENT_KIND, CURRENCIES, SOURCE_TAX_DEFAULT, SOURCE_TYPE, STATUS,
   TAX_HANDLING, TAXABILITY, VAT, VENUE_TYPE, fromLabel,
 } from '../domain/vocabulary'
 import { round2 } from '../lib/money'
@@ -110,6 +110,53 @@ export function recordToProps(r: IncomeRecord): Props {
   }
 }
 
+export function costFromPage(page: { id: string; properties: Props }): CostRecord {
+  const p = page.properties
+  const currencyName = sel(p['Currency'])
+  const currency = (CURRENCIES as string[]).includes(currencyName ?? '') ? (currencyName as Currency) : 'RON'
+  const amount = num(p['Amount']) ?? 0
+  const fxRate = num(p['FX rate']) ?? (currency === 'RON' ? 1 : 0)
+  const group = fromLabel<CostRecord['group']>(COST_GROUP_SHORT, sel(p['Group']), 'operating')
+  return {
+    id: page.id.replace(/-/g, ''),
+    description: text(p['Description']),
+    amount,
+    currency,
+    fxRate,
+    amountRon: num(p['Amount RON']) ?? round2(amount * fxRate),
+    date: date(p['Date']),
+    status: fromLabel(COST_STATUS, sel(p['Status']), 'paid'),
+    group,
+    category: fromLabel<CostRecord['category']>(COST_CATEGORY, sel(p['Category']), group === 'direct' ? 'materials' : 'other_operating'),
+    venueId: rel(p['Venue']),
+    clientId: rel(p['Client']),
+    activity: sel(p['Activity']) ? fromLabel<Category>(CATEGORY, sel(p['Activity']), 'other') : null,
+    recurring: chk(p['Recurring']),
+    deductible: chk(p['Deductible']),
+    notes: text(p['Notes']),
+  }
+}
+
+export function costToProps(c: CostRecord): Props {
+  return {
+    'Description': wTitle(c.description),
+    'Amount': wNum(c.amount),
+    'Currency': wSel(c.currency),
+    'FX rate': wNum(c.fxRate),
+    'Amount RON': wNum(c.amountRon),
+    'Date': { date: c.date ? { start: c.date } : null },
+    'Status': wSel(COST_STATUS[c.status]),
+    'Group': wSel(COST_GROUP_SHORT[c.group]),
+    'Category': wSel(COST_CATEGORY[c.category]),
+    'Venue': wRel(c.venueId),
+    'Client': wRel(c.clientId),
+    'Activity': wSel(c.activity ? CATEGORY[c.activity] : null),
+    'Recurring': wChk(c.recurring),
+    'Deductible': wChk(c.deductible),
+    'Notes': wText(c.notes),
+  }
+}
+
 export function clientFromPage(page: { id: string; properties: Props }): Client {
   const p = page.properties
   return {
@@ -174,6 +221,8 @@ export interface NotionDbs {
   clients: string
   sources: string
   venues: string
+  /** Optional: found as a sibling of Income on its parent page; null if there is none. */
+  costs: string | null
 }
 
 /** Find the Clients, Sources and Venues databases through Income's relation properties. */
@@ -182,13 +231,32 @@ export async function discoverDatabases(call: Call, incomeDbId: string): Promise
   const db = await call(`databases/${income}`, 'GET')
   const props = (db.properties ?? {}) as Props
   const target = (name: string) => String(props[name]?.relation?.database_id ?? '').replace(/-/g, '')
-  const dbs = { income, clients: target('Client'), sources: target('Source'), venues: target('Venue') }
+  const dbs: NotionDbs = { income, clients: target('Client'), sources: target('Source'), venues: target('Venue'), costs: null }
   const missing = ['Description', 'Amount', 'Date', 'Taxability'].filter((p) => !props[p])
   if (missing.length) throw new Error(`That database is missing ${missing.join(', ')}. Paste the link of "InFlow — Income".`)
   if (!dbs.clients || !dbs.sources || !dbs.venues) {
     throw new Error('Connected, but the Client, Source or Venue relation is missing. Share all four InFlow databases with your integration.')
   }
+  dbs.costs = await findCostsDb(call, db)
   return dbs
+}
+
+/** Costs isn't linked from Income, so look for "… Costs" among Income's siblings on its page. */
+async function findCostsDb(call: Call, incomeDb: Record<string, any>): Promise<string | null> {
+  const pageId = incomeDb?.parent?.type === 'page_id' ? incomeDb.parent.page_id : null
+  if (!pageId) return null
+  try {
+    let cursor: string | undefined
+    do {
+      const res = await call(`blocks/${String(pageId).replace(/-/g, '')}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`, 'GET')
+      const hit = (res.results ?? []).find((b: any) => b.type === 'child_database' && /costs\s*$/i.test(b.child_database?.title ?? ''))
+      if (hit) return String(hit.id).replace(/-/g, '')
+      cursor = res.has_more ? res.next_cursor : undefined
+    } while (cursor)
+  } catch {
+    // Without access to the page, costs are simply unavailable; income still works.
+  }
+  return null
 }
 
 async function queryAll(call: Call, dbId: string): Promise<{ id: string; properties: Props }[]> {
@@ -208,6 +276,8 @@ export class NotionRepo implements Repo {
   readonly kind = 'notion' as const
   private dbs: NotionDbs | null = null
   private call: Call
+  /** Whether a Costs database was found next to Income. */
+  hasCosts = false
 
   constructor(token: string, private incomeDbId: string, private cache: KeyValueStore, call?: Call) {
     this.call = call ?? ((path, method, body) => notionProxy(token, path, method, body))
@@ -220,12 +290,15 @@ export class NotionRepo implements Repo {
 
   async load(): Promise<InflowData> {
     const dbs = await this.databases()
-    const [records, clients, sources, venues] = await Promise.all([
+    const [records, clients, sources, venues, costs] = await Promise.all([
       queryAll(this.call, dbs.income), queryAll(this.call, dbs.clients),
       queryAll(this.call, dbs.sources), queryAll(this.call, dbs.venues),
+      dbs.costs ? queryAll(this.call, dbs.costs) : Promise.resolve([]),
     ])
+    this.hasCosts = !!dbs.costs
     const data: InflowData = {
       records: records.map(recordFromPage).filter((r) => r.date),
+      costs: costs.map(costFromPage).filter((c) => c.date),
       clients: clients.map(clientFromPage),
       sources: sources.map(sourceFromPage),
       venues: venues.map(venueFromPage),
@@ -252,6 +325,20 @@ export class NotionRepo implements Repo {
     await this.call(`pages/${id}`, 'PATCH', { archived: true })
   }
 
+  async saveCost(c: CostRecord): Promise<CostRecord> {
+    const dbs = await this.databases()
+    if (!dbs.costs) throw new Error('No "InFlow — Costs" database next to Income in Notion. Duplicate it from the Starter Template.')
+    const properties = costToProps(c)
+    const page = c.id
+      ? await this.call(`pages/${c.id}`, 'PATCH', { properties })
+      : await this.call('pages', 'POST', { parent: { database_id: dbs.costs }, properties })
+    return { ...c, id: String(page.id).replace(/-/g, ''), demo: undefined }
+  }
+
+  async deleteCost(id: string): Promise<void> {
+    await this.call(`pages/${id}`, 'PATCH', { archived: true })
+  }
+
   async saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T> {
     const dbs = await this.databases()
     const db = kind === 'client' ? dbs.clients : kind === 'source' ? dbs.sources : dbs.venues
@@ -274,21 +361,26 @@ export class NotionRepo implements Repo {
  */
 export async function copyToNotion(repo: Repo, data: InflowData, onProgress?: (done: number, total: number) => void): Promise<number> {
   const records = data.records.filter((r) => !r.demo)
-  const used = new Set(records.flatMap((r) => [r.clientId, r.sourceId, r.venueId]))
+  const costs = (data.costs ?? []).filter((c) => !c.demo)
+  const used = new Set([...records.flatMap((r) => [r.clientId, r.sourceId, r.venueId]), ...costs.flatMap((c) => [c.clientId, c.venueId])])
   const idMap = new Map<string, string>()
   const kinds: [EntityKind, Entity[]][] = [['client', data.clients], ['source', data.sources], ['venue', data.venues]]
   const entities = kinds.flatMap(([k, list]) => list.filter((e) => !e.demo || used.has(e.id)).map((e) => [k, e] as const))
-  const total = entities.length + records.length
+  const total = entities.length + records.length + costs.length
   let done = 0
   for (const [kind, e] of entities) {
     const saved = await repo.saveEntity(kind, { ...e, id: '', demo: undefined })
     idMap.set(e.id, saved.id)
     onProgress?.(++done, total)
   }
+  const map = (id: string | null) => (id ? idMap.get(id) ?? null : null)
   for (const r of records) {
-    const map = (id: string | null) => (id ? idMap.get(id) ?? null : null)
     await repo.saveRecord({ ...r, id: '', clientId: map(r.clientId), sourceId: map(r.sourceId), venueId: map(r.venueId) })
     onProgress?.(++done, total)
   }
-  return records.length
+  for (const c of costs) {
+    await repo.saveCost({ ...c, id: '', clientId: map(c.clientId), venueId: map(c.venueId) })
+    onProgress?.(++done, total)
+  }
+  return records.length + costs.length
 }

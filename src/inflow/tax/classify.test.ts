@@ -4,7 +4,7 @@ import { suggestClassification } from './classify'
 
 const profile: TaxProfile = {
   id: 'pfa_real', vatRegistered: false, cassCoveredElsewhere: false, casExempt: false, casOptIn: false,
-  annualExpenses: 0, annualNorm: 0, microRate: null, dividendPayout: 1, customRate: 0.2, expectedAnnualIncome: 0,
+  annualExpenses: 0, annualNorm: 0, microRate: null, dividendPayout: 1, customRate: 0.2, expectedAnnualIncome: 0, expensesFromCosts: false,
 }
 const client = (kind: Client['kind'], country: Client['country']): Client =>
   ({ id: 'c', name: 'C', kind, country, contact: '', notes: '', archived: false })

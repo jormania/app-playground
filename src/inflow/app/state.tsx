@@ -7,8 +7,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { indexedDbStore, type KeyValueStore } from '../../shared/kvStore'
 import { readJson, writeJson } from '../../shared/storage'
 import { useToastStack, type ToastInput } from '../../ds'
-import { buildDemo, hasDemo, withoutDemo } from '../data/demo'
-import type { IncomeRecord, InflowData, Settings } from '../domain/types'
+import { buildDemo, demoOpening, hasDemo, withoutDemo } from '../data/demo'
+import type { CostRecord, IncomeRecord, InflowData, Settings } from '../domain/types'
+import { ANY_SCOPE, type Scope } from '../lib/analytics'
 import { todayString, type PeriodChoice } from '../lib/period'
 import { copyToNotion, NotionRepo } from '../store/notion'
 import { DeviceRepo, EMPTY, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
@@ -24,13 +25,17 @@ export interface IncomeFilter {
   clientId: string
   sourceId: string
   venueId: string
+  /** Activity: the record's `category`. */
+  activity: string
   taxability: string
   status: string
   /** 'period' follows the selected period; 'all' shows everything. */
   range: 'period' | 'all'
 }
 
-export const EMPTY_FILTER: IncomeFilter = { query: '', clientId: '', sourceId: '', venueId: '', taxability: '', status: '', range: 'all' }
+export const EMPTY_FILTER: IncomeFilter = { query: '', clientId: '', sourceId: '', venueId: '', activity: '', taxability: '', status: '', range: 'all' }
+
+const SCOPE_KEY = 'inflow:report-scope'
 
 interface InflowState {
   today: string
@@ -45,8 +50,15 @@ interface InflowState {
   setPeriod: (p: PeriodChoice) => void
   filter: IncomeFilter
   setFilter: (f: IncomeFilter) => void
+  /** The filter every report shares: client, source, venue, activity. */
+  scope: Scope
+  setScope: (s: Scope) => void
   saveRecord: (r: IncomeRecord) => Promise<IncomeRecord | null>
   deleteRecord: (r: IncomeRecord) => Promise<void>
+  saveCost: (c: CostRecord) => Promise<CostRecord | null>
+  deleteCost: (c: CostRecord) => Promise<void>
+  /** False in Notion mode when no Costs database sits next to Income. */
+  costsAvailable: boolean
   saveEntity: <T extends Entity>(kind: EntityKind, e: T) => Promise<T | null>
   deleteEntity: (kind: EntityKind, id: string) => Promise<void>
   clearDemo: () => Promise<void>
@@ -87,6 +99,9 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
   const [offlineCopy, setOfflineCopy] = useState(false)
   const [period, setPeriodState] = useState<PeriodChoice>(() => readJson<PeriodChoice>(PERIOD_KEY, { preset: 'month' }))
   const [filter, setFilter] = useState<IncomeFilter>(EMPTY_FILTER)
+  const [scope, setScopeState] = useState<Scope>(() => ({ ...ANY_SCOPE, ...readJson<Partial<Scope>>(SCOPE_KEY, {}) }))
+  const setScope = useCallback((s: Scope) => { setScopeState(s); writeJson(SCOPE_KEY, s) }, [])
+  const [costsAvailable, setCostsAvailable] = useState(true)
   const toasts = useToastStack()
   const { push } = toasts
   const toast = useCallback((t: ToastInput | string) => { push(typeof t === 'string' ? { message: t } : t) }, [push])
@@ -123,17 +138,24 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
       if (!settingsRef.current.demoSeeded && dev.records.length === 0 && dev.clients.length === 0) {
         dev = buildDemo(today, settingsRef.current.tax)
         await device.replaceAll(dev)
-        updateSettings({ demoSeeded: true })
+        updateSettings({ demoSeeded: true, ...(settingsRef.current.openingCashDate ? {} : demoOpening(today)) })
+      } else if (dev.records.some((r) => r.demo) && dev.costs.length === 0) {
+        // A demo seeded before costs existed gets the demo's costs, so the P&L isn't empty.
+        dev = { ...dev, costs: buildDemo(today, settingsRef.current.tax).costs }
+        await device.replaceAll(dev)
+        if (!settingsRef.current.openingCashDate) updateSettings(demoOpening(today))
       }
       setDeviceData(dev)
       if (repo.kind === 'device') {
         setData(dev)
+        setCostsAvailable(true)
         setOfflineCopy(false)
       } else {
         const cached = repo instanceof NotionRepo ? await repo.cached() : EMPTY
         if (cached.records.length || cached.clients.length) setData(cached)
         try {
           setData(await repo.load())
+          setCostsAvailable(!(repo instanceof NotionRepo) || repo.hasCosts)
           setOfflineCopy(false)
         } catch (e) {
           if (cached.records.length || cached.clients.length) {
@@ -183,6 +205,29 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     } catch (e) { fail(e, 'Deleting') }
   }, [repo, apply, fail, toast, saveRecord])
 
+  const saveCost = useCallback(async (c: CostRecord) => {
+    try {
+      const saved = await repo.saveCost(c)
+      apply((d) => {
+        const exists = !!c.id && d.costs.some((x) => x.id === c.id)
+        return { ...d, costs: exists ? d.costs.map((x) => (x.id === c.id ? saved : x)) : [...d.costs, saved] }
+      })
+      return saved
+    } catch (e) { fail(e, 'Saving'); return null }
+  }, [repo, apply, fail])
+
+  const deleteCost = useCallback(async (c: CostRecord) => {
+    try {
+      await repo.deleteCost(c.id)
+      apply((d) => ({ ...d, costs: d.costs.filter((x) => x.id !== c.id) }))
+      toast({
+        message: 'Cost deleted',
+        actionLabel: 'Undo',
+        onAction: () => { void saveCost(repo.kind === 'notion' ? { ...c, id: '' } : c) },
+      })
+    } catch (e) { fail(e, 'Deleting') }
+  }, [repo, apply, fail, toast, saveCost])
+
   const saveEntity = useCallback(async <T extends Entity>(kind: EntityKind, e: T): Promise<T | null> => {
     try {
       const saved = await repo.saveEntity(kind, e)
@@ -205,6 +250,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
         ...d,
         [key]: (d[key] as Entity[]).filter((x) => x.id !== id),
         records: d.records.map((r) => (r[field] === id ? { ...r, [field]: null } : r)),
+        costs: d.costs.map((c) => (field !== 'sourceId' && c[field as 'clientId' | 'venueId'] === id ? { ...c, [field]: null } : c)),
       }))
     } catch (e) { fail(e, 'Deleting') }
   }, [repo, apply, fail])
@@ -225,6 +271,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     const merge = <T extends { id: string }>(a: T[], b: T[]) => [...a, ...b.filter((x) => !ids(a).has(x.id))]
     const next: InflowData = {
       records: [...mine.records, ...demo.records],
+      costs: [...mine.costs, ...demo.costs],
       clients: merge(mine.clients, demo.clients),
       sources: merge(mine.sources, demo.sources),
       venues: merge(mine.venues, demo.venues),
@@ -232,15 +279,17 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     await device.replaceAll(next)
     setDeviceData(next)
     if (repo.kind === 'device') setData(next)
+    if (!settingsRef.current.openingCashDate) updateSettings(demoOpening(today))
     toast({ message: 'Demo data loaded on this device', tone: 'success' })
-  }, [today, deviceData, device, repo, toast])
+  }, [today, deviceData, device, repo, toast, updateSettings])
 
   const restore = useCallback(async (b: Backup) => {
-    await device.replaceAll(b.data)
-    setDeviceData(b.data)
+    const data = { ...b.data, costs: b.data.costs ?? [] }
+    await device.replaceAll(data)
+    setDeviceData(data)
     const { notionToken: _t, ...keep } = b.settings as Settings
     updateSettings({ ...keep, notionToken: settingsRef.current.notionToken, mode: 'device', demoSeeded: true })
-    setData(b.data)
+    setData(data)
     toast({ message: `Restored ${b.data.records.length} payments to this device`, tone: 'success' })
   }, [device, updateSettings, toast])
 
@@ -251,11 +300,11 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     return n
   }, [repo, deviceData, reload])
 
-  const deviceHasOwnData = deviceData.records.some((r) => !r.demo)
+  const deviceHasOwnData = deviceData.records.some((r) => !r.demo) || deviceData.costs.some((c) => !c.demo)
 
   const value: InflowState = {
     today, settings, updateSettings, data, load, error, offlineCopy, reload, period, setPeriod,
-    filter, setFilter, saveRecord, deleteRecord, saveEntity, deleteEntity, clearDemo, loadDemo, restore,
+    filter, setFilter, scope, setScope, saveRecord, deleteRecord, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, clearDemo, loadDemo, restore,
     copyDeviceToNotion, deviceHasOwnData, toast, toasts,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

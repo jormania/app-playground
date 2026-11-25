@@ -1,11 +1,12 @@
 /**
- * The 20-second screen: how much came in, from where, how much of it is
- * taxable, what's been withheld, what to put aside, and how it's moving.
+ * The 20-second screen: how much came in, from where, how it's moving, what
+ * was kept after costs (optional), how much of it is taxable, what's been
+ * withheld and what to put aside (optional).
  */
 import { useMemo, useState } from 'react'
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Info, Sparkles } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, Info, Scale, Sparkles } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
-import { useInflow } from '../app/state'
+import { EMPTY_FILTER, useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { BreakdownList, SplitBar, TrendChart } from '../components/charts'
 import { Optional } from '../components/Optional'
@@ -15,7 +16,9 @@ import {
 import { addDays, daysBetween, endOfMonth, shortDate, startOfMonth, startOfWeek, yearOf } from '../lib/dates'
 import { delta, lei, money, percent } from '../lib/money'
 import { alignedPrevious, buckets, type Bucket } from '../lib/period'
-import { projectYear } from '../tax/estimate'
+import { projectYear, suggestReserve } from '../tax/estimate'
+import { breakEven, buildPnl } from '../lib/finance'
+import type { IncomeRecord } from '../domain/types'
 import styles from '../styles/ui.module.css'
 
 function granularity(bs: Bucket[]): string {
@@ -27,13 +30,17 @@ const DIMS: { value: Dimension; label: string }[] = [
   { value: 'client', label: 'Clients' },
   { value: 'source', label: 'Sources' },
   { value: 'venue', label: 'Venues' },
+  { value: 'activity', label: 'Activities' },
 ]
 
-export function Overview({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, settings, today, setFilter, filter } = useInflow()
+const FILTER_KEY: Record<Dimension, 'clientId' | 'sourceId' | 'venueId' | 'activity'> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
+
+export function Overview({ onOpen, onAddCost }: { onOpen: (id: string) => void; onAddCost: () => void }) {
+  const { data, settings, today, setFilter, saveRecord, toast } = useInflow()
   const { range, prev, prevWhole, cur, before, summary, prevSummary } = usePeriodData()
   const [dim, setDim] = useState<Dimension>('client')
-  const go = (patch: Partial<typeof filter>) => { setFilter({ ...filter, query: '', clientId: '', sourceId: '', venueId: '', taxability: '', status: '', range: 'period', ...patch }); location.hash = '#/income' }
+  const go = (patch: Partial<typeof EMPTY_FILTER>) => { setFilter({ ...EMPTY_FILTER, range: 'period', ...patch }); location.hash = '#/income' }
+  const costsForTax = useMemo(() => (settings.trackCosts ? data.costs : []), [settings.trackCosts, data.costs])
 
   const week = sum(received(data.records, { from: startOfWeek(today), to: addDays(startOfWeek(today), 6) }))
   const month = sum(received(data.records, { from: startOfMonth(today), to: endOfMonth(today) }))
@@ -51,7 +58,24 @@ export function Overview({ onOpen }: { onOpen: (id: string) => void }) {
   const large = useMemo(() => largeRecordIds(data.records, settings.largeMultiple), [data.records, settings.largeMultiple])
   const notable = cur.filter((r) => large.has(r.id))
   const owed = outstanding(data.records, today)
-  const projection = useMemo(() => projectYear(settings.tax, data.records, yearOf(range.to > today ? today : range.to), today), [settings.tax, data.records, range.to, today])
+  const projection = useMemo(() => projectYear(settings.tax, data.records, yearOf(range.to > today ? today : range.to), today, 0, costsForTax), [settings.tax, data.records, range.to, today, costsForTax])
+  const pnl = useMemo(() => (settings.trackCosts ? buildPnl(data.records, data.costs, [{ from: range.from, to: range.to, label: '' }]) : null), [settings.trackCosts, data, range])
+  const pnlLine = (k: string) => pnl?.lines.find((l) => l.key === k)?.total ?? 0
+  const be = useMemo(() => (settings.trackCosts ? breakEven(data.records, data.costs, today) : null), [settings.trackCosts, data, today])
+  const costsDue = data.costs.filter((c) => c.status === 'due')
+
+  // One tap when an expected payment lands: received today, with its tax reserve suggested.
+  const markReceived = async (r: IncomeRecord) => {
+    const others = data.records.filter((x) => x.id !== r.id)
+    const next: IncomeRecord = { ...r, status: 'received', date: today }
+    if (settings.trackTax && r.taxability === 'taxable' && r.taxReserve === null) {
+      const s = suggestReserve(next, others, settings.tax, today, costsForTax)
+      next.taxReserve = s.amount
+      next.reserveSource = 'suggested'
+      next.taxRules = s.rulesId
+    }
+    if (await saveRecord(next)) toast({ message: `Marked received: ${money(r.amount, r.currency)}`, tone: 'success' })
+  }
   const target = settings.monthlyTarget
   const recurringTotal = sum(cur.filter((r) => r.recurring))
   const recurringShare = summary.total > 0 ? recurringTotal / summary.total : 0
@@ -136,7 +160,7 @@ export function Overview({ onOpen }: { onOpen: (id: string) => void }) {
           </div>
           <SegmentedControl size="sm" options={DIMS} value={dim} onChange={(v) => setDim(v as Dimension)} label="Break down by" />
           <div style={{ marginTop: 'var(--space-sm)' }}>
-            <BreakdownList rows={rows} onSelect={(r) => go({ [`${dim}Id`]: r.id })} />
+            <BreakdownList rows={rows} onSelect={(r) => go({ [FILTER_KEY[dim]]: r.id })} />
           </div>
           {dim === 'client' && conc && conc.level !== 'healthy' && (
             <p className={styles.hint} style={{ marginTop: 'var(--space-sm)' }}>
@@ -165,7 +189,9 @@ export function Overview({ onOpen }: { onOpen: (id: string) => void }) {
               <span>{percent(projection.rate, 1)}</span>
             </div>
             <span className={styles.lineNote}>
-              {settings.tax.id === 'custom' ? 'Your own flat rate.' : `At ${lei(projection.projected)} of taxable income for ${projection.year}. Estimate, not advice.`}
+              {settings.tax.id === 'custom' ? 'Your own flat rate.'
+                : projection.capped ? `Capped: on ${lei(projection.projected)} a year, fixed minimums would take ${percent(projection.rawRate)}. See the Tax report.`
+                  : `At ${lei(projection.projected)} of taxable income for ${projection.year}. Estimate, not advice.`}
             </span>
           </div>
           {summary.review > 0 && (
@@ -191,11 +217,47 @@ export function Overview({ onOpen }: { onOpen: (id: string) => void }) {
           </div>
         </section>
         )}
-      </div>
 
-      {(owed.count > 0 || notable.length > 0) && (
-        <div className={styles.grid2}>
-          {owed.count > 0 && (
+        {pnl && (
+          <section className={styles.panel} aria-label="What you kept">
+            <div className={styles.panelHead}>
+              <h2 className={styles.panelTitle}><Scale size={14} aria-hidden /> What you kept</h2>
+              <button type="button" className={styles.linkButton} onClick={() => { location.hash = '#/reports/pnl' }}>P&L</button>
+            </div>
+            {data.costs.length === 0 ? (
+              <p className={styles.hint}>Add your costs to see profit, margins per venue and your break-even. <button type="button" className={styles.linkButton} onClick={onAddCost}>Add a cost</button></p>
+            ) : (
+              <div className={styles.lineList}>
+                <div className={styles.line}><span>Income received</span><span>{lei(pnlLine('revenue'))}</span></div>
+                <div className={styles.line}><span>− Direct costs</span><span>{lei(pnlLine('direct'))}</span></div>
+                <div className={styles.line}><span>− Operating costs</span><span>{lei(pnlLine('operating'))}</span></div>
+                <div className={styles.line}><span>− Depreciation, interest, tax paid</span><span>{lei(pnlLine('depreciation') + pnlLine('interest') + pnlLine('tax'))}</span></div>
+                <div className={`${styles.line} ${styles.lineTotal}`}>
+                  <span>Net profit</span>
+                  <span className={pnlLine('net') < 0 ? styles.down : undefined}>{lei(pnlLine('net'))}{pnlLine('revenue') > 0 ? ` · ${percent(pnlLine('net') / pnlLine('revenue'))}` : ''}</span>
+                </div>
+                {be && (
+                  <>
+                    <div className={styles.line} style={{ marginTop: 'var(--space-sm)' }}><span>Break-even each month</span><span>{lei(be.revenueNeeded)}</span></div>
+                    <div className={styles.progress} role="progressbar" aria-label="Break-even this month" aria-valuenow={Math.round(be.covered * 100)} aria-valuemin={0} aria-valuemax={100}>
+                      <div className={styles.progressFill} style={{ width: `${Math.min(100, be.covered * 100)}%`, background: be.covered < 1 ? 'var(--color-warning)' : undefined }} />
+                    </div>
+                    <span className={styles.lineNote}>
+                      {be.covered >= 1 ? 'This month is past break-even. ' : `This month is at ${percent(be.covered)} of it. `}
+                      Fixed costs average {lei(be.fixedPerMonth)} a month, and {percent(be.grossRate)} of each leu is left after direct costs.
+                    </span>
+                  </>
+                )}
+                {costsDue.length > 0 && (
+                  <span className={styles.lineNote}>
+                    <button type="button" className={styles.linkButton} onClick={() => { location.hash = '#/costs' }}>{costsDue.length} {costsDue.length === 1 ? 'cost' : 'costs'} to pay ({lei(costsDue.reduce((a, c) => a + c.amountRon, 0))}) →</button>
+                  </span>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+        {owed.count > 0 && (
             <section className={styles.panel} aria-label="Expected payments">
               <div className={styles.panelHead}>
                 <h2 className={styles.panelTitle}><CalendarClock size={14} aria-hidden /> Expected</h2>
@@ -203,14 +265,20 @@ export function Overview({ onOpen }: { onOpen: (id: string) => void }) {
               </div>
               <div className={styles.rows}>
                 {owed.records.slice(0, 4).map((r) => (
-                  <button key={r.id} type="button" className={styles.row} onClick={() => onOpen(r.id)}>
-                    <span className={styles.rowName}>{r.description}</span>
-                    <span className={styles.rowValue}>{money(r.amount, r.currency)}</span>
-                    <span className={styles.rowMeta} style={r.date < today ? { color: 'var(--color-warning)' } : undefined}>
-                      {data.clients.find((c) => c.id === r.clientId)?.name ?? '—'} · {r.date < today ? `due ${shortDate(r.date)}, overdue` : `due ${shortDate(r.date)}`}
-                    </span>
-                  </button>
+                  <div key={r.id} className={styles.expectedRow}>
+                    <button type="button" className={styles.row} onClick={() => onOpen(r.id)}>
+                      <span className={styles.rowName}>{r.description}</span>
+                      <span className={styles.rowValue}>{money(r.amount, r.currency)}</span>
+                      <span className={styles.rowMeta} style={r.date < today ? { color: 'var(--color-warning)' } : undefined}>
+                        {data.clients.find((c) => c.id === r.clientId)?.name ?? '—'} · {r.date < today ? `due ${shortDate(r.date)}, overdue` : `due ${shortDate(r.date)}`}
+                      </span>
+                    </button>
+                    <button type="button" className={styles.chip} onClick={() => void markReceived(r)} aria-label={`Mark ${r.description} received`}>
+                      <Check size={12} aria-hidden /> Received
+                    </button>
+                  </div>
                 ))}
+                {owed.count > 4 && <button type="button" className={styles.linkButton} onClick={() => go({ status: 'expected', range: 'all' })}>All {owed.count} expected →</button>}
               </div>
             </section>
           )}
@@ -231,8 +299,7 @@ export function Overview({ onOpen }: { onOpen: (id: string) => void }) {
               </div>
             </section>
           )}
-        </div>
-      )}
+      </div>
     </>
   )
 }

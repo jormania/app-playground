@@ -12,36 +12,42 @@ import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SelectInput, TextInput } from '../components/fields'
 import {
-  defaultReportOptions, PRESET_LABEL, presetOptions, renderReport, SECTION_LABEL,
+  COST_SECTIONS, defaultReportOptions, PRESET_LABEL, presetOptions, renderReport, SECTION_LABEL,
   type ReportOptions, type ReportPreset, type ReportSection,
 } from '../lib/report'
+import { ACTIVITY, options } from '../domain/vocabulary'
 import { download } from '../store/backup'
 import styles from '../styles/ui.module.css'
 
 const KEY = 'inflow:report-options'
-const ORDER: ReportSection[] = ['summary', 'trend', 'clients', 'venues', 'sources', 'mix', 'outstanding', 'tax', 'payments']
+const ORDER: ReportSection[] = ['summary', 'trend', 'clients', 'venues', 'activities', 'sources', 'mix', 'margins', 'pnl', 'cashflow', 'outstanding', 'tax', 'payments']
 
 export function ReportBuilder() {
-  const { data, settings, today } = useInflow()
+  const { data, settings, today, scope } = useInflow()
   const { range } = usePeriodData()
   const [opt, setOpt] = useState<ReportOptions>(() => ({
-    ...defaultReportOptions(range, settings.trackTax),
+    ...defaultReportOptions(range, settings.trackTax, settings.trackCosts),
     ...readJson<Partial<ReportOptions>>(KEY, {}),
     from: range.from,
     to: range.to,
+    // Starts from the filters set on the other reports.
+    clientId: scope.clientId, sourceId: scope.sourceId, venueId: scope.venueId, activity: scope.activity,
   }))
   const frame = useRef<HTMLIFrameElement>(null)
   const set = (patch: Partial<ReportOptions>) => setOpt((o) => {
     const next = { ...o, ...patch }
-    const { from: _f, to: _t, ...keep } = next
+    const { from: _f, to: _t, clientId: _c, sourceId: _s, venueId: _v, activity: _a, ...keep } = next
     writeJson(KEY, keep)
     return next
   })
   const toggle = (s: ReportSection) => set({ sections: opt.sections.includes(s) ? opt.sections.filter((x) => x !== s) : ORDER.filter((x) => x === s || opt.sections.includes(x)) })
 
   const html = useMemo(
-    () => renderReport(data, opt, { today, trackTax: settings.trackTax, tax: settings.tax }),
-    [data, opt, today, settings.trackTax, settings.tax],
+    () => renderReport(data, opt, {
+      today, trackTax: settings.trackTax, tax: settings.tax, trackCosts: settings.trackCosts,
+      openingCash: settings.openingCash, openingCashDate: settings.openingCashDate,
+    }),
+    [data, opt, today, settings.trackTax, settings.tax, settings.trackCosts, settings.openingCash, settings.openingCashDate],
   )
 
   const print = () => {
@@ -49,7 +55,7 @@ export function ReportBuilder() {
     if (w) { w.focus(); w.print() }
   }
   const file = `inflow-${(opt.title || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${opt.from}-${opt.to}.html`
-  const sections = ORDER.filter((s) => s !== 'tax' || settings.trackTax)
+  const sections = ORDER.filter((s) => (s !== 'tax' || settings.trackTax) && (!COST_SECTIONS.includes(s) || settings.trackCosts))
   const clients = [...data.clients].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
@@ -58,7 +64,7 @@ export function ReportBuilder() {
         <div className={styles.form}>
           <div className={styles.chips}>
             {(Object.keys(PRESET_LABEL) as ReportPreset[]).map((p) => (
-              <button key={p} type="button" className={styles.chip} onClick={() => set(presetOptions(p, range, today, settings.trackTax))}>{PRESET_LABEL[p]}</button>
+              <button key={p} type="button" className={styles.chip} onClick={() => set(presetOptions(p, range, today, settings.trackTax, settings.trackCosts))}>{PRESET_LABEL[p]}</button>
             ))}
           </div>
           <TextInput label="Title" value={opt.title} onChange={(v) => set({ title: v })} />
@@ -73,6 +79,20 @@ export function ReportBuilder() {
           <SelectInput label="Client" value={opt.clientId} onChange={(v) => set({ clientId: v })} hint="One client only turns it into a statement for them.">
             <option value="">Everyone</option>
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </SelectInput>
+          <div className={styles.formRow}>
+            <SelectInput label="Venue" value={opt.venueId} onChange={(v) => set({ venueId: v })}>
+              <option value="">All</option>
+              {[...data.venues].sort((a, b) => a.name.localeCompare(b.name)).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </SelectInput>
+            <SelectInput label="Activity" value={opt.activity} onChange={(v) => set({ activity: v })}>
+              <option value="">All</option>
+              {options(ACTIVITY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </SelectInput>
+          </div>
+          <SelectInput label="Source" value={opt.sourceId} onChange={(v) => set({ sourceId: v })}>
+            <option value="">All</option>
+            {[...data.sources].sort((a, b) => a.name.localeCompare(b.name)).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </SelectInput>
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className={styles.fieldLabel} style={{ fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: 6 }}>Sections</legend>

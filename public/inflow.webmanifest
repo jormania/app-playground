@@ -1,7 +1,7 @@
 {
   "name": "InFlow",
   "short_name": "InFlow",
-  "description": "A lightweight income tracker for freelancers: where the money comes from, how it's moving, and what to set aside for tax.",
+  "description": "A lightweight income and cost tracker for freelancers: where the money comes from, what you keep after costs (P&L, cash flow, margins), and what to set aside for tax.",
   "id": "/inflow-react.html",
   "start_url": "/inflow-react.html",
   "scope": "/inflow-react.html",

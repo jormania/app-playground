@@ -38,6 +38,9 @@ export function readBackup(text: string): Backup {
   for (const k of ['records', 'clients', 'sources', 'venues'] as const) {
     if (!Array.isArray(d[k])) throw new BackupError(`The backup has no ${k} list; it may be damaged.`)
   }
+  // Backups made before costs existed have none.
+  if (d.costs !== undefined && !Array.isArray(d.costs)) throw new BackupError('The backup has a damaged costs list.')
+  d.costs = d.costs ?? []
   const bad = (d.records as IncomeRecord[]).find((r) => !r || typeof r.id !== 'string' || typeof r.amountRon !== 'number' || !/^\d{4}-\d{2}-\d{2}/.test(r.date))
   if (bad) throw new BackupError('A record in the backup is missing its amount or date; it may be damaged.')
   return raw as Backup

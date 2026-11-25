@@ -125,7 +125,7 @@ by design.
 | KeyPath | `src/keypath/` | strict TS, DS — piano tutor, in progress; its own `CLAUDE.md`, and [`KEYPATH.md`](KEYPATH.md) |
 | The Long Listen | `src/long-listen/` | strict TS, DS — orchestral curator; its own `CLAUDE.md`, and [`LONG_LISTEN.md`](LONG_LISTEN.md) |
 | Stillflow | `src/stillflow/` | strict TS, DS — yoga library and practice companion; [`STILLFLOW.md`](STILLFLOW.md): never invent video metadata |
-| InFlow | `src/inflow/` | strict TS, DS — freelancer income tracker, Notion or device; [`INFLOW.md`](INFLOW.md): tax rulesets are frozen per year, and stored reserves are never recomputed |
+| InFlow | `src/inflow/` | strict TS, DS — freelancer income, optional costs/P&L and tax, Notion or device; [`INFLOW.md`](INFLOW.md): tax rulesets are frozen per year, stored reserves are never recomputed |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |

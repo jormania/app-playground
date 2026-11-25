@@ -5,7 +5,7 @@
  * entity (with its final id) on every write.
  */
 import type { KeyValueStore } from '../../shared/kvStore'
-import type { Client, IncomeRecord, InflowData, Source, Venue } from '../domain/types'
+import type { Client, CostRecord, IncomeRecord, InflowData, Source, Venue } from '../domain/types'
 
 export type EntityKind = 'client' | 'source' | 'venue'
 export type Entity = Client | Source | Venue
@@ -15,11 +15,13 @@ export interface Repo {
   load(): Promise<InflowData>
   saveRecord(r: IncomeRecord): Promise<IncomeRecord>
   deleteRecord(id: string): Promise<void>
+  saveCost(c: CostRecord): Promise<CostRecord>
+  deleteCost(id: string): Promise<void>
   saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T>
   deleteEntity(kind: EntityKind, id: string): Promise<void>
 }
 
-export const EMPTY: InflowData = { records: [], clients: [], sources: [], venues: [] }
+export const EMPTY: InflowData = { records: [], costs: [], clients: [], sources: [], venues: [] }
 
 export const DATA_KEY = 'data'
 
@@ -54,7 +56,8 @@ export class DeviceRepo implements Repo {
 
   async load(): Promise<InflowData> {
     const stored = await this.store.get<InflowData>(DATA_KEY)
-    this.data = { ...EMPTY, ...(stored ?? {}) }
+    // Data written before costs existed has no costs list.
+    this.data = { ...EMPTY, ...(stored ?? {}), costs: stored?.costs ?? [] }
     return this.data
   }
 
@@ -78,6 +81,16 @@ export class DeviceRepo implements Repo {
     await this.commit({ ...this.data, records: this.data.records.filter((r) => r.id !== id) })
   }
 
+  async saveCost(c: CostRecord): Promise<CostRecord> {
+    const saved = c.id ? c : { ...c, id: newId() }
+    await this.commit({ ...this.data, costs: upsert(this.data.costs, saved) })
+    return saved
+  }
+
+  async deleteCost(id: string): Promise<void> {
+    await this.commit({ ...this.data, costs: this.data.costs.filter((c) => c.id !== id) })
+  }
+
   async saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T> {
     const saved = e.id ? e : { ...e, id: newId() }
     const key = listKey(kind)
@@ -93,6 +106,7 @@ export class DeviceRepo implements Repo {
       [key]: (this.data[key] as Entity[]).filter((x) => x.id !== id),
       // Records keep their history; the link is simply cleared.
       records: this.data.records.map((r) => (r[field] === id ? { ...r, [field]: null } : r)),
+      costs: this.data.costs.map((c) => (field !== 'sourceId' && c[field as 'clientId' | 'venueId'] === id ? { ...c, [field]: null } : c)),
     })
   }
 }

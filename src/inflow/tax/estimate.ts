@@ -12,7 +12,8 @@
  *
  * Everything here is advisory. The user sets each record's actual treatment.
  */
-import type { IncomeRecord, TaxProfile } from '../domain/types'
+import type { CostRecord, IncomeRecord, TaxProfile } from '../domain/types'
+import { deductibleCosts } from '../lib/finance'
 import { daysBetween, yearOf } from '../lib/dates'
 import { round2 } from '../lib/money'
 import { rulesFor, type Ruleset } from './rules'
@@ -159,18 +160,29 @@ export interface Projection {
   projected: number
   method: 'expected' | 'run_rate' | 'actual'
   estimate: Estimate
-  /** total ÷ projected — the share of each taxable leu to put aside. */
+  /** total ÷ projected, capped at MAX_RATE — the share of each taxable leu to put aside. */
   rate: number
+  /** The uncapped rate. */
+  rawRate: number
+  /** True when fixed minimums pushed the rate past MAX_RATE. */
+  capped: boolean
 }
+
+/** The most a reserve suggestion takes from one payment. */
+export const MAX_RATE = 0.45
 
 /** Days of the year counted before annualising: early January otherwise extrapolates wildly. */
 const MIN_ELAPSED_DAYS = 60
 
-export function projectYear(profile: TaxProfile, records: IncomeRecord[], year: number, today: string, extra = 0): Projection {
+export function projectYear(profile: TaxProfile, records: IncomeRecord[], year: number, today: string, extra = 0, costs: CostRecord[] = []): Projection {
   const ytd = round2(taxableGross(records, year) + extra)
   let projected: number
   let method: Projection['method']
   const todayYear = yearOf(today)
+  const days = daysBetween(`${year}-01-01`, `${year}-12-31`) + 1
+  const elapsed = year < todayYear ? days : year > todayYear ? 1 : daysBetween(`${year}-01-01`, today) + 1
+  // How far the year so far is scaled up to a whole year.
+  const factor = days / Math.max(elapsed, MIN_ELAPSED_DAYS)
   if (profile.expectedAnnualIncome > 0) {
     projected = Math.max(profile.expectedAnnualIncome, ytd)
     method = 'expected'
@@ -178,15 +190,23 @@ export function projectYear(profile: TaxProfile, records: IncomeRecord[], year: 
     projected = ytd
     method = 'actual'
   } else {
-    const elapsed = year > todayYear ? 1 : daysBetween(`${year}-01-01`, today) + 1
-    const days = daysBetween(`${year}-01-01`, `${year}-12-31`) + 1
-    projected = round2(ytd * days / Math.max(elapsed, MIN_ELAPSED_DAYS))
-    projected = Math.max(projected, ytd)
+    projected = Math.max(round2(ytd * factor), ytd)
     method = 'run_rate'
   }
-  const estimate = estimateYear(profile, year, projected)
-  const rate = projected > 0 ? estimate.total / projected : profile.id === 'custom' ? clamp01(profile.customRate) : 0
-  return { year, ytd, projected, method, estimate, rate }
+  // Recorded deductible costs replace the typed estimate, annualised the same way.
+  const fromCosts = profile.expensesFromCosts && costs.length > 0 && (profile.id === 'pfa_real' || profile.id === 'srl_micro')
+  const effective = fromCosts
+    ? { ...profile, annualExpenses: round2(deductibleCosts(costs, year) * (year < todayYear ? 1 : factor)) }
+    : profile
+  const estimate = estimateYear(effective, year, projected)
+  if (fromCosts) estimate.notes.unshift(`Expenses read from your recorded deductible costs${year < todayYear ? '' : ', annualised'}: ${Math.round(estimate.expenses).toLocaleString('en-US')} lei.`)
+  const raw = projected > 0 ? estimate.total / projected : profile.id === 'custom' ? clamp01(profile.customRate) : 0
+  // Early in a year, or on a small income, fixed minimums (CASS on 6 minimum wages) can exceed the
+  // income itself. A reserve above the payment helps nobody: the rate is capped, and the report
+  // still shows the whole minimum owed.
+  const capped = raw > MAX_RATE
+  if (capped) estimate.notes.unshift(`On ${Math.round(projected).toLocaleString('en-US')} lei a year, fixed minimums make the rate ${(raw * 100).toFixed(0)}%; reserves are capped at ${MAX_RATE * 100}% per payment. The full amount is still in the estimate.`)
+  return { year, ytd, projected, method, estimate, rate: Math.min(raw, MAX_RATE), rawRate: raw, capped }
 }
 
 export interface ReserveSuggestion {
@@ -206,6 +226,7 @@ export function suggestReserve(
   others: IncomeRecord[],
   profile: TaxProfile,
   today: string,
+  costs: CostRecord[] = [],
 ): ReserveSuggestion {
   const year = yearOf(record.date || today)
   const { rules } = rulesFor(year)
@@ -213,7 +234,7 @@ export function suggestReserve(
     return { amount: 0, rate: 0, rulesId: rules.id, explanation: 'Not taxable as classified, so nothing to reserve.' }
   }
   const counts = record.status === 'received' ? record.amountRon : 0
-  const p = projectYear(profile, others, year, today, counts)
+  const p = projectYear(profile, others, year, today, counts, costs)
   const gross = round2(record.amountRon * p.rate)
   const amount = Math.max(0, Math.round(gross - (record.taxWithheld || 0)))
   const how = p.method === 'expected' ? 'your expected' : p.method === 'actual' ? 'the actual' : 'a projected'
@@ -222,6 +243,8 @@ export function suggestReserve(
     amount,
     rate: p.rate,
     rulesId: p.estimate.rules.id,
-    explanation: `${(p.rate * 100).toFixed(1)}% of this payment${withheld}: the ${year} rate at ${how} ${Math.round(p.projected).toLocaleString('en-US')} lei of taxable income.`,
+    explanation: p.capped
+      ? `${(p.rate * 100).toFixed(0)}% of this payment${withheld}, the cap: at ${how} ${Math.round(p.projected).toLocaleString('en-US')} lei a year, fixed minimums outweigh the income.`
+      : `${(p.rate * 100).toFixed(1)}% of this payment${withheld}: the ${year} rate at ${how} ${Math.round(p.projected).toLocaleString('en-US')} lei of taxable income.`,
   }
 }

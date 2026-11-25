@@ -1,10 +1,10 @@
 /**
- * The welcome tour: five short steps, shown the first time InFlow opens.
+ * The welcome tour: six short steps, shown the first time InFlow opens.
  * The checkbox on every step decides whether it comes back next time; it
  * starts ticked on first run, and Settings can always bring the tour back.
  */
 import { useState } from 'react'
-import { BarChart3, Database, PlusCircle, Receipt, Waves } from 'lucide-react'
+import { BarChart3, Database, PlusCircle, Receipt, Scale, Waves } from 'lucide-react'
 import { Button, Modal } from '../../ds'
 import { useInflow } from '../app/state'
 import styles from '../styles/ui.module.css'
@@ -29,7 +29,12 @@ const STEPS: Step[] = [
   {
     icon: BarChart3,
     title: 'See where it comes from',
-    text: 'Overview answers the big questions at a glance, for this week, this month or any period you choose. Reports break it down by client, venue and source, compare against the period before, and build a printable report you can save as PDF.',
+    text: 'Overview answers the big questions at a glance, for this week, this month or any period you choose. Reports break it down by client, venue, activity and source, cross any two, compare against the period before, and build a printable report you can save as PDF.',
+  },
+  {
+    icon: Scale,
+    title: 'Costs and profit, if you want them',
+    text: 'Record what you spend — room hire, co-facilitators, software, the accountant — and InFlow adds a P&L, a monthly cash flow, the margin each venue, client and activity leaves you, and the income you need each month to break even. Not needed? Switch costs off below.',
   },
   {
     icon: Receipt,
@@ -62,7 +67,13 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
         <div className={styles.tourIcon}><s.icon size={26} aria-hidden /></div>
         <h3 className={styles.tourTitle}>{s.title}</h3>
         <p className={styles.tourText}>{s.text}</p>
-        {step === 3 && (
+        {s.icon === Scale && (
+          <label className={styles.tourCheck}>
+            <input type="checkbox" checked={settings.trackCosts} onChange={(e) => updateSettings({ trackCosts: e.target.checked })} />
+            Track costs, P&L and cash flow (optional)
+          </label>
+        )}
+        {s.icon === Receipt && (
           <label className={styles.tourCheck}>
             <input type="checkbox" checked={settings.trackTax} onChange={(e) => updateSettings({ trackTax: e.target.checked })} />
             Show tax figures (optional)

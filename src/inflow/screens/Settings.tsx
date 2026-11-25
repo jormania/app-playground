@@ -9,7 +9,7 @@ import { parseNotionId } from '../../shared/notionId'
 import { useInflow, hasDemo } from '../app/state'
 import { EntityEditor } from '../components/EntityEditor'
 import { Optional } from '../components/Optional'
-import { SelectInput, TextInput, parseAmount } from '../components/fields'
+import { NumberInput, SelectInput, TextInput } from '../components/fields'
 import type { Client, Settings as SettingsT, TaxProfileId } from '../domain/types'
 import { CLIENT_COUNTRY, PROFILE, SOURCE_TYPE, VENUE_TYPE, options } from '../domain/vocabulary'
 import { clientStats } from '../lib/analytics'
@@ -50,7 +50,15 @@ export function Settings() {
       updateSettings({ notionToken: token.trim(), incomeDbId: id, mode: 'notion' })
       toast({ message: 'Notion connected', tone: 'success' })
     } catch (e) {
-      setTesting(`Could not connect: ${(e as Error).message}`)
+      const msg = (e as Error).message
+      // A bare status means the relay itself wasn't reached (offline, blocked), not a Notion answer.
+      setTesting(/request failed \((404|5\d\d)\)/.test(msg)
+        ? 'Could not reach the Notion connection. Check you are online and try again.'
+        : /unauthorized|invalid|token/i.test(msg)
+          ? `Notion refused the token: ${msg} Check it was copied whole, from the right integration.`
+          : /could not find|object_not_found|shared/i.test(msg)
+            ? `${msg} Share the InFlow page with your integration (••• → Connections) and try again.`
+            : `Could not connect: ${msg}`)
     }
   }
 
@@ -107,12 +115,27 @@ export function Settings() {
       <section className={styles.panel}>
         <div className={styles.panelHead}><h2 className={styles.panelTitle}>Demo data</h2>
           <span className={styles.panelSub}>{demoPresent ? 'showing' : 'none'}</span></div>
-        <p className={styles.hint}>A coaching practice's last ten months: private clients, group workshops, corporate work in lei and euro, platform payouts in dollars, a retreat, royalties with tax withheld. Demo rows stay on this device and are never sent to Notion.</p>
+        <p className={styles.hint}>Fourteen months of a coaching practice: private clients, group workshops, corporate work in lei and euro, platform payouts in dollars, retreats, royalties with tax withheld, and the costs behind them (room hire, co-facilitators, software, the accountant). Demo rows stay on this device and are never sent to Notion.</p>
         <div className={styles.buttonRow} style={{ marginTop: 'var(--space-sm)' }}>
           <Button variant="danger" disabled={!demoPresent} onClick={() => setConfirm('clear')}>Clear demo data</Button>
           <Button variant="secondary" onClick={() => void loadDemo()}>Load demo data</Button>
         </div>
         {settings.mode === 'notion' && settings.notionToken && <p className={styles.hint} style={{ marginTop: 'var(--space-xs)' }}>You're viewing Notion; switch to “This device” to see the demo.</p>}
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.panelHead}><h2 className={styles.panelTitle}>Costs, P&L and cash flow <Optional /></h2></div>
+        <div className={styles.settingsGroup}>
+          <SettingsToggle label="Track costs" checked={settings.trackCosts} onChange={(e) => updateSettings({ trackCosts: e.target.checked })}
+            hint="Adds Costs, the P&L, cash flow, margins per venue, client and activity, and a break-even. Off: InFlow is income only." />
+          {settings.trackCosts && (
+            <div className={styles.formRow}>
+              <NumberInput label="Cash on hand (lei)" value={settings.openingCash} onCommit={(n) => updateSettings({ openingCash: n ?? 0 })}
+                hint="Bank and cash together, on the date beside it. Cash flow counts from here." />
+              <TextInput label="On" type="date" value={settings.openingCashDate} onChange={(v) => updateSettings({ openingCashDate: v })} />
+            </div>
+          )}
+        </div>
       </section>
 
       <section className={styles.panel}>
@@ -124,26 +147,32 @@ export function Settings() {
           <SelectInput label="How you invoice" value={tax.id} onChange={(v) => setTax({ id: v as TaxProfileId })}>
             {options(PROFILE).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </SelectInput>
-          {tax.id === 'pfa_real' && (
-            <TextInput label="Deductible expenses this year (lei)" inputMode="decimal" value={String(tax.annualExpenses)}
-              onChange={(v) => setTax({ annualExpenses: nonNeg(v) })} hint="Rent, equipment, training, accounting. Subtracted before CAS, CASS and income tax." />
+          {(tax.id === 'pfa_real' || tax.id === 'srl_micro') && settings.trackCosts && (
+            <SettingsToggle label="Read expenses from my costs" checked={tax.expensesFromCosts} onChange={(e) => setTax({ expensesFromCosts: e.target.checked })}
+              hint="Uses the costs you've recorded as deductible, annualised like your income, instead of a figure typed here." />
+          )}
+          {tax.id === 'pfa_real' && !(settings.trackCosts && tax.expensesFromCosts) && (
+            <NumberInput label="Deductible expenses this year (lei)" value={tax.annualExpenses}
+              onCommit={(n) => setTax({ annualExpenses: n ?? 0 })} hint="Rent, equipment, training, accounting. Subtracted before CAS, CASS and income tax." />
           )}
           {tax.id === 'pfa_norma' && (
-            <TextInput label="Annual income norm (lei)" inputMode="decimal" value={String(tax.annualNorm)}
-              onChange={(v) => setTax({ annualNorm: nonNeg(v) })} hint="From your county's norm for your CAEN code, after any reductions. Tax follows this, not what you earn." />
+            <NumberInput label="Annual income norm (lei)" value={tax.annualNorm}
+              onCommit={(n) => setTax({ annualNorm: n ?? 0 })} hint="From your county's norm for your CAEN code, after any reductions. Tax follows this, not what you earn." />
           )}
           {tax.id === 'srl_micro' && (
             <>
-              <TextInput label="Company expenses this year (lei)" inputMode="decimal" value={String(tax.annualExpenses)} onChange={(v) => setTax({ annualExpenses: nonNeg(v) })} />
-              <TextInput label="Micro tax rate (%)" inputMode="decimal" value={tax.microRate === null ? '' : String(round(tax.microRate * 100))}
-                placeholder="ruleset default (1%)" onChange={(v) => setTax({ microRate: v.trim() === '' ? null : nonNeg(v) / 100 })} />
-              <TextInput label="Profit paid out as dividends (%)" inputMode="decimal" value={String(round(tax.dividendPayout * 100))}
-                onChange={(v) => setTax({ dividendPayout: Math.min(1, nonNeg(v) / 100) })} />
+              {!(settings.trackCosts && tax.expensesFromCosts) && (
+                <NumberInput label="Company expenses this year (lei)" value={tax.annualExpenses} onCommit={(n) => setTax({ annualExpenses: n ?? 0 })} />
+              )}
+              <NumberInput label="Micro tax rate (%)" value={tax.microRate} scale={100} emptyIsZero={false}
+                placeholder="ruleset default (1%)" onCommit={(n) => setTax({ microRate: n === null ? null : Math.min(1, n) })} />
+              <NumberInput label="Profit paid out as dividends (%)" value={tax.dividendPayout} scale={100}
+                onCommit={(n) => setTax({ dividendPayout: Math.min(1, n ?? 0) })} />
             </>
           )}
           {tax.id === 'custom' && (
-            <TextInput label="Reserve rate (%)" inputMode="decimal" value={String(round(tax.customRate * 100))}
-              onChange={(v) => setTax({ customRate: Math.min(1, nonNeg(v) / 100) })} hint="A flat share of taxable income. Use it when the profiles above don't fit." />
+            <NumberInput label="Reserve rate (%)" value={tax.customRate} scale={100}
+              onCommit={(n) => setTax({ customRate: Math.min(1, n ?? 0) })} hint="A flat share of taxable income. Use it when the profiles above don't fit." />
           )}
           {tax.id !== 'custom' && tax.id !== 'srl_micro' && (
             <>
@@ -153,8 +182,8 @@ export function Settings() {
             </>
           )}
           <SettingsToggle label="VAT-registered" hint="Off: the small-business exemption (under 395,000 lei a year)." checked={tax.vatRegistered} onChange={(e) => setTax({ vatRegistered: e.target.checked })} />
-          <TextInput label="Expected taxable income this year (lei, optional)" inputMode="decimal" value={tax.expectedAnnualIncome ? String(tax.expectedAnnualIncome) : ''}
-            placeholder="projected from the year so far" onChange={(v) => setTax({ expectedAnnualIncome: nonNeg(v) })}
+          <NumberInput label="Expected taxable income this year (lei, optional)" value={tax.expectedAnnualIncome}
+            placeholder="projected from the year so far" onCommit={(n) => setTax({ expectedAnnualIncome: n ?? 0 })}
             hint="Thresholds make the rate depend on the whole year. Leave empty to project it from what you've earned so far." />
           <p className={styles.hint}>
             Rules on file: {RULESETS.map((r) => r.id).join(', ')}. Each payment keeps the ruleset it was suggested under, and a changed setting never rewrites a reserve you've stored; open a payment and use its suggestion to update it.
@@ -166,10 +195,10 @@ export function Settings() {
       <section className={styles.panel}>
         <div className={styles.panelHead}><h2 className={styles.panelTitle}>Targets</h2></div>
         <div className={styles.formRow}>
-          <TextInput label="Monthly income target (lei)" inputMode="decimal" value={settings.monthlyTarget ? String(settings.monthlyTarget) : ''}
-            placeholder="none" onChange={(v) => updateSettings({ monthlyTarget: nonNeg(v) })} />
-          <TextInput label="Flag payments above (× typical)" inputMode="decimal" value={String(settings.largeMultiple)}
-            onChange={(v) => updateSettings({ largeMultiple: Math.max(1.5, nonNeg(v) || 4) })} />
+          <NumberInput label="Monthly income target (lei)" value={settings.monthlyTarget}
+            placeholder="none" onCommit={(n) => updateSettings({ monthlyTarget: n ?? 0 })} />
+          <NumberInput label="Flag payments above (× typical)" value={settings.largeMultiple}
+            onCommit={(n) => { if (n && n >= 1.5) updateSettings({ largeMultiple: n }) }} hint="1.5 or more." />
         </div>
       </section>
 
@@ -252,11 +281,3 @@ export function Settings() {
   )
 }
 
-function nonNeg(v: string): number {
-  const n = parseAmount(v)
-  return Number.isFinite(n) && n > 0 ? n : 0
-}
-
-function round(n: number) {
-  return Math.round(n * 100) / 100
-}

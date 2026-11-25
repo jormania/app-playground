@@ -23,6 +23,9 @@ export const DEFAULT_SETTINGS: Settings = {
   demoSeeded: false,
   trackTax: true,
   showTour: true,
+  trackCosts: true,
+  openingCash: 0,
+  openingCashDate: '',
 }
 
 export function loadSettings(): Settings {

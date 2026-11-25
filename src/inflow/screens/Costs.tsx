@@ -1,0 +1,184 @@
+/**
+ * Every cost, newest first, grouped by month, with unpaid ones on top. The
+ * filters are the same dimensions as income (venue, client, activity) plus
+ * the kind of cost.
+ */
+import { useMemo, useState } from 'react'
+import { Download, Repeat, X } from 'lucide-react'
+import { Button } from '../../ds'
+import { useInflow } from '../app/state'
+import { usePeriodData } from '../app/usePeriod'
+import { SelectInput } from '../components/fields'
+import type { CostRecord, InflowData } from '../domain/types'
+import { ACTIVITY, COST_CATEGORY, COST_GROUP, COST_GROUP_SHORT, options } from '../domain/vocabulary'
+import { NO_ENTITY } from '../lib/analytics'
+import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
+import { lei, money, round2 } from '../lib/money'
+import { download, toCsv } from '../store/backup'
+import styles from '../styles/ui.module.css'
+
+export interface CostFilter {
+  query: string
+  group: string
+  venueId: string
+  clientId: string
+  activity: string
+  status: string
+  range: 'period' | 'all'
+}
+
+export const EMPTY_COST_FILTER: CostFilter = { query: '', group: '', venueId: '', clientId: '', activity: '', status: '', range: 'period' }
+
+export function applyCostFilter(data: InflowData, f: CostFilter, range: { from: string; to: string }): CostRecord[] {
+  const q = f.query.trim().toLowerCase()
+  const name = (l: { id: string; name: string }[], id: string | null) => l.find((x) => x.id === id)?.name ?? ''
+  const match = (field: string | null, want: string) => !want || (want === NO_ENTITY ? !field : field === want)
+  return data.costs
+    .filter((c) => f.range === 'all' || (c.date >= range.from && c.date <= range.to) || (c.status === 'due' && f.range === 'period'))
+    .filter((c) => !f.group || c.group === f.group)
+    .filter((c) => match(c.venueId, f.venueId) && match(c.clientId, f.clientId) && match(c.activity, f.activity))
+    .filter((c) => !f.status || c.status === f.status)
+    .filter((c) => !q || [c.description, c.notes, COST_CATEGORY[c.category], name(data.venues, c.venueId), name(data.clients, c.clientId)]
+      .some((s) => s.toLowerCase().includes(q)))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.amountRon - a.amountRon)
+}
+
+const sumRon = (cs: CostRecord[]) => round2(cs.reduce((s, c) => s + c.amountRon, 0))
+
+export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => void; filter: CostFilter; setFilter: (f: CostFilter) => void }) {
+  const { data, today, costsAvailable } = useInflow()
+  const { range } = usePeriodData()
+  const [showFilters, setShowFilters] = useState(false)
+  const list = useMemo(() => applyCostFilter(data, filter, range), [data, filter, range])
+  const set = (patch: Partial<CostFilter>) => setFilter({ ...filter, ...patch })
+
+  const groups = useMemo(() => {
+    const due = list.filter((c) => c.status === 'due').sort((a, b) => a.date.localeCompare(b.date))
+    const m = new Map<string, CostRecord[]>()
+    for (const c of list) if (c.status === 'paid') m.set(c.date.slice(0, 7), [...(m.get(c.date.slice(0, 7)) ?? []), c])
+    return [...(due.length ? [['due', due] as [string, CostRecord[]]] : []), ...m.entries()]
+  }, [list])
+
+  const paid = list.filter((c) => c.status === 'paid')
+  const pnl = paid.filter((c) => !['investment', 'financing'].includes(c.group))
+  const name = (l: { id: string; name: string }[], id: string) => l.find((x) => x.id === id)?.name ?? '—'
+  const active: [keyof CostFilter, string][] = []
+  if (filter.group) active.push(['group', COST_GROUP_SHORT[filter.group as keyof typeof COST_GROUP_SHORT]])
+  if (filter.venueId) active.push(['venueId', filter.venueId === NO_ENTITY ? 'No venue' : name(data.venues, filter.venueId)])
+  if (filter.clientId) active.push(['clientId', filter.clientId === NO_ENTITY ? 'No client' : name(data.clients, filter.clientId)])
+  if (filter.activity) active.push(['activity', filter.activity === NO_ENTITY ? 'No activity' : ACTIVITY[filter.activity as keyof typeof ACTIVITY]])
+  if (filter.status) active.push(['status', filter.status === 'due' ? 'Due' : 'Paid'])
+
+  const exportCsv = () => download(`inflow-costs-${today}.csv`, toCsv(
+    ['Date', 'Description', 'Amount', 'Currency', 'FX rate', 'Amount RON', 'Status', 'Kind', 'Category', 'Venue', 'Client', 'Activity', 'Recurring', 'Deductible', 'Notes'],
+    [...list].sort((a, b) => a.date.localeCompare(b.date)).map((c) => [
+      c.date, c.description, c.amount, c.currency, c.fxRate, c.amountRon, c.status === 'due' ? 'Due' : 'Paid', COST_GROUP_SHORT[c.group],
+      COST_CATEGORY[c.category], c.venueId ? name(data.venues, c.venueId) : '', c.clientId ? name(data.clients, c.clientId) : '',
+      c.activity ? ACTIVITY[c.activity] : '', c.recurring ? 'yes' : '', c.deductible ? 'yes' : '', c.notes,
+    ])), 'text/csv')
+
+  return (
+    <>
+      {!costsAvailable && (
+        <div className={styles.banner} role="status">
+          <span>Your Notion workspace has no “InFlow — Costs” database next to Income, so costs can't be saved there. Duplicate it from the Starter Template.</span>
+        </div>
+      )}
+      <div className={styles.toolbar}>
+        <input className={styles.search} type="search" placeholder="Search costs, venues, categories…" value={filter.query}
+          onChange={(e) => set({ query: e.target.value })} aria-label="Search costs" />
+        <Button size="sm" variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
+      </div>
+      <div className={styles.chips}>
+        <button type="button" className={`${styles.chip} ${filter.range === 'period' ? styles.chipOn : ''}`} onClick={() => set({ range: 'period' })}>{range.label}</button>
+        <button type="button" className={`${styles.chip} ${filter.range === 'all' ? styles.chipOn : ''}`} onClick={() => set({ range: 'all' })}>All time</button>
+        {active.map(([k, label]) => (
+          <button key={k} type="button" className={`${styles.chip} ${styles.chipOn}`} onClick={() => set({ [k]: '' })} aria-label={`Remove filter ${label}`}>
+            {label} <X size={12} aria-hidden />
+          </button>
+        ))}
+        {(active.length > 0 || filter.query) && (
+          <button type="button" className={styles.chip} onClick={() => setFilter({ ...EMPTY_COST_FILTER, range: filter.range })}>Clear</button>
+        )}
+      </div>
+      {showFilters && (
+        <section className={styles.panel}>
+          <div className={styles.formRow}>
+            <SelectInput label="Kind of cost" value={filter.group} onChange={(v) => set({ group: v })}>
+              <option value="">Any</option>
+              {options(COST_GROUP).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </SelectInput>
+            <SelectInput label="Status" value={filter.status} onChange={(v) => set({ status: v })}>
+              <option value="">Any</option>
+              <option value="paid">Paid</option>
+              <option value="due">Due</option>
+            </SelectInput>
+            <SelectInput label="Venue" value={filter.venueId} onChange={(v) => set({ venueId: v })}>
+              <option value="">Any</option>
+              {[...data.venues].sort((a, b) => a.name.localeCompare(b.name)).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              <option value={NO_ENTITY}>No venue (overheads)</option>
+            </SelectInput>
+            <SelectInput label="Activity" value={filter.activity} onChange={(v) => set({ activity: v })}>
+              <option value="">Any</option>
+              {options(ACTIVITY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <option value={NO_ENTITY}>No activity</option>
+            </SelectInput>
+            <SelectInput label="Client" value={filter.clientId} onChange={(v) => set({ clientId: v })}>
+              <option value="">Any</option>
+              {[...data.clients].sort((a, b) => a.name.localeCompare(b.name)).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              <option value={NO_ENTITY}>No client</option>
+            </SelectInput>
+          </div>
+        </section>
+      )}
+
+      <div className={styles.panelHead} style={{ marginBottom: 0 }}>
+        <span className={styles.panelSub}>{list.length} {list.length === 1 ? 'cost' : 'costs'} · {lei(sumRon(pnl))} in the P&L{paid.length !== pnl.length ? ` · ${lei(sumRon(paid) - sumRon(pnl))} equipment & drawings` : ''}</span>
+        {list.length > 0 && (
+          <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
+        )}
+      </div>
+
+      {list.length === 0 ? (
+        <div className={styles.empty}>
+          {data.costs.length === 0 ? 'No costs yet. Tap “Add cost” to record rent, a room hire or a subscription.' : 'Nothing matches these filters.'}
+        </div>
+      ) : groups.map(([key, cs]) => (
+        <div key={key} className={styles.group}>
+          <div className={styles.groupHead}>
+            <span>{key === 'due' ? 'Due, not paid yet' : monthLabel(`${key}-01`)}</span>
+            <span className="num">{key === 'due' ? `${lei(sumRon(cs))} to pay` : lei(sumRon(cs))}</span>
+          </div>
+          {cs.map((c) => <CostRow key={c.id} c={c} data={data} today={today} onOpen={onOpen} />)}
+        </div>
+      ))}
+    </>
+  )
+}
+
+function CostRow({ c, data, today, onOpen }: { c: CostRecord; data: InflowData; today: string; onOpen: (id: string) => void }) {
+  const venue = data.venues.find((v) => v.id === c.venueId)?.name
+  const client = data.clients.find((x) => x.id === c.clientId)?.name
+  return (
+    <button type="button" className={styles.entry} onClick={() => onOpen(c.id)} aria-label={`${c.description}, ${money(c.amount, c.currency)}, ${c.date}`}>
+      <span className={styles.entryDate}>
+        <span className={styles.entryDay}>{parseDate(c.date).getDate()}</span>
+        <span className={styles.entryDow}>{c.status === 'due' ? monthShort(c.date) : weekdayShort(c.date)}</span>
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span className={styles.entryTitle} style={{ display: 'block' }}>{c.description}</span>
+        <span className={styles.entrySub} style={{ display: 'block' }}>{[COST_CATEGORY[c.category], venue, client].filter(Boolean).join(' · ')}</span>
+        <span className={styles.tags}>
+          {c.status === 'due' && <span className={`${styles.tag} ${styles.tagAlert}`}>{c.date < today ? 'Overdue' : 'Due'}</span>}
+          <span className={`${styles.tag} ${c.group === 'direct' ? styles.tagReview : c.group === 'operating' ? styles.tagNon : ''}`}>{COST_GROUP_SHORT[c.group]}</span>
+          {c.activity && <span className={styles.tag}>{ACTIVITY[c.activity]}</span>}
+          {c.recurring && <span className={styles.tag}><Repeat size={10} aria-hidden /> recurring</span>}
+        </span>
+      </span>
+      <span className={styles.entryAmount}>
+        <span className={styles.entryAmountMain} style={{ display: 'block' }}>− {money(c.amount, c.currency)}</span>
+        {c.currency !== 'RON' && <span className={styles.entryAmountSub} style={{ display: 'block' }}>{lei(c.amountRon)}</span>}
+      </span>
+    </button>
+  )
+}

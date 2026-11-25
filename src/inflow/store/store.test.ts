@@ -4,7 +4,7 @@ import { buildDemo, withoutDemo } from '../data/demo'
 import { DEFAULT_SETTINGS } from './settings'
 import { BackupError, makeBackup, readBackup, recordsCsv } from './backup'
 import {
-  clientFromPage, clientToProps, copyToNotion, discoverDatabases, NotionRepo, recordFromPage, recordToProps,
+  clientFromPage, clientToProps, copyToNotion, costFromPage, costToProps, discoverDatabases, NotionRepo, recordFromPage, recordToProps,
   sourceFromPage, sourceToProps, venueFromPage, venueToProps,
 } from './notion'
 import { DeviceRepo } from './repo'
@@ -31,6 +31,14 @@ describe('Notion mapping', () => {
     }
   })
 
+  it('round-trips every demo cost through Notion properties', () => {
+    expect(demo.costs.length).toBeGreaterThan(50)
+    for (const c of demo.costs) {
+      const { demo: _d, ...expected } = c
+      expect(costFromPage({ id: c.id, properties: asRead(costToProps(c)) })).toEqual(expected)
+    }
+  })
+
   it('round-trips clients, sources and venues', () => {
     for (const c of demo.clients) expect(clientFromPage({ id: c.id, properties: asRead(clientToProps(c)) })).toEqual((({ demo: _, ...x }) => x)(c))
     for (const s of demo.sources) expect(sourceFromPage({ id: s.id, properties: asRead(sourceToProps(s)) })).toEqual((({ demo: _, ...x }) => x)(s))
@@ -54,11 +62,24 @@ describe('discoverDatabases', () => {
     Description: { type: 'title' }, Amount: {}, Date: {}, Taxability: {},
     Client: { relation: { database_id: 'aaaa-1' } }, Source: { relation: { database_id: 'bbbb-2' } }, Venue: { relation: { database_id: 'cccc-3' } },
   }
-  it('finds the three related databases from the Income link', async () => {
-    const call = vi.fn(async () => ({ properties: incomeProps }))
+  it('finds the three related databases from the Income link, and Costs beside it', async () => {
+    const call = vi.fn(async (path: string) => path.startsWith('blocks/')
+      ? { results: [{ type: 'child_database', id: 'aaaa-0', child_database: { title: 'InFlow — Clients' } }, { type: 'child_database', id: 'dddd-4', child_database: { title: 'InFlow — Costs' } }] }
+      : { properties: incomeProps, parent: { type: 'page_id', page_id: 'page-1' } })
     const dbs = await discoverDatabases(call, 'https://www.notion.so/InFlow-Income-423d3e6d60db8153942bd13b8b6922b2?v=1')
     expect(call).toHaveBeenCalledWith('databases/423d3e6d60db8153942bd13b8b6922b2', 'GET')
-    expect(dbs).toEqual({ income: '423d3e6d60db8153942bd13b8b6922b2', clients: 'aaaa1', sources: 'bbbb2', venues: 'cccc3' })
+    expect(call).toHaveBeenCalledWith('blocks/page1/children?page_size=100', 'GET')
+    expect(dbs).toEqual({ income: '423d3e6d60db8153942bd13b8b6922b2', clients: 'aaaa1', sources: 'bbbb2', venues: 'cccc3', costs: 'dddd4' })
+  })
+
+  it('works without a Costs database, or without access to the page', async () => {
+    const noPage = await discoverDatabases(async () => ({ properties: incomeProps }), 'x')
+    expect(noPage.costs).toBeNull()
+    const refused = await discoverDatabases(async (path: string) => {
+      if (path.startsWith('blocks/')) throw new Error('Could not find block')
+      return { properties: incomeProps, parent: { type: 'page_id', page_id: 'p' } }
+    }, 'x')
+    expect(refused.costs).toBeNull()
   })
   it('explains a wrong database rather than failing later', async () => {
     await expect(discoverDatabases(async () => ({ properties: { Name: {} } }), 'x')).rejects.toThrow(/InFlow — Income/)
@@ -95,6 +116,8 @@ describe('NotionRepo', () => {
       load: async () => mine,
       saveRecord: async (r: any) => { saved.push(r); return { ...r, id: `p${n++}` } },
       deleteRecord: async () => {},
+      saveCost: async (c: any) => ({ ...c, id: `p${n++}` }),
+      deleteCost: async () => {},
       saveEntity: async (_k: any, e: any) => ({ ...e, id: `p${n++}` }),
       deleteEntity: async () => {},
     }
