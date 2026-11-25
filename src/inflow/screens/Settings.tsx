@@ -4,6 +4,7 @@
  * lists, backup, appearance. Every section folds away behind a twisty.
  */
 import { useMemo, useRef, useState } from 'react'
+import { Check, Lock, Minus } from 'lucide-react'
 import { Button, ConfirmModal, SegmentedControl, SettingsToggle } from '../../ds'
 import { memoryStore } from '../../shared/kvStore'
 import { parseNotionId } from '../../shared/notionId'
@@ -26,30 +27,40 @@ import type { ReactNode } from 'react'
 import styles from '../styles/ui.module.css'
 
 /**
- * The switchable parts of InFlow, simplest first. `more` is what the twisty
- * under each toggle explains: what turns on, and what disappears when off.
+ * The switchable parts of InFlow, simplest first. Under each toggle, a twisty
+ * lists what it adds (short points) and what goes when it's off (one line).
  */
-export const FEATURES: { key: FeatureKey; label: string; hint: string; more: string[] }[] = [
+export const FEATURES: { key: FeatureKey; label: string; hint: string; on: string[]; off: string }[] = [
   { key: 'insights', label: 'Insights', hint: 'Pain points and wins, in plain words.',
-    more: ['Read from your own records, and only where they apply: sessions that lost money at a room, the same work at two rooms, regular clients going quiet or growing, individual clients who came once, work that keeps little after costs, overdue money, a quiet month once you have most of a year. Shown on the Overview and in the Review. 👍 keeps one near the top; 👎 hides it, or all like it.', 'Off: the Overview panel and the pain points in the Review go away.'] },
+    on: ['Read from your records, only where they apply', 'Rooms that lost money; the same work at two rooms', 'Regular clients going quiet or growing', 'Intro clients who never came back; overdue money', '👍 keeps one on top, 👎 hides it'],
+    off: 'The Overview panel and the Review’s pain points go.' },
   { key: 'deals', label: 'Venue deals', hint: 'Fixed fee or revenue share, and what each venue leaves you.',
-    more: ['Set each venue\'s deal — a fee per session, a share of the takings, both, or monthly rent — and record how many people came. InFlow shows what each venue left you per session, the sessions that cost more than they earned, the head count a room needs, and a "fixed or share?" chart to try the other deal on your own numbers.', 'Off: deal fields leave the venue form, the head-count field leaves the income form, and the Venue deals report goes away.'] },
+    on: ['Each venue’s deal: a fee per session, or a share', 'What every room leaves you, side by side', 'Break-even: people needed to cover a fee', 'What if: the same sessions on other terms', 'A “people who came” field on payments'],
+    off: 'Deal fields, head counts and the Venue deals report go.' },
   { key: 'costs', label: 'Costs, P&L and cash flow', hint: 'Record what you spend; see what you keep.',
-    more: ['Adds a Costs tab (rent, room hire, co-facilitators, software…), a P&L and monthly cash flow in Reports, margins per venue, client and activity, and a break-even gauge on the Overview.', 'Off: InFlow is income only. Costs you recorded stay stored and come back when you switch this on.'] },
+    on: ['A Costs tab with “where it went”', 'P&L and monthly cash flow', 'What you kept, by client and kind of work', 'A monthly break-even on the Overview'],
+    off: 'Income only. Recorded costs are kept and come back.' },
   { key: 'tax', label: 'Tax suggestions', hint: 'Taxable or not, withheld, VAT, and what to set aside.',
-    more: ['Each payment gets a suggested tax treatment under Romanian rules (PFA real, PFA normă, SRL micro or your own rate), always labelled as a suggestion, and a reserve to put aside. Adds the Tax report and the tax figures on the Overview.', 'Off: nothing asks about tax, no reserves are computed, and the tax report, panels and columns disappear.'] },
+    on: ['A suggested treatment on each payment', 'A reserve to set aside, Romanian rules', 'PFA real, PFA normă, SRL micro or your rate', 'The Tax report'],
+    off: 'Nothing asks about tax; no reserves are computed.' },
   { key: 'expected', label: 'Expected payments', hint: 'Money promised but not in yet, with overdue flags.',
-    more: ['Record a payment as Expected when it is invoiced or agreed; the Overview lists what\'s coming and what\'s overdue, and one tap marks it received.', 'Off: the Expected status, list and alerts go away. Expected payments never count in totals either way.'] },
+    on: ['Mark a payment Expected when invoiced', 'What’s coming and what’s overdue, on the Overview', 'Received in one tap; a reminder to copy'],
+    off: 'The status, the list and the alerts go.' },
   { key: 'currencies', label: 'Foreign currencies', hint: 'Euro, dollars and more, converted to lei.',
-    more: ['Pick a currency on each payment or cost; the day\'s rate is fetched and every total is in lei.', 'Off: amounts are entered and shown in lei only.'] },
+    on: ['A currency on each payment or cost', 'The day’s rate, fetched for you', 'Every total in lei'],
+    off: 'Lei only.' },
   { key: 'targets', label: 'Monthly target', hint: 'A goal for the month and how far you are.',
-    more: ['A progress bar under "This month" on the Overview.', 'Off: no target is shown.'] },
+    on: ['A progress bar under “This month”'],
+    off: 'No target is shown.' },
   { key: 'unusual', label: 'Unusual payments', hint: 'Flags payments far above your typical one.',
-    more: ['Payments several times your typical one are tagged and listed on the Overview, so a one-off windfall isn\'t mistaken for a trend.', 'Off: no flags.'] },
+    on: ['Payments several times your typical one, tagged', 'Listed on the Overview, so a windfall isn’t read as a trend'],
+    off: 'No flags.' },
   { key: 'reportTools', label: 'Report filters & split-by', hint: 'Narrow every report; cross two dimensions.',
-    more: ['A filter bar (client, venue, activity, source) that narrows every report at once, and a "split by" table, e.g. which activities pay at which venue.', 'Off: reports show everything, unfiltered.'] },
+    on: ['One filter bar for every report', 'Split by: which activities pay at which venue'],
+    off: 'Reports show everything, unfiltered.' },
   { key: 'printable', label: 'Printable reports', hint: 'Build a report and save it as PDF or HTML.',
-    more: ['Presets for a period summary, a year in review, a client statement or your accountant, with the sections and filters you choose.', 'Off: the Printable tab goes away. CSV exports stay.'] },
+    on: ['Month at a glance, Year in review', 'A client statement; a pack for your accountant', 'Saved as PDF or HTML'],
+    off: 'The Print tab goes. CSV exports stay.' },
 ]
 
 /** A first-day InFlow: income, where it comes from, insights. The rest can come later. */
@@ -88,7 +99,7 @@ function Section({ id, title, sub, action, children }: { id: string; title: stri
 
 const LAST_BACKUP_KEY = 'inflow:last-backup'
 
-export const STARTER_TEMPLATE_HINT = 'Duplicate the “InFlow — Starter Template” page in Notion, share it with your integration, and paste the link of its Income database.'
+export const STARTER_STEPS = ['Duplicate “InFlow — Starter Template” in Notion', 'Share it with your integration', 'Paste its Income database link below']
 
 export function Settings() {
   const { settings, updateSettings, data, toast, today, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore, copyDeviceToNotion, deviceHasOwnData, reload, on } = useInflow()
@@ -156,7 +167,10 @@ export function Settings() {
             options={[{ value: 'mine', label: 'My data' }, { value: 'demo', label: 'Demo practice' }]} />
           {workspace === 'demo' ? (
             <>
-              <p className={styles.hint}>Two years of a coaching practice: private clients, group workshops at rooms rented by the evening or on a share of the tickets, corporate work in lei and euro, platform payouts in dollars, retreats, and the costs behind them. It lives apart from your data, on this device only: try anything here, then switch back to “My data” — nothing of the demo comes with you.</p>
+              <div className={styles.factChips} aria-label="In the demo">
+                {['2 years', '35 clients', '7 rooms · fixed & share', '4 currencies', 'Costs & tax', 'Retreats & courses'].map((c) => <span key={c}>{c}</span>)}
+              </div>
+              <p className={styles.hint} style={{ margin: 0 }}><Lock size={12} aria-hidden /> Kept apart from your data, on this device only. Nothing of it comes with you.</p>
               <div className={styles.buttonPair}>
                 <Button variant="secondary" onClick={() => setConfirm('reset')}>Reset demo</Button>
                 <Button variant="danger" onClick={() => setConfirm('clear')}>Clear demo data</Button>
@@ -167,10 +181,15 @@ export function Settings() {
               <SegmentedControl label="Data mode" value={settings.mode} onChange={(v) => (v === 'device' ? switchToDevice() : updateSettings({ mode: 'notion' }))}
                 options={[{ value: 'device', label: 'This device' }, { value: 'notion', label: 'Notion' }]} />
               {settings.mode === 'device' ? (
-                <p className={styles.hint}>Everything is stored in this browser (IndexedDB) and works offline. Back it up below, or connect Notion to keep it there and use it on any device.</p>
+                <div className={styles.factChips} aria-label="On this device">
+                  <span>Works offline</span><span>This browser only</span><span>Back up below</span>
+                </div>
               ) : (
                 <>
-                  <p className={styles.hint}>{STARTER_TEMPLATE_HINT} The token stays on this device and goes only to this site's Notion relay.</p>
+                  <ol className={styles.steps}>
+                    {STARTER_STEPS.map((x) => <li key={x}>{x}</li>)}
+                  </ol>
+                  <p className={styles.hint} style={{ margin: 0 }}><Lock size={12} aria-hidden /> The token stays on this device and goes only to this site's Notion relay.</p>
                   <TextInput label="Notion integration token" type="password" value={token} onChange={setToken} placeholder="ntn_…" />
                   <TextInput label="Income database (link or ID)" value={dbLink} onChange={setDbLink} placeholder="https://www.notion.so/…"
                     hint="Clients, Sources and Venues are found through its relations, Costs beside it on the same page." />
@@ -224,7 +243,10 @@ export function Settings() {
                 onChange={(e) => updateSettings({ features: { [f.key]: e.target.checked } })} />
               <details className={styles.featureMore}>
                 <summary><span className={styles.twistyArrow} aria-hidden>▶</span>What this does</summary>
-                {f.more.map((para) => <p key={para}>{para}</p>)}
+                <ul className={styles.featurePoints}>
+                  {f.on.map((x) => <li key={x}><Check size={13} aria-hidden />{x}</li>)}
+                </ul>
+                <p className={styles.featureOff}><Minus size={13} aria-hidden /> Off: {f.off}</p>
               </details>
             </div>
           ))}
@@ -329,7 +351,11 @@ export function Settings() {
 
       {workspace === 'mine' && (
         <Section id="backup" title="Backup & export" sub={lastBackup ? `last backup ${shortDate(lastBackup, Number(today.slice(0, 4)))}` : settings.mode === 'device' || !settings.notionToken ? 'no backup yet' : undefined}>
-          <p className={styles.hint}>A backup holds every payment, cost, client, source and venue and your settings — never your Notion token. Restoring puts it on this device.</p>
+          <ul className={styles.featurePoints} style={{ marginTop: 0 }}>
+            <li><Check size={13} aria-hidden />Every payment, cost, client, source and venue</li>
+            <li><Check size={13} aria-hidden />Your settings</li>
+            <li><Minus size={13} aria-hidden />Never your Notion token</li>
+          </ul>
           <div className={styles.buttonPair}>
             <Button variant="secondary" onClick={() => { download(`inflow-backup-${today}.json`, JSON.stringify(makeBackup(data, settings), null, 2), 'application/json'); writeJson(LAST_BACKUP_KEY, today); setLastBackup(today) }}>Download backup</Button>
             <Button variant="secondary" onClick={() => fileRef.current?.click()}>Restore…</Button>

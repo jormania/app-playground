@@ -70,3 +70,12 @@ describe('movers keep the biggest drops', () => {
     expect(m.find((x) => x.name === 'X')!.change).toBe(-3000)
   })
 })
+
+describe('the demo year keeps its biggest drop', () => {
+  it('names the contract that ended among the movers', () => {
+    const cur = received(demo.records, { from: '2026-01-01', to: '2026-11-25' })
+    const before = received(demo.records, { from: '2025-01-01', to: '2025-11-25' })
+    const m = movers(demo, cur, before)
+    expect(m.some((x) => x.name === 'Orion Pharma SRL' && x.change < 0)).toBe(true)
+  })
+})

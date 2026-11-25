@@ -49,8 +49,10 @@ export function movers(
       .map(([id, [c, p]]) => ({ dim, id, name: nameOf(data, dim, id), current: Math.round(c), previous: Math.round(p), change: Math.round(c - p) }))
       .filter((m) => m.change !== 0)
       .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
-      .slice(0, perDim)
-    all.push(...list)
+    // The top few by size, plus this dimension's biggest drop if it didn't make it.
+    const kept = list.slice(0, perDim)
+    const drop = list.find((x) => x.change < 0)
+    all.push(...kept, ...(drop && !kept.includes(drop) ? [drop] : []))
   }
   // The biggest drops always make the list (up to two), so a client who stopped
   // is never crowded out by a good year's rises.
@@ -114,4 +116,50 @@ export function reviewSummary({ data, cur, before, prevLabel, kept, insights, pe
   const pains = insights.filter((i) => i.kind === 'pain').length
   if (pains) out.push(`${pains} ${pains === 1 ? 'thing needs' : 'things need'} a look.`)
   return out.join(' ')
+}
+
+export type HighlightKind = 'in' | 'kept' | 'top' | 'up' | 'down' | 'look'
+
+/** One line of the review, mapped: what it is, the figure, a short note, and whether it reads good or bad. */
+export interface Highlight {
+  kind: HighlightKind
+  label: string
+  value: string
+  note: string
+  tone: 'good' | 'bad' | 'neutral'
+}
+
+/**
+ * The review as rows instead of a paragraph: income against the period
+ * before, what you kept, the top client, the biggest rise and drop, and how
+ * many things need a look. Same facts as reviewSummary, which stays for
+ * plain-text copying.
+ */
+export function reviewHighlights({ data, cur, before, prevLabel, kept, insights, prevFrom, firstRecord }: ReviewInput): Highlight[] {
+  const total = sum(cur)
+  const prev = sum(before)
+  const out: Highlight[] = []
+  const d = delta(total, prev)
+  const partial = !!(prevFrom && firstRecord && firstRecord > prevFrom && prev > 0)
+  out.push({
+    kind: 'in', label: 'Came in', value: lei(total),
+    note: total === 0 && prev === 0 ? `nothing ${prevLabel} either`
+      : partial ? `records start ${monthLabel(firstRecord!)}; ${lei(prev)} ${prevLabel}`
+        : d.direction === 'new' ? `nothing ${prevLabel}`
+          : d.direction === 'flat' ? `about the same as ${prevLabel}` : `${d.text} on ${prevLabel} (${lei(prev)})`,
+    tone: partial || d.direction === 'flat' ? 'neutral' : d.direction === 'down' ? 'bad' : 'good',
+  })
+  if (kept !== null && kept !== undefined && total > 0) {
+    out.push({ kind: 'kept', label: 'You kept', value: lei(kept), note: `${percent(kept / total)} of income, after costs`, tone: kept < 0 ? 'bad' : 'neutral' })
+  }
+  const top = breakdown(data, cur, before, 'client')[0]
+  if (top && total > 0) out.push({ kind: 'top', label: 'Top client', value: top.name, note: `${lei(top.total)} · ${percent(top.share)} of income`, tone: 'neutral' })
+  const m = movers(data, cur, before)
+  const up = m.find((x) => x.change > 0)
+  const down = m.find((x) => x.change < 0)
+  if (up) out.push({ kind: 'up', label: 'Biggest rise', value: up.name, note: `+${lei(up.change)} · ${DIMENSION_NOUN[up.dim].toLowerCase()}`, tone: 'good' })
+  if (down) out.push({ kind: 'down', label: 'Biggest drop', value: down.name, note: `−${lei(-down.change)}${down.current === 0 ? ' · nothing this time' : ''}`, tone: 'bad' })
+  const pains = insights.filter((i) => i.kind === 'pain').length
+  if (pains) out.push({ kind: 'look', label: 'Needs a look', value: `${pains} ${pains === 1 ? 'thing' : 'things'}`, note: 'pain points, below', tone: 'bad' })
+  return out
 }

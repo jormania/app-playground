@@ -119,7 +119,10 @@ describe('InFlow', () => {
     await screen.findByTestId('period-total')
     await go('#/reports/insights')
     expect(await screen.findByText('November 2026 in review')).toBeTruthy()
-    expect(screen.getByText(/came in/)).toBeTruthy()
+    const summary = screen.getByLabelText('Summary')
+    for (const k of ['Came in', 'Top client']) expect(within(summary).getByText(k)).toBeTruthy()
+    // No paragraph to read: the facts are rows.
+    expect(summary.querySelectorAll('p')).toHaveLength(0)
     const moved = within(screen.getByLabelText('Main movers')).getAllByRole('button')
     expect(moved.length).toBeGreaterThan(0)
     await user.click(moved[0])

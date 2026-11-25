@@ -358,8 +358,9 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
           </table>
         </div>
         <ul className={styles.notes}>
-          <li>Cash basis: income when received, costs when paid. Equipment purchases, loan repayments and drawings are cash movements, not P&L costs; see Cash flow.</li>
-          {scoped && <li>Filtered: only costs linked to these filters are counted, so unlinked overheads (rent, software…) are left out. Clear the filters for the whole business.</li>}
+          <li>Cash basis: income when received, costs when paid.</li>
+          <li>Equipment, loan repayments and drawings are in Cash flow, not here.</li>
+          {scoped && <li>Filtered: overheads not linked to the filters are left out.</li>}
           {due.length > 0 && <li>{due.length} {due.length === 1 ? 'cost is' : 'costs are'} due and not counted until paid ({lei(due.reduce((s, c) => s + c.amountRon, 0))}).</li>}
           {range.to > today && <li>The period runs to {range.to}; figures are to date.</li>}
         </ul>
@@ -405,7 +406,8 @@ function CashFlowReport() {
         <li>{cf.relative
           ? 'No opening balance set, so balances start from zero. Set your cash on a date in Settings → Costs for real balances.'
           : `From ${lei(settings.openingCash)} in cash on ${settings.openingCashDate}. Ends the period at ${lei(end)}.`}</li>
-        <li>The whole business, unfiltered. Depreciation is not cash and is left out; equipment shows when bought. Loans received and money you put in are not recorded.</li>
+        <li>The whole business, unfiltered.</li>
+        <li>No depreciation (not cash); equipment shows when bought.</li>
       </ul>
     </section>
   )

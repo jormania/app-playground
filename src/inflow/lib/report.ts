@@ -19,7 +19,7 @@ import { buckets, inRange } from './period'
 import { projectYear } from '../tax/estimate'
 import { insights } from './insights'
 import { applyFeedback, type Feedback } from '../app/insightFeedback'
-import { movers, reviewSummary } from './review'
+import { movers, reviewHighlights } from './review'
 
 export type ReportSection =
   | 'summary' | 'review' | 'insights' | 'trend' | 'clients' | 'venues' | 'activities' | 'sources' | 'mix' | 'margins'
@@ -205,14 +205,15 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
     const list = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected })
     const kept = ctx.trackCosts ? buildPnl(scoped.records, scoped.costs, monthColumns(range)).lines.find((l) => l.key === 'net')!.total : null
     const firstRecord = data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999')
-    const text = reviewSummary({ data: scoped, cur, before, prevLabel: 'the period before', kept, insights: list, periodLabel: 'this period', prevFrom: prevRange.from, firstRecord })
+    const facts = reviewHighlights({ data: scoped, cur, before, prevLabel: 'the period before', kept, insights: list, periodLabel: 'this period', prevFrom: prevRange.from, firstRecord })
+    const mark = { in: '◆', kept: '◆', top: '★', up: '▲', down: '▼', look: '!' } as const
     const m = movers(scoped, cur, before)
     const max = Math.max(1, ...m.map((x) => Math.abs(x.change)))
     const rows = m.map((x) => {
       const w = ((Math.abs(x.change) / max) * 100).toFixed(1)
       return `<tr><td>${esc(x.name)} <span class="muted">${DIMENSION_NOUN[x.dim].toLowerCase()}</span></td><td class="mv"><div class="mvbar"><span class="half l">${x.change < 0 ? `<i class="dn" style="width:${w}%"></i>` : ''}</span><span class="half">${x.change > 0 ? `<i class="upb" style="width:${w}%"></i>` : ''}</span></div></td><td class="${x.change > 0 ? 'up' : 'down'}">${x.change > 0 ? '+' : '−'}${lei(Math.abs(x.change))}</td><td class="muted">${lei(x.previous)} → ${lei(x.current)}</td></tr>`
     }).join('')
-    parts.push(`<section><h2>In short</h2><p class="lede">${esc(text)}</p>${m.length ? `<h3>Main movers, against the period before</h3><table class="movers"><tbody>${rows}</tbody></table>` : ''}</section>`)
+    parts.push(`<section><h2>In short</h2><ul class="facts">${facts.map((f) => `<li class="${f.tone}"><span class="mk">${mark[f.kind]}</span><span class="k">${esc(f.label)}</span><b>${esc(f.value)}</b><span class="n">${esc(f.note)}</span></li>`).join('')}</ul>${m.length ? `<h3>Main movers, against the period before</h3><table class="movers"><tbody>${rows}</tbody></table>` : ''}</section>`)
   }
 
   if (has('insights')) {
@@ -358,6 +359,7 @@ tfoot td{font-weight:700;border-bottom:0;border-top:1px solid var(--ink)}tr.tota
 .up{color:var(--up)}.down{color:var(--down)}.new{color:var(--up)}.muted,.muted td{color:var(--faint)}.note{font-size:11px;color:var(--muted)}
 .chart{width:100%;height:auto}.chart .bars rect{fill:var(--accent)}.chart text{font-size:10px;fill:var(--faint)}.chart .axis{stroke:var(--ink)}.chart .grid{stroke:var(--line)}
 .lede{font-size:15px;line-height:1.6;margin:0 0 6px;max-width:62ch}
+ul.facts{list-style:none;margin:0 0 8px;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}ul.facts li{display:grid;grid-template-columns:18px 1fr;grid-template-areas:'mk k' 'mk b' 'mk n';border-bottom:1px solid var(--line);padding:6px 0}ul.facts .mk{grid-area:mk;font-weight:700}ul.facts .k{grid-area:k;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}ul.facts b{grid-area:b;font-size:15px}ul.facts .n{grid-area:n;font-size:12px;color:var(--muted)}ul.facts li.good .mk{color:var(--up)}ul.facts li.bad .mk{color:#c07a22}ul.facts li.neutral .mk{color:#5d6fc4}
 table.movers td{vertical-align:middle}table.movers td.mv{width:34%}table.movers .mvbar{display:grid;grid-template-columns:1fr 1fr;align-items:center}
 table.movers .half{display:flex;height:10px}table.movers .half.l{justify-content:flex-end;border-right:1px solid var(--faint)}table.movers i{display:block;height:10px}
 table.movers i.upb{background:#0a8a6c;border-radius:0 4px 4px 0}table.movers i.dn{background:#c07a22;border-radius:4px 0 0 4px}

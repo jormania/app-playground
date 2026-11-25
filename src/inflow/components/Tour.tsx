@@ -5,7 +5,7 @@
  * Steps that introduce an optional feature carry its switch.
  */
 import { useState } from 'react'
-import { Database, DoorOpen, Flame, PlusCircle, Receipt, Scale, Waves } from 'lucide-react'
+import { Check, Database, DoorOpen, Flame, PlusCircle, Receipt, Scale, Waves } from 'lucide-react'
 import type { FeatureKey } from '../domain/types'
 import { Button, Modal } from '../../ds'
 import { useInflow } from '../app/state'
@@ -14,7 +14,8 @@ import styles from '../styles/ui.module.css'
 interface Step {
   icon: typeof Waves
   title: string
-  text: string
+  /** Two to four short points, read at a glance. */
+  points: string[]
   /** A feature this step introduces, switchable right here. */
   feature?: { key: FeatureKey; label: string }
 }
@@ -23,41 +24,41 @@ const STEPS: Step[] = [
   {
     icon: Waves,
     title: 'Welcome to InFlow',
-    text: 'A light way to see your freelance income: how much came in, who it came from, where the work happened, and which of it is worth keeping. Not accounting software — just the picture.',
+    points: ['How much came in, and from whom', 'Where the work happened', 'What you actually keep', 'Not accounting software — just the picture'],
   },
   {
     icon: PlusCircle,
     title: 'Add a payment in seconds',
-    text: 'Tap “Add income”, type the amount, pick the client. InFlow remembers the rest from that client’s last payment — source, venue, currency — and converts foreign currencies to lei. New clients, sources and venues can be created right inside the form.',
+    points: ['Tap “Add income”, type the amount, pick the client', 'The rest is filled in from their last payment', 'Your usual amounts are one tap away', 'Foreign currencies are converted to lei'],
   },
   {
     icon: Flame,
     title: 'Where the money is good',
-    text: 'Reports → Clients & work ranks your clients and kinds of work by what you actually kept after venue fees and direct costs, with the sessions behind each. The Review adds plain-language pain points: sessions that lost money, clients drifting away, one-off clients who never came back.',
+    points: ['Reports → Clients & work ranks by what you kept', 'The Review maps the period: totals, rises, drops', 'Pain points in plain words; 👍 or 👎 each one'],
     feature: { key: 'insights', label: 'Insights' },
   },
   {
     icon: DoorOpen,
     title: 'Fixed fee or a share?',
-    text: 'Some rooms charge a fee whoever turns up; others take a share of the tickets. Set each venue’s deal and note how many came, and InFlow shows how full a room must be, the evenings that cost you money, and which deal would have left you more.',
+    points: ['Each venue’s deal: a fee per session, or a share', 'What every room leaves you, side by side', 'Break-even: how many people cover the fee', 'What if: the same sessions on other terms'],
     feature: { key: 'deals', label: 'Venue deals' },
   },
   {
     icon: Scale,
     title: 'Costs and profit',
-    text: 'Record what you spend — co-facilitators, software, the accountant — and InFlow adds a P&L, a monthly cash flow, the margin each venue, client and activity leaves you, and the income you need each month to break even.',
+    points: ['Record what you spend', 'P&L and monthly cash flow', 'Your break-even each month'],
     feature: { key: 'costs', label: 'Costs, P&L and cash flow' },
   },
   {
     icon: Receipt,
     title: 'Tax, only if you want it',
-    text: 'InFlow can suggest whether each payment is taxable, whether tax was withheld, the VAT treatment, and how much to set aside under Romanian rules for PFA or SRL. Every suggestion is labelled as one, and you decide.',
+    points: ['Taxable or not, withheld or not, VAT', 'What to set aside, under Romanian rules', 'Always a suggestion; you decide'],
     feature: { key: 'tax', label: 'Tax suggestions' },
   },
   {
     icon: Database,
     title: 'Your data, your choice',
-    text: 'Everything starts switched on; Settings → Features turns off whatever you don’t need, and explains each one. The demo practice lives apart from your own data — switch between them in Settings, or from the banner on top. Keep your records on this device, or connect Notion to have them anywhere.',
+    points: ['Everything is on; Settings → Features turns parts off', 'The demo lives apart from your data', 'On this device, or in your Notion'],
   },
 ]
 
@@ -79,7 +80,9 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
       <div className={styles.tourStep}>
         <div className={styles.tourIcon}><s.icon size={26} aria-hidden /></div>
         <h3 className={styles.tourTitle}>{s.title}</h3>
-        <p className={styles.tourText}>{s.text}</p>
+        <ul className={styles.tourPoints}>
+          {s.points.map((p) => <li key={p}><Check size={14} aria-hidden />{p}</li>)}
+        </ul>
         {s.feature && (
           <label className={styles.tourCheck}>
             <input type="checkbox" checked={settings.features[s.feature.key]}

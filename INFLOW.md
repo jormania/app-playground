@@ -127,6 +127,18 @@ recorded one is filled in), and seat icons show how many people cover the fee
 (`breakEvenPeople`) and what each person after that leaves you (`keptPerPerson`). A revenue
 share has no break-even.
 
+### Information mapping (25 Nov 2026)
+No paragraphs to read where facts can be laid out.
+- **The Review's summary** is rows (`reviewHighlights`): came in, you kept, top client, biggest
+  rise, biggest drop, needs a look. Each row has an icon tile coloured by how it reads: green good,
+  amber bad, blue neutral. The printout's *In short* uses the same rows. The sentence form
+  (`reviewSummary`) survives only for *Copy summary*.
+- **The tour** gives two to four ticked points per step.
+- **Settings → Features:** each twisty lists what the feature adds (ticks) and one "Off:" line.
+- **The demo, device mode and backup:** chips or ticks. **Notion setup:** numbered steps.
+- **Report notes:** one fact per line.
+- Movers keep each dimension's biggest drop, so the summary can always name one.
+
 ### Small conveniences (25 Nov 2026)
 - **Usual amounts**: pick a client and their three most frequent amounts appear as chips.
 - **People × price**: a head count at a venue (or for an activity) with a known price per head

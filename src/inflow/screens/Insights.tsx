@@ -4,7 +4,7 @@
  * Earnings.tsx, venue deals in VenueDeals.tsx.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { Copy } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Copy, PiggyBank, Trophy, Wallet } from 'lucide-react'
 import { useInflow, EMPTY_FILTER } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { InsightList } from '../components/insightsUi'
@@ -12,13 +12,15 @@ import { MoversChart } from '../components/charts'
 import { Donut } from '../components/Donut'
 import { leaveTrail } from '../app/trail'
 import { buildPnl, monthColumns } from '../lib/finance'
-import { movers, reviewSummary, reviewTitle, shakers } from '../lib/review'
+import { movers, reviewHighlights, reviewSummary, reviewTitle, shakers, type HighlightKind } from '../lib/review'
 import { ANY_SCOPE, DIMENSION_NOUN, inScope, NO_ENTITY, sum, type Dimension, type Scope } from '../lib/analytics'
 import type { CostRecord, FeatureKey } from '../domain/types'
 import { insights } from '../lib/insights'
 import { useInsightFeedback } from '../app/insightFeedback'
-import { compact, delta, lei } from '../lib/money'
+import { compact, delta } from '../lib/money'
 import styles from '../styles/ui.module.css'
+
+const HIGHLIGHT_ICON: Record<HighlightKind, typeof Copy> = { in: Wallet, kept: PiggyBank, top: Trophy, up: ArrowUpRight, down: ArrowDownRight, look: AlertTriangle }
 
 /** A cost in scope (Reports' rule, kept here to avoid an import cycle). */
 function costInScopeLite(c: CostRecord, s: Scope): boolean {
@@ -94,7 +96,10 @@ export function ReviewReport() {
   const prevTotal = sum(beforeS)
   const d = delta(total, prevTotal)
   const firstRecord = useMemo(() => data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999'), [data.records])
-  const summary = reviewSummary({ data, cur: curS, before: beforeS, prevLabel: prev.label, kept, insights: fb.apply(list), periodLabel: range.label, prevFrom: prev.from, firstRecord })
+  const input = { data, cur: curS, before: beforeS, prevLabel: prev.label, kept, insights: fb.apply(list), periodLabel: range.label, prevFrom: prev.from, firstRecord }
+  // Rows on screen; the same facts as a sentence for Copy summary.
+  const summary = reviewSummary(input)
+  const highlights = reviewHighlights(input)
   const moved = useMemo(() => movers(data, curS, beforeS), [data, curS, beforeS])
   const [dim, setDim] = useState<Dimension>('client')
   const parts = useMemo(() => shakers(data, curS, beforeS, dim).map((r) => ({ id: r.id, name: r.name, value: r.total })), [data, curS, beforeS, dim])
@@ -117,14 +122,30 @@ export function ReviewReport() {
       <section id="review-summary" className={`${styles.panel} ${styles.reviewHero} ${styles.anchored}`} aria-label="Summary">
         <div className={styles.eyebrow}>Understand</div>
         <h2 className={styles.reviewTitle}>{reviewTitle(range)}</h2>
-        <p className={`${styles.reviewLede} ${styles.dropCap}`}>{summary}</p>
-        <div className={styles.kpis}>
-          <div><span className={styles.statLabel}>Came in</span><b>{lei(total)}</b></div>
-          <div><span className={styles.statLabel}>vs {prev.label}</span><b className={d.direction === 'up' || d.direction === 'new' ? styles.up : d.direction === 'down' ? styles.down : undefined}>{d.text}</b></div>
-          {kept !== null && <div><span className={styles.statLabel}>Kept</span><b className={kept < 0 ? styles.down : undefined}>{lei(kept)}</b></div>}
-          <div><span className={styles.statLabel}>Payments</span><b>{curS.length}</b></div>
+        <ul className={styles.highlights}>
+          {highlights.map((h) => {
+            const Icon = HIGHLIGHT_ICON[h.kind]
+            const body = (
+              <>
+                <span className={`${styles.hlIcon} ${styles[`hl_${h.tone}`]}`} aria-hidden><Icon size={18} /></span>
+                <span className={styles.hlLabel}>{h.label}</span>
+                <b className={styles.hlValue}>{h.value}</b>
+                <span className={styles.hlNote}>{h.note}</span>
+              </>
+            )
+            return (
+              <li key={h.kind}>
+                {h.kind === 'look'
+                  ? <button type="button" className={styles.hlRow} onClick={() => document.getElementById('review-act')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{body}</button>
+                  : <div className={styles.hlRow}>{body}</div>}
+              </li>
+            )
+          })}
+        </ul>
+        <div className={styles.hlFoot}>
+          <span className={styles.panelSub}>{curS.length} {curS.length === 1 ? 'payment' : 'payments'} · {d.text === '—' ? range.label : `${d.text} vs ${prev.label}`}</span>
+          <button type="button" className={styles.linkButton} onClick={copy}><Copy size={12} aria-hidden /> Copy summary</button>
         </div>
-        <button type="button" className={styles.linkButton} onClick={copy}><Copy size={12} aria-hidden /> Copy summary</button>
       </section>
 
       <section id="review-movers" className={`${styles.panel} ${styles.anchored}`} aria-label="Main movers">
