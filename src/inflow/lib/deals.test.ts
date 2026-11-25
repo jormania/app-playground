@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildDemo } from '../data/demo'
 import type { IncomeRecord, Venue } from '../domain/types'
 import { dealTotals, defaultAlternative, feeCoveredAt, sameDayRepeats, scenario, venueCostOf, venueDeal, venueDeals } from './deals'
-import { heatMap, insights, takeHome } from './insights'
+import { insights, takeHome } from './insights'
 
 const today = '2026-11-25'
 const demo = buildDemo(today)
@@ -74,20 +74,6 @@ describe('take-home and the heat map', () => {
     const evening = demo.records.find((r) => r.venueId === 'demo_v_loft' && r.status === 'received')!
     // 600 rent (deal) + 60 materials (linked cost); the recorded room hire is skipped.
     expect(t.get(evening.id)).toBe(evening.amountRon - 660)
-  })
-  it('builds activity × venue cells from the records', () => {
-    const t = takeHome(demo, { deals: true, costs: true })
-    const h = heatMap(demo, year, 'activity', 'venue', 'takePerSession', t, 20, 20)
-    expect(h.rows.length).toBeGreaterThan(3)
-    expect(h.cols.length).toBeGreaterThan(3)
-    expect(h.min).toBeLessThan(h.max)
-    const workshop = h.rows.findIndex((r) => r.id === 'workshop')
-    const loft = h.cols.findIndex((c) => c.id === 'demo_v_loft')
-    expect(h.cells[workshop][loft]?.count).toBeGreaterThan(0)
-  })
-  it('can run by month', () => {
-    const h = heatMap(demo, year, 'client', 'month', 'income', new Map())
-    expect(h.cols.length).toBe(12)
   })
 })
 

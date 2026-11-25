@@ -15,6 +15,7 @@ import { Optional } from '../components/Optional'
 import { ReportBuilder } from './ReportBuilder'
 import { ReviewReport, SectionIndex } from './Insights'
 import { DealsReport } from './VenueDeals'
+import { EarningsReport } from './Earnings'
 import type { CostRecord } from '../domain/types'
 import { ACTIVITY, PROFILE, options } from '../domain/vocabulary'
 import {
@@ -36,7 +37,7 @@ export function trailLabel(): string {
   return g ? `${g.label.replace('*', '')}${SUB_LABEL[route as ReportTab] && g.routes.length > 1 ? ` · ${SUB_LABEL[route as ReportTab]}` : ''}` : 'Reports'
 }
 
-export const REPORT_TABS = ['insights', 'clients', 'venues', 'activities', 'sources', 'deals', 'pnl', 'cashflow', 'tax', 'print'] as const
+export const REPORT_TABS = ['insights', 'earnings', 'clients', 'venues', 'activities', 'sources', 'deals', 'pnl', 'cashflow', 'tax', 'print'] as const
 export type ReportTab = (typeof REPORT_TABS)[number]
 
 const DIM: Record<'clients' | 'venues' | 'activities' | 'sources', Dimension> = { clients: 'client', venues: 'venue', activities: 'activity', sources: 'source' }
@@ -45,6 +46,7 @@ const DIM: Record<'clients' | 'venues' | 'activities' | 'sources', Dimension> = 
 interface Group { id: string; label: string; routes: ReportTab[] }
 const GROUPS: Group[] = [
   { id: 'review', label: 'Review', routes: ['insights'] },
+  { id: 'earnings', label: 'Clients & work', routes: ['earnings'] },
   { id: 'breakdown', label: 'Breakdown', routes: ['clients', 'venues', 'activities', 'sources'] },
   { id: 'deals', label: 'Venue deals', routes: ['deals'] },
   { id: 'profit', label: 'Profit', routes: ['pnl', 'cashflow'] },
@@ -61,7 +63,7 @@ export function costInScope(c: CostRecord, s: Scope): boolean {
 }
 
 export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; anchor?: string; onTab?: (t: ReportTab) => void; onAddCost: () => void }) {
-  // A link to a section (#/reports/insights/heat) lands on it once the report is drawn.
+  // A link to a section (#/reports/insights/act) lands on it once the report is drawn.
   useEffect(() => {
     if (!anchor) return
     const id = `${tab === 'insights' ? 'review' : tab}-${anchor}`
@@ -74,7 +76,7 @@ export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; ancho
   const current = groups.find((g) => g.routes.includes(tab)) ?? groups[0]
   // A report switched off (or a bare #/reports) falls back to the first one offered.
   const shown: ReportTab = current.routes.includes(tab) ? tab : current.routes[0]
-  const scoped = on('reportTools') && shown !== 'print' && shown !== 'cashflow' && shown !== 'tax'
+  const scoped = on('reportTools') && shown !== 'print' && shown !== 'cashflow' && shown !== 'tax' && shown !== 'earnings'
   const [filters, setFilters] = useState(false)
   const { scope } = useInflow()
   return (
@@ -107,6 +109,7 @@ export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; ancho
             : shown === 'pnl' ? <PnlReport onAddCost={onAddCost} />
               : shown === 'cashflow' ? <CashFlowReport />
                 : shown === 'insights' ? <ReviewReport />
+                  : shown === 'earnings' ? <EarningsReport />
                   : shown === 'deals' ? <DealsReport />
                     : <DimensionReport dim={DIM[shown]} />}
       </div>

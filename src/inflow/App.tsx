@@ -31,7 +31,7 @@ type Screen = 'overview' | 'income' | 'costs' | 'reports' | 'settings'
 
 const TITLE: Record<Screen, string> = { overview: 'Overview', income: 'Income', costs: 'Costs', reports: 'Reports', settings: 'Settings' }
 
-interface Route { screen: Screen; report: ReportTab; /** A section to land on, e.g. #/reports/insights/heat. */ anchor: string; /** #/add/income or #/add/cost: open the form at once. */ add: 'income' | 'cost' | null }
+interface Route { screen: Screen; report: ReportTab; /** A section to land on, e.g. #/reports/insights/act. */ anchor: string; /** #/add/income or #/add/cost: open the form at once. */ add: 'income' | 'cost' | null }
 
 export function parseRoute(hash: string): Route {
   const [, first = 'overview', second = '', anchor = ''] = hash.replace(/^#/, '').split('/')

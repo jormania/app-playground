@@ -88,9 +88,22 @@ Removed: verdicts and thresholds, seat strips, per-session bars, the deal-type c
 its advice, the deal curve and crossover, and the section index. The Review's pain points still
 read `venueDeal` (sessions that lost money at a fixed-fee room).
 
-The Review's grid is **Which work pays best, and where**: a sentence saying what a square
-is, four ready-made questions, "Customise the grid", and the three strongest and weakest
-squares in words. A period too short to compare offers the whole year.
+**Clients & work** (`screens/Earnings.tsx`, `lib/earnings.ts`) replaced the Review's heat map
+on 25 Nov 2026. It answers one question: which clients and kinds of work earn the most.
+- A summary of income, costs and kept, then one toggle (By client / By work type).
+- A list ranked by total kept. Each row shows sessions, kept a session, and a bar of kept (green)
+  against costs (amber). Tap a row for income, venue fees, direct costs, kept, the lowest to
+  highest session, and the venues involved.
+- "Kept" is the existing per-payment rule, `recordCosts` in `lib/insights.ts` (`takeHome` is
+  built on it): income less the venue's deal cost and the direct costs linked to that venue
+  that day, shared across that day's payments.
+- A session is a received, non-reimbursement payment in the selected period. The global
+  period is the only filter.
+
+**Break-even** on Venue deals sits beside "What if…". It takes a price per person (the venue's
+recorded one is filled in), and seat icons show how many people cover the fee
+(`breakEvenPeople`) and what each person after that leaves you (`keptPerPerson`). A revenue
+share has no break-even.
 
 ### Small conveniences (25 Nov 2026)
 - **Usual amounts**: pick a client and their three most frequent amounts appear as chips.

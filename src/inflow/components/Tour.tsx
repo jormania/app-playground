@@ -33,8 +33,8 @@ const STEPS: Step[] = [
   {
     icon: Flame,
     title: 'Where the money is good',
-    text: 'Reports break income down by client, venue, activity and source. Insights goes further: a heat map of what each kind of work leaves you, venue by venue, and plain-language pain points — sessions that lost money, clients drifting away, one-off clients who never came back.',
-    feature: { key: 'insights', label: 'Insights and heat map' },
+    text: 'Reports → Clients & work ranks your clients and kinds of work by what you actually kept after venue fees and direct costs, with the sessions behind each. The Review adds plain-language pain points: sessions that lost money, clients drifting away, one-off clients who never came back.',
+    feature: { key: 'insights', label: 'Insights' },
   },
   {
     icon: DoorOpen,

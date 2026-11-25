@@ -179,3 +179,21 @@ export function feeCoveredAt(d: VenueDeal): { revenue: number; people: number | 
 export function sameDayRepeats(d: VenueDeal): number {
   return d.sessions.length - new Set(d.sessions.map((x) => x.date)).size
 }
+
+/** What one more person at a session leaves you under these terms. */
+export function keptPerPerson(t: Terms, pricePerPerson: number): number {
+  const share = t.deal === 'share' || t.deal === 'hybrid' ? t.sharePct : 0
+  return round2(pricePerPerson * (1 - share))
+}
+
+/**
+ * How many people a session needs before the venue's fee is covered, at a
+ * price per person. Fixed fee (and fee + share): the fee over what each person
+ * leaves you, rounded up. A revenue share has no fee to cover: null.
+ */
+export function breakEvenPeople(t: Terms, pricePerPerson: number): number | null {
+  if (t.deal !== 'fixed' && t.deal !== 'hybrid') return null
+  const each = keptPerPerson(t, pricePerPerson)
+  if (!(each > 0)) return null
+  return Math.max(1, Math.ceil(t.feePerSession / each - 1e-9))
+}

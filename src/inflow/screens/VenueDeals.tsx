@@ -14,7 +14,7 @@ import { SegmentedControl } from '../../ds'
 import { TextInput } from '../components/fields'
 import { DEAL } from '../domain/vocabulary'
 import { ANY_SCOPE, inScope, NO_ENTITY } from '../lib/analytics'
-import { dealTotals, defaultAlternative, feeCoveredAt, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
+import { breakEvenPeople, dealTotals, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
 import { lei, percent } from '../lib/money'
 import { WiderPeriod } from './Insights'
 import styles from '../styles/ui.module.css'
@@ -105,14 +105,58 @@ function VenueRow({ d, best }: { d: VenueDeal; best: number }) {
       </dl>
       <p className={styles.dealNote}>
         {covered
-          ? <>Fee covered at <b>{lei(covered.revenue)}</b> of session revenue{covered.people ? <> (about {covered.people} {covered.people === 1 ? 'person' : 'people'} at {lei(d.revenuePerHead!)})</> : null}.</>
+          ? <>Fee covered at <b>{lei(covered.revenue)}</b> of session revenue.</>
           : v.deal === 'share'
             ? <>You keep <b>{percent(1 - v.sharePct)}</b> of session revenue.</>
             : null}
         {repeats > 0 && <> {repeats} {repeats === 1 ? 'payment shares' : 'payments share'} a day with another and {repeats === 1 ? 'counts' : 'count'} as a separate session.</>}
       </p>
+      {(v.deal === 'fixed' || v.deal === 'share' || v.deal === 'hybrid') && <BreakEven d={d} />}
       <WhatIf d={d} />
     </article>
+  )
+}
+
+/**
+ * Break-even at the venue's actual deal: put in a price per person (the
+ * recorded one is filled in) and see how many people a session needs before
+ * the fee is covered, drawn as seats.
+ */
+function BreakEven({ d }: { d: VenueDeal }) {
+  const v = d.venue
+  const [price, setPrice] = useState(d.revenuePerHead ? String(Math.round(d.revenuePerHead)) : '')
+  const p = Number(price.replace(',', '.'))
+  const ok = Number.isFinite(p) && p > 0
+  const need = ok ? breakEvenPeople(v, p) : null
+  const each = ok ? keptPerPerson(v, p) : 0
+  const seats = need ? Math.min(need, 30) : 0
+  const extra = need ? Math.max(2, Math.min(4, 30 - seats)) : 0
+  return (
+    <details className={styles.whatIfBox}>
+      <summary><span className={styles.twistyArrow} aria-hidden>▶</span>Break-even</summary>
+      <div className={styles.whatIfBody}>
+        <TextInput label="Price per person (lei)" value={price} onChange={setPrice} inputMode="decimal"
+          hint={d.revenuePerHead ? `${lei(d.revenuePerHead)} on average here, from the sessions with a head count.` : 'No head counts recorded here yet.'} />
+        {ok && (v.deal === 'share' ? (
+          <p className={styles.breakEvenAnswer}>
+            <b>No break-even.</b> The venue's {percent(v.sharePct)} comes out of each payment, so every person leaves you <b>{lei(each)}</b>.
+          </p>
+        ) : need ? (
+          <>
+            <div className={styles.seatsLine} role="img" aria-label={`${need} ${need === 1 ? 'person covers' : 'people cover'} the fee; each one after leaves you ${lei(each)}`}>
+              {Array.from({ length: seats }, (_, i) => <span key={`f${i}`} className={styles.seatFee} />)}
+              <span className={styles.seatDivider} />
+              {Array.from({ length: extra }, (_, i) => <span key={`k${i}`} className={styles.seatKept} />)}
+            </div>
+            <p className={styles.breakEvenAnswer}>
+              <b className={styles.breakEvenNumber}>{need}</b> {need === 1 ? 'person covers' : 'people cover'} the {lei(v.feePerSession)} fee.
+              {' '}From person {need + 1} on, each one leaves you <b>{lei(each)}</b>.
+              {d.avgAttendees !== null && <> Your sessions here averaged {d.avgAttendees}.</>}
+            </p>
+          </>
+        ) : <p className={styles.dealNote}>At this price the fee can't be covered.</p>)}
+      </div>
+    </details>
   )
 }
 

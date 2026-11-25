@@ -1,13 +1,13 @@
 /**
- * Insights for someone finding their feet: a heat map of where the money is
- * best, and a short list of pain points and wins in plain words — the
+ * Insights for someone finding their feet: what each payment left you, and
+ * a short list of pain points and wins in plain words — the
  * sessions that cost more than they earned, the client drifting away, the
  * work that leaves little after costs, the room that needs more people.
  *
  * Every insight is computed from the records; nothing is a canned tip.
  */
 import type { IncomeRecord, InflowData } from '../domain/types'
-import { keyOf, nameOf, type Dimension } from './analytics'
+import { nameOf } from './analytics'
 import { addMonths, monthShort, startOfMonth, endOfMonth } from './dates'
 import { venueCosts, venueDeals } from './deals'
 import { lei, percent, round2 } from './money'
@@ -21,6 +21,15 @@ import { lei, percent, round2 } from './money'
  * skipped when deals are on, so a room is never counted twice.
  */
 export function takeHome(data: InflowData, opts: { deals: boolean; costs: boolean }): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const [id, c] of recordCosts(data, opts)) out.set(id, c.kept)
+  return out
+}
+
+export interface RecordCosts { income: number; venueFee: number; direct: number; kept: number }
+
+/** takeHome's parts, per received payment: the venue's fee, the direct costs shared to it, and what was kept. */
+export function recordCosts(data: InflowData, opts: { deals: boolean; costs: boolean }): Map<string, RecordCosts> {
   const venue = opts.deals ? venueCosts(data.records, data.venues) : new Map<string, number>()
   const linked = new Map<string, number>()
   if (opts.costs) {
@@ -34,84 +43,15 @@ export function takeHome(data: InflowData, opts: { deals: boolean; costs: boolea
   // Same-day linked costs are shared across that venue's payments that day.
   const sameDay = new Map<string, number>()
   for (const r of data.records) if (r.status === 'received' && r.venueId) sameDay.set(`${r.venueId}|${r.date}`, (sameDay.get(`${r.venueId}|${r.date}`) ?? 0) + 1)
-  const out = new Map<string, number>()
+  const out = new Map<string, RecordCosts>()
   for (const r of data.records) {
     if (r.status !== 'received') continue
     const k = `${r.venueId}|${r.date}`
     const direct = r.venueId ? (linked.get(k) ?? 0) / (sameDay.get(k) ?? 1) : 0
-    out.set(r.id, round2(r.amountRon - (venue.get(r.id) ?? 0) - direct))
+    const venueFee = venue.get(r.id) ?? 0
+    out.set(r.id, { income: r.amountRon, venueFee: round2(venueFee), direct: round2(direct), kept: round2(r.amountRon - venueFee - direct) })
   }
   return out
-}
-
-// ── heat map ────────────────────────────────────────────────────────────────
-
-export type HeatMeasure = 'income' | 'perSession' | 'take' | 'takePerSession'
-export type HeatAxis = Dimension | 'month'
-
-export const HEAT_MEASURE_LABEL: Record<HeatMeasure, string> = {
-  income: 'Total income',
-  perSession: 'Income per session',
-  take: 'Total kept',
-  takePerSession: 'Kept per session',
-}
-
-export interface HeatCell { value: number; count: number }
-export interface HeatMap {
-  rows: { id: string; name: string; total: number }[]
-  cols: { id: string; name: string }[]
-  cells: (HeatCell | null)[][]
-  min: number
-  max: number
-}
-
-function monthKeys(r: { from: string; to: string }): string[] {
-  const out: string[] = []
-  for (let m = startOfMonth(r.from); m <= r.to; m = addMonths(m, 1)) out.push(m.slice(0, 7))
-  return out
-}
-
-export function heatMap(
-  data: InflowData,
-  r: { from: string; to: string },
-  rowDim: Dimension,
-  colAxis: HeatAxis,
-  measure: HeatMeasure,
-  take: Map<string, number>,
-  maxRows = 8,
-  maxCols = 8,
-): HeatMap {
-  const rs = data.records.filter((x) => x.status === 'received' && x.date >= r.from && x.date <= r.to && x.category !== 'reimbursement')
-  const colKey = (x: IncomeRecord) => (colAxis === 'month' ? x.date.slice(0, 7) : keyOf(x, colAxis))
-  const val = (x: IncomeRecord) => (measure === 'take' || measure === 'takePerSession' ? take.get(x.id) ?? x.amountRon : x.amountRon)
-  const perSession = measure === 'perSession' || measure === 'takePerSession'
-
-  const rowTotals = new Map<string, number>()
-  for (const x of rs) rowTotals.set(keyOf(x, rowDim), (rowTotals.get(keyOf(x, rowDim)) ?? 0) + x.amountRon)
-  const rows = [...rowTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, maxRows)
-    .map(([id, total]) => ({ id, name: nameOf(data, rowDim, id), total: round2(total) }))
-
-  let colIds: string[]
-  if (colAxis === 'month') colIds = monthKeys(r).slice(-12)
-  else {
-    const colTotals = new Map<string, number>()
-    for (const x of rs) colTotals.set(colKey(x), (colTotals.get(colKey(x)) ?? 0) + x.amountRon)
-    colIds = [...colTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, maxCols).map(([id]) => id)
-  }
-  const cols = colIds.map((id) => ({ id, name: colAxis === 'month' ? `${monthShort(`${id}-01`)}${colIds.length > 12 ? ` ${id.slice(2, 4)}` : ''}` : nameOf(data, colAxis, id) }))
-
-  let min = Infinity
-  let max = -Infinity
-  const cells = rows.map((row) => cols.map((col) => {
-    const xs = rs.filter((x) => keyOf(x, rowDim) === row.id && colKey(x) === col.id)
-    if (!xs.length) return null
-    const total = xs.reduce((a, x) => a + val(x), 0)
-    const value = round2(perSession ? total / xs.length : total)
-    min = Math.min(min, value)
-    max = Math.max(max, value)
-    return { value, count: xs.length }
-  }))
-  return { rows, cols, cells, min: Number.isFinite(min) ? min : 0, max: Number.isFinite(max) ? max : 0 }
 }
 
 // ── pain points and wins ────────────────────────────────────────────────────
@@ -192,7 +132,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
       id: `best-activity`, kind: 'win', weight: best.kept * 0.5,
       title: `${nameOf(data, 'activity', best.id)} keeps the most per session: ${lei(best.perSession)}`,
       detail: `${best.n} sessions brought ${lei(best.income)}${opts.deals || opts.costs ? `, and ${lei(best.kept)} stayed with you` : ''}. More of this is the quickest way up.`,
-      link: { label: 'See where it pays best', hash: '#/reports/insights/heat' },
+      link: { label: 'Clients & work', hash: '#/reports/earnings' },
     })
   }
 

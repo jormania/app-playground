@@ -1,13 +1,13 @@
 /**
  * Review: the period in review — a headline, the main movers, who carries
- * the income, then the pain points and wins and a grid of which work pays
- * best where. Venue deals live in VenueDeals.tsx.
+ * the income, then the pain points and wins. Clients & work lives in
+ * Earnings.tsx, venue deals in VenueDeals.tsx.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { Copy, Grid3x3, TrendingDown, TrendingUp } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import { useInflow, EMPTY_FILTER } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
-import { HeatMapTable, InsightList } from '../components/insightsUi'
+import { InsightList } from '../components/insightsUi'
 import { MoversChart } from '../components/charts'
 import { Donut } from '../components/Donut'
 import { leaveTrail } from '../app/trail'
@@ -15,7 +15,7 @@ import { buildPnl, monthColumns } from '../lib/finance'
 import { movers, reviewSummary, reviewTitle, shakers } from '../lib/review'
 import { ANY_SCOPE, DIMENSION_NOUN, inScope, NO_ENTITY, sum, type Dimension, type Scope } from '../lib/analytics'
 import type { CostRecord, FeatureKey } from '../domain/types'
-import { HEAT_MEASURE_LABEL, heatMap, insights, takeHome, type HeatAxis, type HeatMeasure } from '../lib/insights'
+import { insights } from '../lib/insights'
 import { compact, delta, lei } from '../lib/money'
 import styles from '../styles/ui.module.css'
 
@@ -36,7 +36,6 @@ export const REVIEW_SECTIONS: IndexItem[] = [
   { id: 'review-movers', label: 'Movers' },
   { id: 'review-shakers', label: 'Who pays' },
   { id: 'review-act', label: 'Pain points', needs: 'insights' },
-  { id: 'review-heat', label: 'Work × place', needs: 'insights' },
 ]
 
 /**
@@ -156,139 +155,7 @@ export function ReviewReport() {
         </section>
       )}
 
-      {on('insights') && <HeatSection />}
     </>
-  )
-}
-
-/** Ready-made questions for the grid; "Customise" holds the rest. */
-const HEAT_QUESTIONS: { id: string; label: string; rows: Dimension; cols: HeatAxis }[] = [
-  { id: 'work-place', label: 'Which work pays best where', rows: 'activity', cols: 'venue' },
-  { id: 'client-month', label: 'Who pays, month by month', rows: 'client', cols: 'month' },
-  { id: 'work-month', label: 'Which work, when', rows: 'activity', cols: 'month' },
-  { id: 'place-month', label: 'Which room, when', rows: 'venue', cols: 'month' },
-]
-
-const MEASURE_PHRASE: Record<HeatMeasure, string> = {
-  income: 'all the income',
-  perSession: 'what one session brought in',
-  take: 'all you kept after the room and direct costs',
-  takePerSession: 'what one session left you after the room and direct costs',
-}
-
-function HeatSection() {
-  const { data, on, scope: rawScope, setFilter } = useInflow()
-  const scope = on('reportTools') ? rawScope : ANY_SCOPE
-  const { range } = usePeriodData()
-  const [rows, setRows] = useState<Dimension>('activity')
-  const [cols, setCols] = useState<HeatAxis>('venue')
-  const kept = on('deals') || on('costs')
-  const [measure, setMeasure] = useState<HeatMeasure>(kept ? 'takePerSession' : 'perSession')
-  const [all, setAll] = useState(false)
-  const scoped = useMemo(() => ({ ...data, records: data.records.filter((r) => inScope(r, scope)) }), [data, scope])
-  const take = useMemo(() => takeHome(scoped, { deals: on('deals'), costs: on('costs') }), [scoped, on])
-  const effMeasure: HeatMeasure = !kept && (measure === 'take' || measure === 'takePerSession') ? 'perSession' : measure
-  const map = useMemo(() => heatMap(scoped, range, rows, cols, effMeasure, take, all ? 30 : 8, all ? 30 : 8), [scoped, range, rows, cols, effMeasure, take, all])
-  const axes: Dimension[] = ['activity', 'venue', 'client', 'source']
-  const measures = (Object.keys(HEAT_MEASURE_LABEL) as HeatMeasure[]).filter((m) => kept || (m !== 'take' && m !== 'takePerSession'))
-  const drill = (rowId: string, colId: string) => {
-    const f = { ...EMPTY_FILTER, range: 'period' as const, [FILTER_KEY[rows]]: rowId }
-    if (cols !== 'month') Object.assign(f, { [FILTER_KEY[cols]]: colId })
-    setFilter(f)
-    leaveTrail('Review')
-    location.hash = '#/income'
-  }
-  const colNoun = cols === 'month' ? 'month' : DIMENSION_NOUN[cols].toLowerCase()
-  const rowNoun = DIMENSION_NOUN[rows].toLowerCase()
-  const thin = map.rows.length < 2 || map.cols.length < 2
-  const question = HEAT_QUESTIONS.find((q) => q.rows === rows && q.cols === cols)
-
-  // The squares worth naming: best and weakest, with at least two sessions behind them where there are enough.
-  const cells = map.rows.flatMap((r, i) => map.cols.map((c, j) => ({ r, c, cell: map.cells[i][j] })))
-    .filter((x): x is { r: typeof x.r; c: typeof x.c; cell: NonNullable<typeof x.cell> } => !!x.cell)
-  const solid = cells.filter((x) => x.cell.count >= 2).length >= 4 ? cells.filter((x) => x.cell.count >= 2) : cells
-  const ranked = [...solid].sort((a, b) => b.cell.value - a.cell.value)
-  const best = ranked.slice(0, 3)
-  const worst = ranked.length > 4 ? ranked.slice(-3).reverse() : []
-  const perUnit = effMeasure === 'perSession' || effMeasure === 'takePerSession' ? ' a session' : ''
-  const where = (x: (typeof cells)[number]) => cols === 'month' ? `${x.r.name} in ${x.c.name}` : `${x.r.name} at ${x.c.name}`
-
-  return (
-    <section id="review-heat" className={`${styles.panel} ${styles.anchored}`} aria-label="Heat map">
-      <div className={styles.eyebrow}>Explore</div>
-      <div className={styles.panelHead}>
-        <h2 className={styles.panelTitle}><Grid3x3 size={14} aria-hidden /> Which work pays best, and where</h2>
-        <button type="button" className={styles.linkButton} onClick={() => setAll((x) => !x)}>{all ? 'Top 8' : 'Show all'}</button>
-      </div>
-      <p className={styles.hint} style={{ marginTop: 0 }}>
-        A grid of everything you do against everywhere (or whenever) you do it. Each square is <b>{MEASURE_PHRASE[effMeasure]}</b>, for one {rowNoun} at one {colNoun}. Deeper green is better; amber lost money; a dot means you haven't done it there. Do more of the deep squares, and rethink the pale and amber ones.
-      </p>
-      <div className={styles.chips} role="group" aria-label="Question">
-        {HEAT_QUESTIONS.map((q) => (
-          <button key={q.id} type="button" className={`${styles.chip} ${question?.id === q.id ? styles.chipOn : ''}`}
-            onClick={() => { setRows(q.rows); setCols(q.cols) }}>{q.label}</button>
-        ))}
-      </div>
-      <details className={`${styles.featureMore}`} style={{ margin: 'var(--space-xs) 0 var(--space-sm)' }}>
-        <summary><span className={styles.twistyArrow} aria-hidden>▶</span>Customise the grid</summary>
-        <div className={styles.scope} style={{ marginTop: 'var(--space-xs)' }}>
-          <label>Down the side
-            <select value={rows} onChange={(e) => { const v = e.target.value as Dimension; setRows(v); if (cols === v) setCols(v === 'venue' ? 'activity' : 'venue') }}>
-              {axes.map((x) => <option key={x} value={x}>{DIMENSION_NOUN[x]}</option>)}
-            </select>
-          </label>
-          <label>Across the top
-            <select value={cols} onChange={(e) => setCols(e.target.value as HeatAxis)}>
-              {axes.filter((x) => x !== rows).map((x) => <option key={x} value={x}>{DIMENSION_NOUN[x]}</option>)}
-              <option value="month">Month</option>
-            </select>
-          </label>
-          <label>Each square shows
-            <select value={effMeasure} onChange={(e) => setMeasure(e.target.value as HeatMeasure)}>
-              {measures.map((m) => <option key={m} value={m}>{HEAT_MEASURE_LABEL[m]}</option>)}
-            </select>
-          </label>
-        </div>
-      </details>
-      {thin ? (
-        <div className={styles.heatThin}>
-          <Grid3x3 size={22} aria-hidden />
-          <p>
-            {map.rows.length === 0 ? 'Nothing to map in this period.'
-              : `Too little to compare in this period: ${map.rows.length} ${rowNoun}${map.rows.length === 1 ? '' : 's'} at ${map.cols.length} ${colNoun}${map.cols.length === 1 ? '' : 's'}. The grid needs at least two of each.`}
-          </p>
-          <WiderPeriod what="" />
-        </div>
-      ) : <HeatMapTable map={map} rowNoun={DIMENSION_NOUN[rows]} onCell={drill} />}
-      {!thin && best.length > 0 && (
-        <div className={styles.heatCalls}>
-          <div>
-            <div className={styles.heatCallHead}><TrendingUp size={14} aria-hidden /> Strongest</div>
-            {best.map((x) => (
-              <button key={`${x.r.id}-${x.c.id}`} type="button" className={styles.heatCall} onClick={() => drill(x.r.id, x.c.id)}>
-                <span>{where(x)}</span><b>{lei(x.cell.value)}{perUnit}</b><em>{x.cell.count} {x.cell.count === 1 ? 'session' : 'sessions'}</em>
-              </button>
-            ))}
-          </div>
-          {worst.length > 0 && (
-            <div>
-              <div className={styles.heatCallHead}><TrendingDown size={14} aria-hidden /> Weakest</div>
-              {worst.map((x) => (
-                <button key={`${x.r.id}-${x.c.id}`} type="button" className={styles.heatCall} onClick={() => drill(x.r.id, x.c.id)}>
-                  <span>{where(x)}</span><b className={x.cell.value < 0 ? styles.down : undefined}>{lei(x.cell.value)}{perUnit}</b><em>{x.cell.count} {x.cell.count === 1 ? 'session' : 'sessions'}</em>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <p className={styles.hint} style={{ marginBottom: 0 }}>
-        {effMeasure === 'takePerSession' || effMeasure === 'take'
-          ? `"Kept" is income less ${[on('deals') && "the venue's deal", on('costs') && 'direct costs linked to the same venue and day'].filter(Boolean).join(' and ')}. `
-          : ''}
-        Tap a square or a line to see its payments.
-      </p>
-    </section>
   )
 }
 

@@ -257,17 +257,6 @@ describe('small conveniences', () => {
     expect(await within(screen.getByLabelText('Where it went')).findByText('spent')).toBeTruthy()
   })
 
-  it('says when the work-by-place grid has too little to compare', async () => {
-    settings()
-    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'week' }))
-    render(<App store={store} today={today} />)
-    await screen.findByTestId('period-total')
-    await go('#/reports/insights/heat')
-    const heat = await screen.findByLabelText('Heat map')
-    expect(within(heat).getByText(/Too little to compare in this period|Nothing to map/)).toBeTruthy()
-    expect(within(heat).queryByRole('table')).toBeNull()
-    expect(within(heat).getByRole('button', { name: 'See the whole year' })).toBeTruthy()
-  })
 })
 
 describe('venue deals', () => {
@@ -294,6 +283,51 @@ describe('venue deals', () => {
     expect(JSON.stringify((await store.get<{ venues: unknown[] }>('demo'))!.venues)).toBe(before)
     // No verdicts, no commentary cards.
     expect(screen.queryByText(/Keep, watch|Too early|Rethink/)).toBeNull()
+  })
+})
+
+describe('clients & work', () => {
+  it('ranks clients by what was kept, switches to work type, and opens a breakdown', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/earnings')
+    const total = await screen.findByLabelText('Earnings in total')
+    for (const k of ['Income', 'Costs', 'You kept']) expect(within(total).getByText(k)).toBeTruthy()
+    const list = screen.getByLabelText('Clients, most kept first')
+    const items = within(list).getAllByRole('listitem').filter((li) => li.parentElement?.tagName === 'OL')
+    expect(items.length).toBeGreaterThan(3)
+    expect(within(items[0]).getByText(/sessions? · .* a session/)).toBeTruthy()
+    await user.click(screen.getByRole('radio', { name: 'By work type' }))
+    const work = screen.getByLabelText('Work types, most kept first')
+    await user.click(within(work).getByText('Workshop'))
+    const row = within(work).getByText('Workshop').closest('li')!
+    expect(row.querySelector('details')!.open).toBe(true)
+    expect(within(row).getByText('Venue fees')).toBeTruthy()
+    expect(within(row).getByText(/a session on average · from/)).toBeTruthy()
+    expect(within(row).getByText('Casa Verde loft')).toBeTruthy()
+    // No grid, no question chips, no filter button on this report.
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull()
+  })
+
+  it('works out the break-even on a fixed-fee venue from a price per person', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/deals')
+    const loft = await screen.findByRole('article', { name: 'Casa Verde loft' })
+    await user.click(within(loft).getByText('Break-even'))
+    const price = within(loft).getByLabelText('Price per person (lei)') as HTMLInputElement
+    expect(price.value).toBe('220')
+    expect(within(loft).getByText(/people cover the 600 lei fee/).textContent).toContain('3')
+    await user.clear(price)
+    await user.type(price, '100')
+    expect(within(loft).getByText(/From person 7 on/)).toBeTruthy()
   })
 })
 
@@ -378,11 +412,10 @@ describe('feature switches', () => {
     expect(screen.getByLabelText('Monthly target')).toBeTruthy()
     expect(screen.getByRole('link', { name: /Costs/ })).toBeTruthy()
     const tabs = await reportTabs()
-    for (const t of ['Review', 'Breakdown', 'Venue deals', 'Profit', 'P&L', 'Cash flow', 'Tax*', 'Print']) expect(tabs).toContain(t)
+    for (const t of ['Review', 'Clients & work', 'Breakdown', 'Venue deals', 'Profit', 'P&L', 'Cash flow', 'Tax*', 'Print']) expect(tabs).toContain(t)
     expect(screen.getByRole('button', { name: /Filter/ })).toBeTruthy()
     await go('#/reports/insights')
     expect(await screen.findByLabelText('Pain points and wins')).toBeTruthy()
-    expect(screen.getByLabelText('Heat map')).toBeTruthy()
   })
 
   it('insights off: no Overview panel, no Insights report', async () => {
@@ -394,7 +427,6 @@ describe('feature switches', () => {
     // The review stays (summary, movers, who pays); its insight sections go.
     expect(await screen.findByLabelText('Main movers')).toBeTruthy()
     expect(screen.queryByLabelText('Pain points and wins')).toBeNull()
-    expect(screen.queryByLabelText('Heat map')).toBeNull()
   })
 
   it('venue deals off: no report, no deal fields, no head count', async () => {

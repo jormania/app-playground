@@ -29,9 +29,9 @@ import styles from '../styles/ui.module.css'
  * under each toggle explains: what turns on, and what disappears when off.
  */
 export const FEATURES: { key: FeatureKey; label: string; hint: string; more: string[] }[] = [
-  { key: 'insights', label: 'Insights & heat map', hint: 'Pain points, wins, and where the money is best.',
-    more: ['A short list on the Overview and a full Insights report: sessions that lost money, clients drifting away, work that keeps little after costs, one-off clients who never came back, overdue money, your quietest month. Plus a heat map of activity × venue (or any two) by what you kept per session.', 'Off: the Overview panel and the Insights report go away.'] },
-  { key: 'deals', label: 'Venue deals', hint: 'Fixed fee or revenue share, and how full a room must be.',
+  { key: 'insights', label: 'Insights', hint: 'Pain points and wins, in plain words.',
+    more: ['A short list on the Overview and a full Insights report: sessions that lost money, clients drifting away, work that keeps little after costs, one-off clients who never came back, overdue money, your quietest month.', 'Off: the Overview panel and the pain points in the Review go away.'] },
+  { key: 'deals', label: 'Venue deals', hint: 'Fixed fee or revenue share, and what each venue leaves you.',
     more: ['Set each venue\'s deal — a fee per session, a share of the takings, both, or monthly rent — and record how many people came. InFlow shows what each venue left you per session, the sessions that cost more than they earned, the head count a room needs, and a "fixed or share?" chart to try the other deal on your own numbers.', 'Off: deal fields leave the venue form, the head-count field leaves the income form, and the Venue deals report goes away.'] },
   { key: 'costs', label: 'Costs, P&L and cash flow', hint: 'Record what you spend; see what you keep.',
     more: ['Adds a Costs tab (rent, room hire, co-facilitators, software…), a P&L and monthly cash flow in Reports, margins per venue, client and activity, and a break-even gauge on the Overview.', 'Off: InFlow is income only. Costs you recorded stay stored and come back when you switch this on.'] },
