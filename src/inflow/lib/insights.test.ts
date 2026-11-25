@@ -70,8 +70,12 @@ describe('insights that apply to this practice', () => {
     expect(lean).not.toContain('overdue')
   })
 
-  it('orders by what is at stake', () => {
-    for (let i = 1; i < list.length; i++) expect(list[i - 1].weight).toBeGreaterThanOrEqual(list[i].weight)
+  it('puts the period first, then longer trends, each ordered by what is at stake', () => {
+    const firstTrend = list.findIndex((i) => i.span)
+    expect(firstTrend).toBeGreaterThan(0)
+    expect(list.slice(firstTrend).every((i) => i.span)).toBe(true)
+    for (const part of [list.slice(0, firstTrend), list.slice(firstTrend)])
+      for (let i = 1; i < part.length; i++) expect(part[i - 1].weight).toBeGreaterThanOrEqual(part[i].weight)
   })
 
   it('a new practice with two months of records gets no seasonal or client-trend insights', () => {

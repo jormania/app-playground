@@ -25,7 +25,7 @@ describe('venue cost under each deal', () => {
 
 })
 
-describe('the demo loft (fixed 600 lei, 220 lei a seat)', () => {
+describe('the demo loft (fixed 400 lei, 150 lei a seat)', () => {
   const d = venueDeal(venue('loft'), demo.records, year)
   it('needs 3 people to cover the room, and has evenings that lost money', () => {
     expect(d.breakEvenAttendees).toBe(3)
@@ -53,8 +53,8 @@ describe('take-home', () => {
   it('takes the venue deal off each payment, never a room twice', () => {
     const t = takeHome(demo, { deals: true, costs: true })
     const evening = demo.records.find((r) => r.venueId === 'demo_v_loft' && r.status === 'received')!
-    // 600 rent (deal) + 60 materials (linked cost); the recorded room hire is skipped.
-    expect(t.get(evening.id)).toBe(evening.amountRon - 660)
+    // 400 rent (deal) + 60 materials (linked cost); the recorded room hire is skipped.
+    expect(t.get(evening.id)).toBe(evening.amountRon - 460)
   })
 })
 

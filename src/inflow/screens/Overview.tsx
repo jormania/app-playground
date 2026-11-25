@@ -38,7 +38,8 @@ export function reminderText(r: Pick<IncomeRecord, 'description' | 'amount' | 'c
 
 function granularity(bs: Bucket[]): string {
   const widest = Math.max(...bs.map((b) => daysBetween(b.from, b.to) + 1))
-  return widest === 1 ? 'per day' : widest <= 7 ? 'per week' : 'per month'
+  // What one bar holds, so a custom range's chart reads plainly: its bars are days, weeks or months of it.
+  return widest === 1 ? 'one bar a day' : widest <= 7 ? 'one bar a week' : 'one bar a month'
 }
 
 const DISMISSED_KEY = 'inflow:suggest-dismissed'

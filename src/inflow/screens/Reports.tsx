@@ -16,9 +16,9 @@ import { DealsReport } from './VenueDeals'
 import { EarningsReport } from './Earnings'
 import { PROFILE } from '../domain/vocabulary'
 import { sum, type Dimension } from '../lib/analytics'
-import { yearOf } from '../lib/dates'
+import { daysBetween, yearOf } from '../lib/dates'
 import { breakEven, buildCashFlow, buildPnl, monthColumns } from '../lib/finance'
-import { lei, percent } from '../lib/money'
+import { lei, percent, round2 } from '../lib/money'
 import { download, toCsv } from '../store/backup'
 import { projectYear, taxableGross } from '../tax/estimate'
 import { leaveTrail } from '../app/trail'
@@ -106,15 +106,22 @@ function useDrill() {
 }
 
 function PnlReport({ onAddCost }: { onAddCost: () => void }) {
-  const { data, today } = useInflow()
+  const { data, today, period } = useInflow()
   const { range } = usePeriodData()
   const [details, setDetails] = useState(false)
   const columns = useMemo(() => monthColumns(range), [range])
   const pnl = useMemo(() => buildPnl(data.records, data.costs, columns), [data, columns])
-  // The income a month needs to cover its fixed costs, and where this month stands.
+  // The income a month needs to cover its fixed costs, scaled to the selected period, and where the period stands.
   const be = useMemo(() => breakEven(data.records, data.costs, today), [data, today])
   const t = (k: string) => pnl.lines.find((l) => l.key === k)!.total
   const rev = t('revenue')
+  const days = daysBetween(range.from, range.to) + 1
+  const [beScale, beLabel] = period.preset === 'month' || period.preset === 'last_month' ? [1, 'Break-even a month']
+    : period.preset === 'year' ? [12, 'Break-even a year']
+      : period.preset === 'week' ? [7 / 30.44, 'Break-even a week']
+        : [days / 30.44, `Break-even for ${days} days`]
+  const beNeed = be ? round2(be.revenueNeeded * beScale) : 0
+  const beCovered = beNeed > 0 ? rev / beNeed : 0
   const costTotal = rev - t('net')
   const due = data.costs.filter((c) => c.status === 'due' && c.date <= range.to)
   const exportCsv = () => download(`inflow-pnl-${range.from}-${range.to}.csv`, toCsv(
@@ -131,12 +138,12 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
         <div className={styles.stat}><div className={styles.statLabel}>Net profit</div><div className={`${styles.statValue} ${t('net') < 0 ? styles.down : ''}`}>{lei(t('net'))}</div><div className={styles.statNote}>{rev ? percent(t('net') / rev) : '—'} margin</div></div>
         {be && (
           <div className={styles.stat}>
-            <div className={styles.statLabel}>Break-even each month</div>
-            <div className={styles.statValue}>{lei(be.revenueNeeded)}</div>
-            <div className={styles.progress} role="progressbar" aria-label="Break-even this month" aria-valuenow={Math.round(be.covered * 100)} aria-valuemin={0} aria-valuemax={100}>
-              <div className={styles.progressFill} style={{ width: `${Math.min(100, be.covered * 100)}%`, background: be.covered < 1 ? 'var(--color-warning)' : undefined }} />
+            <div className={styles.statLabel}>{beLabel}</div>
+            <div className={styles.statValue}>{lei(beNeed)}</div>
+            <div className={styles.progress} role="progressbar" aria-label="Break-even in this period" aria-valuenow={Math.round(beCovered * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <div className={styles.progressFill} style={{ width: `${Math.min(100, beCovered * 100)}%`, background: beCovered < 1 ? 'var(--color-warning)' : undefined }} />
             </div>
-            <div className={styles.statNote}>{be.covered >= 1 ? 'this month is past it' : `this month at ${percent(be.covered)}`}</div>
+            <div className={styles.statNote}>{beCovered >= 1 ? 'covered in this period' : `${percent(beCovered)} covered${range.to >= today ? ' so far' : ''}`}</div>
           </div>
         )}
       </div>

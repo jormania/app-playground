@@ -216,9 +216,9 @@ describe('small conveniences', () => {
     const dialog = await screen.findByRole('dialog')
     await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
     await user.type(within(dialog).getByLabelText(/People who came/), '10')
-    expect(within(dialog).getByText(/10 × 220 lei/)).toBeTruthy()
+    expect(within(dialog).getByText(/10 × 150 lei/)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'Use' }))
-    expect((within(dialog).getByLabelText('Amount') as HTMLInputElement).value).toBe('2200')
+    expect((within(dialog).getByLabelText('Amount') as HTMLInputElement).value).toBe('1500')
   })
 
   it('copies a friendly reminder for an expected payment', async () => {
@@ -282,6 +282,19 @@ describe('one period, no repeats', () => {
 })
 
 describe('audit conveniences', () => {
+  it('on a custom range, break-even follows its days and fixed-window insights say so', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'custom', from: '2026-09-10', to: '2026-10-20' }))
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/pnl')
+    expect(await screen.findByText('Break-even for 41 days')).toBeTruthy()
+    expect(screen.queryByText(/this month/i)).toBeNull()
+    await go('#/reports/insights')
+    const act = await screen.findByLabelText('Pain points and wins')
+    expect(within(act).getAllByText(/· past (6|12) months/).length).toBeGreaterThan(0)
+  })
+
   it('suggests next month from a recurring client, adds it in one tap, or lets it go', async () => {
     settings()
     const user = userEvent.setup()
@@ -303,10 +316,10 @@ describe('audit conveniences', () => {
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     await go('#/income')
-    await user.type(screen.getByLabelText('Search income'), '6.500')
+    await user.type(screen.getByLabelText('Search income'), '5.000')
     const rows = await screen.findAllByRole('button', { name: /Team-lead coaching circle/ })
     expect(rows.length).toBeGreaterThan(5)
-    expect(screen.queryByRole('button', { name: /Coaching session, 400/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Coaching session, 300/ })).toBeNull()
   })
 
   it('nudges a backup when your own data on this device has none for a month', async () => {
@@ -335,15 +348,15 @@ describe('venue deals', () => {
     const total = await screen.findByLabelText('Venue deals in total')
     for (const k of ['Revenue', 'Paid to venues', 'You kept']) expect(within(total).getByText(k)).toBeTruthy()
     const loft = within(screen.getByLabelText('Venues')).getByRole('article', { name: 'Casa Verde loft' })
-    expect(within(loft).getByText('Fixed fee · 600 lei a session')).toBeTruthy()
+    expect(within(loft).getByText('Fixed fee · 400 lei a session')).toBeTruthy()
     expect(within(loft).getByText(/Fee covered at/)).toBeTruthy()
     const before = JSON.stringify((await store.get<{ venues: unknown[] }>('demo'))!.venues)
     await user.click(within(loft).getByText('What if…'))
     await user.click(within(loft).getByRole('radio', { name: 'Fixed fee' }))
     const fee = within(loft).getByLabelText('Fee a session (lei)')
     await user.clear(fee)
-    await user.type(fee, '800')
-    // 9 evenings at 800 instead of 600: 1,800 lei less.
+    await user.type(fee, '600')
+    // 9 evenings at 600 instead of 400: 1,800 lei less.
     expect(within(loft).getByText(/−1,800 lei/)).toBeTruthy()
     expect(JSON.stringify((await store.get<{ venues: unknown[] }>('demo'))!.venues)).toBe(before)
     // No verdicts, no commentary cards.
@@ -403,11 +416,11 @@ describe('clients & work', () => {
     const loft = await screen.findByRole('article', { name: 'Casa Verde loft' })
     await user.click(within(loft).getByText('Break-even'))
     const price = within(loft).getByLabelText('Price per person (lei)') as HTMLInputElement
-    expect(price.value).toBe('220')
-    expect(within(loft).getByText(/people cover the 600 lei fee/).textContent).toContain('3')
+    expect(price.value).toBe('150')
+    expect(within(loft).getByText(/people cover the 400 lei fee/).textContent).toContain('3')
     await user.clear(price)
     await user.type(price, '100')
-    expect(within(loft).getByText(/From person 7 on/)).toBeTruthy()
+    expect(within(loft).getByText(/From person 5 on/)).toBeTruthy()
   })
 })
 

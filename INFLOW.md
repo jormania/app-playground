@@ -308,8 +308,8 @@ every feature has something real to show (extended 25 Nov 2026):
   | Room | Deal | Role in the demo |
   |---|---|---|
   | Studio Lumina | fixed 60 | 1:1 |
-  | Casa Verde loft | fixed 600 | uneven turnout, one losing evening |
-  | Sala Lumière | fixed 450, 120 a seat | turnout 4–6 against a break-even of 4: close, never losing |
+  | Casa Verde loft | fixed 400, 150 a seat | uneven turnout, a losing evening |
+  | Sala Lumière | fixed 350, 100 a seat | turnout 4–6 against a break-even of 4: close, never losing |
   | Coworking Cotroceni | 30% | |
   | Yoga Shala Herăstrău | 40% | |
   | Coachlane | 20% | platform |
@@ -323,6 +323,15 @@ every feature has something real to show (extended 25 Nov 2026):
   platform commissions, a home office then a coworking desk, software, accountant, supervision,
   two certification modules, a laptop depreciated over 36 months, and owner drawings.
 - Cash stays positive from a 14,000 lei start.
+- **Prices follow the Bucharest market (checked 25 Nov 2026)**, not guesses: 1:1 coaching
+  250–350 lei (intro 150, packages about 225–250 a session; listings put life coaching at
+  150–400 and career coaching at 200–500), couples 400, group circles 100 a seat, public
+  workshops 150–220 a seat, evening rooms 350–400 (about 80 lei an hour to rent), a guest
+  lecture 270–300 (university hourly rates of 95–135 lei), a corporate training day about
+  6,500 lei, monthly corporate coaching 4,500–5,000 lei for two sessions, an accountant 300 a
+  month. Retreat facilitation is the agency's fee to the coach (1,500–2,400 EUR), not the
+  participants' price. Owner drawings follow the income, so the first year never runs out of
+  cash and the second builds a reserve for May's tax.
 
 ## Feature switches
 
@@ -407,6 +416,10 @@ page; viewport screenshots while scrolling confirm the tab bar stays at the bott
   from recurring ones (`suggestExpected` in `lib/analytics.ts`; a dismissal is remembered
   per device under `inflow:suggest-dismissed`), break-even in Profit, simple start with a
   master switch.
+- **Periods:** under *Custom* (or any period), insights that read a fixed window say so
+  beside their label ("Worth knowing · past 12 months") and come after the ones about the
+  period; Profit's break-even scales to the period ("Break-even for 41 days", a week, a
+  month, a year); the trend chart says "one bar a week" rather than "per week".
 - **Tidy:** one `DIM_FILTER` map in `app/state.tsx` instead of three copies; unused
   `Sparkline`, `pivot` and the scope/filter CSS removed; the section index observes on the
   next frame and the `/` shortcut focuses search on `hashchange`, not after guessed delays.

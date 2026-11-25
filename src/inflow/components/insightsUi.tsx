@@ -34,7 +34,7 @@ export function InsightList({ items, limit, feedback, onHidden }: {
             {i.kind === 'pain' ? <AlertTriangle size={16} /> : i.kind === 'win' ? <TrendingUp size={16} /> : <Lightbulb size={16} />}
           </span>
           <span>
-            <span className={styles.insightKind}>{i.kind === 'pain' ? 'Pain point' : i.kind === 'win' ? 'Working well' : 'Worth knowing'}</span>
+            <span className={styles.insightKind}>{i.kind === 'pain' ? 'Pain point' : i.kind === 'win' ? 'Working well' : 'Worth knowing'}{i.span ? ` · ${i.span}` : ''}</span>
             <b className={styles.insightTitle}>{i.title}</b>
             <span className={styles.insightDetail}>{i.detail}</span>
             <span className={styles.insightFoot}>

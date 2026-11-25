@@ -70,6 +70,12 @@ export interface Insight {
   weight: number
   /** Where to look next. */
   link?: { label: string; hash: string }
+  /**
+   * Set when the insight reads a fixed window, not the selected period
+   * ("past 12 months"): shown beside its label, and listed after the ones
+   * about the period itself.
+   */
+  span?: string
 }
 
 export type InsightRule =
@@ -244,7 +250,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
       const now = rc.get(id) ?? 0
       if (now < prev * 0.5 && prev >= 1000) {
         out.push({
-          id: `fading-${id}`, rule: 'regular-fading', kind: 'pain', weight: prev - now,
+          id: `fading-${id}`, rule: 'regular-fading', kind: 'pain', weight: prev - now, span: 'past 6 months',
           title: `${nameOf(data, 'client', id)} has gone quiet: ${lei(now)} in the last three months, ${lei(prev)} the three before`,
           detail: now === 0 ? 'A regular client with nothing since. A short check-in costs less than finding a new client.' : 'A regular client paying less. Worth a conversation about what they need next.',
           link: { label: 'Clients & work', hash: '#/reports/earnings' },
@@ -255,7 +261,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
       const prev = bc.get(id) ?? 0
       if (prev > 0 && now >= prev * 1.5 && now - prev >= 1000) {
         out.push({
-          id: `growing-${id}`, rule: 'regular-growing', kind: 'win', weight: now - prev,
+          id: `growing-${id}`, rule: 'regular-growing', kind: 'win', weight: now - prev, span: 'past 6 months',
           title: `${nameOf(data, 'client', id)} is growing: ${lei(now)} in the last three months, up from ${lei(prev)}`,
           detail: 'Whatever is working there, it could work with similar clients.',
           link: { label: 'Clients & work', hash: '#/reports/earnings' },
@@ -272,7 +278,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
   const top = [...yearClients.entries()].sort((a, b) => b[1] - a[1])[0]
   if (top && yearClients.size >= 3 && p.fullMonths >= 3 && top[1] / yearTotal >= 0.35) {
     out.push({
-      id: `one-client-${top[0]}`, rule: 'one-client', kind: 'pain', weight: top[1] * 0.4,
+      id: `one-client-${top[0]}`, rule: 'one-client', kind: 'pain', weight: top[1] * 0.4, span: 'past 12 months',
       title: `${percent(top[1] / yearTotal)} of the last twelve months came from ${nameOf(data, 'client', top[0])}`,
       detail: 'If they paused, the year would look very different. A second client of that size would make you sturdier.',
       link: { label: 'Clients & work', hash: '#/reports/earnings' },
@@ -292,7 +298,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
   const once = settled.filter((f) => f.n === 1).length
   if (settled.length >= 5 && once >= 2 && once / settled.length >= 0.25) {
     out.push({
-      id: 'intro-clients', rule: 'intro-clients', kind: once / settled.length > 0.4 ? 'pain' : 'tip', weight: once * 300,
+      id: 'intro-clients', rule: 'intro-clients', kind: once / settled.length > 0.4 ? 'pain' : 'tip', weight: once * 300, span: 'past 12 months',
       title: `${once} of ${settled.length} new individual clients this year came once and didn't return`,
       detail: 'A follow-up after a first session, or a small package to continue, often turns intro clients into regulars.',
       link: { label: 'Clients & work', hash: '#/reports/earnings' },
@@ -327,12 +333,13 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
     const [m, v] = [...settled].sort((a, b) => a[1] - b[1])[0] ?? ['', 0]
     if (settled.length >= 9 && m && v < avg * 0.6) {
       out.push({
-        id: `quiet-month-${m}`, rule: 'quiet-month', kind: 'tip', weight: avg - v,
+        id: `quiet-month-${m}`, rule: 'quiet-month', kind: 'tip', weight: avg - v, span: 'past 12 months',
         title: `${monthShort(`${m}-01`)} ${m.slice(0, 4)} was your quietest month: ${lei(v)}, against ${lei(avg)} on average`,
         detail: 'If it repeats, set something aside beforehand, or plan work that fills it.',
       })
     }
   }
 
-  return out.sort((a, b) => b.weight - a.weight)
+  // The selected period first: a short custom range should lead with what happened in it.
+  return out.sort((a, b) => Number(!!a.span) - Number(!!b.span) || b.weight - a.weight)
 }
