@@ -128,6 +128,10 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
 
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  // The repo on screen now. A load or save that finishes after a switch (demo ↔
+  // your data, device ↔ Notion) must not paint its rows into the other one.
+  const repoRef = useRef(repo)
+  repoRef.current = repo
 
   const updateSettings = useCallback((patch: SettingsPatch) => {
     setSettings((cur) => {
@@ -168,18 +172,23 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
         await demoRepo.replaceAll(demo)
       }
       setDeviceData(dev)
+      if (repoRef.current !== repo) return
       if (repo === demoRepo || repo === device) {
         setData(repo === demoRepo ? demo : dev)
         setCostsAvailable(true)
         setOfflineCopy(false)
       } else {
         const cached = repo instanceof NotionRepo ? await repo.cached() : EMPTY
+        if (repoRef.current !== repo) return
         if (cached.records.length || cached.clients.length) setData(cached)
         try {
-          setData(await repo.load())
+          const fresh = await repo.load()
+          if (repoRef.current !== repo) return
+          setData(fresh)
           setCostsAvailable(!(repo instanceof NotionRepo) || repo.hasCosts)
           setOfflineCopy(false)
         } catch (e) {
+          if (repoRef.current !== repo) return
           if (cached.records.length || cached.clients.length) {
             setOfflineCopy(true)
             setError(`Showing the last copy from Notion: ${(e as Error).message}`)
@@ -188,6 +197,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
       }
       setLoad('ready')
     } catch (e) {
+      if (repoRef.current !== repo) return
       setError((e as Error).message || 'Could not load your data.')
       setLoad('error')
     }
@@ -196,8 +206,9 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
   useEffect(() => { void reload() }, [reload])
 
   const apply = useCallback((fn: (d: InflowData) => InflowData) => {
-    setData(fn)
+    // Device data is kept whatever is on screen; the screen only takes rows from its own repo.
     if (repo === device) setDeviceData(fn)
+    if (repoRef.current === repo) setData(fn)
   }, [repo, device])
 
   const fail = useCallback((e: unknown, what: string) => {

@@ -97,11 +97,11 @@ describe('NotionRepo', () => {
       return { id: 'new-page-id' }
     }
     const repo = new NotionRepo('t', 'inc', memoryStore(), call)
-    const saved = await repo.saveRecord({ ...demo.records[0], id: '' })
+    const saved = await repo.saveRecord({ ...demo.records[0], id: '', demo: undefined, clientId: null, sourceId: null, venueId: null })
     expect(saved.id).toBe('newpageid')
     expect(saved.demo).toBeUndefined()
     expect(calls.at(-1)?.[2].parent).toEqual({ database_id: 'inc' })
-    await repo.saveEntity('venue', { ...demo.venues[0], id: '' })
+    await repo.saveEntity('venue', { ...demo.venues[0], id: '', demo: undefined })
     expect(calls.at(-1)?.[2].parent).toEqual({ database_id: 'v1' })
     await repo.deleteRecord('xyz')
     expect(calls.at(-1)).toEqual(['pages/xyz', 'PATCH', { archived: true }])
@@ -170,5 +170,20 @@ describe('clearing demo data', () => {
     expect(cleaned.records).toEqual([mine])
     expect(cleaned.clients.map((c) => c.id)).toEqual([mine.clientId])
     expect(cleaned.venues.map((v) => v.id)).toEqual([mine.venueId])
+  })
+})
+
+describe('the demo never reaches Notion', () => {
+  it('refuses demo rows, rows linked to demo entities and demo ids, before any request', async () => {
+    const call = vi.fn()
+    const repo = new NotionRepo('t', 'inc', memoryStore(), call)
+    const r = demo.records[0]
+    await expect(repo.saveRecord(r)).rejects.toThrow(/demo/)
+    await expect(repo.saveRecord({ ...r, id: '', demo: undefined })).rejects.toThrow(/demo/) // its client is a demo client
+    await expect(repo.saveCost(demo.costs[0])).rejects.toThrow(/demo/)
+    await expect(repo.saveEntity('client', demo.clients[0])).rejects.toThrow(/demo/)
+    await expect(repo.deleteRecord(r.id)).rejects.toThrow(/demo/)
+    await expect(repo.deleteEntity('venue', demo.venues[0].id)).rejects.toThrow(/demo/)
+    expect(call).not.toHaveBeenCalled()
   })
 })

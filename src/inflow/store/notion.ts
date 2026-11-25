@@ -24,6 +24,16 @@ import { normalise, type Entity, type EntityKind, type Repo } from './repo'
 
 export const CACHE_KEY = 'notion-cache'
 
+/**
+ * The demo never reaches Notion. The app keeps it in its own workspace; this is
+ * the second lock, should a demo row ever be on screen while Notion is the repo.
+ */
+export function refuseDemo(row: { demo?: boolean }, ids: (string | null | undefined)[]): void {
+  if (row.demo || ids.some((id) => id && id.startsWith('demo_'))) {
+    throw new Error('That belongs to the demo, which never goes to Notion. Switch to the demo to change it.')
+  }
+}
+
 type Props = Record<string, any>
 type Call = (path: string, method: string, body?: unknown) => Promise<Record<string, any>>
 
@@ -322,6 +332,7 @@ export class NotionRepo implements Repo {
   }
 
   async saveRecord(r: IncomeRecord): Promise<IncomeRecord> {
+    refuseDemo(r, [r.id, r.clientId, r.sourceId, r.venueId])
     const dbs = await this.databases()
     const properties = recordToProps(r)
     const page = r.id
@@ -331,10 +342,12 @@ export class NotionRepo implements Repo {
   }
 
   async deleteRecord(id: string): Promise<void> {
+    refuseDemo({}, [id])
     await this.call(`pages/${id}`, 'PATCH', { archived: true })
   }
 
   async saveCost(c: CostRecord): Promise<CostRecord> {
+    refuseDemo(c, [c.id, c.clientId, c.venueId])
     const dbs = await this.databases()
     if (!dbs.costs) throw new Error('No "InFlow — Costs" database next to Income in Notion. Duplicate it from the Starter Template.')
     const properties = costToProps(c)
@@ -345,10 +358,12 @@ export class NotionRepo implements Repo {
   }
 
   async deleteCost(id: string): Promise<void> {
+    refuseDemo({}, [id])
     await this.call(`pages/${id}`, 'PATCH', { archived: true })
   }
 
   async saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T> {
+    refuseDemo(e, [e.id])
     const dbs = await this.databases()
     const db = kind === 'client' ? dbs.clients : kind === 'source' ? dbs.sources : dbs.venues
     const properties = TO_PROPS[kind](e)
@@ -359,6 +374,7 @@ export class NotionRepo implements Repo {
   }
 
   async deleteEntity(_kind: EntityKind, id: string): Promise<void> {
+    refuseDemo({}, [id])
     await this.call(`pages/${id}`, 'PATCH', { archived: true })
   }
 }

@@ -95,7 +95,7 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
         <input type="checkbox" checked={again} onChange={(e) => setAgain(e.target.checked)} />
         Show this guide next time I open InFlow
       </label>
-      <div className={styles.formActions} style={{ position: 'static', marginTop: 'var(--space-md)' }}>
+      <div className={styles.tourActions}>
         <div><Button variant="ghost" onClick={finish}>Skip</Button></div>
         <div>
           {step > 0 && <Button variant="secondary" onClick={() => setStep(step - 1)}>Back</Button>}

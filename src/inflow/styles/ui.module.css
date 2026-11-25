@@ -888,3 +888,17 @@ a.modeTag { text-decoration: none; }
   color: var(--color-accent);
   border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
+
+/* The tour's footer: the form footer's look without its sticky overhang, which
+   made the dialog scroll by 12px with nothing to show. */
+.tourActions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+.tourActions > div { display: flex; gap: var(--space-sm); flex-wrap: wrap; justify-content: flex-end; }

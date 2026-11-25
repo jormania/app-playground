@@ -150,7 +150,7 @@ function Shell() {
             <button type="button" className={styles.linkButton} onClick={() => void reload()}>Try again</button>
           </div>
         )}
-        {load === 'loading' && data.records.length === 0 ? (
+        {load === 'loading' && data.records.length === 0 && screen !== 'settings' ? (
           <div className={styles.empty}>Loading…</div>
         ) : (
           <div key={`${screen}-${workspace}`} className={`${styles.screen} ${styles.screenIn}`}>

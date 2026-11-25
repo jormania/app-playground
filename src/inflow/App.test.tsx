@@ -9,7 +9,9 @@ import { memoryStore, type KeyValueStore } from '../shared/kvStore'
 import App from './App'
 import { ALL_FEATURES, SETTINGS_KEY } from './store/settings'
 import { buildDemo } from './data/demo'
-import type { FeatureKey } from './domain/types'
+import type { FeatureKey, InflowData } from './domain/types'
+import type { Repo } from './store/repo'
+import { vi } from 'vitest'
 
 const today = '2026-11-25'
 let store: KeyValueStore
@@ -152,6 +154,67 @@ describe('InFlow', () => {
     // The demo client that payment points at stays, so it keeps its name.
     expect(data.clients.map((c) => c.id)).toEqual([demo.records[0].clientId])
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).workspace).toBe('mine')
+  })
+})
+
+describe('switching between the demo and Notion', () => {
+  const mineInNotion: InflowData = {
+    records: [{ ...buildDemo(today).records.find((r) => r.status === 'received' && r.date.startsWith('2026-11'))!, id: 'notion1', clientId: null, sourceId: null, venueId: null, demo: undefined, amount: 1234, amountRon: 1234, currency: 'RON', fxRate: 1 }],
+    costs: [], clients: [], sources: [], venues: [],
+  }
+  const fakeNotion = (load: () => Promise<InflowData>) => {
+    const writes = vi.fn()
+    const repo: Repo = {
+      kind: 'notion', load,
+      saveRecord: async (r) => { writes('saveRecord'); return r }, deleteRecord: async () => { writes('deleteRecord') },
+      saveCost: async (c) => { writes('saveCost'); return c }, deleteCost: async () => { writes('deleteCost') },
+      saveEntity: async (_k, e) => { writes('saveEntity'); return e }, deleteEntity: async () => { writes('deleteEntity') },
+    }
+    return { repo, writes }
+  }
+  const notionSettings = { mode: 'notion', notionToken: 'ntn_x', incomeDbId: 'abc', workspace: 'mine', demoSeeded: true }
+
+  it('keeps the connection, writes nothing to Notion from the demo, and comes back to Notion', async () => {
+    settings(notionSettings)
+    const { repo, writes } = fakeNotion(async () => mineInNotion)
+    const user = userEvent.setup()
+    render(<App store={store} today={today} notionRepo={repo} />)
+    await waitFor(() => expect(screen.getByTestId('period-total').textContent).toMatch(/^1[.,]?234/))
+    await go('#/settings')
+    await user.click(screen.getByRole('radio', { name: 'Demo practice' }))
+    await go('#/overview')
+    // Add and delete in the demo.
+    await user.click(await screen.findByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Amount'), '77')
+    await user.click(within(dialog).getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(writes).not.toHaveBeenCalled()
+    const kept = JSON.parse(localStorage.getItem(SETTINGS_KEY)!)
+    expect([kept.mode, kept.notionToken, kept.incomeDbId]).toEqual(['notion', 'ntn_x', 'abc'])
+    await user.click(screen.getByRole('button', { name: 'Switch to my data' }))
+    await waitFor(() => expect(screen.getByTestId('period-total').textContent).toMatch(/^1[.,]?234/))
+    expect(screen.getByText('Notion')).toBeTruthy()
+  })
+
+  it('a Notion load that finishes after switching to the demo does not replace the demo', async () => {
+    settings(notionSettings)
+    let n = 0
+    let finish: (d: InflowData) => void = () => {}
+    // The first load answers at once; the next one hangs until released.
+    const { repo } = fakeNotion(() => (n++ === 0 ? Promise.resolve(mineInNotion) : new Promise((res) => { finish = res })))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} notionRepo={repo} />)
+    await waitFor(() => expect(screen.getByTestId('period-total').textContent).toMatch(/^1[.,]?234/))
+    await go('#/settings')
+    await user.click(screen.getByRole('radio', { name: 'Demo practice' }))
+    await user.click(screen.getByRole('radio', { name: 'My data' })) // starts the second, slow load
+    await user.click(screen.getByRole('radio', { name: 'Demo practice' }))
+    await go('#/overview')
+    const demoTotal = (await screen.findByTestId('period-total')).textContent
+    expect(demoTotal).not.toMatch(/^1[.,]?234/)
+    await act(async () => { finish(mineInNotion) })
+    expect(screen.getByTestId('period-total').textContent).toBe(demoTotal)
   })
 })
 
