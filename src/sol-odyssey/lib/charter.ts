@@ -2,6 +2,7 @@
 // Notion properties we write. No React, no network — all unit-tested.
 
 import type { Settings } from './settings'
+import { richText } from './richText'
 
 /** Everything the wizard collects. Buddy fields are NOT here — they live in Settings and are
  *  folded into the row at write time (spec: buddy = name + email, captured once). */
@@ -171,11 +172,6 @@ export function odysseyName(number: number, behaviour: string): string {
 }
 
 // ── Notion property mapping ───────────────────────────────────────────────────────────────
-
-function richText(value: string): { rich_text: { text: { content: string } }[] } {
-  const v = value.trim()
-  return { rich_text: v ? [{ text: { content: v } }] : [] }
-}
 
 /** The charter fields shared by both the Active and the Planning (draft) property maps. */
 function charterFieldProperties(draft: CharterDraft, settings: Settings): Record<string, unknown> {

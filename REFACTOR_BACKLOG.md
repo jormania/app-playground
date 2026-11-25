@@ -56,7 +56,7 @@ Anything under **`## Proposed`** is the agent's own idea and will not be worked
 until a human moves it up into the main list. That move is the whole approval
 ritual: cut the block, paste it above, change `proposed` to `open`.
 
-## P-006 — A Sol Odyssey reflection over 2000 characters fails to save · `qol` · `open`
+## P-006 — A Sol Odyssey reflection over 2000 characters fails to save · `qol` · `done 2026-11-25`
 
 Approved 2026-11-24 and put at the top.
 
