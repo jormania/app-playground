@@ -223,7 +223,8 @@ function drafts(today: string): Draft[] {
     if (n % 3 === 0 && n > 0) {
       out.push({ hours: 6, description: 'Leadership workshop — branch managers', amount: jitter(6500, 700), currency: 'RON', date: dayIn(month, 24), client: 'northbridge', source: 'corporate', venue: 'northbridge', category: 'workshop', attendees: 14 })
     }
-    if (n >= 4 && n <= 7) {
+    // An NGO programme that ran four months and ended: a recurring arrangement that stopped.
+    if (n >= 5 && n <= 8) {
       out.push({ sessions: 2, description: 'Mentoring stipend — youth workers', amount: 800, currency: 'RON', date: dayIn(month, 28), client: 'ngo', source: 'ngo', venue: 'meet', category: 'group_coaching', recurring: true, attendees: 8 })
     }
   }

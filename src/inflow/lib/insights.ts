@@ -8,7 +8,7 @@
  */
 import type { IncomeRecord, InflowData } from '../domain/types'
 import { nameOf } from './analytics'
-import { addMonths, monthShort, startOfMonth, endOfMonth } from './dates'
+import { addMonths, daysBetween, monthShort, shortDate, startOfMonth, endOfMonth } from './dates'
 import { venueCosts, venueDeals } from './deals'
 import { lei, percent, round2 } from './money'
 
@@ -81,6 +81,7 @@ export interface Insight {
 export type InsightRule =
   | 'losing-sessions' | 'close-to-break-even' | 'venue-for-the-same-work' | 'best-work' | 'thin-margin'
   | 'regular-fading' | 'regular-growing' | 'one-client' | 'intro-clients' | 'overdue' | 'quiet-month'
+  | 'tax-review' | 'costs-overdue'
 
 export const RULE_LABEL: Record<InsightRule, string> = {
   'losing-sessions': 'Sessions that lost money at a venue',
@@ -88,18 +89,22 @@ export const RULE_LABEL: Record<InsightRule, string> = {
   'venue-for-the-same-work': 'The same work at two venues',
   'best-work': 'The work that keeps the most',
   'thin-margin': 'Work that keeps little after costs',
-  'regular-fading': 'Regular clients going quiet',
+  // The key predates the rule's narrowing (a recurring arrangement that stopped); kept so mutes still hold.
+  'regular-fading': 'Recurring arrangements that stopped',
   'regular-growing': 'Regular clients growing',
   'one-client': 'Leaning on one client',
   'intro-clients': 'Individual clients who came once',
   overdue: 'Overdue payments',
   'quiet-month': 'Your quietest month',
+  'tax-review': 'Payments waiting for a tax decision',
+  'costs-overdue': 'Costs past their due date',
 }
 
 export interface InsightOptions {
   deals: boolean
   costs: boolean
   expected: boolean
+  tax?: boolean
 }
 
 const sum = (xs: { amountRon: number }[]) => round2(xs.reduce((a, x) => a + x.amountRon, 0))
@@ -151,7 +156,8 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
       const v = d.venue
       if (d.losing.length && (v.deal === 'fixed' || v.deal === 'hybrid' || v.deal === 'monthly')) {
         out.push({
-          id: `losing-${v.id}`, rule: 'losing-sessions', kind: 'pain', weight: d.lost * 3,
+          // One evening that fell short is a tip; a pattern, or real money, is a pain point.
+          id: `losing-${v.id}`, rule: 'losing-sessions', kind: d.losing.length >= 2 || d.lost >= 300 ? 'pain' : 'tip', weight: d.lost * 3,
           title: `${d.losing.length} ${d.losing.length === 1 ? 'session' : 'sessions'} at ${v.name} cost more than ${d.losing.length === 1 ? 'it' : 'they'} earned`,
           detail: `The ${v.deal === 'monthly' ? 'rent' : 'fee'} is paid whoever comes; together they lost ${lei(d.lost)}.${d.breakEvenAttendees && d.breakEvenAttendees > 1 ? ` Confirming a session there once ${d.breakEvenAttendees} people have booked would avoid it.` : ''}`,
           link: { label: 'Venue deals', hash: '#/reports/deals' },
@@ -233,36 +239,64 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
     }
   }
 
-  // Regular clients only (paid in three or more months this past year): the last three months against the three before.
-  const m3 = addMonths(startOfMonth(today), -3)
-  const m6 = addMonths(startOfMonth(today), -6)
-  const lastEnd = endOfMonth(addMonths(startOfMonth(today), -1))
   const window = (from: string, to: string) => rec.filter((x) => x.date >= from && x.date <= to)
-  const byClient = (xs: IncomeRecord[]) => {
-    const m = new Map<string, number>()
-    for (const x of xs) if (x.clientId && p.regularClients.has(x.clientId)) m.set(x.clientId, (m.get(x.clientId) ?? 0) + x.amountRon)
-    return m
+
+  // Coaching ends, and clients come and go: a client paying less is not a problem in itself.
+  // What is worth a word is a recurring arrangement (payments marked recurring, not platform
+  // or royalty payouts, which vary by nature) that has gone well past its rhythm with nothing
+  // expected: income you may be counting on. Neutral, because it may have ended as planned.
+  const waiting = new Set(data.records.filter((x) => x.status === 'expected' && x.clientId).map((x) => x.clientId!))
+  const sourceType = new Map(data.sources.map((x) => [x.id, x.type]))
+  const arrangements = new Map<string, string[]>()
+  for (const x of rec) {
+    if (!x.recurring || !x.clientId || x.category === 'content' || x.date > today) continue
+    const t = x.sourceId ? sourceType.get(x.sourceId) : undefined
+    if (t === 'platform' || t === 'royalties') continue
+    arrangements.set(x.clientId, [...(arrangements.get(x.clientId) ?? []), x.date])
   }
-  if (p.fullMonths >= 6) {
-    const rc = byClient(window(m3, lastEnd))
-    const bc = byClient(window(m6, endOfMonth(addMonths(m3, -1))))
-    for (const [id, prev] of bc) {
-      const now = rc.get(id) ?? 0
-      if (now < prev * 0.5 && prev >= 1000) {
-        out.push({
-          id: `fading-${id}`, rule: 'regular-fading', kind: 'pain', weight: prev - now, span: 'past 6 months',
-          title: `${nameOf(data, 'client', id)} has gone quiet: ${lei(now)} in the last three months, ${lei(prev)} the three before`,
-          detail: now === 0 ? 'A regular client with nothing since. A short check-in costs less than finding a new client.' : 'A regular client paying less. Worth a conversation about what they need next.',
-          link: { label: 'Clients & work', hash: '#/reports/earnings' },
-        })
-      }
+  for (const [id, dates] of arrangements) {
+    if (waiting.has(id) || dates.length < 3) continue
+    dates.sort()
+    const gaps = dates.slice(1).map((d, i) => daysBetween(dates[i], d)).sort((x, y) => x - y)
+    const rhythm = gaps[Math.floor(gaps.length / 2)]
+    const last = dates[dates.length - 1]
+    const since = daysBetween(last, today)
+    // Long past its rhythm, but recent enough to still matter.
+    if (since > Math.max(45, rhythm * 2) && since <= 180) {
+      out.push({
+        id: `fading-${id}`, rule: 'regular-fading', kind: 'tip', weight: sum(rec.filter((x) => x.clientId === id && x.date >= addMonths(last, -3))),
+        title: `Nothing from ${nameOf(data, 'client', id)} since ${shortDate(last)}, after ${dates.length} recurring payments`,
+        detail: 'If the arrangement ended as planned, nothing to do. If not, a short check-in, or an expected payment so it is counted.',
+        span: 'past 6 months',
+        link: { label: 'Clients & work', hash: '#/reports/earnings' },
+      })
     }
-    for (const [id, now] of rc) {
-      const prev = bc.get(id) ?? 0
-      if (prev > 0 && now >= prev * 1.5 && now - prev >= 1000) {
+  }
+
+  // A client with a track record paying clearly more: the last three months against the three
+  // before, where they paid in at least two of those earlier months (a new client ramping up is not growth).
+  if (p.fullMonths >= 6) {
+    const m3 = addMonths(startOfMonth(today), -3)
+    const m6 = addMonths(startOfMonth(today), -6)
+    const lastEnd = endOfMonth(addMonths(startOfMonth(today), -1))
+    const tally = (xs: IncomeRecord[]) => {
+      const m = new Map<string, { total: number; months: Set<string> }>()
+      for (const x of xs) {
+        if (!x.clientId || !p.regularClients.has(x.clientId)) continue
+        const c = m.get(x.clientId) ?? { total: 0, months: new Set() }
+        c.total += x.amountRon
+        c.months.add(x.date.slice(0, 7))
+        m.set(x.clientId, c)
+      }
+      return m
+    }
+    const before = tally(window(m6, endOfMonth(addMonths(m3, -1))))
+    for (const [id, c] of tally(window(m3, lastEnd))) {
+      const b = before.get(id)
+      if (b && b.months.size >= 2 && c.total >= b.total * 1.5 && c.total - b.total >= 1000) {
         out.push({
-          id: `growing-${id}`, rule: 'regular-growing', kind: 'win', weight: now - prev, span: 'past 6 months',
-          title: `${nameOf(data, 'client', id)} is growing: ${lei(now)} in the last three months, up from ${lei(prev)}`,
+          id: `growing-${id}`, rule: 'regular-growing', kind: 'win', weight: c.total - b.total, span: 'past 6 months',
+          title: `${nameOf(data, 'client', id)} is growing: ${lei(c.total)} in the last three months, up from ${lei(b.total)}`,
           detail: 'Whatever is working there, it could work with similar clients.',
           link: { label: 'Clients & work', hash: '#/reports/earnings' },
         })
@@ -296,9 +330,10 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
   }
   const settled = [...firstSeen.values()].filter((f) => f.first <= addMonths(today, -2) && f.first >= addMonths(today, -12))
   const once = settled.filter((f) => f.n === 1).length
-  if (settled.length >= 5 && once >= 2 && once / settled.length >= 0.25) {
+  // Some first sessions never turn into more, and that is normal; it is worth a thought only when most don't.
+  if (settled.length >= 5 && once / settled.length > 0.5) {
     out.push({
-      id: 'intro-clients', rule: 'intro-clients', kind: once / settled.length > 0.4 ? 'pain' : 'tip', weight: once * 300, span: 'past 12 months',
+      id: 'intro-clients', rule: 'intro-clients', kind: 'tip', weight: once * 300, span: 'past 12 months',
       title: `${once} of ${settled.length} new individual clients this year came once and didn't return`,
       detail: 'A follow-up after a first session, or a small package to continue, often turns intro clients into regulars.',
       link: { label: 'Clients & work', hash: '#/reports/earnings' },
@@ -318,12 +353,39 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
     }
   }
 
+  // Payments marked "review": the tax estimate cannot count them until you decide.
+  if (opts.tax) {
+    const year = today.slice(0, 4)
+    const open = rec.filter((x) => x.taxability === 'review' && x.date.startsWith(year))
+    if (open.length) {
+      out.push({
+        id: 'tax-review', rule: 'tax-review', kind: 'pain', weight: sum(open) * 1.5,
+        title: `${open.length} ${open.length === 1 ? 'payment this year needs' : 'payments this year need'} a tax decision: ${lei(sum(open))}`,
+        detail: 'Marked "review", so the estimate leaves them out. Decide taxable or not on each, with your accountant if unsure.',
+        link: { label: 'Tax', hash: '#/reports/tax' },
+      })
+    }
+  }
+
+  // Bills that should have been paid: a late fee, or a supplier waiting.
+  if (opts.costs) {
+    const late = data.costs.filter((c) => c.status === 'due' && c.date < today)
+    if (late.length) {
+      out.push({
+        id: 'costs-overdue', rule: 'costs-overdue', kind: 'pain', weight: sum(late) * 2,
+        title: `${lei(sum(late))} of costs ${late.length === 1 ? 'is' : 'are'} past due`,
+        detail: `${late.length} ${late.length === 1 ? 'cost' : 'costs'} still marked due after ${late.length === 1 ? 'its' : 'their'} date. Pay, or mark paid if already done.`,
+        link: { label: 'Costs', hash: '#/costs' },
+      })
+    }
+  }
+
   // The quietest complete month of the last year: never the current month, never a first partial one.
   if (p.fullMonths >= 9) {
     const from = [addMonths(startOfMonth(today), -12), p.firstFullMonth].sort()[1]
     const months = new Map<string, number>()
     for (let m = from; m < startOfMonth(today); m = addMonths(m, 1)) months.set(m.slice(0, 7), 0)
-    for (const x of window(from, lastEnd)) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + x.amountRon)
+    for (const x of window(from, endOfMonth(addMonths(startOfMonth(today), -1)))) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + x.amountRon)
     // A practice starting up has low first months; they say nothing about the seasons.
     const all = [...months.entries()]
     const typical = all.map(([, v]) => v).sort((a, b) => a - b)[Math.floor(all.length / 2)]

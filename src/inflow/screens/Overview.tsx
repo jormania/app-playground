@@ -84,7 +84,7 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
   const addSuggested = async (s: (typeof suggested)[number]) => {
     if (await saveRecord(asExpected(s))) toast({ message: `Expected on ${shortDate(s.date)}: ${money(s.from.amount, s.from.currency)}`, tone: 'success' })
   }
-  const all = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected') }) : []), [on, data, range, today])
+  const all = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected'), tax: on('tax') }) : []), [on, data, range, today])
   const fb = useInsightFeedback()
   const top = fb.apply(all)
 

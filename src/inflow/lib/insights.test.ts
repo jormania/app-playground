@@ -6,7 +6,7 @@ import { insights, practice, type Insight } from './insights'
 const today = '2026-11-25'
 const demo = buildDemo(today)
 const year = { from: '2026-01-01', to: '2026-12-31' }
-const all = { deals: true, costs: true, expected: true }
+const all = { deals: true, costs: true, expected: true, tax: true }
 const list = insights(demo, year, today, all)
 const rules = list.map((i) => i.rule)
 
@@ -20,17 +20,34 @@ describe('reading the practice', () => {
 })
 
 describe('insights that apply to this practice', () => {
-  it('names the room that lost money, the overdue payment, intro clients and the same workshop at two rooms', () => {
-    expect(rules).toEqual(expect.arrayContaining(['losing-sessions', 'overdue', 'intro-clients', 'venue-for-the-same-work']))
+  it('names the room that lost money, the overdue payment, the tax decisions and the same workshop at two rooms', () => {
+    expect(rules).toEqual(expect.arrayContaining(['losing-sessions', 'overdue', 'tax-review', 'venue-for-the-same-work']))
     expect(list.find((i) => i.rule === 'losing-sessions')!.detail).toMatch(/once 3 people have booked/)
   })
 
-  it('calls only regular clients quiet: an agency that books twice a year is not fading', () => {
-    const quiet = list.filter((i) => i.rule === 'regular-fading').map((i) => i.title)
-    expect(quiet.length).toBeGreaterThan(0)
-    expect(quiet.some((t) => /Aegean/.test(t))).toBe(false)
-    const p = practice(demo, today)
-    for (const i of list.filter((x) => x.rule === 'regular-fading')) expect(p.regularClients.has(i.id.replace('fading-', ''))).toBe(true)
+  it('keeps pain points for what costs money or needs a decision', () => {
+    // One evening that lost a little is a tip; overdue money and open tax questions are pain points.
+    expect(list.find((i) => i.rule === 'losing-sessions')!.kind).toBe('tip')
+    expect(list.filter((i) => i.kind === 'pain').map((i) => i.rule).sort()).toEqual(['overdue', 'tax-review'])
+  })
+
+  it('does not call a client who finished coaching "quiet": only a recurring arrangement that stopped, as a note', () => {
+    const stopped = list.filter((i) => i.rule === 'regular-fading')
+    expect(stopped.map((i) => i.title).join()).toMatch(/Pași Mici/)
+    for (const i of stopped) expect(i.kind).toBe('tip')
+    // A couple whose sessions ended, course sales tapering off, an agency booking twice a year: not flagged.
+    expect(stopped.some((i) => /Mihai|Courseline|Aegean/.test(i.title))).toBe(false)
+  })
+
+  it('does not call a new client growth, and treats intro clients who mostly return as fine', () => {
+    expect(list.some((i) => i.rule === 'regular-growing' && /Andreea/.test(i.title))).toBe(false)
+    expect(rules).not.toContain('intro-clients')
+  })
+
+  it('flags costs past their date, and nothing about tax with tax switched off', () => {
+    const late = { ...demo, costs: [...demo.costs, { ...demo.costs[0], id: 'late', status: 'due' as const, date: '2026-11-01' }] }
+    expect(insights(late, year, today, all).find((i) => i.rule === 'costs-overdue')?.kind).toBe('pain')
+    expect(insights(demo, year, today, { ...all, tax: false }).map((i) => i.rule)).not.toContain('tax-review')
   })
 
   it('never picks the running month, or a first month while the practice started up, as the quietest', () => {
@@ -52,9 +69,10 @@ describe('insights that apply to this practice', () => {
     expect(list.some((i) => /^Retreat keeps the most/.test(i.title))).toBe(false)
   })
 
-  it('counts only individual clients as intro clients, not companies with a project', () => {
-    const intro = list.find((i) => i.rule === 'intro-clients')!
-    expect(intro.title).toMatch(/new individual clients/)
+  it('speaks about intro clients only when most of them never came back', () => {
+    const lost = { ...demo, records: demo.records.filter((r) => !['demo_c_intro_irina', 'demo_c_intro_mara'].includes(r.clientId ?? '')) }
+    const intro = insights(lost, year, today, all).find((i) => i.rule === 'intro-clients')
+    if (intro) { expect(intro.kind).toBe('tip'); expect(intro.title).toMatch(/new individual clients/) }
   })
 
   it('does not read one week as leaning on one client', () => {

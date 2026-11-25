@@ -117,16 +117,23 @@ history, whether there is group work. Each rule then fires only where it applies
 
 | Rule | When it fires |
 |---|---|
-| losing-sessions | a fixed-fee room had sessions that lost money; advice: confirm once N have booked (terms are the venue's) |
+| losing-sessions | a fixed-fee room had sessions that lost money; advice: confirm once N have booked (terms are the venue's). A pain point from two sessions or 300 lei lost, a tip below that |
 | close-to-break-even | ≥ 3 sessions averaging within 30% of a fixed fee's break-even |
 | venue-for-the-same-work | the same work, ≥ 3 sessions at each of two in-person rooms, ≥ 15% apart (never an online platform paid monthly) |
 | best-work | ≥ 2 kinds of work with ≥ 5 sessions each, the best ≥ 25% ahead |
 | thin-margin | work keeping < 50% after venue and direct costs, ≥ 4% of income |
-| regular-fading / -growing | regular clients only, ≥ 6 full months, last 3 months vs the 3 before |
+| regular-fading | *a recurring arrangement that stopped* (tip, not a pain point): ≥ 3 payments marked recurring, not platform or royalty payouts or content, nothing expected, silent for more than twice its rhythm (≥ 45 days) and at most 180 days. Clients finishing coaching are normal and never flagged |
+| regular-growing | regular clients who paid in ≥ 2 of the earlier 3 months (a new client ramping up is not growth), up ≥ 50% and ≥ 1,000 lei |
 | one-client | ≥ 35% of the last 12 months from one client (never read from a short period) |
-| intro-clients | individual clients only (not companies with a project), ≥ 5 new this year |
+| intro-clients | individual clients only, ≥ 5 new this year, and more than half never came back (a tip: some first sessions never turn into more) |
 | overdue | an expected payment past its date |
 | quiet-month | ≥ 9 complete months, never the running month or a start-up month |
+| tax-review | *(tax)* payments this year marked "review": the estimate leaves them out until decided |
+| costs-overdue | *(costs)* costs still due after their date |
+
+Pain points are kept for what costs money or needs a decision: overdue payments, open tax
+questions, overdue costs, thin margins, a pattern of losing sessions, leaning on one client
+(audited 25 Nov 2026). Everything else is a win or a tip.
 
 **Feedback** (`app/insightFeedback.ts`, this device): 👍 keeps an insight first. 👎 asks
 "Hide this one" or "Hide all about <rule>", with Undo. Settings → Features shows how many are
@@ -317,8 +324,8 @@ every feature has something real to show (extended 25 Nov 2026):
 
   The same workshop runs at three rooms.
 - **Also covered:** four currencies, withheld royalties and lecture fees, reimbursements, an
-  award and a barter for review, two overdue and two upcoming payments, intro clients who never
-  came back, and regular clients going quiet and growing.
+  award and a barter for review, two overdue and two upcoming payments, intro clients (most came
+  back), and an NGO programme that ended.
 - **About 300 payments and 435 costs:** room bookings and shares, co-facilitators, materials,
   platform commissions, a home office then a coworking desk, software, accountant, supervision,
   two certification modules, a laptop depreciated over 36 months, and owner drawings.

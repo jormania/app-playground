@@ -202,7 +202,7 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
   }
 
   if (has('review')) {
-    const list = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected })
+    const list = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected, tax: ctx.trackTax })
     const kept = ctx.trackCosts ? buildPnl(scoped.records, scoped.costs, monthColumns(range)).lines.find((l) => l.key === 'net')!.total : null
     const firstRecord = data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999')
     const facts = reviewHighlights({ data: scoped, cur, before, prevLabel: 'the period before', kept, insights: list, periodLabel: 'this period', prevFrom: prevRange.from, firstRecord })
@@ -217,7 +217,7 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
   }
 
   if (has('insights')) {
-    const raw = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected })
+    const raw = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected, tax: ctx.trackTax })
     const list = ctx.insightFeedback ? applyFeedback(raw, ctx.insightFeedback) : raw
     const word = { pain: 'Look at', win: 'Working', tip: 'Note' } as const
     parts.push(`<section><h2>Pain points and wins</h2>${list.length ? `<ul class="insights">${list.map((i) => `<li class="${i.kind}"><b><span class="kind">${word[i.kind]}</span> ${esc(i.title)}</b><div>${esc(i.detail)}</div></li>`).join('')}</ul>` : '<p class="muted">Nothing stands out in this period.</p>'}</section>`)

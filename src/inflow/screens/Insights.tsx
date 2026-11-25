@@ -75,7 +75,7 @@ export function ReviewReport() {
   const { data, today, on, setFilter, toast } = useInflow()
   const { range, prev, cur, before } = usePeriodData()
   const fb = useInsightFeedback()
-  const list = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected') }) : []), [data, range, today, on])
+  const list = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected'), tax: on('tax') }) : []), [data, range, today, on])
   const kept = useMemo(() => {
     if (!on('costs')) return null
     const pnl = buildPnl(data.records, data.costs, monthColumns(range))
