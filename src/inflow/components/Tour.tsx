@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { CalendarClock, Check, Database, DoorOpen, Flame, Receipt, Scale, Waves } from 'lucide-react'
 import type { FeatureKey } from '../domain/types'
-import { Button, Modal } from '../../ds'
+import { Button, Modal, SegmentedControl } from '../../ds'
 import { useInflow } from '../app/state'
 import styles from '../styles/ui.module.css'
 
@@ -71,10 +71,16 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
   const s = STEPS[step]
   const last = step === STEPS.length - 1
 
+  const [startWith, setStartWith] = useState<'demo' | 'mine'>('demo')
+
   const finish = () => {
     updateSettings({ showTour: again })
     setStep(0)
     onClose()
+  }
+  const start = () => {
+    if (workspace === 'demo' && startWith === 'mine') setWorkspace('mine')
+    finish()
   }
 
   return (
@@ -92,6 +98,13 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
             {s.feature.label}
           </label>
         )}
+        {/* The last step's choice sits in the step, so the buttons below never move. */}
+        {last && workspace === 'demo' && (
+          <div className={styles.tourChoice}>
+            <SegmentedControl label="Open with" value={startWith} onChange={(v) => setStartWith(v as 'demo' | 'mine')}
+              options={[{ value: 'demo', label: 'The demo' }, { value: 'mine', label: 'My data' }]} />
+          </div>
+        )}
       </div>
       <div className={styles.tourDots} aria-hidden>
         {STEPS.map((_, i) => <span key={i} className={`${styles.tourDot} ${i === step ? styles.tourDotOn : ''}`} />)}
@@ -100,21 +113,14 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
         <input type="checkbox" checked={again} onChange={(e) => setAgain(e.target.checked)} />
         Show this guide next time
       </label>
-      {/* Skip and Back on the left, the way forward on the right; the last step's two choices stacked full width. */}
-      {last && workspace === 'demo' && (
-        <div className={styles.tourChoice}>
-          <Button onClick={finish}>Explore the demo</Button>
-          <Button variant="secondary" onClick={() => { setWorkspace('mine'); finish() }}>Start with my data</Button>
-        </div>
-      )}
+      {/* Same three places on every step, for the thumb: Skip left, Back and the way forward right. */}
       <div className={styles.tourActions}>
-        {last
-          ? <Button variant="ghost" onClick={() => setStep(step - 1)}>Back</Button>
-          : <Button variant="ghost" onClick={finish}>Skip</Button>}
+        <span className={last ? styles.tourHidden : undefined}>
+          <Button variant="ghost" onClick={finish} tabIndex={last ? -1 : undefined} aria-hidden={last || undefined}>Skip</Button>
+        </span>
         <div>
-          {!last && step > 0 && <Button variant="secondary" onClick={() => setStep(step - 1)}>Back</Button>}
-          {!last && <Button onClick={() => setStep(step + 1)}>Next</Button>}
-          {last && workspace !== 'demo' && <Button onClick={finish}>Start</Button>}
+          <Button variant="secondary" className={step === 0 ? styles.tourHidden : undefined} disabled={step === 0} onClick={() => setStep(step - 1)}>Back</Button>
+          <Button className={styles.tourNext} onClick={() => (last ? start() : setStep(step + 1))}>{last ? 'Start' : 'Next'}</Button>
         </div>
       </div>
     </Modal>

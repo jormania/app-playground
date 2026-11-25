@@ -889,9 +889,12 @@ a.modeTag { text-decoration: none; }
 .tourActions > div { display: flex; gap: var(--space-sm); justify-content: flex-end; }
 /* One row on any phone: Skip or Back left, the way forward right. */
 .tourActions { flex-wrap: nowrap; }
-.tourActions > button:first-child { margin-left: calc(-1 * var(--space-sm)); }
-.tourChoice { display: grid; gap: var(--space-sm); margin-top: var(--space-md); }
-.tourChoice > button { width: 100%; }
+.tourChoice { margin-top: var(--space-md); }
+/* Keeps its place in the row while not in use, so nothing beside it shifts. */
+.tourHidden { visibility: hidden; }
+.tourNext { min-width: 88px; }
+@media (max-width: 400px) { .tourActions, .tourActions > div { gap: var(--space-xs); } }
+@media (max-width: 360px) { .tourActions > span > button { padding-inline: var(--space-xs); } }
 
 /* ── part-to-whole bar ─────────────────────────────────────────────────── */
 .shareBar {
