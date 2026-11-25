@@ -270,6 +270,33 @@ describe('small conveniences', () => {
   })
 })
 
+describe('venue deals', () => {
+  it('shows each venue\'s actual deal and results; the what-if changes nothing stored', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/deals')
+    const total = await screen.findByLabelText('Venue deals in total')
+    for (const k of ['Revenue', 'Paid to venues', 'You kept']) expect(within(total).getByText(k)).toBeTruthy()
+    const loft = within(screen.getByLabelText('Venues')).getByRole('article', { name: 'Casa Verde loft' })
+    expect(within(loft).getByText('Fixed fee · 600 lei a session')).toBeTruthy()
+    expect(within(loft).getByText(/Fee covered at/)).toBeTruthy()
+    const before = JSON.stringify((await store.get<{ venues: unknown[] }>('demo'))!.venues)
+    await user.click(within(loft).getByText('What if…'))
+    await user.click(within(loft).getByRole('radio', { name: 'Fixed fee' }))
+    const fee = within(loft).getByLabelText('Fee a session (lei)')
+    await user.clear(fee)
+    await user.type(fee, '800')
+    // 9 evenings at 800 instead of 600: 1,800 lei less.
+    expect(within(loft).getByText(/−1,800 lei/)).toBeTruthy()
+    expect(JSON.stringify((await store.get<{ venues: unknown[] }>('demo'))!.venues)).toBe(before)
+    // No verdicts, no commentary cards.
+    expect(screen.queryByText(/Keep, watch|Too early|Rethink/)).toBeNull()
+  })
+})
+
 describe('switching between the demo and Notion', () => {
   const mineInNotion: InflowData = {
     records: [{ ...buildDemo(today).records.find((r) => r.status === 'received' && r.date.startsWith('2026-11'))!, id: 'notion1', clientId: null, sourceId: null, venueId: null, demo: undefined, amount: 1234, amountRon: 1234, currency: 'RON', fxRate: 1 }],

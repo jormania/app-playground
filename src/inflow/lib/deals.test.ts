@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildDemo } from '../data/demo'
-import { crossover, dealCurve, dealTypes, defaultAlternative, venueCostOf, venueDeal, venueDeals, verdict } from './deals'
+import type { IncomeRecord, Venue } from '../domain/types'
+import { dealTotals, defaultAlternative, feeCoveredAt, sameDayRepeats, scenario, venueCostOf, venueDeal, venueDeals } from './deals'
 import { heatMap, insights, takeHome } from './insights'
 
 const today = '2026-11-25'
@@ -22,13 +23,6 @@ describe('venue cost under each deal', () => {
     expect(venueCostOf(2000, { deal: 'none', feePerSession: 0, sharePct: 0, monthlyFee: 0 })).toBe(0)
   })
 
-  it('finds where fixed and share cross: 600 lei ÷ (220 × 30%) ≈ 9 people', () => {
-    const points = dealCurve(220, fixed, share, 15)
-    expect(points[0]).toEqual({ attendees: 0, current: -600, alternative: 0 })
-    const x = crossover(points)!
-    expect(x).toBeGreaterThan(9)
-    expect(x).toBeLessThan(9.2)
-  })
 })
 
 describe('the demo loft (fixed 600 lei, 220 lei a seat)', () => {
@@ -98,25 +92,73 @@ describe('take-home and the heat map', () => {
 })
 
 
-describe('keep, watch or rethink', () => {
-  const at = (id: string) => venueDeal(venue(id), demo.records, year)
-  it('keeps a share deal that never lost money, and watches the loft that once did', () => {
-    expect(verdict(at('cowork')).level).toBe('keep')
-    const loft = verdict(at('loft'))
-    expect(loft.level).toBe('watch')
-    expect(loft.reason).toMatch(/1 session of 9 lost money/)
+/** Three sessions at one venue: 1,000, 400 and 2,000 lei; 5, 2 and 10 people. */
+const room = (terms: Partial<Venue>): Venue => ({ ...venue('loft'), id: 'v_room', ...terms })
+const session = (id: string, date: string, amountRon: number, attendees: number): IncomeRecord =>
+  ({ ...demo.records[0], id, date, amount: amountRon, amountRon, currency: 'RON', fxRate: 1, venueId: 'v_room', status: 'received', category: 'workshop', attendees, demo: undefined })
+const three = [session('a', '2026-03-02', 1000, 5), session('b', '2026-03-09', 400, 2), session('c', '2026-03-16', 2000, 10)]
+const all = { from: '2026-01-01', to: '2026-12-31' }
+
+describe('a fixed-fee venue (500 lei a session)', () => {
+  const d = venueDeal(room({ deal: 'fixed', feePerSession: 500, sharePct: 0 }), three, all)
+  it('pays the fee on every session and keeps the rest', () => {
+    expect(d.sessions).toHaveLength(3)
+    expect(d.revenue).toBe(3400)
+    expect(d.venueCost).toBe(1500)
+    expect(d.takeHome).toBe(1900)
+    expect(d.takePerSession).toBeCloseTo(633.33, 2)
+    expect(d.losing.map((x) => x.id)).toEqual(['b'])
   })
-  it('rethinks a room where a quarter of sessions lose money', () => {
-    const v = { ...venue('loft'), feePerSession: 1500 }
-    expect(verdict(venueDeal(v, demo.records, year)).level).toBe('rethink')
+  it('is covered once a session brings in the fee: 500 lei, about 3 people at 200 lei a head', () => {
+    expect(feeCoveredAt(d)).toEqual({ revenue: 500, people: 3 })
   })
-  it('is too early with fewer than three sessions', () => {
-    const one = demo.records.filter((r) => r.venueId === 'demo_v_loft' && r.status === 'received').slice(0, 2)
-    expect(verdict(venueDeal(venue('loft'), one, year)).level).toBe('early')
+  it('what if it took 25% instead: same sessions, 850 lei to the venue', () => {
+    const s = scenario(d, { deal: 'share', feePerSession: 0, sharePct: 0.25, monthlyFee: 0 })
+    expect(s).toEqual({ current: 1900, hypothetical: 2550, difference: 650, differencePct: 650 / 1900 })
   })
-  it('compares the kinds of deal', () => {
-    const rows = dealTypes(venueDeals(demo.venues, demo.records, year).filter((d) => d.venue.deal !== 'none'))
-    expect(rows.map((r) => r.deal).sort()).toEqual(['fixed', 'share'])
-    expect(rows.find((r) => r.deal === 'fixed')!.losing).toBeGreaterThan(0)
+  it('what if the fee were 700: 600 lei less', () => {
+    const s = scenario(d, { deal: 'fixed', feePerSession: 700, sharePct: 0, monthlyFee: 0 })
+    expect(s.hypothetical).toBe(1300)
+    expect(s.difference).toBe(-600)
+    expect(s.differencePct).toBeCloseTo(-600 / 1900)
+  })
+})
+
+describe('a revenue-share venue (30%)', () => {
+  const v = room({ deal: 'share', feePerSession: 0, sharePct: 0.3 })
+  const d = venueDeal(v, three, all)
+  it('pays the venue its share of each session', () => {
+    expect(d.venueCost).toBe(1020)
+    expect(d.takeHome).toBe(2380)
+    expect(d.losing).toEqual([])
+    expect(feeCoveredAt(d)).toBeNull()
+  })
+  it('what if it were 20%, or a 300 lei fee', () => {
+    expect(scenario(d, { deal: 'share', feePerSession: 0, sharePct: 0.2, monthlyFee: 0 })).toMatchObject({ hypothetical: 2720, difference: 340 })
+    expect(scenario(d, { deal: 'fixed', feePerSession: 300, sharePct: 0, monthlyFee: 0 })).toMatchObject({ hypothetical: 2500, difference: 120 })
+  })
+  it('the same terms give no difference, and nothing is changed by asking', () => {
+    const before = JSON.stringify([v, three])
+    expect(scenario(d, v)).toMatchObject({ difference: 0, differencePct: 0 })
+    expect(JSON.stringify([v, three])).toBe(before)
+  })
+  it('has no percentage when nothing was kept', () => {
+    const none = venueDeal(room({ deal: 'fixed', feePerSession: 5000, sharePct: 0 }), three, all)
+    expect(scenario(none, v).differencePct).toBeNull()
+  })
+})
+
+describe('totals and data questions', () => {
+  it('adds up revenue, venue costs and what was kept across venues', () => {
+    const a = venueDeal(room({ deal: 'fixed', feePerSession: 500 }), three, all)
+    const b = venueDeal(room({ deal: 'share', sharePct: 0.3 }), three, all)
+    expect(dealTotals([a, b])).toEqual({ sessions: 6, revenue: 6800, venueCost: 2520, retained: 4280 })
+  })
+  it('counts payments that share a day at one venue', () => {
+    const d = venueDeal(room({ deal: 'fixed', feePerSession: 500 }), [...three, session('d', '2026-03-16', 300, 2)], all)
+    expect(sameDayRepeats(d)).toBe(1)
+  })
+  it('lists the demo venues that have a deal', () => {
+    expect(venueDeals(demo.venues, demo.records, year).filter((d) => d.venue.deal !== 'none').length).toBeGreaterThan(2)
   })
 })

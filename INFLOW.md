@@ -64,20 +64,29 @@ Navigation: a drill-down from a report leaves a trail (`app/trail.ts`), and Inco
 "← Back to Review". Month headings on Income and Costs stick while scrolling. Tapping the
 current tab scrolls to the top. Each screen names itself in the browser tab.
 
-**Venue deals** (`DealsReport`, `lib/deals.ts`), in five sections under a section index:
-- **Keep, watch or rethink**: every room ranked by what a session leaves you. `verdict()`:
-  *early* under 3 sessions; *rethink* if it loses on average or ≥ 25% of sessions lost
-  money; *watch* if any lost, turnout is within 30% of the break-even, or the venue takes
-  over a third; *keep* otherwise. Each verdict is a word with an icon, never colour alone.
-- **How full each room must be**: seat strips. The break-even seats are outlined amber, the
-  rest are green, with a marker at the average turnout and the cushion in words.
-  Revenue-share rooms say "no break-even".
-- **Every session, after the room**: one bar per session on one scale, with losses below
-  the line.
-- **Fixed fee or a share?**: the deal types side by side, with advice for each and a caveat
-  that different rooms host different work.
-- **Venue by venue**: twisties, opened for *rethink*, with the "try another deal" chart. A
-  crossover under one person reads "from the first person on".
+**Venue deals** (`screens/VenueDeals.tsx`, `lib/deals.ts`), simplified 25 Nov 2026 to answer
+one question: which deals make the freelancer the most money.
+
+- **The actual deal is fact.** Every venue has its deal set by the venue owner: a *fixed fee* per
+  session, or a *revenue share* of each session's revenue. The page shows it and never offers
+  to change it. The venue form offers Fixed fee, Revenue share or No venue cost. A venue saved
+  earlier as "fixed + share" or "monthly rent" keeps its terms, and they still calculate.
+- **Summary:** revenue, paid to venues, kept, sessions (`dealTotals`).
+- **One row per venue, best average first:**
+  - the deal and its terms, sessions, revenue, paid to the venue, kept, and kept per session
+    (`venueDeal`: each received, non-reimbursement payment at a venue is one session);
+  - fixed fee: "Fee covered at <fee> of session revenue", plus the head count at the venue's
+    recorded price per head when there is one (`feeCoveredAt`);
+  - revenue share: "You keep <100 − share>%".
+- **What if… (one per row):** a hypothetical fixed fee or share, run over the same sessions and
+  revenue (`scenario`). It shows actual kept, hypothetical kept, and the difference in lei and
+  %. The terms live in the component's state only; nothing is saved.
+- **One data note, only when true:** at a fixed-fee venue, two payments on the same day count
+  as two sessions and two fees (`sameDayRepeats`).
+
+Removed: verdicts and thresholds, seat strips, per-session bars, the deal-type comparison and
+its advice, the deal curve and crossover, and the section index. The Review's pain points still
+read `venueDeal` (sessions that lost money at a fixed-fee room).
 
 The Review's grid is **Which work pays best, and where**: a sentence saying what a square
 is, four ready-made questions, "Customise the grid", and the three strongest and weakest

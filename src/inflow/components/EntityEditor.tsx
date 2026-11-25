@@ -93,8 +93,11 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
               <TextInput label="Location or URL (optional)" value={v.location} onChange={(x) => set({ location: x })} />
               {on('deals') && (
                 <>
+                  {/* The venue sets the deal: a fixed fee or a revenue share. An older venue saved
+                      with another kind keeps it, and the option stays so it reads true. */}
                   <SelectInput label="Deal with the venue" value={v.deal} onChange={(x) => set({ deal: x })} hint={DEAL_HINT[v.deal]}>
-                    {options(DEAL).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {options(DEAL).filter((o) => ['fixed', 'share', 'none'].includes(o.value) || o.value === v.deal)
+                      .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </SelectInput>
                   {(v.deal === 'fixed' || v.deal === 'hybrid') && (
                     <NumberInput label="Fee per session (lei)" value={v.feePerSession} onCommit={(n) => set({ feePerSession: n ?? 0 })} />

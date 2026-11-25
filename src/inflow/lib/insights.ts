@@ -152,7 +152,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
           id: `losing-${v.id}`, kind: 'pain', weight: d.lost * 3,
           title: `${d.losing.length} ${d.losing.length === 1 ? 'session' : 'sessions'} at ${v.name} cost more than ${d.losing.length === 1 ? 'it' : 'they'} earned`,
           detail: `The ${v.deal === 'monthly' ? 'rent' : 'fee'} is paid whoever comes; those sessions lost ${lei(d.lost)} together.${d.breakEvenAttendees ? ` A session there needs ${d.breakEvenAttendees} people to cover the room.` : ''} A minimum sign-up before booking, or a share deal, would take the risk off you.`,
-          link: { label: 'Venue deals', hash: '#/reports/deals/verdict' },
+          link: { label: 'Venue deals', hash: '#/reports/deals' },
         })
       } else if (d.breakEvenAttendees && d.breakEvenAttendees > 1 && d.avgAttendees !== null && d.avgAttendees < d.breakEvenAttendees * 1.3) {
         // A room one person already pays for (1:1 work) is never "close" in any useful sense.
@@ -160,7 +160,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
           id: `thin-${v.id}`, kind: 'tip', weight: d.revenue * 0.2,
           title: `${v.name} runs close to its break-even`,
           detail: `Sessions there average ${d.avgAttendees} ${d.avgAttendees === 1 ? 'person' : 'people'} and need ${d.breakEvenAttendees} to cover the ${lei(v.feePerSession)} fee. One quiet evening and it's a loss.`,
-          link: { label: 'Venue deals', hash: '#/reports/deals/verdict' },
+          link: { label: 'Venue deals', hash: '#/reports/deals' },
         })
       }
       if (v.deal === 'share' && d.sessions.length >= 3 && d.venueCost / d.sessions.length > 300) {
@@ -168,7 +168,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
           id: `share-${v.id}`, kind: 'tip', weight: d.venueCost * 0.3,
           title: `${v.name}'s ${percent(v.sharePct)} share costs about ${lei(d.venueCost / d.sessions.length)} a session`,
           detail: `At your current turnout${d.avgAttendees ? ` (${d.avgAttendees} people)` : ''}, a fixed fee below that would leave you more — but you'd carry the empty days yourself. Worth asking once your numbers are steady.`,
-          link: { label: 'Compare deals', hash: '#/reports/deals/types' },
+          link: { label: 'Compare deals', hash: '#/reports/deals' },
         })
       }
     }

@@ -164,8 +164,8 @@ export const DEAL: Record<DealType, string> = {
 }
 
 export const DEAL_HINT: Record<DealType, string> = {
-  fixed: 'You book and pay a fee per session, whoever turns up. Empty rooms cost you; full ones are all yours.',
-  share: 'The venue takes a share of what each session brings in. Empty rooms cost nothing; full ones cost more.',
+  fixed: 'You pay the venue a set amount per session, whatever the session brings in.',
+  share: 'The venue receives a set percentage of each session\'s revenue.',
   hybrid: 'A fee per session plus a share of the takings.',
   monthly: 'Rent per month, used as often as you like.',
   none: 'No venue cost: online, the client\'s office, or an agency pays the room.',

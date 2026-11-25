@@ -12,7 +12,7 @@
  *   none     nothing (online, client's office, an agency pays)
  */
 import type { IncomeRecord, Venue } from '../domain/types'
-import { lei, percent, round2 } from './money'
+import { round2 } from './money'
 
 const inRange = (d: string, r: { from: string; to: string }) => d >= r.from && d <= r.to
 
@@ -117,46 +117,8 @@ export function venueDeals(venues: Venue[], records: IncomeRecord[], r: { from: 
     .sort((a, b) => b.takeHome - a.takeHome)
 }
 
-export interface DealCurvePoint {
-  attendees: number
-  current: number
-  alternative: number
-}
-
-/**
- * What one session leaves you at each head count, under the current deal and
- * an alternative: the "fixed or share?" picture. Monthly rent is read per session.
- */
-export function dealCurve(
-  pricePerHead: number,
-  current: Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'>,
-  alternative: Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'>,
-  maxAttendees: number,
-): DealCurvePoint[] {
-  const points: DealCurvePoint[] = []
-  for (let n = 0; n <= maxAttendees; n++) {
-    const rev = n * pricePerHead
-    points.push({ attendees: n, current: round2(rev - venueCostOf(rev, current)), alternative: round2(rev - venueCostOf(rev, alternative)) })
-  }
-  return points
-}
-
-/** The head count at which the two deals leave you the same, if they cross. */
-export function crossover(points: DealCurvePoint[]): number | null {
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1].current - points[i - 1].alternative
-    const b = points[i].current - points[i].alternative
-    if (a === 0) return points[i - 1].attendees
-    if ((a < 0 && b >= 0) || (a > 0 && b <= 0)) {
-      // Interpolate between the two head counts.
-      return Math.round((points[i - 1].attendees + Math.abs(a) / (Math.abs(a) + Math.abs(b))) * 10) / 10
-    }
-  }
-  return null
-}
-
 /** A sensible "what if" to compare against: the other kind of deal at today's equivalent price. */
-export function defaultAlternative(d: VenueDeal): Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'> {
+export function defaultAlternative(d: VenueDeal): Terms {
   const v = d.venue
   if (v.deal === 'share') {
     // A fixed fee equal to what the share cost per session on average.
@@ -168,74 +130,52 @@ export function defaultAlternative(d: VenueDeal): Pick<Venue, 'deal' | 'feePerSe
   return { deal: 'share', feePerSession: 0, sharePct: share, monthlyFee: 0 }
 }
 
-export type VerdictLevel = 'keep' | 'watch' | 'rethink' | 'early'
 
-export interface Verdict { level: VerdictLevel; reason: string }
+/** A venue's deal terms: the actual ones on the venue, or a hypothetical set to compare. */
+export type Terms = Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'>
 
-const MIN_SESSIONS = 3
+export interface Scenario {
+  /** Retained under the venue's actual deal (as recorded). */
+  current: number
+  /** Retained on the same sessions under the hypothetical terms. */
+  hypothetical: number
+  /** hypothetical − current, lei. */
+  difference: number
+  /** difference ÷ current; null when current is zero or below. */
+  differencePct: number | null
+}
 
 /**
- * Keep, watch or rethink a venue: the call a beginner needs, in one line.
- *   early    fewer than three sessions — nothing to judge yet
- *   rethink  a quarter or more of sessions lost money, or it loses on average
- *   watch    some sessions lost money, turnout sits near the break-even, or the
- *            venue takes over a third of the takings
- *   keep     none of that
+ * The same sessions, the same revenue, other terms: what you would have
+ * retained. Pure — the venue and its records are never changed.
  */
-export function verdict(d: VenueDeal): Verdict {
-  const n = d.sessions.length
-  const s = (k: number, word = 'session') => `${k} ${word}${k === 1 ? '' : 's'}`
-  if (n < MIN_SESSIONS) return { level: 'early', reason: `Only ${s(n)} so far: too early to judge.` }
-  const lostShare = d.losing.length / n
-  if (d.takePerSession < 0) return { level: 'rethink', reason: `Loses ${lei(-d.takePerSession)} a session on average after the room.` }
-  if (lostShare >= 0.25) return { level: 'rethink', reason: `${d.losing.length} of ${n} sessions lost money (${lei(d.lost)} in all).` }
-  if (d.losing.length) return { level: 'watch', reason: `${s(d.losing.length)} of ${n} lost money (${lei(d.lost)}); the rest carried it.` }
-  if (d.breakEvenAttendees && d.avgAttendees !== null && d.breakEvenAttendees > 1 && d.avgAttendees < d.breakEvenAttendees * 1.3) {
-    return { level: 'watch', reason: `Turnout averages ${people(d.avgAttendees)}; the room needs ${people(d.breakEvenAttendees)}. Little cushion.` }
-  }
-  if (d.effectiveShare !== null && d.effectiveShare > 0.34) return { level: 'watch', reason: `The venue takes ${percent(d.effectiveShare)} of what comes in.` }
-  return {
-    level: 'keep',
-    reason: d.venue.deal === 'share' || d.venue.deal === 'hybrid'
-      ? `Never lost money; the venue's ${percent(d.effectiveShare ?? 0)} share moves with turnout.`
-      : d.breakEvenAttendees && d.avgAttendees !== null && d.breakEvenAttendees > 1
-        ? `Turnout averages ${people(d.avgAttendees)}, well past the ${people(d.breakEvenAttendees)} the room needs.`
-        : `Every session paid for itself.`,
-  }
+export function scenario(d: VenueDeal, alt: Terms): Scenario {
+  const hypothetical = round2(d.sessions.reduce((s, x) => s + x.revenue - venueCostOf(x.revenue, alt), 0))
+  const current = d.takeHome
+  const difference = round2(hypothetical - current)
+  return { current, hypothetical, difference, differencePct: current > 0 ? difference / current : null }
 }
 
-export function people(n: number): string {
-  return `${n} ${n === 1 ? 'person' : 'people'}`
+/** Totals across venues: revenue, paid to the venues, retained. */
+export function dealTotals(deals: VenueDeal[]): { sessions: number; revenue: number; venueCost: number; retained: number } {
+  const t = deals.reduce((a, d) => ({ sessions: a.sessions + d.sessions.length, revenue: a.revenue + d.revenue, venueCost: a.venueCost + d.venueCost }), { sessions: 0, revenue: 0, venueCost: 0 })
+  return { sessions: t.sessions, revenue: round2(t.revenue), venueCost: round2(t.venueCost), retained: round2(t.revenue - t.venueCost) }
 }
 
-export interface DealTypeRow {
-  deal: Venue['deal']
-  venues: number
-  sessions: number
-  revenue: number
-  venueCost: number
-  takePerSession: number
-  /** Venue cost ÷ revenue. */
-  share: number
-  losing: number
+/**
+ * A fixed fee is covered once a session brings in the fee itself. Shown with
+ * the head count it takes at the venue's recorded price per head, when there is one.
+ */
+export function feeCoveredAt(d: VenueDeal): { revenue: number; people: number | null } | null {
+  if (d.venue.deal !== 'fixed') return null
+  const fee = d.venue.feePerSession
+  return { revenue: fee, people: d.revenuePerHead && d.revenuePerHead > 0 ? Math.ceil(fee / d.revenuePerHead) : null }
 }
 
-/** The kinds of deal side by side: what each did for you over the period. */
-export function dealTypes(deals: VenueDeal[]): DealTypeRow[] {
-  const m = new Map<Venue['deal'], DealTypeRow>()
-  for (const d of deals) {
-    const r = m.get(d.venue.deal) ?? { deal: d.venue.deal, venues: 0, sessions: 0, revenue: 0, venueCost: 0, takePerSession: 0, share: 0, losing: 0 }
-    r.venues += 1
-    r.sessions += d.sessions.length
-    r.revenue += d.revenue
-    r.venueCost += d.venueCost
-    r.losing += d.losing.length
-    m.set(d.venue.deal, r)
-  }
-  return [...m.values()].map((r) => ({
-    ...r,
-    revenue: round2(r.revenue), venueCost: round2(r.venueCost),
-    takePerSession: r.sessions ? round2((r.revenue - r.venueCost) / r.sessions) : 0,
-    share: r.revenue > 0 ? r.venueCost / r.revenue : 0,
-  })).sort((a, b) => b.takePerSession - a.takePerSession)
+/**
+ * A genuine data question: two payments at a fixed-fee venue on the same day
+ * count as two sessions, and two fees. The number of such extra payments.
+ */
+export function sameDayRepeats(d: VenueDeal): number {
+  return d.sessions.length - new Set(d.sessions.map((x) => x.date)).size
 }
