@@ -7,14 +7,13 @@
  * activity), and every row drills down to the payments behind it.
  */
 import { Fragment, useMemo, useState } from 'react'
-import { Download, X } from 'lucide-react'
-import { SegmentedControl } from '../../ds'
+import { Download, SlidersHorizontal, X } from 'lucide-react'
 import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
-import { SplitBar, Sparkline } from '../components/charts'
+import { MonthlyPair, ShareBar, SplitBar, Sparkline } from '../components/charts'
 import { Optional } from '../components/Optional'
 import { ReportBuilder } from './ReportBuilder'
-import { DealsReport, InsightsReport } from './Insights'
+import { DealsReport, ReviewReport, SectionIndex } from './Insights'
 import type { CostRecord } from '../domain/types'
 import { ACTIVITY, PROFILE, options } from '../domain/vocabulary'
 import {
@@ -26,12 +25,32 @@ import { buildCashFlow, buildPnl, margins, monthColumns } from '../lib/finance'
 import { delta, lei, percent } from '../lib/money'
 import { download, toCsv } from '../store/backup'
 import { projectYear, taxableGross } from '../tax/estimate'
+import { leaveTrail } from '../app/trail'
 import styles from '../styles/ui.module.css'
+
+/** What the way back from a drill-down is called: the report you were on. */
+export function trailLabel(): string {
+  const route = location.hash.split('/')[2] ?? ''
+  const g = GROUPS.find((x) => (x.routes as string[]).includes(route))
+  return g ? `${g.label.replace('*', '')}${SUB_LABEL[route as ReportTab] && g.routes.length > 1 ? ` · ${SUB_LABEL[route as ReportTab]}` : ''}` : 'Reports'
+}
 
 export const REPORT_TABS = ['insights', 'clients', 'venues', 'activities', 'sources', 'deals', 'pnl', 'cashflow', 'tax', 'print'] as const
 export type ReportTab = (typeof REPORT_TABS)[number]
 
 const DIM: Record<'clients' | 'venues' | 'activities' | 'sources', Dimension> = { clients: 'client', venues: 'venue', activities: 'activity', sources: 'source' }
+
+/** The six reports, each owning one or more routes (old links keep working). */
+interface Group { id: string; label: string; routes: ReportTab[] }
+const GROUPS: Group[] = [
+  { id: 'review', label: 'Review', routes: ['insights'] },
+  { id: 'breakdown', label: 'Breakdown', routes: ['clients', 'venues', 'activities', 'sources'] },
+  { id: 'deals', label: 'Venue deals', routes: ['deals'] },
+  { id: 'profit', label: 'Profit', routes: ['pnl', 'cashflow'] },
+  { id: 'tax', label: 'Tax*', routes: ['tax'] },
+  { id: 'print', label: 'Print', routes: ['print'] },
+]
+const SUB_LABEL: Partial<Record<ReportTab, string>> = { clients: 'Clients', venues: 'Venues', activities: 'Activities', sources: 'Sources', pnl: 'P&L', cashflow: 'Cash flow' }
 
 /** A cost in scope: costs carry venue, client and activity, but never a source. */
 export function costInScope(c: CostRecord, s: Scope): boolean {
@@ -40,33 +59,46 @@ export function costInScope(c: CostRecord, s: Scope): boolean {
   return m(c.clientId, s.clientId) && m(c.venueId, s.venueId) && m(c.activity, s.activity)
 }
 
-export function Reports({ tab, onTab, onAddCost }: { tab: ReportTab; onTab: (t: ReportTab) => void; onAddCost: () => void }) {
+export function Reports({ tab, onAddCost }: { tab: ReportTab; onTab?: (t: ReportTab) => void; onAddCost: () => void }) {
   const { on } = useInflow()
   // Each optional report appears only while its feature is on.
-  const tabs = [
-    ...(on('insights') ? [{ value: 'insights', label: 'Insights' }] : []),
-    { value: 'clients', label: 'Clients' },
-    { value: 'venues', label: 'Venues' },
-    { value: 'activities', label: 'Activities' },
-    { value: 'sources', label: 'Sources' },
-    ...(on('deals') ? [{ value: 'deals', label: 'Venue deals' }] : []),
-    ...(on('costs') ? [{ value: 'pnl', label: 'P&L' }, { value: 'cashflow', label: 'Cash flow' }] : []),
-    ...(on('tax') ? [{ value: 'tax', label: 'Tax*' }] : []),
-    ...(on('printable') ? [{ value: 'print', label: 'Printable' }] : []),
-  ]
+  const groups = GROUPS.filter((g) => (g.id !== 'deals' || on('deals')) && (g.id !== 'profit' || on('costs')) && (g.id !== 'tax' || on('tax')) && (g.id !== 'print' || on('printable')))
+  const current = groups.find((g) => g.routes.includes(tab)) ?? groups[0]
   // A report switched off (or a bare #/reports) falls back to the first one offered.
-  const shown: ReportTab = tabs.some((t) => t.value === tab) ? tab : (tabs[0].value as ReportTab)
+  const shown: ReportTab = current.routes.includes(tab) ? tab : current.routes[0]
   const scoped = on('reportTools') && shown !== 'print' && shown !== 'cashflow' && shown !== 'tax'
+  const [filters, setFilters] = useState(false)
+  const { scope } = useInflow()
   return (
     <>
-      <SegmentedControl wrap options={tabs} value={shown} onChange={(v) => onTab(v as ReportTab)} label="Report" />
-      {scoped && <ScopeBar />}
-      <div key={shown} className={styles.screenIn} style={{ display: 'contents' }}>
+      <nav className={styles.reportNav} aria-label="Reports">
+        <div className={styles.reportTabs} ref={(el) => { el?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' }) }}>
+          {groups.map((g) => (
+            <a key={g.id} href={`#/reports/${g.routes[0]}`} className={styles.reportTab} aria-current={g === current ? 'page' : undefined}>{g.label}</a>
+          ))}
+          {scoped && (
+            <button type="button" className={`${styles.reportTab} ${styles.filterToggle} ${scopeIsSet(scope) ? styles.filterOn : ''}`}
+              aria-expanded={filters} onClick={() => setFilters((f) => !f)}>
+              <SlidersHorizontal size={14} aria-hidden /> Filter{scopeIsSet(scope) ? ' ·' : ''}
+            </button>
+          )}
+        </div>
+        {current.routes.length > 1 && (
+          <div className={styles.subTabs}>
+            {current.routes.map((r) => (
+              <a key={r} href={`#/reports/${r}`} className={styles.subTab} aria-current={r === shown ? 'page' : undefined}>{SUB_LABEL[r]}</a>
+            ))}
+          </div>
+        )}
+        {shown === 'insights' && <SectionIndex />}
+      </nav>
+      {scoped && (filters || scopeIsSet(scope)) && <ScopeBar />}
+      <div key={shown} className={`${styles.screen} ${styles.screenIn}`}>
         {shown === 'tax' ? <TaxReport />
           : shown === 'print' ? <ReportBuilder />
             : shown === 'pnl' ? <PnlReport onAddCost={onAddCost} />
               : shown === 'cashflow' ? <CashFlowReport />
-                : shown === 'insights' ? <InsightsReport />
+                : shown === 'insights' ? <ReviewReport />
                   : shown === 'deals' ? <DealsReport />
                     : <DimensionReport dim={DIM[shown]} />}
       </div>
@@ -112,6 +144,7 @@ function useDrill() {
   const scope = on('reportTools') ? rawScope : ANY_SCOPE
   return (patch: Partial<IncomeFilter>) => {
     setFilter({ ...EMPTY_FILTER, range: 'period', clientId: scope.clientId, sourceId: scope.sourceId, venueId: scope.venueId, activity: scope.activity, ...patch })
+    leaveTrail(trailLabel())
     location.hash = '#/income'
   }
 }
@@ -167,6 +200,10 @@ function DimensionReport({ dim }: { dim: Dimension }) {
           <span className={styles.panelSub}>{lei(total)} from {rows.length} · vs {prev.label}</span>
         </div>
         {rows.length === 0 ? <p className={styles.hint}>No income in this period{scopeIsSet(scope) ? ' for these filters' : ''}.</p> : (
+          <>
+          <div style={{ marginBottom: 'var(--space-md)' }}>
+            <ShareBar parts={rows.map((r) => ({ id: r.id, name: r.name, value: r.total }))} label={`Income by ${noun.toLowerCase()}`} onSelect={go} />
+          </div>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -202,6 +239,7 @@ function DimensionReport({ dim }: { dim: Dimension }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
         {rows.length > 0 && (
           <p className={styles.hint} style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
@@ -284,6 +322,11 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
             <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
           </span>
         </div>
+        {columns.length > 1 && (
+          <MonthlyPair months={columns.map((c) => ({ label: c.label, from: c.from }))}
+            income={pnl.lines.find((l) => l.key === 'revenue')!.values}
+            costs={pnl.lines.find((l) => l.key === 'revenue')!.values.map((v, i) => Math.round(v - pnl.lines.find((l) => l.key === 'net')!.values[i]))} />
+        )}
         {data.costs.length === 0 ? (
           <p className={styles.hint}>No costs yet, so this is revenue only. <button type="button" className={styles.linkButton} onClick={onAddCost}>Add a cost</button></p>
         ) : null}

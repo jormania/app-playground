@@ -89,16 +89,43 @@ describe('InFlow', () => {
     expect(screen.queryByRole('radio', { name: 'Tax*' })).toBeNull()
   })
 
-  it('builds a printable report that follows its options', async () => {
+  it('prints one of four reports, each with its advice, and adjusts', async () => {
     settings()
     const user = userEvent.setup()
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     await go('#/reports/print')
+    expect(within(screen.getByRole('radiogroup', { name: 'Report' })).getAllByRole('radio')).toHaveLength(4)
+    expect(screen.getByText('At the end of each month.')).toBeTruthy()
     const frame = await screen.findByTitle('Report preview') as HTMLIFrameElement
-    expect(frame.getAttribute('srcdoc')).toContain('By venue')
+    expect(frame.getAttribute('srcdoc')).toContain('In short')
+    expect(frame.getAttribute('srcdoc')).toContain('Pain points and wins')
+    // A statement waits for its client.
+    await user.click(screen.getByRole('radio', { name: /Client statement/ }))
+    expect(screen.queryByTitle('Report preview')).toBeNull()
+    await user.selectOptions(screen.getByLabelText('Client'), screen.getByRole('option', { name: 'Andreea Vlad' }))
+    expect((await screen.findByTitle('Report preview')).getAttribute('srcdoc')).toContain('Andreea Vlad')
+    // Adjust: a section off leaves the print.
+    await user.click(screen.getByRole('radio', { name: /Year in review/ }))
+    await user.click(screen.getByText('Adjust this report'))
     await user.click(screen.getByLabelText('By venue'))
-    expect(frame.getAttribute('srcdoc')).not.toContain('By venue')
+    expect((screen.getByTitle('Report preview') as HTMLIFrameElement).getAttribute('srcdoc')).not.toContain('By venue')
+  })
+
+  it('the review tells the period: summary, movers, who pays; a drill-down offers the way back', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/insights')
+    expect(await screen.findByText('November 2026 in review')).toBeTruthy()
+    expect(screen.getByText(/came in/)).toBeTruthy()
+    const moved = within(screen.getByLabelText('Main movers')).getAllByRole('button')
+    expect(moved.length).toBeGreaterThan(0)
+    await user.click(moved[0])
+    expect(window.location.hash).toBe('#/income')
+    const back = await screen.findByRole('link', { name: '← Back to Review' })
+    expect(back.getAttribute('href')).toBe('#/reports/insights')
   })
 
   it('keeps the demo and your own data apart, and switches between them', async () => {
@@ -222,7 +249,12 @@ describe('feature switches', () => {
   const off = (key: FeatureKey) => settings({ features: { ...ALL_FEATURES, [key]: false } })
   const reportTabs = async () => {
     await go('#/reports')
-    return screen.getAllByRole('radio').map((r) => r.getAttribute('aria-label') ?? r.textContent)
+    const nav = await screen.findByRole('navigation', { name: 'Reports' })
+    const tabs = within(nav).getAllByRole('link').map((a) => a.textContent ?? '')
+    // The second row: Breakdown's dimensions, Profit's P&L and cash flow.
+    await go('#/reports/pnl')
+    const sub = within(screen.getByRole('navigation', { name: 'Reports' })).getAllByRole('link').map((a) => a.textContent ?? '')
+    return [...new Set([...tabs, ...sub])]
   }
 
   it('everything is on for a new user', async () => {
@@ -233,8 +265,11 @@ describe('feature switches', () => {
     expect(screen.getByLabelText('Monthly target')).toBeTruthy()
     expect(screen.getByRole('link', { name: /Costs/ })).toBeTruthy()
     const tabs = await reportTabs()
-    for (const t of ['Insights', 'Venue deals', 'P&L', 'Cash flow', 'Tax*', 'Printable']) expect(tabs).toContain(t)
-    expect(screen.getByLabelText('Filter reports')).toBeTruthy()
+    for (const t of ['Review', 'Breakdown', 'Venue deals', 'Profit', 'P&L', 'Cash flow', 'Tax*', 'Print']) expect(tabs).toContain(t)
+    expect(screen.getByRole('button', { name: /Filter/ })).toBeTruthy()
+    await go('#/reports/insights')
+    expect(await screen.findByLabelText('Pain points and wins')).toBeTruthy()
+    expect(screen.getByLabelText('Heat map')).toBeTruthy()
   })
 
   it('insights off: no Overview panel, no Insights report', async () => {
@@ -242,7 +277,11 @@ describe('feature switches', () => {
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     expect(screen.queryByLabelText('Worth a look')).toBeNull()
-    expect(await reportTabs()).not.toContain('Insights')
+    await go('#/reports/insights')
+    // The review stays (summary, movers, who pays); its insight sections go.
+    expect(await screen.findByLabelText('Main movers')).toBeTruthy()
+    expect(screen.queryByLabelText('Pain points and wins')).toBeNull()
+    expect(screen.queryByLabelText('Heat map')).toBeNull()
   })
 
   it('venue deals off: no report, no deal fields, no head count', async () => {
@@ -263,7 +302,7 @@ describe('feature switches', () => {
     expect(screen.queryByRole('link', { name: /Costs/ })).toBeNull()
     expect(screen.queryByLabelText('What you kept')).toBeNull()
     const tabs = await reportTabs()
-    expect(tabs).not.toContain('P&L')
+    expect(tabs).not.toContain('Profit')
     expect(tabs).not.toContain('Cash flow')
   })
 
@@ -300,8 +339,8 @@ describe('feature switches', () => {
     await screen.findByTestId('period-total')
     expect(screen.queryByLabelText('Monthly target')).toBeNull()
     expect(screen.queryByLabelText('Unusually large')).toBeNull()
-    expect(await reportTabs()).not.toContain('Printable')
-    expect(screen.queryByLabelText('Filter reports')).toBeNull()
+    expect(await reportTabs()).not.toContain('Print')
+    expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull()
   })
 
   it('Settings lists every feature with an explanation, and a switch takes effect at once', async () => {

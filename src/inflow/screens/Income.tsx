@@ -11,7 +11,10 @@ import { usePeriodData } from '../app/usePeriod'
 import { SelectInput } from '../components/fields'
 import type { IncomeRecord, InflowData } from '../domain/types'
 import { ACTIVITY, TAX_HANDLING, TAXABILITY, VAT_SHORT, options } from '../domain/vocabulary'
-import { largeRecordIds, NO_ENTITY, sum } from '../lib/analytics'
+import { breakdown, DIMENSION_NOUN, largeRecordIds, NO_ENTITY, sum, type Dimension } from '../lib/analytics'
+import { ShareBar } from '../components/charts'
+import { BackBar } from '../components/BackBar'
+import { readJson, writeJson } from '../../shared/storage'
 import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
 import { lei, money } from '../lib/money'
 import { inRange } from '../lib/period'
@@ -64,6 +67,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
 
   return (
     <>
+      <BackBar />
       <div className={styles.toolbar}>
         <input className={styles.search} type="search" placeholder="Search payments, clients, venues…" value={filter.query}
           onChange={(e) => set({ query: e.target.value })} aria-label="Search income" />
@@ -129,6 +133,8 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
         )}
       </div>
 
+      {receivedTotal > 0 && <WhereFrom list={list.filter((r) => r.status === 'received')} data={data} onPick={(patch) => set(patch)} />}
+
       {list.length === 0 ? (
         <div className={styles.empty}>
           {data.records.length === 0 ? 'No income yet. Tap “Add income” to record your first payment.' : 'Nothing matches these filters.'}
@@ -143,6 +149,27 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
         </div>
       ))}
     </>
+  )
+}
+
+const PICK: Record<Dimension, keyof IncomeFilter> = { client: 'clientId', source: 'sourceId', venue: 'venueId', activity: 'activity' }
+
+/** Where the income in this list came from: one bar, its largest parts, tap one to narrow the list. */
+function WhereFrom({ list, data, onPick }: { list: IncomeRecord[]; data: InflowData; onPick: (patch: Partial<IncomeFilter>) => void }) {
+  const [dim, setDim] = useState<Dimension>(() => readJson<Dimension>('inflow:income-split', 'source'))
+  const parts = useMemo(() => breakdown(data, list, [], dim).map((r) => ({ id: r.id, name: r.name, value: r.total })), [data, list, dim])
+  return (
+    <section className={styles.panel} aria-label="Where it came from">
+      <div className={styles.panelHead}>
+        <h2 className={styles.panelTitle}>Where it came from</h2>
+        <select className={styles.inlineSelect} value={dim} aria-label="Split by"
+          onChange={(e) => { const v = e.target.value as Dimension; setDim(v); writeJson('inflow:income-split', v) }}>
+          {(['source', 'client', 'venue', 'activity'] as Dimension[]).map((x) => <option key={x} value={x}>by {DIMENSION_NOUN[x].toLowerCase()}</option>)}
+        </select>
+      </div>
+      <ShareBar parts={parts} label={`Income by ${DIMENSION_NOUN[dim].toLowerCase()}`} max={4}
+        onSelect={(id) => onPick({ [PICK[dim]]: id })} />
+    </section>
   )
 }
 

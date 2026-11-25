@@ -5,7 +5,8 @@
  * Reports (who, where, what kind of work, P&L, cash flow, tax) and Settings.
  * Hash routes, so a reload or a home-screen launch lands where you were.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { clearTrail } from './app/trail'
 import { BarChart3, LayoutDashboard, List, Plus, Receipt, Settings as Cog, Waves } from 'lucide-react'
 import { SegmentedControl, ToastStack } from '../ds'
 import { InflowProvider, useInflow, type ProviderProps } from './app/state'
@@ -27,6 +28,8 @@ import styles from './styles/ui.module.css'
 export const TOUR_EVENT = 'inflow:tour'
 
 type Screen = 'overview' | 'income' | 'costs' | 'reports' | 'settings'
+
+const TITLE: Record<Screen, string> = { overview: 'Overview', income: 'Income', costs: 'Costs', reports: 'Reports', settings: 'Settings' }
 
 interface Route { screen: Screen; report: ReportTab }
 
@@ -103,6 +106,16 @@ function Shell() {
     return () => window.removeEventListener('scroll', on)
   }, [])
 
+  // The report bar sticks right under the header, whatever its height.
+  const headerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--inflow-header', `${el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const open = (id: string | null) => setEntry((e) => ({ kind: 'income', id, copyOf: null, n: (e?.n ?? 0) + 1 }))
   const openCost = (id: string | null) => setEntry((e) => ({ kind: 'cost', id, copyOf: null, n: (e?.n ?? 0) + 1 }))
   const copy = (kind: 'income' | 'cost', id: string) => setEntry((e) => ({ kind, id: null, copyOf: id, n: (e?.n ?? 0) + 1 }))
@@ -112,6 +125,8 @@ function Shell() {
   const copyOfCost = entry?.kind === 'cost' && entry.copyOf ? data.costs.find((c) => c.id === entry.copyOf) ?? null : null
   // Costs is optional: with it off, its tab and screen go away.
   const screen: Screen = route.screen === 'costs' && !settings.features.costs ? 'overview' : route.screen
+  // Every screen names itself in the browser tab.
+  useEffect(() => { document.title = `${TITLE[screen]} · InFlow` }, [screen])
   const tabs = TABS.filter((t) => t.screen !== 'costs' || settings.features.costs)
   const showPeriod = screen !== 'settings'
   const custom = resolvePeriod(period, today)
@@ -119,7 +134,7 @@ function Shell() {
 
   return (
     <div className={styles.app}>
-      <header className={styles.header}>
+      <header className={styles.header} ref={headerRef}>
         <div className={styles.headerInner}>
           <div className={styles.brand}><Waves size={22} aria-hidden /> InFlow</div>
           <a href="#/settings" className={`${styles.modeTag} ${workspace === 'demo' ? styles.modeTagDemo : ''}`}
@@ -179,7 +194,8 @@ function Shell() {
       <nav className={styles.tabbar} aria-label="Sections">
         <div className={styles.tabbarInner} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
           {tabs.map(({ screen: s, label, icon: Icon, href }) => (
-            <a key={s} href={href} className={styles.tab} aria-current={screen === s ? 'page' : undefined}>
+            <a key={s} href={href} className={styles.tab} aria-current={screen === s ? 'page' : undefined}
+              onClick={(e) => { clearTrail(); if (screen === s && route.screen === s) { e.preventDefault(); window.scrollTo?.({ top: 0, behavior: 'smooth' }) } }}>
               <Icon size={20} aria-hidden />
               {label}
             </a>

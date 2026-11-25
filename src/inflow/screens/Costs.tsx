@@ -15,6 +15,8 @@ import { NO_ENTITY } from '../lib/analytics'
 import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
 import { lei, money, round2 } from '../lib/money'
 import { costsCsv, download } from '../store/backup'
+import { ShareBar } from '../components/charts'
+import { readJson, writeJson } from '../../shared/storage'
 import styles from '../styles/ui.module.css'
 
 export interface CostFilter {
@@ -44,6 +46,39 @@ export function applyCostFilter(data: InflowData, f: CostFilter, range: { from: 
 }
 
 const sumRon = (cs: CostRecord[]) => round2(cs.reduce((s, c) => s + c.amountRon, 0))
+
+type CostSplit = 'group' | 'category' | 'venue'
+const SPLIT_LABEL: Record<CostSplit, string> = { group: 'by kind', category: 'by category', venue: 'by venue' }
+
+/** Where the money went, WhereItWent's question: one bar of the P&L costs in this list, its largest parts. */
+function WhereWent({ costs, data, onPick }: { costs: CostRecord[]; data: InflowData; onPick: (patch: Partial<CostFilter>) => void }) {
+  const [split, setSplit] = useState<CostSplit>(() => readJson<CostSplit>('inflow:cost-split', 'category'))
+  const parts = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const c of costs) {
+      const k = split === 'group' ? c.group : split === 'category' ? c.category : c.venueId ?? NO_ENTITY
+      m.set(k, (m.get(k) ?? 0) + c.amountRon)
+    }
+    const nameOf = (k: string) => split === 'group' ? COST_GROUP_SHORT[k as keyof typeof COST_GROUP_SHORT]
+      : split === 'category' ? COST_CATEGORY[k as keyof typeof COST_CATEGORY]
+        : k === NO_ENTITY ? 'No venue (overheads)' : data.venues.find((v) => v.id === k)?.name ?? '—'
+    return [...m.entries()].map(([id, value]) => ({ id, name: nameOf(id), value: round2(value) }))
+  }, [costs, split, data.venues])
+  return (
+    <section className={styles.panel} aria-label="Where it went">
+      <div className={styles.panelHead}>
+        <h2 className={styles.panelTitle}>Where it went</h2>
+        <select className={styles.inlineSelect} value={split} aria-label="Split by"
+          onChange={(e) => { const v = e.target.value as CostSplit; setSplit(v); writeJson('inflow:cost-split', v) }}>
+          {(Object.keys(SPLIT_LABEL) as CostSplit[]).map((k) => <option key={k} value={k}>{SPLIT_LABEL[k]}</option>)}
+        </select>
+      </div>
+      <ShareBar parts={parts} label={`Costs ${SPLIT_LABEL[split]}`} max={4}
+        onSelect={split === 'category' ? undefined : (id) => onPick(split === 'group' ? { group: id } : { venueId: id })} />
+      <p className={styles.hint} style={{ marginTop: 'var(--space-xs)' }}>Costs in the P&L only: equipment, loan repayments and drawings are left out.</p>
+    </section>
+  )
+}
 
 export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => void; filter: CostFilter; setFilter: (f: CostFilter) => void }) {
   const { data, today, costsAvailable } = useInflow()
@@ -132,6 +167,8 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
           <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
         )}
       </div>
+
+      {sumRon(pnl) > 0 && <WhereWent costs={pnl} data={data} onPick={(patch) => set(patch)} />}
 
       {list.length === 0 ? (
         <div className={styles.empty}>

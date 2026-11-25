@@ -26,6 +26,10 @@
   --chart-1: #0a8a6c;
   --chart-2: #5d6fc4;
   --chart-3: #c07a22;
+  /* Slots 4–5 for part-to-whole bars; the five validated together (dataviz validator, light + dark). */
+  --chart-4: #b5577e;
+  --chart-5: #1a8fc9;
+  --chart-other: #a8a49a;
   --chart-ghost: #d9d6cd;
   --chart-grid: #ebe9e3;
 
@@ -60,6 +64,9 @@
   --chart-1: #3a9c7d;
   --chart-2: #7f8bd0;
   --chart-3: #c48a3a;
+  --chart-4: #c56a90;
+  --chart-5: #3a9fd6;
+  --chart-other: #5c625f;
   --chart-ghost: #2f3633;
   --chart-grid: #232927;
 

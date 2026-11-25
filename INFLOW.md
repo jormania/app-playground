@@ -36,12 +36,45 @@ Six steps on first open, including the costs and tax switches. Its checkbox, "Sh
 guide next time I open InFlow", decides whether it returns; Settings can switch it back on
 or show it now.
 
+### Reports (simplified 25 Nov 2026)
+Six tabs at most, as links (`#/reports/<route>`), so back and forward work and old links
+land: **Review** (`insights`), **Breakdown** (`clients|venues|activities|sources`, a second
+row), **Venue deals**, **Profit** (`pnl|cashflow`), **Tax**, **Print**. The report bar sticks
+under the header (`--inflow-header`, measured in `App.tsx`); the filter bar opens from a
+*Filter* button and stays open while a filter is set.
+
+**Review** follows WhereItWent's order (`lib/review.ts`, `screens/Insights.tsx`):
+- *Understand*: "<period> in review", a plain summary paragraph (`reviewSummary`), KPIs,
+  *Copy summary*.
+- *Main movers*: the biggest changes vs the period before, across clients, venues and
+  activities (at most three from one), with a client who stopped included. Drawn either side
+  of zero: green up, amber down.
+- *Who carries the income*: a share bar by any dimension.
+- *Act*: pain points and wins. *Explore*: the heat map.
+
+A section index under the tabs lights the section in view and scrolls to it. A comparison that
+reaches before the first record says so instead of quoting "+1644%".
+
+Charts follow the dataviz skill: part-to-whole is a tall segmented bar (`ShareBar`, ≤ 5
+named parts plus "Other"), never a donut. `--chart-4`/`--chart-5` were added and the five
+hues validated together, light and dark. Breakdown, Income ("Where it came from") and Costs
+("Where it went") each carry one. Profit has monthly income vs costs bars (`MonthlyPair`).
+
+Navigation: a drill-down from a report leaves a trail (`app/trail.ts`), and Income offers
+"← Back to Review". Month headings on Income and Costs stick while scrolling. Tapping the
+current tab scrolls to the top. Each screen names itself in the browser tab.
+
 ### Printable reports
-`lib/report.ts` renders one self-contained HTML document (inline CSS and SVG, no script,
-every user string escaped). Presets: period summary, year in review, client statement, for
-my accountant. Options: title, subtitle, dates, client / venue / activity / source filters,
-sections (incl. margins, P&L and cash flow when costs are on), rows per table, comparison,
-original currencies, sort, notes. *Print / save as PDF* prints the preview; *HTML* downloads it.
+Four reports, each with when to print it and what it holds (`PRESET_ADVICE`):
+- **Month at a glance**: headline, *In short* with the movers, top clients, pain points.
+- **Year in review**: adds the trend, venues, activities and the P&L.
+- **Client statement**: asks for the client first.
+- **For my accountant**: sources, P&L, tax, every payment with notes.
+
+Dates follow the selected period, with one tap to the whole year. Title, sections, rows,
+comparison, currencies and notes wait under *Adjust this report*. `lib/report.ts` renders one
+self-contained HTML document (inline CSS and SVG, every user string escaped). A year's P&L
+uses smaller type so twelve months fit A4.
 
 ## Costs, P&L and cash flow (optional)
 

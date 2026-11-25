@@ -154,11 +154,12 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
           detail: `The ${v.deal === 'monthly' ? 'rent' : 'fee'} is paid whoever comes; those sessions lost ${lei(d.lost)} together.${d.breakEvenAttendees ? ` A session there needs ${d.breakEvenAttendees} people to cover the room.` : ''} A minimum sign-up before booking, or a share deal, would take the risk off you.`,
           link: { label: 'Venue deals', hash: '#/reports/deals' },
         })
-      } else if (d.breakEvenAttendees && d.avgAttendees !== null && d.avgAttendees < d.breakEvenAttendees * 1.3) {
+      } else if (d.breakEvenAttendees && d.breakEvenAttendees > 1 && d.avgAttendees !== null && d.avgAttendees < d.breakEvenAttendees * 1.3) {
+        // A room one person already pays for (1:1 work) is never "close" in any useful sense.
         out.push({
           id: `thin-${v.id}`, kind: 'tip', weight: d.revenue * 0.2,
           title: `${v.name} runs close to its break-even`,
-          detail: `Sessions there average ${d.avgAttendees} people and need ${d.breakEvenAttendees} to cover the ${lei(v.feePerSession)} fee. One quiet evening and it's a loss.`,
+          detail: `Sessions there average ${d.avgAttendees} ${d.avgAttendees === 1 ? 'person' : 'people'} and need ${d.breakEvenAttendees} to cover the ${lei(v.feePerSession)} fee. One quiet evening and it's a loss.`,
           link: { label: 'Venue deals', hash: '#/reports/deals' },
         })
       }

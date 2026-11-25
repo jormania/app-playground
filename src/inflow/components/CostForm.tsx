@@ -206,8 +206,8 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
           <div className={styles.formActions}>
             <div>
-              {!isNew && <Button variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
-              {!isNew && onDuplicate && <Button variant="ghost" onClick={() => onDuplicate(cost!)}>Copy</Button>}
+              {!isNew && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+              {!isNew && onDuplicate && <Button size="sm" variant="ghost" onClick={() => onDuplicate(cost!)}>Copy</Button>}
             </div>
             <div>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>

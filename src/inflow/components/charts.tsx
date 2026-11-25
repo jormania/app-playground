@@ -169,3 +169,129 @@ export function Sparkline({ values, label }: { values: number[]; label: string }
     </svg>
   )
 }
+
+const SLOTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
+
+export interface SharePart { id: string; name: string; value: number }
+
+/**
+ * One whole split into its largest parts: a tall segmented bar (≤ 5 named
+ * parts, the rest folded into "Other"), shares printed where they fit, and a
+ * key below. Colours go by place in this list, which is by size.
+ */
+export function ShareBar({ parts, onSelect, label, max = 5 }: { parts: SharePart[]; onSelect?: (id: string) => void; label: string; max?: number }) {
+  const [hover, setHover] = useState<string | null>(null)
+  const total = parts.reduce((s, p) => s + Math.max(0, p.value), 0)
+  if (total <= 0) return <p className={styles.hint}>Nothing in this period.</p>
+  const sorted = [...parts].filter((p) => p.value > 0).sort((a, b) => b.value - a.value)
+  const named = sorted.slice(0, sorted.length > max ? max : sorted.length)
+  const rest = sorted.slice(named.length)
+  const blocks = [
+    ...named.map((p, i) => ({ ...p, color: SLOTS[i], other: false })),
+    ...(rest.length ? [{ id: '__other', name: `${rest.length} other${rest.length === 1 ? '' : 's'}`, value: rest.reduce((s, p) => s + p.value, 0), color: 'var(--chart-other)', other: true }] : []),
+  ]
+  const Row = onSelect ? 'button' : 'div'
+  return (
+    <div>
+      <div className={styles.shareBar} role="img" aria-label={`${label}: ${blocks.map((b) => `${b.name} ${percent(b.value / total)}`).join(', ')}`}>
+        {blocks.map((b) => {
+          const share = b.value / total
+          return (
+            <span key={b.id} style={{ flexGrow: b.value, background: b.color, opacity: hover && hover !== b.id ? 0.45 : 1 }}
+              onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)} title={`${b.name}: ${lei(b.value)} (${percent(share)})`}>
+              {share >= 0.12 ? percent(share) : ''}
+            </span>
+          )
+        })}
+      </div>
+      <div className={styles.shareKey}>
+        {blocks.map((b) => (
+          <Row key={b.id} className={styles.shareKeyRow} onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)}
+            {...(onSelect && !b.other ? { type: 'button' as const, onClick: () => onSelect(b.id) } : {})}>
+            <span className={styles.swatch} style={{ background: b.color }} />
+            <span className={styles.shareName}>{b.name}</span>
+            <span className={styles.shareValue}>{lei(b.value)} <span className={styles.panelSub}>{percent(b.value / total)}</span></span>
+          </Row>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export interface MoverRow { key: string; name: string; tag: string; change: number; current: number; previous: number }
+
+/**
+ * What moved most: bars either side of a zero line, rises in the series
+ * green, drops in amber (the two poles; no hue at the midpoint). The figure
+ * and the name are text, so the direction never rests on colour alone.
+ */
+export function MoversChart({ rows, onSelect, prevLabel }: { rows: MoverRow[]; onSelect?: (key: string) => void; prevLabel: string }) {
+  if (!rows.length) return <p className={styles.hint}>Nothing moved against {prevLabel}.</p>
+  const max = Math.max(...rows.map((r) => Math.abs(r.change)), 1)
+  const Row = onSelect ? 'button' : 'div'
+  return (
+    <div className={styles.movers}>
+      {rows.map((r) => {
+        const w = `${(Math.abs(r.change) / max) * 100}%`
+        const up = r.change > 0
+        return (
+          <Row key={r.key} className={styles.mover} {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.key) } : {})}
+            title={`${r.name}: ${lei(r.current)} now, ${lei(r.previous)} ${prevLabel}`}>
+            <span className={styles.moverName}>{r.name}<span className={styles.moverTag}>{r.tag}</span></span>
+            <span className={styles.moverTrack} aria-hidden>
+              <span className={styles.moverHalf}>{!up && <span className={styles.moverDown} style={{ width: w }} />}</span>
+              <span className={styles.moverHalf}>{up && <span className={styles.moverUp} style={{ width: w }} />}</span>
+            </span>
+            <span className={`${styles.moverValue} ${up ? styles.up : styles.down}`}>{up ? '+' : '−'}{compact(Math.abs(r.change))}</span>
+          </Row>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Income and costs month by month, side by side, with what was kept in the readout. */
+export function MonthlyPair({ months, income, costs }: { months: { label: string; from: string }[]; income: number[]; costs: number[] }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const W = 640
+  const H = 170
+  const top = 12
+  const bottom = 22
+  const plotH = H - top - bottom
+  const max = Math.max(1, ...income, ...costs)
+  const n = months.length
+  const slot = W / Math.max(1, n)
+  const barW = Math.max(3, Math.min(26, slot * 0.32))
+  const y = (v: number) => top + plotH - (v / max) * plotH
+  const every = n > 14 ? Math.ceil(n / 8) : 1
+  return (
+    <div>
+      <div className={styles.legend} aria-hidden>
+        <span><span className={styles.swatch} style={{ background: 'var(--chart-1)' }} />Income</span>
+        <span><span className={styles.swatch} style={{ background: 'var(--chart-3)' }} />Costs</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className={styles.chart} role="img"
+        aria-label={`Income and costs by month: ${months.map((m, i) => `${m.label} ${lei(income[i])} in, ${lei(costs[i])} out`).join('; ')}`}>
+        <line x1={0} x2={W} y1={y(max)} y2={y(max)} className={styles.gridLine} />
+        <text x={W} y={y(max) - 3} textAnchor="end" className={styles.chartLabel}>{compact(max)}</text>
+        <line x1={0} x2={W} y1={top + plotH} y2={top + plotH} className={styles.gridLine} />
+        {months.map((m, i) => {
+          const cx = slot * i + slot / 2
+          return (
+            <g key={m.from} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => setHover(i)} className={styles.barGroup}>
+              <rect x={slot * i} y={top} width={slot} height={plotH + bottom} className={styles.barHit} />
+              {income[i] > 0 && <path d={barPath(cx - barW - 1, top + plotH, barW, top + plotH - y(income[i]))} fill="var(--chart-1)" opacity={hover === null || hover === i ? 1 : 0.5} />}
+              {costs[i] > 0 && <path d={barPath(cx + 1, top + plotH, barW, top + plotH - y(costs[i]))} fill="var(--chart-3)" opacity={hover === null || hover === i ? 1 : 0.5} />}
+              {i % every === 0 && <text x={cx} y={H - 6} textAnchor="middle" className={styles.chartLabel}>{m.label}</text>}
+            </g>
+          )
+        })}
+      </svg>
+      <div className={styles.tooltip} aria-live="polite">
+        {hover !== null
+          ? <>{months[hover].label}: <b>{lei(income[hover])}</b> in · {lei(costs[hover])} out · kept <b className={income[hover] - costs[hover] < 0 ? styles.down : undefined}>{lei(income[hover] - costs[hover])}</b></>
+          : <>Tap a month for its figures.</>}
+      </div>
+    </div>
+  )
+}

@@ -9,7 +9,7 @@
 import type { InflowData, TaxProfile } from '../domain/types'
 import { ACTIVITY, PROFILE, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
 import {
-  breakdown, inScope, NO_ENTITY, outstanding, received, scopeIsSet, series, summarise, sum,
+  breakdown, DIMENSION_NOUN, inScope, NO_ENTITY, outstanding, received, scopeIsSet, series, summarise, sum,
   type BreakdownRow, type Dimension, type Scope,
 } from './analytics'
 import { buildCashFlow, buildPnl, margins, monthColumns } from './finance'
@@ -17,13 +17,17 @@ import { addDays, daysBetween, monthLabel, shortDate, yearOf } from './dates'
 import { delta, lei, money, percent } from './money'
 import { buckets, inRange } from './period'
 import { projectYear } from '../tax/estimate'
+import { insights } from './insights'
+import { movers, reviewSummary } from './review'
 
 export type ReportSection =
-  | 'summary' | 'trend' | 'clients' | 'venues' | 'activities' | 'sources' | 'mix' | 'margins'
+  | 'summary' | 'review' | 'insights' | 'trend' | 'clients' | 'venues' | 'activities' | 'sources' | 'mix' | 'margins'
   | 'pnl' | 'cashflow' | 'outstanding' | 'tax' | 'payments'
 
 export const SECTION_LABEL: Record<ReportSection, string> = {
   summary: 'Headline figures',
+  review: 'In short, and the main movers',
+  insights: 'Pain points and wins',
   trend: 'Trend chart',
   clients: 'By client',
   venues: 'By venue',
@@ -64,33 +68,41 @@ export interface ReportOptions {
 export type ReportPreset = 'monthly' | 'annual' | 'client' | 'accountant'
 
 export const PRESET_LABEL: Record<ReportPreset, string> = {
-  monthly: 'Period summary',
+  monthly: 'Month at a glance',
   annual: 'Year in review',
   client: 'Client statement',
   accountant: 'For my accountant',
 }
 
+/** When to print each one, and what it holds: the builder's recommendations. */
+export const PRESET_ADVICE: Record<ReportPreset, { when: string; holds: string }> = {
+  monthly: { when: 'At the end of each month.', holds: 'What came in, what moved, who paid most, and what to look at next.' },
+  annual: { when: 'Once a year, or before planning the next.', holds: 'The year’s shape, the best and weakest work, venues and clients, and the profit.' },
+  client: { when: 'When a client asks what they’ve paid.', holds: 'Their payments in the period and the total — nothing about anyone else.' },
+  accountant: { when: 'Before filing, or when they ask.', holds: 'Income by source, the P&L, the tax summary and every payment with its notes.' },
+}
+
 export function presetOptions(preset: ReportPreset, range: { from: string; to: string }, today: string, trackTax: boolean, trackCosts = false): Partial<ReportOptions> {
   const year = today.slice(0, 4)
-  const tax = (s: ReportSection[]) => s.filter((x) => (x !== 'tax' || trackTax) && (!COST_SECTIONS.includes(x) || trackCosts))
+  const keep = (s: ReportSection[]) => s.filter((x) => (x !== 'tax' || trackTax) && (!COST_SECTIONS.includes(x) || trackCosts))
   switch (preset) {
     case 'monthly':
-      return { title: 'Income summary', subtitle: '', from: range.from, to: range.to, sections: tax(['summary', 'trend', 'clients', 'venues', 'activities', 'sources', 'pnl', 'outstanding', 'tax']), topN: 5, compare: true, ...ALL }
+      return { title: 'Month at a glance', subtitle: '', from: range.from, to: range.to, sections: keep(['summary', 'review', 'clients', 'insights']), topN: 5, compare: true, ...ALL }
     case 'annual':
-      return { title: `${year} in review`, subtitle: '', from: `${year}-01-01`, to: `${year}-12-31`, sections: tax(['summary', 'trend', 'clients', 'venues', 'activities', 'sources', 'mix', 'margins', 'pnl', 'cashflow', 'tax']), topN: 10, compare: true, ...ALL }
+      return { title: `${year} in review`, subtitle: '', from: `${year}-01-01`, to: `${year}-12-31`, sections: keep(['summary', 'review', 'trend', 'clients', 'venues', 'activities', 'pnl', 'insights']), topN: 10, compare: true, ...ALL }
     case 'client':
-      return { title: 'Statement of payments', subtitle: '', from: range.from, to: range.to, sections: ['summary', 'payments'], topN: 0, compare: false, paymentsSort: 'date', includeNotes: false }
+      return { title: 'Statement of payments', subtitle: '', from: range.from, to: range.to, sections: ['summary', 'payments'], topN: 0, compare: false, paymentsSort: 'date', includeNotes: false, sourceId: '', venueId: '', activity: '' }
     case 'accountant':
-      return { title: `Income for ${year}`, subtitle: 'Prepared for my accountant', from: `${year}-01-01`, to: `${year}-12-31`, sections: tax(['summary', 'pnl', 'tax', 'sources', 'payments']), topN: 0, compare: false, ...ALL, showOriginalCurrency: true, paymentsSort: 'date', includeNotes: true }
+      return { title: `Income for ${year}`, subtitle: 'Prepared for my accountant', from: `${year}-01-01`, to: `${year}-12-31`, sections: keep(['summary', 'sources', 'pnl', 'tax', 'payments']), topN: 0, compare: false, ...ALL, showOriginalCurrency: true, paymentsSort: 'date', includeNotes: true }
   }
 }
 
 const ALL = { clientId: '', sourceId: '', venueId: '', activity: '' }
 
-export function defaultReportOptions(range: { from: string; to: string }, trackTax: boolean, trackCosts = false): ReportOptions {
+export function defaultReportOptions(range: { from: string; to: string }, _trackTax?: boolean, _trackCosts?: boolean): ReportOptions {
   return {
-    title: 'Income summary', subtitle: '', from: range.from, to: range.to,
-    sections: ['summary', 'trend', 'clients', 'venues', 'activities', 'sources', ...(trackCosts ? ['pnl' as const] : []), 'outstanding', ...(trackTax ? ['tax' as const] : [])],
+    title: 'Month at a glance', subtitle: '', from: range.from, to: range.to,
+    sections: ['summary', 'review', 'clients', 'insights'],
     topN: 5, compare: true, ...ALL, showOriginalCurrency: true, paymentsSort: 'date', includeNotes: false,
   }
 }
@@ -102,6 +114,9 @@ export interface ReportContext {
   openingCash?: number
   openingCashDate?: string
   tax: TaxProfile
+  /** Features on, for the insight rules (venue deals, costs, expected payments). */
+  trackDeals?: boolean
+  trackExpected?: boolean
   /** Shown in the footer, e.g. the practice's name. */
   owner?: string
 }
@@ -164,18 +179,43 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
   const before = received(scoped.records, prevRange)
   const s = summarise(cur)
   const ps = summarise(before)
+  // A comparison reaching before the first record would show "new" and runaway percentages.
+  const firstRec = data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999')
+  const comparable = !(firstRec > prevRange.from && ps.total > 0)
   const has = (x: ReportSection) => opt.sections.includes(x) && (x !== 'tax' || ctx.trackTax) && (!COST_SECTIONS.includes(x) || !!ctx.trackCosts)
   const parts: string[] = []
 
   if (has('summary')) {
+    const first = data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999')
+    const partialPrev = first > prevRange.from && ps.total > 0
     const d = delta(s.total, ps.total)
     const cards = [
-      ['Income received', lei(s.total), opt.compare ? `${d.text} vs previous ${daysBetween(from, to) + 1} days (${lei(ps.total)})` : `${s.count} payments`],
+      ['Income received', lei(s.total), opt.compare ? (partialPrev ? `records start ${monthLabel(first)}: no full period to compare` : `${d.text} vs previous ${daysBetween(from, to) + 1} days (${lei(ps.total)})`) : `${s.count} payments`],
       ['Payments', String(s.count), `average ${lei(s.count ? s.total / s.count : 0)}`],
       ['Clients paid', String(new Set(cur.map((r) => r.clientId).filter(Boolean)).size), opt.clientId ? '' : `largest: ${esc(breakdown(scoped, cur, [], 'client')[0]?.name ?? '—')}`],
       ...(ctx.trackTax ? [['Set aside for tax*', lei(s.reserve), `withheld ${lei(s.taxWithheld)}`]] : []),
     ]
     parts.push(`<section class="cards">${cards.map(([k, v, n]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join('')}</section>`)
+  }
+
+  if (has('review')) {
+    const list = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected })
+    const kept = ctx.trackCosts ? buildPnl(scoped.records, scoped.costs, monthColumns(range)).lines.find((l) => l.key === 'net')!.total : null
+    const firstRecord = data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999')
+    const text = reviewSummary({ data: scoped, cur, before, prevLabel: 'the period before', kept, insights: list, periodLabel: 'this period', prevFrom: prevRange.from, firstRecord })
+    const m = movers(scoped, cur, before)
+    const max = Math.max(1, ...m.map((x) => Math.abs(x.change)))
+    const rows = m.map((x) => {
+      const w = ((Math.abs(x.change) / max) * 100).toFixed(1)
+      return `<tr><td>${esc(x.name)} <span class="muted">${DIMENSION_NOUN[x.dim].toLowerCase()}</span></td><td class="mv"><div class="mvbar"><span class="half l">${x.change < 0 ? `<i class="dn" style="width:${w}%"></i>` : ''}</span><span class="half">${x.change > 0 ? `<i class="upb" style="width:${w}%"></i>` : ''}</span></div></td><td class="${x.change > 0 ? 'up' : 'down'}">${x.change > 0 ? '+' : '−'}${lei(Math.abs(x.change))}</td><td class="muted">${lei(x.previous)} → ${lei(x.current)}</td></tr>`
+    }).join('')
+    parts.push(`<section><h2>In short</h2><p class="lede">${esc(text)}</p>${m.length ? `<h3>Main movers, against the period before</h3><table class="movers"><tbody>${rows}</tbody></table>` : ''}</section>`)
+  }
+
+  if (has('insights')) {
+    const list = insights(scoped, range, ctx.today, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts, expected: !!ctx.trackExpected })
+    const word = { pain: 'Look at', win: 'Working', tip: 'Note' } as const
+    parts.push(`<section><h2>Pain points and wins</h2>${list.length ? `<ul class="insights">${list.map((i) => `<li class="${i.kind}"><b><span class="kind">${word[i.kind]}</span> ${esc(i.title)}</b><div>${esc(i.detail)}</div></li>`).join('')}</ul>` : '<p class="muted">Nothing stands out in this period.</p>'}</section>`)
   }
 
   if (has('trend')) {
@@ -190,7 +230,7 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
   for (const [sec, dim, noun, countNoun] of dims) {
     if (!has(sec)) continue
     const rows = breakdown(scoped, cur, opt.compare ? before : [], dim)
-    parts.push(`<section><h2>By ${dim}</h2>${rows.length ? table(rows, noun, opt.topN, opt.compare, countNoun) : '<p class="muted">Nothing in this period.</p>'}</section>`)
+    parts.push(`<section><h2>By ${dim}</h2>${rows.length ? table(rows, noun, opt.topN, opt.compare && comparable, countNoun) : '<p class="muted">Nothing in this period.</p>'}</section>`)
   }
 
   if (has('mix')) {
@@ -219,7 +259,7 @@ ${[...byCur.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>Paid
     const pnl = buildPnl(scoped.records, scoped.costs, cols)
     const rev = pnl.lines[0].total
     const many = cols.length > 1
-    parts.push(`<section class="break"><h2>Profit &amp; loss</h2><table class="statement"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}${many ? '<th>Total</th>' : ''}<th>%</th></tr></thead><tbody>${
+    parts.push(`<section class="break"><h2>Profit &amp; loss</h2><table class="statement${cols.length > 6 ? ' wide' : ''}"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}${many ? '<th>Total</th>' : ''}<th>%</th></tr></thead><tbody>${
       pnl.lines.filter((l) => l.kind !== 'detail').map((l) => `<tr class="${l.kind === 'subtotal' || l.kind === 'revenue' ? 'total' : ''}"><td>${l.kind === 'cost' ? '− ' : ''}${esc(l.label)}</td>${l.values.map((v) => `<td class="${v < 0 ? 'down' : ''}">${num(v)}</td>`).join('')}${many ? `<td>${num(l.total)}</td>` : ''}<td>${rev ? percent(l.total / rev) : ''}</td></tr>`).join('')
     }</tbody></table><p class="muted">Cash basis: income when received, costs when paid. Lei.${scopeIsSet(sc) ? ' Filtered: only costs linked to the filters are counted.' : ''}</p></section>`)
   }
@@ -227,7 +267,7 @@ ${[...byCur.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>Paid
   if (has('cashflow')) {
     const cols = monthColumns(range)
     const cf = buildCashFlow(data.records, data.costs ?? [], cols, ctx.openingCash ?? 0, ctx.openingCashDate ?? '')
-    parts.push(`<section class="break"><h2>Cash flow</h2><table class="statement"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>${
+    parts.push(`<section class="break"><h2>Cash flow</h2><table class="statement${cols.length > 6 ? ' wide' : ''}"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>${
       cf.rows.map((r) => `<tr class="${r.kind === 'subtotal' || r.kind === 'balance' ? 'total' : ''}"><td>${r.kind === 'out' ? '− ' : r.kind === 'in' ? '+ ' : ''}${esc(r.label)}</td>${r.values.map((v) => `<td class="${v < 0 ? 'down' : ''}">${num(v)}</td>`).join('')}</tr>`).join('')
     }</tbody></table><p class="muted">The whole business, unfiltered. ${cf.relative ? 'No opening balance was set, so balances start at zero.' : `From ${lei(ctx.openingCash ?? 0)} on ${esc(ctx.openingCashDate ?? '')}.`}</p></section>`)
   }
@@ -307,12 +347,18 @@ section{break-inside:avoid}section.break{break-inside:auto}
 .card{border:1px solid var(--line);border-radius:10px;padding:12px 14px}.card .k{font-size:12px;color:var(--muted)}.card .v{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.card .n{font-size:11px;color:var(--faint)}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th{font-size:11px;color:var(--faint);font-weight:600;text-align:right;padding:4px 6px;border-bottom:1px solid var(--ink)}
 td{text-align:right;padding:6px;border-bottom:1px solid var(--line);vertical-align:top}th:first-child,td:first-child{text-align:left;padding-left:0}
-table.statement td,table.statement th{white-space:nowrap;font-size:12px;padding:4px 5px}table.statement tr.total td{font-weight:700}
+table.statement td,table.statement th{white-space:nowrap;font-size:12px;padding:4px 5px}table.statement.wide td,table.statement.wide th{font-size:9.5px;padding:3px 2px}table.statement tr.total td{font-weight:700}
 table.list td:nth-child(2),table.list th:nth-child(2),table.list td:nth-child(3),table.list th:nth-child(3),table.list td:nth-child(4),table.list th:nth-child(4){text-align:left}
 tfoot td{font-weight:700;border-bottom:0;border-top:1px solid var(--ink)}tr.total td{font-weight:700;border-top:1px solid var(--ink)}
 .barcell{width:22%}.barcell span{display:block;height:8px;border-radius:4px;background:var(--accent)}
 .up{color:var(--up)}.down{color:var(--down)}.new{color:var(--up)}.muted,.muted td{color:var(--faint)}.note{font-size:11px;color:var(--muted)}
 .chart{width:100%;height:auto}.chart .bars rect{fill:var(--accent)}.chart text{font-size:10px;fill:var(--faint)}.chart .axis{stroke:var(--ink)}.chart .grid{stroke:var(--line)}
+.lede{font-size:15px;line-height:1.6;margin:0 0 6px;max-width:62ch}
+table.movers td{vertical-align:middle}table.movers td.mv{width:34%}table.movers .mvbar{display:grid;grid-template-columns:1fr 1fr;align-items:center}
+table.movers .half{display:flex;height:10px}table.movers .half.l{justify-content:flex-end;border-right:1px solid var(--faint)}table.movers i{display:block;height:10px}
+table.movers i.upb{background:#0a8a6c;border-radius:0 4px 4px 0}table.movers i.dn{background:#c07a22;border-radius:4px 0 0 4px}
+ul.insights{list-style:none;padding:0;margin:0;display:grid;gap:8px}ul.insights li{border-left:3px solid var(--line);padding:2px 0 2px 10px}
+ul.insights li.pain{border-color:#c07a22}ul.insights li.win{border-color:#0a8a6c}ul.insights li.tip{border-color:#5d6fc4}ul.insights .kind{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}ul.insights div{color:var(--muted);font-size:13px}
 footer{margin-top:32px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--faint)}
 @page{size:A4;margin:16mm 14mm}@media print{main{padding:0;max-width:none}a{color:inherit}}
 `

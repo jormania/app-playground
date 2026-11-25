@@ -403,8 +403,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
           <div className={styles.formActions}>
             <div>
-              {!isNew && <Button variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
-              {!isNew && onDuplicate && <Button variant="ghost" onClick={() => onDuplicate(record!)}>Copy</Button>}
+              {!isNew && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+              {!isNew && onDuplicate && <Button size="sm" variant="ghost" onClick={() => onDuplicate(record!)}>Copy</Button>}
             </div>
             <div>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>
