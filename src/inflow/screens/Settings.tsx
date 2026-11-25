@@ -24,6 +24,7 @@ import { RULESETS } from '../tax/rules'
 import { ALL_FEATURES, NO_FEATURES, SIMPLE_FEATURES } from '../store/settings'
 import { readJson, writeJson } from '../../shared/storage'
 import type { ReactNode } from 'react'
+import { useHint } from '../app/hints'
 import styles from '../styles/ui.module.css'
 
 /**
@@ -90,6 +91,7 @@ export const STARTER_STEPS = ['Duplicate “InFlow — Starter Template” in No
 
 export function Settings() {
   const { settings, updateSettings, data, toast, today, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore, copyDeviceToNotion, deviceHasOwnData, reload, on } = useInflow()
+  const h = useHint()
   const [token, setToken] = useState(settings.notionToken)
   const [dbLink, setDbLink] = useState(settings.incomeDbId)
   const [testing, setTesting] = useState<string | null>(null)
@@ -181,9 +183,10 @@ export function Settings() {
                     {STARTER_STEPS.map((x) => <li key={x}>{x}</li>)}
                   </ol>
                   <p className={styles.hint} style={{ margin: 0 }}><Lock size={12} aria-hidden /> The token stays on this device and goes only to this site's Notion relay.</p>
-                  <TextInput label="Notion integration token" type="password" value={token} onChange={setToken} placeholder="ntn_…" />
+                  <TextInput label="Notion integration token" type="password" value={token} onChange={setToken} placeholder="ntn_…"
+                    hint={h('From notion.so/profile/integrations: create an internal integration, copy its secret, and share the InFlow page with it.')} />
                   <TextInput label="Income database (link or ID)" value={dbLink} onChange={setDbLink} placeholder="https://www.notion.so/…"
-                    hint="Clients, Sources and Venues are found through its relations, Costs beside it on the same page." />
+                    hint={h('Clients, Sources and Venues are found through its relations, Costs beside it on the same page.')} />
                   <div className={styles.buttonRow}>
                     <Button onClick={() => void connect()}>Connect & test</Button>
                     {settings.notionToken && <Button variant="secondary" onClick={() => void reload()}>Reload from Notion</Button>}
@@ -210,7 +213,8 @@ export function Settings() {
               options={[{ value: 'system', label: 'Device' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
             <p className={styles.hint} style={{ marginTop: 6 }}>“Device” follows your phone's light or dark mode.</p>
           </div>
-          <SettingsToggle label="Welcome guide on opening" hint="The short tour of InFlow." checked={settings.showTour} onChange={(e) => updateSettings({ showTour: e.target.checked })} />
+          <SettingsToggle label="Show hints" hint="Short explanations under the fields. Turn off once you know your way around; live figures still show." checked={settings.showHints} onChange={(e) => updateSettings({ showHints: e.target.checked })} />
+          <SettingsToggle label="Welcome guide on opening" hint={h('The short tour of InFlow.')} checked={settings.showTour} onChange={(e) => updateSettings({ showTour: e.target.checked })} />
           <div><Button variant="secondary" onClick={() => window.dispatchEvent(new Event('inflow:tour'))}>Show the guide now</Button></div>
         </div>
       </Section>
@@ -253,7 +257,7 @@ export function Settings() {
         <Section id="costs" title="Costs and cash flow">
           <div className={styles.formRow}>
             <NumberInput label="Cash on hand (lei)" value={settings.openingCash} onCommit={(n) => updateSettings({ openingCash: n ?? 0 })}
-              hint="Bank and cash together, on the date beside it. Cash flow counts from here." />
+              hint={h('Bank and cash together, on the date beside it. Cash flow counts from here.')} />
             <TextInput label="On" type="date" value={settings.openingCashDate} onChange={(v) => updateSettings({ openingCashDate: v })} />
           </div>
         </Section>
@@ -262,47 +266,48 @@ export function Settings() {
       {on('tax') && (
         <Section id="tax" title="Tax profile" sub={PROFILE[tax.id]}>
           <div className={styles.settingsGroup}>
-          <SelectInput label="How you invoice" value={tax.id} onChange={(v) => setTax({ id: v as TaxProfileId })}>
+          <SelectInput label="How you invoice" value={tax.id} onChange={(v) => setTax({ id: v as TaxProfileId })}
+            hint={h('Sistem real: tax on income less expenses. Normă: on a fixed norm. Micro SRL: 1% of revenue plus dividend tax. Your accountant knows which.')}>
             {options(PROFILE).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </SelectInput>
           {(tax.id === 'pfa_real' || tax.id === 'srl_micro') && on('costs') && (
             <SettingsToggle label="Read expenses from my costs" checked={tax.expensesFromCosts} onChange={(e) => setTax({ expensesFromCosts: e.target.checked })}
-              hint="Uses the costs you've recorded as deductible, annualised like your income, instead of a figure typed here." />
+              hint={h("Uses the costs you've recorded as deductible, annualised like your income, instead of a figure typed here.")} />
           )}
           {tax.id === 'pfa_real' && !(on('costs') && tax.expensesFromCosts) && (
             <NumberInput label="Deductible expenses this year (lei)" value={tax.annualExpenses}
-              onCommit={(n) => setTax({ annualExpenses: n ?? 0 })} hint="Rent, equipment, training, accounting. Subtracted before CAS, CASS and income tax." />
+              onCommit={(n) => setTax({ annualExpenses: n ?? 0 })} hint={h('Rent, equipment, training, accounting. Subtracted before CAS, CASS and income tax.')} />
           )}
           {tax.id === 'pfa_norma' && (
             <NumberInput label="Annual income norm (lei)" value={tax.annualNorm}
-              onCommit={(n) => setTax({ annualNorm: n ?? 0 })} hint="From your county's norm for your CAEN code, after any reductions. Tax follows this, not what you earn." />
+              onCommit={(n) => setTax({ annualNorm: n ?? 0 })} hint={h("From your county's norm for your CAEN code, after any reductions. Tax follows this, not what you earn.")} />
           )}
           {tax.id === 'srl_micro' && (
             <>
               {!(on('costs') && tax.expensesFromCosts) && (
-                <NumberInput label="Company expenses this year (lei)" value={tax.annualExpenses} onCommit={(n) => setTax({ annualExpenses: n ?? 0 })} />
+                <NumberInput label="Company expenses this year (lei)" value={tax.annualExpenses} onCommit={(n) => setTax({ annualExpenses: n ?? 0 })} hint={h('They lower the profit paid out as dividends, not the 1% on revenue.')} />
               )}
               <NumberInput label="Micro tax rate (%)" value={tax.microRate} scale={100} emptyIsZero={false}
                 placeholder="ruleset default (1%)" onCommit={(n) => setTax({ microRate: n === null ? null : Math.min(1, n) })} />
               <NumberInput label="Profit paid out as dividends (%)" value={tax.dividendPayout} scale={100}
-                onCommit={(n) => setTax({ dividendPayout: Math.min(1, n ?? 0) })} />
+                onCommit={(n) => setTax({ dividendPayout: Math.min(1, n ?? 0) })} hint={h('What you take out as dividends; the rest stays in the company, untaxed for now.')} />
             </>
           )}
           {tax.id === 'custom' && (
             <NumberInput label="Reserve rate (%)" value={tax.customRate} scale={100}
-              onCommit={(n) => setTax({ customRate: Math.min(1, n ?? 0) })} hint="A flat share of taxable income. Use it when the profiles above don't fit." />
+              onCommit={(n) => setTax({ customRate: Math.min(1, n ?? 0) })} hint={h("A flat share of taxable income. Use it when the profiles above don't fit.")} />
           )}
           {tax.id !== 'custom' && tax.id !== 'srl_micro' && (
             <>
-              <SettingsToggle label="Insured elsewhere for health" hint="Salary of at least 6 minimum wages, pension, or another exception: the CASS minimum base doesn't apply." checked={tax.cassCoveredElsewhere} onChange={(e) => setTax({ cassCoveredElsewhere: e.target.checked })} />
-              <SettingsToggle label="Exempt from CAS" hint="E.g. pensioners." checked={tax.casExempt} onChange={(e) => setTax({ casExempt: e.target.checked })} />
-              <SettingsToggle label="Pay CAS below the threshold" hint="Opt in to pension contributions on 12 minimum wages." checked={tax.casOptIn} onChange={(e) => setTax({ casOptIn: e.target.checked })} />
+              <SettingsToggle label="Insured elsewhere for health" hint={h("Salary of at least 6 minimum wages, pension, or another exception: the CASS minimum base doesn't apply.")} checked={tax.cassCoveredElsewhere} onChange={(e) => setTax({ cassCoveredElsewhere: e.target.checked })} />
+              <SettingsToggle label="Exempt from CAS" hint={h('E.g. pensioners.')} checked={tax.casExempt} onChange={(e) => setTax({ casExempt: e.target.checked })} />
+              <SettingsToggle label="Pay CAS below the threshold" hint={h('Opt in to pension contributions on 12 minimum wages.')} checked={tax.casOptIn} onChange={(e) => setTax({ casOptIn: e.target.checked })} />
             </>
           )}
-          <SettingsToggle label="VAT-registered" hint="Off: the small-business exemption (under 395,000 lei a year)." checked={tax.vatRegistered} onChange={(e) => setTax({ vatRegistered: e.target.checked })} />
+          <SettingsToggle label="VAT-registered" hint={h('Off: the small-business exemption (under 395,000 lei a year).')} checked={tax.vatRegistered} onChange={(e) => setTax({ vatRegistered: e.target.checked })} />
           <NumberInput label="Expected taxable income this year (lei, optional)" value={tax.expectedAnnualIncome}
             placeholder="projected from the year so far" onCommit={(n) => setTax({ expectedAnnualIncome: n ?? 0 })}
-            hint="Thresholds make the rate depend on the whole year. Leave empty to project it from what you've earned so far." />
+            hint={h("Thresholds make the rate depend on the whole year. Leave empty to project it from what you've earned so far.")} />
           <p className={styles.hint}>
             Rules on file: {RULESETS.map((r) => r.id).join(', ')}. Each payment keeps the ruleset it was suggested under, and a changed setting never rewrites a reserve you've stored; open a payment and use its suggestion to update it.
           </p>
@@ -313,18 +318,19 @@ export function Settings() {
       <Section id="targets" title="Target and flags">
         <div className={styles.settingsGroup}>
           <NumberInput label="Monthly income target (lei)" value={settings.monthlyTarget} placeholder="none"
-            onCommit={(n) => updateSettings({ monthlyTarget: n ?? 0 })} hint="A progress bar under the total for a month, and for a year as twelve of them. Empty for none." />
-          <SettingsToggle label="Flag unusually large payments" hint="Tags payments several times your typical one, so a windfall isn't read as a trend."
+            onCommit={(n) => updateSettings({ monthlyTarget: n ?? 0 })} hint={h('A progress bar under the total for a month, and for a year as twelve of them. Empty for none.')} />
+          <SettingsToggle label="Flag unusually large payments" hint={h("Tags payments several times your typical one, so a windfall isn't read as a trend.")}
             checked={settings.largeMultiple > 0} onChange={(e) => updateSettings({ largeMultiple: e.target.checked ? 4 : 0 })} />
           {settings.largeMultiple > 0 && (
             <NumberInput label="Flag above (× typical)" value={settings.largeMultiple}
-              onCommit={(n) => { if (n && n >= 1.5) updateSettings({ largeMultiple: n }) }} hint="1.5 or more." />
+              onCommit={(n) => { if (n && n >= 1.5) updateSettings({ largeMultiple: n }) }} hint={h('1.5 or more.')} />
           )}
         </div>
       </Section>
 
       <Section id="entities" title="Clients, sources & venues"
         action={<button type="button" className={styles.linkButton} onClick={() => setEditing({ kind: manage, entity: null })}>+ Add</button>}>
+        {h(<p className={styles.hint} style={{ marginTop: 0 }}>These fill the pickers in the forms; “+ New…” there adds to them too. Archive instead of deleting to keep a client's history.</p>)}
         <SegmentedControl size="sm" label="List" value={manage} onChange={(v) => setManage(v as EntityKind)}
           options={[{ value: 'client', label: `Clients (${data.clients.length})` }, { value: 'source', label: `Sources (${data.sources.length})` }, { value: 'venue', label: `Venues (${data.venues.length})` }]} />
         <div className={styles.rows} style={{ marginTop: 'var(--space-sm)' }}>

@@ -208,6 +208,20 @@ describe('small conveniences', () => {
     expect((within(dialog).getByLabelText('Description') as HTMLInputElement).placeholder).toContain(' · ')
   })
 
+  it('hides field hints once switched off, but never a live figure', async () => {
+    settings({ showHints: false })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText(/A 4-session package/)).toBeNull()
+    // Live: the per-head figure still shows once people are entered.
+    await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
+    await user.type(within(dialog).getByLabelText(/People per session/), '10')
+    expect(within(dialog).getByText(/10 × 150 lei/)).toBeTruthy()
+  })
+
   it('folds the tax section of a payment back after opening it', async () => {
     settings()
     const user = userEvent.setup()

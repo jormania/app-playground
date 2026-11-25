@@ -14,7 +14,7 @@ import { Button, ConfirmModal, Modal, SettingsToggle } from '../../ds'
 import { readJson, writeJson } from '../../shared/storage'
 import { useInflow } from '../app/state'
 import type { Currency, IncomeRecord, TaxHandling, Taxability, VatTreatment } from '../domain/types'
-import { CATEGORY, CURRENCIES, TAX_HANDLING, TAXABILITY, VAT, options } from '../domain/vocabulary'
+import { CATEGORY, CURRENCIES, PROFILE, TAX_HANDLING, TAXABILITY, VAT, options } from '../domain/vocabulary'
 import { fetchRonRate, lei, money, round2, toRon } from '../lib/money'
 import { suggestClassification, suggestedWithholding } from '../tax/classify'
 import { suggestReserve } from '../tax/estimate'
@@ -22,7 +22,8 @@ import type { Entity, EntityKind } from '../store/repo'
 import { blankEntity, EntityEditor, KIND_LABEL } from './EntityEditor'
 import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
 import { Findings } from './Findings'
-import { incomeErrors, incomeFindings, type Finding, type Fix } from '../lib/guards'
+import { useHint } from '../app/hints'
+import { incomeErrors, incomeFindings, lastRate, type Finding, type Fix } from '../lib/guards'
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-entry'
@@ -94,7 +95,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     () => new Set(record ? ['taxability', 'taxHandling', 'vat', 'reserve', 'withheld', 'fx', 'prefill'] : copyOf ? ['prefill'] : []),
   )
   // The parent mounts a fresh form per opening (keyed), so state starts clean each time.
-  const [fxState, setFxState] = useState<'idle' | 'loading' | 'failed' | 'ok'>('idle')
+  const [fxState, setFxState] = useState<'idle' | 'loading' | 'failed' | 'ok' | 'last'>('idle')
   const [creating, setCreating] = useState<{ kind: EntityKind; entity: Entity } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -103,6 +104,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const [error, setError] = useState<string | null>(null)
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
+  const h = useHint()
   // Warnings from lib/guards.ts for the draft exactly as it was when Save was pressed.
   const [warned, setWarned] = useState<{ draft: Draft; items: Finding[] } | null>(null)
   const warnings = warned && warned.draft === draft ? warned.items : []
@@ -199,9 +201,12 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     setFxState('loading')
     void fetchRonRate(draft.currency, draft.date || today).then((r) => {
       if (req !== fxReq.current) return
-      if (r) { setDraft((d) => ({ ...d, fxRate: String(r) })); setFxState('ok') } else setFxState('failed')
+      if (r) { setDraft((d) => ({ ...d, fxRate: String(r) })); setFxState('ok'); return }
+      // No rate to fetch (offline, a holiday the source lacks): start from the last one you used, said plainly.
+      const last = lastRate(draft.currency, data.records)
+      if (last) { setDraft((d) => ({ ...d, fxRate: String(last) })); setFxState('last') } else setFxState('failed')
     })
-  }, [open, draft.currency, draft.date, touched, today])
+  }, [open, draft.currency, draft.date, touched, today, data.records])
 
   const pickClient = (id: string) => {
     if (id === NEW) { setCreating({ kind: 'client', entity: blankEntity('client') }); return }
@@ -325,7 +330,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       hint={fromHeads && Math.round(amountRon) !== fromHeads
         ? <>Usually {lei(usualPerHead!)} a head here: {heads}{sessionsN > 1 ? ` seats (${draft.attendees} × ${sessionsN} sessions)` : ''} × {lei(usualPerHead!)} = <b>{lei(fromHeads)}</b>{' '}
           <button type="button" className={styles.linkButton} onClick={() => set({ amount: String(fromHeads) })}>Use</button></>
-        : perHead ? `${lei(perHead)} a head` : 'How many came, as one number (not names). Shows what a seat earns.'} />
+        : perHead ? `${lei(perHead)} a head` : h('How many came, as one number (not names). Shows what a seat earns and how full a room must be.')} />
   )
 
   return (
@@ -351,6 +356,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               hint={<>
                 {fxState === 'loading' ? 'Fetching the ECB rate for that day…'
                   : fxState === 'failed' ? 'No rate could be fetched; type the BNR rate.'
+                  : fxState === 'last' ? 'Offline: the last rate you used. Check it against BNR.'
                     : touched.has('fx') ? 'Your rate.' : 'ECB rate for that day. The BNR rate is what you declare; adjust if it differs.'}
                 {amountRon > 0 && <> · <b>{lei(amountRon)}</b></>}
               </>}
@@ -364,7 +370,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             </div>
           )}
           <SelectInput label="Client" value={draft.clientId} onChange={pickClient} name="client"
-            hint={activeClients.length ? undefined : "Your own list. Add one with “+ New client…” at the bottom."}>
+            hint={h(activeClients.length ? 'Picking one fills the rest from their last payment. “+ New client…” at the bottom.' : 'Your own list. Add one with “+ New client…” at the bottom.')}>
             <option value="">— none —</option>
             {activeClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             <option value={NEW}>+ New client…</option>
@@ -389,7 +395,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date"
               hint={<DateShortcuts today={today} value={draft.date} onPick={(d) => set({ date: d })} />} />
             {showStatus ? (
-              <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}>
+              <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}
+                hint={h(draft.status === 'expected' ? 'Not paid yet: shown under Expected, counted nowhere until received.' : 'Expected: money promised but not in yet.')}>
                 <option value="received">Received</option>
                 <option value="expected">Expected</option>
               </SelectInput>
@@ -398,30 +405,30 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           {showStatus && on('deals') && attendeesField}
           <div className={styles.formRow}>
             <TextInput label="Sessions" value={draft.sessions} onChange={(v) => set({ sessions: v })} inputMode="numeric"
-              hint="A 4-session package is 4." />
+              hint={h('A 4-session package is 4; a payout, the sessions in it.')} />
             <TextInput label="Hours (optional)" value={draft.hours} onChange={(v) => set({ hours: v })} inputMode="decimal" placeholder="—"
-              hint="All of it, to see what an hour keeps." />
+              hint={h('Total for the payment. Shows what an hour keeps you.')} />
           </div>
           <div className={styles.formRow}>
             <SelectInput label="Source" value={draft.sourceId} onChange={(v) => pickEntity('source', v)} name="source"
-              hint="How it reached you: direct, a platform, an agency. “+ New…” at the bottom.">
+              hint={h('How it reached you: direct, a platform, an agency. “+ New…” at the bottom.')}>
               <option value="">— none —</option>
               {activeSources.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               <option value={NEW}>+ New source…</option>
             </SelectInput>
             <SelectInput label="Venue" value={draft.venueId} onChange={(v) => pickEntity('venue', v)} name="venue"
-              hint="Where it happened, online too. “+ New…” at the bottom.">
+              hint={h('Where it happened, online too. Its deal sets what the room costs. “+ New…” at the bottom.')}>
               <option value="">— none —</option>
               {activeVenues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               <option value={NEW}>+ New venue…</option>
             </SelectInput>
           </div>
           <SelectInput label="Activity (optional)" value={draft.category} onChange={(v) => set({ category: v })}
-            hint="A set list, the same everywhere and in Notion. Anything else: Other.">
+            hint={h('The kind of work. A set list, the same in Notion; anything else is Other.')}>
             <option value="">—</option>
             {options(CATEGORY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </SelectInput>
-          <SettingsToggle label="Recurring" hint="A package, retainer or regular payout." checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
+          <SettingsToggle label="Recurring" hint={h('A package, retainer or regular payout. Next month’s is then suggested as expected.')} checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
 
           {settings.features.tax && !taxOpen && (
             <button type="button" className={styles.disclosure} onClick={() => setTaxOpen(true)} aria-expanded={false}>
@@ -447,7 +454,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
                 <button type="button" className={styles.linkButton} onClick={useSuggestedTax}>Use suggestion</button>
               )}
             </h3>
-            <p className={styles.hint}>Suggestions from your tax profile ({settings.tax.id.replace('_', ' ').toUpperCase()}). You decide; nothing here is tax advice.</p>
+            {h(<p className={styles.hint}>Suggested from your tax profile ({PROFILE[settings.tax.id]}) and the source. You decide; nothing here is tax advice.</p>)}
             <SelectInput label="Taxable?" right={badge(isSuggested('taxability') && !touched.has('taxability'))} value={draft.taxability}
               onChange={(v) => setTax('taxability', v as Taxability)} hint={isSuggested('taxability') ? cls.reasons.taxability : `Suggested: ${TAXABILITY[cls.taxability]}. ${cls.reasons.taxability}`}>
               {options(TAXABILITY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -463,7 +470,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             {(draft.taxHandling === 'withheld' || withheldNum > 0) && (
               <TextInput label="Tax withheld or paid (lei)" value={draft.withheld} inputMode="decimal"
                 onChange={(v) => { touch('withheld'); set({ withheld: v }) }}
-                hint={touched.has('withheld') ? 'As on the payment statement.' : '10% suggested; enter what the statement shows.'} />
+                hint={h(touched.has('withheld') ? 'As on the payment statement.' : '10% suggested; enter what the statement shows.')} />
             )}
             <TextInput
               label="Set aside for tax (lei)"
@@ -480,7 +487,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
                 )}
               </>}
             />
-            <SettingsToggle label="Classification checked" hint="Marks the tax treatment as confirmed rather than suggested." checked={draft.confirmed} onChange={(e) => set({ confirmed: e.target.checked })} />
+            <SettingsToggle label="Classification checked" hint={h('Marks the tax treatment as confirmed rather than suggested.')} checked={draft.confirmed} onChange={(e) => set({ confirmed: e.target.checked })} />
           </div>
           )}
 

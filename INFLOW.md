@@ -500,3 +500,19 @@ their link underline. The "Optional" badge is gone from tax, which only shows on
 - **Payment form:** the Tax section folds back from its heading; every list says where it
   comes from ("+ New…" for clients, sources, venues; a set list for activities); "People per
   session" is a head count, one number.
+
+## Exchange rates and field hints, 25 Nov 2026
+- **Rates.** A foreign amount gets the ECB reference rate for the payment's own date from
+  Frankfurter (as WhereItWent does): published each working day around 16:00 CET; a weekend or
+  holiday gets the last working day's. Fetched rates are now kept on the device
+  (`inflow:fx-rates`, the last 300), so an offline form still finds a day fetched before; with
+  nothing kept, the form starts from the last rate you used for that currency and says so
+  ("Offline: the last rate you used"). The BNR rate is what's declared; the hint says to check it.
+- **Hints.** Every field whose use could be debated explains itself in one line: status,
+  sessions, hours, people per session, source, venue, activity, recurring (and what it
+  triggers), the cost's kind, category, status, links, deductible; the client/source/venue
+  editor (name, kind and country for VAT, source type, active, venue type, each deal field);
+  and Settings (Notion token, tax profile, company fields, the lists). Settings → Appearance &
+  guide → **Show hints** turns them off (`settings.showHints`, `app/hints.ts`, as Sol
+  Odyssey's guidance). Hints that report something live (a rate being fetched, a per-head
+  figure, a tax saving, the tax suggestion's reasons) are not wrapped and always show.

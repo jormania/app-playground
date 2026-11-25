@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showTour: true,
   features: { ...SIMPLE_FEATURES },
   simpleStartNotice: true,
+  showHints: true,
   openingCash: 0,
   openingCashDate: '',
 }

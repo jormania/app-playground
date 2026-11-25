@@ -232,6 +232,8 @@ export interface Settings {
   features: Features
   /** A new user's simple start is announced once on the Overview, until dismissed. */
   simpleStartNotice: boolean
+  /** Explanations under form fields. On until someone knows their way around; live figures show either way. */
+  showHints: boolean
   /** Cash in hand and in the bank on `openingCashDate`, the cash-flow starting point. */
   openingCash: number
   openingCashDate: string

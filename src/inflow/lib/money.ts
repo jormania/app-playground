@@ -72,13 +72,34 @@ export function delta(current: number, previous: number): { text: string; direct
  */
 export async function fetchRonRate(currency: Currency, date: string, fetcher: typeof fetch = fetch): Promise<number | null> {
   if (currency === 'RON') return 1
+  const key = `${currency}|${date}`
   try {
     const res = await fetcher(`https://api.frankfurter.dev/v1/${date}?base=${currency}&symbols=RON`)
-    if (!res.ok) return null
+    if (!res.ok) return cachedRate(key)
     const body = await res.json() as { rates?: { RON?: number } }
     const r = body.rates?.RON
-    return typeof r === 'number' && r > 0 ? Math.round(r * 10000) / 10000 : null
+    if (!(typeof r === 'number' && r > 0)) return cachedRate(key)
+    const rate = Math.round(r * 10000) / 10000
+    rememberRate(key, rate)
+    return rate
   } catch {
-    return null
+    // Offline: a rate fetched for that day before still holds; the ECB never revises a published one.
+    return cachedRate(key)
   }
+}
+
+const FX_CACHE = 'inflow:fx-rates'
+function readRates(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(FX_CACHE) ?? '{}') as Record<string, number> } catch { return {} }
+}
+function cachedRate(key: string): number | null {
+  const r = readRates()[key]
+  return typeof r === 'number' && r > 0 ? r : null
+}
+function rememberRate(key: string, rate: number) {
+  try {
+    // The most recent 300 lookups are plenty; older ones are on the payments themselves.
+    const entries = Object.entries({ ...readRates(), [key]: rate }).slice(-300)
+    localStorage.setItem(FX_CACHE, JSON.stringify(Object.fromEntries(entries)))
+  } catch { /* storage off: the rate is still used, just not kept */ }
 }

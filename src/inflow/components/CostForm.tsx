@@ -15,7 +15,8 @@ import { fetchRonRate, lei, money, round2, toRon } from '../lib/money'
 import { addMonths } from '../lib/dates'
 import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
 import { Findings } from './Findings'
-import { costFindings, type Finding } from '../lib/guards'
+import { useHint } from '../app/hints'
+import { costFindings, lastRate, type Finding } from '../lib/guards'
 import { costTaxEffect } from '../tax/estimate'
 import styles from '../styles/ui.module.css'
 
@@ -72,11 +73,12 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
     }
   })
   const [fxTouched, setFxTouched] = useState(!!cost || !!copyOf)
-  const [fxState, setFxState] = useState<'idle' | 'loading' | 'failed' | 'ok'>('idle')
+  const [fxState, setFxState] = useState<'idle' | 'loading' | 'failed' | 'ok' | 'last'>('idle')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
+  const h = useHint()
   // Warnings from lib/guards.ts for the draft exactly as it was when Save was pressed.
   const [warned, setWarned] = useState<{ draft: Draft; items: Finding[] } | null>(null)
   const warnings = warned && warned.draft === draft ? warned.items : []
@@ -92,9 +94,11 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
     setFxState('loading')
     void fetchRonRate(draft.currency, draft.date || today).then((r) => {
       if (req !== fxReq.current) return
-      if (r) { setDraft((d) => ({ ...d, fxRate: String(r) })); setFxState('ok') } else setFxState('failed')
+      if (r) { setDraft((d) => ({ ...d, fxRate: String(r) })); setFxState('ok'); return }
+      const last = lastRate(draft.currency, data.costs)
+      if (last) { setDraft((d) => ({ ...d, fxRate: String(last) })); setFxState('last') } else setFxState('failed')
     })
-  }, [draft.currency, draft.date, fxTouched, today])
+  }, [draft.currency, draft.date, fxTouched, today, data.costs])
 
   // The costs you enter again and again (rent, Zoom, the accountant) as one-tap shortcuts:
   // ranked by how often they were paid in the last six months, then by how recently.
@@ -190,27 +194,29 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
           {draft.currency !== 'RON' && (
             <TextInput label={`Lei per 1 ${draft.currency}`} value={draft.fxRate} inputMode="decimal"
               onChange={(v) => { setFxTouched(true); set({ fxRate: v }) }}
-              hint={<>{fxState === 'loading' ? 'Fetching the ECB rate…' : fxState === 'failed' ? 'No rate could be fetched; type it.' : 'Rate for that day.'}{amountRon > 0 && <> · <b>{lei(amountRon)}</b></>}</>} />
+              hint={<>{fxState === 'loading' ? 'Fetching the ECB rate…' : fxState === 'failed' ? 'No rate could be fetched; type it.' : fxState === 'last' ? 'Offline: the last rate you used. Check it.' : 'ECB rate for that day; BNR\'s may differ slightly.'}{amountRon > 0 && <> · <b>{lei(amountRon)}</b></>}</>} />
           )}
-          <TextInput label="What was it?" value={draft.description} onChange={(v) => set({ description: v })} placeholder="e.g. Studio hire, Zoom, accountant" name="description" />
-          <SelectInput label="Kind of cost" value={draft.group} onChange={(v) => setGroup(v as CostGroup)} hint={COST_GROUP_HINT[draft.group]} name="group">
+          <TextInput label="What was it?" value={draft.description} onChange={(v) => set({ description: v })} placeholder="e.g. Studio hire, Zoom, accountant" name="description"
+            hint={h('Use the same words each month: repeats and reminders match on it.')} />
+          <SelectInput label="Kind of cost" value={draft.group} onChange={(v) => setGroup(v as CostGroup)} hint={h(COST_GROUP_HINT[draft.group])} name="group">
             {options(COST_GROUP).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </SelectInput>
           <div className={styles.formRow}>
-            <SelectInput label="Category" value={draft.category} onChange={(v) => set({ category: v as CostCategory })} name="category">
+            <SelectInput label="Category" value={draft.category} onChange={(v) => set({ category: v as CostCategory })} name="category"
+              hint={h('Its line inside the kind, as the P&L lists it.')}>
               {CATEGORIES_BY_GROUP[draft.group].map((c) => <option key={c} value={c}>{COST_CATEGORY[c]}</option>)}
             </SelectInput>
             <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date"
               hint={<DateShortcuts today={today} value={draft.date} onPick={(d) => set({ date: d })} />} />
           </div>
           <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}
-            hint={draft.status === 'due' ? 'Not paid yet: left out of the P&L and cash flow until you mark it paid.' : undefined}>
+            hint={h(draft.status === 'due' ? 'Not paid yet: left out of the P&L and cash flow until you mark it paid.' : 'Due: a bill still to pay, kept apart until paid.')}>
             <option value="paid">Paid</option>
             <option value="due">Due (not paid yet)</option>
           </SelectInput>
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}><span>Link it <span className={styles.optional}>Optional</span></span></h3>
-            <p className={styles.hint}>A direct cost linked to a venue or client comes off the nearest payment there, in Clients & work. Leave empty for overheads.</p>
+            {h(<p className={styles.hint}>A direct cost linked to a venue or client comes off the nearest payment there, in Clients & work. Activity is for sorting. Leave all empty for overheads.</p>)}
             <div className={styles.formRow}>
               <SelectInput label="Venue" value={draft.venueId} onChange={(v) => set({ venueId: v })}>
                 <option value="">—</option>
@@ -226,8 +232,8 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </SelectInput>
           </div>
-          <SettingsToggle label="Recurring" hint="Rent, subscriptions, monthly fees." checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
-          <SettingsToggle label="Deductible" hint="Counts as an expense for the tax estimate." checked={draft.deductible} onChange={(e) => set({ deductible: e.target.checked })} />
+          <SettingsToggle label="Recurring" hint={h('Rent, subscriptions, monthly fees. Next month it is offered under “Usually paid by now”.')} checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
+          <SettingsToggle label="Deductible" hint={h('Counts as an expense for the tax estimate. Equipment and drawings are not.')} checked={draft.deductible} onChange={(e) => set({ deductible: e.target.checked })} />
           {deductibleHint}
           <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}

@@ -9,6 +9,7 @@ import { CLIENT_COUNTRY, CLIENT_KIND, DEAL, DEAL_HINT, SOURCE_TAX_DEFAULT, SOURC
 import { useInflow } from '../app/state'
 import type { Entity, EntityKind } from '../store/repo'
 import { NumberInput, SelectInput, TextArea, TextInput } from './fields'
+import { useHint } from '../app/hints'
 import styles from '../styles/ui.module.css'
 
 export const KIND_LABEL: Record<EntityKind, string> = { client: 'client', source: 'income source', venue: 'venue' }
@@ -30,6 +31,7 @@ export interface EntityEditorProps {
 
 export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }: EntityEditorProps) {
   const { saveEntity, on } = useInflow()
+  const h = useHint()
   const [draft, setDraft] = useState<Entity>(() => entity ?? blankEntity(kind))
   const [busy, setBusy] = useState(false)
   // Mounted fresh per opening by its parent, so the draft never carries over.
@@ -47,7 +49,8 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <form className={styles.form} onSubmit={(e) => { e.preventDefault(); void save() }}>
-        <TextInput label="Name" value={draft.name} onChange={(v) => set({ name: v })} autoFocus={!draft.id} />
+        <TextInput label="Name" value={draft.name} onChange={(v) => set({ name: v })} autoFocus={!draft.id}
+          hint={h(kind === 'client' ? 'As you want it on statements: a person or a company.' : kind === 'source' ? 'How work reaches you: “Direct clients”, “Coachlane”, “Retreat agency”.' : 'A room, a platform, a client\'s office, or online.')} />
         {kind === 'client' && (() => {
           const c = draft as Client
           return (
@@ -60,10 +63,10 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
                   {options(CLIENT_COUNTRY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </SelectInput>
               </div>
-              <p className={styles.hint}>Kind and country only decide the VAT suggestion.</p>
+              {h(<p className={styles.hint}>Kind and country only decide the VAT suggestion: an EU business is reverse charge. Individuals also count toward the intro-client insight.</p>)}
               <TextInput label="Contact (optional)" value={c.contact} onChange={(v) => set({ contact: v })} />
               <TextArea label="Notes" value={c.notes} onChange={(v) => set({ notes: v })} />
-              <SettingsToggle label="Archived" hint="Hidden from the pickers; history stays." checked={c.archived} onChange={(e) => set({ archived: e.target.checked })} />
+              <SettingsToggle label="Archived" hint={h('Hidden from the pickers; history and reports keep it.')} checked={c.archived} onChange={(e) => set({ archived: e.target.checked })} />
             </>
           )
         })()}
@@ -71,15 +74,16 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
           const s = draft as Source
           return (
             <>
-              <SelectInput label="Type" value={s.type} onChange={(v) => set({ type: v as Source['type'] })}>
+              <SelectInput label="Type" value={s.type} onChange={(v) => set({ type: v as Source['type'] })}
+                hint={h('Platform and royalty payouts vary month to month, so they are never read as a client going quiet.')}>
                 {options(SOURCE_TYPE).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </SelectInput>
               <SelectInput label="Usual tax treatment" value={s.taxDefault} onChange={(v) => set({ taxDefault: v as Source['taxDefault'] })}
-                hint="Feeds the suggestion on new payments from this source. You can still change each payment.">
+                hint={h('Feeds the tax suggestion on new payments from this source. Each payment can still differ.')}>
                 {options(SOURCE_TAX_DEFAULT).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </SelectInput>
               <TextArea label="Description" value={s.description} onChange={(v) => set({ description: v })} />
-              <SettingsToggle label="Active" checked={s.active} onChange={(e) => set({ active: e.target.checked })} />
+              <SettingsToggle label="Active" hint={h('Off: hidden from the pickers; history stays.')} checked={s.active} onChange={(e) => set({ active: e.target.checked })} />
             </>
           )
         })()}
@@ -87,7 +91,8 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
           const v = draft as Venue
           return (
             <>
-              <SelectInput label="Type" value={v.type} onChange={(x) => set({ type: x as Venue['type'] })}>
+              <SelectInput label="Type" value={v.type} onChange={(x) => set({ type: x as Venue['type'] })}
+                hint={h('Only in-person rooms are compared with each other in insights.')}>
                 {options(VENUE_TYPE).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </SelectInput>
               <TextInput label="Location or URL (optional)" value={v.location} onChange={(x) => set({ location: x })} />
@@ -95,23 +100,23 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
                 <>
                   {/* The venue sets the deal: a fixed fee or a revenue share. An older venue saved
                       with another kind keeps it, and the option stays so it reads true. */}
-                  <SelectInput label="Deal with the venue" value={v.deal} onChange={(x) => set({ deal: x })} hint={DEAL_HINT[v.deal]}>
+                  <SelectInput label="Deal with the venue" value={v.deal} onChange={(x) => set({ deal: x })} hint={h(DEAL_HINT[v.deal])}>
                     {options(DEAL).filter((o) => ['fixed', 'share', 'none'].includes(o.value) || o.value === v.deal)
                       .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </SelectInput>
                   {(v.deal === 'fixed' || v.deal === 'hybrid') && (
-                    <NumberInput label="Fee per session (lei)" value={v.feePerSession} onCommit={(n) => set({ feePerSession: n ?? 0 })} />
+                    <NumberInput label="Fee per session (lei)" value={v.feePerSession} onCommit={(n) => set({ feePerSession: n ?? 0 })} hint={h('Paid for each session, however many come. A 4-session package pays it four times.')} />
                   )}
                   {(v.deal === 'share' || v.deal === 'hybrid') && (
-                    <NumberInput label="Venue's share of takings (%)" value={v.sharePct} scale={100} onCommit={(n) => set({ sharePct: Math.min(1, n ?? 0) })} />
+                    <NumberInput label="Venue's share of takings (%)" value={v.sharePct} scale={100} onCommit={(n) => set({ sharePct: Math.min(1, n ?? 0) })} hint={h('Of what each session brings in. 30 means 30%.')} />
                   )}
                   {v.deal === 'monthly' && (
-                    <NumberInput label="Rent per month (lei)" value={v.monthlyFee} onCommit={(n) => set({ monthlyFee: n ?? 0 })} />
+                    <NumberInput label="Rent per month (lei)" value={v.monthlyFee} onCommit={(n) => set({ monthlyFee: n ?? 0 })} hint={h('Spread over that month\'s sessions there.')} />
                   )}
                 </>
               )}
               <TextArea label="Notes" value={v.notes} onChange={(x) => set({ notes: x })} />
-              <SettingsToggle label="Archived" hint="Hidden from the pickers; history stays." checked={v.archived} onChange={(e) => set({ archived: e.target.checked })} />
+              <SettingsToggle label="Archived" hint={h('Hidden from the pickers; history and reports keep it.')} checked={v.archived} onChange={(e) => set({ archived: e.target.checked })} />
             </>
           )
         })()}
