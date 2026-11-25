@@ -2,7 +2,8 @@
  * Add or edit one cost. Quick by default: amount, what it was, and where it
  * sits (direct or operating). A cost you've entered before is one tap away
  * under "Repeat a recent cost", which is how monthly bills get entered. Linking a venue,
- * client or activity is optional and only feeds the margins.
+ * client or activity is optional; a direct cost linked to a venue or client comes off the
+ * nearest payment there in Clients & work.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, ConfirmModal, Modal, SettingsToggle } from '../../ds'
@@ -15,6 +16,7 @@ import { addMonths } from '../lib/dates'
 import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
 import { Findings } from './Findings'
 import { costFindings, type Finding } from '../lib/guards'
+import { costTaxEffect } from '../tax/estimate'
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-cost'
@@ -56,7 +58,7 @@ export interface CostFormProps {
 }
 
 export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) {
-  const { data, today, saveCost, deleteCost, toast, on } = useInflow()
+  const { data, today, saveCost, deleteCost, toast, on, settings } = useInflow()
   const isNew = !cost
   const [draft, setDraft] = useState<Draft>(() => {
     if (cost) return fromCost(cost)
@@ -146,6 +148,19 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
   const clients = data.clients.filter((c) => !c.archived || c.id === draft.clientId).sort((a, b) => a.name.localeCompare(b.name))
   const venues = data.venues.filter((v) => !v.archived || v.id === draft.venueId).sort((a, b) => a.name.localeCompare(b.name))
 
+  // What this cost does to the tax estimate, and the one VAT trap of buying abroad.
+  const taxEffect = useMemo(() => {
+    if (!on('tax') || !draft.deductible || !(amountRon > 0) || !draft.date) return null
+    return costTaxEffect(settings.tax, data.records, data.costs, { id: cost?.id ?? '', amountRon, date: draft.date }, today)
+  }, [on, draft.deductible, draft.date, amountRon, settings.tax, data.records, data.costs, cost?.id, today])
+  const abroad = on('tax') && draft.currency !== 'RON' && !settings.tax.vatRegistered
+  const savingText = taxEffect?.note ?? (taxEffect && taxEffect.saving > 0 ? `Lowers this year's tax estimate by about ${lei(taxEffect.saving)}.` : null)
+  const deductibleHint = (savingText || abroad) ? (
+    <p className={styles.hint} style={{ marginTop: 'calc(-1 * var(--space-xs))' }}>
+      {savingText}{abroad && `${savingText ? ' ' : ''}Bought from abroad: a service may owe reverse-charge VAT even if you're not VAT-registered (art. 317). Check with your accountant.`}
+    </p>
+  ) : null
+
   return (
     <>
       <Modal open onClose={onClose} title={isNew ? (copyOf ? 'Add cost (copy)' : 'Add cost') : 'Edit cost'}>
@@ -195,7 +210,7 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
           </SelectInput>
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}><span>Link it <span className={styles.optional}>Optional</span></span></h3>
-            <p className={styles.hint}>Linked costs come off that venue's, client's or activity's revenue in the margins. Leave them empty for overheads.</p>
+            <p className={styles.hint}>A direct cost linked to a venue or client comes off the nearest payment there, in Clients & work. Leave empty for overheads.</p>
             <div className={styles.formRow}>
               <SelectInput label="Venue" value={draft.venueId} onChange={(v) => set({ venueId: v })}>
                 <option value="">—</option>
@@ -213,6 +228,7 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
           </div>
           <SettingsToggle label="Recurring" hint="Rent, subscriptions, monthly fees." checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
           <SettingsToggle label="Deductible" hint="Counts as an expense for the tax estimate." checked={draft.deductible} onChange={(e) => set({ deductible: e.target.checked })} />
+          {deductibleHint}
           <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
           <Findings items={warnings} onFix={(f) => {

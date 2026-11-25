@@ -183,3 +183,20 @@ describe('projection and reserve suggestion', () => {
     expect(high).toBeLessThan(mid) // CAS and CASS are capped, so the rate falls at the top
   })
 })
+
+describe('what a deductible cost does to the tax', () => {
+  it('lowers the estimate by about a fifth of it under sistem real, and not at all under normă', async () => {
+    const { buildDemo, DEMO_SETTINGS_TAX: real } = await import('../data/demo')
+    const { costTaxEffect } = await import('./estimate')
+    const d = buildDemo('2026-11-25')
+    const cost = { id: '', amountRon: 1000, date: '2026-11-20' }
+    const e = costTaxEffect(real, d.records, d.costs, cost, '2026-11-25')
+    // 10% CASS on the lower net income, then 10% income tax on what's left: about 190 lei.
+    expect(e.saving).toBeGreaterThan(150)
+    expect(e.saving).toBeLessThan(260)
+    expect(e.note).toBeNull()
+    const norma = costTaxEffect({ ...real, id: 'pfa_norma' }, d.records, d.costs, cost, '2026-11-25')
+    expect(norma.saving).toBe(0)
+    expect(norma.note).toMatch(/normă/)
+  })
+})

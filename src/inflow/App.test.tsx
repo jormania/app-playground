@@ -87,7 +87,7 @@ describe('InFlow', () => {
     expect(screen.queryByText(/Set aside for tax/)).toBeNull()
     expect(screen.getByText('Average payment')).toBeTruthy()
     await go('#/reports')
-    expect(screen.queryByRole('radio', { name: 'Tax*' })).toBeNull()
+    expect(screen.queryByRole('radio', { name: 'Tax' })).toBeNull()
   })
 
   it('prints one of four reports, each with its advice, and adjusts', async () => {
@@ -208,6 +208,19 @@ describe('small conveniences', () => {
     expect((within(dialog).getByLabelText('Description') as HTMLInputElement).placeholder).toContain(' · ')
   })
 
+  it('folds the tax section of a payment back after opening it', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /^Tax/, expanded: false }))
+    expect(within(dialog).getByLabelText(/Taxable\?/)).toBeTruthy()
+    await user.click(within(dialog).getByRole('button', { name: /^Tax/, expanded: true }))
+    expect(within(dialog).queryByLabelText(/Taxable\?/)).toBeNull()
+  })
+
   it('opens a P&L cost line into its categories in place', async () => {
     settings()
     localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
@@ -251,7 +264,7 @@ describe('small conveniences', () => {
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
     await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
-    await user.type(within(dialog).getByLabelText(/People who came/), '10')
+    await user.type(within(dialog).getByLabelText(/People per session/), '10')
     expect(within(dialog).getByText(/10 × 150 lei/)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'Use' }))
     expect((within(dialog).getByLabelText('Amount') as HTMLInputElement).value).toBe('1500')
@@ -583,7 +596,7 @@ describe('feature switches', () => {
     expect(screen.getByRole('link', { name: /Costs/ })).toBeTruthy()
     expect(screen.queryByLabelText('Simple start')).toBeNull()
     const tabs = await reportTabs()
-    for (const t of ['Review', 'Clients & work', 'Venue deals', 'Profit', 'P&L', 'Cash flow', 'Tax*', 'Print']) expect(tabs).toContain(t)
+    for (const t of ['Review', 'Clients & work', 'Venue deals', 'Profit', 'P&L', 'Cash flow', 'Tax', 'Print']) expect(tabs).toContain(t)
     // Breakdown and its filter bar are folded into Clients & work.
     expect(tabs).not.toContain('Breakdown')
     expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull()
@@ -637,7 +650,7 @@ describe('feature switches', () => {
     expect(await reportTabs()).not.toContain('Venue deals')
     await go('#/overview')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
-    expect(within(await screen.findByRole('dialog')).queryByLabelText(/People who came/)).toBeNull()
+    expect(within(await screen.findByRole('dialog')).queryByLabelText(/People per session/)).toBeNull()
   })
 
   it('costs off: no Costs tab, P&L, cash flow or break-even', async () => {
@@ -656,7 +669,7 @@ describe('feature switches', () => {
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     expect(screen.queryByLabelText('Taxable or not')).toBeNull()
-    expect(await reportTabs()).not.toContain('Tax*')
+    expect(await reportTabs()).not.toContain('Tax')
   })
 
   it('expected off: no Expected panel and no status choice', async () => {

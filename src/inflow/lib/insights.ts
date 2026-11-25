@@ -31,26 +31,31 @@ export interface RecordCosts { income: number; venueFee: number; direct: number;
 /** takeHome's parts, per received payment: the venue's fee, the direct costs shared to it, and what was kept. */
 export function recordCosts(data: InflowData, opts: { deals: boolean; costs: boolean }): Map<string, RecordCosts> {
   const venue = opts.deals ? venueCosts(data.records, data.venues) : new Map<string, number>()
-  const linked = new Map<string, number>()
+  // A reimbursement is money back, not a session: it takes no share of any cost.
+  const sessions = data.records.filter((r) => r.status === 'received' && r.category !== 'reimbursement')
+  const direct = new Map<string, number>()
   if (opts.costs) {
     for (const c of data.costs) {
-      if (c.status !== 'paid' || c.group !== 'direct' || !c.venueId) continue
+      if (c.status !== 'paid' || c.group !== 'direct') continue
       if (opts.deals && (c.category === 'venue_hire' || c.category === 'platform_fees')) continue
-      const k = `${c.venueId}|${c.date}`
-      linked.set(k, (linked.get(k) ?? 0) + c.amountRon)
+      // The most specific link wins: the venue, else the client. A cost with neither stays an overhead.
+      const at = c.venueId ? sessions.filter((r) => r.venueId === c.venueId) : c.clientId ? sessions.filter((r) => r.clientId === c.clientId) : []
+      if (!at.length) continue
+      // The payment closest in date (materials bought days before a retreat, flights the week before),
+      // within a month; payments sharing that date split it. The same day, when there is one, is closest.
+      let best = Infinity
+      for (const r of at) best = Math.min(best, Math.abs(daysBetween(c.date, r.date)))
+      if (best > 31) continue
+      const targets = at.filter((r) => Math.abs(daysBetween(c.date, r.date)) === best)
+      for (const r of targets) direct.set(r.id, (direct.get(r.id) ?? 0) + c.amountRon / targets.length)
     }
   }
-  // Same-day linked costs are shared across that venue's payments that day.
-  const sameDay = new Map<string, number>()
-  // A reimbursement is money back, not a session: it takes no share of the day's costs.
-  for (const r of data.records) if (r.status === 'received' && r.venueId && r.category !== 'reimbursement') sameDay.set(`${r.venueId}|${r.date}`, (sameDay.get(`${r.venueId}|${r.date}`) ?? 0) + 1)
   const out = new Map<string, RecordCosts>()
   for (const r of data.records) {
     if (r.status !== 'received') continue
-    const k = `${r.venueId}|${r.date}`
-    const direct = r.venueId && r.category !== 'reimbursement' ? (linked.get(k) ?? 0) / (sameDay.get(k) ?? 1) : 0
+    const d = direct.get(r.id) ?? 0
     const venueFee = venue.get(r.id) ?? 0
-    out.set(r.id, { income: r.amountRon, venueFee: round2(venueFee), direct: round2(direct), kept: round2(r.amountRon - venueFee - direct) })
+    out.set(r.id, { income: r.amountRon, venueFee: round2(venueFee), direct: round2(d), kept: round2(r.amountRon - venueFee - d) })
   }
   return out
 }

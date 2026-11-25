@@ -6,9 +6,8 @@
  * out of every figure here. Depreciation is the one non-cash line: it is in
  * the P&L and never in cash flow; buying the equipment is the reverse.
  */
-import type { CostGroup, CostRecord, IncomeRecord, InflowData } from '../domain/types'
+import type { CostGroup, CostRecord, IncomeRecord } from '../domain/types'
 import { COST_CATEGORY } from '../domain/vocabulary'
-import { keyOf, nameOf, NO_ENTITY, type Dimension } from './analytics'
 import { addDays, addMonths, daysBetween, endOfMonth, monthShort, startOfMonth } from './dates'
 import { round2 } from './money'
 
@@ -27,7 +26,10 @@ export function monthColumns(r: { from: string; to: string }): Column[] {
     const end = endOfMonth(m)
     const to = end > r.to ? r.to : end
     const sameYear = r.from.slice(0, 4) === r.to.slice(0, 4)
-    out.push({ from, to, label: sameYear ? monthShort(m) : `${monthShort(m)} ${m.slice(2, 4)}` })
+    const name = sameYear ? monthShort(m) : `${monthShort(m)} ${m.slice(2, 4)}`
+    // A column holding only part of a month says which days, so a week never reads as all of November.
+    const whole = from === m && to === end
+    out.push({ from, to, label: whole ? name : from === to ? `${Number(from.slice(8))} ${name}` : `${Number(from.slice(8))}–${Number(to.slice(8))} ${name}` })
     m = addMonths(m, 1)
   }
   return out
@@ -168,47 +170,6 @@ export function buildCashFlow(records: IncomeRecord[], costs: CostRecord[], colu
       { key: 'close', label: 'Cash at end', kind: 'balance', values: rows.close },
     ],
   }
-}
-
-// ── margins per dimension ───────────────────────────────────────────────────
-
-export interface MarginRow {
-  id: string
-  name: string
-  revenue: number
-  costs: number
-  margin: number
-  /** margin ÷ revenue; null without revenue. */
-  marginRate: number | null
-  engagements: number
-  revenuePerEngagement: number
-}
-
-/**
- * Revenue less the direct and operating costs linked to each venue, client or
- * activity. Costs not linked to anything stay out (they are overheads), and a
- * source can't carry costs, so for sources this is revenue only.
- */
-export function margins(data: Pick<InflowData, 'clients' | 'sources' | 'venues'>, records: IncomeRecord[], costs: CostRecord[], r: { from: string; to: string }, dim: Dimension): MarginRow[] {
-  const rec = records.filter((x) => x.status === 'received' && inCol(x.date, r))
-  const cst = paidCosts(costs, r).filter((x) => x.group === 'direct' || x.group === 'operating')
-  const costKey = (c: CostRecord) => {
-    const id = dim === 'client' ? c.clientId : dim === 'venue' ? c.venueId : dim === 'activity' ? c.activity : null
-    return id ?? NO_ENTITY
-  }
-  const keys = new Set([...rec.map((x) => keyOf(x, dim)), ...cst.map(costKey).filter((k) => k !== NO_ENTITY)])
-  return [...keys].map((id) => {
-    const rs = rec.filter((x) => keyOf(x, dim) === id)
-    const revenue = total(rs)
-    const c = id === NO_ENTITY ? 0 : total(cst.filter((x) => costKey(x) === id))
-    const margin = round2(revenue - c)
-    return {
-      id, name: nameOf(data, dim, id), revenue, costs: c, margin,
-      marginRate: revenue > 0 ? margin / revenue : null,
-      engagements: rs.length,
-      revenuePerEngagement: rs.length ? round2(revenue / rs.length) : 0,
-    }
-  }).sort((a, b) => b.margin - a.margin || a.name.localeCompare(b.name))
 }
 
 // ── break-even ──────────────────────────────────────────────────────────────

@@ -12,11 +12,12 @@ import {
   breakdown, DIMENSION_NOUN, inScope, NO_ENTITY, outstanding, received, scopeIsSet, series, summarise, sum,
   type BreakdownRow, type Dimension, type Scope,
 } from './analytics'
-import { buildCashFlow, buildPnl, margins, monthColumns } from './finance'
+import { buildCashFlow, buildPnl, monthColumns } from './finance'
+import { earnings } from './earnings'
 import { addDays, daysBetween, monthLabel, shortDate, yearOf } from './dates'
 import { delta, lei, money, percent } from './money'
 import { buckets, inRange } from './period'
-import { projectYear } from '../tax/estimate'
+import { projectYear, taxableGross } from '../tax/estimate'
 import { insights } from './insights'
 import { applyFeedback, type Feedback } from '../app/insightFeedback'
 import { movers, reviewHighlights } from './review'
@@ -35,7 +36,7 @@ export const SECTION_LABEL: Record<ReportSection, string> = {
   activities: 'By activity',
   sources: 'By source',
   mix: 'Recurring, one-off & currencies',
-  margins: 'Margins by venue & activity (costs)',
+  margins: 'What you kept, by client & work',
   pnl: 'Profit & loss (costs)',
   cashflow: 'Cash flow (costs)',
   outstanding: 'Expected payments',
@@ -185,7 +186,7 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
   // A comparison reaching before the first record would show "new" and runaway percentages.
   const firstRec = data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999')
   const comparable = !(firstRec > prevRange.from && ps.total > 0)
-  const has = (x: ReportSection) => opt.sections.includes(x) && (x !== 'tax' || ctx.trackTax) && (!COST_SECTIONS.includes(x) || !!ctx.trackCosts)
+  const has = (x: ReportSection) => opt.sections.includes(x) && (x !== 'tax' || ctx.trackTax) && (!COST_SECTIONS.includes(x) || !!ctx.trackCosts || (x === 'margins' && !!ctx.trackDeals))
   const parts: string[] = []
 
   if (has('summary')) {
@@ -250,13 +251,14 @@ ${[...byCur.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>Paid
   }
 
   if (has('margins')) {
-    const block = (dim: Dimension, noun: string) => {
-      const rows = margins(data, scoped.records, scoped.costs, range, dim).filter((m) => m.revenue > 0 || m.costs > 0)
-      const shown = opt.topN > 0 ? rows.slice(0, opt.topN) : rows
-      return `<h3>${noun}</h3><table><thead><tr><th>${noun}</th><th>Income</th><th>Linked costs</th><th>Margin</th><th>Margin %</th><th>Per engagement</th></tr></thead><tbody>${shown.map((m) =>
-        `<tr><td>${esc(m.name)}</td><td>${lei(m.revenue)}</td><td>${m.costs ? lei(m.costs) : '–'}</td><td class="${m.margin < 0 ? 'down' : ''}">${lei(m.margin)}</td><td>${m.marginRate === null ? '' : percent(m.marginRate)}</td><td>${m.engagements ? lei(m.revenuePerEngagement) : ''}</td></tr>`).join('')}</tbody></table>`
+    // The same "kept" as Clients & work: income less each venue's deal fee and the direct costs that belong to it.
+    const block = (by: Dimension, noun: string) => {
+      const e = earnings(scoped, range, by, { deals: !!ctx.trackDeals, costs: !!ctx.trackCosts })
+      const shown = opt.topN > 0 ? e.rows.slice(0, opt.topN) : e.rows
+      return `<h3>${noun}</h3><table><thead><tr><th>${noun}</th><th>Income</th><th>Venue fees</th><th>Direct costs</th><th>Kept</th><th>Sessions</th><th>A session</th></tr></thead><tbody>${shown.map((r) =>
+        `<tr><td>${esc(r.name)}</td><td>${lei(r.income)}</td><td>${r.venueFees ? lei(r.venueFees) : '–'}</td><td>${r.directCosts ? lei(r.directCosts) : '–'}</td><td class="${r.kept < 0 ? 'down' : ''}">${lei(r.kept)}</td><td>${r.sessions}</td><td>${lei(r.keptPerSession)}</td></tr>`).join('')}</tbody></table>`
     }
-    parts.push(`<section><h2>Margins</h2>${block('venue', 'Venue')}${block('activity', 'Activity')}<p class="muted">Income less the costs linked to each venue or activity. Unlinked overheads are not shared out.</p></section>`)
+    parts.push(`<section><h2>What you kept</h2>${block('client', 'Client')}${block('activity', 'Work')}<p class="muted">As in Clients &amp; work: income less each venue's deal fee and the direct costs linked to that venue or client, nearest in date. Overheads are not shared out.</p></section>`)
   }
 
   if (has('pnl')) {
@@ -265,7 +267,8 @@ ${[...byCur.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>Paid
     const rev = pnl.lines[0].total
     const many = cols.length > 1
     parts.push(`<section class="break"><h2>Profit &amp; loss</h2><table class="statement${cols.length > 6 ? ' wide' : ''}"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}${many ? '<th>Total</th>' : ''}<th>%</th></tr></thead><tbody>${
-      pnl.lines.filter((l) => l.kind !== 'detail').map((l) => `<tr class="${l.kind === 'subtotal' || l.kind === 'revenue' ? 'total' : ''}"><td>${l.kind === 'cost' ? '− ' : ''}${esc(l.label)}</td>${l.values.map((v) => `<td class="${v < 0 ? 'down' : ''}">${num(v)}</td>`).join('')}${many ? `<td>${num(l.total)}</td>` : ''}<td>${rev ? percent(l.total / rev) : ''}</td></tr>`).join('')
+      // Paper can't expand a line, so each cost's categories print under it.
+      pnl.lines.map((l) => `<tr class="${l.kind === 'subtotal' || l.kind === 'revenue' ? 'total' : l.kind === 'detail' ? 'detail' : ''}"><td>${l.kind === 'cost' ? '− ' : ''}${esc(l.label)}</td>${l.values.map((v) => `<td class="${v < 0 ? 'down' : ''}">${num(v)}</td>`).join('')}${many ? `<td>${num(l.total)}</td>` : ''}<td>${rev && l.kind !== 'detail' ? percent(l.total / rev) : ''}</td></tr>`).join('')
     }</tbody></table><p class="muted">Cash basis: income when received, costs when paid. Lei.${scopeIsSet(sc) ? ' Filtered: only costs linked to the filters are counted.' : ''}</p></section>`)
   }
 
@@ -274,7 +277,7 @@ ${[...byCur.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>Paid
     const cf = buildCashFlow(data.records, data.costs ?? [], cols, ctx.openingCash ?? 0, ctx.openingCashDate ?? '')
     parts.push(`<section class="break"><h2>Cash flow</h2><table class="statement${cols.length > 6 ? ' wide' : ''}"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>${
       cf.rows.map((r) => `<tr class="${r.kind === 'subtotal' || r.kind === 'balance' ? 'total' : ''}"><td>${r.kind === 'out' ? '− ' : r.kind === 'in' ? '+ ' : ''}${esc(r.label)}</td>${r.values.map((v) => `<td class="${v < 0 ? 'down' : ''}">${num(v)}</td>`).join('')}</tr>`).join('')
-    }</tbody></table><p class="muted">The whole business, unfiltered. ${cf.relative ? 'No opening balance was set, so balances start at zero.' : `From ${lei(ctx.openingCash ?? 0)} on ${esc(ctx.openingCashDate ?? '')}.`}</p></section>`)
+    }</tbody></table><p class="muted">${scopeIsSet(sc) ? 'The whole business, not just the filter above. ' : ''}${cf.relative ? 'No opening balance was set, so balances start at zero.' : `From ${lei(ctx.openingCash ?? 0)} on ${esc(ctx.openingCashDate ?? '')}.`}</p></section>`)
   }
 
   if (has('outstanding')) {
@@ -298,6 +301,15 @@ ${[...byCur.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>Paid
 <table><tbody><tr><td>Taxable income, full year (${p.method === 'expected' ? 'expected' : p.method === 'actual' ? 'actual' : 'projected'})</td><td>${lei(p.projected)}</td></tr>
 ${p.estimate.lines.map((l) => `<tr><td>${esc(l.label)}${l.rate !== null && l.base !== null ? ` <span class="muted">${percent(l.rate)} of ${lei(l.base)}</span>` : ''}</td><td>${lei(l.amount)}</td></tr>`).join('')}
 <tr class="total"><td>Estimated total</td><td>${lei(p.estimate.total)}</td></tr><tr><td>Effective rate</td><td>${percent(p.rate, 1)}</td></tr></tbody></table>
+${(() => {
+    // The same "still to set aside" as the app's Tax report.
+    const yr = data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year)
+    const owed = Math.round(taxableGross(data.records, year) * p.rate)
+    const withheld = sum(yr, (r) => r.taxWithheld)
+    const reserved = sum(yr, (r) => r.taxReserve ?? 0)
+    const gap = Math.round(owed - withheld - reserved)
+    return `<table><tbody><tr><td>Owed on ${year} income so far, at that rate</td><td>${lei(owed)}</td></tr><tr><td>Withheld or paid this year</td><td>− ${lei(withheld)}</td></tr><tr><td>Already set aside this year</td><td>− ${lei(reserved)}</td></tr><tr class="total"><td>${gap > 0 ? 'Still to set aside' : 'Ahead of the reserve by'}</td><td>${lei(Math.abs(gap))}</td></tr></tbody></table>`
+  })()}
 <p class="muted">${p.estimate.notes.map(esc).join(' ')}</p></section>`)
   }
 
@@ -329,7 +341,7 @@ ${taxCols ? `<td>${TAXABILITY[r.taxability]}${r.taxability === 'taxable' ? `, ${
 <title>${esc(opt.title || 'Income report')} — ${esc(monthTitle)}</title><style>${CSS}</style></head><body><main>
 <header><div class="brand">InFlow</div><h1>${esc(opt.title || 'Income report')}</h1><div class="period">${esc(monthTitle)}${subtitle ? ` · ${subtitle}` : ''}</div></header>
 ${parts.join('\n') || '<p class="muted">Pick at least one section.</p>'}
-<footer>Generated ${shortDate(ctx.today, 0)} by InFlow${ctx.owner ? ` for ${esc(ctx.owner)}` : ''}. Amounts in lei, converted at the rate recorded on each payment; received payments only unless marked expected.${ctx.trackTax && opt.sections.includes('tax') ? ' * Tax figures are optional estimates from published Romanian rules, not tax advice.' : ''}</footer>
+<footer>Generated ${shortDate(ctx.today, 0)} by InFlow${ctx.owner ? ` for ${esc(ctx.owner)}` : ''}. Amounts in lei, converted at the rate recorded on each payment; received payments only unless marked expected.${ctx.trackTax && (has('tax') || has('summary') || has('payments')) ? ' * Tax figures are optional estimates from published Romanian rules, not tax advice.' : ''}</footer>
 </main></body></html>`
 }
 
@@ -352,7 +364,7 @@ section{break-inside:avoid}section.break{break-inside:auto}
 .card{border:1px solid var(--line);border-radius:10px;padding:12px 14px}.card .k{font-size:12px;color:var(--muted)}.card .v{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.card .n{font-size:11px;color:var(--faint)}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th{font-size:11px;color:var(--faint);font-weight:600;text-align:right;padding:4px 6px;border-bottom:1px solid var(--ink)}
 td{text-align:right;padding:6px;border-bottom:1px solid var(--line);vertical-align:top}th:first-child,td:first-child{text-align:left;padding-left:0}
-table.statement td,table.statement th{white-space:nowrap;font-size:12px;padding:4px 5px}table.statement.wide td,table.statement.wide th{font-size:9.5px;padding:3px 2px}table.statement tr.total td{font-weight:700}
+table.statement td,table.statement th{white-space:nowrap;font-size:12px;padding:4px 5px}table.statement.wide td,table.statement.wide th{font-size:9.5px;padding:3px 2px}table.statement tr.total td{font-weight:700}table.statement tr.detail td{color:var(--muted);font-size:11px}table.statement tr.detail td:first-child{padding-left:16px}
 table.list td:nth-child(2),table.list th:nth-child(2),table.list td:nth-child(3),table.list th:nth-child(3),table.list td:nth-child(4),table.list th:nth-child(4){text-align:left}
 tfoot td{font-weight:700;border-bottom:0;border-top:1px solid var(--ink)}tr.total td{font-weight:700;border-top:1px solid var(--ink)}
 .barcell{width:22%}.barcell span{display:block;height:8px;border-radius:4px;background:var(--accent)}

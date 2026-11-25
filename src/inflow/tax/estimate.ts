@@ -248,3 +248,23 @@ export function suggestReserve(
       : `${(p.rate * 100).toFixed(1)}% of this payment${withheld}: the ${year} rate at ${how} ${Math.round(p.projected).toLocaleString('en-US')} lei of taxable income.`,
   }
 }
+
+/**
+ * What one deductible cost does to the year's tax estimate: the estimate
+ * without it, less the estimate with it, on the same projected income. Under
+ * sistem real a cost lowers the net income that income tax and CASS are read
+ * from (CAS moves only across its thresholds); under a micro company it lowers
+ * the profit paid out as dividends. Under normă or a custom rate on income,
+ * costs change nothing, and the note says so.
+ */
+export function costTaxEffect(profile: TaxProfile, records: IncomeRecord[], costs: CostRecord[], cost: Pick<CostRecord, 'id' | 'amountRon' | 'date'>, today: string): { saving: number; note: string | null } {
+  if (profile.id === 'pfa_norma') return { saving: 0, note: 'Under normă de venit the tax follows the norm, so costs don\'t lower it.' }
+  if (profile.id === 'custom') return { saving: 0, note: 'Your custom rate applies to income, so costs don\'t change it.' }
+  const year = yearOf(cost.date)
+  const others = costs.filter((c) => c.id !== cost.id || !cost.id)
+  const p = projectYear(profile, records, year, today, 0, others)
+  const base = profile.expensesFromCosts ? p.estimate.expenses : Math.max(0, profile.annualExpenses)
+  const without = estimateYear({ ...profile, annualExpenses: base }, year, p.projected).total
+  const withIt = estimateYear({ ...profile, annualExpenses: base + cost.amountRon }, year, p.projected).total
+  return { saving: Math.max(0, round2(without - withIt)), note: null }
+}

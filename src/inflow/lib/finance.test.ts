@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CostRecord, IncomeRecord } from '../domain/types'
 import { buildDemo } from '../data/demo'
-import { balanceAt, breakEven, buildCashFlow, buildPnl, deductibleCosts, margins, monthColumns } from './finance'
+import { balanceAt, breakEven, buildCashFlow, buildPnl, deductibleCosts, monthColumns } from './finance'
 
 const inc = (p: Partial<IncomeRecord>): IncomeRecord => ({
   id: Math.random().toString(36), description: '', amount: 0, currency: 'RON', fxRate: 1, amountRon: 0, date: '2026-03-10',
@@ -70,13 +70,14 @@ describe('cash flow', () => {
 describe('margins and break-even on the demo', () => {
   const today = '2026-11-25'
   const demo = buildDemo(today)
-  it('gives retreats a margin below their revenue, and a source no costs', () => {
-    const rows = margins(demo, demo.records, demo.costs, { from: '2026-01-01', to: '2026-12-31' }, 'activity')
-    const retreat = rows.find((r) => r.id === 'retreat')!
-    expect(retreat.costs).toBeGreaterThan(0)
-    expect(retreat.margin).toBeLessThan(retreat.revenue)
-    const bySource = margins(demo, demo.records, demo.costs, { from: '2026-01-01', to: '2026-12-31' }, 'source')
-    expect(bySource.every((r) => r.costs === 0)).toBe(true)
+  it('takes a retreat\'s costs off it even when they were paid days before (materials, flights, co-facilitator)', async () => {
+    const { earnings } = await import('./earnings')
+    const e = earnings(demo, { from: '2026-01-01', to: '2026-12-31' }, 'activity', { deals: true, costs: true })
+    const retreat = e.rows.find((r) => r.id === 'retreat')!
+    // Co-facilitators (same day), materials (three days before) and flights (nine days before) all count.
+    const linked = demo.costs.filter((c) => c.activity === 'retreat' && c.status === 'paid' && c.date >= '2026-01-01').reduce((a, c) => a + c.amountRon, 0)
+    expect(retreat.directCosts).toBeCloseTo(linked, 0)
+    expect(retreat.kept).toBeLessThan(retreat.income)
   })
   it('finds a break-even revenue from the last three months', () => {
     const be = breakEven(demo.records, demo.costs, today)!
@@ -95,8 +96,12 @@ describe('monthColumns', () => {
   it('clips to the range and labels across years', () => {
     const cols = monthColumns({ from: '2025-12-15', to: '2026-02-10' })
     expect(cols.map((c) => [c.from, c.to, c.label])).toEqual([
-      ['2025-12-15', '2025-12-31', 'Dec 25'], ['2026-01-01', '2026-01-31', 'Jan 26'], ['2026-02-01', '2026-02-10', 'Feb 26'],
+      ['2025-12-15', '2025-12-31', '15–31 Dec 25'], ['2026-01-01', '2026-01-31', 'Jan 26'], ['2026-02-01', '2026-02-10', '1–10 Feb 26'],
     ])
+  })
+  it('names the days when a column is only part of a month, so a week never reads as the month', () => {
+    expect(monthColumns({ from: '2026-11-23', to: '2026-11-29' }).map((c) => c.label)).toEqual(['23–29 Nov'])
+    expect(monthColumns({ from: '2026-11-01', to: '2026-11-30' }).map((c) => c.label)).toEqual(['Nov'])
   })
 })
 

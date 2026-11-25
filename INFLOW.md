@@ -476,3 +476,27 @@ sit under every date. Costs shows *Usually paid by now*: recurring costs paid la
 not yet this month, once their day has passed, with one-tap Add (a copy). Each P&L cost line
 opens its own categories in place, replacing a "Show categories" link. The bottom tabs lose
 their link underline. The "Optional" badge is gone from tax, which only shows once switched on.
+
+## Profit, Tax and Print audit, 25 Nov 2026
+- **"Kept" counted costs paid on another day.** A direct cost came off a payment only when
+  linked to the same venue on the same day, so retreat materials bought days before and flights
+  the week before never counted, and Clients & work overstated what that work kept.
+  `recordCosts` now gives each direct cost to the nearest payment (within a month) at its venue,
+  or with its client when it has no venue; payments sharing that date split it.
+- **One "kept" everywhere.** The print's old Margins section (linked costs only, no venue
+  deals) became *What you kept, by client & work*, the same figures as Clients & work. The
+  old `margins()` is gone.
+- **Columns name their days** when they hold part of a month ("23–29 Nov"), so a week's P&L
+  no longer reads as all of November.
+- **Tax report:** the tax rows sit apart from the income lines (they are not their total);
+  the tab is "Tax" (the asterisk had no footnote); expenses show what they take off the tax.
+- **Print:** the P&L lists each cost's categories (paper can't expand); the tax section adds
+  the app's "still to set aside"; the tax footnote prints whenever an asterisk does; the cash
+  flow note appears only when the report is narrowed.
+- **Cost form:** under Deductible, what the cost takes off this year's estimate
+  (`costTaxEffect`: the estimate without it, less with it); under normă or a custom rate it
+  says costs don't change the tax. A foreign-currency cost, with tax on and not VAT-registered,
+  notes reverse-charge VAT (art. 317).
+- **Payment form:** the Tax section folds back from its heading; every list says where it
+  comes from ("+ New…" for clients, sources, venues; a set list for activities); "People per
+  session" is a head count, one number.

@@ -19,7 +19,7 @@ import { daysBetween, yearOf } from '../lib/dates'
 import { breakEven, buildCashFlow, buildPnl, monthColumns } from '../lib/finance'
 import { lei, percent, round2 } from '../lib/money'
 import { download, toCsv } from '../store/backup'
-import { projectYear, taxableGross } from '../tax/estimate'
+import { estimateYear, projectYear, taxableGross } from '../tax/estimate'
 import { leaveTrail } from '../app/trail'
 import styles from '../styles/ui.module.css'
 
@@ -43,7 +43,7 @@ const GROUPS: Group[] = [
   { id: 'earnings', label: 'Clients & work', routes: ['earnings', 'clients', 'venues', 'activities', 'sources'] },
   { id: 'deals', label: 'Venue deals', routes: ['deals'] },
   { id: 'profit', label: 'Profit', routes: ['pnl', 'cashflow'] },
-  { id: 'tax', label: 'Tax*', routes: ['tax'] },
+  { id: 'tax', label: 'Tax', routes: ['tax'] },
   { id: 'print', label: 'Print', routes: ['print'] },
 ]
 const SUB_LABEL: Partial<Record<ReportTab, string>> = { pnl: 'P&L', cashflow: 'Cash flow' }
@@ -234,7 +234,6 @@ function CashFlowReport() {
         <li>{cf.relative
           ? 'No opening balance set, so balances start from zero. Set your cash on a date in Settings → Costs for real balances.'
           : `From ${lei(settings.openingCash)} in cash on ${settings.openingCashDate}. Ends the period at ${lei(end)}.`}</li>
-        <li>The whole business, unfiltered.</li>
         <li>No depreciation (not cash); equipment shows when bought.</li>
       </ul>
     </section>
@@ -251,6 +250,8 @@ function TaxReport() {
   const ytdWithheld = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxWithheld)
   const ytdReserved = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxReserve ?? 0)
   const yearGross = taxableGross(data.records, year)
+  // What the deductible expenses take off: the same income estimated with none.
+  const costSaving = Math.max(0, Math.round(estimateYear({ ...settings.tax, annualExpenses: 0 }, year, p.projected).total - p.estimate.total))
   // What the year so far would owe at the effective rate, less what's withheld and already set aside.
   const owedSoFar = Math.round(yearGross * p.rate)
   const gap = Math.round(owedSoFar - ytdWithheld - ytdReserved)
@@ -296,8 +297,11 @@ function TaxReport() {
           <button type="button" className={`${styles.row} ${styles.line}`} onClick={() => drill({ taxability: 'review' })}>
             <span>Needs review</span><span>{lei(summary.review)}</span>
           </button>
-          <div className={`${styles.line} ${styles.lineTotal}`}><span>Tax withheld or paid</span><span>{lei(summary.taxWithheld)}</span></div>
-          <div className={styles.line}><span>Set aside on these payments</span><span>{lei(summary.reserve)}</span></div>
+        </div>
+        {/* Tax on these payments, apart from the income lines above: not their total. */}
+        <div className={styles.lineList} style={{ marginTop: 'var(--space-md)' }}>
+          <div className={styles.line}><span>Tax withheld or paid on them</span><span>{lei(summary.taxWithheld)}</span></div>
+          <div className={styles.line}><span>Set aside on them</span><span>{lei(summary.reserve)}</span></div>
         </div>
       </section>
 
@@ -309,7 +313,7 @@ function TaxReport() {
         <div className={styles.lineList}>
           <div className={styles.line}><span>Taxable income so far</span><span>{lei(p.ytd)}</span></div>
           <div className={styles.line}><span>Read at, for the full year</span><span>{lei(p.projected)}</span></div>
-          <span className={styles.lineNote}>From {how}.{(settings.tax.id === 'pfa_real' || settings.tax.id === 'srl_micro') && p.estimate.expenses > 0 ? ` Less ${lei(p.estimate.expenses)} of expenses.` : ''}</span>
+          <span className={styles.lineNote}>From {how}.{(settings.tax.id === 'pfa_real' || settings.tax.id === 'srl_micro') && p.estimate.expenses > 0 ? ` Less ${lei(p.estimate.expenses)} of expenses, which take about ${lei(costSaving)} off the tax.` : ''}</span>
           {p.estimate.lines.map((l) => (
             <Fragment key={l.key}>
               <div className={styles.line}>

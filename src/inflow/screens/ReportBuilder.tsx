@@ -47,7 +47,7 @@ export function ReportBuilder() {
   const toggle = (s: ReportSection) => set({ sections: opt.sections.includes(s) ? opt.sections.filter((x) => x !== s) : ORDER.filter((x) => x === s || opt.sections.includes(x)) })
 
   // Only sections whose feature is on are offered, or printed.
-  const sections = ORDER.filter((s) => (s !== 'tax' || on('tax')) && (!COST_SECTIONS.includes(s) || on('costs')) && (s !== 'outstanding' || on('expected'))
+  const sections = ORDER.filter((s) => (s !== 'tax' || on('tax')) && (!COST_SECTIONS.includes(s) || on('costs') || (s === 'margins' && on('deals'))) && (s !== 'outstanding' || on('expected'))
     && (s !== 'mix' || on('currencies')) && (s !== 'insights' || on('insights')))
   const live = useMemo(() => ({ ...opt, sections: opt.sections.filter((x) => sections.includes(x)) }), [opt, sections])
   const needsClient = preset === 'client' && !opt.clientId

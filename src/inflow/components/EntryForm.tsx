@@ -248,7 +248,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     if (!draft.date) { setError('Pick the date it was received.'); return }
     if (draft.currency !== 'RON' && (!Number.isFinite(fxRate) || fxRate <= 0)) { setError('Enter the exchange rate to lei.'); return }
     const attendeesNum = draft.attendees.trim() === '' ? null : Math.round(parseAmount(draft.attendees))
-    if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setError('People who came should be a whole number.'); return }
+    if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setError('People per session is a head count: one whole number, like 8.'); return }
     const sessionsNum = draft.sessions.trim() === '' ? 1 : Math.round(parseAmount(draft.sessions))
     if (!Number.isFinite(sessionsNum) || sessionsNum < 1) { setError('Sessions should be a whole number, 1 or more.'); return }
     const hoursNum = draft.hours.trim() === '' ? null : parseRate(draft.hours)
@@ -321,11 +321,11 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const perHead = heads > 0 && amountRon > 0 ? amountRon / heads : 0
   const fromHeads = usualPerHead && heads > 0 && draft.currency === 'RON' ? heads * usualPerHead : 0
   const attendeesField = (
-    <TextInput label="People who came (optional)" value={draft.attendees} onChange={(v) => set({ attendees: v })} inputMode="numeric" placeholder="—"
+    <TextInput label="People per session (optional)" value={draft.attendees} onChange={(v) => set({ attendees: v })} inputMode="numeric" placeholder="e.g. 8"
       hint={fromHeads && Math.round(amountRon) !== fromHeads
         ? <>Usually {lei(usualPerHead!)} a head here: {heads}{sessionsN > 1 ? ` seats (${draft.attendees} × ${sessionsN} sessions)` : ''} × {lei(usualPerHead!)} = <b>{lei(fromHeads)}</b>{' '}
           <button type="button" className={styles.linkButton} onClick={() => set({ amount: String(fromHeads) })}>Use</button></>
-        : perHead ? `${lei(perHead)} a head` : 'For group sessions: shows what each seat earns and how full a room must be.'} />
+        : perHead ? `${lei(perHead)} a head` : 'How many came, as one number (not names). Shows what a seat earns.'} />
   )
 
   return (
@@ -363,7 +363,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               ))}
             </div>
           )}
-          <SelectInput label="Client" value={draft.clientId} onChange={pickClient} name="client">
+          <SelectInput label="Client" value={draft.clientId} onChange={pickClient} name="client"
+            hint={activeClients.length ? undefined : "Your own list. Add one with “+ New client…” at the bottom."}>
             <option value="">— none —</option>
             {activeClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             <option value={NEW}>+ New client…</option>
@@ -402,18 +403,21 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               hint="All of it, to see what an hour keeps." />
           </div>
           <div className={styles.formRow}>
-            <SelectInput label="Source" value={draft.sourceId} onChange={(v) => pickEntity('source', v)} name="source">
+            <SelectInput label="Source" value={draft.sourceId} onChange={(v) => pickEntity('source', v)} name="source"
+              hint="How it reached you: direct, a platform, an agency. “+ New…” at the bottom.">
               <option value="">— none —</option>
               {activeSources.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               <option value={NEW}>+ New source…</option>
             </SelectInput>
-            <SelectInput label="Venue" value={draft.venueId} onChange={(v) => pickEntity('venue', v)} name="venue">
+            <SelectInput label="Venue" value={draft.venueId} onChange={(v) => pickEntity('venue', v)} name="venue"
+              hint="Where it happened, online too. “+ New…” at the bottom.">
               <option value="">— none —</option>
               {activeVenues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               <option value={NEW}>+ New venue…</option>
             </SelectInput>
           </div>
-          <SelectInput label="Activity (optional)" value={draft.category} onChange={(v) => set({ category: v })}>
+          <SelectInput label="Activity (optional)" value={draft.category} onChange={(v) => set({ category: v })}
+            hint="A set list, the same everywhere and in Notion. Anything else: Other.">
             <option value="">—</option>
             {options(CATEGORY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </SelectInput>
@@ -435,7 +439,10 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           {settings.features.tax && taxOpen && (
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>
-              <span>Tax</span>
+              {/* Opens from the summary row above; closes from its own heading. */}
+              <button type="button" className={styles.sectionToggle} onClick={() => setTaxOpen(false)} aria-expanded>
+                Tax <ChevronDown size={16} aria-hidden style={{ transform: 'rotate(180deg)' }} />
+              </button>
               {(!isSuggested('taxability') || !isSuggested('taxHandling') || !isSuggested('vat')) && (
                 <button type="button" className={styles.linkButton} onClick={useSuggestedTax}>Use suggestion</button>
               )}
