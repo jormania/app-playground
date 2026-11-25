@@ -80,6 +80,24 @@ describe('insights that apply to this practice', () => {
     for (const i of week.filter((x) => x.rule === 'one-client')) expect(i.title).toMatch(/last twelve months/)
   })
 
+  it('hides each feature\'s findings while it is off, and brings them back when it is on again', () => {
+    const late = { ...demo, costs: [...demo.costs, { ...demo.costs[0], id: 'late', status: 'due' as const, date: '2026-11-01' }] }
+    const owned: [keyof typeof all, string[]][] = [
+      ['tax', ['tax-review']],
+      ['costs', ['costs-overdue']],
+      ['deals', ['losing-sessions', 'close-to-break-even', 'venue-for-the-same-work']],
+      ['expected', ['overdue']],
+    ]
+    for (const [feature, rs] of owned) {
+      const off = insights(late, year, today, { ...all, [feature]: false }).map((i) => i.rule)
+      for (const rule of rs) expect(off, `${rule} with ${feature} off`).not.toContain(rule)
+      const on = insights(late, year, today, all).map((i) => i.rule)
+      expect(on, `${feature} back on`).toEqual(expect.arrayContaining(rs))
+    }
+    // Nothing is deleted while hidden: the records behind them are untouched.
+    expect(late.records.filter((r) => r.taxability === 'review').length).toBeGreaterThan(0)
+  })
+
   it('leaves out what is switched off', () => {
     const lean = insights(demo, year, today, { deals: false, costs: false, expected: false }).map((i) => i.rule)
     expect(lean).not.toContain('losing-sessions')
