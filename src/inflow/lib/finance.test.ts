@@ -99,3 +99,15 @@ describe('monthColumns', () => {
     ])
   })
 })
+
+describe('recurring costs not yet recorded this month', () => {
+  const base = { id: '', description: 'Coworking desk', amount: 850, currency: 'RON' as const, fxRate: 1, amountRon: 850, status: 'paid' as const, group: 'operating' as const, category: 'rent' as const, venueId: null, clientId: null, activity: null, recurring: true, deductible: true, notes: '' }
+  it('offers last month\'s rent once its day has passed, and not after it is in', async () => {
+    const { recurringCostsMissing } = await import('./finance')
+    const october = { ...base, id: 'oct', date: '2026-10-02' }
+    expect(recurringCostsMissing([october], '2026-11-01')).toEqual([])
+    expect(recurringCostsMissing([october], '2026-11-03').map((c) => c.id)).toEqual(['oct'])
+    expect(recurringCostsMissing([october, { ...base, id: 'nov', date: '2026-11-02' }], '2026-11-25')).toEqual([])
+    expect(recurringCostsMissing([{ ...october, recurring: false }], '2026-11-25')).toEqual([])
+  })
+})

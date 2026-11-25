@@ -71,6 +71,8 @@ export function parseAmount(s: string): number {
   // Spaces (also non-breaking) group thousands too: "1 500".
   const t = String(s).trim().replace(/[\s\u00a0\u202f]/g, '')
   if (!t) return 0
+  // "1.5k" or "2k": thousands, the way people jot amounts down.
+  if (/^-?[\d.,]+k$/i.test(t)) return Math.round(parseAmount(t.slice(0, -1).replace(',', '.')) * 1000 * 100) / 100
   const lastComma = t.lastIndexOf(',')
   const lastDot = t.lastIndexOf('.')
   let norm: string
@@ -122,5 +124,19 @@ export function NumberInput({ label, value, onCommit, hint, placeholder, scale =
         const n = parseAmount(t)
         if (Number.isFinite(n) && n >= 0) onCommit(n / scale)
       }} />
+  )
+}
+
+/** Today and yesterday, one tap each under a date field: most entries are one or the other. */
+export function DateShortcuts({ today, value, onPick }: { today: string; value: string; onPick: (date: string) => void }) {
+  const d = new Date(`${today}T12:00:00`)
+  d.setDate(d.getDate() - 1)
+  const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return (
+    <span className={styles.dateShortcuts}>
+      {([[today, 'Today'], [yesterday, 'Yesterday']] as const).map(([day, label]) => (
+        <button key={label} type="button" className={styles.linkButton} aria-pressed={value === day} onClick={() => onPick(day)}>{label}</button>
+      ))}
+    </span>
   )
 }

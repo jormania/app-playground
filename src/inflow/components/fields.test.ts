@@ -17,3 +17,13 @@ describe('parseAmount reads amounts as people type them', () => {
 describe('parseRate keeps exchange rates as decimals', () => {
   it.each([['4.976', 4.976], ['4,976', 4.976], ['5.0912', 5.0912], ['5', 5], ['', 0]])('%s → %s', (input, want) => expect(parseRate(input)).toBe(want))
 })
+
+describe('amounts jotted down in thousands', () => {
+  it('reads 2k, 1.5k and 1,5k as thousands', async () => {
+    const { parseAmount } = await import('./fields')
+    expect(parseAmount('2k')).toBe(2000)
+    expect(parseAmount('1.5k')).toBe(1500)
+    expect(parseAmount('1,5K')).toBe(1500)
+    expect(parseAmount('k')).toBeNaN()
+  })
+})

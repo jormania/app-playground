@@ -214,7 +214,7 @@ function Shell() {
             )}
             {screen === 'overview' && <Overview onOpen={open} onAdd={() => open(null)} onAddCost={() => openCost(null)} />}
             {screen === 'income' && <Income onOpen={open} />}
-            {screen === 'costs' && <Costs onOpen={openCost} filter={costFilter} setFilter={setCostFilter} />}
+            {screen === 'costs' && <Costs onOpen={openCost} onCopy={(id) => copy('cost', id)} filter={costFilter} setFilter={setCostFilter} />}
             {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onAddCost={() => openCost(null)} />}
             {screen === 'settings' && <Settings />}
           </div>

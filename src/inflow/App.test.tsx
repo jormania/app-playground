@@ -57,7 +57,8 @@ describe('InFlow', () => {
     expect(total.textContent).not.toBe('0 lei')
     expect(screen.getByText('Where it came from')).toBeTruthy()
     expect(screen.getByText(/Set aside for tax/)).toBeTruthy()
-    expect(screen.getAllByText('Optional').length).toBeGreaterThan(0)
+    // Tax shows only once switched on, so it carries no "optional" badge.
+    expect(screen.queryByText('Optional')).toBeNull()
   })
 
   it('adds a payment with the tax folded away as an optional suggestion', async () => {
@@ -205,6 +206,41 @@ describe('small conveniences', () => {
     expect((within(dialog).getByLabelText('Amount') as HTMLInputElement).value).not.toBe('')
     await user.clear(within(dialog).getByLabelText('Description'))
     expect((within(dialog).getByLabelText('Description') as HTMLInputElement).placeholder).toContain(' · ')
+  })
+
+  it('opens a P&L cost line into its categories in place', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/pnl')
+    const line = await screen.findByRole('button', { name: /Operating costs/ })
+    expect(screen.queryByText('Rent')).toBeNull()
+    await user.click(line)
+    expect(line.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Rent')).toBeTruthy()
+  })
+
+  it('asks before saving an extra zero, fixes it in one tap, and still lets you save as typed', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.selectOptions(within(dialog).getByLabelText('Client'), within(dialog).getByRole('option', { name: 'Ioana Marinescu' }))
+    const amount = within(dialog).getByLabelText('Amount') as HTMLInputElement
+    await user.clear(amount)
+    await user.type(amount, '10000')
+    await user.click(within(dialog).getByRole('button', { name: 'Add' }))
+    const box = await within(dialog).findByRole('alert', { name: 'Worth a second look' })
+    expect(within(box).getByText(/extra zero/)).toBeTruthy()
+    await user.click(within(box).getByRole('button', { name: /Make it/ }))
+    expect(amount.value).toBe('1000')
+    expect(within(dialog).queryByRole('alert', { name: 'Worth a second look' })).toBeNull()
+    await user.click(within(dialog).getByRole('button', { name: 'Add' }))
+    expect(await screen.findByText(/Added 1,000/)).toBeTruthy()
   })
 
   it('turns the head count into an amount at a venue with a known price per head', async () => {

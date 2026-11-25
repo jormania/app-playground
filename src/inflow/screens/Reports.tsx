@@ -9,7 +9,6 @@ import { Download } from 'lucide-react'
 import { useInflow, EMPTY_FILTER, type IncomeFilter } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { MonthlyPair, SplitBar } from '../components/charts'
-import { Optional } from '../components/Optional'
 import { ReportBuilder } from './ReportBuilder'
 import { ReviewReport, SectionIndex } from './Insights'
 import { DealsReport } from './VenueDeals'
@@ -108,7 +107,9 @@ function useDrill() {
 function PnlReport({ onAddCost }: { onAddCost: () => void }) {
   const { data, today, period } = useInflow()
   const { range } = usePeriodData()
-  const [details, setDetails] = useState(false)
+  // Each cost line opens its own categories, right where it is (rent, software… under operating costs).
+  const [open, setOpen] = useState<Set<string>>(new Set())
+  const toggle = (k: string) => setOpen((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n })
   const columns = useMemo(() => monthColumns(range), [range])
   const pnl = useMemo(() => buildPnl(data.records, data.costs, columns), [data, columns])
   // The income a month needs to cover its fixed costs, scaled to the selected period, and where the period stands.
@@ -126,7 +127,7 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
   const due = data.costs.filter((c) => c.status === 'due' && c.date <= range.to)
   const exportCsv = () => download(`inflow-pnl-${range.from}-${range.to}.csv`, toCsv(
     ['Line', ...columns.map((c) => c.label), 'Total', '% of revenue'],
-    pnl.lines.filter((l) => details || l.kind !== 'detail').map((l) => [l.label, ...l.values, l.total, rev ? ((l.total / rev) * 100).toFixed(1) + '%' : '']),
+    pnl.lines.map((l) => [l.label, ...l.values, l.total, rev ? ((l.total / rev) * 100).toFixed(1) + '%' : '']),
   ), 'text/csv')
 
   return (
@@ -150,10 +151,7 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <h2 className={styles.panelTitle}>Profit & loss · {range.label}</h2>
-          <span style={{ display: 'flex', gap: 'var(--space-md)' }}>
-            <button type="button" className={styles.linkButton} onClick={() => setDetails((d) => !d)}>{details ? 'Hide categories' : 'Show categories'}</button>
-            <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
-          </span>
+          <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
         </div>
         {columns.length > 1 && (
           <MonthlyPair months={columns.map((c) => ({ label: c.label, from: c.from }))}
@@ -168,14 +166,23 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
             {/* Total and % sit beside the labels, so a phone sees the period's answer before scrolling the months. */}
             <thead><tr><th></th><th>{columns.length > 1 ? 'Total' : columns[0]?.label}</th><th>%</th>{columns.length > 1 && columns.map((c) => <th key={c.from}>{c.label}</th>)}</tr></thead>
             <tbody>
-              {pnl.lines.filter((l) => details || l.kind !== 'detail').map((l) => (
+              {pnl.lines.filter((l) => l.kind !== 'detail' || open.has(l.key.split(':')[0])).map((l) => {
+                const hasParts = l.kind === 'cost' && pnl.lines.some((d) => d.kind === 'detail' && d.key.startsWith(`${l.key}:`))
+                return (
                 <tr key={l.key} className={l.kind === 'subtotal' || l.kind === 'revenue' ? styles.sub : l.kind === 'detail' ? styles.detail : undefined}>
-                  <td title={l.label}>{l.kind === 'cost' ? `− ${l.label}` : l.label}</td>
+                  <td title={l.label}>
+                    {hasParts
+                      ? <button type="button" className={styles.lineToggle} aria-expanded={open.has(l.key)} onClick={() => toggle(l.key)}>
+                          − {l.label} <span className={styles.twistyArrow} aria-hidden>▶</span>
+                        </button>
+                      : l.kind === 'cost' ? `− ${l.label}` : l.label}
+                  </td>
                   <td className={`${columns.length > 1 ? styles.totalCol : ''} ${l.total < 0 ? styles.neg : ''}`}>{fmt(l.total)}</td>
                   <td>{rev && l.kind !== 'detail' ? percent(l.total / rev) : ''}</td>
                   {columns.length > 1 && l.values.map((v, i) => <td key={i} className={v < 0 ? styles.neg : undefined}>{fmt(v)}</td>)}
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -268,7 +275,7 @@ function TaxReport() {
     <>
       <section className={styles.panel}>
         <div className={styles.panelHead}>
-          <h2 className={styles.panelTitle}>Tax · {range.label} <Optional /></h2>
+          <h2 className={styles.panelTitle}>Tax · {range.label}</h2>
           <button type="button" className={styles.linkButton} onClick={exportCsv}><Download size={12} aria-hidden /> CSV</button>
         </div>
         <SplitBar total={summary.total} parts={[

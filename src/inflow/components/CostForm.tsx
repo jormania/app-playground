@@ -12,7 +12,9 @@ import type { Category, CostCategory, CostGroup, CostRecord, Currency } from '..
 import { ACTIVITY, CATEGORIES_BY_GROUP, COST_CATEGORY, COST_GROUP, COST_GROUP_HINT, CURRENCIES, options } from '../domain/vocabulary'
 import { fetchRonRate, lei, money, round2, toRon } from '../lib/money'
 import { addMonths } from '../lib/dates'
-import { parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
+import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
+import { Findings } from './Findings'
+import { costFindings, type Finding } from '../lib/guards'
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-cost'
@@ -73,6 +75,9 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
+  // Warnings from lib/guards.ts for the draft exactly as it was when Save was pressed.
+  const [warned, setWarned] = useState<{ draft: Draft; items: Finding[] } | null>(null)
+  const warnings = warned && warned.draft === draft ? warned.items : []
 
   const amount = parseAmount(draft.amount)
   const fxRate = draft.currency === 'RON' ? 1 : parseRate(draft.fxRate)
@@ -123,6 +128,11 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
       group: draft.group, category: draft.category, venueId: draft.venueId || null, clientId: draft.clientId || null,
       activity: (draft.activity || null) as Category | null, recurring: draft.recurring, deductible: draft.deductible,
       notes: draft.notes.trim(), demo: cost?.demo,
+    }
+    // A second press with nothing changed means "yes, I meant it".
+    if (!warnings.length) {
+      const found = costFindings(c, { costs: data.costs, today })
+      if (found.length) { setWarned({ draft, items: found }); return }
     }
     setBusy(true)
     const saved = await saveCost(c)
@@ -175,7 +185,8 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
             <SelectInput label="Category" value={draft.category} onChange={(v) => set({ category: v as CostCategory })} name="category">
               {CATEGORIES_BY_GROUP[draft.group].map((c) => <option key={c} value={c}>{COST_CATEGORY[c]}</option>)}
             </SelectInput>
-            <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date" />
+            <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date"
+              hint={<DateShortcuts today={today} value={draft.date} onPick={(d) => set({ date: d })} />} />
           </div>
           <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}
             hint={draft.status === 'due' ? 'Not paid yet: left out of the P&L and cash flow until you mark it paid.' : undefined}>
@@ -204,6 +215,11 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
           <SettingsToggle label="Deductible" hint="Counts as an expense for the tax estimate." checked={draft.deductible} onChange={(e) => set({ deductible: e.target.checked })} />
           <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+          <Findings items={warnings} onFix={(f) => {
+            if (f.kind === 'amount') set({ amount: String(f.value) })
+            else if (f.kind === 'fxRate') set({ fxRate: String(f.value) })
+            else if (f.kind === 'status') set({ status: f.value as Draft['status'] })
+          }} />
           <div className={styles.formActions}>
             <div>
               {!isNew && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
@@ -211,7 +227,7 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
             </div>
             <div>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={busy}>{isNew ? 'Add' : 'Save'}</Button>
+              <Button type="submit" disabled={busy}>{warnings.length ? 'Save anyway' : isNew ? 'Add' : 'Save'}</Button>
             </div>
           </div>
         </form>

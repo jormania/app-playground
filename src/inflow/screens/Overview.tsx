@@ -11,7 +11,6 @@ import { usePeriodData } from '../app/usePeriod'
 import { TrendChart } from '../components/charts'
 import { Donut } from '../components/Donut'
 import { useCountUp } from '../components/useCountUp'
-import { Optional } from '../components/Optional'
 import {
   asExpected, breakdown, concentration, NO_ENTITY, outstanding, series, suggestExpected, sum, type Dimension,
 } from '../lib/analytics'
@@ -151,12 +150,12 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
           {on('tax') ? (
             <>
               <div className={styles.stat}>
-                <div className={styles.statLabel}>Set aside for tax <Optional /></div>
+                <div className={styles.statLabel}>Set aside for tax</div>
                 <div className={styles.statValue}>{lei(summary.reserve)}</div>
                 <div className={styles.statNote}>{summary.taxWithheld > 0 ? `+ ${lei(summary.taxWithheld)} withheld` : 'nothing withheld'}</div>
               </div>
               <div className={styles.stat}>
-                <div className={styles.statLabel}>Estimated net <Optional /></div>
+                <div className={styles.statLabel}>Estimated net</div>
                 <div className={styles.statValue}>{lei(summary.net)}</div>
                 <div className={styles.statNote}>after reserve and withheld tax</div>
               </div>

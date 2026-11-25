@@ -12,7 +12,8 @@ import { SelectInput } from '../components/fields'
 import type { CostRecord, InflowData } from '../domain/types'
 import { ACTIVITY, COST_CATEGORY, COST_GROUP, COST_GROUP_SHORT, options } from '../domain/vocabulary'
 import { NO_ENTITY } from '../lib/analytics'
-import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
+import { monthLabel, monthShort, parseDate, shortDate, weekdayShort } from '../lib/dates'
+import { recurringCostsMissing } from '../lib/finance'
 import { lei, money, round2 } from '../lib/money'
 import { costsCsv, download } from '../store/backup'
 import { Donut } from '../components/Donut'
@@ -86,7 +87,7 @@ function WhereWent({ costs, data, onPick, empty, onWiden }: { costs: CostRecord[
   )
 }
 
-export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => void; filter: CostFilter; setFilter: (f: CostFilter) => void }) {
+export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: string) => void; onCopy?: (id: string) => void; filter: CostFilter; setFilter: (f: CostFilter) => void }) {
   const { data, today, costsAvailable, setPeriod } = useInflow()
   const { range } = usePeriodData()
   const [showFilters, setShowFilters] = useState(false)
@@ -110,6 +111,7 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
   if (filter.activity) active.push(['activity', filter.activity === NO_ENTITY ? 'No activity' : ACTIVITY[filter.activity as keyof typeof ACTIVITY]])
   if (filter.status) active.push(['status', filter.status === 'due' ? 'Due' : 'Paid'])
 
+  const missing = useMemo(() => recurringCostsMissing(data.costs, today), [data.costs, today])
   const exportCsv = () => download(`inflow-costs-${today}.csv`, costsCsv(list, data), 'text/csv')
 
   return (
@@ -118,6 +120,28 @@ export function Costs({ onOpen, filter, setFilter }: { onOpen: (id: string) => v
         <div className={styles.banner} role="status">
           <span>Your Notion workspace has no “InFlow — Costs” database next to Income, so costs can't be saved there. Duplicate it from the Starter Template.</span>
         </div>
+      )}
+      {onCopy && missing.length > 0 && (
+        <section className={styles.panel} aria-label="Usually paid by now">
+          <div className={styles.panelHead}>
+            <h2 className={styles.panelTitle}><Repeat size={14} aria-hidden /> Usually paid by now</h2>
+            <span className={styles.panelSub}>recurring, not yet this month</span>
+          </div>
+          <div className={styles.rows}>
+            {missing.slice(0, 4).map((c) => (
+              <div key={c.id} className={styles.expectedRow}>
+                <div className={`${styles.row} ${styles.suggestRow}`}>
+                  <span className={styles.rowName}>{c.description}</span>
+                  <span className={styles.rowValue}>{money(c.amount, c.currency)}</span>
+                  <span className={styles.rowMeta}>last on {shortDate(c.date)}</span>
+                </div>
+                <div className={styles.expectedActions}>
+                  <button type="button" className={styles.chip} onClick={() => onCopy(c.id)} aria-label={`Add ${c.description} for this month`}>Add</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
       <div className={styles.toolbar}>
         <input className={styles.search} type="search" placeholder="Search costs, venues, categories…" value={filter.query}

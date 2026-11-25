@@ -20,8 +20,9 @@ import { suggestClassification, suggestedWithholding } from '../tax/classify'
 import { suggestReserve } from '../tax/estimate'
 import type { Entity, EntityKind } from '../store/repo'
 import { blankEntity, EntityEditor, KIND_LABEL } from './EntityEditor'
-import { parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
-import { Optional } from './Optional'
+import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
+import { Findings } from './Findings'
+import { incomeErrors, incomeFindings, type Finding, type Fix } from '../lib/guards'
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-entry'
@@ -102,6 +103,9 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const [error, setError] = useState<string | null>(null)
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
+  // Warnings from lib/guards.ts for the draft exactly as it was when Save was pressed.
+  const [warned, setWarned] = useState<{ draft: Draft; items: Finding[] } | null>(null)
+  const warnings = warned && warned.draft === draft ? warned.items : []
   const touch = (f: TaxField | 'reserve' | 'withheld' | 'fx' | 'prefill') => setTouched((t) => new Set(t).add(f))
 
   // The clients paid most recently, as one-tap chips above the picker.
@@ -282,6 +286,16 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       taxRules: reserveUnchanged ? record!.taxRules : reserveSuggestion.rulesId,
       demo: record?.demo,
     }
+    const impossible = incomeErrors(r)
+    if (impossible) { setError(impossible); return }
+    // A second press with nothing changed means "yes, I meant it".
+    if (!warnings.length) {
+      const found = incomeFindings(r, {
+        records: data.records, today, before: record ?? null,
+        suggestedReserve: settings.features.tax && r.taxability === 'taxable' && r.status === 'received' ? reserveSuggestion.amount : null,
+      })
+      if (found.length) { setWarned({ draft, items: found }); return }
+    }
     setBusy(true)
     const saved = await saveRecord(r)
     setBusy(false)
@@ -371,7 +385,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           <TextInput label="Description" value={draft.description} onChange={(v) => set({ description: v })} placeholder={autoDescription === 'Payment' ? 'e.g. Coaching session' : autoDescription} name="description"
             hint={!draft.description.trim() && autoDescription !== 'Payment' ? 'Left empty, it is saved as shown.' : undefined} />
           <div className={styles.formRow}>
-            <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date" />
+            <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date"
+              hint={<DateShortcuts today={today} value={draft.date} onPick={(d) => set({ date: d })} />} />
             {showStatus ? (
               <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}>
                 <option value="received">Received</option>
@@ -407,7 +422,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           {settings.features.tax && !taxOpen && (
             <button type="button" className={styles.disclosure} onClick={() => setTaxOpen(true)} aria-expanded={false}>
               <span>
-                <b>Tax</b> <Optional />
+                <b>Tax</b>
                 <span className={styles.disclosureSummary}>
                   {TAXABILITY[draft.taxability]}{draft.taxability === 'taxable' ? ` · ${TAX_HANDLING[draft.taxHandling].toLowerCase()}` : ''} · VAT {VAT[draft.vat].toLowerCase()}
                   {draft.taxability === 'taxable' && draft.reserve ? ` · set aside ${lei(parseAmount(draft.reserve) || 0)}` : ''}
@@ -420,7 +435,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           {settings.features.tax && taxOpen && (
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>
-              <span>Tax <Optional /></span>
+              <span>Tax</span>
               {(!isSuggested('taxability') || !isSuggested('taxHandling') || !isSuggested('vat')) && (
                 <button type="button" className={styles.linkButton} onClick={useSuggestedTax}>Use suggestion</button>
               )}
@@ -464,6 +479,12 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
 
           <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+          <Findings items={warnings} onFix={(f: Fix) => {
+            if (f.kind === 'amount') set({ amount: String(f.value) })
+            else if (f.kind === 'fxRate') { touch('fx'); set({ fxRate: String(f.value) }) }
+            else if (f.kind === 'status') set({ status: f.value as Draft['status'] })
+            else { touch('reserve'); set({ reserve: String(f.value) }) }
+          }} />
           <div className={styles.formActions}>
             <div>
               {!isNew && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
@@ -471,7 +492,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             </div>
             <div>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={busy}>{isNew ? 'Add' : 'Save'}</Button>
+              <Button type="submit" disabled={busy}>{warnings.length ? 'Save anyway' : isNew ? 'Add' : 'Save'}</Button>
             </div>
           </div>
         </form>

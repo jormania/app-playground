@@ -246,3 +246,24 @@ export function deductibleCosts(costs: CostRecord[], year: number, upTo?: string
   return total(costs.filter((c) => c.status === 'paid' && c.deductible && c.date.startsWith(String(year)) && (!upTo || c.date <= upTo)
     && (c.group === 'direct' || c.group === 'operating' || c.group === 'depreciation' || c.group === 'interest')))
 }
+
+/**
+ * Recurring costs paid last month and not yet recorded this month, once their
+ * usual day has passed: rent, software, the accountant. One copy of each, the
+ * latest, so the form opens filled in.
+ */
+export function recurringCostsMissing(costs: CostRecord[], today: string): CostRecord[] {
+  const thisMonth = today.slice(0, 7)
+  const lastMonth = addMonths(startOfMonth(today), -1).slice(0, 7)
+  const key = (c: CostRecord) => `${c.category}|${c.description.trim().toLowerCase()}`
+  const seenNow = new Set(costs.filter((c) => c.date.startsWith(thisMonth)).map(key))
+  const latest = new Map<string, CostRecord>()
+  for (const c of costs) {
+    if (!c.recurring || c.status !== 'paid' || !c.date.startsWith(lastMonth) || seenNow.has(key(c))) continue
+    const cur = latest.get(key(c))
+    if (!cur || c.date > cur.date) latest.set(key(c), c)
+  }
+  return [...latest.values()]
+    .filter((c) => Number(c.date.slice(8, 10)) <= Number(today.slice(8, 10)))
+    .sort((a, b) => b.amountRon - a.amountRon)
+}

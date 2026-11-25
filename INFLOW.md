@@ -448,3 +448,31 @@ page; viewport screenshots while scrolling confirm the tab bar stays at the bott
   per hour, settings migration for new and existing users, feature gating of insights, Income
   and Costs donuts (received only), no sideways overflow on any screen at 360 px in Month or
   Custom, no runtime errors.
+
+## Guards against a believable wrong number, 25 Nov 2026
+Tax rulesets are frozen and stored reserves are never recomputed, so a slip there gives a
+plausible figure, not a crash. Two layers now catch it:
+- **Tests.** `tax/frozen.test.ts` holds each published ruleset's figures by hand: editing
+  RO-2025 or RO-2026 in place fails with "ship a corrected ruleset under a new id". Rates
+  must be shares (0–1), not percentages.
+- **Before a save** (`lib/guards.ts`, shown by `components/Findings.tsx`): warnings, never
+  blocks, each with a one-tap fix where the right value is plain, then *Save anyway*.
+  Compared with the person's own history, never a price list:
+  - an amount 8× above or below the client's usual (an extra zero offers the corrected amount);
+  - far above anything received, for a new client;
+  - received or paid on a future date (offers expected / due);
+  - dated over a year ago or ahead;
+  - a rate more than a third off the last one used for that currency (inverted or a lost decimal);
+  - the same payment or bill twice within three days;
+  - absurd sessions, hours or head counts;
+  - a stored reserve whose amount has changed: kept, as the rule says, but the new
+    suggestion is shown, one tap away;
+  - a reserve above 45% of the payment.
+
+  Refused outright: tax set aside or withheld above the payment, or a negative reserve.
+
+**Quality of life, same pass:** "1.5k" and "2k" are read as thousands. Today and Yesterday
+sit under every date. Costs shows *Usually paid by now*: recurring costs paid last month and
+not yet this month, once their day has passed, with one-tap Add (a copy). Each P&L cost line
+opens its own categories in place, replacing a "Show categories" link. The bottom tabs lose
+their link underline. The "Optional" badge is gone from tax, which only shows once switched on.
