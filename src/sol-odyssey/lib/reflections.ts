@@ -4,6 +4,7 @@
 
 import { CYCLE_DAYS } from './charter'
 import { weekIndexFromDay, type CheckinRecord } from './checkins'
+import { richText } from './richText'
 
 export const WEEKS = 6
 
@@ -94,11 +95,6 @@ export function canSubmit(draft: ReflectionDraft): boolean {
 }
 
 // ── Notion property mapping ─────────────────────────────────────────────────────────────────
-
-function richText(value: string): { rich_text: { text: { content: string } }[] } {
-  const v = value.trim()
-  return { rich_text: v ? [{ text: { content: v } }] : [] }
-}
 
 export function buildReflectionProperties(
   odysseyId: string,

@@ -28,6 +28,7 @@ import {
 } from './reflections'
 import { buildHarvestProperties, type Outcome } from './harvest'
 import { validateSchema, DB_LABEL, type DbKey, type SchemaIssue } from './schema'
+import { richText } from './richText'
 
 export const RELAY_ENDPOINT = '/api/notion'
 
@@ -535,7 +536,7 @@ export async function writeCommitment(
   contract: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
-  const properties = { Commitment: { rich_text: contract.trim() ? [{ text: { content: contract.trim() } }] : [] } }
+  const properties = { Commitment: richText(contract) }
   try {
     await callRelay(settings.token, updatePageRequest(odysseyId, properties), fetchImpl)
   } catch (err) {
@@ -573,7 +574,7 @@ export async function updateTinyVersion(
   value: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
-  const properties = { 'Tiny Version': { rich_text: value.trim() ? [{ text: { content: value.trim() } }] : [] } }
+  const properties = { 'Tiny Version': richText(value) }
   await callRelay(settings.token, updatePageRequest(odysseyId, properties), fetchImpl)
 }
 

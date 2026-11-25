@@ -64,6 +64,7 @@ src/sol-odyssey/
   pages/Settings.tsx             ← token + 3 data-source IDs + buddy; "Test connection"
   lib/settings.ts                ← on-device settings (pure; tested)
   lib/notion.ts                  ← relay request builders + listActiveOdysseys (pure core; tested)
+  lib/richText.ts                ← every rich_text write; chunks at Notion's 2000-char element cap
   lib/cn.ts                      ← clsx + tailwind-merge helper
   components/{Button,Field}.tsx  ← token-styled primitives
   styles/{tokens,fonts,index}.css

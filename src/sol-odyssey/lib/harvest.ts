@@ -1,6 +1,8 @@
 // Harvest: closing one Odyssey and pointing the machine at the next. Day 42 isn't an ending —
 // it's a handover. Pure logic only; the screen + write live elsewhere.
 
+import { richText } from './richText'
+
 export type Outcome = 'Keep' | 'Grow' | 'Retire'
 
 export interface OutcomeOption {
@@ -45,11 +47,6 @@ export function statusForOutcome(outcome: Outcome): 'Maintenance' | 'Completed' 
     case 'Retire':
       return 'Retired'
   }
-}
-
-function richText(value: string): { rich_text: { text: { content: string } }[] } {
-  const v = value.trim()
-  return { rich_text: v ? [{ text: { content: v } }] : [] }
 }
 
 /** The Notion properties patched onto the Odyssey at harvest. */

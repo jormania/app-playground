@@ -3,6 +3,7 @@
 // but "never skip two days running" (spec): a lapse is data, handled warmly.
 
 import { CYCLE_DAYS, computeDayIndex, isoAddDays } from './charter'
+import { richText } from './richText'
 
 export interface CheckinDraft {
   done: boolean
@@ -119,11 +120,6 @@ export function forfeitDue(records: CheckinRecord[], todayISO: string): boolean 
 }
 
 // ── Notion property mapping ─────────────────────────────────────────────────────────────────
-
-function richText(value: string): { rich_text: { text: { content: string } }[] } {
-  const v = value.trim()
-  return { rich_text: v ? [{ text: { content: v } }] : [] }
-}
 
 export function buildCheckinProperties(
   odysseyId: string,
